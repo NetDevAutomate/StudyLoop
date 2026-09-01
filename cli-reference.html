@@ -1,0 +1,2245 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A local-first, AuDHD-aware study companion for active learning with AI mentors">
+      
+      
+      
+        <link rel="canonical" href="https://netdevautomate.github.io/StudyLoop/cli-reference.html">
+      
+      
+        <link rel="prev" href="agent-install.html">
+      
+      
+        <link rel="next" href="troubleshooting.html">
+      
+      
+        
+      
+      
+      <link rel="icon" href="images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>CLI Reference - StudyLoop</title>
+      
+    
+    
+      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="stylesheets/audhd.css">
+    
+      <link rel="stylesheet" href="stylesheets/fonts.css">
+    
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#cli-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="index.html" title="StudyLoop" class="md-header__button md-logo" aria-label="StudyLoop" data-md-component="logo">
+      
+  <img src="images/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            StudyLoop
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              CLI Reference
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="index.html" title="StudyLoop" class="md-nav__button md-logo" aria-label="StudyLoop" data-md-component="logo">
+      
+  <img src="images/logo.png" alt="logo">
+
+    </a>
+    StudyLoop
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Start Here
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="first-week.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your First Week
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="setup-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Study and Review
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Study and Review
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="study-plans.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Study Plans
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="web-ui-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web UI Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="content-pipeline.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Content Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="voice-output.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Voice Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="obsidian-export.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Obsidian Export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interfaces
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Interfaces
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="tui-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TUI Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="agent-install.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="cli-reference.html" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#studyloop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        studyloop
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="studyloop">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#study-sessions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Study Sessions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#health-updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Health &amp; Updates
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#spaced-repetition-intervals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Spaced Repetition Intervals
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#active-learning-decision-loop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Active learning decision loop
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#progress" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Progress
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wins-resume-and-streaks-audhd-progress" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wins, resume, and streaks (AuDHD progress)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#struggles-and-extraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Struggles and extraction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#study-backlog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Study backlog
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#study-plans" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Study plans
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#topic-exercises" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Topic exercises
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#focus-and-pruning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Focus and pruning
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#knowledge-bridges" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Knowledge bridges
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#session-cleanup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Session cleanup
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#web-pwa" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Web PWA
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#agent-session-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        agent-session-tools
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="agent-session-tools">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#supported-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supported Sources
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#results-incremental-behaviour" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Results &amp; Incremental Behaviour
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-export-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install &amp; Export Examples
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#obsidian-vault-export-opt-in" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Obsidian Vault Export (opt-in)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optional-extras" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optional Extras
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="troubleshooting.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    About
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="audhd-learning-philosophy.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Learning Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="architecture.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="roadmap.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contribute
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#studyloop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        studyloop
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="studyloop">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#study-sessions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Study Sessions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#health-updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Health &amp; Updates
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#spaced-repetition-intervals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Spaced Repetition Intervals
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#active-learning-decision-loop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Active learning decision loop
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#progress" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Progress
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wins-resume-and-streaks-audhd-progress" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wins, resume, and streaks (AuDHD progress)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#struggles-and-extraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Struggles and extraction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#study-backlog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Study backlog
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#study-plans" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Study plans
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#topic-exercises" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Topic exercises
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#focus-and-pruning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Focus and pruning
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#knowledge-bridges" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Knowledge bridges
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#session-cleanup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Session cleanup
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#web-pwa" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Web PWA
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#agent-session-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        agent-session-tools
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="agent-session-tools">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#supported-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supported Sources
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#results-incremental-behaviour" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Results &amp; Incremental Behaviour
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-export-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install &amp; Export Examples
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#obsidian-vault-export-opt-in" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Obsidian Vault Export (opt-in)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optional-extras" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optional Extras
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="cli-reference">CLI Reference<a class="headerlink" href="#cli-reference" title="Permanent link">&para;</a></h1>
+<h2 id="studyloop">studyloop<a class="headerlink" href="#studyloop" title="Permanent link">&para;</a></h2>
+<p>Study pipeline management — content, review, sessions, and tracking.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Study sessions (tmux + AI agent + Textual sidebar)</span>
+studyloop<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;topic&quot;</span><span class="w"> </span>--energy<span class="w"> </span><span class="m">7</span><span class="w">        </span><span class="c1"># Full tmux environment in one command</span>
+studyloop<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;topic&quot;</span><span class="w"> </span>--mode<span class="w"> </span>co-study<span class="w">   </span><span class="c1"># Co-study mode (user drives)</span>
+studyloop<span class="w"> </span>study<span class="w"> </span>--resume<span class="w">                  </span><span class="c1"># Reattach to existing session</span>
+studyloop<span class="w"> </span>study<span class="w"> </span>--end<span class="w">                     </span><span class="c1"># End session cleanly</span>
+studyloop<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;topic&quot;</span><span class="w"> </span>--web<span class="w">             </span><span class="c1"># Also start web dashboard</span>
+studyloop<span class="w"> </span>park<span class="w"> </span>QUESTION<span class="w"> </span><span class="o">[</span>-t<span class="w"> </span>TOPIC<span class="o">]</span><span class="w">        </span><span class="c1"># Park tangential topic</span>
+
+<span class="c1"># Low-level session commands (used internally by study)</span>
+studyloop<span class="w"> </span>session<span class="w"> </span>start<span class="w"> </span>-t<span class="w"> </span>TOPIC<span class="w"> </span>-e<span class="w"> </span><span class="m">7</span><span class="w">    </span><span class="c1"># Start session (DB + IPC files)</span>
+studyloop<span class="w"> </span>session<span class="w"> </span>status<span class="w">                  </span><span class="c1"># Timer, topics, parking lot</span>
+studyloop<span class="w"> </span>session<span class="w"> </span>end<span class="w"> </span><span class="o">[</span>-n<span class="w"> </span>NOTES<span class="o">]</span><span class="w">          </span><span class="c1"># End session, show summary</span>
+studyloop<span class="w"> </span>session<span class="w"> </span>effectiveness<span class="w">           </span><span class="c1"># Persona effectiveness metrics</span>
+
+<span class="c1"># Content pipeline</span>
+studyloop<span class="w"> </span>content<span class="w"> </span>split<span class="w"> </span>SOURCE<span class="w">            </span><span class="c1"># Split PDF by chapters</span>
+studyloop<span class="w"> </span>content<span class="w"> </span>generate-cards<span class="w"> </span>DIR<span class="w"> </span>--course<span class="w"> </span>COURSE<span class="w"> </span><span class="c1"># Local quiz/flashcard JSON</span>
+studyloop<span class="w"> </span>content<span class="w"> </span>generate-practice<span class="w"> </span>DIR<span class="w"> </span>--course<span class="w"> </span>COURSE<span class="w"> </span><span class="c1"># Local hands-on practice JSON</span>
+studyloop<span class="w"> </span>content<span class="w"> </span>discover<span class="w">                </span><span class="c1"># Preview configured study sources</span>
+studyloop<span class="w"> </span>content<span class="w"> </span>ingest<span class="w"> </span>--dry-run<span class="w">        </span><span class="c1"># Plan source ingest</span>
+studyloop<span class="w"> </span>content<span class="w"> </span>import-review<span class="w"> </span>DIR<span class="w"> </span>--course<span class="w"> </span>COURSE<span class="w">  </span><span class="c1"># Import existing JSON artefacts</span>
+studyloop<span class="w"> </span>content<span class="w"> </span>process<span class="w"> </span>SOURCE<span class="w">          </span><span class="c1"># Legacy optional NotebookLM upload path</span>
+studyloop<span class="w"> </span>content<span class="w"> </span>from-obsidian<span class="w"> </span>DIR<span class="w">       </span><span class="c1"># Legacy optional NotebookLM path</span>
+
+<span class="c1"># Sync &amp; topics</span>
+studyloop<span class="w"> </span>sync<span class="w"> </span><span class="o">[</span>TOPIC<span class="o">]</span><span class="w"> </span>--all<span class="w"> </span>--dry-run<span class="w">    </span><span class="c1"># Legacy optional notebook sync</span>
+studyloop<span class="w"> </span>status<span class="w"> </span><span class="o">[</span>TOPIC<span class="o">]</span><span class="w">                  </span><span class="c1"># Show sync status</span>
+studyloop<span class="w"> </span>topics<span class="w">                          </span><span class="c1"># List configured topics</span>
+studyloop<span class="w"> </span>audio<span class="w"> </span>TOPIC<span class="w">                     </span><span class="c1"># Legacy optional audio overview</span>
+studyloop<span class="w"> </span>dedup<span class="w"> </span><span class="o">[</span>TOPIC<span class="o">]</span><span class="w"> </span>--all<span class="w"> </span>--dry-run<span class="w">   </span><span class="c1"># Remove duplicate notebook sources</span>
+
+<span class="c1"># Review</span>
+studyloop<span class="w"> </span>now<span class="w">                            </span><span class="c1"># Recommend one next study action</span>
+studyloop<span class="w"> </span>now<span class="w"> </span>--energy<span class="w"> </span>low<span class="w"> </span>--time<span class="w"> </span><span class="m">15</span><span class="w">     </span><span class="c1"># Smaller, lower-switching recommendation</span>
+studyloop<span class="w"> </span>now<span class="w"> </span>--modality<span class="w"> </span>hands-on<span class="w"> </span>--interleave<span class="w"> </span>adaptive
+studyloop<span class="w"> </span>chat-note<span class="w"> </span>NOTE.md<span class="w"> </span>--mode<span class="w"> </span>recall<span class="w">      </span><span class="c1"># Build a Socratic context pack</span>
+studyloop<span class="w"> </span>chat-note<span class="w"> </span>NOTE.md<span class="w"> </span>--mode<span class="w"> </span>diagram<span class="w"> </span>--voice
+studyloop<span class="w"> </span>practice<span class="w"> </span>verify<span class="w"> </span>TASKS.json<span class="w"> </span>--task<span class="w"> </span><span class="m">1</span><span class="w"> </span>--notes<span class="w"> </span><span class="s2">&quot;what passed&quot;</span>
+studyloop<span class="w"> </span>practice<span class="w"> </span>verify<span class="w"> </span>TASKS.json<span class="w"> </span>--task<span class="w"> </span><span class="m">1</span><span class="w"> </span>--run-command<span class="w"> </span>--workdir<span class="w"> </span>.<span class="w"> </span>--timeout<span class="w"> </span><span class="m">120</span>
+studyloop<span class="w"> </span>recap<span class="w"> </span>today<span class="w">                    </span><span class="c1"># One win, repair target, due item, next action</span>
+studyloop<span class="w"> </span>recap<span class="w"> </span>today<span class="w"> </span>--speak<span class="w">            </span><span class="c1"># Speak through study-speak</span>
+studyloop<span class="w"> </span>recap<span class="w"> </span>today<span class="w"> </span>--audio-file<span class="w"> </span>recap.wav
+studyloop<span class="w"> </span>mastery<span class="w"> </span>graph<span class="w"> </span>--topic<span class="w"> </span>python<span class="w">   </span><span class="c1"># Mermaid concept graph</span>
+studyloop<span class="w"> </span>mastery<span class="w"> </span>graph<span class="w"> </span>--topic<span class="w"> </span>python<span class="w"> </span>--format<span class="w"> </span>json
+studyloop<span class="w"> </span>mastery<span class="w"> </span>weak-links<span class="w"> </span>--topic<span class="w"> </span>python
+studyloop<span class="w"> </span>review<span class="w">                          </span><span class="c1"># Check spaced repetition due dates</span>
+studyloop<span class="w"> </span>review<span class="w"> </span>--interleave<span class="w"> </span>adaptive<span class="w"> </span>--energy<span class="w"> </span>medium
+studyloop<span class="w"> </span>progress<span class="w">                        </span><span class="c1"># Summarize local course progress</span>
+studyloop<span class="w"> </span>progress<span class="w"> </span>--course<span class="w"> </span>python<span class="w">        </span><span class="c1"># Summarize one course</span>
+studyloop<span class="w"> </span>progress<span class="w"> </span>--json<span class="w">                 </span><span class="c1"># Machine-readable progress summary</span>
+studyloop<span class="w"> </span>progress<span class="w"> </span>CONCEPT<span class="w"> </span>-t<span class="w"> </span>TOPIC<span class="w"> </span>-c<span class="w"> </span>confident<span class="w"> </span><span class="c1"># Record concept confidence</span>
+studyloop<span class="w"> </span>teachback<span class="w"> </span>CONCEPT<span class="w"> </span>-t<span class="w"> </span>TOPIC<span class="w"> </span>--score<span class="w"> </span><span class="m">3</span>,3,4,3,2<span class="w"> </span>--type<span class="w"> </span>structured
+studyloop<span class="w"> </span>teachback-history<span class="w"> </span>CONCEPT<span class="w"> </span><span class="o">[</span>-t<span class="w"> </span>TOPIC<span class="o">]</span>
+studyloop<span class="w"> </span>struggles<span class="w"> </span>--days<span class="w"> </span><span class="m">30</span><span class="w">             </span><span class="c1"># Find recurring struggle topics</span>
+studyloop<span class="w"> </span>wins<span class="w"> </span>--days<span class="w"> </span><span class="m">30</span><span class="w">                  </span><span class="c1"># Concepts mastered / confident (AuDHD wins)</span>
+studyloop<span class="w"> </span>resume<span class="w">                          </span><span class="c1"># Where you left off (last session summary)</span>
+studyloop<span class="w"> </span>streaks<span class="w">                         </span><span class="c1"># Study streak and consistency stats</span>
+studyloop<span class="w"> </span>backlog<span class="w"> </span>list<span class="w">                    </span><span class="c1"># Pending study backlog (parked/struggled/manual)</span>
+studyloop<span class="w"> </span>bridge<span class="w"> </span>list<span class="w">                     </span><span class="c1"># Network→DE (or cross-domain) knowledge bridges</span>
+studyloop<span class="w"> </span>clean<span class="w"> </span>--dry-run<span class="w">                 </span><span class="c1"># Preview orphan tmux/session cleanup</span>
+studyloop<span class="w"> </span>extract-struggles<span class="w"> </span>--incremental<span class="w"> </span>--harness<span class="w"> </span>kiro<span class="w"> </span>--model<span class="w"> </span>MODEL_ID
+
+<span class="c1"># Study plans</span>
+studyloop<span class="w"> </span>plan<span class="w"> </span>interview<span class="w">                  </span><span class="c1"># Interview questions + evidence-based seed suggestions</span>
+studyloop<span class="w"> </span>plan<span class="w"> </span>new<span class="w"> </span>--title<span class="w"> </span>TITLE<span class="w"> </span><span class="o">[</span>--why<span class="w"> </span>WHY<span class="o">]</span><span class="w"> </span><span class="o">[</span>--topic<span class="w"> </span>T<span class="o">]</span><span class="w"> </span><span class="o">[</span>--success<span class="w"> </span>S<span class="o">]</span><span class="w"> </span><span class="o">[</span>--milestone<span class="w"> </span>M<span class="o">]</span>
+studyloop<span class="w"> </span>plan<span class="w"> </span>new<span class="w"> </span>--title<span class="w"> </span>TITLE<span class="w"> </span>--activate<span class="w">  </span><span class="c1"># Activate on create (refused if incomplete)</span>
+studyloop<span class="w"> </span>plan<span class="w"> </span>list<span class="w"> </span><span class="o">[</span>--status<span class="w"> </span>draft<span class="p">|</span>active<span class="p">|</span>paused<span class="p">|</span>complete<span class="p">|</span>abandoned<span class="o">]</span><span class="w"> </span><span class="o">[</span>--json<span class="o">]</span>
+studyloop<span class="w"> </span>plan<span class="w"> </span>show<span class="w"> </span>PLAN_ID<span class="w"> </span><span class="o">[</span>--markdown<span class="o">]</span><span class="w"> </span><span class="o">[</span>--json<span class="o">]</span>
+studyloop<span class="w"> </span>plan<span class="w"> </span>status<span class="w"> </span>PLAN_ID<span class="w"> </span>active<span class="w">      </span><span class="c1"># Change lifecycle state</span>
+studyloop<span class="w"> </span>plan<span class="w"> </span>milestone<span class="w"> </span>PLAN_ID<span class="w"> </span>INDEX<span class="w"> </span><span class="o">[</span>--done<span class="p">|</span>--undone<span class="o">]</span><span class="w">  </span><span class="c1"># Toggle or set a milestone</span>
+studyloop<span class="w"> </span>plan<span class="w"> </span>evaluate<span class="w"> </span>PLAN_ID<span class="w"> </span><span class="o">[</span>--phase<span class="w"> </span>start<span class="p">|</span>mid<span class="p">|</span>end<span class="o">]</span><span class="w"> </span><span class="o">[</span>--record<span class="o">]</span><span class="w"> </span><span class="o">[</span>--study-id<span class="w"> </span>ID<span class="o">]</span>
+studyloop<span class="w"> </span>plan<span class="w"> </span>reindex<span class="w">                    </span><span class="c1"># Rebuild the plan index in the sessions DB</span>
+studyloop<span class="w"> </span>plan<span class="w"> </span>path<span class="w">                       </span><span class="c1"># Print the plan document directory</span>
+
+<span class="c1"># Topic exercises (blank slate / completion / multiple choice)</span>
+studyloop<span class="w"> </span>exercise<span class="w"> </span>new<span class="w"> </span>--topic<span class="w"> </span>TOPIC<span class="w"> </span><span class="o">[</span>--plan<span class="w"> </span>ID<span class="o">]</span><span class="w"> </span><span class="o">[</span>--requirement<span class="w"> </span>R<span class="o">]</span><span class="w"> </span><span class="o">[</span>--reference<span class="w"> </span>FILE<span class="o">]</span>
+studyloop<span class="w"> </span>exercise<span class="w"> </span>from-milestone<span class="w"> </span>PLAN_ID<span class="w"> </span><span class="o">[</span>--index<span class="w"> </span>N<span class="o">]</span><span class="w">  </span><span class="c1"># Draft from a plan milestone</span>
+studyloop<span class="w"> </span>exercise<span class="w"> </span>import<span class="w"> </span>PATH<span class="w">            </span><span class="c1"># Import a hand-authored exercise document</span>
+studyloop<span class="w"> </span>exercise<span class="w"> </span>list<span class="w"> </span><span class="o">[</span>--plan<span class="w"> </span>ID<span class="o">]</span><span class="w"> </span><span class="o">[</span>--topic<span class="w"> </span>T<span class="o">]</span><span class="w"> </span><span class="o">[</span>--json<span class="o">]</span>
+studyloop<span class="w"> </span>exercise<span class="w"> </span>show<span class="w"> </span>SET_ID<span class="w"> </span><span class="o">[</span>--markdown<span class="o">]</span><span class="w">      </span><span class="c1"># Learner-safe (answers withheld)</span>
+studyloop<span class="w"> </span>exercise<span class="w"> </span>show<span class="w"> </span>SET_ID<span class="w"> </span>--with-answers<span class="w">    </span><span class="c1"># Author use only</span>
+studyloop<span class="w"> </span>exercise<span class="w"> </span>review<span class="w"> </span>SET_ID<span class="w"> </span><span class="o">[</span>--kind<span class="w"> </span>blank_slate<span class="p">|</span>completion<span class="p">|</span>multiple_choice<span class="o">]</span>
+studyloop<span class="w"> </span>exercise<span class="w"> </span>review<span class="w"> </span>SET_ID<span class="w"> </span>--file<span class="w"> </span>ANSWER.py<span class="w"> </span>--record<span class="w">  </span><span class="c1"># Score + write confidence</span>
+studyloop<span class="w"> </span>exercise<span class="w"> </span>path<span class="w">                   </span><span class="c1"># Print the exercise document directory</span>
+
+<span class="c1"># Focus &amp; retention</span>
+studyloop<span class="w"> </span>focus<span class="w">                           </span><span class="c1"># Show current focus topics (max 3)</span>
+studyloop<span class="w"> </span>focus<span class="w"> </span>suggest<span class="w"> </span><span class="o">[</span>--days<span class="w"> </span><span class="m">30</span><span class="o">]</span><span class="w">       </span><span class="c1"># Suggest focus from sessions, struggles, config</span>
+studyloop<span class="w"> </span>focus<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="s2">&quot;python&quot;</span><span class="w"> </span><span class="s2">&quot;sql window functions&quot;</span><span class="w">  </span><span class="c1"># Replace focus (1-3 topics)</span>
+studyloop<span class="w"> </span>focus<span class="w"> </span><span class="nb">set</span><span class="w"> </span>TOPIC<span class="w"> </span>--no-refocus<span class="w">    </span><span class="c1"># Save focus only, skip the data movement</span>
+studyloop<span class="w"> </span>focus<span class="w"> </span>apply<span class="w"> </span><span class="o">[</span>--days<span class="w"> </span><span class="m">30</span><span class="o">]</span><span class="w"> </span><span class="o">[</span>--dry-run<span class="o">]</span><span class="w">  </span><span class="c1"># Run/retry the deferred data movement</span>
+studyloop<span class="w"> </span>focus<span class="w"> </span>clear<span class="w">                     </span><span class="c1"># Clear all focus topics</span>
+studyloop<span class="w"> </span>prune<span class="w"> </span><span class="o">[</span>--days<span class="w"> </span><span class="m">30</span><span class="o">]</span><span class="w">               </span><span class="c1"># Preview trimming old local sessions (dry run)</span>
+studyloop<span class="w"> </span>prune<span class="w"> </span>--days<span class="w"> </span><span class="m">30</span><span class="w"> </span>--apply<span class="w">         </span><span class="c1"># Actually delete (only verified-in-full sessions)</span>
+
+<span class="c1"># Configuration &amp; health</span>
+studyloop<span class="w"> </span>setup<span class="w">                           </span><span class="c1"># Interactive setup wizard</span>
+studyloop<span class="w"> </span>install<span class="w"> </span>tools<span class="w">                   </span><span class="c1"># Install global CLI entrypoints from repo</span>
+studyloop<span class="w"> </span>install<span class="w"> </span>agents<span class="w">                  </span><span class="c1"># Install agent definitions for detected tools</span>
+studyloop<span class="w"> </span>config<span class="w"> </span>init<span class="w">                     </span><span class="c1"># Advanced/legacy config initializer</span>
+studyloop<span class="w"> </span>config<span class="w"> </span>show<span class="w">                     </span><span class="c1"># Display current configuration</span>
+studyloop<span class="w"> </span>self-test<span class="w">                       </span><span class="c1"># Lightweight post-install smoke check</span>
+studyloop<span class="w"> </span>doctor<span class="w">                          </span><span class="c1"># Full health check</span>
+studyloop<span class="w"> </span>update<span class="w">                          </span><span class="c1"># Check for available updates</span>
+studyloop<span class="w"> </span>upgrade<span class="w">                         </span><span class="c1"># Apply all available updates</span>
+
+<span class="c1"># Backup &amp; restore</span>
+studyloop<span class="w"> </span>backup<span class="w"> </span><span class="o">[</span>--tag<span class="w"> </span>NAME<span class="o">]</span><span class="w">             </span><span class="c1"># Snapshot DB + config to backups/</span>
+studyloop<span class="w"> </span>restore<span class="w">                         </span><span class="c1"># List available backups</span>
+studyloop<span class="w"> </span>restore<span class="w"> </span>BACKUP<span class="w"> </span>--confirm<span class="w">        </span><span class="c1"># Restore from backup (safety backup first)</span>
+
+<span class="c1"># Web</span>
+studyloop<span class="w"> </span>web<span class="w"> </span><span class="o">[</span>--port<span class="w"> </span>PORT<span class="o">]</span><span class="w"> </span><span class="o">[</span>--lan<span class="o">]</span><span class="w"> </span><span class="o">[</span>--password<span class="w"> </span>SECRET<span class="o">]</span><span class="w"> </span><span class="c1"># Launch study web app (PWA)</span>
+studyloop<span class="w"> </span>web<span class="w"> </span>--ttyd-port<span class="w"> </span><span class="m">7681</span><span class="w">            </span><span class="c1"># ttyd server transport port (0 = read from config)</span>
+studyloop<span class="w"> </span>web<span class="w"> </span>--dev<span class="w">                       </span><span class="c1"># Dev mode: swap xterm.js for an alternative renderer</span>
+</code></pre></div>
+<h3 id="study-sessions">Study Sessions<a class="headerlink" href="#study-sessions" title="Permanent link">&para;</a></h3>
+<p>The primary entry point is <code>studyloop study</code>, which creates a complete tmux-based study environment:</p>
+<div class="highlight"><pre><span></span><code>studyloop<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;Python Decorators&quot;</span><span class="w"> </span>--energy<span class="w"> </span><span class="m">7</span><span class="w">          </span><span class="c1"># Socratic mentor session</span>
+studyloop<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;Spark Internals&quot;</span><span class="w"> </span>--mode<span class="w"> </span>co-study<span class="w">       </span><span class="c1"># User-driven co-study</span>
+studyloop<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;topic&quot;</span><span class="w"> </span>--timer<span class="w"> </span>pomodoro<span class="w">                </span><span class="c1"># Override default timer</span>
+studyloop<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;topic&quot;</span><span class="w"> </span>--agent<span class="w"> </span>claude<span class="w"> </span>--web<span class="w">            </span><span class="c1"># Explicit agent + web dashboard</span>
+studyloop<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;topic&quot;</span><span class="w"> </span>--agent<span class="w"> </span>codex<span class="w">                  </span><span class="c1"># Explicit Codex CLI session</span>
+studyloop<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;topic&quot;</span><span class="w"> </span>--lan<span class="w">                           </span><span class="c1"># LAN access with password auth (implies --web)</span>
+studyloop<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;topic&quot;</span><span class="w"> </span>--lan<span class="w"> </span>--password<span class="w"> </span>SECRET<span class="w">         </span><span class="c1"># Explicit password for LAN auth</span>
+studyloop<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;topic&quot;</span><span class="w"> </span>--agent<span class="w"> </span>opencode<span class="w">                </span><span class="c1"># Preview OpenCode integration</span>
+studyloop<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;topic&quot;</span><span class="w"> </span>--agent<span class="w"> </span>pi<span class="w">                      </span><span class="c1"># Preview pi integration</span>
+studyloop<span class="w"> </span>study<span class="w"> </span>--resume<span class="w">                                </span><span class="c1"># Resume conversation (-r)</span>
+studyloop<span class="w"> </span>study<span class="w"> </span>--end<span class="w">                                   </span><span class="c1"># End session cleanly</span>
+studyloop<span class="w"> </span>park<span class="w"> </span><span class="s2">&quot;How does asyncio compare?&quot;</span><span class="w">              </span><span class="c1"># Park mid-session</span>
+</code></pre></div>
+<p>Run <code>studyloop study</code> without a topic to open the textual picker for body double, topic directory, course vendor, or course.</p>
+<p><strong>What <code>studyloop study</code> creates:</strong>
+- tmux session with agent pane (left) + Textual sidebar (right)
+- AI agent launched with mode-specific persona (clean pane, no visible command)
+- Persistent session directory at <code>~/.config/studyloop/sessions/{name}/</code> — preserves AI conversation history (<code>.claude/</code>, <code>.kiro/</code>, etc.)
+- Sidebar shows timer, activity feed, counters (keyboard: <code>p</code> pause, <code>r</code> reset, <code>Q</code> end session)
+- IPC files for dashboard viewports
+- Optional web dashboard at <code>/session</code> via <code>--web</code>
+- <code>--web</code> auto-opens a browser to the dashboard on startup
+- <code>--lan</code> exposes the dashboard on your LAN with HTTP Basic Auth, prints usable local/LAN URLs, username, and password (implies <code>--web</code>). Password is auto-generated if not set via <code>--password</code> or <code>lan_password</code> in config
+- <code>--password SECRET</code> sets the LAN authentication password (used with <code>--lan</code>)</p>
+<p><strong>Session lifecycle:</strong>
+- <strong>Start:</strong> <code>studyloop study "topic"</code> — creates tmux session, agent, sidebar
+- <strong>Exit:</strong> quit Claude normally (<code>/exit</code>, Ctrl+C) — auto-cleans up tmux, IPC files, switches back to previous session. Session directory preserved.
+- <strong>Resume:</strong> <code>studyloop study --resume</code> — if tmux alive, reattaches. If ended, rebuilds tmux and passes <code>-r</code> to the agent to continue the conversation from history.
+- <strong>End explicitly:</strong> <code>studyloop study --end</code> or sidebar <code>Q</code> — same cleanup as quitting Claude</p>
+<p><strong>Modes:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Flag</th>
+<th>Timer default</th>
+<th>Agent role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Study</td>
+<td>(default)</td>
+<td>Elapsed</td>
+<td>Socratic mentor drives</td>
+</tr>
+<tr>
+<td>Co-study</td>
+<td><code>--mode co-study</code></td>
+<td>Pomodoro</td>
+<td>User drives, agent available</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Low-level session commands</strong> (used internally by <code>studyloop study</code>):</p>
+<div class="highlight"><pre><span></span><code>studyloop<span class="w"> </span>session<span class="w"> </span>start<span class="w"> </span>-t<span class="w"> </span><span class="s2">&quot;Decorators&quot;</span><span class="w"> </span>-e<span class="w"> </span><span class="m">7</span><span class="w">    </span><span class="c1"># Start session record</span>
+studyloop<span class="w"> </span>session<span class="w"> </span>status<span class="w">                         </span><span class="c1"># Show current state</span>
+studyloop<span class="w"> </span>session<span class="w"> </span>end<span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;Got through closures&quot;</span><span class="w">  </span><span class="c1"># End with notes</span>
+studyloop<span class="w"> </span>session<span class="w"> </span>effectiveness<span class="w">                  </span><span class="c1"># Win rate per persona version</span>
+studyloop<span class="w"> </span>session<span class="w"> </span>effectiveness<span class="w"> </span>-p<span class="w"> </span>abc123...<span class="w">     </span><span class="c1"># Filter by persona hash</span>
+</code></pre></div>
+<h3 id="health-updates">Health &amp; Updates<a class="headerlink" href="#health-updates" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>studyloop<span class="w"> </span>self-test<span class="w">                       </span><span class="c1"># Lightweight post-install smoke check</span>
+studyloop<span class="w"> </span>self-test<span class="w"> </span>--json<span class="w">                </span><span class="c1"># JSON output for scripts/agents</span>
+studyloop<span class="w"> </span>self-test<span class="w"> </span>--quiet<span class="w">               </span><span class="c1"># One-line summary</span>
+studyloop<span class="w"> </span>doctor<span class="w">                          </span><span class="c1"># Full health check (Rich table)</span>
+studyloop<span class="w"> </span>doctor<span class="w"> </span>--json<span class="w">                   </span><span class="c1"># JSON output (for AI agents and CI)</span>
+studyloop<span class="w"> </span>doctor<span class="w"> </span>--quiet<span class="w">                  </span><span class="c1"># One-line summary</span>
+studyloop<span class="w"> </span>doctor<span class="w"> </span>--category<span class="w"> </span>core<span class="w">          </span><span class="c1"># Check specific category only</span>
+studyloop<span class="w"> </span>doctor<span class="w"> </span>--category<span class="w"> </span>voice<span class="w">         </span><span class="c1"># Check local Kokoro files, afplay, and the Kokoro server</span>
+studyloop<span class="w"> </span>doctor<span class="w"> </span>--fix<span class="w">                    </span><span class="c1"># Apply safe automatic fixes</span>
+studyloop<span class="w"> </span>update<span class="w"> </span>--json<span class="w">                   </span><span class="c1"># Machine-readable update info</span>
+studyloop<span class="w"> </span>upgrade<span class="w"> </span>--dry-run<span class="w">               </span><span class="c1"># Preview what would change</span>
+studyloop<span class="w"> </span>upgrade<span class="w"> </span>--component<span class="w"> </span>packages<span class="w">    </span><span class="c1"># Upgrade only packages</span>
+studyloop<span class="w"> </span>upgrade<span class="w"> </span>--component<span class="w"> </span>database<span class="w">    </span><span class="c1"># Run DB migrations only</span>
+studyloop<span class="w"> </span>upgrade<span class="w"> </span>--component<span class="w"> </span>agents<span class="w">      </span><span class="c1"># Update agent definitions only</span>
+</code></pre></div>
+<p>Use <code>studyloop self-test</code> immediately after install when you only need to
+confirm the CLI imports, config can be read, the sessions database path is
+usable, and the web module imports. It is deliberately lightweight: it does
+not run <code>doctor --fix</code>, start web servers, contact external services, or write
+agent/harness files.</p>
+<p><strong>Exit codes for <code>studyloop self-test</code>:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0</code></td>
+<td>All lightweight checks pass</td>
+</tr>
+<tr>
+<td><code>1</code></td>
+<td>One or more warnings, with no failures</td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td>One or more checks failed</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Exit codes for <code>studyloop doctor</code>:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0</code></td>
+<td>All checks pass — installation is healthy</td>
+</tr>
+<tr>
+<td><code>1</code></td>
+<td>Warnings or failures that can be fixed — run <code>studyloop doctor --fix</code></td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td>Core failure — a fundamental component is broken (e.g. wrong Python version)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Check categories:</strong> <code>core</code> (Python, packages, config), <code>database</code> (review DB, sessions DB), <code>config</code> (Obsidian vault + <code>.obsidian/</code> marker, Obsidian export config, review dirs, pandoc), <code>deps</code> (optional packages), <code>agents</code> (AI tool definitions), <code>voice</code> (local Kokoro model files, <code>afplay</code>, and Kokoro-server reachability when configured), <code>harness</code> (session-export wiring), <code>updates</code> (source-install/version metadata).</p>
+<h3 id="spaced-repetition-intervals">Spaced Repetition Intervals<a class="headerlink" href="#spaced-repetition-intervals" title="Permanent link">&para;</a></h3>
+<p>Review schedule: <strong>1 → 3 → 7 → 14 → 30 days</strong></p>
+<p><code>studyloop review</code> shows what's due based on active learning evidence in <code>study_progress</code>, such as recorded concept progress and teach-back scores.</p>
+<p>Use <code>studyloop review --interleave adaptive --energy low|medium|high</code> when you want review to show the active interleaving mix. Low energy keeps the mix close to current or due repair; medium and high energy allow more transfer and weak-link work.</p>
+<h3 id="active-learning-decision-loop">Active learning decision loop<a class="headerlink" href="#active-learning-decision-loop" title="Permanent link">&para;</a></h3>
+<p><code>studyloop now</code> is the shared recommendation engine for the CLI and web API (<code>GET /api/now</code>). It returns one primary recommendation and up to two alternates. Each recommendation includes the concept, topic or course, reason, action type, estimated minutes, source, score, and the command to record evidence when done.</p>
+<div class="highlight"><pre><span></span><code>studyloop<span class="w"> </span>now
+studyloop<span class="w"> </span>now<span class="w"> </span>--energy<span class="w"> </span>low<span class="w"> </span>--time<span class="w"> </span><span class="m">15</span>
+studyloop<span class="w"> </span>now<span class="w"> </span>--modality<span class="w"> </span>hands-on<span class="w"> </span>--interleave<span class="w"> </span>adaptive
+studyloop<span class="w"> </span>now<span class="w"> </span>--json
+studyloop<span class="w"> </span>now<span class="w"> </span>--speak
+</code></pre></div>
+<p>Default ranking is due review first, then struggling or low teach-back score, then active-course continuity, then modality match. Low energy suppresses hard context switching.</p>
+<p><code>studyloop chat-note</code> turns one markdown/text note into a compact Socratic context pack. V1 prints or speaks the mentor prompt; it does not run a separate chat backend.</p>
+<div class="highlight"><pre><span></span><code>studyloop<span class="w"> </span>chat-note<span class="w"> </span>~/Obsidian/Personal/Study/Python/decorators.md
+studyloop<span class="w"> </span>chat-note<span class="w"> </span>NOTE.md<span class="w"> </span>--mode<span class="w"> </span>diagram
+studyloop<span class="w"> </span>chat-note<span class="w"> </span>NOTE.md<span class="w"> </span>--mode<span class="w"> </span>trace<span class="w"> </span>--json
+</code></pre></div>
+<p>Modes are <code>recall</code>, <code>diagram</code>, <code>trace</code>, <code>teachback</code>, and <code>repair</code>. The command validates that the note is inside configured vault/content roots, chunks by headings and code blocks, and ends with a suggested <code>studyloop progress</code> or <code>studyloop teachback</code> command.</p>
+<p><code>studyloop practice verify</code> records an attempt against a generated practice deck. Command verification only runs when <code>--run-command</code> is explicit; non-command tasks use notes plus expected-artifact checks as a rubric. Newer generated decks can also carry rubric items, evidence prompts, setup commands, and per-task command timeouts.</p>
+<div class="highlight"><pre><span></span><code>studyloop<span class="w"> </span>practice<span class="w"> </span>verify<span class="w"> </span>course-practice.json<span class="w"> </span>--task<span class="w"> </span><span class="m">1</span><span class="w"> </span>--notes<span class="w"> </span><span class="s2">&quot;diagram matched&quot;</span>
+studyloop<span class="w"> </span>practice<span class="w"> </span>verify<span class="w"> </span>course-practice.json<span class="w"> </span>--task<span class="w"> </span><span class="m">2</span><span class="w"> </span>--run-command<span class="w"> </span>--workdir<span class="w"> </span>.<span class="w"> </span>--timeout<span class="w"> </span><span class="m">120</span>
+</code></pre></div>
+<p><code>studyloop recap today</code> compresses the day into one win, one repair target, one due item, and one next action. <code>--speak</code> calls <code>study-speak</code>, so the local-Kokoro / Kokoro-server / macOS backend configuration is inherited. <code>--audio-file</code> saves the same recap as a local audio file, preferring the Kokoro server when configured and falling back to macOS <code>say</code>.</p>
+<div class="highlight"><pre><span></span><code>studyloop<span class="w"> </span>recap<span class="w"> </span>today
+studyloop<span class="w"> </span>recap<span class="w"> </span>today<span class="w"> </span>--json
+studyloop<span class="w"> </span>recap<span class="w"> </span>today<span class="w"> </span>--speak
+studyloop<span class="w"> </span>recap<span class="w"> </span>today<span class="w"> </span>--audio-file<span class="w"> </span>~/Desktop/studyloop-recap.wav
+</code></pre></div>
+<p><code>studyloop mastery</code> exposes concept dependencies and blockers. The Web UI's
+<strong>Mastery</strong> tab uses the same data through <code>GET /api/mastery/graph</code> and
+<code>GET /api/mastery/weak-links</code>; those web endpoints accept <code>limit</code> so broad
+topics stay fast to render in Mermaid.</p>
+<div class="highlight"><pre><span></span><code>studyloop<span class="w"> </span>mastery<span class="w"> </span>graph<span class="w"> </span>--topic<span class="w"> </span>python
+studyloop<span class="w"> </span>mastery<span class="w"> </span>graph<span class="w"> </span>--topic<span class="w"> </span>python<span class="w"> </span>--format<span class="w"> </span>json
+studyloop<span class="w"> </span>mastery<span class="w"> </span>weak-links<span class="w"> </span>--topic<span class="w"> </span>python
+</code></pre></div>
+<p>The graph seeds lightweight concept edges from headings, tags, backlinks, existing concept relations, and knowledge bridges, then renders Mermaid by default.</p>
+<h3 id="progress">Progress<a class="headerlink" href="#progress" title="Permanent link">&para;</a></h3>
+<p><code>studyloop progress</code> has two modes:</p>
+<ul>
+<li>With no concept argument, it summarizes local course progress from <code>content.base_path</code> and the review database.</li>
+<li>With a concept argument, it records confidence for a study concept.</li>
+</ul>
+<div class="highlight"><pre><span></span><code>studyloop<span class="w"> </span>progress<span class="w">                                  </span><span class="c1"># Course summary table</span>
+studyloop<span class="w"> </span>progress<span class="w"> </span>--course<span class="w"> </span>python<span class="w">                  </span><span class="c1"># One course only</span>
+studyloop<span class="w"> </span>progress<span class="w"> </span>--json<span class="w">                           </span><span class="c1"># JSON for scripts/agents</span>
+studyloop<span class="w"> </span>progress<span class="w"> </span><span class="s2">&quot;list comprehensions&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--topic<span class="w"> </span>python<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--confidence<span class="w"> </span>confident<span class="w">                           </span><span class="c1"># Record concept confidence</span>
+</code></pre></div>
+<p>The summary includes local source count, unique review cards, due cards, mastered cards, review sessions, and review accuracy. Course filtering uses the course slug, such as <code>python</code> or <code>data-engineering</code>.</p>
+<h3 id="wins-resume-and-streaks-audhd-progress">Wins, resume, and streaks (AuDHD progress)<a class="headerlink" href="#wins-resume-and-streaks-audhd-progress" title="Permanent link">&para;</a></h3>
+<p>These commands surface progress without opening the Web UI. Shipped mentor
+definitions run the relevant checks at session start.</p>
+<div class="highlight"><pre><span></span><code>studyloop<span class="w"> </span>wins<span class="w">                    </span><span class="c1"># Progress overview + recent mastered/confident concepts</span>
+studyloop<span class="w"> </span>wins<span class="w"> </span>--days<span class="w"> </span><span class="m">14</span><span class="w">          </span><span class="c1"># Wins in the last N days (default 30)</span>
+
+studyloop<span class="w"> </span>resume<span class="w">                  </span><span class="c1"># Last session source, topics, in-progress concepts, streak</span>
+
+studyloop<span class="w"> </span>streaks<span class="w">                 </span><span class="c1"># Current/longest streak, weekly sessions, energy patterns</span>
+</code></pre></div>
+<p><code>studyloop resume</code> is <strong>not</strong> the same as <code>studyloop study --resume</code>: the latter reattaches a tmux/agent session; <code>studyloop resume</code> prints a text summary from session history.</p>
+<h3 id="struggles-and-extraction">Struggles and extraction<a class="headerlink" href="#struggles-and-extraction" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>studyloop<span class="w"> </span>struggles<span class="w"> </span>--days<span class="w"> </span><span class="m">30</span><span class="w">     </span><span class="c1"># Topics mentioned in 3+ sessions (table)</span>
+
+studyloop<span class="w"> </span>extract-struggles<span class="w"> </span>--incremental<span class="w"> </span>--harness<span class="w"> </span>kiro<span class="w"> </span>--model<span class="w"> </span>MODEL_ID
+studyloop<span class="w"> </span>extract-struggles<span class="w"> </span>--incremental<span class="w"> </span>--session-id<span class="w"> </span>ID<span class="w"> </span>--model<span class="w"> </span>MODEL_ID
+studyloop<span class="w"> </span>extract-struggles<span class="w"> </span>--full<span class="w"> </span>--harness<span class="w"> </span>codex<span class="w"> </span>--model<span class="w"> </span>MODEL_ID
+studyloop<span class="w"> </span>extract-struggles<span class="w"> </span>--dry-run<span class="w"> </span>--harness<span class="w"> </span>claude<span class="w"> </span>--model<span class="w"> </span>MODEL_ID
+</code></pre></div>
+<p>Extraction always calls the explicitly selected live Bedrock model. You can set
+<code>STUDYLOOP_EXTRACTOR_MODEL</code> instead of repeating <code>--model</code>. There is no fixture
+or fallback backend: missing model access fails without writing progress rows.
+Latest-session and full-history runs require <code>--harness</code>; an explicit session ID
+does not scan unrelated coding history.</p>
+<h3 id="study-backlog">Study backlog<a class="headerlink" href="#study-backlog" title="Permanent link">&para;</a></h3>
+<p>Cross-session backlog over parked topics, detected struggles, and manual entries (<code>parked_topics</code> store). Distinct from <code>studyloop topics</code>, which lists <strong>configured course topics</strong> in <code>config.yaml</code>.</p>
+<div class="highlight"><pre><span></span><code>studyloop<span class="w"> </span>backlog<span class="w"> </span>list
+studyloop<span class="w"> </span>backlog<span class="w"> </span>list<span class="w"> </span>--tech<span class="w"> </span>Python<span class="w"> </span>--source<span class="w"> </span>struggled
+studyloop<span class="w"> </span>backlog<span class="w"> </span>list<span class="w"> </span>--all<span class="w">                         </span><span class="c1"># Include resolved/dismissed</span>
+
+studyloop<span class="w"> </span>backlog<span class="w"> </span>add<span class="w"> </span><span class="s2">&quot;Python decorators&quot;</span><span class="w"> </span>--tech<span class="w"> </span>Python<span class="w"> </span>--note<span class="w"> </span><span class="s2">&quot;After Ch. 4&quot;</span>
+studyloop<span class="w"> </span>backlog<span class="w"> </span>resolve<span class="w"> </span><span class="m">42</span>
+
+studyloop<span class="w"> </span>backlog<span class="w"> </span>suggest
+studyloop<span class="w"> </span>backlog<span class="w"> </span>suggest<span class="w"> </span>--limit<span class="w"> </span><span class="m">5</span><span class="w"> </span>--topic<span class="w"> </span><span class="s2">&quot;Python Patterns&quot;</span>
+</code></pre></div>
+<p>Mid-session parking uses <code>studyloop park</code> (writes to the same backlog with source <code>parked</code>).</p>
+<h3 id="study-plans">Study plans<a class="headerlink" href="#study-plans" title="Permanent link">&para;</a></h3>
+<p>Structured, evaluable plans: a mission, topics, success criteria, and milestones. Plans live as Markdown documents (<code>studyloop plan path</code>) with a derived index in the sessions DB, so a plan is readable and editable outside the tool.</p>
+<div class="highlight"><pre><span></span><code>studyloop<span class="w"> </span>plan<span class="w"> </span>interview<span class="w">                  </span><span class="c1"># What to ask, plus evidence-based seed suggestions</span>
+studyloop<span class="w"> </span>plan<span class="w"> </span>new<span class="w"> </span>--title<span class="w"> </span><span class="s2">&quot;SQL window functions&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--why<span class="w"> </span><span class="s2">&quot;Stop guessing at analytic queries&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--topic<span class="w"> </span><span class="s2">&quot;sql&quot;</span><span class="w"> </span>--success<span class="w"> </span><span class="s2">&quot;Explain PARTITION BY unprompted&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--milestone<span class="w"> </span><span class="s2">&quot;Frames (concepts: window frame, rows vs range)&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--target-date<span class="w"> </span><span class="m">2026</span>-10-01<span class="w"> </span>--energy-floor<span class="w"> </span><span class="m">4</span>
+studyloop<span class="w"> </span>plan<span class="w"> </span>list<span class="w"> </span>--status<span class="w"> </span>active
+studyloop<span class="w"> </span>plan<span class="w"> </span>show<span class="w"> </span>PLAN_ID<span class="w"> </span>--markdown
+studyloop<span class="w"> </span>plan<span class="w"> </span>milestone<span class="w"> </span>PLAN_ID<span class="w"> </span><span class="m">0</span><span class="w"> </span>--done
+studyloop<span class="w"> </span>plan<span class="w"> </span>evaluate<span class="w"> </span>PLAN_ID<span class="w"> </span>--phase<span class="w"> </span>mid<span class="w"> </span>--record
+studyloop<span class="w"> </span>plan<span class="w"> </span>status<span class="w"> </span>PLAN_ID<span class="w"> </span><span class="nb">complete</span>
+studyloop<span class="w"> </span>plan<span class="w"> </span>reindex<span class="w">                    </span><span class="c1"># Rebuild the DB index from the documents</span>
+</code></pre></div>
+<p>Omitted answers are left <strong>explicitly blank</strong> in the document rather than invented, and <code>readiness</code> reports what is still missing. Activation (<code>--activate</code>, or <code>plan status … active</code>) is <strong>refused</strong> while a plan lacks a mission, success criteria, or milestones — an unevaluable plan must not look active.</p>
+<p><code>studyloop plan interview</code> exists so an agent can learn what to ask before proposing a plan.</p>
+<h3 id="topic-exercises">Topic exercises<a class="headerlink" href="#topic-exercises" title="Permanent link">&para;</a></h3>
+<p>Each exercise set carries all three formats — <strong>blank slate</strong>, <strong>completion</strong>, and <strong>multiple choice</strong>. The completion exercise is sliced from the reference solution, so one authored task yields both code formats.</p>
+<div class="highlight"><pre><span></span><code>studyloop<span class="w"> </span>exercise<span class="w"> </span>new<span class="w"> </span>--topic<span class="w"> </span><span class="s2">&quot;generators&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--requirement<span class="w"> </span><span class="s2">&quot;Yields lazily&quot;</span><span class="w"> </span>--requirement<span class="w"> </span><span class="s2">&quot;Handles empty input&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--reference<span class="w"> </span>solution.py<span class="w"> </span>--reveal<span class="w"> </span><span class="m">0</span>.4<span class="w"> </span>--language<span class="w"> </span>python
+studyloop<span class="w"> </span>exercise<span class="w"> </span>from-milestone<span class="w"> </span>PLAN_ID<span class="w"> </span>--index<span class="w"> </span><span class="m">0</span><span class="w">   </span><span class="c1"># Seed from a plan milestone</span>
+studyloop<span class="w"> </span>exercise<span class="w"> </span>import<span class="w"> </span>hand-written.md<span class="w">             </span><span class="c1"># `- [x]` marks the correct option</span>
+studyloop<span class="w"> </span>exercise<span class="w"> </span>list<span class="w"> </span>--plan<span class="w"> </span>PLAN_ID
+studyloop<span class="w"> </span>exercise<span class="w"> </span>show<span class="w"> </span>SET_ID<span class="w"> </span>--markdown<span class="w">             </span><span class="c1"># Learner-safe: no answers</span>
+studyloop<span class="w"> </span>exercise<span class="w"> </span>show<span class="w"> </span>SET_ID<span class="w"> </span>--with-answers<span class="w">         </span><span class="c1"># Author use only</span>
+studyloop<span class="w"> </span>exercise<span class="w"> </span>review<span class="w"> </span>SET_ID<span class="w"> </span>--kind<span class="w"> </span>completion<span class="w"> </span>--file<span class="w"> </span>attempt.py<span class="w"> </span>--record
+studyloop<span class="w"> </span>exercise<span class="w"> </span>review<span class="w"> </span>SET_ID<span class="w"> </span>--kind<span class="w"> </span>multiple_choice<span class="w"> </span>--answer<span class="w"> </span><span class="m">0</span>:a<span class="w"> </span>--answer<span class="w"> </span><span class="m">1</span>:b,c
+</code></pre></div>
+<p><code>show</code> withholds reference solutions and marked-correct choices unless <code>--with-answers</code> is passed, so pasting the output into a study session cannot hand over the solution. <code>review</code> output carries questions, never the solution; a completion attempt is scored on what the learner <strong>added</strong>, with criteria the starter code already satisfied marked <code>given</code> and excluded. <code>--record</code> writes the derived confidence to <code>study_progress</code>.</p>
+<p>Multiple-choice sets are authored in plain Markdown, so a set can be written in any text editor with no tooling. These commands are <strong>CLI-only</strong> — there is no browser panel for exercises yet.</p>
+<h3 id="focus-and-pruning">Focus and pruning<a class="headerlink" href="#focus-and-pruning" title="Permanent link">&para;</a></h3>
+<p>Focus shapes what <code>studyloop now</code> and review sessions recommend. It never deletes data on its own; <code>studyloop prune</code> is the age-based command that does.</p>
+<div class="highlight"><pre><span></span><code>studyloop<span class="w"> </span>focus<span class="w">                            </span><span class="c1"># Show current focus (max 3 topics)</span>
+studyloop<span class="w"> </span>focus<span class="w"> </span>suggest<span class="w"> </span>--days<span class="w"> </span><span class="m">30</span><span class="w">          </span><span class="c1"># Propose focus from sessions, struggles, config</span>
+studyloop<span class="w"> </span>focus<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="s2">&quot;python&quot;</span><span class="w"> </span><span class="s2">&quot;sql window functions&quot;</span>
+studyloop<span class="w"> </span>focus<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="s2">&quot;python&quot;</span><span class="w"> </span>--no-refocus<span class="w">  </span><span class="c1"># Save focus only, skip the data movement</span>
+studyloop<span class="w"> </span>focus<span class="w"> </span>apply<span class="w"> </span>--dry-run<span class="w">            </span><span class="c1"># Preview the deferred data movement</span>
+studyloop<span class="w"> </span>focus<span class="w"> </span>clear
+
+studyloop<span class="w"> </span>prune<span class="w"> </span>--days<span class="w"> </span><span class="m">30</span><span class="w">                  </span><span class="c1"># Dry run by default</span>
+studyloop<span class="w"> </span>prune<span class="w"> </span>--days<span class="w"> </span><span class="m">30</span><span class="w"> </span>--apply<span class="w">          </span><span class="c1"># Actually delete</span>
+</code></pre></div>
+<p>Saving a focus is followed by the <strong>refocus data movement</strong>: focus-topic conversations newer than <code>--days</code> are pulled from the full DB into the local DB, then non-focus sessions older than <code>--days</code> are pruned. If the full DB is unreachable (external volume unmounted) the focus still saves and the movement is <strong>deferred</strong> — run <code>studyloop focus apply</code> later.</p>
+<p>Both <code>prune</code> and the refocus prune obey one safety invariant: a session is deleted only when the configured full DB (<code>database.full_db_path</code>) holds the same session with a <strong>matching content hash and at least as many messages</strong>. Unverified sessions are skipped and reported. Learning data — progress, concepts, reviews — is never touched.</p>
+<h3 id="knowledge-bridges">Knowledge bridges<a class="headerlink" href="#knowledge-bridges" title="Permanent link">&para;</a></h3>
+<p>Record analogies between domains (e.g. networking → data engineering). Stored in the session/review database.</p>
+<div class="highlight"><pre><span></span><code>studyloop<span class="w"> </span>bridge<span class="w"> </span>add<span class="w"> </span><span class="s2">&quot;ECMP&quot;</span><span class="w"> </span>-s<span class="w"> </span>networking<span class="w"> </span><span class="s2">&quot;Spark partitions&quot;</span><span class="w"> </span>-t<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;Both distribute load&quot;</span>
+studyloop<span class="w"> </span>bridge<span class="w"> </span>list
+studyloop<span class="w"> </span>bridge<span class="w"> </span>list<span class="w"> </span>--source-domain<span class="w"> </span>networking<span class="w"> </span>--target-domain<span class="w"> </span>python
+</code></pre></div>
+<h3 id="session-cleanup">Session cleanup<a class="headerlink" href="#session-cleanup" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>studyloop<span class="w"> </span>clean<span class="w"> </span>--dry-run<span class="w">         </span><span class="c1"># Preview zombie tmux sessions, orphan dirs, stale state</span>
+studyloop<span class="w"> </span>clean<span class="w">                   </span><span class="c1"># Apply cleanup (respects lock; safe with --resume)</span>
+</code></pre></div>
+<p>Also runs automatically before <code>studyloop study</code> when zombies are detected.</p>
+<h3 id="web-pwa">Web PWA<a class="headerlink" href="#web-pwa" title="Permanent link">&para;</a></h3>
+<p><code>studyloop web</code> launches a progressive web app for flashcard and quiz review. By default it binds to <code>127.0.0.1</code>; use <code>--lan</code> to expose it on your network with HTTP Basic Auth.</p>
+<div class="highlight"><pre><span></span><code>studyloop<span class="w"> </span>web<span class="w">                    </span><span class="c1"># Serve on 127.0.0.1:8567</span>
+studyloop<span class="w"> </span>web<span class="w"> </span>--port<span class="w"> </span><span class="m">9000</span><span class="w">        </span><span class="c1"># Custom port</span>
+studyloop<span class="w"> </span>web<span class="w"> </span>--lan<span class="w">              </span><span class="c1"># LAN access with auth</span>
+studyloop<span class="w"> </span>web<span class="w"> </span>--lan<span class="w"> </span>--password<span class="w"> </span>SECRET
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Action</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Space</code>/<code>Enter</code></td>
+<td>Flip card</td>
+<td>Flashcard, before reveal</td>
+</tr>
+<tr>
+<td><code>Y</code></td>
+<td>I knew it</td>
+<td>Flashcard, after reveal</td>
+</tr>
+<tr>
+<td><code>N</code></td>
+<td>Didn't know</td>
+<td>Flashcard, after reveal</td>
+</tr>
+<tr>
+<td><code>1</code>-<code>4</code></td>
+<td>Select quiz option</td>
+<td>Quiz mode</td>
+</tr>
+<tr>
+<td><code>S</code></td>
+<td>Skip card</td>
+<td>During review</td>
+</tr>
+<tr>
+<td><code>T</code></td>
+<td>Read aloud (once)</td>
+<td>During review</td>
+</tr>
+<tr>
+<td><code>R</code></td>
+<td>Retry wrong answers</td>
+<td>After session</td>
+</tr>
+<tr>
+<td><code>Esc</code></td>
+<td>Back to home</td>
+<td>Anywhere</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Features:</strong> Source/chapter filter, card count limiter (10/20/50/100/All), due cards badge, session history, 90-day study heatmap, Pomodoro timer (25min/5min), OpenDyslexic font toggle, dark/light theme, PWA installable.</p>
+<p><strong>Live session dashboard</strong> (<code>/session</code>): Real-time SSE activity feed, energy-adaptive timer, topic counters, and a <strong>terminal panel</strong> showing the live session. The panel renders one of two surfaces: <strong>xterm.js</strong> driven by a PTY streamed over a WebSocket (<code>transport: "pty"</code>), or <strong>ACP chat</strong> for structured-event agents (<code>transport: "acp"</code>). It is draggable (stacked or side-by-side), has a layout toggle and panel-swap buttons, and can be popped out to a separate window (pop-out auto-closes when returning inline). The panel reattaches by itself after a page refresh — it reads <code>GET /api/session/state</code> on init and adopts a live session it owns.</p>
+<p>There is <strong>no browser terminal fallback</strong>: the ttyd iframe surface was retired.
+Installing ttyd no longer enables anything user-visible in the dashboard. The
+<code>ttyd</code> <strong>server</strong> transport still exists for maintainers, but a session started
+that way has no browser renderer and reports an explicit <code>unavailable</code> state.</p>
+<p><strong>Voice:</strong> Server-side Kokoro. The browser posts to StudyLoop's own authenticated <code>/api/tts/speak</code>, which proxies to the Kokoro server named by <code>tts.openvox_base_url</code>; with none reachable it falls back to the OS's Web Speech voices, then to silence. Off until enabled in the header.
+- <strong>Read once</strong> — speaker icon on card or <code>T</code> key
+- <strong>Announcements</strong> — header speaker toggle (Pomodoro transitions and confirmations). It does not read cards automatically; <code>V</code> is unbound
+- <strong>Stop</strong> — header stop button interrupts playback mid-utterance</p>
+<p><strong>Web + terminal config</strong> (<code>~/.config/studyloop/config.yaml</code>):</p>
+<div class="highlight"><pre><span></span><code><span class="nt">web_port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8567</span><span class="w">       </span><span class="c1"># web dashboard port (default 8567)</span>
+<span class="nt">ttyd_port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">7681</span><span class="w">      </span><span class="c1"># ttyd server transport port (default 7681) — maintainer-only; no browser surface</span>
+<span class="nt">browser</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="w">          </span><span class="c1"># auto-open browser: chrome, safari, firefox, brave, or empty for system default</span>
+<span class="nt">lan_password</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="w">     </span><span class="c1"># persistent password for --lan mode (auto-generated if empty)</span>
+</code></pre></div>
+<p><strong>Agent priority config</strong> (<code>~/.config/studyloop/config.yaml</code>):</p>
+<div class="highlight"><pre><span></span><code><span class="nt">agents</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">priority</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">kiro</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">codex</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">claude</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">opencode</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">pi</span><span class="p p-Indicator">]</span>
+</code></pre></div>
+<hr />
+<h2 id="agent-session-tools">agent-session-tools<a class="headerlink" href="#agent-session-tools" title="Permanent link">&para;</a></h2>
+<p>AI session export, search, and cross-machine sync.</p>
+<div class="highlight"><pre><span></span><code>session-export<span class="w"> </span><span class="o">[</span>--sources<span class="w"> </span>SOURCE<span class="w"> </span>...<span class="o">]</span><span class="w">    </span><span class="c1"># Export AI sessions to SQLite</span>
+session-export<span class="w"> </span><span class="o">[</span>--obsidian<span class="o">]</span><span class="w"> </span><span class="o">[</span>--obsidian-vault<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--obsidian-backfill<span class="o">]</span><span class="w"> </span><span class="o">[</span>--obsidian-dry-run<span class="o">]</span>
+session-query<span class="w"> </span>search-cmd<span class="w"> </span>QUERY<span class="w">           </span><span class="c1"># Full-text search across sessions</span>
+session-query<span class="w"> </span>list<span class="w"> </span>--since<span class="w"> </span>7d<span class="w">            </span><span class="c1"># List recent sessions</span>
+session-query<span class="w"> </span>show<span class="w"> </span>SESSION_ID<span class="w">            </span><span class="c1"># Show session details</span>
+session-query<span class="w"> </span>context<span class="w"> </span>SESSION_ID<span class="w">         </span><span class="c1"># Generate context for resuming</span>
+session-query<span class="w"> </span><span class="k">continue</span><span class="w"> </span>SESSION_ID<span class="w">        </span><span class="c1"># Continuation context for resuming work</span>
+session-query<span class="w"> </span>stats-cmd<span class="w">                  </span><span class="c1"># Database statistics</span>
+session-query<span class="w"> </span>tag<span class="p">|</span>note<span class="w"> </span>SESSION_ID<span class="w">        </span><span class="c1"># Manage session tags / notes</span>
+session-query<span class="w"> </span>check-size<span class="w">                 </span><span class="c1"># Check DB size against thresholds</span>
+session-query<span class="w"> </span>profiles<span class="w">                   </span><span class="c1"># Manage export profiles/templates</span>
+session-sync<span class="w"> </span>push<span class="p">|</span>pull<span class="p">|</span>sync<span class="w"> </span>REMOTE<span class="w">       </span><span class="c1"># Sync database across machines</span>
+session-maint<span class="w"> </span>vacuum<span class="p">|</span>reindex<span class="p">|</span>schema<span class="p">|</span>archive<span class="w">  </span><span class="c1"># Database maintenance</span>
+session-maint<span class="w"> </span>delete<span class="w"> </span>--confirm<span class="w">            </span><span class="c1"># Permanently delete old sessions</span>
+session-maint<span class="w"> </span>find-duplicates<span class="p">|</span>fts-check<span class="p">|</span>compact<span class="w">  </span><span class="c1"># Integrity and rescue</span>
+session-maint<span class="w"> </span>sync-full<span class="p">|</span>snapshot<span class="p">|</span>prune<span class="w">    </span><span class="c1"># Full-DB sync, snapshot, verified prune</span>
+study-speak<span class="w"> </span><span class="s2">&quot;text&quot;</span><span class="w"> </span><span class="o">[</span>-b<span class="w"> </span>openvox<span class="p">|</span>kokoro<span class="p">|</span>qwen3<span class="p">|</span>macos<span class="o">]</span><span class="w"> </span><span class="o">[</span>-v<span class="w"> </span>VOICE<span class="o">]</span><span class="w"> </span><span class="o">[</span>-s<span class="w"> </span>SPEED<span class="o">]</span>
+<span class="w">                                          </span><span class="c1"># Speak text aloud using local TTS</span>
+</code></pre></div>
+<h3 id="supported-sources">Supported Sources<a class="headerlink" href="#supported-sources" title="Permanent link">&para;</a></h3>
+<p><code>search-cmd</code> and <code>stats-cmd</code> carry the <code>-cmd</code> suffix because the module already imports <code>search</code> and <code>stats</code> from <code>query_logic</code>, and Typer derives each command name from its function name. The CLI names are literal, not typos.</p>
+<p>The <code>--sources</code> values below are the complete set the CLI accepts — anything else is rejected with <code>Invalid sources: {...}</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Tool</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>claude</code></td>
+<td>Claude Code</td>
+</tr>
+<tr>
+<td><code>codex</code></td>
+<td>OpenAI Codex CLI</td>
+</tr>
+<tr>
+<td><code>kiro</code></td>
+<td>Kiro CLI</td>
+</tr>
+<tr>
+<td><code>opencode</code></td>
+<td>OpenCode</td>
+</tr>
+<tr>
+<td><code>pi</code></td>
+<td>pi coding agent</td>
+</tr>
+</tbody>
+</table>
+<h3 id="results-incremental-behaviour">Results &amp; Incremental Behaviour<a class="headerlink" href="#results-incremental-behaviour" title="Permanent link">&para;</a></h3>
+<p>By default <code>session-export</code> runs <strong>incrementally</strong>: it only imports sessions
+that are new or whose source file changed since the last export. The summary
+reports four outcomes:</p>
+<table>
+<thead>
+<tr>
+<th>Outcome</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>added</code></td>
+<td>New session imported for the first time</td>
+</tr>
+<tr>
+<td><code>updated</code></td>
+<td>Existing session re-imported because its source changed</td>
+</tr>
+<tr>
+<td><code>skipped</code></td>
+<td>Already up-to-date since last export (unchanged) — <strong>not</strong> re-read</td>
+</tr>
+<tr>
+<td><code>empty</code></td>
+<td>No extractable messages (header-only, content-less, or only tool-results)</td>
+</tr>
+</tbody>
+</table>
+<p><code>skipped</code> is the steady-state for a repeat run — a large <code>skipped</code> count is
+normal and means deduplication is working, not that anything failed. <code>empty</code>
+is tracked separately so a session with no usable text is never mistaken for
+one that was simply unchanged.</p>
+<p>Use <code>--full</code> to ignore change-detection and re-import every session (every
+unchanged session then re-imports as <code>updated</code> instead of <code>skipped</code>).</p>
+<h3 id="install-export-examples">Install &amp; Export Examples<a class="headerlink" href="#install-export-examples" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>studyloop<span class="w"> </span>install<span class="w"> </span>tools
+studyloop<span class="w"> </span>install<span class="w"> </span>agents
+studyloop<span class="w"> </span>install<span class="w"> </span>agents<span class="w"> </span>--tool<span class="w"> </span>codex
+studyloop<span class="w"> </span>install<span class="w"> </span>agents<span class="w"> </span>--tool<span class="w"> </span>claude<span class="w"> </span>--tool<span class="w"> </span>kiro
+studyloop<span class="w"> </span>install<span class="w"> </span>agents<span class="w"> </span>--tool<span class="w"> </span>opencode
+studyloop<span class="w"> </span>install<span class="w"> </span>agents<span class="w"> </span>--tool<span class="w"> </span>pi
+
+session-export
+session-export<span class="w"> </span>--sources<span class="w"> </span>claude<span class="w"> </span>--sources<span class="w"> </span>codex
+session-export<span class="w"> </span>--sources<span class="w"> </span>opencode<span class="w"> </span>--sources<span class="w"> </span>pi
+session-export<span class="w"> </span>--claude-only
+session-export<span class="w"> </span>--codex-only
+session-export<span class="w"> </span>--kiro-only
+session-export<span class="w"> </span>--opencode-only
+session-export<span class="w"> </span>--pi-only
+session-export<span class="w"> </span>--full
+</code></pre></div>
+<h3 id="obsidian-vault-export-opt-in">Obsidian Vault Export (opt-in)<a class="headerlink" href="#obsidian-vault-export-opt-in" title="Permanent link">&para;</a></h3>
+<p><code>session-export</code> can also write one Markdown "session-memory" note per session
+into an Obsidian vault, alongside the SQLite export. Notes carry Dataview-ready
+YAML frontmatter (<code>type: agent-memory</code>), <code>[[wikilink]]</code> backlinks to matching
+vault topic notes, and per-project MOC index notes. Output lands in
+<code>&lt;vault&gt;/AgentMemory/</code> (and <code>&lt;vault&gt;/AgentMemory/MOC/</code>).</p>
+<p>Enable it per-run with <code>--obsidian</code>, or set <code>obsidian.export_enabled: true</code> in
+<code>~/.config/studyloop/config.yaml</code> (see <a href="setup-guide.html#obsidian-session-memory-export">Configuration</a>).</p>
+<div class="highlight"><pre><span></span><code>session-export<span class="w"> </span>--obsidian<span class="w">                      </span><span class="c1"># write notes for sessions touched this run</span>
+session-export<span class="w"> </span>--obsidian<span class="w"> </span>--obsidian-vault<span class="w"> </span>~/Obsidian/Personal<span class="w">  </span><span class="c1"># override vault path</span>
+session-export<span class="w"> </span>--obsidian<span class="w"> </span>--obsidian-backfill<span class="w">  </span><span class="c1"># write notes for ALL historical sessions (idempotent)</span>
+session-export<span class="w"> </span>--obsidian<span class="w"> </span>--obsidian-dry-run<span class="w">   </span><span class="c1"># preview what would be written; write nothing</span>
+session-export<span class="w"> </span>--no-obsidian<span class="w">                   </span><span class="c1"># force-disable even if config enables it</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--obsidian</code> / <code>--no-obsidian</code></td>
+<td>Enable/disable export for this run; overrides the <code>obsidian.export_enabled</code> config gate.</td>
+</tr>
+<tr>
+<td><code>--obsidian-vault PATH</code></td>
+<td>Override the vault root (default: <code>obsidian.vault_path</code>, falling back to <code>obsidian_base</code>).</td>
+</tr>
+<tr>
+<td><code>--obsidian-backfill</code></td>
+<td>Export every session in the DB, not just those touched this run. Idempotent — unchanged notes are skipped.</td>
+</tr>
+<tr>
+<td><code>--obsidian-dry-run</code></td>
+<td>Print the written/skipped/MOC counts without writing any files.</td>
+</tr>
+</tbody>
+</table>
+<p>Notes are <strong>idempotent</strong>: a content hash in each note's frontmatter means re-runs
+skip unchanged sessions. A normal <code>--obsidian</code> run only writes sessions added or
+updated in that run; use <code>--obsidian-backfill</code> for the one-time full history import.</p>
+<h3 id="optional-extras">Optional Extras<a class="headerlink" href="#optional-extras" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>agent-session-tools<span class="o">[</span>semantic<span class="o">]</span><span class="w">  </span><span class="c1"># Vector embeddings search</span>
+uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>agent-session-tools<span class="o">[</span>tokens<span class="o">]</span><span class="w">    </span><span class="c1"># Token counting</span>
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.sections", "navigation.expand", "toc.follow", "search.highlight"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="javascripts/preferences.js"></script>
+      
+    
+  </body>
+</html>

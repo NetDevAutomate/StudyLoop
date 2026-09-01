@@ -1,0 +1,1645 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A local-first, AuDHD-aware study companion for active learning with AI mentors">
+      
+      
+      
+        <link rel="canonical" href="https://netdevautomate.github.io/StudyLoop/tui-guide.html">
+      
+      
+        <link rel="prev" href="obsidian-export.html">
+      
+      
+        <link rel="next" href="agent-install.html">
+      
+      
+        
+      
+      
+      <link rel="icon" href="images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>TUI Guide - StudyLoop</title>
+      
+    
+    
+      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="stylesheets/audhd.css">
+    
+      <link rel="stylesheet" href="stylesheets/fonts.css">
+    
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#tui-sidebar-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="index.html" title="StudyLoop" class="md-header__button md-logo" aria-label="StudyLoop" data-md-component="logo">
+      
+  <img src="images/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            StudyLoop
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              TUI Guide
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="index.html" title="StudyLoop" class="md-nav__button md-logo" aria-label="StudyLoop" data-md-component="logo">
+      
+  <img src="images/logo.png" alt="logo">
+
+    </a>
+    StudyLoop
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Start Here
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="first-week.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your First Week
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="setup-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Study and Review
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Study and Review
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="study-plans.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Study Plans
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="web-ui-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web UI Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="content-pipeline.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Content Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="voice-output.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Voice Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="obsidian-export.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Obsidian Export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interfaces
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Interfaces
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TUI Guide
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="tui-guide.html" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TUI Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Layout
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Flow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#widgets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Widgets
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Widgets">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#timer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Timer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#activity-feed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Activity Feed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#counter-bar" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Counter Bar
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#break-banner" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Break Banner
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-bindings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Bindings
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#starting-a-session" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Starting a Session
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ending-a-session" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ending a Session
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#resuming-a-session" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resuming a Session
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="agent-install.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="cli-reference.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="troubleshooting.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    About
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="audhd-learning-philosophy.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Learning Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="architecture.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="roadmap.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contribute
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Layout
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Flow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#widgets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Widgets
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Widgets">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#timer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Timer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#activity-feed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Activity Feed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#counter-bar" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Counter Bar
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#break-banner" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Break Banner
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-bindings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Bindings
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#starting-a-session" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Starting a Session
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ending-a-session" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ending a Session
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#resuming-a-session" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resuming a Session
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="tui-sidebar-guide">TUI Sidebar Guide<a class="headerlink" href="#tui-sidebar-guide" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p>The Textual sidebar runs alongside your AI agent in a split tmux layout, showing live session progress without leaving the terminal.</p>
+</blockquote>
+<hr />
+<h2 id="layout">Layout<a class="headerlink" href="#layout" title="Permanent link">&para;</a></h2>
+<p>When you start a study session with <code>studyloop study "topic"</code>, a tmux session is created with two panes:</p>
+<div class="highlight"><pre><span></span><code>+------------------------------------------+------------------+
+|                                          |                  |
+|         AI Agent (main pane)             |    Sidebar       |
+|                                          |                  |
+|   Your AI mentor runs here.              |   00:12:34       |
+|   Kiro, Codex, Claude Code,              |   ELAPSED        |
+|   OpenCode, or pi.                       |                  |
+|                                          |  ── Activity ──  |
+|   The agent has full terminal access     |  * Closures  win |
+|   and uses Socratic questioning to       |  * Decorators    |
+|   guide your learning.                   |    learning      |
+|                                          |  o Metaclasses   |
+|                                          |    parked        |
+|                                          |                  |
+|                                          |  WINS:2 PARK:1   |
+|                                          |                  |
+|                                          |  p:pause r:reset |
+|                                          |  Q:end session   |
++------------------------------------------+------------------+
+           ~75% width                          ~25% width
+</code></pre></div>
+<p>The sidebar occupies the right 25% of the terminal. The agent gets the remaining 75%.</p>
+<hr />
+<h2 id="data-flow">Data Flow<a class="headerlink" href="#data-flow" title="Permanent link">&para;</a></h2>
+<p>The sidebar reads from IPC files that the agent writes to during the session:</p>
+<pre class="mermaid"><code>graph LR
+    subgraph "Agent Pane"
+        AGENT["AI Agent"]
+        CLI["studyloop topic&lt;br/&gt;(CLI command)"]
+    end
+
+    subgraph "IPC Files"
+        STATE["session-state.json&lt;br/&gt;(timer, energy, mode)"]
+        TOPICS["session-topics.md&lt;br/&gt;(activity log)"]
+        PARKING["session-parking.md&lt;br/&gt;(parked questions)"]
+    end
+
+    subgraph "Sidebar Pane"
+        TIMER["Timer Widget"]
+        FEED["Activity Feed"]
+        COUNTERS["Counter Bar"]
+        BREAK["Break Banner"]
+    end
+
+    AGENT --&gt;|"studyloop topic 'X' --status win"| CLI
+    CLI --&gt; TOPICS
+    CLI --&gt; PARKING
+    TOPICS --&gt;|polls| FEED
+    TOPICS --&gt;|polls| COUNTERS
+    PARKING --&gt;|polls| FEED
+    STATE --&gt;|polls| TIMER
+    TIMER --&gt;|"time thresholds"| BREAK</code></pre>
+<p>The sidebar polls these files every second. When the agent logs a topic via <code>studyloop topic</code>, the sidebar updates within 1-2 seconds.</p>
+<hr />
+<h2 id="widgets">Widgets<a class="headerlink" href="#widgets" title="Permanent link">&para;</a></h2>
+<h3 id="timer">Timer<a class="headerlink" href="#timer" title="Permanent link">&para;</a></h3>
+<p>The timer shows elapsed time or Pomodoro cycles depending on the session mode.</p>
+<p><strong>Elapsed mode</strong> (default for <code>--mode study</code>):</p>
+<p>The timer counts up from 00:00:00, changing colour as time passes:</p>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Time</th>
+<th>Colour</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Fresh</td>
+<td>0-25 min</td>
+<td>Green</td>
+<td>Deep work zone</td>
+</tr>
+<tr>
+<td>Sustained</td>
+<td>25-50 min</td>
+<td>Amber</td>
+<td>Consider a break soon</td>
+</tr>
+<tr>
+<td>Extended</td>
+<td>50+ min</td>
+<td>Red</td>
+<td>Break recommended</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Pomodoro mode</strong> (default for <code>--mode co-study</code>):</p>
+<p>Alternates between 25-minute work periods and 5-minute breaks, with a 15-minute break every 4 cycles. The timer counts down and chimes at transitions.</p>
+<p>Switch modes explicitly:</p>
+<div class="highlight"><pre><span></span><code>studyloop<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;Python&quot;</span><span class="w"> </span>--timer<span class="w"> </span>pomodoro<span class="w">    </span><span class="c1"># Force Pomodoro in study mode</span>
+studyloop<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;Python&quot;</span><span class="w"> </span>--timer<span class="w"> </span>elapsed<span class="w">     </span><span class="c1"># Force elapsed in co-study mode</span>
+</code></pre></div>
+<h3 id="activity-feed">Activity Feed<a class="headerlink" href="#activity-feed" title="Permanent link">&para;</a></h3>
+<p>Shows topics logged during the session with status icons:</p>
+<table>
+<thead>
+<tr>
+<th>Icon</th>
+<th>Status</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>*</code> (check)</td>
+<td><code>win</code></td>
+<td>Concept mastered</td>
+</tr>
+<tr>
+<td><code>*</code> (star)</td>
+<td><code>insight</code></td>
+<td>Aha moment or bridge connection</td>
+</tr>
+<tr>
+<td><code>*</code> (diamond)</td>
+<td><code>learning</code></td>
+<td>Currently exploring</td>
+</tr>
+<tr>
+<td><code>^</code> (triangle)</td>
+<td><code>struggling</code></td>
+<td>Needs different explanation</td>
+</tr>
+<tr>
+<td><code>o</code> (circle)</td>
+<td><code>parked</code></td>
+<td>Tangent saved for later</td>
+</tr>
+</tbody>
+</table>
+<p>Each entry shows the topic name, status, and the note the agent recorded.</p>
+<h3 id="counter-bar">Counter Bar<a class="headerlink" href="#counter-bar" title="Permanent link">&para;</a></h3>
+<p>Running totals at the bottom of the sidebar:</p>
+<div class="highlight"><pre><span></span><code>WINS: 3  |  PARKED: 1  |  REVIEW: 2
+</code></pre></div>
+<ul>
+<li><strong>WINS</strong> — topics with status <code>win</code> or <code>insight</code> (green)</li>
+<li><strong>PARKED</strong> — questions deferred to the parking lot</li>
+<li><strong>REVIEW</strong> — topics with status <code>struggling</code> (flagged for next session)</li>
+</ul>
+<h3 id="break-banner">Break Banner<a class="headerlink" href="#break-banner" title="Permanent link">&para;</a></h3>
+<p>Appears automatically based on elapsed time and energy level. The sidebar uses energy-adaptive thresholds:</p>
+<table>
+<thead>
+<tr>
+<th>Energy Level</th>
+<th>Micro Break</th>
+<th>Short Break</th>
+<th>Long Break</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Low (1-3)</td>
+<td>15 min</td>
+<td>30 min</td>
+<td>60 min</td>
+</tr>
+<tr>
+<td>Medium (4-7)</td>
+<td>20 min</td>
+<td>45 min</td>
+<td>90 min</td>
+</tr>
+<tr>
+<td>High (8-10)</td>
+<td>25 min</td>
+<td>50 min</td>
+<td>120 min</td>
+</tr>
+</tbody>
+</table>
+<p>The banner is colour-coded (blue for micro, amber for short, red for long) and auto-dismisses when the timer is paused.</p>
+<hr />
+<h2 id="key-bindings">Key Bindings<a class="headerlink" href="#key-bindings" title="Permanent link">&para;</a></h2>
+<p>Press these keys while the sidebar pane is focused (click the sidebar or use <code>Ctrl-b →</code> in tmux to switch):</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Action</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>p</code></td>
+<td>Toggle pause</td>
+<td>Pauses/resumes the timer. Resuming records a break taken.</td>
+</tr>
+<tr>
+<td><code>s</code></td>
+<td>Start/stop Pomodoro</td>
+<td>Toggles the Pomodoro cycle without restarting the session.</td>
+</tr>
+<tr>
+<td><code>r</code></td>
+<td>Reset timer</td>
+<td>Resets the timer to 00:00:00.</td>
+</tr>
+<tr>
+<td><code>+</code></td>
+<td>+5 min focus</td>
+<td>Lengthens the Pomodoro focus period by 5 minutes.</td>
+</tr>
+<tr>
+<td><code>-</code></td>
+<td>−5 min focus</td>
+<td>Shortens the Pomodoro focus period by 5 minutes.</td>
+</tr>
+<tr>
+<td><code>Q</code></td>
+<td>End session</td>
+<td>Ends the entire study session: sends <code>/exit</code> to the agent, runs cleanup (flashcard generation, DB update), kills the tmux session.</td>
+</tr>
+<tr>
+<td><code>q</code></td>
+<td>Quit sidebar</td>
+<td>Quits only the sidebar process. The tmux session and agent continue running.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Important</strong>: <code>Q</code> (uppercase) ends everything. <code>q</code> (lowercase) only quits the sidebar widget.</p>
+<hr />
+<h2 id="starting-a-session">Starting a Session<a class="headerlink" href="#starting-a-session" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># Basic session</span>
+studyloop<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;Python Decorators&quot;</span><span class="w"> </span>--energy<span class="w"> </span><span class="m">7</span>
+
+<span class="c1"># With web dashboard alongside the TUI</span>
+studyloop<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;Python Decorators&quot;</span><span class="w"> </span>--energy<span class="w"> </span><span class="m">7</span><span class="w"> </span>--web
+
+<span class="c1"># Co-study mode (Pomodoro timer, agent is passive)</span>
+studyloop<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;Python Decorators&quot;</span><span class="w"> </span>--mode<span class="w"> </span>co-study
+
+<span class="c1"># Choose a specific AI agent</span>
+studyloop<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;Python Decorators&quot;</span><span class="w"> </span>--agent<span class="w"> </span>kiro
+</code></pre></div>
+<p>You'll be dropped into the tmux session automatically. The agent starts in the left pane, the sidebar in the right.</p>
+<h2 id="ending-a-session">Ending a Session<a class="headerlink" href="#ending-a-session" title="Permanent link">&para;</a></h2>
+<p>Three ways to end:</p>
+<ol>
+<li><strong>Press <code>Q</code> in the sidebar</strong> — cleanest method, runs full cleanup</li>
+<li><strong>Type <code>studyloop study --end</code></strong> in a separate terminal</li>
+<li><strong>Quit the agent</strong> (e.g. type <code>/exit</code> in Claude Code) — the wrapper script triggers cleanup automatically</li>
+</ol>
+<p>All three paths run the same cleanup: flashcard generation from session wins, DB session end, tmux session kill, IPC file removal.</p>
+<hr />
+<h2 id="resuming-a-session">Resuming a Session<a class="headerlink" href="#resuming-a-session" title="Permanent link">&para;</a></h2>
+<p>If your terminal disconnects or you close the window:</p>
+<div class="highlight"><pre><span></span><code>studyloop<span class="w"> </span>study<span class="w"> </span>--resume
+</code></pre></div>
+<p>This reattaches to the existing tmux session with your agent conversation and sidebar state intact.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.sections", "navigation.expand", "toc.follow", "search.highlight"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="javascripts/preferences.js"></script>
+      
+    
+  </body>
+</html>

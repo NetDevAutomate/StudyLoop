@@ -1,0 +1,1578 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A local-first, AuDHD-aware study companion for active learning with AI mentors">
+      
+      
+      
+        <link rel="canonical" href="https://netdevautomate.github.io/StudyLoop/troubleshooting.html">
+      
+      
+        <link rel="prev" href="cli-reference.html">
+      
+      
+        <link rel="next" href="audhd-learning-philosophy.html">
+      
+      
+        
+      
+      
+      <link rel="icon" href="images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>Troubleshooting - StudyLoop</title>
+      
+    
+    
+      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="stylesheets/audhd.css">
+    
+      <link rel="stylesheet" href="stylesheets/fonts.css">
+    
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#troubleshooting" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="index.html" title="StudyLoop" class="md-header__button md-logo" aria-label="StudyLoop" data-md-component="logo">
+      
+  <img src="images/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            StudyLoop
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Troubleshooting
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="index.html" title="StudyLoop" class="md-nav__button md-logo" aria-label="StudyLoop" data-md-component="logo">
+      
+  <img src="images/logo.png" alt="logo">
+
+    </a>
+    StudyLoop
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Start Here
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="first-week.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your First Week
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="setup-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Study and Review
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Study and Review
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="study-plans.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Study Plans
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="web-ui-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web UI Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="content-pipeline.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Content Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="voice-output.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Voice Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="obsidian-export.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Obsidian Export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interfaces
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Interfaces
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="tui-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TUI Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="agent-install.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="cli-reference.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="troubleshooting.html" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#install-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install Checks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#uv-environment-drift" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        uv Environment Drift
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#optional-profiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optional Profiles
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#web-and-lan-access" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Web And LAN Access
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-browser-terminal-shows-no-terminal-available" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Browser Terminal Shows "No Terminal Available"
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-terminal-is-empty-after-a-page-refresh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Terminal Is Empty After A Page Refresh
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#provider-credentials" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Provider Credentials
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#generation-is-busy-or-stuck" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generation Is Busy Or Stuck
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#generated-too-many-or-too-few-cards" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generated Too Many Or Too Few Cards
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#course-explorer-looks-stale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Course Explorer Looks Stale
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#search-results-are-stale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Search Results Are Stale
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#progress-or-struggles-missing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Progress Or Struggles Missing
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    About
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="audhd-learning-philosophy.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Learning Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="architecture.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="roadmap.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contribute
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#install-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install Checks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#uv-environment-drift" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        uv Environment Drift
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#optional-profiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optional Profiles
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#web-and-lan-access" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Web And LAN Access
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-browser-terminal-shows-no-terminal-available" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Browser Terminal Shows "No Terminal Available"
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-terminal-is-empty-after-a-page-refresh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Terminal Is Empty After A Page Refresh
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#provider-credentials" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Provider Credentials
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#generation-is-busy-or-stuck" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generation Is Busy Or Stuck
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#generated-too-many-or-too-few-cards" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generated Too Many Or Too Few Cards
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#course-explorer-looks-stale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Course Explorer Looks Stale
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#search-results-are-stale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Search Results Are Stale
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#progress-or-struggles-missing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Progress Or Struggles Missing
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h1>
+<h2 id="install-checks">Install Checks<a class="headerlink" href="#install-checks" title="Permanent link">&para;</a></h2>
+<p>Run the lightweight self-test first:</p>
+<div class="highlight"><pre><span></span><code>studyloop<span class="w"> </span>self-test
+studyloop<span class="w"> </span>self-test<span class="w"> </span>--json
+</code></pre></div>
+<p>Then run the deeper environment checks:</p>
+<div class="highlight"><pre><span></span><code>studyloop<span class="w"> </span>doctor
+studyloop<span class="w"> </span>doctor<span class="w"> </span>--json
+</code></pre></div>
+<p><code>studyloop self-test</code> is safe immediately after installation. It does not run
+<code>doctor --fix</code>, start services, contact providers, or write agent files.</p>
+<h2 id="uv-environment-drift">uv Environment Drift<a class="headerlink" href="#uv-environment-drift" title="Permanent link">&para;</a></h2>
+<p>When a local checkout behaves differently from CI, resync the lean development
+profile and rerun the core gates:</p>
+<div class="highlight"><pre><span></span><code>just<span class="w"> </span>sync-dev
+just<span class="w"> </span>lint
+just<span class="w"> </span>typecheck
+just<span class="w"> </span><span class="nb">test</span>
+</code></pre></div>
+<p>Use <code>just sync-full</code> only when validating optional extras. The full profile
+pulls heavier optional stacks such as semantic search and TTS dependencies.</p>
+<h2 id="optional-profiles">Optional Profiles<a class="headerlink" href="#optional-profiles" title="Permanent link">&para;</a></h2>
+<p>Use profile checks when a change touches a specific optional surface:</p>
+<div class="highlight"><pre><span></span><code>just<span class="w"> </span>test-web
+just<span class="w"> </span>test-content
+just<span class="w"> </span>test-semantic
+</code></pre></div>
+<p>If <code>test-semantic</code> skips because <code>numpy</code> or embedding dependencies are missing,
+run:</p>
+<div class="highlight"><pre><span></span><code>just<span class="w"> </span>sync-semantic
+just<span class="w"> </span>test-semantic
+</code></pre></div>
+<h2 id="web-and-lan-access">Web And LAN Access<a class="headerlink" href="#web-and-lan-access" title="Permanent link">&para;</a></h2>
+<p>For local-only use:</p>
+<div class="highlight"><pre><span></span><code>studyloop<span class="w"> </span>web
+</code></pre></div>
+<p>For LAN use:</p>
+<div class="highlight"><pre><span></span><code>studyloop<span class="w"> </span>web<span class="w"> </span>--lan
+</code></pre></div>
+<p>Configured LAN passwords are not printed. Generated one-time passwords are
+printed once. If a phone or tablet cannot connect, check that the shown LAN URL
+uses the host's real LAN address and that the device is on the same network.</p>
+<h2 id="the-browser-terminal-shows-no-terminal-available">The Browser Terminal Shows "No Terminal Available"<a class="headerlink" href="#the-browser-terminal-shows-no-terminal-available" title="Permanent link">&para;</a></h2>
+<p>The live console has two renderers, chosen by the session's <code>transport</code>:</p>
+<table>
+<thead>
+<tr>
+<th><code>transport</code></th>
+<th>Renders as</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pty</code> (default)</td>
+<td>xterm.js, fed by the PTY over a WebSocket</td>
+</tr>
+<tr>
+<td><code>acp</code></td>
+<td>structured ACP chat events</td>
+</tr>
+</tbody>
+</table>
+<p>Anything else has <strong>no browser renderer</strong>. The console reports an explicit
+<code>unavailable</code> state — status <code>No terminal available</code>, plus a message naming the
+transport it cannot render and telling you to end the session and start it again
+on the browser terminal or ACP.</p>
+<p>The usual cause is <code>STUDYLOOP_TRANSPORT=ttyd</code> in the environment. That path is
+still honoured server-side, but it is no longer a browser rendering option:</p>
+<div class="highlight"><pre><span></span><code>env<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>STUDYLOOP_TRANSPORT
+</code></pre></div>
+<p>Unset it and start a new session:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">unset</span><span class="w"> </span>STUDYLOOP_TRANSPORT
+studyloop<span class="w"> </span>web
+</code></pre></div>
+<p>Installing <code>ttyd</code> does <strong>not</strong> fix this and is not required for the terminal
+panel. The ttyd browser surface was retired deliberately, because without the
+binary the old iframe rendered an empty frame that was indistinguishable from a
+hang. The retired design record remains in the repository for maintainers,
+including the reasoning and the server path that remains.</p>
+<p>If the transport is already <code>pty</code> and the panel still reports no terminal, the
+server did not return a connection for the session. Ending and restarting the
+session clears this; the message says so rather than leaving a blank pane.</p>
+<h2 id="the-terminal-is-empty-after-a-page-refresh">The Terminal Is Empty After A Page Refresh<a class="headerlink" href="#the-terminal-is-empty-after-a-page-refresh" title="Permanent link">&para;</a></h2>
+<p>The panel should reattach on its own. What holds today:</p>
+<ul>
+<li><strong>The session survives the refresh.</strong> A disconnect starts a detach grace
+  window on the server (90 s by default; <code>STUDYLOOP_WS_GRACE_SECONDS</code>
+  overrides it), so the agent process keeps running and
+  <code>GET /api/session/state</code> still reports the session after the reload.</li>
+<li><strong>The reattach is automatic.</strong> <code>liveAgentConsole.init()</code> reads
+  <code>GET /api/session/state</code> on load and re-adopts a live session it owns,
+  restoring the terminal and reporting <em>Reattached</em> rather than <em>Starting</em>.</li>
+</ul>
+<p>An empty terminal after a refresh is therefore a real fault worth
+investigating, not expected behaviour. The most likely cause is a reload that
+took longer than the grace window, which genuinely ends the session.</p>
+<p>If a refresh leaves an empty terminal:</p>
+<ol>
+<li>Confirm a session is actually live: <code>GET /api/session/state</code> should report
+   it. If the grace window has already expired, the state response says why
+   the last session went away.</li>
+<li>Check the browser console for a JS error during <code>init()</code> — a thrown
+   initialiser stops the adopt step from even being attempted.</li>
+<li>Confirm the static assets being served are current. <code>studyloop web</code> serves the
+   <strong>installed</strong> package's assets, so a stale editable install serves stale JS:</li>
+</ol>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>studyloop<span class="w"> </span>install<span class="w"> </span>tools<span class="w"> </span>--skip-sync
+</code></pre></div>
+<p>To get back to work, end the session from the UI and start a new one — the
+pane says what happened rather than staying blank. Sessions started from the
+CLI in tmux (not through the web UI) have their own recovery path:
+<code>studyloop study --resume</code> reattaches to the running agent, or rebuilds the
+conversation from history if the tmux session is gone.</p>
+<h2 id="provider-credentials">Provider Credentials<a class="headerlink" href="#provider-credentials" title="Permanent link">&para;</a></h2>
+<p>Use the web Settings panel or environment variables for provider keys. Raw
+provider keys must never appear in logs, screenshots, or issue reports.</p>
+<p>For provider checks:</p>
+<div class="highlight"><pre><span></span><code>studyloop<span class="w"> </span>self-test
+studyloop<span class="w"> </span>doctor<span class="w"> </span>--category<span class="w"> </span>deps
+</code></pre></div>
+<p><code>studyloop self-test</code> only verifies that the web module imports. It does not
+call OpenAI, OpenRouter, Gemini, Anthropic, Bedrock, Ollama, or other providers.</p>
+<h2 id="generation-is-busy-or-stuck">Generation Is Busy Or Stuck<a class="headerlink" href="#generation-is-busy-or-stuck" title="Permanent link">&para;</a></h2>
+<p>The Generate panel runs one content-generation job at a time. If another job is
+active, <code>POST /api/content/generate</code> returns <code>409</code> and the browser shows a
+visible busy/conflict banner.</p>
+<p>Use this order:</p>
+<ol>
+<li>Check the Generate panel status and progress rows.</li>
+<li>Wait for the active job to finish if the panel says another job is running.</li>
+<li>If the local process was killed mid-job and the UI never clears, restart
+   <code>studyloop web</code>.</li>
+<li>Rerun generation from the same course/scope. The default <strong>Merge</strong> policy
+   de-duplicates existing cards/questions and is the least destructive retry.</li>
+</ol>
+<h2 id="generated-too-many-or-too-few-cards">Generated Too Many Or Too Few Cards<a class="headerlink" href="#generated-too-many-or-too-few-cards" title="Permanent link">&para;</a></h2>
+<p>The <strong>Cards / questions per source</strong> field is sent as <code>count_per_source</code>. It is
+copied into each <code>GenerationTask.count</code> and included in the provider prompt for
+every selected source and kind.</p>
+<p>This is a target, not a filesystem quota. Live providers can under- or
+over-produce if they do not follow the prompt; invalid shapes fail validation
+and appear as task errors. StudyLoop does not substitute generated-looking
+placeholder cards when a provider fails.
+Use the Generate panel plan/progress line to confirm the requested count,
+provider, and model before comparing output files.</p>
+<h2 id="course-explorer-looks-stale">Course Explorer Looks Stale<a class="headerlink" href="#course-explorer-looks-stale" title="Permanent link">&para;</a></h2>
+<p>The Course Explorer provider/course tree is cached by a visible tree
+fingerprint, not only the top-level directory timestamp. Adding or deleting
+nested source courses should refresh on the next tree request, while generated
+output folders such as <code>flashcards/</code> and <code>quizzes/</code> intentionally do not
+invalidate the visible tree.</p>
+<p>If the panel looks stale:</p>
+<ol>
+<li>Refresh the browser.</li>
+<li>Confirm the source file lives under <code>content.base_path</code>.</li>
+<li>Confirm the source file has an allowed suffix: <code>.md</code>, <code>.markdown</code>, or <code>.txt</code>.</li>
+<li>Restart <code>studyloop web</code> if the process has been running through manual file
+   moves or external sync conflicts.</li>
+</ol>
+<p>Do not delete <code>explorer_fts.db</code> for a stale provider/course list. That file is
+only the derived search index.</p>
+<h2 id="search-results-are-stale">Search Results Are Stale<a class="headerlink" href="#search-results-are-stale" title="Permanent link">&para;</a></h2>
+<p>Course Explorer search uses the derived SQLite FTS cache at
+<code>&lt;session_db_dir&gt;/explorer_fts.db</code>. The cache is built lazily on first search and
+refreshed from source lesson metadata on subsequent searches.</p>
+<p>If search results are stale but the course tree is correct:</p>
+<ol>
+<li>Search again after saving the source file.</li>
+<li>Restart <code>studyloop web</code> if the process was interrupted during indexing.</li>
+<li>Delete <code>explorer_fts.db</code> only for search-index issues; it will be rebuilt on
+   the next search and is not part of <code>sessions.db</code> migrations.</li>
+</ol>
+<h2 id="progress-or-struggles-missing">Progress Or Struggles Missing<a class="headerlink" href="#progress-or-struggles-missing" title="Permanent link">&para;</a></h2>
+<p>Struggles and progress live in <code>sessions.db</code> and are surfaced through
+<code>study_progress</code>. Course Explorer writes web-marked struggles through
+<code>POST /api/history/struggling-topics</code>, including provenance columns such as
+<code>source_course</code> and <code>source_section</code>.</p>
+<p>Run:</p>
+<div class="highlight"><pre><span></span><code>studyloop<span class="w"> </span>self-test
+studyloop<span class="w"> </span>doctor<span class="w"> </span>--category<span class="w"> </span>database
+</code></pre></div>
+<p>If the database check fails, fix that first. If it passes but the Generate
+panel's <strong>Topic I'm struggling on</strong> list is empty, confirm that the relevant
+struggle is inside the selected window and has <code>confidence='struggling'</code>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.sections", "navigation.expand", "toc.follow", "search.highlight"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="javascripts/preferences.js"></script>
+      
+    
+  </body>
+</html>

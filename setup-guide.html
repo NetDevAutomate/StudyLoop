@@ -1,0 +1,3104 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A local-first, AuDHD-aware study companion for active learning with AI mentors">
+      
+      
+      
+        <link rel="canonical" href="https://netdevautomate.github.io/StudyLoop/setup-guide.html">
+      
+      
+        <link rel="prev" href="first-week.html">
+      
+      
+        <link rel="next" href="study-plans.html">
+      
+      
+        
+      
+      
+      <link rel="icon" href="images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>Setup Guide - StudyLoop</title>
+      
+    
+    
+      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="stylesheets/audhd.css">
+    
+      <link rel="stylesheet" href="stylesheets/fonts.css">
+    
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#setup-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="index.html" title="StudyLoop" class="md-header__button md-logo" aria-label="StudyLoop" data-md-component="logo">
+      
+  <img src="images/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            StudyLoop
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Setup Guide
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="index.html" title="StudyLoop" class="md-nav__button md-logo" aria-label="StudyLoop" data-md-component="logo">
+      
+  <img src="images/logo.png" alt="logo">
+
+    </a>
+    StudyLoop
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Start Here
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="first-week.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your First Week
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="setup-guide.html" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#table-of-contents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Table of Contents
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Prerequisites">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tmux-resurrect-compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        tmux-resurrect Compatibility
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#user-install-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        User Install (recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-the-installer-does" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the installer does
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#advanced-manual-tool-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Advanced Manual Tool Install
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optional-extras" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optional Extras
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#developer-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Developer Install
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#legacy-script-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Legacy Script Modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#interactive-setup-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interactive Setup (recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manual-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#web-pwa-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Web PWA (recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remote-study-ipad-on-the-bus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remote Study (iPad on the Bus)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hosts-cross-machine-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hosts — Cross-Machine Sync
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Hosts — Cross-Machine Sync">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites-passwordless-ssh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites: Passwordless SSH
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#host-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Host Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#study-topics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Study Topics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#database-search-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Database &amp; Search Settings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#web-terminal-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Web Terminal Settings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tts-voice-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TTS Voice Settings
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#obsidian-vault-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Obsidian Vault Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Obsidian Vault Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#obsidian-session-memory-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Obsidian session-memory export
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#session-database" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Session Database
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Session Database">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#populate-the-database" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Populate the database
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verify-its-working" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verify it's working
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#content-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Content Pipeline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Content Pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#install-content-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install content dependencies
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configure-study-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configure study sources
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#typical-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Typical workflow
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cross-machine-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cross-Machine Sync
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Cross-Machine Sync">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#session-database-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Session database sync
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scheduling-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scheduling Status
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#windows-wsl2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Windows (WSL2)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Windows (WSL2)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#differences-from-macos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Differences from macOS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#connecting-wsl2-mcp-servers-to-claude-desktop-windows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Connecting WSL2 MCP servers to Claude Desktop (Windows)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#obsidian-vault-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Obsidian vault path
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#verify-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verify Installation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Verify Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ai-guided-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AI-Guided Setup
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#first-step-run-studyloop-doctor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        First step: run studyloop doctor
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#studyloop-command-not-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        studyloop: command not found
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#session-export-finds-no-sessions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        session-export finds no sessions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#studyloop-review-shows-nothing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        studyloop review shows nothing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#config-file-not-loading" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Config file not loading
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#database-too-large" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Database too large
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Study and Review
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Study and Review
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="study-plans.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Study Plans
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="web-ui-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web UI Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="content-pipeline.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Content Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="voice-output.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Voice Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="obsidian-export.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Obsidian Export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interfaces
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Interfaces
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="tui-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TUI Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="agent-install.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="cli-reference.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="troubleshooting.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    About
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="audhd-learning-philosophy.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Learning Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="architecture.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="roadmap.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contribute
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#table-of-contents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Table of Contents
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Prerequisites">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tmux-resurrect-compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        tmux-resurrect Compatibility
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#user-install-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        User Install (recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-the-installer-does" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the installer does
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#advanced-manual-tool-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Advanced Manual Tool Install
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optional-extras" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optional Extras
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#developer-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Developer Install
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#legacy-script-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Legacy Script Modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#interactive-setup-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interactive Setup (recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manual-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#web-pwa-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Web PWA (recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remote-study-ipad-on-the-bus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remote Study (iPad on the Bus)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hosts-cross-machine-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hosts — Cross-Machine Sync
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Hosts — Cross-Machine Sync">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites-passwordless-ssh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites: Passwordless SSH
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#host-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Host Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#study-topics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Study Topics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#database-search-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Database &amp; Search Settings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#web-terminal-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Web Terminal Settings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tts-voice-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TTS Voice Settings
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#obsidian-vault-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Obsidian Vault Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Obsidian Vault Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#obsidian-session-memory-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Obsidian session-memory export
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#session-database" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Session Database
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Session Database">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#populate-the-database" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Populate the database
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verify-its-working" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verify it's working
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#content-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Content Pipeline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Content Pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#install-content-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install content dependencies
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configure-study-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configure study sources
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#typical-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Typical workflow
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cross-machine-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cross-Machine Sync
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Cross-Machine Sync">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#session-database-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Session database sync
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scheduling-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scheduling Status
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#windows-wsl2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Windows (WSL2)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Windows (WSL2)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#differences-from-macos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Differences from macOS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#connecting-wsl2-mcp-servers-to-claude-desktop-windows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Connecting WSL2 MCP servers to Claude Desktop (Windows)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#obsidian-vault-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Obsidian vault path
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#verify-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verify Installation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Verify Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ai-guided-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AI-Guided Setup
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#first-step-run-studyloop-doctor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        First step: run studyloop doctor
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#studyloop-command-not-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        studyloop: command not found
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#session-export-finds-no-sessions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        session-export finds no sessions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#studyloop-review-shows-nothing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        studyloop review shows nothing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#config-file-not-loading" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Config file not loading
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#database-too-large" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Database too large
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="setup-guide">Setup Guide<a class="headerlink" href="#setup-guide" title="Permanent link">&para;</a></h1>
+<p>Step-by-step installation and configuration for StudyLoop.</p>
+<h2 id="table-of-contents">Table of Contents<a class="headerlink" href="#table-of-contents" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="#prerequisites">Prerequisites</a></li>
+<li><a href="#tmux-resurrect-compatibility">tmux-resurrect Compatibility</a></li>
+<li><a href="#installation">Installation</a></li>
+<li><a href="#configuration">Configuration</a></li>
+<li><a href="#obsidian-vault-setup">Obsidian Vault Setup</a></li>
+<li><a href="#session-database">Session Database</a></li>
+<li><a href="#content-pipeline">Content Pipeline</a></li>
+<li><a href="#cross-machine-sync">Cross-Machine Sync</a></li>
+<li><a href="#scheduling-status">Scheduling Status</a></li>
+<li><a href="#troubleshooting">Troubleshooting</a></li>
+</ul>
+<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Python 3.12+</strong> (both studyloop and agent-session-tools require 3.12+)</li>
+<li><strong><a href="https://docs.astral.sh/uv/">uv</a></strong> — Python package manager</li>
+<li><strong>tmux 3.1+</strong> — required for <code>studyloop study</code> split-pane sessions (<code>brew install tmux</code> on macOS, <code>apt install tmux</code> on Linux)</li>
+<li><strong>Optional</strong>: Obsidian or another Markdown folder for study notes. Notes are
+  context, not a requirement; Study Session, review, and session history work
+  without a notes folder.</li>
+<li><strong>Optional</strong>: <code>sentence-transformers</code> for semantic search</li>
+<li><strong>Optional</strong>: a Kokoro TTS server for voice output — <a href="https://github.com/mbailey/voicemode">VoiceMode</a>, <a href="https://openvoxai.com/">OpenVox</a>, or <code>docker/kokoro/docker-compose.yml</code>. Used by both <code>study-speak</code> and the web app. Without one, the web app uses your OS voices. See <a href="voice-output.html#kokoro-server-backends">Voice Output</a></li>
+</ul>
+<blockquote>
+<p><strong>tmux-resurrect / tmux-continuum users</strong>: studyloop automatically cleans up
+zombie sessions on startup, so resurrect-restored sessions are handled
+gracefully. For the best experience, add the restore hook below to prevent
+resurrect from saving study sessions at all. See
+<a href="#tmux-resurrect-compatibility">tmux-resurrect compatibility</a> for details.</p>
+</blockquote>
+<h3 id="tmux-resurrect-compatibility">tmux-resurrect Compatibility<a class="headerlink" href="#tmux-resurrect-compatibility" title="Permanent link">&para;</a></h3>
+<p>studyloop creates temporary <code>study-*</code> tmux sessions that should not persist
+across tmux restarts. If you use <strong>tmux-resurrect</strong> or <strong>tmux-continuum</strong>,
+these plugins may save and restore killed study sessions as zombies.</p>
+<p><strong>Automatic handling (no action required):</strong> <code>studyloop study</code> automatically
+detects and kills zombie sessions before starting a new session. This works
+out of the box — no configuration needed.</p>
+<p><strong>Recommended: add a restore hook</strong> to prevent resurrect from restoring
+study sessions at all. Add this to your <code>~/.tmux.conf</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Kill any restored study-* sessions immediately after resurrect restore.</span>
+<span class="c1"># studyloop sessions are temporary and should not survive tmux restarts.</span>
+<span class="nb">set</span><span class="w"> </span>-g<span class="w"> </span>@resurrect-restore-hook<span class="w"> </span><span class="s1">&#39;for s in $(tmux list-sessions -F &quot;#{session_name}&quot; 2&gt;/dev/null | grep &quot;^study-&quot;); do tmux kill-session -t &quot;$s&quot; 2&gt;/dev/null; done&#39;</span>
+</code></pre></div>
+<p>After adding, reload your tmux config:</p>
+<div class="highlight"><pre><span></span><code>tmux<span class="w"> </span>source-file<span class="w"> </span>~/.tmux.conf
+</code></pre></div>
+<p>Run <code>studyloop doctor</code> to verify the configuration — it checks for
+tmux-resurrect and warns if the restore hook is not detected.</p>
+<h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h2>
+<h3 id="user-install-recommended">User Install (recommended)<a class="headerlink" href="#user-install-recommended" title="Permanent link">&para;</a></h3>
+<p>Install from a source checkout. There is no current PyPI or Homebrew release, so
+source install is the supported path, and <code>scripts/install.sh</code> is the
+primary installer because it installs both <code>studyloop</code> and the
+<code>agent-session-tools</code> console scripts used by the session database workflow.</p>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/NetDevAutomate/StudyLoop.git<span class="w"> </span>studyloop
+<span class="nb">cd</span><span class="w"> </span>studyloop
+./scripts/install.sh
+studyloop<span class="w"> </span>self-test
+studyloop<span class="w"> </span>setup
+studyloop<span class="w"> </span>doctor<span class="w"> </span>--fix
+</code></pre></div>
+<p><code>studyloop self-test</code> is the fastest post-install confidence check. It verifies
+that the CLI imports, config is readable if present, the sessions database path
+is usable, and the web module imports. A warning exit (<code>1</code>) is acceptable before
+first setup if <code>config.yaml</code> does not exist yet.</p>
+<blockquote>
+<p>If <code>studyloop doctor</code> reports <code>agent-session-tools not installed</code>, run
+<code>studyloop install tools</code> — it reinstalls the workspace tools with
+agent-session-tools wired into the studyloop tool venv.</p>
+</blockquote>
+<h3 id="what-the-installer-does">What the installer does<a class="headerlink" href="#what-the-installer-does" title="Permanent link">&para;</a></h3>
+<p><code>./scripts/install.sh</code> will:
+1. Verify Python 3.12+ is installed
+2. Install <code>uv</code> if not already available
+3. Run <code>uv sync</code>
+4. Delegate to <code>studyloop install tools</code> — installs both packages with their
+   <code>[all]</code> extras, so web UI, content generation, Bedrock, MCP, NotebookLM,
+   TUI, TTS, and semantic session search all work out of the box
+5. Delegate to <code>studyloop install agents</code>
+6. Run lightweight installed CLI smoke checks</p>
+<p>The typed CLI commands are available when you need to refresh one side of the
+install:</p>
+<div class="highlight"><pre><span></span><code>studyloop<span class="w"> </span>install<span class="w"> </span>tools
+studyloop<span class="w"> </span>install<span class="w"> </span>agents
+studyloop<span class="w"> </span>self-test
+studyloop<span class="w"> </span>doctor<span class="w"> </span>--fix
+</code></pre></div>
+<h3 id="advanced-manual-tool-install">Advanced Manual Tool Install<a class="headerlink" href="#advanced-manual-tool-install" title="Permanent link">&para;</a></h3>
+<p>You can install the <code>studyloop</code> tool venv manually, but this only exposes the
+<code>studyloop</code> entry point. Dependency console scripts from <code>agent-session-tools</code>
+such as <code>session-export</code>, <code>session-query</code>, and <code>session-sync</code> may not appear on
+<code>PATH</code> unless <code>agent-session-tools</code> is installed as its own tool.</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>sync<span class="w"> </span>--all-packages
+uv<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span>--editable<span class="w"> </span><span class="s1">&#39;./packages/studyloop[all]&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--with-editable<span class="w"> </span>./packages/agent-session-tools
+uv<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span>--editable<span class="w"> </span><span class="s1">&#39;./packages/agent-session-tools[all]&#39;</span>
+</code></pre></div>
+<p>Prefer <code>./scripts/install.sh</code> or <code>studyloop install tools</code> for normal source
+checkout installs because they keep the two tool venvs wired together.</p>
+<h3 id="optional-extras">Optional Extras<a class="headerlink" href="#optional-extras" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Extra</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>content</code></td>
+<td>PDF splitting and local content processing</td>
+</tr>
+<tr>
+<td><code>bedrock</code></td>
+<td>AWS Bedrock generator support</td>
+</tr>
+<tr>
+<td><code>notebooklm</code></td>
+<td>NotebookLM API workflow</td>
+</tr>
+<tr>
+<td><code>tui</code></td>
+<td>terminal UI dependencies</td>
+</tr>
+<tr>
+<td><code>web</code></td>
+<td>FastAPI web UI</td>
+</tr>
+<tr>
+<td><code>mcp</code></td>
+<td>MCP server integration</td>
+</tr>
+<tr>
+<td><code>sessions</code></td>
+<td><code>agent-session-tools</code> import/session DB integration</td>
+</tr>
+<tr>
+<td><code>all</code></td>
+<td>all StudyLoop package extras</td>
+</tr>
+</tbody>
+</table>
+<h3 id="developer-install">Developer Install<a class="headerlink" href="#developer-install" title="Permanent link">&para;</a></h3>
+<p>If you are contributing to the repo or running from source, prefer <code>uv sync</code> in the checkout:</p>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/NetDevAutomate/StudyLoop.git<span class="w"> </span>studyloop
+<span class="nb">cd</span><span class="w"> </span>studyloop
+uv<span class="w"> </span>sync
+</code></pre></div>
+<p>Then use the repo-local commands directly, or install/editable tools only when you explicitly want global entrypoints.</p>
+<p>For contributor setups, the cleanest flow is usually:</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>sync
+uv<span class="w"> </span>run<span class="w"> </span>studyloop<span class="w"> </span>install<span class="w"> </span>agents
+uv<span class="w"> </span>run<span class="w"> </span>studyloop<span class="w"> </span>self-test
+uv<span class="w"> </span>run<span class="w"> </span>studyloop<span class="w"> </span>doctor<span class="w"> </span>--fix
+</code></pre></div>
+<h3 id="legacy-script-modes">Legacy Script Modes<a class="headerlink" href="#legacy-script-modes" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/NetDevAutomate/StudyLoop.git<span class="w"> </span>studyloop
+<span class="nb">cd</span><span class="w"> </span>studyloop
+
+<span class="c1"># Full bootstrap from a repo checkout</span>
+./scripts/install.sh
+
+<span class="c1"># Full install without prompts (for Ansible/CI compatibility)</span>
+./scripts/install.sh<span class="w"> </span>--non-interactive
+
+<span class="c1"># Just reinstall/upgrade CLI tools globally</span>
+./scripts/install.sh<span class="w"> </span>--tools-only
+
+<span class="c1"># Just reinstall agent definitions</span>
+./scripts/install.sh<span class="w"> </span>--agents-only
+
+<span class="c1"># Skip installed CLI smoke checks</span>
+./scripts/install.sh<span class="w"> </span>--no-smoke
+
+<span class="c1"># Direct typed commands</span>
+studyloop<span class="w"> </span>install<span class="w"> </span>tools
+studyloop<span class="w"> </span>install<span class="w"> </span>agents
+studyloop<span class="w"> </span>doctor<span class="w"> </span>--fix
+
+<span class="c1"># Install optional semantic search support</span>
+uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>agent-session-tools<span class="o">[</span>semantic<span class="o">]</span>
+</code></pre></div>
+<p>For <strong>Ansible playbooks</strong>, clone the repo then run the install script:</p>
+<div class="highlight"><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Install StudyLoop</span>
+<span class="w">  </span><span class="nt">hosts</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">study_machines</span>
+<span class="w">  </span><span class="nt">tasks</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Clone repo</span>
+<span class="w">      </span><span class="nt">git</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">repo</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://github.com/NetDevAutomate/StudyLoop.git</span>
+<span class="w">        </span><span class="nt">dest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/code/personal/tools/studyloop</span>
+
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Run installer</span>
+<span class="w">      </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./scripts/install.sh --non-interactive</span>
+<span class="w">      </span><span class="nt">args</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">chdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/code/personal/tools/studyloop</span>
+</code></pre></div>
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
+<h3 id="interactive-setup-recommended">Interactive Setup (recommended)<a class="headerlink" href="#interactive-setup-recommended" title="Permanent link">&para;</a></h3>
+<p>Run the interactive wizard to configure your study environment:</p>
+<div class="highlight"><pre><span></span><code>studyloop<span class="w"> </span>setup
+</code></pre></div>
+<p>This walks you through three core questions:</p>
+<ol>
+<li><strong>Knowledge bridging</strong> — Do you want to leverage a topic you already know well (e.g. networking, cooking, music theory) so the mentor can draw analogies to new topics you're studying?</li>
+<li><strong>Study material location</strong> — Where are your study sources? The default is <code>~/Obsidian/Personal/Study</code>.</li>
+<li><strong>Obsidian vault</strong> — Do you want to integrate with an existing Obsidian vault? If so, provide the base path (e.g. <code>~/Obsidian/Personal</code>).</li>
+</ol>
+<p>The wizard creates or updates <code>~/.config/studyloop/config.yaml</code> with your choices. You can re-run it at any time to change settings.</p>
+<p><code>studyloop config init</code> is the older low-level config initializer. Prefer
+<code>studyloop setup</code> for first-run setup because it also covers current install,
+agent, and Obsidian export checks.</p>
+<h3 id="manual-configuration">Manual Configuration<a class="headerlink" href="#manual-configuration" title="Permanent link">&para;</a></h3>
+<p>All configuration lives in a single YAML file: <code>~/.config/studyloop/config.yaml</code>. This file is shared between <code>studyloop</code> and all <code>session-*</code> tools — use the same file on every machine.</p>
+<p><code>STUDYLOOP_CONFIG</code> can point at a different YAML file for testing, alternate profiles, or machine-specific overrides:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">STUDYLOOP_CONFIG</span><span class="o">=</span>~/.config/studyloop/work.yaml
+studyloop<span class="w"> </span>config<span class="w"> </span>show
+</code></pre></div>
+<p>TOML is not currently supported. Use YAML for the production config contract; adding TOML would require a deliberate parser, migration, and compatibility test pass.</p>
+<p>Minimal production example:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">obsidian_base</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/Obsidian/Personal</span>
+<span class="nt">session_db</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/.config/studyloop/sessions.db</span>
+<span class="nt">state_dir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/.local/share/studyloop</span>
+
+<span class="nt">content</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">base_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/study-materials</span>
+<span class="w">  </span><span class="nt">study_paths</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/Obsidian/Personal/Study</span>
+<span class="w">  </span><span class="nt">inter_episode_gap</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
+
+<span class="c1"># Opt-in: write one Markdown note per AI session into the vault.</span>
+<span class="c1"># Coexists with the flat `obsidian_base` key above (which is for study sources).</span>
+<span class="nt">obsidian</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">export_enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">          </span><span class="c1"># off by default; --obsidian overrides per-run</span>
+<span class="w">  </span><span class="nt">vault_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/Obsidian/Personal</span><span class="w"> </span><span class="c1"># defaults to obsidian_base when omitted</span>
+<span class="w">  </span><span class="nt">memory_dir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">AgentMemory</span><span class="w">         </span><span class="c1"># notes written under &lt;vault&gt;/AgentMemory/</span>
+<span class="w">  </span><span class="nt">moc_dir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">AgentMemory/MOC</span><span class="w">        </span><span class="c1"># per-project index notes</span>
+<span class="w">  </span><span class="nt">backlinks</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">                 </span><span class="c1"># inject [[wikilink]]s to matching topic notes</span>
+<span class="w">  </span><span class="nt">granularity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">both</span><span class="w">               </span><span class="c1"># both | session (per-session notes ± MOC index)</span>
+
+<span class="nt">topics</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Python</span>
+<span class="w">    </span><span class="nt">slug</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python</span>
+<span class="w">    </span><span class="nt">obsidian_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2-Areas/Study/Python</span>
+<span class="w">    </span><span class="nt">tags</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">python</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">programming</span><span class="p p-Indicator">]</span>
+
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Data Engineering</span>
+<span class="w">    </span><span class="nt">slug</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">data-engineering</span>
+<span class="w">    </span><span class="nt">obsidian_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/Obsidian/Work/Study/Data-Engineering</span>
+<span class="w">    </span><span class="nt">tags</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">data-engineering</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">analytics</span><span class="p p-Indicator">]</span>
+</code></pre></div>
+<p>Path rules:</p>
+<ul>
+<li>Relative <code>topics[].obsidian_path</code> values are resolved under <code>obsidian_base</code>.</li>
+<li>Absolute <code>topics[].obsidian_path</code> values are used as-is.</li>
+<li>Relative <code>content.study_paths</code> values are resolved under <code>obsidian_base</code>.</li>
+<li><code>content.study_paths</code> augments topic paths for <code>studyloop content discover</code> and <code>studyloop content generate-cards</code> when you do not pass source directories manually.</li>
+</ul>
+<p>To make Codex CLI the default coding assistant for study sessions, set the agent priority explicitly:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">agents</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">priority</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">codex</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">kiro</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">claude</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">opencode</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">pi</span><span class="p p-Indicator">]</span>
+</code></pre></div>
+<h3 id="web-pwa-recommended">Web PWA (recommended)<a class="headerlink" href="#web-pwa-recommended" title="Permanent link">&para;</a></h3>
+<p>The study web app requires no extra dependencies — just run:</p>
+<div class="highlight"><pre><span></span><code>studyloop<span class="w"> </span>web
+</code></pre></div>
+<p>This starts a web server on <code>http://127.0.0.1:8567</code>. Use <code>studyloop web --lan</code> if you want to expose it to other devices on your network.</p>
+<p><strong>Add to home screen (iPadOS):</strong> Open in Safari → Share → Add to Home Screen. <code>manifest.json</code> sets <code>display: standalone</code>, so it launches without browser chrome.</p>
+<blockquote>
+<p><strong>The web app does not work offline.</strong> There is no service worker anywhere in
+the app, so no page and no asset is cached. Every launch — including from a
+home-screen icon — needs the <code>studyloop web</code> server reachable on the network.</p>
+</blockquote>
+<p>Configure flashcard/quiz directories:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># ~/.config/studyloop/config.yaml</span>
+<span class="nt">review</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">directories</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/Desktop/ZTM-DE/downloads</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/Desktop/Python/downloads</span>
+</code></pre></div>
+<p><strong>Voice output</strong> is synthesised by a Kokoro server you run, not in the browser. The page posts text to StudyLoop's own authenticated <code>/api/tts/speak</code>, which proxies it to whatever <code>tts.openvox_base_url</code> names; the device just plays the audio. That is why a tablet gets the same voice as the desktop. With no server reachable, the app falls back to your operating system's own voices — no install, lower quality — and failing that, to silence. Voice is off until you turn it on in the header.</p>
+<p>Two ways to hear a card:
+- <strong>Read once</strong> — tap the speaker icon on a card, or press <code>T</code>. Reads the current content once.
+- <strong>Announcements</strong> — the header speaker toggle enables the app's own spoken announcements (Pomodoro transitions and confirmations) and reveals the voice selector. It does <strong>not</strong> read cards to you automatically; there is no auto-voice mode and <code>V</code> is not bound.
+- <strong>Stop</strong> — a stop button appears while audio plays; it interrupts mid-utterance.</p>
+<p>See <a href="voice-output.html#web-app-voice-server-side-kokoro">Voice Output § Web App Voice</a> for the full picture, including which server to run and the LAN-exposure trade-off one of them carries.</p>
+<p><strong>Accessibility:</strong> The <code>Aa</code> button toggles <a href="https://opendyslexic.org">OpenDyslexic</a> font. The sun icon toggles light/dark theme. Both are persisted across sessions.</p>
+<h3 id="remote-study-ipad-on-the-bus">Remote Study (iPad on the Bus)<a class="headerlink" href="#remote-study-ipad-on-the-bus" title="Permanent link">&para;</a></h3>
+<p>Use <code>--lan</code> to make the web dashboard and terminal accessible from any tablet or laptop on your network — iPad, Android tablet, second laptop:</p>
+<div class="highlight"><pre><span></span><code>studyloop<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;Python Decorators&quot;</span><span class="w"> </span>--energy<span class="w"> </span><span class="m">7</span><span class="w"> </span>--lan
+<span class="c1"># Auto-generates password and saves LAN info to session state:</span>
+<span class="c1">#   Local:    http://127.0.0.1:8567/session</span>
+<span class="c1">#   LAN:      http://192.168.1.42:8567/session</span>
+<span class="c1">#   Username: study</span>
+<span class="c1">#   Password: &lt;auto-generated&gt;</span>
+
+<span class="c1"># Or set a known password:</span>
+studyloop<span class="w"> </span>study<span class="w"> </span><span class="s2">&quot;Python Decorators&quot;</span><span class="w"> </span>--energy<span class="w"> </span><span class="m">7</span><span class="w"> </span>--lan<span class="w"> </span>--password<span class="w"> </span><span class="s1">&#39;&lt;strong-unique-password&gt;&#39;</span>
+</code></pre></div>
+<p>Access the live dashboard from your iPad at <code>http://&lt;mac-ip&gt;:8567/session</code>. Use username <code>study</code> and the displayed password when prompted. The terminal panel runs in the page itself — xterm.js over a same-origin WebSocket — so nothing extra needs installing on either machine.</p>
+<p><strong>Password sources</strong> (checked in order):
+1. <code>--password</code> CLI flag
+2. <code>lan_password</code> in <code>~/.config/studyloop/config.yaml</code>
+3. Auto-generated (displayed in terminal output, saved to session state)</p>
+<h3 id="hosts-cross-machine-sync">Hosts — Cross-Machine Sync<a class="headerlink" href="#hosts-cross-machine-sync" title="Permanent link">&para;</a></h3>
+<h4 id="prerequisites-passwordless-ssh">Prerequisites: Passwordless SSH<a class="headerlink" href="#prerequisites-passwordless-ssh" title="Permanent link">&para;</a></h4>
+<p>Cross-machine sync uses SSH and rsync under the hood. <strong>Passwordless SSH must be configured</strong> between all machines before sync will work. If you're prompted for a password, sync will hang or fail.</p>
+<p>Set up SSH key-based auth between each pair of machines:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1. Generate a key (if you don&#39;t have one)</span>
+ssh-keygen<span class="w"> </span>-t<span class="w"> </span>ed25519<span class="w"> </span>-C<span class="w"> </span><span class="s2">&quot;your-email@example.com&quot;</span>
+
+<span class="c1"># 2. Copy your public key to each remote machine</span>
+ssh-copy-id<span class="w"> </span>&lt;user&gt;@&lt;remote-host&gt;
+
+<span class="c1"># 3. Verify passwordless login works</span>
+ssh<span class="w"> </span>&lt;user&gt;@&lt;remote-host&gt;<span class="w"> </span><span class="s2">&quot;echo ok&quot;</span><span class="w">  </span><span class="c1"># should print &quot;ok&quot; with no password prompt</span>
+</code></pre></div>
+<p>Do this from <strong>every machine</strong> to <strong>every other machine</strong> you want to sync with. If machine A syncs with B and C, then A needs key access to B and C, B needs access to A and C, etc.</p>
+<blockquote>
+<p><strong>Platform limitation:</strong> Cross-machine sync requires a native Unix/Linux SSH server on the remote host with direct access to the filesystem. This means sync <strong>does not work</strong> with:</p>
+<ul>
+<li><strong>Windows hosts running WSL</strong> — SSH connects to Windows, not the WSL filesystem where the database lives. The <code>$HOME</code> path and <code>sqlite3</code> binary won't resolve correctly.</li>
+<li><strong>Docker containers</strong> — unless SSH is exposed from the container (not recommended). The database path inside the container differs from the host path.</li>
+<li><strong>Network-attached storage</strong> — the remote needs <code>sqlite3</code> installed and SSH access.</li>
+</ul>
+<p>Supported targets: macOS, native Linux, any Unix system with SSH + sqlite3.</p>
+</blockquote>
+<h4 id="host-configuration">Host Configuration<a class="headerlink" href="#host-configuration" title="Permanent link">&para;</a></h4>
+<p>The <code>hosts</code> section defines all your machines. The local machine is auto-detected by matching your system hostname, and everything else becomes a sync target.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">hosts</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">desktop</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">hostname</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">study-desktop</span><span class="w">           </span><span class="c1"># must match socket.gethostname()</span>
+<span class="w">    </span><span class="nt">ip_address</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">primary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">192.168.1.20</span><span class="w">           </span><span class="c1"># wired / ethernet</span>
+<span class="w">      </span><span class="nt">secondary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">192.168.1.21</span><span class="w">         </span><span class="c1"># wifi (optional fallback)</span>
+<span class="w">    </span><span class="nt">user</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">your-user</span>
+<span class="w">    </span><span class="nt">state_json</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/.config/studyloop/state.json</span>
+<span class="w">    </span><span class="nt">sessions_db</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/.config/studyloop/sessions.db</span>
+
+<span class="w">  </span><span class="nt">laptop</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">hostname</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">study-laptop</span>
+<span class="w">    </span><span class="nt">ip_address</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">primary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">192.168.1.30</span>
+<span class="w">    </span><span class="nt">user</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">your-user</span>
+<span class="w">    </span><span class="nt">state_json</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/.config/studyloop/state.json</span>
+<span class="w">    </span><span class="nt">sessions_db</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/.config/studyloop/sessions.db</span>
+</code></pre></div>
+<p><strong>One config file on all machines.</strong> Deploy the same <code>config.yaml</code> everywhere — each machine auto-detects itself by hostname and treats the rest as remotes.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>hostname</code></td>
+<td>Must match <code>socket.gethostname()</code> on that machine</td>
+</tr>
+<tr>
+<td><code>ip_address.primary</code></td>
+<td>Wired/ethernet IP (tried first for rsync/SSH)</td>
+</tr>
+<tr>
+<td><code>ip_address.secondary</code></td>
+<td>Wifi IP (optional fallback if primary unreachable)</td>
+</tr>
+<tr>
+<td><code>user</code></td>
+<td>SSH username for this machine</td>
+</tr>
+<tr>
+<td><code>state_json</code></td>
+<td>Path to studyloop state file</td>
+</tr>
+<tr>
+<td><code>sessions_db</code></td>
+<td>Path to the AI session SQLite database</td>
+</tr>
+</tbody>
+</table>
+<p>Use <code>session-sync</code> for cross-machine database sync:</p>
+<div class="highlight"><pre><span></span><code>session-sync<span class="w"> </span>push<span class="w"> </span>macmini
+session-sync<span class="w"> </span>pull<span class="w"> </span>macbookpro
+session-sync<span class="w"> </span>sync<span class="w"> </span>work-macbook
+session-sync<span class="w"> </span>endpoints<span class="w">            </span><span class="c1"># list all remote hosts</span>
+</code></pre></div>
+<h3 id="study-topics">Study Topics<a class="headerlink" href="#study-topics" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">topics</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Python</span>
+<span class="w">    </span><span class="nt">slug</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python</span>
+<span class="w">    </span><span class="nt">obsidian_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2-Areas/Study/Python</span>
+<span class="w">    </span><span class="nt">tags</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">python</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">programming</span><span class="p p-Indicator">]</span>
+
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">SQL</span>
+<span class="w">    </span><span class="nt">slug</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sql</span>
+<span class="w">    </span><span class="nt">obsidian_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2-Areas/Study/SQL</span>
+<span class="w">    </span><span class="nt">tags</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">sql</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">databases</span><span class="p p-Indicator">]</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>topics[].name</code></td>
+<td>Display name for the topic</td>
+<td>required</td>
+</tr>
+<tr>
+<td><code>topics[].slug</code></td>
+<td>URL-safe identifier</td>
+<td>required</td>
+</tr>
+<tr>
+<td><code>topics[].obsidian_path</code></td>
+<td>Path relative to <code>obsidian_base</code></td>
+<td>required</td>
+</tr>
+<tr>
+<td><code>topics[].tags</code></td>
+<td>Keywords for session search matching</td>
+<td><code>[]</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="database-search-settings">Database &amp; Search Settings<a class="headerlink" href="#database-search-settings" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">database</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/.config/studyloop/sessions.db</span>
+<span class="w">  </span><span class="nt">archive_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/.config/studyloop/sessions_archive.db</span>
+<span class="w">  </span><span class="nt">backup_dir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/.config/studyloop/backups</span>
+
+<span class="nt">thresholds</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">warning_mb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span>
+<span class="w">  </span><span class="nt">critical_mb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">500</span>
+
+<span class="nt">semantic_search</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">all-mpnet-base-v2</span><span class="w">    </span><span class="c1"># embedding model</span>
+<span class="w">  </span><span class="nt">fts_weight</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.4</span><span class="w">             </span><span class="c1"># hybrid search: FTS weight</span>
+<span class="w">  </span><span class="nt">semantic_weight</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.6</span><span class="w">        </span><span class="c1"># hybrid search: vector weight</span>
+<span class="w">  </span><span class="nt">min_content_length</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">50</span>
+<span class="w">  </span><span class="nt">auto_embed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</code></pre></div>
+<p>Environment variable overrides:
+- <code>DATABASE_PATH</code> — override database location
+- <code>LOG_LEVEL</code> — set logging level (DEBUG, INFO, WARNING, ERROR)
+- <code>EMBEDDING_MODEL</code> — override embedding model</p>
+<h3 id="web-terminal-settings">Web Terminal Settings<a class="headerlink" href="#web-terminal-settings" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Web dashboard</span>
+<span class="nt">web_port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8567</span><span class="w">       </span><span class="c1"># web dashboard port (default 8567)</span>
+<span class="nt">browser</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="w">          </span><span class="c1"># auto-open browser: chrome, safari, firefox, brave, or empty for system default</span>
+<span class="nt">lan_password</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="w">     </span><span class="c1"># persistent LAN password (auto-generated per session if empty)</span>
+
+<span class="c1"># Maintainer-only (see the note below) — retired ttyd server transport</span>
+<span class="nt">ttyd_port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">7681</span><span class="w">      </span><span class="c1"># port a ttyd process would listen on (default 7681)</span>
+</code></pre></div>
+<blockquote>
+<p><strong><code>ttyd_port</code> unlocks nothing for normal use — do not install ttyd for it.</strong>
+The browser terminal is xterm.js over a same-origin WebSocket; the ttyd browser
+surface was retired. Installing ttyd does not enable a learner-facing browser
+terminal in the current Web UI.
+For maintainers the server still honours <code>STUDYLOOP_TRANSPORT=ttyd</code> and
+<code>studyloop web --ttyd-port</code>, but a session started on that transport has <strong>no
+browser renderer</strong> and reports <code>unavailable</code>.</p>
+</blockquote>
+<h3 id="tts-voice-settings">TTS Voice Settings<a class="headerlink" href="#tts-voice-settings" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">tts</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">backend</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kokoro</span><span class="w">        </span><span class="c1"># kokoro | openvox | qwen3 | macos</span>
+<span class="w">  </span><span class="nt">voice</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">am_michael</span><span class="w">      </span><span class="c1"># kokoro voice (am_michael, af_heart, bf_emma, etc.)</span>
+<span class="w">  </span><span class="nt">speed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.5</span><span class="w">             </span><span class="c1"># 0.5 = slow, 1.0 = normal, 1.5 = fast</span>
+<span class="w">  </span><span class="nt">pause</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0</span><span class="w">             </span><span class="c1"># seconds between sentences</span>
+<span class="w">  </span><span class="nt">macos_voice</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Samantha</span>
+</code></pre></div>
+<p>Kokoro server profile — used by <code>study-speak</code> <strong>and</strong> by the web app:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">tts</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">backend</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">openvox</span>
+<span class="w">  </span><span class="nt">openvox_base_url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://127.0.0.1:8000/v1</span><span class="w">   </span><span class="c1"># or :8880/v1 for VoiceMode / the container</span>
+<span class="w">  </span><span class="nt">openvox_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kokoro</span>
+<span class="w">  </span><span class="nt">openvox_voice</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bf_emma</span>
+<span class="w">  </span><span class="nt">openvox_language</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">en</span>
+<span class="w">  </span><span class="nt">openvox_response_format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">wav</span>
+<span class="w">  </span><span class="nt">openvox_timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
+
+<span class="w">  </span><span class="c1"># Kokoro/Qwen/macOS fallback settings still apply.</span>
+<span class="w">  </span><span class="nt">voice</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">am_michael</span><span class="w">      </span><span class="c1"># kokoro voice (am_michael, af_heart, bf_emma, etc.)</span>
+<span class="w">  </span><span class="nt">speed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.5</span><span class="w">             </span><span class="c1"># 0.5 = slow, 1.0 = normal, 1.5 = fast</span>
+<span class="w">  </span><span class="nt">pause</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0</span><span class="w">             </span><span class="c1"># seconds between sentences</span>
+<span class="w">  </span><span class="nt">macos_voice</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Samantha</span>
+</code></pre></div>
+<p>The <code>openvox_*</code> keys are named that way for historical reasons and accept <strong>any</strong> OpenAI-compatible Kokoro endpoint — OpenVox, VoiceMode, or the container. Only the URL changes between them. To repoint for one command without editing the file:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">STUDYLOOP_TTS_BASE_URL</span><span class="o">=</span>http://127.0.0.1:8880/v1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">STUDYLOOP_TTS_VOICE</span><span class="o">=</span>bf_lily<span class="w"> </span>studyloop<span class="w"> </span>recap<span class="w"> </span>today<span class="w"> </span>--speak
+</code></pre></div>
+<p><code>STUDYLOOP_TTS_MODEL</code> works the same way. All three override the config <strong>file</strong> only.</p>
+<p>Test the server voice:</p>
+<div class="highlight"><pre><span></span><code>study-speak<span class="w"> </span><span class="s2">&quot;StudyLoop is speaking through a Kokoro server.&quot;</span><span class="w"> </span>-b<span class="w"> </span>openvox
+studyloop<span class="w"> </span>doctor<span class="w"> </span>--category<span class="w"> </span>voice
+</code></pre></div>
+<p>If the server is not running or is busy, StudyLoop falls back to the existing local voice path so the study session can continue.</p>
+<h2 id="obsidian-vault-setup">Obsidian Vault Setup<a class="headerlink" href="#obsidian-vault-setup" title="Permanent link">&para;</a></h2>
+<p>studyloop expects your study notes in directories under your Obsidian vault. The structure is flexible — just point each topic's <code>obsidian_path</code> at the right directory.</p>
+<p>Example vault layout:</p>
+<div class="highlight"><pre><span></span><code>~/Obsidian/
+├── Personal/
+│   ├── 2-Areas/
+│   │   └── Study/
+│   │       ├── Courses/
+│   │       │   ├── ArjanCodes/       ← Python topic
+│   │       │   └── DataCamp/         ← SQL topic
+│   │       ├── Mentoring/
+│   │       │   ├── Python/           ← AI-generated teaching moments
+│   │       │   ├── Databases/
+│   │       │   └── Data-Engineering/
+│   │       └── Study-Plans/
+│   └── AgentMemory/                  ← created by `session-export --obsidian`
+│       ├── 2026-06-01-claude-code-myproject-1a2b3c4d.md
+│       └── MOC/
+│           ├── _index.md             ← project index
+│           └── myproject.md          ← per-project session list
+</code></pre></div>
+<p>studyloop syncs <code>.md</code>, <code>.pdf</code>, and <code>.txt</code> files. It skips:
+- Files under 100 bytes
+- Obsidian metadata files (<code>.obsidian/</code>, index files)
+- Common non-content directories (<code>node_modules</code>, <code>__pycache__</code>)</p>
+<h3 id="obsidian-session-memory-export">Obsidian session-memory export<a class="headerlink" href="#obsidian-session-memory-export" title="Permanent link">&para;</a></h3>
+<p><code>session-export --obsidian</code> writes one Markdown note per AI coding session into
+<code>&lt;vault&gt;/AgentMemory/</code>, in addition to the SQLite export. This is <strong>opt-in</strong> and
+shared across the supported harnesses — Kiro CLI, Codex, Claude Code, OpenCode,
+and pi all flow into the same folder, keeping curated study notes untouched.</p>
+<p>Each note carries Dataview-ready frontmatter so vault dashboards pick them up:</p>
+<div class="highlight"><pre><span></span><code><span class="nn">---</span>
+<span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">agent-memory</span>
+<span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2026-06-01-claude-code-myproject-1a2b3c4d</span>
+<span class="nt">created</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2026-06-01</span>
+<span class="nt">source_tool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">claude_code</span>
+<span class="nt">source_project</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">myproject</span>
+<span class="nt">session_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;full id&gt;</span>
+<span class="nt">tags</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">agent-memory</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">claude_code</span><span class="p p-Indicator">]</span>
+<span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2026-06-01</span>
+<span class="nt">content_hash</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">39fa1138</span><span class="w">   </span><span class="c1"># drives idempotent re-export</span>
+<span class="nn">---</span>
+</code></pre></div>
+<p>Enable it three ways:</p>
+<ol>
+<li><strong>Per-run:</strong> <code>session-export --obsidian</code> (or <code>--obsidian-backfill</code> for all history).</li>
+<li><strong>Config:</strong> set <code>obsidian.export_enabled: true</code> (see the <code>obsidian:</code> block under
+   <a href="#manual-configuration">Manual Configuration</a>).</li>
+<li><strong>Setup wizard:</strong> <code>studyloop setup</code> asks whether to enable export at the Obsidian step.</li>
+</ol>
+<p><code>studyloop doctor</code> validates the vault path, checks for the <code>.obsidian/</code> marker, and
+(when export is enabled) confirms the memory directory is writable.</p>
+<p>Legacy NotebookLM sync/audio commands are not part of the current session-memory
+export path. Use <code>session-export --obsidian</code> for Obsidian memory notes and the
+local content pipeline for flashcards and quizzes.</p>
+<h2 id="session-database">Session Database<a class="headerlink" href="#session-database" title="Permanent link">&para;</a></h2>
+<p>The session database stores exported AI conversations from all your tools. It powers spaced repetition, struggle detection, and session search.</p>
+<h3 id="populate-the-database">Populate the database<a class="headerlink" href="#populate-the-database" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Export from all detected sources</span>
+session-export
+
+<span class="c1"># Export specific sources</span>
+session-export<span class="w"> </span>--sources<span class="w"> </span>claude<span class="w"> </span>--sources<span class="w"> </span>codex
+session-export<span class="w"> </span>--sources<span class="w"> </span>opencode<span class="w"> </span>--sources<span class="w"> </span>pi
+
+<span class="c1"># One-harness convenience flags</span>
+session-export<span class="w"> </span>--claude-only
+session-export<span class="w"> </span>--kiro-only
+session-export<span class="w"> </span>--codex-only
+session-export<span class="w"> </span>--opencode-only
+session-export<span class="w"> </span>--pi-only
+
+<span class="c1"># Also write Obsidian session-memory notes (see Obsidian Vault Setup above)</span>
+session-export<span class="w"> </span>--obsidian
+session-export<span class="w"> </span>--obsidian<span class="w"> </span>--obsidian-backfill<span class="w">   </span><span class="c1"># one-time: all history</span>
+</code></pre></div>
+<p>Supported <code>--sources</code> values: <code>kiro</code>, <code>codex</code>, <code>claude</code>, <code>opencode</code>, and <code>pi</code>.
+Repeat <code>--sources</code> when selecting more than one.</p>
+<h3 id="verify-its-working">Verify it's working<a class="headerlink" href="#verify-its-working" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>session-query<span class="w"> </span>stats-cmd<span class="w">            </span><span class="c1"># Show database statistics</span>
+session-query<span class="w"> </span>list<span class="w"> </span>--since<span class="w"> </span>7d<span class="w">      </span><span class="c1"># List recent sessions</span>
+session-query<span class="w"> </span>search-cmd<span class="w"> </span><span class="s2">&quot;python&quot;</span><span class="w">  </span><span class="c1"># Search across all sessions</span>
+</code></pre></div>
+<h2 id="content-pipeline">Content Pipeline<a class="headerlink" href="#content-pipeline" title="Permanent link">&para;</a></h2>
+<p>The content pipeline converts local study sources into review artefacts that support interactive study sessions. The primary path is local quiz, flashcard, and hands-on practice generation.</p>
+<h3 id="install-content-dependencies">Install content dependencies<a class="headerlink" href="#install-content-dependencies" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Repo-local PDF splitting and local content processing</span>
+uv<span class="w"> </span>sync<span class="w"> </span>--all-packages<span class="w"> </span>--extra<span class="w"> </span>content
+
+<span class="c1"># Or refresh the global CLI with the documented feature set</span>
+studyloop<span class="w"> </span>install<span class="w"> </span>tools
+</code></pre></div>
+<h3 id="configure-study-sources">Configure study sources<a class="headerlink" href="#configure-study-sources" title="Permanent link">&para;</a></h3>
+<p>The default study material source is <code>~/Obsidian/Personal/Study</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># ~/.config/studyloop/config.yaml</span>
+<span class="nt">content</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">base_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/study-materials</span>
+<span class="w">  </span><span class="nt">study_paths</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/Obsidian/Personal/Study</span>
+</code></pre></div>
+<h3 id="typical-workflow">Typical workflow<a class="headerlink" href="#typical-workflow" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1. Preview available sources</span>
+studyloop<span class="w"> </span>content<span class="w"> </span>discover
+
+<span class="c1"># 2. Generate local flashcards, quizzes, and hands-on practice</span>
+studyloop<span class="w"> </span>content<span class="w"> </span>generate-cards<span class="w"> </span>~/Obsidian/Personal/Study/Python<span class="w"> </span>--course<span class="w"> </span>python
+studyloop<span class="w"> </span>content<span class="w"> </span>generate-practice<span class="w"> </span>~/Obsidian/Personal/Study/Python<span class="w"> </span>--course<span class="w"> </span>python
+
+<span class="c1"># 3. Review</span>
+studyloop<span class="w"> </span>web
+</code></pre></div>
+<p>See the <a href="cli-reference.html">CLI Reference</a> for all available commands.</p>
+<h2 id="cross-machine-sync">Cross-Machine Sync<a class="headerlink" href="#cross-machine-sync" title="Permanent link">&para;</a></h2>
+<p>Both tools support syncing state across machines via SSH.</p>
+<h3 id="session-database-sync">Session database sync<a class="headerlink" href="#session-database-sync" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>session-sync<span class="w"> </span>push<span class="w"> </span>macmini<span class="w">        </span><span class="c1"># Push sessions to a named host</span>
+session-sync<span class="w"> </span>pull<span class="w"> </span>macbookpro<span class="w">     </span><span class="c1"># Pull sessions from a named host</span>
+session-sync<span class="w"> </span>sync<span class="w"> </span>work-macbook<span class="w">   </span><span class="c1"># Two-way sync with a host</span>
+session-sync<span class="w"> </span>endpoints<span class="w">           </span><span class="c1"># List all configured remote hosts</span>
+</code></pre></div>
+<p>Both commands read host definitions from <code>~/.config/studyloop/config.yaml</code> (the <code>hosts</code> section). See <a href="#host-configuration">Host Configuration</a> below for the schema. Delta sync transfers only new sessions, not the entire database.</p>
+<h2 id="scheduling-status">Scheduling Status<a class="headerlink" href="#scheduling-status" title="Permanent link">&para;</a></h2>
+<p>Scheduled sync is not currently shipped. Use system cron/launchd manually if
+needed, or track scheduling in the roadmap.</p>
+<h2 id="windows-wsl2">Windows (WSL2)<a class="headerlink" href="#windows-wsl2" title="Permanent link">&para;</a></h2>
+<p>The toolkit runs on Windows via WSL2 (Windows Subsystem for Linux).</p>
+<h3 id="prerequisites_1">Prerequisites<a class="headerlink" href="#prerequisites_1" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Install WSL2 with Ubuntu: <code>wsl --install -d Ubuntu</code></li>
+<li>Inside WSL2, install Python 3.12+ and uv:
+   <div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-LsSf<span class="w"> </span>https://astral.sh/uv/install.sh<span class="w"> </span><span class="p">|</span><span class="w"> </span>sh
+</code></pre></div></li>
+<li>Clone and install as normal (all commands run inside WSL2)</li>
+</ol>
+<h3 id="what-works">What works<a class="headerlink" href="#what-works" title="Permanent link">&para;</a></h3>
+<ul>
+<li>All CLI tools (<code>studyloop</code>, <code>session-export</code>, <code>session-query</code>, etc.)</li>
+<li>kiro-cli and Claude Code (terminal-based)</li>
+<li>SQLite database, FTS5 search, session sync</li>
+<li>Cron scheduling (enable with <code>sudo service cron start</code> or systemd)</li>
+<li>Git, pre-commit, ruff, pyright, pytest</li>
+</ul>
+<h3 id="differences-from-macos">Differences from macOS<a class="headerlink" href="#differences-from-macos" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>macOS</th>
+<th>WSL2</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Scheduling</td>
+<td>launchd (automatic)</td>
+<td>cron (enable manually)</td>
+</tr>
+<tr>
+<td>Calendar MCP</td>
+<td>Apple Calendar or Google</td>
+<td>Google Calendar only</td>
+</tr>
+<tr>
+<td>Reminders</td>
+<td>Apple Reminders (native notifications)</td>
+<td>Google Calendar reminders</td>
+</tr>
+<tr>
+<td>Obsidian vault</td>
+<td><code>~/Obsidian/</code></td>
+<td><code>/mnt/c/Users/&lt;name&gt;/Obsidian/</code></td>
+</tr>
+<tr>
+<td>PDF rendering</td>
+<td><code>brew install pandoc mactex</code></td>
+<td><code>sudo apt install pandoc texlive-xetex</code></td>
+</tr>
+<tr>
+<td>Claude Desktop</td>
+<td>Native app</td>
+<td>Runs on Windows side</td>
+</tr>
+</tbody>
+</table>
+<h3 id="connecting-wsl2-mcp-servers-to-claude-desktop-windows">Connecting WSL2 MCP servers to Claude Desktop (Windows)<a class="headerlink" href="#connecting-wsl2-mcp-servers-to-claude-desktop-windows" title="Permanent link">&para;</a></h3>
+<p>Claude Desktop runs on Windows but can connect to MCP servers inside WSL2:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;mcpServers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;study-tools&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;wsl&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;--&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;npx&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;-y&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;your-mcp-server&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="obsidian-vault-path">Obsidian vault path<a class="headerlink" href="#obsidian-vault-path" title="Permanent link">&para;</a></h3>
+<p>If your Obsidian vault is on the Windows filesystem, configure the path in <code>~/.config/studyloop/config.yaml</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">obsidian_base</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/mnt/c/Users/YourName/Obsidian</span>
+</code></pre></div>
+<p>For better performance, consider keeping the vault inside WSL2's native filesystem (<code>~/Obsidian/</code>) and syncing with Obsidian Sync or Git.</p>
+<h2 id="verify-installation">Verify Installation<a class="headerlink" href="#verify-installation" title="Permanent link">&para;</a></h2>
+<p>After installing and configuring, run the health check to make sure everything is working:</p>
+<div class="highlight"><pre><span></span><code>studyloop<span class="w"> </span>doctor
+</code></pre></div>
+<p>This checks Python version, installed packages, config validity, databases, optional dependencies, and AI agent definitions. You'll see a colour-coded table:</p>
+<ul>
+<li>Green tick = healthy</li>
+<li>Yellow ! = warning (often auto-fixable)</li>
+<li>Red cross = failure (needs attention)</li>
+<li>Blue i = informational (optional)</li>
+</ul>
+<p>If issues are found:</p>
+<div class="highlight"><pre><span></span><code>studyloop<span class="w"> </span>doctor<span class="w"> </span>--fix<span class="w">         </span><span class="c1"># Apply safe local repairs first</span>
+studyloop<span class="w"> </span>upgrade<span class="w"> </span>--dry-run<span class="w">    </span><span class="c1"># Preview package/database/agent upgrades</span>
+studyloop<span class="w"> </span>upgrade<span class="w">              </span><span class="c1"># Apply package/database/agent upgrades</span>
+</code></pre></div>
+<p>For machine-readable output (used by CI pipelines and AI agents):</p>
+<div class="highlight"><pre><span></span><code>studyloop<span class="w"> </span>doctor<span class="w"> </span>--json
+</code></pre></div>
+<h3 id="ai-guided-setup">AI-Guided Setup<a class="headerlink" href="#ai-guided-setup" title="Permanent link">&para;</a></h3>
+<p>If you're using an AI coding assistant, the <strong>install-mentor agent</strong> can guide you through the entire setup process conversationally. It automatically detects your environment, installs packages, runs <code>studyloop doctor</code>, and fixes issues.</p>
+<p>The prompt lives at <code>agents/shared/install-mentor.md</code> and is intended for the
+supported harnesses: Kiro CLI, Codex, Claude Code, OpenCode, and pi.</p>
+<p>For example, in Claude Code or Codex:
+<div class="highlight"><pre><span></span><code>Read agents/shared/install-mentor.md and follow its instructions to set up studyloop
+</code></pre></div></p>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<h3 id="first-step-run-studyloop-doctor">First step: run <code>studyloop doctor</code><a class="headerlink" href="#first-step-run-studyloop-doctor" title="Permanent link">&para;</a></h3>
+<p>Before investigating specific issues, always start with the health check:</p>
+<div class="highlight"><pre><span></span><code>studyloop<span class="w"> </span>doctor
+</code></pre></div>
+<p>This will identify most common problems and tell you how to fix them. Run
+<code>studyloop doctor --fix</code> first for safe local repairs. Use
+<code>studyloop upgrade --dry-run</code> before package/database/agent upgrades.</p>
+<h3 id="studyloop-command-not-found"><code>studyloop: command not found</code><a class="headerlink" href="#studyloop-command-not-found" title="Permanent link">&para;</a></h3>
+<p>The package isn't on your PATH. Either:
+- Run via <code>uv run studyloop</code> instead
+- Or ensure <code>uv sync</code> completed successfully and your shell can find uv-installed scripts</p>
+<h3 id="session-export-finds-no-sessions"><code>session-export</code> finds no sessions<a class="headerlink" href="#session-export-finds-no-sessions" title="Permanent link">&para;</a></h3>
+<p>Check that the AI tool's data directory exists:
+- Claude Code: <code>~/.claude/projects/</code>
+- Kiro CLI: <code>~/Library/Application Support/kiro-cli/data.sqlite3</code> (macOS)
+- Codex CLI: exported from Codex transcript storage if present on this machine
+- OpenCode: <code>~/.local/share/opencode/storage/</code>
+- pi: <code>~/.pi/agent/sessions/</code></p>
+<p>For pi or OpenCode, run <code>studyloop doctor --category agents</code> first, then use the
+general <a href="troubleshooting.html">Troubleshooting</a> guide with the harness's own CLI
+output.</p>
+<h3 id="studyloop-review-shows-nothing"><code>studyloop review</code> shows nothing<a class="headerlink" href="#studyloop-review-shows-nothing" title="Permanent link">&para;</a></h3>
+<p>The session database may be empty. Run <code>session-export</code> first to populate it, then <code>studyloop review</code> can check your study history.</p>
+<h3 id="config-file-not-loading">Config file not loading<a class="headerlink" href="#config-file-not-loading" title="Permanent link">&para;</a></h3>
+<p>studyloop looks for config at <code>~/.config/studyloop/config.yaml</code>. Override with:
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">STUDYLOOP_CONFIG</span><span class="o">=</span>/path/to/your/config.yaml
+</code></pre></div></p>
+<h3 id="database-too-large">Database too large<a class="headerlink" href="#database-too-large" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>session-maint<span class="w"> </span>vacuum<span class="w">             </span><span class="c1"># Reclaim space</span>
+session-query<span class="w"> </span>stats-cmd<span class="w">          </span><span class="c1"># Check current size</span>
+session-maint<span class="w"> </span>archive<span class="w">            </span><span class="c1"># Archive old sessions</span>
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.sections", "navigation.expand", "toc.follow", "search.highlight"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="javascripts/preferences.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,16 @@
+/* Fonts — privacy plugin will auto-download these from CDN and self-host */
+@import url('../assets/external/fonts.googleapis.com/css2.1ee01cd5.css');
+@import url('../assets/external/fonts.googleapis.com/css2.11d4fe4c.css');
+@import url('../assets/external/fonts.googleapis.com/css2.c387df13.css');
+@import url('../assets/external/cdn.jsdelivr.net/npm/open-dyslexic@1.0.3/open-dyslexic-regular.css');
+
+/* Default: Lexend Deca */
+:root {
+  --md-text-font: 'Lexend Deca', sans-serif;
+  --md-code-font: 'JetBrains Mono', monospace;
+}
+
+/* Font toggle classes — applied to <body> */
+.font-lexend { --md-text-font: 'Lexend Deca', sans-serif; }
+.font-opendyslexic { --md-text-font: 'OpenDyslexic', sans-serif; }
+.font-atkinson { --md-text-font: 'Atkinson Hyperlegible', sans-serif; }

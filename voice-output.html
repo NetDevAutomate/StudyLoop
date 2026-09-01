@@ -1,0 +1,2011 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A local-first, AuDHD-aware study companion for active learning with AI mentors">
+      
+      
+      
+        <link rel="canonical" href="https://netdevautomate.github.io/StudyLoop/voice-output.html">
+      
+      
+        <link rel="prev" href="content-pipeline.html">
+      
+      
+        <link rel="next" href="obsidian-export.html">
+      
+      
+        
+      
+      
+      <link rel="icon" href="images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>Voice Output - StudyLoop</title>
+      
+    
+    
+      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+        <script src="assets/external/unpkg.com/iframe-worker/shim.js"></script>
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="stylesheets/audhd.css">
+    
+      <link rel="stylesheet" href="stylesheets/fonts.css">
+    
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#voice-output" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="index.html" title="StudyLoop" class="md-header__button md-logo" aria-label="StudyLoop" data-md-component="logo">
+      
+  <img src="images/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            StudyLoop
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Voice Output
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="index.html" title="StudyLoop" class="md-nav__button md-logo" aria-label="StudyLoop" data-md-component="logo">
+      
+  <img src="images/logo.png" alt="logo">
+
+    </a>
+    StudyLoop
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Start Here
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="first-week.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your First Week
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="setup-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Study and Review
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Study and Review
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="study-plans.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Study Plans
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="web-ui-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web UI Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="content-pipeline.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Content Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Voice Output
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="voice-output.html" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Voice Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Start
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Quick Start">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#download-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Download Models
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#agent-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Integration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#overriding-the-server-for-a-single-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overriding the server for a single command
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#kokoro-server-backends" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kokoro Server Backends
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#available-kokoro-voices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Available Kokoro Voices
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mcp-server-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MCP Server Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="MCP Server Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#kiro-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kiro CLI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#codex-claude-code-opencode-pi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Codex / Claude Code / OpenCode / pi
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#web-app-voice-server-side-kokoro" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Web App Voice (server-side Kokoro)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Web App Voice (server-side Kokoro)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-fallback-ladder" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The fallback ladder
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-synthesis-is-not-in-the-browser" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why synthesis is not in the browser
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#english-voices-only-deliberately" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        English voices only, deliberately
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verified-devices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verified devices
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Controls
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cli-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CLI Reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#backends" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Backends
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-voice-matters-for-audhd-learners" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why Voice Matters for AuDHD Learners
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="obsidian-export.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Obsidian Export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interfaces
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Interfaces
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="tui-guide.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TUI Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="agent-install.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="cli-reference.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="troubleshooting.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    About
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="audhd-learning-philosophy.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AuDHD Learning Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="architecture.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="roadmap.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contribute
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Start
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Quick Start">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#download-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Download Models
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#agent-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Integration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#overriding-the-server-for-a-single-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overriding the server for a single command
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#kokoro-server-backends" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kokoro Server Backends
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#available-kokoro-voices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Available Kokoro Voices
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mcp-server-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MCP Server Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="MCP Server Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#kiro-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kiro CLI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#codex-claude-code-opencode-pi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Codex / Claude Code / OpenCode / pi
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#web-app-voice-server-side-kokoro" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Web App Voice (server-side Kokoro)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Web App Voice (server-side Kokoro)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-fallback-ladder" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The fallback ladder
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-synthesis-is-not-in-the-browser" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why synthesis is not in the browser
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#english-voices-only-deliberately" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        English voices only, deliberately
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verified-devices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verified devices
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Controls
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cli-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CLI Reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#backends" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Backends
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-voice-matters-for-audhd-learners" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why Voice Matters for AuDHD Learners
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="voice-output">Voice Output<a class="headerlink" href="#voice-output" title="Permanent link">&para;</a></h1>
+<p>StudyLoop has two neural-TTS surfaces for AuDHD learners who benefit from auditory reinforcement alongside visual text:</p>
+<ul>
+<li><strong><code>study-speak</code> CLI</strong> (this page, below) — speaks agent responses aloud during terminal sessions via <code>kokoro-onnx</code> on the local filesystem, a Kokoro server, Qwen3/ltts, or macOS <code>say</code>.</li>
+<li><strong>Web app voice</strong> (<a href="#web-app-voice-server-side-kokoro">jump to section</a>) — the browser posts text to StudyLoop's own server, which proxies it to a Kokoro server you run. The device only plays the audio it gets back.</li>
+</ul>
+<p>Both surfaces read the same <code>tts:</code> block in <code>~/.config/studyloop/config.yaml</code>. <code>tts.backend</code> is <strong>not</strong> CLI-only: the web app's server-side path uses the same <code>openvox_*</code> connection settings.</p>
+<p>Voice is <strong>off by default</strong> on both surfaces. You turn it on deliberately — a toggle in the web header, a command in an agent session.</p>
+<hr />
+<h2 id="quick-start">Quick Start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
+<h3 id="install">Install<a class="headerlink" href="#install" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;./packages/agent-session-tools[tts]&quot;</span><span class="w"> </span>--force
+</code></pre></div>
+<h3 id="download-models">Download Models<a class="headerlink" href="#download-models" title="Permanent link">&para;</a></h3>
+<p>Models download automatically on first run. If you want to pre-download them, fetch the files manually:</p>
+<p>To download manually:</p>
+<div class="highlight"><pre><span></span><code>mkdir<span class="w"> </span>-p<span class="w"> </span>~/.cache/kokoro-onnx<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>curl<span class="w"> </span>-fsSL<span class="w"> </span>https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-o<span class="w"> </span>~/.cache/kokoro-onnx/kokoro-v1.0.onnx<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>curl<span class="w"> </span>-fsSL<span class="w"> </span>https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-o<span class="w"> </span>~/.cache/kokoro-onnx/voices-v1.0.bin
+</code></pre></div>
+<h3 id="test">Test<a class="headerlink" href="#test" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>study-speak<span class="w"> </span><span class="s2">&quot;Hello, can you hear me?&quot;</span>
+</code></pre></div>
+<hr />
+<h2 id="agent-integration">Agent Integration<a class="headerlink" href="#agent-integration" title="Permanent link">&para;</a></h2>
+<p>Voice is <strong>off by default</strong>. Toggle it during a session:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Kiro CLI</label><label for="__tabbed_1_2">Claude Code</label><label for="__tabbed_1_3">Codex / OpenCode / pi</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code>@speak-start    # enable voice
+@speak-stop     # disable voice
+</code></pre></div>
+<p>Kiro uses a native MCP tool for speech.</p>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code>/speak-start    # enable voice
+/speak-stop     # disable voice
+</code></pre></div>
+<p>Uses shell command <code>~/.local/bin/study-speak</code>.</p>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code>@speak-start    # enable voice
+@speak-stop     # disable voice
+</code></pre></div>
+<p>Uses shell command <code>~/.local/bin/study-speak</code>.</p>
+</div>
+</div>
+</div>
+<p>When enabled, the agent speaks core questions, answers, key principles, and teaching moments — <strong>excluding code blocks, scaffolding, and long explanations</strong>.</p>
+<hr />
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
+<p><code>~/.config/studyloop/config.yaml</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">tts</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">backend</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kokoro</span><span class="w">        </span><span class="c1"># kokoro | openvox | qwen3 | macos</span>
+<span class="w">  </span><span class="nt">voice</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">am_michael</span><span class="w">      </span><span class="c1"># kokoro voices: am_michael, af_heart, bf_emma, etc.</span>
+<span class="w">  </span><span class="nt">speed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span><span class="w">             </span><span class="c1"># 0.5 = slow, 1.0 = normal, 1.5 = fast, 2.0 = very fast</span>
+<span class="w">  </span><span class="nt">macos_voice</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Samantha</span><span class="w">  </span><span class="c1"># fallback voice for macOS say</span>
+</code></pre></div>
+<p>Kokoro server profile — used by the CLI <strong>and</strong> by the web app:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">tts</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">backend</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">openvox</span>
+<span class="w">  </span><span class="nt">openvox_base_url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://127.0.0.1:8000/v1</span><span class="w">   </span><span class="c1"># or :8880/v1 for VoiceMode / the container</span>
+<span class="w">  </span><span class="nt">openvox_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kokoro</span>
+<span class="w">  </span><span class="nt">openvox_voice</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bf_emma</span>
+<span class="w">  </span><span class="nt">openvox_language</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">en</span>
+<span class="w">  </span><span class="nt">openvox_response_format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">wav</span>
+<span class="w">  </span><span class="nt">openvox_timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
+
+<span class="w">  </span><span class="c1"># Existing fallback settings still apply.</span>
+<span class="w">  </span><span class="nt">voice</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">am_michael</span><span class="w">      </span><span class="c1"># kokoro voices: am_michael, af_heart, bf_emma, etc.</span>
+<span class="w">  </span><span class="nt">speed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span><span class="w">             </span><span class="c1"># 0.5 = slow, 1.0 = normal, 1.5 = fast, 2.0 = very fast</span>
+<span class="w">  </span><span class="nt">macos_voice</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Samantha</span><span class="w">  </span><span class="c1"># fallback voice for macOS say</span>
+</code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">The keys are named <code>openvox_*</code> for historical reasons only</p>
+<p>They accept <strong>any</strong> OpenAI-compatible Kokoro endpoint — OpenVox was simply
+the first one wired up. Nothing about the name restricts you to that
+product, and no code path is specific to it. Only the URL changes between
+servers.</p>
+</div>
+<h3 id="overriding-the-server-for-a-single-command">Overriding the server for a single command<a class="headerlink" href="#overriding-the-server-for-a-single-command" title="Permanent link">&para;</a></h3>
+<p><code>STUDYLOOP_TTS_BASE_URL</code>, <code>STUDYLOOP_TTS_VOICE</code> and <code>STUDYLOOP_TTS_MODEL</code> override
+the config file without editing it — the quickest way to compare two servers back
+to back:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">STUDYLOOP_TTS_BASE_URL</span><span class="o">=</span>http://127.0.0.1:8880/v1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">STUDYLOOP_TTS_VOICE</span><span class="o">=</span>bf_lily<span class="w"> </span>studyloop<span class="w"> </span>recap<span class="w"> </span>today<span class="w"> </span>--speak
+</code></pre></div>
+<p>They override the config <strong>file</strong> only. Code that names its own endpoint is never
+silently repointed by a stray variable. The <code>STUDYLOOP_</code> prefix is deliberate:
+VoiceMode namespaces its equivalents as <code>VOICEMODE_TTS_BASE_URLS</code> and friends, and
+two voice tools sharing an unprefixed <code>TTS_BASE_URL</code> would fight over the same
+shell.</p>
+<h3 id="kokoro-server-backends">Kokoro Server Backends<a class="headerlink" href="#kokoro-server-backends" title="Permanent link">&para;</a></h3>
+<p>StudyLoop does not depend on a particular provider. It POSTs to whatever
+<code>openvox_base_url</code> names, so anything exposing an OpenAI-compatible
+<code>/v1/audio/speech</code> will do. Three are known to work with a byte-identical request
+and the same voice ids:</p>
+<table>
+<thead>
+<tr>
+<th>Server</th>
+<th>Port</th>
+<th>Warm latency per sentence</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><a href="https://github.com/mbailey/voicemode">VoiceMode</a></strong></td>
+<td>8880</td>
+<td>0.37–1.8 s</td>
+<td><code>voicemode service install kokoro</code>. Native, no Docker. On Apple Silicon its <code>mlx-audio</code> service (:8890) bundles an MPS-accelerated Kokoro alongside Whisper. <strong>Binds to your LAN — see the trade-off below.</strong></td>
+</tr>
+<tr>
+<td><strong><a href="https://openvoxai.com/">OpenVox</a></strong></td>
+<td>8000</td>
+<td>2.4–2.5 s</td>
+<td>A macOS app. Binds <code>127.0.0.1</code> only.</td>
+</tr>
+<tr>
+<td><strong>Container</strong></td>
+<td>8880</td>
+<td>not measured</td>
+<td><code>docker/kokoro/docker-compose.yml</code> in this repo, pinned to <code>127.0.0.1</code>. Correct for amd64 but <strong>untested</strong> there; the arm64 image is broken upstream (ships a CUDA PyTorch, fails with <code>libcublasLt.so not found</code>, crash-loops). On Apple Silicon use a native server.</td>
+</tr>
+</tbody>
+</table>
+<p>On macOS prefer a native server — no Docker, no image to track. On Linux and
+Windows the container is the intended route.</p>
+<div class="admonition warning">
+<p class="admonition-title">VoiceMode's Kokoro is reachable from your whole network</p>
+<p>Measured, not inferred: it runs uvicorn with <code>--host 0.0.0.0</code>, and a separate
+tablet on the same network fetched <code>http://&lt;host&gt;:8880/v1/models</code>
+successfully <strong>with no credentials</strong>. It is not configurable — VoiceMode
+exposes port, models dir, cache dir, default voice and max-requests settings,
+but no host setting. Its upstream start script fixes the bind address to
+<code>0.0.0.0</code>, and a subsequent upstream install or pull can restore that value.</p>
+<p><strong>The trade-off, stated plainly, because it is a real choice and not a defect
+to route around.</strong> Kokoro is CPU-intensive, so an open TTS port lets anything
+on the network spend your host's CPU, and it is the one component here with no
+authentication. Against that, it is the only route that gives a tablet a good
+voice at all — the alternative on such a device is the system voices, or
+silence. On a home network that is usually a fine trade; on a shared, office
+or public network it is not.</p>
+<p>StudyLoop itself never needs the port reachable: tablets get speech through
+StudyLoop's own password-protected <code>/api/tts/speak</code>, so firewalling 8880 costs
+you nothing. OpenVox and the container both bind loopback and raise none of
+this.</p>
+</div>
+<p>Smoke test:</p>
+<div class="highlight"><pre><span></span><code>study-speak<span class="w"> </span><span class="s2">&quot;Explain this back in your own words.&quot;</span><span class="w"> </span>-b<span class="w"> </span>openvox
+studyloop<span class="w"> </span>recap<span class="w"> </span>today<span class="w"> </span>--audio-file<span class="w"> </span>recap.wav
+</code></pre></div>
+<p><code>studyloop recap today --audio-file</code> saves the same compact daily recap that
+<code>--speak</code> reads aloud. It prefers the configured server when <code>tts.backend:
+openvox</code> is set, and falls back to macOS <code>say</code> when the server is unavailable.</p>
+<p>Manual API check — the same request works against any of the three servers, with
+only the port changed:</p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">&quot;http://127.0.0.1:8000/v1/audio/speech&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{</span>
+<span class="s1">    &quot;model&quot;: &quot;kokoro&quot;,</span>
+<span class="s1">    &quot;input&quot;: &quot;StudyLoop is speaking through a Kokoro server.&quot;,</span>
+<span class="s1">    &quot;language&quot;: &quot;en&quot;,</span>
+<span class="s1">    &quot;voice&quot;: &quot;bf_emma&quot;,</span>
+<span class="s1">    &quot;response_format&quot;: &quot;wav&quot;</span>
+<span class="s1">  }&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output<span class="w"> </span>kokoro-test.wav
+afplay<span class="w"> </span>kokoro-test.wav
+</code></pre></div>
+<p>If the server is closed, busy or unreachable, <code>study-speak</code> continues through the existing fallback chain instead of blocking the study session.</p>
+<h3 id="available-kokoro-voices">Available Kokoro Voices<a class="headerlink" href="#available-kokoro-voices" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Voice</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>am_michael</code></td>
+<td>American male (default)</td>
+</tr>
+<tr>
+<td><code>af_heart</code></td>
+<td>American female</td>
+</tr>
+<tr>
+<td><code>bf_emma</code></td>
+<td>British female</td>
+</tr>
+</tbody>
+</table>
+<p>Pass any kokoro voice name with <code>-v</code> or set in config. See <a href="https://github.com/thewh1teagle/kokoro-onnx#voices">kokoro-onnx voices</a> for the full list.</p>
+<hr />
+<h2 id="mcp-server-setup">MCP Server Setup<a class="headerlink" href="#mcp-server-setup" title="Permanent link">&para;</a></h2>
+<p>The study-speak MCP server lets AI agents call the TTS tool directly. The standalone server lives at <code>agents/mcp/study-speak-server.py</code>.</p>
+<h3 id="kiro-cli">Kiro CLI<a class="headerlink" href="#kiro-cli" title="Permanent link">&para;</a></h3>
+<p>Configured automatically via <code>agents/kiro/study-mentor.json</code>. No manual setup needed — the install script handles it.</p>
+<h3 id="codex-claude-code-opencode-pi">Codex / Claude Code / OpenCode / pi<a class="headerlink" href="#codex-claude-code-opencode-pi" title="Permanent link">&para;</a></h3>
+<p>Each agent has an <code>mcp.json</code> in its <code>agents/</code> directory. The server command uses <code>uvx</code> to run the standalone MCP server:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;mcpServers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;speaker&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;uvx&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;--from&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;mcp[cli]&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;mcp&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;run&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;/absolute/path/to/agents/mcp/study-speak-server.py&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Replace the path with your actual clone location. The <code>scripts/install-agents.sh</code> script sets this up automatically for detected AI tools.</p>
+<hr />
+<h2 id="web-app-voice-server-side-kokoro">Web App Voice (server-side Kokoro)<a class="headerlink" href="#web-app-voice-server-side-kokoro" title="Permanent link">&para;</a></h2>
+<p>The study web app (<code>studyloop web</code>) speaks through a <strong>server-side</strong> Kokoro. The browser POSTs the text to StudyLoop's own authenticated route <code>/api/tts/speak</code>, which proxies the request to whatever <code>tts.openvox_base_url</code> names and returns the audio. The device only has to play a response, which is why this works on a tablet where in-browser synthesis could not.</p>
+<p>Set it up in the <a href="#kokoro-server-backends">Kokoro Server Backends</a> section above — the web app needs no separate configuration.</p>
+<h3 id="the-fallback-ladder">The fallback ladder<a class="headerlink" href="#the-fallback-ladder" title="Permanent link">&para;</a></h3>
+<p>Three tiers, in order. This is <strong>not</strong> a chain of servers: StudyLoop points at <strong>one</strong> server URL, and the ladder is what happens when that one is absent or unreachable.</p>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>Engine</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>server-openvox</code></strong></td>
+<td>Kokoro on the server you configured</td>
+<td>A reachable <code>openvox_base_url</code>. The best tier, not a degraded one.</td>
+</tr>
+<tr>
+<td><strong><code>web-speech</code></strong></td>
+<td>Web Speech API — your operating system's own voices</td>
+<td>No server configured, or it cannot be reached</td>
+</tr>
+<tr>
+<td><strong><code>silent</code></strong></td>
+<td>Nothing speaks</td>
+<td>No server and no OS speech support</td>
+</tr>
+</tbody>
+</table>
+<p>The middle rung matters: with no Kokoro server at all, the app still talks, using voices the device already has. They need no install and work everywhere, they are simply not as good.</p>
+<h3 id="why-synthesis-is-not-in-the-browser">Why synthesis is not in the browser<a class="headerlink" href="#why-synthesis-is-not-in-the-browser" title="Permanent link">&para;</a></h3>
+<p>An earlier tier ran Kokoro-82M in the page itself, via transformers.js on WebGPU or WASM. It has been removed, along with the vendored ONNX Runtime, the phonemiser and ~27 MB of model runtime. The reasons, in order of how badly each hurt:</p>
+<ul>
+<li><strong>It could not run at all over <code>studyloop web --lan</code>.</strong> That serves plain HTTP, which is not a secure context, so the browser hides both <code>navigator.gpu</code> and Cache Storage. The tablets voice was mostly <em>for</em> were exactly the devices it could not reach.</li>
+<li><strong>6.6x real time on a warmed WebGPU tier</strong> — slower than reading the card.</li>
+<li><strong>It self-downgraded to a silent tier</strong> rather than failing visibly.</li>
+<li><strong>It occasionally spoke Mandarin</strong>, for reasons never established.</li>
+</ul>
+<p>A server has none of those limits. The design notes for the removed tier are kept at <code>docs/archive/browser-neural-tts-design.md</code>.</p>
+<h3 id="english-voices-only-deliberately">English voices only, deliberately<a class="headerlink" href="#english-voices-only-deliberately" title="Permanent link">&para;</a></h3>
+<p>StudyLoop filters the server's voice list to English. One real server offered 67 voices; the picker showed 41.</p>
+<p>This is not tidiness. The same Kokoro model speaks Mandarin, Japanese, Spanish, French, Hindi, Italian and Portuguese, and a stray voice id is <strong>a valid request that speaks that language</strong> rather than an error you would notice. Filtering is what stops a mistyped voice reading your flashcards in Mandarin.</p>
+<p>The default voice is <code>bf_emma</code>, British female.</p>
+<h3 id="verified-devices">Verified devices<a class="headerlink" href="#verified-devices" title="Permanent link">&para;</a></h3>
+<p>An iPad (both Brave and Chrome) and an Android tablet all speak through the server tier over the LAN.</p>
+<h3 id="controls">Controls<a class="headerlink" href="#controls" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Voice selector dropdown</strong> — choose a voice offered by your Kokoro server (e.g. <code>bf_emma</code>, <code>am_michael</code>, <code>af_heart</code>). Appears in the header; selection persists across sessions. On the <code>web-speech</code> tier it lists the OS voices instead.</li>
+<li><strong>Read once</strong> — tap the speaker icon on a card, or press <code>T</code>. Reads the current content once. This works whether or not the header voice toggle is on.</li>
+<li><strong>Voice toggle</strong> — the header speaker button. It enables the app's own spoken announcements (Pomodoro transitions and confirmations such as "voice enabled") and reveals the voice selector and engine badge. Persists to <code>localStorage</code> under <code>voice</code>. <strong>Click-only — no key is bound to it, and it does not read cards to you automatically.</strong></li>
+<li><strong>Engine badge</strong> — names the tier actually speaking (<code>server-openvox</code>, <code>web-speech</code>, <code>silent</code>), shown whenever voice is on rather than only on failure. A badge that appears only when something breaks teaches nobody what working looks like.</li>
+<li><strong>Stop</strong> — a stop button appears in the header while audio is playing; click it (or it clears automatically when playback ends) to interrupt mid-utterance. It halts server-audio playback, not just Web Speech API output.</li>
+</ul>
+<div class="admonition warning">
+<p class="admonition-title">There is no auto-voice, and <code>V</code> is unbound</p>
+<p>This page previously described pressing <code>V</code> to "read everything automatically as you navigate". No such feature exists in the web app — there is no auto-read mode, and <code>V</code> is not bound to anything. Reading is always one deliberate action: <code>T</code>, or the speaker icon.</p>
+</div>
+<hr />
+<h2 id="cli-reference">CLI Reference<a class="headerlink" href="#cli-reference" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>study-speak<span class="w"> </span><span class="s2">&quot;text&quot;</span><span class="w">                                        </span><span class="c1"># Speak text</span>
+study-speak<span class="w"> </span>-<span class="w">                                              </span><span class="c1"># Read from stdin</span>
+study-speak<span class="w"> </span><span class="s2">&quot;text&quot;</span><span class="w"> </span>-v<span class="w"> </span>af_heart<span class="w">                            </span><span class="c1"># Different voice</span>
+study-speak<span class="w"> </span><span class="s2">&quot;text&quot;</span><span class="w"> </span>-s<span class="w"> </span><span class="m">1</span>.2<span class="w">                                 </span><span class="c1"># Faster speed</span>
+study-speak<span class="w"> </span><span class="s2">&quot;text&quot;</span><span class="w"> </span>-b<span class="w"> </span>openvox<span class="w"> </span>-v<span class="w"> </span>af_bella<span class="w">                 </span><span class="c1"># Use OpenVox local API</span>
+study-speak<span class="w"> </span><span class="s2">&quot;text&quot;</span><span class="w"> </span>-b<span class="w"> </span>macos<span class="w">                               </span><span class="c1"># Force macOS fallback</span>
+study-speak<span class="w"> </span><span class="s2">&quot;text&quot;</span><span class="w"> </span>-b<span class="w"> </span>qwen3<span class="w"> </span>--instruct<span class="w"> </span><span class="s2">&quot;speak warmly&quot;</span><span class="w">    </span><span class="c1"># Qwen3 with emotion</span>
+</code></pre></div>
+<hr />
+<h2 id="backends">Backends<a class="headerlink" href="#backends" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Backend</th>
+<th>Model Size</th>
+<th>Latency</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>kokoro</code> (default)</td>
+<td>82M params</td>
+<td>~1.5s</td>
+<td>ONNX runtime on CPU. Best balance of quality, speed, and StudyLoop-controlled reliability.</td>
+</tr>
+<tr>
+<td><code>openvox</code></td>
+<td>Depends on the server's model</td>
+<td>0.37–2.5s warm, by server</td>
+<td>A Kokoro server over HTTP — OpenVox, VoiceMode, or the container. Also the engine behind web-app voice. Falls back gracefully if unreachable.</td>
+</tr>
+<tr>
+<td><code>qwen3</code> (via ltts)</td>
+<td>1.7B params</td>
+<td>30–60s</td>
+<td>Highest quality. Emotional control via <code>--instruct</code>. Apple Silicon MPS. Only use when quality matters more than speed.</td>
+</tr>
+<tr>
+<td><code>macos</code> (say)</td>
+<td>Built-in</td>
+<td>Instant</td>
+<td>Low quality. Last resort fallback.</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition tip">
+<p class="admonition-title">When to use qwen3</p>
+<p>The 30–60s latency on Apple Silicon makes qwen3 impractical for live sessions. Use it for generating audio files or when you want emotional expression and don't mind waiting.</p>
+</div>
+<hr />
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<p><strong>Crackling audio</strong>
+:   Automatic 24kHz→48kHz resampling should fix this. If it persists, check your audio output device settings.</p>
+<p><strong>No sound</strong>
+:   Check for errors: <code>study-speak "test" 2&gt;&amp;1</code>. Verify models exist in <code>~/.cache/kokoro-onnx/</code>.</p>
+<p><strong>The Kokoro server does not speak</strong>
+:   Start the server, then run <code>studyloop doctor --category voice</code> and <code>study-speak "test" -b openvox</code>. Check <code>/v1/models</code> answers on the port you configured — every OpenAI-compatible Kokoro server implements it, whereas the voice-listing path differs between implementations. If OpenVox returns <code>429</code>, it is already generating or preloading a model; wait a moment and retry. StudyLoop falls back automatically for normal agent sessions.</p>
+<p><strong>The web app uses the OS voices instead of Kokoro</strong>
+:   The engine badge reads <code>web-speech</code>, which means <code>/api/tts/speak</code> could not reach your server. Check <code>openvox_base_url</code> and that the server is running. Nothing is broken — you are on the middle rung of the ladder.</p>
+<p><strong>AirPlay latency</strong>
+:   Short clips (&lt;2s) may not play through AirPlay due to buffer timing. Use longer text or switch to local speakers.</p>
+<hr />
+<h2 id="why-voice-matters-for-audhd-learners">Why Voice Matters for AuDHD Learners<a class="headerlink" href="#why-voice-matters-for-audhd-learners" title="Permanent link">&para;</a></h2>
+<div class="admonition energy-check">
+<p class="admonition-title">Dual coding = better retention</p>
+<p>Hearing information while reading it activates two processing channels simultaneously. For AuDHD brains, this redundancy helps compensate for attention drift.</p>
+</div>
+<ul>
+<li><strong>Auditory reinforcement</strong> — dual coding (visual + auditory) improves retention</li>
+<li><strong>Processing support</strong> — hearing questions spoken aloud helps with comprehension and focus</li>
+<li><strong>Reduces overwhelm</strong> — breaks up the "wall of text" experience</li>
+<li><strong>Maintains engagement</strong> — natural voice (not robotic) avoids sensory irritation</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.sections", "navigation.expand", "toc.follow", "search.highlight"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="javascripts/preferences.js"></script>
+      
+    
+  </body>
+</html>
