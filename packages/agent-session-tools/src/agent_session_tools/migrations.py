@@ -60,39 +60,119 @@ def _install_messages_fts_update_trigger(conn: sqlite3.Connection) -> None:
     """)
 
 
+#: Migrations whose entire body is connection/database-level ``PRAGMA`` work.
+#:
+#: SQLite makes both ``PRAGMA journal_mode`` and ``PRAGMA foreign_keys`` a
+#: **silent no-op** while a transaction is open -- this file already documents
+#: that for the v26 table rebuild. Now that :func:`migrate` runs the whole
+#: sequence inside one ``BEGIN IMMEDIATE``, a pragma-only migration would
+#: quietly stop having any effect, so these are re-applied after the commit.
+#:
+#: Safe precisely because they carry no DDL and no data change, so their
+#: position relative to the transaction cannot alter the schema or its contents.
+#: A migration added here that *does* touch schema or data would be a bug.
+PRAGMA_ONLY_VERSIONS: frozenset[int] = frozenset({6})
+
+
 def migrate(conn: sqlite3.Connection) -> list[str]:
     """Run all pending migrations.
 
     Returns list of migration descriptions that were applied.
+
+    Concurrency
+    -----------
+    The migrations are NOT idempotent -- they ``ALTER TABLE ... ADD COLUMN``,
+    ``CREATE INDEX`` and ``CREATE TABLE`` without ``IF NOT EXISTS``. This
+    function used to read ``user_version`` with no lock held and then
+    ``commit()`` after *each* individual migration, which made two failures
+    possible whenever two connections opened the same fresh database at once:
+
+    * both read the same stale version and then applied the same DDL, producing
+      ``duplicate column name: seq``, ``index ... already exists`` and
+      ``table messages_fts already exists``;
+    * the per-migration commit released the write lock mid-sequence, so a second
+      migrator could enter partway through and start from a version that was
+      only half-applied.
+
+    That is not a theoretical race. The SPA fires ``/api/now``, ``/api/backlog``,
+    ``/api/session/last`` and ``/api/history`` in parallel on page load, and each
+    one reaches this function through its own lazily-opened connection -- so a
+    first run on a new machine races its own schema setup.
+
+    The sequence is now wrapped in a single ``BEGIN IMMEDIATE`` transaction: the
+    write lock is taken up front, the version is re-read *under* that lock, and
+    exactly one commit ends the whole run. A loser of the race blocks on the
+    lock, re-reads the now-current version, and correctly does nothing.
+
+    The initial read stays outside the lock on purpose. Every request calls this
+    function, and taking a write lock unconditionally would serialise reads that
+    have no migrating to do.
     """
-    current = get_user_version(conn)
-    applied = []
+    # Fast path, unlocked: the overwhelming majority of calls have nothing to do.
+    # Safe because the version only ever increases, and a migration in flight is
+    # not yet committed -- so this read either sees the old version (and we go on
+    # to take the lock and block) or the final one (and we correctly skip).
+    if get_user_version(conn) >= CURRENT_VERSION:
+        logger.debug(
+            "Database already at version %d, no migrations needed", CURRENT_VERSION
+        )
+        return []
 
-    if current >= CURRENT_VERSION:
-        logger.debug(f"Database at version {current}, no migrations needed")
-        return applied
+    # Only manage the transaction if we opened it; a caller that already holds
+    # one keeps ownership of its commit/rollback.
+    owns_transaction = not conn.in_transaction
+    if owns_transaction:
+        conn.execute("BEGIN IMMEDIATE")
 
-    logger.info(f"Migrating database from version {current} to {CURRENT_VERSION}")
+    try:
+        # Re-read under the lock: another migrator may have finished the whole
+        # sequence while we were waiting for it.
+        current = get_user_version(conn)
+        applied: list[str] = []
 
-    for version in range(current + 1, CURRENT_VERSION + 1):
-        if version not in MIGRATIONS:
-            logger.warning(f"Missing migration for version {version}")
-            continue
+        if current >= CURRENT_VERSION:
+            logger.debug(
+                "Another migrator brought the database to version %d while we waited",
+                current,
+            )
+            if owns_transaction:
+                conn.commit()
+            return applied
 
-        description, migration_func = MIGRATIONS[version]
-        logger.info(f"Applying migration v{version}: {description}")
+        logger.info(f"Migrating database from version {current} to {CURRENT_VERSION}")
+        pragma_only_applied: list[int] = []
 
-        try:
+        for version in range(current + 1, CURRENT_VERSION + 1):
+            if version not in MIGRATIONS:
+                logger.warning(f"Missing migration for version {version}")
+                continue
+
+            description, migration_func = MIGRATIONS[version]
+            logger.info(f"Applying migration v{version}: {description}")
+
             migration_func(conn)
             set_user_version(conn, version)
-            conn.commit()
             applied.append(f"v{version}: {description}")
-        except Exception as e:
-            logger.error(f"Migration v{version} failed: {e}")
-            conn.rollback()
-            raise
+            if version in PRAGMA_ONLY_VERSIONS:
+                pragma_only_applied.append(version)
 
-    return applied
+        # One commit for the entire sequence, so the lock is never released
+        # part-way through and no other migrator can observe a half-applied
+        # schema.
+        if owns_transaction:
+            conn.commit()
+
+            # Only now, with no transaction open, can the pragma-only
+            # migrations actually take effect. See PRAGMA_ONLY_VERSIONS.
+            for version in pragma_only_applied:
+                MIGRATIONS[version][1](conn)
+
+        return applied
+    except Exception as e:
+        logger.error(f"Migration failed, rolling back the whole sequence: {e}")
+        if owns_transaction:
+            conn.rollback()
+        raise
 
 
 # ============================================================================
