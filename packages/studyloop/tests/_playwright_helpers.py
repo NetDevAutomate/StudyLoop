@@ -8,8 +8,10 @@ helpers explicitly, following the precedent set in
 
 from __future__ import annotations
 
+import socket
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -71,18 +73,59 @@ def start_web_server(
         )
         raise ValueError(msg)
 
+    # Pre-flight: refuse to start if something is ALREADY serving this port.
+    #
+    # The readiness probe below cannot tell our child's response from another
+    # process's. If a previous server leaked or two test files declare the same
+    # port, the probe would accept the stranger's 200, hand back our (about to
+    # die) child, and the test would drive the wrong server — passing or failing
+    # for reasons that have nothing to do with it. Failing here names the real
+    # problem instead.
+    if not _port_is_free(port):
+        msg = (
+            f"port {port} is already being served before the child started. "
+            "Either a previous server leaked, or two test modules declare this "
+            "same port (see test_port_uniqueness). Refusing to continue: the "
+            "readiness probe cannot distinguish that server from ours."
+        )
+        raise RuntimeError(msg)
+
     child_env = dict(env) if env is not None else {**os.environ, **(extra_env or {})}
     cmd = [sys.executable, "-m", "studyloop.cli", "web", "--port", str(port)]
     if extra_args:
         cmd.extend(extra_args)
+
+    # Capture the child's output to a file rather than discarding it.
+    #
+    # This used to be stderr=DEVNULL, which threw away every server-side
+    # traceback. Two separate defects in this repo were diagnosable only from
+    # output that had already been destroyed here: an "Errno 48 address already
+    # in use" bind failure, and an HTTP 500 on /api/backlog whose traceback was
+    # unrecoverable. A file (not a PIPE) because nobody drains a PIPE and a
+    # chatty server would deadlock on a full buffer.
+    log_fd, log_path = tempfile.mkstemp(prefix=f"studyloop-web-{port}-", suffix=".log")
+    log_file = os.fdopen(log_fd, "w")
+
     proc = subprocess.Popen(
         cmd,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        stdout=log_file,
+        stderr=subprocess.STDOUT,
         env=child_env,
         cwd=None if cwd is None else str(cwd),
     )
+    # Discoverable by tests and by a failing teardown.
+    proc.studyloop_log_path = log_path  # type: ignore[attr-defined]
+
+    def _fail(reason: str) -> RuntimeError:
+        tail = _read_log_tail(log_path)
+        return RuntimeError(f"{reason}\n--- server output ---\n{tail}")
+
     for _ in range(40):
+        # A dead child can never become ready, and continuing to poll would let
+        # an unrelated server on this port answer for it.
+        exit_code = proc.poll()
+        if exit_code is not None:
+            raise _fail(f"studyloop web exited with code {exit_code} before serving port {port}")
         try:
             urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=1)
             return proc
@@ -92,9 +135,37 @@ def start_web_server(
             time.sleep(0.3)
         except Exception:
             time.sleep(0.3)
+
     proc.kill()
-    msg = f"Web server failed to start on port {port}"
-    raise RuntimeError(msg)
+    raise _fail(f"Web server failed to start on port {port} within 12s")
+
+
+def _port_is_free(port: int) -> bool:
+    """True when no process is currently listening on ``port``.
+
+    ``SO_REUSEADDR`` is set deliberately: a socket left in ``TIME_WAIT`` by a
+    just-stopped server is not a problem (uvicorn can still bind it), so it must
+    not be reported as occupied. An active listener still refuses the bind,
+    which is the case worth catching.
+    """
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            probe.bind(("127.0.0.1", port))
+        except OSError:
+            return False
+    return True
+
+
+def _read_log_tail(log_path: str, limit: int = 4000) -> str:
+    """Last ``limit`` characters of a captured server log, for error messages."""
+    try:
+        text = Path(log_path).read_text(errors="replace")
+    except OSError as exc:  # pragma: no cover - defensive
+        return f"<could not read {log_path}: {exc}>"
+    if not text.strip():
+        return "<server produced no output>"
+    return text[-limit:]
 
 
 def effective_credentials() -> tuple[str, str]:
