@@ -118,7 +118,6 @@ studyloop restore BACKUP --confirm        # Restore from backup (safety backup f
 
 # Web
 studyloop web [--port PORT] [--lan] [--password SECRET] # Launch study web app (PWA)
-studyloop web --ttyd-port 7681            # ttyd server transport port (0 = read from config)
 studyloop web --dev                       # Dev mode: swap xterm.js for an alternative renderer
 ```
 
