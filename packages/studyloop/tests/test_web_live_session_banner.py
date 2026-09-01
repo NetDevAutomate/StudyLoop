@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import sys
+import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -120,6 +121,73 @@ def _live_session_banner_visible(page: Page) -> bool:
     )
 
 
+def _wait_banner_visible(page: Page, timeout: int = 5000) -> None:
+    """Wait for the banner to be visible, rather than reading it once.
+
+    The single read this replaces asserted not just the product's contract --
+    'while a session is live, the banner is shown' -- but the instant at which
+    the paint lands, which the contract says nothing about. It failed in CI
+    while passing locally and under every reproduction attempted here: an
+    injected Alpine reveal delay (measured at 0ms), a check of whether the
+    banner belongs to a different component (it is inside
+    reviewApp('flashcards'), the same one the test waits on), and injected
+    endpoint latency up to 1500ms, which kept the banner visible throughout.
+
+    A bounded wait cannot hide a real regression: if the banner never appears
+    the wait still fails, and _banner_diag records what the page actually
+    showed. What it does remove is a failure mode that says nothing about the
+    product.
+    """
+    page.wait_for_function(
+        """() => {
+          const b = document.querySelector('.session-indicator');
+          return !!b && window.getComputedStyle(b).display !== 'none';
+        }""",
+        timeout=timeout,
+    )
+
+
+def _banner_diag(page: Page, name: str) -> None:
+    """Record why a banner assertion failed.
+
+    Added because this file produced a CI failure that could not be diagnosed
+    from its traceback: 'assert False' says only that the banner was not
+    visible, never whether it was missing from the DOM, hidden by x-show, or
+    holding a liveSession the test did not expect. The uploaded artifacts are
+    what finally explained the sibling terminal failure.
+    """
+    results = Path("test-results")
+    results.mkdir(exist_ok=True)
+    stamp = int(time.time())
+    try:
+        page.screenshot(path=str(results / f"{name}-{stamp}.png"), full_page=True)
+        (results / f"{name}-{stamp}.html").write_text(page.content())
+        state = page.evaluate(
+            """() => {
+                const b = document.querySelector('.session-indicator');
+                const el = [...document.querySelectorAll('.content-area [x-data]')]
+                    .find((n) => {
+                        const p = window.Alpine && window.Alpine.$data(n);
+                        return p && p.mode === 'flashcards';
+                    });
+                const d = el ? window.Alpine.$data(el) : null;
+                return {
+                    banner_in_dom: !!b,
+                    computed_display: b ? getComputedStyle(b).display : '(absent)',
+                    inline_style: b ? b.getAttribute('style') : '(absent)',
+                    component_found: !!d,
+                    init_done: d ? d._initDone : '(none)',
+                    live_session: d ? JSON.stringify(d.liveSession) : '(none)',
+                    live_epoch: d ? d._liveSessionEpoch : '(none)',
+                };
+            }"""
+        )
+        (results / f"{name}-{stamp}-state.json").write_text(json.dumps(state, indent=2))
+    except Exception:
+        # Diagnostics must never mask the real failure they are describing.
+        pass
+
+
 def _get_alpine_live_session(page: Page) -> object:
     """Return the liveSession value from the flashcards reviewApp component."""
     return page.evaluate(
@@ -147,7 +215,13 @@ class TestLiveSessionBannerClearedOnStop:
     """The 'Live session' banner must disappear when the session is stopped."""
 
     def test_banner_appears_when_session_active(self, web_page: Page) -> None:
-        """Sanity check: banner IS shown when API returns an active session."""
+        """Sanity check: banner IS shown when API returns an active session.
+
+        The positive control for this whole class. The four tests after it
+        assert the banner is ABSENT, and each of those would pass just as
+        happily if the banner were broken and never rendered at all -- so if
+        this one is unsound, the class as a whole proves nothing.
+        """
         _stub_session_state(
             web_page,
             {
@@ -159,23 +233,29 @@ class TestLiveSessionBannerClearedOnStop:
         _goto(web_page, "flashcards")
         _wait_flashcards_init(web_page)
 
-        web_page.wait_for_function(
-            """() => {
-              // Identity lookup, not document position - see _wait_flashcards_init.
-              const el = [...document.querySelectorAll('.content-area [x-data]')]
-                .find((node) => {
-                  const probe = window.Alpine && window.Alpine.$data(node);
-                  return probe && probe.mode === 'flashcards';
-                });
-              if (!el) return false;
-              const d = window.Alpine.$data(el);
-              return d && d.mode === 'flashcards' && d.liveSession !== null;
-            }""",
-            timeout=5000,
-        )
-        assert _live_session_banner_visible(web_page), (
-            "Banner should be visible when a session is active"
-        )
+        try:
+            web_page.wait_for_function(
+                """() => {
+                  // Identity lookup, not document position - see _wait_flashcards_init.
+                  const el = [...document.querySelectorAll('.content-area [x-data]')]
+                    .find((node) => {
+                      const probe = window.Alpine && window.Alpine.$data(node);
+                      return probe && probe.mode === 'flashcards';
+                    });
+                  if (!el) return false;
+                  const d = window.Alpine.$data(el);
+                  return d && d.mode === 'flashcards' && d.liveSession !== null;
+                }""",
+                timeout=5000,
+            )
+            # Waited for, not read once: see _wait_banner_visible.
+            _wait_banner_visible(web_page)
+            assert _live_session_banner_visible(web_page), (
+                "Banner should be visible when a session is active"
+            )
+        except Exception:
+            _banner_diag(web_page, "banner-appears-when-active")
+            raise
 
     def test_banner_absent_after_stop_event(self, web_page: Page) -> None:
         """After 'study-session-stop' is dispatched, liveSession clears
