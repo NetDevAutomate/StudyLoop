@@ -538,7 +538,7 @@ def test_concurrent_same_name_adds_all_get_distinct_keys(board_db: Path) -> None
     assert all(r is not None for r in results), (
         f"every concurrent add should succeed, got {results.count(None)} failures"
     )
-    keys = [r["key"] for r in results]
+    keys = [r["key"] for r in results if r is not None]
     assert len(set(keys)) == n, f"duplicate keys handed out: {sorted(keys)}"
 
 
@@ -622,3 +622,83 @@ def test_concurrent_reorder_and_delete_leave_a_coherent_board(board_db: Path) ->
     finally:
         conn.close()
     assert stored <= live_keys, f"cards stranded under deleted columns: {stored - live_keys}"
+
+
+def test_card_is_never_stored_under_a_deleted_column(board_db: Path) -> None:
+    """A column deleted mid-write must not strand the card under a dead key.
+
+    The routes validate ``board_column`` before writing, but that check runs on
+    its own connection and completes before the write begins -- and there is no
+    foreign key on ``board_column``. So a column deleted in the gap was still
+    stored, leaving a card under a key no column owns: invisible on a board that
+    groups by column, and only masked by the UI defaulting it into the first
+    column.
+
+    Resolution happens inside the writing transaction now, so the stored key is
+    always one that existed at write time.
+    """
+    from studyloop.parking import add_board_column, delete_board_column, park_topic
+
+    assert add_board_column("Doomed") is not None
+    gate = threading.Barrier(2)
+
+    def park() -> int | None:
+        gate.wait()
+        return park_topic("card racing a deletion", board_column="doomed")
+
+    def delete() -> bool:
+        gate.wait()
+        return delete_board_column("doomed")
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = [pool.submit(park), pool.submit(delete)]
+        [f.result() for f in futures]
+
+    live_keys = {k for k, _ in _column_rows(board_db)}
+    conn = sqlite3.connect(str(board_db))
+    try:
+        stored = {
+            r[0]
+            for r in conn.execute(
+                "SELECT DISTINCT board_column FROM parked_topics WHERE status = 'pending'"
+            )
+        }
+    finally:
+        conn.close()
+
+    assert stored, "the card should still exist -- never lost, only relocated"
+    assert stored <= live_keys, f"card stranded under a deleted column: {stored - live_keys}"
+
+
+def test_patching_onto_a_vanished_column_keeps_the_card_reachable(board_db: Path) -> None:
+    """The same guarantee for an in-place edit, not just creation."""
+    from studyloop.parking import add_board_column, delete_board_column, update_parked_topic
+
+    assert add_board_column("Transient") is not None
+    item_id = _park("card to be patched")
+    gate = threading.Barrier(2)
+
+    def patch() -> dict | None:
+        gate.wait()
+        return update_parked_topic(item_id, board_column="transient")
+
+    def delete() -> bool:
+        gate.wait()
+        return delete_board_column("transient")
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = [pool.submit(patch), pool.submit(delete)]
+        [f.result() for f in futures]
+
+    live_keys = {k for k, _ in _column_rows(board_db)}
+    conn = sqlite3.connect(str(board_db))
+    try:
+        stored = [
+            r[0]
+            for r in conn.execute("SELECT board_column FROM parked_topics WHERE id = ?", (item_id,))
+        ]
+    finally:
+        conn.close()
+
+    assert stored, "the card must still exist"
+    assert stored[0] in live_keys, f"card stranded under a deleted column: {stored[0]}"

@@ -103,6 +103,32 @@ def _connect() -> sqlite3.Connection:
     return conn
 
 
+def _resolve_board_column(conn: sqlite3.Connection, requested: str) -> str:
+    """Return ``requested`` if it is a live column, else the board's first column.
+
+    Call this INSIDE the write transaction that stores the value. The routes
+    validate ``board_column`` up front to give the user a clean 400, but that
+    check runs on its own connection and finishes before the write starts, so a
+    column deleted in between would still be stored -- there is no foreign key to
+    catch it. The card then sits under a key no column owns, invisible on a board
+    that groups by column.
+
+    Resolving rather than raising is deliberate. Only the web route lets the user
+    choose a column; the CLI, MCP and backlog callers take the ``'inbox'``
+    default, and ``delete_board_column`` will happily delete ``inbox`` as long as
+    it is not the last one. Raising would turn someone else's column deletion
+    into a failure for a caller that never picked a column. Keeping the card and
+    putting it in a real column is what the UI already pretended happened.
+    """
+    keys = _column_keys(conn)
+    if requested in keys:
+        return requested
+    if keys:
+        logger.info("board_column %r no longer exists; storing card in %r", requested, keys[0])
+        return keys[0]
+    return requested
+
+
 def _create_parked_topics_table(conn: sqlite3.Connection) -> None:
     """Create parked_topics with the full current schema.
 
@@ -282,6 +308,9 @@ def park_topic(
                     study_session_id=study_session_id,
                     session_id=session_id,
                 )
+                # Under the write lock, so a column deleted after the route
+                # validated cannot strand this card under a dead key.
+                board_column = _resolve_board_column(conn, board_column)
                 # Append to the end of the target column (dense 0..n ordering).
                 next_order = conn.execute(
                     "SELECT COALESCE(MAX(board_order), -1) + 1 AS n FROM parked_topics "
@@ -600,14 +629,22 @@ def update_parked_topic(item_id: int, **fields: object) -> dict | None:
     if updates.get("priority") is not None:
         updates["priority"] = max(1, min(5, int(updates["priority"])))  # type: ignore[arg-type]
 
-    assignments = ", ".join(f"{column} = ?" for column in updates)
     conn = _connect()
     try:
-        cursor = conn.execute(
-            f"UPDATE parked_topics SET {assignments}, updated_at = datetime('now') WHERE id = ?",
-            (*updates.values(), item_id),
-        )
-        conn.commit()
+        # A board_column edit must be validated under the same write lock that
+        # stores it, or a concurrent column deletion leaves the card orphaned.
+        # Unconditional rather than only-when-present: a lone UPDATE gains nothing
+        # from the transaction, but a conditional one here cost more in
+        # readability than the lock acquisition it saved.
+        with immediate(conn):
+            if "board_column" in updates:
+                updates["board_column"] = _resolve_board_column(conn, str(updates["board_column"]))
+            assignments = ", ".join(f"{column} = ?" for column in updates)
+            cursor = conn.execute(
+                f"UPDATE parked_topics SET {assignments}, "
+                "updated_at = datetime('now') WHERE id = ?",
+                (*updates.values(), item_id),
+            )
         if cursor.rowcount == 0:
             return None
         row = conn.execute("SELECT * FROM parked_topics WHERE id = ?", (item_id,)).fetchone()
