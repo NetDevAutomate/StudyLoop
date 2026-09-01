@@ -143,10 +143,17 @@ def parse_topics_file() -> list[TopicEntry]:
     Expected format per line:
     - [HH:MM] topic name | status:learning | Some note about progress
     """
-    if not TOPICS_FILE.exists():
+    # Read first and handle failure, rather than checking exists() and then
+    # reading: session release calls clear_session_files() on an executor
+    # thread, so the file can be unlinked between the two. That raced a
+    # request and surfaced as HTTP 500 from GET /api/session/state.
+    # FileNotFoundError is an OSError, so this also covers "no session yet".
+    try:
+        raw = TOPICS_FILE.read_text()
+    except OSError:
         return []
     entries = []
-    for line in TOPICS_FILE.read_text().splitlines():
+    for line in raw.splitlines():
         line = line.strip()
         if not line or not line.startswith("- ["):
             continue
@@ -181,10 +188,15 @@ def parse_parking_file() -> list[ParkingEntry]:
     Expected format per line:
     - Question text here
     """
-    if not PARKING_FILE.exists():
+    # Same deletion race as parse_topics_file: clear_session_files() unlinks
+    # PARKING_FILE from an executor thread, so read-then-handle rather than
+    # exists-then-read.
+    try:
+        raw = PARKING_FILE.read_text()
+    except OSError:
         return []
     entries = []
-    for line in PARKING_FILE.read_text().splitlines():
+    for line in raw.splitlines():
         line = line.strip()
         if not line or not line.startswith("- "):
             continue

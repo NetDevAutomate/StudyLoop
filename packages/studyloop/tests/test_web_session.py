@@ -3,7 +3,12 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, cast, get_type_hints
+from typing import TYPE_CHECKING, Any, cast, get_type_hints
+
+if TYPE_CHECKING:
+    # ``pytest`` below is bound by __import__, which pyright treats as a
+    # variable rather than a module, so it cannot carry type annotations.
+    from pytest import MonkeyPatch
 
 pytest = __import__("pytest")
 pytest.importorskip("fastapi")
@@ -115,6 +120,36 @@ class TestSessionStateAPI:
             assert len(data["topics"]) == 2
             assert data["topics"][0]["status"] == "win"
             assert data["topics"][1]["status"] == "struggling"
+
+    def test_state_survives_session_files_vanishing_mid_request(
+        self, client: TestClient, monkeypatch: MonkeyPatch
+    ) -> None:
+        """The endpoint returns 200, not 500, when IPC files vanish mid-read.
+
+        Session release runs clear_session_files() on an executor thread, so a
+        request in flight can lose session-topics.md between the exists() check
+        and the read. That raced GET /api/session/state and returned HTTP 500.
+
+        This drives the REAL parsers (only the file objects are replaced), so it
+        exercises the guard rather than a mock of it.
+        """
+
+        class _VanishingFile:
+            def exists(self) -> bool:
+                return True
+
+            def read_text(self, *args: object, **kwargs: object) -> str:
+                raise FileNotFoundError(2, "No such file or directory")
+
+        monkeypatch.setattr("studyloop.session_state.TOPICS_FILE", _VanishingFile())
+        monkeypatch.setattr("studyloop.session_state.PARKING_FILE", _VanishingFile())
+
+        resp = client.get("/api/session/state")
+
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["topics"] == []
+        assert data["parking"] == []
 
 
 class TestSessionSSE:
