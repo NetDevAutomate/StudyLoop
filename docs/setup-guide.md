@@ -483,13 +483,12 @@ lan_password: ""     # persistent LAN password (auto-generated per session if em
 ttyd_port: 7681      # port a ttyd process would listen on (default 7681)
 ```
 
-> **`ttyd_port` unlocks nothing for normal use — do not install ttyd for it.**
-> The browser terminal is xterm.js over a same-origin WebSocket; the ttyd browser
-> surface was retired. Installing ttyd does not enable a learner-facing browser
-> terminal in the current Web UI.
-> For maintainers the server still honours `STUDYLOOP_TRANSPORT=ttyd` and
-> `studyloop web --ttyd-port`, but a session started on that transport has **no
-> browser renderer** and reports `unavailable`.
+> **`ttyd_port` does nothing — do not install ttyd, and remove the key if you set it.**
+> The browser terminal is xterm.js over a same-origin WebSocket. ttyd is being
+> retired: the `studyloop web --ttyd-port` flag and the CLI transport option are
+> already gone, and the remaining machinery is on its way out. A `ttyd_port` key
+> left in your config is ignored rather than an error, so nothing breaks — but it
+> is inert, not a setting.
 
 ### TTS Voice Settings
 
