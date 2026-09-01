@@ -67,8 +67,11 @@ studyloop doctor --fix
 
    ```bash
    session-export
-   session-query list --since 7d
+   session-query list --since last-7-days
    ```
+
+   `--since` takes `YYYY-MM-DD`, `last-week`, `last-month`, or `last-N-days`.
+   Shorthand like `7d` is rejected.
 
 2. Surface progress (useful for AuDHD “nothing counts” moments):
 
@@ -82,8 +85,12 @@ studyloop doctor --fix
 3. If you use Kiro and want struggle signals in progress tracking:
 
    ```bash
-   studyloop extract-struggles --incremental --dry-run
+   studyloop extract-struggles --incremental --dry-run --model <bedrock-model-id>
    ```
+
+   `--model` is required — it names the Bedrock model that reads your sessions.
+   Set `STUDYLOOP_EXTRACTOR_MODEL` once and you can leave the flag off. This
+   step needs AWS credentials; skip it if you have none configured.
 
 ## Day 4 — Review support and source notes
 

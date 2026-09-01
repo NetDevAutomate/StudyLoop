@@ -90,7 +90,9 @@ StudyLoop is an early open-source release, so the boundaries are worth making
 clear:
 
 - installation is from a Git checkout; there is no current PyPI or Homebrew release;
-- the Web UI supports laptop and tablet layouts, not phone screens;
+- the Web UI is built for laptop and tablet layouts. Phone widths get a usable
+  bottom tab bar rather than a broken one, but a phone is not a supported layout
+  and no journey is tested at that size;
 - the Web UI needs the local StudyLoop server and does not work offline;
 - voice uses a configured Kokoro-compatible server, then falls back to operating
   system voices when available;

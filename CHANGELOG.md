@@ -14,7 +14,9 @@ experience may change before `1.0.0`.
 - First-party harness support for Kiro CLI, Codex, and Claude Code.
 - Preview harness support for OpenCode and pi.
 - Session-history import for each supported harness.
-- Study-plan creation through **Study Plans → Create with Architect**.
+- Study-plan creation in the Web UI (**Study Plans → New plan**) and the CLI. The
+  Web UI form is manual, with seed suggestions drawn from your own history; an
+  agent-led planning interview is not integrated there yet.
 - AuDHD-aware session scaffolding, spaced review, teach-back, parking-lot, and
   wind-down workflows.
 - A strict public-documentation build and a separate internal audit/archive
