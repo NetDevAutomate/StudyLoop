@@ -238,6 +238,30 @@ class TestQuizzesConfigNavLayout:
                 return d && d.view === 'config'; }}""",
             timeout=5000,
         )
+        # Alpine sets `view` synchronously but flushes the DOM on a microtask, so
+        # the predicate above goes true BEFORE .nav-course exists. Measuring
+        # straight after it gave the geometry assertion a zero-millisecond
+        # readiness budget: assert_centered_in does an immediate page.evaluate()
+        # and fails on a null element. That is the intermittent "element not
+        # found" this file showed under full-suite load and never in isolation —
+        # under load the browser simply had not painted yet.
+        #
+        # Wait for the nodes, then for non-zero bounds. A visible element can
+        # still report a 0x0 rect for a frame while flex resolves, and centring
+        # arithmetic on a zero-width box is meaningless.
+        for selector in (f"{root} .nav-bar", f"{root} .nav-bar .nav-course"):
+            page.locator(selector).first.wait_for(state="visible", timeout=5000)
+        page.wait_for_function(
+            f"""() => {{
+                const bar = document.querySelector('{root} .nav-bar');
+                const title = document.querySelector('{root} .nav-bar .nav-course');
+                if (!bar || !title) return false;
+                const b = bar.getBoundingClientRect();
+                const t = title.getBoundingClientRect();
+                return b.width > 0 && b.height > 0 && t.width > 0 && t.height > 0;
+            }}""",
+            timeout=5000,
+        )
 
     def test_config_nav_title_is_centered(self, web_page: Page) -> None:
         # The real symptom: the title was ~18px off-centre because the third
