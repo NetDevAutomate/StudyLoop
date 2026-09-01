@@ -42,10 +42,21 @@ jobs:
           NO_MKDOCS_2_WARNING: "1"
 
   deploy:
+    # Publishes the built site straight from a workflow artifact. This used to
+    # run `mkdocs gh-deploy --force`, which pushed the rendered HTML to a
+    # gh-pages branch -- and since Pages was never enabled on the repository
+    # (has_pages: false, and the site_url returned 404), that branch was
+    # write-only: CI regenerated it on every docs push and nothing served it.
+    # Deploying from an artifact keeps the source in main, keeps build output
+    # out of git entirely, and removes the branch from the picture.
     if: github.event_name == 'push'
     needs: build
     permissions:
-      contents: write
+      pages: write # deploy to the Pages environment
+      id-token: write # OIDC token the deploy action verifies with
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -55,6 +66,11 @@ jobs:
         with:
           python-version: "3.12"
       - run: uv sync --locked --extra docs
-      - run: uv run --extra docs mkdocs gh-deploy --force
+      - run: uv run --extra docs mkdocs build --strict
         env:
           NO_MKDOCS_2_WARNING: "1"
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5
