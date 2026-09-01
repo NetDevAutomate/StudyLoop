@@ -261,13 +261,56 @@ def _write_note(page: Page, *, kind: str, title: str, body: str, confidence: int
 
 
 def _park(page: Page, question: str, notes: str = "") -> None:
+    """Park a topic and wait for the SERVER to confirm it, not the save chip.
+
+    ``#bd-park-saved`` cannot be used as the completion signal. It is an
+    ``x-show`` element, so it never leaves the DOM, and ``submitPark()`` sets
+    ``parkSaved = true`` then re-arms a 1500ms timer. Parking several topics in
+    a row therefore lets one park's wait be satisfied by the PREVIOUS park's
+    chip, which is still visible -- the helper returns before this park's POST
+    has been accepted, and the test races ahead of the server.
+
+    That produced three separate CI failures from one cause: phase2 saw
+    ``parkingLotCount`` still 0 after a fourth park, phase5 counted one item
+    where it wanted two, and phase9 recorded a 422 on /api/parking/item --
+    because ``submitPark()`` clears ``parkQuestion`` on success, so a clear
+    belonging to an in-flight submit can empty the field after the next fill,
+    and ``ParkingCreate.question`` has ``min_length=1``.
+
+    Counting total pending topics rather than ``parking_lot_count``: the first
+    three parks become live focus slots and only the overflow is 'parked', so
+    the parking count is not a signal every park moves.
+    """
+    before = _api(page, "/api/backlog")
+    expected = before["active_count"] + before["parking_lot_count"] + 1
+
     page.locator("#bd-tab-park").click()
     page.wait_for_selector("#bd-park-form", state="visible", timeout=5_000)
     page.locator("#bd-park-question").fill(question)
     if notes:
         page.locator("#bd-park-notes").fill(notes)
     page.locator("#bd-park-submit").click()
-    page.wait_for_selector("#bd-park-saved", state="visible", timeout=10_000)
+
+    # The invariant the product actually guarantees: one more pending topic
+    # exists server-side. Polled through the page so it shares the browser's
+    # origin and auth, exactly as _api does.
+    page.wait_for_function(
+        """async (want) => {
+            const r = await fetch('/api/backlog');
+            if (!r.ok) return false;
+            const b = await r.json();
+            return (b.active_count + b.parking_lot_count) >= want;
+        }""",
+        arg=expected,
+        timeout=15_000,
+    )
+    # Only now is the form guaranteed quiescent: submitPark() clears the
+    # question field in its success path, so returning before that lands would
+    # let the clear race the NEXT park's fill.
+    page.wait_for_function(
+        "() => document.querySelector('#bd-park-question').value === ''",
+        timeout=5_000,
+    )
 
 
 def _open_notes_panel(page: Page) -> None:
