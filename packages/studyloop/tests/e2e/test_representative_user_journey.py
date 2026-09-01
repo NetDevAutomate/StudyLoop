@@ -379,14 +379,38 @@ def test_fake_agent_terminal_renders_in_browser(browser, fake_agent_server: str)
         page.locator(".start-session-btn").click()
 
         # Proof the whole loop connected. xterm's WebGL renderer paints to a
-        # canvas, so the banner text is NOT in the DOM — assert the two
-        # DOM-visible signals instead: (1) the terminal header flips to
-        # "Connected · Codex" (WS established, transport Started), and (2) the
-        # session status bar shows the live topic (state hydrated end-to-end).
+        # canvas, so the banner text is NOT in the DOM — assert the DOM-visible
+        # signals instead: (1) the terminal header reports the connection and
+        # names the agent, and (2) the session status bar shows the live topic
+        # (state hydrated end-to-end).
+        #
+        # Scoped to .agent-console-state, NOT document.body.innerText. This
+        # previously searched the whole body for 'Connected' and 'Codex', and
+        # the capital-C form only ever existed in the AGENT PICKER -- two
+        # <option> labels and a picker-hint paragraph. The header itself renders
+        # the resolved agent id from the server, so it reads "Connected · codex"
+        # in lower case (live-agent-console.js interpolates
+        # detail.resolvedAgent/frame.agent verbatim; nothing title-cases it).
+        # The assertion therefore passed only while the picker was still on
+        # screen at the moment the socket opened -- a race it won locally and
+        # lost on slower CI, where the session view has already replaced the
+        # picker. It was checking the wrong element for the whole of its life.
+        console_state = page.locator(".agent-console-state").first
+        console_state.wait_for(state="visible", timeout=20000)
         page.wait_for_function(
-            """() => document.body.innerText.includes('Connected') &&
-                     document.body.innerText.includes('Codex')""",
+            """() => {
+                const el = document.querySelector('.agent-console-state');
+                if (!el) return false;
+                const t = el.innerText.toLowerCase();
+                return t.includes('connected') && t.includes('codex');
+            }""",
             timeout=20000,
+        )
+        # The live indicator is a separate signal from the text: it is set on
+        # the socket's own open event, so a header that says Connected while the
+        # dot is still idle would be a lie this catches.
+        assert page.locator(".agent-status-dot-live").count() >= 1, (
+            "terminal reported Connected without a live status dot"
         )
         page.wait_for_function(
             "() => document.body.innerText.includes('Browser Fake Walk')",
