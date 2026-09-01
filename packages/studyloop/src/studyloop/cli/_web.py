@@ -35,7 +35,6 @@ def _candidate_lan_hosts() -> tuple[str, ...]:
 @click.option("--port", "-p", default=8567, help="Port for web server")
 @click.option("--lan", is_flag=True, help="Expose to LAN (default: localhost only)")
 @click.option("--password", default="", help="Password for HTTP Basic Auth (LAN protection)")
-@click.option("--ttyd-port", default=0, help="Port where ttyd is running (0 = read from config)")
 @click.option(
     "--dev",
     is_flag=True,
@@ -46,7 +45,6 @@ def web(
     port: int,
     lan: bool,
     password: str,
-    ttyd_port: int,
     dev: bool,
 ) -> None:
     """Launch the study PWA in your browser.
@@ -102,14 +100,6 @@ def web(
         ):
             console.print(line)
 
-    if not ttyd_port:
-        from studyloop.settings import load_settings as _ls
-
-        try:
-            ttyd_port = _ls().ttyd_port
-        except Exception:
-            ttyd_port = 7681
-
     from studyloop.web.app import create_app
 
     # `--dev` goes through the dev_engines REGISTRY. The deprecated
@@ -128,7 +118,6 @@ def web(
     host = "0.0.0.0" if lan else "127.0.0.1"
     app = create_app(
         study_dirs=study_dirs,
-        ttyd_port=ttyd_port,
         username=username,
         password=password,
         dev_mode=dev,

@@ -142,51 +142,6 @@ class TestStudyCommand:
             assert result.exit_code == 0
 
 
-class TestStudyTransportFlag:
-    """§1.10: ``--transport [pty|ttyd]`` parity with the web picker.
-
-    The flag exists on the CLI surface today; the ``pty`` branch is
-    deferred to §1.5d (CLI-driven PTY sessions need more plumbing
-    than the web route got). Declaring the option now keeps the CLI
-    and web surfaces symmetric and future-proofs the signature.
-    """
-
-    def test_transport_flag_is_declared(self, runner):
-        result = runner.invoke(study, ["--help"])
-        assert result.exit_code == 0
-        assert "--transport" in result.output
-
-    def test_transport_pty_is_not_yet_supported(self, runner):
-        """Passing --transport=pty reports the deferral cleanly rather
-        than silently running the ttyd/tmux path or crashing."""
-        result = runner.invoke(study, ["Test Topic", "--transport", "pty"])
-        assert result.exit_code != 0
-        assert "pty" in result.output.lower() or "not yet supported" in result.output.lower()
-
-    def test_transport_rejects_unknown_values(self, runner):
-        """Click's Choice() should reject anything outside {pty, ttyd}."""
-        result = runner.invoke(study, ["Test Topic", "--transport", "acp"])
-        assert result.exit_code != 0
-
-    def test_transport_ttyd_is_accepted_and_runs_legacy_path(self, runner, tmp_path):
-        """--transport=ttyd must not crash; it's the current default shape."""
-        with (
-            patch("studyloop.tmux.shutil.which", return_value="/usr/bin/tmux"),
-            patch("studyloop.tmux.subprocess.run", side_effect=_tmux_side_effect),
-            patch("studyloop.tmux.LOCK_FILE", tmp_path / "lock"),
-            patch("studyloop.agent_launcher.shutil.which", return_value="/usr/bin/claude"),
-            patch("studyloop.session_state.read_session_state", return_value={}),
-            patch("studyloop.session_state.STATE_FILE", tmp_path / "state.json"),
-            patch("studyloop.session_state.SESSION_DIR", tmp_path),
-            patch("studyloop.session_state.TOPICS_FILE", tmp_path / "topics.md"),
-            patch("studyloop.session_state.PARKING_FILE", tmp_path / "parking.md"),
-            patch("studyloop.history.start_study_session", return_value="abc12345"),
-            patch.dict("os.environ", {"TMUX": "/tmp/tmux"}),
-        ):
-            result = runner.invoke(study, ["Test Topic", "--transport", "ttyd"])
-        assert result.exit_code == 0
-
-
 class TestStudyEnd:
     def test_end_no_session(self, runner):
         with patch("studyloop.session_state.read_session_state", return_value={}):
