@@ -132,6 +132,18 @@ def _connect() -> sqlite3.Connection:
     return conn
 
 
+def ensure_schema() -> None:
+    """Build the notes schema now, so no request has to do it later.
+
+    ``_connect`` probes for ``study_notes`` and creates it plus two indexes when
+    absent, under ``SCHEMA_LOCK``. Every notes route reaches it, and
+    ``GET /api/body-double/focus`` reaches it alongside the parking and history
+    bootstraps in a single request. Calling this once at startup means the probe
+    finds its table already there.
+    """
+    _connect().close()
+
+
 def _ensure_reference_rows(
     conn: sqlite3.Connection,
     *,
