@@ -548,11 +548,16 @@ class TestEndSession:
         dialog.wait_for(state="visible", timeout=3000)
         # Scoped to the dialog: .end-confirm-yes appears 3x in the SPA, so an
         # unscoped locator is a strict-mode violation, not a timeout.
-        dialog.locator(".end-confirm-yes").click()
-        # Assert the POST landed and the dialog is gone.
-        web_page.wait_for_timeout(200)
+        # Two independent waits rather than one sleep. confirmEndSession()
+        # clears confirmingEnd BEFORE awaiting the fetch, so a hidden dialog
+        # does not imply the POST landed; and the overlay carries
+        # x-transition.opacity, so it stays visible() while the fade runs.
+        # A fixed 200ms sleep raced both and failed under full-suite load.
+        with web_page.expect_response("**/api/session/end") as resp_info:
+            dialog.locator(".end-confirm-yes").click()
+        assert resp_info.value.request.method == "POST"
+        dialog.wait_for(state="hidden", timeout=5000)
         assert any("/api/session/end" in c["url"] for c in calls)
-        assert not dialog.is_visible()
 
     def test_end_confirm_cancel_keeps_session(self, web_page: Page) -> None:
         _stub_options(web_page)
@@ -579,7 +584,11 @@ class TestEndSession:
         dialog.wait_for(state="visible", timeout=3000)
         # Scoped for the same reason as the confirm button above.
         dialog.locator(".end-confirm-cancel").click()
-        web_page.wait_for_timeout(200)
+        # Wait for an observable consequence of the cancel -- the overlay
+        # finishing its fade -- rather than sleeping. "assert not calls" after
+        # an arbitrary sleep can pass merely because the request had not been
+        # made YET, which is a false green rather than a flake.
+        dialog.wait_for(state="hidden", timeout=5000)
         assert not calls
         assert web_page.evaluate(
             """() => window.Alpine.$data(
