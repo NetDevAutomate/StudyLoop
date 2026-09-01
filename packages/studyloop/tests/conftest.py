@@ -293,3 +293,63 @@ def _scale_playwright_readiness_budgets():
         yield
     finally:
         _readiness.remove_scaling(patched)
+
+
+# ---------------------------------------------------------------------------
+# Server-side failure detection — every test, every transport
+# ---------------------------------------------------------------------------
+#
+# The suite reported "500 passed" while GET /api/session/state was returning
+# HTTP 500, because nothing in the harness failed a run on a server error. The
+# browser-attached ConsoleWatch records 5xx responses, but only 6 of 40 e2e
+# files construct one, and the test that was actually failing drove the server
+# with urllib and had no Playwright page at all.
+#
+# So the check lives here, as an autouse fixture keyed off logs registered by
+# start_web_server itself. Any test that starts a server is covered without
+# opting in, including one that brings its own client or its own server wrapper.
+
+
+@pytest.hookimpl(hookwrapper=True, tryfirst=True)
+def pytest_runtest_makereport(item, call):
+    """Record each phase's report on the item so fixtures can read the outcome.
+
+    Needed so the server-error check below can stay quiet when the test has
+    already failed: appending a teardown error to a real failure buries the
+    thing the developer needs to read.
+    """
+    outcome = yield
+    setattr(item, f"_report_{outcome.get_result().when}", outcome.get_result())
+
+
+@pytest.fixture(autouse=True)
+def _fail_on_server_side_errors(request: pytest.FixtureRequest):
+    """Fail a test whose server logged an unhandled exception.
+
+    Runs last: autouse function-scoped fixtures are set up first and finalized
+    last, so by the time this teardown runs the server fixtures have already
+    terminated their children and flushed the captured logs.
+
+    A test that legitimately drives the server into an unhandled exception can
+    opt out with ``@pytest.mark.allow_server_errors``.
+    """
+    from _playwright_helpers import new_server_log_failures
+
+    # Drain anything logged before this test so it is not misattributed.
+    new_server_log_failures()
+    yield
+    failures = new_server_log_failures()
+    if not failures:
+        return
+    if request.node.get_closest_marker("allow_server_errors"):
+        return
+    report = getattr(request.node, "_report_call", None)
+    if report is not None and report.failed:
+        # The test already failed; that failure is the more useful signal.
+        return
+    detail = "\n".join(f"  - {f}" for f in failures)
+    pytest.fail(
+        f"the server logged {len(failures)} unhandled exception(s) during this "
+        f"test, so it passed only because nothing asserted on them:\n{detail}",
+        pytrace=False,
+    )

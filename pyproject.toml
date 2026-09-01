@@ -116,4 +116,5 @@ markers = [
     "e2e: end-to-end tests requiring full stack (tmux, ttyd, web server)",
     "live_kiro: dogfood tests that spawn a real kiro-cli acp child",
     "live_provider: tests that call a real LLM provider",
+    "allow_server_errors: test deliberately drives the server into an unhandled exception, so the per-test server-log check is skipped for it",
 ]

@@ -93,6 +93,7 @@ markers = [
     "e2e: end-to-end browser tests requiring Playwright + web server",
     "live_kiro: dogfood tests that spawn a real kiro-cli acp child (requires Kiro auth + network; opt in with -m live_kiro)",
     "live_provider: tests that call a real LLM provider (OpenAI/OpenRouter/Gemini/MiniMax/Anthropic). Burns API quota; opt in with -m live_provider",
+    "allow_server_errors: test deliberately drives the server into an unhandled exception, so the per-test server-log check is skipped for it",
 ]
 
 [tool.pyright]
