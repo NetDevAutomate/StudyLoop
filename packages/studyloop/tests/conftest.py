@@ -407,3 +407,57 @@ def _fail_on_server_side_errors(request: pytest.FixtureRequest):
         f"test, so it passed only because nothing asserted on them:\n{detail}",
         pytrace=False,
     )
+
+
+# ---------------------------------------------------------------------------
+# Hollow-run guard
+# ---------------------------------------------------------------------------
+#
+# A gate can go green while testing almost nothing. If a dependency is missing
+# the browser suite does not fail, it SKIPS -- so "0 failed" survives a run that
+# executed no tests at all, which is this repo's recurring defect rather than a
+# hypothetical: a 500-pass report once concealed two real bugs, and the
+# browser-side unit tests sat in no gate while looking covered.
+#
+# Enforcing "these binaries are installed" would only cover the dependencies
+# somebody thought of. Enforcing "this run actually passed N tests" covers every
+# way a run can quietly become hollow, including reasons nobody has met yet.
+#
+# Opt-in via STUDYLOOP_MIN_PASSED so a developer running one file is unaffected.
+
+MIN_PASSED_ENV = "STUDYLOOP_MIN_PASSED"
+
+
+def _passed_count(terminalreporter) -> int:
+    return len(terminalreporter.stats.get("passed", []))
+
+
+def pytest_sessionfinish(session, exitstatus) -> None:
+    """Fail a run that passed fewer tests than the caller demanded.
+
+    Reads the count from the terminal reporter, which is the same number the
+    summary line prints, so the check and the report cannot disagree.
+    """
+    required = os.environ.get(MIN_PASSED_ENV)
+    if not required:
+        return
+    try:
+        minimum = int(required)
+    except ValueError:
+        return
+    reporter = session.config.pluginmanager.get_plugin("terminalreporter")
+    if reporter is None:  # pragma: no cover - no terminal plugin (e.g. -p no:terminal)
+        return
+    passed = _passed_count(reporter)
+    if passed >= minimum:
+        return
+    skipped = len(reporter.stats.get("skipped", []))
+    reporter.write_sep(
+        "!",
+        f"HOLLOW RUN: {passed} passed, {minimum} required ({MIN_PASSED_ENV}), "
+        f"{skipped} skipped — a dependency is probably missing, so this green "
+        "is not evidence",
+        red=True,
+        bold=True,
+    )
+    session.exitstatus = 1
