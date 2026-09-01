@@ -160,6 +160,24 @@ jobs:
       - run: just e2e
         env:
           STUDYLOOP_MIN_PASSED: "450"
+      # The e2e tests already screenshot the page and dump its HTML when they
+      # fail (_diag in the journey files), but nothing collected those, so every
+      # CI failure had to be diagnosed from a stack trace alone -- a
+      # wait_for_function timeout says only that a condition never became true,
+      # never what the page actually showed instead. Uploading them turns the
+      # next failure into evidence rather than a hypothesis.
+      #
+      # if: failure() rather than always(): on a green run there is nothing to
+      # collect, and an empty artifact per run is noise.
+      - if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: e2e-failure-diagnostics
+          path: |
+            test-results/
+            packages/studyloop/test-results/
+          retention-days: 7
+          if-no-files-found: warn
 
   content-profile:
     runs-on: ubuntu-latest
