@@ -16,8 +16,6 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import RedirectResponse, Response
 
-from studyloop.session_runtime import AgentSessionManager
-
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
@@ -110,7 +108,6 @@ def create_app(
     # that was never written to config used to leave ttyd unauthenticated).
     app.state.lan_username = username
     app.state.lan_password = password
-    app.state.agent_session_manager = AgentSessionManager()
     app.state.explorer_tree_cache = None
     app.state.explorer_tree_fingerprint = None
     app.state.session_options_targets_cache = None
