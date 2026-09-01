@@ -24,7 +24,6 @@ import fcntl
 import logging
 import os
 import pty
-import re
 import select
 import signal
 import struct
@@ -32,6 +31,11 @@ import termios
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from studyloop.session.child_env import (
+    CHILD_ENV_DENY,
+    CHILD_ENV_DENY_PAT,
+    build_child_env,
+)
 from studyloop.session.transport import (
     OutputBytes,
     SessionConfig,
@@ -65,8 +69,8 @@ _QUEUE_MAX = 256
 # Child env keys we never pass through. Covers the test escape hatch
 # (STUDYLOOP_TEST_AGENT_CMD) + studyloop config loader env + anything
 # matching a secret-ish pattern. See plan Blocker B3.
-_CHILD_ENV_DENY = {"STUDYLOOP_TEST_AGENT_CMD", "STUDYLOOP_CONFIG"}
-_CHILD_ENV_DENY_PAT = re.compile(r"(?i)(password|secret|token)$")
+_CHILD_ENV_DENY = CHILD_ENV_DENY
+_CHILD_ENV_DENY_PAT = CHILD_ENV_DENY_PAT
 
 # Grace window between SIGTERM and SIGKILL on cancel().
 _SIGKILL_GRACE_S = 1.5
@@ -136,15 +140,13 @@ def _deregister_pid(pid: int) -> None:
 
 
 def _build_child_env(caller_env: dict[str, str]) -> dict[str, str]:
-    """Return a clean env dict for the child, with secrets stripped."""
-    clean: dict[str, str] = {}
-    for k, v in caller_env.items():
-        if k in _CHILD_ENV_DENY:
-            continue
-        if _CHILD_ENV_DENY_PAT.search(k):
-            continue
-        clean[k] = v
-    return clean
+    """Return a clean env dict for the child, with secrets stripped.
+
+    Delegates to studyloop.session.child_env so this rule has exactly one
+    definition. It used to live here alone, which is how the ACP transport came
+    to inherit the whole environment while this one scrubbed it.
+    """
+    return build_child_env(caller_env)
 
 
 def _set_winsize(fd: int, cols: int, rows: int) -> None:
