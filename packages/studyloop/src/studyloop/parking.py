@@ -129,6 +129,21 @@ def _resolve_board_column(conn: sqlite3.Connection, requested: str) -> str:
     return requested
 
 
+def ensure_schema() -> None:
+    """Build the parking schema now, so no request has to do it later.
+
+    ``_connect`` is self-healing by design: it applies migrations, probes for
+    missing columns, repairs drift and seeds the default board columns. That makes
+    it safe but expensive, and it runs on read paths -- ``GET /api/backlog`` and
+    ``GET /api/parking/board`` both reach it. Calling this once at server startup
+    means the first request finds the work already done.
+
+    Kept as a thin wrapper rather than exposing ``_connect`` so callers cannot
+    accidentally take ownership of the connection's lifetime.
+    """
+    _connect().close()
+
+
 def _create_parked_topics_table(conn: sqlite3.Connection) -> None:
     """Create parked_topics with the full current schema.
 

@@ -26,7 +26,7 @@ STATIC_DIR = Path(__file__).parent / "static"
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Run the session-slot reaper for the whole life of the app.
+    """Prepare the database, then run the session-slot reaper for the app's life.
 
     The reaper is the backstop for every way the single-session slot can be
     pinned that the WebSocket grace timer cannot see — a session whose socket
@@ -34,9 +34,15 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     slots stay occupied until the server restarts and every ``/session/start``
     409s. Started on app startup and torn down on shutdown so a stop cannot
     leave an orphaned agent child owned by a timer that will never fire.
+
+    Schema preparation runs FIRST. It is not that the reaper does DDL — its first
+    tick sleeps before doing anything and reads only session state — but a slow
+    first ``init_db`` should not overlap a tick against a half-built database.
     """
+    from studyloop.web._schema_init import prepare_schema
     from studyloop.web.routes.session import _grace
 
+    prepare_schema()
     _grace.start_reaper()
     try:
         yield
