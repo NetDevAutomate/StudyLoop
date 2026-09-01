@@ -92,10 +92,19 @@ def _watch(page: Page) -> ConsoleWatch:
 def test_spa_html_renders_without_console_errors(page: Page, env) -> None:
     """The SPA boots clean and its chrome lays out without overlap/clipping.
 
-    Three failure classes in one test because they share a page load:
-    (1) a JS exception during boot, (2) markup that parses but paints on top of
-    itself, (3) markup that paints off-screen. All three have shipped before.
+    Four failure classes in one test because they share a page load:
+    (1) a JS exception during boot, (2) a module the SPA imports that is not
+    actually served, (3) markup that parses but paints on top of itself,
+    (4) markup that paints off-screen. All four have shipped before.
     """
+    js_responses: list[tuple[str, int]] = []
+
+    def _capture_js(response) -> None:
+        if "/js/" in response.url:
+            js_responses.append((response.url, response.status))
+
+    page.on("response", _capture_js)
+
     try:
         page.goto(f"{env.base_url}/")
         page.wait_for_load_state("domcontentloaded")
@@ -116,7 +125,18 @@ def test_spa_html_renders_without_console_errors(page: Page, env) -> None:
         )
         assert all(libs.values()), f"vendored render libs missing: {libs}"
 
-        # 3. Geometry: the sidebar chrome and a content header paint sanely.
+        # 3. The SPA's OWN module graph resolved. js/main.js imports
+        #    js/lib/chunk-text.js and js/lib/timer-thresholds.js; a bare
+        #    `lib/` rule in .gitignore kept both out of every commit, so a
+        #    fresh clone served 404s and Alpine never finished booting. That
+        #    surfaced downstream as a strict-mode locator violation and a
+        #    select_option timeout in a different file — symptoms nowhere near
+        #    the cause. Assert the status codes directly.
+        failed_js = [(url, status) for url, status in js_responses if status >= 400]
+        assert js_responses, "the SPA requested no /js/* modules at all"
+        assert not failed_js, f"SPA JavaScript module requests failed: {failed_js}"
+
+        # 4. Geometry: the sidebar chrome and a content header paint sanely.
         assert_nonzero_size(page, ".sidebar-btn")
         nav_sel = "nav.sidebar" if page.locator("nav.sidebar").count() else "nav"
         assert_within_viewport(page, nav_sel)

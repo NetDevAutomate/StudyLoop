@@ -227,8 +227,12 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+# Anchored to the repo root on purpose. A bare `lib/` matches ANY directory
+# named lib at any depth, which silently untracked two production SPA modules
+# (web/static/js/lib/) for the whole project history — they existed only as
+# working-tree files, so a fresh clone shipped a broken app.
+/lib/
+/lib64/
 parts/
 sdist/
 var/
