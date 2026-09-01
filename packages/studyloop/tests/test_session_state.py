@@ -178,3 +178,65 @@ def test_is_session_active(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
 
     state_file.write_text(json.dumps({"study_session_id": "abc-123"}))
     assert is_session_active()
+
+
+class _VanishingFile:
+    """A path that exists when checked but is gone when read.
+
+    This is the deletion race in one object: session release calls
+    ``clear_session_files()`` on an executor thread, so a file can be unlinked
+    between an ``exists()`` check and the ``read_text()`` that follows it. The
+    stub makes that interleaving deterministic — no threads, no timing.
+    """
+
+    def __init__(self, name: str) -> None:
+        self._name = name
+
+    def exists(self) -> bool:
+        return True
+
+    def read_text(self, *args: object, **kwargs: object) -> str:
+        raise FileNotFoundError(2, "No such file or directory", self._name)
+
+
+def test_parse_topics_file_survives_deletion_race(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Returns [] rather than raising when the file vanishes mid-read.
+
+    Against the previous exists()-then-read() form this raised
+    FileNotFoundError, which surfaced as HTTP 500 from GET /api/session/state.
+    """
+    monkeypatch.setattr(
+        "studyloop.session_state.TOPICS_FILE",
+        _VanishingFile("session-topics.md"),
+    )
+    from studyloop.session_state import parse_topics_file
+
+    assert parse_topics_file() == []
+
+
+def test_parse_parking_file_survives_deletion_race(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Returns [] rather than raising when the file vanishes mid-read."""
+    monkeypatch.setattr(
+        "studyloop.session_state.PARKING_FILE",
+        _VanishingFile("session-parking.md"),
+    )
+    from studyloop.session_state import parse_parking_file
+
+    assert parse_parking_file() == []
+
+
+def test_parsers_tolerate_unreadable_paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Any OSError is absorbed, not just a missing file.
+
+    A directory standing where a file is expected raises IsADirectoryError on
+    read. Uses the real filesystem, so it also proves the guard is not merely
+    catching the stub above.
+    """
+    a_dir = tmp_path / "session-topics.md"
+    a_dir.mkdir()
+    monkeypatch.setattr("studyloop.session_state.TOPICS_FILE", a_dir)
+    monkeypatch.setattr("studyloop.session_state.PARKING_FILE", a_dir)
+    from studyloop.session_state import parse_parking_file, parse_topics_file
+
+    assert parse_topics_file() == []
+    assert parse_parking_file() == []
