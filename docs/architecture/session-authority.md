@@ -159,7 +159,7 @@ their claim true (not before — R-59's lesson):
 
 ## Resolved notes
 
-- **cli-then-cli's own staleness gap (R-01b, closed).** `session/start.py`'s
+- **cli-then-cli's own staleness gap (R-01b, closed in `8a01a5e`).** `session/start.py`'s
   `is_session_active()` check used to block a new CLI start unconditionally,
   even when the recorded owner (CLI or web) was provably dead — unlike the
   web start path, which reclaimed a stale claim from the start. Fixed by
