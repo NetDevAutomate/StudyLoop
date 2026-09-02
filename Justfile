@@ -48,7 +48,27 @@ test-browser-smoke:
 # itself in both its header and its summary.
 
 # Full browser e2e suite, unscaled (~8 min). Args narrow it: just e2e <file>
+#
+# One run per machine at a time. The suite binds fixed per-module ports and
+# (until R-49 lands) writes the real session-state file, so two concurrent runs
+# — two lane worktrees, or a lane and its verifier — refuse each other's ports
+# ("port 18614 is already being served before the child started") and can
+# clobber each other's session state. 51 such errors were seen on 2026-09-02.
+# The lock is a directory (mkdir is atomic and portable; macOS has no flock(1));
+# a lock whose recorded pid is no longer alive is treated as stale and removed.
 e2e *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    lock=/tmp/studyloop-e2e.lock
+    while ! mkdir "$lock" 2>/dev/null; do
+        holder=$(cat "$lock/pid" 2>/dev/null || echo "")
+        if [ -n "$holder" ] && ! kill -0 "$holder" 2>/dev/null; then
+            echo "e2e: removing stale lock left by dead pid $holder"; rm -rf "$lock"; continue
+        fi
+        echo "e2e: another e2e run holds $lock (pid ${holder:-unknown}); waiting 20s"; sleep 20
+    done
+    echo $$ > "$lock/pid"
+    trap 'rm -rf "$lock"' EXIT
     STUDYLOOP_E2E_TIMEOUT_SCALE= uv run --group dev pytest -m e2e {{ARGS}}
 
 # Browser-side unit tests. Pass the GLOB, not the directory — `node --test <dir>`
