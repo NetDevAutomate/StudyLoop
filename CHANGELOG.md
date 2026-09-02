@@ -120,6 +120,13 @@ experience may change before `1.0.0`.
   the backup silently missed recently-committed rows. Both now use a
   WAL-aware backup mechanism (the sqlite3 CLI's `.backup` dot-command
   remotely, `sqlite3.Connection.backup()` locally).
+- `push` and the remote-writing step of `sync` discarded the result of
+  backing up the remote destination — a failed backup was logged and the
+  write proceeded anyway, unprotected. Both now abort the write when the
+  backup fails. The remote backup also had no retention: every `push`/
+  `sync` call left another `.bak-<timestamp>` copy next to the remote
+  database forever. It now rotates, keeping only the newest 5 (matching
+  the local backup helper's own default).
 
 ### Known pre-release boundaries
 

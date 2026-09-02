@@ -768,6 +768,13 @@ def _stream_sql_to_target(sql: str, target: Path | tuple[str, str]) -> bool:
 from agent_session_tools.maintenance import create_backup  # noqa: E402
 
 
+# Remote backups older than the newest N per destination are rotated out on
+# every call -- otherwise unbounded `.bak-<timestamp>` copies accumulate next
+# to the remote DB forever (M3 council, arbitration A9). Mirrors
+# `create_backup`'s local retention default (maintenance.py:database.backup_retention).
+_REMOTE_BACKUP_RETENTION = 5
+
+
 def _remote_backup(host: str, remote_db: str) -> str | None:
     """Back up the remote DB to a timestamped copy before writing to it.
 
@@ -798,12 +805,25 @@ def _remote_backup(host: str, remote_db: str) -> str | None:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     backup_path = f"{remote_db}.bak-{timestamp}"
     backup_sql = shlex.quote(f".backup '{backup_path}'")
+    # Retention runs in the same SSH round-trip as the backup itself: list
+    # this destination's own `.bak-*` copies newest-first, keep the newest
+    # _REMOTE_BACKUP_RETENTION, delete the rest. The `while read` loop (not
+    # `xargs`) is deliberate -- xargs's "don't run the command on empty
+    # input" behaviour is a GNU extension (`-r`/`--no-run-if-empty`); BSD
+    # xargs (macOS, most remote endpoints in practice) lacks the flag, and a
+    # bare `xargs rm` on empty input still invokes `rm` with no arguments on
+    # some platforms. A `while read` loop is a no-op on empty input on every
+    # POSIX shell, with no flag to get wrong.
+    rotate_cmd = (
+        f"ls -t {remote_path}.bak-* 2>/dev/null | tail -n +{_REMOTE_BACKUP_RETENTION + 1} "
+        '| while read -r f; do rm -f "$f"; done'
+    )
     result = subprocess.run(
         [
             "ssh",
             *_SSH_MUX_OPTS,
             host,
-            f"test -f {remote_path} && sqlite3 {remote_path} {backup_sql}",
+            f"test -f {remote_path} && sqlite3 {remote_path} {backup_sql} && ({rotate_cmd})",
         ],
         capture_output=True,
         text=True,
@@ -1034,7 +1054,18 @@ def push(
     # Back up the remote before writing to it — R-19 / D1: `pull` has always
     # backed up its destination; `push` writes to the remote and, until now,
     # took no backup of the side it can revert.
-    _backup_destination((host, remote_db))
+    #
+    # R-19d (M3 council, arbitration A3): a failed backup used to be silently
+    # ignored (the return value was discarded) -- the write proceeded anyway.
+    # The whole point of the backup is recoverability if the recency gate
+    # somehow doesn't save the day, so a failed backup must abort the write,
+    # not merely log a warning and continue.
+    if _backup_destination((host, remote_db)) is None:
+        console.print(
+            f"[red]❌ Could not back up the remote destination "
+            f"({host}:{remote_db}) — refusing to push without a backup[/red]"
+        )
+        raise typer.Exit(1)
 
     console.print("[bold]Streaming to remote...[/bold]")
     if _stream_sql_to_target(sql, (host, remote_db)):
@@ -1164,8 +1195,18 @@ def sync(
         # gated on the same `no_backup` flag); the remote side of a two-way
         # sync gets the same protection pull has always given its own
         # destination.
-        if sql.strip() and not no_backup:
-            _backup_destination((host, remote_db))
+        #
+        # R-19d: a failed backup must abort this step's write, same as push.
+        if (
+            sql.strip()
+            and not no_backup
+            and _backup_destination((host, remote_db)) is None
+        ):
+            console.print(
+                f"[red]❌ Could not back up the remote destination "
+                f"({host}:{remote_db}) — refusing to push without a backup[/red]"
+            )
+            raise typer.Exit(1)
         if sql.strip() and not _stream_sql_to_target(sql, (host, remote_db)):
             console.print("[red]❌ Failed to push[/red]")
             raise typer.Exit(1)

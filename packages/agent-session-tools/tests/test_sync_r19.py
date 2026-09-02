@@ -19,6 +19,7 @@ from agent_session_tools.migrations import migrate
 from agent_session_tools.sync import (
     GLOBAL_TABLE_PRIMARY_KEYS,
     TABLE_SYNC_COLUMNS,
+    _REMOTE_BACKUP_RETENTION,
     _backup_destination,
     _build_global_upsert_select_sql,
     _dump_delta_sql,
@@ -525,6 +526,47 @@ class TestRemoteBackupWalSafety:
         backup_conn.close()
         assert count == 1, "the remote backup must include data still in the -wal file"
 
+    def test_retains_only_the_newest_n_backups(self, tmp_path):
+        """R-19d addition (M3 council, arbitration A9): unbounded
+        `.bak-<timestamp>` copies must not accumulate next to the remote DB
+        forever -- keep the newest `_REMOTE_BACKUP_RETENTION`, same default
+        as `create_backup`'s local retention."""
+        db_path = tmp_path / "remote-sessions.db"
+        conn = sqlite3.connect(db_path)
+        conn.execute("CREATE TABLE t (id INTEGER PRIMARY KEY)")
+        conn.commit()
+        conn.close()
+
+        # Pre-seed more stale backups than the retention limit, with
+        # distinguishable, monotonically increasing mtimes (the rotation
+        # command sorts by mtime via `ls -t`).
+        import time
+
+        stale_backups = []
+        for i in range(_REMOTE_BACKUP_RETENTION + 2):
+            stale = tmp_path / f"remote-sessions.db.bak-stale-{i}"
+            stale.write_bytes(b"stale")
+            stale_backups.append(stale)
+            time.sleep(0.01)
+
+        with patch(
+            "agent_session_tools.sync.subprocess.run", side_effect=_run_ssh_locally
+        ):
+            with patch("agent_session_tools.sync._ensure_mux_dir"):
+                new_backup = _remote_backup("irrelevant-host", str(db_path))
+
+        assert new_backup is not None
+        remaining = sorted(tmp_path.glob("remote-sessions.db.bak-*"))
+        assert len(remaining) == _REMOTE_BACKUP_RETENTION, (
+            f"expected exactly {_REMOTE_BACKUP_RETENTION} backups to remain, "
+            f"got {len(remaining)}: {[p.name for p in remaining]}"
+        )
+        # The newest backup this call just created must survive rotation;
+        # the oldest pre-seeded stale ones must be the ones removed.
+        assert Path(new_backup).name in {p.name for p in remaining}
+        oldest_stale = stale_backups[0]
+        assert oldest_stale.name not in {p.name for p in remaining}
+
 
 class TestPushBacksUpRemoteBeforeWriting:
     """Exercise `push()` itself with SSH mocked, proving the backup call
@@ -565,3 +607,88 @@ class TestPushBacksUpRemoteBeforeWriting:
         sync_mod.push(remote="host:/r.db", db=local_db, tier="hot")
 
         assert call_order == ["backup", "stream"]
+
+    def test_push_refuses_when_backup_fails_and_leaves_destination_unchanged(
+        self, tmp_path, monkeypatch
+    ):
+        """R-19d (M3 council, arbitration A3): a failed backup used to be
+        silently ignored (the return value was discarded) -- the write
+        proceeded anyway. Reproduced end-to-end, no mocked backup function:
+        a real "remote" directory made unwritable (chmod 0500) so the real
+        `_remote_backup` genuinely fails to write its copy, exercised
+        through `push()` itself with only SSH-as-a-transport substituted
+        for a local shell (`_run_ssh_locally` -- see its docstring).
+        """
+        import agent_session_tools.sync as sync_mod
+
+        local_conn, local_db = TestRecencyGateEndToEnd()._make_migrated_db(
+            tmp_path, "local.db"
+        )
+        # Newer than the remote's seed below, so _get_sync_state finds a
+        # real update and push() actually reaches the backup step instead
+        # of returning early on "already up to date".
+        local_conn.execute(
+            "INSERT INTO sessions (id, source, created_at, updated_at) "
+            "VALUES ('sess-1', 'test', '2024-01-01', '2024-06-01')"
+        )
+        _seed_study_progress(local_conn, "prog-1", updated_at="2024-06-01T00:00:00Z")
+        local_conn.commit()
+        local_conn.close()
+
+        remote_dir = tmp_path / "remote"
+        remote_dir.mkdir()
+        remote_conn, remote_db = TestRecencyGateEndToEnd()._make_migrated_db(
+            tmp_path, "remote/sessions.db"
+        )
+        _seed_session(remote_conn, "sess-1")
+        remote_conn.commit()
+        # Back to rollback-journal mode before making the directory
+        # read-only: a WAL-mode database needs to (re)create its -wal/-shm
+        # sidecar files on open, even for a plain read, which a read-only
+        # directory would ALSO break -- that's not the scenario this test
+        # is isolating (the backup's write failing), so it must not be the
+        # reason push() can't proceed here.
+        remote_conn.execute("PRAGMA journal_mode=DELETE")
+        remote_conn.close()
+        before_bytes = remote_db.read_bytes()
+
+        stream_calls: list = []
+        real_stream = sync_mod._stream_sql_to_target
+
+        def spying_stream(sql, target):
+            stream_calls.append((sql, target))
+            return real_stream(sql, target)
+
+        remote_dir.chmod(0o500)
+        try:
+            monkeypatch.setattr(
+                sync_mod,
+                "_resolve_remote",
+                lambda remote, tier="hot": ("host", str(remote_db)),
+            )
+            monkeypatch.setattr(sync_mod.subprocess, "run", _run_ssh_locally)
+            monkeypatch.setattr(sync_mod, "_ensure_mux_dir", lambda: None)
+            # A spy, not a stub: if the abort check regresses, this still
+            # calls the real implementation, so the test can tell "aborted
+            # before streaming" apart from "streaming also happened to fail
+            # for the same permission reason" -- either would leave the
+            # destination unchanged, but only the first is R-19d's fix.
+            monkeypatch.setattr(sync_mod, "_stream_sql_to_target", spying_stream)
+
+            try:
+                sync_mod.push(remote="host:" + str(remote_db), db=local_db, tier="hot")
+                raised = False
+            except Exception as exc:  # typer.Exit
+                raised = True
+                assert "Exit" in type(exc).__name__ or getattr(exc, "exit_code", 1) == 1
+        finally:
+            remote_dir.chmod(0o700)
+
+        assert raised, "push must refuse to proceed when the backup fails"
+        assert stream_calls == [], (
+            "the write step must never be attempted once the backup has "
+            f"failed, but _stream_sql_to_target was called: {stream_calls}"
+        )
+        assert remote_db.read_bytes() == before_bytes, (
+            "the destination must be byte-for-byte unchanged when the backup failed"
+        )
