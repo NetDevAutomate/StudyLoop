@@ -104,6 +104,14 @@ experience may change before `1.0.0`.
   Now `COALESCE(destination.updated_at, '')` treats a NULL destination as
   older than anything, and a trigger stamps `updated_at` on every insert and
   update to the tables that previously had no default for it.
+- Cross-machine sync used `id INTEGER PRIMARY KEY AUTOINCREMENT` as the
+  conflict target for `teach_back_scores`, `knowledge_bridges`,
+  `parked_topics`, and `scrub_log` -- a counter private to each machine,
+  starting at 1 independently everywhere. Two machines' different row #1s
+  collided as the same row, and the incoming row was silently dropped (no
+  error, row count unchanged). These four now use a migration-backfilled
+  `sync_key`; `concept_relations` (which already had a real natural key)
+  now syncs on that instead of its own autoincrement `id`.
 
 ### Known pre-release boundaries
 

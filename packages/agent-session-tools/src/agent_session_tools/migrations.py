@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Current schema version - increment when adding new migrations
-CURRENT_VERSION = 29
+CURRENT_VERSION = 30
 
 # Migration functions: version -> (description, migration_func)
 MIGRATIONS: dict[int, tuple[str, Callable[[sqlite3.Connection], None]]] = {}
@@ -1265,6 +1265,89 @@ def migrate_v29(conn: sqlite3.Connection) -> None:
             WHEN NEW.updated_at IS OLD.updated_at
             BEGIN
                 UPDATE {table} SET updated_at = datetime('now') WHERE {match_clause};
+            END
+        """)
+
+
+@migration(
+    30,
+    "R-19e: add a cross-machine-stable sync_key to autoincrement-keyed "
+    "GLOBAL_SYNC_TABLES tables",
+)
+def migrate_v30(conn: sqlite3.Connection) -> None:
+    """Stop cross-machine sync from using a per-machine counter as identity.
+
+    M3 council, arbitration A5 (High, verified by direct reproduction): four
+    of the ten `GLOBAL_SYNC_TABLES` tables (`teach_back_scores`,
+    `knowledge_bridges`, `parked_topics`, `scrub_log`) are keyed by
+    `id INTEGER PRIMARY KEY AUTOINCREMENT` -- a counter private to *this*
+    database, starting at 1 independently on every machine. `sync.py`'s
+    recency-gated upsert used that `id` as its `ON CONFLICT` target, so two
+    machines' *different* row #1s (a teach-back score on one, a knowledge
+    bridge on the other) collide as if they were the same row the moment
+    both reach `id = 1` -- reproduced directly: row count on the destination
+    does not grow, and no error is raised, so the incoming row is dropped
+    with no trace at all.
+
+    (The other six are already safe: `study_progress`/`concepts` use a
+    `uuid5`-derived `id` (`progress_id_for`, and the equivalent in
+    `concepts.py`); `study_sessions` uses `uuid.uuid4()`; `concept_aliases`/
+    `message_concepts` are keyed by their own composite natural key
+    (`alias, concept_id` / `message_id, concept_id`); `concept_relations`
+    has an `id INTEGER PRIMARY KEY AUTOINCREMENT` **and** an existing
+    `UNIQUE(source_concept_id, target_concept_id, relation_type)` constraint
+    -- fixed by switching `sync.py`'s conflict target to that natural key,
+    no schema change needed there.)
+
+    Fix, for the four that need a schema change: add a `sync_key TEXT`
+    column with a `UNIQUE` index, auto-populated by an ``AFTER INSERT``
+    trigger (`lower(hex(randomblob(16)))` -- 128 bits of randomness, plenty
+    collision-resistant across any realistic number of machines; it does
+    not need to look like a UUID, only to be one). Same trigger-based
+    approach as v29 and for the same reason: `parked_topics` is written from
+    `parking.py` and `scrub_log` from `mcp_server.py`, both outside this
+    lane's ownership, so a schema-level trigger fixes every writer without
+    touching either file.
+
+    `id` itself is intentionally dropped from `sync.py`'s
+    `TABLE_SYNC_COLUMNS` for these four tables (a separate change, in
+    `sync.py`) rather than merely stopping being the conflict target: if it
+    stayed in the synced column list as a plain "update on conflict"
+    column, a first-time INSERT would still carry the *source* machine's
+    numeric `id` value across, which can collide with an unrelated
+    pre-existing local row that happens to occupy that same number. Letting
+    the destination assign its own fresh `id` (by never mentioning the
+    column) decouples the two machines' counters completely; `sync_key`
+    becomes the only identity that travels.
+
+    No table here is referenced by a foreign key on its `id` (verified: no
+    `REFERENCES teach_back_scores|knowledge_bridges|parked_topics|scrub_log`
+    anywhere in the schema), and `history/bridges.py`'s
+    `update_bridge_usage(bridge_id)` is a purely local lookup (a web request
+    reads a `knowledge_bridges.id` it just fetched from the same machine and
+    uses it in the same request) -- unaffected by `id` no longer being a
+    cross-machine identity.
+    """
+    tables = ("teach_back_scores", "knowledge_bridges", "parked_topics", "scrub_log")
+    for table in tables:
+        columns = _table_columns(conn, table)
+        if not columns or "sync_key" in columns:
+            continue
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN sync_key TEXT")
+        conn.execute(
+            f"UPDATE {table} SET sync_key = lower(hex(randomblob(16))) "
+            "WHERE sync_key IS NULL"
+        )
+        conn.execute(
+            f"CREATE UNIQUE INDEX IF NOT EXISTS uix_{table}_sync_key ON {table}(sync_key)"
+        )
+        conn.execute(f"DROP TRIGGER IF EXISTS trg_{table}_sync_key")
+        conn.execute(f"""
+            CREATE TRIGGER trg_{table}_sync_key AFTER INSERT ON {table}
+            WHEN NEW.sync_key IS NULL
+            BEGIN
+                UPDATE {table} SET sync_key = lower(hex(randomblob(16)))
+                WHERE id = NEW.id;
             END
         """)
 
