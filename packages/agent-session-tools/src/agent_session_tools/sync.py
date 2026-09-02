@@ -127,8 +127,11 @@ TABLE_SYNC_COLUMNS = {
         "topic_slug",
         "updated_at",
     ],
+    # R-19e: no "id" -- INTEGER PRIMARY KEY AUTOINCREMENT is a per-machine
+    # counter, not a cross-machine identity (arbitration A5). "sync_key" is
+    # the stable, migration-backfilled conflict target instead.
     "teach_back_scores": [
-        "id",
+        "sync_key",
         "concept",
         "topic",
         "session_id",
@@ -143,8 +146,9 @@ TABLE_SYNC_COLUMNS = {
         "created_at",
         "updated_at",
     ],
+    # R-19e: see teach_back_scores' comment above -- same reasoning.
     "knowledge_bridges": [
-        "id",
+        "sync_key",
         "source_concept",
         "source_domain",
         "target_concept",
@@ -159,8 +163,12 @@ TABLE_SYNC_COLUMNS = {
     ],
     "concepts": ["id", "name", "domain", "description", "created_at", "updated_at"],
     "concept_aliases": ["alias", "concept_id", "updated_at"],
+    # R-19e: no "id" either -- but concept_relations already has a real
+    # natural key (UNIQUE(source_concept_id, target_concept_id,
+    # relation_type), migrations.py migrate_v12), so no sync_key column is
+    # needed here; the fix is just using that constraint as the conflict
+    # target (GLOBAL_TABLE_PRIMARY_KEYS below) instead of the autoincrement id.
     "concept_relations": [
-        "id",
         "source_concept_id",
         "target_concept_id",
         "relation_type",
@@ -172,8 +180,9 @@ TABLE_SYNC_COLUMNS = {
         "updated_at",
     ],
     "message_concepts": ["message_id", "concept_id", "confidence", "updated_at"],
+    # R-19e: see teach_back_scores' comment above -- same reasoning.
     "parked_topics": [
-        "id",
+        "sync_key",
         "study_session_id",
         "session_id",
         "topic_tag",
@@ -189,8 +198,9 @@ TABLE_SYNC_COLUMNS = {
         "priority",
         "updated_at",
     ],
+    # R-19e: see teach_back_scores' comment above -- same reasoning.
     "scrub_log": [
-        "id",
+        "sync_key",
         "session_id",
         "message_id",
         "entity_type",
@@ -208,14 +218,22 @@ TABLE_SYNC_COLUMNS = {
 GLOBAL_TABLE_PRIMARY_KEYS: dict[str, list[str]] = {
     "study_progress": ["id"],
     "study_sessions": ["id"],
-    "teach_back_scores": ["id"],
-    "knowledge_bridges": ["id"],
+    # R-19e (arbitration A5): these four were "id" (INTEGER PRIMARY KEY
+    # AUTOINCREMENT, a per-machine counter, not a cross-machine identity --
+    # two machines' row #1s collide silently). Now a migration-backfilled,
+    # trigger-maintained sync_key column (migrations.py migrate_v30).
+    "teach_back_scores": ["sync_key"],
+    "knowledge_bridges": ["sync_key"],
     "concepts": ["id"],
     "concept_aliases": ["alias", "concept_id"],
-    "concept_relations": ["id"],
+    # R-19e: also "id" before -- concept_relations already had a real
+    # natural key (UNIQUE(source_concept_id, target_concept_id,
+    # relation_type), migrate_v12), so it needs no new column, just this
+    # conflict-target change.
+    "concept_relations": ["source_concept_id", "target_concept_id", "relation_type"],
     "message_concepts": ["message_id", "concept_id"],
-    "parked_topics": ["id"],
-    "scrub_log": ["id"],
+    "parked_topics": ["sync_key"],
+    "scrub_log": ["sync_key"],
 }
 
 # Module-level logger — does NOT configure the root logger (no basicConfig here).
