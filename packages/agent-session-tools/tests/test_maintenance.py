@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import os
 import sqlite3
-from datetime import datetime, timedelta
+import time
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
+
+import pytest
 
 
 from agent_session_tools.maintenance import (
@@ -604,6 +608,58 @@ class TestDeleteOld:
             _delete_old(db_path, days=30, confirm=False, backup=True)
 
         mock_backup.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# R-20: cutoff must be real UTC, not naive local time. updated_at is
+# UTC-sourced (exporters/claude.py, exporters/codex.py); a naive
+# datetime.now() cutoff shifts the delete/archive boundary by the machine's
+# local UTC offset. Runs the boundary case under two non-UTC zones.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def _restore_tz():
+    original = os.environ.get("TZ")
+
+    def _set(tz: str) -> None:
+        os.environ["TZ"] = tz
+        time.tzset()
+
+    yield _set
+
+    if original is None:
+        os.environ.pop("TZ", None)
+    else:
+        os.environ["TZ"] = original
+    time.tzset()
+
+
+class TestDeleteOldUtcCutoff:
+    @pytest.mark.parametrize("tz", ["Pacific/Auckland", "America/Los_Angeles"])
+    def test_minute_inside_kept_minute_outside_deleted(self, tz, tmp_path, _restore_tz):
+        db_path = _make_db(tmp_path)
+        days = 1
+        cutoff_instant = datetime.now(UTC) - timedelta(days=days)
+        inside = (cutoff_instant + timedelta(minutes=1)).isoformat()
+        outside = (cutoff_instant - timedelta(minutes=1)).isoformat()
+
+        _insert_session(db_path, "s-in", inside)
+        _insert_session(db_path, "s-out", outside)
+
+        _restore_tz(tz)
+        with patch("agent_session_tools.maintenance.create_backup"):
+            _delete_old(db_path, days=days, confirm=True, backup=False)
+
+        remaining = {
+            r[0] for r in sqlite3.connect(db_path).execute("SELECT id FROM sessions")
+        }
+        assert "s-in" in remaining, (
+            f"a session 1 minute inside the UTC cutoff must survive under TZ={tz}"
+        )
+        assert "s-out" not in remaining, (
+            f"a session 1 minute outside the UTC cutoff must be deleted under TZ={tz}"
+        )
 
 
 # ---------------------------------------------------------------------------
