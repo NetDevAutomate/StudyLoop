@@ -516,6 +516,39 @@ class TestCrashThenRestart:
         assert session_state.parse_parking_file() == []
 
 
+class TestForeignWebServerPid:
+    """C3: claim_blocks_web_start now distinguishes "this process holds a
+    stale claim from an earlier run" (always reclaimed, unchanged) from "a
+    DIFFERENT, still-alive web server process holds a live pty/acp claim"
+    (now blocks -- R-01b started recording pid on every web claim, so the
+    check is cheap and cross-process)."""
+
+    def test_a_foreign_live_web_server_pid_blocks_a_second_web_start(
+        self,
+        client: TestClient,
+        _mock_agent_available,
+        _stub_db,
+        _stub_pty_factory,
+    ) -> None:
+        state = _fixture("web-live")
+        # pid 1 (init/launchd) always exists and is always foreign to the
+        # test process -- portable stand-in for "a second, real web server".
+        # _mock_agent_available/_stub_db/_stub_pty_factory keep a WRONGLY
+        # unblocked request from reaching the real PTY spawn path (which
+        # fails outside the main thread here) -- if the fix regresses, this
+        # test must fail on a clean status-code assertion, not a spawn crash.
+        state["pid"] = 1
+        session_state.write_session_state(state)
+
+        resp = client.post(
+            "/api/session/start",
+            json={"topic": "Async IO", "energy": 5, "agent": "claude", "transport": "pty"},
+        )
+
+        assert resp.status_code == 409, resp.text
+        assert "already active" in resp.json()["error"]
+
+
 class TestNoClaim:
     """Baseline: an ended (or absent) claim never blocks a start."""
 

@@ -364,3 +364,57 @@ def test_claim_blocks_cli_start_process_lookup_error_does_not_block(
     state = {"study_session_id": "x", "mode": "focus", "transport": "acp", "pid": 4242}
 
     assert claim_blocks_cli_start(state) is False
+
+
+# ---------------------------------------------------------------------------
+# claim_blocks_web_start (C3) -- a foreign, alive web server's pid now
+# blocks a second web start; the process's own pid, or no pid at all,
+# still behaves exactly as before R-01b.
+# ---------------------------------------------------------------------------
+
+
+def test_claim_blocks_web_start_foreign_alive_pid_blocks() -> None:
+    from studyloop.session_state import claim_blocks_web_start
+
+    # pid 1 (init/launchd) always exists and is always foreign to a test
+    # process; os.kill(1, 0) raises PermissionError, which counts as alive.
+    state = {"study_session_id": "x", "mode": "focus", "transport": "pty", "pid": 1}
+
+    assert claim_blocks_web_start(state) is True
+
+
+def test_claim_blocks_web_start_own_pid_does_not_block() -> None:
+    from studyloop.session_state import claim_blocks_web_start
+
+    state = {
+        "study_session_id": "x",
+        "mode": "focus",
+        "transport": "acp",
+        "pid": os.getpid(),
+    }
+
+    assert claim_blocks_web_start(state) is False
+
+
+def test_claim_blocks_web_start_dead_foreign_pid_reclaims() -> None:
+    from studyloop.session_state import claim_blocks_web_start
+
+    state = {
+        "study_session_id": "x",
+        "mode": "focus",
+        "transport": "pty",
+        "pid": 999999999,
+    }
+
+    assert claim_blocks_web_start(state) is False
+
+
+def test_claim_blocks_web_start_no_pid_unchanged() -> None:
+    """A pty/acp claim with no pid recorded (a build before R-01b, or the
+    in-process-singleton-already-ruled-out case R-01's own docstring
+    describes) never blocks -- unchanged by C3."""
+    from studyloop.session_state import claim_blocks_web_start
+
+    state = {"study_session_id": "x", "mode": "focus", "transport": "acp"}
+
+    assert claim_blocks_web_start(state) is False
