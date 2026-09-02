@@ -62,6 +62,19 @@ def web(
 
     Requires: uv pip install 'studyloop[web]'
     """
+    # R-10b: Click's envvar= support has already read STUDYLOOP_WEB_PASSWORD
+    # into `password` above (that is the whole point of it — see the option's
+    # help text and session/orchestrator.py::start_web_background, which sets
+    # it so the --lan password never appears in the SPAWNED process's argv).
+    # But leaving it in this process's OWN environ afterwards means every
+    # non-agent subprocess this server itself spawns inherits it too, and
+    # `ps eww`/`/proc/<pid>/environ` shows it here for this process's whole
+    # lifetime — the exact argv-visibility problem R-10 fixed, recreated one
+    # layer up. Scrub it the moment it has been read.
+    import os as _os
+
+    _os.environ.pop("STUDYLOOP_WEB_PASSWORD", None)
+
     try:
         import uvicorn
     except ImportError:
