@@ -361,9 +361,22 @@ class TestCleanTmuxExit:
             ]
             assert not study_sessions, f"Stale study sessions remain after Q: {study_sessions}"
 
-    def test_q_cleans_stale_sessions(self, terminal, tmp_path):
-        """Q should kill not just the current session but ALL stale study-* sessions."""
-        # Create a stale session first
+    def test_q_leaves_an_unrelated_session_alone(self, terminal, tmp_path):
+        """R-02b: Q must kill ONLY the current session, never every other
+        study-* session on the machine.
+
+        Renamed from test_q_cleans_stale_sessions, which asserted the exact
+        opposite -- pressing Q was expected to also kill an unrelated stale
+        session, because the sidebar's End Session action called
+        kill_all_study_sessions() directly. That was the same defect R-02
+        fixed for the web and CLI end paths, reached through a third
+        surface. A genuinely stale/zombie session is still cleaned up, but
+        by auto_clean_zombies() on the next `studyloop study` start (or
+        `studyloop clean`), not as a side effect of ending an unrelated
+        live session.
+        """
+        # Create an unrelated session first -- something else entirely,
+        # not a zombie of THIS session.
         subprocess.run(
             ["tmux", "new-session", "-d", "-s", "study-stale-old-one"],
             capture_output=True,
@@ -374,26 +387,29 @@ class TestCleanTmuxExit:
                 capture_output=True,
             ).returncode
             == 0
-        ), "Stale session should exist"
+        ), "Unrelated session should exist"
 
         # Start a real study session
         agent_cmd = long_running_agent(tmp_path)
         terminal.spawn_study("Stale Cleanup", energy=5, agent_cmd=agent_cmd)
 
-        # Q should kill BOTH sessions
+        # Q ends only this session
         terminal.attach_and_send_q(timeout=15)
 
-        # Verify the stale session is also gone
-        result = subprocess.run(
-            ["tmux", "list-sessions", "-F", "#{session_name}"],
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode == 0:
-            study_sessions = [
-                n for n in result.stdout.strip().splitlines() if n.startswith("study-")
-            ]
-            assert not study_sessions, f"Stale sessions survived Q: {study_sessions}"
+        # The unrelated session must still be alive.
+        try:
+            assert (
+                subprocess.run(
+                    ["tmux", "has-session", "-t", "study-stale-old-one"],
+                    capture_output=True,
+                ).returncode
+                == 0
+            ), "An unrelated study-* session was killed by ending a different session"
+        finally:
+            subprocess.run(
+                ["tmux", "kill-session", "-t", "study-stale-old-one"],
+                capture_output=True,
+            )
 
     def test_q_detaches_client_not_switches(self, terminal, tmp_path):
         """With a non-study session present, Q should detach (exit tmux),
