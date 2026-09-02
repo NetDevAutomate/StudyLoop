@@ -60,6 +60,13 @@ lanes:
     # which has not started and will later own the rest of this file for
     # R-32 (the dead "+5min focus" keybinding).
     - packages/studyloop/src/studyloop/tui/sidebar.py
+    # R-09c (DECISIONS §E12: "R-09c ... goes to M2"). The brief's own text
+    # for this item requires exposing the import-time
+    # STUDYLOOP_TEST_*-snapshot accessor IN studyloop/__init__.py (the
+    # module that already snapshots the pre-dotenv key names for R-09/R-09b);
+    # dual-owned with m4, which owns the rest of the file (R-09, R-09b's
+    # sibling scrub logic).
+    - packages/studyloop/src/studyloop/__init__.py
 
   m3: # data safety (lane/m3-data-safety)
     - packages/agent-session-tools/**

@@ -200,6 +200,11 @@ experience may change before `1.0.0`.
   web-server startup, via a second dotenv loader in `agent-session-tools`
   that ran after the first fix's scrub. Same rule, same guard, now applied
   in both loaders.
+- Hardened the fix above further: every production site that reads the test
+  hatch now consults a value captured once, at import time, before any
+  `.env` file is loaded, rather than re-reading the environment on every
+  session start. A `.env` loaded by something other than this package,
+  later in the process's life, can no longer set the hatch either.
 - `practice verify --run-command` now runs the EXACT command string a human
   confirmed, and refuses if the practice deck's command changed between
   being shown for confirmation and being executed, closing a time-of-check-

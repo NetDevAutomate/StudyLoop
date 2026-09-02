@@ -109,3 +109,65 @@ def test_no_env_file_is_a_silent_no_op(tmp_path: Path) -> None:
     assert proc.returncode == 0, proc.stderr
     assert proc.stdout.strip() == "None"
     assert proc.stderr == ""
+
+
+# ---------------------------------------------------------------------------
+# R-09c: the production read sites consult an import-time snapshot
+# (studyloop.test_hatch_env), not os.environ directly -- so a dotenv loader
+# that runs LATER in the process (a library re-calling load_dotenv(), or one
+# not yet identified; R-09b already closed the one known loader in
+# agent_session_tools/config_loader.py) cannot inject the hatch either.
+# ---------------------------------------------------------------------------
+
+
+def test_accessor_ignores_a_post_import_environ_mutation(tmp_path: Path) -> None:
+    """The scrub in R-09/R-09b only runs once, at import time. If the hatch
+    were read from os.environ directly at call time, anything that mutates
+    os.environ afterwards -- not just this package's own dotenv loader --
+    could still inject it. studyloop.test_hatch_env() must return the value
+    os.environ held at import time, forever, regardless of what runs after."""
+    proc = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import studyloop, os\n"
+            "os.environ['STUDYLOOP_TEST_AGENT_CMD'] = 'injected-after-import'\n"
+            "print(repr(studyloop.test_hatch_env('STUDYLOOP_TEST_AGENT_CMD')))\n",
+        ],
+        cwd=str(tmp_path),
+        env={"PATH": os.environ.get("PATH", "")},
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+
+    assert proc.returncode == 0, proc.stderr
+    # No hatch was present before import in this scenario -- the accessor
+    # must report that absence, not the value injected afterwards.
+    assert proc.stdout.strip() == "None"
+
+
+def test_accessor_returns_the_real_pre_import_export_unharmed(tmp_path: Path) -> None:
+    """The e2e harness's own pattern: export the hatch for real, before the
+    server process imports studyloop at all. The accessor must keep
+    returning that value even if something mutates os.environ afterwards."""
+    proc = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import studyloop, os\n"
+            "os.environ['STUDYLOOP_TEST_AGENT_CMD'] = 'a-later-mutation'\n"
+            "print(repr(studyloop.test_hatch_env('STUDYLOOP_TEST_AGENT_CMD')))\n",
+        ],
+        cwd=str(tmp_path),
+        env={
+            "PATH": os.environ.get("PATH", ""),
+            "STUDYLOOP_TEST_AGENT_CMD": "from-real-shell-export",
+        },
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+
+    assert proc.returncode == 0, proc.stderr
+    assert proc.stdout.strip() == repr("from-real-shell-export")
