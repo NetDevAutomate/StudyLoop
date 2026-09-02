@@ -69,6 +69,14 @@ experience may change before `1.0.0`.
   and the `study_progress` row id derived from (topic, concept) is now
   separator-safe, so a topic and concept that together contain a `:` can no
   longer collide with a different pair.
+- Roughly 30 read/write helpers across `history/{sessions,progress,bridges,
+  streaks,teachback}.py` and `learning/mastery.py` caught every
+  `sqlite3.OperationalError` the same way, including a genuine lock/timeout
+  fault — silently returning "no wins" / "no struggling topics" / "no
+  progress" instead of surfacing the failure. Narrowed to the specific "no
+  such table" case (an expected, pre-migration schema gap); anything else is
+  now logged and re-raised, matching the fix already applied to the explorer
+  search path.
 
 ### Known pre-release boundaries
 

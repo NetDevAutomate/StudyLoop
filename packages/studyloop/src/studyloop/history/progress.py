@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 
 from . import _connection, search
+
+logger = logging.getLogger(__name__)
 
 
 def last_studied(topic_keywords: list[str]) -> str | None:
@@ -78,7 +81,13 @@ def _progress_review_due(now: datetime) -> tuple[list[dict], set[str]]:
             ORDER BY last_seen DESC
             """
         ).fetchall()
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as exc:
+        # The "study_progress missing" case is already handled above (the
+        # sqlite_master check at :63-64) -- anything reaching here is a real
+        # fault (e.g. a lock timeout), not an expected schema gap.
+        if not _connection.is_missing_table_error(exc):
+            logger.warning("_progress_review_due failed: %s", exc)
+            raise
         return [], set()
     finally:
         conn.close()
@@ -264,8 +273,11 @@ def record_progress(
         )
         conn.commit()
         return True
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as exc:
         conn.rollback()
+        if not _connection.is_missing_table_error(exc):
+            logger.warning("record_progress failed: %s", exc)
+            raise
         return False
     finally:
         conn.close()
@@ -288,7 +300,10 @@ def get_wins(days: int = 30) -> list[dict]:
             (f"-{days} days",),
         ).fetchall()
         return [dict(r) for r in rows]
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as exc:
+        if not _connection.is_missing_table_error(exc):
+            logger.warning("get_wins failed: %s", exc)
+            raise
         return []
     finally:
         conn.close()
@@ -377,7 +392,10 @@ def get_struggling_topics(days: int = 14) -> list[dict]:
     def _progress_columns() -> set[str]:
         try:
             return {r["name"] for r in conn.execute("PRAGMA table_info(study_progress)")}
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as exc:
+            if not _connection.is_missing_table_error(exc):
+                logger.warning("get_struggling_topics: _progress_columns failed: %s", exc)
+                raise
             return set()
 
     def _display_topic(topic: str, source_section: str | None) -> str:
@@ -425,8 +443,10 @@ def get_struggling_topics(days: int = 14) -> list[dict]:
                     source_section=source_section,
                     source_publisher=source_publisher,
                 )
-        except sqlite3.OperationalError:
-            pass
+        except sqlite3.OperationalError as exc:
+            if not _connection.is_missing_table_error(exc):
+                logger.warning("get_struggling_topics: study_progress source failed: %s", exc)
+                raise
 
         # Source 2: study_sessions flagged as a struggle.
         try:
@@ -444,8 +464,10 @@ def get_struggling_topics(days: int = 14) -> list[dict]:
                 cutoff,
             ).fetchall():
                 _merge(r["topic"], 0, r["session_count"] or 0, r["last_seen"])
-        except sqlite3.OperationalError:
-            pass
+        except sqlite3.OperationalError as exc:
+            if not _connection.is_missing_table_error(exc):
+                logger.warning("get_struggling_topics: study_sessions source failed: %s", exc)
+                raise
 
         # Source 3: parked topics whose source is a struggle.
         try:
@@ -463,8 +485,10 @@ def get_struggling_topics(days: int = 14) -> list[dict]:
                 cutoff,
             ).fetchall():
                 _merge(r["topic"], 0, r["session_count"] or 0, r["last_seen"])
-        except sqlite3.OperationalError:
-            pass
+        except sqlite3.OperationalError as exc:
+            if not _connection.is_missing_table_error(exc):
+                logger.warning("get_struggling_topics: parked_topics source failed: %s", exc)
+                raise
     finally:
         conn.close()
 
@@ -492,7 +516,10 @@ def get_progress_for_map() -> list[dict]:
             """
         ).fetchall()
         return [dict(r) for r in rows]
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as exc:
+        if not _connection.is_missing_table_error(exc):
+            logger.warning("get_progress_for_map failed: %s", exc)
+            raise
         return []
     finally:
         conn.close()
@@ -510,7 +537,10 @@ def get_progress_summary() -> dict:
         summary = {r["confidence"]: r["count"] for r in rows}
         summary["total"] = sum(summary.values())
         return summary
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as exc:
+        if not _connection.is_missing_table_error(exc):
+            logger.warning("get_progress_summary failed: %s", exc)
+            raise
         return {}
     finally:
         conn.close()

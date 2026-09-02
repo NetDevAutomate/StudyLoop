@@ -41,6 +41,21 @@ def progress_id_for(topic: str, concept: str) -> str:
     return str(uuid.uuid5(uuid.NAMESPACE_DNS, joined))
 
 
+def is_missing_table_error(exc: BaseException) -> bool:
+    """True when a caught ``sqlite3.OperationalError`` means "no such table".
+
+    R-22: SQLite has no exception subtype for a missing table — both a
+    genuinely absent table (an old schema, pre-migration) and a real fault
+    (a lock timeout, a busy-DB error) raise the same
+    ``sqlite3.OperationalError``, distinguishable only by matching its
+    message. Only the first is safe to treat as "nothing to show"; a caller
+    must log and re-raise anything else, or a lock collision reads back
+    indistinguishably from "no struggling topics" / "no wins" / "no progress"
+    — the exact defect ``e692510`` fixed for the explorer's FTS path.
+    """
+    return "no such table" in str(exc)
+
+
 def _get_db_path():
     """Return the configured sessions DB path (always a Path, never None)."""
     return load_settings().session_db
