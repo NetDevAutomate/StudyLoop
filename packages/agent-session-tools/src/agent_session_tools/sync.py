@@ -778,20 +778,32 @@ def _remote_backup(host: str, remote_db: str) -> str | None:
     side of `sync` did not back up the *remote* -- the side their own writes
     can revert -- at all. Returns the remote backup path, or None if there is
     nothing to back up (remote DB absent) or the copy failed (logged, not
-    raised: a failed backup must not block on its own -- the recency gate in
-    `_build_global_upsert_select_sql` is the primary defence either way).
+    raised here -- R-19d makes the *callers* decide whether a failed backup
+    blocks the write; this function's only job is to attempt one and report
+    whether it succeeded).
+
+    R-19c (M3 council, arbitration A2): this used to be a plain `cp -p` of
+    the remote file. In WAL mode, data committed but not yet checkpointed
+    into the main `.db` file lives in the sibling `-wal` file -- a file copy
+    of just the `.db` file silently misses it (verified directly: a row
+    committed with no explicit checkpoint was present in a `.backup()` copy
+    and absent from a `cp -p` of the same database at the same instant). The
+    sqlite3 CLI's `.backup` dot-command is the same WAL-aware mechanism as
+    Python's `sqlite3.Connection.backup()` (used by `maintenance.create_backup`
+    for the equivalent local fix) -- it can run against the remote file over
+    SSH without a live Python connection to it.
     """
     _ensure_mux_dir()
     remote_path = _quote_remote_path(remote_db)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     backup_path = f"{remote_db}.bak-{timestamp}"
-    quoted_backup_path = _quote_remote_path(backup_path)
+    backup_sql = shlex.quote(f".backup '{backup_path}'")
     result = subprocess.run(
         [
             "ssh",
             *_SSH_MUX_OPTS,
             host,
-            f"test -f {remote_path} && cp -p {remote_path} {quoted_backup_path}",
+            f"test -f {remote_path} && sqlite3 {remote_path} {backup_sql}",
         ],
         capture_output=True,
         text=True,

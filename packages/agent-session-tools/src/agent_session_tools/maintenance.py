@@ -6,7 +6,6 @@ schema inspection, and maintenance operations.
 """
 
 import logging
-import shutil
 import sqlite3
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -103,7 +102,22 @@ def create_backup(db_path: Path) -> Path | None:
     backup_dir.mkdir(parents=True, exist_ok=True)
 
     backup_path = backup_dir / f"{db_path.stem}_backup_{timestamp}.db"
-    shutil.copy2(db_path, backup_path)
+    # R-19c (M3 council, arbitration A2/X1 extension): a plain file copy of a
+    # WAL-mode database can miss committed data still sitting in the
+    # `-wal` file -- `shutil.copy2` (like `cp -p`) only ever sees the main
+    # `.db` file. sqlite3.Connection.backup() reads through SQLite's own
+    # backup API, which is WAL-aware (verified directly: a row committed but
+    # not yet checkpointed was present in a `.backup()` copy and absent from
+    # a `cp -p` of the same database at the same instant).
+    source_conn = sqlite3.connect(db_path)
+    try:
+        dest_conn = sqlite3.connect(backup_path)
+        try:
+            source_conn.backup(dest_conn)
+        finally:
+            dest_conn.close()
+    finally:
+        source_conn.close()
 
     # Rotation: keep only the newest N backups for this database stem.
     retention = int(db_cfg.get("backup_retention", 5))
