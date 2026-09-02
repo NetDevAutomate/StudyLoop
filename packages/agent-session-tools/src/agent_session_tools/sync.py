@@ -544,14 +544,37 @@ def _build_global_upsert_select_sql(table: str) -> str:
     evaluate to NULL, and a NULL WHERE result is treated as false. A
     destination row whose ``updated_at`` is NULL therefore could never be
     overwritten by *any* source row, however new, freezing it forever. The
-    ``COALESCE(<table>.updated_at, '')`` on the destination side treats a
-    NULL destination as "older than any real timestamp" (the empty string
-    sorts before every non-empty ISO-ish string), so a dated source row now
-    correctly wins. The source side is deliberately left bare: a NULL
-    *source* `updated_at` (``excluded.updated_at > ...``) still evaluates to
-    NULL/false and is skipped -- "no signal" from the incoming row should
-    never win, only a destination with no signal should lose. Both halves of
-    this decision are covered by `test_sync_r19.py`.
+    ``COALESCE(<table>.updated_at, <very old date>)`` on the destination side
+    treats a NULL destination as "older than any real timestamp", so a dated
+    source row now correctly wins. The source side is deliberately left
+    bare: a NULL *source* `updated_at` (``excluded.updated_at > ...``) still
+    evaluates to NULL/false and is skipped -- "no signal" from the incoming
+    row should never win, only a destination with no signal should lose.
+    Both halves of this decision are covered by `test_sync_r19.py`.
+
+    R-19f (M3 council, arbitration X1): both sides are wrapped in SQLite's
+    ``datetime()`` rather than compared as bare strings. Every current
+    writer of a ``GLOBAL_SYNC_TABLES`` ``updated_at`` uses SQL
+    ``datetime('now')``/``CURRENT_TIMESTAMP`` (both produce the same
+    canonical ``YYYY-MM-DD HH:MM:SS`` form -- confirmed table-by-table in
+    `evidence/M3/R-19f/00-dod.md`), so today's writes never actually hit a
+    mismatch here. But real format heterogeneity for timestamps genuinely
+    exists elsewhere in this codebase (the `sessions.updated_at` exporters:
+    kiro/codex's UTC-aware ``isoformat()``, Claude's raw ``...Z`` passthrough,
+    opencode's naive ``isoformat()``), and a bare string compare is silently
+    wrong across formats that put a different character at the same
+    position -- e.g. ``'...T00:00:01Z' > '...23:59:59'`` is true by pure
+    lexical accident (``'T' > ' '`` in ASCII), even though 00:00:01 is hours
+    *earlier* the same day. `datetime()` normalizes any SQLite-recognised
+    time-string (space- or T-separated, Z-suffixed, +HH:MM-offset, with or
+    without fractional seconds) to the same canonical form before comparing,
+    so this gate is not silently wrong if a future writer -- or a foreign
+    row synced in from an older/different format -- ever disagrees with
+    today's uniform writers. ``datetime()`` of an empty string or NULL
+    returns NULL, so the destination fallback uses ``'0001-01-01'`` (a real
+    parseable "infinitely old" date), not ``''`` -- an empty-string fallback
+    wrapped in ``datetime()`` would silently turn back into NULL and
+    reopen the R-19b bug it's meant to prevent.
     """
     columns = TABLE_SYNC_COLUMNS[table]
     pk_columns = GLOBAL_TABLE_PRIMARY_KEYS[table]
@@ -568,7 +591,8 @@ def _build_global_upsert_select_sql(table: str) -> str:
         f"SELECT 'INSERT INTO {table} "
         f"({', '.join(quoted_columns)}) VALUES (' || {literal_expr} || ') "
         f"ON CONFLICT({conflict_target}) DO UPDATE SET {set_clause} "
-        f"WHERE excluded.{updated_at_col} > COALESCE({table}.{updated_at_col}, '''');' "
+        f"WHERE datetime(excluded.{updated_at_col}) > "
+        f"datetime(COALESCE({table}.{updated_at_col}, ''0001-01-01''));' "
         f"FROM {table};"
     )
 
