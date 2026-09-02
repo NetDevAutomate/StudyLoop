@@ -16,17 +16,34 @@ from dataclasses import dataclass, field
 _LANE_BRANCH_RE = re.compile(r"^lane/m(\d+)-")
 
 
+class MalformedLaneBranchError(ValueError):
+    """A branch under ``lane/`` that is not named ``lane/m<n>-<slug>``.
+
+    Raised rather than returning ``None`` so the guard FAILS on such a branch
+    instead of skipping: with a plain ``None`` a branch named ``lane/m1`` or
+    ``lane/m1x`` would have dodged the ownership check entirely (M0 council
+    finding A1, deepseek-r1 and openai.gpt-5.6-sol independently).
+    """
+
+
 def lane_id_from_branch(branch: str) -> str | None:
     """Return the lane id (``"m3"``) for a lane branch, or ``None`` otherwise.
 
     ``None`` covers everything that isn't a lane branch at all (``main``,
-    ``integration/...``, a throwaway probe branch with the wrong prefix) --
-    the caller's job is to skip in that case, not fail.
+    ``integration/...``, a probe branch without the ``lane/`` prefix) -- the
+    caller's job is to skip in that case, not fail. A branch that IS under
+    ``lane/`` but does not fit ``lane/m<n>-<slug>`` raises
+    :class:`MalformedLaneBranchError`, which the caller turns into a failure.
     """
     match = _LANE_BRANCH_RE.match(branch)
-    if not match:
-        return None
-    return f"m{match.group(1)}"
+    if match:
+        return f"m{match.group(1)}"
+    if branch.startswith("lane/"):
+        raise MalformedLaneBranchError(
+            f"branch {branch!r} is under lane/ but is not named lane/m<n>-<slug>; "
+            "the ownership guard cannot tell which lane it is and will not guess"
+        )
+    return None
 
 
 def _matches_any(path: str, patterns: list[str]) -> bool:

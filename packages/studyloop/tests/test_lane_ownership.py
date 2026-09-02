@@ -38,6 +38,7 @@ if _tests_dir not in sys.path:
 
 from _lane_ownership import (  # noqa: E402
     LaneOwnershipResult,
+    MalformedLaneBranchError,
     classify_files,
     lane_id_from_branch,
 )
@@ -66,6 +67,21 @@ FALLBACK_BRANCH = "main"
 )
 def test_lane_id_from_branch(branch: str, expected: str | None) -> None:
     assert lane_id_from_branch(branch) == expected
+
+
+@pytest.mark.parametrize(
+    "branch",
+    [
+        pytest.param("lane/m1", id="no-hyphen-no-slug"),
+        pytest.param("lane/m1x", id="letter-after-digit"),
+        pytest.param("lane/foo-bar", id="no-milestone"),
+        pytest.param("lane/", id="bare-prefix"),
+    ],
+)
+def test_malformed_lane_branch_is_an_error_not_a_skip(branch: str) -> None:
+    """A1: a branch under lane/ that dodges the pattern must fail, not skip."""
+    with pytest.raises(MalformedLaneBranchError):
+        lane_id_from_branch(branch)
 
 
 # ---------------------------------------------------------------------------
@@ -168,8 +184,13 @@ def _changed_files() -> list[str]:
     plus whatever is currently staged/unstaged/untracked in the worktree."""
     base = _merge_base_ref()
     merge_base = _git("merge-base", base, "HEAD").strip()
-    committed = _git("diff", "--name-only", f"{merge_base}..HEAD")
-    working = _git("diff", "--name-only", "HEAD")
+    # --no-renames: a rename would otherwise list only its NEW path, so moving
+    # another lane's file into your own lane's directory would pass the guard
+    # (M0 council finding A3, reproduced by openai.gpt-5.6-sol's reviewer in a
+    # scratch repo). With renames disabled both the deleted old path and the
+    # added new path are listed and each is classified on its own.
+    committed = _git("diff", "--name-only", "--no-renames", f"{merge_base}..HEAD")
+    working = _git("diff", "--name-only", "--no-renames", "HEAD")
     untracked = _git("ls-files", "--others", "--exclude-standard")
     files = {
         line.strip()
@@ -187,7 +208,10 @@ def _load_map() -> tuple[dict[str, list[str]], list[str]]:
 
 def test_lane_stays_in_its_lane() -> None:
     branch = _current_branch()
-    lane = lane_id_from_branch(branch)
+    try:
+        lane = lane_id_from_branch(branch)
+    except MalformedLaneBranchError as exc:
+        pytest.fail(str(exc))
     if lane is None:
         pytest.skip(f"not on a lane branch ({branch!r}); nothing to police here")
     if lane == "m0":
