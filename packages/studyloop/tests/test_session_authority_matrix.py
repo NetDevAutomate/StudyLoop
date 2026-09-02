@@ -435,6 +435,40 @@ class TestWebThenCli:
         assert len(warnings) == 1
         assert "web-sess-crashed" in warnings[0].message
 
+    def test_cli_start_is_refused_while_a_web_session_is_detached_within_grace(
+        self, caplog
+    ) -> None:
+        """C6 (matrix gap the council named): a web session merely DETACHED
+        within its grace window (client's tab closed, agent still running,
+        not yet released) must still refuse a CLI start with the existing
+        message -- the grace window is not license to reclaim.
+        claim_blocks_cli_start does not consult grace state at all (only
+        pid liveness), which is exactly why this cell was worth pinning:
+        proof the two mechanisms compose correctly rather than merely each
+        being individually tested."""
+        from studyloop.web.routes.session import _grace
+
+        state = _fixture("web-live")
+        state["pid"] = os.getpid()
+
+        async def _schedule() -> None:
+            _grace.schedule_release("web-sess-1", grace=60.0)
+
+        run_async(_schedule())
+        assert _grace.has_pending_release("web-sess-1") is True
+
+        with (
+            patch("studyloop.tmux.is_tmux_available", return_value=True),
+            patch("studyloop.agent_launcher.shutil.which", return_value="/usr/bin/claude"),
+            patch("studyloop.session_state.read_session_state", return_value=state),
+            patch("studyloop.session.cleanup.auto_clean_zombies"),
+            pytest.raises(SessionStartError) as exc_info,
+        ):
+            start_session("Async IO", "claude", "study", "elapsed", 5, False)
+
+        assert "already active" in exc_info.value.message
+        assert not any("reclaim" in rec.message.lower() for rec in caplog.records)
+
     def test_a_web_claim_without_a_pid_blocks_conservatively(self) -> None:
         """A web-owned claim with no `pid` key (written by a build before
         this fix) blocks rather than silently reclaiming a claim whose
