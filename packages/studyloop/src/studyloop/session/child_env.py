@@ -74,11 +74,15 @@ CHILD_ENV_DENY_PAT = re.compile(
 #: Matched on underscore-delimited segments rather than as bare substrings, which
 #: is what keeps TOKENIZERS_PARALLELISM: its segments are TOKENIZERS and
 #: PARALLELISM, neither of which is TOKEN.
+#:
+#: ``oauth`` (R-11b) joined the list because no existing word covered it:
+#: LEAKED_OAUTH has no OTHER credential-shaped segment, so it reached the
+#: agent child until ``oauth`` itself became a recognised word.
 CHILD_ENV_DENY_SEGMENT_PAT = re.compile(
     r"(?i)(^|_)("
     r"bearer_token|auth_token|access_token|refresh_token|id_token"
     r"|api_key|access_key|secret_key|private_key|client_secret"
-    r"|secret|password|passwd|credentials|authorization|jwt|cookie"
+    r"|secret|password|passwd|credentials|authorization|jwt|cookie|oauth"
     r")(_|$)"
 )
 

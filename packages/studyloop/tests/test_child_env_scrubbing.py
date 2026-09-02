@@ -63,6 +63,15 @@ class TestScrubbing:
         "AUTHORIZATION",
         "JWT",
         "SESSION_COOKIE",
+        # Bare `oauth` segment — R-11b. No existing pattern covered `oauth`
+        # at all; LEAKED_OAUTH has no OTHER credential-shaped segment, so it
+        # only reaches the child if `oauth` itself is a recognised word.
+        "LEAKED_OAUTH",
+        # Already caught by the existing `client_secret` segment even before
+        # this fix — kept here as a named regression case since it is the
+        # shape the finding cited, not because it demonstrates the new
+        # pattern alone.
+        "OAUTH_CLIENT_SECRET",
     )
 
     #: Ordinary environment that MUST survive. Keep-controls matter as much as the
@@ -91,6 +100,9 @@ class TestScrubbing:
         "SSH_AUTH_SOCK",
         "MONKEYPATCH_MODE",
         "TURKEY_DATA",
+        # R-11b: no entry in this keep-list contains "oauth" as a substring,
+        # so the new `oauth` segment word has no false positive to guard
+        # against here. Checked directly, not just asserted by omission.
     )
 
     def test_every_known_credential_shape_is_removed(self) -> None:
