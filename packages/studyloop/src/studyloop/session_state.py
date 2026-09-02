@@ -246,3 +246,42 @@ def is_session_active() -> bool:
         return False
     # Session marked as ended by cleanup — not active
     return state.get("mode") != "ended"
+
+
+def claim_blocks_web_start(state: dict) -> bool:
+    """Whether a file claim should block a new web PTY/ACP session start.
+
+    Call this only AFTER confirming the in-process singleton
+    (``session/active.py``) is empty — see
+    docs/architecture/session-authority.md clause 2 (R-01) for the full
+    contract. Given that precondition:
+
+    - No claim at all (``study_session_id`` unset, or ``mode == "ended"``)
+      never blocks.
+    - A CLI-owned claim (no ``transport`` key, or one outside
+      ``{"pty", "acp"}``) blocks iff its recorded multiplexer session
+      (``mux_session``/``tmux_session``) still exists. No name recorded, or
+      the multiplexer backend can't be reached, means "can't confirm it's
+      alive" — treated conservatively as NOT blocking (stale), same as a
+      session whose tmux server was killed outside StudyLoop.
+    - A web-owned claim (``transport`` in ``{"pty", "acp"}``) can only be
+      genuinely live via the singleton the caller already ruled out — this
+      codebase runs one web server process per machine (see
+      ``session/active.py``'s own docstring). Reaching this function with
+      such a claim therefore proves it is stale (the crash-then-restart
+      cell): it never blocks.
+    """
+    if not state.get("study_session_id") or state.get("mode") == "ended":
+        return False
+    if state.get("transport") in ("pty", "acp"):
+        return False
+    session_name = state.get("mux_session") or state.get("tmux_session")
+    if not session_name:
+        return False
+    import contextlib
+
+    from studyloop.multiplexer import get_backend
+
+    with contextlib.suppress(Exception):
+        return bool(get_backend().session_exists(session_name))
+    return False
