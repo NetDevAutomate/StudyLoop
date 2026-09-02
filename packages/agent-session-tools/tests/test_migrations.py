@@ -410,7 +410,8 @@ class TestMigrationV12:
             r[1]
             for r in fresh_db.execute("PRAGMA table_info(concept_aliases)").fetchall()
         }
-        assert cols == {"alias", "concept_id"}
+        # updated_at added in v28 for R-19's cross-machine sync recency gate.
+        assert cols == {"alias", "concept_id", "updated_at"}
 
     def test_concept_relations_table_columns(self, fresh_db):
         migrate(fresh_db)
@@ -516,7 +517,8 @@ class TestMigrationV13:
             r[1]
             for r in fresh_db.execute("PRAGMA table_info(message_concepts)").fetchall()
         }
-        assert cols == {"message_id", "concept_id", "confidence"}
+        # updated_at added in v28 for R-19's cross-machine sync recency gate.
+        assert cols == {"message_id", "concept_id", "confidence", "updated_at"}
 
     def test_study_progress_has_concept_id_column(self, fresh_db):
         migrate(fresh_db)

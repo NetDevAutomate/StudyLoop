@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Current schema version - increment when adding new migrations
-CURRENT_VERSION = 27
+CURRENT_VERSION = 28
 
 # Migration functions: version -> (description, migration_func)
 MIGRATIONS: dict[int, tuple[str, Callable[[sqlite3.Connection], None]]] = {}
@@ -1077,6 +1077,73 @@ def migrate_v27(conn: sqlite3.Connection) -> None:
         "CREATE INDEX IF NOT EXISTS idx_progress_source_session "
         "ON study_progress(source_session_id)"
     )
+
+
+@migration(28, "Add updated_at to every GLOBAL_SYNC_TABLES row for R-19's recency gate")
+def migrate_v28(conn: sqlite3.Connection) -> None:
+    """Add ``updated_at`` to the global-sync tables that lack it.
+
+    ``sync.py``'s cross-machine push/pull/sync gates every row of
+    ``GLOBAL_SYNC_TABLES`` on ``updated_at`` (matching the check already done
+    for ``sessions``/``messages``) so a stale machine's dump cannot silently
+    revert a newer row on the receiving side (R-19 / D1). That gate needs the
+    column to exist everywhere it dumps from. ``study_progress``,
+    ``knowledge_bridges``, ``concepts`` and ``concept_relations`` already have
+    it (added in v9/v11/v12); this backfills the rest:
+
+    - ``study_sessions``, ``teach_back_scores``: seed from ``created_at`` --
+      the closest existing signal of "when was this row last true".
+    - ``parked_topics``: seed from ``parked_at``.
+    - ``scrub_log``: seed from ``scrubbed_at``.
+    - ``concept_aliases``, ``message_concepts``: pure link tables with no
+      existing timestamp of any kind; seed with ``datetime('now')`` at
+      migration time. This does not invent false history -- these rows have
+      never participated in the recency gate before, so "now" is a safe,
+      conservative starting point (it makes existing rows lose ties against
+      a genuinely new row from either side, which is the same "no signal ->
+      don't assume I'm newer" default the code already applies elsewhere).
+
+    The column is added with no ``DEFAULT`` at all, deliberately: SQLite's
+    ``ALTER TABLE ADD COLUMN`` refuses a non-constant default (``CURRENT_
+    TIMESTAMP`` or ``datetime('now')`` included) the moment the table holds
+    at least one row -- exactly the case this migration runs against in
+    practice. Adding the column bare (NULL for every existing row) and then
+    backfilling with an ``UPDATE`` sidesteps that restriction; ``UPDATE``
+    has no such limit. A row that still ends up NULL (no ``source_column``
+    value to backfill from) simply never wins the recency gate in
+    ``sync.py`` -- the same safe "no signal -> don't overwrite" behaviour as
+    everywhere else in that gate.
+    """
+    backfill_from = {
+        "study_sessions": "created_at",
+        "teach_back_scores": "created_at",
+        "parked_topics": "parked_at",
+        "scrub_log": "scrubbed_at",
+    }
+    no_backfill_source = ("concept_aliases", "message_concepts")
+
+    for table, source_column in backfill_from.items():
+        columns = _table_columns(conn, table)
+        if not columns or "updated_at" in columns:
+            continue
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN updated_at TEXT")
+        # Older/minimal schemas (older fixtures, partial tables) may lack
+        # even the backfill source column -- leave updated_at NULL rather
+        # than referencing a column that doesn't exist.
+        if source_column in columns:
+            conn.execute(
+                f"UPDATE {table} SET updated_at = {source_column} "
+                f"WHERE updated_at IS NULL AND {source_column} IS NOT NULL"
+            )
+
+    for table in no_backfill_source:
+        columns = _table_columns(conn, table)
+        if not columns or "updated_at" in columns:
+            continue
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN updated_at TEXT")
+        conn.execute(
+            f"UPDATE {table} SET updated_at = datetime('now') WHERE updated_at IS NULL"
+        )
 
 
 def check_migration_status(db_path: Path) -> dict:
