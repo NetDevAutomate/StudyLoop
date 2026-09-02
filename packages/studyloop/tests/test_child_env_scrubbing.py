@@ -26,7 +26,12 @@ from studyloop.session.child_env import (
 class TestScrubbing:
     #: Credential names taken from tools this project actually integrates with,
     #: not invented shapes. Every one of these must be stripped.
-    MUST_STRIP = (
+    #: Annotated tuple[str, ...] rather than left inferred: an un-annotated
+    #: string-literal tuple infers as tuple[Literal[...], ...], which makes
+    #: dict.fromkeys(...) below a dict[Literal[...], str] -- invariant in its
+    #: key type and therefore not assignable to build_child_env's
+    #: dict[str, str] parameter.
+    MUST_STRIP: tuple[str, ...] = (
         # Ends in a credential word — caught by the suffix rule.
         "AWS_SECRET_ACCESS_KEY",
         "OPENAI_API_KEY",
@@ -51,7 +56,8 @@ class TestScrubbing:
     #: Ordinary environment that MUST survive. Keep-controls matter as much as the
     #: strip list: a scrubber that removed these would break agents for reasons
     #: nobody can see, which is how protections get switched off.
-    MUST_KEEP = (
+    #: Annotated tuple[str, ...] for the same reason as MUST_STRIP above.
+    MUST_KEEP: tuple[str, ...] = (
         "PATH",
         "HOME",
         "LANG",

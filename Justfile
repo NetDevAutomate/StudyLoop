@@ -129,3 +129,15 @@ prepare-release version:
 preflight: lint typecheck test test-js docs release-consistency spec-check
 
 release-check: test test-js lint typecheck shellcheck docs audit audit-full release-consistency smoke-installed
+
+# "Would GitHub Actions pass?" locally, before pushing. `check` runs the
+# host-answerable gates (lint, typecheck, test, sast, audit, docs, ...); `lint`
+# via run-job then proves the container path itself works, since ci-standards
+# needs `ci-standards-runner:latest` built once (see
+# ~/code/personal/tools/github_ci_pipeline/README.md) for anything
+# platform-sensitive. This pair is the fast, cheap confidence check -- run
+# `ci-standards run-job e2e --target . --image ci-standards-runner:latest`
+# separately for the platform-sensitive browser suite (15+ minutes).
+ci-local:
+    ci-standards check --target .
+    ci-standards run-job lint --target . --image ci-standards-runner:latest
