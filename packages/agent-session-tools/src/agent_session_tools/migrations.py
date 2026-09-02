@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Current schema version - increment when adding new migrations
-CURRENT_VERSION = 27
+CURRENT_VERSION = 30
 
 # Migration functions: version -> (description, migration_func)
 MIGRATIONS: dict[int, tuple[str, Callable[[sqlite3.Connection], None]]] = {}
@@ -1077,6 +1077,279 @@ def migrate_v27(conn: sqlite3.Connection) -> None:
         "CREATE INDEX IF NOT EXISTS idx_progress_source_session "
         "ON study_progress(source_session_id)"
     )
+
+
+@migration(28, "Add updated_at to every GLOBAL_SYNC_TABLES row for R-19's recency gate")
+def migrate_v28(conn: sqlite3.Connection) -> None:
+    """Add ``updated_at`` to the global-sync tables that lack it.
+
+    ``sync.py``'s cross-machine push/pull/sync gates every row of
+    ``GLOBAL_SYNC_TABLES`` on ``updated_at`` (matching the check already done
+    for ``sessions``/``messages``) so a stale machine's dump cannot silently
+    revert a newer row on the receiving side (R-19 / D1). That gate needs the
+    column to exist everywhere it dumps from. ``study_progress``,
+    ``knowledge_bridges``, ``concepts`` and ``concept_relations`` already have
+    it (added in v9/v11/v12); this backfills the rest:
+
+    - ``study_sessions``, ``teach_back_scores``: seed from ``created_at`` --
+      the closest existing signal of "when was this row last true".
+    - ``parked_topics``: seed from ``parked_at``.
+    - ``scrub_log``: seed from ``scrubbed_at``.
+    - ``concept_aliases``, ``message_concepts``: pure link tables with no
+      existing timestamp of any kind; seed with ``datetime('now')`` at
+      migration time. This does not invent false history -- these rows have
+      never participated in the recency gate before, so "now" is a safe,
+      conservative starting point (it makes existing rows lose ties against
+      a genuinely new row from either side, which is the same "no signal ->
+      don't assume I'm newer" default the code already applies elsewhere).
+
+    The column is added with no ``DEFAULT`` at all, deliberately: SQLite's
+    ``ALTER TABLE ADD COLUMN`` refuses a non-constant default (``CURRENT_
+    TIMESTAMP`` or ``datetime('now')`` included) the moment the table holds
+    at least one row -- exactly the case this migration runs against in
+    practice. Adding the column bare (NULL for every existing row) and then
+    backfilling with an ``UPDATE`` sidesteps that restriction; ``UPDATE``
+    has no such limit. A row that still ends up NULL (no ``source_column``
+    value to backfill from) simply never wins the recency gate in
+    ``sync.py`` -- the same safe "no signal -> don't overwrite" behaviour as
+    everywhere else in that gate.
+    """
+    backfill_from = {
+        "study_sessions": "created_at",
+        "teach_back_scores": "created_at",
+        "parked_topics": "parked_at",
+        "scrub_log": "scrubbed_at",
+    }
+    no_backfill_source = ("concept_aliases", "message_concepts")
+
+    for table, source_column in backfill_from.items():
+        columns = _table_columns(conn, table)
+        if not columns or "updated_at" in columns:
+            continue
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN updated_at TEXT")
+        # Older/minimal schemas (older fixtures, partial tables) may lack
+        # even the backfill source column -- leave updated_at NULL rather
+        # than referencing a column that doesn't exist.
+        if source_column in columns:
+            conn.execute(
+                f"UPDATE {table} SET updated_at = {source_column} "
+                f"WHERE updated_at IS NULL AND {source_column} IS NOT NULL"
+            )
+
+    for table in no_backfill_source:
+        columns = _table_columns(conn, table)
+        if not columns or "updated_at" in columns:
+            continue
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN updated_at TEXT")
+        conn.execute(
+            f"UPDATE {table} SET updated_at = datetime('now') WHERE updated_at IS NULL"
+        )
+
+
+@migration(
+    29,
+    "R-19b: backfill residual NULL updated_at on GLOBAL_SYNC_TABLES rows and "
+    "auto-stamp it on every future insert/update",
+)
+def migrate_v29(conn: sqlite3.Connection) -> None:
+    """Close the "NULL freezes the destination" gap in the R-19 recency gate.
+
+    Two separate problems, both real (M3 council, arbitration rows A1/A1'):
+
+    1. **Residual NULLs on existing rows.** v28's backfill used each table's
+       best available existing timestamp column, but a row is left NULL if
+       that source column was itself NULL, or (for `study_progress`,
+       `knowledge_bridges`, `concepts`, `concept_relations`, which already
+       had `updated_at` since v9/v11/v12) if a NULL ever reached this table
+       another way -- most plausibly a pre-R-19 cross-machine sync blindly
+       replicating a NULL from an older source (`INSERT OR REPLACE` copied
+       literal column values, including NULL, before the recency gate
+       existed). This migration sweeps every `GLOBAL_SYNC_TABLES` row still
+       NULL and backfills from `created_at` (or the same per-table column
+       v28 used) with `datetime('now')` as the last resort.
+
+    2. **Every future row was silently exempt.** This is the part v28 missed
+       and the council's second reviewer (verified) escalated to High:
+       `history/sessions.py` never writes `updated_at` for `study_sessions`,
+       and v28 added that column via a bare `ALTER TABLE ... ADD COLUMN`
+       with **no default** (SQLite refuses a non-constant default on a
+       populated table -- see v28's own docstring). So every `study_sessions`
+       row created *after* v28 ran is NULL from the moment it's written, not
+       just the ones that predate the migration.
+
+       Fixed with an ``AFTER INSERT`` + ``AFTER UPDATE`` trigger per table,
+       rather than touching every writer (several -- `parking.py`,
+       `mcp_server.py` -- are outside this lane's ownership; a schema-level
+       trigger fixes every current and future writer regardless of which
+       file it lives in):
+
+       - ``AFTER INSERT ... WHEN NEW.updated_at IS NULL``: stamps a fresh row
+         that omitted it (matches this exact defect).
+       - ``AFTER UPDATE ... WHEN NEW.updated_at IS OLD.updated_at``: stamps
+         any update that didn't already set `updated_at` itself (several
+         `parking.py` update paths -- board_order, priority, park_count --
+         don't; a few others already do, and the guard makes this a no-op
+         for those instead of double-stamping).
+
+       Only the six tables whose `updated_at` was added via v28's bare
+       `ALTER TABLE` (no default) need this: `study_sessions`,
+       `teach_back_scores`, `parked_topics`, `scrub_log`, `concept_aliases`,
+       `message_concepts`. The other four (`study_progress`,
+       `knowledge_bridges`, `concepts`, `concept_relations`) have had
+       `updated_at TEXT DEFAULT (datetime('now'))` since their original
+       `CREATE TABLE` (v9/v11/v12) -- that default *does* apply to a fresh
+       INSERT that omits the column, even though ALTER TABLE cannot add one
+       retroactively to a populated table. Confirmed no writer of those four
+       tables ever explicitly inserts a literal NULL.
+    """
+    residual_backfill_column = {
+        "study_progress": "created_at",
+        "study_sessions": "created_at",
+        "teach_back_scores": "created_at",
+        "knowledge_bridges": "created_at",
+        "concepts": "created_at",
+        "concept_relations": "created_at",
+        "parked_topics": "parked_at",
+        "scrub_log": "scrubbed_at",
+    }
+    for table, source_column in residual_backfill_column.items():
+        columns = _table_columns(conn, table)
+        if not columns or "updated_at" not in columns:
+            continue
+        if source_column in columns:
+            conn.execute(
+                f"UPDATE {table} SET updated_at = COALESCE({source_column}, datetime('now')) "
+                "WHERE updated_at IS NULL"
+            )
+        else:
+            conn.execute(
+                f"UPDATE {table} SET updated_at = datetime('now') WHERE updated_at IS NULL"
+            )
+    for table in ("concept_aliases", "message_concepts"):
+        columns = _table_columns(conn, table)
+        if not columns or "updated_at" not in columns:
+            continue
+        conn.execute(
+            f"UPDATE {table} SET updated_at = datetime('now') WHERE updated_at IS NULL"
+        )
+
+    # Auto-stamp updated_at going forward -- only the six tables whose column
+    # has no schema-level default (see docstring). Keyed by the table's full
+    # PRIMARY KEY (composite for the two link tables) so the trigger's own
+    # UPDATE matches exactly the one row that was just written, never a
+    # sibling row sharing part of that key.
+    trigger_pk_columns: dict[str, tuple[str, ...]] = {
+        "study_sessions": ("id",),
+        "teach_back_scores": ("id",),
+        "parked_topics": ("id",),
+        "scrub_log": ("id",),
+        "concept_aliases": ("alias", "concept_id"),
+        "message_concepts": ("message_id", "concept_id"),
+    }
+    for table, pk_columns in trigger_pk_columns.items():
+        columns = _table_columns(conn, table)
+        if not columns or "updated_at" not in columns:
+            continue
+        match_clause = " AND ".join(f"{col} = NEW.{col}" for col in pk_columns)
+        conn.execute(f"DROP TRIGGER IF EXISTS trg_{table}_updated_at_ins")
+        conn.execute(f"""
+            CREATE TRIGGER trg_{table}_updated_at_ins AFTER INSERT ON {table}
+            WHEN NEW.updated_at IS NULL
+            BEGIN
+                UPDATE {table} SET updated_at = datetime('now') WHERE {match_clause};
+            END
+        """)
+        conn.execute(f"DROP TRIGGER IF EXISTS trg_{table}_updated_at_upd")
+        conn.execute(f"""
+            CREATE TRIGGER trg_{table}_updated_at_upd AFTER UPDATE ON {table}
+            WHEN NEW.updated_at IS OLD.updated_at
+            BEGIN
+                UPDATE {table} SET updated_at = datetime('now') WHERE {match_clause};
+            END
+        """)
+
+
+@migration(
+    30,
+    "R-19e: add a cross-machine-stable sync_key to autoincrement-keyed "
+    "GLOBAL_SYNC_TABLES tables",
+)
+def migrate_v30(conn: sqlite3.Connection) -> None:
+    """Stop cross-machine sync from using a per-machine counter as identity.
+
+    M3 council, arbitration A5 (High, verified by direct reproduction): four
+    of the ten `GLOBAL_SYNC_TABLES` tables (`teach_back_scores`,
+    `knowledge_bridges`, `parked_topics`, `scrub_log`) are keyed by
+    `id INTEGER PRIMARY KEY AUTOINCREMENT` -- a counter private to *this*
+    database, starting at 1 independently on every machine. `sync.py`'s
+    recency-gated upsert used that `id` as its `ON CONFLICT` target, so two
+    machines' *different* row #1s (a teach-back score on one, a knowledge
+    bridge on the other) collide as if they were the same row the moment
+    both reach `id = 1` -- reproduced directly: row count on the destination
+    does not grow, and no error is raised, so the incoming row is dropped
+    with no trace at all.
+
+    (The other six are already safe: `study_progress`/`concepts` use a
+    `uuid5`-derived `id` (`progress_id_for`, and the equivalent in
+    `concepts.py`); `study_sessions` uses `uuid.uuid4()`; `concept_aliases`/
+    `message_concepts` are keyed by their own composite natural key
+    (`alias, concept_id` / `message_id, concept_id`); `concept_relations`
+    has an `id INTEGER PRIMARY KEY AUTOINCREMENT` **and** an existing
+    `UNIQUE(source_concept_id, target_concept_id, relation_type)` constraint
+    -- fixed by switching `sync.py`'s conflict target to that natural key,
+    no schema change needed there.)
+
+    Fix, for the four that need a schema change: add a `sync_key TEXT`
+    column with a `UNIQUE` index, auto-populated by an ``AFTER INSERT``
+    trigger (`lower(hex(randomblob(16)))` -- 128 bits of randomness, plenty
+    collision-resistant across any realistic number of machines; it does
+    not need to look like a UUID, only to be one). Same trigger-based
+    approach as v29 and for the same reason: `parked_topics` is written from
+    `parking.py` and `scrub_log` from `mcp_server.py`, both outside this
+    lane's ownership, so a schema-level trigger fixes every writer without
+    touching either file.
+
+    `id` itself is intentionally dropped from `sync.py`'s
+    `TABLE_SYNC_COLUMNS` for these four tables (a separate change, in
+    `sync.py`) rather than merely stopping being the conflict target: if it
+    stayed in the synced column list as a plain "update on conflict"
+    column, a first-time INSERT would still carry the *source* machine's
+    numeric `id` value across, which can collide with an unrelated
+    pre-existing local row that happens to occupy that same number. Letting
+    the destination assign its own fresh `id` (by never mentioning the
+    column) decouples the two machines' counters completely; `sync_key`
+    becomes the only identity that travels.
+
+    No table here is referenced by a foreign key on its `id` (verified: no
+    `REFERENCES teach_back_scores|knowledge_bridges|parked_topics|scrub_log`
+    anywhere in the schema), and `history/bridges.py`'s
+    `update_bridge_usage(bridge_id)` is a purely local lookup (a web request
+    reads a `knowledge_bridges.id` it just fetched from the same machine and
+    uses it in the same request) -- unaffected by `id` no longer being a
+    cross-machine identity.
+    """
+    tables = ("teach_back_scores", "knowledge_bridges", "parked_topics", "scrub_log")
+    for table in tables:
+        columns = _table_columns(conn, table)
+        if not columns or "sync_key" in columns:
+            continue
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN sync_key TEXT")
+        conn.execute(
+            f"UPDATE {table} SET sync_key = lower(hex(randomblob(16))) "
+            "WHERE sync_key IS NULL"
+        )
+        conn.execute(
+            f"CREATE UNIQUE INDEX IF NOT EXISTS uix_{table}_sync_key ON {table}(sync_key)"
+        )
+        conn.execute(f"DROP TRIGGER IF EXISTS trg_{table}_sync_key")
+        conn.execute(f"""
+            CREATE TRIGGER trg_{table}_sync_key AFTER INSERT ON {table}
+            WHEN NEW.sync_key IS NULL
+            BEGIN
+                UPDATE {table} SET sync_key = lower(hex(randomblob(16)))
+                WHERE id = NEW.id;
+            END
+        """)
 
 
 def check_migration_status(db_path: Path) -> dict:

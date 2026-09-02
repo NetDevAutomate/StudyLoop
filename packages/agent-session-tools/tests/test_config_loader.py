@@ -1,5 +1,8 @@
 """Tests for config_loader module."""
 
+import os
+import subprocess
+import sys
 from pathlib import Path
 
 from agent_session_tools.config_loader import (
@@ -170,3 +173,135 @@ class TestGetLogPath:
         """Test that get_log_path returns a Path object."""
         result = get_log_path()
         assert isinstance(result, Path)
+
+
+class TestDotenvCannotSetTheTestHatch:
+    """R-09b: this loader is a SECOND, independent dotenv load that a `.env`
+    at ``~/.config/studyloop/.env`` reaches even after studyloop's own R-09
+    scrub (``studyloop/__init__.py``) has already run and refused it.
+
+    ``export_sessions.py`` calls ``load_config()`` at MODULE IMPORT TIME
+    (top-level statement), and ``studyloop/web/_schema_init.py``'s
+    ``prepare_schema()`` -- called from ``web/app.py``'s server-startup
+    lifespan -- imports ``agent_session_tools.export_sessions``, which
+    triggers that call. So a `.env` planted at this path re-adds
+    STUDYLOOP_TEST_AGENT_CMD/ACP_CMD on every server boot, strictly AFTER
+    studyloop's own import-time scrub already deleted it, before the first
+    request is served.
+
+    A package-import-time side effect can only be observed honestly in a
+    FRESH interpreter, so this spawns a real subprocess with a fake HOME --
+    same technique as ``studyloop/tests/test_dotenv_test_hatch.py``.
+    """
+
+    @staticmethod
+    def _write_fake_home_env_file(home: Path) -> None:
+        env_dir = home / ".config" / "studyloop"
+        env_dir.mkdir(parents=True)
+        (env_dir / ".env").write_text(
+            "STUDYLOOP_TEST_AGENT_CMD=/bin/false\n"
+            "STUDYLOOP_OTHER_THING=hello-from-dotenv\n"
+        )
+
+    @staticmethod
+    def _run(tmp_path: Path, home: Path, code: str) -> subprocess.CompletedProcess[str]:
+        # cwd is a SEPARATE tmp dir with no .env anywhere in it or its
+        # parents, so studyloop's own directory-walking loader cannot also
+        # find a file here -- this test isolates the SECOND loader only.
+        cwd = tmp_path / "cwd"
+        cwd.mkdir()
+        env = {"PATH": os.environ.get("PATH", ""), "HOME": str(home)}
+        return subprocess.run(
+            [sys.executable, "-c", code],
+            cwd=str(cwd),
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+
+    def test_planted_home_env_file_cannot_set_the_hatch(self, tmp_path: Path) -> None:
+        home = tmp_path / "home"
+        home.mkdir()
+        self._write_fake_home_env_file(home)
+
+        # Import studyloop first, exactly like the real process does --
+        # its own R-09 scrub runs and finds nothing yet (this .env is a
+        # different path from the one it walks up from cwd).
+        code = (
+            "import studyloop; "
+            "from agent_session_tools.config_loader import load_config; "
+            "load_config(); "
+            "import os; "
+            "print(repr(os.environ.get('STUDYLOOP_TEST_AGENT_CMD')))"
+        )
+        proc = self._run(tmp_path, home, code)
+
+        assert proc.returncode == 0, proc.stderr
+        assert proc.stdout.strip() == "None"
+
+    def test_warns_once_naming_the_key_and_the_env_path(self, tmp_path: Path) -> None:
+        home = tmp_path / "home"
+        home.mkdir()
+        self._write_fake_home_env_file(home)
+
+        code = (
+            "import studyloop; "
+            "from agent_session_tools.config_loader import load_config; "
+            "load_config()"
+        )
+        proc = self._run(tmp_path, home, code)
+
+        assert "STUDYLOOP_TEST_AGENT_CMD" in proc.stderr
+        assert str(home / ".config" / "studyloop" / ".env") in proc.stderr
+
+    def test_other_dotenv_keys_still_load(self, tmp_path: Path) -> None:
+        home = tmp_path / "home"
+        home.mkdir()
+        self._write_fake_home_env_file(home)
+
+        code = (
+            "import studyloop; "
+            "from agent_session_tools.config_loader import load_config; "
+            "load_config(); "
+            "import os; "
+            "print(repr(os.environ.get('STUDYLOOP_OTHER_THING')))"
+        )
+        proc = self._run(tmp_path, home, code)
+
+        assert proc.returncode == 0, proc.stderr
+        assert proc.stdout.strip() == repr("hello-from-dotenv")
+
+    def test_harness_exported_hatch_still_works(self, tmp_path: Path) -> None:
+        """The value is trusted when the REAL process env already had it
+        before this loader's dotenv call -- same rule as studyloop's own
+        scrub, and the same guarantee the e2e harness relies on."""
+        home = tmp_path / "home"
+        home.mkdir()
+        self._write_fake_home_env_file(home)
+
+        cwd = tmp_path / "cwd"
+        cwd.mkdir()
+        env = {
+            "PATH": os.environ.get("PATH", ""),
+            "HOME": str(home),
+            "STUDYLOOP_TEST_AGENT_CMD": "from-parent-env",
+        }
+        code = (
+            "import studyloop; "
+            "from agent_session_tools.config_loader import load_config; "
+            "load_config(); "
+            "import os; "
+            "print(repr(os.environ.get('STUDYLOOP_TEST_AGENT_CMD')))"
+        )
+        proc = subprocess.run(
+            [sys.executable, "-c", code],
+            cwd=str(cwd),
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+
+        assert proc.returncode == 0, proc.stderr
+        assert proc.stdout.strip() == repr("from-parent-env")

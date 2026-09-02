@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 import sqlite3
 import uuid
@@ -11,6 +12,8 @@ from typing import TYPE_CHECKING
 
 from studyloop.history import _connection
 from studyloop.learning.concept_quality import is_usable_concept
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -195,7 +198,10 @@ def upsert_dependency(edge: ConceptDependency) -> bool:
         )
         conn.commit()
         return True
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as exc:
+        if not _connection.is_missing_table_error(exc):
+            logger.warning("upsert_dependency failed: %s", exc)
+            raise
         return False
     finally:
         conn.close()
@@ -324,8 +330,12 @@ def seed_inferred_dependencies(topic: str) -> int:
                     )
                 ):
                     count += 1
-        except sqlite3.OperationalError:
-            pass
+        except sqlite3.OperationalError as exc:
+            if not _connection.is_missing_table_error(exc):
+                logger.warning(
+                    "seed_inferred_dependencies: concept_relations source failed: %s", exc
+                )
+                raise
 
         try:
             rows = conn.execute(
@@ -351,8 +361,12 @@ def seed_inferred_dependencies(topic: str) -> int:
                     )
                 ):
                     count += 1
-        except sqlite3.OperationalError:
-            pass
+        except sqlite3.OperationalError as exc:
+            if not _connection.is_missing_table_error(exc):
+                logger.warning(
+                    "seed_inferred_dependencies: knowledge_bridges source failed: %s", exc
+                )
+                raise
     finally:
         conn.close()
     return count
@@ -395,7 +409,10 @@ def _fetch_dependencies(topic: str) -> list[ConceptDependency]:
             # since a dependency pointing at debris teaches nothing.
             if is_usable_concept(row["source_concept"]) and is_usable_concept(row["target_concept"])
         ]
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as exc:
+        if not _connection.is_missing_table_error(exc):
+            logger.warning("_fetch_dependencies failed: %s", exc)
+            raise
         return []
     finally:
         conn.close()
@@ -431,7 +448,10 @@ def _progress_by_concept(topic: str) -> dict[str, dict]:
             (topic,),
         ).fetchall()
         return {str(row["concept"]).lower(): dict(row) for row in rows}
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as exc:
+        if not _connection.is_missing_table_error(exc):
+            logger.warning("_progress_by_concept failed: %s", exc)
+            raise
         return {}
     finally:
         conn.close()
@@ -628,7 +648,10 @@ def weak_links_for_topic(topic: str) -> list[dict]:
                 (topic,),
             ).fetchall()
             progress = {str(row["concept"]).lower(): dict(row) for row in rows}
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as exc:
+            if not _connection.is_missing_table_error(exc):
+                logger.warning("weak_links_for_topic failed: %s", exc)
+                raise
             progress = {}
         finally:
             conn.close()

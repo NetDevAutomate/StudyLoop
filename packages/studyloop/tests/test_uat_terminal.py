@@ -37,8 +37,15 @@ pytestmark = [
 
 @pytest.fixture
 def terminal(tmp_path):
-    """Provide a TerminalSession that cleans up after itself."""
-    session = TerminalSession()
+    """Provide a TerminalSession that cleans up after itself.
+
+    R-49: session_dir is redirected to tmp_path/session-ipc so this
+    fixture reads/writes/deletes there instead of the developer's real
+    ~/.config/studyloop.
+    """
+    session_dir = tmp_path / "session-ipc"
+    session_dir.mkdir(parents=True, exist_ok=True)
+    session = TerminalSession(session_dir)
     yield session
     session.cleanup()
 
@@ -71,7 +78,7 @@ class TestQuitViaTerminal:
         terminal.spawn_study("UAT State Test", energy=5, agent_cmd=agent_cmd)
         terminal.attach_and_send_q(timeout=15)
 
-        state_file = Path.home() / ".config" / "studyloop" / "session-state.json"
+        state_file = terminal.state_file
         if state_file.exists():
             state = json.loads(state_file.read_text())
             assert state.get("mode") == "ended", f"Expected mode='ended', got {state.get('mode')!r}"
@@ -108,7 +115,7 @@ class TestNestedTmux:
     switch_client fails silently.
     """
 
-    def _start_nested_study(self, tmp_path, host_name="host-workspace"):
+    def _start_nested_study(self, terminal, tmp_path, host_name="host-workspace"):
         """Helper: create host session, attach client, run study inside it.
 
         Returns (pexpect_child, session_name, sidebar_pane).
@@ -133,16 +140,20 @@ class TestNestedTmux:
         time.sleep(1)  # let shell prompt render
 
         # Send the study command inside the attached session
+        # R-49: STUDYLOOP_SESSION_DIR set inline -- this is a raw shell
+        # command typed into a live tmux pane, not a Python subprocess call,
+        # so there is no env= dict to pass it through.
         agent_script = long_running_agent(tmp_path)
         study_cmd = (
             f"STUDYLOOP_TEST_AGENT_CMD='{agent_script}' "
+            f"STUDYLOOP_SESSION_DIR='{terminal.session_dir}' "
             f"{sys.executable} -m studyloop.cli study 'Nested Test' "
             f"--energy 5 --agent claude"
         )
         child.sendline(study_cmd)
 
         # Wait for study session to appear in state file
-        state_file = Path.home() / ".config" / "studyloop" / "session-state.json"
+        state_file = terminal.state_file
         deadline = time.monotonic() + 20
         session_name = None
         sidebar_pane = None
@@ -165,7 +176,7 @@ class TestNestedTmux:
         session via switch_client."""
         child = None
         try:
-            child, session_name, _sidebar = self._start_nested_study(tmp_path)
+            child, session_name, _sidebar = self._start_nested_study(terminal, tmp_path)
 
             assert session_name, "Study session should have been created from nested tmux"
 
@@ -192,7 +203,7 @@ class TestNestedTmux:
 
         child = None
         try:
-            child, session_name, sidebar_pane = self._start_nested_study(tmp_path)
+            child, session_name, sidebar_pane = self._start_nested_study(terminal, tmp_path)
             assert session_name, "Study session should exist"
             assert sidebar_pane, "Sidebar pane should exist"
             terminal._session_name = session_name
@@ -254,11 +265,14 @@ class TestEndFromOutside:
         assert terminal.session_exists(), "Session should exist before --end"
 
         # Run --end from a separate process (simulates different terminal)
+        end_env = dict(os.environ)
+        end_env["STUDYLOOP_SESSION_DIR"] = str(terminal.session_dir)
         subprocess.run(
             [sys.executable, "-m", "studyloop.cli", "study", "--end"],
             capture_output=True,
             text=True,
             timeout=15,
+            env=end_env,
         )
 
         import time
@@ -279,18 +293,21 @@ class TestEndFromOutside:
         agent_cmd = long_running_agent(tmp_path)
         terminal.spawn_study("End State Test", energy=5, agent_cmd=agent_cmd)
 
+        end_env = dict(os.environ)
+        end_env["STUDYLOOP_SESSION_DIR"] = str(terminal.session_dir)
         subprocess.run(
             [sys.executable, "-m", "studyloop.cli", "study", "--end"],
             capture_output=True,
             text=True,
             timeout=15,
+            env=end_env,
         )
 
         import time
 
         time.sleep(2)  # let cleanup complete
 
-        state_file = Path.home() / ".config" / "studyloop" / "session-state.json"
+        state_file = terminal.state_file
         if state_file.exists():
             state = json.loads(state_file.read_text())
             assert state.get("mode") == "ended", f"Expected mode='ended', got {state.get('mode')!r}"
@@ -300,18 +317,21 @@ class TestEndFromOutside:
         agent_cmd = long_running_agent(tmp_path)
         terminal.spawn_study("End Cleanup Test", energy=5, agent_cmd=agent_cmd)
 
+        end_env = dict(os.environ)
+        end_env["STUDYLOOP_SESSION_DIR"] = str(terminal.session_dir)
         subprocess.run(
             [sys.executable, "-m", "studyloop.cli", "study", "--end"],
             capture_output=True,
             text=True,
             timeout=15,
+            env=end_env,
         )
 
         import time
 
         time.sleep(2)
 
-        config_dir = Path.home() / ".config" / "studyloop"
+        config_dir = terminal.session_dir
         topics_file = config_dir / "session-topics.md"
         parking_file = config_dir / "session-parking.md"
 
@@ -408,9 +428,8 @@ class TestCleanTmuxExit:
 
             # Read sidebar pane and send Q
             import json
-            from pathlib import Path
 
-            state_file = Path.home() / ".config" / "studyloop" / "session-state.json"
+            state_file = terminal.state_file
             state = json.loads(state_file.read_text())
             sidebar_pane = state.get("tmux_sidebar_pane")
 

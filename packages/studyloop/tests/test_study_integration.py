@@ -20,11 +20,18 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import textwrap
 import time
 from pathlib import Path
 
 import pytest
+
+_tests_dir = str(Path(__file__).parent)
+if _tests_dir not in sys.path:
+    sys.path.insert(0, _tests_dir)
+
+from harness.tmux import TmuxHarness  # noqa: E402
 
 # Skip entire module if tmux is not installed, and mark as integration
 # so CI can exclude with -m "not integration" (headless runners time out).
@@ -33,7 +40,11 @@ pytestmark = [
     pytest.mark.integration,
 ]
 
-# Paths
+# Paths — R-49: these are reassigned to a tmp_path-derived directory by the
+# `_clean_state` autouse fixture before every test, via `STUDYLOOP_SESSION_DIR`
+# (the env var `session_state.py` honours). The `Path.home()` fallback here
+# only matters if a test somehow runs without that fixture; every test in
+# this module gets it automatically since it is autouse.
 CONFIG_DIR = Path.home() / ".config" / "studyloop"
 STATE_FILE = CONFIG_DIR / "session-state.json"
 TOPICS_FILE = CONFIG_DIR / "session-topics.md"
@@ -104,10 +115,21 @@ def _read_state() -> dict:
 
 
 def _kill_orphaned_processes():
-    """Kill orphaned sidebar and mock-agent processes from failed tests."""
+    """Kill orphaned sidebar and mock-agent processes from failed tests.
+
+    R-49c: this name-pattern list is a secondary safety net, not the
+    primary mechanism -- `_cleanup_all`'s pgid-based `kill_process_groups`
+    call above does not depend on knowing every agent script's name.
+    ``wrapper-agent`` and ``fast-agent`` were missing here even though
+    both have existed in this file for a while (`_make_wrapper_agent`,
+    `_make_fast_agent`) -- exactly the kind of staleness a name-based
+    pattern list is prone to, and the actual observed shape of the 75
+    orphaned processes this item fixes (`wrapper-agent.sh`, unmatched by
+    the two patterns that used to be here).
+    """
     import signal
 
-    for pattern in ("studyloop.tui.sidebar", "mock-agent"):
+    for pattern in ("studyloop.tui.sidebar", "mock-agent", "wrapper-agent", "fast-agent"):
         try:
             result = subprocess.run(
                 ["pgrep", "-f", pattern],
@@ -127,11 +149,33 @@ def _cleanup_all():
     for f in [STATE_FILE, TOPICS_FILE, PARKING_FILE, ONELINE_FILE]:
         f.unlink(missing_ok=True)
     result = _tmux("list-sessions", "-F", "#{session_name}")
+    study_session_names = []
     if result.returncode == 0:
-        for name in result.stdout.strip().splitlines():
-            if name.startswith("study-"):
-                _tmux("kill-session", "-t", name)
+        study_session_names = [
+            n for n in result.stdout.strip().splitlines() if n.startswith("study-")
+        ]
+    # R-49c (machine-observed): capture each study- session's pane pids
+    # *before* killing it -- `tmux kill-session` sends SIGHUP to the pane
+    # leader and hopes it (and anything it forked, e.g. a `bash
+    # wrapper-agent.sh` grandchild) dies; that is not a given (confirmed
+    # directly against a pane that ignores SIGHUP -- see
+    # test_r49c_harness_cleanup.py), and it is the exact shape of the 75
+    # orphaned wrapper-agent processes this item fixes. `TmuxHarness`'s
+    # captured-pgid SIGTERM/SIGKILL backstop is used here too rather than
+    # duplicated, since it is the same fix at the same kind of call site.
+    pgids: list[int] = []
+    for name in study_session_names:
+        panes_result = _tmux("list-panes", "-t", name, "-F", "#{pane_pid}")
+        if panes_result.returncode == 0:
+            for pid_str in panes_result.stdout.strip().splitlines():
+                with contextlib.suppress(ValueError):
+                    pgids.append(int(pid_str))
+        _tmux("kill-session", "-t", name)
+    TmuxHarness.kill_process_groups(pgids)
     # Kill orphaned child processes that escaped the tmux session tree
+    # (belt-and-suspenders: catches anything not tied to a pane pid above,
+    # e.g. a process from a session that was already gone by the time this
+    # ran).
     _kill_orphaned_processes()
     # Remove test session directories
     if SESSIONS_DIR.exists():
@@ -218,8 +262,29 @@ def _make_fast_agent(tmp_path: Path) -> str:
 
 
 @pytest.fixture(autouse=True)
-def _clean_state():
-    """Clean slate before and after every test."""
+def _clean_state(tmp_path, monkeypatch):
+    """Clean slate before and after every test.
+
+    R-49: redirects every IPC/session path this module touches to a
+    tmp_path-derived directory instead of the developer's real
+    ~/.config/studyloop, and sets STUDYLOOP_SESSION_DIR so the spawned
+    `studyloop` CLI subprocess (via `_studyloop()`, which snapshots
+    `os.environ`) resolves the same directory. Without this, every test
+    below reads, writes, and deletes the developer's live session state.
+    """
+    global CONFIG_DIR, STATE_FILE, TOPICS_FILE, PARKING_FILE, ONELINE_FILE, SESSIONS_DIR
+
+    session_dir = tmp_path / "session-ipc"
+    session_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv("STUDYLOOP_SESSION_DIR", str(session_dir))
+
+    CONFIG_DIR = session_dir
+    STATE_FILE = session_dir / "session-state.json"
+    TOPICS_FILE = session_dir / "session-topics.md"
+    PARKING_FILE = session_dir / "session-parking.md"
+    ONELINE_FILE = session_dir / "session-oneline.txt"
+    SESSIONS_DIR = session_dir / "sessions"
+
     _cleanup_all()
     yield
     _cleanup_all()

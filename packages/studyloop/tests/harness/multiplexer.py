@@ -10,7 +10,7 @@ Usage::
 
     @pytest.fixture(params=["tmux", "herdr"])
     def mux(request, tmp_path):
-        with MultiplexerHarness.from_backend_name(request.param) as h:
+        with MultiplexerHarness.from_backend_name(request.param, tmp_path) as h:
             yield h
 
     def test_session_starts(mux, tmp_path):
@@ -36,29 +36,46 @@ if TYPE_CHECKING:
 
     from studyloop.multiplexer import Multiplexer
 
-# IPC file locations (mirrors studyloop.session_state)
-CONFIG_DIR = Path.home() / ".config" / "studyloop"
-STATE_FILE = CONFIG_DIR / "session-state.json"
-TOPICS_FILE = CONFIG_DIR / "session-topics.md"
-PARKING_FILE = CONFIG_DIR / "session-parking.md"
-ONELINE_FILE = CONFIG_DIR / "session-oneline.txt"
-
 
 class MultiplexerHarness:
     """Backend-agnostic test harness for multiplexer integration journeys.
 
     Wraps a Multiplexer Protocol instance with cleanup tracking, polling
     helpers, and study-session lifecycle methods.
+
+    R-49: ``session_dir`` (normally ``tmp_path``-derived) is where the
+    session-state IPC files live for this harness, and is forwarded to every
+    spawned ``studyloop`` process via ``STUDYLOOP_SESSION_DIR`` (the env var
+    ``session_state.py`` honours). Defaulting to the real
+    ``~/.config/studyloop`` keeps this usable outside tests, but every caller
+    in this test suite passes an explicit ``tmp_path``.
     """
 
-    def __init__(self, backend: Multiplexer) -> None:
+    def __init__(self, backend: Multiplexer, session_dir: Path | None = None) -> None:
         self.backend = backend
+        self.session_dir = session_dir or (Path.home() / ".config" / "studyloop")
         self._managed_sessions: list[str] = []
         self._backend_name: str = type(backend).__name__
         self._pty_child: pexpect.spawn | None = None
 
+    @property
+    def state_file(self) -> Path:
+        return self.session_dir / "session-state.json"
+
+    @property
+    def topics_file(self) -> Path:
+        return self.session_dir / "session-topics.md"
+
+    @property
+    def parking_file(self) -> Path:
+        return self.session_dir / "session-parking.md"
+
+    @property
+    def oneline_file(self) -> Path:
+        return self.session_dir / "session-oneline.txt"
+
     @classmethod
-    def from_backend_name(cls, name: str) -> MultiplexerHarness:
+    def from_backend_name(cls, name: str, session_dir: Path | None = None) -> MultiplexerHarness:
         """Create a harness from a backend name ('tmux' or 'herdr').
 
         Raises RuntimeError if the backend is not available.
@@ -69,14 +86,14 @@ class MultiplexerHarness:
             backend = TmuxBackend()
             if not backend.is_available():
                 raise RuntimeError("tmux is not available")
-            return cls(backend)
+            return cls(backend, session_dir)
         elif name == "herdr":
             from studyloop.herdr import HerdrBackend
 
             backend = HerdrBackend()
             if not backend.is_available():
                 raise RuntimeError("herdr is not available")
-            return cls(backend)
+            return cls(backend, session_dir)
         else:
             raise ValueError(f"Unknown backend: {name!r}")
 
@@ -259,6 +276,7 @@ class MultiplexerHarness:
 
         env = os.environ.copy()
         env["STUDYLOOP_TEST_AGENT_CMD"] = agent_cmd
+        env["STUDYLOOP_SESSION_DIR"] = str(self.session_dir)
         # Remove multiplexer env vars so we go through real attach flow
         env.pop("TMUX", None)
         env.pop("TMUX_PANE", None)
@@ -292,7 +310,7 @@ class MultiplexerHarness:
 
         # Wait for state file
         self.wait_for(
-            lambda: STATE_FILE.exists() and self._read_state().get("study_session_id"),
+            lambda: self.state_file.exists() and self._read_state().get("study_session_id"),
             timeout=15,
             msg=f"session state not written (exit={result.returncode}, "
             f"stderr={result.stderr[-200:]!r})",
@@ -314,6 +332,7 @@ class MultiplexerHarness:
         self.kill_pty_child()
 
         env = os.environ.copy()
+        env["STUDYLOOP_SESSION_DIR"] = str(self.session_dir)
         env.pop("TMUX", None)
         env.pop("HERDR_ENV", None)
 
@@ -374,6 +393,7 @@ class MultiplexerHarness:
         env: dict[str, str] = dict(os.environ)
         env["STUDYLOOP_TEST_AGENT_CMD"] = agent_cmd
         env["STUDYLOOP_MULTIPLEXER"] = "herdr"
+        env["STUDYLOOP_SESSION_DIR"] = str(self.session_dir)
         # Strip multiplexer env vars so the CLI goes through the real attach path
         env.pop("TMUX", None)
         env.pop("TMUX_PANE", None)
@@ -394,7 +414,7 @@ class MultiplexerHarness:
         #   2. mux_session, mux_main_pane, mux_sidebar_pane (after workspace creation)
         # We need phase 2 to be complete.
         def _state_fully_written() -> bool:
-            if not STATE_FILE.exists():
+            if not self.state_file.exists():
                 return False
             s = self._read_state()
             return bool(s.get("study_session_id") and s.get("mux_main_pane"))
@@ -411,7 +431,7 @@ class MultiplexerHarness:
                     self._pty_child.expect(pexpect.TIMEOUT, timeout=0.1)
                 before = self._pty_child.before if isinstance(self._pty_child.before, str) else ""
                 child_output = before
-            partial_state = self._read_state() if STATE_FILE.exists() else {}
+            partial_state = self._read_state() if self.state_file.exists() else {}
             raise TimeoutError(
                 f"session state not fully written via PTY spawn. "
                 f"Partial state keys: {list(partial_state.keys())}. "
@@ -436,20 +456,18 @@ class MultiplexerHarness:
     # State file helpers
     # ------------------------------------------------------------------
 
-    @staticmethod
-    def _read_state() -> dict:
+    def _read_state(self) -> dict:
         """Read session-state.json."""
         try:
-            if STATE_FILE.exists():
-                return json.loads(STATE_FILE.read_text())
+            if self.state_file.exists():
+                return json.loads(self.state_file.read_text())
         except (json.JSONDecodeError, OSError):
             pass
         return {}
 
-    @staticmethod
-    def _clean_ipc_files() -> None:
+    def _clean_ipc_files(self) -> None:
         """Remove IPC files from prior test."""
-        for f in (STATE_FILE, TOPICS_FILE, PARKING_FILE, ONELINE_FILE):
+        for f in (self.state_file, self.topics_file, self.parking_file, self.oneline_file):
             f.unlink(missing_ok=True)
 
     # ------------------------------------------------------------------

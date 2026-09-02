@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 import sqlite3
 from datetime import UTC, datetime, timedelta
 
 from . import _connection
+
+logger = logging.getLogger(__name__)
 
 
 def get_study_streaks() -> dict:
@@ -79,7 +82,10 @@ def get_study_streaks() -> dict:
             "sessions_this_week": sessions_this_week,
             "last_session_date": study_dates[0].isoformat() if study_dates else None,
         }
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as exc:
+        if not _connection.is_missing_table_error(exc):
+            logger.warning("get_study_streaks failed: %s", exc)
+            raise
         return empty
     finally:
         conn.close()

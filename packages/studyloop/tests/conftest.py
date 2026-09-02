@@ -198,11 +198,15 @@ class StubTransport:
 
 
 @pytest.fixture(params=["tmux", "herdr"])
-def mux_harness(request: pytest.FixtureRequest):
+def mux_harness(request: pytest.FixtureRequest, tmp_path):
     """Parameterised multiplexer harness — yields one instance per backend.
 
     Tests using this fixture run TWICE: once for tmux, once for herdr.
     Skips gracefully if the backend binary is not available (CI without herdr).
+
+    R-49: session_dir is redirected to tmp_path/session-ipc so the harness
+    reads/writes/deletes there instead of the developer's real
+    ~/.config/studyloop.
     """
     import shutil
 
@@ -215,12 +219,14 @@ def mux_harness(request: pytest.FixtureRequest):
     if backend_name == "herdr" and not shutil.which("herdr"):
         pytest.skip("herdr not available")
 
-    with MultiplexerHarness.from_backend_name(backend_name) as harness:
+    session_dir = tmp_path / "session-ipc"
+    session_dir.mkdir(parents=True, exist_ok=True)
+    with MultiplexerHarness.from_backend_name(backend_name, session_dir) as harness:
         yield harness
 
 
 @pytest.fixture()
-def tmux_mux_harness():
+def tmux_mux_harness(tmp_path):
     """tmux-only multiplexer harness (for tmux-specific journey tests)."""
     import shutil
 
@@ -228,12 +234,14 @@ def tmux_mux_harness():
 
     if not shutil.which("tmux"):
         pytest.skip("tmux not available")
-    with MultiplexerHarness.from_backend_name("tmux") as harness:
+    session_dir = tmp_path / "session-ipc"
+    session_dir.mkdir(parents=True, exist_ok=True)
+    with MultiplexerHarness.from_backend_name("tmux", session_dir) as harness:
         yield harness
 
 
 @pytest.fixture()
-def herdr_mux_harness():
+def herdr_mux_harness(tmp_path):
     """herdr-only multiplexer harness (for herdr-specific journey tests)."""
     import shutil
 
@@ -241,7 +249,9 @@ def herdr_mux_harness():
 
     if not shutil.which("herdr"):
         pytest.skip("herdr not available")
-    with MultiplexerHarness.from_backend_name("herdr") as harness:
+    session_dir = tmp_path / "session-ipc"
+    session_dir.mkdir(parents=True, exist_ok=True)
+    with MultiplexerHarness.from_backend_name("herdr", session_dir) as harness:
         yield harness
 
 
