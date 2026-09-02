@@ -146,6 +146,12 @@ experience may change before `1.0.0`.
   now logged and re-raised unless it is a missing-table error, matching
   the fix already applied to the read-side helpers across
   `history/*.py`.
+- `history/concepts.py`'s `list_concepts` and `history/search.py`'s
+  `topic_frequency`/`struggle_topics` had the same bare
+  `except sqlite3.OperationalError: return []` the rest of `history/*.py`
+  was already fixed for -- a lock/timeout fault read back
+  indistinguishably from "no concepts"/"topic never mentioned." Narrowed
+  to the missing-table case; anything else is now logged and re-raised.
 
 ### Known pre-release boundaries
 

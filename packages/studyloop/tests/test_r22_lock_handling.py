@@ -284,3 +284,114 @@ class TestMasteryNoSuchTableVsLocked:
             mastery_mod.upsert_dependency(self._edge())
 
         assert any("upsert_dependency" in r.message for r in caplog.records)
+
+
+class TestConceptsNoSuchTableVsLocked:
+    """R-22b (M3 council, arbitration A10): `history/concepts.py`'s
+    `list_concepts` had the same bare `except sqlite3.OperationalError:
+    return []` this file's other classes already fixed elsewhere."""
+
+    def test_no_such_table_returns_fallback(self, tmp_path, monkeypatch):
+        db_path = tmp_path / "sessions.db"
+        sqlite3.connect(db_path).close()
+
+        import studyloop.history.concepts as concepts_mod
+
+        monkeypatch.setattr(_connection, "_connect", lambda: _real_conn(db_path))
+
+        assert concepts_mod.list_concepts() == []
+
+    def test_locked_db_raises_and_logs_not_silent_fallback(self, tmp_path, monkeypatch, caplog):
+        db_path = tmp_path / "sessions.db"
+        sqlite3.connect(db_path).execute(
+            "CREATE TABLE concepts (id TEXT PRIMARY KEY, name TEXT, domain TEXT, description TEXT)"
+        )
+
+        import studyloop.history.concepts as concepts_mod
+
+        monkeypatch.setattr(_connection, "_connect", lambda: _RaisingConn(_real_conn(db_path)))
+
+        with (
+            caplog.at_level(logging.WARNING, logger="studyloop.history.concepts"),
+            pytest.raises(sqlite3.OperationalError, match="locked"),
+        ):
+            concepts_mod.list_concepts()
+
+        assert any("list_concepts" in r.message for r in caplog.records)
+
+
+class TestSearchTopicFrequencyNoSuchTableVsLocked:
+    """R-22b: `history/search.py`'s `topic_frequency` had the same bare
+    `except sqlite3.OperationalError: return []`."""
+
+    def test_no_such_table_returns_fallback(self, tmp_path, monkeypatch):
+        db_path = tmp_path / "sessions.db"
+        sqlite3.connect(db_path).close()  # no messages_fts at all
+
+        import studyloop.history.search as search_mod
+
+        monkeypatch.setattr(_connection, "_connect", lambda: _real_conn(db_path))
+
+        assert search_mod.topic_frequency(["python"]) == []
+
+    def test_locked_db_raises_and_logs_not_silent_fallback(self, tmp_path, monkeypatch, caplog):
+        db_path = tmp_path / "sessions.db"
+        conn = sqlite3.connect(db_path)
+        conn.execute(
+            "CREATE TABLE messages (id INTEGER PRIMARY KEY, session_id TEXT, "
+            "role TEXT, content TEXT, timestamp TEXT)"
+        )
+        conn.execute(
+            "CREATE VIRTUAL TABLE messages_fts USING fts5("
+            "  content, session_id UNINDEXED, role UNINDEXED,"
+            "  tokenize='porter unicode61'"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+
+        import studyloop.history.search as search_mod
+
+        monkeypatch.setattr(_connection, "_connect", lambda: _RaisingConn(_real_conn(db_path)))
+
+        with (
+            caplog.at_level(logging.WARNING, logger="studyloop.history.search"),
+            pytest.raises(sqlite3.OperationalError, match="locked"),
+        ):
+            search_mod.topic_frequency(["python"])
+
+        assert any("topic_frequency" in r.message for r in caplog.records)
+
+
+class TestSearchStruggleTopicsNoSuchTableVsLocked:
+    """R-22b: `history/search.py`'s `struggle_topics` had the same bare
+    `except sqlite3.OperationalError: return []`."""
+
+    def test_no_such_table_returns_fallback(self, tmp_path, monkeypatch):
+        db_path = tmp_path / "sessions.db"
+        sqlite3.connect(db_path).close()
+
+        import studyloop.history.search as search_mod
+
+        monkeypatch.setattr(_connection, "_connect", lambda: _real_conn(db_path))
+
+        assert search_mod.struggle_topics() == []
+
+    def test_locked_db_raises_and_logs_not_silent_fallback(self, tmp_path, monkeypatch, caplog):
+        db_path = tmp_path / "sessions.db"
+        sqlite3.connect(db_path).execute(
+            "CREATE TABLE messages (id INTEGER PRIMARY KEY, session_id TEXT, "
+            "role TEXT, content TEXT, timestamp TEXT)"
+        )
+
+        import studyloop.history.search as search_mod
+
+        monkeypatch.setattr(_connection, "_connect", lambda: _RaisingConn(_real_conn(db_path)))
+
+        with (
+            caplog.at_level(logging.WARNING, logger="studyloop.history.search"),
+            pytest.raises(sqlite3.OperationalError, match="locked"),
+        ):
+            search_mod.struggle_topics()
+
+        assert any("struggle_topics" in r.message for r in caplog.records)
