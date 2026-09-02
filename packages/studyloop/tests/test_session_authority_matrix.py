@@ -781,6 +781,105 @@ class TestClaimReservation:
 
         assert observed["mode_when_db_called"] == "starting"
 
+    def test_a_second_cli_start_sees_a_cli_reservation_as_live(self, caplog) -> None:
+        """C9 (council): a CLI reservation (try_claim_session's own write,
+        mode="starting", pid=os.getpid(), no mux_session yet -- that name
+        is chosen later in the CLI's own flow) must read as LIVE to a
+        second, concurrent CLI start. claim_blocks_cli_start used to judge
+        a CLI-owned claim purely by mux_session existence, so a fresh
+        reservation (which has none yet) read as stale and would have been
+        silently reclaimed by the second start -- the C1 lock makes the
+        READ consistent, but this liveness signal defeated it before this
+        fix. os.getppid() is alive (this test process's own parent) and
+        not our own pid -- a portable stand-in for "a different, real CLI
+        process holds the reservation"."""
+        session_state.write_session_state(
+            {
+                "study_session_id": "pending-cli-a",
+                "mode": "starting",
+                "pid": os.getppid(),
+                "topic": "Async IO",
+                "started_at": "2026-06-01T12:00:00+00:00",
+            }
+        )
+
+        with (
+            patch("studyloop.tmux.is_tmux_available", return_value=True),
+            patch("studyloop.agent_launcher.shutil.which", return_value="/usr/bin/claude"),
+            patch("studyloop.session.cleanup.auto_clean_zombies"),
+            # Defensive, not just belt-and-braces: if the guard wrongly
+            # does NOT block (the pre-fix RED case), start_session would
+            # otherwise fall through into REAL tmux orchestration --
+            # os.execvp, a real forked tmux session -- exactly the R-01b
+            # incident (evidence/M2/step-8/00-dod.md). Ending the test at
+            # "Failed to create session in DB" instead is what makes a
+            # regression here fail on a clean assertion, not a hang.
+            patch("studyloop.history.start_study_session", return_value=None),
+            pytest.raises(SessionStartError) as exc_info,
+        ):
+            start_session("Async IO", "claude", "study", "elapsed", 5, False)
+
+        assert "already active" in exc_info.value.message
+        assert not any("reclaim" in rec.message.lower() for rec in caplog.records)
+
+    def test_a_web_start_sees_a_cli_reservation_as_live(
+        self,
+        client: TestClient,
+        _mock_agent_available,
+        _stub_db,
+        _stub_pty_factory,
+    ) -> None:
+        """C9 mirror: the web helper must also treat a fresh CLI
+        reservation (pid alive, foreign, no mux_session yet) as live --
+        before this fix, claim_blocks_web_start's CLI-owned branch also
+        only checked mux_session, so a web start could have clobbered a
+        fresh CLI reservation the same way a second CLI start could."""
+        session_state.write_session_state(
+            {
+                "study_session_id": "pending-cli-a",
+                "mode": "starting",
+                "pid": os.getppid(),
+                "topic": "Async IO",
+                "started_at": "2026-06-01T12:00:00+00:00",
+            }
+        )
+
+        resp = client.post(
+            "/api/session/start",
+            json={"topic": "Async IO", "energy": 5, "agent": "claude", "transport": "pty"},
+        )
+
+        assert resp.status_code == 409, resp.text
+        assert "already active" in resp.json()["error"]
+
+    def test_a_dead_pid_cli_reservation_is_reclaimed_by_a_second_cli_start(self, caplog) -> None:
+        """The negative: pid-first does not turn a genuinely stale
+        reservation (owner's process is dead -- a crash mid-reservation,
+        before mux_session was ever chosen) into a permanent block."""
+        session_state.write_session_state(
+            {
+                "study_session_id": "pending-cli-dead",
+                "mode": "starting",
+                "pid": 999999999,
+                "topic": "Async IO",
+                "started_at": "2026-06-01T12:00:00+00:00",
+            }
+        )
+
+        with (
+            patch("studyloop.tmux.is_tmux_available", return_value=True),
+            patch("studyloop.agent_launcher.shutil.which", return_value="/usr/bin/claude"),
+            patch("studyloop.session.cleanup.auto_clean_zombies"),
+            patch("studyloop.history.start_study_session", return_value=None),
+            pytest.raises(SessionStartError) as exc_info,
+        ):
+            start_session("Async IO", "claude", "study", "elapsed", 5, False)
+
+        assert "already active" not in exc_info.value.message
+        warnings = [rec for rec in caplog.records if "reclaim" in rec.message.lower()]
+        assert len(warnings) == 1
+        assert "pending-cli-dead" in warnings[0].message
+
 
 class TestNoClaim:
     """Baseline: an ended (or absent) claim never blocks a start."""

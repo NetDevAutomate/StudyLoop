@@ -47,15 +47,14 @@ narrowly to its own actual risk window (the web paths wrap their entire
 post-reservation body in a `claim_finalized` flag + `finally`, since many
 failure points exist between reservation and the final write; the CLI
 path's own window is much shorter -- only the DB-record call sits between
-its reservation and its write). **Residual, not closed:** a CLI
-reservation carries no `mux_session` (that name is not chosen until
+its reservation and its write). **Was residual, closed by C9 (below):** a
+CLI reservation carries no `mux_session` (that name is not chosen until
 later in the CLI's own flow), so a second, concurrent CLI start's own
-`claim_blocks_cli_start` check cannot yet see the first one's reservation
-as live via the mux-session-exists check -- the same shape of limitation
-`claim_blocks_web_start`'s CLI-owned branch already had before this item,
-now also true of a reservation specifically. `try_claim_session`'s own
-locking still prevents a corrupted read; it is the CLI's OWN liveness
-signal that has this gap, same as it always did.
+`claim_blocks_cli_start` check could not see the first one's reservation
+as live via the mux-session-exists check alone. Closed by checking the
+reservation's `pid` BEFORE either owner-type branch, in both
+`claim_blocks_cli_start` and `claim_blocks_web_start` -- see clause 2's
+"Reservation" row.
 
 ## 2. Liveness
 
@@ -67,6 +66,7 @@ A claim is **LIVE** iff `session_state.is_session_active()` is true (a
 | CLI (`studyloop study`) — no `transport` key, or one outside `{"pty","acp"}` | Its recorded multiplexer session (`mux_session`/`tmux_session`) still exists (`get_backend().session_exists(name)`). No name recorded ⇒ not alive. A backend that raises while answering also fails open (not alive) — logged at WARNING (C5, council) rather than silently swallowed, so a genuinely broken backend is visible instead of indistinguishable from "no live session". |
 | Web PTY/ACP, checked by the web server process that could hold it | `session/active.py`'s singleton is the *only* way a pty/acp claim can be genuinely live in THIS process — this codebase runs one web server process per machine (`active.py`'s own docstring: "One process, one session"). A check that reaches the file only after finding the singleton empty has therefore already proven the claim is not live in this process. **C3 (council):** it may still be live in a DIFFERENT web server process (a different port, or a restart racing the old instance before it exits) — since R-01b records `pid` on every web claim, `claim_blocks_web_start` now blocks iff that `pid` is recorded, alive, and not this process's own pid; own-pid or no-pid claims are unchanged (always stale here). |
 | Web PTY/ACP, read cross-process (R-01b: `studyloop study`, i.e. `session/start.py`, checking a web-owned claim) | The web server process's own pid, recorded on the claim by `build_session_state_payload` (`"pid": os.getpid()`) at start time. Live iff `os.kill(pid, 0)` doesn't raise `ProcessLookupError`; a `PermissionError` (pid reused by a process this CLI invocation doesn't own) also counts as alive, since a real process IS sitting on that pid. **No `pid` recorded blocks conservatively** — a claim written by a build before this field existed can't be verified either way, and refusing (with the existing message telling the user how to end it) is safer than silently reclaiming a claim of unknown liveness. Implemented as `claim_blocks_cli_start` in `session_state.py`, next to `claim_blocks_web_start`; the two share the CLI-owned branch via a private `_cli_owned_claim_is_live` helper. **Accepted residual risk: pid reuse** between the web server's death and this check — an unrelated process now holding that pid reads as "alive," so the claim still blocks. The failure mode is a false block ("run `--end`"), never a false reclaim of a genuinely live session. |
+| **Reservation (`mode="starting"`, C1/C9, council)** | Live iff its recorded `pid` is alive and is not the CHECKING process's own pid — checked BEFORE either owner-type row above, in both `claim_blocks_web_start` and `claim_blocks_cli_start` (shared private helper `_reservation_pid_is_live_and_foreign`). A reservation has no `mux_session` yet (the CLI chooses that name later in its own flow) and no in-process singleton either (the web singleton is populated only after `active.acquire()` succeeds, after the reservation already exists) — judging it by either of those signals alone reads it as stale to anyone else checking it, which is exactly the gap C9 closed: a fresh reservation must read as live to a concurrent second start of EITHER kind, or `try_claim_session`'s own locking (C1) only makes the READ consistent, not the outcome. The CLI keeps its pid through `os.execvp` into the tmux attach (the same OS pid survives an exec) and every later merge-write leaves `pid` untouched (`write_session_state` merges, never replaces) until `mux_session` is recorded, so this rule holds for the reservation's whole risk window. |
 
 A **stale** claim (owner dead) never blocks a new start. The next start
 **RECLAIMS** it: log a warning naming the previous owner's `study_session_id`
