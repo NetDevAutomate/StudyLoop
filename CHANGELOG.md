@@ -171,6 +171,13 @@ experience may change before `1.0.0`.
   overwriting the shared session state and orphaning the CLI's running
   agent. A session left behind by a crashed process is still reclaimed
   automatically rather than blocking forever.
+- Ending a session -- from the Web UI, `studyloop study --end`, or the study
+  sidebar's End Session key -- no longer terminates every other study
+  session on the machine. Each end path now closes only its own terminal
+  session (a web Study Session or Body Double closes none, since it owns no
+  terminal). `studyloop clean --all` is the one place left to deliberately
+  sweep every `study-*` session at once, for the rare case that's actually
+  wanted.
 
 ### Security
 

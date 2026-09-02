@@ -8,6 +8,7 @@ with mocks only at the I/O boundary.
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import patch
 
 from studyloop.logic.clean_logic import CleanResult, DirInfo, plan_clean
 
@@ -219,3 +220,87 @@ class TestCleanResult:
 
     def test_has_work_true_with_state(self):
         assert CleanResult(state_to_clean=True).has_work
+
+
+# ─── Imperative Shell Tests (CliRunner + mocks at the I/O boundary) ─────
+#
+# R-02: kill_all_study_sessions() used to be reachable from the per-session
+# end path (session/cleanup.py). That call site is gone now -- the ending
+# session's own multiplexer name is killed instead. `studyloop clean --all`
+# is the one place left that still reaches for the blunt "kill everything"
+# sweep, as a deliberate, explicit operation the review's fix recommended
+# keeping ("keep a separate, explicit 'clean everything' operation for
+# `studyloop clean`"). Default `clean` (no --all) is unchanged: zombie-only,
+# via individual kill_session() calls.
+
+
+class TestCleanAllFlag:
+    def _mock_mux(self, *, all_sessions: list[str], zombies: set[str]):
+        from unittest.mock import MagicMock
+
+        mux = MagicMock()
+        mux.is_server_running.return_value = True
+        mux.list_study_sessions.return_value = list(all_sessions)
+        mux.is_zombie_session.side_effect = lambda name: name in zombies
+        mux.kill_session.return_value = True
+        return mux
+
+    def _invoke(self, mux, tmp_path, args: list[str]):
+        from click.testing import CliRunner
+
+        from studyloop import session_state as ss
+        from studyloop.cli._clean import clean
+
+        with (
+            patch("studyloop.multiplexer.get_backend", return_value=mux),
+            patch.object(ss, "SESSION_DIR", tmp_path),
+            patch.object(ss, "STATE_FILE", tmp_path / "session-state.json"),
+        ):
+            return CliRunner().invoke(clean, args)
+
+    def test_default_dry_run_lists_only_zombies(self, tmp_path):
+        """Regression: --all absent must not change default behaviour."""
+        mux = self._mock_mux(
+            all_sessions=["study-live-1", "study-zombie-2"], zombies={"study-zombie-2"}
+        )
+
+        result = self._invoke(mux, tmp_path, ["--dry-run"])
+
+        assert result.exit_code == 0, result.output
+        assert "study-zombie-2" in result.output
+        assert "study-live-1" not in result.output
+        mux.kill_all_study_sessions.assert_not_called()
+
+    def test_dry_run_all_lists_every_study_session(self, tmp_path):
+        mux = self._mock_mux(
+            all_sessions=["study-live-1", "study-zombie-2"], zombies={"study-zombie-2"}
+        )
+
+        result = self._invoke(mux, tmp_path, ["--dry-run", "--all"])
+
+        assert result.exit_code == 0, result.output
+        assert "study-live-1" in result.output
+        assert "study-zombie-2" in result.output
+        mux.kill_all_study_sessions.assert_not_called()  # dry-run never acts
+
+    def test_all_calls_kill_all_study_sessions_not_individual_kills(self, tmp_path):
+        mux = self._mock_mux(
+            all_sessions=["study-live-1", "study-zombie-2"], zombies={"study-zombie-2"}
+        )
+
+        result = self._invoke(mux, tmp_path, ["--all"])
+
+        assert result.exit_code == 0, result.output
+        mux.kill_all_study_sessions.assert_called_once_with(current_session=None)
+        mux.kill_session.assert_not_called()
+
+    def test_without_all_only_zombies_are_individually_killed(self, tmp_path):
+        mux = self._mock_mux(
+            all_sessions=["study-live-1", "study-zombie-2"], zombies={"study-zombie-2"}
+        )
+
+        result = self._invoke(mux, tmp_path, [])
+
+        assert result.exit_code == 0, result.output
+        mux.kill_all_study_sessions.assert_not_called()
+        mux.kill_session.assert_called_once_with("study-zombie-2")
