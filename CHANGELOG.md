@@ -138,6 +138,14 @@ experience may change before `1.0.0`.
   through SQLite's `datetime()`, so it stays correct if a future writer,
   a manual edit, or an older/foreign row ever disagrees with today's
   uniform writers.
+- `record_teachback` caught every `sqlite3.DatabaseError` the same way,
+  including a genuine lock/timeout `OperationalError` -- indistinguishable
+  from an expected CHECK-constraint rejection (an out-of-range teach-back
+  score), both silently returning "not recorded." Narrowed to
+  `sqlite3.IntegrityError` for the CHECK-violation case; anything else is
+  now logged and re-raised unless it is a missing-table error, matching
+  the fix already applied to the read-side helpers across
+  `history/*.py`.
 
 ### Known pre-release boundaries
 

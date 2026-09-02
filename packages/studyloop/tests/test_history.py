@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+import logging
 import sqlite3
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+
+import pytest
 
 
 def _make_db(tmp_path: Path) -> Path:
@@ -414,6 +417,59 @@ class TestRecordTeachbackSerialisationAndErrors:
         count = conn.execute("SELECT COUNT(*) FROM teach_back_scores").fetchone()[0]
         conn.close()
         assert count == 0
+
+    def test_locked_db_raises_and_logs_not_silently_returned_as_false(
+        self, tmp_path, monkeypatch, caplog
+    ):
+        """R-21b (M3 council, arbitration A10): `except sqlite3.DatabaseError`
+        is IntegrityError's *and* OperationalError's shared parent -- so the
+        broad catch that let a CHECK violation return False also silently
+        swallowed a genuine lock/timeout OperationalError into the exact
+        same "return False" as an expected rejection, indistinguishable from
+        one another to every caller. Reproduced with a real connection whose
+        `execute` only raises on the specific statement `record_teachback`
+        actually issues (not every statement -- unlike a CHECK violation,
+        which SQLite itself raises, "database is locked" has to be injected
+        here since there is no real lock contention in a single-process
+        test), so `BEGIN IMMEDIATE`/`ROLLBACK`/`isolation_level` all still
+        behave like the real connection they wrap.
+        """
+        db_path = _make_teachback_db(tmp_path)
+
+        class _LockOnInsertConn:
+            def __init__(self, real_conn: sqlite3.Connection) -> None:
+                self._real = real_conn
+
+            def execute(self, sql, *args, **kwargs):
+                if "INSERT INTO teach_back_scores" in sql:
+                    raise sqlite3.OperationalError("database is locked")
+                return self._real.execute(sql, *args, **kwargs)
+
+            def __getattr__(self, name):
+                return getattr(self._real, name)
+
+        def mock_connect():
+            conn = sqlite3.connect(db_path, timeout=5)
+            conn.row_factory = sqlite3.Row
+            return _LockOnInsertConn(conn)
+
+        import studyloop.history as hist
+        import studyloop.history._connection as _conn
+
+        monkeypatch.setattr(_conn, "_connect", mock_connect)
+
+        with (
+            caplog.at_level(logging.WARNING, logger="studyloop.history.teachback"),
+            pytest.raises(sqlite3.OperationalError, match="locked"),
+        ):
+            hist.record_teachback(
+                concept="Decorators",
+                topic="Python",
+                scores=(3, 3, 3, 3, 3),
+                review_type="micro",
+            )
+
+        assert any("record_teachback" in r.message for r in caplog.records)
 
 
 class TestProgressIdFor:
