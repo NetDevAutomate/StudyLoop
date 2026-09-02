@@ -45,6 +45,21 @@ STATUS_SHAPES: dict[str, tuple[str, str]] = {
 }
 
 
+def _mtime_or_zero(path) -> float:
+    """``path``'s mtime, or 0.0 if it is missing (or vanishes mid-check).
+
+    Read first, catch OSError, rather than exists()-then-stat() -- the
+    latter races session release's unlink() from an executor thread
+    (session/active.py) exactly like the SSE poll R-06/R-08 fixed
+    elsewhere on this same surface (C7, council: caught here once
+    test_no_exists_then_read_race.py's scan widened to the whole package).
+    """
+    try:
+        return path.stat().st_mtime
+    except OSError:
+        return 0.0
+
+
 def _compute_elapsed(state: dict) -> int:
     """Compute elapsed seconds from state file fields.
 
@@ -370,9 +385,9 @@ class SidebarApp(App[None]):
         last_mtimes = (0.0, 0.0, 0.0)
         while True:
             mtimes = (
-                STATE_FILE.stat().st_mtime if STATE_FILE.exists() else 0.0,
-                TOPICS_FILE.stat().st_mtime if TOPICS_FILE.exists() else 0.0,
-                PARKING_FILE.stat().st_mtime if PARKING_FILE.exists() else 0.0,
+                _mtime_or_zero(STATE_FILE),
+                _mtime_or_zero(TOPICS_FILE),
+                _mtime_or_zero(PARKING_FILE),
             )
 
             state = read_session_state()

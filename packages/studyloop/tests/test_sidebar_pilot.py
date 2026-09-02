@@ -254,3 +254,41 @@ class TestSidebarKeyBindings:
             # State file should now have paused_at set
             state = json.loads((state_dir / "session-state.json").read_text())
             assert state.get("paused_at") is not None, "paused_at should be set after pressing p"
+
+
+# ---------------------------------------------------------------------------
+# _mtime_or_zero (C7) -- the IPC poll's exists()-then-stat() TOCTOU, the same
+# shape R-06/R-08 fixed elsewhere in the session-authority surface, caught
+# once test_no_exists_then_read_race.py's scan widened to the whole package.
+# ---------------------------------------------------------------------------
+
+
+class _VanishingPath:
+    """A path that exists() but is gone by the time stat() runs."""
+
+    def exists(self) -> bool:
+        return True
+
+    def stat(self):
+        raise FileNotFoundError(2, "No such file or directory")
+
+
+def test_mtime_or_zero_survives_a_vanishing_file() -> None:
+    from studyloop.tui.sidebar import _mtime_or_zero
+
+    assert _mtime_or_zero(_VanishingPath()) == 0.0
+
+
+def test_mtime_or_zero_returns_missing_files_mtime(tmp_path: Path) -> None:
+    from studyloop.tui.sidebar import _mtime_or_zero
+
+    missing = tmp_path / "does-not-exist"
+    assert _mtime_or_zero(missing) == 0.0
+
+
+def test_mtime_or_zero_returns_the_real_mtime(tmp_path: Path) -> None:
+    from studyloop.tui.sidebar import _mtime_or_zero
+
+    real = tmp_path / "state.json"
+    real.write_text("{}")
+    assert _mtime_or_zero(real) == real.stat().st_mtime
