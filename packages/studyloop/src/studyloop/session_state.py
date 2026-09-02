@@ -256,6 +256,61 @@ def is_session_active() -> bool:
     return state.get("mode") != "ended"
 
 
+def _claim_exists(state: dict) -> bool:
+    """Whether ``state`` names a claim that hasn't been explicitly ended."""
+    return bool(state.get("study_session_id")) and state.get("mode") != "ended"
+
+
+def _cli_owned_claim_is_live(state: dict) -> bool:
+    """Whether a CLI-owned claim's recorded multiplexer session still exists.
+
+    Shared by :func:`claim_blocks_web_start` and :func:`claim_blocks_cli_start`
+    — both ask the same question of a CLI-owned claim, just from different
+    callers. No name recorded, or the multiplexer backend can't be reached,
+    means "can't confirm it's alive" — treated conservatively as NOT
+    blocking (stale), same as a session whose tmux server was killed
+    outside StudyLoop.
+    """
+    session_name = state.get("mux_session") or state.get("tmux_session")
+    if not session_name:
+        return False
+    import contextlib
+
+    from studyloop.multiplexer import get_backend
+
+    with contextlib.suppress(Exception):
+        return bool(get_backend().session_exists(session_name))
+    return False
+
+
+def _pid_is_alive(pid: object) -> bool:
+    """Whether ``pid`` names a process this machine still has running.
+
+    ``os.kill(pid, 0)`` sends no signal, only asks the kernel whether the
+    pid exists and is reachable: ``ProcessLookupError`` means it doesn't
+    (dead); ``PermissionError`` means it does but is owned by someone else
+    (still counts as alive — a real process is sitting on that pid, and
+    treating it as free risks two processes touching the state file at
+    once). Any other failure, or a non-int ``pid`` (a claim written before
+    this field existed will not reach here — callers check for it first —
+    but a corrupt file might), is treated as dead: invalid input can't name
+    a live process.
+    """
+    if not isinstance(pid, int):
+        return False
+    import os
+
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except OSError:
+        return False
+    return True
+
+
 def claim_blocks_web_start(state: dict) -> bool:
     """Whether a file claim should block a new web PTY/ACP session start.
 
@@ -268,10 +323,8 @@ def claim_blocks_web_start(state: dict) -> bool:
       never blocks.
     - A CLI-owned claim (no ``transport`` key, or one outside
       ``{"pty", "acp"}``) blocks iff its recorded multiplexer session
-      (``mux_session``/``tmux_session``) still exists. No name recorded, or
-      the multiplexer backend can't be reached, means "can't confirm it's
-      alive" — treated conservatively as NOT blocking (stale), same as a
-      session whose tmux server was killed outside StudyLoop.
+      (``mux_session``/``tmux_session``) still exists (see
+      :func:`_cli_owned_claim_is_live`).
     - A web-owned claim (``transport`` in ``{"pty", "acp"}``) can only be
       genuinely live via the singleton the caller already ruled out — this
       codebase runs one web server process per machine (see
@@ -279,17 +332,45 @@ def claim_blocks_web_start(state: dict) -> bool:
       such a claim therefore proves it is stale (the crash-then-restart
       cell): it never blocks.
     """
-    if not state.get("study_session_id") or state.get("mode") == "ended":
+    if not _claim_exists(state):
         return False
     if state.get("transport") in ("pty", "acp"):
         return False
-    session_name = state.get("mux_session") or state.get("tmux_session")
-    if not session_name:
+    return _cli_owned_claim_is_live(state)
+
+
+def claim_blocks_cli_start(state: dict) -> bool:
+    """Whether a file claim should block a new CLI (``studyloop study``) start.
+
+    The CLI's own start path (R-01b) has no in-process singleton to rule a
+    web-owned claim out with, unlike :func:`claim_blocks_web_start` — so it
+    checks both owner shapes for real:
+
+    - No claim at all never blocks.
+    - A CLI-owned claim blocks iff its recorded multiplexer session still
+      exists (:func:`_cli_owned_claim_is_live`, shared with
+      ``claim_blocks_web_start``).
+    - A web-owned claim (``transport`` in ``{"pty", "acp"}``), read
+      cross-process from the CLI: live iff its recorded ``pid`` (the web
+      server process that holds the claim) is still alive
+      (:func:`_pid_is_alive`). **No ``pid`` recorded blocks
+      conservatively** — a claim written by a build before this field
+      existed can't be verified either way, and the existing "already
+      active" message already tells the user how to end it explicitly,
+      which is safer than silently reclaiming a claim this process cannot
+      confirm is actually dead.
+
+    Residual risk, accepted: pid reuse. If the web server process dies and
+    the OS recycles its pid for an unrelated process before this check
+    runs, that unrelated process reads as "alive" and the claim still
+    blocks — a false block, not a false reclaim, so the failure mode is
+    "tell the user to run `--end`", not "clobber a live session's state".
+    """
+    if not _claim_exists(state):
         return False
-    import contextlib
-
-    from studyloop.multiplexer import get_backend
-
-    with contextlib.suppress(Exception):
-        return bool(get_backend().session_exists(session_name))
-    return False
+    if state.get("transport") not in ("pty", "acp"):
+        return _cli_owned_claim_is_live(state)
+    pid = state.get("pid")
+    if pid is None:
+        return True
+    return _pid_is_alive(pid)

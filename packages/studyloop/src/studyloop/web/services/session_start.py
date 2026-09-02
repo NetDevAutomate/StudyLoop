@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 from typing import TYPE_CHECKING, Literal
 
@@ -68,6 +69,15 @@ def build_session_state_payload(
         "agent": agent,
         "persona_hash": persona_hash,
         "transport": transport,
+        # The web server process is the owner of a pty/acp claim (the
+        # session/active.py singleton lives in it). Recording its pid lets
+        # a LATER, cross-process reader -- the CLI's own start path,
+        # claim_blocks_cli_start() -- tell a live claim from a stale one
+        # left by a server that crashed without clearing the state file
+        # (R-01b). Accepted residual risk: pid reuse between this
+        # process's death and a later check; see
+        # docs/architecture/session-authority.md clause 2.
+        "pid": os.getpid(),
         # PTY/ACP starts own no tmux session. write_session_state is a
         # read-merge-write, so a PTY session started after a CLI tmux session
         # (studyloop study) would otherwise inherit that session's dead

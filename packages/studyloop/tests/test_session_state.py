@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -240,3 +241,126 @@ def test_parsers_tolerate_unreadable_paths(tmp_path: Path, monkeypatch: pytest.M
 
     assert parse_topics_file() == []
     assert parse_parking_file() == []
+
+
+# ---------------------------------------------------------------------------
+# claim_blocks_cli_start (R-01b) -- the CLI start path's own liveness check,
+# mirroring claim_blocks_web_start (docs/architecture/session-authority.md
+# clause 2).
+# ---------------------------------------------------------------------------
+
+
+def test_claim_blocks_cli_start_no_claim_never_blocks() -> None:
+    from studyloop.session_state import claim_blocks_cli_start
+
+    assert claim_blocks_cli_start({}) is False
+
+
+def test_claim_blocks_cli_start_ended_claim_never_blocks() -> None:
+    from studyloop.session_state import claim_blocks_cli_start
+
+    assert claim_blocks_cli_start({"study_session_id": "x", "mode": "ended"}) is False
+
+
+def test_claim_blocks_cli_start_live_cli_claim_blocks(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A CLI-owned claim (no transport key) blocks iff its recorded
+    multiplexer session still exists."""
+    from studyloop.session_state import claim_blocks_cli_start
+
+    state = {"study_session_id": "x", "mode": "focus", "mux_session": "study-x"}
+    monkeypatch.setattr(
+        "studyloop.multiplexer.get_backend",
+        lambda: type("_Mux", (), {"session_exists": staticmethod(lambda name: True)})(),
+    )
+
+    assert claim_blocks_cli_start(state) is True
+
+
+def test_claim_blocks_cli_start_dead_cli_claim_does_not_block(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from studyloop.session_state import claim_blocks_cli_start
+
+    state = {"study_session_id": "x", "mode": "focus", "mux_session": "study-x"}
+    monkeypatch.setattr(
+        "studyloop.multiplexer.get_backend",
+        lambda: type("_Mux", (), {"session_exists": staticmethod(lambda name: False)})(),
+    )
+
+    assert claim_blocks_cli_start(state) is False
+
+
+def test_claim_blocks_cli_start_cli_claim_with_no_session_name_does_not_block() -> None:
+    """No mux/tmux session name recorded means "can't confirm it's alive" --
+    treated conservatively as NOT blocking (stale), same rule
+    claim_blocks_web_start already applies."""
+    from studyloop.session_state import claim_blocks_cli_start
+
+    assert claim_blocks_cli_start({"study_session_id": "x", "mode": "focus"}) is False
+
+
+def test_claim_blocks_cli_start_live_web_claim_blocks() -> None:
+    """A web-owned claim (transport pty/acp) read from the CLI process
+    blocks iff its recorded pid is alive."""
+    from studyloop.session_state import claim_blocks_cli_start
+
+    state = {
+        "study_session_id": "x",
+        "mode": "focus",
+        "transport": "pty",
+        "pid": os.getpid(),
+    }
+    assert claim_blocks_cli_start(state) is True
+
+
+def test_claim_blocks_cli_start_dead_web_claim_does_not_block() -> None:
+    from studyloop.session_state import claim_blocks_cli_start
+
+    state = {
+        "study_session_id": "x",
+        "mode": "focus",
+        "transport": "pty",
+        "pid": 999999999,
+    }
+    assert claim_blocks_cli_start(state) is False
+
+
+def test_claim_blocks_cli_start_web_claim_with_no_pid_blocks_conservatively() -> None:
+    """No `pid` recorded (a claim written by an older build) blocks --
+    the existing message tells the user how to end it explicitly, which is
+    safer than reclaiming a claim this process cannot verify."""
+    from studyloop.session_state import claim_blocks_cli_start
+
+    state = {"study_session_id": "x", "mode": "focus", "transport": "acp"}
+    assert claim_blocks_cli_start(state) is True
+
+
+def test_claim_blocks_cli_start_permission_error_counts_as_alive(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A pid the CLI process cannot signal (owned by another user, or
+    reused) still has something live at it -- PermissionError means the
+    kernel found a real process, not that the slot is free."""
+    from studyloop.session_state import claim_blocks_cli_start
+
+    def _raise_permission_error(pid: int, sig: int) -> None:
+        raise PermissionError(1, "Operation not permitted")
+
+    monkeypatch.setattr(os, "kill", _raise_permission_error)
+    state = {"study_session_id": "x", "mode": "focus", "transport": "pty", "pid": 4242}
+
+    assert claim_blocks_cli_start(state) is True
+
+
+def test_claim_blocks_cli_start_process_lookup_error_does_not_block(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from studyloop.session_state import claim_blocks_cli_start
+
+    def _raise_process_lookup_error(pid: int, sig: int) -> None:
+        raise ProcessLookupError(3, "No such process")
+
+    monkeypatch.setattr(os, "kill", _raise_process_lookup_error)
+    state = {"study_session_id": "x", "mode": "focus", "transport": "acp", "pid": 4242}
+
+    assert claim_blocks_cli_start(state) is False

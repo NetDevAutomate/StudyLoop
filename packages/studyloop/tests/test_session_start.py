@@ -111,12 +111,23 @@ class TestStartSessionPreflightFailures:
         assert "No AI agent" in exc_info.value.message
 
     def test_raises_when_session_already_active(self):
-        active_state = {"study_session_id": "x"}
+        """A CLI claim whose recorded multiplexer session is still alive
+        blocks (R-01b: claim_blocks_cli_start, not the old unconditional
+        is_session_active() check). ``mux_session`` must be set and its
+        backend stubbed to report it alive -- a claim with no recorded
+        session name is stale by definition (see
+        test_a_dead_cli_claim_is_reclaimed_by_a_cli_start in
+        test_session_authority_matrix.py) and must NOT reach this far."""
+        active_state = {"study_session_id": "x", "mux_session": "study-x"}
         with (
             patch("studyloop.tmux.is_tmux_available", return_value=True),
             patch("studyloop.agent_launcher.shutil.which", return_value="/usr/bin/claude"),
             patch("studyloop.session_state.read_session_state", return_value=active_state),
             patch("studyloop.session_state.STATE_FILE") as sf,
+            patch(
+                "studyloop.multiplexer.get_backend",
+                return_value=MagicMock(session_exists=lambda name: True),
+            ),
             patch("studyloop.session.cleanup.auto_clean_zombies"),
             pytest.raises(SessionStartError) as exc_info,
         ):

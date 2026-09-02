@@ -68,13 +68,23 @@ class TestStudyCommand:
             assert "No AI agent" in result.output
 
     def test_existing_session_blocks(self, runner):
-        state = {"study_session_id": "existing123"}
+        """R-01b: claim_blocks_cli_start blocks iff the recorded owner is
+        confirmed alive -- a `mux_session` name plus a backend stub
+        reporting it exists, not merely a `study_session_id`. A claim with
+        no recorded session name is stale by definition and must NOT reach
+        this far (see test_session_authority_matrix.py's
+        TestCliThenCli::test_a_dead_cli_claim_is_reclaimed_by_a_cli_start)."""
+        state = {"study_session_id": "existing123", "mux_session": "study-existing"}
         with (
             patch("studyloop.tmux.shutil.which", return_value="/usr/bin/tmux"),
             patch("studyloop.tmux.subprocess.run", side_effect=_tmux_side_effect),
             patch("studyloop.agent_launcher.shutil.which", return_value="/usr/bin/claude"),
             patch("studyloop.session_state.read_session_state", return_value=state),
             patch("studyloop.session_state.STATE_FILE") as sf,
+            patch(
+                "studyloop.multiplexer.get_backend",
+                return_value=MagicMock(session_exists=lambda name: True),
+            ),
         ):
             sf.exists.return_value = True
             result = runner.invoke(study, ["Test Topic"])

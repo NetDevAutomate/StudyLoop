@@ -30,6 +30,7 @@ matching ``test_session_slot_reconcile.py``'s established pattern.
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -43,6 +44,7 @@ from fastapi.testclient import TestClient  # pyright: ignore[reportMissingImport
 
 from studyloop import session_state
 from studyloop.session import active
+from studyloop.session.start import SessionStartError, start_session
 from studyloop.session.transport import SessionConfig, Started
 from studyloop.web.app import create_app
 from studyloop.web.routes.session import _grace
@@ -197,16 +199,70 @@ class TestWebThenWeb:
 
 
 class TestCliThenCli:
-    """Existing behaviour, documented rather than changed: the CLI's own
-    is_session_active() check blocks a second CLI start unconditionally,
-    regardless of whether the recorded owner is actually still alive (see
-    docs/architecture/session-authority.md's open questions). This lane does
-    not touch session/start.py's CLI control flow."""
+    """R-01b, the fix. session/start.py's CLI guard used to block a second
+    CLI start unconditionally, regardless of whether the recorded owner was
+    actually still alive. It now consults claim_blocks_cli_start: a live CLI
+    claim (its recorded multiplexer session still exists) still blocks, but
+    a stale one is reclaimed, logged, and never blocks forever -- the same
+    rule the web start path already applied (see
+    docs/architecture/session-authority.md clause 2). is_session_active()
+    itself is unchanged and still reports True for either shape."""
 
     def test_a_live_cli_claim_reports_active(self) -> None:
         _write_fixture("cli-live")
 
         assert session_state.is_session_active() is True
+
+    def test_a_live_cli_claim_still_blocks_a_cli_start(self, caplog) -> None:
+        """A CLI claim whose tmux session still exists blocks a new CLI
+        start with the existing message, and logs no reclaim warning."""
+        state = _fixture("cli-live")
+
+        with (
+            patch("studyloop.tmux.is_tmux_available", return_value=True),
+            patch("studyloop.agent_launcher.shutil.which", return_value="/usr/bin/claude"),
+            patch("studyloop.session_state.read_session_state", return_value=state),
+            patch(
+                "studyloop.multiplexer.get_backend",
+                return_value=MagicMock(session_exists=lambda name: True),
+            ),
+            patch("studyloop.session.cleanup.auto_clean_zombies"),
+            pytest.raises(SessionStartError) as exc_info,
+        ):
+            start_session("Async IO", "claude", "study", "elapsed", 5, False)
+
+        assert "already active" in exc_info.value.message
+        assert not any("reclaim" in rec.message.lower() for rec in caplog.records)
+
+    def test_a_dead_cli_claim_is_reclaimed_by_a_cli_start(self, caplog) -> None:
+        """A CLI claim whose tmux session no longer exists (the user's
+        machine rebooted, or the tmux server was killed outside StudyLoop)
+        must not block a new CLI start forever -- the CLI-then-CLI twin of
+        the web path's crash-then-restart cell."""
+        state = _fixture("cli-live")
+
+        with (
+            patch("studyloop.tmux.is_tmux_available", return_value=True),
+            patch("studyloop.agent_launcher.shutil.which", return_value="/usr/bin/claude"),
+            patch("studyloop.session_state.read_session_state", return_value=state),
+            patch(
+                "studyloop.multiplexer.get_backend",
+                return_value=MagicMock(session_exists=lambda name: False),
+            ),
+            patch("studyloop.session.cleanup.auto_clean_zombies"),
+            patch("studyloop.history.start_study_session", return_value=None),
+            pytest.raises(SessionStartError) as exc_info,
+        ):
+            # start_study_session returning None gets past the reclaimed
+            # guard and ends the test at the next SessionStartError
+            # ("Failed to create session in DB") -- proof the guard let the
+            # start proceed instead of raising "already active".
+            start_session("Async IO", "claude", "study", "elapsed", 5, False)
+
+        assert "already active" not in exc_info.value.message
+        warnings = [rec for rec in caplog.records if "reclaim" in rec.message.lower()]
+        assert len(warnings) == 1
+        assert "cli-sess-1" in warnings[0].message
 
 
 class TestCliThenWeb:
@@ -285,14 +341,77 @@ class TestCliThenWeb:
 
 
 class TestWebThenCli:
-    """Already correctly refused today: session/start.py's own
-    is_session_active() check blocks unconditionally when the file says a
-    session -- of any kind -- is live. Documented and pinned, not changed."""
+    """R-01b, the fix. session/start.py's CLI guard used to block
+    unconditionally when the file said ANY session was live. It now checks
+    a web-owned claim's recorded pid cross-process: live (blocks) iff
+    os.kill(pid, 0) doesn't raise ProcessLookupError; a PermissionError
+    (pid reused by a process the CLI doesn't own) also counts as live. No
+    pid recorded (a claim written by a build before this fix) blocks
+    conservatively -- see docs/architecture/session-authority.md clause 2.
+    is_session_active() itself is unchanged and still reports True for any
+    of these shapes."""
 
     def test_a_live_web_claim_reports_active(self) -> None:
         _write_fixture("web-live")
 
         assert session_state.is_session_active() is True
+
+    def test_a_live_web_claim_still_blocks_a_cli_start(self, caplog) -> None:
+        """A web claim whose recorded pid is this (very much alive) test
+        process still blocks a new CLI start, and logs no reclaim
+        warning."""
+        state = _fixture("web-live")
+        state["pid"] = os.getpid()
+
+        with (
+            patch("studyloop.tmux.is_tmux_available", return_value=True),
+            patch("studyloop.agent_launcher.shutil.which", return_value="/usr/bin/claude"),
+            patch("studyloop.session_state.read_session_state", return_value=state),
+            patch("studyloop.session.cleanup.auto_clean_zombies"),
+            pytest.raises(SessionStartError) as exc_info,
+        ):
+            start_session("Async IO", "claude", "study", "elapsed", 5, False)
+
+        assert "already active" in exc_info.value.message
+        assert not any("reclaim" in rec.message.lower() for rec in caplog.records)
+
+    def test_a_dead_web_claim_is_reclaimed_by_a_cli_start(self, caplog) -> None:
+        """crashed-web-still-live's recorded pid cannot be alive on any real
+        machine -- the crash-then-restart cell, checked from the CLI side."""
+        state = _fixture("crashed-web-still-live")
+
+        with (
+            patch("studyloop.tmux.is_tmux_available", return_value=True),
+            patch("studyloop.agent_launcher.shutil.which", return_value="/usr/bin/claude"),
+            patch("studyloop.session_state.read_session_state", return_value=state),
+            patch("studyloop.session.cleanup.auto_clean_zombies"),
+            patch("studyloop.history.start_study_session", return_value=None),
+            pytest.raises(SessionStartError) as exc_info,
+        ):
+            start_session("Fresh topic", "claude", "study", "elapsed", 5, False)
+
+        assert "already active" not in exc_info.value.message
+        warnings = [rec for rec in caplog.records if "reclaim" in rec.message.lower()]
+        assert len(warnings) == 1
+        assert "web-sess-crashed" in warnings[0].message
+
+    def test_a_web_claim_without_a_pid_blocks_conservatively(self) -> None:
+        """A web-owned claim with no `pid` key (written by a build before
+        this fix) blocks rather than silently reclaiming a claim whose
+        owner it cannot verify."""
+        state = _fixture("web-live")
+        assert "pid" not in state
+
+        with (
+            patch("studyloop.tmux.is_tmux_available", return_value=True),
+            patch("studyloop.agent_launcher.shutil.which", return_value="/usr/bin/claude"),
+            patch("studyloop.session_state.read_session_state", return_value=state),
+            patch("studyloop.session.cleanup.auto_clean_zombies"),
+            pytest.raises(SessionStartError) as exc_info,
+        ):
+            start_session("Async IO", "claude", "study", "elapsed", 5, False)
+
+        assert "already active" in exc_info.value.message
 
 
 # ---------------------------------------------------------------------------

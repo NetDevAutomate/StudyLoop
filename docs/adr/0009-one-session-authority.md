@@ -35,9 +35,15 @@ was chosen, not the mechanics.
   valid only for a PTY/ACP session held by the current web server process.
 - Every start path (CLI, web PTY, web ACP) reads the claim before proceeding.
   A live claim owned by someone else blocks with the same 409 shape (web) or
-  the same exit-1 message (CLI, unchanged) either surface already used for
-  its own in-process conflict. A stale claim (owner's process/tmux session no
-  longer exists) is reclaimed, logged, and never blocks a start forever.
+  the same exit-1 message (CLI) either surface already used for its own
+  in-process conflict. A stale claim (owner's process/tmux session no
+  longer exists, or — for a web-owned claim read by the CLI, R-01b — its
+  recorded pid is dead) is reclaimed, logged, and never blocks a start
+  forever. The CLI's own start path originally checked only "does a claim
+  exist" (`is_session_active()`), blocking unconditionally even when the
+  owner was provably dead; R-01b closed that gap with
+  `claim_blocks_cli_start()`, giving the CLI start path the same
+  owner-liveness check the web path already had.
 - `kill_all_study_sessions()` keeps its blunt "kill everything" semantics —
   that is a legitimate, separate operation — but every per-session end path
   (`end_session_common` → `_cleanup_tmux_and_files`, and the study sidebar's
@@ -63,10 +69,15 @@ was chosen, not the mechanics.
 | --- | --- | --- | --- |
 | web-then-web | `TestWebThenWeb::test_second_web_start_is_refused` | 409 | 409 (unchanged) |
 | cli-then-cli | `TestCliThenCli::test_a_live_cli_claim_reports_active` | blocks | blocks (unchanged) |
+| cli-then-cli, live | `TestCliThenCli::test_a_live_cli_claim_still_blocks_a_cli_start` | blocks | blocks (unchanged) |
+| **cli-then-cli, stale claim (R-01b)** | `TestCliThenCli::test_a_dead_cli_claim_is_reclaimed_by_a_cli_start` | **blocked unconditionally, no log** | **proceeds, logged as a reclaim** |
 | cli-then-web | `TestCliThenWeb::test_web_start_is_refused_when_cli_claim_is_live` | **201, clobbered the file** | **409** |
 | cli-then-web (ACP) | `TestCliThenWeb::test_web_acp_start_is_also_refused` | **real spawn attempted, opaque error** | **409** |
 | cli-then-web, stale claim | `TestCliThenWeb::test_a_dead_cli_claim_is_reclaimed_not_blocked` | 201 (coincidentally), no log | 201, logged as a reclaim |
 | web-then-cli | `TestWebThenCli::test_a_live_web_claim_reports_active` | blocks | blocks (unchanged) |
+| web-then-cli, live pid (R-01b) | `TestWebThenCli::test_a_live_web_claim_still_blocks_a_cli_start` | blocked unconditionally | blocks (pid checked, same message) |
+| **web-then-cli, stale claim (R-01b)** | `TestWebThenCli::test_a_dead_web_claim_is_reclaimed_by_a_cli_start` | **blocked unconditionally, no log** | **proceeds, logged as a reclaim** |
+| web-then-cli, no pid recorded (R-01b) | `TestWebThenCli::test_a_web_claim_without_a_pid_blocks_conservatively` | blocked unconditionally | blocks (conservative default, unverifiable claim) |
 | crash-then-restart | `TestCrashThenRestart::test_stale_web_claim_is_reclaimed` | 201, no log | 201, logged as a reclaim |
 | no claim | `TestNoClaim::test_an_ended_claim_never_blocks` | 201 | 201 (unchanged) |
 | end: PTY/ACP owns nothing | `TestEndMatrix::test_ending_a_pty_session_kills_no_multiplexer_session` | **called `kill_all_study_sessions`** | kills nothing |
