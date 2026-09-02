@@ -325,17 +325,28 @@ def claim_blocks_web_start(state: dict) -> bool:
       ``{"pty", "acp"}``) blocks iff its recorded multiplexer session
       (``mux_session``/``tmux_session``) still exists (see
       :func:`_cli_owned_claim_is_live`).
-    - A web-owned claim (``transport`` in ``{"pty", "acp"}``) can only be
-      genuinely live via the singleton the caller already ruled out — this
-      codebase runs one web server process per machine (see
-      ``session/active.py``'s own docstring). Reaching this function with
-      such a claim therefore proves it is stale (the crash-then-restart
-      cell): it never blocks.
+    - A web-owned claim (``transport`` in ``{"pty", "acp"}``) is normally
+      stale once the singleton is ruled out — this codebase runs one web
+      server process per machine (see ``session/active.py``'s own
+      docstring), so most reaching claims here are this process's own
+      earlier, crashed instance (the crash-then-restart cell). **C3
+      (council):** since R-01b started recording ``pid`` on every web
+      claim, a SECOND, still-alive web server process — a different port,
+      or a restart racing the old one before it exits — is now cheap to
+      detect: blocks iff ``pid`` is recorded, alive
+      (:func:`_pid_is_alive`), AND not this process's own pid. No ``pid``
+      recorded, or the recorded pid IS this process, still never blocks
+      (unchanged) — the former is a pre-R-01b claim shape, the latter is
+      this process's own stale claim, which is exactly the
+      crash-then-restart case, not a foreign live server.
     """
     if not _claim_exists(state):
         return False
     if state.get("transport") in ("pty", "acp"):
-        return False
+        pid = state.get("pid")
+        if pid is None or pid == os.getpid():
+            return False
+        return _pid_is_alive(pid)
     return _cli_owned_claim_is_live(state)
 
 

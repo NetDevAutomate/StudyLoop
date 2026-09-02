@@ -177,6 +177,10 @@ experience may change before `1.0.0`.
 - Reclaiming a crashed session's slot (web or CLI) no longer shows its
   topics-covered list and parking lot to the new session; both are cleared
   before the new session starts, not just touched (C2).
+- A second web server process (a different port, or a restart racing the
+  previous one before it fully exits) starting a Study Session or Body
+  Double now correctly refuses with "already active" instead of treating
+  the first server's still-live session as stale (C3).
 - Ending a session -- from the Web UI, `studyloop study --end`, or the study
   sidebar's End Session key -- no longer terminates every other study
   session on the machine. Each end path now closes only its own terminal
