@@ -71,10 +71,12 @@ def _build_pty_transport(config):  # type: ignore[no-untyped-def]
         # known-good shell command (e.g. `/bin/sh -c 'echo ready; cat'`)
         # without needing the real agent binary installed. The hatch is
         # stripped from the child env by _build_child_env() so the child
-        # cannot observe its own override key.
-        import os as _os
+        # cannot observe its own override key. Reads the import-time
+        # snapshot (R-09c), not os.environ directly, so a dotenv loader
+        # that runs later in the process cannot re-inject this key.
+        from studyloop import test_hatch_env
 
-        test_cmd = _os.environ.get("STUDYLOOP_TEST_AGENT_CMD")
+        test_cmd = test_hatch_env("STUDYLOOP_TEST_AGENT_CMD")
         if test_cmd:
             shell_cmd = test_cmd.format(persona_file=_config.persona_file)
         else:
@@ -120,19 +122,20 @@ def _build_acp_transport(config):  # type: ignore[no-untyped-def]
         # (e.g. "python3 /path/to/test_agent.py"); return the first token
         # resolved so ``asyncio.create_subprocess_exec`` gets a real
         # path — ``shutil.which`` on an absolute path returns it
-        # unchanged when executable.
-        import os as _os
+        # unchanged when executable. Reads the import-time snapshot
+        # (R-09c), not os.environ directly -- see _build_launch_cmd above.
+        from studyloop import test_hatch_env
 
-        test_cmd = _os.environ.get("STUDYLOOP_TEST_ACP_CMD")
+        test_cmd = test_hatch_env("STUDYLOOP_TEST_ACP_CMD")
         if test_cmd:
             first = shlex.split(test_cmd)[0] if test_cmd.strip() else ""
             return _shutil.which(first) or first or None
         return _shutil.which(adapter.binary)
 
     def _build_argv(_config) -> list[str]:  # type: ignore[no-untyped-def]
-        import os as _os
+        from studyloop import test_hatch_env
 
-        test_cmd = _os.environ.get("STUDYLOOP_TEST_ACP_CMD")
+        test_cmd = test_hatch_env("STUDYLOOP_TEST_ACP_CMD")
         if test_cmd:
             return shlex.split(test_cmd)
         if _config.agent == "kiro":

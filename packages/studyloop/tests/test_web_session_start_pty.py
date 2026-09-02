@@ -145,8 +145,20 @@ class TestPtyStartHappyPath:
         _stub_db,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """An explicit source-test child replaces the vendor process entirely."""
-        monkeypatch.setenv("STUDYLOOP_TEST_AGENT_CMD", "test-agent {persona_file}")
+        """An explicit source-test child replaces the vendor process entirely.
+
+        R-09c: the read sites consult studyloop.test_hatch_env(), an
+        import-time os.environ snapshot -- not os.environ directly -- so
+        monkeypatch.setenv() alone no longer reaches them (this process
+        already imported studyloop long before this test ran). Monkeypatch
+        the accessor itself, which is exactly how a real caller observes
+        "the hatch was exported before studyloop was imported."
+        """
+
+        def _fake_hatch(name: str) -> str | None:
+            return "test-agent {persona_file}" if name == "STUDYLOOP_TEST_AGENT_CMD" else None
+
+        monkeypatch.setattr("studyloop.test_hatch_env", _fake_hatch)
         monkeypatch.setattr("shutil.which", lambda _name: None)
 
         with patch("studyloop.web.routes.session.is_session_active", return_value=False):

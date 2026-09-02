@@ -91,6 +91,32 @@ def _scrub_dotenv_test_hatch(pre_dotenv_test_keys: frozenset[str], env_file: Pat
         )
 
 
-_pre_dotenv_test_keys = frozenset(k for k in os.environ if k.startswith("STUDYLOOP_TEST_"))
+_pre_dotenv_test_env: dict[str, str] = {
+    k: v for k, v in os.environ.items() if k.startswith("STUDYLOOP_TEST_")
+}
+_pre_dotenv_test_keys = frozenset(_pre_dotenv_test_env)
 _dotenv_path = _load_dotenv_once()
 _scrub_dotenv_test_hatch(_pre_dotenv_test_keys, _dotenv_path)
+
+
+def test_hatch_env(name: str) -> str | None:
+    """Return a ``STUDYLOOP_TEST_*`` hatch variable's import-time snapshot.
+
+    R-09c: ``_scrub_dotenv_test_hatch`` above deletes any ``STUDYLOOP_TEST_*``
+    key that arrived via THIS package's own dotenv load, but that scrub runs
+    exactly once, at import time. A dotenv loader elsewhere in the process
+    (a library re-calling ``load_dotenv()``, or one not yet identified) could
+    still mutate ``os.environ`` again, later, and every production read site
+    that called ``os.environ.get("STUDYLOOP_TEST_AGENT_CMD")`` directly would
+    pick that up. This accessor returns the value captured HERE, before
+    ``_load_dotenv_once()`` even ran -- callers that use it can never observe
+    a value ``os.environ`` did not already hold at the moment this module
+    was first imported, no matter what runs afterwards. The one exception is
+    exactly what should be trusted: a real shell export, present before
+    import, which is also what the e2e harness does (it exports the hatch
+    before the server process imports ``studyloop`` at all).
+
+    Only ``STUDYLOOP_TEST_*``-prefixed names are meaningful here; anything
+    else returns ``None``, since only those names were snapshotted.
+    """
+    return _pre_dotenv_test_env.get(name)

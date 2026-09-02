@@ -417,9 +417,13 @@ def start_session(
             adapter.mcp_setup(session_dir)
 
         # Allow integration tests to inject a test-only agent command.
-        import os
+        # Import-time snapshot (R-09c), not os.environ directly -- see
+        # studyloop.test_hatch_env: a dotenv loader that runs later in the
+        # process cannot re-inject this key if nothing ever re-reads
+        # os.environ for it.
+        from studyloop import test_hatch_env
 
-        test_agent_cmd = os.environ.get("STUDYLOOP_TEST_AGENT_CMD")
+        test_agent_cmd = test_hatch_env("STUDYLOOP_TEST_AGENT_CMD")
         if test_agent_cmd:
             agent_cmd = test_agent_cmd.format(persona_file=persona_file)
         else:

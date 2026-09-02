@@ -262,7 +262,11 @@ async def _start_pty_session(
         agent = available[0]
 
     adapter = AGENTS[agent]
-    test_agent_cmd = os.environ.get("STUDYLOOP_TEST_AGENT_CMD")
+    # Import-time snapshot (R-09c), not os.environ directly -- see
+    # studyloop.test_hatch_env.
+    from studyloop import test_hatch_env
+
+    test_agent_cmd = test_hatch_env("STUDYLOOP_TEST_AGENT_CMD")
     if not test_agent_cmd and not shutil.which(adapter.binary):
         return JSONResponse(
             {
@@ -482,8 +486,11 @@ async def _start_acp_session(
     # test agent (tests/_stub_acp_agent.py) is the argv we spawn, so the real
     # Kiro binary doesn't need to be installed. Parity with the
     # PTY test hatch behaviour (which dodges the check by routing every
-    # launch through /bin/sh anyway).
-    test_acp_cmd = os.environ.get("STUDYLOOP_TEST_ACP_CMD")
+    # launch through /bin/sh anyway). Import-time snapshot (R-09c), not
+    # os.environ directly -- see studyloop.test_hatch_env.
+    from studyloop import test_hatch_env
+
+    test_acp_cmd = test_hatch_env("STUDYLOOP_TEST_ACP_CMD")
     if not test_acp_cmd and not shutil.which(adapter.binary):
         return JSONResponse(
             {
