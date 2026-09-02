@@ -135,6 +135,61 @@ def test_write_raw_config_creates_parent_and_round_trips(monkeypatch, tmp_path):
     assert load_raw_config() == {"browser": "brave", "web_port": 9000}
 
 
+def test_write_raw_config_locks_file_to_owner_only(monkeypatch, tmp_path):
+    """R-14: config.yaml can hold lan_password in plaintext -- must be 0600."""
+    from studyloop.settings import write_raw_config
+
+    config_path = tmp_path / "config.yaml"
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
+
+    written_path = write_raw_config({"lan_password": "correct-horse-battery-staple"})
+
+    assert written_path.stat().st_mode & 0o777 == 0o600
+
+
+def test_write_raw_config_locks_new_parent_dir_to_owner_only(monkeypatch, tmp_path):
+    from studyloop.settings import write_raw_config
+
+    config_path = tmp_path / "nested" / "config.yaml"
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
+
+    write_raw_config({"browser": "brave"})
+
+    assert config_path.parent.stat().st_mode & 0o777 == 0o700
+
+
+def test_write_raw_config_repairs_a_pre_existing_0644_file(monkeypatch, tmp_path):
+    """An existing 0644 config.yaml (e.g. from before this fix) is tightened
+    to 0600 the next time it is saved, not just on first creation."""
+    from studyloop.settings import write_raw_config
+
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text("browser: firefox\n")
+    config_path.chmod(0o644)
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
+    assert config_path.stat().st_mode & 0o777 == 0o644
+
+    write_raw_config({"browser": "brave"})
+
+    assert config_path.stat().st_mode & 0o777 == 0o600
+
+
+def test_write_raw_config_leaves_pre_existing_dir_permissions_alone(monkeypatch, tmp_path):
+    """Only a NEWLY created parent dir is locked to 0700; a pre-existing dir's
+    permissions are not silently overridden (someone may have deliberately
+    loosened them for another local tool to read)."""
+    from studyloop.settings import write_raw_config
+
+    config_dir = tmp_path / "existing"
+    config_dir.mkdir(mode=0o755)
+    config_path = config_dir / "config.yaml"
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
+
+    write_raw_config({"browser": "brave"})
+
+    assert config_dir.stat().st_mode & 0o777 == 0o755
+
+
 def test_load_raw_config_rejects_invalid_yaml(monkeypatch, tmp_path):
     from studyloop.settings import ConfigError, load_raw_config
 

@@ -51,6 +51,9 @@ experience may change before `1.0.0`.
   `AUTHORIZATION`/`JWT`/`COOKIE`-shaped variables now get stripped from an
   agent child's environment, matching the compounds (`api_key`,
   `secret_key`, ...) already covered.
+- `config.yaml` (which can hold `lan_password` in plaintext) is now written
+  0600 on every save, repairing a pre-existing 0644 file on its next save;
+  a newly created config directory is created 0700.
 
 ### Known pre-release boundaries
 
