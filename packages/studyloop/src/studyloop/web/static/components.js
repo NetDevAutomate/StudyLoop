@@ -280,8 +280,8 @@ function _pomoNotify(title, body) {
 document.addEventListener("alpine:init", () => {
   /* Which renderer will actually PAINT the terminal — the renderer axis, not
      the transport axis. Conflating the two is the confusion that made `--dev`
-     look like it "still showed xterm.js, ACP and Legacy (ttyd)": those are
-     transports. Hydrated from /api/session/options.
+     look like it "still showed xterm.js and ACP": those are transports.
+     Hydrated from /api/session/options.
 
      The defaults deliberately mirror describe_terminal_engine()'s stock output
      (dev_engines.py), so a slow or failed fetch still renders the CORRECT

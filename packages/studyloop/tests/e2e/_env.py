@@ -384,6 +384,23 @@ class ConsoleWatch:
             return
         self.errors.append(f"console.error: {text}")
 
+    def assert_no_csp_violations(self) -> None:
+        """Fail specifically if any captured console error is a CSP report.
+
+        Distinct from ``assert_clean()`` (which fails on ANY console error,
+        CSP violations included) so a Content-Security-Policy regression is
+        diagnosed by name in its own assertion message, not lost inside a
+        generic error list. This is the evidence for R-13's `script-src
+        'self'` with no `'unsafe-inline'`/nonce exception (ttyd retirement
+        stage 4): if either of the two inline `<script>` blocks that used to
+        live in index.html ever came back, Chromium reports it as exactly
+        this shape of console error, and this method names it.
+        """
+        violations = [e for e in self.errors if "Content Security Policy" in e or "Refused to" in e]
+        assert not violations, "CSP violation(s) detected:\n" + "\n".join(
+            f"  - {v}" for v in violations
+        )
+
     def assert_clean(self, context: str) -> None:
         """Fail if the page saw a JS error OR the server returned a 5xx.
 

@@ -48,15 +48,57 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         await _grace.shutdown()
 
 
+# CSP for a fully same-origin, no-build static app: every script and vendored
+# library loads from this origin (verified in ttyd retirement stage 4 — no
+# CDN <script src>, no data: script, and the two former inline <script>
+# blocks in index.html were moved to files in the same stage). Three
+# documented, load-bearing exceptions on top of that, each found by
+# reproduction (loading every page with console-error capture), not
+# guessed in advance:
+#
+# - script-src 'unsafe-eval': Alpine.js evaluates every `x-data`/`x-text`/
+#   `x-show`/`@click`/etc. expression string via `new Function(...)`
+#   internally (this is Alpine's own documented CSP constraint, not
+#   specific to this app). Without it, `script-src 'self'` alone still
+#   loads Alpine correctly but every directive throws a CSP `pageerror` the
+#   instant it tries to evaluate an expression — the whole app's
+#   interactivity goes dark (bindings render empty, `@click` handlers never
+#   fire) while the page still "loads". `'self'`-only script SOURCES still
+#   hold: no CDN, no inline block, no data: URI.
+# - style-src 'unsafe-inline': Alpine's `:style` bindings and `x-transition`
+#   set inline `style` ATTRIBUTES at runtime (there is no way to nonce an
+#   attribute, only a <style> element or <link>), and xterm.js's own DOM
+#   rendering does the same for cursor/viewport positioning.
+# - connect-src data:: `--dev --dev-engine ghostty` (opt-in developer
+#   renderer, vendor/dev/js/ghostty-web-0.4.0.js) bootstraps its WASM VT100
+#   parser via `fetch("data:application/wasm;base64,...")` rather than
+#   `WebAssembly.instantiateStreaming` against a same-origin URL. Without
+#   this, `default-src 'self'` (connect-src's fallback) blocks that fetch
+#   and every `--dev` session fails to render with a CSP-caused 404. Scoped
+#   to `connect-src` only — script-src stays `'self' 'unsafe-eval'`, no
+#   `data:` script source.
+_CSP = (
+    "default-src 'self'; script-src 'self' 'unsafe-eval'; "
+    "style-src 'self' 'unsafe-inline'; connect-src 'self' data:"
+)
+
+
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Add security headers to all responses."""
 
     async def dispatch(self, request: Request, call_next) -> Response:  # type: ignore[override]
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
-        # SAMEORIGIN (not DENY) so our same-origin /terminal/ iframe can embed ttyd
-        response.headers["X-Frame-Options"] = "SAMEORIGIN"
-        response.headers["X-XSS-Protection"] = "1; mode=block"
+        # DENY: no iframe surface exists anywhere in static/ (the ttyd
+        # iframe fallback this used to justify SAMEORIGIN for was retired —
+        # see ADR-0005 and the ttyd retirement, stage 4).
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Content-Security-Policy"] = _CSP
+        response.headers["Referrer-Policy"] = "same-origin"
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        # X-XSS-Protection is deliberately NOT set: deprecated, a no-op (or
+        # an XSS vector via its filter) in every modern browser, superseded
+        # by the CSP above.
         return response
 
 
@@ -180,14 +222,6 @@ def create_app(
                 "long_break_minutes": 15,
                 "cycle_length": 4,
             }
-
-    # Terminal proxy — MUST be registered before the static files catch-all
-    try:
-        from studyloop.web.routes import terminal_proxy
-
-        app.include_router(terminal_proxy.router)
-    except ImportError:
-        pass  # httpx/websockets not installed — proxy unavailable
 
     # Serve index.html at root (no-cache to prevent stale SW/browser cache).
     # In dev_mode=True the HTML is read and renderer-specific tags are injected
