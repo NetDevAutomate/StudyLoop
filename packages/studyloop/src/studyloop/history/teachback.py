@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import json
 import sqlite3
-import uuid
 from datetime import UTC, datetime
 
+from ..db import immediate
 from . import _connection
 
 
@@ -44,81 +44,98 @@ def record_teachback(
     if not conn:
         return False
     try:
-        accuracy, own_words, structure, depth, transfer = scores
-        conn.execute(
-            """
-            INSERT INTO teach_back_scores
-                (concept, topic, session_id, score_accuracy, score_own_words,
-                 score_structure, score_depth, score_transfer,
-                 review_type, question_angle, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                concept,
-                topic,
-                session_id,
-                accuracy,
-                own_words,
-                structure,
-                depth,
-                transfer,
-                review_type,
-                angle,
-                notes,
-            ),
-        )
+        # R-21 invariant, made explicit: this is NOT a lost-update race in
+        # practice -- the INSERT into teach_back_scores below is the first DML
+        # statement in this function, so Python's sqlite3 module opens the
+        # write transaction there and holds SQLite's single writer lock across
+        # the SELECT/upsert of study_progress that follows (a 150-thread probe
+        # confirmed zero lost updates). But that safety previously depended on
+        # statement order and the default isolation level -- nothing said so,
+        # and a refactor that moved the SELECT earlier would silently reopen
+        # the race. `db.immediate()` takes the write lock up front instead, so
+        # the serialisation holds regardless of statement order.
+        with immediate(conn):
+            accuracy, own_words, structure, depth, transfer = scores
+            conn.execute(
+                """
+                INSERT INTO teach_back_scores
+                    (concept, topic, session_id, score_accuracy, score_own_words,
+                     score_structure, score_depth, score_transfer,
+                     review_type, question_angle, notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    concept,
+                    topic,
+                    session_id,
+                    accuracy,
+                    own_words,
+                    structure,
+                    depth,
+                    transfer,
+                    review_type,
+                    angle,
+                    notes,
+                ),
+            )
 
-        # Upsert study_progress so teach-back evidence feeds review scheduling
-        # even when the concept was not explicitly recorded beforehand.
-        total = sum(scores)
-        topic_key = topic.lower().strip()
-        concept_key = concept.lower().strip()
-        progress_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{topic_key}:{concept_key}"))
-        now = datetime.now(UTC).isoformat()
-        confidence = _confidence_from_teachback(total, review_type)
+            # Upsert study_progress so teach-back evidence feeds review
+            # scheduling even when the concept was not explicitly recorded
+            # beforehand.
+            total = sum(scores)
+            topic_key = topic.lower().strip()
+            concept_key = concept.lower().strip()
+            # R-21: shared with history/progress.py's _record_progress_on_connection
+            # -- both must derive the same id for the same (topic, concept).
+            progress_id = _connection.progress_id_for(topic_key, concept_key)
+            now = datetime.now(UTC).isoformat()
+            confidence = _confidence_from_teachback(total, review_type)
 
-        # Get existing angles_used and append
-        existing = conn.execute(
-            "SELECT angles_used FROM study_progress WHERE id = ?",
-            (progress_id,),
-        ).fetchone()
-        angles: list[str] = []
-        if existing and existing["angles_used"]:
-            angles = json.loads(existing["angles_used"])
-        if angle and angle not in angles:
-            angles.append(angle)
+            # Get existing angles_used and append
+            existing = conn.execute(
+                "SELECT angles_used FROM study_progress WHERE id = ?",
+                (progress_id,),
+            ).fetchone()
+            angles: list[str] = []
+            if existing and existing["angles_used"]:
+                angles = json.loads(existing["angles_used"])
+            if angle and angle not in angles:
+                angles.append(angle)
 
-        conn.execute(
-            """
-            INSERT INTO study_progress
-                (id, topic, concept, confidence, first_seen, last_seen, session_count,
-                 notes, last_teachback_score, angles_used)
-            VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET
-                confidence = excluded.confidence,
-                last_seen = excluded.last_seen,
-                session_count = session_count + 1,
-                notes = COALESCE(excluded.notes, notes),
-                last_teachback_score = excluded.last_teachback_score,
-                angles_used = excluded.angles_used,
-                updated_at = datetime('now')
-            """,
-            (
-                progress_id,
-                topic_key,
-                concept_key,
-                confidence,
-                now,
-                now,
-                notes,
-                total,
-                json.dumps(angles),
-            ),
-        )
+            conn.execute(
+                """
+                INSERT INTO study_progress
+                    (id, topic, concept, confidence, first_seen, last_seen, session_count,
+                     notes, last_teachback_score, angles_used)
+                VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    confidence = excluded.confidence,
+                    last_seen = excluded.last_seen,
+                    session_count = session_count + 1,
+                    notes = COALESCE(excluded.notes, notes),
+                    last_teachback_score = excluded.last_teachback_score,
+                    angles_used = excluded.angles_used,
+                    updated_at = datetime('now')
+                """,
+                (
+                    progress_id,
+                    topic_key,
+                    concept_key,
+                    confidence,
+                    now,
+                    now,
+                    notes,
+                    total,
+                    json.dumps(angles),
+                ),
+            )
 
-        conn.commit()
         return True
-    except sqlite3.OperationalError:
+    except sqlite3.DatabaseError:
+        # R-21: was `except sqlite3.OperationalError`, which does not catch
+        # sqlite3.IntegrityError -- a CHECK-constraint violation (e.g. a score
+        # outside teach_back_scores' `BETWEEN 1 AND 4` constraints) used to
+        # raise straight through this best-effort, "return False" function.
         return False
     finally:
         conn.close()
