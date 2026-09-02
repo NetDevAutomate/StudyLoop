@@ -72,23 +72,32 @@ pty/acp session is live, no genuine owner — reclaimed, not blocked.
 
 **`kill_all_study_sessions()`** (`tmux.py`, `herdr.py`'s `HerdrBackend`) keeps
 its exact semantics — kill every `study-*` session, unconditionally, current
-one last. It is a deliberate blunt instrument, not a bug. This lane removes its
-only call site from the per-session end path (`session/cleanup.py`'s
-`_cleanup_tmux_and_files`, R-02) and does not add a new one: `studyloop clean`
-(`cli/_clean.py`) already has a safer, targeted sweep (`plan_clean`'s
-zombie-only `sessions_to_kill`, individually killed via `mux.kill_session`),
-which better serves "no non-technical user stranded" than the blunt function
-does, so this lane does not wire `kill_all_study_sessions()` into it.
+one last. It is a deliberate blunt instrument, not a bug. This lane removes
+its call sites from every per-session end path (`session/cleanup.py`'s
+`_cleanup_tmux_and_files`, R-02; `tui/sidebar.py`'s `action_end_session`,
+R-02b — see below) and gives it exactly one deliberate, explicit caller:
+`studyloop clean --all` (`cli/_clean.py`). Default `clean` (no `--all`) keeps
+its existing, safer, zombie-only sweep (`plan_clean`'s `sessions_to_kill`,
+individually killed via `mux.kill_session`) — `--all` widens that to every
+`study-*` session, live or dead, for the rare case a user genuinely wants
+the machine wiped. **Revision note:** an earlier draft of this clause
+decided NOT to wire the function into `clean` at all, reasoning that
+`clean`'s existing sweep already served the "no non-technical user
+stranded" goal. That call is superseded by DECISIONS.md §E17: R-02's
+definition of done is *exactly one* production caller, and with R-02b (below)
+also in this lane's remit, "zero callers" was no longer an available answer
+without leaving the function itself looking unreachable dead code.
 
-**Discovered gap, out of this lane's reach:** `tui/sidebar.py`'s
-`action_end_session` (the sidebar TUI's "End Session" key) calls
+**R-02b (DECISIONS §E17 — reassigned to this lane, closed):** `tui/sidebar.py`'s
+`action_end_session` (the sidebar TUI's "End Session" key) also called
 `mux.kill_all_study_sessions(current_session=session_name)` directly, in
-addition to calling `cleanup_on_exit()` (which itself no longer does so after
-this lane's fix). `tui/sidebar.py` is owned by lane M5
-(`tests/fixtures/lane_ownership.yaml`), not M2, so this lane cannot edit it
-without failing `test_lane_ownership.py`. Filed as **R-02b** in
-`evidence/M2/BLOCKED.md` for the coordinator/M5: the sidebar's End Session
-action still reproduces the exact defect R-02 exists to close.
+addition to calling `cleanup_on_exit()` — reproducing R-02 through a third
+surface the original review's finding didn't name. `tui/sidebar.py` is
+dual-owned m2/m5 for this item (`tests/fixtures/lane_ownership.yaml`); the
+direct call is deleted, `cleanup_on_exit()` (which now kills only this
+session's own multiplexer name) and `self.exit()` are unchanged. See
+`evidence/M2/BLOCKED.md` for the full history of this item, kept as the
+record of what was found and why this lane initially could not act on it.
 
 ## 5. Reconcile rules (existing, restated so they are testable against this
    contract — not changed by this lane)
