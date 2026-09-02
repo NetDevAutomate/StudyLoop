@@ -8,11 +8,14 @@ from __future__ import annotations
 
 import fcntl
 import json
+import logging
 import os
 import threading
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 SESSION_DIR = Path(os.environ.get("STUDYLOOP_SESSION_DIR", Path.home() / ".config" / "studyloop"))
 STATE_FILE = SESSION_DIR / "session-state.json"
@@ -274,13 +277,24 @@ def _cli_owned_claim_is_live(state: dict) -> bool:
     session_name = state.get("mux_session") or state.get("tmux_session")
     if not session_name:
         return False
-    import contextlib
 
     from studyloop.multiplexer import get_backend
 
-    with contextlib.suppress(Exception):
+    try:
         return bool(get_backend().session_exists(session_name))
-    return False
+    except Exception as exc:
+        # C5 (council): fail open is correct here -- a backend that cannot
+        # be reached has no live sessions FROM HERE, and blocking a start
+        # forever because tmux itself is broken would be worse than a
+        # false reclaim. But silently swallowing the exception hid a
+        # broken backend from anyone debugging "why did this reclaim when
+        # I expected it to block" -- log it.
+        logger.warning(
+            "could not confirm liveness of multiplexer session %s: %s",
+            session_name,
+            exc,
+        )
+        return False
 
 
 def _pid_is_alive(pid: object) -> bool:
