@@ -112,8 +112,10 @@ def _get_registry():
     for fn in config_checks:
         registry.register("config")(fn)
     registry.register("deps")(check_optional_deps)
-    # check_system_binaries (bin_ttyd) is gone: ADR-0005 retired the ttyd
-    # browser surface, so reporting ttyd's absence is noise with no signal.
+    # check_system_binaries (bin_ttyd) is gone: ttyd is fully retired
+    # (ADR-0005, ADR-0008) -- nothing installs, spawns, or reads a ttyd
+    # process any more, so reporting its absence would be noise with no
+    # signal regardless of whether the binary happens to be on PATH.
     registry.register("agents")(check_agent_definitions)
     registry.register("agents")(check_agent_smoke_tests)
     registry.register("harness")(check_harness_export)

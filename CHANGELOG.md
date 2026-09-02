@@ -43,6 +43,14 @@ experience may change before `1.0.0`.
 - Session exporters outside the five-harness pre-release contract.
 - Public pages that exposed implementation notes, internal architecture detail,
   or release-planning material.
+- `ttyd` entirely — the browser terminal fallback and the server transport
+  that backed it. `studyloop study --transport`, `studyloop web --ttyd-port`,
+  the `ttyd_port` config key, the `/terminal/` HTTP+WebSocket proxy, and the
+  `transport: "ttyd"` / `STUDYLOOP_TRANSPORT=ttyd` request paths are all
+  removed; requesting `ttyd` now fails with a clear error instead of being
+  silently downgraded to another transport. `studyloop study` is unaffected —
+  it never depended on ttyd to work. See
+  [ADR-0008](docs/adr/0008-retire-ttyd-entirely.md).
 
 ### Known pre-release boundaries
 
