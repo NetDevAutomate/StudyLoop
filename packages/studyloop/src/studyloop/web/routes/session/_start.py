@@ -138,8 +138,7 @@ async def _session_conflict() -> JSONResponse | None:
     if not session_state.claim_blocks_web_start(state):
         if state.get("study_session_id") and state.get("mode") != "ended":
             logger.warning(
-                "Reclaiming stale session claim id=%s transport=%s — its "
-                "owner is no longer alive",
+                "Reclaiming stale session claim id=%s transport=%s — its owner is no longer alive",
                 state.get("study_session_id"),
                 state.get("transport", "cli"),
             )
