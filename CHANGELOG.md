@@ -62,6 +62,13 @@ experience may change before `1.0.0`.
   timestamps. On a machine east of UTC this could delete sessions updated
   within the last few hours; west of UTC it could keep sessions that should
   have been caught. Cutoffs now use real UTC.
+- `record_teachback`'s write to `study_progress` now runs inside an explicit
+  `db.immediate()` transaction instead of relying on statement order to hold
+  SQLite's write lock; a CHECK-constraint violation (an out-of-range
+  teach-back score) no longer raises unhandled through `record_teachback`;
+  and the `study_progress` row id derived from (topic, concept) is now
+  separator-safe, so a topic and concept that together contain a `:` can no
+  longer collide with a different pair.
 
 ### Known pre-release boundaries
 

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import sqlite3
-import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -181,7 +180,9 @@ def _record_progress_on_connection(
     topic = topic.lower().strip()
     concept = concept.lower().strip()
     now = datetime.now(UTC).isoformat()
-    progress_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{topic}:{concept}"))
+    # R-21: shared with history/teachback.py's record_teachback -- both must
+    # derive the same id for the same (topic, concept) pair.
+    progress_id = _connection.progress_id_for(topic, concept)
     conn.execute(
         """
         INSERT INTO study_progress
