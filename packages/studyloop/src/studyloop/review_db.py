@@ -37,7 +37,11 @@ def ensure_tables(db_path: Path | None = None) -> None:
     path = db_path or _get_db()
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    with _connect(path) as conn:
+    # R-23: `with conn:` only commits/rolls back -- sqlite3.Connection.__exit__
+    # does not close the connection (verified experimentally; db.py's own
+    # contract says the caller must). try/finally is explicit about it.
+    conn = _connect(path)
+    try:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS card_reviews (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,6 +76,9 @@ def ensure_tables(db_path: Path | None = None) -> None:
                 finished_at TEXT
             )
         """)
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def record_card_review(
@@ -86,65 +93,69 @@ def record_card_review(
     path = db_path or _get_db()
     ensure_tables(path)
 
-    with _connect(path) as conn, immediate(conn):
-        # The prior schedule is what the next one is derived from, so the read and
-        # the insert must hold the write lock together. Otherwise concurrent
-        # reviews of the same card read the same predecessor and -- the SM-2 step
-        # being deterministic given (ease, interval, correct) -- all write the same
-        # successor. Every row persists, so the count looks right while the
-        # progression silently stalls.
+    conn = _connect(path)
+    try:
+        with immediate(conn):
+            # The prior schedule is what the next one is derived from, so the read and
+            # the insert must hold the write lock together. Otherwise concurrent
+            # reviews of the same card read the same predecessor and -- the SM-2 step
+            # being deterministic given (ease, interval, correct) -- all write the same
+            # successor. Every row persists, so the count looks right while the
+            # progression silently stalls.
 
-        # Stamped INSIDE the transaction on purpose. Taken before it, threads
-        # acquire the write lock in a different order than they read the
-        # clock, so a review could insert a row that sorts BELOW one already
-        # committed -- making its own update invisible to the next reader,
-        # which then derived from the same predecessor again. Serialising the
-        # transaction alone did not fix that; the ordering key had to become
-        # monotonic too.
-        now = datetime.now(UTC).isoformat()
+            # Stamped INSIDE the transaction on purpose. Taken before it, threads
+            # acquire the write lock in a different order than they read the
+            # clock, so a review could insert a row that sorts BELOW one already
+            # committed -- making its own update invisible to the next reader,
+            # which then derived from the same predecessor again. Serialising the
+            # transaction alone did not fix that; the ordering key had to become
+            # monotonic too.
+            now = datetime.now(UTC).isoformat()
 
-        # `id DESC` breaks ties: two reviews inside the same clock tick would
-        # otherwise leave "the latest review" ambiguous, and SQLite free to
-        # return either.
-        row = conn.execute(
-            "SELECT ease_factor, interval_days FROM card_reviews "
-            "WHERE course = ? AND card_hash = ? "
-            "ORDER BY reviewed_at DESC, id DESC LIMIT 1",
-            (course, card_hash),
-        ).fetchone()
+            # `id DESC` breaks ties: two reviews inside the same clock tick would
+            # otherwise leave "the latest review" ambiguous, and SQLite free to
+            # return either.
+            row = conn.execute(
+                "SELECT ease_factor, interval_days FROM card_reviews "
+                "WHERE course = ? AND card_hash = ? "
+                "ORDER BY reviewed_at DESC, id DESC LIMIT 1",
+                (course, card_hash),
+            ).fetchone()
 
-        if row:
-            ease, interval = row
-        else:
-            ease, interval = DEFAULT_EASE, 1
+            if row:
+                ease, interval = row
+            else:
+                ease, interval = DEFAULT_EASE, 1
 
-        # SM-2 simplified update (interval capped at 365 days)
-        if correct:
-            interval = min(max(1, int(interval * ease)), 365)
-            ease = min(ease + 0.1, 3.0)
-        else:
-            interval = 1
-            ease = max(ease - 0.2, MIN_EASE)
+            # SM-2 simplified update (interval capped at 365 days)
+            if correct:
+                interval = min(max(1, int(interval * ease)), 365)
+                ease = min(ease + 0.1, 3.0)
+            else:
+                interval = 1
+                ease = max(ease - 0.2, MIN_EASE)
 
-        next_review = (datetime.now(UTC) + timedelta(days=interval)).strftime("%Y-%m-%d")
+            next_review = (datetime.now(UTC) + timedelta(days=interval)).strftime("%Y-%m-%d")
 
-        conn.execute(
-            "INSERT INTO card_reviews "
-            "(course, card_type, card_hash, correct, reviewed_at, "
-            "ease_factor, interval_days, next_review, response_time_ms) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (
-                course,
-                card_type,
-                card_hash,
-                correct,
-                now,
-                ease,
-                interval,
-                next_review,
-                response_time_ms,
-            ),
-        )
+            conn.execute(
+                "INSERT INTO card_reviews "
+                "(course, card_type, card_hash, correct, reviewed_at, "
+                "ease_factor, interval_days, next_review, response_time_ms) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    course,
+                    card_type,
+                    card_hash,
+                    correct,
+                    now,
+                    ease,
+                    interval,
+                    next_review,
+                    response_time_ms,
+                ),
+            )
+    finally:
+        conn.close()
 
 
 def record_session(
@@ -159,7 +170,8 @@ def record_session(
     path = db_path or _get_db()
     ensure_tables(path)
 
-    with _connect(path) as conn:
+    conn = _connect(path)
+    try:
         now = datetime.now(UTC).isoformat()
         conn.execute(
             "INSERT INTO review_sessions "
@@ -167,6 +179,9 @@ def record_session(
             "VALUES (?, ?, ?, ?, ?, ?, ?)",
             (course, mode, total, correct, duration_seconds, now, now),
         )
+        conn.commit()
+    finally:
+        conn.close()
 
 
 @dataclass
@@ -186,7 +201,8 @@ def get_due_cards(course: str, db_path: Path | None = None) -> list[CardProgress
         return []
 
     ensure_tables(path)
-    with _connect(path) as conn:
+    conn = _connect(path)
+    try:
         today = datetime.now(UTC).strftime("%Y-%m-%d")
 
         rows = conn.execute(
@@ -205,6 +221,8 @@ def get_due_cards(course: str, db_path: Path | None = None) -> list[CardProgress
             """,
             (course, today),
         ).fetchall()
+    finally:
+        conn.close()
 
     return [
         CardProgress(
@@ -226,7 +244,8 @@ def get_wrong_hashes(course: str, db_path: Path | None = None) -> set[str]:
         return set()
 
     ensure_tables(path)
-    with _connect(path) as conn:
+    conn = _connect(path)
+    try:
         # Find the most recent session's reviewed_at range
         last_session = conn.execute(
             "SELECT started_at FROM review_sessions "
@@ -242,6 +261,8 @@ def get_wrong_hashes(course: str, db_path: Path | None = None) -> set[str]:
             "WHERE course = ? AND correct = 0 AND reviewed_at >= ?",
             (course, last_session[0]),
         ).fetchall()
+    finally:
+        conn.close()
 
     return {r[0] for r in rows}
 
@@ -253,7 +274,8 @@ def get_course_stats(course: str, db_path: Path | None = None) -> dict:
         return {"total_reviews": 0, "unique_cards": 0, "due_today": 0, "mastered": 0}
 
     ensure_tables(path)
-    with _connect(path) as conn:
+    conn = _connect(path)
+    try:
         today = datetime.now(UTC).strftime("%Y-%m-%d")
 
         total = conn.execute(
@@ -288,6 +310,8 @@ def get_course_stats(course: str, db_path: Path | None = None) -> dict:
             """,
             (course,),
         ).fetchone()[0]
+    finally:
+        conn.close()
 
     return {
         "total_reviews": total,

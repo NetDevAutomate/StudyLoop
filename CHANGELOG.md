@@ -77,6 +77,14 @@ experience may change before `1.0.0`.
   such table" case (an expected, pre-migration schema gap); anything else is
   now logged and re-raised, matching the fix already applied to the explorer
   search path.
+- `review_db.py`'s six public functions (`ensure_tables`,
+  `record_card_review`, `record_session`, `get_due_cards`, `get_wrong_hashes`,
+  `get_course_stats`) used `with conn:` for cleanup, which only commits or
+  rolls back a transaction — it does not close the connection. Every
+  flashcard/quiz answer (`POST /api/review`) leaked a `sqlite3.Connection`,
+  relying on CPython's refcounting to eventually close the file handle. Now
+  `try/finally: conn.close()`, matching the convention used everywhere else
+  in the codebase (`parking.py`, `notes.py`, `history/*.py`).
 
 ### Known pre-release boundaries
 
