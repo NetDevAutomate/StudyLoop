@@ -623,6 +623,165 @@ class TestForeignWebServerPid:
         assert "already active" in resp.json()["error"]
 
 
+class TestClaimReservation:
+    """C1 (council, High): the cross-process check-then-claim window.
+    Every start path used to read the file claim (unlocked), decide "not
+    blocked," do real work (spawn a transport, create a DB record), and
+    only THEN write its own claim -- a second start landing in that
+    window read the same "not blocked" state and could race the write.
+    try_claim_session closes it: read, reclaim side effect, and
+    reservation write all happen under one flock. These tests prove the
+    reservation IS the claim from the moment it lands, not a promise
+    fulfilled later."""
+
+    def test_reservation_is_visible_as_starting_during_spawn(
+        self,
+        client: TestClient,
+        _mock_agent_available,
+        _stub_db,
+        monkeypatch,
+    ) -> None:
+        """(a) While the (stubbed) transport is "spawning", the state file
+        already shows mode="starting" and is_session_active() is already
+        True."""
+        observed: dict[str, object] = {}
+
+        class _ObservingTransport(StubTransport):
+            async def start(self, config) -> None:
+                observed["mode"] = session_state.read_session_state().get("mode")
+                observed["is_active"] = session_state.is_session_active()
+                await super().start(config)
+
+        def factory():
+            return _ObservingTransport(events=[Started(agent="claude")])
+
+        monkeypatch.setattr(
+            "studyloop.web.routes.session._build_pty_transport",
+            lambda config: factory,
+            raising=False,
+        )
+
+        resp = client.post(
+            "/api/session/start",
+            json={"topic": "Async IO", "energy": 5, "agent": "claude", "transport": "pty"},
+        )
+
+        assert resp.status_code == 201, resp.text
+        assert observed["mode"] == "starting"
+        assert observed["is_active"] is True
+
+    def test_a_spawn_failure_leaves_no_live_claim(
+        self,
+        client: TestClient,
+        _mock_agent_available,
+        _stub_db,
+        monkeypatch,
+    ) -> None:
+        """(b) A spawn that raises must not leave the reservation stuck --
+        the next start must not see a phantom "already active" session
+        that is actually this failed attempt."""
+
+        class _FailingTransport(StubTransport):
+            async def start(self, config) -> None:
+                raise OSError("fork/exec failed")
+
+        def factory():
+            return _FailingTransport()
+
+        monkeypatch.setattr(
+            "studyloop.web.routes.session._build_pty_transport",
+            lambda config: factory,
+            raising=False,
+        )
+
+        resp = client.post(
+            "/api/session/start",
+            json={"topic": "Async IO", "energy": 5, "agent": "claude", "transport": "pty"},
+        )
+
+        assert resp.status_code == 500, resp.text
+        assert session_state.is_session_active() is False
+
+    def test_two_concurrent_cli_starts_exactly_one_wins(self, monkeypatch) -> None:
+        """(c) The same guarantee test_session_state.py's unit test proves
+        for a synthetic blocks(), against a REAL predicate this lane ships
+        (claim_blocks_cli_start): two reservations racing try_claim_session
+        directly (the mechanism the route/CLI calls at the point of its
+        own check) -- exactly one wins, the loser sees the winner's own
+        reservation, never a race-corrupted read. Models two concurrent
+        `studyloop study` invocations, each recording its own mux_session
+        name; the backend stub says any name "exists", so each looks
+        genuinely live to the other -- claim_blocks_web_start's pid check
+        can't be used here instead, since two THREADS of one test process
+        share this process's own pid, which is exactly the "my own claim"
+        case that check deliberately does not block (C3) -- a real
+        cross-process race is what production faces, not this artifact of
+        threading within one test."""
+        import threading
+
+        monkeypatch.setattr(
+            "studyloop.multiplexer.get_backend",
+            lambda: MagicMock(session_exists=lambda name: True),
+        )
+
+        results: list[dict | None] = [None, None]
+
+        def _attempt(index: int, session_id: str) -> None:
+            reservation = {
+                "study_session_id": session_id,
+                "mode": "starting",
+                "mux_session": f"study-{session_id}",
+            }
+            results[index] = session_state.try_claim_session(
+                reservation, session_state.claim_blocks_cli_start
+            )
+
+        barrier = threading.Barrier(2)
+
+        def _run(index: int, session_id: str) -> None:
+            barrier.wait()
+            _attempt(index, session_id)
+
+        t1 = threading.Thread(target=_run, args=(0, "cli-a"))
+        t2 = threading.Thread(target=_run, args=(1, "cli-b"))
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
+
+        winners = [r for r in results if r is None]
+        losers = [r for r in results if r is not None]
+        assert len(winners) == 1, f"exactly one thread must claim the slot, got {results}"
+        assert len(losers) == 1
+        assert losers[0].get("study_session_id") in ("cli-a", "cli-b")
+
+    def test_cli_start_reserves_before_the_db_call(self) -> None:
+        """(d) The reservation lands BEFORE the DB record is created --
+        proof the claim, not just the eventual write, is what the guard
+        moved earlier."""
+        from studyloop.session.start import start_session
+
+        observed: dict[str, object] = {}
+
+        def _spy_start_study_session(topic, energy_label, topic_slug=None):
+            observed["mode_when_db_called"] = session_state.read_session_state().get("mode")
+            return None
+
+        with (
+            patch("studyloop.tmux.is_tmux_available", return_value=True),
+            patch("studyloop.agent_launcher.shutil.which", return_value="/usr/bin/claude"),
+            patch("studyloop.session.cleanup.auto_clean_zombies"),
+            patch(
+                "studyloop.history.start_study_session",
+                side_effect=_spy_start_study_session,
+            ),
+            pytest.raises(SessionStartError),
+        ):
+            start_session("Async IO", "claude", "study", "elapsed", 5, False)
+
+        assert observed["mode_when_db_called"] == "starting"
+
+
 class TestNoClaim:
     """Baseline: an ended (or absent) claim never blocks a start."""
 

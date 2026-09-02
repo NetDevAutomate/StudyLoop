@@ -190,6 +190,11 @@ experience may change before `1.0.0`.
   process (if one was recorded and is still running) so it is visible
   that an orphaned agent may still be alive on the machine; StudyLoop
   still never signals it (C4).
+- Closed a narrow race where a session start (CLI or web) checked whether
+  a slot was free and only claimed it afterward, with real work
+  (spawning the agent, creating the database record) running in between;
+  a second start landing in that window could have raced the eventual
+  claim. The check and the claim now happen together (C1).
 - Ending a session -- from the Web UI, `studyloop study --end`, or the study
   sidebar's End Session key -- no longer terminates every other study
   session on the machine. Each end path now closes only its own terminal

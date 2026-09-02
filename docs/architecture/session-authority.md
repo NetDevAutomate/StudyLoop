@@ -19,6 +19,44 @@ in-process **CACHE** of that claim, valid only for a PTY/ACP session started by
 Every start path reads the claim before proceeding. Every end path clears only
 what it owns — never a blanket sweep. (§4.)
 
+**C1 (council, High, closed):** "reads the claim before proceeding" used to
+be two separate steps -- read the file (unlocked), decide whether it
+blocks, THEN (much later, after real work: spawning a transport, creating
+a DB record) write the new claim. A second start landing in that window
+read the same "not blocked" state and could race the first one's
+eventual write -- the R-01 clobber, by timing instead of by the R-01 bug
+itself (which this lane already closed). `session_state.try_claim_session
+(reservation, blocks, *, on_reclaim=None) -> dict | None` closes it: under
+the SAME `fcntl.flock` `write_session_state` uses, read the current
+claim, decide via `blocks`, and (if not blocked) merge-write `reservation`
+-- all in one lock acquisition. `on_reclaim(previous_state)` runs inside
+that same lock, before the write, so a caller's IPC-file clear (C2) and
+reclaim log (C4) are atomic with the claim itself, not a separate,
+racy step. Every start path now calls this at the point of its own old
+"unlocked read" (`_session_conflict()` for web; `session/start.py`'s
+guard for CLI), with a reservation shape of `{"study_session_id": "<a
+placeholder id, since the real one is not known yet>", "mode":
+"starting", "transport": <"pty"|"acp"|absent for CLI>, "pid":
+os.getpid(), "topic": …, "started_at": …}`. `mode="starting"` reads as
+active (`is_session_active()` already treats anything but `"ended"` as
+active) and, for a web reservation, as genuinely LIVE to anyone else
+checking it cross-process (its own `pid` is this process, alive). Any
+failure between the reservation and the real, final claim clears the
+reservation (`clear_session_files()`); each start path scopes this
+narrowly to its own actual risk window (the web paths wrap their entire
+post-reservation body in a `claim_finalized` flag + `finally`, since many
+failure points exist between reservation and the final write; the CLI
+path's own window is much shorter -- only the DB-record call sits between
+its reservation and its write). **Residual, not closed:** a CLI
+reservation carries no `mux_session` (that name is not chosen until
+later in the CLI's own flow), so a second, concurrent CLI start's own
+`claim_blocks_cli_start` check cannot yet see the first one's reservation
+as live via the mux-session-exists check -- the same shape of limitation
+`claim_blocks_web_start`'s CLI-owned branch already had before this item,
+now also true of a reservation specifically. `try_claim_session`'s own
+locking still prevents a corrupted read; it is the CLI's OWN liveness
+signal that has this gap, same as it always did.
+
 ## 2. Liveness
 
 A claim is **LIVE** iff `session_state.is_session_active()` is true (a

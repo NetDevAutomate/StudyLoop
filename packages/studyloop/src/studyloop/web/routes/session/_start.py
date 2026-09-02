@@ -91,8 +91,9 @@ def _conflict_response(
     )
 
 
-async def _session_conflict() -> JSONResponse | None:
-    """Build the 409 for a start blocked by an already-active session.
+async def _session_conflict(reservation: dict) -> JSONResponse | None:
+    """Build the 409 for a start blocked by an already-active session, or
+    atomically claim the slot for ``reservation`` (C1, council).
 
     Checks BOTH claims to the single-session slot (R-01): the in-process
     singleton (``session/active.py``, this process's own PTY/ACP session) and
@@ -105,13 +106,23 @@ async def _session_conflict() -> JSONResponse | None:
     offer "reattach or end" instead of the desync fallback string. The topic
     is looked up via :func:`_active_session_topic` for the in-process case
     (which never borrows a different session's topic), or read directly from
-    the file claim for the cross-process case (same guarantee — the claim
-    dict IS that session's own state).
+    the blocking claim itself for the cross-process case (same guarantee —
+    the claim dict IS that session's own state).
 
-    Returns ``None`` when nothing live is blocking the start — including when
-    the file names a claim whose owner is no longer alive. A stale claim is
-    RECLAIMED (logged, never blocking) rather than refused forever; see
-    clause 2's crash-then-restart case.
+    Returns ``None`` when the file claim is successfully RESERVED for the
+    caller — including when the previous claim was stale and reclaimed
+    (logged, IPC files cleared, C1/C2/C4) rather than refused forever; see
+    clause 2's crash-then-restart case. The caller (``_start_pty_session``/
+    ``_start_acp_session``) must clear the reservation if anything fails
+    before it writes the real, final claim.
+
+    C1 (council): the file-claim check and the reservation write used to be
+    two separate steps -- read (unlocked), decide, do real work (spawn a
+    transport, create a DB record), THEN write the claim. A second start
+    landing in that window read the same "not blocked" state and could race
+    the eventual write. ``try_claim_session`` closes it: the read, the
+    reclaim side effect, and the reservation write now happen under ONE
+    flock acquisition (the same one ``write_session_state`` uses).
     """
     from studyloop.session import active as session_active
     from studyloop.web.routes.session import _grace
@@ -126,32 +137,31 @@ async def _session_conflict() -> JSONResponse | None:
             detached=_grace.has_pending_release(session_id),
         )
 
-    # No in-process singleton holds the slot: consult the cross-process file
-    # claim. is_session_active() here would only tell us a claim EXISTS —
-    # claim_blocks_web_start() also asks whether its recorded owner is still
-    # alive, which is exactly the check the ttyd-only branch used to do and
-    # every other branch skipped (R-01).
+    # No in-process singleton holds the slot: try to claim the cross-process
+    # file slot for `reservation`. claim_blocks_web_start() asks whether the
+    # CURRENT claim's recorded owner is still alive, which is exactly the
+    # check the ttyd-only branch used to do and every other branch skipped
+    # (R-01); try_claim_session does that check AND the reservation write
+    # under the same lock (C1), running on_reclaim (clear IPC files + log,
+    # C2/C4) first if the current claim turns out to be stale.
     from studyloop import session_state
-    from studyloop.web.routes import session as session_pkg
 
-    state = session_pkg.read_session_state()
-    if not session_state.claim_blocks_web_start(state):
-        if state.get("study_session_id") and state.get("mode") != "ended":
-            # C2: a reclaimed session must not inherit the dead session's
-            # topics/parking -- clear before returning so the caller's own
-            # write starts from empty, not before (there is nothing to race
-            # here: nothing else can claim the slot until this function
-            # returns None and the caller's own write lands).
-            session_state.clear_session_files()
-            logger.warning(session_state.reclaim_log_message(state))
+    def _on_reclaim(previous: dict) -> None:
+        session_state.clear_session_files()
+        logger.warning(session_state.reclaim_log_message(previous))
+
+    blocking_state = session_state.try_claim_session(
+        reservation, session_state.claim_blocks_web_start, on_reclaim=_on_reclaim
+    )
+    if blocking_state is None:
         return None
 
-    session_id = str(state.get("study_session_id"))
-    topic = state.get("topic")
+    session_id = str(blocking_state.get("study_session_id"))
+    topic = blocking_state.get("topic")
     return _conflict_response(
         session_id=session_id,
         topic=topic if isinstance(topic, str) else None,
-        agent=state.get("agent") if isinstance(state.get("agent"), str) else None,
+        agent=blocking_state.get("agent") if isinstance(blocking_state.get("agent"), str) else None,
         detached=_grace.has_pending_release(session_id),
     )
 
@@ -232,186 +242,210 @@ async def _start_pty_session(
     """PTY-backed start path — no tmux, no ttyd.
 
     1. Reject if a session is already active -- in-process singleton OR a live
-       cross-process file claim (``_session_conflict()``, R-01).
+       cross-process file claim, or atomically RESERVE the slot
+       (``_session_conflict()``, R-01/C1).
     2. Resolve agent + check binary. 503 with ``install_hint`` on miss.
     3. Persona + DB record creation (shared with legacy).
     4. ``await active.acquire(config, factory)`` — atomic under asyncio.Lock.
     5. Write IPC session_state only after the transport starts, then return
        201 with ``ws_url`` for the client to open.
+
+    C1 (council): everything from step 2 onward runs with the slot already
+    reserved (step 1's ``_session_conflict`` call claims it, not just
+    checks it). ``claim_finalized`` tracks whether the reservation was
+    replaced by the real, final claim; the ``finally`` clears it on ANY
+    other exit -- an early return, an exception, doesn't matter which.
     """
     import os
     import shutil
+    import uuid
 
     from studyloop.agent_launcher import AGENTS, detect_agents
     from studyloop.session import active as session_active
     from studyloop.session.transport import SessionAlreadyActiveError, SessionConfig
 
-    conflict = await _session_conflict()
+    reservation = {
+        "study_session_id": f"pending-{uuid.uuid4().hex[:12]}",
+        "mode": "starting",
+        "transport": "pty",
+        "pid": os.getpid(),
+        "topic": body.topic,
+        "started_at": datetime.now(UTC).isoformat(),
+    }
+    conflict = await _session_conflict(reservation)
     if conflict is not None:
         return conflict
 
-    # --- Agent resolution ---
-    agent = body.agent
-    if agent and agent not in AGENTS:
-        return JSONResponse({"error": f"Unknown agent: {agent}"}, status_code=400)
-    if not agent:
-        available = detect_agents()
-        if not available:
+    claim_finalized = False
+    try:
+        # --- Agent resolution ---
+        agent = body.agent
+        if agent and agent not in AGENTS:
+            return JSONResponse({"error": f"Unknown agent: {agent}"}, status_code=400)
+        if not agent:
+            available = detect_agents()
+            if not available:
+                return JSONResponse(
+                    {"error": "No AI agent found on this machine"},
+                    status_code=503,
+                )
+            agent = available[0]
+
+        adapter = AGENTS[agent]
+        # Import-time snapshot (R-09c), not os.environ directly -- see
+        # studyloop.test_hatch_env.
+        from studyloop import test_hatch_env
+
+        test_agent_cmd = test_hatch_env("STUDYLOOP_TEST_AGENT_CMD")
+        if not test_agent_cmd and not shutil.which(adapter.binary):
             return JSONResponse(
-                {"error": "No AI agent found on this machine"},
+                {
+                    "error": f"Agent '{agent}' binary not found: {adapter.binary}",
+                    "agent": agent,
+                    "binary": adapter.binary,
+                    "install_hint": _AGENT_INSTALL_HINTS.get(
+                        agent,
+                        f"Install the {agent!r} CLI and ensure {adapter.binary!r} is on PATH.",
+                    ),
+                },
                 status_code=503,
             )
-        agent = available[0]
 
-    adapter = AGENTS[agent]
-    # Import-time snapshot (R-09c), not os.environ directly -- see
-    # studyloop.test_hatch_env.
-    from studyloop import test_hatch_env
+        # --- Topic resolution (optional) ---
+        topic_config = None
+        try:
+            from studyloop.logic.topic_resolver import resolve_topic
+            from studyloop.settings import load_settings
 
-    test_agent_cmd = test_hatch_env("STUDYLOOP_TEST_AGENT_CMD")
-    if not test_agent_cmd and not shutil.which(adapter.binary):
-        return JSONResponse(
-            {
-                "error": f"Agent '{agent}' binary not found: {adapter.binary}",
-                "agent": agent,
-                "binary": adapter.binary,
-                "install_hint": _AGENT_INSTALL_HINTS.get(
-                    agent,
-                    f"Install the {agent!r} CLI and ensure {adapter.binary!r} is on PATH.",
-                ),
-            },
-            status_code=503,
+            settings = load_settings()
+            if settings.topics:
+                result = resolve_topic(body.topic, settings.topics)
+                topic_config = result.resolved or (result.matches[0] if result.matches else None)
+        except Exception:
+            pass
+
+        # --- DB record ---
+        from studyloop.history import start_study_session
+        from studyloop.output import energy_to_label
+
+        energy_label = energy_to_label(body.energy)
+        study_id = start_study_session(
+            body.topic,
+            energy_label,
+            topic_slug=topic_config.slug if topic_config else None,
         )
+        if not study_id:
+            return JSONResponse(
+                {"error": "Failed to create session record"},
+                status_code=500,
+            )
 
-    # --- Topic resolution (optional) ---
-    topic_config = None
-    try:
-        from studyloop.logic.topic_resolver import resolve_topic
-        from studyloop.settings import load_settings
+        # --- Session dir + persona (no tmux) ---
+        session_dir = SESSION_DIR / "sessions" / session_dir_name(body.topic, study_id)
 
-        settings = load_settings()
-        if settings.topics:
-            result = resolve_topic(body.topic, settings.topics)
-            topic_config = result.resolved or (result.matches[0] if result.matches else None)
-    except Exception:
-        pass
+        from studyloop.agent_launcher import build_canonical_persona
+        from studyloop.session.orchestrator import setup_session_dir
 
-    # --- DB record ---
-    from studyloop.history import start_study_session
-    from studyloop.output import energy_to_label
+        setup_session_dir(session_dir, body.topic)
+        canonical = build_canonical_persona("focus", body.topic, body.energy)
+        persona_hash = hashlib.sha256(canonical.encode()).hexdigest()[:16]
 
-    energy_label = energy_to_label(body.energy)
-    study_id = start_study_session(
-        body.topic,
-        energy_label,
-        topic_slug=topic_config.slug if topic_config else None,
-    )
-    if not study_id:
-        return JSONResponse(
-            {"error": "Failed to create session record"},
-            status_code=500,
-        )
+        from studyloop.history.sessions import update_persona_hash
 
-    # --- Session dir + persona (no tmux) ---
-    session_dir = SESSION_DIR / "sessions" / session_dir_name(body.topic, study_id)
+        update_persona_hash(study_id, persona_hash)
 
-    from studyloop.agent_launcher import build_canonical_persona
-    from studyloop.session.orchestrator import setup_session_dir
+        persona_file = adapter.setup(canonical, session_dir)
+        if adapter.mcp_setup:
+            adapter.mcp_setup(session_dir)
 
-    setup_session_dir(session_dir, body.topic)
-    canonical = build_canonical_persona("focus", body.topic, body.energy)
-    persona_hash = hashlib.sha256(canonical.encode()).hexdigest()[:16]
-
-    from studyloop.history.sessions import update_persona_hash
-
-    update_persona_hash(study_id, persona_hash)
-
-    persona_file = adapter.setup(canonical, session_dir)
-    if adapter.mcp_setup:
-        adapter.mcp_setup(session_dir)
-
-    # --- Acquire the active-session singleton ---
-    config = SessionConfig(
-        study_session_id=study_id,
-        agent=agent,
-        persona_file=str(persona_file),
-        cwd=str(session_dir),
-        env=dict(os.environ),
-        cols=80,
-        rows=24,
-    )
-    from studyloop.web.routes import session as session_pkg
-
-    factory = session_pkg._build_pty_transport(config)
-
-    try:
-        active_session = await session_active.acquire(config, factory)
-    except SessionAlreadyActiveError:
-        from studyloop.history import abort_study_session
-
-        abort_study_session(study_id, "Startup failed: another session is already active")
-        return JSONResponse(
-            {"error": "A session is already active"},
-            status_code=409,
-        )
-    except FileNotFoundError as exc:
-        from studyloop.history import abort_study_session
-
-        abort_study_session(study_id, f"Startup failed: agent binary not found: {exc}")
-        logger.exception("PTY start failed: binary missing")
-        return JSONResponse(
-            {"error": f"Agent binary not found: {exc}"},
-            status_code=503,
-        )
-    except OSError:
-        from studyloop.history import abort_study_session
-
-        abort_study_session(study_id, "Startup failed: failed to start agent PTY")
-        logger.exception("PTY start failed: fork/exec error")
-        return JSONResponse(
-            {"error": "Failed to start agent PTY"},
-            status_code=500,
-        )
-
-    try:
-        # --- Session state (no tmux metadata) ---
-        _ensure_session_dir()
-        pty_state = build_session_state_payload(
-            study_id=study_id,
-            topic=body.topic,
-            energy=body.energy,
-            energy_label=energy_label,
+        # --- Acquire the active-session singleton ---
+        config = SessionConfig(
+            study_session_id=study_id,
             agent=agent,
             persona_file=str(persona_file),
-            session_dir=str(session_dir),
-            persona_hash=persona_hash,
-            transport="pty",
-            now=datetime.now(UTC),
-            # C4 (council): informational only -- getattr because
-            # StubTransport (tests) exposes no .pid, and the real
-            # PTYTransport's own .pid property returns None before
-            # start() runs (never the case here, after a successful
-            # acquire, but the getattr default is the same either way).
-            child_pid=getattr(active_session.transport, "pid", None),
+            cwd=str(session_dir),
+            env=dict(os.environ),
+            cols=80,
+            rows=24,
         )
-        # origin distinguishes Study Session ('study') from Body Double
-        # ('body-double') starts. Merged in here rather than in
-        # build_session_state_payload (owned by another stage) so it flows
-        # through write_session_state → read_session_state → /api/session/state.
-        pty_state["origin"] = origin
-        write_session_state(pty_state)
-        TOPICS_FILE.touch(mode=0o600, exist_ok=True)
-        PARKING_FILE.touch(mode=0o600, exist_ok=True)
-    except OSError:
-        from studyloop.history import abort_study_session
+        from studyloop.web.routes import session as session_pkg
 
-        await session_active.release()
-        abort_study_session(study_id, "Startup failed: failed to finalise session state")
-        logger.exception("PTY start failed: session state finalisation error")
-        return JSONResponse(
-            {"error": "Failed to finalise session state"},
-            status_code=500,
-        )
+        factory = session_pkg._build_pty_transport(config)
+
+        try:
+            active_session = await session_active.acquire(config, factory)
+        except SessionAlreadyActiveError:
+            from studyloop.history import abort_study_session
+
+            abort_study_session(study_id, "Startup failed: another session is already active")
+            return JSONResponse(
+                {"error": "A session is already active"},
+                status_code=409,
+            )
+        except FileNotFoundError as exc:
+            from studyloop.history import abort_study_session
+
+            abort_study_session(study_id, f"Startup failed: agent binary not found: {exc}")
+            logger.exception("PTY start failed: binary missing")
+            return JSONResponse(
+                {"error": f"Agent binary not found: {exc}"},
+                status_code=503,
+            )
+        except OSError:
+            from studyloop.history import abort_study_session
+
+            abort_study_session(study_id, "Startup failed: failed to start agent PTY")
+            logger.exception("PTY start failed: fork/exec error")
+            return JSONResponse(
+                {"error": "Failed to start agent PTY"},
+                status_code=500,
+            )
+
+        try:
+            # --- Session state (no tmux metadata) ---
+            _ensure_session_dir()
+            pty_state = build_session_state_payload(
+                study_id=study_id,
+                topic=body.topic,
+                energy=body.energy,
+                energy_label=energy_label,
+                agent=agent,
+                persona_file=str(persona_file),
+                session_dir=str(session_dir),
+                persona_hash=persona_hash,
+                transport="pty",
+                now=datetime.now(UTC),
+                # C4 (council): informational only -- getattr because
+                # StubTransport (tests) exposes no .pid, and the real
+                # PTYTransport's own .pid property returns None before
+                # start() runs (never the case here, after a successful
+                # acquire, but the getattr default is the same either way).
+                child_pid=getattr(active_session.transport, "pid", None),
+            )
+            # origin distinguishes Study Session ('study') from Body Double
+            # ('body-double') starts. Merged in here rather than in
+            # build_session_state_payload (owned by another stage) so it flows
+            # through write_session_state → read_session_state → /api/session/state.
+            pty_state["origin"] = origin
+            write_session_state(pty_state)
+            TOPICS_FILE.touch(mode=0o600, exist_ok=True)
+            PARKING_FILE.touch(mode=0o600, exist_ok=True)
+            claim_finalized = True
+        except OSError:
+            from studyloop.history import abort_study_session
+
+            await session_active.release()
+            abort_study_session(study_id, "Startup failed: failed to finalise session state")
+            logger.exception("PTY start failed: session state finalisation error")
+            return JSONResponse(
+                {"error": "Failed to finalise session state"},
+                status_code=500,
+            )
+    finally:
+        if not claim_finalized:
+            from studyloop.session_state import clear_session_files
+
+            clear_session_files()
 
     return JSONResponse(
         {
@@ -438,203 +472,229 @@ async def _start_acp_session(
     §2.2 we let the frontend send it.
 
     1. Reject if a session is already active -- in-process singleton OR a live
-       cross-process file claim (``_session_conflict()``, R-01).
+       cross-process file claim, or atomically RESERVE the slot
+       (``_session_conflict()``, R-01/C1).
     2. Resolve agent + check binary. 503 with ``install_hint`` on miss.
     3. DB record creation (no tmux metadata, no persona file).
     4. ``await active.acquire(config, factory)`` — atomic under asyncio.Lock.
     5. Write IPC session_state only after the transport starts, then return
        201 with ``ws_url`` for the client to open.
+
+    C1 (council): see ``_start_pty_session``'s identical structure and
+    docstring note -- ``claim_finalized`` tracks whether the reservation
+    was replaced by the real, final claim; the ``finally`` clears it on
+    ANY other exit.
     """
     import os
     import shutil
+    import uuid
 
     from studyloop.agent_launcher import AGENTS, detect_agents
     from studyloop.session import active as session_active
     from studyloop.session.transport import SessionAlreadyActiveError, SessionConfig
 
-    conflict = await _session_conflict()
+    reservation = {
+        "study_session_id": f"pending-{uuid.uuid4().hex[:12]}",
+        "mode": "starting",
+        "transport": "acp",
+        "pid": os.getpid(),
+        "topic": body.topic,
+        "started_at": datetime.now(UTC).isoformat(),
+    }
+    conflict = await _session_conflict(reservation)
     if conflict is not None:
         return conflict
 
-    # --- Agent resolution ---
-    agent = body.agent
-    if agent and agent not in AGENTS:
-        return JSONResponse({"error": f"Unknown agent: {agent}"}, status_code=400)
-    if not agent:
-        available = detect_agents()
-        if not available:
+    claim_finalized = False
+    try:
+        # --- Agent resolution ---
+        agent = body.agent
+        if agent and agent not in AGENTS:
+            return JSONResponse({"error": f"Unknown agent: {agent}"}, status_code=400)
+        if not agent:
+            available = detect_agents()
+            if not available:
+                return JSONResponse(
+                    {"error": "No AI agent found on this machine"},
+                    status_code=503,
+                )
+            agent = available[0]
+
+        # --- ACP capability guard ---
+        # Fail early (before spawn) if the resolved agent has no ACP transport.
+        # Claude Code and Codex are PTY-only; forcing ACP on them dead-ends in a
+        # spawn failure with an opaque message. Surface the cause + repair instead.
+        from studyloop.web.services.session_start import ACP_CAPABLE_AGENTS
+
+        if agent not in ACP_CAPABLE_AGENTS:
             return JSONResponse(
-                {"error": "No AI agent found on this machine"},
+                {
+                    "error": f"Agent '{agent}' does not support the ACP transport.",
+                    "agent": agent,
+                    "supported_agents": sorted(ACP_CAPABLE_AGENTS),
+                    "repair": (
+                        f"Use transport 'pty' for {agent}, or pick an ACP-capable "
+                        f"agent ({', '.join(sorted(ACP_CAPABLE_AGENTS))})."
+                    ),
+                },
+                status_code=400,
+            )
+
+        adapter = AGENTS[agent]
+        # STUDYLOOP_TEST_ACP_CMD bypasses the binary check entirely — the test
+        # test agent (tests/_stub_acp_agent.py) is the argv we spawn, so the real
+        # Kiro binary doesn't need to be installed. Parity with the
+        # PTY test hatch behaviour (which dodges the check by routing every
+        # launch through /bin/sh anyway). Import-time snapshot (R-09c), not
+        # os.environ directly -- see studyloop.test_hatch_env.
+        from studyloop import test_hatch_env
+
+        test_acp_cmd = test_hatch_env("STUDYLOOP_TEST_ACP_CMD")
+        if not test_acp_cmd and not shutil.which(adapter.binary):
+            return JSONResponse(
+                {
+                    "error": f"Agent '{agent}' binary not found: {adapter.binary}",
+                    "agent": agent,
+                    "binary": adapter.binary,
+                    "install_hint": _AGENT_INSTALL_HINTS.get(
+                        agent,
+                        f"Install the {agent!r} CLI and ensure {adapter.binary!r} is on PATH.",
+                    ),
+                },
                 status_code=503,
             )
-        agent = available[0]
 
-    # --- ACP capability guard ---
-    # Fail early (before spawn) if the resolved agent has no ACP transport.
-    # Claude Code and Codex are PTY-only; forcing ACP on them dead-ends in a
-    # spawn failure with an opaque message. Surface the cause + repair instead.
-    from studyloop.web.services.session_start import ACP_CAPABLE_AGENTS
+        # --- Topic resolution (optional, same as PTY) ---
+        topic_config = None
+        try:
+            from studyloop.logic.topic_resolver import resolve_topic
+            from studyloop.settings import load_settings
 
-    if agent not in ACP_CAPABLE_AGENTS:
-        return JSONResponse(
-            {
-                "error": f"Agent '{agent}' does not support the ACP transport.",
-                "agent": agent,
-                "supported_agents": sorted(ACP_CAPABLE_AGENTS),
-                "repair": (
-                    f"Use transport 'pty' for {agent}, or pick an ACP-capable "
-                    f"agent ({', '.join(sorted(ACP_CAPABLE_AGENTS))})."
-                ),
-            },
-            status_code=400,
+            settings = load_settings()
+            if settings.topics:
+                result = resolve_topic(body.topic, settings.topics)
+                topic_config = result.resolved or (result.matches[0] if result.matches else None)
+        except Exception:
+            pass
+
+        # --- DB record ---
+        from studyloop.history import start_study_session
+        from studyloop.output import energy_to_label
+
+        energy_label = energy_to_label(body.energy)
+        study_id = start_study_session(
+            body.topic,
+            energy_label,
+            topic_slug=topic_config.slug if topic_config else None,
+        )
+        if not study_id:
+            return JSONResponse(
+                {"error": "Failed to create session record"},
+                status_code=500,
+            )
+
+        # --- Session dir (for cwd — no persona/MCP file written) ---
+        session_dir = (
+            SESSION_DIR / "sessions" / session_dir_name(body.topic, study_id, prefix="acp")
         )
 
-    adapter = AGENTS[agent]
-    # STUDYLOOP_TEST_ACP_CMD bypasses the binary check entirely — the test
-    # test agent (tests/_stub_acp_agent.py) is the argv we spawn, so the real
-    # Kiro binary doesn't need to be installed. Parity with the
-    # PTY test hatch behaviour (which dodges the check by routing every
-    # launch through /bin/sh anyway). Import-time snapshot (R-09c), not
-    # os.environ directly -- see studyloop.test_hatch_env.
-    from studyloop import test_hatch_env
+        from studyloop.agent_launcher import build_canonical_persona
+        from studyloop.session.orchestrator import setup_session_dir
 
-    test_acp_cmd = test_hatch_env("STUDYLOOP_TEST_ACP_CMD")
-    if not test_acp_cmd and not shutil.which(adapter.binary):
-        return JSONResponse(
-            {
-                "error": f"Agent '{agent}' binary not found: {adapter.binary}",
-                "agent": agent,
-                "binary": adapter.binary,
-                "install_hint": _AGENT_INSTALL_HINTS.get(
-                    agent,
-                    f"Install the {agent!r} CLI and ensure {adapter.binary!r} is on PATH.",
-                ),
-            },
-            status_code=503,
-        )
+        setup_session_dir(session_dir, body.topic)
 
-    # --- Topic resolution (optional, same as PTY) ---
-    topic_config = None
-    try:
-        from studyloop.logic.topic_resolver import resolve_topic
-        from studyloop.settings import load_settings
+        # Persona is built here and returned inline in the response so the
+        # browser can ship it as the first invisible session/prompt on WS open.
+        # No persona file is written to disk: ACP agents receive context via
+        # session/prompt, not via argv/env, so a file would just be dead weight.
+        persona_text = build_canonical_persona("focus", body.topic, body.energy)
+        persona_hash = hashlib.sha256(persona_text.encode()).hexdigest()[:16]
 
-        settings = load_settings()
-        if settings.topics:
-            result = resolve_topic(body.topic, settings.topics)
-            topic_config = result.resolved or (result.matches[0] if result.matches else None)
-    except Exception:
-        pass
+        from studyloop.history.sessions import update_persona_hash
 
-    # --- DB record ---
-    from studyloop.history import start_study_session
-    from studyloop.output import energy_to_label
+        update_persona_hash(study_id, persona_hash)
 
-    energy_label = energy_to_label(body.energy)
-    study_id = start_study_session(
-        body.topic,
-        energy_label,
-        topic_slug=topic_config.slug if topic_config else None,
-    )
-    if not study_id:
-        return JSONResponse(
-            {"error": "Failed to create session record"},
-            status_code=500,
-        )
-
-    # --- Session dir (for cwd — no persona/MCP file written) ---
-    session_dir = SESSION_DIR / "sessions" / session_dir_name(body.topic, study_id, prefix="acp")
-
-    from studyloop.agent_launcher import build_canonical_persona
-    from studyloop.session.orchestrator import setup_session_dir
-
-    setup_session_dir(session_dir, body.topic)
-
-    # Persona is built here and returned inline in the response so the
-    # browser can ship it as the first invisible session/prompt on WS open.
-    # No persona file is written to disk: ACP agents receive context via
-    # session/prompt, not via argv/env, so a file would just be dead weight.
-    persona_text = build_canonical_persona("focus", body.topic, body.energy)
-    persona_hash = hashlib.sha256(persona_text.encode()).hexdigest()[:16]
-
-    from studyloop.history.sessions import update_persona_hash
-
-    update_persona_hash(study_id, persona_hash)
-
-    # --- Acquire the active-session singleton ---
-    config = SessionConfig(
-        study_session_id=study_id,
-        agent=agent,
-        persona_file="",  # ACP ignores this; kept for Protocol parity.
-        cwd=str(session_dir),
-        env=dict(os.environ),
-        cols=80,
-        rows=24,
-    )
-    from studyloop.web.routes import session as session_pkg
-
-    factory = session_pkg._build_acp_transport(config)
-
-    try:
-        active_session = await session_active.acquire(config, factory)
-    except SessionAlreadyActiveError:
-        from studyloop.history import abort_study_session
-
-        abort_study_session(study_id, "Startup failed: another session is already active")
-        return JSONResponse(
-            {"error": "A session is already active"},
-            status_code=409,
-        )
-    except FileNotFoundError as exc:
-        from studyloop.history import abort_study_session
-
-        abort_study_session(study_id, f"Startup failed: agent binary not found: {exc}")
-        logger.exception("ACP start failed: binary missing")
-        return JSONResponse(
-            {"error": f"Agent binary not found: {exc}"},
-            status_code=503,
-        )
-    except OSError:
-        from studyloop.history import abort_study_session
-
-        abort_study_session(study_id, "Startup failed: failed to start ACP agent")
-        logger.exception("ACP start failed: spawn error")
-        return JSONResponse(
-            {"error": "Failed to start ACP agent"},
-            status_code=500,
-        )
-
-    try:
-        # --- Session state (no tmux, no persona_file path; hash only) ---
-        _ensure_session_dir()
-        acp_state = build_session_state_payload(
-            study_id=study_id,
-            topic=body.topic,
-            energy=body.energy,
-            energy_label=energy_label,
+        # --- Acquire the active-session singleton ---
+        config = SessionConfig(
+            study_session_id=study_id,
             agent=agent,
-            session_dir=str(session_dir),
-            persona_hash=persona_hash,
-            transport="acp",
-            now=datetime.now(UTC),
-            # C4 (council): see the PTY path's identical comment.
-            child_pid=getattr(active_session.transport, "pid", None),
+            persona_file="",  # ACP ignores this; kept for Protocol parity.
+            cwd=str(session_dir),
+            env=dict(os.environ),
+            cols=80,
+            rows=24,
         )
-        # See PTY path: origin merged here, not in build_session_state_payload.
-        acp_state["origin"] = origin
-        write_session_state(acp_state)
-        TOPICS_FILE.touch(mode=0o600, exist_ok=True)
-        PARKING_FILE.touch(mode=0o600, exist_ok=True)
-    except OSError:
-        from studyloop.history import abort_study_session
+        from studyloop.web.routes import session as session_pkg
 
-        await session_active.release()
-        abort_study_session(study_id, "Startup failed: failed to finalise session state")
-        logger.exception("ACP start failed: session state finalisation error")
-        return JSONResponse(
-            {"error": "Failed to finalise session state"},
-            status_code=500,
-        )
+        factory = session_pkg._build_acp_transport(config)
+
+        try:
+            active_session = await session_active.acquire(config, factory)
+        except SessionAlreadyActiveError:
+            from studyloop.history import abort_study_session
+
+            abort_study_session(study_id, "Startup failed: another session is already active")
+            return JSONResponse(
+                {"error": "A session is already active"},
+                status_code=409,
+            )
+        except FileNotFoundError as exc:
+            from studyloop.history import abort_study_session
+
+            abort_study_session(study_id, f"Startup failed: agent binary not found: {exc}")
+            logger.exception("ACP start failed: binary missing")
+            return JSONResponse(
+                {"error": f"Agent binary not found: {exc}"},
+                status_code=503,
+            )
+        except OSError:
+            from studyloop.history import abort_study_session
+
+            abort_study_session(study_id, "Startup failed: failed to start ACP agent")
+            logger.exception("ACP start failed: spawn error")
+            return JSONResponse(
+                {"error": "Failed to start ACP agent"},
+                status_code=500,
+            )
+
+        try:
+            # --- Session state (no tmux, no persona_file path; hash only) ---
+            _ensure_session_dir()
+            acp_state = build_session_state_payload(
+                study_id=study_id,
+                topic=body.topic,
+                energy=body.energy,
+                energy_label=energy_label,
+                agent=agent,
+                session_dir=str(session_dir),
+                persona_hash=persona_hash,
+                transport="acp",
+                now=datetime.now(UTC),
+                # C4 (council): see the PTY path's identical comment.
+                child_pid=getattr(active_session.transport, "pid", None),
+            )
+            # See PTY path: origin merged here, not in build_session_state_payload.
+            acp_state["origin"] = origin
+            write_session_state(acp_state)
+            TOPICS_FILE.touch(mode=0o600, exist_ok=True)
+            PARKING_FILE.touch(mode=0o600, exist_ok=True)
+            claim_finalized = True
+        except OSError:
+            from studyloop.history import abort_study_session
+
+            await session_active.release()
+            abort_study_session(study_id, "Startup failed: failed to finalise session state")
+            logger.exception("ACP start failed: session state finalisation error")
+            return JSONResponse(
+                {"error": "Failed to finalise session state"},
+                status_code=500,
+            )
+
+    finally:
+        if not claim_finalized:
+            from studyloop.session_state import clear_session_files
+
+            clear_session_files()
 
     return JSONResponse(
         {

@@ -14,6 +14,10 @@ import threading
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -146,6 +150,60 @@ def write_session_state(updates: dict) -> None:
                 return
             current.update(updates)
             _write_file_secure(STATE_FILE, json.dumps(current, indent=2, default=str))
+        finally:
+            fcntl.flock(lock_fd, fcntl.LOCK_UN)
+            os.close(lock_fd)
+
+
+def try_claim_session(
+    reservation: dict,
+    blocks: Callable[[dict], bool],
+    *,
+    on_reclaim: Callable[[dict], None] | None = None,
+) -> dict | None:
+    """Atomically check-then-claim the single-session slot (C1, council).
+
+    Under the SAME file lock ``write_session_state`` uses: read the
+    current claim once; if ``blocks(state)`` is True, return that state
+    UNCHANGED (refused, nothing written) -- the caller builds its own
+    409/exit-1 from it, exactly as it would have from its own read.
+    Otherwise, if the current state names a claim that has not been
+    explicitly ended (a stale one, since ``blocks`` just said no) and
+    ``on_reclaim`` was given, call ``on_reclaim(state)`` -- this is where a
+    caller clears inherited IPC files (C2) and logs the reclaim (C4/R-01b)
+    -- THEN merge-write ``reservation`` over the current state and return
+    ``None``.
+
+    Closes the race C1 named: before this, every start path read the file
+    (unlocked), decided "not blocked," did real work (spawn a transport,
+    create a DB record), and only THEN wrote its claim. A second start
+    landing in that window read the same "not blocked" state and could
+    race the first one's eventual write. Now the read, the reclaim side
+    effect, and the reservation write all happen inside one flock
+    acquisition, so any concurrent caller's own ``try_claim_session`` call
+    is guaranteed to see either this reservation (and treat it as live,
+    since its own recorded pid/mux_session names a real, running process)
+    or a fully-formed prior claim -- never the gap between them.
+
+    A ``blocks`` that (wrongly) treats a fresh reservation as never-live
+    would let two callers both "win" — that failure mode belongs to
+    ``blocks``, not to this function: ``claim_blocks_web_start``/
+    ``claim_blocks_cli_start`` are written so a reservation's own pid/
+    mux_session makes it look genuinely live to anyone else who reads it.
+    """
+    _ensure_session_dir()
+    with _state_lock:
+        lock_fd = os.open(str(_lock_file()), os.O_WRONLY | os.O_CREAT, 0o600)
+        try:
+            fcntl.flock(lock_fd, fcntl.LOCK_EX)
+            current = read_session_state()
+            if blocks(current):
+                return current
+            if on_reclaim is not None and _claim_exists(current):
+                on_reclaim(current)
+            merged = {**current, **reservation}
+            _write_file_secure(STATE_FILE, json.dumps(merged, indent=2, default=str))
+            return None
         finally:
             fcntl.flock(lock_fd, fcntl.LOCK_UN)
             os.close(lock_fd)

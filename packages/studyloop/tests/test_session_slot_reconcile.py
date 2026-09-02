@@ -339,7 +339,12 @@ class TestZombieClearingCannotOrphanTheSlot:
 
         from studyloop.web.routes.session._start import _session_conflict
 
-        response = run_async(_session_conflict())
+        # The in-process singleton (_install_active above) is checked
+        # first and returns before this reservation would ever be used --
+        # C1 (council) made _session_conflict take one, so any call site
+        # needs one, even a path that never reaches the file-claim branch.
+        reservation = {"study_session_id": "unused", "mode": "starting"}
+        response = run_async(_session_conflict(reservation))
         assert response is not None
         import json
 

@@ -252,6 +252,8 @@ def start_session(
             session already active, DB failure). The caller should print
             ``error.message`` and exit with code 1.
     """
+    import os
+    import uuid
     from pathlib import Path
 
     from studyloop.agent_launcher import (
@@ -275,8 +277,8 @@ def start_session(
         _ensure_session_dir,
         claim_blocks_cli_start,
         clear_session_files,
-        read_session_state,
         reclaim_log_message,
+        try_claim_session,
         write_session_state,
     )
 
@@ -313,60 +315,80 @@ def start_session(
             )
         agent = available[0]
 
-    # R-01b: a claim EXISTING no longer blocks unconditionally — only a
-    # claim whose recorded owner is provably still alive does. A stale
-    # claim (owner dead) is reclaimed instead of refused forever, exactly
-    # as the web start path already does (docs/architecture/
-    # session-authority.md clause 2). is_session_active() is unchanged and
-    # still answers "does a claim exist", but no longer gates the start.
-    claim = read_session_state()
-    if claim_blocks_cli_start(claim):
+    # R-01b/C1 (council): claim_blocks_cli_start still decides whether an
+    # EXISTING claim blocks (only a provably-still-alive owner does; a
+    # stale one is reclaimed, not refused forever). C1 closes the window
+    # that used to sit between that decision and this function's own
+    # write_session_state call below: try_claim_session does the check,
+    # the reclaim side effect (C2's clear + the log), and a RESERVATION
+    # write all under one flock, so nothing can land in the gap where this
+    # function used to just be deciding, unlocked. is_session_active() is
+    # unchanged and still answers "does a claim exist".
+    def _on_reclaim(previous_claim: dict) -> None:
+        clear_session_files()
+        logger.warning(reclaim_log_message(previous_claim))
+
+    reservation = {
+        "study_session_id": f"pending-{uuid.uuid4().hex[:12]}",
+        "mode": "starting",
+        "pid": os.getpid(),
+        "topic": topic,
+        "started_at": datetime.now(UTC).isoformat(),
+    }
+    blocking_claim = try_claim_session(reservation, claim_blocks_cli_start, on_reclaim=_on_reclaim)
+    if blocking_claim is not None:
         raise SessionStartError(
             "[yellow]A session is already active.[/yellow]\n"
             "  Resume: [bold]studyloop study --resume[/bold]\n"
             "  End:    [bold]studyloop study --end[/bold]"
         )
-    if claim.get("study_session_id") and claim.get("mode") != "ended":
-        # C2: same rule as the web path -- a reclaimed session must not
-        # inherit the dead session's topics/parking.
-        clear_session_files()
-        logger.warning(reclaim_log_message(claim))
 
-    # --- Create DB session ---
+    # From here to the real write_session_state call below, the slot is
+    # held by `reservation`, not yet by a real session -- any failure
+    # (right now, only the DB record failing) must clear it, or the next
+    # start would see this function's OWN pid as a live, blocking owner
+    # forever (this process does not die just because one attempt failed).
+    reservation_claimed = True
+    try:
+        # --- Create DB session ---
 
-    from studyloop.output import energy_to_label
+        from studyloop.output import energy_to_label
 
-    energy_label = energy_to_label(energy)
+        energy_label = energy_to_label(energy)
 
-    study_id = start_study_session(
-        topic, energy_label, topic_slug=topic_config.slug if topic_config else None
-    )
-    if not study_id:
-        raise SessionStartError(
-            "[red]Failed to create session in DB.[/red]\n"
-            "  Likely cause: agent-session-tools not installed or sessions DB has no schema.\n"
-            "  Fix: [bold]uv pip install agent-session-tools[/bold], then retry.\n"
-            "  Run [bold]studyloop doctor[/bold] for full diagnostics."
+        study_id = start_study_session(
+            topic, energy_label, topic_slug=topic_config.slug if topic_config else None
         )
+        if not study_id:
+            raise SessionStartError(
+                "[red]Failed to create session in DB.[/red]\n"
+                "  Likely cause: agent-session-tools not installed or sessions DB has no schema.\n"
+                "  Fix: [bold]uv pip install agent-session-tools[/bold], then retry.\n"
+                "  Run [bold]studyloop doctor[/bold] for full diagnostics."
+            )
 
-    # Write session state
-    _ensure_session_dir()
-    now = datetime.now(UTC).isoformat()
-    write_session_state(
-        {
-            "study_session_id": study_id,
-            "topic": topic,
-            "energy": energy,
-            "energy_label": energy_label,
-            "mode": mode,
-            "timer_mode": timer,
-            "started_at": now,
-            "paused_at": None,
-            "total_paused_seconds": 0,
-        }
-    )
-    TOPICS_FILE.touch(mode=0o600, exist_ok=True)
-    PARKING_FILE.touch(mode=0o600, exist_ok=True)
+        # Write session state
+        _ensure_session_dir()
+        now = datetime.now(UTC).isoformat()
+        write_session_state(
+            {
+                "study_session_id": study_id,
+                "topic": topic,
+                "energy": energy,
+                "energy_label": energy_label,
+                "mode": mode,
+                "timer_mode": timer,
+                "started_at": now,
+                "paused_at": None,
+                "total_paused_seconds": 0,
+            }
+        )
+        TOPICS_FILE.touch(mode=0o600, exist_ok=True)
+        PARKING_FILE.touch(mode=0o600, exist_ok=True)
+        reservation_claimed = False
+    finally:
+        if reservation_claimed:
+            clear_session_files()
 
     # --- Resolve session directory ---
 
