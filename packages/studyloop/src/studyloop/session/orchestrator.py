@@ -241,13 +241,20 @@ def start_web_background(session_name: str, *, lan: bool = False, password: str 
     )
     if lan:
         cmd.append("--lan")
-    if password:
-        cmd.extend(["--password", password])
+    # R-10: the password goes to the child via environment, not argv. Argv is
+    # visible to any other local user for the process's whole lifetime via
+    # `ps`/`/proc/<pid>/cmdline`; an env var is only readable by that user or
+    # root reading /proc/<pid>/environ, which is the same access level `--lan`
+    # already grants to this machine's owner. `cli/_web.py`'s `--password`
+    # option reads this env var itself (Click `envvar=`) when the flag is
+    # absent, so the child needs no special-casing.
+    child_env = {**os.environ, "STUDYLOOP_WEB_PASSWORD": password} if password else None
     try:
         proc = subprocess.Popen(
             cmd,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
+            env=child_env,
         )
         from studyloop.session_state import write_session_state
 

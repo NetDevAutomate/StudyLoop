@@ -34,7 +34,14 @@ def _candidate_lan_hosts() -> tuple[str, ...]:
 @click.command()
 @click.option("--port", "-p", default=8567, help="Port for web server")
 @click.option("--lan", is_flag=True, help="Expose to LAN (default: localhost only)")
-@click.option("--password", default="", help="Password for HTTP Basic Auth (LAN protection)")
+@click.option(
+    "--password",
+    default="",
+    envvar="STUDYLOOP_WEB_PASSWORD",
+    help="Password for HTTP Basic Auth (LAN protection). Also settable via "
+    "STUDYLOOP_WEB_PASSWORD (used internally when `studyloop study --web --lan` "
+    "spawns this command, so the password never appears in this process's argv).",
+)
 @click.option(
     "--dev",
     is_flag=True,

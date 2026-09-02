@@ -275,6 +275,31 @@ class TestZombieClearingCannotOrphanTheSlot:
         assert state.get("study_session_id") is None
         assert not session_state.STATE_FILE.exists()
 
+    def test_zombie_clearing_survives_a_stale_ttyd_pid_in_state(self, monkeypatch) -> None:
+        """Characterisation test, written before ttyd retirement stage 5 removes
+        `_kill_stale_ttyd()`: the zombie-clearing reconcile above (`_ipc.py:44-64`)
+        must keep clearing dead-tmux state even when the stale state dict still
+        carries a leftover `ttyd_pid` key from before ttyd was retired — only the
+        ttyd-kill call goes, never the clearing itself. Fixture data mirrors a
+        config.yaml written before ttyd retirement stage 2, whose session-state.json
+        still names a ttyd_pid nothing will ever kill again.
+        """
+        monkeypatch.setattr(_ipc, "_is_tmux_session_alive", lambda _name: False)
+        session_state.write_session_state(
+            {
+                "study_session_id": "legacy-ttyd-1",
+                "mode": "focus",
+                "tmux_session": "study-dead-ttyd",
+                "ttyd_pid": 999999,  # leftover from a pre-retirement session; unkillable
+                "ttyd_port": 7681,
+            }
+        )
+
+        state = _ipc._get_full_state()
+
+        assert state.get("study_session_id") is None, "zombie state was not cleared"
+        assert not session_state.STATE_FILE.exists()
+
     def test_the_reported_bug_is_escapable(self, client: TestClient, config: SessionConfig) -> None:
         """The whole loop: picker shown, every start 409s, 'your last topic'."""
         transport = FakeTransport()

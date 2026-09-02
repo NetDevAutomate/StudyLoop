@@ -458,10 +458,12 @@ studyloop web --lan --password SECRET
 
 **Live session dashboard** (`/session`): Real-time SSE activity feed, energy-adaptive timer, topic counters, and a **terminal panel** showing the live session. The panel renders one of two surfaces: **xterm.js** driven by a PTY streamed over a WebSocket (`transport: "pty"`), or **ACP chat** for structured-event agents (`transport: "acp"`). It is draggable (stacked or side-by-side), has a layout toggle and panel-swap buttons, and can be popped out to a separate window (pop-out auto-closes when returning inline). The panel reattaches by itself after a page refresh — it reads `GET /api/session/state` on init and adopts a live session it owns.
 
-There is **no browser terminal fallback**: the ttyd iframe surface was retired.
-Installing ttyd no longer enables anything user-visible in the dashboard. The
-`ttyd` **server** transport still exists for maintainers, but a session started
-that way has no browser renderer and reports an explicit `unavailable` state.
+There is **no ttyd fallback of any kind**: ttyd has been fully retired.
+Installing ttyd enables nothing — `studyloop` no longer spawns, proxies, or
+accepts a `transport` value for it anywhere, server or browser.
+`POST /api/session/start {"transport": "ttyd"}` and
+`STUDYLOOP_TRANSPORT=ttyd` are both rejected with an error, not silently
+downgraded to another transport.
 
 **Voice:** Server-side Kokoro. The browser posts to StudyLoop's own authenticated `/api/tts/speak`, which proxies to the Kokoro server named by `tts.openvox_base_url`; with none reachable it falls back to the OS's Web Speech voices, then to silence. Off until enabled in the header.
 - **Read once** — speaker icon on card or `T` key
@@ -472,7 +474,6 @@ that way has no browser renderer and reports an explicit `unavailable` state.
 
 ```yaml
 web_port: 8567       # web dashboard port (default 8567)
-ttyd_port: 7681      # ttyd server transport port (default 7681) — maintainer-only; no browser surface
 browser: ""          # auto-open browser: chrome, safari, firefox, brave, or empty for system default
 lan_password: ""     # persistent password for --lan mode (auto-generated if empty)
 ```

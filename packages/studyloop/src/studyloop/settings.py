@@ -317,7 +317,6 @@ class Settings:
     content: ContentConfig = field(default_factory=ContentConfig)
     agents: AgentsConfig = field(default_factory=AgentsConfig)
     card_generator: CardGeneratorConfig = field(default_factory=CardGeneratorConfig)
-    ttyd_port: int = 7681
     web_port: int = 8567
     browser: str = ""  # empty = system default; or "chrome", "safari", "firefox", "brave"
     pomodoro: PomodoroConfig = field(default_factory=PomodoroConfig)
@@ -454,12 +453,56 @@ _SCALAR_FIELDS: list[tuple[str, object]] = [
     ("state_dir", _path),
     ("sync_remote", str),
     ("sync_user", str),
-    ("ttyd_port", int),
     ("web_port", int),
     ("browser", str),
     ("lan_username", str),
     ("lan_password", str),
 ]
+
+# Top-level config.yaml sections read directly from load_raw_config() by a
+# consumer OTHER than load_settings() (never via _SCALAR_FIELDS or a Settings
+# dataclass field) — R-34's unknown-key check needs these named or every one
+# of them false-positives as "unknown". Add a name here in the same commit
+# that adds a new top-level raw.get(...) call site.
+_RAW_ONLY_SECTIONS: frozenset[str] = frozenset(
+    {
+        "review",  # resolve_study_dirs() — review.directories
+        "tts",  # learning/voice.py, doctor/voice.py
+        "focus",  # focus.py — the body-double focus-contract section
+    }
+)
+
+
+def known_top_level_keys() -> frozenset[str]:
+    """Every top-level config.yaml key some consumer recognises.
+
+    Single source of truth for "is this key known" — used by the doctor's
+    unknown-key report (R-34) so a retired or misspelled key is surfaced
+    instead of silently doing nothing. Union of the three ways a key becomes
+    known: a scalar field (_SCALAR_FIELDS), a nested dataclass-backed section
+    (every ``Settings`` field name), or a raw-only section a consumer reads
+    directly (_RAW_ONLY_SECTIONS).
+    """
+    from dataclasses import fields as _dataclass_fields
+
+    scalar_names = {name for name, _ in _SCALAR_FIELDS}
+    dataclass_names = {f.name for f in _dataclass_fields(Settings)}
+    return frozenset(scalar_names | dataclass_names | _RAW_ONLY_SECTIONS)
+
+
+def unknown_top_level_keys(raw: dict[str, Any] | None = None) -> list[str]:
+    """Top-level config.yaml keys no consumer recognises.
+
+    ``load_settings()`` and every other reader of ``load_raw_config()``
+    silently ignores a key it doesn't look for — a retired field (e.g. the
+    ttyd retirement's ``ttyd_port``) or a typo becomes inert with no signal.
+    Returns the sorted list of such keys so a caller (the doctor check,
+    ``config show``) can name them. Reads the real config file when ``raw``
+    is not supplied.
+    """
+    if raw is None:
+        raw = load_raw_config()
+    return sorted(set(raw) - known_top_level_keys())
 
 
 def _slugify_topic_name(name: str) -> str:

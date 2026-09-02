@@ -291,6 +291,49 @@ class TestNoTtydSpawnOnStudyPath:
         )
 
 
+class TestWebPasswordViaEnvNotArgv:
+    """R-10: the --lan password must reach the spawned web process via the
+    environment, never argv — argv is visible to any other local user via
+    `ps`/`/proc/<pid>/cmdline` for the process's whole lifetime.
+    """
+
+    def test_password_reaches_child_via_env_not_argv(self, tmp_path, monkeypatch):
+        marker = tmp_path / "web-spawn-dump.txt"
+        bin_dir = tmp_path / "fakebin"
+        bin_dir.mkdir()
+        fake_studyloop = bin_dir / "studyloop"
+        fake_studyloop.write_text(
+            "#!/bin/sh\n"
+            f'ps -p $$ -o command= > "{marker}"\n'
+            f'echo "env:$STUDYLOOP_WEB_PASSWORD" >> "{marker}"\n'
+            "sleep 2\n"
+        )
+        fake_studyloop.chmod(0o755)
+        monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}")
+
+        from studyloop.session.orchestrator import start_web_background
+
+        with (
+            patch("studyloop.session.orchestrator._kill_port_occupant"),
+            patch("studyloop.session.orchestrator._open_browser"),
+            patch("studyloop.session_state.write_session_state"),
+        ):
+            start_web_background("study-test", lan=True, password="s3cr3t-pw")
+
+        # Poll: the fake process needs a moment to run `ps` on itself.
+        for _ in range(60):
+            if marker.exists() and marker.stat().st_size > 0:
+                break
+            time.sleep(0.05)
+        assert marker.exists(), "fake studyloop process never ran"
+        lines = marker.read_text().splitlines()
+        argv_line = lines[0] if lines else ""
+        assert "s3cr3t-pw" not in argv_line, f"password leaked into argv: {argv_line!r}"
+        assert "env:s3cr3t-pw" in lines, (
+            f"password did not reach the child via STUDYLOOP_WEB_PASSWORD: {lines!r}"
+        )
+
+
 class TestStartSessionRollback:
     def _mock_adapter(self, tmp_path):
         adapter = MagicMock()

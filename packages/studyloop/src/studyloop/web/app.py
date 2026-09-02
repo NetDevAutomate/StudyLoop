@@ -104,7 +104,6 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 def create_app(
     study_dirs: list[str] | None = None,
-    ttyd_port: int = 7681,
     username: str = "study",
     password: str = "",
     dev_mode: bool = False,
@@ -114,7 +113,6 @@ def create_app(
 
     Args:
         study_dirs: List of directory paths containing flashcard/quiz content.
-        ttyd_port: Port where the local ttyd process is listening.
         username: Username for HTTP Basic Auth (LAN protection). Default: "study".
         password: Optional password for HTTP Basic Auth (LAN protection).
                   If empty, no authentication is applied.
@@ -138,7 +136,6 @@ def create_app(
 
     # Store config on app state for route access
     app.state.study_dirs = study_dirs or []
-    app.state.ttyd_port = ttyd_port
     app.state.dev_mode = dev_mode
     # None unless dev_mode is on — `--dev-engine` is inert without `--dev`.
     # Resolved (and validated) up front so a bad --dev-engine fails at startup,

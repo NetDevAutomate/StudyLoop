@@ -60,11 +60,14 @@ def read_session_state() -> dict:
         state["mux_sidebar_pane"] = state["tmux_sidebar_pane"]
 
     # A PTY/ACP session owns no multiplexer. ``write_session_state`` is a
-    # read-merge-write, so a PTY session started after a legacy ttyd session
-    # inherits that session's dead ``tmux_session`` key. Left in place, zombie
-    # detection then classifies the live PTY session as a dead tmux session and
-    # deletes its state file. Drop the inherited multiplexer keys so a live PTY
-    # session is never mistaken for a dead tmux session.
+    # read-merge-write, so a PTY session started after a CLI tmux session
+    # (``studyloop study``) inherits that session's dead ``tmux_session`` key.
+    # Left in place, zombie detection then classifies the live PTY session as
+    # a dead tmux session and deletes its state file. Drop the inherited
+    # multiplexer keys so a live PTY session is never mistaken for a dead
+    # tmux session. (Renamed from "legacy ttyd session" during ttyd
+    # retirement stage 5 — the leak was never ttyd-specific, any tmux-backed
+    # CLI session triggers it.)
     if state.get("transport") in ("pty", "acp"):
         state.pop("tmux_session", None)
         state.pop("mux_session", None)

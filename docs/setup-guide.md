@@ -478,18 +478,15 @@ Environment variable overrides:
 web_port: 8567       # web dashboard port (default 8567)
 browser: ""          # auto-open browser: chrome, safari, firefox, brave, or empty for system default
 lan_password: ""     # persistent LAN password (auto-generated per session if empty)
-
-# Maintainer-only (see the note below) — ttyd server transport, being retired
-ttyd_port: 7681      # port the CLI study path gives a ttyd process, if ttyd is installed
 ```
 
-> **Do not install ttyd, and remove this key if you set it.** The browser
-> terminal is xterm.js over a same-origin WebSocket and has no ttyd surface. ttyd
-> is being retired: the `studyloop web --ttyd-port` flag and the CLI transport
-> option are already gone. What remains, until the retirement finishes, is that
-> `studyloop study` still reads `ttyd_port` and starts a ttyd process on it
-> **when ttyd is on your PATH**. Uninstalling ttyd disables that path entirely;
-> with ttyd absent the key is read and nothing happens.
+> **`ttyd_port` is removed.** ttyd has been fully retired: nothing installs,
+> starts, or reads a ttyd process any more, and the key is no longer
+> recognised by `load_settings()`. The browser terminal is xterm.js over a
+> same-origin WebSocket and never had a ttyd surface. If your `config.yaml`
+> still has a `ttyd_port` line from before the retirement, it does nothing —
+> `studyloop doctor` names it as an unknown/retired key so you know to
+> delete it.
 
 ### TTS Voice Settings
 

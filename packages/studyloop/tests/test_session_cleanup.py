@@ -325,22 +325,6 @@ class TestKillBackgroundProcesses:
 
         mock_kill.assert_not_called()
 
-    def test_port_fallback_called_for_ttyd(self):
-        """_kill_port_occupant is called for ttyd_port when present."""
-        state = {"ttyd_port": 7681}
-        mock_kill_port = MagicMock()
-
-        with (
-            patch("subprocess.run", MagicMock(return_value=MagicMock(stdout=""))),
-            patch("os.kill"),
-            patch("studyloop.session.orchestrator._kill_port_occupant", mock_kill_port),
-        ):
-            from studyloop.session.cleanup import _kill_background_processes
-
-            _kill_background_processes(state)
-
-        mock_kill_port.assert_any_call(7681, expected_cmd="ttyd")
-
     def test_port_fallback_called_for_web(self):
         """_kill_port_occupant is called for web_port when present."""
         state = {"web_port": 8567}
