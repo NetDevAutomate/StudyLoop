@@ -578,7 +578,6 @@ class SidebarApp(App[None]):
         mux = get_backend()
         state = read_session_state()
         main_pane = state.get("mux_main_pane") or state.get("tmux_main_pane")
-        session_name = state.get("mux_session") or state.get("tmux_session")
 
         # Try graceful agent exit (best effort)
         if main_pane:
