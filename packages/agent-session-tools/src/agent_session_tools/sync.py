@@ -512,14 +512,28 @@ def _build_global_upsert_select_sql(table: str) -> str:
 
     So the gate has to travel with the row instead of living in a Python-side
     filter: emit ``INSERT ... ON CONFLICT(<pk>) DO UPDATE SET ... WHERE
-    excluded.updated_at > <table>.updated_at``. SQLite evaluates that WHERE
-    clause on the destination, at apply time, against the destination's own
-    current row -- so this is correct whether the generated SQL is streamed
-    into a local file or piped into a remote ``sqlite3`` over SSH; no
-    round-trip to read the destination first is needed. If the destination
-    row is newer (or equal), the ON CONFLICT branch's WHERE is false, so
-    SQLite neither inserts (conflict) nor updates (WHERE unmet) -- the
-    destination row survives untouched.
+    excluded.updated_at > COALESCE(<table>.updated_at, '')``. SQLite evaluates
+    that WHERE clause on the destination, at apply time, against the
+    destination's own current row -- so this is correct whether the
+    generated SQL is streamed into a local file or piped into a remote
+    ``sqlite3`` over SSH; no round-trip to read the destination first is
+    needed. If the destination row is newer (or equal), the ON CONFLICT
+    branch's WHERE is false, so SQLite neither inserts (conflict) nor
+    updates (WHERE unmet) -- the destination row survives untouched.
+
+    R-19b (M3 council, arbitration A1/A1'): a bare ``excluded.updated_at >
+    <table>.updated_at`` is NULL-falsy -- SQL comparisons involving NULL
+    evaluate to NULL, and a NULL WHERE result is treated as false. A
+    destination row whose ``updated_at`` is NULL therefore could never be
+    overwritten by *any* source row, however new, freezing it forever. The
+    ``COALESCE(<table>.updated_at, '')`` on the destination side treats a
+    NULL destination as "older than any real timestamp" (the empty string
+    sorts before every non-empty ISO-ish string), so a dated source row now
+    correctly wins. The source side is deliberately left bare: a NULL
+    *source* `updated_at` (``excluded.updated_at > ...``) still evaluates to
+    NULL/false and is skipped -- "no signal" from the incoming row should
+    never win, only a destination with no signal should lose. Both halves of
+    this decision are covered by `test_sync_r19.py`.
     """
     columns = TABLE_SYNC_COLUMNS[table]
     pk_columns = GLOBAL_TABLE_PRIMARY_KEYS[table]
@@ -536,7 +550,7 @@ def _build_global_upsert_select_sql(table: str) -> str:
         f"SELECT 'INSERT INTO {table} "
         f"({', '.join(quoted_columns)}) VALUES (' || {literal_expr} || ') "
         f"ON CONFLICT({conflict_target}) DO UPDATE SET {set_clause} "
-        f"WHERE excluded.{updated_at_col} > {table}.{updated_at_col};' "
+        f"WHERE excluded.{updated_at_col} > COALESCE({table}.{updated_at_col}, '''');' "
         f"FROM {table};"
     )
 

@@ -96,6 +96,14 @@ experience may change before `1.0.0`.
   state. Every path now derives from `STUDYLOOP_SESSION_DIR`, redirected to a
   `tmp_path`-based directory by each fixture, and forwarded to every spawned
   `studyloop` subprocess.
+- Cross-machine sync's recency gate (`excluded.updated_at > table.updated_at`)
+  was NULL-falsy: a destination row with a NULL `updated_at` could never be
+  overwritten by any incoming row, however new, freezing it forever. Every
+  `study_sessions` row created after the R-19 migration was silently one of
+  these, since that table's `updated_at` had no default and nothing wrote it.
+  Now `COALESCE(destination.updated_at, '')` treats a NULL destination as
+  older than anything, and a trigger stamps `updated_at` on every insert and
+  update to the tables that previously had no default for it.
 
 ### Known pre-release boundaries
 
