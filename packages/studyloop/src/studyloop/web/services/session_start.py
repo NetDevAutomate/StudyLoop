@@ -51,6 +51,7 @@ def build_session_state_payload(
     transport: TransportName,
     now: datetime,
     persona_file: str | None = None,
+    child_pid: int | None = None,
 ) -> dict[str, object]:
     """Build the common state payload for PTY and ACP web session starts."""
     timestamp = now.isoformat()
@@ -88,4 +89,10 @@ def build_session_state_payload(
     }
     if persona_file is not None:
         payload["persona_file"] = persona_file
+    if child_pid is not None:
+        # C4 (council): the transport's own child process pid, purely
+        # informational -- for `clean`/`doctor`'s future orphan reporting
+        # (R-01g, 0.2.0). A reclaim never signals it (see
+        # session_state.reclaim_log_message's docstring for why).
+        payload["child_pid"] = child_pid
     return payload

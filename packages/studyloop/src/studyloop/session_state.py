@@ -259,6 +259,27 @@ def is_session_active() -> bool:
     return state.get("mode") != "ended"
 
 
+def reclaim_log_message(state: dict) -> str:
+    """The "reclaiming a stale claim" warning both start paths log,
+    identically (R-01b required exact-wording parity between the CLI and
+    web paths; building it once here, rather than duplicating it, keeps
+    that guarantee mechanical instead of a promise to remember).
+
+    C4 (council): appends the previous owner's recorded ``child_pid`` when
+    present, so a human (or `clean`/`doctor`, R-01g, 0.2.0) reading the log
+    has it to hand -- reclaim itself never acts on ``child_pid`` (pid
+    reuse makes killing an old child unsafe, and it may be the user's own
+    still-useful agent).
+    """
+    session_id = state.get("study_session_id")
+    transport = state.get("transport", "cli")
+    child_pid = state.get("child_pid")
+    base = f"Reclaiming stale session claim id={session_id} transport={transport}"
+    if child_pid is not None:
+        base += f" child_pid={child_pid}"
+    return base + " — its owner is no longer alive"
+
+
 def _claim_exists(state: dict) -> bool:
     """Whether ``state`` names a claim that hasn't been explicitly ended."""
     return bool(state.get("study_session_id")) and state.get("mode") != "ended"

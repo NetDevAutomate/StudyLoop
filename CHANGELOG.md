@@ -186,6 +186,10 @@ experience may change before `1.0.0`.
   moment the poll runs; it now reads first and treats a vanished file as
   "no update" instead of checking existence then reading as two separate
   steps (C7).
+- A reclaimed session's log line now names the crashed session's agent
+  process (if one was recorded and is still running) so it is visible
+  that an orphaned agent may still be alive on the machine; StudyLoop
+  still never signals it (C4).
 - Ending a session -- from the Web UI, `studyloop study --end`, or the study
   sidebar's End Session key -- no longer terminates every other study
   session on the machine. Each end path now closes only its own terminal

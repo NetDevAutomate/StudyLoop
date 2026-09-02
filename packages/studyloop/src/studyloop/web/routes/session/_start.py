@@ -143,11 +143,7 @@ async def _session_conflict() -> JSONResponse | None:
             # here: nothing else can claim the slot until this function
             # returns None and the caller's own write lands).
             session_state.clear_session_files()
-            logger.warning(
-                "Reclaiming stale session claim id=%s transport=%s — its owner is no longer alive",
-                state.get("study_session_id"),
-                state.get("transport", "cli"),
-            )
+            logger.warning(session_state.reclaim_log_message(state))
         return None
 
     session_id = str(state.get("study_session_id"))
@@ -349,7 +345,7 @@ async def _start_pty_session(
     factory = session_pkg._build_pty_transport(config)
 
     try:
-        await session_active.acquire(config, factory)
+        active_session = await session_active.acquire(config, factory)
     except SessionAlreadyActiveError:
         from studyloop.history import abort_study_session
 
@@ -391,6 +387,12 @@ async def _start_pty_session(
             persona_hash=persona_hash,
             transport="pty",
             now=datetime.now(UTC),
+            # C4 (council): informational only -- getattr because
+            # StubTransport (tests) exposes no .pid, and the real
+            # PTYTransport's own .pid property returns None before
+            # start() runs (never the case here, after a successful
+            # acquire, but the getattr default is the same either way).
+            child_pid=getattr(active_session.transport, "pid", None),
         )
         # origin distinguishes Study Session ('study') from Body Double
         # ('body-double') starts. Merged in here rather than in
@@ -574,7 +576,7 @@ async def _start_acp_session(
     factory = session_pkg._build_acp_transport(config)
 
     try:
-        await session_active.acquire(config, factory)
+        active_session = await session_active.acquire(config, factory)
     except SessionAlreadyActiveError:
         from studyloop.history import abort_study_session
 
@@ -615,6 +617,8 @@ async def _start_acp_session(
             persona_hash=persona_hash,
             transport="acp",
             now=datetime.now(UTC),
+            # C4 (council): see the PTY path's identical comment.
+            child_pid=getattr(active_session.transport, "pid", None),
         )
         # See PTY path: origin merged here, not in build_session_state_payload.
         acp_state["origin"] = origin
