@@ -229,7 +229,12 @@ be the thing that changes the file the web process is polling.
   item, already delivered. Changing `LOCK_FILE` to derive from
   `session_state.SESSION_DIR` is a one-line, low-risk follow-up that belongs
   with R-49's own file list, not bundled into a session-authority contract
-  commit. Recorded, not fixed, here.
+  commit. Recorded, not fixed, here. **Observed concretely (C8/C11, council):** the
+  `integration`-marked suite (`test_harness_matrix.py`, real tmux) always
+  bumps this file's mtime, which the unit suite's own session-runtime
+  snapshot guard (C8/R-49d, `conftest.py`) then reports as "changed"
+  whenever that suite runs -- a known, accepted false positive from an
+  already-recorded gap, not a new defect either guard introduces.
 - **`data/tmux-studyloop.conf:16`** (hardcodes the real
   `~/.config/studyloop/session-oneline.txt` path) — out of scope for the same
   reason: it is a static config asset outside every file this lane owns
