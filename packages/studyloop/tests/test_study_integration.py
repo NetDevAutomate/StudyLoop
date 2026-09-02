@@ -33,7 +33,11 @@ pytestmark = [
     pytest.mark.integration,
 ]
 
-# Paths
+# Paths — R-49: these are reassigned to a tmp_path-derived directory by the
+# `_clean_state` autouse fixture before every test, via `STUDYLOOP_SESSION_DIR`
+# (the env var `session_state.py` honours). The `Path.home()` fallback here
+# only matters if a test somehow runs without that fixture; every test in
+# this module gets it automatically since it is autouse.
 CONFIG_DIR = Path.home() / ".config" / "studyloop"
 STATE_FILE = CONFIG_DIR / "session-state.json"
 TOPICS_FILE = CONFIG_DIR / "session-topics.md"
@@ -218,8 +222,29 @@ def _make_fast_agent(tmp_path: Path) -> str:
 
 
 @pytest.fixture(autouse=True)
-def _clean_state():
-    """Clean slate before and after every test."""
+def _clean_state(tmp_path, monkeypatch):
+    """Clean slate before and after every test.
+
+    R-49: redirects every IPC/session path this module touches to a
+    tmp_path-derived directory instead of the developer's real
+    ~/.config/studyloop, and sets STUDYLOOP_SESSION_DIR so the spawned
+    `studyloop` CLI subprocess (via `_studyloop()`, which snapshots
+    `os.environ`) resolves the same directory. Without this, every test
+    below reads, writes, and deletes the developer's live session state.
+    """
+    global CONFIG_DIR, STATE_FILE, TOPICS_FILE, PARKING_FILE, ONELINE_FILE, SESSIONS_DIR
+
+    session_dir = tmp_path / "session-ipc"
+    session_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv("STUDYLOOP_SESSION_DIR", str(session_dir))
+
+    CONFIG_DIR = session_dir
+    STATE_FILE = session_dir / "session-state.json"
+    TOPICS_FILE = session_dir / "session-topics.md"
+    PARKING_FILE = session_dir / "session-parking.md"
+    ONELINE_FILE = session_dir / "session-oneline.txt"
+    SESSIONS_DIR = session_dir / "sessions"
+
     _cleanup_all()
     yield
     _cleanup_all()

@@ -10,6 +10,7 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+from pathlib import Path
 from typing import cast
 
 import pexpect
@@ -20,11 +21,24 @@ class TerminalSession:
 
     Spawns studyloop commands via pexpect, attaches to tmux sessions,
     and sends keystrokes exactly as a user would.
+
+    R-49: ``session_dir`` (a ``tmp_path``-derived directory, normally) is
+    where the session-state IPC files live for this session, and is
+    forwarded to every spawned ``studyloop`` process via
+    ``STUDYLOOP_SESSION_DIR`` (the env var ``session_state.py`` honours).
+    Defaulting to the real ``~/.config/studyloop`` (rather than requiring the
+    argument) keeps this usable outside tests, but every caller in this test
+    suite passes an explicit ``tmp_path``.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, session_dir: Path | None = None) -> None:
         self._child: pexpect.spawn | None = None
         self._session_name: str | None = None
+        self.session_dir = session_dir or (Path.home() / ".config" / "studyloop")
+
+    @property
+    def state_file(self) -> Path:
+        return self.session_dir / "session-state.json"
 
     @property
     def session_name(self) -> str | None:
@@ -48,6 +62,7 @@ class TerminalSession:
         env: dict[str, str] = dict(os.environ)
         if agent_cmd:
             env["STUDYLOOP_TEST_AGENT_CMD"] = agent_cmd
+        env["STUDYLOOP_SESSION_DIR"] = str(self.session_dir)
         # Remove TMUX so studyloop uses attach mode (which fails gracefully
         # in pexpect since there's no real tmux client — the session is
         # created detached and we attach separately).
@@ -64,9 +79,8 @@ class TerminalSession:
 
         # Read session name from state file
         import json
-        from pathlib import Path
 
-        state_file = Path.home() / ".config" / "studyloop" / "session-state.json"
+        state_file = self.state_file
         for _ in range(20):
             if state_file.exists():
                 try:
@@ -102,7 +116,6 @@ class TerminalSession:
         """
         import json
         import time
-        from pathlib import Path
 
         assert self._session_name, "No session — call spawn_study first"
 
@@ -117,8 +130,7 @@ class TerminalSession:
         time.sleep(2)
 
         # Read sidebar pane ID from state file
-        state_file = Path.home() / ".config" / "studyloop" / "session-state.json"
-        state = json.loads(state_file.read_text())
+        state = json.loads(self.state_file.read_text())
         sidebar_pane = state.get("tmux_sidebar_pane")
 
         if sidebar_pane:
@@ -185,9 +197,8 @@ class TerminalSession:
 
         # Check state file
         import json
-        from pathlib import Path
 
-        state_file = Path.home() / ".config" / "studyloop" / "session-state.json"
+        state_file = self.state_file
         if state_file.exists():
             state = json.loads(state_file.read_text())
             print(f"\nState mode: {state.get('mode')}", file=sys.stderr)
@@ -221,15 +232,12 @@ class TerminalSession:
                 capture_output=True,
             )
         # Clean IPC files
-        from pathlib import Path
-
-        config_dir = Path.home() / ".config" / "studyloop"
         for name in (
             "session-state.json",
             "session-topics.md",
             "session-parking.md",
             "session-oneline.txt",
         ):
-            f = config_dir / name
+            f = self.session_dir / name
             if f.exists():
                 f.unlink()

@@ -19,32 +19,53 @@ import json
 import os
 import subprocess
 import sys
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from .agents import long_running_agent
 from .tmux import TmuxHarness
 
-# IPC file locations (mirrors studyloop.session_state)
-CONFIG_DIR = Path.home() / ".config" / "studyloop"
-STATE_FILE = CONFIG_DIR / "session-state.json"
-TOPICS_FILE = CONFIG_DIR / "session-topics.md"
-PARKING_FILE = CONFIG_DIR / "session-parking.md"
-ONELINE_FILE = CONFIG_DIR / "session-oneline.txt"
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class StudySession:
     """High-level test harness for studyloop study sessions.
 
     Manages the full lifecycle: start → interact → assert → end → cleanup.
+
+    R-49: IPC files (session-state.json, session-topics.md, session-parking.md,
+    session-oneline.txt) live under ``tmp_path / "session-ipc"``, and every
+    spawned ``studyloop`` subprocess gets ``STUDYLOOP_SESSION_DIR`` pointed at
+    that directory (the env var ``session_state.py`` honours) -- otherwise
+    every method here reads, writes, and deletes the developer's real
+    ``~/.config/studyloop``.
     """
 
     def __init__(self, tmp_path: Path) -> None:
         self.tmp_path = tmp_path
+        self.session_dir = tmp_path / "session-ipc"
+        self.session_dir.mkdir(parents=True, exist_ok=True)
         self.tmux = TmuxHarness()
         self._session_name: str | None = None
         self._main_pane: str | None = None
         self._sidebar_pane: str | None = None
         self._started = False
+
+    @property
+    def state_file(self) -> Path:
+        return self.session_dir / "session-state.json"
+
+    @property
+    def topics_file(self) -> Path:
+        return self.session_dir / "session-topics.md"
+
+    @property
+    def parking_file(self) -> Path:
+        return self.session_dir / "session-parking.md"
+
+    @property
+    def oneline_file(self) -> Path:
+        return self.session_dir / "session-oneline.txt"
 
     def __enter__(self) -> StudySession:
         return self
@@ -75,7 +96,7 @@ class StudySession:
     def state(self) -> dict:
         """Read the current session state from the IPC file."""
         try:
-            return json.loads(STATE_FILE.read_text()) if STATE_FILE.exists() else {}
+            return json.loads(self.state_file.read_text()) if self.state_file.exists() else {}
         except (json.JSONDecodeError, OSError):
             return {}
 
@@ -106,6 +127,7 @@ class StudySession:
         # Build and run the studyloop study command
         env = os.environ.copy()
         env["STUDYLOOP_TEST_AGENT_CMD"] = agent_cmd
+        env["STUDYLOOP_SESSION_DIR"] = str(self.session_dir)
         # Remove TMUX env var so studyloop uses attach (not switch-client)
         env.pop("TMUX", None)
         env.pop("TMUX_PANE", None)
@@ -179,6 +201,7 @@ class StudySession:
         env = os.environ.copy()
         # Use long_running_agent for rebuilt sessions
         env["STUDYLOOP_TEST_AGENT_CMD"] = long_running_agent(self.tmp_path)
+        env["STUDYLOOP_SESSION_DIR"] = str(self.session_dir)
         env.pop("TMUX", None)
         env.pop("TMUX_PANE", None)
 
@@ -223,6 +246,7 @@ class StudySession:
     def end_via_cli(self) -> None:
         """Run studyloop study --end."""
         env = os.environ.copy()
+        env["STUDYLOOP_SESSION_DIR"] = str(self.session_dir)
         env.pop("TMUX", None)
 
         subprocess.run(
@@ -336,7 +360,7 @@ class StudySession:
 
     def _clean_ipc_files(self) -> None:
         """Remove stale IPC files from a previous test."""
-        for f in (STATE_FILE, TOPICS_FILE, PARKING_FILE, ONELINE_FILE):
+        for f in (self.state_file, self.topics_file, self.parking_file, self.oneline_file):
             if f.exists():
                 f.unlink()
 
