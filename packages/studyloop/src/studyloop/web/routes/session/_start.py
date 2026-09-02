@@ -599,14 +599,15 @@ async def _start_acp_session(
 def _start_ttyd_session(
     body: StartSessionRequest, origin: str = _DEFAULT_ORIGIN, request: Request | None = None
 ) -> JSONResponse:
-    """Legacy tmux+ttyd start path (plan §1.9 emergency fallback).
+    """Legacy tmux start path (plan §1.9 emergency fallback), ttyd removed.
 
     Kept as-is to guarantee a deprecation window. New development should
     target the PTY path above.
 
-    ``request`` carries ``app.state`` so ttyd's Basic-Auth credentials come
-    from the SAME resolved source as the app's middleware (see the fail-closed
-    guard below). It is optional only so the legacy CLI caller keeps working.
+    ``request`` is unused since ttyd retirement stage 2 removed the spawn
+    that read Basic-Auth credentials from ``app.state`` — kept only for the
+    legacy CLI caller's signature until stage 3 deletes this function
+    entirely.
     """
     import os
     import shutil
@@ -740,7 +741,6 @@ def _start_ttyd_session(
         build_wrapped_agent_cmd,
         create_tmux_environment,
         setup_session_dir,
-        start_ttyd_background,
     )
 
     setup_session_dir(session_dir, body.topic)
@@ -793,13 +793,10 @@ def _start_ttyd_session(
         state_update["topic_config_name"] = topic_config.name
     write_session_state(state_update)
 
-    # Credentials come from app.state (the single source of truth the app's
-    # BasicAuthMiddleware was built from), NOT a fresh config.yaml read — the
-    # two used to diverge, leaving ttyd unauthenticated when --password was
-    # passed on the CLI but not persisted. Fails closed if app.state is
-    # unreadable (see _ttyd_credentials).
-    ttyd_username, ttyd_password = _ttyd_credentials(request)
-    start_ttyd_background(session_name, username=ttyd_username, password=ttyd_password)
+    # ttyd is no longer spawned here (stage 2 of the ttyd retirement removed
+    # the spawn entirely — see PLAN-retire-ttyd.md). _ttyd_credentials() and
+    # app.state.lan_username/lan_password are now dead below this point;
+    # stage 3 deletes them along with the rest of this legacy path.
 
     return JSONResponse(
         {
