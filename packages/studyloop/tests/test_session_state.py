@@ -418,3 +418,29 @@ def test_claim_blocks_web_start_no_pid_unchanged() -> None:
     state = {"study_session_id": "x", "mode": "focus", "transport": "acp"}
 
     assert claim_blocks_web_start(state) is False
+
+
+# ---------------------------------------------------------------------------
+# _cli_owned_claim_is_live (C5) -- a multiplexer backend that cannot be
+# reached must still fail open (no crash, no false block), but must log
+# the exception instead of swallowing it silently.
+# ---------------------------------------------------------------------------
+
+
+def test_cli_owned_claim_is_live_logs_when_the_backend_raises(
+    monkeypatch: pytest.MonkeyPatch, caplog
+) -> None:
+    from studyloop.session_state import _cli_owned_claim_is_live
+
+    class _BrokenBackend:
+        def session_exists(self, name: str) -> bool:
+            raise RuntimeError("tmux server unreachable")
+
+    monkeypatch.setattr("studyloop.multiplexer.get_backend", lambda: _BrokenBackend())
+    state = {"mux_session": "study-x"}
+
+    assert _cli_owned_claim_is_live(state) is False
+    warnings = [rec for rec in caplog.records if rec.levelname == "WARNING"]
+    assert len(warnings) == 1
+    assert "study-x" in warnings[0].message
+    assert "tmux server unreachable" in warnings[0].message
