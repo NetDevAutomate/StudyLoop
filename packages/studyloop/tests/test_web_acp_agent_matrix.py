@@ -835,7 +835,9 @@ class TestU2ChatPanelMount:
               catch { return null; }
             }"""
         )
-        # Must NOT be 'acp-chat' — either 'xterm' or 'ttyd-iframe'
+        # Must NOT be 'acp-chat' — either 'xterm' or 'unavailable'
+        # ('ttyd-iframe' was never a real terminalMode value; that surface
+        # never existed here — see live-agent-console.js:49)
         assert terminal_mode != "acp-chat", (
             f"PTY transport must not produce terminalMode='acp-chat', got {terminal_mode!r}"
         )

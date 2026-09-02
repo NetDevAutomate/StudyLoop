@@ -47,7 +47,7 @@ export function liveAgentConsole(origin = 'study') {
     return {
       /* ---- reactive state (bound to template) --------------------- */
       terminalMode: null,        /* 'xterm' | 'acp-chat' | 'unavailable' | null (idle) */
-      transport: null,           /* 'pty' | 'acp' | 'ttyd' | null (idle) */
+      transport: null,           /* 'pty' | 'acp' | null (idle) */
       connected: false,
       /* Monotonic guard so an in-flight _adoptLiveSession() fetch cannot mount
          over a newer real start/stop. Same pattern as reviewApp's

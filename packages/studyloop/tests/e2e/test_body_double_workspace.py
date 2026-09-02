@@ -432,12 +432,12 @@ class TestTransportPickerNamesTheRealRenderer:
         values = bd_page.eval_on_selector_all(
             "#bd-transport-select option", "(opts) => opts.map((o) => o.value)"
         )
-        # The UI surface is now deliberately NARROWER than the API surface: the
-        # server still honours transport="ttyd" (STUDYLOOP_TRANSPORT=ttyd, one
-        # deprecation window), but the browser no longer OFFERS it, because the
-        # ttyd iframe needs a separately-installed binary and renders an empty
-        # frame without it - indistinguishable from a hang. Offering a option
-        # that usually looks broken is worse than not offering it.
+        # ttyd is fully retired (ttyd retirement stages 2-5): the server
+        # structurally rejects transport="ttyd"/STUDYLOOP_TRANSPORT=ttyd with
+        # 422 rather than accepting it, and the browser never offered it
+        # (the ttyd iframe needed a separately-installed binary and rendered
+        # an empty, hang-indistinguishable frame without it). Only pty/acp
+        # exist anywhere in the stack now.
         assert values == ["pty", "acp"], values
         assert bd_page.eval_on_selector("#bd-transport-select", "(el) => el.value") == "pty"
 
@@ -565,12 +565,12 @@ class TestDevEngineIsVisible:
         values = dev_page.eval_on_selector_all(
             "#bd-transport-select option", "(opts) => opts.map((o) => o.value)"
         )
-        # The UI surface is now deliberately NARROWER than the API surface: the
-        # server still honours transport="ttyd" (STUDYLOOP_TRANSPORT=ttyd, one
-        # deprecation window), but the browser no longer OFFERS it, because the
-        # ttyd iframe needs a separately-installed binary and renders an empty
-        # frame without it - indistinguishable from a hang. Offering a option
-        # that usually looks broken is worse than not offering it.
+        # ttyd is fully retired (ttyd retirement stages 2-5): the server
+        # structurally rejects transport="ttyd"/STUDYLOOP_TRANSPORT=ttyd with
+        # 422 rather than accepting it, and the browser never offered it
+        # (the ttyd iframe needed a separately-installed binary and rendered
+        # an empty, hang-indistinguishable frame without it). Only pty/acp
+        # exist anywhere in the stack now.
         assert values == ["pty", "acp"], values
 
     def test_a_badge_announces_the_experiment_and_lists_its_gaps(self, dev_page: Page) -> None:
