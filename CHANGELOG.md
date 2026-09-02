@@ -32,6 +32,10 @@ experience may change before `1.0.0`.
   exported harness session.
 - Added source-session provenance and transaction-safe writes to struggle
   extraction.
+- `practice verify --run-command` now requires `--yes` (or an interactive `y`
+  at the prompt) in addition to `--run-command` before it actually executes a
+  practice deck's verification command; the resolved command is always
+  printed first. Without confirmation, nothing runs and the command exits 2.
 
 ### Removed
 
@@ -152,6 +156,46 @@ experience may change before `1.0.0`.
   was already fixed for -- a lock/timeout fault read back
   indistinguishably from "no concepts"/"topic never mentioned." Narrowed
   to the missing-table case; anything else is now logged and re-raised.
+
+||||||| 22a91e6
+### Security
+
+- Closed a gap where a `.env` file planted in or above the directory
+  `studyloop` is run from could set the test-only `STUDYLOOP_TEST_AGENT_CMD`
+  / `STUDYLOOP_TEST_ACP_CMD` hatch and get an attacker-chosen shell command
+  executed on the next session start. The hatch is now honoured only when
+  exported in the real process environment (as the e2e harness already
+  does); a value that arrives via the `.env` auto-loader is deleted and
+  logged.
+- Closed a second, independent gap that bypassed the fix above: a `.env` at
+  `~/.config/studyloop/.env` reintroduced the same test hatch at every
+  web-server startup, via a second dotenv loader in `agent-session-tools`
+  that ran after the first fix's scrub. Same rule, same guard, now applied
+  in both loaders.
+- `practice verify --run-command` now runs the EXACT command string a human
+  confirmed, and refuses if the practice deck's command changed between
+  being shown for confirmation and being executed, closing a time-of-check-
+  to-time-of-use window in the R-15 fix above.
+- Closed a gap in the agent-child credential scrub where two credential-
+  shaped words joined with no separator (`SERVICE_APIKEY`, `SESSIONCOOKIE`)
+  escaped every existing pattern, which is underscore-anchored throughout.
+- Closed a gap in the agent-child credential scrub: a bare `_KEY` suffix
+  (`ENCRYPTION_KEY`, `SIGNING_KEY`, `MASTER_KEY`, ...) and bare
+  `AUTHORIZATION`/`JWT`/`COOKIE`-shaped variables now get stripped from an
+  agent child's environment, matching the compounds (`api_key`,
+  `secret_key`, ...) already covered.
+- `config.yaml` (which can hold `lan_password` in plaintext) is now written
+  0600 on every save, repairing a pre-existing 0644 file on its next save;
+  a newly created config directory is created 0700.
+- Disabled the last piece of the Web UI's auto-docs surface: `/openapi.json`
+  now 404s, matching the already-disabled `/docs` and `/redoc`.
+- `practice verify --run-command` no longer runs a practice deck's
+  verification command blind: it is shown before it runs and requires
+  explicit human confirmation (see `### Changed`). The three local
+  card-generation prompts (flashcard, quiz, practice) now instruct the model
+  to treat the source material it is given as data, not as instructions to
+  follow, and the practice prompt additionally warns against copying a
+  command straight out of the source into a task's verification metadata.
 
 ### Known pre-release boundaries
 

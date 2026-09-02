@@ -48,8 +48,16 @@ CHILD_ENV_DENY: frozenset[str] = frozenset(
 #: end in 'token', and TOKEN_BUDGET_HINT names a budget rather than a secret.
 #: Over-broad scrubbing is its own failure mode -- it breaks agents for reasons
 #: nobody can see, which trains people to disable the protection.
+#:
+#: ``(?:^|_)key`` is deliberately its own alternative rather than a bare
+#: ``key`` added to the word list: a bare ``key`` would match the tail of
+#: MONKEY, DONKEY or KEYBOARD (which ends in the wrong place to match ``$``
+#: anyway, but MONKEY/DONKEY would not be). Requiring the character before
+#: ``key`` to be ``_`` or the start of the string is what lets ENCRYPTION_KEY,
+#: SIGNING_KEY and MASTER_KEY get caught while MONKEY/DONKEY survive.
 CHILD_ENV_DENY_PAT = re.compile(
-    r"(?i)(password|passwd|secret|token|api_key|access_key|credentials|private_key)$"
+    r"(?i)(password|passwd|secret|token|api_key|access_key|credentials"
+    r"|private_key|(?:^|_)key)$"
 )
 
 #: Segment match, for credential words that appear MID-NAME.
@@ -58,17 +66,53 @@ CHILD_ENV_DENY_PAT = re.compile(
 #: AWS_BEARER_TOKEN_BEDROCK is the credential this project's own Bedrock
 #: generators use on their profile-less fast path, and it ends in BEDROCK, so a
 #: suffix-only rule handed it straight to the agent child. GOOGLE_APPLICATION_-
-#: CREDENTIALS and AZURE_CLIENT_SECRET_ID have the same shape.
+#: CREDENTIALS and AZURE_CLIENT_SECRET_ID have the same shape. AUTHORIZATION,
+#: JWT and COOKIE joined the list after a live probe showed a bare
+#: ``AUTHORIZATION`` (holding e.g. ``Bearer <token>``), a bare ``JWT``, and
+#: SESSION_COOKIE all surviving unchanged.
 #:
 #: Matched on underscore-delimited segments rather than as bare substrings, which
 #: is what keeps TOKENIZERS_PARALLELISM: its segments are TOKENIZERS and
 #: PARALLELISM, neither of which is TOKEN.
+#:
+#: ``oauth`` (R-11b) joined the list because no existing word covered it:
+#: LEAKED_OAUTH has no OTHER credential-shaped segment, so it reached the
+#: agent child until ``oauth`` itself became a recognised word.
 CHILD_ENV_DENY_SEGMENT_PAT = re.compile(
     r"(?i)(^|_)("
     r"bearer_token|auth_token|access_token|refresh_token|id_token"
     r"|api_key|access_key|secret_key|private_key|client_secret"
-    r"|secret|password|passwd|credentials"
+    r"|secret|password|passwd|credentials|authorization|jwt|cookie|oauth"
     r")(_|$)"
+)
+
+#: Compound credential words with their internal separator removed, checked
+#: against the SAME normalisation of the candidate name (underscores
+#: stripped, lowercased) -- R-11c.
+#:
+#: SERVICE_APIKEY, GOOGLE_APIKEY and SESSIONCOOKIE defeat every pattern
+#: above by construction: each joins two credential-shaped words with NO
+#: separator at all, and every rule above is underscore-anchored.
+#:
+#: Deliberately a short, curated list of COMPOUNDS rather than the bare
+#: words (key/token/secret/cookie/...) themselves. Checking a bare word as
+#: a substring of the squashed name would also catch MONKEY -- "monkey"
+#: literally ends in "key" -- plus DONKEY, TURKEY_DATA and KEYBOARD_LAYOUT,
+#: the exact false positives CHILD_ENV_DENY_PAT's underscore anchoring
+#: exists to avoid. None of those names, squashed, contain any COMPOUND
+#: word below.
+CHILD_ENV_DENY_SQUASHED: tuple[str, ...] = (
+    "apikey",
+    "accesskey",
+    "secretkey",
+    "privatekey",
+    "sessioncookie",
+    "accesstoken",
+    "authtoken",
+    "bearertoken",
+    "refreshtoken",
+    "idtoken",
+    "clientsecret",
 )
 
 
@@ -86,6 +130,9 @@ def build_child_env(caller_env: dict[str, str] | None = None) -> dict[str, str]:
         if CHILD_ENV_DENY_PAT.search(key):
             continue
         if CHILD_ENV_DENY_SEGMENT_PAT.search(key):
+            continue
+        squashed = key.replace("_", "").lower()
+        if any(word in squashed for word in CHILD_ENV_DENY_SQUASHED):
             continue
         clean[key] = value
     return clean

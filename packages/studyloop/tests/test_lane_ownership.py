@@ -22,6 +22,7 @@ Two layers:
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -67,6 +68,14 @@ FALLBACK_BRANCH = "main"
 )
 def test_lane_id_from_branch(branch: str, expected: str | None) -> None:
     assert lane_id_from_branch(branch) == expected
+
+
+def test_current_branch_honours_the_lane_branch_env_override(monkeypatch) -> None:
+    """A detached verifier worktree names its lane via the env var."""
+    monkeypatch.setenv(LANE_BRANCH_ENV, "lane/m4-security")
+    assert _current_branch() == "lane/m4-security"
+    monkeypatch.setenv(LANE_BRANCH_ENV, "   ")
+    assert _current_branch() != "   "  # blank override is ignored, git is consulted
 
 
 @pytest.mark.parametrize(
@@ -159,7 +168,19 @@ def _git(*args: str) -> str:
     return proc.stdout
 
 
+#: Verifiers check a lane out DETACHED (the branch is already checked out in the
+#: lane's own worktree, and git allows one checkout per branch). `git rev-parse
+#: --abbrev-ref HEAD` then returns the literal "HEAD", which is not a lane
+#: branch, and the guard would skip on exactly the run that is supposed to prove
+#: it (found by the M4 verifier, SIGNOFF-M4/VERIFIER.md). The env var names the
+#: branch the detached worktree represents; the guard then runs for real.
+LANE_BRANCH_ENV = "STUDYLOOP_LANE_BRANCH"
+
+
 def _current_branch() -> str:
+    override = os.environ.get(LANE_BRANCH_ENV, "").strip()
+    if override:
+        return override
     return _git("rev-parse", "--abbrev-ref", "HEAD").strip()
 
 
@@ -213,7 +234,12 @@ def test_lane_stays_in_its_lane() -> None:
     except MalformedLaneBranchError as exc:
         pytest.fail(str(exc))
     if lane is None:
-        pytest.skip(f"not on a lane branch ({branch!r}); nothing to police here")
+        hint = (
+            f" (detached HEAD: set {LANE_BRANCH_ENV}=lane/m<n>-<slug> to run the guard for real)"
+            if branch == "HEAD"
+            else ""
+        )
+        pytest.skip(f"not on a lane branch ({branch!r}); nothing to police here{hint}")
     if lane == "m0":
         pytest.skip("m0 is foundations; exempt")
 
