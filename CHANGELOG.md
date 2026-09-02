@@ -54,6 +54,8 @@ experience may change before `1.0.0`.
 - `config.yaml` (which can hold `lan_password` in plaintext) is now written
   0600 on every save, repairing a pre-existing 0644 file on its next save;
   a newly created config directory is created 0700.
+- Disabled the last piece of the Web UI's auto-docs surface: `/openapi.json`
+  now 404s, matching the already-disabled `/docs` and `/redoc`.
 
 ### Known pre-release boundaries
 
