@@ -7,6 +7,7 @@ tmux client attachment, nested sessions).
 
 from __future__ import annotations
 
+import contextlib
 import os
 import subprocess
 import sys
@@ -14,6 +15,8 @@ from pathlib import Path
 from typing import cast
 
 import pexpect
+
+from .tmux import TmuxHarness
 
 
 class TerminalSession:
@@ -223,14 +226,34 @@ class TerminalSession:
         return result.returncode == 0
 
     def cleanup(self) -> None:
-        """Kill any remaining processes and sessions."""
+        """Kill any remaining processes and sessions.
+
+        R-49c: `tmux kill-session` alone does not guarantee every pane's
+        process tree dies -- a pane leader that ignores or is slow to act
+        on the SIGHUP it sends can survive, orphaned, with no session left
+        pointing at it (see `TmuxHarness.kill_session`'s docstring for the
+        directly-confirmed mechanism). Captures each pane's pid (also its
+        process-group id) before killing the session, then falls back to
+        `TmuxHarness.kill_process_groups` afterward.
+        """
         if self._child and self._child.isalive():
             self._child.close(force=True)
         if self._session_name:
+            pgids: list[int] = []
+            panes = subprocess.run(
+                ["tmux", "list-panes", "-t", self._session_name, "-F", "#{pane_pid}"],
+                capture_output=True,
+                text=True,
+            )
+            if panes.returncode == 0:
+                for pid_str in panes.stdout.strip().splitlines():
+                    with contextlib.suppress(ValueError):
+                        pgids.append(int(pid_str))
             subprocess.run(
                 ["tmux", "kill-session", "-t", self._session_name],
                 capture_output=True,
             )
+            TmuxHarness.kill_process_groups(pgids)
         # Clean IPC files
         for name in (
             "session-state.json",
