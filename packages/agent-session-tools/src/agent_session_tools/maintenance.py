@@ -8,7 +8,7 @@ schema inspection, and maintenance operations.
 import logging
 import shutil
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Annotated
 
@@ -302,7 +302,12 @@ def _archive(db_path: Path, days: int, backup: bool = True) -> int:
         return 1
 
     archive_path = db_path.parent / f"{db_path.stem}_archive.db"
-    cutoff_date = (datetime.now() - timedelta(days=days)).isoformat()
+    # R-20: sessions.updated_at is sourced from UTC transcript timestamps
+    # (exporters/claude.py, exporters/codex.py). A naive datetime.now() cutoff
+    # reads the *local* wall clock, which shifts the effective boundary by the
+    # machine's UTC offset -- east of UTC, sessions updated within the last
+    # offset-hours could wrongly satisfy `updated_at < cutoff_date`.
+    cutoff_date = (datetime.now(UTC) - timedelta(days=days)).isoformat()
 
     try:
         # Source database
@@ -492,7 +497,10 @@ def _delete_old(
         print(f"❌ Database not found: {db_path}")
         return 1
 
-    cutoff_date = (datetime.now() - timedelta(days=days)).isoformat()
+    # R-20: see the matching comment in `_archive` -- this cutoff feeds an
+    # irreversible DELETE, so the naive-local-time skew is the higher-stakes
+    # half of D2.
+    cutoff_date = (datetime.now(UTC) - timedelta(days=days)).isoformat()
 
     try:
         conn = sqlite3.connect(db_path)

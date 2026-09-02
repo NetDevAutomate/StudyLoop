@@ -56,6 +56,12 @@ experience may change before `1.0.0`.
   receiving side. `push` and the remote side of `sync` now back up the
   destination before writing to it, exactly as `pull` already backs up its
   own destination.
+- Session archive/delete/prune cutoffs (`session-maint archive`/`delete-old`,
+  tiering's `prune`/`refocus`) and focus suggestions computed their cutoff
+  from naive local wall-clock time, then compared it against UTC-sourced
+  timestamps. On a machine east of UTC this could delete sessions updated
+  within the last few hours; west of UTC it could keep sessions that should
+  have been caught. Cutoffs now use real UTC.
 
 ### Known pre-release boundaries
 
