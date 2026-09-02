@@ -199,6 +199,40 @@ class TestSessionSSE:
         assert "counter-wins" in sse_line
         assert "session-meta" in sse_line
 
+    def test_mtime_or_zero_survives_a_vanishing_file(self) -> None:
+        """R-06: the SSE loop's change-detection stat() must not race
+        clear_session_files(), which unlinks these same files from an
+        executor thread (session/active.py:130-131) -- the exact race
+        28a431b fixed for parse_topics_file/parse_parking_file, reachable
+        here too (that commit's own message named it: "any client polling
+        session state while a grace window expires could hit it") but never
+        patched until now."""
+        from studyloop.web.routes.session._dashboard import _mtime_or_zero
+
+        class _VanishingFile:
+            def stat(self) -> None:
+                raise FileNotFoundError(2, "No such file or directory")
+
+        assert _mtime_or_zero(_VanishingFile()) == 0.0  # type: ignore[arg-type]
+
+    def test_mtime_or_zero_tolerates_any_oserror(self) -> None:
+        """Not just a missing file -- any OSError (e.g. a permissions
+        error) must degrade to 0.0, not raise into the SSE generator."""
+        from studyloop.web.routes.session._dashboard import _mtime_or_zero
+
+        class _Denied:
+            def stat(self) -> None:
+                raise PermissionError(13, "Permission denied")
+
+        assert _mtime_or_zero(_Denied()) == 0.0  # type: ignore[arg-type]
+
+    def test_mtime_or_zero_reports_a_real_mtime(self, tmp_path: Path) -> None:
+        from studyloop.web.routes.session._dashboard import _mtime_or_zero
+
+        f = tmp_path / "session-state.json"
+        f.write_text("{}")
+        assert _mtime_or_zero(f) == f.stat().st_mtime
+
 
 class TestRenderFunctions:
     """Test the HTML rendering helper functions directly."""

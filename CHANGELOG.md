@@ -178,6 +178,10 @@ experience may change before `1.0.0`.
   terminal). `studyloop clean --all` is the one place left to deliberately
   sweep every `study-*` session at once, for the rare case that's actually
   wanted.
+- The live session dashboard's activity stream (SSE) could very rarely drop
+  its connection with no explanation if a session ended at the exact moment
+  the stream polled for changes. It now tolerates that race the same way the
+  rest of the session-state readers already did.
 
 ### Security
 

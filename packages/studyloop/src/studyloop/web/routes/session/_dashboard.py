@@ -16,6 +16,7 @@ from studyloop.web.routes.session._router import router
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
+    from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -108,6 +109,24 @@ def get_last_session() -> dict:
         return {}
 
 
+def _mtime_or_zero(f: Path) -> float:
+    """This file's mtime, or 0.0 if it can't be stat()'d.
+
+    Read first and handle failure, rather than checking exists() and then
+    stat()-ing: clear_session_files() (session release, active.py:130-131)
+    unlinks these same files from an executor thread. 28a431b fixed the
+    exact race for parse_topics_file/parse_parking_file's read(); the SSE
+    loop below is the client its own commit message named as reachable
+    ("any client polling session state while a grace window expires could
+    hit it") but never patched until now (R-06). Module-level (not a
+    closure inside session_stream) so it is directly unit-testable.
+    """
+    try:
+        return f.stat().st_mtime
+    except OSError:
+        return 0.0
+
+
 @router.get("/session/stream")
 async def session_stream(request: Request) -> StreamingResponse:
     """SSE endpoint for live session updates.
@@ -123,10 +142,7 @@ async def session_stream(request: Request) -> StreamingResponse:
             if await request.is_disconnected():
                 break
             # O(1) change detection: 3 stat() calls instead of full JSON serialisation
-            mtimes = tuple(
-                f.stat().st_mtime if f.exists() else 0.0
-                for f in (STATE_FILE, TOPICS_FILE, PARKING_FILE)
-            )
+            mtimes = tuple(_mtime_or_zero(f) for f in (STATE_FILE, TOPICS_FILE, PARKING_FILE))
             if mtimes != last_mtimes:
                 state = _get_full_state()
                 html = _render_update(state)

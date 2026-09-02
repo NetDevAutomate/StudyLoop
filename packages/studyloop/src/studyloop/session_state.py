@@ -46,8 +46,16 @@ def read_session_state() -> dict:
     ``tmux_session``. Same for ``mux_main_pane``/``mux_sidebar_pane``.
     This allows both old and new writers to coexist during migration.
     """
+    # Read first and handle failure, rather than checking exists() and then
+    # reading: session release calls clear_session_files() on an executor
+    # thread, exactly the race 28a431b fixed for parse_topics_file/
+    # parse_parking_file below. The exists() check here was already
+    # redundant -- FileNotFoundError is an OSError, already caught -- but a
+    # future edit that narrowed this except clause (e.g. to just
+    # json.JSONDecodeError, "since exists() already guards missing files")
+    # would silently reopen the exact race (R-08).
     try:
-        state = json.loads(STATE_FILE.read_text()) if STATE_FILE.exists() else {}
+        state = json.loads(STATE_FILE.read_text())
     except (json.JSONDecodeError, OSError):
         return {}
 
