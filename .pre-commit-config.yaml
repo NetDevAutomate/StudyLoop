@@ -46,15 +46,13 @@ repos:
     language: pygrep
     types:
     - text
-  - id: pyright-agent-session-tools
-    name: pyright (agent-session-tools)
+  # One hook, the same invocation as `just typecheck`, so the commit-time check
+  # and the release gate cannot disagree. The previous two hooks ran pyright on
+  # each package's src/ only; a test-only type error (R-51) passed the hook and
+  # then failed the gate.
+  - id: pyright
+    name: pyright (workspace, src + tests — same as `just typecheck`)
     language: system
-    entry: bash -c 'cd packages/agent-session-tools && uv run pyright src/'
+    entry: uv run --group dev pyright
     pass_filenames: false
-    files: ^packages/agent-session-tools/.*\.py$
-  - id: pyright-studyloop
-    name: pyright (studyloop)
-    language: system
-    entry: bash -c 'cd packages/studyloop && uv run pyright src/'
-    pass_filenames: false
-    files: ^packages/studyloop/.*\.py$
+    files: ^packages/.*\.py$
