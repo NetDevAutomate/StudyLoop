@@ -122,3 +122,28 @@ class TestDoctorIntegration:
         output = result.output.strip()
         assert output.endswith(".")
         assert not output.startswith("[")
+
+    def test_orphaned_ttyd_port_key_is_named_by_the_real_doctor_command(
+        self, runner: CliRunner, tmp_path: Path
+    ) -> None:
+        """R-34b: check_unknown_config_keys (R-34) is wired into the real
+        `doctor` CLI command, not just unit-tested against the bare
+        function. A config.yaml carrying the retired ttyd_port key must
+        make the actual `studyloop doctor` invocation name it, exactly as
+        a user running the real command would see it -- end-to-end through
+        _get_registry(), not through a mocked registry.
+        """
+        (tmp_path / "config.yaml").write_text(
+            "ttyd_port: 7681\nweb_port: 9000\nobsidian_base: ''\ntopics: []\n"
+        )
+
+        result = self._run_doctor(runner, ["--json"])
+
+        assert result.exit_code in (0, 1, 2), (
+            f"Unexpected exit code: {result.exit_code}\n{result.output}"
+        )
+        data = json.loads(result.output)
+        unknown_key_results = [r for r in data if r["name"] == "unknown_config_keys"]
+        assert len(unknown_key_results) == 1
+        assert "ttyd_port" in unknown_key_results[0]["message"]
+        assert "ttyd_port" in unknown_key_results[0]["fix_hint"]
