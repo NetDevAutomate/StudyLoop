@@ -215,8 +215,14 @@ class TestCliThenCli:
 
     def test_a_live_cli_claim_still_blocks_a_cli_start(self, caplog) -> None:
         """A CLI claim whose tmux session still exists blocks a new CLI
-        start with the existing message, and logs no reclaim warning."""
+        start with the existing message, and logs no reclaim warning. C2:
+        a claim that is never reclaimed must never have its topics/parking
+        cleared either -- clearing is a reclaim-only side effect."""
         state = _fixture("cli-live")
+        session_state.TOPICS_FILE.write_text(
+            "- [09:00] Live topic | status:learning | still in progress\n"
+        )
+        session_state.PARKING_FILE.write_text("- Still-relevant parked question\n")
 
         with (
             patch("studyloop.tmux.is_tmux_available", return_value=True),
@@ -233,6 +239,8 @@ class TestCliThenCli:
 
         assert "already active" in exc_info.value.message
         assert not any("reclaim" in rec.message.lower() for rec in caplog.records)
+        assert len(session_state.parse_topics_file()) == 1
+        assert len(session_state.parse_parking_file()) == 1
 
     def test_a_dead_cli_claim_is_reclaimed_by_a_cli_start(self, caplog) -> None:
         """A CLI claim whose tmux session no longer exists (the user's
@@ -263,6 +271,38 @@ class TestCliThenCli:
         warnings = [rec for rec in caplog.records if "reclaim" in rec.message.lower()]
         assert len(warnings) == 1
         assert "cli-sess-1" in warnings[0].message
+
+    def test_a_dead_cli_claim_reclaimed_by_a_cli_start_clears_topics_and_parking(
+        self,
+    ) -> None:
+        """C2, CLI side: a CLI reclaim must not inherit the crashed
+        session's topics/parking either -- the same defect the web path
+        had, just reached from studyloop study instead of the web start
+        route."""
+        from studyloop.session.start import start_session
+
+        state = _fixture("cli-live")
+        session_state.TOPICS_FILE.write_text(
+            "- [09:00] Dead topic | status:learning | leftover from the crash\n"
+        )
+        session_state.PARKING_FILE.write_text("- Leftover parked question\n")
+
+        with (
+            patch("studyloop.tmux.is_tmux_available", return_value=True),
+            patch("studyloop.agent_launcher.shutil.which", return_value="/usr/bin/claude"),
+            patch("studyloop.session_state.read_session_state", return_value=state),
+            patch(
+                "studyloop.multiplexer.get_backend",
+                return_value=MagicMock(session_exists=lambda name: False),
+            ),
+            patch("studyloop.session.cleanup.auto_clean_zombies"),
+            patch("studyloop.history.start_study_session", return_value=None),
+            pytest.raises(SessionStartError),
+        ):
+            start_session("Async IO", "claude", "study", "elapsed", 5, False)
+
+        assert session_state.parse_topics_file() == []
+        assert session_state.parse_parking_file() == []
 
 
 class TestCliThenWeb:
@@ -448,6 +488,32 @@ class TestCrashThenRestart:
         assert any("reclaim" in rec.message.lower() for rec in caplog.records), (
             "a reclaimed stale claim must be logged, not silently dropped"
         )
+
+    def test_reclaim_clears_inherited_topics_and_parking(
+        self,
+        client: TestClient,
+        _mock_agent_available,
+        _stub_db,
+        _stub_pty_factory,
+    ) -> None:
+        """C2: a reclaimed session must not show the dead session's topics
+        and parking-lot. Before this fix, _start.py only touch()ed these
+        files after a reclaim, so a crashed session's leftover content
+        stayed visible to the new session."""
+        _write_fixture("crashed-web-still-live")
+        session_state.TOPICS_FILE.write_text(
+            "- [09:00] Dead topic | status:learning | leftover from the crash\n"
+        )
+        session_state.PARKING_FILE.write_text("- Leftover parked question\n")
+
+        resp = client.post(
+            "/api/session/start",
+            json={"topic": "Fresh topic", "energy": 5, "agent": "claude", "transport": "pty"},
+        )
+
+        assert resp.status_code == 201, resp.text
+        assert session_state.parse_topics_file() == []
+        assert session_state.parse_parking_file() == []
 
 
 class TestNoClaim:

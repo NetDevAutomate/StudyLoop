@@ -274,6 +274,7 @@ def start_session(
         TOPICS_FILE,
         _ensure_session_dir,
         claim_blocks_cli_start,
+        clear_session_files,
         read_session_state,
         write_session_state,
     )
@@ -325,6 +326,9 @@ def start_session(
             "  End:    [bold]studyloop study --end[/bold]"
         )
     if claim.get("study_session_id") and claim.get("mode") != "ended":
+        # C2: same rule as the web path -- a reclaimed session must not
+        # inherit the dead session's topics/parking.
+        clear_session_files()
         logger.warning(
             "Reclaiming stale session claim id=%s transport=%s — its owner is no longer alive",
             claim.get("study_session_id"),

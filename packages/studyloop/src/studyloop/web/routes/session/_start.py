@@ -137,6 +137,12 @@ async def _session_conflict() -> JSONResponse | None:
     state = session_pkg.read_session_state()
     if not session_state.claim_blocks_web_start(state):
         if state.get("study_session_id") and state.get("mode") != "ended":
+            # C2: a reclaimed session must not inherit the dead session's
+            # topics/parking -- clear before returning so the caller's own
+            # write starts from empty, not before (there is nothing to race
+            # here: nothing else can claim the slot until this function
+            # returns None and the caller's own write lands).
+            session_state.clear_session_files()
             logger.warning(
                 "Reclaiming stale session claim id=%s transport=%s — its owner is no longer alive",
                 state.get("study_session_id"),

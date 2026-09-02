@@ -174,6 +174,9 @@ experience may change before `1.0.0`.
 - `studyloop study` no longer refuses to start after a crashed session left
   a stale claim; the stale claim is reclaimed with a logged warning
   (R-01b).
+- Reclaiming a crashed session's slot (web or CLI) no longer shows its
+  topics-covered list and parking lot to the new session; both are cleared
+  before the new session starts, not just touched (C2).
 - Ending a session -- from the Web UI, `studyloop study --end`, or the study
   sidebar's End Session key -- no longer terminates every other study
   session on the machine. Each end path now closes only its own terminal
