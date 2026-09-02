@@ -195,6 +195,12 @@ experience may change before `1.0.0`.
   (spawning the agent, creating the database record) running in between;
   a second start landing in that window could have raced the eventual
   claim. The check and the claim now happen together (C1).
+- Reclaiming a crashed session's slot could leave that dead session's
+  multiplexer name and other identifying details attached to the brand
+  new session that reclaimed it -- in the worst case, ending the new
+  session could then affect an unrelated terminal session that happened
+  to still be using that name. A reclaimed slot now starts completely
+  clean (C10).
 - Ending a session -- from the Web UI, `studyloop study --end`, or the study
   sidebar's End Session key -- no longer terminates every other study
   session on the machine. Each end path now closes only its own terminal

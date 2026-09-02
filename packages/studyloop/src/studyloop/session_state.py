@@ -171,8 +171,8 @@ def try_claim_session(
     explicitly ended (a stale one, since ``blocks`` just said no) and
     ``on_reclaim`` was given, call ``on_reclaim(state)`` -- this is where a
     caller clears inherited IPC files (C2) and logs the reclaim (C4/R-01b)
-    -- THEN merge-write ``reservation`` over the current state and return
-    ``None``.
+    -- THEN write ``reservation`` as the new claim, REPLACING whatever was
+    there, and return ``None``.
 
     Closes the race C1 named: before this, every start path read the file
     (unlocked), decided "not blocked," did real work (spawn a transport,
@@ -190,6 +190,21 @@ def try_claim_session(
     ``blocks``, not to this function: ``claim_blocks_web_start``/
     ``claim_blocks_cli_start`` are written so a reservation's own pid/
     mux_session makes it look genuinely live to anyone else who reads it.
+
+    **C10 (council): REPLACE, never merge, when writing the reservation.**
+    An earlier version wrote ``{**current, **reservation}`` -- correct
+    only when there was no prior claim to begin with. When ``blocks``
+    returns False because the PRIOR claim is stale (the reclaim path),
+    that prior claim's own fields the reservation does not name
+    (``mux_session``/``tmux_session``, ``child_pid``, ``session_dir``,
+    ``agent``, ``energy``, ``topic``, ...) would resurrect into the BRAND
+    NEW session's state -- e.g. a stale CLI claim's ``mux_session``
+    leaking into a freshly-started web session's state, so that ending
+    the web session could later call ``kill_session`` on a tmux name that
+    is not its own, the exact shape of invariant R-02 exists to prevent.
+    A fresh start (blocked=False) never inherits: the new state is
+    EXACTLY ``dict(reservation)``, whether the prior claim was empty,
+    ended, or genuinely stale.
     """
     _ensure_session_dir()
     with _state_lock:
@@ -201,8 +216,7 @@ def try_claim_session(
                 return current
             if on_reclaim is not None and _claim_exists(current):
                 on_reclaim(current)
-            merged = {**current, **reservation}
-            _write_file_secure(STATE_FILE, json.dumps(merged, indent=2, default=str))
+            _write_file_secure(STATE_FILE, json.dumps(dict(reservation), indent=2, default=str))
             return None
         finally:
             fcntl.flock(lock_fd, fcntl.LOCK_UN)

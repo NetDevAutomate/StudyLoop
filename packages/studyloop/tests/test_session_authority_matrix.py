@@ -953,3 +953,54 @@ class TestEndMatrix:
             end_session_common(state, auto_persist=False)
 
         mock_mux.kill_all_study_sessions.assert_not_called()
+
+    def test_a_web_session_started_over_a_reclaimed_stale_cli_claim_ends_without_kill_session(
+        self,
+        client: TestClient,
+        _mock_agent_available,
+        _stub_db,
+        _stub_pty_factory,
+    ) -> None:
+        """C10 (council): a stale CLI claim's mux_session (and child_pid,
+        etc) must not leak into a freshly-started web session's state --
+        if it did, ending the web session could later call kill_session
+        on a tmux name that is not its own, exactly the invariant R-02
+        exists to prevent. Regression test for try_claim_session's own
+        merge-vs-replace bug (fixed in the same commit as this test)."""
+        session_state.write_session_state(
+            {
+                "study_session_id": "stale-cli-1",
+                "mode": "focus",
+                "mux_session": "study-x-1234",
+                "tmux_session": "study-x-1234",
+                "child_pid": 4242,
+            }
+        )
+
+        with patch(
+            "studyloop.multiplexer.get_backend",
+            return_value=MagicMock(session_exists=lambda name: False),
+        ):
+            resp = client.post(
+                "/api/session/start",
+                json={"topic": "Fresh topic", "energy": 5, "agent": "claude", "transport": "pty"},
+            )
+        assert resp.status_code == 201, resp.text
+
+        state = session_state.read_session_state()
+        assert "mux_session" not in state
+        assert "tmux_session" not in state
+        assert "child_pid" not in state
+
+        from studyloop.session.cleanup import end_session_common
+
+        mock_mux = MagicMock()
+        with (
+            patch("studyloop.multiplexer.get_backend", return_value=mock_mux),
+            patch("studyloop.history.end_study_session"),
+            patch("studyloop.services.backlog.auto_persist_struggled"),
+        ):
+            end_session_common(state, auto_persist=False)
+
+        mock_mux.kill_session.assert_not_called()
+        mock_mux.kill_all_study_sessions.assert_not_called()
