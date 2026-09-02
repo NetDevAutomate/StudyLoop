@@ -479,16 +479,17 @@ web_port: 8567       # web dashboard port (default 8567)
 browser: ""          # auto-open browser: chrome, safari, firefox, brave, or empty for system default
 lan_password: ""     # persistent LAN password (auto-generated per session if empty)
 
-# Maintainer-only (see the note below) — retired ttyd server transport
-ttyd_port: 7681      # port a ttyd process would listen on (default 7681)
+# Maintainer-only (see the note below) — ttyd server transport, being retired
+ttyd_port: 7681      # port the CLI study path gives a ttyd process, if ttyd is installed
 ```
 
-> **`ttyd_port` does nothing — do not install ttyd, and remove the key if you set it.**
-> The browser terminal is xterm.js over a same-origin WebSocket. ttyd is being
-> retired: the `studyloop web --ttyd-port` flag and the CLI transport option are
-> already gone, and the remaining machinery is on its way out. A `ttyd_port` key
-> left in your config is ignored rather than an error, so nothing breaks — but it
-> is inert, not a setting.
+> **Do not install ttyd, and remove this key if you set it.** The browser
+> terminal is xterm.js over a same-origin WebSocket and has no ttyd surface. ttyd
+> is being retired: the `studyloop web --ttyd-port` flag and the CLI transport
+> option are already gone. What remains, until the retirement finishes, is that
+> `studyloop study` still reads `ttyd_port` and starts a ttyd process on it
+> **when ttyd is on your PATH**. Uninstalling ttyd disables that path entirely;
+> with ttyd absent the key is read and nothing happens.
 
 ### TTS Voice Settings
 
