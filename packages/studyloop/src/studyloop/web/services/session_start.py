@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Literal
 if TYPE_CHECKING:
     from datetime import datetime
 
-TransportName = Literal["pty", "acp", "ttyd"]
+TransportName = Literal["pty", "acp"]
 
 # Agents that speak the Agent Client Protocol. Single source of truth shared by
 # the session-start ACP guard and the options endpoint (_options.py). Kiro is

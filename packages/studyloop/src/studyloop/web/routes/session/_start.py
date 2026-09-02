@@ -1,4 +1,4 @@
-"""POST /session/start — PTY, ACP, and legacy ttyd paths."""
+"""POST /session/start — PTY and ACP session start."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import hashlib
 import logging
 from datetime import UTC, datetime
 
-from fastapi import HTTPException, Request
+from fastapi import Request  # noqa: TC002 - FastAPI needs Request at runtime for injection.
 from fastapi.responses import JSONResponse
 
 from studyloop.session_state import (
@@ -19,6 +19,7 @@ from studyloop.session_state import (
 from studyloop.web.routes.session._models import _AGENT_INSTALL_HINTS, StartSessionRequest
 from studyloop.web.routes.session._router import router
 from studyloop.web.routes.session._transport import (
+    UnsupportedTransportError,
     _resolve_transport,
 )
 from studyloop.web.services.session_start import (
@@ -124,29 +125,6 @@ async def _resolve_origin(request: Request) -> str:
     return origin
 
 
-def _ttyd_credentials(request: Request | None) -> tuple[str, str]:
-    """Resolve ttyd Basic-Auth creds from the app's single source of truth.
-
-    Reads ``(lan_username, lan_password)`` off ``request.app.state`` — the same
-    values ``create_app`` used to install ``BasicAuthMiddleware``. Fails closed:
-    if app.state is unreadable (no request wired through), refuse rather than
-    guess, because a wrong guess spawns an unauthenticated PTY on the LAN.
-    """
-    state = getattr(getattr(request, "app", None), "state", None)
-    if state is None:
-        raise HTTPException(
-            status_code=500,
-            detail=(
-                "Cannot start ttyd: LAN credentials unavailable from app state "
-                "(auth divergence guard)."
-            ),
-        )
-    return (
-        getattr(state, "lan_username", "") or "",
-        getattr(state, "lan_password", "") or "",
-    )
-
-
 @router.post("/session/start")
 async def start_session(body: StartSessionRequest, request: Request) -> JSONResponse:
     """Start a new study session from the web UI.
@@ -156,10 +134,16 @@ async def start_session(body: StartSessionRequest, request: Request) -> JSONResp
     - ``pty`` (default, plan §1.5b) — spawns the agent directly via
       ``PTYTransport`` + ``active.acquire`` and returns a ``ws_url``
       that the browser feeds to ``/api/session/ws``. No tmux, no ttyd.
-    - ``ttyd`` (legacy, plan §1.9 fallback) — runs the original
-      tmux+ttyd flow for one deprecation window. Enable explicitly via
-      ``{"transport": "ttyd"}`` in the body or by exporting
-      ``STUDYLOOP_TRANSPORT=ttyd``.
+    - ``acp`` (Agent Client Protocol, available for Kiro) — body-only,
+      never selectable via ``STUDYLOOP_TRANSPORT``.
+
+    ``transport`` is validated structurally by ``StartSessionRequest``
+    (``Literal["pty", "acp"]``), so an unrecognised body value — including
+    the retired ``ttyd`` — never reaches this handler; FastAPI rejects it
+    with 422 first. ``STUDYLOOP_TRANSPORT`` is checked at runtime by
+    ``_resolve_transport`` and raises :class:`UnsupportedTransportError` for
+    the same reason: a caller asking for a transport that no longer exists
+    must see an error, not silently get ``pty`` instead (R-05).
 
     Declared ``async`` so the PTY path's ``active.acquire`` runs on the
     FastAPI event loop — installing the SIGCHLD signal handler requires
@@ -174,12 +158,17 @@ async def start_session(body: StartSessionRequest, request: Request) -> JSONResp
             status_code=400,
         )
 
-    transport = _resolve_transport(body.transport)
-    if transport == "pty":
-        return await _start_pty_session(body, origin)
+    try:
+        transport = _resolve_transport(body.transport)
+    except UnsupportedTransportError as exc:
+        return JSONResponse(
+            {"error": f"Unsupported transport: {exc.args[0]!r}. Allowed: ['pty', 'acp']"},
+            status_code=422,
+        )
+
     if transport == "acp":
         return await _start_acp_session(body, origin)
-    return _start_ttyd_session(body, origin, request)
+    return await _start_pty_session(body, origin)
 
 
 async def _start_pty_session(
@@ -591,220 +580,6 @@ async def _start_acp_session(
             # is the only injection point.
             "persona_text": persona_text,
             "persona_hash": persona_hash,
-        },
-        status_code=201,
-    )
-
-
-def _start_ttyd_session(
-    body: StartSessionRequest, origin: str = _DEFAULT_ORIGIN, request: Request | None = None
-) -> JSONResponse:
-    """Legacy tmux start path (plan §1.9 emergency fallback), ttyd removed.
-
-    Kept as-is to guarantee a deprecation window. New development should
-    target the PTY path above.
-
-    ``request`` is unused since ttyd retirement stage 2 removed the spawn
-    that read Basic-Auth credentials from ``app.state`` — kept only for the
-    legacy CLI caller's signature until stage 3 deletes this function
-    entirely.
-    """
-    import os
-    import shutil
-    from pathlib import Path
-
-    from studyloop.multiplexer import get_backend
-
-    mux = get_backend()
-
-    # --- Pre-flight ---
-
-    if not mux.is_available():
-        return JSONResponse(
-            {"error": "Terminal multiplexer is required but not available"},
-            status_code=503,
-        )
-
-    from studyloop.web.routes import session as session_pkg
-
-    if session_pkg.is_session_active():
-        return JSONResponse(
-            {"error": "A session is already active"},
-            status_code=409,
-        )
-
-    # --- Resolve agent ---
-
-    from studyloop.agent_launcher import AGENTS, detect_agents
-
-    agent = body.agent
-    if agent and agent not in AGENTS:
-        return JSONResponse(
-            {"error": f"Unknown agent: {agent}"},
-            status_code=400,
-        )
-    if not agent:
-        available = detect_agents()
-        if not available:
-            return JSONResponse(
-                {"error": "No AI agent found on this machine"},
-                status_code=503,
-            )
-        agent = available[0]
-
-    # Check agent binary is installed
-    adapter = AGENTS[agent]
-    if not shutil.which(adapter.binary):
-        return JSONResponse(
-            {"error": f"Agent '{agent}' binary not found: {adapter.binary}"},
-            status_code=503,
-        )
-
-    # --- Resolve topic config ---
-
-    topic_config = None
-    try:
-        from studyloop.logic.topic_resolver import resolve_topic
-        from studyloop.settings import load_settings
-
-        settings = load_settings()
-        if settings.topics:
-            result = resolve_topic(body.topic, settings.topics)
-            topic_config = result.resolved or (result.matches[0] if result.matches else None)
-    except Exception:
-        pass  # Topic resolution is optional
-
-    # --- Clean zombies ---
-
-    try:
-        from studyloop.session.cleanup import auto_clean_zombies
-
-        auto_clean_zombies()
-    except Exception:
-        pass
-
-    # --- Create DB session ---
-
-    from studyloop.history import start_study_session
-    from studyloop.output import energy_to_label
-
-    energy_label = energy_to_label(body.energy)
-    study_id = start_study_session(
-        body.topic,
-        energy_label,
-        topic_slug=topic_config.slug if topic_config else None,
-    )
-    if not study_id:
-        return JSONResponse(
-            {"error": "Failed to create session record"},
-            status_code=500,
-        )
-
-    # --- Write session state ---
-
-    _ensure_session_dir()
-    now = datetime.now(UTC).isoformat()
-    write_session_state(
-        {
-            "study_session_id": study_id,
-            "topic": body.topic,
-            "energy": body.energy,
-            "energy_label": energy_label,
-            "mode": "focus",
-            "timer_mode": "energy",
-            "started_at": now,
-            "start_time": now,
-            "paused_at": None,
-            "total_paused_seconds": 0,
-            "origin": origin,
-        }
-    )
-    TOPICS_FILE.touch(mode=0o600, exist_ok=True)
-    PARKING_FILE.touch(mode=0o600, exist_ok=True)
-
-    # --- Session directory + tmux ---
-    # slug_session_dir strips path-traversal from the user-controlled topic;
-    # this session_name becomes a path segment (and is later rmtree'd on
-    # cleanup), so an unsanitised "../.." here is a real escape vector.
-    from studyloop.web.services.session_start import slug_session_dir
-
-    slug = slug_session_dir(body.topic)
-    short_id = study_id[:8]
-    session_name = f"study-{slug}-{short_id}"
-    session_dir = SESSION_DIR / "sessions" / session_name
-
-    if mux.session_exists(session_name):
-        mux.kill_session(session_name)
-
-    from studyloop.agent_launcher import build_canonical_persona
-    from studyloop.session.orchestrator import (
-        build_wrapped_agent_cmd,
-        create_tmux_environment,
-        setup_session_dir,
-    )
-
-    setup_session_dir(session_dir, body.topic)
-
-    # Build persona
-    canonical = build_canonical_persona("focus", body.topic, body.energy)
-    persona_hash = hashlib.sha256(canonical.encode()).hexdigest()[:16]
-
-    from studyloop.history.sessions import update_persona_hash
-
-    update_persona_hash(study_id, persona_hash)
-
-    persona_file = adapter.setup(canonical, session_dir)
-    if adapter.mcp_setup:
-        adapter.mcp_setup(session_dir)
-
-    # Allow test injection
-    test_agent_cmd = os.environ.get("STUDYLOOP_TEST_AGENT_CMD")
-    if test_agent_cmd:
-        agent_cmd = test_agent_cmd.format(persona_file=persona_file)
-    else:
-        # Check if session dir has prior agent history (resuming)
-        claude_project_key = str(session_dir).replace("/", "-").lstrip("-")
-        claude_project_dir = Path.home() / ".claude" / "projects" / claude_project_key
-        is_resuming = claude_project_dir.exists()
-        agent_cmd = adapter.launch_cmd(persona_file, is_resuming)
-
-    wrapped_cmd = build_wrapped_agent_cmd(session_dir, agent_cmd)
-
-    result = create_tmux_environment(
-        session_name=session_name,
-        session_dir=session_dir,
-        wrapped_agent_cmd=wrapped_cmd,
-        session_state_dir=SESSION_DIR,
-        sidebar=False,
-    )
-
-    # Persist tmux metadata
-    state_update: dict = {
-        "tmux_session": session_name,
-        "tmux_main_pane": result["tmux_main_pane"],
-        "tmux_sidebar_pane": result["tmux_sidebar_pane"],
-        "persona_file": str(persona_file),
-        "session_dir": str(session_dir),
-        "agent": agent,
-        "persona_hash": persona_hash,
-    }
-    if topic_config:
-        state_update["topic_slug"] = topic_config.slug
-        state_update["topic_config_name"] = topic_config.name
-    write_session_state(state_update)
-
-    # ttyd is no longer spawned here (stage 2 of the ttyd retirement removed
-    # the spawn entirely — see PLAN-retire-ttyd.md). _ttyd_credentials() and
-    # app.state.lan_username/lan_password are now dead below this point;
-    # stage 3 deletes them along with the rest of this legacy path.
-
-    return JSONResponse(
-        {
-            "study_session_id": study_id,
-            "topic": body.topic,
-            "energy": body.energy,
-            "session_name": session_name,
-            "agent": agent,
         },
         status_code=201,
     )

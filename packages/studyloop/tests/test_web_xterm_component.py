@@ -132,14 +132,14 @@ class TestXtermPickerDefaults:
         """The ttyd BROWSER surface was retired in ADR-0005, so the dropdown
         must no longer offer it.
 
-        The UI surface is deliberately NARROWER than the API surface here: the
-        server still honours ``STUDYLOOP_TRANSPORT=ttyd`` for maintainers, so
-        ``POST /api/session/start`` continues to accept ``transport=ttyd``.
-        What was removed is the browser's ability to *choose* it, because
-        choosing it rendered nothing — there is no iframe left to mount. If
-        this assertion ever fails because ``ttyd`` came back into the dropdown,
-        check that a renderer came back with it; a selectable transport with no
-        renderer is the silent-blank defect ADR-0005 exists to prevent.
+        The server-side transport axis is gone too as of ttyd retirement
+        stage 3: ``POST /api/session/start`` now structurally rejects
+        ``transport=ttyd`` with 422 (see test_web_session.py and
+        test_web_session_start_pty.py), so the UI and API surfaces agree.
+        If this assertion ever fails because ``ttyd`` came back into the
+        dropdown, check that a renderer came back with it; a selectable
+        transport with no renderer is the silent-blank defect ADR-0005
+        exists to prevent.
         """
         web_page.goto(f"http://127.0.0.1:{WEB_PORT}/#study-session")
         web_page.wait_for_selector("#transport-select", state="attached", timeout=5000)

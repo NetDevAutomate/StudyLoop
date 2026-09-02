@@ -10,20 +10,35 @@ class _PermissionResponder(Protocol):
     async def send_permission_response(self, request_id: str, outcome: dict[str, Any]) -> None: ...
 
 
-def _resolve_transport(body_transport: str | None) -> str:
-    """Decide between 'pty', 'ttyd', and 'acp'. Env var wins for operator kill-switch.
+class UnsupportedTransportError(ValueError):
+    """Raised when ``STUDYLOOP_TRANSPORT`` names a transport that does not exist.
 
-    The ``STUDYLOOP_TRANSPORT`` env var only accepts ``pty`` or ``ttyd`` —
-    ACP is body-only, intentionally kept out of the operator kill-switch
-    surface because the env var is the "force the legacy / safe path"
-    lever, not a general transport selector.
+    Ttyd retirement stage 3 (R-05): a naive deletion of the ttyd arm left this
+    function silently downgrading any unrecognised value to ``"pty"``, so
+    ``STUDYLOOP_TRANSPORT=ttyd`` kept "working" — just as a different
+    transport than the operator asked for. The fix is structural rejection,
+    not a wider allow-list: the caller gets an error, never a substitution.
+    """
+
+
+def _resolve_transport(body_transport: str | None) -> str:
+    """Decide between 'pty' and 'acp'. Env var wins for operator kill-switch.
+
+    The ``STUDYLOOP_TRANSPORT`` env var only accepts ``pty`` — ACP is
+    body-only, intentionally kept out of the operator kill-switch surface
+    because the env var is the "force the safe path" lever, not a general
+    transport selector. Any other non-empty value (including the retired
+    ``ttyd``) raises :class:`UnsupportedTransportError` rather than silently
+    resolving to ``pty``.
     """
     import os
 
     env_override = os.environ.get("STUDYLOOP_TRANSPORT", "").strip().lower()
-    if env_override in {"pty", "ttyd"}:
+    if env_override:
+        if env_override != "pty":
+            raise UnsupportedTransportError(env_override)
         return env_override
-    if body_transport in {"pty", "ttyd", "acp"}:
+    if body_transport in {"pty", "acp"}:
         return body_transport
     return "pty"
 

@@ -102,12 +102,6 @@ def create_app(
     # Resolved (and validated) up front so a bad --dev-engine fails at startup,
     # not on first page load.
     app.state.dev_engine = resolve_dev_engine(dev_engine) if dev_mode else None
-    # Single source of truth for LAN Basic-Auth credentials. The ttyd start
-    # path reads these instead of independently re-loading config.yaml, so the
-    # app's auth and ttyd's auth can never silently diverge (a CLI --password
-    # that was never written to config used to leave ttyd unauthenticated).
-    app.state.lan_username = username
-    app.state.lan_password = password
     app.state.explorer_tree_cache = None
     app.state.explorer_tree_fingerprint = None
     app.state.session_options_targets_cache = None

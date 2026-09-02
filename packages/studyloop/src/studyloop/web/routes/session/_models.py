@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -11,14 +13,15 @@ class StartSessionRequest(BaseModel):
     topic: str
     energy: int = Field(default=5, ge=1, le=10)
     agent: str | None = None
-    transport: str | None = Field(
+    transport: Literal["pty", "acp"] | None = Field(
         default=None,
         description=(
-            "Session transport: 'pty' (default), 'ttyd' (legacy fallback), or "
-            "'acp' (Agent Client Protocol, available for Kiro). "
-            "STUDYLOOP_TRANSPORT env var forces 'pty' or 'ttyd' regardless of "
-            "this field; 'acp' is body-only to keep the kill-switch semantics "
-            "focused on the safe paths."
+            "Session transport: 'pty' (default) or 'acp' (Agent Client "
+            "Protocol, available for Kiro). Any other value — including the "
+            "retired 'ttyd' — is rejected with 422, not silently downgraded. "
+            "STUDYLOOP_TRANSPORT=pty is the only accepted env-var override; "
+            "'acp' is body-only to keep the kill-switch semantics focused on "
+            "the safe path."
         ),
     )
 
