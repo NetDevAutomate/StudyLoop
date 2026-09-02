@@ -127,6 +127,17 @@ experience may change before `1.0.0`.
   `sync` call left another `.bak-<timestamp>` copy next to the remote
   database forever. It now rotates, keeping only the newest 5 (matching
   the local backup helper's own default).
+- Cross-machine sync's global-table recency gate compared `updated_at` as
+  a raw string. Every current writer produces the same canonical format,
+  so this was not a live bug today, but a bare string compare is silently
+  wrong across formats that place a different character at the same
+  position (for example, a `T`-separated timestamp sorts as "later" than
+  a space-separated one at the same clock time, regardless of which is
+  actually later) — exactly the kind of mismatch real elsewhere in this
+  codebase's session-import exporters. The gate now compares both sides
+  through SQLite's `datetime()`, so it stays correct if a future writer,
+  a manual edit, or an older/foreign row ever disagrees with today's
+  uniform writers.
 
 ### Known pre-release boundaries
 

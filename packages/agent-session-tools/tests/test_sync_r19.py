@@ -107,12 +107,16 @@ class TestGlobalUpsertSql:
         sql = _build_global_upsert_select_sql("study_progress")
         assert "INSERT OR REPLACE" not in sql
         assert 'ON CONFLICT("id")' in sql
-        # R-19b: COALESCE(dest, '') on the destination side only -- a NULL
-        # destination must lose to any dated source; a NULL source must not
-        # win (see TestRecencyGateEndToEnd::test_null_destination_loses_to_dated_source).
+        # R-19b: COALESCE(dest, <very old date>) on the destination side
+        # only -- a NULL destination must lose to any dated source; a NULL
+        # source must not win (see
+        # TestRecencyGateEndToEnd::test_null_destination_loses_to_dated_source).
+        # R-19f: both sides wrapped in datetime() so mismatched real-world
+        # timestamp formats (space- vs T-separated, Z-suffixed, offset) are
+        # compared correctly, not as bare strings.
         assert (
-            "WHERE excluded.\"updated_at\" > COALESCE(study_progress.\"updated_at\", '''')"
-            in sql
+            'WHERE datetime(excluded."updated_at") > '
+            "datetime(COALESCE(study_progress.\"updated_at\", ''0001-01-01''))" in sql
         )
 
     def test_covers_every_global_table_and_pk(self):
@@ -307,6 +311,69 @@ class TestRecencyGateEndToEnd:
 
         assert row == ("effective", "2024-01-01 00:00:00"), (
             f"a NULL source updated_at must not overwrite a dated destination, got {row}"
+        )
+
+    def test_mismatched_real_world_timestamp_formats_compare_correctly(self, tmp_path):
+        """R-19f (M3 council, arbitration X1): the gate must not compare
+        ``updated_at`` as a bare string.
+
+        Every current writer of a GLOBAL_SYNC_TABLES ``updated_at`` uses the
+        same canonical SQL format (`evidence/M3/R-19f/00-dod.md`'s table-by-
+        table audit), so this exact mismatch cannot happen through today's
+        writers alone -- but these three formats are all real, in active use
+        elsewhere in this codebase for `sessions.updated_at`
+        (`exporters/kiro.py`, `exporters/claude.py`, `exporters/codex.py`),
+        and a bare string compare is silently wrong across them: a
+        `T`-separated timestamp sorts as "greater" than a space-separated
+        one at the same clock time purely because ``'T' > ' '`` in ASCII,
+        regardless of which one is actually later. Three formats for
+        instants one second apart, deliberately arranged so the
+        *lexicographically* later string is the *chronologically* earlier
+        one -- a bare string compare gets this backwards; ``datetime()``
+        normalization must not.
+        """
+        source_conn, source_path = self._make_migrated_db(tmp_path, "source.db")
+        dest_conn, dest_path = self._make_migrated_db(tmp_path, "dest.db")
+
+        _seed_session(source_conn, "sess-1")
+        # Chronologically EARLIER (00:00:01), but formatted with a 'T'
+        # separator and 'Z' suffix (kiro/claude/codex's exporter shape) --
+        # lexicographically GREATER than the space-separated destination
+        # value below, at the same character position.
+        _seed_knowledge_bridge(
+            source_conn,
+            "bridge-key-1",
+            updated_at="2026-09-02T00:00:01Z",
+            quality="SHOULD-NOT-WIN",
+        )
+        source_conn.commit()
+
+        _seed_session(dest_conn, "sess-1")
+        # Chronologically LATER the same day (23:59:59), in the plain SQL
+        # `datetime('now')` canonical shape every current writer actually
+        # produces.
+        _seed_knowledge_bridge(
+            dest_conn,
+            "bridge-key-1",
+            updated_at="2026-09-02 23:59:59",
+            quality="should-survive",
+        )
+        dest_conn.commit()
+        dest_conn.close()
+
+        sql = _dump_delta_sql(source_path, {"sess-1"})
+        assert _stream_sql_to_target(sql, dest_path) is True
+
+        check_conn = sqlite3.connect(dest_path)
+        row = check_conn.execute(
+            "SELECT quality FROM knowledge_bridges WHERE sync_key = 'bridge-key-1'"
+        ).fetchone()
+        check_conn.close()
+        source_conn.close()
+
+        assert row == ("should-survive",), (
+            "a chronologically older source row must not win just because "
+            f"its timestamp format sorts higher as a bare string, got {row}"
         )
 
 

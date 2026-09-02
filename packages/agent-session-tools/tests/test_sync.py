@@ -259,7 +259,9 @@ class TestDumpDeltaSql:
             assert f"INSERT INTO {table}" in sql
             assert f"INSERT OR REPLACE INTO {table}" not in sql
             assert "ON CONFLICT" in sql
-            assert 'excluded."updated_at" >' in sql
+            # R-19f: compared through datetime(), not as a bare string
+            # (see test_sync_r19.py for the mismatched-format regression test).
+            assert 'datetime(excluded."updated_at") >' in sql
 
 
 # --- _stream_sql_to_target (local path only) ---
