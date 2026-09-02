@@ -66,7 +66,7 @@ class TestScrubbing:
     )
 
     def test_every_known_credential_shape_is_removed(self) -> None:
-        env = dict.fromkeys(self.MUST_STRIP, "sensitive")
+        env: dict[str, str] = dict.fromkeys(self.MUST_STRIP, "sensitive")
         clean = build_child_env(env)
         leaked = sorted(k for k in self.MUST_STRIP if k in clean)
         assert leaked == [], f"these credentials reached the agent child: {leaked}"
@@ -78,7 +78,7 @@ class TestScrubbing:
         configuration, and every breakage would be reported as 'the agent does
         not work' long after the cause was forgotten.
         """
-        env = dict.fromkeys(self.MUST_KEEP, "fine")
+        env: dict[str, str] = dict.fromkeys(self.MUST_KEEP, "fine")
         assert build_child_env(env) == env
 
     def test_the_two_lists_do_not_overlap(self) -> None:
