@@ -62,6 +62,10 @@ experience may change before `1.0.0`.
   web-server startup, via a second dotenv loader in `agent-session-tools`
   that ran after the first fix's scrub. Same rule, same guard, now applied
   in both loaders.
+- `practice verify --run-command` now runs the EXACT command string a human
+  confirmed, and refuses if the practice deck's command changed between
+  being shown for confirmation and being executed, closing a time-of-check-
+  to-time-of-use window in the R-15 fix above.
 - Closed a gap in the agent-child credential scrub: a bare `_KEY` suffix
   (`ENCRYPTION_KEY`, `SIGNING_KEY`, `MASTER_KEY`, ...) and bare
   `AUTHORIZATION`/`JWT`/`COOKIE`-shaped variables now get stripped from an

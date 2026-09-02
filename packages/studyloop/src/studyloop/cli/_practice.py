@@ -62,7 +62,12 @@ def practice_verify(
     interactive ``y`` at the prompt. Without either, nothing executes and
     this command exits with status 2.
     """
-    confirmed = False
+    # R-15b (TOCTOU): the string a human confirms, not just a bool, crosses
+    # into verify_practice_task -- it reloads the deck itself and refuses to
+    # run anything if the freshly-loaded command no longer equals this one,
+    # closing the window between showing a command and running it during
+    # which the deck file could be rewritten to something else entirely.
+    confirmed_command: str | None = None
     if run_command:
         try:
             kind, command = peek_verification_command(practice_json, task_index=task_index)
@@ -79,6 +84,7 @@ def practice_verify(
             if not confirmed:
                 console.print("[yellow]Not confirmed — nothing executed.[/yellow]")
                 raise SystemExit(2)
+            confirmed_command = command
 
     try:
         result = verify_practice_task(
@@ -86,7 +92,7 @@ def practice_verify(
             task_index=task_index,
             workdir=workdir,
             run_command=run_command,
-            confirmed=confirmed,
+            confirmed_command=confirmed_command,
             notes=notes,
             timeout_seconds=timeout_seconds,
         )

@@ -169,22 +169,43 @@ def verify_practice_task(
     task_index: int,
     workdir: Path | None = None,
     run_command: bool = False,
-    confirmed: bool = False,
+    confirmed_command: str | None = None,
     notes: str = "",
     timeout_seconds: int | None = None,
 ) -> PracticeVerificationResult:
     """Verify one practice task and record the attempt.
 
-    ``confirmed`` is the human-in-the-loop gate for R-15: a practice deck is
-    JSON a user pointed the CLI at, which may itself be LLM-authored, so
-    ``verification.command`` is data the deck's author chose, not an
+    ``confirmed_command`` is the human-in-the-loop gate for R-15: a practice
+    deck is JSON a user pointed the CLI at, which may itself be LLM-authored,
+    so ``verification.command`` is data the deck's author chose, not an
     instruction this function trusts blindly. ``run_command`` alone (the
-    original gate) only asked "is command verification allowed at all";
-    ``confirmed`` additionally asks "has THIS resolved command been shown to
-    a human and approved" -- enforced here, independent of whatever a caller
-    (the CLI's ``--yes``/interactive-prompt dance, see ``cli/_practice.py``)
-    did upstream, so this function can never be made to run a command
-    silently just because some other caller forgot to ask.
+    original gate) only asks "is command verification allowed at all";
+    ``confirmed_command`` additionally asks "has THIS EXACT resolved command
+    been shown to a human and approved" -- enforced here, independent of
+    whatever a caller (the CLI's ``--yes``/interactive-prompt dance, see
+    ``cli/_practice.py``) did upstream, so this function can never be made
+    to run a command silently just because some other caller forgot to ask.
+
+    R-15b (TOCTOU): this takes the confirmed command as a STRING, not a
+    bool. ``peek_verification_command`` (what a caller uses to show the
+    command and obtain confirmation) and this function each reload the deck
+    from disk independently -- a bare ``confirmed: bool`` could not detect
+    the deck changing between those two reads, so a caller could be shown
+    one command and have a DIFFERENT one executed. Passing the string closes
+    that window: below, the freshly-reloaded command is compared against
+    ``confirmed_command``, and execution is refused if they no longer match.
+    ``None`` means "no confirmation offered" (the old ``confirmed=False``).
+
+    R-15c: the only caller of this function (and of
+    ``peek_verification_command``) anywhere in ``packages/studyloop/src`` is
+    ``cli/_practice.py``'s ``practice_verify`` command -- confirmed by
+    ``rg -n "verify_practice_task|peek_verification_command"
+    packages/studyloop/src`` (see ``evidence/M4/R-15b/rg-callers.txt``). The
+    CLI is therefore the trust boundary: it is what shows the command and
+    obtains ``--yes``/interactive-``y`` confirmation before passing a
+    non-``None`` ``confirmed_command`` here. A future MCP tool, web route,
+    or other agent-facing caller that reaches this function MUST perform
+    the same show-then-confirm step itself; there is no other gate.
     """
     resolved = practice_path.expanduser().resolve()
     deck = load_practice_deck(resolved)
@@ -210,17 +231,24 @@ def verify_practice_task(
         if not command:
             msg = "Practice task verification.kind is command but no command is configured."
             raise ValueError(msg)
-        if not confirmed:
+        if confirmed_command is None:
             msg = (
                 "Command verification requires confirmation before it runs "
                 "(--yes, or an interactive y at the prompt)."
             )
             raise PermissionError(msg)
+        if confirmed_command != command:
+            msg = (
+                "The practice deck's command changed since it was shown for "
+                "confirmation; refusing to run a different command than the "
+                "one approved."
+            )
+            raise PermissionError(msg)
         try:
             completed = subprocess.run(
-                command,
-                shell=True,  # nosec B602 -- deck author's command, confirmed by a human just above
+                confirmed_command,
                 cwd=wd,
+                shell=True,  # nosec B602 -- deck author's command, confirmed by a human just above
                 text=True,
                 capture_output=True,
                 timeout=effective_timeout,
