@@ -219,22 +219,32 @@ be the thing that changes the file the web process is polling.
 
 ## 6. Scope decisions carried from M3
 
-- **`studyloop/tmux.py:LOCK_FILE`** (`~/.config/studyloop/studyloop-tmux.lock`,
-  hardcoded, not derived from `STUDYLOOP_SESSION_DIR`) — **in scope for this
-  lane's spirit but not touched by it.** It is a real gap (a test run that
-  legitimately wants an isolated `STUDYLOOP_SESSION_DIR` still serialises tmux
-  *creation* through the real, shared machine-wide lock file), but no step in
-  this lane's brief creates a new tmux session under test, and R-49 (fixing
-  the integration harness's hardcoded paths generally) is explicitly M3's
-  item, already delivered. Changing `LOCK_FILE` to derive from
-  `session_state.SESSION_DIR` is a one-line, low-risk follow-up that belongs
-  with R-49's own file list, not bundled into a session-authority contract
-  commit. Recorded, not fixed, here. **Observed concretely (C8/C11, council):** the
-  `integration`-marked suite (`test_harness_matrix.py`, real tmux) always
-  bumps this file's mtime, which the unit suite's own session-runtime
-  snapshot guard (C8/R-49d, `conftest.py`) then reports as "changed"
-  whenever that suite runs -- a known, accepted false positive from an
-  already-recorded gap, not a new defect either guard introduces.
+- **`studyloop/tmux.py`'s coordination lock — RESOLVED (C12/R-49f,
+  council).** Was: hardcoded to `~/.config/studyloop/studyloop-tmux.lock`
+  at `tmux.py`'s own import time, independent of `STUDYLOOP_SESSION_DIR`
+  (a real gap: a test run that legitimately wanted an isolated
+  `STUDYLOOP_SESSION_DIR` still serialised tmux *creation* through the
+  real, shared machine-wide lock file — the exact shape that made the
+  nightly `integration` UAT workflow release-blocking once C8's
+  session-runtime guard existed to notice it, C11's own incident report).
+  Fixed: `tmux._lock_file()` resolves the path lazily, at call time, from
+  `session_state.SESSION_DIR` (`STUDYLOOP_SESSION_DIR`, default
+  `~/.config/studyloop`, same as every other constant this contract
+  documents) — `create_session()` and `cli/_clean.py`'s own equivalent
+  code path both call it instead of reading a module-level constant bound
+  at import time. Production default is unchanged (same path, same
+  machine-wide serialisation property); a relocated
+  `STUDYLOOP_SESSION_DIR` now relocates this lock too, and the C8/R-49d
+  test-suite isolation fixture covers it with no fixture change, since it
+  already redirects `session_state.SESSION_DIR` for every unit test.
+  `test_r49_canary.py`'s own permitted-new-entry carve-out for this lock
+  is unchanged in shape (the lock still legitimately appears as a new
+  entry under the fake home) but its docstring now explains why that is a
+  correctness property, not an exception to one — see that file. C8's
+  own snapshot diff during the `integration`-marked suite's real-tmux runs
+  showed only this one file (`studyloop-tmux.lock`) as "changed";
+  `data/tmux-studyloop.conf:16` (below) is untouched by that suite and
+  stays a separate, unresolved item.
 - **`data/tmux-studyloop.conf:16`** (hardcodes the real
   `~/.config/studyloop/session-oneline.txt` path) — out of scope for the same
   reason: it is a static config asset outside every file this lane owns
