@@ -17,6 +17,7 @@ These env vars affect only the test process, never user runtime.
 from __future__ import annotations
 
 import os
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -221,10 +222,41 @@ def _snapshot_studyloop_session_runtime() -> dict[str, float]:
 _studyloop_session_runtime_snapshot: dict[str, float] = {}
 
 
+# ---------------------------------------------------------------------------
+# tmux socket isolation (C11 / R-49e): the real tmux server must be
+# unreachable from the unit suite, the same way C8/R-49d made the real
+# ~/.config/studyloop unreachable.
+# ---------------------------------------------------------------------------
+#
+# tmux resolves its socket directory from TMUX_TMPDIR (falling back to
+# TMPDIR, then /tmp/tmux-<uid>/) for the default `-L <name>` addressing
+# EVERY tmux call site in this codebase uses -- confirmed by inspection:
+# studyloop.tmux._tmux() passes no -L/-S at all, and the harness
+# (test_harness_matrix.py) shells out to the bare `tmux` binary the same
+# way. The one `-S` anywhere in the source tree
+# (multiplexer.py's `capture-pane -t ... -S -{lines}`) is capture-pane's
+# unrelated "start line" flag, not a socket path -- no code path in this
+# repository bypasses TMUX_TMPDIR with an explicit socket path.
+#
+# Set here, in pytest_sessionstart, before any test imports studyloop.tmux
+# or spawns a tmux subprocess: every tmux invocation reads os.environ
+# fresh at call time (none of them capture it at import time), including
+# subprocess children spawned by the harness (they build their env from
+# `**os.environ`), so this redirects the WHOLE suite's tmux traffic to a
+# private, throwaway socket directory. TMUX is also unset, so a test
+# process run from inside a real tmux session on this machine is never
+# treated as "already inside" one (studyloop.tmux.is_in_tmux()).
+_TMUX_TMPDIR_ROOT = Path(tempfile.mkdtemp(prefix="studyloop-test-tmux-"))
+
+
 def pytest_sessionstart(session) -> None:
-    """Snapshot the real session-runtime surface before any test runs."""
+    """Snapshot the real session-runtime surface (C8) and isolate tmux's
+    own socket directory (C11) before any test runs."""
     global _studyloop_session_runtime_snapshot
     _studyloop_session_runtime_snapshot = _snapshot_studyloop_session_runtime()
+
+    os.environ["TMUX_TMPDIR"] = str(_TMUX_TMPDIR_ROOT)
+    os.environ.pop("TMUX", None)
 
 
 def test_session_dir_is_isolated_from_the_real_config_dir() -> None:
@@ -250,6 +282,17 @@ def test_session_dir_is_isolated_from_the_real_config_dir() -> None:
                 f"{module_name}.{attr} == {value!r} still resolves under the real "
                 "config dir -- the autouse isolation fixture did not retarget it"
             )
+
+
+def test_tmux_socket_is_isolated_from_the_real_tmux_server() -> None:
+    """Guard (C11/R-49e): TMUX_TMPDIR must actually point at the private
+    directory pytest_sessionstart created, and TMUX must be unset.
+
+    Assertion-only: never itself starts a tmux session, so it cannot trip
+    the private-socket guard in pytest_sessionfinish.
+    """
+    assert os.environ.get("TMUX_TMPDIR") == str(_TMUX_TMPDIR_ROOT)
+    assert "TMUX" not in os.environ
 
 
 def test_no_test_writes_to_real_user_state() -> None:
@@ -615,6 +658,55 @@ def pytest_sessionfinish(session, exitstatus) -> None:
                     session.exitstatus = 1
 
     _check_real_studyloop_config_dir_untouched(session)
+    _kill_and_report_private_tmux_socket(session)
+
+
+def _kill_and_report_private_tmux_socket(session) -> None:
+    """C11/R-49e backstop: kill any tmux server left running in the
+    private socket directory, and fail the run if one existed.
+
+    Guarded against a synthetic ``session`` for the same reason
+    ``_check_real_studyloop_config_dir_untouched`` is (see its own
+    docstring): a direct call from a unit test exercising unrelated
+    hook logic must not run this.
+
+    A server here means some test created a real tmux session without
+    going through the stubbed multiplexer backend -- exactly the failure
+    mode that leaked 3 real tmux sessions during R-01b/C9's own RED
+    verification (caught and cleaned up by hand both times; this backstop
+    is what makes the NEXT one loud instead of a manual `tmux
+    list-sessions` check after the fact).
+    """
+    if not isinstance(session, pytest.Session):
+        return
+    env = {**os.environ, "TMUX_TMPDIR": str(_TMUX_TMPDIR_ROOT)}
+    listing = subprocess.run(
+        ["tmux", "list-sessions"],
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+    had_sessions = listing.returncode == 0 and bool(listing.stdout.strip())
+    # kill-server exits non-zero with "no server running on <socket>" when
+    # there is nothing to kill -- ignored either way, per the item's own
+    # instruction; there is nothing further to clean up once this returns.
+    subprocess.run(
+        ["tmux", "kill-server"],
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+    if not had_sessions:
+        return
+    message = (
+        "R-49e: a real tmux session was left running in the unit suite's "
+        "private socket directory at session finish -- a test fell "
+        f"through tmux isolation (now killed):\n{listing.stdout}"
+    )
+    reporter = session.config.pluginmanager.get_plugin("terminalreporter")
+    if reporter is not None:  # pragma: no cover - no terminal plugin
+        reporter.write_sep("!", message, red=True, bold=True)
+    session.exitstatus = 1
 
 
 def _check_real_studyloop_config_dir_untouched(session) -> None:
