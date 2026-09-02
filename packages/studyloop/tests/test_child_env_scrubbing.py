@@ -72,6 +72,12 @@ class TestScrubbing:
         # shape the finding cited, not because it demonstrates the new
         # pattern alone.
         "OAUTH_CLIENT_SECRET",
+        # No underscore at all between the two credential-shaped words —
+        # R-11c. Every pattern above is underscore-anchored, so a name that
+        # joins two words with no separator defeated all of them.
+        "SERVICE_APIKEY",
+        "GOOGLE_APIKEY",
+        "SESSIONCOOKIE",
     )
 
     #: Ordinary environment that MUST survive. Keep-controls matter as much as the
@@ -103,6 +109,25 @@ class TestScrubbing:
         # R-11b: no entry in this keep-list contains "oauth" as a substring,
         # so the new `oauth` segment word has no false positive to guard
         # against here. Checked directly, not just asserted by omission.
+        #
+        # R-11c: none of these entries, underscore-stripped and lowercased,
+        # contain any of CHILD_ENV_DENY_SQUASHED's compound words either.
+        # MONKEY -> "monkey" (literally ends in "key", the classic false
+        # positive the anchored suffix pattern above already handles) does
+        # NOT contain "apikey"/"accesskey"/"secretkey"/... as a substring,
+        # which is exactly why CHILD_ENV_DENY_SQUASHED is a curated list of
+        # COMPOUNDS rather than the bare words themselves.
+    )
+
+    #: R-11c (ARBITRATION.md A6): stripping these two is a DELIBERATE,
+    #: accepted trade-off of the bare `authorization`/`cookie` segment words
+    #: added for R-11, not a new false positive introduced here and not
+    #: something to "fix" by narrowing the pattern. A deny-list errs toward
+    #: over-stripping; documented here so a future reader does not mistake
+    #: this for a regression or move these into MUST_KEEP.
+    KNOWN_INTENDED_STRIPS: tuple[str, ...] = (
+        "AUTHORIZATION_ENDPOINT",
+        "COOKIE_FILE",
     )
 
     def test_every_known_credential_shape_is_removed(self) -> None:
@@ -110,6 +135,14 @@ class TestScrubbing:
         clean = build_child_env(env)
         leaked = sorted(k for k in self.MUST_STRIP if k in clean)
         assert leaked == [], f"these credentials reached the agent child: {leaked}"
+
+    def test_known_intended_strips_are_stripped(self) -> None:
+        """R-11c: AUTHORIZATION_ENDPOINT and COOKIE_FILE are an ACCEPTED
+        false-positive trade-off of the bare authorization/cookie segment
+        words, not something this fix should try to avoid."""
+        env: dict[str, str] = dict.fromkeys(self.KNOWN_INTENDED_STRIPS, "value")
+        clean = build_child_env(env)
+        assert clean == {}
 
     def test_ordinary_environment_survives(self) -> None:
         """Deny-list, not allow-list.

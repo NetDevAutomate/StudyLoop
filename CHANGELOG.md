@@ -66,6 +66,9 @@ experience may change before `1.0.0`.
   confirmed, and refuses if the practice deck's command changed between
   being shown for confirmation and being executed, closing a time-of-check-
   to-time-of-use window in the R-15 fix above.
+- Closed a gap in the agent-child credential scrub where two credential-
+  shaped words joined with no separator (`SERVICE_APIKEY`, `SESSIONCOOKIE`)
+  escaped every existing pattern, which is underscore-anchored throughout.
 - Closed a gap in the agent-child credential scrub: a bare `_KEY` suffix
   (`ENCRYPTION_KEY`, `SIGNING_KEY`, `MASTER_KEY`, ...) and bare
   `AUTHORIZATION`/`JWT`/`COOKIE`-shaped variables now get stripped from an
