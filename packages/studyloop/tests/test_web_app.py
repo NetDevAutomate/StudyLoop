@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 pytest = __import__("pytest")
@@ -15,8 +17,6 @@ from studyloop.cli import cli  # noqa: E402
 from studyloop.web.app import create_app  # noqa: E402
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from pytest import MonkeyPatch
 
 
@@ -71,10 +71,70 @@ class TestIndex:
         assert "text/html" in resp.headers["content-type"]
 
     def test_security_headers(self, client: TestClient) -> None:
+        """R-13: DENY + CSP + Referrer-Policy + Permissions-Policy, no X-XSS-Protection.
+
+        DENY (not SAMEORIGIN) because no iframe surface exists anywhere in
+        static/ after the ttyd retirement (stage 4) — the same-origin
+        /terminal/ iframe this header used to be weakened for is gone.
+        X-XSS-Protection is a deprecated no-op in every modern browser and
+        must NOT be set; the CSP below is its replacement.
+        """
         resp = client.get("/")
         assert resp.headers["x-content-type-options"] == "nosniff"
-        # SAMEORIGIN (not DENY) to allow same-origin iframe embedding of the ttyd proxy
-        assert resp.headers["x-frame-options"] == "SAMEORIGIN"
+        assert resp.headers["x-frame-options"] == "DENY"
+        assert resp.headers["referrer-policy"] == "same-origin"
+        assert resp.headers["permissions-policy"] == "geolocation=(), microphone=(), camera=()"
+        assert "x-xss-protection" not in resp.headers
+
+        csp = resp.headers["content-security-policy"]
+        assert "default-src 'self'" in csp
+        assert "script-src 'self'" in csp
+        # No 'unsafe-inline' for script-src: both inline <script> blocks that
+        # used to live in index.html were moved to files under web/static/js/
+        # in this same stage. 'unsafe-eval' IS present and required — Alpine
+        # evaluates every x-data/x-text/@click expression via `new Function`
+        # internally (Alpine's own documented CSP constraint); confirmed by
+        # reproduction that script-src 'self' alone leaves every Alpine
+        # binding throwing a CSP pageerror and rendering empty. style-src
+        # keeps 'unsafe-inline' — Alpine's :style bindings and x-transition
+        # set inline style attributes at runtime, which cannot be nonced
+        # (only <style> elements/<link> can).
+        script_src = next(part for part in csp.split(";") if "script-src" in part).strip()
+        assert "unsafe-inline" not in script_src
+        assert "unsafe-eval" in script_src
+        # connect-src data: is scoped to fetch/XHR targets, not script
+        # sources: --dev --dev-engine ghostty's WASM VT100 parser bootstraps
+        # via fetch("data:application/wasm;base64,...") rather than a
+        # same-origin URL. Without this, every --dev session 404s under CSP.
+        assert "connect-src 'self' data:" in csp
+
+    def test_no_inline_script_blocks_in_index_html(self) -> None:
+        """The two inline <script> blocks this stage moved out must not come back.
+
+        A regression here would make the script-src 'self' CSP above break
+        the app (no 'unsafe-inline', no nonce), rather than just fail this
+        test — so this guards the CSP's own precondition, not just a style
+        preference.
+        """
+        html = (
+            Path(__file__).resolve().parent.parent
+            / "src"
+            / "studyloop"
+            / "web"
+            / "static"
+            / "index.html"
+        ).read_text()
+        # Strip HTML comments first: this repo's comments reference the word
+        # "<script>" in prose (e.g. documenting where code moved to), which
+        # is not a real tag and must not trip this check.
+        without_comments = re.sub(r"<!--.*?-->", "", html, flags=re.DOTALL)
+        real_script_tags = re.findall(r"<script\b[^>]*>", without_comments)
+        no_src = [tag for tag in real_script_tags if "src=" not in tag]
+        assert not no_src, (
+            f"found a bare inline <script> block with no src=: {no_src!r} — "
+            "move it to a file under web/static/js/ or the CSP's "
+            "script-src 'self' will break it"
+        )
 
 
 class TestCoursesAPI:

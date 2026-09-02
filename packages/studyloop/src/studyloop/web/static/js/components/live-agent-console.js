@@ -788,12 +788,15 @@ export function liveAgentConsole(origin = 'study') {
       },
 
       /* ------------------------------------------------------------
-       * Legacy ttyd iframe path (transport=ttyd emergency fallback)
+       * Unrecognised-transport fallback
        * ------------------------------------------------------------ */
       /* Terminal surfaces are xterm (transport=pty) and ACP chat (transport=acp).
-         The ttyd iframe was retired once the pty path survived a page reload; the
-         server still honours STUDYLOOP_TRANSPORT=ttyd, but it is no longer offered
-         as a browser rendering option. */
+         The ttyd iframe was retired once the pty path survived a page reload, and
+         ttyd retirement stage 3 removed the server-side transport axis entirely —
+         the server now rejects transport=ttyd/STUDYLOOP_TRANSPORT=ttyd outright.
+         This method is the generic "the server reported a transport this view
+         cannot render" fallback for any future unrecognised value, not a
+         ttyd-specific branch. */
       _mountUnavailable(detail) {
         this.terminalMode = 'unavailable';
         this.connected = false;

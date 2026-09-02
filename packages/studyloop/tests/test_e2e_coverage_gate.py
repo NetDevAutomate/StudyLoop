@@ -87,12 +87,6 @@ ROUTE_NO_FULL_STACK_WAIVERS: dict[str, str] = {
         "full-stack run would need a live LLM provider, which the "
         "live_provider-marked suites own."
     ),
-    "WS /terminal/ws": (
-        "Passthrough socket to the external ttyd binary (legacy tmux fallback "
-        "transport). It cannot be walked without ttyd installed, and the "
-        "browser-visible terminal a learner actually uses is the PTY/xterm path "
-        "proven by test_render_validation.test_terminal_paints_agent_bytes."
-    ),
 }
 
 #: CLI commands with no test. Maintainer/one-shot commands may be waived;
