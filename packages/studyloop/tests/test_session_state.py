@@ -690,3 +690,72 @@ def test_claim_blocks_cli_start_reservation_with_live_pid_and_mux_session_still_
     }
 
     assert claim_blocks_cli_start(state) is True
+
+
+# ---------------------------------------------------------------------------
+# C10 (council): try_claim_session must REPLACE the previous claim when
+# reclaiming, not merge the reservation over it -- a merge resurrects
+# every key of the stale claim the reservation does not name
+# (mux_session/tmux_session, child_pid, session_dir, agent, energy,
+# topic, ...) into the brand-new session's state.
+# ---------------------------------------------------------------------------
+
+
+def test_try_claim_session_reclaim_does_not_inherit_the_stale_claims_other_keys(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A stale CLI claim carrying mux_session/child_pid/session_dir/etc,
+    reclaimed by a fresh web reservation, must leave the new state exactly
+    equal to the reservation -- none of the stale claim's other fields."""
+    from studyloop.session_state import (
+        read_session_state,
+        try_claim_session,
+        write_session_state,
+    )
+
+    monkeypatch.setattr("studyloop.session_state.SESSION_DIR", tmp_path)
+    monkeypatch.setattr("studyloop.session_state.STATE_FILE", tmp_path / "session-state.json")
+    write_session_state(
+        {
+            "study_session_id": "stale-cli-1",
+            "mode": "focus",
+            "mux_session": "study-x-1234",
+            "tmux_session": "study-x-1234",
+            "child_pid": 4242,
+            "session_dir": "/some/dead/session/dir",
+            "agent": "codex",
+            "energy": 3,
+            "topic": "Old topic",
+        }
+    )
+
+    web_reservation = {
+        "study_session_id": "pending-web-1",
+        "mode": "starting",
+        "transport": "pty",
+        "pid": os.getpid(),
+        "topic": "New topic",
+        "started_at": "2026-06-01T12:00:00+00:00",
+    }
+    result = try_claim_session(web_reservation, blocks=lambda state: False)
+
+    assert result is None
+    assert read_session_state() == web_reservation
+
+
+def test_try_claim_session_no_prior_claim_still_writes_exactly_the_reservation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Baseline (no regression): with no prior claim at all, the merge and
+    the replace produce the same result -- there is nothing to resurrect
+    either way. Pinned so the two behave identically on the common case."""
+    from studyloop.session_state import read_session_state, try_claim_session
+
+    monkeypatch.setattr("studyloop.session_state.SESSION_DIR", tmp_path)
+    monkeypatch.setattr("studyloop.session_state.STATE_FILE", tmp_path / "session-state.json")
+
+    reservation = {"study_session_id": "pending-1", "mode": "starting"}
+    result = try_claim_session(reservation, blocks=lambda state: False)
+
+    assert result is None
+    assert read_session_state() == reservation

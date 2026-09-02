@@ -28,8 +28,13 @@ eventual write -- the R-01 clobber, by timing instead of by the R-01 bug
 itself (which this lane already closed). `session_state.try_claim_session
 (reservation, blocks, *, on_reclaim=None) -> dict | None` closes it: under
 the SAME `fcntl.flock` `write_session_state` uses, read the current
-claim, decide via `blocks`, and (if not blocked) merge-write `reservation`
--- all in one lock acquisition. `on_reclaim(previous_state)` runs inside
+claim, decide via `blocks`, and (if not blocked) write `reservation` as
+the new claim -- **REPLACING** whatever was there, not merged over it
+(C10, council: an earlier version merge-wrote, which resurrected a stale
+claim's own fields -- `mux_session`, `child_pid`, `session_dir`, etc --
+that the reservation does not name, into the brand-new session's state;
+see clause 4's own note on this). All of this happens in one lock
+acquisition. `on_reclaim(previous_state)` runs inside
 that same lock, before the write, so a caller's IPC-file clear (C2) and
 reclaim log (C4) are atomic with the claim itself, not a separate,
 racy step. Every start path now calls this at the point of its own old
@@ -152,6 +157,19 @@ individually correct.
 | --- | --- |
 | Web ends (`POST /session/end`) while a CLI tmux session happens to be live | `active.release()` tears down the web slot; `end_session_common` → `_cleanup_tmux_and_files` kills **only** the ending session's own multiplexer name (`None` for PTY/ACP, so nothing is killed). The CLI's tmux session is untouched. |
 | CLI ends (`studyloop study --end`) while a web session happens to be live | `end_session_common` kills only the CLI's own tmux name. The web session's slot is unaffected by this call; it is released by the existing `_grace.py` reaper on its own schedule if the web session's owning process observes the file changed (out of scope for this clause — the reaper is not modified by this lane). |
+
+**C10 (council, closed):** this invariant ("end kills only its own name")
+depends on the state a session's end path reads NEVER carrying another
+session's multiplexer name. `try_claim_session` reclaiming a stale claim
+used to merge-write the reservation over it, so a stale CLI claim's
+`mux_session` (plus `child_pid`, `session_dir`, and anything else the
+reservation does not name) survived into the brand-new session's own
+state — a web session started over a reclaimed CLI claim would then end
+by calling `kill_session` on a tmux name that was never its own,
+violating this exact row silently. Fixed by making the reservation write
+REPLACE, not merge (clause 1) — a fresh start never inherits a stale
+claim's other fields, full stop. Pinned by
+`TestEndMatrix::test_a_web_session_started_over_a_reclaimed_stale_cli_claim_ends_without_kill_session`.
 
 **`kill_all_study_sessions()`** (`tmux.py`, `herdr.py`'s `HerdrBackend`) keeps
 its exact semantics — kill every `study-*` session, unconditionally, current
