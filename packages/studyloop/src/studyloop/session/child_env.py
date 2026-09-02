@@ -86,6 +86,35 @@ CHILD_ENV_DENY_SEGMENT_PAT = re.compile(
     r")(_|$)"
 )
 
+#: Compound credential words with their internal separator removed, checked
+#: against the SAME normalisation of the candidate name (underscores
+#: stripped, lowercased) -- R-11c.
+#:
+#: SERVICE_APIKEY, GOOGLE_APIKEY and SESSIONCOOKIE defeat every pattern
+#: above by construction: each joins two credential-shaped words with NO
+#: separator at all, and every rule above is underscore-anchored.
+#:
+#: Deliberately a short, curated list of COMPOUNDS rather than the bare
+#: words (key/token/secret/cookie/...) themselves. Checking a bare word as
+#: a substring of the squashed name would also catch MONKEY -- "monkey"
+#: literally ends in "key" -- plus DONKEY, TURKEY_DATA and KEYBOARD_LAYOUT,
+#: the exact false positives CHILD_ENV_DENY_PAT's underscore anchoring
+#: exists to avoid. None of those names, squashed, contain any COMPOUND
+#: word below.
+CHILD_ENV_DENY_SQUASHED: tuple[str, ...] = (
+    "apikey",
+    "accesskey",
+    "secretkey",
+    "privatekey",
+    "sessioncookie",
+    "accesstoken",
+    "authtoken",
+    "bearertoken",
+    "refreshtoken",
+    "idtoken",
+    "clientsecret",
+)
+
 
 def build_child_env(caller_env: dict[str, str] | None = None) -> dict[str, str]:
     """Return the environment for an agent child, with credentials removed.
@@ -101,6 +130,9 @@ def build_child_env(caller_env: dict[str, str] | None = None) -> dict[str, str]:
         if CHILD_ENV_DENY_PAT.search(key):
             continue
         if CHILD_ENV_DENY_SEGMENT_PAT.search(key):
+            continue
+        squashed = key.replace("_", "").lower()
+        if any(word in squashed for word in CHILD_ENV_DENY_SQUASHED):
             continue
         clean[key] = value
     return clean
