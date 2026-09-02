@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Current schema version - increment when adding new migrations
-CURRENT_VERSION = 28
+CURRENT_VERSION = 29
 
 # Migration functions: version -> (description, migration_func)
 MIGRATIONS: dict[int, tuple[str, Callable[[sqlite3.Connection], None]]] = {}
@@ -1144,6 +1144,129 @@ def migrate_v28(conn: sqlite3.Connection) -> None:
         conn.execute(
             f"UPDATE {table} SET updated_at = datetime('now') WHERE updated_at IS NULL"
         )
+
+
+@migration(
+    29,
+    "R-19b: backfill residual NULL updated_at on GLOBAL_SYNC_TABLES rows and "
+    "auto-stamp it on every future insert/update",
+)
+def migrate_v29(conn: sqlite3.Connection) -> None:
+    """Close the "NULL freezes the destination" gap in the R-19 recency gate.
+
+    Two separate problems, both real (M3 council, arbitration rows A1/A1'):
+
+    1. **Residual NULLs on existing rows.** v28's backfill used each table's
+       best available existing timestamp column, but a row is left NULL if
+       that source column was itself NULL, or (for `study_progress`,
+       `knowledge_bridges`, `concepts`, `concept_relations`, which already
+       had `updated_at` since v9/v11/v12) if a NULL ever reached this table
+       another way -- most plausibly a pre-R-19 cross-machine sync blindly
+       replicating a NULL from an older source (`INSERT OR REPLACE` copied
+       literal column values, including NULL, before the recency gate
+       existed). This migration sweeps every `GLOBAL_SYNC_TABLES` row still
+       NULL and backfills from `created_at` (or the same per-table column
+       v28 used) with `datetime('now')` as the last resort.
+
+    2. **Every future row was silently exempt.** This is the part v28 missed
+       and the council's second reviewer (verified) escalated to High:
+       `history/sessions.py` never writes `updated_at` for `study_sessions`,
+       and v28 added that column via a bare `ALTER TABLE ... ADD COLUMN`
+       with **no default** (SQLite refuses a non-constant default on a
+       populated table -- see v28's own docstring). So every `study_sessions`
+       row created *after* v28 ran is NULL from the moment it's written, not
+       just the ones that predate the migration.
+
+       Fixed with an ``AFTER INSERT`` + ``AFTER UPDATE`` trigger per table,
+       rather than touching every writer (several -- `parking.py`,
+       `mcp_server.py` -- are outside this lane's ownership; a schema-level
+       trigger fixes every current and future writer regardless of which
+       file it lives in):
+
+       - ``AFTER INSERT ... WHEN NEW.updated_at IS NULL``: stamps a fresh row
+         that omitted it (matches this exact defect).
+       - ``AFTER UPDATE ... WHEN NEW.updated_at IS OLD.updated_at``: stamps
+         any update that didn't already set `updated_at` itself (several
+         `parking.py` update paths -- board_order, priority, park_count --
+         don't; a few others already do, and the guard makes this a no-op
+         for those instead of double-stamping).
+
+       Only the six tables whose `updated_at` was added via v28's bare
+       `ALTER TABLE` (no default) need this: `study_sessions`,
+       `teach_back_scores`, `parked_topics`, `scrub_log`, `concept_aliases`,
+       `message_concepts`. The other four (`study_progress`,
+       `knowledge_bridges`, `concepts`, `concept_relations`) have had
+       `updated_at TEXT DEFAULT (datetime('now'))` since their original
+       `CREATE TABLE` (v9/v11/v12) -- that default *does* apply to a fresh
+       INSERT that omits the column, even though ALTER TABLE cannot add one
+       retroactively to a populated table. Confirmed no writer of those four
+       tables ever explicitly inserts a literal NULL.
+    """
+    residual_backfill_column = {
+        "study_progress": "created_at",
+        "study_sessions": "created_at",
+        "teach_back_scores": "created_at",
+        "knowledge_bridges": "created_at",
+        "concepts": "created_at",
+        "concept_relations": "created_at",
+        "parked_topics": "parked_at",
+        "scrub_log": "scrubbed_at",
+    }
+    for table, source_column in residual_backfill_column.items():
+        columns = _table_columns(conn, table)
+        if not columns or "updated_at" not in columns:
+            continue
+        if source_column in columns:
+            conn.execute(
+                f"UPDATE {table} SET updated_at = COALESCE({source_column}, datetime('now')) "
+                "WHERE updated_at IS NULL"
+            )
+        else:
+            conn.execute(
+                f"UPDATE {table} SET updated_at = datetime('now') WHERE updated_at IS NULL"
+            )
+    for table in ("concept_aliases", "message_concepts"):
+        columns = _table_columns(conn, table)
+        if not columns or "updated_at" not in columns:
+            continue
+        conn.execute(
+            f"UPDATE {table} SET updated_at = datetime('now') WHERE updated_at IS NULL"
+        )
+
+    # Auto-stamp updated_at going forward -- only the six tables whose column
+    # has no schema-level default (see docstring). Keyed by the table's full
+    # PRIMARY KEY (composite for the two link tables) so the trigger's own
+    # UPDATE matches exactly the one row that was just written, never a
+    # sibling row sharing part of that key.
+    trigger_pk_columns: dict[str, tuple[str, ...]] = {
+        "study_sessions": ("id",),
+        "teach_back_scores": ("id",),
+        "parked_topics": ("id",),
+        "scrub_log": ("id",),
+        "concept_aliases": ("alias", "concept_id"),
+        "message_concepts": ("message_id", "concept_id"),
+    }
+    for table, pk_columns in trigger_pk_columns.items():
+        columns = _table_columns(conn, table)
+        if not columns or "updated_at" not in columns:
+            continue
+        match_clause = " AND ".join(f"{col} = NEW.{col}" for col in pk_columns)
+        conn.execute(f"DROP TRIGGER IF EXISTS trg_{table}_updated_at_ins")
+        conn.execute(f"""
+            CREATE TRIGGER trg_{table}_updated_at_ins AFTER INSERT ON {table}
+            WHEN NEW.updated_at IS NULL
+            BEGIN
+                UPDATE {table} SET updated_at = datetime('now') WHERE {match_clause};
+            END
+        """)
+        conn.execute(f"DROP TRIGGER IF EXISTS trg_{table}_updated_at_upd")
+        conn.execute(f"""
+            CREATE TRIGGER trg_{table}_updated_at_upd AFTER UPDATE ON {table}
+            WHEN NEW.updated_at IS OLD.updated_at
+            BEGIN
+                UPDATE {table} SET updated_at = datetime('now') WHERE {match_clause};
+            END
+        """)
 
 
 def check_migration_status(db_path: Path) -> dict:

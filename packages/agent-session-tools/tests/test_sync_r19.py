@@ -46,6 +46,28 @@ def _seed_study_progress(
     )
 
 
+def _seed_knowledge_bridge(
+    conn: sqlite3.Connection,
+    bridge_id: int,
+    *,
+    updated_at: str | None,
+    quality: str = "proposed",
+) -> None:
+    """`knowledge_bridges.updated_at` is nullable (unlike `study_progress`'s
+    NOT NULL column), which is exactly what R-19b's NULL-destination test
+    needs to construct.
+    """
+    conn.execute(
+        """
+        INSERT INTO knowledge_bridges
+            (id, source_concept, source_domain, target_concept, target_domain,
+             quality, updated_at)
+        VALUES (?, 'decorator', 'python', 'wrapper', 'general', ?, ?)
+        """,
+        (bridge_id, quality, updated_at),
+    )
+
+
 class TestGlobalUpsertSql:
     """Shape of the generated SQL, independent of any DB."""
 
@@ -53,7 +75,13 @@ class TestGlobalUpsertSql:
         sql = _build_global_upsert_select_sql("study_progress")
         assert "INSERT OR REPLACE" not in sql
         assert 'ON CONFLICT("id")' in sql
-        assert 'WHERE excluded."updated_at" > study_progress."updated_at"' in sql
+        # R-19b: COALESCE(dest, '') on the destination side only -- a NULL
+        # destination must lose to any dated source; a NULL source must not
+        # win (see TestRecencyGateEndToEnd::test_null_destination_loses_to_dated_source).
+        assert (
+            "WHERE excluded.\"updated_at\" > COALESCE(study_progress.\"updated_at\", '''')"
+            in sql
+        )
 
     def test_covers_every_global_table_and_pk(self):
         # Every GLOBAL_SYNC_TABLES entry (sync.py) has a primary/conflict key
@@ -166,6 +194,78 @@ class TestRecencyGateEndToEnd:
         source_conn.close()
 
         assert count == 1
+
+    def test_null_destination_updated_at_loses_to_dated_source(self, tmp_path):
+        """R-19b (M3 council arbitration A1/A1'): a destination row with a
+        NULL updated_at must not freeze forever -- it is "older than
+        anything" and any dated source row must win.
+
+        knowledge_bridges.updated_at is nullable (study_progress's is NOT
+        NULL, so it cannot construct this case) -- this is exactly the shape
+        a pre-R-19 cross-machine sync could have left behind, replicating a
+        NULL literally before the recency gate existed.
+        """
+        source_conn, source_path = self._make_migrated_db(tmp_path, "source.db")
+        dest_conn, dest_path = self._make_migrated_db(tmp_path, "dest.db")
+
+        _seed_session(source_conn, "sess-1")
+        _seed_knowledge_bridge(
+            source_conn, 1, updated_at="2024-06-01 00:00:00", quality="effective"
+        )
+        source_conn.commit()
+
+        _seed_session(dest_conn, "sess-1")
+        _seed_knowledge_bridge(dest_conn, 1, updated_at=None, quality="proposed")
+        dest_conn.commit()
+        dest_conn.close()
+
+        sql = _dump_delta_sql(source_path, {"sess-1"})
+        assert _stream_sql_to_target(sql, dest_path) is True
+
+        check_conn = sqlite3.connect(dest_path)
+        row = check_conn.execute(
+            "SELECT quality, updated_at FROM knowledge_bridges WHERE id = 1"
+        ).fetchone()
+        check_conn.close()
+        source_conn.close()
+
+        assert row == ("effective", "2024-06-01 00:00:00"), (
+            f"a NULL destination updated_at must lose to any dated source row, got {row}"
+        )
+
+    def test_null_source_updated_at_does_not_win(self, tmp_path):
+        """The other half of R-19b's decision: a NULL *source* updated_at
+        must never win, even against a destination that itself has a real
+        (older) timestamp -- "no signal" from the incoming row is not
+        evidence of freshness.
+        """
+        source_conn, source_path = self._make_migrated_db(tmp_path, "source.db")
+        dest_conn, dest_path = self._make_migrated_db(tmp_path, "dest.db")
+
+        _seed_session(source_conn, "sess-1")
+        _seed_knowledge_bridge(source_conn, 1, updated_at=None, quality="proposed")
+        source_conn.commit()
+
+        _seed_session(dest_conn, "sess-1")
+        _seed_knowledge_bridge(
+            dest_conn, 1, updated_at="2024-01-01 00:00:00", quality="effective"
+        )
+        dest_conn.commit()
+        dest_conn.close()
+
+        sql = _dump_delta_sql(source_path, {"sess-1"})
+        assert _stream_sql_to_target(sql, dest_path) is True
+
+        check_conn = sqlite3.connect(dest_path)
+        row = check_conn.execute(
+            "SELECT quality, updated_at FROM knowledge_bridges WHERE id = 1"
+        ).fetchone()
+        check_conn.close()
+        source_conn.close()
+
+        assert row == ("effective", "2024-01-01 00:00:00"), (
+            f"a NULL source updated_at must not overwrite a dated destination, got {row}"
+        )
 
 
 class TestBackupDestination:
