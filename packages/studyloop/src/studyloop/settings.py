@@ -448,6 +448,17 @@ def write_raw_config(data: dict[str, Any]) -> Path:
     deliberately loosened, e.g. to share read access with another local
     tool) is left alone; only the file itself is re-tightened on every save,
     which also repairs a pre-existing 0644 file on its next write.
+
+    R-14b: ``Path.write_text`` followed by a separate ``chmod`` left a real
+    window -- for a BRAND NEW file, ``write_text`` creates it at the process
+    umask mode (typically 0644) and only ``chmod`` afterward narrows it, so
+    the plaintext ``lan_password`` briefly sat on disk wider than 0600.
+    ``os.open`` with ``O_CREAT`` and an explicit mode creates a new file at
+    that mode atomically -- there is no window where it exists any wider.
+    ``O_CREAT``'s mode argument is a no-op on an ALREADY-existing file (POSIX
+    leaves its current permissions alone), which is exactly why the
+    unconditional ``chmod`` below is kept: it is what repairs a pre-existing
+    0644 file (from before this fix shipped) on its next save.
     """
     config_path = get_config_path()
     parent = config_path.parent
@@ -455,7 +466,10 @@ def write_raw_config(data: dict[str, Any]) -> Path:
     parent.mkdir(parents=True, exist_ok=True)
     if not dir_already_existed:
         parent.chmod(0o700)
-    config_path.write_text(yaml.dump(data, default_flow_style=False, sort_keys=False))
+    content = yaml.dump(data, default_flow_style=False, sort_keys=False)
+    fd = os.open(config_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as handle:
+        handle.write(content)
     config_path.chmod(0o600)
     return config_path
 

@@ -147,6 +147,38 @@ def test_write_raw_config_locks_file_to_owner_only(monkeypatch, tmp_path):
     assert written_path.stat().st_mode & 0o777 == 0o600
 
 
+def test_write_raw_config_file_is_never_wider_than_0600_before_chmod(monkeypatch, tmp_path):
+    """R-14b: the previous fix wrote config.yaml (landing at the process
+    umask mode, typically 0644, with the plaintext lan_password already in
+    it) and only chmod'd it AFTER -- a real window where the file sits
+    group/world-readable. This spies on Path.chmod to observe the file's
+    mode at the instant just before chmod runs (the tail of that window)
+    and asserts it is ALREADY 0600, i.e. the file was created at 0600 and
+    chmod has nothing left to tighten."""
+    from studyloop.settings import write_raw_config
+
+    config_path = tmp_path / "config.yaml"
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
+
+    modes_observed_just_before_chmod: list[int] = []
+    original_chmod = Path.chmod
+
+    def spy_chmod(self, mode, *args, **kwargs):
+        modes_observed_just_before_chmod.append(self.stat().st_mode & 0o777)
+        return original_chmod(self, mode, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "chmod", spy_chmod)
+
+    write_raw_config({"lan_password": "correct-horse-battery-staple"})
+
+    assert modes_observed_just_before_chmod, "chmod was never called on the config file"
+    assert modes_observed_just_before_chmod[-1] == 0o600, (
+        f"config.yaml existed at mode {oct(modes_observed_just_before_chmod[-1])} "
+        "before chmod ran -- the plaintext lan_password was briefly readable "
+        "wider than 0600"
+    )
+
+
 def test_write_raw_config_locks_new_parent_dir_to_owner_only(monkeypatch, tmp_path):
     from studyloop.settings import write_raw_config
 
