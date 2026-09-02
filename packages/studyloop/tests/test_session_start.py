@@ -5,6 +5,8 @@ No conftest.py (pluggy conflict with agent-session-tools). All fixtures inline.
 
 from __future__ import annotations
 
+import os
+import time
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -230,6 +232,63 @@ class TestStartSessionHappyPath:
             )
 
         assert "study-old-session-abcd1234" in created_names
+
+
+class TestNoTtydSpawnOnStudyPath:
+    """R-03: plain ``studyloop study`` must never spawn ttyd, even when installed.
+
+    Puts a working ``ttyd`` shim on PATH and proves the CLI study path never
+    invokes it. Before stage 2 of the ttyd retirement, ``start_session()``
+    unconditionally called ``start_ttyd_background()``, which shelled out to
+    whatever ``ttyd`` it found on PATH with an empty password whenever neither
+    ``--web`` nor ``--lan`` was passed (R-03: a writable, unauthenticated
+    terminal on ``127.0.0.1:7681``).
+    """
+
+    def test_fake_ttyd_on_path_is_never_invoked(self, tmp_path, monkeypatch):
+        marker = tmp_path / "ttyd-was-spawned"
+        bin_dir = tmp_path / "fakebin"
+        bin_dir.mkdir()
+        fake_ttyd = bin_dir / "ttyd"
+        fake_ttyd.write_text(f"#!/bin/sh\ntouch {marker}\n")
+        fake_ttyd.chmod(0o755)
+        monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}")
+
+        with (
+            patch("studyloop.tmux.shutil.which", return_value="/usr/bin/tmux"),
+            patch("studyloop.tmux.subprocess.run", side_effect=_tmux_side_effect),
+            patch("studyloop.tmux.LOCK_FILE", tmp_path / "lock"),
+            patch("studyloop.tmux.os.execvp"),
+            # NOTE: this patches the process-wide `shutil.which` (all modules
+            # share the one `shutil` module object), so it must resolve "ttyd"
+            # for real — not just stub "claude" — or this test cannot tell
+            # apart "ttyd was never looked up" from "the patch masked it".
+            patch(
+                "studyloop.agent_launcher.shutil.which",
+                side_effect=lambda name: str(fake_ttyd) if name == "ttyd" else "/usr/bin/claude",
+            ),
+            patch("studyloop.session_state.read_session_state", return_value={}),
+            patch("studyloop.session_state.STATE_FILE", tmp_path / "state.json"),
+            patch("studyloop.session_state.SESSION_DIR", tmp_path),
+            patch("studyloop.session_state.TOPICS_FILE", tmp_path / "topics.md"),
+            patch("studyloop.session_state.PARKING_FILE", tmp_path / "parking.md"),
+            patch("studyloop.history.start_study_session", return_value="abc12345"),
+            patch("studyloop.session.cleanup.auto_clean_zombies"),
+            patch.dict("os.environ", {"TMUX": "/tmp/tmux"}),
+        ):
+            start_session("Python Decorators", "claude", "study", "elapsed", 7, False)
+
+        # Poll rather than check once: a real spawn is an async subprocess, so
+        # a single immediate check could pass by luck even with the spawn
+        # still present and merely slow to touch the marker.
+        for _ in range(20):
+            if marker.exists():
+                break
+            time.sleep(0.05)
+        assert not marker.exists(), (
+            "ttyd was spawned from the CLI study path even with no --web/--lan; "
+            "this is exactly the unauthenticated-terminal regression R-03 describes."
+        )
 
 
 class TestStartSessionRollback:
