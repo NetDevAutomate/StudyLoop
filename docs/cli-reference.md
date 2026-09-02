@@ -154,7 +154,7 @@ Run `studyloop study` without a topic to open the textual picker for body double
 - `--password SECRET` sets the LAN authentication password (used with `--lan`)
 
 **Session lifecycle:**
-- **Start:** `studyloop study "topic"` — creates tmux session, agent, sidebar
+- **Start:** `studyloop study "topic"` — creates tmux session, agent, sidebar. Refuses with "A session is already active" only when a prior session's owner is confirmed still alive (its tmux session, or — for a web session — its server process); a claim left behind by a crashed session is reclaimed automatically, with a warning logged naming the stale session, instead of refusing forever.
 - **Exit:** quit Claude normally (`/exit`, Ctrl+C) — auto-cleans up tmux, IPC files, switches back to previous session. Session directory preserved.
 - **Resume:** `studyloop study --resume` — if tmux alive, reattaches. If ended, rebuilds tmux and passes `-r` to the agent to continue the conversation from history.
 - **End explicitly:** `studyloop study --end` or sidebar `Q` — same cleanup as quitting Claude

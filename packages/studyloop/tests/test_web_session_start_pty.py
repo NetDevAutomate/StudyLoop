@@ -202,6 +202,30 @@ class TestPtyStartHappyPath:
         # active.acquire should have run.
         assert run_async(active.current()) is not None
 
+    def test_pty_start_records_the_server_process_pid(
+        self,
+        client: TestClient,
+        _mock_agent_available,
+        _stub_db,
+    ) -> None:
+        """R-01b: a fresh PTY start writes `pid == os.getpid()` into the
+        claim, so a later `studyloop study` invocation (a different
+        process) can check whether this web server process is still alive
+        (claim_blocks_cli_start)."""
+        import os
+
+        with patch("studyloop.web.routes.session.is_session_active", return_value=False):
+            resp = client.post(
+                "/api/session/start",
+                json={"topic": "Python", "energy": 5, "agent": "claude", "transport": "pty"},
+            )
+
+        assert resp.status_code == 201, resp.text
+
+        from studyloop.session_state import read_session_state
+
+        assert read_session_state().get("pid") == os.getpid()
+
     def test_pty_is_default_when_body_and_env_unset(
         self,
         client: TestClient,

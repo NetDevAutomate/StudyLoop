@@ -28,7 +28,7 @@ A claim is **LIVE** iff `session_state.is_session_active()` is true (a
 | --- | --- |
 | CLI (`studyloop study`) — no `transport` key, or one outside `{"pty","acp"}` | Its recorded multiplexer session (`mux_session`/`tmux_session`) still exists (`get_backend().session_exists(name)`). No name recorded ⇒ not alive. |
 | Web PTY/ACP, checked by the web server process that could hold it | `session/active.py`'s singleton is the *only* way a pty/acp claim can be genuinely live — this codebase runs one web server process per machine (`active.py`'s own docstring: "One process, one session"). A check that reaches the file only after finding the singleton empty has therefore already proven the claim is not live in this process. |
-| Web PTY/ACP, read from a different process (no code path in this repo does this today) | Out of scope for this lane — tracked as an open question below, not a defect this lane closes. |
+| Web PTY/ACP, read cross-process (R-01b: `studyloop study`, i.e. `session/start.py`, checking a web-owned claim) | The web server process's own pid, recorded on the claim by `build_session_state_payload` (`"pid": os.getpid()`) at start time. Live iff `os.kill(pid, 0)` doesn't raise `ProcessLookupError`; a `PermissionError` (pid reused by a process this CLI invocation doesn't own) also counts as alive, since a real process IS sitting on that pid. **No `pid` recorded blocks conservatively** — a claim written by a build before this field existed can't be verified either way, and refusing (with the existing message telling the user how to end it) is safer than silently reclaiming a claim of unknown liveness. Implemented as `claim_blocks_cli_start` in `session_state.py`, next to `claim_blocks_web_start`; the two share the CLI-owned branch via a private `_cli_owned_claim_is_live` helper. **Accepted residual risk: pid reuse** between the web server's death and this check — an unrelated process now holding that pid reads as "alive," so the claim still blocks. The failure mode is a false block ("run `--end`"), never a false reclaim of a genuinely live session. |
 
 A **stale** claim (owner dead) never blocks a new start. The next start
 **RECLAIMS** it: log a warning naming the previous owner's `study_session_id`
@@ -39,29 +39,39 @@ forever. This is the crash-then-restart cell.
 
 | | new start: CLI | new start: web (pty/acp) |
 | --- | --- | --- |
-| **existing: CLI live** | existing behaviour (`session/start.py`'s own `is_session_active()` check blocks unconditionally) — **unchanged by this lane**, documented and pinned by test only | **409**, same body `_session_conflict()` already builds for the in-process case (R-01 — this is the fix) |
-| **existing: web live** | existing behaviour (`session/start.py`'s `is_session_active()` check blocks unconditionally) — **unchanged**, pinned by test | existing behaviour: `_session_conflict()` reads `session/active.py`'s singleton — **unchanged**, pinned by test |
-| **existing: stale/crashed web claim, singleton empty** | out of scope (CLI's existing check is unrelated) | **201** — reclaimed, with a logged warning (the crash-then-restart cell) |
+| **existing: CLI live** | `session/start.py` now consults `claim_blocks_cli_start()`: blocks with the existing message iff the recorded multiplexer session still exists (R-01b — a stale one is reclaimed instead, see below) | **409**, same body `_session_conflict()` already builds for the in-process case (R-01) |
+| **existing: web live** | `claim_blocks_cli_start()`: blocks with the existing message iff the recorded owner pid is alive (R-01b — a stale one is reclaimed instead, see below) | existing behaviour: `_session_conflict()` reads `session/active.py`'s singleton — **unchanged**, pinned by test |
+| **existing: stale/crashed claim (CLI or web owner dead), singleton empty for the web column** | **proceeds** — reclaimed, with a logged warning naming the claim's `study_session_id` and transport (R-01b) | **201** — reclaimed, with a logged warning (the crash-then-restart cell, R-01) |
 
 Cells, named per the brief:
 
 1. **web-then-web** — existing, unchanged.
-2. **cli-then-cli** — existing, unchanged. `session/start.py`'s own
-   `is_session_active()` call already blocks unconditionally, regardless of
-   whether the earlier claim's owner is actually still alive. This lane does
-   not change that path; the asymmetry is real but is not R-01/R-02, and
-   fixing it would touch `session/start.py`'s CLI-only control flow the M1
-   ttyd-retirement lane also edits. Recorded as an open question below.
+2. **cli-then-cli** (R-01b, the fix) — `session/start.py`'s own guard used to
+   call `is_session_active()`, which only asked whether a claim existed, so
+   it blocked a new CLI start unconditionally even when the recorded owner
+   was provably dead. It now calls `claim_blocks_cli_start()`, sharing the
+   CLI-owned-claim liveness check with `claim_blocks_web_start()` (does its
+   recorded multiplexer session still exist?). A live claim blocks with the
+   unchanged message; a stale one is reclaimed and logged, exactly like the
+   web path already did for its own crash-then-restart cell.
+   `is_session_active()` itself is unchanged — it still answers "does a
+   claim exist," it just no longer gates the start on its own.
 3. **cli-then-web** (the R-01 fix) — web start now consults the file claim
    before acquiring. A live CLI claim blocks with the same 409 shape
    `_session_conflict()` already builds for the in-process case.
-4. **web-then-cli** — already correctly refused today by `session/start.py`'s
-   unconditional `is_session_active()` check, with the message
-   `session/start.py` prints ("A session is already active. Resume: ...").
-   Unchanged; pinned by test so a future edit cannot silently reopen it.
+4. **web-then-cli** (R-01b, the fix) — `session/start.py`'s guard used to
+   block unconditionally whenever the file said ANY session was live,
+   including a web PTY/ACP claim whose owning server process had crashed.
+   `claim_blocks_cli_start()` now checks the claim's recorded `pid`
+   cross-process (`os.kill(pid, 0)`); a live server process still blocks
+   with the unchanged message, a dead one is reclaimed and logged. A claim
+   with **no `pid` recorded** (written by a build before this fix) blocks
+   conservatively — see clause 2's per-owner liveness table.
 
-Crash-then-restart is cell 3's stale-claim branch: singleton empty, file says a
-pty/acp session is live, no genuine owner — reclaimed, not blocked.
+Crash-then-restart is cell 3's stale-claim branch (web start, singleton
+empty) and cell 2/4's stale-claim branch (CLI start, either owner shape):
+the recorded owner is provably dead — reclaimed, not blocked, in both
+directions.
 
 ## 4. End matrix
 
@@ -147,22 +157,42 @@ their claim true (not before — R-59's lesson):
   is already active.
 - `docs/cli-reference.md` — `studyloop study --end` and `studyloop clean`.
 
+## Resolved notes
+
+- **cli-then-cli's own staleness gap (R-01b, closed).** `session/start.py`'s
+  `is_session_active()` check used to block a new CLI start unconditionally,
+  even when the recorded owner (CLI or web) was provably dead — unlike the
+  web start path, which reclaimed a stale claim from the start. Fixed by
+  `claim_blocks_cli_start()` (`session_state.py`), which checks CLI-owned
+  claims the same way `claim_blocks_web_start()` does (multiplexer session
+  still exists?) and web-owned claims by their recorded pid
+  (`build_session_state_payload` now writes `"pid": os.getpid()` on every
+  web claim). `session/start.py`'s guard reads the state once, blocks iff
+  `claim_blocks_cli_start()` says so, and otherwise logs the same "Reclaiming
+  stale session claim" warning the web path already used. See clause 2's
+  per-owner liveness table and clause 3's matrix, cells 2 and 4.
+  `is_session_active()` itself is unchanged; its only remaining production
+  caller is `cli/_session.py`'s separate, simpler `studyloop session start`
+  command (see below).
+
 ## Open questions
 
-- **cli-then-cli's own staleness gap.** `session/start.py`'s `is_session_active()`
-  check blocks a new CLI start unconditionally, even when the recorded owner
-  (CLI or web) is provably dead — unlike the web start path this lane fixes,
-  which reclaims a stale claim. `auto_clean_zombies()` runs first and clears
-  some staleness (zombie tmux sessions with no child process, aged 60s+), but
-  not a state file left at `mode=focus` by a CLI process that died before
-  writing `mode=ended`. This is a real, separate gap; fixing it touches
-  `session/start.py`'s CLI-only control flow, which M1's ttyd-retirement lane
-  also edited on the same head. Left open for a follow-up item, not folded
-  into R-01/R-02.
-- **Web-owned claim liveness checked cross-process.** No code path in this
-  repository reads a pty/acp-owned claim from a process other than the one
-  web server that could hold it. If a future feature needs that (e.g. a
-  `studyloop session status` CLI command showing a live web session), it will
-  need a real cross-process liveness signal (a pid check against the
-  transport's child process, most likely) that this lane does not build,
-  because nothing exercises it today.
+- **`cli/_session.py`'s `studyloop session start` keeps the unconditional
+  `is_session_active()` guard, not `claim_blocks_cli_start()`.** This
+  command is a different shape from `studyloop study`: it never records a
+  `mux_session`/`tmux_session` name (no tmux environment is created), so the
+  CLI-owned branch `claim_blocks_cli_start()` shares with
+  `claim_blocks_web_start()` — "does the recorded multiplexer session still
+  exist?" — can never confirm one of its own claims alive; every claim this
+  command writes would read as stale and be silently reclaimed on the next
+  start, removing the fail-closed guarantee `test_cli_session.py::
+  test_session_start_rejects_when_already_active` pins, with no liveness
+  signal (no pid, no session name) to replace it. R-01b's defect report is
+  specifically about `studyloop study` (`session/start.py`); this command
+  needs its own liveness signal (most plausibly a pid recorded at write
+  time, mirroring the web claim) before the same reclaim rule can apply
+  safely. Left open for a follow-up item, not folded into R-01b.
+- **Web-owned claim liveness checked cross-process.** Now exercised by
+  `claim_blocks_cli_start()` (R-01b, above) for the one caller that needs
+  it (`studyloop study`). A second future caller (e.g. a `studyloop session
+  status` command) can reuse `claim_blocks_cli_start()`'s pid check as-is.

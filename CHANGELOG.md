@@ -171,6 +171,9 @@ experience may change before `1.0.0`.
   overwriting the shared session state and orphaning the CLI's running
   agent. A session left behind by a crashed process is still reclaimed
   automatically rather than blocking forever.
+- `studyloop study` no longer refuses to start after a crashed session left
+  a stale claim; the stale claim is reclaimed with a logged warning
+  (R-01b).
 - Ending a session -- from the Web UI, `studyloop study --end`, or the study
   sidebar's End Session key -- no longer terminates every other study
   session on the machine. Each end path now closes only its own terminal

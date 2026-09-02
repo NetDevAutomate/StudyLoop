@@ -273,7 +273,8 @@ def start_session(
         SESSION_DIR,
         TOPICS_FILE,
         _ensure_session_dir,
-        is_session_active,
+        claim_blocks_cli_start,
+        read_session_state,
         write_session_state,
     )
 
@@ -310,11 +311,24 @@ def start_session(
             )
         agent = available[0]
 
-    if is_session_active():
+    # R-01b: a claim EXISTING no longer blocks unconditionally — only a
+    # claim whose recorded owner is provably still alive does. A stale
+    # claim (owner dead) is reclaimed instead of refused forever, exactly
+    # as the web start path already does (docs/architecture/
+    # session-authority.md clause 2). is_session_active() is unchanged and
+    # still answers "does a claim exist", but no longer gates the start.
+    claim = read_session_state()
+    if claim_blocks_cli_start(claim):
         raise SessionStartError(
             "[yellow]A session is already active.[/yellow]\n"
             "  Resume: [bold]studyloop study --resume[/bold]\n"
             "  End:    [bold]studyloop study --end[/bold]"
+        )
+    if claim.get("study_session_id") and claim.get("mode") != "ended":
+        logger.warning(
+            "Reclaiming stale session claim id=%s transport=%s — its owner is no longer alive",
+            claim.get("study_session_id"),
+            claim.get("transport", "cli"),
         )
 
     # --- Create DB session ---
