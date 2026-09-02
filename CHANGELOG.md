@@ -57,6 +57,11 @@ experience may change before `1.0.0`.
   exported in the real process environment (as the e2e harness already
   does); a value that arrives via the `.env` auto-loader is deleted and
   logged.
+- Closed a second, independent gap that bypassed the fix above: a `.env` at
+  `~/.config/studyloop/.env` reintroduced the same test hatch at every
+  web-server startup, via a second dotenv loader in `agent-session-tools`
+  that ran after the first fix's scrub. Same rule, same guard, now applied
+  in both loaders.
 - Closed a gap in the agent-child credential scrub: a bare `_KEY` suffix
   (`ENCRYPTION_KEY`, `SIGNING_KEY`, `MASTER_KEY`, ...) and bare
   `AUTHORIZATION`/`JWT`/`COOKIE`-shaped variables now get stripped from an
