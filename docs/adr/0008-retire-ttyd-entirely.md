@@ -33,7 +33,9 @@ What the kept transport actually left behind:
 
 A fallback nobody selects still costs: a transport axis in two CLIs, a
 reverse-proxy route with its own auth and origin checks, a frontend panel and
-iframe path, config and session-state keys, and ~20 test files.
+iframe path, config and session-state keys, and a wide swath of test files
+(full classification in `evidence/M1/stage-6/04-manifest.md` — R-62: a count
+belongs to the evidence file it was measured in).
 
 ## Decision
 
@@ -80,9 +82,11 @@ blind to a default transport, and a spawn function that publishes an
 unauthenticated writable shell if a caller forgets. An escape hatch nobody
 exercises is not tested by use.
 
-**Delete it in one commit.** Rejected: 25 source and 20 test files, where a
-half-landed state is worse than either end — the frontend would probe a proxy that
-no longer exists, or the CLI would spawn a process nothing cleans up. Staged
+**Delete it in one commit.** Rejected: too many source and test files touch
+ttyd for a single commit not to risk landing half-migrated, and a half-landed
+state is worse than either end — the frontend would probe a proxy that
+no longer exists, or the CLI would spawn a process nothing cleans up (full
+scope in `evidence/M1/stage-6/04-manifest.md`). Staged
 across 6 commits (stages 2-7), with the spawn/cleanup ordering enforced by a test
 rather than by prose — the first draft of the retirement plan removed the cleanup
 while leaving the spawn; that class of defect was subsequently generalised into
@@ -99,4 +103,5 @@ one `stage-<n>/` directory per commit (stages 2-7), each with a DoD written
 before the change, red/green test output, the `just preflight`/`just e2e` gate
 tail, and the manifest of every test that died, was retargeted, or survived
 renamed. The final `just e2e` run of this retirement (stage 6) was the first
-fully uncontended run of the lane: 501 passed, 20 skipped, 0 failed, 0 errors.
+fully uncontended run of the lane — see `evidence/M1/stage-6/03-gate.txt` for
+the pass/skip/fail counts that run actually produced.
