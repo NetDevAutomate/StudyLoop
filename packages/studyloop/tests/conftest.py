@@ -106,6 +106,152 @@ def _isolate_state_dir(
     monkeypatch.setattr(_settings_mod, "load_settings", _patched_load_settings)
 
 
+# ---------------------------------------------------------------------------
+# Session-dir isolation (C8 / R-49d): the real ~/.config/studyloop must be
+# unreachable from the unit suite.
+# ---------------------------------------------------------------------------
+#
+# Root cause of the incident this fixture closes (evidence/M2/step-8/00-dod.md,
+# "Safety incident during implementation"): ``session_state.py``'s
+# ``SESSION_DIR``/``STATE_FILE``/``TOPICS_FILE``/``PARKING_FILE`` are resolved
+# ONCE, at that module's own import time, from ``STUDYLOOP_SESSION_DIR``
+# (defaulting to the real ``~/.config/studyloop``) -- setting the env var
+# later, or patching ``_isolate_state_dir`` above, does nothing for them:
+# that fixture covers a DIFFERENT subsystem (``load_settings().state_dir``,
+# the DB/settings root) and never touches these names. Several other
+# modules additionally bind their OWN copies of the same names at their OWN
+# import time (``from studyloop.session_state import STATE_FILE``), so
+# patching only ``studyloop.session_state``'s attributes does not retarget
+# those modules' bound copies -- each needs patching individually. Two
+# pre-existing tests fell through this exact gap and created 5 real tmux
+# sessions plus 5 real directories under ``~/.config/studyloop/sessions/``
+# before being caught by hand.
+
+_SESSION_DIR_CONSTANT_MODULES = (
+    "studyloop.session_state",
+    "studyloop.web.routes.session",
+    "studyloop.web.routes.session._ipc",
+    "studyloop.web.routes.session._start",
+    "studyloop.web.routes.session._dashboard",
+    "studyloop.tui.sidebar",
+)
+
+_SESSION_DIR_CONSTANT_FILENAMES = (
+    ("SESSION_DIR", None),
+    ("STATE_FILE", "session-state.json"),
+    ("TOPICS_FILE", "session-topics.md"),
+    ("PARKING_FILE", "session-parking.md"),
+)
+
+
+@pytest.fixture(autouse=True)
+def _isolate_real_studyloop_config_dir(
+    tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Point every session-dir constant, in every module that binds its own
+    copy, at a throwaway directory -- for every test in the suite, whether
+    or not the test itself opts in.
+
+    A test that wants its own tmp_path for this (most of
+    test_session_authority_matrix.py, test_web_session_start_pty.py, etc.)
+    is unaffected: its own later monkeypatch/patch calls simply override
+    this fixture's default for the duration of that test, then both unwind
+    together at teardown (same monkeypatch stack). ``tmp_path_factory``,
+    not ``tmp_path``, so this fixture's directory never coincides with a
+    test's own ``tmp_path`` and cannot contaminate an assertion the test
+    makes about its own tmp_path's contents (same reasoning as
+    ``_isolate_state_dir`` above).
+    """
+    import importlib
+
+    isolated = tmp_path_factory.mktemp("studyloop-suite-session-dir")
+    monkeypatch.setenv("STUDYLOOP_SESSION_DIR", str(isolated))
+
+    for module_name in _SESSION_DIR_CONSTANT_MODULES:
+        module = importlib.import_module(module_name)
+        for attr, filename in _SESSION_DIR_CONSTANT_FILENAMES:
+            if not hasattr(module, attr):
+                continue
+            target = isolated if filename is None else isolated / filename
+            monkeypatch.setattr(module, attr, target)
+
+
+# The session-runtime surface the fixture above targets and the guard below
+# watches -- deliberately NOT the whole ~/.config/studyloop tree. That
+# directory also holds sessions.db (the real learner's history database,
+# governed by STUDYLOOP_DB/agent_session_tools and already isolated by the
+# env vars set at the top of this file), config.yaml, secrets, and backups,
+# none of which any code path this incident touched can reach. Watching
+# those too would make the guard fail on unrelated traffic from other
+# processes sharing this machine (a live studyloop web server, another
+# agent session, session-export) -- a false positive that would teach
+# developers to ignore the guard, exactly what it must never do.
+_SESSION_RUNTIME_NAMES = (
+    "session-state.json",
+    "session-topics.md",
+    "session-parking.md",
+    ".session-state.lock",
+    "studyloop-tmux.lock",
+    "session-oneline.txt",
+    "sessions",
+)
+
+
+def _snapshot_studyloop_session_runtime() -> dict[str, float]:
+    """List every path under the session-runtime surface with its mtime.
+
+    A missing root, or a missing individual entry, contributes nothing --
+    there is nothing to violate yet.
+    """
+    root = Path.home() / ".config" / "studyloop"
+    snapshot: dict[str, float] = {}
+    for name in _SESSION_RUNTIME_NAMES:
+        entry = root / name
+        if not entry.exists():
+            continue
+        paths = [entry] if entry.is_file() else [entry, *entry.rglob("*")]
+        for p in paths:
+            try:
+                snapshot[str(p)] = p.stat().st_mtime
+            except OSError:
+                continue
+    return snapshot
+
+
+_studyloop_session_runtime_snapshot: dict[str, float] = {}
+
+
+def pytest_sessionstart(session) -> None:
+    """Snapshot the real session-runtime surface before any test runs."""
+    global _studyloop_session_runtime_snapshot
+    _studyloop_session_runtime_snapshot = _snapshot_studyloop_session_runtime()
+
+
+def test_session_dir_is_isolated_from_the_real_config_dir() -> None:
+    """Guard: every session-dir constant the autouse fixture above patches
+    must actually point away from ~/.config/studyloop, in every module that
+    binds its own copy.
+
+    Companion to test_no_test_writes_to_real_user_state below -- same shape,
+    different subsystem (session_state.py's SESSION_DIR family rather than
+    load_settings().state_dir). Assertion-only: never itself writes
+    anywhere, so it cannot trip the session-runtime snapshot guard.
+    """
+    import importlib
+
+    real = str(Path.home() / ".config" / "studyloop")
+    for module_name in _SESSION_DIR_CONSTANT_MODULES:
+        module = importlib.import_module(module_name)
+        for attr, _filename in _SESSION_DIR_CONSTANT_FILENAMES:
+            if not hasattr(module, attr):
+                continue
+            value = str(getattr(module, attr))
+            assert not value.startswith(real), (
+                f"{module_name}.{attr} == {value!r} still resolves under the real "
+                "config dir -- the autouse isolation fixture did not retarget it"
+            )
+
+
 def test_no_test_writes_to_real_user_state() -> None:
     """Guard: the suite must never resolve writable state to the real dirs.
 
@@ -443,31 +589,65 @@ def _passed_count(terminalreporter) -> int:
 
 
 def pytest_sessionfinish(session, exitstatus) -> None:
-    """Fail a run that passed fewer tests than the caller demanded.
-
-    Reads the count from the terminal reporter, which is the same number the
-    summary line prints, so the check and the report cannot disagree.
+    """Fail a run that passed fewer tests than the caller demanded, OR that
+    touched the real ~/.config/studyloop session-runtime surface (C8/R-49d).
     """
     required = os.environ.get(MIN_PASSED_ENV)
-    if not required:
+    if required:
+        try:
+            minimum = int(required)
+        except ValueError:
+            minimum = None
+        if minimum is not None:
+            reporter = session.config.pluginmanager.get_plugin("terminalreporter")
+            if reporter is not None:  # pragma: no cover - no terminal plugin
+                passed = _passed_count(reporter)
+                if passed < minimum:
+                    skipped = len(reporter.stats.get("skipped", []))
+                    reporter.write_sep(
+                        "!",
+                        f"HOLLOW RUN: {passed} passed, {minimum} required "
+                        f"({MIN_PASSED_ENV}), {skipped} skipped — a dependency is "
+                        "probably missing, so this green is not evidence",
+                        red=True,
+                        bold=True,
+                    )
+                    session.exitstatus = 1
+
+    _check_real_studyloop_config_dir_untouched(session)
+
+
+def _check_real_studyloop_config_dir_untouched(session) -> None:
+    """C8/R-49d backstop: fail the whole run if anything under the real
+    ``~/.config/studyloop`` session-runtime surface changed during it.
+
+    The per-test isolation fixture above is the primary defence; this is
+    the loud failure for the day it has a gap (a module not on its list, a
+    new code path that resolves the path some other way) instead of silent
+    damage to the developer's real config directory -- exactly how the two
+    tests fixed in R-01b were found.
+    """
+    after = _snapshot_studyloop_session_runtime()
+    if after == _studyloop_session_runtime_snapshot:
         return
-    try:
-        minimum = int(required)
-    except ValueError:
-        return
+    before = _studyloop_session_runtime_snapshot
+    added = sorted(set(after) - set(before))
+    removed = sorted(set(before) - set(after))
+    changed = sorted(p for p in (set(after) & set(before)) if after[p] != before[p])
     reporter = session.config.pluginmanager.get_plugin("terminalreporter")
-    if reporter is None:  # pragma: no cover - no terminal plugin (e.g. -p no:terminal)
-        return
-    passed = _passed_count(reporter)
-    if passed >= minimum:
-        return
-    skipped = len(reporter.stats.get("skipped", []))
-    reporter.write_sep(
-        "!",
-        f"HOLLOW RUN: {passed} passed, {minimum} required ({MIN_PASSED_ENV}), "
-        f"{skipped} skipped — a dependency is probably missing, so this green "
-        "is not evidence",
-        red=True,
-        bold=True,
+    detail_lines = []
+    if added:
+        detail_lines.append(f"  created: {added}")
+    if removed:
+        detail_lines.append(f"  removed: {removed}")
+    if changed:
+        detail_lines.append(f"  modified: {changed}")
+    message = (
+        "R-49d: the real ~/.config/studyloop session-runtime surface changed "
+        "during this run -- a test fell through session-dir isolation (or "
+        "something else on this machine wrote there while the suite ran):\n"
+        + "\n".join(detail_lines)
     )
+    if reporter is not None:  # pragma: no cover - no terminal plugin
+        reporter.write_sep("!", message, red=True, bold=True)
     session.exitstatus = 1
