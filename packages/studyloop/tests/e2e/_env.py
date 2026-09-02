@@ -368,6 +368,10 @@ class ConsoleWatch:
         #: console line names its URL. Without this the most common browser
         #: failure is undebuggable from the log alone.
         self.failed_requests: list[str] = []
+        #: Content-Security-Policy header value from every top-level document
+        #: response seen (usually one, more after a reload). None means the
+        #: header was absent from that response.
+        self._document_csp_headers: list[str | None] = []
         page.on("console", self._on_console)
         page.on("pageerror", lambda e: self.errors.append(f"pageerror: {e}"))
         page.on("response", self._on_response)
@@ -375,6 +379,11 @@ class ConsoleWatch:
     def _on_response(self, response) -> None:
         if response.status >= 500:
             self.failed_requests.append(f"HTTP {response.status} {response.url}")
+        try:
+            if response.request.resource_type == "document":
+                self._document_csp_headers.append(response.headers.get("content-security-policy"))
+        except Exception:  # pragma: no cover - defensive, e.g. a closed page
+            pass
 
     def _on_console(self, msg) -> None:
         if msg.type != "error":
@@ -385,10 +394,17 @@ class ConsoleWatch:
         self.errors.append(f"console.error: {text}")
 
     def assert_no_csp_violations(self) -> None:
-        """Fail specifically if any captured console error is a CSP report.
+        """Fail if any captured console error is a CSP report, OR if the
+        Content-Security-Policy header itself is missing from a document
+        response.
 
-        Distinct from ``assert_clean()`` (which fails on ANY console error,
-        CSP violations included) so a Content-Security-Policy regression is
+        The console check alone is a false negative waiting to happen: a
+        page with NO CSP header at all also reports zero violations, because
+        there is nothing left to violate — the browser enforces no policy.
+        Folded in from the M1 council: assert the header's presence
+        directly, not just the absence of complaints about it. Distinct
+        from ``assert_clean()`` (which fails on ANY console error, CSP
+        violations included) so a Content-Security-Policy regression is
         diagnosed by name in its own assertion message, not lost inside a
         generic error list. This is the evidence for R-13's `script-src
         'self'` with no `'unsafe-inline'`/nonce exception (ttyd retirement
@@ -399,6 +415,14 @@ class ConsoleWatch:
         violations = [e for e in self.errors if "Content Security Policy" in e or "Refused to" in e]
         assert not violations, "CSP violation(s) detected:\n" + "\n".join(
             f"  - {v}" for v in violations
+        )
+        assert self._document_csp_headers, (
+            "no document response observed — did the page navigate before this assertion ran?"
+        )
+        missing = [i for i, h in enumerate(self._document_csp_headers) if not h]
+        assert not missing, (
+            f"{len(missing)} of {len(self._document_csp_headers)} document "
+            "response(s) carried no Content-Security-Policy header at all"
         )
 
     def assert_clean(self, context: str) -> None:
