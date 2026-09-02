@@ -44,6 +44,19 @@ experience may change before `1.0.0`.
 - Public pages that exposed implementation notes, internal architecture detail,
   or release-planning material.
 
+### Fixed
+
+- Cross-machine sync (`session-sync push`/`pull`/`sync`) no longer overwrites
+  global tables (`study_progress`, `study_sessions`, `teach_back_scores`,
+  `knowledge_bridges`, `concepts`, `concept_aliases`, `concept_relations`,
+  `message_concepts`, `parked_topics`, `scrub_log`) unconditionally. Every row
+  is now gated on `updated_at`, matching the check already applied to
+  `sessions`/`messages`, so a stale machine's dump can no longer silently
+  revert a newer board move, teach-back score, or progress row on the
+  receiving side. `push` and the remote side of `sync` now back up the
+  destination before writing to it, exactly as `pull` already backs up its
+  own destination.
+
 ### Known pre-release boundaries
 
 - Kiro CLI is the documented demonstration harness.

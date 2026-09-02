@@ -125,6 +125,7 @@ TABLE_SYNC_COLUMNS = {
         "win_count",
         "struggle_count",
         "topic_slug",
+        "updated_at",
     ],
     "teach_back_scores": [
         "id",
@@ -140,6 +141,7 @@ TABLE_SYNC_COLUMNS = {
         "question_angle",
         "notes",
         "created_at",
+        "updated_at",
     ],
     "knowledge_bridges": [
         "id",
@@ -156,7 +158,7 @@ TABLE_SYNC_COLUMNS = {
         "updated_at",
     ],
     "concepts": ["id", "name", "domain", "description", "created_at", "updated_at"],
-    "concept_aliases": ["alias", "concept_id"],
+    "concept_aliases": ["alias", "concept_id", "updated_at"],
     "concept_relations": [
         "id",
         "source_concept_id",
@@ -169,7 +171,7 @@ TABLE_SYNC_COLUMNS = {
         "created_at",
         "updated_at",
     ],
-    "message_concepts": ["message_id", "concept_id", "confidence"],
+    "message_concepts": ["message_id", "concept_id", "confidence", "updated_at"],
     "parked_topics": [
         "id",
         "study_session_id",
@@ -185,6 +187,7 @@ TABLE_SYNC_COLUMNS = {
         "source",
         "tech_area",
         "priority",
+        "updated_at",
     ],
     "scrub_log": [
         "id",
@@ -193,7 +196,26 @@ TABLE_SYNC_COLUMNS = {
         "entity_type",
         "placeholder",
         "scrubbed_at",
+        "updated_at",
     ],
+}
+
+# Primary/conflict key columns per GLOBAL_SYNC_TABLES row, used to build the
+# recency-gated upsert in `_build_global_upsert_select_sql` (R-19 / D1). These
+# match each table's `CREATE TABLE` in migrations.py exactly -- SQLite's
+# `ON CONFLICT(...)` target must name a unique index or the table's own
+# PRIMARY KEY/UNIQUE constraint.
+GLOBAL_TABLE_PRIMARY_KEYS: dict[str, list[str]] = {
+    "study_progress": ["id"],
+    "study_sessions": ["id"],
+    "teach_back_scores": ["id"],
+    "knowledge_bridges": ["id"],
+    "concepts": ["id"],
+    "concept_aliases": ["alias", "concept_id"],
+    "concept_relations": ["id"],
+    "message_concepts": ["message_id", "concept_id"],
+    "parked_topics": ["id"],
+    "scrub_log": ["id"],
 }
 
 # Module-level logger — does NOT configure the root logger (no basicConfig here).
@@ -477,6 +499,48 @@ def _build_insert_select_sql(
     )
 
 
+def _build_global_upsert_select_sql(table: str) -> str:
+    """Build a SELECT emitting a recency-gated upsert for one global-sync table.
+
+    R-19 / D1: unlike the session-scoped ``SYNC_TABLES`` (where the caller has
+    already restricted the row set to sessions that are new/newer on the
+    source side -- see ``_get_sync_state`` -- so a blind ``INSERT OR REPLACE``
+    is safe), every row of a ``GLOBAL_SYNC_TABLES`` table is dumped on every
+    sync with no per-row filter. Without a recency check, a stale machine's
+    dump silently reverts a newer row the destination already has (a board
+    move, a teach-back score, a progress update).
+
+    So the gate has to travel with the row instead of living in a Python-side
+    filter: emit ``INSERT ... ON CONFLICT(<pk>) DO UPDATE SET ... WHERE
+    excluded.updated_at > <table>.updated_at``. SQLite evaluates that WHERE
+    clause on the destination, at apply time, against the destination's own
+    current row -- so this is correct whether the generated SQL is streamed
+    into a local file or piped into a remote ``sqlite3`` over SSH; no
+    round-trip to read the destination first is needed. If the destination
+    row is newer (or equal), the ON CONFLICT branch's WHERE is false, so
+    SQLite neither inserts (conflict) nor updates (WHERE unmet) -- the
+    destination row survives untouched.
+    """
+    columns = TABLE_SYNC_COLUMNS[table]
+    pk_columns = GLOBAL_TABLE_PRIMARY_KEYS[table]
+    quoted_columns = [_quote_identifier(column) for column in columns]
+    literal_expr = " || ',' || ".join(f"quote({col})" for col in quoted_columns)
+    update_columns = [c for c in columns if c not in pk_columns]
+    set_clause = ", ".join(
+        f"{_quote_identifier(c)} = excluded.{_quote_identifier(c)}"
+        for c in update_columns
+    )
+    conflict_target = ", ".join(_quote_identifier(c) for c in pk_columns)
+    updated_at_col = _quote_identifier("updated_at")
+    return (
+        f"SELECT 'INSERT INTO {table} "
+        f"({', '.join(quoted_columns)}) VALUES (' || {literal_expr} || ') "
+        f"ON CONFLICT({conflict_target}) DO UPDATE SET {set_clause} "
+        f"WHERE excluded.{updated_at_col} > {table}.{updated_at_col};' "
+        f"FROM {table};"
+    )
+
+
 def _build_dump_queries(
     session_ids: set[str], available_tables: set[str] | None = None
 ) -> list[str]:
@@ -506,7 +570,7 @@ def _build_dump_queries(
     for table in GLOBAL_SYNC_TABLES:
         if not _has_table(table):
             continue
-        queries.append(_build_insert_select_sql(table))
+        queries.append(_build_global_upsert_select_sql(table))
     return queries
 
 
@@ -670,6 +734,65 @@ def _stream_sql_to_target(sql: str, target: Path | tuple[str, str]) -> bool:
 
 
 from agent_session_tools.maintenance import create_backup  # noqa: E402
+
+
+def _remote_backup(host: str, remote_db: str) -> str | None:
+    """Back up the remote DB to a timestamped copy before writing to it.
+
+    Mirrors `create_backup`'s naming (``<stem>.bak-<timestamp>`` next to the
+    original) but runs the copy on the remote host over SSH, since the file
+    is not locally reachable. R-19 / D1: `pull` already backs up the side
+    that can lose data (`create_backup(local_db)`); `push` and the remote
+    side of `sync` did not back up the *remote* -- the side their own writes
+    can revert -- at all. Returns the remote backup path, or None if there is
+    nothing to back up (remote DB absent) or the copy failed (logged, not
+    raised: a failed backup must not block on its own -- the recency gate in
+    `_build_global_upsert_select_sql` is the primary defence either way).
+    """
+    _ensure_mux_dir()
+    remote_path = _quote_remote_path(remote_db)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_path = f"{remote_db}.bak-{timestamp}"
+    quoted_backup_path = _quote_remote_path(backup_path)
+    result = subprocess.run(
+        [
+            "ssh",
+            *_SSH_MUX_OPTS,
+            host,
+            f"test -f {remote_path} && cp -p {remote_path} {quoted_backup_path}",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        logger.warning(
+            "Remote backup skipped for %s:%s (%s)",
+            host,
+            remote_db,
+            result.stderr.strip() or "remote DB not found",
+        )
+        return None
+    logger.info("Remote backup created: %s:%s", host, backup_path)
+    return backup_path
+
+
+def _backup_destination(target: Path | tuple[str, str]) -> Path | str | None:
+    """Back up whatever `_stream_sql_to_target` is about to write to.
+
+    R-19 / D1: `pull` has always backed up its destination
+    (`create_backup(local_db)`, above in `pull()`) before applying a dump --
+    it is the side that can lose data. `push` and the remote side of `sync`
+    write to the *other* machine and took no backup at all. This dispatches
+    to the same local `create_backup` `pull` uses when `target` is a local
+    Path, or to `_remote_backup` when it is a (host, remote_db) tuple, so
+    every write path backs up its destination the same way.
+    """
+    if isinstance(target, Path):
+        if not target.exists():
+            return None
+        return create_backup(target)
+    host, remote_db = target
+    return _remote_backup(host, remote_db)
 
 
 def show_db_stats(db_path: Path, label: str = "Database") -> None:
@@ -864,6 +987,11 @@ def push(
 
     sql = _dump_delta_sql(local_db, all_ids)
 
+    # Back up the remote before writing to it — R-19 / D1: `pull` has always
+    # backed up its destination; `push` writes to the remote and, until now,
+    # took no backup of the side it can revert.
+    _backup_destination((host, remote_db))
+
     console.print("[bold]Streaming to remote...[/bold]")
     if _stream_sql_to_target(sql, (host, remote_db)):
         console.print(
@@ -987,6 +1115,13 @@ def sync(
     if push_ids:
         console.print(f"\n[bold]Step 2: Pushing {len(push_ids)} sessions...[/bold]")
         sql = _dump_delta_sql(local_db, push_ids)
+        # Back up the remote before this step writes to it — R-19 / D1: the
+        # local side is already backed up above (`create_backup(local_db)`,
+        # gated on the same `no_backup` flag); the remote side of a two-way
+        # sync gets the same protection pull has always given its own
+        # destination.
+        if sql.strip() and not no_backup:
+            _backup_destination((host, remote_db))
         if sql.strip() and not _stream_sql_to_target(sql, (host, remote_db)):
             console.print("[red]❌ Failed to push[/red]")
             raise typer.Exit(1)
