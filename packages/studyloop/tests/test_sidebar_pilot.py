@@ -106,7 +106,10 @@ class TestSidebarKeyBindings:
 
     @pytest.mark.asyncio
     async def test_q_triggers_end_session_action(self, state_dir):
-        """Pressing Q should call action_end_session."""
+        """Pressing Q should call action_end_session and run cleanup --
+        never the blanket kill_all_study_sessions sweep (R-02b: this test
+        used to assert the opposite, pinning the bug it now guards against;
+        see docs/architecture/session-authority.md clause 4)."""
         from studyloop.tui.sidebar import SidebarApp
 
         _write_state(
@@ -126,19 +129,67 @@ class TestSidebarKeyBindings:
 
         mock_backend = MagicMock()
         mock_backend.list_study_sessions.return_value = ["study-test-123"]
+        mock_cleanup = MagicMock()
 
         with (
             patch("studyloop.multiplexer.get_backend", return_value=mock_backend),
-            patch("studyloop.session.cleanup.cleanup_on_exit"),
+            patch("studyloop.session.cleanup.cleanup_on_exit", mock_cleanup),
         ):
             async with SidebarApp().run_test(size=(40, 20)) as pilot:
                 await pilot.press("Q")
                 await pilot.pause()
 
-                # Verify kill_all_study_sessions was called
-                mock_backend.kill_all_study_sessions.assert_called_once_with(
-                    current_session="study-test-123"
-                )
+                mock_cleanup.assert_called_once()
+                mock_backend.kill_all_study_sessions.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_end_session_leaves_an_unrelated_study_session_alive(self, state_dir):
+        """R-02b: End Session used to call kill_all_study_sessions() directly
+        (in addition to cleanup_on_exit's own, now correctly-scoped kill),
+        which kills every study-* session on the machine. With a second,
+        unrelated study-* session also present, ending THIS one must leave
+        the other alive -- the same guarantee R-02 already made for the web
+        and CLI end paths.
+
+        cleanup_on_exit runs for real here (not mocked away) so the actual
+        _cleanup_tmux_and_files scoping is exercised end to end; every DB
+        write it touches is mocked so nothing reaches a real database.
+        """
+        from studyloop.tui.sidebar import SidebarApp
+
+        _write_state(
+            state_dir,
+            {
+                "study_session_id": "test-123",
+                "topic": "Test",
+                "energy": 5,
+                "mode": "study",
+                "tmux_session": "study-test-123",
+                "tmux_main_pane": "%0",
+                "mux_session": "study-test-123",
+                "mux_main_pane": "%0",
+                "started_at": "2026-04-02T12:00:00+00:00",
+            },
+        )
+
+        mock_backend = MagicMock()
+        # Two fake study-* sessions exist: this one, and an unrelated other.
+        mock_backend.list_study_sessions.return_value = ["study-test-123", "study-other-999"]
+        mock_backend.kill_session.return_value = True
+
+        with (
+            patch("studyloop.multiplexer.get_backend", return_value=mock_backend),
+            patch("studyloop.history.end_study_session"),
+            patch("studyloop.history.record_progress"),
+            patch("studyloop.services.backlog.auto_persist_struggled"),
+        ):
+            async with SidebarApp().run_test(size=(40, 20)) as pilot:
+                await pilot.press("Q")
+                await pilot.pause()
+
+        mock_backend.kill_all_study_sessions.assert_not_called()
+        killed_names = [c.args[0] for c in mock_backend.kill_session.call_args_list]
+        assert "study-other-999" not in killed_names
 
     @pytest.mark.asyncio
     async def test_q_sends_exit_to_agent_pane(self, state_dir):
