@@ -87,7 +87,7 @@ def setup_session_dir(
         )
 
     # Pre-trust the session directory for Claude Code so the workspace
-    # trust prompt doesn't block automated/ttyd sessions.
+    # trust prompt doesn't block automated (non-interactive) sessions.
     # Trust is stored in ~/.claude/settings.json under projects[path].hasTrustDialogAccepted.
     # Trust both the parent (for future sessions) AND the specific session dir
     # (Claude Code may not walk up the tree for all trust checks).
