@@ -515,6 +515,46 @@ class TestCrashThenRestart:
         assert session_state.parse_topics_file() == []
         assert session_state.parse_parking_file() == []
 
+    def test_reclaim_never_kills_a_recorded_live_child_pid(
+        self,
+        client: TestClient,
+        _mock_agent_available,
+        _stub_db,
+        _stub_pty_factory,
+        caplog,
+        monkeypatch,
+    ) -> None:
+        """C4: reclaim never acts on a recorded child_pid -- it only logs
+        it, so `clean`/`doctor` (R-01g, 0.2.0) can report the orphan later.
+        Killing here would risk pid reuse, and it may be the user's own
+        still-useful agent."""
+        state = _fixture("crashed-web-still-live")
+        state["child_pid"] = os.getpid()
+        session_state.write_session_state(state)
+
+        kill_calls: list[tuple[int, int]] = []
+        real_kill = os.kill
+
+        def _tracking_kill(pid: int, sig: int) -> None:
+            kill_calls.append((pid, sig))
+            real_kill(pid, sig)
+
+        monkeypatch.setattr(os, "kill", _tracking_kill)
+
+        resp = client.post(
+            "/api/session/start",
+            json={"topic": "Fresh topic", "energy": 5, "agent": "claude", "transport": "pty"},
+        )
+
+        assert resp.status_code == 201, resp.text
+        # os.kill(pid, 0) is a liveness PROBE, not a termination signal --
+        # only a real signal (SIGTERM=15, SIGKILL=9, ...) against this
+        # process's own pid would mean "reclaim tried to kill it".
+        assert not any(pid == os.getpid() and sig != 0 for pid, sig in kill_calls)
+        reclaim_records = [rec for rec in caplog.records if "reclaim" in rec.message.lower()]
+        assert len(reclaim_records) == 1
+        assert f"child_pid={os.getpid()}" in reclaim_records[0].message
+
 
 class TestForeignWebServerPid:
     """C3: claim_blocks_web_start now distinguishes "this process holds a

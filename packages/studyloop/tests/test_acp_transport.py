@@ -87,6 +87,31 @@ async def _reset_env(monkeypatch):
 
 class TestStart:
     @pytest.mark.asyncio
+    async def test_pid_property_reflects_the_subprocess(self, tmp_path, monkeypatch, _reset_env):
+        """C4: same accessor as PTYTransport, for the same reason (child_pid
+        recorded on the claim, for future orphan reporting -- R-01g)."""
+        monkeypatch.setenv(
+            "STUB_ACP_INIT_RESULT",
+            json.dumps(
+                {
+                    "protocolVersion": 1,
+                    "agentCapabilities": {"loadSession": True},
+                    "authMethods": [],
+                    "agentInfo": {"name": "Stub ACP Agent", "version": "0.0.1"},
+                }
+            ),
+        )
+        transport = ACPTransport(
+            resolve_binary=_stub_resolve_binary,
+            build_argv=_stub_build_argv(),
+        )
+        assert transport.pid is None
+        await transport.start(_make_config(tmp_path))
+        assert isinstance(transport.pid, int)
+        assert transport.pid > 0
+        await transport.end()
+
+    @pytest.mark.asyncio
     async def test_start_sends_initialize_and_session_new(self, tmp_path, monkeypatch, _reset_env):
         """Happy path: initialize + session/new + Started event with the
         agent name from the stub's agentInfo."""

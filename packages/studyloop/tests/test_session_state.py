@@ -444,3 +444,31 @@ def test_cli_owned_claim_is_live_logs_when_the_backend_raises(
     assert len(warnings) == 1
     assert "study-x" in warnings[0].message
     assert "tmux server unreachable" in warnings[0].message
+
+
+# ---------------------------------------------------------------------------
+# reclaim_log_message (C4) -- the single place both start paths build the
+# "reclaiming a stale claim" warning, so they cannot drift (R-01b's own
+# requirement), extended to name a recorded child_pid when present.
+# ---------------------------------------------------------------------------
+
+
+def test_reclaim_log_message_without_child_pid() -> None:
+    from studyloop.session_state import reclaim_log_message
+
+    state = {"study_session_id": "sess-1", "transport": "pty"}
+    message = reclaim_log_message(state)
+
+    assert "Reclaiming stale session claim id=sess-1 transport=pty" in message
+    assert "its owner is no longer alive" in message
+    assert "child_pid" not in message
+
+
+def test_reclaim_log_message_with_child_pid() -> None:
+    from studyloop.session_state import reclaim_log_message
+
+    state = {"study_session_id": "sess-1", "transport": "pty", "child_pid": 4242}
+    message = reclaim_log_message(state)
+
+    assert "child_pid=4242" in message
+    assert "its owner is no longer alive" in message

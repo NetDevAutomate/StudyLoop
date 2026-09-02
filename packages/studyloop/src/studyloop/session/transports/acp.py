@@ -165,6 +165,14 @@ class ACPTransport:
         self._stderr_tail: bytes = b""
         self._stderr_task: asyncio.Task[None] | None = None
 
+    @property
+    def pid(self) -> int | None:
+        """The subprocess's pid once ``start()`` has run, else ``None``.
+
+        Same accessor and purpose as ``PTYTransport.pid`` -- see there.
+        """
+        return self._state.proc.pid if self._state is not None else None
+
     # ---- AgentSessionTransport ------------------------------------------
 
     async def start(self, config: SessionConfig) -> None:

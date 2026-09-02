@@ -44,6 +44,22 @@ session's leftover topics/parking stayed visible to whoever reclaimed the
 slot. A live (blocking) claim's files are never touched -- clearing is a
 reclaim-only side effect.
 
+**C4 (council, residual, recorded not fixed):** a reclaim never checks --
+and never kills -- a live PTY child the crashed server's process left
+running (a "server restart with the agent still alive" case). Both
+`PTYTransport` and `ACPTransport` now expose their child's pid via a
+`.pid` property; the web start paths read it via `getattr(transport,
+"pid", None)` (`None` for `StubTransport`, used in tests) and record it on
+the claim as `child_pid` (`build_session_state_payload`). A reclaim's log
+line (`session_state.reclaim_log_message`) names it when the PREVIOUS
+claim had one, so a human (or a future `clean`/`doctor` orphan report,
+item R-01g, 0.2.0) has it to hand -- reclaim itself takes no action on it.
+Rejected: killing it on reclaim. The pid could have been reused by an
+unrelated process by the time this runs, and the child may be the user's
+own still-useful agent that simply outlived a crashed web server; neither
+risk is worth taking to tidy up an orphan that costs nothing but a stray
+process entry.
+
 ## 3. Start matrix
 
 | | new start: CLI | new start: web (pty/acp) |
