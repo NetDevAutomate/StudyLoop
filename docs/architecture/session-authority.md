@@ -98,6 +98,16 @@ empty) and cell 2/4's stale-claim branch (CLI start, either owner shape):
 the recorded owner is provably dead — reclaimed, not blocked, in both
 directions.
 
+**C6 (council, matrix gap, closed):** cell 4's live-pid branch is also
+exercised while the web session is merely DETACHED within its grace
+window (`_grace.has_pending_release()` true — client's tab closed, agent
+still running, not yet released) — `TestWebThenCli::
+test_cli_start_is_refused_while_a_web_session_is_detached_within_grace`.
+`claim_blocks_cli_start` does not consult grace state at all (only pid
+liveness), which is exactly why this cell was worth pinning explicitly:
+proof the two mechanisms compose correctly, not merely that each is
+individually correct.
+
 ## 4. End matrix
 
 | Ends | Effect |
