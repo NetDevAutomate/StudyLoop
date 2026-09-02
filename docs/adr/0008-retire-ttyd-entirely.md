@@ -1,8 +1,9 @@
-# ADR-0006 — Retire ttyd entirely; the Web UI owns interactive sessions
+# ADR-0008 — Retire ttyd entirely; the Web UI owns interactive sessions
 
-**Status:** accepted, 2026-09-02. **Supersedes** the second half of
+**Status:** Accepted, 2026-09-02. **Supersedes** the second half of
 [ADR-0005](0005-retire-ttyd-browser-surface.md), which retired the ttyd *browser
-surface* and deliberately **kept** the ttyd *server transport*.
+surface* and deliberately **kept** the ttyd *server transport*. (Renumbered from
+0006 — that number collided with 0006-bridge-aware-deferred-topics.md.)
 
 ## Context
 
@@ -10,14 +11,16 @@ ADR-0005 kept the server transport for one reason: the PTY path had a reload bug
 and a fallback was worth its cost until that was fixed. That reason has expired —
 `live-agent-console.js:794` records the iframe being retired "once the pty path
 survived a page reload", and the xterm/PTY path has since carried the full e2e
-suite (502 browser tests, unscaled, green in CI).
+suite (see the Verification section below for the current pass counts, not a
+fixed number here — R-62: a count belongs to the evidence file it was measured
+in, not to prose that outlives the run that produced it).
 
 What the kept transport actually left behind:
 
 - `studyloop study --transport` advertised `[pty|ttyd]` and defaulted to ttyd
   while refusing `pty` outright — an option whose choice list named a value it
   rejected, in user-facing `--help`.
-- `doctor` stopped checking for the ttyd binary (`cli/_doctor.py:78-79`, citing
+- `doctor` stopped checking for the ttyd binary (`cli/_doctor.py`, citing
   ADR-0005's retirement of the browser surface) while the CLI still named ttyd as
   its default transport. So the one diagnostic that would have told a user their
   default transport was unavailable had been removed on the strength of a
@@ -46,27 +49,28 @@ sessions.
 
 ## Consequences
 
-`X-Frame-Options` is currently `SAMEORIGIN` rather than `DENY` for one stated
-reason: "so our same-origin /terminal/ iframe can embed ttyd" (`web/app.py:57`).
-With no iframe surface that justification is void, and the header should tighten
-to `DENY` unless another embedding need is recorded here.
+`X-Frame-Options` was `SAMEORIGIN` rather than `DENY` for one stated reason: "so
+our same-origin /terminal/ iframe can embed ttyd" (`web/app.py`). With no iframe
+surface that justification was void — done: `X-Frame-Options: DENY`, plus a full
+CSP, `Referrer-Policy` and `Permissions-Policy` (ttyd retirement stage 4).
 
-Existing `ttyd_port` config needs no migration. `load_settings()` applies only
-keys present in `_SCALAR_FIELDS` (`settings.py:550-560`), so an orphaned key is
-silently ignored — it loads clean, and is inert rather than broken. The setup
-guide now says so, because a setting that looks active and does nothing is its own
-kind of defect.
+`ttyd_port` config is fully removed, not merely inert: `Settings.ttyd_port` and
+its `_SCALAR_FIELDS` entry are deleted (stage 5). An orphaned `ttyd_port` line in
+an existing `config.yaml` is no longer silently-ignored-but-present — `doctor`
+now reports it by name via `known_top_level_keys()`/`unknown_top_level_keys()`
+(`settings.py`), a general unknown-top-level-key check built for this and reusable
+beyond it.
 
-Two invariants must survive the removal, and both have comments that call them
-"legacy ttyd" while being load-bearing for something else:
+Two invariants that had to survive the removal, both had comments calling them
+"legacy ttyd" while being load-bearing for something else, and both were renamed
+rather than deleted (stage 5):
 
-- `/session/state`'s file fallback (`web/routes/session/_dashboard.py:25-40`).
+- `/session/state`'s file fallback (`web/routes/session/_dashboard.py`).
   Out-of-process CLI tmux sessions never hold the web singleton, so the fallback
   is what makes a CLI session visible to the dashboard at all.
-- Clearing inherited multiplexer keys for PTY/ACP sessions
-  (`session_state.py:54-70`).
-
-Rename the comments; keep the code.
+- Clearing inherited multiplexer keys for PTY/ACP sessions (`session_state.py`).
+- A third, found only once cleanup work started: the stale-multiplexer reconcile
+  in `_ipc.py` that clears zombie IPC state — only the ttyd-kill half of it went.
 
 ## What was considered and rejected
 
@@ -78,8 +82,21 @@ exercises is not tested by use.
 
 **Delete it in one commit.** Rejected: 25 source and 20 test files, where a
 half-landed state is worse than either end — the frontend would probe a proxy that
-no longer exists, or the CLI would spawn a process nothing cleans up. Staged, with
-the ordering enforced by
-`packages/studyloop/tests/test_ttyd_retirement_ordering.py` rather than by
-prose, because the first draft of that plan removed the cleanup while leaving the
-spawn.
+no longer exists, or the CLI would spawn a process nothing cleans up. Staged
+across 6 commits (stages 2-7), with the spawn/cleanup ordering enforced by a test
+rather than by prose — the first draft of the retirement plan removed the cleanup
+while leaving the spawn; that class of defect was subsequently generalised into
+`packages/studyloop/tests/test_ttyd_retirement_ordering.py
+::test_no_frontend_module_imports_a_deleted_component`, the one ordering guard
+this retirement still needs (its ttyd-specific sibling was deleted once its own
+precondition became permanently true — see that test file's module docstring).
+
+## Verification
+
+Evidence lives with the work, not in this file (R-62: a number belongs to the
+run that produced it). See `reviews/2026-09-02-full-repo-review/evidence/M1/`,
+one `stage-<n>/` directory per commit (stages 2-7), each with a DoD written
+before the change, red/green test output, the `just preflight`/`just e2e` gate
+tail, and the manifest of every test that died, was retargeted, or survived
+renamed. The final `just e2e` run of this retirement (stage 6) was the first
+fully uncontended run of the lane: 501 passed, 20 skipped, 0 failed, 0 errors.

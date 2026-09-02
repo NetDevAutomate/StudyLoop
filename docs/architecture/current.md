@@ -146,7 +146,7 @@ flowchart TB
 **Key invariants today**:
 
 - **One active session at a time.** `SessionRuntime` is a singleton acquired under `asyncio.Lock`. `/api/session/start` returns 409 if a session is already live.
-- **Transport selection is explicit per session.** Body field `transport: "pty" | "ttyd" | "acp"`. The env var `STUDYLOOP_TRANSPORT` can force `pty`/`ttyd` as an operator kill-switch (ACP is body-only).
+- **Transport selection is explicit per session.** Body field `transport: "pty" | "acp"` (`ttyd` retired — [ADR-0008](../adr/0008-retire-ttyd-entirely.md)). The env var `STUDYLOOP_TRANSPORT` can force `pty` as an operator kill-switch (ACP is body-only); any other value, including `ttyd`, is rejected rather than silently downgraded.
 - **Persona text never reaches the wire on the PTY path** — it's written to a temp file, the agent's launch command embeds the path, and the agent reads it at startup.
 - **Persona text DOES travel on the wire on the ACP path** — added 2026-05-28 in commit `bfe9210`. `/api/session/start` returns `persona_text` inline in the JSON body; the browser ships it as the first invisible `session/prompt` after WS open. Hidden client-side: not pushed to `acpMessages`.
 - **The PWA owns chat-surface state.** The server never sends server-rendered HTML for chat bubbles — only raw ACP events. Markdown rendering, sanitisation, syntax highlighting, theme palette: all in the browser.
@@ -898,4 +898,4 @@ flowchart TB
 - **The Pomodoro overlay**, OpenDyslexic toggle — orthogonal UI concerns, not part of the session pipeline. (Voice output is now documented in its own C4 L3 component section above.)
 - **The Generate panel implementation details beyond the C4 slice above** — provider-specific prompt tuning and deck-quality judging are documented in [Content Pipeline](../content-pipeline.md).
 - **MCP servers** — see [MCP](../mcp.md). Currently only the Kiro adapter exposes any MCP integration.
-- **Legacy tmux + ttyd** — the ttyd browser surface is **retired** ([ADR-0005](../adr/0005-retire-ttyd-browser-surface.md)); the web session surfaces are xterm.js over a PTY WebSocket and the ACP chat surface. Background in [Web UI Guide § The retired ttyd iframe](../web-ui-guide.md#the-retired-ttyd-iframe). `tmux` itself remains the terminal session host for `studyloop study`.
+- **ttyd** — **fully retired**, browser surface and server transport alike ([ADR-0005](../adr/0005-retire-ttyd-browser-surface.md), [ADR-0008](../adr/0008-retire-ttyd-entirely.md)); the web session surfaces are xterm.js over a PTY WebSocket and the ACP chat surface. Background in [Web UI Guide § The retired ttyd iframe](../web-ui-guide.md#the-retired-ttyd-iframe). `tmux` remains the terminal session host for `studyloop study` — that command was never ttyd-dependent.
