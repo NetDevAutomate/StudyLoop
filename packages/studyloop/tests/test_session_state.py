@@ -611,3 +611,82 @@ def test_try_claim_session_two_threads_exactly_one_wins(
         "thread-a",
         "thread-b",
     )
+
+
+# ---------------------------------------------------------------------------
+# C9 (council): a claim's recorded pid, when alive and foreign, blocks
+# BEFORE either owner-type branch runs -- a reservation (mode="starting")
+# always carries pid but has no mux_session yet (CLI) or is checked before
+# the in-process singleton exists (web is unaffected there, but a CLI
+# reservation read from claim_blocks_web_start has the same gap). Without
+# this, a fresh reservation reads as stale to anyone judging it only by
+# mux_session/singleton state, defeating try_claim_session's own locking
+# with a liveness signal that cannot see the winner.
+# ---------------------------------------------------------------------------
+
+
+def test_claim_blocks_cli_start_sees_a_cli_reservation_with_no_mux_session_as_live() -> None:
+    """A CLI-owned claim (no transport key) with an alive, foreign pid and
+    NO mux_session yet -- exactly the shape try_claim_session's reservation
+    has before the CLI chooses its tmux session name -- must block."""
+    from studyloop.session_state import claim_blocks_cli_start
+
+    state = {"study_session_id": "pending-1", "mode": "starting", "pid": os.getppid()}
+
+    assert claim_blocks_cli_start(state) is True
+
+
+def test_claim_blocks_web_start_sees_a_cli_reservation_with_no_mux_session_as_live() -> None:
+    """Mirror of the above for the web helper -- a web start must not
+    clobber a fresh CLI reservation either."""
+    from studyloop.session_state import claim_blocks_web_start
+
+    state = {"study_session_id": "pending-1", "mode": "starting", "pid": os.getppid()}
+
+    assert claim_blocks_web_start(state) is True
+
+
+def test_claim_blocks_cli_start_reclaims_a_dead_pid_reservation_with_no_mux_session() -> None:
+    """The negative: a reservation whose pid is dead (no live owner at
+    all) still reclaims, exactly as before -- pid-first does not turn
+    every unnamed-mux_session claim into a permanent block."""
+    from studyloop.session_state import claim_blocks_cli_start
+
+    state = {"study_session_id": "pending-1", "mode": "starting", "pid": 999999999}
+
+    assert claim_blocks_cli_start(state) is False
+
+
+def test_claim_blocks_web_start_reclaims_a_dead_pid_reservation_with_no_mux_session() -> None:
+    from studyloop.session_state import claim_blocks_web_start
+
+    state = {"study_session_id": "pending-1", "mode": "starting", "pid": 999999999}
+
+    assert claim_blocks_web_start(state) is False
+
+
+def test_claim_blocks_cli_start_own_pid_reservation_falls_through_to_mux_check() -> None:
+    """A CLI-owned claim carrying THIS process's own pid (the ordinary
+    crash-then-restart shape, not a live reservation) must not block on
+    the pid check alone -- it falls through to the existing mux_session
+    check, which (absent one) still reads as stale."""
+    from studyloop.session_state import claim_blocks_cli_start
+
+    state = {"study_session_id": "pending-1", "mode": "starting", "pid": os.getpid()}
+
+    assert claim_blocks_cli_start(state) is False
+
+
+def test_claim_blocks_cli_start_reservation_with_live_pid_and_mux_session_still_blocks() -> None:
+    """Once the mux_session IS recorded too, the claim blocks via either
+    signal -- pid-first does not regress the already-working case."""
+    from studyloop.session_state import claim_blocks_cli_start
+
+    state = {
+        "study_session_id": "pending-1",
+        "mode": "starting",
+        "pid": os.getppid(),
+        "mux_session": "study-x",
+    }
+
+    assert claim_blocks_cli_start(state) is True

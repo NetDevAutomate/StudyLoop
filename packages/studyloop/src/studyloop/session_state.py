@@ -404,6 +404,34 @@ def _pid_is_alive(pid: object) -> bool:
     return True
 
 
+def _reservation_pid_is_live_and_foreign(state: dict) -> bool:
+    """Whether ``state``'s recorded ``pid`` is alive and is not this
+    process's own (C9, council).
+
+    Checked BEFORE either owner-type branch in both
+    :func:`claim_blocks_web_start` and :func:`claim_blocks_cli_start`. A
+    reservation (``mode="starting"``, ``try_claim_session``, C1) always
+    carries ``pid`` from the moment it is written, but has no
+    ``mux_session`` yet (the CLI chooses that name later in its own start
+    flow) and no in-process singleton either (the web path's singleton is
+    populated only after ``active.acquire()`` succeeds, well after the
+    reservation is claimed). Judging a CLI-owned claim purely by
+    ``mux_session`` existence — the pre-C9 rule — therefore read a fresh
+    reservation as stale to anyone else checking it, silently reclaiming
+    the winner's own claim and defeating ``try_claim_session``'s locking
+    with a liveness signal that could not see who actually won.
+
+    No ``pid`` recorded, or the recorded pid IS this process, defers to
+    the per-owner-type checks below (a claim shape that predates this
+    field, or this process's own earlier, stale claim -- the ordinary
+    crash-then-restart case, not a live reservation somebody else holds).
+    """
+    pid = state.get("pid")
+    if pid is None or pid == os.getpid():
+        return False
+    return _pid_is_alive(pid)
+
+
 def claim_blocks_web_start(state: dict) -> bool:
     """Whether a file claim should block a new web PTY/ACP session start.
 
@@ -414,32 +442,28 @@ def claim_blocks_web_start(state: dict) -> bool:
 
     - No claim at all (``study_session_id`` unset, or ``mode == "ended"``)
       never blocks.
+    - **C9 (council):** a claim whose recorded ``pid`` is alive and
+      foreign blocks immediately, before either owner-type branch below —
+      see :func:`_reservation_pid_is_live_and_foreign`. This is what lets
+      a fresh CLI reservation (no ``mux_session`` yet) read as live to a
+      concurrent web start, instead of being silently reclaimed.
     - A CLI-owned claim (no ``transport`` key, or one outside
-      ``{"pty", "acp"}``) blocks iff its recorded multiplexer session
-      (``mux_session``/``tmux_session``) still exists (see
-      :func:`_cli_owned_claim_is_live`).
-    - A web-owned claim (``transport`` in ``{"pty", "acp"}``) is normally
-      stale once the singleton is ruled out — this codebase runs one web
-      server process per machine (see ``session/active.py``'s own
-      docstring), so most reaching claims here are this process's own
-      earlier, crashed instance (the crash-then-restart cell). **C3
-      (council):** since R-01b started recording ``pid`` on every web
-      claim, a SECOND, still-alive web server process — a different port,
-      or a restart racing the old one before it exits — is now cheap to
-      detect: blocks iff ``pid`` is recorded, alive
-      (:func:`_pid_is_alive`), AND not this process's own pid. No ``pid``
-      recorded, or the recorded pid IS this process, still never blocks
-      (unchanged) — the former is a pre-R-01b claim shape, the latter is
-      this process's own stale claim, which is exactly the
-      crash-then-restart case, not a foreign live server.
+      ``{"pty", "acp"}``) that the pid check above did not already resolve
+      blocks iff its recorded multiplexer session (``mux_session``/
+      ``tmux_session``) still exists (see :func:`_cli_owned_claim_is_live`).
+    - A web-owned claim (``transport`` in ``{"pty", "acp"}``) that the pid
+      check above did not already resolve is stale — this codebase runs
+      one web server process per machine (see ``session/active.py``'s own
+      docstring), so a claim reaching this far with no live foreign pid is
+      this process's own earlier, crashed instance (the crash-then-restart
+      cell), not a genuinely live one.
     """
     if not _claim_exists(state):
         return False
+    if _reservation_pid_is_live_and_foreign(state):
+        return True
     if state.get("transport") in ("pty", "acp"):
-        pid = state.get("pid")
-        if pid is None or pid == os.getpid():
-            return False
-        return _pid_is_alive(pid)
+        return False
     return _cli_owned_claim_is_live(state)
 
 
@@ -451,20 +475,29 @@ def claim_blocks_cli_start(state: dict) -> bool:
     checks both owner shapes for real:
 
     - No claim at all never blocks.
-    - A CLI-owned claim blocks iff its recorded multiplexer session still
-      exists (:func:`_cli_owned_claim_is_live`, shared with
+    - **C9 (council):** a claim whose recorded ``pid`` is alive and
+      foreign blocks immediately, before either owner-type branch below —
+      see :func:`_reservation_pid_is_live_and_foreign`. Without this, a
+      second, concurrent CLI start judged a fresh CLI reservation (no
+      ``mux_session`` yet — that name is chosen later in the CLI's own
+      flow) purely by ``mux_session`` existence, read it as stale, and
+      silently reclaimed the FIRST start's own reservation — the C1 lock
+      makes the read consistent, but this liveness gap defeated it.
+    - A CLI-owned claim that the pid check above did not already resolve
+      blocks iff its recorded multiplexer session still exists
+      (:func:`_cli_owned_claim_is_live`, shared with
       ``claim_blocks_web_start``).
-    - A web-owned claim (``transport`` in ``{"pty", "acp"}``), read
-      cross-process from the CLI: live iff its recorded ``pid`` (the web
-      server process that holds the claim) is still alive
-      (:func:`_pid_is_alive`). **No ``pid`` recorded blocks
+    - A web-owned claim (``transport`` in ``{"pty", "acp"}``) that the pid
+      check above did not already resolve: **no ``pid`` recorded blocks
       conservatively** — a claim written by a build before this field
       existed can't be verified either way, and the existing "already
       active" message already tells the user how to end it explicitly,
       which is safer than silently reclaiming a claim this process cannot
-      confirm is actually dead.
+      confirm is actually dead. (A recorded-but-dead pid falls through to
+      here too, and correctly does not block — the pid check above only
+      ever returns early on *live* pids.)
 
-    Residual risk, accepted: pid reuse. If the web server process dies and
+    Residual risk, accepted: pid reuse. If a claim's owner process dies and
     the OS recycles its pid for an unrelated process before this check
     runs, that unrelated process reads as "alive" and the claim still
     blocks — a false block, not a false reclaim, so the failure mode is
@@ -472,6 +505,8 @@ def claim_blocks_cli_start(state: dict) -> bool:
     """
     if not _claim_exists(state):
         return False
+    if _reservation_pid_is_live_and_foreign(state):
+        return True
     if state.get("transport") not in ("pty", "acp"):
         return _cli_owned_claim_is_live(state)
     pid = state.get("pid")
