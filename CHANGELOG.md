@@ -182,6 +182,9 @@ experience may change before `1.0.0`.
   its connection with no explanation if a session ended at the exact moment
   the stream polled for changes. It now tolerates that race the same way the
   rest of the session-state readers already did.
+- When a Kiro (ACP) session fails to start, the server log now includes
+  whatever the agent printed before it crashed, instead of only a generic
+  handshake-timeout message.
 
 ### Security
 

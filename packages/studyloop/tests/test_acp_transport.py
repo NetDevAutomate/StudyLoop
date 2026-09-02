@@ -158,6 +158,69 @@ class TestStart:
 
 
 # ---------------------------------------------------------------------------
+# R-07: stderr was DEVNULL, so a crash before the handshake completed (or a
+# non-zero exit later) reported only a generic timeout/exit code, with no
+# reason why.
+# ---------------------------------------------------------------------------
+
+
+class TestStderrCapture:
+    @pytest.mark.asyncio
+    async def test_handshake_failure_logs_child_stderr(self, tmp_path, caplog):
+        """A fake ACP agent that writes to stderr and exits 1 before
+        answering `initialize` produces a logged reason containing that
+        text -- not just a generic '_RpcError: subprocess exited before
+        responding'."""
+        script = (
+            "import sys\n"
+            "sys.stderr.write('fatal: missing MCP config\\n')\n"
+            "sys.stderr.flush()\n"
+            "sys.exit(1)\n"
+        )
+        transport = ACPTransport(
+            resolve_binary=lambda _agent: sys.executable,
+            build_argv=lambda _cfg: [sys.executable, "-c", script],
+        )
+
+        with pytest.raises(Exception):  # noqa: B017 - _RpcError, internal to the module
+            await transport.start(_make_config(tmp_path))
+
+        assert "fatal: missing MCP config" in caplog.text
+        assert "ACP handshake failed" in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_no_log_line_when_stderr_is_empty(self, tmp_path, caplog):
+        """A handshake failure with no stderr output logs nothing extra --
+        the diagnostic is additive, not a new source of log noise."""
+        transport = ACPTransport(
+            resolve_binary=lambda _agent: sys.executable,
+            build_argv=lambda _cfg: [sys.executable, "-c", "import sys; sys.exit(1)"],
+        )
+
+        with pytest.raises(Exception):  # noqa: B017 - _RpcError, internal to the module
+            await transport.start(_make_config(tmp_path))
+
+        assert "child stderr" not in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_drain_stderr_keeps_only_the_tail(self, tmp_path) -> None:
+        """_STDERR_TAIL_BYTES bounds memory even if a chatty child writes
+        far more than that before the handshake ever resolves."""
+        from studyloop.session.transports.acp import _STDERR_TAIL_BYTES
+
+        script = "import sys\nsys.stderr.write('x' * 20000)\nsys.stderr.flush()\nsys.exit(1)\n"
+        transport = ACPTransport(
+            resolve_binary=lambda _agent: sys.executable,
+            build_argv=lambda _cfg: [sys.executable, "-c", script],
+        )
+
+        with pytest.raises(Exception):  # noqa: B017 - _RpcError, internal to the module
+            await transport.start(_make_config(tmp_path))
+
+        assert len(transport._stderr_tail) <= _STDERR_TAIL_BYTES
+
+
+# ---------------------------------------------------------------------------
 # PR-A.3: events() + reader task + session/update normalisation
 # ---------------------------------------------------------------------------
 
