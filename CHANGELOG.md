@@ -46,6 +46,13 @@ experience may change before `1.0.0`.
 
 ### Security
 
+- Closed a gap where a `.env` file planted in or above the directory
+  `studyloop` is run from could set the test-only `STUDYLOOP_TEST_AGENT_CMD`
+  / `STUDYLOOP_TEST_ACP_CMD` hatch and get an attacker-chosen shell command
+  executed on the next session start. The hatch is now honoured only when
+  exported in the real process environment (as the e2e harness already
+  does); a value that arrives via the `.env` auto-loader is deleted and
+  logged.
 - Closed a gap in the agent-child credential scrub: a bare `_KEY` suffix
   (`ENCRYPTION_KEY`, `SIGNING_KEY`, `MASTER_KEY`, ...) and bare
   `AUTHORIZATION`/`JWT`/`COOKIE`-shaped variables now get stripped from an
