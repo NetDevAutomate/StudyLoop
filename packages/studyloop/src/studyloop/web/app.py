@@ -10,10 +10,10 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.datastructures import MutableHeaders
 from starlette.responses import RedirectResponse, Response
 
 if TYPE_CHECKING:
@@ -110,24 +110,72 @@ def _build_csp(dev_mode: bool) -> str:
     )
 
 
-class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    """Add security headers to all responses."""
+class SecurityHeadersMiddleware:
+    """Add security headers to every HTTP response — including one built
+    from an unhandled exception.
 
-    async def dispatch(self, request: Request, call_next) -> Response:  # type: ignore[override]
-        response = await call_next(request)
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        # DENY: no iframe surface exists anywhere in static/ (the ttyd
-        # iframe fallback this used to justify SAMEORIGIN for was retired —
-        # see ADR-0005 and the ttyd retirement, stage 4).
-        response.headers["X-Frame-Options"] = "DENY"
-        dev_mode = bool(getattr(request.app.state, "dev_mode", False))
-        response.headers["Content-Security-Policy"] = _build_csp(dev_mode)
-        response.headers["Referrer-Policy"] = "same-origin"
-        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
-        # X-XSS-Protection is deliberately NOT set: deprecated, a no-op (or
-        # an XSS vector via its filter) in every modern browser, superseded
-        # by the CSP above.
-        return response
+    R-13d: this used to be a Starlette ``BaseHTTPMiddleware`` subclass.
+    ``BaseHTTPMiddleware``'s ``dispatch()`` only runs its post-``call_next``
+    code on the SUCCESS path — when a route raises, Starlette's own
+    ``ExceptionMiddleware``/``ServerErrorMiddleware`` builds the 404/500
+    response directly against the raw ASGI ``send`` callable, downstream of
+    where ``dispatch()`` would have added headers. The result: a 500 (or a
+    404 from routing) shipped with NONE of these headers, and the only
+    test this middleware had exercised the all-success `GET /` path.
+
+    A pure ASGI middleware wrapping ``send`` fixes this structurally: it
+    intercepts every ``http.response.start`` message regardless of which
+    layer emitted it, success or error alike. It is also naturally inert
+    for the ``websocket`` scope — a WS upgrade has no ``http.response.
+    start`` message to intercept (it sends ``websocket.accept``/``.close``
+    instead), so these headers correctly never reach the upgrade response.
+    That is not a gap: a 101 Switching Protocols response has no document
+    to render, so a content policy has nothing to police there.
+    """
+
+    def __init__(self, app) -> None:  # type: ignore[no-untyped-def]
+        self.app = app
+
+    def __getattr__(self, name: str):  # type: ignore[no-untyped-def]
+        # This now wraps the fully-built FastAPI app (see create_app()'s
+        # return statement) rather than being registered via
+        # app.add_middleware(), so callers that hold onto create_app()'s
+        # return value and reach for .state/.routes/etc. (several tests do)
+        # need those to keep working transparently.
+        return getattr(self.app, name)
+
+    async def __call__(self, scope, receive, send) -> None:  # type: ignore[no-untyped-def]
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        # self.app IS the wrapped FastAPI instance directly (this class
+        # wraps the finished app object rather than being registered via
+        # add_middleware() -- see create_app()'s return statement), so its
+        # .state is reached straight off that reference. scope["app"] is
+        # NOT usable here: Starlette only sets it once the inner app's own
+        # __call__ runs, which is after this line, not before it.
+        app_state = getattr(self.app, "state", None)
+        dev_mode = bool(getattr(app_state, "dev_mode", False)) if app_state is not None else False
+        csp = _build_csp(dev_mode)
+
+        async def send_wrapper(message):  # type: ignore[no-untyped-def]
+            if message["type"] == "http.response.start":
+                headers = MutableHeaders(scope=message)
+                headers["X-Content-Type-Options"] = "nosniff"
+                # DENY: no iframe surface exists anywhere in static/ (the
+                # ttyd iframe fallback this used to justify SAMEORIGIN for
+                # was retired — see ADR-0005 and the ttyd retirement, stage 4).
+                headers["X-Frame-Options"] = "DENY"
+                headers["Content-Security-Policy"] = csp
+                headers["Referrer-Policy"] = "same-origin"
+                headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+                # X-XSS-Protection is deliberately NOT set: deprecated, a
+                # no-op (or an XSS vector via its filter) in every modern
+                # browser, superseded by the CSP above.
+            await send(message)
+
+        await self.app(scope, receive, send_wrapper)
 
 
 def create_app(
@@ -179,9 +227,6 @@ def create_app(
         from studyloop.web.auth import BasicAuthMiddleware
 
         app.add_middleware(BasicAuthMiddleware, username=username, password=password)
-
-    # Security headers
-    app.add_middleware(SecurityHeadersMiddleware)
 
     # Register API routes
     from studyloop.web.routes import (
@@ -276,4 +321,16 @@ def create_app(
     # Mount static files LAST (catch-all)
     app.mount("/", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
-    return app
+    # Security headers: wraps the FINISHED app object rather than being
+    # registered via app.add_middleware(). Starlette always puts its own
+    # ServerErrorMiddleware OUTSIDE every user-added middleware, specifically
+    # so it can catch exceptions raised BY user middleware too -- which means
+    # a middleware added via add_middleware() can never see the 500 response
+    # ServerErrorMiddleware builds for an unhandled exception (R-13d).
+    # Wrapping the app object here makes this the true outermost ASGI layer,
+    # so it sees every response, error or not. SecurityHeadersMiddleware's
+    # __getattr__ forwards .state/.routes/etc. to the wrapped FastAPI
+    # instance, so it remains a drop-in replacement for every caller that
+    # holds onto create_app()'s return value -- but it is not actually a
+    # FastAPI subclass, hence the ignore below.
+    return SecurityHeadersMiddleware(app)  # type: ignore[return-value]

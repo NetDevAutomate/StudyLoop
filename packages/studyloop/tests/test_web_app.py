@@ -11,6 +11,7 @@ pytest.importorskip("fastapi")
 
 from unittest.mock import patch  # noqa: E402
 
+from fastapi import FastAPI  # noqa: E402  # pyright: ignore[reportMissingImports]
 from fastapi.testclient import TestClient  # noqa: E402  # pyright: ignore[reportMissingImports]
 
 from studyloop.cli import cli  # noqa: E402
@@ -192,6 +193,58 @@ class TestDevModeCsp:
         csp = resp.headers["content-security-policy"]
         connect_src = next(part for part in csp.split(";") if "connect-src" in part).strip()
         assert "data:" in connect_src
+
+
+class TestSecurityHeadersSurviveExceptions:
+    """R-13d: SecurityHeadersMiddleware was a BaseHTTPMiddleware, whose
+    response path is bypassed when a route raises -- the resulting 500
+    carried none of these headers, and only GET / was ever tested. Builds a
+    minimal app (not create_app) so a deliberately-raising route doesn't
+    need to exist in production code at all.
+    """
+
+    @staticmethod
+    def _minimal_app():
+        from studyloop.web.app import SecurityHeadersMiddleware
+
+        app = FastAPI()
+
+        @app.get("/boom")
+        def boom() -> None:
+            raise RuntimeError("deliberate failure for R-13d red evidence")
+
+        # Matches create_app()'s own wiring exactly: SecurityHeadersMiddleware
+        # wraps the finished app object rather than being registered via
+        # app.add_middleware(), because add_middleware() places it INSIDE
+        # Starlette's own ServerErrorMiddleware -- which builds the 500
+        # response for an unhandled exception using the ORIGINAL send, never
+        # reaching any add_middleware()-registered layer. See the class
+        # docstring in web/app.py.
+        return SecurityHeadersMiddleware(app)
+
+    @staticmethod
+    def _assert_all_security_headers_present(resp) -> None:
+        assert resp.headers.get("x-frame-options") == "DENY"
+        assert resp.headers.get("content-security-policy")
+        assert resp.headers.get("referrer-policy") == "same-origin"
+        assert resp.headers.get("permissions-policy")
+
+    def test_404_carries_security_headers(self) -> None:
+        app = self._minimal_app()
+        resp = TestClient(app, raise_server_exceptions=False).get("/does-not-exist")
+        assert resp.status_code == 404
+        self._assert_all_security_headers_present(resp)
+
+    def test_500_from_a_raising_route_carries_security_headers(self) -> None:
+        app = self._minimal_app()
+        resp = TestClient(app, raise_server_exceptions=False).get("/boom")
+        assert resp.status_code == 500
+        self._assert_all_security_headers_present(resp)
+
+    def test_static_file_response_carries_security_headers(self, client: TestClient) -> None:
+        resp = client.get("/style.css")
+        assert resp.status_code == 200
+        self._assert_all_security_headers_present(resp)
 
 
 class TestCoursesAPI:
