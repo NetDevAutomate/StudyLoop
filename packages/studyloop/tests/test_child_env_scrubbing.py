@@ -4,11 +4,13 @@ An agent subprocess is a third-party binary chosen by the learner and driven by 
 model, and on the ACP path it is granted filesystem read and write. Anything left
 in its environment is available to it and to whatever it launches.
 
-This file exists because the rule was enforced in exactly one of the two
-transports. ``pty.py`` built a scrubbed env; ``session_runtime/acp.py`` passed
-``os.environ.copy()`` and ``session/transports/acp.py`` passed no ``env=`` at all,
-which inherits everything. Each file looked reasonable on its own, which is how
-the asymmetry survived. The tests below are written against the SHARED rule so a
+This file exists because the rule was enforced in exactly one of two
+transports that both existed at the time. ``pty.py`` built a scrubbed env;
+``session_runtime/acp.py`` (a fully dead, parallel transport implementation,
+deleted in R-04) passed ``os.environ.copy()``, and the LIVE
+``session/transports/acp.py`` passed no ``env=`` at all, which inherits
+everything. Each file looked reasonable on its own, which is how the
+asymmetry survived. The tests below are written against the SHARED rule so a
 future third transport cannot quietly opt out.
 """
 
@@ -235,15 +237,6 @@ class TestEveryTransportUsesIt:
         """
         lines = inspect.getsource(module).splitlines()  # type: ignore[arg-type]
         return "\n".join(ln for ln in lines if not ln.lstrip().startswith("#"))
-
-    def test_acp_runtime_does_not_copy_os_environ(self) -> None:
-        from studyloop.session_runtime import acp as runtime_acp
-
-        code = self._code_only(runtime_acp)
-        assert "os.environ.copy()" not in code, (
-            "session_runtime/acp.py is handing the child the parent environment"
-        )
-        assert "build_child_env" in code
 
     def test_acp_transport_passes_env_explicitly(self) -> None:
         """Omitting env= inherits everything, so its ABSENCE is the bug."""
