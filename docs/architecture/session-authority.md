@@ -250,21 +250,23 @@ their claim true (not before — R-59's lesson):
 
 ## Open questions
 
-- **`cli/_session.py`'s `studyloop session start` keeps the unconditional
-  `is_session_active()` guard, not `claim_blocks_cli_start()`.** This
-  command is a different shape from `studyloop study`: it never records a
-  `mux_session`/`tmux_session` name (no tmux environment is created), so the
-  CLI-owned branch `claim_blocks_cli_start()` shares with
+- **`cli/_session.py`'s `studyloop session start` claims carry no liveness
+  signal (R-01h, filed for 0.2.0 — no code change in this lane).** This
+  command keeps the unconditional `is_session_active()` guard, not
+  `claim_blocks_cli_start()`/`try_claim_session()` (R-01b, C1). It is a
+  different shape from `studyloop study`: it never records a
+  `mux_session`/`tmux_session` name (no tmux environment is created), so
+  the CLI-owned branch `claim_blocks_cli_start()` shares with
   `claim_blocks_web_start()` — "does the recorded multiplexer session still
   exist?" — can never confirm one of its own claims alive; every claim this
   command writes would read as stale and be silently reclaimed on the next
   start, removing the fail-closed guarantee `test_cli_session.py::
   test_session_start_rejects_when_already_active` pins, with no liveness
-  signal (no pid, no session name) to replace it. R-01b's defect report is
-  specifically about `studyloop study` (`session/start.py`); this command
-  needs its own liveness signal (most plausibly a pid recorded at write
-  time, mirroring the web claim) before the same reclaim rule can apply
-  safely. Left open for a follow-up item, not folded into R-01b.
+  signal (no pid, no session name) to replace it. R-01b's and C1's defect
+  reports are both specifically about `studyloop study`
+  (`session/start.py`); this command needs its own liveness signal (most
+  plausibly a pid recorded at write time, mirroring the web claim) before
+  the same reclaim rule can apply safely. Tracked as R-01h, 0.2.0.
 - **Web-owned claim liveness checked cross-process.** Now exercised by
   `claim_blocks_cli_start()` (R-01b, above) for the one caller that needs
   it (`studyloop study`). A second future caller (e.g. a `studyloop session
