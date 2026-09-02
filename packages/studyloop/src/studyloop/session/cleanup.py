@@ -154,10 +154,12 @@ def _teardown_agent(state: dict) -> None:
 
 
 def _kill_background_processes(state: dict) -> None:
-    """Kill web dashboard and ttyd processes by PID, then by port as fallback.
+    """Kill the web dashboard process by PID, then by port as fallback.
 
-    PID-based kill is tried first (fast). Port-based kill handles orphaned
-    processes whose PIDs were lost between code paths.
+    PID-based kill is tried first (fast). Port-based kill handles an orphaned
+    process whose PID was lost between code paths. ttyd is no longer spawned
+    (ttyd retirement stage 2), so there is nothing left to kill here for it —
+    this only tears down what stage 2 could still create.
     """
     import contextlib
     import os
@@ -165,7 +167,7 @@ def _kill_background_processes(state: dict) -> None:
 
     # PID-based kill — verify command matches to guard against PID recycling.
     # "studyloop" matches both the binary and "python -m studyloop.cli".
-    pid_checks = {"web_pid": "studyloop", "ttyd_pid": "ttyd"}
+    pid_checks = {"web_pid": "studyloop"}
     for pid_key, expected in pid_checks.items():
         pid = state.get(pid_key)
         if not pid:
@@ -185,10 +187,6 @@ def _kill_background_processes(state: dict) -> None:
     # Port-based fallback
     from studyloop.session.orchestrator import _kill_port_occupant
 
-    ttyd_port = state.get("ttyd_port")
-    if ttyd_port:
-        with contextlib.suppress(Exception):
-            _kill_port_occupant(int(ttyd_port), expected_cmd="ttyd")
     web_port = state.get("web_port")
     if web_port:
         with contextlib.suppress(Exception):

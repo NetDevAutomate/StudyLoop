@@ -69,9 +69,11 @@ def build_session_state_payload(
         "persona_hash": persona_hash,
         "transport": transport,
         # PTY/ACP starts own no tmux session. write_session_state is a
-        # read-merge-write, so a PTY session started after a legacy ttyd one
-        # would otherwise inherit that session's dead tmux_session key and be
-        # misclassified as a tmux zombie. Clear it explicitly at the source.
+        # read-merge-write, so a PTY session started after a CLI tmux session
+        # (studyloop study) would otherwise inherit that session's dead
+        # tmux_session key and be misclassified as a tmux zombie. Clear it
+        # explicitly at the source. (Renamed from "legacy ttyd one" during
+        # ttyd retirement stage 5 — never ttyd-specific.)
         "tmux_session": None,
     }
     if persona_file is not None:

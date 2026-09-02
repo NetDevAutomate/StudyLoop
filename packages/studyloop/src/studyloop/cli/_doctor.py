@@ -21,6 +21,42 @@ from studyloop.installers import (
 )
 
 
+def check_unknown_config_keys() -> list[CheckResult]:
+    """Warn about top-level config.yaml keys no consumer reads any more.
+
+    R-34: an unknown or retired key (e.g. ``ttyd_port``, dropped in the ttyd
+    retirement) silently does nothing today — ``load_settings()`` only ever
+    reads the keys it looks for, so a stale key from an old config is neither
+    applied nor reported. This is the report; the fix (deleting the key) is
+    the user's. Lives here rather than in ``doctor/config.py`` (owned by a
+    different remediation lane, m5, in the same window this was added) —
+    the registry below wires it into the same "config" category regardless
+    of which module defines it.
+    """
+    try:
+        from studyloop.settings import unknown_top_level_keys
+
+        unknown = unknown_top_level_keys()
+    except Exception:
+        return []
+
+    if not unknown:
+        return []
+
+    keys = ", ".join(unknown)
+    return [
+        CheckResult(
+            "config",
+            "unknown_config_keys",
+            "warn",
+            f"Unknown or retired config.yaml key(s): {keys}. StudyLoop no longer "
+            "reads them; they are silently inert.",
+            f"Remove {keys} from ~/.config/studyloop/config.yaml.",
+            False,
+        )
+    ]
+
+
 def _get_registry():
     """Build and return a fully-loaded CheckerRegistry."""
     from studyloop.doctor import CheckerRegistry
@@ -60,6 +96,7 @@ def _get_registry():
         check_active_topic_limit,
         check_review_directories,
         check_pandoc,
+        check_unknown_config_keys,
     ]
     # Obsidian is an OPT-IN integration, so its checks are registered only when
     # the config actually mentions it. A user who never had Obsidian should not

@@ -30,7 +30,11 @@ async def get_session_state() -> dict:
     slot even when the file is gone or an out-of-process end left
     ``mode=ended``, and surface the same ``detached`` / ``reattach_url``
     affordance the 409 carries. When no slot is held, fall back to the file
-    verbatim so legacy ttyd sessions (which never touch the slot) still show.
+    verbatim so out-of-process CLI tmux sessions (``studyloop study``, which
+    never touch the web app's in-process slot) still show. Renamed from
+    "legacy ttyd sessions" during the ttyd retirement (stage 5): the fallback
+    was never about ttyd specifically — it is load-bearing for every CLI
+    session, ttyd or not, because none of them ever held the slot.
     """
     from studyloop.session import active as session_active
     from studyloop.web.routes.session import _grace
@@ -206,7 +210,7 @@ async def end_session() -> JSONResponse:
         await _grace.release_now(str(session_id), reason="ended-by-user")
 
     # Release the PTY singleton first — idempotent, safe when the session
-    # was a legacy ttyd flow that never touched active.py.
+    # was a CLI tmux flow (studyloop study) that never touched active.py.
     await session_active.release()
 
     if not state.get("study_session_id"):

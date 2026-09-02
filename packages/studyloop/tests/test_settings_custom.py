@@ -35,7 +35,6 @@ def test_defaults_when_no_config_file(tmp_path):
 
         s = load_settings()
 
-    assert s.ttyd_port == 7681
     assert s.web_port == 8567
     assert s.browser == ""
     assert s.topics == []
@@ -188,10 +187,9 @@ def test_scalar_path_fields_are_expanded(tmp_path):
 
 
 def test_scalar_int_fields(tmp_path):
-    config_path = _write_config(tmp_path, {"ttyd_port": 9999, "web_port": 1234})
+    config_path = _write_config(tmp_path, {"web_port": 1234})
     s = _load(config_path)
 
-    assert s.ttyd_port == 9999
     assert s.web_port == 1234
 
 
@@ -221,7 +219,6 @@ def test_absent_scalar_fields_keep_defaults(tmp_path):
     s = _load(config_path)
 
     assert s.browser == "chrome"
-    assert s.ttyd_port == 7681  # unchanged default
     assert s.web_port == 8567  # unchanged default
 
 
@@ -698,3 +695,56 @@ def test_bare_content_key(tmp_path, monkeypatch):
 
     # Falls back to ContentConfig defaults; the key point is no AttributeError.
     assert load_settings().content.base_path
+
+
+# ---------------------------------------------------------------------------
+# Unknown top-level config keys (R-34) — feeds the doctor's unknown-key check
+# ---------------------------------------------------------------------------
+
+
+def test_known_top_level_keys_covers_every_settings_field():
+    """Every Settings dataclass field name must be in the known-keys set, or
+    a real, currently-supported key would false-positive as unknown."""
+    import dataclasses
+
+    from studyloop.settings import Settings, known_top_level_keys
+
+    known = known_top_level_keys()
+    for f in dataclasses.fields(Settings):
+        assert f.name in known, f"Settings field {f.name!r} missing from known_top_level_keys()"
+
+
+def test_known_top_level_keys_covers_raw_only_sections():
+    """review/tts/focus are read directly from load_raw_config() by consumers
+    other than load_settings() and are not Settings fields — they must still
+    be known, or every config.yaml using them false-positives as unknown."""
+    from studyloop.settings import known_top_level_keys
+
+    known = known_top_level_keys()
+    for section in ("review", "tts", "focus"):
+        assert section in known
+
+
+def test_unknown_top_level_keys_flags_a_retired_field(tmp_path, monkeypatch):
+    _write_raw(tmp_path, "ttyd_port: 7681\nweb_port: 9000\n", monkeypatch)
+    from studyloop.settings import unknown_top_level_keys
+
+    assert unknown_top_level_keys() == ["ttyd_port"]
+
+
+def test_unknown_top_level_keys_flags_a_typo():
+    from studyloop.settings import unknown_top_level_keys
+
+    assert unknown_top_level_keys({"web_prot": 9000}) == ["web_prot"]
+
+
+def test_unknown_top_level_keys_empty_for_a_fully_known_config(tmp_path, monkeypatch):
+    _write_raw(
+        tmp_path,
+        "web_port: 9000\nbrowser: firefox\nreview:\n  directories: []\n"
+        "tts:\n  backend: kokoro\nfocus:\n  max_active: 3\n",
+        monkeypatch,
+    )
+    from studyloop.settings import unknown_top_level_keys
+
+    assert unknown_top_level_keys() == []

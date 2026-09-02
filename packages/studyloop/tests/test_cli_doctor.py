@@ -104,3 +104,41 @@ class TestDoctorCommand:
         assert result.exit_code == 0
         assert mock_reg.return_value.run_all.call_count == 2
         assert "Applied fixes" in result.output
+
+
+class TestUnknownConfigKeysCheck:
+    """R-34: a retired or misspelled top-level config.yaml key is silently
+    inert today. This check names it instead. Defined in cli/_doctor.py
+    (not doctor/config.py, which is owned by a different remediation lane)."""
+
+    def test_orphaned_ttyd_port_key_is_named_unknown(self, tmp_path, monkeypatch) -> None:
+        """ttyd_port survives in a pre-retirement config.yaml as dead weight;
+        doctor must name it as unknown/retired, not stay silent."""
+        from studyloop.cli._doctor import check_unknown_config_keys
+
+        config = tmp_path / "config.yaml"
+        config.write_text("ttyd_port: 7681\nweb_port: 9000\n")
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(config))
+
+        results = check_unknown_config_keys()
+
+        assert len(results) == 1
+        assert results[0].status == "warn"
+        assert "ttyd_port" in results[0].message
+        assert "ttyd_port" in results[0].fix_hint
+
+    def test_no_warning_for_a_config_with_only_known_keys(self, tmp_path, monkeypatch) -> None:
+        from studyloop.cli._doctor import check_unknown_config_keys
+
+        config = tmp_path / "config.yaml"
+        config.write_text("web_port: 9000\nbrowser: firefox\ntts:\n  backend: kokoro\n")
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(config))
+
+        assert check_unknown_config_keys() == []
+
+    def test_no_warning_when_config_file_absent(self, tmp_path, monkeypatch) -> None:
+        from studyloop.cli._doctor import check_unknown_config_keys
+
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(tmp_path / "does-not-exist.yaml"))
+
+        assert check_unknown_config_keys() == []
