@@ -61,6 +61,10 @@ _INITIALIZE_TIMEOUT_S = 15.0
 # Kiro's MCP-server bootstrap takes around 13 seconds. Generous margin.
 _SESSION_NEW_TIMEOUT_S = 60.0
 _EVENT_QUEUE_MAX = 256
+# Bytes of child stderr kept for a handshake-failure/non-zero-exit
+# diagnostic (R-07). A tail, not the whole stream -- this is a debugging
+# aid, not a log sink.
+_STDERR_TAIL_BYTES = 4096
 
 
 @dataclass
@@ -153,6 +157,13 @@ class ACPTransport:
         self._pending: dict[int, asyncio.Future[dict[str, Any]]] = {}
         self._prompt_tasks: set[asyncio.Task[None]] = set()
         self._handshake_complete = False
+        # R-07: stderr was DEVNULL, so a crash before the handshake completed
+        # (or a non-zero exit later) reported only a generic timeout/exit
+        # code, with no reason. Drained continuously (not read once, on
+        # demand) so a chatty child can never fill the pipe buffer and block
+        # itself -- see _drain_stderr.
+        self._stderr_tail: bytes = b""
+        self._stderr_task: asyncio.Task[None] | None = None
 
     # ---- AgentSessionTransport ------------------------------------------
 
@@ -177,9 +188,13 @@ class ACPTransport:
             *argv,
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.PIPE,
             cwd=config.cwd,
             env=build_child_env(),
+        )
+        self._stderr_task = asyncio.create_task(
+            self._drain_stderr(proc),
+            name=f"acptransport-stderr-{proc.pid}",
         )
 
         queue: asyncio.Queue[TransportEventT | None] = asyncio.Queue(maxsize=_EVENT_QUEUE_MAX)
@@ -225,6 +240,7 @@ class ACPTransport:
         except Exception:
             # Tear down the subprocess so we don't leak on handshake failure.
             await self._tear_down()
+            self._log_stderr_tail(f"ACP handshake failed for agent={config.agent!r}")
             raise
 
         # Mark handshake complete. Started is synthesised by events() as the
@@ -393,6 +409,33 @@ class ACPTransport:
 
     # ---- Internal -------------------------------------------------------
 
+    async def _drain_stderr(self, proc: asyncio.subprocess.Process) -> None:
+        """Continuously drain the child's stderr into a bounded tail.
+
+        Piped stderr that nobody reads fills the OS pipe buffer and blocks
+        the child -- this runs for the transport's whole life so a chatty
+        agent can never deadlock on it. Only the last ``_STDERR_TAIL_BYTES``
+        are kept, for the diagnostic ``_log_stderr_tail`` logs on handshake
+        failure or a non-zero exit (R-07 -- previously ``DEVNULL``, so a
+        crash reported only a generic timeout or exit code, with no reason).
+        """
+        if proc.stderr is None:
+            return
+        try:
+            while True:
+                chunk = await proc.stderr.read(1024)
+                if not chunk:
+                    break
+                self._stderr_tail = (self._stderr_tail + chunk)[-_STDERR_TAIL_BYTES:]
+        except Exception:  # pragma: no cover - defensive, pipe already closing
+            pass
+
+    def _log_stderr_tail(self, context: str) -> None:
+        """Log the drained stderr tail at WARNING, if any was captured."""
+        text = self._stderr_tail.decode("utf-8", errors="replace").strip()
+        if text:
+            logger.warning("%s; child stderr: %s", context, text)
+
     async def _rpc(self, method: str, params: dict[str, Any]) -> dict[str, Any]:
         """Send a JSON-RPC request and await its matching response.
 
@@ -457,6 +500,12 @@ class ACPTransport:
                 returncode = await asyncio.wait_for(proc.wait(), timeout=3.0)
             except TimeoutError:
                 returncode = None
+
+            # A non-zero exit after a successful handshake is a crash, not a
+            # clean shutdown -- log why, the same diagnostic the handshake
+            # failure path already gets (R-07).
+            if returncode not in (0, None) and not self._cancel_requested:
+                self._log_stderr_tail(f"ACP child exited with code {returncode}")
 
             # Wake every pending future so awaiters don't hang.
             for fut in self._pending.values():
@@ -599,6 +648,16 @@ class ACPTransport:
         # Drain the event queue of stale events by enqueueing a sentinel.
         with contextlib.suppress(Exception):
             state.queue.put_nowait(None)
+        # Let the stderr drain task finish reading up to EOF (the child is
+        # dead or dying by now) so _stderr_tail is complete for whichever
+        # caller logs it next.
+        if self._stderr_task is not None and not self._stderr_task.done():
+            try:
+                await asyncio.wait_for(self._stderr_task, timeout=2.0)
+            except TimeoutError:
+                self._stderr_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError, Exception):
+                    await self._stderr_task
         self._state = None
 
     # Accessor used only by unit tests (not part of the Protocol).
