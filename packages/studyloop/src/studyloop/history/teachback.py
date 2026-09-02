@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import json
+import logging
 import sqlite3
 from datetime import UTC, datetime
 
 from ..db import immediate
 from . import _connection
+
+logger = logging.getLogger(__name__)
 
 
 def _confidence_from_teachback(total: int, review_type: str) -> str:
@@ -174,7 +177,10 @@ def get_teachback_history(concept: str, topic: str | None = None) -> list[dict]:
                 (concept,),
             ).fetchall()
         return [dict(r) for r in rows]
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as exc:
+        if not _connection.is_missing_table_error(exc):
+            logger.warning("get_teachback_history failed: %s", exc)
+            raise
         return []
     finally:
         conn.close()
