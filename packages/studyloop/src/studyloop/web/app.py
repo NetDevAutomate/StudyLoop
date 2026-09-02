@@ -207,6 +207,7 @@ def create_app(
         title="StudyLoop",
         docs_url=None,
         redoc_url=None,
+        openapi_url=None,
         lifespan=_lifespan,
     )
 

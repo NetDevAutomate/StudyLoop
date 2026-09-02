@@ -359,3 +359,84 @@ class TestConcurrentSameCardReviews:
             "concurrent reviews did not reproduce the sequential schedule -- "
             f"lost progression.\n  sequential: {expected}\n  concurrent: {actual}"
         )
+
+
+# ---------------------------------------------------------------------------
+# R-23: every public function must close every connection it opens.
+# `with conn:` (the old pattern) only commits/rolls back -- verified
+# experimentally that a connection used that way stays open and keeps
+# accepting queries. A closed sqlite3.Connection raises ProgrammingError on
+# the next execute(), so that's the proof a `finally: conn.close()` ran.
+# ---------------------------------------------------------------------------
+
+
+class TestConnectionsAreClosed:
+    def _spy_connect(self, monkeypatch) -> list[sqlite3.Connection]:
+        """Capture every connection sqlite3.connect() hands back, via a thin
+        pass-through wrapper -- so the test can inspect them after the public
+        function under test has returned.
+        """
+        created: list[sqlite3.Connection] = []
+        real_connect = sqlite3.connect
+
+        def spy(*args, **kwargs):
+            conn = real_connect(*args, **kwargs)
+            created.append(conn)
+            return conn
+
+        monkeypatch.setattr(sqlite3, "connect", spy)
+        return created
+
+    def _assert_all_closed(self, created: list[sqlite3.Connection]) -> None:
+        assert created, "no connection was opened -- test fixture is wrong"
+        for conn in created:
+            with pytest.raises(sqlite3.ProgrammingError):
+                conn.execute("SELECT 1")
+
+    def test_ensure_tables_closes_its_connection(self, db_path, monkeypatch):
+        from studyloop.review_db import ensure_tables
+
+        created = self._spy_connect(monkeypatch)
+        ensure_tables(db_path)
+        self._assert_all_closed(created)
+
+    def test_record_card_review_closes_its_connection(self, db_path, monkeypatch):
+        from studyloop.review_db import record_card_review
+
+        created = self._spy_connect(monkeypatch)
+        record_card_review(
+            course="python",
+            card_type="flashcard",
+            card_hash="card-1",
+            correct=True,
+            db_path=db_path,
+        )
+        self._assert_all_closed(created)
+
+    def test_record_session_closes_its_connection(self, db_path, monkeypatch):
+        from studyloop.review_db import record_session
+
+        created = self._spy_connect(monkeypatch)
+        record_session(course="python", mode="quiz", total=10, correct=8, db_path=db_path)
+        self._assert_all_closed(created)
+
+    def test_get_due_cards_closes_its_connection(self, db_path, monkeypatch):
+        from studyloop.review_db import get_due_cards
+
+        created = self._spy_connect(monkeypatch)
+        get_due_cards("python", db_path=db_path)
+        self._assert_all_closed(created)
+
+    def test_get_wrong_hashes_closes_its_connection(self, db_path, monkeypatch):
+        from studyloop.review_db import get_wrong_hashes
+
+        created = self._spy_connect(monkeypatch)
+        get_wrong_hashes("python", db_path=db_path)
+        self._assert_all_closed(created)
+
+    def test_get_course_stats_closes_its_connection(self, db_path, monkeypatch):
+        from studyloop.review_db import get_course_stats
+
+        created = self._spy_connect(monkeypatch)
+        get_course_stats("python", db_path=db_path)
+        self._assert_all_closed(created)

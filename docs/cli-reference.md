@@ -43,7 +43,7 @@ studyloop now --modality hands-on --interleave adaptive
 studyloop chat-note NOTE.md --mode recall      # Build a Socratic context pack
 studyloop chat-note NOTE.md --mode diagram --voice
 studyloop practice verify TASKS.json --task 1 --notes "what passed"
-studyloop practice verify TASKS.json --task 1 --run-command --workdir . --timeout 120
+studyloop practice verify TASKS.json --task 1 --run-command --yes --workdir . --timeout 120
 studyloop recap today                    # One win, repair target, due item, next action
 studyloop recap today --speak            # Speak through study-speak
 studyloop recap today --audio-file recap.wav
@@ -253,9 +253,11 @@ Modes are `recall`, `diagram`, `trace`, `teachback`, and `repair`. The command v
 
 `studyloop practice verify` records an attempt against a generated practice deck. Command verification only runs when `--run-command` is explicit; non-command tasks use notes plus expected-artifact checks as a rubric. Newer generated decks can also carry rubric items, evidence prompts, setup commands, and per-task command timeouts.
 
+A command-verification task's command comes from the practice-deck JSON — possibly LLM-generated — so it is always printed before it runs. With `--run-command`, actually executing it additionally requires `--yes` (needed in non-interactive contexts such as scripts or CI) or an interactive `y` at the prompt; without either, the command is shown but nothing executes and the process exits with status 2.
+
 ```bash
 studyloop practice verify course-practice.json --task 1 --notes "diagram matched"
-studyloop practice verify course-practice.json --task 2 --run-command --workdir . --timeout 120
+studyloop practice verify course-practice.json --task 2 --run-command --yes --workdir . --timeout 120
 ```
 
 `studyloop recap today` compresses the day into one win, one repair target, one due item, and one next action. `--speak` calls `study-speak`, so the local-Kokoro / Kokoro-server / macOS backend configuration is inherited. `--audio-file` saves the same recap as a local audio file, preferring the Kokoro server when configured and falling back to macOS `say`.

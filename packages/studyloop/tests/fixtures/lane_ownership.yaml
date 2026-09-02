@@ -73,6 +73,10 @@ lanes:
     # R-15 sites (DECISIONS §E4)
     - packages/studyloop/src/studyloop/cli/_practice.py
     - packages/studyloop/src/studyloop/content/generators/prompts.py
+    # R-09b: second unscrubbed dotenv loader (DECISIONS §E12). Dual-owned with
+    # m3, which already owns the whole agent-session-tools/** glob above; m3
+    # is told not to touch this specific file.
+    - packages/agent-session-tools/src/agent_session_tools/config_loader.py
 
   m5: # public contract, packaging, functional UX (lane/m5-contract-packaging) — after M2 merges
     - pyproject.toml

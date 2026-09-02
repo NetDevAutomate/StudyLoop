@@ -10,12 +10,15 @@ import each other's config loaders.
 """
 
 import copy
+import logging
 import os
 from pathlib import Path
 from typing import Any
 
 import yaml
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 # Default paths
 CONFIG_DIR = Path.home() / ".config" / "studyloop"
@@ -237,10 +240,41 @@ def load_config() -> dict[str, Any]:
     """
     config = copy.deepcopy(DEFAULT_CONFIG)
 
-    # Load .env file if exists
+    # Load .env file if exists.
+    #
+    # R-09b: STUDYLOOP_TEST_AGENT_CMD / STUDYLOOP_TEST_ACP_CMD are
+    # shell=True-executed test-only escape hatches, honoured unconditionally
+    # in studyloop's production session-start paths. studyloop's own package
+    # import (studyloop/__init__.py) already refuses to let a `.env` set
+    # either one -- it snapshots the STUDYLOOP_TEST_* keys present BEFORE its
+    # dotenv load and deletes anything a `.env` added afterward. This loader
+    # is a SECOND, independent dotenv load of a `.env` at the SAME path
+    # (this package must not import studyloop's config loader, or vice
+    # versa -- see the module docstring), and it runs LATER: at web-server
+    # startup, via export_sessions.py's module-level load_config() call,
+    # reached from studyloop/web/_schema_init.py's prepare_schema() --
+    # strictly AFTER studyloop's own scrub already ran. Without the same
+    # rule here, a `.env` at this path reintroduces the hatch on every
+    # server boot, before the first request is served. DUPLICATE of the
+    # rule in studyloop/__init__.py (same reasoning as the DELIBERATE
+    # DUPLICATE of _expand_dotted_keys above) -- keep both in sync.
     env_file = get_env_file()
     if env_file.exists():
+        pre_dotenv_test_keys = frozenset(
+            key for key in os.environ if key.startswith("STUDYLOOP_TEST_")
+        )
         load_dotenv(env_file)
+        for key in [key for key in os.environ if key.startswith("STUDYLOOP_TEST_")]:
+            if key in pre_dotenv_test_keys:
+                continue
+            del os.environ[key]
+            logger.warning(
+                "Ignoring %s loaded from %s: STUDYLOOP_TEST_* test hatches are "
+                "only honoured when exported in the real process environment, "
+                "never when set by a .env file.",
+                key,
+                env_file,
+            )
 
     # Try loading config.yaml (new location first, then legacy)
     config_file = get_config_file()

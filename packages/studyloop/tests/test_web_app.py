@@ -248,6 +248,24 @@ class TestSecurityHeadersSurviveExceptions:
         self._assert_all_security_headers_present(resp)
 
 
+class TestAutoDocsDisabled:
+    """R-16: docs_url/redoc_url were disabled but openapi_url was left at its
+    FastAPI default (/openapi.json) -- unnecessary residual surface even
+    though it sits behind BasicAuthMiddleware when a password is set."""
+
+    def test_openapi_json_not_served(self, client: TestClient) -> None:
+        resp = client.get("/openapi.json")
+        assert resp.status_code == 404
+
+    def test_docs_not_served(self, client: TestClient) -> None:
+        resp = client.get("/docs")
+        assert resp.status_code == 404
+
+    def test_redoc_not_served(self, client: TestClient) -> None:
+        resp = client.get("/redoc")
+        assert resp.status_code == 404
+
+
 class TestCoursesAPI:
     def test_list_courses(self, client: TestClient) -> None:
         resp = client.get("/api/courses")
