@@ -10,6 +10,7 @@ Nothing touches `~/.config/studyloop`.
 
 from __future__ import annotations
 
+import subprocess
 import sqlite3
 from pathlib import Path
 from unittest.mock import patch
@@ -21,8 +22,32 @@ from agent_session_tools.sync import (
     _backup_destination,
     _build_global_upsert_select_sql,
     _dump_delta_sql,
+    _remote_backup,
     _stream_sql_to_target,
 )
+
+
+# Captured before any test patches `agent_session_tools.sync.subprocess.run`
+# (which, since it's the same module object, patches this file's own
+# `subprocess.run` too) -- `_run_ssh_locally` below must call the REAL
+# implementation, not itself recursively.
+_real_subprocess_run = subprocess.run
+
+
+def _run_ssh_locally(args, **kwargs):
+    """Stand-in for `subprocess.run` in `_remote_backup` tests.
+
+    `_remote_backup` shells out to `["ssh", *opts, host, remote_cmd]`. There
+    is no real remote host in these tests -- the thing under test is
+    whether `remote_cmd` (the shell command string `_remote_backup` builds)
+    is *itself* correct, independent of SSH as a transport. Running that
+    exact string through a local shell instead of over a real network hop
+    tests precisely that, without needing a real remote to talk to or
+    faking SSH's own behaviour.
+    """
+    assert args[0] == "ssh"
+    remote_cmd = args[-1]
+    return _real_subprocess_run(["sh", "-c", remote_cmd], **kwargs)
 
 
 def _seed_session(conn: sqlite3.Connection, session_id: str) -> None:
@@ -457,6 +482,50 @@ class TestBackupDestination:
         assert result == "/remote/sessions.db.bak-20240101_000000"
 
 
+class TestRemoteBackupWalSafety:
+    """R-19c (M3 council, arbitration A2): `_remote_backup` used to be a
+    plain `cp -p`, which can miss data still sitting in a WAL-mode
+    database's `-wal` file. Fixed with the sqlite3 CLI's `.backup`
+    dot-command (the same WAL-aware mechanism as Python's
+    `sqlite3.Connection.backup()`), run on the "remote" host.
+
+    No real SSH here -- `_run_ssh_locally` runs the exact shell command
+    `_remote_backup` builds through a local shell instead, which is what
+    actually needs proving (see its docstring). `_remote_backup` accepts a
+    bare path string for `remote_db`, so a `tmp_path` file underneath it
+    plays the role of the "remote" database.
+    """
+
+    def test_backup_captures_uncheckpointed_wal_data(self, tmp_path):
+        db_path = tmp_path / "remote-sessions.db"
+        reader = sqlite3.connect(db_path)
+        reader.execute("CREATE TABLE t (id INTEGER PRIMARY KEY, val TEXT)")
+        reader.execute("PRAGMA journal_mode=WAL")
+        reader.commit()
+        reader.execute("BEGIN")
+        reader.execute("SELECT COUNT(*) FROM t").fetchone()
+
+        writer = sqlite3.connect(db_path)
+        writer.execute("INSERT INTO t (val) VALUES ('wal-only')")
+        writer.commit()
+        writer.close()
+
+        with patch(
+            "agent_session_tools.sync.subprocess.run", side_effect=_run_ssh_locally
+        ):
+            with patch("agent_session_tools.sync._ensure_mux_dir"):
+                backup_path = _remote_backup("irrelevant-host", str(db_path))
+        reader.close()
+
+        assert backup_path is not None
+        backup_conn = sqlite3.connect(backup_path)
+        count = backup_conn.execute(
+            "SELECT COUNT(*) FROM t WHERE val = 'wal-only'"
+        ).fetchone()[0]
+        backup_conn.close()
+        assert count == 1, "the remote backup must include data still in the -wal file"
+
+
 class TestPushBacksUpRemoteBeforeWriting:
     """Exercise `push()` itself with SSH mocked, proving the backup call
     happens before the write, not just that the helper exists."""
@@ -485,7 +554,7 @@ class TestPushBacksUpRemoteBeforeWriting:
         monkeypatch.setattr(
             sync_mod,
             "_backup_destination",
-            lambda target: call_order.append("backup"),
+            lambda target: call_order.append("backup") or "/r.db.bak-fake",
         )
         monkeypatch.setattr(
             sync_mod,

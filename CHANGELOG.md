@@ -112,6 +112,14 @@ experience may change before `1.0.0`.
   error, row count unchanged). These four now use a migration-backfilled
   `sync_key`; `concept_relations` (which already had a real natural key)
   now syncs on that instead of its own autoincrement `id`.
+- Cross-machine sync's remote backup (`push`/the remote side of `sync`) and
+  the local `session-maint` backup helper both copied the database file
+  with a plain file copy (`cp -p` over SSH, `shutil.copy2` locally). In WAL
+  mode, data committed but not yet checkpointed into the main `.db` file
+  lives in the sibling `-wal` file, which a plain file copy never reads —
+  the backup silently missed recently-committed rows. Both now use a
+  WAL-aware backup mechanism (the sqlite3 CLI's `.backup` dot-command
+  remotely, `sqlite3.Connection.backup()` locally).
 
 ### Known pre-release boundaries
 

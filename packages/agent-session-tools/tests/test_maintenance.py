@@ -182,6 +182,40 @@ class TestCreateBackup:
         conn.close()
         assert row[0] == 1
 
+    def test_backup_captures_uncheckpointed_wal_data(self, tmp_path):
+        """R-19c (M3 council, arbitration A2/X1 extension): a plain file
+        copy of a WAL-mode database can miss committed data still sitting
+        in the sibling `-wal` file. A writer's COMMIT+close alone is not
+        enough to reproduce this -- SQLite opportunistically checkpoints
+        when a write connection closes and nothing else is actively
+        pinning the WAL, which would silently flush the row into the main
+        file and make the bug invisible. A reader with an open transaction
+        pins the WAL frames so the write genuinely stays WAL-only; the
+        backup must still contain it.
+        """
+        db_path = _make_db(tmp_path)
+        reader = sqlite3.connect(db_path)
+        reader.execute("PRAGMA journal_mode=WAL")
+        reader.execute("BEGIN")
+        reader.execute("SELECT COUNT(*) FROM sessions").fetchone()
+
+        _insert_session(db_path, "wal-only", "2024-01-01T10:00:00")
+
+        backup_dir = tmp_path / "backups"
+        with patch(
+            "agent_session_tools.maintenance.get_backup_dir", return_value=backup_dir
+        ):
+            backup_path = create_backup(db_path)
+        reader.close()
+
+        assert backup_path is not None
+        backup_conn = sqlite3.connect(backup_path)
+        count = backup_conn.execute(
+            "SELECT COUNT(*) FROM sessions WHERE id = 'wal-only'"
+        ).fetchone()[0]
+        backup_conn.close()
+        assert count == 1, "the backup must include data still in the -wal file"
+
     def test_backup_dir_created_if_absent(self, tmp_path):
         db_path = _make_db(tmp_path)
         backup_dir = tmp_path / "deep" / "nested" / "backups"
