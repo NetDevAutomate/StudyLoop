@@ -134,11 +134,23 @@ def record_teachback(
             )
 
         return True
-    except sqlite3.DatabaseError:
+    except sqlite3.IntegrityError:
         # R-21: was `except sqlite3.OperationalError`, which does not catch
         # sqlite3.IntegrityError -- a CHECK-constraint violation (e.g. a score
         # outside teach_back_scores' `BETWEEN 1 AND 4` constraints) used to
         # raise straight through this best-effort, "return False" function.
+        # Narrowed from `except sqlite3.DatabaseError` to just this (R-21b):
+        # DatabaseError is IntegrityError's and OperationalError's shared
+        # parent, so the broader catch also silently swallowed a genuine
+        # lock/timeout OperationalError into the same "return False" as an
+        # expected CHECK violation -- exactly the defect R-22 fixed
+        # elsewhere. A CHECK violation is the only case safe to treat as
+        # "rejected, not recorded"; anything else must not look like one.
+        return False
+    except sqlite3.OperationalError as exc:
+        if not _connection.is_missing_table_error(exc):
+            logger.warning("record_teachback failed: %s", exc)
+            raise
         return False
     finally:
         conn.close()
