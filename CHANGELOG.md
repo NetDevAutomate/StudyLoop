@@ -164,8 +164,14 @@ experience may change before `1.0.0`.
   was already fixed for -- a lock/timeout fault read back
   indistinguishably from "no concepts"/"topic never mentioned." Narrowed
   to the missing-table case; anything else is now logged and re-raised.
+- Starting a web Study Session or Body Double no longer clobbers a session
+  already running in a terminal (`studyloop study`), and vice versa. The web
+  UI's start path now checks the same cross-process session claim the CLI
+  writes, refusing with a clear "already active" message instead of silently
+  overwriting the shared session state and orphaning the CLI's running
+  agent. A session left behind by a crashed process is still reclaimed
+  automatically rather than blocking forever.
 
-||||||| 22a91e6
 ### Security
 
 - Closed a gap where a `.env` file planted in or above the directory

@@ -58,31 +58,21 @@ def _active_session_topic(session_id: str) -> str | None:
     return topic if isinstance(topic, str) else None
 
 
-async def _session_conflict() -> JSONResponse | None:
-    """Build the 409 for a start blocked by an already-active session.
+def _conflict_response(
+    *,
+    session_id: str,
+    topic: str | None,
+    agent: str | None,
+    detached: bool,
+) -> JSONResponse:
+    """The 409 body shared by every start path blocked by an active session.
 
-    Reports the *active* session's own topic and reattach URL so the UI can
-    offer "reattach or end" instead of the desync fallback string, and surfaces
-    the same ``detached`` / ``reattach_url`` affordance ``/session/state``
-    carries. The topic is looked up via :func:`_active_session_topic`, which
-    never borrows a different session's topic. Returns ``None`` when nothing is
-    active (the caller then proceeds with a normal start).
+    Name the topic in the message itself, not only in the `topic` field. The
+    learner reads the error text, and "a session is already active" without
+    saying WHICH is the difference between a clear refusal and a dead end —
+    especially mid-study, when the blocking session may be one they forgot in
+    another tab.
     """
-    from studyloop.session import active as session_active
-    from studyloop.web.routes.session import _grace
-
-    current = await session_active.current()
-    if current is None:
-        return None
-
-    session_id = current.study_session_id
-    topic = _active_session_topic(session_id)
-    # Name the topic in the message itself, not only in the `topic` field. The
-    # learner reads the error text, and "a session is already active" without
-    # saying WHICH is the difference between a clear refusal and a dead end —
-    # especially mid-study, when the blocking session may be one they forgot in
-    # another tab. _active_session_topic reads the blocking session's own state,
-    # so this cannot borrow a different session's topic.
     subject = f' on "{topic}"' if topic else ""
     return JSONResponse(
         {
@@ -93,11 +83,75 @@ async def _session_conflict() -> JSONResponse | None:
             ),
             "study_session_id": session_id,
             "topic": topic,
-            "agent": current.config.agent,
-            "detached": _grace.has_pending_release(session_id),
+            "agent": agent,
+            "detached": detached,
             "reattach_url": f"/api/session/ws?study_session_id={session_id}",
         },
         status_code=409,
+    )
+
+
+async def _session_conflict() -> JSONResponse | None:
+    """Build the 409 for a start blocked by an already-active session.
+
+    Checks BOTH claims to the single-session slot (R-01): the in-process
+    singleton (``session/active.py``, this process's own PTY/ACP session) and
+    the cross-process file claim (``session-state.json``, written by the
+    CLI's ``studyloop study`` or a PTY/ACP session that outlived a crashed web
+    server process). See docs/architecture/session-authority.md clause 2 for
+    the full liveness contract.
+
+    Reports the *blocking* session's own topic and reattach URL so the UI can
+    offer "reattach or end" instead of the desync fallback string. The topic
+    is looked up via :func:`_active_session_topic` for the in-process case
+    (which never borrows a different session's topic), or read directly from
+    the file claim for the cross-process case (same guarantee — the claim
+    dict IS that session's own state).
+
+    Returns ``None`` when nothing live is blocking the start — including when
+    the file names a claim whose owner is no longer alive. A stale claim is
+    RECLAIMED (logged, never blocking) rather than refused forever; see
+    clause 2's crash-then-restart case.
+    """
+    from studyloop.session import active as session_active
+    from studyloop.web.routes.session import _grace
+
+    current = await session_active.current()
+    if current is not None:
+        session_id = current.study_session_id
+        return _conflict_response(
+            session_id=session_id,
+            topic=_active_session_topic(session_id),
+            agent=current.config.agent,
+            detached=_grace.has_pending_release(session_id),
+        )
+
+    # No in-process singleton holds the slot: consult the cross-process file
+    # claim. is_session_active() here would only tell us a claim EXISTS —
+    # claim_blocks_web_start() also asks whether its recorded owner is still
+    # alive, which is exactly the check the ttyd-only branch used to do and
+    # every other branch skipped (R-01).
+    from studyloop import session_state
+    from studyloop.web.routes import session as session_pkg
+
+    state = session_pkg.read_session_state()
+    if not session_state.claim_blocks_web_start(state):
+        if state.get("study_session_id") and state.get("mode") != "ended":
+            logger.warning(
+                "Reclaiming stale session claim id=%s transport=%s — its "
+                "owner is no longer alive",
+                state.get("study_session_id"),
+                state.get("transport", "cli"),
+            )
+        return None
+
+    session_id = str(state.get("study_session_id"))
+    topic = state.get("topic")
+    return _conflict_response(
+        session_id=session_id,
+        topic=topic if isinstance(topic, str) else None,
+        agent=state.get("agent") if isinstance(state.get("agent"), str) else None,
+        detached=_grace.has_pending_release(session_id),
     )
 
 
@@ -176,7 +230,8 @@ async def _start_pty_session(
 ) -> JSONResponse:
     """PTY-backed start path — no tmux, no ttyd.
 
-    1. Reject if a session is already active (``active.current()``).
+    1. Reject if a session is already active -- in-process singleton OR a live
+       cross-process file claim (``_session_conflict()``, R-01).
     2. Resolve agent + check binary. 503 with ``install_hint`` on miss.
     3. Persona + DB record creation (shared with legacy).
     4. ``await active.acquire(config, factory)`` — atomic under asyncio.Lock.
@@ -371,7 +426,8 @@ async def _start_acp_session(
     refinement may inject the persona as the first prompt, but for
     §2.2 we let the frontend send it.
 
-    1. Reject if a session is already active (``active.current()``).
+    1. Reject if a session is already active -- in-process singleton OR a live
+       cross-process file claim (``_session_conflict()``, R-01).
     2. Resolve agent + check binary. 503 with ``install_hint`` on miss.
     3. DB record creation (no tmux metadata, no persona file).
     4. ``await active.acquire(config, factory)`` — atomic under asyncio.Lock.
@@ -385,11 +441,9 @@ async def _start_acp_session(
     from studyloop.session import active as session_active
     from studyloop.session.transport import SessionAlreadyActiveError, SessionConfig
 
-    if await session_active.current() is not None:
-        return JSONResponse(
-            {"error": "A session is already active"},
-            status_code=409,
-        )
+    conflict = await _session_conflict()
+    if conflict is not None:
+        return conflict
 
     # --- Agent resolution ---
     agent = body.agent
