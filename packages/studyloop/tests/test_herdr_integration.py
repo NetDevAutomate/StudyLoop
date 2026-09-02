@@ -26,8 +26,6 @@ from __future__ import annotations
 
 import os
 import shutil
-import subprocess
-import sys
 import time
 
 import pytest
@@ -180,7 +178,23 @@ class TestEndFromOutside:
     """T8: `studyloop study --end` from a separate process kills session."""
 
     def test_end_from_separate_process(self, mux_cli: MultiplexerHarness, agent_cmd: str):
-        """Session killed when --end is run from an external process."""
+        """Session killed when --end is run from an external process.
+
+        Was hand-rolling the subprocess env inline, WITHOUT
+        STUDYLOOP_SESSION_DIR -- so the `--end` subprocess read/wrote the
+        real ~/.config/studyloop (the exact thing R-49 and this suite's own
+        module docstring forbid), found no session there, and did nothing.
+        This passed anyway before R-02's fix, purely by accident: the old
+        end path called kill_all_study_sessions(), which kills every
+        study-* session on the machine regardless of which claim triggered
+        it, so it swept up this test's session as a side effect even though
+        it never found this session's own claim. R-02's fix (kill only the
+        claim's own name) correctly stopped doing that, which is what
+        surfaced this test's own isolation bug. Fixed by using the
+        harness's own end_study_via_cli(), which already sets
+        STUDYLOOP_SESSION_DIR correctly (see TestQQuits above, which does
+        this right).
+        """
         state = mux_cli.start_study_session("test-end-outside", agent_cmd=agent_cmd)
         session_name = state.get("mux_session") or state.get("tmux_session")
         assert session_name
@@ -189,21 +203,7 @@ class TestEndFromOutside:
         mux_cli.assert_session_exists(session_name)
 
         # End from a separate process (simulates user in another terminal)
-        env = os.environ.copy()
-        env.pop("TMUX", None)
-        env.pop("HERDR_ENV", None)
-        if mux_cli.is_herdr:
-            env["STUDYLOOP_MULTIPLEXER"] = "herdr"
-        else:
-            env["STUDYLOOP_MULTIPLEXER"] = "tmux"
-
-        subprocess.run(
-            [sys.executable, "-m", "studyloop.cli", "study", "--end"],
-            capture_output=True,
-            text=True,
-            env=env,
-            timeout=15,
-        )
+        mux_cli.end_study_via_cli()
 
         mux_cli.wait_for_session_gone(session_name, timeout=15)
 
