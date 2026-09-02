@@ -1,15 +1,27 @@
 """Active session primitive — module-level singleton with an asyncio.Lock.
 
-Holds *the* currently-running agent session. One process, one session:
-the plan's single-session invariant (one learner, one agent, one PTY)
-is enforced here, atomically, so the web route and CLI cannot race each
-other into a double-start.
+Holds *the* currently-running WEB PTY/ACP agent session, IN THIS PROCESS
+ONLY. It is a CACHE of the cross-process claim recorded in
+``session-state.json`` (``session_state.py``), not the claim itself — see
+docs/architecture/session-authority.md for the full contract. Two starts
+racing each other *within this process* (two concurrent
+``POST /api/session/start`` calls) are serialised here, atomically, under
+one ``asyncio.Lock``.
+
+What this module does NOT do (an earlier version of this docstring implied
+it did, which R-01 named as the exact gap that let a web start silently
+clobber a live CLI session): it has no idea a CLI-owned session
+(``studyloop study``, which never touches this module) exists at all. The
+web start routes (``web/routes/session/_start.py``) are what cross-checks
+this singleton against the file claim before deciding whether to acquire —
+this module only serialises acquisition once that decision has already
+been made.
 
 Why a module, not a class: the architecture review wanted an atomic home
-for the "is something running?" check; the simplicity review objected to
-class ceremony for a singleton. The compromise is a module with a lock —
-no `StudySessionManager` class, no `app.state` wiring, just three small
-async functions.
+for the "is something running in THIS process?" check; the simplicity
+review objected to class ceremony for a singleton. The compromise is a
+module with a lock — no `StudySessionManager` class, no `app.state`
+wiring, just three small async functions.
 
 See docs/plans/2026-05-09-refactor-agent-session-transport-plan.md §1.4.
 """

@@ -430,9 +430,13 @@ studyloop bridge list --source-domain networking --target-domain python
 ```bash
 studyloop clean --dry-run         # Preview zombie tmux sessions, orphan dirs, stale state
 studyloop clean                   # Apply cleanup (respects lock; safe with --resume)
+studyloop clean --all             # Also kill every study-* session, live or dead, not just zombies
 ```
 
 Also runs automatically before `studyloop study` when zombies are detected.
+`--all` is a deliberate, broader sweep: it ends every running study session
+on the machine, not just orphaned ones — use it if you want a clean slate
+rather than routine tidy-up.
 
 ### Web PWA
 

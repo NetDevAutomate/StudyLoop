@@ -1,10 +1,9 @@
 # ADR-0009 — The session-state file is the claim; the in-process slot is a cache
 
-**Status:** Proposed, 2026-09-02. Written as the M2 lane's step 0 contract stub;
-finalised (status moved to Accepted, consequences filled in against the
-landed code) in the lane's last step. Motivated by the 2026-09-02 full-repo
-review's R-01 and R-02 findings and the 2026-09-01 purpose-congruence
-review's C1 finding.
+**Status:** Accepted, 2026-09-02. Written as the M2 lane's step 0 contract
+stub; finalised here against the landed code. Motivated by the 2026-09-02
+full-repo review's R-01 and R-02 findings and the 2026-09-01
+purpose-congruence review's C1 finding.
 
 ## Context
 
@@ -40,10 +39,15 @@ was chosen, not the mechanics.
   its own in-process conflict. A stale claim (owner's process/tmux session no
   longer exists) is reclaimed, logged, and never blocks a start forever.
 - `kill_all_study_sessions()` keeps its blunt "kill everything" semantics —
-  that is a legitimate, separate operation — but the per-session end path
-  (`end_session_common` → `_cleanup_tmux_and_files`) no longer calls it. It
-  kills only the ending session's own multiplexer name (nothing, for
-  PTY/ACP).
+  that is a legitimate, separate operation — but every per-session end path
+  (`end_session_common` → `_cleanup_tmux_and_files`, and the study sidebar's
+  End Session key, R-02b) no longer calls it. Each kills only the ending
+  session's own multiplexer name (nothing, for PTY/ACP). Per
+  DECISIONS.md §E17, R-02's definition of done is *exactly one* production
+  caller, not zero — `studyloop clean --all` (a new flag) is that one
+  caller, a deliberate, explicit "kill everything" sweep for the rare case
+  it's actually wanted. Default `clean` (no `--all`) is unchanged: a safer,
+  zombie-only sweep.
 - Rejected alternative: giving the CLI a control socket into the web server
   so a CLI end could directly call `active.release()` on a live web session.
   The existing `_grace.py` reaper already reconciles "the file changed
@@ -53,5 +57,40 @@ was chosen, not the mechanics.
 
 ## Consequences
 
-Filled in against the landed code at the end of the lane (see the commit that
-finalises this ADR for the concrete before/after and the matrix test IDs).
+**Before -> after**, per `tests/test_session_authority_matrix.py`:
+
+| Cell | Test | Before | After |
+| --- | --- | --- | --- |
+| web-then-web | `TestWebThenWeb::test_second_web_start_is_refused` | 409 | 409 (unchanged) |
+| cli-then-cli | `TestCliThenCli::test_a_live_cli_claim_reports_active` | blocks | blocks (unchanged) |
+| cli-then-web | `TestCliThenWeb::test_web_start_is_refused_when_cli_claim_is_live` | **201, clobbered the file** | **409** |
+| cli-then-web (ACP) | `TestCliThenWeb::test_web_acp_start_is_also_refused` | **real spawn attempted, opaque error** | **409** |
+| cli-then-web, stale claim | `TestCliThenWeb::test_a_dead_cli_claim_is_reclaimed_not_blocked` | 201 (coincidentally), no log | 201, logged as a reclaim |
+| web-then-cli | `TestWebThenCli::test_a_live_web_claim_reports_active` | blocks | blocks (unchanged) |
+| crash-then-restart | `TestCrashThenRestart::test_stale_web_claim_is_reclaimed` | 201, no log | 201, logged as a reclaim |
+| no claim | `TestNoClaim::test_an_ended_claim_never_blocks` | 201 | 201 (unchanged) |
+| end: PTY/ACP owns nothing | `TestEndMatrix::test_ending_a_pty_session_kills_no_multiplexer_session` | **called `kill_all_study_sessions`** | kills nothing |
+| end: CLI owns its own name | `TestEndMatrix::test_ending_a_cli_session_kills_only_its_own_tmux_name` | **called `kill_all_study_sessions`** | kills only its own name |
+| end: shared path | `TestEndMatrix::test_web_end_common_never_reaches_for_kill_all` | **called `kill_all_study_sessions`** | never calls it |
+
+**R-02b** (`tests/test_sidebar_pilot.py::TestSidebarKeyBindings::
+test_end_session_leaves_an_unrelated_study_session_alive`): the study
+sidebar's End Session key called `kill_all_study_sessions()` directly, in
+addition to `cleanup_on_exit()` — the same defect, a third surface the
+original review's finding didn't name. Now: the direct call is deleted;
+`cleanup_on_exit()` alone (already scoped by the fix above) handles it.
+
+**Commits:** `1f5f371` (contract + ADR stub), `2d901c9` (red matrix),
+`16b451f` (R-01), `cdac20b` (R-02), `704f1e2` + `5835e4d` + `9f5769f`
+(R-02b and lint/format follow-ups), `863f0ea` (R-04, delete
+`session_runtime/`), `7e9786a` (R-06, R-08), `2ddebb9` (R-07), `847aad3`
+(R-09c) — all on `lane/m2-session-authority`.
+
+**Verified:** `kill_all_study_sessions` (`tmux.py`, `herdr.py`) has exactly
+one production caller left — `cli/_clean.py`'s `--all` flag
+(`rg -n "kill_all_study_sessions\(" packages/studyloop/src` after this
+lane: `cli/_clean.py:109` is the only call against a `mux`/`Multiplexer`
+instance; the rest are the two backends' own definitions and
+`multiplexer.py`'s Protocol delegation). `just preflight` green at every
+step; the full unit suite gained tests at every step and lost none it
+didn't delete on purpose (R-04's 7-test pass-count floor, exact match).
