@@ -95,8 +95,10 @@ class TestSessionManagement:
 
         mock_subprocess.return_value = MagicMock(returncode=0, stdout="%0\n", stderr="")
 
-        with patch("studyloop.tmux.LOCK_FILE", tmp_path / "lock"):
-            pane_id = create_session("test-session")
+        # C12: the lock now follows session_state.SESSION_DIR, which the
+        # suite's own autouse C8 fixture already isolates for every test
+        # -- no explicit LOCK_FILE patch needed here anymore.
+        pane_id = create_session("test-session")
 
         assert pane_id == "%0"
         call_args = mock_subprocess.call_args[0][0]
@@ -226,3 +228,50 @@ class TestAttachSafetyGuard:
 
         mock_logger.warning.assert_called_once()
         assert "nested" in mock_logger.warning.call_args[0][0].lower()
+
+
+class TestLockFileFollowsSessionDir:
+    """C12 (council, R-49f): the tmux coordination lock must follow
+    session_state.SESSION_DIR (STUDYLOOP_SESSION_DIR), not a path bound at
+    tmux.py's own import time. Two reasons: (1) a user who relocates their
+    config dir gets the lock relocated too, instead of a stale reference
+    to the old default; (2) the C8/R-49d test-suite isolation fixture
+    already redirects session_state.SESSION_DIR for every test, so
+    deriving from it means this file is covered with no fixture change.
+    """
+
+    def test_lock_file_helper_follows_session_dir(
+        self, tmp_path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from studyloop.tmux import _lock_file
+
+        monkeypatch.setattr("studyloop.session_state.SESSION_DIR", tmp_path)
+
+        assert _lock_file() == tmp_path / "studyloop-tmux.lock"
+
+    def test_lock_file_helper_tracks_session_dirs_default_shape(self) -> None:
+        """Production behaviour unchanged: absent any override, the lock
+        resolves under whatever session_state.SESSION_DIR currently is --
+        asserted relatively, not against a hardcoded ~/.config/studyloop
+        path, since the suite's own C8 fixture already redirects
+        SESSION_DIR for every test (this one included)."""
+        from studyloop import session_state
+        from studyloop.tmux import _lock_file
+
+        assert _lock_file() == session_state.SESSION_DIR / "studyloop-tmux.lock"
+
+    def test_create_session_lock_lands_under_session_dir(
+        self, mock_subprocess, tmp_path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Red-first proof: with SESSION_DIR redirected (the same effect
+        STUDYLOOP_SESSION_DIR has at session_state's own import time), the
+        coordination lock create_session() acquires lands under tmp_path,
+        not the real config dir."""
+        from studyloop.tmux import create_session
+
+        monkeypatch.setattr("studyloop.session_state.SESSION_DIR", tmp_path)
+        mock_subprocess.return_value = MagicMock(returncode=0, stdout="%0\n", stderr="")
+
+        create_session("test-session")
+
+        assert (tmp_path / "studyloop-tmux.lock").exists()

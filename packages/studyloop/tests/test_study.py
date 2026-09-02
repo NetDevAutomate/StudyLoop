@@ -95,7 +95,8 @@ class TestStudyCommand:
         with (
             patch("studyloop.tmux.shutil.which", return_value="/usr/bin/tmux"),
             patch("studyloop.tmux.subprocess.run", side_effect=_tmux_side_effect),
-            patch("studyloop.tmux.LOCK_FILE", tmp_path / "lock"),
+            # C12: the lock now follows session_state.SESSION_DIR,
+            # already patched below to tmp_path.
             patch("studyloop.tmux.os.execvp"),
             patch("studyloop.agent_launcher.shutil.which", return_value="/usr/bin/claude"),
             patch("studyloop.session_state.read_session_state", return_value={}),
@@ -119,7 +120,8 @@ class TestStudyCommand:
         with (
             patch("studyloop.tmux.shutil.which", return_value="/usr/bin/tmux"),
             patch("studyloop.tmux.subprocess.run", side_effect=_tmux_side_effect),
-            patch("studyloop.tmux.LOCK_FILE", tmp_path / "lock"),
+            # C12: the lock now follows session_state.SESSION_DIR,
+            # already patched below to tmp_path.
             patch("studyloop.agent_launcher.shutil.which", return_value="/usr/bin/claude"),
             patch("studyloop.session_state.read_session_state", return_value={}),
             patch("studyloop.session_state.STATE_FILE", tmp_path / "state.json"),
@@ -137,7 +139,8 @@ class TestStudyCommand:
         with (
             patch("studyloop.tmux.shutil.which", return_value="/usr/bin/tmux"),
             patch("studyloop.tmux.subprocess.run", side_effect=_tmux_side_effect),
-            patch("studyloop.tmux.LOCK_FILE", tmp_path / "lock"),
+            # C12: the lock now follows session_state.SESSION_DIR,
+            # already patched below to tmp_path.
             patch("studyloop.agent_launcher.shutil.which", return_value="/usr/bin/claude"),
             patch("studyloop.session_state.read_session_state", return_value={}),
             patch("studyloop.session_state.STATE_FILE", tmp_path / "state.json"),

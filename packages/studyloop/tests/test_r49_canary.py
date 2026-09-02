@@ -11,12 +11,16 @@ A marker file is planted in the fake home's ``.config/studyloop`` before a
 full study-session lifecycle runs there. The assertion is scoped to the four
 session-state IPC files R-49 is about (session-state.json, session-topics.md,
 session-parking.md, session-oneline.txt) plus the marker itself, not the
-whole directory: ``studyloop.tmux.LOCK_FILE`` is a separate, pre-existing,
-contentless (0-byte) coordination lock hardcoded to ``~/.config/studyloop``
-independent of any env var, in a file owned by a different lane (M2's
-``tmux.py``) -- out of scope here, and legitimately appears in the fake home
-too once ``studyloop.tmux`` is first imported after HOME is faked. Noted, not
-fixed, in this milestone's evidence.
+whole directory: ``studyloop.tmux``'s coordination lock (contentless, 0-byte)
+is EXPECTED to appear as a new entry under the fake home -- it is a
+legitimate write, not a leak. **Resolved (C12/R-49f, council):** the lock
+path used to be hardcoded to ``~/.config/studyloop`` independent of any env
+var (a real gap this canary once had to carve an exception around, "noted,
+not fixed"); it now resolves lazily from ``session_state.SESSION_DIR``
+(``tmux._lock_file()``), the SAME ``STUDYLOOP_SESSION_DIR``/``HOME``-derived
+resolution every other IPC file in this test already depends on -- so its
+appearance under the fake home is now the SAME correctness property this
+canary proves for everything else, not a carved-out exception to it.
 
 R-49b (M3 council, arbitration A2'): the checks above only prove the
 *end state* of the directory is clean -- a file created and then removed

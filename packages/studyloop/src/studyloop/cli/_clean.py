@@ -55,7 +55,7 @@ def clean(dry_run: bool, kill_all: bool) -> None:
     from studyloop.logic.clean_logic import CleanResult, DirInfo, plan_clean
     from studyloop.multiplexer import get_backend
     from studyloop.session_state import SESSION_DIR, STATE_FILE, read_session_state
-    from studyloop.tmux import LOCK_FILE
+    from studyloop.tmux import _lock_file
 
     mux = get_backend()
 
@@ -120,8 +120,9 @@ def clean(dry_run: bool, kill_all: bool) -> None:
                 execution_warnings.append(f"Partial delete {path.name}: {e}")
 
         if plan.state_to_clean:
-            LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
-            with open(LOCK_FILE, "w") as f:
+            lock_path = _lock_file()
+            lock_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(lock_path, "w") as f:
                 fcntl.flock(f, fcntl.LOCK_EX)
                 try:
                     # Re-read under lock to prevent TOCTOU with --resume
