@@ -33,17 +33,20 @@ was chosen, not the mechanics.
 - `session-state.json` is the single cross-process CLAIM to "a study session
   is running." `session/active.py`'s singleton is a CACHE of that claim,
   valid only for a PTY/ACP session held by the current web server process.
-- Every start path (CLI, web PTY, web ACP) reads the claim before proceeding.
-  A live claim owned by someone else blocks with the same 409 shape (web) or
-  the same exit-1 message (CLI) either surface already used for its own
-  in-process conflict. A stale claim (owner's process/tmux session no
-  longer exists, or — for a web-owned claim read by the CLI, R-01b — its
-  recorded pid is dead) is reclaimed, logged, and never blocks a start
-  forever. The CLI's own start path originally checked only "does a claim
-  exist" (`is_session_active()`), blocking unconditionally even when the
-  owner was provably dead; R-01b closed that gap with
-  `claim_blocks_cli_start()`, giving the CLI start path the same
-  owner-liveness check the web path already had.
+- Every start path (CLI, web PTY, web ACP) atomically claims the slot
+  (`session_state.try_claim_session`, C1, council -- read, decide, and
+  write the claim under one file lock, not read-then-decide followed by a
+  separate, later write with real work in between). A live claim owned by
+  someone else blocks with the same 409 shape (web) or the same exit-1
+  message (CLI) either surface already used for its own in-process
+  conflict. A stale claim (owner's process/tmux session no longer exists,
+  or — for a web-owned claim read by the CLI, R-01b — its recorded pid is
+  dead) is reclaimed, logged, and never blocks a start forever. The CLI's
+  own start path originally checked only "does a claim exist"
+  (`is_session_active()`), blocking unconditionally even when the owner
+  was provably dead; R-01b closed that gap with `claim_blocks_cli_start()`,
+  giving the CLI start path the same owner-liveness check the web path
+  already had.
 - `kill_all_study_sessions()` keeps its blunt "kill everything" semantics —
   that is a legitimate, separate operation — but every per-session end path
   (`end_session_common` → `_cleanup_tmux_and_files`, and the study sidebar's

@@ -472,3 +472,142 @@ def test_reclaim_log_message_with_child_pid() -> None:
 
     assert "child_pid=4242" in message
     assert "its owner is no longer alive" in message
+
+
+# ---------------------------------------------------------------------------
+# try_claim_session (C1) -- the atomic check-then-claim primitive that
+# closes the cross-process check-then-claim window: read, decide, and
+# (reclaim side effect +) write all happen under the SAME flock
+# write_session_state uses, instead of a read (unlocked) followed by a
+# separate, later write.
+# ---------------------------------------------------------------------------
+
+
+def test_try_claim_session_no_claim_writes_the_reservation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from studyloop.session_state import read_session_state, try_claim_session
+
+    monkeypatch.setattr("studyloop.session_state.SESSION_DIR", tmp_path)
+    monkeypatch.setattr("studyloop.session_state.STATE_FILE", tmp_path / "session-state.json")
+
+    reservation = {"study_session_id": "pending-1", "mode": "starting"}
+    result = try_claim_session(reservation, blocks=lambda state: False)
+
+    assert result is None
+    assert read_session_state()["study_session_id"] == "pending-1"
+    assert read_session_state()["mode"] == "starting"
+
+
+def test_try_claim_session_blocked_writes_nothing_and_returns_the_state(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from studyloop.session_state import (
+        read_session_state,
+        try_claim_session,
+        write_session_state,
+    )
+
+    monkeypatch.setattr("studyloop.session_state.SESSION_DIR", tmp_path)
+    monkeypatch.setattr("studyloop.session_state.STATE_FILE", tmp_path / "session-state.json")
+    write_session_state({"study_session_id": "live-1", "mode": "focus"})
+
+    reservation = {"study_session_id": "pending-1", "mode": "starting"}
+    result = try_claim_session(reservation, blocks=lambda state: True)
+
+    assert result == {"study_session_id": "live-1", "mode": "focus"}
+    # Nothing was written -- the blocking claim is exactly as it was.
+    assert read_session_state() == {"study_session_id": "live-1", "mode": "focus"}
+
+
+def test_try_claim_session_reclaim_calls_on_reclaim_before_writing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """on_reclaim(previous_state) runs INSIDE the same locked section,
+    before the reservation overwrites it -- a caller uses this to clear
+    inherited IPC files (C2) and log the reclaim (C4) atomically with the
+    claim, not as a separate, racy step before or after."""
+    from studyloop.session_state import (
+        read_session_state,
+        try_claim_session,
+        write_session_state,
+    )
+
+    monkeypatch.setattr("studyloop.session_state.SESSION_DIR", tmp_path)
+    monkeypatch.setattr("studyloop.session_state.STATE_FILE", tmp_path / "session-state.json")
+    write_session_state({"study_session_id": "stale-1", "mode": "focus"})
+
+    seen: list[dict] = []
+    reservation = {"study_session_id": "pending-1", "mode": "starting"}
+    result = try_claim_session(reservation, blocks=lambda state: False, on_reclaim=seen.append)
+
+    assert result is None
+    assert seen == [{"study_session_id": "stale-1", "mode": "focus"}]
+    assert read_session_state()["study_session_id"] == "pending-1"
+
+
+def test_try_claim_session_no_claim_never_calls_on_reclaim(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from studyloop.session_state import try_claim_session
+
+    monkeypatch.setattr("studyloop.session_state.SESSION_DIR", tmp_path)
+    monkeypatch.setattr("studyloop.session_state.STATE_FILE", tmp_path / "session-state.json")
+
+    seen: list[dict] = []
+    reservation = {"study_session_id": "pending-1", "mode": "starting"}
+    try_claim_session(reservation, blocks=lambda state: False, on_reclaim=seen.append)
+
+    assert seen == []
+
+
+def test_try_claim_session_two_threads_exactly_one_wins(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The atomicity guarantee itself: two threads racing try_claim_session
+    against the same claim, with a blocks() that treats ANY existing claim
+    (including the other thread's own reservation) as live, must produce
+    exactly one winner -- the loser's result is the winner's own
+    reservation, not a race-corrupted read."""
+    import threading
+
+    from studyloop.session_state import try_claim_session
+
+    monkeypatch.setattr("studyloop.session_state.SESSION_DIR", tmp_path)
+    monkeypatch.setattr("studyloop.session_state.STATE_FILE", tmp_path / "session-state.json")
+
+    def _blocks_if_claimed(state: dict) -> bool:
+        return bool(state.get("study_session_id"))
+
+    results: list[dict | None] = [None, None]
+
+    def _attempt(index: int, session_id: str) -> None:
+        results[index] = try_claim_session(
+            {"study_session_id": session_id, "mode": "starting"},
+            blocks=_blocks_if_claimed,
+        )
+
+    barrier = threading.Barrier(2)
+
+    def _run(index: int, session_id: str) -> None:
+        barrier.wait()
+        _attempt(index, session_id)
+
+    t1 = threading.Thread(target=_run, args=(0, "thread-a"))
+    t2 = threading.Thread(target=_run, args=(1, "thread-b"))
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()
+
+    winners = [r for r in results if r is None]
+    losers = [r for r in results if r is not None]
+    assert len(winners) == 1, f"exactly one thread must claim the slot, got {results}"
+    assert len(losers) == 1
+    # The loser's returned state must be a real claim -- either the OTHER
+    # thread's own reservation (the race this closes) or (extremely
+    # unlikely under a Barrier) its own already-written one; never {}.
+    assert losers[0] is not None and losers[0].get("study_session_id") in (
+        "thread-a",
+        "thread-b",
+    )
