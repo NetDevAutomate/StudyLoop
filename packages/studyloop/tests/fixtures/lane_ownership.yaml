@@ -54,6 +54,12 @@ lanes:
     - packages/studyloop/src/studyloop/herdr.py
     - packages/studyloop/src/studyloop/cli/_study.py
     - packages/studyloop/src/studyloop/cli/_clean.py
+    # R-02b (DECISIONS §E17): the sidebar's End Session key called
+    # kill_all_study_sessions() directly, reproducing R-02 through a third
+    # surface the original review's finding didn't name. Dual-owned with m5,
+    # which has not started and will later own the rest of this file for
+    # R-32 (the dead "+5min focus" keybinding).
+    - packages/studyloop/src/studyloop/tui/sidebar.py
 
   m3: # data safety (lane/m3-data-safety)
     - packages/agent-session-tools/**
