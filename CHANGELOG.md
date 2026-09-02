@@ -44,6 +44,14 @@ experience may change before `1.0.0`.
 - Public pages that exposed implementation notes, internal architecture detail,
   or release-planning material.
 
+### Security
+
+- Closed a gap in the agent-child credential scrub: a bare `_KEY` suffix
+  (`ENCRYPTION_KEY`, `SIGNING_KEY`, `MASTER_KEY`, ...) and bare
+  `AUTHORIZATION`/`JWT`/`COOKIE`-shaped variables now get stripped from an
+  agent child's environment, matching the compounds (`api_key`,
+  `secret_key`, ...) already covered.
+
 ### Known pre-release boundaries
 
 - Kiro CLI is the documented demonstration harness.
