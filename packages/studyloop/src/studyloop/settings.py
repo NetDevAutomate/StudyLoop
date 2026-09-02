@@ -438,10 +438,25 @@ def resolve_study_dirs() -> list[str]:
 
 
 def write_raw_config(data: dict[str, Any]) -> Path:
-    """Write raw YAML config to the active config path and return the path."""
+    """Write raw YAML config to the active config path and return the path.
+
+    ``config.yaml`` can hold ``lan_password`` in plaintext, so the file is
+    locked to owner-only (0600) after every write, and the config dir is
+    locked to 0700 the first time this function creates it -- the same
+    posture ``secrets.py`` uses for the encrypted secrets store. A config
+    directory that already existed (and whose permissions someone may have
+    deliberately loosened, e.g. to share read access with another local
+    tool) is left alone; only the file itself is re-tightened on every save,
+    which also repairs a pre-existing 0644 file on its next write.
+    """
     config_path = get_config_path()
-    config_path.parent.mkdir(parents=True, exist_ok=True)
+    parent = config_path.parent
+    dir_already_existed = parent.exists()
+    parent.mkdir(parents=True, exist_ok=True)
+    if not dir_already_existed:
+        parent.chmod(0o700)
     config_path.write_text(yaml.dump(data, default_flow_style=False, sort_keys=False))
+    config_path.chmod(0o600)
     return config_path
 
 
