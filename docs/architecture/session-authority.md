@@ -35,6 +35,15 @@ A **stale** claim (owner dead) never blocks a new start. The next start
 and transport, then proceed exactly as if no claim existed. It does not 409
 forever. This is the crash-then-restart cell.
 
+**C2 (council):** "exactly as if no claim existed" includes the IPC files,
+not just the state file's claim fields. A reclaim (web or CLI) calls
+`clear_session_files()` before proceeding, so the new session never shows
+the dead session's `TOPICS_FILE`/`PARKING_FILE` content. Before this, both
+start paths only `touch()`ed those files after a reclaim, so a crashed
+session's leftover topics/parking stayed visible to whoever reclaimed the
+slot. A live (blocking) claim's files are never touched -- clearing is a
+reclaim-only side effect.
+
 ## 3. Start matrix
 
 | | new start: CLI | new start: web (pty/acp) |
