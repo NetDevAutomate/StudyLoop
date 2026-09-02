@@ -626,7 +626,21 @@ def _check_real_studyloop_config_dir_untouched(session) -> None:
     new code path that resolves the path some other way) instead of silent
     damage to the developer's real config directory -- exactly how the two
     tests fixed in R-01b were found.
+
+    Guarded against a synthetic ``session`` (not a real ``pytest.Session``):
+    ``test_readiness_scaling.py::TestHollowRunGuard`` calls
+    ``conftest.pytest_sessionfinish(fake_session, 0)`` DIRECTLY, with a
+    hand-built stand-in object, to unit-test the hollow-run-guard logic
+    above in isolation -- without this guard, that call would ALSO run
+    the check below against this REAL machine's REAL config dir (nothing
+    about a direct function call tells Python "this session is fake"),
+    and any real, unrelated activity on a shared dev machine during a
+    long suite run (a live `studyloop web` session, another agent's own
+    test run) would fail those tests for a reason that has nothing to do
+    with what they test.
     """
+    if not isinstance(session, pytest.Session):
+        return
     after = _snapshot_studyloop_session_runtime()
     if after == _studyloop_session_runtime_snapshot:
         return
