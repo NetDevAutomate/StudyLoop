@@ -29,17 +29,12 @@ import shutil
 import subprocess
 import sys
 import time
-from pathlib import Path
 
 import pytest
 from harness.agents import long_running_agent
 from harness.multiplexer import MultiplexerHarness
 
 pytestmark = [pytest.mark.integration]
-
-# IPC files
-CONFIG_DIR = Path.home() / ".config" / "studyloop"
-STATE_FILE = CONFIG_DIR / "session-state.json"
 
 
 # ---------------------------------------------------------------------------
@@ -66,7 +61,9 @@ skip_no_herdr = pytest.mark.skipif(not has_herdr, reason="herdr not available")
 )
 def mux(request, tmp_path):
     """Parameterised multiplexer harness — both backends run the same journey."""
-    with MultiplexerHarness.from_backend_name(request.param) as harness:
+    session_dir = tmp_path / "session-ipc"
+    session_dir.mkdir(parents=True, exist_ok=True)
+    with MultiplexerHarness.from_backend_name(request.param, session_dir) as harness:
         yield harness
 
 
@@ -86,7 +83,9 @@ def mux_cli(request, tmp_path):
     tmux tests use subprocess.run (tmux attach fails gracefully without a
     terminal; the detached session is the thing we test).
     """
-    with MultiplexerHarness.from_backend_name(request.param) as harness:
+    session_dir = tmp_path / "session-ipc"
+    session_dir.mkdir(parents=True, exist_ok=True)
+    with MultiplexerHarness.from_backend_name(request.param, session_dir) as harness:
         yield harness
 
 
@@ -251,7 +250,9 @@ class TestAttachFromOutside:
 
     def test_workspace_creation_from_non_herdr_shell(self, tmp_path):
         """herdr workspace create works when invoked from a plain shell."""
-        with MultiplexerHarness.from_backend_name("herdr") as mux:
+        session_dir = tmp_path / "session-ipc"
+        session_dir.mkdir(parents=True, exist_ok=True)
+        with MultiplexerHarness.from_backend_name("herdr", session_dir) as mux:
             # Ensure we're NOT inside herdr
             env = os.environ.copy()
             env.pop("HERDR_ENV", None)
@@ -274,13 +275,15 @@ class TestAttachFromOutside:
             content = mux.wait_for_pane_content(pane_id, r"ATTACH_TEST_OK", timeout=10)
             assert "ATTACH_TEST_OK" in content
 
-    def test_full_study_session_from_non_herdr_shell(self, agent_cmd: str):
+    def test_full_study_session_from_non_herdr_shell(self, agent_cmd: str, tmp_path):
         """Full study session lifecycle from a non-herdr shell.
 
         Uses pexpect PTY so herdr TUI can launch after os.execvp.
         Proves: workspace created → agent running → end tears down → no residue.
         """
-        with MultiplexerHarness.from_backend_name("herdr") as mux:
+        session_dir = tmp_path / "session-ipc"
+        session_dir.mkdir(parents=True, exist_ok=True)
+        with MultiplexerHarness.from_backend_name("herdr", session_dir) as mux:
             # Start a study session (the real flow: create workspace → agent → sidebar)
             state = mux.start_study_session(
                 "test-attach-full",

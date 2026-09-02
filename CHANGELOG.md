@@ -85,6 +85,17 @@ experience may change before `1.0.0`.
   relying on CPython's refcounting to eventually close the file handle. Now
   `try/finally: conn.close()`, matching the convention used everywhere else
   in the codebase (`parking.py`, `notes.py`, `history/*.py`).
+- The tmux/herdr integration test harness (`tests/harness/multiplexer.py`,
+  `tests/harness/study.py`, `tests/harness/terminal.py`,
+  `tests/harness/agents.py`) and the test modules that drive it
+  (`test_harness_matrix.py`, `test_study_integration.py`,
+  `test_uat_terminal.py`, `test_study_lifecycle.py`, `test_herdr_integration.py`,
+  `conftest.py`) hardcoded `~/.config/studyloop` for session-state IPC files
+  and spawned the CLI without setting `STUDYLOOP_SESSION_DIR`. Running these
+  suites locally read, wrote, and deleted the developer's real live session
+  state. Every path now derives from `STUDYLOOP_SESSION_DIR`, redirected to a
+  `tmp_path`-based directory by each fixture, and forwarded to every spawned
+  `studyloop` subprocess.
 
 ### Known pre-release boundaries
 
