@@ -69,18 +69,45 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
 #   set inline `style` ATTRIBUTES at runtime (there is no way to nonce an
 #   attribute, only a <style> element or <link>), and xterm.js's own DOM
 #   rendering does the same for cursor/viewport positioning.
-# - connect-src data:: `--dev --dev-engine ghostty` (opt-in developer
-#   renderer, vendor/dev/js/ghostty-web-0.4.0.js) bootstraps its WASM VT100
-#   parser via `fetch("data:application/wasm;base64,...")` rather than
+# - connect-src data: (dev_mode ONLY, see _build_csp below): `--dev
+#   --dev-engine ghostty` (opt-in developer renderer,
+#   vendor/dev/js/ghostty-web-0.4.0.js) bootstraps its WASM VT100 parser via
+#   `fetch("data:application/wasm;base64,...")` rather than
 #   `WebAssembly.instantiateStreaming` against a same-origin URL. Without
 #   this, `default-src 'self'` (connect-src's fallback) blocks that fetch
 #   and every `--dev` session fails to render with a CSP-caused 404. Scoped
 #   to `connect-src` only — script-src stays `'self' 'unsafe-eval'`, no
-#   `data:` script source.
-_CSP = (
-    "default-src 'self'; script-src 'self' 'unsafe-eval'; "
-    "style-src 'self' 'unsafe-inline'; connect-src 'self' data:"
-)
+#   `data:` script source. Scoped to dev_mode only — a learner who never
+#   passes `--dev` gets no `data:` relaxation at all, since ghostty-web is
+#   the sole consumer (found in the M1 council, A2: the first cut sent this
+#   unconditionally, in every mode, for a --dev-only need).
+#
+# R-13c adds the four directives a CSP audit checks for by name rather than
+# trusting default-src to cover them, each verified free of cost here:
+# - object-src 'none': no <object>/<embed>/<applet> anywhere in static/.
+# - base-uri 'self': no <base> tag anywhere in index.html (verified —
+#   zero matches), so nothing currently relies on the default (document
+#   URL); pinning it just forecloses a future injected <base> from
+#   silently retargeting every relative URL on the page.
+# - form-action 'self': every <form> in index.html uses `@submit.prevent`
+#   (Alpine intercepts the submit event) with no `action=` attribute at
+#   all (verified — zero matches), so no browser-native form POST target
+#   exists to restrict; this only forecloses one from appearing later.
+# - frame-ancestors 'none': the CSP-native form of the `X-Frame-Options:
+#   DENY` already sent below. Kept alongside it, not instead of it — CSP
+#   frame-ancestors is unsupported in a few embedded/legacy contexts that
+#   still honour X-Frame-Options, and the reverse is true for modern ones
+#   that prioritise CSP; sending both is the documented belt-and-braces.
+def _build_csp(dev_mode: bool) -> str:
+    """Build the CSP, adding the dev_mode-only connect-src exception only
+    when --dev is actually active — see the module comment above."""
+    connect_src = "connect-src 'self' data:" if dev_mode else "connect-src 'self'"
+    return (
+        "default-src 'self'; script-src 'self' 'unsafe-eval'; "
+        f"style-src 'self' 'unsafe-inline'; {connect_src}; "
+        "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; "
+        "form-action 'self'"
+    )
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -93,7 +120,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # iframe fallback this used to justify SAMEORIGIN for was retired —
         # see ADR-0005 and the ttyd retirement, stage 4).
         response.headers["X-Frame-Options"] = "DENY"
-        response.headers["Content-Security-Policy"] = _CSP
+        dev_mode = bool(getattr(request.app.state, "dev_mode", False))
+        response.headers["Content-Security-Policy"] = _build_csp(dev_mode)
         response.headers["Referrer-Policy"] = "same-origin"
         response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
         # X-XSS-Protection is deliberately NOT set: deprecated, a no-op (or

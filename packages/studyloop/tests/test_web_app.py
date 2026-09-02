@@ -77,7 +77,14 @@ class TestIndex:
         static/ after the ttyd retirement (stage 4) — the same-origin
         /terminal/ iframe this header used to be weakened for is gone.
         X-XSS-Protection is a deprecated no-op in every modern browser and
-        must NOT be set; the CSP below is its replacement.
+        must NOT be set; the CSP below is its replacement. R-13c adds
+        object-src/base-uri/frame-ancestors/form-action, the four directives
+        a CSP audit checks for by name regardless of what default-src covers.
+        `BaseHTTPMiddleware` (Starlette) only wraps the ASGI `http` scope, so
+        none of these headers reach the WebSocket upgrade response for
+        `/api/session/ws` etc. — inert, not a gap: a 101 Switching Protocols
+        response has no document to render, so there is nothing for a
+        content policy to police.
         """
         resp = client.get("/")
         assert resp.headers["x-content-type-options"] == "nosniff"
@@ -102,11 +109,38 @@ class TestIndex:
         script_src = next(part for part in csp.split(";") if "script-src" in part).strip()
         assert "unsafe-inline" not in script_src
         assert "unsafe-eval" in script_src
-        # connect-src data: is scoped to fetch/XHR targets, not script
-        # sources: --dev --dev-engine ghostty's WASM VT100 parser bootstraps
-        # via fetch("data:application/wasm;base64,...") rather than a
-        # same-origin URL. Without this, every --dev session 404s under CSP.
-        assert "connect-src 'self' data:" in csp
+        # connect-src is 'self'-only by default: --dev --dev-engine
+        # ghostty's WASM VT100 parser is the ONLY consumer of the data:
+        # exception (its bootstrap calls
+        # fetch("data:application/wasm;base64,...")), so `data:` must be
+        # scoped to dev_mode, not sent unconditionally to every learner who
+        # never passes --dev. See TestDevModeCsp below for the dev_mode=True
+        # case.
+        assert "connect-src 'self'" in csp
+        connect_src = next(part for part in csp.split(";") if "connect-src" in part).strip()
+        assert "data:" not in connect_src
+        # R-13c: no <object>/<embed> plugin content, no <base> tag anywhere
+        # in index.html (verified: zero matches), and every <form> uses
+        # @submit.prevent with no action= attribute at all (verified: zero
+        # matches) — so object-src/base-uri/form-action cost nothing and
+        # close a real gap (a future <base> or a plugin embed would
+        # otherwise be unrestricted by this policy). frame-ancestors is the
+        # CSP-native form of X-Frame-Options: DENY, kept alongside it for
+        # browsers that only honour one or the other.
+        assert "object-src 'none'" in csp
+        assert "base-uri 'self'" in csp
+        assert "frame-ancestors 'none'" in csp
+        assert "form-action 'self'" in csp
+
+    def test_csp_header_present_on_document_response(self, client: TestClient) -> None:
+        """Fold from the M1 council (A?): a CSP-violation console check alone
+        would pass if the header were deleted entirely and the browser just
+        never enforced anything. Assert the header itself exists, not only
+        the absence of violations."""
+        resp = client.get("/")
+        assert resp.headers.get("content-security-policy"), (
+            "Content-Security-Policy header missing from the document response"
+        )
 
     def test_no_inline_script_blocks_in_index_html(self) -> None:
         """The two inline <script> blocks this stage moved out must not come back.
@@ -135,6 +169,29 @@ class TestIndex:
             "move it to a file under web/static/js/ or the CSP's "
             "script-src 'self' will break it"
         )
+
+
+class TestDevModeCsp:
+    """R-13c fold (A2): connect-src 'self' data: must be dev_mode-only.
+
+    The exception exists for exactly one consumer: --dev --dev-engine
+    ghostty's WASM bootstrap. Sending it unconditionally would grant every
+    default-mode learner a connect-src relaxation they have no use for.
+    """
+
+    def test_no_data_exception_when_dev_mode_is_off(self) -> None:
+        app = create_app(dev_mode=False)
+        resp = TestClient(app).get("/")
+        csp = resp.headers["content-security-policy"]
+        connect_src = next(part for part in csp.split(";") if "connect-src" in part).strip()
+        assert "data:" not in connect_src
+
+    def test_data_exception_present_when_dev_mode_is_on(self) -> None:
+        app = create_app(dev_mode=True)
+        resp = TestClient(app).get("/")
+        csp = resp.headers["content-security-policy"]
+        connect_src = next(part for part in csp.split(";") if "connect-src" in part).strip()
+        assert "data:" in connect_src
 
 
 class TestCoursesAPI:
