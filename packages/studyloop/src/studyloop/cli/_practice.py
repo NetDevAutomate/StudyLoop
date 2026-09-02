@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 import click
 from rich.table import Table
 
 from studyloop.cli._shared import console
-from studyloop.learning.practice import verify_practice_task
+from studyloop.learning.practice import peek_verification_command, verify_practice_task
 
 
 @click.group("practice")
@@ -22,6 +23,16 @@ def practice_group() -> None:
 @click.option("--task", "task_index", type=int, required=True, help="1-based task index.")
 @click.option("--workdir", type=click.Path(file_okay=False, path_type=Path), default=None)
 @click.option("--run-command", is_flag=True, help="Allow command verification to execute.")
+@click.option(
+    "--yes",
+    is_flag=True,
+    help=(
+        "Confirm running a command-verification task's shell command "
+        "without an interactive prompt. Required in non-interactive "
+        "contexts (CI, scripts) -- without it, or an interactive y at the "
+        "prompt, the command is shown but not run."
+    ),
+)
 @click.option("--notes", default="", help="Notes/evidence from the practice attempt.")
 @click.option(
     "--timeout",
@@ -36,17 +47,46 @@ def practice_verify(
     task_index: int,
     workdir: Path | None,
     run_command: bool,
+    yes: bool,
     notes: str,
     timeout_seconds: int | None,
     json_output: bool,
 ) -> None:
-    """Verify a practice task and record the attempt."""
+    """Verify a practice task and record the attempt.
+
+    A command-verification task's ``verification.command`` comes from a
+    practice-deck JSON file -- possibly LLM-authored -- and is treated as
+    data to show a human, not an instruction to trust blindly (R-15). With
+    ``--run-command``, the resolved command is always printed before
+    anything runs; actually running it additionally requires ``--yes`` or an
+    interactive ``y`` at the prompt. Without either, nothing executes and
+    this command exits with status 2.
+    """
+    confirmed = False
+    if run_command:
+        try:
+            kind, command = peek_verification_command(practice_json, task_index=task_index)
+        except ValueError as exc:
+            raise click.ClickException(str(exc)) from exc
+        if kind == "command" and command:
+            console.print(f"Command: {command}")
+            # Short-circuits: --yes skips the interactive prompt entirely,
+            # and a non-interactive stdin (scripts, CI, CliRunner) skips it
+            # too rather than blocking on a read that will never resolve.
+            confirmed = yes or (
+                sys.stdin.isatty() and click.confirm("Run this command now?", default=False)
+            )
+            if not confirmed:
+                console.print("[yellow]Not confirmed — nothing executed.[/yellow]")
+                raise SystemExit(2)
+
     try:
         result = verify_practice_task(
             practice_json,
             task_index=task_index,
             workdir=workdir,
             run_command=run_command,
+            confirmed=confirmed,
             notes=notes,
             timeout_seconds=timeout_seconds,
         )

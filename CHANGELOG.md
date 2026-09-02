@@ -32,6 +32,10 @@ experience may change before `1.0.0`.
   exported harness session.
 - Added source-session provenance and transaction-safe writes to struggle
   extraction.
+- `practice verify --run-command` now requires `--yes` (or an interactive `y`
+  at the prompt) in addition to `--run-command` before it actually executes a
+  practice deck's verification command; the resolved command is always
+  printed first. Without confirmation, nothing runs and the command exits 2.
 
 ### Removed
 
@@ -63,6 +67,13 @@ experience may change before `1.0.0`.
   a newly created config directory is created 0700.
 - Disabled the last piece of the Web UI's auto-docs surface: `/openapi.json`
   now 404s, matching the already-disabled `/docs` and `/redoc`.
+- `practice verify --run-command` no longer runs a practice deck's
+  verification command blind: it is shown before it runs and requires
+  explicit human confirmation (see `### Changed`). The three local
+  card-generation prompts (flashcard, quiz, practice) now instruct the model
+  to treat the source material it is given as data, not as instructions to
+  follow, and the practice prompt additionally warns against copying a
+  command straight out of the source into a task's verification metadata.
 
 ### Known pre-release boundaries
 

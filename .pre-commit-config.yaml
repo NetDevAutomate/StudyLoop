@@ -35,8 +35,21 @@ repos:
     name: bandit (SAST)
     args:
     - --recursive
+    # CLI tool: list-form subprocess argv to fixed binaries (B603/B606/B607),
+    # the stdlib subprocess import itself (B404), test-fixture/doctor-output
+    # strings that merely look like credentials (B105-107), try/except:pass
+    # on documented best-effort paths (B110), urllib on fixed local URLs
+    # (B310), --lan's intentional 0.0.0.0 bind (B104), and asserts outside
+    # any request path (B101). B602 (shell=True) has its one real hit
+    # suppressed with a specific `# nosec B602` (practice.py) rather than
+    # skipped here. B608 (dynamic SQL) is skipped project-wide because every
+    # hit -- verified individually, see agents/02-security.md in the 2026-09
+    # remediation review -- interpolates only a server-side allowlisted
+    # column name or a `?`-placeholder count; actual values always go
+    # through bound parameters, so there is no real SQL-injection surface
+    # for this rule to catch here.
     - --skip
-    - B101,B104,B105,B106,B107,B108,B110,B310,B404,B602,B603,B606,B607,B608  # CLI tool: subprocess, SQLite, test fixtures, graceful degradation
+    - B101,B104,B105,B106,B107,B108,B110,B310,B404,B602,B603,B606,B607,B608
     - packages/
 - repo: local
   hooks:

@@ -83,6 +83,22 @@ def _verification_command(task: PracticeTask) -> str | None:
     return None
 
 
+def peek_verification_command(practice_path: Path, *, task_index: int) -> tuple[str, str | None]:
+    """Return ``(kind, command)`` for a task WITHOUT running or recording anything.
+
+    A CLI (or any other caller) uses this to show the resolved command and
+    obtain confirmation BEFORE :func:`verify_practice_task` -- which does the
+    actual ``shell=True`` execution -- is ever invoked. The command comes
+    from a practice-deck JSON file that may itself be LLM-authored (R-15);
+    showing it before it runs is the human-in-the-loop gate the security
+    review asked for.
+    """
+    resolved = practice_path.expanduser().resolve()
+    deck = load_practice_deck(resolved)
+    task = _task_at(deck, task_index)
+    return _verification_kind(task), _verification_command(task)
+
+
 def _verification_rubric(task: PracticeTask) -> list[str]:
     if task.verification and task.verification.rubric:
         return list(task.verification.rubric)
@@ -153,10 +169,23 @@ def verify_practice_task(
     task_index: int,
     workdir: Path | None = None,
     run_command: bool = False,
+    confirmed: bool = False,
     notes: str = "",
     timeout_seconds: int | None = None,
 ) -> PracticeVerificationResult:
-    """Verify one practice task and record the attempt."""
+    """Verify one practice task and record the attempt.
+
+    ``confirmed`` is the human-in-the-loop gate for R-15: a practice deck is
+    JSON a user pointed the CLI at, which may itself be LLM-authored, so
+    ``verification.command`` is data the deck's author chose, not an
+    instruction this function trusts blindly. ``run_command`` alone (the
+    original gate) only asked "is command verification allowed at all";
+    ``confirmed`` additionally asks "has THIS resolved command been shown to
+    a human and approved" -- enforced here, independent of whatever a caller
+    (the CLI's ``--yes``/interactive-prompt dance, see ``cli/_practice.py``)
+    did upstream, so this function can never be made to run a command
+    silently just because some other caller forgot to ask.
+    """
     resolved = practice_path.expanduser().resolve()
     deck = load_practice_deck(resolved)
     task = _task_at(deck, task_index)
@@ -181,10 +210,16 @@ def verify_practice_task(
         if not command:
             msg = "Practice task verification.kind is command but no command is configured."
             raise ValueError(msg)
+        if not confirmed:
+            msg = (
+                "Command verification requires confirmation before it runs "
+                "(--yes, or an interactive y at the prompt)."
+            )
+            raise PermissionError(msg)
         try:
             completed = subprocess.run(
                 command,
-                shell=True,
+                shell=True,  # nosec B602 -- deck author's command, confirmed by a human just above
                 cwd=wd,
                 text=True,
                 capture_output=True,
