@@ -79,17 +79,39 @@ if _tests_dir not in sys.path:
 
 _STUDYLOOP_LINE_RE = re.compile(r"^\s*\$?\s*studyloop\b")
 _SESSION_QUERY_LINE_RE = re.compile(r"^\s*\$?\s*session-query\b")
-_SHELL_CUT_RE = re.compile(r"(\||>|&&|;)")
+
+
+_SHELL_OPERATORS = frozenset({"|", "||", ">", ">>", "&&", ";", "&", "<"})
 
 
 def _cut_at_shell_metachar(line: str) -> str:
-    """Cut a doc example at the first shell pipe/redirect/chain operator.
+    """Cut a doc example at the first UNQUOTED shell pipe/redirect/chain operator.
 
-    ``#`` comments are handled by ``shlex.split(..., comments=True)`` at the
-    call site, not here, so quoted ``#`` inside an argument survives.
+    Tokenises with ``shlex`` in punctuation mode so ``studyloop x --msg "a | b"``
+    keeps its quoted argument intact while ``studyloop x | head`` is cut before
+    the pipe. The earlier regex cut at the first metacharacter anywhere in the
+    line, which false-flagged valid quoted arguments (M0 council finding A4,
+    openai.gpt-5.6-sol). Trailing ``# comments`` are dropped here too, so a
+    parenthesised ``(-r)`` inside a comment is never mistaken for an option.
+
+    Returns a string (re-joined with ``shlex.join``) so the caller's tokenizer
+    is unchanged; on a tokenisation error the original line is returned and
+    the caller reports the error.
     """
-    match = _SHELL_CUT_RE.search(line)
-    return line[: match.start()] if match else line
+    # shlex's default commenters ("#") drop a trailing `# comment (-r)` here,
+    # exactly as the caller's ``comments=True`` would; a quoted "#" survives.
+    lexer = shlex.shlex(line, posix=True, punctuation_chars=True)
+    lexer.whitespace_split = True
+    try:
+        tokens = list(lexer)
+    except ValueError:
+        return line
+    kept: list[str] = []
+    for token in tokens:
+        if token in _SHELL_OPERATORS or (token and set(token) <= set("|>&;<")):
+            break
+        kept.append(token)
+    return shlex.join(kept)
 
 
 def _iter_fenced_lines(doc_path: Path, pattern: re.Pattern[str]) -> list[tuple[int, str]]:
@@ -446,6 +468,45 @@ def _yaml_block_params() -> list:
     return params
 
 
+#: Top-level keys that identify a fenced YAML block as something other than a
+#: studyloop config.yaml example: an Ansible playbook (name/hosts/tasks), an
+#: Obsidian note's frontmatter (type/id/created/tags), a GitHub workflow
+#: (on/jobs), an mkdocs config (site_name). A block is skipped ONLY when one of
+#: these is present. The earlier rule -- skip when no key overlaps a known key --
+#: let a block whose every key was misspelled pass silently (M0 council finding
+#: A5, openai.gpt-5.6-sol); now such a block fails with the unknown keys listed.
+_NON_CONFIG_MARKER_KEYS: frozenset[str] = frozenset(
+    {"name", "tasks", "type", "id", "created", "on", "jobs", "site_name"}
+)
+
+#: Keys that must ALWAYS be in the derived known-key set. The derivation reads
+#: loader source statically and is tied to the identifiers those loaders use; a
+#: refactor that renamed one (or the earlier monkeypatch-induced shrink recorded
+#: in evidence/M0/0.8-doc-drift/01-drift-found.md) would otherwise only surface
+#: when a doc happened to mention the lost key (M0 council finding A2,
+#: deepseek-r1). Extend this list when a new section is added to config.yaml.
+_SENTINEL_KNOWN_KEYS: frozenset[str] = frozenset({"web_port", "browser", "lan_password", "tts"})
+
+
+def test_non_config_markers_never_overlap_real_config_keys() -> None:
+    """A marker that is also a real key would silently skip real config blocks.
+
+    `hosts` was in the first marker list and IS a studyloop key (shared.py
+    `_resolve_hosts`); this test is what would have caught it.
+    """
+    overlap = _NON_CONFIG_MARKER_KEYS & _known_top_level_keys()
+    assert not overlap, f"marker key(s) {sorted(overlap)} are real config keys; remove them"
+
+
+def test_known_key_derivation_has_not_shrunk() -> None:
+    known = _known_top_level_keys()
+    missing = _SENTINEL_KNOWN_KEYS - known
+    assert not missing, (
+        f"known-key derivation lost {sorted(missing)}; a loader was probably refactored "
+        f"(see _known_top_level_keys). Derived set: {sorted(known)}"
+    )
+
+
 @pytest.mark.parametrize(("doc_name", "block_index"), _yaml_block_params())
 def test_yaml_block_keys_are_known(doc_name: str, block_index: int) -> None:
     _idx, start_line, text = _iter_yaml_blocks(DOCS_DIR / doc_name)[block_index]
@@ -461,10 +522,11 @@ def test_yaml_block_keys_are_known(doc_name: str, block_index: int) -> None:
 
     known = _known_top_level_keys()
     top_level = set(parsed.keys())
-    if not (top_level & known):
+    markers = top_level & _NON_CONFIG_MARKER_KEYS
+    if markers:
         pytest.skip(
-            f"{location}: no key overlaps a known studyloop config key "
-            f"({sorted(top_level)}); not a studyloop config.yaml example"
+            f"{location}: top-level key(s) {sorted(markers)} mark this block as "
+            "not a studyloop config.yaml example (playbook / frontmatter / workflow)"
         )
 
     unknown = top_level - known
