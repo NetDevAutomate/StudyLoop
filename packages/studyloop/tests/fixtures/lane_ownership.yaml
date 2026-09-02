@@ -119,6 +119,6 @@ shared:
   - docs/**
   - CHANGELOG.md
   - .github/**
-  - justfile
+  - Justfile
   - .pre-commit-config.yaml
   - .ci-standards.yaml     # forward-declared: created by lane/m0-ci-standards
