@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -308,6 +309,29 @@ class TestWebCommandConfig:
 
         assert result.exit_code == 0, result.output
         assert captured["study_dirs"] == [str(course_dir)]
+
+    def test_web_password_env_var_is_scrubbed_after_being_read(
+        self, monkeypatch: MonkeyPatch
+    ) -> None:
+        """R-10b: STUDYLOOP_WEB_PASSWORD is read by Click's envvar= support
+        (session/orchestrator.py sets it so the --lan password never appears
+        in this process's argv), but was never removed from this process's
+        OWN environment afterwards -- so every non-agent subprocess this
+        server spawns inherits it, and `ps eww`/`/proc/<pid>/environ` shows
+        it for the process's whole lifetime. Must be popped immediately
+        after being read.
+        """
+        import uvicorn
+        from click.testing import CliRunner
+
+        monkeypatch.setenv("STUDYLOOP_WEB_PASSWORD", "s3cr3t-env-pw")
+        monkeypatch.setattr("studyloop.web.app.create_app", lambda **kwargs: object())
+        monkeypatch.setattr(uvicorn.Server, "run", lambda *args, **kwargs: None)
+
+        result = CliRunner().invoke(cli, ["web"])
+
+        assert result.exit_code == 0, result.output
+        assert "STUDYLOOP_WEB_PASSWORD" not in os.environ
 
     def test_wrong(self, client: TestClient) -> None:
         resp = client.get("/api/wrong/test-course")
