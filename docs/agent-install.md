@@ -62,13 +62,19 @@ kiro-cli chat --agent study-mentor
 
 Kiro is the demo harness because it makes the named mentor and session flow visible without requiring users to understand prompt files.
 
+Kiro also receives the opt-in `studyloop-xtiles-wind-down` skill, which stays silent unless your second-brain provider is `xtiles` and an `xtiles` MCP server is connected.
+
 ### Codex
 
 Codex reads the StudyLoop `AGENTS.md` from the project. Launching through `studyloop study` creates the session context and starts Codex in that directory.
 
+That `AGENTS.md` carries one self-gated line about xTiles at wind-down, inert unless your provider is `xtiles` and an `xtiles` MCP server is connected.
+
 ### Claude Code
 
 Claude Code receives the `socratic-mentor` agent and a session-export hook. The installer merges the hook into existing settings and does not replace unrelated hooks.
+
+It also receives the opt-in `studyloop-xtiles-wind-down` skill in `~/.claude/skills/`, which does nothing at all unless your provider is `xtiles` and an `xtiles` MCP server is connected.
 
 ### OpenCode
 
@@ -79,9 +85,13 @@ Two separate mechanisms write two separate sets of files, at two different times
 
 Either path gets you the same mentor behaviour. StudyLoop does not choose or hard-code an OpenCode model; your working OpenCode provider and model remain authoritative.
 
+Both copies of the mentor definition carry the same self-gated xTiles line as Codex's, and OpenCode additionally discovers skills from `~/.claude/skills/`, so the xTiles wind-down skill is available there too if you installed the Claude harness.
+
 ### pi
 
 pi reads the project `AGENTS.md` and resumes through its native `--continue` option. Its session-export mandate writes real pi sessions to StudyLoop’s session database; it does not generate fixture or placeholder progress.
+
+Its `AGENTS.md` carries the same self-gated xTiles line, and like every other harness it says nothing about xTiles unless your provider is `xtiles` and an `xtiles` MCP server is connected.
 
 ## Data integrity
 

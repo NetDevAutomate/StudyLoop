@@ -41,7 +41,7 @@ test that proves each clause is in the repository at
 | --- | --- | --- | --- |
 | `none` *(default)* | — | nowhere | — |
 | `obsidian` | free, local | files in your own vault, on your own disk | `studyloop brain publish` |
-| `xtiles` | paid tier | your assistant's model service, then xTiles' cloud | your assistant, on request |
+| `xtiles` | free plan connects; editing an existing project is paid | your assistant's model service, then xTiles' cloud | your assistant, on request |
 
 Obsidian is the free, local option and it is complete: nothing in StudyLoop needs a
 paid service. xTiles is there because some learners already live in it, and it is
@@ -210,7 +210,86 @@ the path the vault has *from the side StudyLoop runs on*.
 
 ## xTiles
 
-xTiles guidance lands with the next task in this campaign.
+xTiles is a visual planner — projects, pages, tiles, a daily planner — and it is
+the one provider StudyLoop does not write to itself. The pattern is two MCP servers
+and one assistant: you connect StudyLoop's MCP server and xTiles' hosted connector
+to the same assistant, then ask it to move today's study into your planner.
+Obsidian remains the free, local option, and nothing in StudyLoop needs xTiles.
+
+### What you need
+
+An xTiles account, an assistant that supports remote MCP servers, and StudyLoop's
+MCP server. xTiles states that MCP works on every plan, Free included, with some
+limitations there. What its pricing page gates is **editing**, not connecting:
+creating projects, pages and tiles is a Free feature, editing an existing project
+in a personal space starts at Plus, and editing in a shared space at Pro. That
+distinction decides which of the prompts below works for you, so it is named
+against each one.
+
+### Set up
+
+One URL, one authorisation:
+
+```bash
+claude mcp add --transport http xtiles https://mcp.xtiles.app/mcp
+```
+
+Then run `/mcp` inside Claude Code and sign in to xTiles. There is no API key to
+copy or store, and xTiles also publishes a connector in Claude's Connectors
+Directory if you would rather not add the URL by hand. Tool names appear only
+after you have signed in.
+
+This is written for Claude Code, which is where it was tested. StudyLoop installs
+the wind-down skill into every harness it detects, but whether Kiro, Codex,
+OpenCode or pi can complete xTiles' browser authorisation is not something this
+page has verified — the skill stays silent unless an `xtiles` server is actually
+connected, so an untested harness costs you nothing.
+
+### What leaves your machine
+
+When you run one of these prompts, the plan text, today's next action, the due
+reviews and the session's learning record go to your assistant's model service —
+Anthropic, for Claude Code — and through the connector to xTiles' cloud. Nothing
+is sent unless you run a prompt. xTiles asks permission per request, and states
+that your assistant only gets what your own account can already see and that
+nothing is shared with other users. Your sign-in lives in your assistant's own MCP
+settings rather than in StudyLoop, and that is also where you end it: remove the
+`xtiles` server there.
+
+### Today into your planner
+
+Creates one task, so it works on any plan including Free.
+
+```text
+Using the StudyLoop tools, call get_next_action with energy "medium", time_minutes 25 and modality "recall", and get_due_cards with limit 20. Then, in xTiles, add ONE task to today's planner titled "Study: <primary concept>" with the recommendation's reason and estimated minutes in the body, and a checklist of the due reviews, one line per card and at most 20. Do not create a project. Ask me before writing if the planner already has a "Study:" task today.
+```
+
+### Your plan as a project
+
+Creating the project works on Free. Refreshing one — editing pages that are
+already there — is the paid case: Plus for a personal space, Pro for a shared one.
+No MCP tool returns plan Markdown, so paste it in from
+`studyloop plan show <plan-id> --markdown`.
+
+```text
+Here is my StudyLoop study plan as Markdown, pasted from the CLI. In xTiles, create or refresh a project named "<plan title>" with pages Mission, Milestones, Learning Records, Resources, Checkpoints and Today. Put the Mission text on the home page, the milestones on a Kanban board (done/not done), the learning records as one page each, the resources in a table, and checkpoints as dated tasks. Update existing pages in place; do not delete anything. Tell me what you changed.
+```
+
+Name the project exactly, every time. A renamed project is a project this prompt
+cannot find, so it creates a second one.
+
+### The wind-down record
+
+Adds a page and a task, so this too works on Free.
+
+```text
+We are finishing a study session. Summarise what I covered in three bullets and one insight, then: (1) in xTiles, add that summary as a new learning record page under my "<plan title>" project, titled "LR — <date> — <topic>"; (2) add ONE planner task titled "Review: <concept>" on the next review date from get_due_cards. If we reviewed cards, record each one in StudyLoop with record_study_progress, passing the card_hash that get_due_cards returned. Ask before writing to xTiles; do not repeat the offer if I decline.
+```
+
+Your mentor offers this last one for you. `studyloop install agents` installs an
+opt-in wind-down skill into every harness it finds, and it stays silent unless
+`studyloop brain status --json` reports `provider: xtiles` **and** an `xtiles`
+server is connected in that session.
 
 ## Commands
 
@@ -289,3 +368,9 @@ Every claim about someone else's software, with the date it was checked.
 | --- | --- | --- |
 | An official Obsidian CLI exists; it drives a running desktop app | <https://obsidian.md/cli> | 2026-09-03 |
 | Dataview is a community plugin, not built in | <https://github.com/blacksmithgu/obsidian-dataview> | 2026-09-03 |
+| One hosted xTiles MCP server, at <https://mcp.xtiles.app/mcp>; one browser authorisation, no API key to copy or store | <https://help.xtiles.app/en/articles/16126651-how-to-connect-xtiles-to-other-ai-tools> | 2026-09-03 |
+| MCP works on every xTiles plan, Free included, with some limitations on Free | <https://help.xtiles.app/en/articles/16126651-how-to-connect-xtiles-to-other-ai-tools> | 2026-09-03 |
+| Creating projects, pages and tiles is a Free feature; editing an existing project in a personal space starts at Plus, and editing in a shared space at Pro | <https://xtiles.app/en/pricing/> | 2026-09-03 |
+| Your assistant only gets what your xTiles account can already see; nothing is shared with other users; you disconnect by removing the server in your AI tool's own MCP settings | <https://help.xtiles.app/en/articles/16126651-how-to-connect-xtiles-to-other-ai-tools> | 2026-09-03 |
+| A remote HTTP MCP server is added with `claude mcp add --transport http`, and `/mcp` manages and authenticates it | <https://code.claude.com/docs/en/mcp> | 2026-09-03 |
+| xTiles publishes a connector in Claude's Connectors Directory as a quicker alternative to adding the URL by hand | <https://help.xtiles.app/en/articles/15192396-how-to-connect-xtiles-to-claude> | 2026-09-03 |
