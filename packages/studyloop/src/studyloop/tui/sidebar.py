@@ -45,6 +45,21 @@ STATUS_SHAPES: dict[str, tuple[str, str]] = {
 }
 
 
+def _mtime_or_zero(path) -> float:
+    """``path``'s mtime, or 0.0 if it is missing (or vanishes mid-check).
+
+    Read first, catch OSError, rather than exists()-then-stat() -- the
+    latter races session release's unlink() from an executor thread
+    (session/active.py) exactly like the SSE poll R-06/R-08 fixed
+    elsewhere on this same surface (C7, council: caught here once
+    test_no_exists_then_read_race.py's scan widened to the whole package).
+    """
+    try:
+        return path.stat().st_mtime
+    except OSError:
+        return 0.0
+
+
 def _compute_elapsed(state: dict) -> int:
     """Compute elapsed seconds from state file fields.
 
@@ -348,7 +363,7 @@ class SidebarApp(App[None]):
         ("p", "toggle_pause", "Pause/Resume"),
         ("s", "toggle_pomodoro", "Start/Stop Pomodoro"),
         ("r", "reset_timer", "Reset"),
-        ("plus_sign", "pomo_focus_up", "+5min focus"),
+        ("plus", "pomo_focus_up", "+5min focus"),
         ("minus", "pomo_focus_down", "-5min focus"),
         ("Q", "end_session", "End Session"),
         ("q", "quit", "Quit sidebar"),
@@ -370,9 +385,9 @@ class SidebarApp(App[None]):
         last_mtimes = (0.0, 0.0, 0.0)
         while True:
             mtimes = (
-                STATE_FILE.stat().st_mtime if STATE_FILE.exists() else 0.0,
-                TOPICS_FILE.stat().st_mtime if TOPICS_FILE.exists() else 0.0,
-                PARKING_FILE.stat().st_mtime if PARKING_FILE.exists() else 0.0,
+                _mtime_or_zero(STATE_FILE),
+                _mtime_or_zero(TOPICS_FILE),
+                _mtime_or_zero(PARKING_FILE),
             )
 
             state = read_session_state()
@@ -556,13 +571,19 @@ class SidebarApp(App[None]):
     def action_end_session(self) -> None:
         """End the entire study session (agent + sidebar + multiplexer).
 
-        Sends /exit to the agent, runs DB cleanup, then fires kill to
-        terminate all study sessions. We DON'T use the retry-loop
-        kill_session() because we're running inside the session being
-        killed — the multiplexer sends SIGHUP which terminates us
-        mid-verification.
-
-        Strategy: fire the kill and accept that we'll die from SIGHUP.
+        Sends /exit to the agent, then runs DB cleanup, which (via
+        ``cleanup_on_exit`` -> ``end_session_common`` ->
+        ``_cleanup_tmux_and_files``) kills this session's OWN multiplexer
+        session -- never every ``study-*`` session on the machine. This used
+        to fire ``kill_all_study_sessions()`` directly, right after
+        ``cleanup_on_exit()`` had already torn down this session's own name --
+        so ending one sidebar session also destroyed every other
+        concurrently-running study session (R-02b; the same defect R-02
+        closed for the web and CLI end paths). We DON'T use the retry-loop
+        ``kill_session()`` ourselves here because we're running inside the
+        session being killed — the multiplexer sends SIGHUP which terminates
+        us mid-verification; ``cleanup_on_exit``'s own kill is fire-and-forget
+        for the same reason.
         """
         import contextlib
 
@@ -572,7 +593,6 @@ class SidebarApp(App[None]):
         mux = get_backend()
         state = read_session_state()
         main_pane = state.get("mux_main_pane") or state.get("tmux_main_pane")
-        session_name = state.get("mux_session") or state.get("tmux_session")
 
         # Try graceful agent exit (best effort)
         if main_pane:
@@ -584,17 +604,15 @@ class SidebarApp(App[None]):
 
         # Run DB cleanup (state=ended, end study session, clean IPC files).
         # Idempotent — safe even if the agent wrapper's cleanup also fires.
+        # This kills our OWN multiplexer session (R-02b) -- kills us too via
+        # SIGHUP, which is fine, that's this session ending.
         with contextlib.suppress(Exception):
             from studyloop.session.cleanup import cleanup_on_exit as _cleanup_session
 
             _cleanup_session()
 
-        # Fire-and-forget: kill ALL study sessions. This ensures no
-        # stale sessions remain and the user returns to their original shell
-        # (not stranded in the multiplexer). Kills us too via SIGHUP — that's fine.
-        mux.kill_all_study_sessions(current_session=session_name)
-
-        # If we somehow survive (e.g., no sessions found), exit cleanly.
+        # If we somehow survive (e.g., no session name was recorded), exit
+        # cleanly rather than leaving the sidebar hanging.
         self.exit()
 
 

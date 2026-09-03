@@ -1,0 +1,83 @@
+# Local CI mirror for StudyLoop. "Does this repo meet the standard?" is
+# `ci-standards check --target .`; "would GitHub Actions pass?" additionally
+# needs `ci-standards run-job <job> --target . --image ci-standards-runner:latest`
+# for anything platform-sensitive (see docs/ci.md and README.md in
+# ~/code/personal/tools/github_ci_pipeline).
+#
+# Every check below overrides a profile default with StudyLoop's own gate
+# command (matching .github/workflows/ci.yml and the Justfile) rather than the
+# profile's generic uvx-pinned version, so a local pass means the same command
+# CI runs, not an equivalent one.
+
+profile: python-uv
+
+checks:
+  # ci.yml `lint` job, split into ruff's own two sub-steps.
+  lint-format:
+    command: uv run --group dev ruff format --check .
+  lint:
+    command: uv run --group dev ruff check .
+
+  # ci.yml `typecheck` job / Justfile `typecheck` recipe. No generic
+  # "typecheck" check exists in the profile -- pyright is this repo's own
+  # choice, not something every python-uv repo shares -- so this is added
+  # here rather than overriding a profile default.
+  typecheck:
+    command: uv run --group dev pyright
+
+  # ci.yml `test` job (functional signal only; this intentionally omits the
+  # --tb=short/--cov flags CI adds for reporting, since a local pass/fail
+  # question doesn't need a coverage report).
+  test:
+    command: uv run --group dev pytest
+    requires_path: pyproject.toml
+
+  # ci.yml `js` job / Justfile `test-js` recipe. The profile's generic
+  # js-tests check runs Node's own bare-discovery `node --test`; this repo's
+  # JS tests live under packages/studyloop/tests/js/, not a location Node's
+  # default discovery would find, so the glob must be explicit.
+  js-tests:
+    command: node --test packages/studyloop/tests/js/*.test.js
+    requires_path: package.json
+
+  # docs.yml build check / Justfile `docs` recipe. NO_MKDOCS_2_WARNING=1 is a
+  # StudyLoop-specific env quirk (see docs/audit/2026-08-27-documentation-review.md)
+  # that has no place in the shared profile's generic mkdocs-strict command.
+  mkdocs-strict:
+    command: NO_MKDOCS_2_WARNING=1 uv run --extra docs mkdocs build --strict
+    requires_path: mkdocs.yml
+
+  # ci.yml `build` job's second step / Justfile `release-consistency` recipe.
+  # No profile default exists for this check (see ci-standards' README): the
+  # command is a path to this repo's own release script plus that script's
+  # own flag, so it is declared here rather than in the shared profile.
+  # --skip-wheel: the host run answers "are the release note and version
+  # metadata consistent," not "does the built wheel match" -- the latter
+  # needs scripts/build-release.sh's dist/ output, which is what the `build`
+  # job's first step and `just build-release` produce; that step lives
+  # outside this per-check gate, not duplicated here.
+  release-consistency:
+    command: uv run python scripts/check-release-consistency.py --skip-wheel
+
+  # ci.yml `sast` job. Same bandit skip list as .pre-commit-config.yaml's
+  # bandit hook (B101,B104,B105,B106,B107,B108,B110,B310,B404,B602,B603,B606,
+  # B607,B608 -- CLI tool: subprocess, SQLite, test fixtures, graceful
+  # degradation) so a local pass means the same findings CI would report.
+  # Not warn_only: the ci.yml sast job has no continue-on-error, so a local
+  # mirror that warned instead of failed would report green when CI would not.
+  sast:
+    command: >-
+      uv run --group dev bandit --recursive
+      --skip B101,B104,B105,B106,B107,B108,B110,B310,B404,B602,B603,B606,B607,B608
+      packages/
+
+  # ci.yml `audit` job / Justfile `audit` recipe, chained into one shell
+  # invocation. Not warn_only, matching the profile's own rationale for that
+  # flag: the ci.yml audit job has no continue-on-error either.
+  audit:
+    command: >-
+      uv --quiet export --all-packages --group dev --no-emit-workspace
+      --format requirements-txt -o /tmp/studyloop-requirements.txt &&
+      uv tool run pip-audit -r /tmp/studyloop-requirements.txt --strict
+      --no-deps --disable-pip
+    requires_path: uv.lock

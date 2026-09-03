@@ -18,6 +18,28 @@ def read_studyloop_version(repo_root: Path) -> str:
     return version
 
 
+def validate_root_version_matches_package(repo_root: Path, package_version: str) -> None:
+    """R-39: the workspace-root pyproject.toml drifted to 1.0.0 while the
+
+    package sat at 0.1.0, and nothing caught it. Read the same way
+    ``read_studyloop_version`` reads the package version, then assert
+    agreement.
+    """
+    root_pyproject_path = repo_root / "pyproject.toml"
+    if not root_pyproject_path.is_file():
+        raise ValueError(f"missing root pyproject.toml: {root_pyproject_path}")
+    with root_pyproject_path.open("rb") as pyproject_file:
+        root_pyproject = tomllib.load(pyproject_file)
+    root_version = root_pyproject.get("project", {}).get("version")
+    if not isinstance(root_version, str) or not root_version:
+        raise ValueError(f"missing project.version in {root_pyproject_path}")
+    if root_version != package_version:
+        raise ValueError(
+            f"root pyproject.toml version ({root_version}) does not match "
+            f"packages/studyloop/pyproject.toml version ({package_version})"
+        )
+
+
 def validate_release_note(repo_root: Path, version: str) -> None:
     release_note_path = repo_root / "releases" / f"v{version}.md"
     if not release_note_path.is_file():
@@ -98,6 +120,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         version = read_studyloop_version(repo_root)
+        validate_root_version_matches_package(repo_root, version)
         validate_release_note(repo_root, version)
         if not args.skip_wheel:
             validate_sdist(repo_root, version)

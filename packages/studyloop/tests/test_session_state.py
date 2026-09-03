@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -240,3 +241,521 @@ def test_parsers_tolerate_unreadable_paths(tmp_path: Path, monkeypatch: pytest.M
 
     assert parse_topics_file() == []
     assert parse_parking_file() == []
+
+
+# ---------------------------------------------------------------------------
+# claim_blocks_cli_start (R-01b) -- the CLI start path's own liveness check,
+# mirroring claim_blocks_web_start (docs/architecture/session-authority.md
+# clause 2).
+# ---------------------------------------------------------------------------
+
+
+def test_claim_blocks_cli_start_no_claim_never_blocks() -> None:
+    from studyloop.session_state import claim_blocks_cli_start
+
+    assert claim_blocks_cli_start({}) is False
+
+
+def test_claim_blocks_cli_start_ended_claim_never_blocks() -> None:
+    from studyloop.session_state import claim_blocks_cli_start
+
+    assert claim_blocks_cli_start({"study_session_id": "x", "mode": "ended"}) is False
+
+
+def test_claim_blocks_cli_start_live_cli_claim_blocks(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A CLI-owned claim (no transport key) blocks iff its recorded
+    multiplexer session still exists."""
+    from studyloop.session_state import claim_blocks_cli_start
+
+    state = {"study_session_id": "x", "mode": "focus", "mux_session": "study-x"}
+    monkeypatch.setattr(
+        "studyloop.multiplexer.get_backend",
+        lambda: type("_Mux", (), {"session_exists": staticmethod(lambda name: True)})(),
+    )
+
+    assert claim_blocks_cli_start(state) is True
+
+
+def test_claim_blocks_cli_start_dead_cli_claim_does_not_block(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from studyloop.session_state import claim_blocks_cli_start
+
+    state = {"study_session_id": "x", "mode": "focus", "mux_session": "study-x"}
+    monkeypatch.setattr(
+        "studyloop.multiplexer.get_backend",
+        lambda: type("_Mux", (), {"session_exists": staticmethod(lambda name: False)})(),
+    )
+
+    assert claim_blocks_cli_start(state) is False
+
+
+def test_claim_blocks_cli_start_cli_claim_with_no_session_name_does_not_block() -> None:
+    """No mux/tmux session name recorded means "can't confirm it's alive" --
+    treated conservatively as NOT blocking (stale), same rule
+    claim_blocks_web_start already applies."""
+    from studyloop.session_state import claim_blocks_cli_start
+
+    assert claim_blocks_cli_start({"study_session_id": "x", "mode": "focus"}) is False
+
+
+def test_claim_blocks_cli_start_live_web_claim_blocks() -> None:
+    """A web-owned claim (transport pty/acp) read from the CLI process
+    blocks iff its recorded pid is alive."""
+    from studyloop.session_state import claim_blocks_cli_start
+
+    state = {
+        "study_session_id": "x",
+        "mode": "focus",
+        "transport": "pty",
+        "pid": os.getpid(),
+    }
+    assert claim_blocks_cli_start(state) is True
+
+
+def test_claim_blocks_cli_start_dead_web_claim_does_not_block() -> None:
+    from studyloop.session_state import claim_blocks_cli_start
+
+    state = {
+        "study_session_id": "x",
+        "mode": "focus",
+        "transport": "pty",
+        "pid": 999999999,
+    }
+    assert claim_blocks_cli_start(state) is False
+
+
+def test_claim_blocks_cli_start_web_claim_with_no_pid_blocks_conservatively() -> None:
+    """No `pid` recorded (a claim written by an older build) blocks --
+    the existing message tells the user how to end it explicitly, which is
+    safer than reclaiming a claim this process cannot verify."""
+    from studyloop.session_state import claim_blocks_cli_start
+
+    state = {"study_session_id": "x", "mode": "focus", "transport": "acp"}
+    assert claim_blocks_cli_start(state) is True
+
+
+def test_claim_blocks_cli_start_permission_error_counts_as_alive(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A pid the CLI process cannot signal (owned by another user, or
+    reused) still has something live at it -- PermissionError means the
+    kernel found a real process, not that the slot is free."""
+    from studyloop.session_state import claim_blocks_cli_start
+
+    def _raise_permission_error(pid: int, sig: int) -> None:
+        raise PermissionError(1, "Operation not permitted")
+
+    monkeypatch.setattr(os, "kill", _raise_permission_error)
+    state = {"study_session_id": "x", "mode": "focus", "transport": "pty", "pid": 4242}
+
+    assert claim_blocks_cli_start(state) is True
+
+
+def test_claim_blocks_cli_start_process_lookup_error_does_not_block(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from studyloop.session_state import claim_blocks_cli_start
+
+    def _raise_process_lookup_error(pid: int, sig: int) -> None:
+        raise ProcessLookupError(3, "No such process")
+
+    monkeypatch.setattr(os, "kill", _raise_process_lookup_error)
+    state = {"study_session_id": "x", "mode": "focus", "transport": "acp", "pid": 4242}
+
+    assert claim_blocks_cli_start(state) is False
+
+
+# ---------------------------------------------------------------------------
+# claim_blocks_web_start (C3) -- a foreign, alive web server's pid now
+# blocks a second web start; the process's own pid, or no pid at all,
+# still behaves exactly as before R-01b.
+# ---------------------------------------------------------------------------
+
+
+def test_claim_blocks_web_start_foreign_alive_pid_blocks() -> None:
+    from studyloop.session_state import claim_blocks_web_start
+
+    # pid 1 (init/launchd) always exists and is always foreign to a test
+    # process; os.kill(1, 0) raises PermissionError, which counts as alive.
+    state = {"study_session_id": "x", "mode": "focus", "transport": "pty", "pid": 1}
+
+    assert claim_blocks_web_start(state) is True
+
+
+def test_claim_blocks_web_start_own_pid_does_not_block() -> None:
+    from studyloop.session_state import claim_blocks_web_start
+
+    state = {
+        "study_session_id": "x",
+        "mode": "focus",
+        "transport": "acp",
+        "pid": os.getpid(),
+    }
+
+    assert claim_blocks_web_start(state) is False
+
+
+def test_claim_blocks_web_start_dead_foreign_pid_reclaims() -> None:
+    from studyloop.session_state import claim_blocks_web_start
+
+    state = {
+        "study_session_id": "x",
+        "mode": "focus",
+        "transport": "pty",
+        "pid": 999999999,
+    }
+
+    assert claim_blocks_web_start(state) is False
+
+
+def test_claim_blocks_web_start_no_pid_unchanged() -> None:
+    """A pty/acp claim with no pid recorded (a build before R-01b, or the
+    in-process-singleton-already-ruled-out case R-01's own docstring
+    describes) never blocks -- unchanged by C3."""
+    from studyloop.session_state import claim_blocks_web_start
+
+    state = {"study_session_id": "x", "mode": "focus", "transport": "acp"}
+
+    assert claim_blocks_web_start(state) is False
+
+
+# ---------------------------------------------------------------------------
+# _cli_owned_claim_is_live (C5) -- a multiplexer backend that cannot be
+# reached must still fail open (no crash, no false block), but must log
+# the exception instead of swallowing it silently.
+# ---------------------------------------------------------------------------
+
+
+def test_cli_owned_claim_is_live_logs_when_the_backend_raises(
+    monkeypatch: pytest.MonkeyPatch, caplog
+) -> None:
+    from studyloop.session_state import _cli_owned_claim_is_live
+
+    class _BrokenBackend:
+        def session_exists(self, name: str) -> bool:
+            raise RuntimeError("tmux server unreachable")
+
+    monkeypatch.setattr("studyloop.multiplexer.get_backend", lambda: _BrokenBackend())
+    state = {"mux_session": "study-x"}
+
+    assert _cli_owned_claim_is_live(state) is False
+    warnings = [rec for rec in caplog.records if rec.levelname == "WARNING"]
+    assert len(warnings) == 1
+    assert "study-x" in warnings[0].message
+    assert "tmux server unreachable" in warnings[0].message
+
+
+# ---------------------------------------------------------------------------
+# reclaim_log_message (C4) -- the single place both start paths build the
+# "reclaiming a stale claim" warning, so they cannot drift (R-01b's own
+# requirement), extended to name a recorded child_pid when present.
+# ---------------------------------------------------------------------------
+
+
+def test_reclaim_log_message_without_child_pid() -> None:
+    from studyloop.session_state import reclaim_log_message
+
+    state = {"study_session_id": "sess-1", "transport": "pty"}
+    message = reclaim_log_message(state)
+
+    assert "Reclaiming stale session claim id=sess-1 transport=pty" in message
+    assert "its owner is no longer alive" in message
+    assert "child_pid" not in message
+
+
+def test_reclaim_log_message_with_child_pid() -> None:
+    from studyloop.session_state import reclaim_log_message
+
+    state = {"study_session_id": "sess-1", "transport": "pty", "child_pid": 4242}
+    message = reclaim_log_message(state)
+
+    assert "child_pid=4242" in message
+    assert "its owner is no longer alive" in message
+
+
+# ---------------------------------------------------------------------------
+# try_claim_session (C1) -- the atomic check-then-claim primitive that
+# closes the cross-process check-then-claim window: read, decide, and
+# (reclaim side effect +) write all happen under the SAME flock
+# write_session_state uses, instead of a read (unlocked) followed by a
+# separate, later write.
+# ---------------------------------------------------------------------------
+
+
+def test_try_claim_session_no_claim_writes_the_reservation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from studyloop.session_state import read_session_state, try_claim_session
+
+    monkeypatch.setattr("studyloop.session_state.SESSION_DIR", tmp_path)
+    monkeypatch.setattr("studyloop.session_state.STATE_FILE", tmp_path / "session-state.json")
+
+    reservation = {"study_session_id": "pending-1", "mode": "starting"}
+    result = try_claim_session(reservation, blocks=lambda state: False)
+
+    assert result is None
+    assert read_session_state()["study_session_id"] == "pending-1"
+    assert read_session_state()["mode"] == "starting"
+
+
+def test_try_claim_session_blocked_writes_nothing_and_returns_the_state(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from studyloop.session_state import (
+        read_session_state,
+        try_claim_session,
+        write_session_state,
+    )
+
+    monkeypatch.setattr("studyloop.session_state.SESSION_DIR", tmp_path)
+    monkeypatch.setattr("studyloop.session_state.STATE_FILE", tmp_path / "session-state.json")
+    write_session_state({"study_session_id": "live-1", "mode": "focus"})
+
+    reservation = {"study_session_id": "pending-1", "mode": "starting"}
+    result = try_claim_session(reservation, blocks=lambda state: True)
+
+    assert result == {"study_session_id": "live-1", "mode": "focus"}
+    # Nothing was written -- the blocking claim is exactly as it was.
+    assert read_session_state() == {"study_session_id": "live-1", "mode": "focus"}
+
+
+def test_try_claim_session_reclaim_calls_on_reclaim_before_writing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """on_reclaim(previous_state) runs INSIDE the same locked section,
+    before the reservation overwrites it -- a caller uses this to clear
+    inherited IPC files (C2) and log the reclaim (C4) atomically with the
+    claim, not as a separate, racy step before or after."""
+    from studyloop.session_state import (
+        read_session_state,
+        try_claim_session,
+        write_session_state,
+    )
+
+    monkeypatch.setattr("studyloop.session_state.SESSION_DIR", tmp_path)
+    monkeypatch.setattr("studyloop.session_state.STATE_FILE", tmp_path / "session-state.json")
+    write_session_state({"study_session_id": "stale-1", "mode": "focus"})
+
+    seen: list[dict] = []
+    reservation = {"study_session_id": "pending-1", "mode": "starting"}
+    result = try_claim_session(reservation, blocks=lambda state: False, on_reclaim=seen.append)
+
+    assert result is None
+    assert seen == [{"study_session_id": "stale-1", "mode": "focus"}]
+    assert read_session_state()["study_session_id"] == "pending-1"
+
+
+def test_try_claim_session_no_claim_never_calls_on_reclaim(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from studyloop.session_state import try_claim_session
+
+    monkeypatch.setattr("studyloop.session_state.SESSION_DIR", tmp_path)
+    monkeypatch.setattr("studyloop.session_state.STATE_FILE", tmp_path / "session-state.json")
+
+    seen: list[dict] = []
+    reservation = {"study_session_id": "pending-1", "mode": "starting"}
+    try_claim_session(reservation, blocks=lambda state: False, on_reclaim=seen.append)
+
+    assert seen == []
+
+
+def test_try_claim_session_two_threads_exactly_one_wins(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The atomicity guarantee itself: two threads racing try_claim_session
+    against the same claim, with a blocks() that treats ANY existing claim
+    (including the other thread's own reservation) as live, must produce
+    exactly one winner -- the loser's result is the winner's own
+    reservation, not a race-corrupted read."""
+    import threading
+
+    from studyloop.session_state import try_claim_session
+
+    monkeypatch.setattr("studyloop.session_state.SESSION_DIR", tmp_path)
+    monkeypatch.setattr("studyloop.session_state.STATE_FILE", tmp_path / "session-state.json")
+
+    def _blocks_if_claimed(state: dict) -> bool:
+        return bool(state.get("study_session_id"))
+
+    results: list[dict | None] = [None, None]
+
+    def _attempt(index: int, session_id: str) -> None:
+        results[index] = try_claim_session(
+            {"study_session_id": session_id, "mode": "starting"},
+            blocks=_blocks_if_claimed,
+        )
+
+    barrier = threading.Barrier(2)
+
+    def _run(index: int, session_id: str) -> None:
+        barrier.wait()
+        _attempt(index, session_id)
+
+    t1 = threading.Thread(target=_run, args=(0, "thread-a"))
+    t2 = threading.Thread(target=_run, args=(1, "thread-b"))
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()
+
+    winners = [r for r in results if r is None]
+    losers = [r for r in results if r is not None]
+    assert len(winners) == 1, f"exactly one thread must claim the slot, got {results}"
+    assert len(losers) == 1
+    # The loser's returned state must be a real claim -- either the OTHER
+    # thread's own reservation (the race this closes) or (extremely
+    # unlikely under a Barrier) its own already-written one; never {}.
+    assert losers[0] is not None and losers[0].get("study_session_id") in (
+        "thread-a",
+        "thread-b",
+    )
+
+
+# ---------------------------------------------------------------------------
+# C9 (council): a claim's recorded pid, when alive and foreign, blocks
+# BEFORE either owner-type branch runs -- a reservation (mode="starting")
+# always carries pid but has no mux_session yet (CLI) or is checked before
+# the in-process singleton exists (web is unaffected there, but a CLI
+# reservation read from claim_blocks_web_start has the same gap). Without
+# this, a fresh reservation reads as stale to anyone judging it only by
+# mux_session/singleton state, defeating try_claim_session's own locking
+# with a liveness signal that cannot see the winner.
+# ---------------------------------------------------------------------------
+
+
+def test_claim_blocks_cli_start_sees_a_cli_reservation_with_no_mux_session_as_live() -> None:
+    """A CLI-owned claim (no transport key) with an alive, foreign pid and
+    NO mux_session yet -- exactly the shape try_claim_session's reservation
+    has before the CLI chooses its tmux session name -- must block."""
+    from studyloop.session_state import claim_blocks_cli_start
+
+    state = {"study_session_id": "pending-1", "mode": "starting", "pid": os.getppid()}
+
+    assert claim_blocks_cli_start(state) is True
+
+
+def test_claim_blocks_web_start_sees_a_cli_reservation_with_no_mux_session_as_live() -> None:
+    """Mirror of the above for the web helper -- a web start must not
+    clobber a fresh CLI reservation either."""
+    from studyloop.session_state import claim_blocks_web_start
+
+    state = {"study_session_id": "pending-1", "mode": "starting", "pid": os.getppid()}
+
+    assert claim_blocks_web_start(state) is True
+
+
+def test_claim_blocks_cli_start_reclaims_a_dead_pid_reservation_with_no_mux_session() -> None:
+    """The negative: a reservation whose pid is dead (no live owner at
+    all) still reclaims, exactly as before -- pid-first does not turn
+    every unnamed-mux_session claim into a permanent block."""
+    from studyloop.session_state import claim_blocks_cli_start
+
+    state = {"study_session_id": "pending-1", "mode": "starting", "pid": 999999999}
+
+    assert claim_blocks_cli_start(state) is False
+
+
+def test_claim_blocks_web_start_reclaims_a_dead_pid_reservation_with_no_mux_session() -> None:
+    from studyloop.session_state import claim_blocks_web_start
+
+    state = {"study_session_id": "pending-1", "mode": "starting", "pid": 999999999}
+
+    assert claim_blocks_web_start(state) is False
+
+
+def test_claim_blocks_cli_start_own_pid_reservation_falls_through_to_mux_check() -> None:
+    """A CLI-owned claim carrying THIS process's own pid (the ordinary
+    crash-then-restart shape, not a live reservation) must not block on
+    the pid check alone -- it falls through to the existing mux_session
+    check, which (absent one) still reads as stale."""
+    from studyloop.session_state import claim_blocks_cli_start
+
+    state = {"study_session_id": "pending-1", "mode": "starting", "pid": os.getpid()}
+
+    assert claim_blocks_cli_start(state) is False
+
+
+def test_claim_blocks_cli_start_reservation_with_live_pid_and_mux_session_still_blocks() -> None:
+    """Once the mux_session IS recorded too, the claim blocks via either
+    signal -- pid-first does not regress the already-working case."""
+    from studyloop.session_state import claim_blocks_cli_start
+
+    state = {
+        "study_session_id": "pending-1",
+        "mode": "starting",
+        "pid": os.getppid(),
+        "mux_session": "study-x",
+    }
+
+    assert claim_blocks_cli_start(state) is True
+
+
+# ---------------------------------------------------------------------------
+# C10 (council): try_claim_session must REPLACE the previous claim when
+# reclaiming, not merge the reservation over it -- a merge resurrects
+# every key of the stale claim the reservation does not name
+# (mux_session/tmux_session, child_pid, session_dir, agent, energy,
+# topic, ...) into the brand-new session's state.
+# ---------------------------------------------------------------------------
+
+
+def test_try_claim_session_reclaim_does_not_inherit_the_stale_claims_other_keys(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A stale CLI claim carrying mux_session/child_pid/session_dir/etc,
+    reclaimed by a fresh web reservation, must leave the new state exactly
+    equal to the reservation -- none of the stale claim's other fields."""
+    from studyloop.session_state import (
+        read_session_state,
+        try_claim_session,
+        write_session_state,
+    )
+
+    monkeypatch.setattr("studyloop.session_state.SESSION_DIR", tmp_path)
+    monkeypatch.setattr("studyloop.session_state.STATE_FILE", tmp_path / "session-state.json")
+    write_session_state(
+        {
+            "study_session_id": "stale-cli-1",
+            "mode": "focus",
+            "mux_session": "study-x-1234",
+            "tmux_session": "study-x-1234",
+            "child_pid": 4242,
+            "session_dir": "/some/dead/session/dir",
+            "agent": "codex",
+            "energy": 3,
+            "topic": "Old topic",
+        }
+    )
+
+    web_reservation = {
+        "study_session_id": "pending-web-1",
+        "mode": "starting",
+        "transport": "pty",
+        "pid": os.getpid(),
+        "topic": "New topic",
+        "started_at": "2026-06-01T12:00:00+00:00",
+    }
+    result = try_claim_session(web_reservation, blocks=lambda state: False)
+
+    assert result is None
+    assert read_session_state() == web_reservation
+
+
+def test_try_claim_session_no_prior_claim_still_writes_exactly_the_reservation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Baseline (no regression): with no prior claim at all, the merge and
+    the replace produce the same result -- there is nothing to resurrect
+    either way. Pinned so the two behave identically on the common case."""
+    from studyloop.session_state import read_session_state, try_claim_session
+
+    monkeypatch.setattr("studyloop.session_state.SESSION_DIR", tmp_path)
+    monkeypatch.setattr("studyloop.session_state.STATE_FILE", tmp_path / "session-state.json")
+
+    reservation = {"study_session_id": "pending-1", "mode": "starting"}
+    result = try_claim_session(reservation, blocks=lambda state: False)
+
+    assert result is None
+    assert read_session_state() == reservation

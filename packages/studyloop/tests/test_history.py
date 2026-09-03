@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+import logging
 import sqlite3
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+
+import pytest
 
 
 def _make_db(tmp_path: Path) -> Path:
@@ -283,6 +286,235 @@ class TestTeachbackProgressEvidence:
         assert progress["last_teachback_score"] == 20
         assert json.loads(progress["angles_used"]) == ["bloom_apply"]
         assert progress["notes"] == "Clear transfer."
+
+
+def _make_teachback_db_with_check_constraints(tmp_path: Path) -> Path:
+    """Same shape as `_make_teachback_db`, but with the real schema's CHECK
+    constraints on `teach_back_scores.score_*` (migrations.py migrate_v10) --
+    needed to actually trigger sqlite3.IntegrityError for the R-21 test below.
+    """
+    db_path = tmp_path / "sessions.db"
+    conn = sqlite3.connect(db_path)
+    conn.execute(
+        """
+        CREATE TABLE teach_back_scores (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            concept TEXT NOT NULL,
+            topic TEXT NOT NULL,
+            session_id TEXT,
+            score_accuracy INTEGER CHECK(score_accuracy BETWEEN 1 AND 4),
+            score_own_words INTEGER CHECK(score_own_words BETWEEN 1 AND 4),
+            score_structure INTEGER CHECK(score_structure BETWEEN 1 AND 4),
+            score_depth INTEGER CHECK(score_depth BETWEEN 1 AND 4),
+            score_transfer INTEGER CHECK(score_transfer BETWEEN 1 AND 4),
+            total_score INTEGER GENERATED ALWAYS AS (
+                COALESCE(score_accuracy, 0) + COALESCE(score_own_words, 0)
+                + COALESCE(score_structure, 0) + COALESCE(score_depth, 0)
+                + COALESCE(score_transfer, 0)
+            ) STORED,
+            review_type TEXT NOT NULL,
+            question_angle TEXT,
+            notes TEXT,
+            created_at TEXT DEFAULT (datetime('now'))
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE study_progress (
+            id TEXT PRIMARY KEY,
+            topic TEXT,
+            concept TEXT,
+            confidence TEXT,
+            first_seen TEXT,
+            last_seen TEXT,
+            session_count INTEGER,
+            notes TEXT,
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now')),
+            last_teachback_score INTEGER,
+            angles_used TEXT
+        )
+        """
+    )
+    conn.commit()
+    conn.close()
+    return db_path
+
+
+class TestRecordTeachbackSerialisationAndErrors:
+    """R-21: explicit serialisation invariant, and CHECK violations must not
+    raise through the public function unhandled."""
+
+    def test_uses_db_immediate_for_explicit_serialisation(self, tmp_path, monkeypatch):
+        """Documents the invariant: the read-decide-write span runs inside
+        `db.immediate()`, not bare on the connection's default isolation
+        level. Not a reordering test -- R-21 was corrected to "not a lost-
+        update race" -- this asserts the serialisation is explicit rather
+        than an accident of statement order.
+        """
+        db_path = _make_teachback_db(tmp_path)
+
+        def mock_connect():
+            conn = sqlite3.connect(db_path, timeout=5)
+            conn.row_factory = sqlite3.Row
+            return conn
+
+        import studyloop.history as hist
+        import studyloop.history._connection as _conn
+        import studyloop.history.teachback as teachback_mod
+
+        monkeypatch.setattr(_conn, "_connect", mock_connect)
+
+        calls: list[sqlite3.Connection] = []
+        real_immediate = teachback_mod.immediate
+
+        def spying_immediate(conn):
+            calls.append(conn)
+            return real_immediate(conn)
+
+        monkeypatch.setattr(teachback_mod, "immediate", spying_immediate)
+
+        ok = hist.record_teachback(
+            concept="Decorators",
+            topic="Python",
+            scores=(3, 3, 3, 3, 3),
+            review_type="micro",
+        )
+
+        assert ok is True
+        assert len(calls) == 1
+
+    def test_check_violation_does_not_raise_through_public_function(self, tmp_path, monkeypatch):
+        """A CHECK-constraint violation (score outside BETWEEN 1 AND 4) used
+        to raise sqlite3.IntegrityError straight through record_teachback,
+        because `except sqlite3.OperationalError` does not catch it.
+        """
+        db_path = _make_teachback_db_with_check_constraints(tmp_path)
+
+        def mock_connect():
+            conn = sqlite3.connect(db_path, timeout=5)
+            conn.row_factory = sqlite3.Row
+            return conn
+
+        import studyloop.history as hist
+        import studyloop.history._connection as _conn
+
+        monkeypatch.setattr(_conn, "_connect", mock_connect)
+
+        # score_accuracy=5 violates CHECK(score_accuracy BETWEEN 1 AND 4).
+        ok = hist.record_teachback(
+            concept="Decorators",
+            topic="Python",
+            scores=(5, 3, 3, 3, 3),
+            review_type="micro",
+        )
+
+        assert ok is False
+
+        # And the transaction rolled back cleanly -- no partial row survives.
+        conn = sqlite3.connect(db_path)
+        count = conn.execute("SELECT COUNT(*) FROM teach_back_scores").fetchone()[0]
+        conn.close()
+        assert count == 0
+
+    def test_locked_db_raises_and_logs_not_silently_returned_as_false(
+        self, tmp_path, monkeypatch, caplog
+    ):
+        """R-21b (M3 council, arbitration A10): `except sqlite3.DatabaseError`
+        is IntegrityError's *and* OperationalError's shared parent -- so the
+        broad catch that let a CHECK violation return False also silently
+        swallowed a genuine lock/timeout OperationalError into the exact
+        same "return False" as an expected rejection, indistinguishable from
+        one another to every caller. Reproduced with a real connection whose
+        `execute` only raises on the specific statement `record_teachback`
+        actually issues (not every statement -- unlike a CHECK violation,
+        which SQLite itself raises, "database is locked" has to be injected
+        here since there is no real lock contention in a single-process
+        test), so `BEGIN IMMEDIATE`/`ROLLBACK`/`isolation_level` all still
+        behave like the real connection they wrap.
+        """
+        db_path = _make_teachback_db(tmp_path)
+
+        class _LockOnInsertConn:
+            def __init__(self, real_conn: sqlite3.Connection) -> None:
+                self._real = real_conn
+
+            def execute(self, sql, *args, **kwargs):
+                if "INSERT INTO teach_back_scores" in sql:
+                    raise sqlite3.OperationalError("database is locked")
+                return self._real.execute(sql, *args, **kwargs)
+
+            def __getattr__(self, name):
+                return getattr(self._real, name)
+
+        def mock_connect():
+            conn = sqlite3.connect(db_path, timeout=5)
+            conn.row_factory = sqlite3.Row
+            return _LockOnInsertConn(conn)
+
+        import studyloop.history as hist
+        import studyloop.history._connection as _conn
+
+        monkeypatch.setattr(_conn, "_connect", mock_connect)
+
+        with (
+            caplog.at_level(logging.WARNING, logger="studyloop.history.teachback"),
+            pytest.raises(sqlite3.OperationalError, match="locked"),
+        ):
+            hist.record_teachback(
+                concept="Decorators",
+                topic="Python",
+                scores=(3, 3, 3, 3, 3),
+                review_type="micro",
+            )
+
+        assert any("record_teachback" in r.message for r in caplog.records)
+
+
+class TestProgressIdFor:
+    """R-21: `progress_id_for` must be separator-safe and backward-compatible
+    with the plain-join formula for the (overwhelmingly common) case where
+    neither field contains ':' or '\\'.
+    """
+
+    def test_no_collision_across_separator_position(self):
+        from studyloop.history._connection import progress_id_for
+
+        # The bug this closes: a plain f"{topic}:{concept}" join makes both
+        # pairs below join to the identical string "a:b:c".
+        a = progress_id_for("a:b", "c")
+        b = progress_id_for("a", "b:c")
+        assert a != b
+
+    def test_backward_compatible_with_old_formula_when_no_separator_present(self):
+        """The overwhelmingly common case -- no ':' or '\\' in either field --
+        must keep producing the exact id the old `f"{topic}:{concept}"` join
+        did, so existing study_progress rows are not orphaned by this fix.
+        """
+        import uuid
+
+        from studyloop.history._connection import progress_id_for
+
+        old_style = str(uuid.uuid5(uuid.NAMESPACE_DNS, "python:decorators"))
+        assert progress_id_for("python", "decorators") == old_style
+
+    def test_deterministic(self):
+        from studyloop.history._connection import progress_id_for
+
+        assert progress_id_for("python", "decorators") == progress_id_for("python", "decorators")
+
+    def test_teachback_and_progress_derive_the_same_id(self):
+        """history/teachback.py and history/progress.py both upsert
+        study_progress for a (topic, concept) pair -- they must agree on the
+        id or one write silently orphans the other's row.
+        """
+        import studyloop.history.progress as progress_mod
+        import studyloop.history.teachback as teachback_mod
+
+        assert progress_mod._connection.progress_id_for(
+            "python", "decorators"
+        ) == teachback_mod._connection.progress_id_for("python", "decorators")
 
 
 class TestGetStudyTerms:

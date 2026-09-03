@@ -1,0 +1,10 @@
+{
+  "study_session_id": "web-sess-crashed",
+  "topic": "Crashed session",
+  "mode": "focus",
+  "agent": "claude",
+  "energy": 4,
+  "transport": "pty",
+  "tmux_session": null,
+  "pid": 999999999
+}

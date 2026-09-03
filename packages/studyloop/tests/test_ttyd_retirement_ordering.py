@@ -1,11 +1,26 @@
-"""Ordering guards for the ttyd retirement.
+"""Ordering guards born from the ttyd retirement, one of them ttyd-specific.
 
 A staged deletion can go green while leaving the product in a worse state than
-either end point. These two assertions turn the specific ways that can happen
-into failures, because a written plan cannot enforce its own ordering.
+either end point. This module started with two assertions turning the specific
+ways that can happen into failures, because a written plan cannot enforce its
+own ordering. Both were identified by an independent review of the retirement
+plan, which found that the plan as written would have produced exactly these
+outcomes.
 
-Both were identified by an independent review of the retirement plan, which found
-that the plan as written would have produced exactly these outcomes.
+``test_ttyd_cleanup_outlives_the_ttyd_spawn`` is deleted as of ttyd retirement
+stage 6 (R-56): it asserted "if nothing spawns ttyd, cleanup may still exist,
+but not the other way around" — a real ordering invariant while the spawn
+(stage 2) and the cleanup (stage 5) were being removed in separate commits.
+Once stage 5 landed, the assertion became unconditionally, permanently true
+(neither side can ever exist again), so it stopped meaning anything: a green
+check with nothing left to catch. See PLAN-retire-ttyd.md's manifest and
+REMEDIATION-PLAN.md's Gate 1 amendment 6, which both name this deletion.
+
+``test_no_frontend_module_imports_a_deleted_component`` survives — it was
+written for the ttyd retirement's stage 3/4 frontend deletions but the
+invariant it guards (an eager `main.js` import of a file that stops existing
+takes down the whole SPA, not just one panel) applies to any future component
+removal, ttyd or not.
 """
 
 from __future__ import annotations
@@ -15,40 +30,6 @@ from pathlib import Path
 import studyloop
 
 _SRC = Path(studyloop.__file__).parent
-
-
-def _sources() -> list[Path]:
-    return [p for p in _SRC.rglob("*.py") if "__pycache__" not in p.parts]
-
-
-def test_ttyd_cleanup_outlives_the_ttyd_spawn() -> None:
-    """If nothing spawns ttyd, cleanup may go. Not before.
-
-    The retirement plan assigned the ttyd CLEANUP to a stage but never assigned
-    the SPAWN to any stage at all. Landed in that order, every `studyloop study`
-    would still start a writable ttyd and record its pid, while session teardown
-    no longer killed it -- an orphaned process holding a terminal attached to the
-    learner's session, and a silent security regression dressed as progress.
-
-    So the invariant is directional: cleanup is allowed to disappear only once no
-    caller can create the thing it cleans up.
-    """
-    spawners = [
-        p.relative_to(_SRC)
-        for p in _sources()
-        if "start_ttyd_background(" in p.read_text(encoding="utf-8", errors="replace")
-        and "def start_ttyd_background(" not in p.read_text(encoding="utf-8", errors="replace")
-    ]
-    cleanup = _SRC / "session" / "cleanup.py"
-    cleanup_text = cleanup.read_text(encoding="utf-8", errors="replace")
-    cleans_ttyd = "ttyd" in cleanup_text
-
-    if spawners and not cleans_ttyd:
-        raise AssertionError(
-            "ttyd cleanup has been removed while these files still spawn ttyd: "
-            f"{[str(p) for p in spawners]}. Delete the spawn first, or restore "
-            "the cleanup — this ordering leaves an orphaned writable terminal."
-        )
 
 
 def test_no_frontend_module_imports_a_deleted_component() -> None:

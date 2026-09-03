@@ -410,7 +410,8 @@ class TestMigrationV12:
             r[1]
             for r in fresh_db.execute("PRAGMA table_info(concept_aliases)").fetchall()
         }
-        assert cols == {"alias", "concept_id"}
+        # updated_at added in v28 for R-19's cross-machine sync recency gate.
+        assert cols == {"alias", "concept_id", "updated_at"}
 
     def test_concept_relations_table_columns(self, fresh_db):
         migrate(fresh_db)
@@ -516,7 +517,8 @@ class TestMigrationV13:
             r[1]
             for r in fresh_db.execute("PRAGMA table_info(message_concepts)").fetchall()
         }
-        assert cols == {"message_id", "concept_id", "confidence"}
+        # updated_at added in v28 for R-19's cross-machine sync recency gate.
+        assert cols == {"message_id", "concept_id", "confidence", "updated_at"}
 
     def test_study_progress_has_concept_id_column(self, fresh_db):
         migrate(fresh_db)
@@ -1202,3 +1204,114 @@ class TestConcurrentFirstBoot:
         finally:
             first.close()
             second.close()
+
+
+class TestMigrationV29UpdatedAtAutoStamp:
+    """R-19b (M3 council, arbitration A1'): every table whose `updated_at`
+    was added by v28's bare `ALTER TABLE` (no default) must never again be
+    NULL from the moment a row is written -- fixed with AFTER INSERT/UPDATE
+    triggers rather than touching every writer (several are outside this
+    lane's ownership; see migrate_v29's docstring).
+
+    Table -> (minimal insert columns, a WHERE clause identifying the row,
+    an UPDATE that intentionally does not touch updated_at).
+    """
+
+    # table -> (insert SQL, where-clause matching the row BEFORE the
+    # update, where-clause matching it AFTER -- identical unless the update
+    # itself changes a key column, as concept_aliases' does, since its only
+    # non-PK-adjacent column IS part of the composite PK, update SQL).
+    CASES = {
+        "study_sessions": (
+            "INSERT INTO study_sessions (id, started_at) VALUES ('s1', '2024-01-01')",
+            "id = 's1'",
+            "id = 's1'",
+            "UPDATE study_sessions SET topic = 'changed' WHERE id = 's1'",
+        ),
+        "teach_back_scores": (
+            "INSERT INTO teach_back_scores (concept, topic, review_type) "
+            "VALUES ('closures', 'python', 'micro')",
+            "concept = 'closures' AND topic = 'python'",
+            "concept = 'closures' AND topic = 'python'",
+            "UPDATE teach_back_scores SET notes = 'changed' "
+            "WHERE concept = 'closures' AND topic = 'python'",
+        ),
+        "parked_topics": (
+            "INSERT INTO parked_topics (question) VALUES ('what about metaclasses?')",
+            "question = 'what about metaclasses?'",
+            "question = 'what about metaclasses?'",
+            "UPDATE parked_topics SET priority = 3 "
+            "WHERE question = 'what about metaclasses?'",
+        ),
+        "scrub_log": (
+            "INSERT INTO scrub_log (entity_type, placeholder) "
+            "VALUES ('email', '[EMAIL_1]')",
+            "placeholder = '[EMAIL_1]'",
+            "placeholder = '[EMAIL_1]'",
+            "UPDATE scrub_log SET entity_type = 'phone' WHERE placeholder = '[EMAIL_1]'",
+        ),
+        "concept_aliases": (
+            "INSERT INTO concepts (id, name, domain) VALUES ('concept-1', 'python', 'lang'); "
+            "INSERT INTO concepts (id, name, domain) VALUES ('concept-2', 'python2', 'lang'); "
+            "INSERT INTO concept_aliases (alias, concept_id) VALUES ('py', 'concept-1')",
+            "alias = 'py' AND concept_id = 'concept-1'",
+            "alias = 'py' AND concept_id = 'concept-2'",
+            "UPDATE concept_aliases SET concept_id = 'concept-2' "
+            "WHERE alias = 'py' AND concept_id = 'concept-1'",
+        ),
+        "message_concepts": (
+            "INSERT INTO sessions (id, source) VALUES ('sess-1', 'test'); "
+            "INSERT INTO messages (id, session_id, role) VALUES ('m1', 'sess-1', 'user'); "
+            "INSERT INTO concepts (id, name, domain) VALUES ('c1', 'closures', 'python'); "
+            "INSERT INTO message_concepts (message_id, concept_id, confidence) "
+            "VALUES ('m1', 'c1', 0.5)",
+            "message_id = 'm1' AND concept_id = 'c1'",
+            "message_id = 'm1' AND concept_id = 'c1'",
+            "UPDATE message_concepts SET confidence = 0.9 "
+            "WHERE message_id = 'm1' AND concept_id = 'c1'",
+        ),
+    }
+
+    @pytest.mark.parametrize("table", list(CASES))
+    def test_fresh_row_gets_non_null_updated_at(self, fresh_db, table):
+        insert_sql, where_before, _, _ = self.CASES[table]
+        migrate(fresh_db)
+        fresh_db.executescript(insert_sql)
+        row = fresh_db.execute(
+            f"SELECT updated_at FROM {table} WHERE {where_before}"
+        ).fetchone()
+        assert row is not None, f"row not found in {table} after insert"
+        assert row[0] is not None, (
+            f"{table}: a freshly inserted row that omits updated_at must not "
+            "stay NULL forever (R-19b / A1')"
+        )
+
+    @pytest.mark.parametrize("table", list(CASES))
+    def test_update_through_normal_api_bumps_updated_at(self, fresh_db, table):
+        insert_sql, where_before, where_after, update_sql = self.CASES[table]
+        migrate(fresh_db)
+        fresh_db.executescript(insert_sql)
+        # Force a known, deliberately-ancient updated_at so "newer after the
+        # update" is a deterministic string comparison, not a same-second
+        # timing race against datetime('now'). This UPDATE's own SET-list
+        # targets updated_at directly, so the trigger's
+        # `WHEN NEW.updated_at IS OLD.updated_at` guard correctly skips
+        # re-stamping it -- that's the setup, not the case under test.
+        fresh_db.execute(
+            f"UPDATE {table} SET updated_at = '2001-01-01 00:00:00' WHERE {where_before}"
+        )
+        before = fresh_db.execute(
+            f"SELECT updated_at FROM {table} WHERE {where_before}"
+        ).fetchone()[0]
+        assert before == "2001-01-01 00:00:00"
+
+        fresh_db.execute(update_sql)
+
+        after = fresh_db.execute(
+            f"SELECT updated_at FROM {table} WHERE {where_after}"
+        ).fetchone()[0]
+        assert after is not None and after > before, (
+            f"{table}: an update through the normal API that doesn't itself "
+            f"touch updated_at must still bump it (got before={before!r}, "
+            f"after={after!r})"
+        )

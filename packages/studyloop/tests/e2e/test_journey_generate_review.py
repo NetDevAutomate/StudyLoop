@@ -17,7 +17,6 @@ Run: cd packages/studyloop && uv run pytest tests/e2e/test_journey_generate_revi
 
 from __future__ import annotations
 
-import os
 import sqlite3
 import subprocess
 import sys
@@ -37,6 +36,11 @@ pytest.importorskip("uvicorn")
 _tests_dir = str(Path(__file__).resolve().parent.parent)
 if _tests_dir not in sys.path:
     sys.path.insert(0, _tests_dir)
+
+from _playwright_helpers import (  # noqa: E402
+    _isolated_child_env,
+    _refuse_if_env_reaches_real_dirs,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -116,8 +120,11 @@ card_generator:
 
 @pytest.fixture(scope="module")
 def server(world: dict) -> Generator[str, None, None]:
-    env = os.environ.copy()
-    env["STUDYLOOP_CONFIG"] = str(world["config"])
+    # C13/R-49g: isolated hermetic env, not os.environ.copy() -- this
+    # spawns a real studyloop web server and must never be able to resolve
+    # HOME/STUDYLOOP_SESSION_DIR back to the developer's real config dir.
+    env = _isolated_child_env({"STUDYLOOP_CONFIG": str(world["config"])})
+    _refuse_if_env_reaches_real_dirs(env)
     proc = subprocess.Popen(
         [
             sys.executable,

@@ -1,6 +1,9 @@
 [project]
 name = "studyloop-workspace"
-version = "1.0.0"
+# Must equal packages/studyloop/pyproject.toml's version -- enforced by
+# scripts/check-release-consistency.py (R-39; this drifted to 1.0.0 while the
+# package sat at 0.1.0, unnoticed because the script never read this file).
+version = "0.1.0"
 description = "StudyLoop: AuDHD-aware Socratic mentoring with AI session management"
 requires-python = ">=3.12"
 readme = "README.md"
@@ -39,7 +42,7 @@ dev = [
     # timeout turns any such hang into an ordinary, attributable failure.
     "pytest-timeout>=2.3",
     "respx>=0.23.1",
-    "mcp[cli]>=1.0.0",
+    "mcp[cli]>=1.0.0,<2",
     "bandit>=1.8",
     "pymupdf>=1.25",
     "notebooklm-py>=0.3.4",

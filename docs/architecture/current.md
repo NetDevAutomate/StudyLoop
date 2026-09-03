@@ -1,6 +1,6 @@
 # Current Architecture
 
-> Last updated: 2026-08-23. Reflects the ACP chat-UI feature, Settings → LLM Providers panel, scalable review list, opt-in Obsidian session-memory export, server-side Kokoro TTS (replacing the removed in-browser neural engine), Course Explorer side panel, generation-control honesty (`count_per_source` through `GenerationTask.count`), Explorer tree fingerprint caching, DB/FTS integrity coverage, route-stubbed browser smoke coverage, and the active-learning loop (`studyloop now`, `chat-note`, `practice verify`, `recap today`, `mastery`, `/api/now`, adaptive interleaving).
+> Last updated: 2026-09-03. Reflects the ACP chat-UI feature, Settings → LLM Providers panel, scalable review list, opt-in Obsidian session-memory export, server-side Kokoro TTS (replacing the removed in-browser neural engine), Course Explorer side panel, generation-control honesty (`count_per_source` through `GenerationTask.count`), Explorer tree fingerprint caching, DB/FTS integrity coverage, route-stubbed browser smoke coverage, the active-learning loop (`studyloop now`, `chat-note`, `practice verify`, `recap today`, `mastery`, `/api/now`, adaptive interleaving), the five-harness mentor contract (Kiro, Codex, and Claude Code as core; OpenCode and pi as preview -- Gemini is a content-generation API provider only, not a mentor, see R-65), and ttyd's full retirement (ADR-0008).
 
 This document describes the system as it works today, using the [C4 model](https://c4model.com/) at three levels of zoom: Context → Container → Component (focused on the ACP chat, Generate, and Review surfaces).
 
@@ -11,8 +11,9 @@ For the planned direction, see [Target Architecture](target.md).
 ## C4 Level 1 — System Context
 
 StudyLoop is single-user and runs primarily on one host. External systems are
-the AI agent CLIs (Kiro, Claude Code, Gemini, Codex, OpenCode), optional
-generation providers, and an optional local Kokoro TTS server.
+the AI agent CLIs (Kiro, Claude Code, and Codex as core; OpenCode and pi as
+preview), optional generation providers, and an optional local Kokoro TTS
+server.
 
 ```mermaid
 flowchart TB
@@ -24,10 +25,10 @@ flowchart TB
 
     subgraph "AI agent CLIs (separate processes)"
       Kiro["Kiro CLI<br/>(supports ACP)"]
-      Gemini["Gemini CLI<br/>(supports ACP)"]
       Claude["Claude Code<br/>(PTY only)"]
       Codex["Codex CLI<br/>(PTY only)"]
-      OpenCode["OpenCode<br/>(PTY only)"]
+      OpenCode["OpenCode<br/>(PTY only, preview)"]
+      Pi["pi<br/>(PTY only, preview)"]
     end
 
     subgraph "Optional generation providers"
@@ -45,10 +46,10 @@ flowchart TB
 
     Learner -->|"studyloop study<br/>or browser"| StudyLoop
     StudyLoop -->|"ACP / JSON-RPC<br/>over stdio"| Kiro
-    StudyLoop -->|"ACP / JSON-RPC<br/>over stdio"| Gemini
     StudyLoop -->|"PTY / raw bytes"| Claude
     StudyLoop -->|"PTY / raw bytes"| Codex
     StudyLoop -->|"PTY / raw bytes"| OpenCode
+    StudyLoop -->|"PTY / raw bytes"| Pi
     StudyLoop -.->|"flashcard /<br/>quiz generation"| OpenAI
     StudyLoop -.->|"flashcard /<br/>quiz generation"| OpenRouter
     StudyLoop -.->|"flashcard /<br/>quiz generation"| GeminiAPI
@@ -94,7 +95,7 @@ flowchart TB
       Runtime["SessionRuntime<br/>──────────<br/>Active-session singleton.<br/>Owns the transport.<br/>Forwards events to WS."]
       ACP["ACPTransport<br/>──────────<br/>JSON-RPC over stdio.<br/>session/new,<br/>session/prompt,<br/>session/update,<br/>session/request_permission."]
       PTY["PTYTransport<br/>──────────<br/>Raw bytes,<br/>WINSZ ioctl,<br/>SIGCHLD-driven exit."]
-      Agent["Agent subprocess<br/>──────────<br/>kiro-cli acp /<br/>gemini --acp /<br/>claude / codex / opencode"]
+      Agent["Agent subprocess<br/>──────────<br/>kiro-cli acp (ACP) /<br/>claude / codex / opencode / pi (PTY)"]
     end
 
     subgraph "Local stores"
@@ -146,7 +147,7 @@ flowchart TB
 **Key invariants today**:
 
 - **One active session at a time.** `SessionRuntime` is a singleton acquired under `asyncio.Lock`. `/api/session/start` returns 409 if a session is already live.
-- **Transport selection is explicit per session.** Body field `transport: "pty" | "ttyd" | "acp"`. The env var `STUDYLOOP_TRANSPORT` can force `pty`/`ttyd` as an operator kill-switch (ACP is body-only).
+- **Transport selection is explicit per session.** Body field `transport: "pty" | "acp"` (`ttyd` retired — [ADR-0008](../adr/0008-retire-ttyd-entirely.md)). The env var `STUDYLOOP_TRANSPORT` can force `pty` as an operator kill-switch (ACP is body-only); any other value, including `ttyd`, is rejected rather than silently downgraded.
 - **Persona text never reaches the wire on the PTY path** — it's written to a temp file, the agent's launch command embeds the path, and the agent reads it at startup.
 - **Persona text DOES travel on the wire on the ACP path** — added 2026-05-28 in commit `bfe9210`. `/api/session/start` returns `persona_text` inline in the JSON body; the browser ships it as the first invisible `session/prompt` after WS open. Hidden client-side: not pushed to `acpMessages`.
 - **The PWA owns chat-surface state.** The server never sends server-rendered HTML for chat bubbles — only raw ACP events. Markdown rendering, sanitisation, syntax highlighting, theme palette: all in the browser.
@@ -324,7 +325,7 @@ flowchart TB
       Route["/api/session/ws<br/>──────────<br/>Origin gate, study_session_id<br/>match, then bidirectional<br/>asyncio.TaskGroup pump."]
       Transport["ACPTransport<br/>(packages/.../session/transports/acp.py)"]
       DispatchFrame["_dispatch_frame<br/>──────────<br/>Translates JSON-RPC frames<br/>from agent stdout into<br/>AgentMessage events."]
-      AgentProc["kiro-cli acp / gemini --acp<br/>(subprocess, JSON-RPC over stdio)"]
+      AgentProc["kiro-cli acp<br/>(subprocess, JSON-RPC over stdio)"]
     end
 
     Picker --> Mount --> OpenWS
@@ -898,4 +899,4 @@ flowchart TB
 - **The Pomodoro overlay**, OpenDyslexic toggle — orthogonal UI concerns, not part of the session pipeline. (Voice output is now documented in its own C4 L3 component section above.)
 - **The Generate panel implementation details beyond the C4 slice above** — provider-specific prompt tuning and deck-quality judging are documented in [Content Pipeline](../content-pipeline.md).
 - **MCP servers** — see [MCP](../mcp.md). Currently only the Kiro adapter exposes any MCP integration.
-- **Legacy tmux + ttyd** — the ttyd browser surface is **retired** ([ADR-0005](../adr/0005-retire-ttyd-browser-surface.md)); the web session surfaces are xterm.js over a PTY WebSocket and the ACP chat surface. Background in [Web UI Guide § The retired ttyd iframe](../web-ui-guide.md#the-retired-ttyd-iframe). `tmux` itself remains the terminal session host for `studyloop study`.
+- **ttyd** — **fully retired**, browser surface and server transport alike ([ADR-0005](../adr/0005-retire-ttyd-browser-surface.md), [ADR-0008](../adr/0008-retire-ttyd-entirely.md)); the web session surfaces are xterm.js over a PTY WebSocket and the ACP chat surface. Background in [Web UI Guide § The retired ttyd iframe](../web-ui-guide.md#the-retired-ttyd-iframe). `tmux` remains the terminal session host for `studyloop study` — that command was never ttyd-dependent.

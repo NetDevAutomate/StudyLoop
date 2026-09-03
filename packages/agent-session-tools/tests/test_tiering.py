@@ -12,7 +12,8 @@ from __future__ import annotations
 
 import os
 import sqlite3
-from datetime import date, datetime, timedelta
+import time
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
@@ -336,6 +337,65 @@ class TestPrune:
         rows = conn.execute("SELECT COUNT(*) FROM study_progress").fetchone()[0]
         conn.close()
         assert rows == 1
+
+
+@pytest.fixture
+def _restore_tz():
+    """R-20: change the process TZ for a test, then restore it. `datetime.now()`
+    (no tz) reads the OS local-time setting, which only takes effect after
+    `time.tzset()` on POSIX -- exactly the mechanism the naive-cutoff bug rode on.
+    """
+    original = os.environ.get("TZ")
+
+    def _set(tz: str) -> None:
+        os.environ["TZ"] = tz
+        time.tzset()
+
+    yield _set
+
+    if original is None:
+        os.environ.pop("TZ", None)
+    else:
+        os.environ["TZ"] = original
+    time.tzset()
+
+
+class TestPruneUtcCutoff:
+    """R-20 / D2: prune's cutoff must be real UTC, not local wall time."""
+
+    @pytest.mark.parametrize("tz", ["Pacific/Auckland", "America/Los_Angeles"])
+    def test_minute_inside_kept_minute_outside_pruned(
+        self, tz, tiered_config, _restore_tz
+    ):
+        _make_hot_db(tiered_config["hot"], sessions=2)
+        sync_to_full()
+
+        days = 1
+        cutoff_instant = datetime.now(UTC) - timedelta(days=days)
+        inside = (cutoff_instant + timedelta(minutes=1)).isoformat()
+        outside = (cutoff_instant - timedelta(minutes=1)).isoformat()
+
+        conn = sqlite3.connect(tiered_config["hot"])
+        conn.execute("UPDATE sessions SET updated_at = ? WHERE id = 's0'", (inside,))
+        conn.execute("UPDATE sessions SET updated_at = ? WHERE id = 's1'", (outside,))
+        conn.commit()
+        conn.close()
+
+        _restore_tz(tz)
+        prune_hot(days=days, dry_run=False)
+
+        remaining = {
+            r[0]
+            for r in sqlite3.connect(tiered_config["hot"]).execute(
+                "SELECT id FROM sessions"
+            )
+        }
+        assert "s0" in remaining, (
+            f"a session 1 minute inside the UTC cutoff must survive under TZ={tz}"
+        )
+        assert "s1" not in remaining, (
+            f"a session 1 minute outside the UTC cutoff must be pruned under TZ={tz}"
+        )
 
 
 # ---------------------------------------------------------------------------

@@ -18,14 +18,14 @@ Plan: docs/plans/2026-05-27-001-feat-acp-chat-ui-plan.md §U3
 from __future__ import annotations
 
 import json
-import os
-import subprocess
 import sys
-import time
 import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import subprocess
 
 import pytest
 
@@ -42,6 +42,7 @@ if str(_tests_dir) not in sys.path:
 from _playwright_helpers import (  # noqa: E402
     clean_ipc,
     effective_credentials,
+    start_web_server,
 )
 
 if TYPE_CHECKING:
@@ -111,36 +112,21 @@ def _start_web_server_with_stub(
 
     Supports both STUB_ACP_PROMPT_UPDATES (single-turn, repeated) and
     STUB_ACP_PROMPT_UPDATES_SEQ (per-turn array-of-arrays).
+
+    C13/R-49g: routed through the shared ``start_web_server`` (hermetic
+    child env, refuses to spawn against the developer's real HOME/config
+    dir) instead of a hand-rolled ``env = {**os.environ, ...}`` + polling
+    loop.
     """
-    env = {
-        **os.environ,
+    extra_env = {
         "STUDYLOOP_TEST_ACP_CMD": _stub_acp_cmd(),
         "STUB_ACP_PROMPT_STOP_REASON": stop_reason,
     }
     if prompt_updates_seq is not None:
-        env["STUB_ACP_PROMPT_UPDATES_SEQ"] = json.dumps(prompt_updates_seq)
+        extra_env["STUB_ACP_PROMPT_UPDATES_SEQ"] = json.dumps(prompt_updates_seq)
     if prompt_updates is not None:
-        env["STUB_ACP_PROMPT_UPDATES"] = json.dumps(prompt_updates)
-
-    cmd = [sys.executable, "-m", "studyloop.cli", "web", "--port", str(WEB_PORT)]
-    proc = subprocess.Popen(
-        cmd,
-        env=env,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
-    )
-    for _ in range(40):
-        try:
-            urllib.request.urlopen(f"http://127.0.0.1:{WEB_PORT}/", timeout=1)
-            return proc
-        except urllib.error.HTTPError as exc:
-            if exc.code in (401, 403):
-                return proc
-            time.sleep(0.3)
-        except Exception:
-            time.sleep(0.3)
-    proc.kill()
-    raise RuntimeError(f"Test web server failed to start on port {WEB_PORT}")
+        extra_env["STUB_ACP_PROMPT_UPDATES"] = json.dumps(prompt_updates)
+    return start_web_server(WEB_PORT, extra_env=extra_env)
 
 
 def _teardown_server(proc: subprocess.Popen) -> None:
@@ -486,21 +472,21 @@ def _server_content_object_form() -> Generator[subprocess.Popen, None, None]:
         _teardown_server(proc)
 
 
-@pytest.fixture(scope="class")
-def _server_content_array_form(
-    tmp_path_factory: pytest.TempPathFactory,
-) -> Generator[subprocess.Popen, None, None]:
-    # We can't bind two servers to the same port. The array-form test
-    # reuses the same server port class-scoped but parametrises the
-    # content shape via the same server — instead we test both shapes
-    # within one test method by comparing Alpine state directly.
-    clean_ipc()
-    # Server emits array-form content for this test.
-    proc = _start_web_server_with_stub(prompt_updates=[_chunk_update_array("content-parity-test")])
-    try:
-        yield proc
-    finally:
-        _teardown_server(proc)
+# NOTE (C13/R-49g): there used to be a second, class-scoped
+# `_server_content_array_form` fixture here binding the SAME WEB_PORT,
+# requested alongside `_server_content_object_form` by the one test below.
+# Two servers can't bind the same port -- the second start attempt never
+# really came up; the old hand-rolled readiness-polling loop had no
+# `proc.poll()`/pre-flight check, so it was fooled by the FIRST server
+# (still running) answering the health probe, and returned that as if it
+# were the second server's `proc`. The test body never actually exercised
+# that "second" server (see the array-form assertion below), so this went
+# unnoticed. Routing through the shared, hardened `start_web_server` (which
+# refuses to spawn onto an already-served port, precisely to catch this)
+# surfaced it as a loud `RuntimeError` instead of a silent false pass.
+# Fix: removed the dead fixture and its unused parameter -- the array-form
+# shape is genuinely exercised by `TestContentArrayFormRendersText` below,
+# via its own `_server_array_standalone` fixture.
 
 
 class TestContentShapeParity:
@@ -554,18 +540,16 @@ class TestContentShapeParity:
     def test_content_array_form_renders_same_as_object_form(
         self,
         _server_content_object_form: subprocess.Popen,
-        _server_content_array_form: subprocess.Popen,
         browser: Browser,
         agent: str,
     ) -> None:
-        # object-form is running on WEB_PORT; array-form is the same port
-        # but we can only bind one at a time so we test sequentially.
+        # object-form is running on WEB_PORT; array-form would bind the same
+        # port, so it is not started here (see the NOTE above the fixtures).
         # For parity we verify that the normalised text from the object-form
         # server matches what we expect from array-form logic by checking
         # Alpine's _extractChunkText normalisation directly.
 
         # Start the object-form server and get the rendered text.
-        _ = _server_content_object_form
         obj_text = self._get_final_text(_server_content_object_form, browser, agent)
         assert "content-parity-test" in obj_text, (
             f"object-form: expected 'content-parity-test' in {obj_text!r}"
@@ -1934,32 +1918,18 @@ def _start_web_server_with_permission_stub() -> subprocess.Popen:
 
     Uses STUB_ACP_EMIT_PERMISSION_REQUEST=1 — the stub sends the request and
     awaits the client's JSON-RPC response before answering session/prompt.
+
+    C13/R-49g: routed through the shared, now-hermetic ``start_web_server``
+    -- see ``_start_web_server_with_stub``'s identical note above.
     """
-    env = {
-        **os.environ,
-        "STUDYLOOP_TEST_ACP_CMD": _stub_acp_cmd(),
-        "STUB_ACP_PROMPT_STOP_REASON": "end_turn",
-        "STUB_ACP_EMIT_PERMISSION_REQUEST": "1",
-    }
-    cmd = [sys.executable, "-m", "studyloop.cli", "web", "--port", str(WEB_PORT)]
-    proc = subprocess.Popen(
-        cmd,
-        env=env,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
+    return start_web_server(
+        WEB_PORT,
+        extra_env={
+            "STUDYLOOP_TEST_ACP_CMD": _stub_acp_cmd(),
+            "STUB_ACP_PROMPT_STOP_REASON": "end_turn",
+            "STUB_ACP_EMIT_PERMISSION_REQUEST": "1",
+        },
     )
-    for _ in range(40):
-        try:
-            urllib.request.urlopen(f"http://127.0.0.1:{WEB_PORT}/", timeout=1)
-            return proc
-        except urllib.error.HTTPError as exc:
-            if exc.code in (401, 403):
-                return proc
-            time.sleep(0.3)
-        except Exception:
-            time.sleep(0.3)
-    proc.kill()
-    raise RuntimeError(f"Test web server failed to start on port {WEB_PORT}")
 
 
 @pytest.fixture(scope="class")

@@ -31,11 +31,11 @@ def topics_list(tech: str | None, source: str | None, show_all: bool) -> None:
 
     Examples:
 
-        studyloop topics list
+        studyloop backlog list
 
-        studyloop topics list --tech Python
+        studyloop backlog list --tech Python
 
-        studyloop topics list --source struggled
+        studyloop backlog list --source struggled
     """
     from rich.table import Table
 
@@ -98,9 +98,9 @@ def topics_add(topic: str, tech: str | None, note: str | None) -> None:
 
     Examples:
 
-        studyloop topics add "Python decorators" --tech Python
+        studyloop backlog add "Python decorators" --tech Python
 
-        studyloop topics add "Window functions" --tech SQL --note "Need for analytics work"
+        studyloop backlog add "Window functions" --tech SQL --note "Need for analytics work"
     """
     from studyloop.cli._shared import console
     from studyloop.parking import park_topic
@@ -129,7 +129,7 @@ def topics_resolve(topic_id: int) -> None:
 
     Examples:
 
-        studyloop topics resolve 42
+        studyloop backlog resolve 42
     """
     from studyloop.cli._shared import console
     from studyloop.parking import resolve_parked_topic

@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import os
 import re
 from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
     from datetime import datetime
 
-TransportName = Literal["pty", "acp", "ttyd"]
+TransportName = Literal["pty", "acp"]
 
 # Agents that speak the Agent Client Protocol. Single source of truth shared by
 # the session-start ACP guard and the options endpoint (_options.py). Kiro is
@@ -50,6 +51,7 @@ def build_session_state_payload(
     transport: TransportName,
     now: datetime,
     persona_file: str | None = None,
+    child_pid: int | None = None,
 ) -> dict[str, object]:
     """Build the common state payload for PTY and ACP web session starts."""
     timestamp = now.isoformat()
@@ -68,12 +70,29 @@ def build_session_state_payload(
         "agent": agent,
         "persona_hash": persona_hash,
         "transport": transport,
+        # The web server process is the owner of a pty/acp claim (the
+        # session/active.py singleton lives in it). Recording its pid lets
+        # a LATER, cross-process reader -- the CLI's own start path,
+        # claim_blocks_cli_start() -- tell a live claim from a stale one
+        # left by a server that crashed without clearing the state file
+        # (R-01b). Accepted residual risk: pid reuse between this
+        # process's death and a later check; see
+        # docs/architecture/session-authority.md clause 2.
+        "pid": os.getpid(),
         # PTY/ACP starts own no tmux session. write_session_state is a
-        # read-merge-write, so a PTY session started after a legacy ttyd one
-        # would otherwise inherit that session's dead tmux_session key and be
-        # misclassified as a tmux zombie. Clear it explicitly at the source.
+        # read-merge-write, so a PTY session started after a CLI tmux session
+        # (studyloop study) would otherwise inherit that session's dead
+        # tmux_session key and be misclassified as a tmux zombie. Clear it
+        # explicitly at the source. (Renamed from "legacy ttyd one" during
+        # ttyd retirement stage 5 — never ttyd-specific.)
         "tmux_session": None,
     }
     if persona_file is not None:
         payload["persona_file"] = persona_file
+    if child_pid is not None:
+        # C4 (council): the transport's own child process pid, purely
+        # informational -- for `clean`/`doctor`'s future orphan reporting
+        # (R-01g, 0.2.0). A reclaim never signals it (see
+        # session_state.reclaim_log_message's docstring for why).
+        payload["child_pid"] = child_pid
     return payload

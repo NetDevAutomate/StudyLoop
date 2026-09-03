@@ -93,9 +93,11 @@ first setup if `config.yaml` does not exist yet.
 1. Verify Python 3.12+ is installed
 2. Install `uv` if not already available
 3. Run `uv sync`
-4. Delegate to `studyloop install tools` — installs both packages with their
-   `[all]` extras, so web UI, content generation, Bedrock, MCP, NotebookLM,
-   TUI, TTS, and semantic session search all work out of the box
+4. Delegate to `studyloop install tools` — installs `studyloop[all]` (web UI,
+   content generation, Bedrock, MCP, NotebookLM, TUI) and
+   `agent-session-tools[all]` (TTS, semantic session search), and always adds
+   `agent-session-tools` into the `studyloop` tool venv too — that part is not
+   gated behind any extra, so it happens on every source install
 5. Delegate to `studyloop install agents`
 6. Run lightweight installed CLI smoke checks
 
@@ -128,6 +130,14 @@ checkout installs because they keep the two tool venvs wired together.
 
 ### Optional Extras
 
+These are `studyloop`'s own extras — every one of them installs from a bare
+built wheel, with no workspace checkout required. There is no `sessions`
+extra: `agent-session-tools` (the session DB / cross-harness knowledge base)
+is not published anywhere, so it cannot be an installable extra of a wheel.
+It is instead a hard dependency of the source-install path described above —
+`studyloop install tools` and `./scripts/install.sh` always add it,
+unconditionally, alongside whichever of these extras you choose.
+
 | Extra | Use |
 |-------|-----|
 | `content` | PDF splitting and local content processing |
@@ -136,8 +146,7 @@ checkout installs because they keep the two tool venvs wired together.
 | `tui` | terminal UI dependencies |
 | `web` | FastAPI web UI |
 | `mcp` | MCP server integration |
-| `sessions` | `agent-session-tools` import/session DB integration |
-| `all` | all StudyLoop package extras |
+| `all` | `content`, `bedrock`, `notebooklm`, `tui`, `web`, and `mcp` together |
 
 ### Developer Install
 
@@ -217,17 +226,31 @@ Run the interactive wizard to configure your study environment:
 studyloop setup
 ```
 
-This walks you through three core questions:
+Two questions on the happy path, three at most, and every one of them accepts
+Enter (blank is a valid, first-class answer, not a degraded one):
 
-1. **Knowledge bridging** — Do you want to leverage a topic you already know well (e.g. networking, cooking, music theory) so the mentor can draw analogies to new topics you're studying?
-2. **Study material location** — Where are your study sources? The default is `~/Obsidian/Personal/Study`.
-3. **Obsidian vault** — Do you want to integrate with an existing Obsidian vault? If so, provide the base path (e.g. `~/Obsidian/Personal`).
+1. **Where do your study notes live?** A folder of `.md`/`.txt` files;
+   sub-folders become topics. Leave it blank if you have none yet — your
+   study sessions become the source instead, which the wizard treats as the
+   better source anyway, not a fallback.
+2. **Focus on up to 3 topics to start?** Asked only if question 1 found a
+   notes folder with sub-folders to suggest — ranked by note count, offered
+   as a comma-separated default you can edit or accept as-is.
+3. **Which AI assistant should run your study sessions?** Asked only when
+   more than one supported harness is detected on `PATH`. Exactly one found →
+   used automatically, no prompt. None found → skipped; studyloop works
+   standalone and you can install one later.
 
-The wizard creates or updates `~/.config/studyloop/config.yaml` with your choices. You can re-run it at any time to change settings.
+The wizard creates or updates `~/.config/studyloop/config.yaml` with your
+answers, preserving everything else in the file untouched. You can re-run it
+at any time — a second run defaults every prompt to what you answered last
+time, so accepting every default changes nothing.
 
-`studyloop config init` is the older low-level config initializer. Prefer
-`studyloop setup` for first-run setup because it also covers current install,
-agent, and Obsidian export checks.
+`studyloop config init` is a separate, older wizard with its own three
+questions (knowledge bridging, Google NotebookLM integration, and an
+Obsidian vault path) and its own defaults. `studyloop setup` is the
+recommended first-run path; `config init` remains for the bridging/
+NotebookLM/Obsidian options it alone asks about.
 
 ### Manual Configuration
 
@@ -478,17 +501,15 @@ Environment variable overrides:
 web_port: 8567       # web dashboard port (default 8567)
 browser: ""          # auto-open browser: chrome, safari, firefox, brave, or empty for system default
 lan_password: ""     # persistent LAN password (auto-generated per session if empty)
-
-# Maintainer-only (see the note below) — retired ttyd server transport
-ttyd_port: 7681      # port a ttyd process would listen on (default 7681)
 ```
 
-> **`ttyd_port` does nothing — do not install ttyd, and remove the key if you set it.**
-> The browser terminal is xterm.js over a same-origin WebSocket. ttyd is being
-> retired: the `studyloop web --ttyd-port` flag and the CLI transport option are
-> already gone, and the remaining machinery is on its way out. A `ttyd_port` key
-> left in your config is ignored rather than an error, so nothing breaks — but it
-> is inert, not a setting.
+> **`ttyd_port` is removed.** ttyd has been fully retired: nothing installs,
+> starts, or reads a ttyd process any more, and the key is no longer
+> recognised by `load_settings()`. The browser terminal is xterm.js over a
+> same-origin WebSocket and never had a ttyd surface. If your `config.yaml`
+> still has a `ttyd_port` line from before the retirement, it does nothing —
+> `studyloop doctor` names it as an unknown/retired key so you know to
+> delete it.
 
 ### TTS Voice Settings
 
@@ -640,7 +661,7 @@ Repeat `--sources` when selecting more than one.
 
 ```bash
 session-query stats-cmd            # Show database statistics
-session-query list --since 7d      # List recent sessions
+session-query list --since last-7-days  # List recent sessions
 session-query search-cmd "python"  # Search across all sessions
 ```
 

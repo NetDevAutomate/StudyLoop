@@ -343,3 +343,21 @@ Planned parsers:
 NotebookLM commands may still exist for historical audio/video workflows, but they are not the default path and should move behind an optional plugin.
 
 Use local generation unless you explicitly need NotebookLM-specific audio/video artefacts.
+
+### NotebookLM podcast-syllabus subcommands
+
+All of these operate on a NotebookLM notebook (`-n`/`--notebook-id`) and require `studyloop[notebooklm]`. They are part of the podcast-episode generation workflow, distinct from the local `generate-cards`/`generate-practice` flow above.
+
+| Subcommand | Does |
+|---|---|
+| `content syllabus -n ID` | Generate a podcast syllabus from a notebook's sources and save it as a plan. |
+| `content autopilot` | Generate the next pending episode from the syllabus, unattended. |
+| `content status` | Show syllabus progress for chunked (multi-episode) generation. |
+| `content generate -n ID -c "1-3"` | Generate audio/video overviews for one chapter range. |
+| `content list` | List notebooks, or the sources within one notebook. |
+| `content download -n ID` | Download the audio/video artifacts a notebook has generated. |
+| `content delete -n ID --yes` | Delete a notebook and everything in it. |
+
+### Content index
+
+`studyloop content index` builds or refreshes the fast content index the web UI's course explorer, CLI review flows, and MCP tools all read from. It's incremental by default (only re-indexes changed files); run it after adding new courses, or with `--force` if the explorer feels stale. `--artefacts` also indexes generated quizzes and flashcards JSON, not just source material.

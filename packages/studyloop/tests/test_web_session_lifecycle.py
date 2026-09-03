@@ -543,7 +543,7 @@ class TestEndSession:
             }"""
         )
         # The in-page confirm dialog appears (no native confirm() — Chrome
-        # auto-dismisses those while the ttyd iframe holds focus).
+        # auto-dismisses those while the embedded xterm.js terminal holds focus).
         dialog = web_page.locator(".end-confirm-dialog")
         dialog.wait_for(state="visible", timeout=3000)
         # Scoped to the dialog: .end-confirm-yes appears 3x in the SPA, so an
@@ -591,6 +591,77 @@ class TestEndSession:
         dialog.wait_for(state="hidden", timeout=5000)
         assert not calls
         assert web_page.evaluate(
+            """() => window.Alpine.$data(
+              document.querySelector('[x-data="sessionTimer()"]')).sessionActive"""
+        )
+
+    def test_end_failure_keeps_dialog_open_with_error_and_retry_succeeds(
+        self, web_page: Page
+    ) -> None:
+        """R-70: a failed POST /api/session/end used to look identical to a
+
+        success -- the dialog closed and the session state was torn down
+        regardless (confirmEndSession() cleared confirmingEnd BEFORE the
+        fetch even started). The public guide says ending from here is what
+        saves the summary and evidence, so a silent failure is a real defect,
+        not a cosmetic one. 500s the route once, asserts the dialog is still
+        open with the error text and the session still active, then lets the
+        route succeed and asserts the SAME confirm button retries correctly.
+        """
+        _stub_options(web_page)
+        _stub_session_state(web_page)
+        _stub_topics_list(web_page)
+
+        calls: list[dict] = []
+        should_fail = {"value": True}
+
+        def end_handler(route: Route) -> None:
+            if route.request.method != "POST":
+                route.continue_()
+                return
+            calls.append({})
+            if should_fail["value"]:
+                route.fulfill(status=500, body="internal error")
+            else:
+                _fulfill(route, {"ended": True, "topic": "Python"})
+
+        web_page.route("**/api/session/end", end_handler)
+
+        _goto_picker(web_page)
+        web_page.evaluate(
+            """() => {
+              const root = document.querySelector('[x-data="sessionTimer()"]');
+              const d = window.Alpine.$data(root);
+              d.sessionActive = true;
+              d.topic = 'Python';
+              d.endSession();
+            }"""
+        )
+        dialog = web_page.locator(".end-confirm-dialog")
+        dialog.wait_for(state="visible", timeout=3000)
+
+        with web_page.expect_response("**/api/session/end"):
+            dialog.locator(".end-confirm-yes").click()
+
+        # Dialog stays open; error text appears; session is still active.
+        error = dialog.locator(".end-confirm-error")
+        error.wait_for(state="visible", timeout=3000)
+        assert "try again" in (error.text_content() or "").lower()
+        assert dialog.is_visible()
+        assert web_page.evaluate(
+            """() => window.Alpine.$data(
+              document.querySelector('[x-data="sessionTimer()"]')).sessionActive"""
+        )
+        assert len(calls) == 1
+
+        # Retry via the SAME button now succeeds.
+        should_fail["value"] = False
+        with web_page.expect_response("**/api/session/end") as resp_info:
+            dialog.locator(".end-confirm-yes").click()
+        assert resp_info.value.status == 200
+        dialog.wait_for(state="hidden", timeout=5000)
+        assert len(calls) == 2
+        assert not web_page.evaluate(
             """() => window.Alpine.$data(
               document.querySelector('[x-data="sessionTimer()"]')).sessionActive"""
         )

@@ -72,7 +72,12 @@ Claude Code receives the `socratic-mentor` agent and a session-export hook. The 
 
 ### OpenCode
 
-OpenCode receives a project-local `study-mentor` definition and StudyLoop MCP configuration. StudyLoop does not choose or hard-code an OpenCode model; your working OpenCode provider and model remain authoritative.
+Two separate mechanisms write two separate sets of files, at two different times:
+
+- **`studyloop install agents --tool opencode`** (the install command above) writes a **global** `study-mentor` agent definition to `~/.config/opencode/agents/study-mentor.md`, available to any OpenCode session on the machine.
+- **`studyloop study --agent opencode`** (starting a session) separately writes a **project-local** `.opencode/agents/study-mentor.md` and `.opencode/opencode.json` (StudyLoop's MCP server, in OpenCode's own config schema) into that session's working directory. This happens at session start, not at install time — if you only ran the install command and are looking for these project-local files, that's why they aren't there yet.
+
+Either path gets you the same mentor behaviour. StudyLoop does not choose or hard-code an OpenCode model; your working OpenCode provider and model remain authoritative.
 
 ### pi
 

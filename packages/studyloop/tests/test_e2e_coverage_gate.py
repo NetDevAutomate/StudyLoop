@@ -87,30 +87,20 @@ ROUTE_NO_FULL_STACK_WAIVERS: dict[str, str] = {
         "full-stack run would need a live LLM provider, which the "
         "live_provider-marked suites own."
     ),
-    "WS /terminal/ws": (
-        "Passthrough socket to the external ttyd binary (legacy tmux fallback "
-        "transport). It cannot be walked without ttyd installed, and the "
-        "browser-visible terminal a learner actually uses is the PTY/xterm path "
-        "proven by test_render_validation.test_terminal_paints_agent_bytes."
-    ),
 }
 
 #: CLI commands with no test. Maintainer/one-shot commands may be waived;
 #: anything a learner runs in the documented workflow may not.
-CLI_WAIVERS: dict[str, str] = {
-    "content autopilot": (
-        "Long-running orchestration across real providers and the network; its "
-        "components (discover/ingest/generate) are each tested individually."
-    ),
-    "content download": (
-        "Fetches course material from third-party hosts over the network — not "
-        "reproducible in a hermetic run."
-    ),
-    "content delete": (
-        "Destructive maintenance command that removes generated material; "
-        "exercised manually to keep data-loss risk out of automated runs."
-    ),
-}
+#:
+#: R-37 (M5) documented `content autopilot`/`content download`/`content
+#: delete` in docs/cli-reference.md's Quick Reference block with real
+#: examples; test_docs_drift.py's test_studyloop_example_resolves walks the
+#: real Click tree against every `studyloop ...` example there, which counts
+#: as a cli_references() match -- the gate itself said so
+#: (test_cli_waivers_are_not_stale). Their former waivers are gone; the
+#: reasons they were waived for (network/destructive execution) still apply
+#: to actually RUNNING them, which nothing here does.
+CLI_WAIVERS: dict[str, str] = {}
 
 
 def _fmt(items: dict[str, str] | list[str]) -> str:

@@ -49,6 +49,9 @@ ENERGY = 5
 POLL_TIMEOUT = 20
 POLL_INTERVAL = 0.5
 
+# R-49: reassigned to a per-class tmp_path directory by `matrix_session`
+# (via STUDYLOOP_SESSION_DIR, the env var session_state.py honours) before
+# any test in this module runs. See that fixture for why.
 CONFIG_DIR = Path.home() / ".config" / "studyloop"
 STATE_FILE = CONFIG_DIR / "session-state.json"
 TOPICS_FILE = CONFIG_DIR / "session-topics.md"
@@ -217,8 +220,25 @@ class MatrixSession:
 @pytest.fixture(scope="class", params=AGENTS)
 def matrix_session(request, tmp_path_factory):
     """Start a study session per agent, shared across all class tests."""
+    global CONFIG_DIR, STATE_FILE, TOPICS_FILE, PARKING_FILE, ONELINE_FILE
+
     agent_name = request.param
     tmp = tmp_path_factory.mktemp(f"matrix-{agent_name}")
+
+    # R-49: redirect this module's own IPC file reads (below) and the
+    # subprocess env (_build_env) to a directory under this class's tmp_path
+    # instead of the developer's real ~/.config/studyloop. `monkeypatch` is
+    # function-scoped and unusable from a class-scoped fixture, so this
+    # fixture manages the env var itself, restoring it in teardown.
+    session_dir = tmp / "session-ipc"
+    session_dir.mkdir(parents=True, exist_ok=True)
+    prior_session_dir = os.environ.get("STUDYLOOP_SESSION_DIR")
+    os.environ["STUDYLOOP_SESSION_DIR"] = str(session_dir)
+    CONFIG_DIR = session_dir
+    STATE_FILE = session_dir / "session-state.json"
+    TOPICS_FILE = session_dir / "session-topics.md"
+    PARKING_FILE = session_dir / "session-parking.md"
+    ONELINE_FILE = session_dir / "session-oneline.txt"
 
     # Build config and environment
     config_path = _make_test_config(tmp)
@@ -284,6 +304,10 @@ def matrix_session(request, tmp_path_factory):
 
     # Teardown — belt-and-suspenders cleanup
     _cleanup_all()
+    if prior_session_dir is None:
+        os.environ.pop("STUDYLOOP_SESSION_DIR", None)
+    else:
+        os.environ["STUDYLOOP_SESSION_DIR"] = prior_session_dir
 
 
 # ---------------------------------------------------------------------------

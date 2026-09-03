@@ -87,7 +87,7 @@ def setup_session_dir(
         )
 
     # Pre-trust the session directory for Claude Code so the workspace
-    # trust prompt doesn't block automated/ttyd sessions.
+    # trust prompt doesn't block automated (non-interactive) sessions.
     # Trust is stored in ~/.claude/settings.json under projects[path].hasTrustDialogAccepted.
     # Trust both the parent (for future sessions) AND the specific session dir
     # (Claude Code may not walk up the tree for all trust checks).
@@ -241,13 +241,20 @@ def start_web_background(session_name: str, *, lan: bool = False, password: str 
     )
     if lan:
         cmd.append("--lan")
-    if password:
-        cmd.extend(["--password", password])
+    # R-10: the password goes to the child via environment, not argv. Argv is
+    # visible to any other local user for the process's whole lifetime via
+    # `ps`/`/proc/<pid>/cmdline`; an env var is only readable by that user or
+    # root reading /proc/<pid>/environ, which is the same access level `--lan`
+    # already grants to this machine's owner. `cli/_web.py`'s `--password`
+    # option reads this env var itself (Click `envvar=`) when the flag is
+    # absent, so the child needs no special-casing.
+    child_env = {**os.environ, "STUDYLOOP_WEB_PASSWORD": password} if password else None
     try:
         proc = subprocess.Popen(
             cmd,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
+            env=child_env,
         )
         from studyloop.session_state import write_session_state
 
@@ -364,72 +371,3 @@ def _open_browser(url: str) -> None:
         pass
     finally:
         os._exit(0)  # Child must exit, never return to caller
-
-
-def _get_ttyd_port() -> int:
-    """Read ttyd port from config, default 7681."""
-    try:
-        from studyloop.settings import load_settings
-
-        return getattr(load_settings(), "ttyd_port", 7681)
-    except Exception:
-        return 7681
-
-
-def start_ttyd_background(
-    session_name: str,
-    *,
-    lan: bool = False,
-    username: str = "",
-    password: str = "",
-) -> None:
-    """Start ttyd to expose the tmux session over HTTP.
-
-    Attaches a writable ttyd client to the study tmux session.
-    When credentials are provided, passes ``-c username:password``
-    so ttyd enforces HTTP Basic Auth on direct connections.
-    Skips silently if ttyd is not installed.
-    """
-    from studyloop.session_state import write_session_state
-
-    ttyd_bin = shutil.which("ttyd")
-    if not ttyd_bin:
-        return
-
-    host = "0.0.0.0" if lan else "127.0.0.1"
-    port = _get_ttyd_port()
-
-    # Kill any stale ttyd left over from a previous session
-    _kill_port_occupant(port, expected_cmd="ttyd")
-
-    cmd = [
-        ttyd_bin,
-        "-W",  # writable (user interacts with the agent)
-        "-i",
-        host,
-        "-p",
-        str(port),
-    ]
-
-    # Enforce auth on ttyd when credentials are available
-    if username and password:
-        cmd.extend(["-c", f"{username}:{password}"])
-
-    cmd.extend(
-        [
-            "tmux",
-            "attach",
-            "-t",
-            session_name,
-        ]
-    )
-
-    try:
-        proc = subprocess.Popen(
-            cmd,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        write_session_state({"ttyd_pid": proc.pid, "ttyd_port": port})
-    except Exception:
-        pass  # ttyd failed to start — non-fatal

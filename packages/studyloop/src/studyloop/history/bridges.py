@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 import sqlite3
 import uuid
 
 from . import _connection
+
+logger = logging.getLogger(__name__)
 
 
 def record_bridge(
@@ -41,7 +44,10 @@ def record_bridge(
         )
         conn.commit()
         return True
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as exc:
+        if not _connection.is_missing_table_error(exc):
+            logger.warning("record_bridge failed: %s", exc)
+            raise
         return False
     finally:
         conn.close()
@@ -82,7 +88,10 @@ def get_bridges(
             params,
         ).fetchall()
         return [dict(r) for r in rows]
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as exc:
+        if not _connection.is_missing_table_error(exc):
+            logger.warning("get_bridges failed: %s", exc)
+            raise
         return []
     finally:
         conn.close()
@@ -107,7 +116,10 @@ def update_bridge_usage(bridge_id: int, helpful: bool) -> bool:
         )
         conn.commit()
         return True
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as exc:
+        if not _connection.is_missing_table_error(exc):
+            logger.warning("update_bridge_usage failed: %s", exc)
+            raise
         return False
     finally:
         conn.close()
@@ -172,7 +184,12 @@ def migrate_bridges_to_graph() -> int:
 
         conn.commit()
         return count
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as exc:
+        # The missing-table case is already handled above (:132-133) --
+        # anything reaching here is a real fault, not an expected schema gap.
+        if not _connection.is_missing_table_error(exc):
+            logger.warning("migrate_bridges_to_graph failed: %s", exc)
+            raise
         return 0
     finally:
         conn.close()

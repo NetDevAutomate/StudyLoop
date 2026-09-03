@@ -49,11 +49,9 @@
        so it works without importmap/ESM). Initialize with startOnLoad:false
        so we control rendering timing (two-pass after Alpine DOM flush). -->
   <script src="/vendor/js/mermaid-11.4.1.min.js"></script>
-  <script>
-    if (window.mermaid) {
-      window.mermaid.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'strict' });
-    }
-  </script>
+  <!-- Moved out of an inline <script> (ttyd retirement stage 4, R-13b) so
+       script-src 'self' needs no 'unsafe-inline' exception. -->
+  <script src="/js/mermaid-init.js"></script>
   <!-- Fuse.js fuzzy search (vendored). UMD global: window.Fuse.
        Loaded as a plain (non-defer) script before Alpine so courseExplorer()
        can reference window.Fuse synchronously during init. -->
@@ -1185,16 +1183,6 @@
                     </div>
                   </div>
                 </template>
-                <!-- Heatmap -->
-                <div x-show="heatmapDays.length" class="heatmap-section">
-                  <h3 style="font-size:1rem;color:var(--text-muted);margin-bottom:8px">Study Activity</h3>
-                  <div class="heatmap">
-                    <template x-for="day in heatmapDays" :key="day.date">
-                      <div class="heatmap-day" :class="day.level"
-                           :title="day.date + ': ' + day.count + ' session' + (day.count !== 1 ? 's' : '')"></div>
-                    </template>
-                  </div>
-                </div>
                 <!-- Recent history -->
                 <div x-show="history.length" class="history-section">
                   <h3>Recent Sessions</h3>
@@ -1740,6 +1728,9 @@
                       aria-label="End body double session" @click="endSession()">End session</button>
               <div id="bd-end-confirm" class="bd-end-confirm" x-show="confirmingEnd">
                 <span>End this session?</span>
+                <!-- R-70: shown when /api/session/end fails; the dialog stays
+                     open (confirmingEnd is untouched) and "Yes, end it" retries. -->
+                <span id="bd-end-error" class="bd-end-error" role="alert" x-show="endError" x-text="endError"></span>
                 <button id="bd-end-confirm-yes" type="button" class="bulk-btn" @click="confirmEnd()">Yes, end it</button>
                 <button id="bd-end-cancel" type="button" class="bulk-btn" @click="cancelEnd()">Keep going</button>
               </div>
@@ -2198,9 +2189,12 @@
             <p x-text="conflictSession && !conflictIsOwn
                        ? 'End the live session in ' + (conflictOwnerLabel || 'the other view') + '?'
                        : 'End the current study session?'"></p>
+            <!-- R-70: shown when /api/session/end fails; the dialog stays open
+                 (confirmingEnd is untouched) and "End session" retries. -->
+            <p class="end-confirm-error" role="alert" x-show="endError" x-text="endError"></p>
             <div class="end-confirm-actions">
               <button class="end-confirm-btn end-confirm-cancel"
-                      @click="confirmingEnd = false">Keep going</button>
+                      @click="confirmingEnd = false; endError = ''">Keep going</button>
               <button class="end-confirm-btn end-confirm-yes"
                       data-testid="study-end-confirm-yes"
                       @click="confirmEndSession()">End session</button>
@@ -2311,9 +2305,6 @@
           <p class="picker-hint" x-show="transport === 'acp'">
             Structured ACP events (no raw terminal). Available for Kiro CLI. Complete Kiro authentication interactively before enabling this transport.
           </p>
-          <p class="picker-hint" x-show="transport === 'ttyd'">
-            Legacy tmux+ttyd fallback. Use only if the xterm.js terminal misbehaves; we plan to remove this after one deprecation window.
-          </p>
 
           <div class="picker-field" x-show="agentOptions().length > 0">
             <label>Detected Agents</label>
@@ -2405,7 +2396,7 @@
         <!-- ── Active Session: terminal + status bar ── -->
         <div x-show="sessionActive" x-transition class="session-active-layout">
 
-          <!-- Live mentor surface: xterm.js for PTY, legacy iframe for ttyd fallback, message log for protocol transports (unused in Phase 1) -->
+          <!-- Live mentor surface: xterm.js for PTY, message log for ACP (protocol transports) -->
           <!-- origin defaults to 'study' in liveAgentConsole(); left ARGUMENT-FREE on
            purpose. 46 assertions across 3 suites address this attribute by its
            literal string, and the default already gives correct scoping - so
@@ -2687,8 +2678,8 @@
               <span class="plan-field-hint">
                 Type it or dictate it — no structure needed. What you are aiming
                 for, what you have already tried, and where you get stuck. It is
-                kept with the plan, and the study-plan agent can turn it into the
-                fields below for you to edit.
+                kept with the plan exactly as written; fill in the fields below
+                yourself using it as a reference.
               </span>
               <textarea class="plan-braindump" rows="7"
                         data-testid="plan-field-braindump"
@@ -2949,170 +2940,26 @@
   </div><!-- .app-layout -->
 
   <!-- Alpine stores and component factories -->
-  <script>
-  document.addEventListener('alpine:init', () => {
-    /* ----------------------------------------------------------------
-     * Course Explorer store — drives the sidebar toggle button state.
-     * The full courseExplorer() component (in components.js) reads and
-     * writes this store so the sidebar button and the panel stay in sync.
-     * ---------------------------------------------------------------- */
-    Alpine.store('explorer', {
-      open: false,
-      // These stubs fire if the sidebar button is clicked before the
-      // courseExplorer() component mounts (very brief window at boot).
-      // The full implementation lives in courseExplorer().toggle()/close()
-      // which also drive the .app-layout.explorer-open CSS class.
-      toggle() {
-        this.open = !this.open;
-        const layout = document.querySelector('.app-layout');
-        if (layout) layout.classList.toggle('explorer-open', this.open);
-      },
-      close() {
-        this.open = false;
-        const layout = document.querySelector('.app-layout');
-        if (layout) layout.classList.remove('explorer-open');
-      },
-    });
+  <!-- Moved out of an inline <script> (ttyd retirement stage 4, R-13b) so
+       script-src 'self' needs no 'unsafe-inline' exception. Registers the
+       explorer/parking/notes/nav Alpine stores on alpine:init. -->
+  <script src="/js/nav-and-panel-stores.js"></script>
 
-    /* ----------------------------------------------------------------
-     * Parking Lot + Notes stores — boot stubs for the sidebar toggle
-     * buttons. The full behaviour (lazy-fetch + close siblings) is wired
-     * onto these by parkingPanel()/notesPanel() in their init(), mirroring
-     * the explorer store above. Only one 3rd-column panel is open at once.
-     * ---------------------------------------------------------------- */
-    Alpine.store('parking', {
-      open: false,
-      toggle() {
-        this.open = !this.open;
-        const layout = document.querySelector('.app-layout');
-        if (layout) layout.classList.toggle('parking-open', this.open);
-      },
-      close() {
-        this.open = false;
-        const layout = document.querySelector('.app-layout');
-        if (layout) layout.classList.remove('parking-open');
-      },
-    });
-
-    Alpine.store('notes', {
-      open: false,
-      toggle() {
-        this.open = !this.open;
-        const layout = document.querySelector('.app-layout');
-        if (layout) layout.classList.toggle('notes-open', this.open);
-      },
-      close() {
-        this.open = false;
-        const layout = document.querySelector('.app-layout');
-        if (layout) layout.classList.remove('notes-open');
-      },
-    });
-
-    /* ----------------------------------------------------------------
-     * Alpine.store('plans') is registered by plansPanel()
-     * (js/components/plans-panel.js) — it owns the plan data and the
-     * left-pane list reads it, because the sidebar and the
-     * content-column reader are sibling subtrees that cannot share one
-     * x-data scope.  Deliberately NOT registered here: a second
-     * registration would silently replace whichever half won the race.
-     * The sidebar bindings use optional chaining so they render blank,
-     * not broken, before that module has installed the store.
-     * ---------------------------------------------------------------- */
-
-    /* ----------------------------------------------------------------
-     * Navigation store — drives sidebar + view switching
-     * ---------------------------------------------------------------- */
-    Alpine.store('nav', {
-      current: 'today',
-
-      init() {
-        const hash = window.location.hash.slice(1);
-        const valid = ['today', 'flashcards', 'quizzes', 'generate', 'mastery', 'body-double', 'study-session', 'study-plans', 'settings', 'course-reader'];
-        if (hash && valid.includes(hash)) this.current = hash;
-      },
-
-      go(view) {
-        this.current = view;
-        window.location.hash = view;
-      },
-
-      is(view) {
-        return this.current === view;
-      }
-    });
-  });
-
-  /* ------------------------------------------------------------------
-   * Energy-adaptive timer thresholds (from break-science.md)
-   * ------------------------------------------------------------------ */
-  /* THRESHOLDS -> js/lib/timer-thresholds.js */
-
-  /* energyBand() -> js/lib/chunk-text.js (unit-tested in tests/js/) */
-
-  /* ------------------------------------------------------------------
-   * Generate panel — drives content generation jobs (U8).
-   *
-   * Lifecycle:
-   *   load() → POST /api/content/generate → 202 { job_id, plan }
-   *          → open WS /api/content/generate/ws?job_id=...
-   *          → render started / task_complete frames
-   *          → close on all_done | transport_error
-   *
-   * The form state is the source of truth; `running` flips the UI
-   * between form and progress views. 409 conflicts surface as a
-   * non-modal banner that includes the other job's id.
-   * ------------------------------------------------------------------ */
-  /* generatePanel() -> js/components/generate-panel.js (unit-tested) */
-
-  /* ------------------------------------------------------------------
-   * Settings panel — LLM Providers admin (add/change/delete/test keys)
-   * ------------------------------------------------------------------ */
-  /* settingsPanel() -> js/components/settings-panel.js */
-
-  /* ------------------------------------------------------------------
-   * Session timer component (from session.html)
-   * ------------------------------------------------------------------ */
-  /* sessionTimer() -> js/components/session-timer.js (unit-tested) */
-
-  /* ------------------------------------------------------------------
-   * Terminal panel component (from session.html)
-   * ------------------------------------------------------------------ */
-  /* terminalPanel() -> js/components/terminal-panel.js */
-
-  /* ------------------------------------------------------------------
-   * _extractChunkText — pull the assistant text out of an agent_chunk
-   * payload. The ACP normaliser (session/transports/acp_normaliser.py)
-   * passes the raw `update` subtree through (minus the sessionUpdate
-   * discriminator), so the shape is typically
-   *   { content: { type: 'text', text: '...' }, sessionId: '...' }
-   * but Kiro occasionally emits { content: [ { type: 'text', text } ] }
-   * for multi-part responses. Handle both.
-   * ------------------------------------------------------------------ */
-  /* _extractChunkText() -> js/lib/chunk-text.js (unit-tested in tests/js/) */
-
-  /* ------------------------------------------------------------------
-   * Live agent console — xterm.js terminal for PTY transport, iframe
-   * fallback for the legacy ttyd path. Wired in §1.7; contract is
-   * the one documented in plan Amendment #5 (WS route) + Amendment
-   * #6 (REST /session/start returns ws_url).
-   * ------------------------------------------------------------------ */
-  /* origin: which view owns this console — 'study' or 'body-double'. Two
-     instances live on the page at once, so every start/stop event must be
-     filtered by origin: without the STOP guard, ending a study session tears
-     down the Body Double console and vice versa. See ADR-0002 and the
-     _ALLOWED_ORIGINS comment in web/routes/session/_start.py. */
-  /* liveAgentConsole() -> js/components/live-agent-console.js */
-
-  /* ------------------------------------------------------------------
-   * Split layout component (from session.html)
-   * ------------------------------------------------------------------ */
-  /**
-   * Split layout Alpine component — uses Split.js for reliable resizable panes.
-   * Split.js handles all drag, touch, and gutter creation.
-   * Alpine handles terminal availability detection and swap-panels event.
-   */
-  /* splitLayout() -> js/components/split-layout.js */
-  </script>
+  <!-- ------------------------------------------------------------------
+       Where the rest of this app's Alpine factories/helpers now live
+       (extracted from this file's former inline <script> one at a time):
+         THRESHOLDS              -> js/lib/timer-thresholds.js
+         energyBand()             -> js/lib/chunk-text.js (unit-tested)
+         generatePanel()          -> js/components/generate-panel.js (unit-tested)
+         settingsPanel()          -> js/components/settings-panel.js
+         sessionTimer()           -> js/components/session-timer.js (unit-tested)
+         _extractChunkText()      -> js/lib/chunk-text.js (unit-tested)
+         liveAgentConsole()       -> js/components/live-agent-console.js
+       liveAgentConsole()'s origin argument ('study' vs 'body-double')
+       distinguishes the two consoles that live on one page at once — see
+       ADR-0002 and the _ALLOWED_ORIGINS comment in
+       web/routes/session/_start.py.
+       ------------------------------------------------------------------ -->
 
   <!-- Toast — shared feedback primitive ($store.toast) -->
   <div class="toast" x-data x-show="$store.toast.visible" x-transition.opacity x-cloak

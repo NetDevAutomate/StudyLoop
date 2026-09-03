@@ -48,7 +48,27 @@ test-browser-smoke:
 # itself in both its header and its summary.
 
 # Full browser e2e suite, unscaled (~8 min). Args narrow it: just e2e <file>
+#
+# One run per machine at a time. The suite binds fixed per-module ports and
+# (until R-49 lands) writes the real session-state file, so two concurrent runs
+# — two lane worktrees, or a lane and its verifier — refuse each other's ports
+# ("port 18614 is already being served before the child started") and can
+# clobber each other's session state. 51 such errors were seen on 2026-09-02.
+# The lock is a directory (mkdir is atomic and portable; macOS has no flock(1));
+# a lock whose recorded pid is no longer alive is treated as stale and removed.
 e2e *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    lock=/tmp/studyloop-e2e.lock
+    while ! mkdir "$lock" 2>/dev/null; do
+        holder=$(cat "$lock/pid" 2>/dev/null || echo "")
+        if [ -n "$holder" ] && ! kill -0 "$holder" 2>/dev/null; then
+            echo "e2e: removing stale lock left by dead pid $holder"; rm -rf "$lock"; continue
+        fi
+        echo "e2e: another e2e run holds $lock (pid ${holder:-unknown}); waiting 20s"; sleep 20
+    done
+    echo $$ > "$lock/pid"
+    trap 'rm -rf "$lock"' EXIT
     STUDYLOOP_E2E_TIMEOUT_SCALE= uv run --group dev pytest -m e2e {{ARGS}}
 
 # Browser-side unit tests. Pass the GLOB, not the directory — `node --test <dir>`
@@ -117,6 +137,14 @@ smoke-installed:
     ./scripts/build-release.sh
     tmp="$(mktemp -d)" && uv venv "$tmp/venv" && uv pip install --python "$tmp/venv/bin/python" dist/studyloop-*.whl packages/agent-session-tools && STUDYLOOP_EXPECT_BIN_DIR="$tmp/venv/bin" PATH="$tmp/venv/bin:$PATH" ./scripts/smoke-installed-cli.sh
 
+# R-29: every extra studyloop's wheel advertises (content, bedrock, notebooklm,
+# tui, web, mcp, all) must install and import from a BARE wheel -- no
+# workspace, no --with-editable, no sibling package on disk. Also asserts
+# `sessions` is not advertised at all, since agent-session-tools cannot
+# resolve outside this repo's uv workspace. See test_wheel_extras_smoke.py.
+smoke-extras:
+    uv run --group dev pytest packages/studyloop/tests/test_wheel_extras_smoke.py -m integration -q
+
 build-release:
     ./scripts/build-release.sh
 
@@ -128,4 +156,16 @@ prepare-release version:
 
 preflight: lint typecheck test test-js docs release-consistency spec-check
 
-release-check: test test-js lint typecheck shellcheck docs audit audit-full release-consistency smoke-installed
+release-check: test test-js lint typecheck shellcheck docs audit audit-full release-consistency smoke-installed smoke-extras
+
+# "Would GitHub Actions pass?" locally, before pushing. `check` runs the
+# host-answerable gates (lint, typecheck, test, sast, audit, docs, ...); `lint`
+# via run-job then proves the container path itself works, since ci-standards
+# needs `ci-standards-runner:latest` built once (see
+# ~/code/personal/tools/github_ci_pipeline/README.md) for anything
+# platform-sensitive. This pair is the fast, cheap confidence check -- run
+# `ci-standards run-job e2e --target . --image ci-standards-runner:latest`
+# separately for the platform-sensitive browser suite (15+ minutes).
+ci-local:
+    ci-standards check --target .
+    ci-standards run-job lint --target . --image ci-standards-runner:latest

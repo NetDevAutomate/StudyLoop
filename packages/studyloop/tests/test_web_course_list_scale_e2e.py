@@ -313,19 +313,26 @@ class TestCompactRowLayout:
 
 
 # ---------------------------------------------------------------------------
-# Heatmap section is Flashcards-only (must survive the courses-view rework)
+# R-60: the 90-day heatmap was a placeholder (_buildHeatmap() always emitted
+# count: 0, level: 'level-0' for all 90 days -- no API call ever fired) that
+# rendered as a working feature. Removed outright rather than wired to real
+# data; see the one-line pointer in components.js to ADR-0006's 0.2.0
+# asymmetric-visibility constraint. Was previously flashcards-panel-only
+# (TestHeatmapPlacement); now absent everywhere.
 # ---------------------------------------------------------------------------
 
 
-class TestHeatmapPlacement:
-    def test_heatmap_present_in_flashcards_panel(self, web_page: Page) -> None:
+class TestHeatmapRemoved:
+    def test_no_heatmap_element_on_flashcards_panel(self, web_page: Page) -> None:
         _stub_courses(web_page)
         _stub_misc(web_page)
         _goto(web_page, "flashcards")
-        assert web_page.locator('[x-data*="flashcards"] .heatmap-section').count() == 1
+        assert web_page.locator(".heatmap").count() == 0
+        assert web_page.locator(".heatmap-section").count() == 0
 
-    def test_heatmap_absent_from_quizzes_panel(self, web_page: Page) -> None:
+    def test_no_heatmap_element_on_quizzes_panel(self, web_page: Page) -> None:
         _stub_courses(web_page)
         _stub_misc(web_page)
         _goto(web_page, "quizzes")
-        assert web_page.locator('[x-data*="quiz"] .heatmap-section').count() == 0
+        assert web_page.locator(".heatmap").count() == 0
+        assert web_page.locator(".heatmap-section").count() == 0

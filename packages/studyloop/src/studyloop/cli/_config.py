@@ -37,7 +37,7 @@ def config_init(install_agents: bool | None) -> None:
 @config_group.command(name="show")
 def config_show() -> None:
     """Display current configuration."""
-    from studyloop.settings import get_config_path, load_settings
+    from studyloop.settings import get_config_path, load_settings, unknown_top_level_keys
 
     settings = load_settings()
     config_path = get_config_path()
@@ -47,6 +47,16 @@ def config_show() -> None:
         return
 
     console.print(f"[bold]Configuration[/bold] \u2014 {config_path}\n")
+
+    # R-34: a retired or misspelled top-level key is otherwise silently
+    # inert -- name it here too, not just in `doctor`.
+    unknown = unknown_top_level_keys()
+    if unknown:
+        keys = ", ".join(unknown)
+        console.print(
+            f"[yellow]\u26a0 Unknown or retired config key(s): {keys}[/yellow] "
+            "(not read by studyloop; safe to remove)\n"
+        )
 
     # Core settings
     table = Table(title="Core Settings")

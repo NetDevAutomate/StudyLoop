@@ -511,3 +511,28 @@ class TestLaunchCommands:
         with patch("studyloop.adapters.claude.shutil.which", return_value=None):
             cmd = ADAPTER.launch_cmd(persona, False)
         assert "claude" in cmd
+
+    def test_claude_launch_quotes_a_persona_path_with_a_space(self, tmp_path):
+        """R-35: the launch string is executed via `/bin/sh -c`
+
+        (`web/routes/session/_transport.py:68-69`) with no `shlex.quote()`.
+        `persona_path` comes from `tempfile.mkstemp()` under `$TMPDIR`, which
+        can contain a space (a custom `$TMPDIR`, or a home directory with
+        one). Without quoting, the shell splits the path into two argv
+        words and the command breaks or misparses.
+        """
+        import shlex
+
+        from studyloop.adapters.claude import ADAPTER
+
+        weird_dir = tmp_path / "path with spaces"
+        weird_dir.mkdir()
+        persona = weird_dir / "p.md"
+        persona.touch()
+        with patch("studyloop.adapters.claude.shutil.which", return_value="/usr/local/bin/claude"):
+            cmd = ADAPTER.launch_cmd(persona, False)
+
+        tokens = shlex.split(cmd)
+        assert str(persona) in tokens, (
+            f"persona path did not survive shell tokenisation as one word: {cmd!r} -> {tokens}"
+        )

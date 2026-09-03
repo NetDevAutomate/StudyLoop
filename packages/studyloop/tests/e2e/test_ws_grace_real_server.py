@@ -301,11 +301,18 @@ class TestGraceAgainstARealAgent:
         # actually cares about — the liveness poll noticing the agent died
         # ("agent_exited") versus the timer simply running out ("grace_expired")
         # — and no amount of CPU contention can blur them.
+        # Two reasons name the SAME mechanism: "agent_exited" when the poll fires
+        # while the grace timer is still armed, "agent_exited_while_detached" when
+        # the detach has already been recorded and the poll notices afterwards.
+        # Which one lands is a scheduling order between two coroutines, not a
+        # property under test (R-50: 1 red in the full suite, 3/3 green solo).
+        liveness_reasons = {"agent_exited", "agent_exited_while_detached"}
         release = server.state().get("last_release") or {}
-        assert release.get("reason") == "agent_exited", (
+        assert release.get("reason") in liveness_reasons, (
             f"released after {elapsed:.1f}s for reason {release.get('reason')!r} — "
-            "expected 'agent_exited', meaning the liveness poll noticed the agent "
-            "had gone. 'grace_expired' means it did not and the window merely ran out."
+            f"expected one of {sorted(liveness_reasons)}, meaning the liveness poll "
+            "noticed the agent had gone. 'grace_expired' means it did not and the "
+            "window merely ran out."
         )
         # Generous upper bound so a pathologically slow release still fails,
         # without re-introducing a race at the window boundary.

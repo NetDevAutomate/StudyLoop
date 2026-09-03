@@ -10,20 +10,35 @@ class _PermissionResponder(Protocol):
     async def send_permission_response(self, request_id: str, outcome: dict[str, Any]) -> None: ...
 
 
-def _resolve_transport(body_transport: str | None) -> str:
-    """Decide between 'pty', 'ttyd', and 'acp'. Env var wins for operator kill-switch.
+class UnsupportedTransportError(ValueError):
+    """Raised when ``STUDYLOOP_TRANSPORT`` names a transport that does not exist.
 
-    The ``STUDYLOOP_TRANSPORT`` env var only accepts ``pty`` or ``ttyd`` —
-    ACP is body-only, intentionally kept out of the operator kill-switch
-    surface because the env var is the "force the legacy / safe path"
-    lever, not a general transport selector.
+    Ttyd retirement stage 3 (R-05): a naive deletion of the ttyd arm left this
+    function silently downgrading any unrecognised value to ``"pty"``, so
+    ``STUDYLOOP_TRANSPORT=ttyd`` kept "working" — just as a different
+    transport than the operator asked for. The fix is structural rejection,
+    not a wider allow-list: the caller gets an error, never a substitution.
+    """
+
+
+def _resolve_transport(body_transport: str | None) -> str:
+    """Decide between 'pty' and 'acp'. Env var wins for operator kill-switch.
+
+    The ``STUDYLOOP_TRANSPORT`` env var only accepts ``pty`` — ACP is
+    body-only, intentionally kept out of the operator kill-switch surface
+    because the env var is the "force the safe path" lever, not a general
+    transport selector. Any other non-empty value (including the retired
+    ``ttyd``) raises :class:`UnsupportedTransportError` rather than silently
+    resolving to ``pty``.
     """
     import os
 
     env_override = os.environ.get("STUDYLOOP_TRANSPORT", "").strip().lower()
-    if env_override in {"pty", "ttyd"}:
+    if env_override:
+        if env_override != "pty":
+            raise UnsupportedTransportError(env_override)
         return env_override
-    if body_transport in {"pty", "ttyd", "acp"}:
+    if body_transport in {"pty", "acp"}:
         return body_transport
     return "pty"
 
@@ -56,10 +71,12 @@ def _build_pty_transport(config):  # type: ignore[no-untyped-def]
         # known-good shell command (e.g. `/bin/sh -c 'echo ready; cat'`)
         # without needing the real agent binary installed. The hatch is
         # stripped from the child env by _build_child_env() so the child
-        # cannot observe its own override key.
-        import os as _os
+        # cannot observe its own override key. Reads the import-time
+        # snapshot (R-09c), not os.environ directly, so a dotenv loader
+        # that runs later in the process cannot re-inject this key.
+        from studyloop import test_hatch_env
 
-        test_cmd = _os.environ.get("STUDYLOOP_TEST_AGENT_CMD")
+        test_cmd = test_hatch_env("STUDYLOOP_TEST_AGENT_CMD")
         if test_cmd:
             shell_cmd = test_cmd.format(persona_file=_config.persona_file)
         else:
@@ -105,19 +122,20 @@ def _build_acp_transport(config):  # type: ignore[no-untyped-def]
         # (e.g. "python3 /path/to/test_agent.py"); return the first token
         # resolved so ``asyncio.create_subprocess_exec`` gets a real
         # path — ``shutil.which`` on an absolute path returns it
-        # unchanged when executable.
-        import os as _os
+        # unchanged when executable. Reads the import-time snapshot
+        # (R-09c), not os.environ directly -- see _build_launch_cmd above.
+        from studyloop import test_hatch_env
 
-        test_cmd = _os.environ.get("STUDYLOOP_TEST_ACP_CMD")
+        test_cmd = test_hatch_env("STUDYLOOP_TEST_ACP_CMD")
         if test_cmd:
             first = shlex.split(test_cmd)[0] if test_cmd.strip() else ""
             return _shutil.which(first) or first or None
         return _shutil.which(adapter.binary)
 
     def _build_argv(_config) -> list[str]:  # type: ignore[no-untyped-def]
-        import os as _os
+        from studyloop import test_hatch_env
 
-        test_cmd = _os.environ.get("STUDYLOOP_TEST_ACP_CMD")
+        test_cmd = test_hatch_env("STUDYLOOP_TEST_ACP_CMD")
         if test_cmd:
             return shlex.split(test_cmd)
         if _config.agent == "kiro":
