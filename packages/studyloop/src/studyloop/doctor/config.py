@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 from pathlib import Path
 
@@ -232,3 +233,124 @@ def check_obsidian_export() -> list[CheckResult]:
             False,
         )
     ]
+
+
+def check_second_brain() -> list[CheckResult]:
+    """Report the optional second-brain layer, when one is configured.
+
+    Returns ``[]`` when there is no ``second_brain`` section or the provider is
+    ``none``. A learner who has never configured a second brain must not see rows
+    about software they do not use — the setup wizard does not ask about it, so
+    reporting on it would be reporting on nothing. Same reasoning the Obsidian
+    export checks above are registered conditionally for; the registration in
+    ``cli/_doctor.py`` enforces it, and this early return makes the function safe
+    to call unconditionally.
+
+    Nothing here is ever ``fail``. A vault on an unmounted drive deserves a
+    warning, but it is not a broken installation, and ``doctor`` is what a learner
+    runs when something ELSE is wrong.
+    """
+    try:
+        settings = _load_settings()
+    except Exception as exc:
+        # A malformed section must not take down every other check with it.
+        return [
+            CheckResult(
+                "config",
+                "second_brain_config",
+                "warn",
+                f"The second_brain section does not load: {exc}",
+                "Fix the second_brain section in config.yaml, or remove it.",
+                False,
+            )
+        ]
+
+    config = getattr(settings, "second_brain", None)
+    if config is None or config.provider == "none":
+        return []
+
+    if config.provider == "xtiles":
+        return [
+            CheckResult(
+                "config",
+                "second_brain_provider",
+                "info",
+                "Second brain: xTiles (no programmatic backend; prompts and an "
+                "opt-in assistant skill)",
+                "See docs/second-brain.md for the xTiles setup and the three prompts.",
+                False,
+            )
+        ]
+
+    results = [
+        CheckResult(
+            "config",
+            "second_brain_provider",
+            "info",
+            f"Second brain: {config.provider}",
+            "",
+            False,
+        )
+    ]
+
+    vault = Path(config.vault_path).expanduser()
+    if vault.is_dir() and os.access(vault, os.W_OK):
+        results.append(
+            CheckResult("config", "second_brain_vault", "pass", f"Vault: {vault}", "", False)
+        )
+    elif vault.is_dir():
+        results.append(
+            CheckResult(
+                "config",
+                "second_brain_vault",
+                "warn",
+                f"Vault is not writable: {vault}",
+                f"Check the permissions on {vault}",
+                False,
+            )
+        )
+    else:
+        results.append(
+            CheckResult(
+                "config",
+                "second_brain_vault",
+                "warn",
+                f"Vault not found: {vault}",
+                "Mount it, or run: studyloop brain enable obsidian --vault <path>",
+                False,
+            )
+        )
+
+    results.append(
+        CheckResult(
+            "config",
+            "second_brain_folder",
+            "info",
+            f"StudyLoop writes into {config.folder}/ inside the vault",
+            "",
+            False,
+        )
+    )
+
+    # The EFFECTIVE mode, not the configured one: `auto` is not an answer a learner
+    # can act on. resolve_cli_mode never probes when the mode is `off`, so this
+    # cannot spawn Obsidian for someone who switched it off.
+    from studyloop.second_brain.obsidian_cli import resolve_cli_mode
+
+    effective = resolve_cli_mode(config)
+    binary = "yes" if shutil.which("obsidian") else "no"
+    results.append(
+        CheckResult(
+            "config",
+            "second_brain_cli",
+            "info",
+            f"Obsidian CLI: configured {config.use_cli}, binary on PATH {binary}, "
+            f"in use now: {effective}",
+            ""
+            if effective == "cli" or config.use_cli == "off"
+            else "The Obsidian desktop app must be running for the CLI adapter; "
+            "notes are written directly otherwise.",
+            False,
+        )
+    )
+    return results
