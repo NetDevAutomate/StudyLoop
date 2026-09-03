@@ -9,9 +9,18 @@ The project is a **pre-release (0.1.x)**. Five mentor harnesses are first-party:
 Code are core; OpenCode and pi are preview. Everything else is out of scope until an issue defines it.
 
 Contributions of every kind are welcome: a reproducible bug, a clearer setup sentence, an accessibility
-observation, a focused test, or an honest account of where a study flow became overwhelming. Read the
-[AuDHD learning philosophy](audhd-learning-philosophy.md) first; it explains the design constraints that
-shape every decision here.
+observation, a focused test, or an honest account of where a study flow became overwhelming. The fastest
+way in is the [development environment](#development-environment) and one green `just preflight`; before
+you design anything, read the [AuDHD learning philosophy](audhd-learning-philosophy.md), which explains the
+constraints behind the decisions here.
+
+**Licensing.** Contributions are accepted under the repository's [MIT License](https://github.com/NetDevAutomate/StudyLoop/blob/main/LICENSE)
+(inbound = outbound). No CLA and no DCO sign-off is required.
+
+**Conduct.** Be kind and specific; assume the other person is tired. Learners' private material (session
+transcripts, notes, struggles) is never quoted in public threads. Report a conduct concern privately to the
+maintainer through the contact in [`SECURITY.md`](https://github.com/NetDevAutomate/StudyLoop/blob/main/SECURITY.md);
+a formal code of conduct is on the list for the next release.
 
 ## Contents
 
@@ -54,8 +63,11 @@ The `Justfile` is the front door. The recipes you will use most:
 | `just spec-check` | `openspec validate --specs --all`; skips when the `openspec` CLI is missing. |
 | `just preflight` | Everything above in one run: lint, typecheck, unit, JS, docs, release consistency, spec check. Run it before every push. |
 | `just e2e` | The Playwright browser suite. It takes a machine-wide lock; **one e2e run per machine at a time**. |
-| `just release-check` | The release gate: preflight plus dependency audits, a wheel build, a fresh-venv install smoke and a per-extra install smoke. |
+| `just release-check` | The release gate: unit + JS tests, lint, typecheck, shellcheck, docs, both dependency audits, release consistency, a wheel build with a fresh-venv install smoke and a per-extra install smoke. It does not run `spec-check`; `preflight` does. |
 | `just ci-local` | Mirrors the GitHub Actions matrix locally. |
+
+Development happens on macOS and Linux; CI runs Ubuntu and the nightly checks run both Ubuntu and macOS. If setup
+fails, the [troubleshooting page](troubleshooting.md) covers the common causes; `uv sync --reinstall` resets the venv.
 
 Working from a git worktree? Prefix `just` and `uv run` with `env -u VIRTUAL_ENV` so the worktree's own venv is
 used rather than the one exported by your shell.
@@ -104,24 +116,31 @@ harness's transcripts).
 
 ## Making changes
 
-1. **Start from an issue for anything that changes behaviour.** For a new mentor harness the issue must
-   define the persona mechanism, launch and resume commands, session store, exporter, health check, failure
-   behaviour and a live acceptance path. Drive-by harness additions are declined.
-2. **Branch from `main`** with a `feat/`, `fix/`, `docs/` or `test/` prefix. Do not use `lane/…`; that prefix
-   is reserved for the maintainers' remediation lanes and carries an ownership test that only makes sense
-   there. On any other branch that test is skipped.
-3. **Specs before surprises.** Behaviour is described in `openspec/specs/<capability>/spec.md`; a change that
-   alters behaviour comes with a proposal under `openspec/changes/<change>/` (proposal, design, tasks).
-   `just spec-check` validates the specs. When a design decision will still matter in six months, write an
-   ADR (`docs/adr/NNNN-kebab-title.md`, indexed in `docs/adr/README.md`) and have the design link to it.
+1. **Pick the path that fits the size of the change.**
+   - *Small fix* (a bug with a test, a docs correction, a test-only change): open the pull request directly.
+   - *Behaviour or design change* (a new option, a changed flow, a new module): open an issue first, then a
+     proposal under `openspec/changes/<change>/` (proposal, design, tasks) against the capability spec in
+     `openspec/specs/<capability>/spec.md`. `just spec-check` validates the specs. When a decision will still
+     matter in six months, write an ADR (`docs/adr/NNNN-kebab-title.md`, indexed in `docs/adr/README.md`).
+   - *New mentor harness or backend*: the issue must define the persona mechanism, launch and resume
+     commands, session store, exporter, health check, failure behaviour and a live acceptance path. Drive-by
+     harness additions are declined.
+2. **Fork and branch.** Outside contributors fork and open pull requests against `main`; maintainers branch
+   in the repository. Name branches `feat/…`, `fix/…`, `docs/…` or `test/…`. Do not use `lane/…`: that
+   prefix is reserved for the maintainers' remediation lanes and carries an ownership test that only makes
+   sense there (on any other branch it is skipped). Review comments are addressed on the same branch; the
+   maintainer merges, so far always with a merge commit.
+3. **Keep specs and code together.** If your change alters what a spec describes, update the spec in the
+   same pull request; the spec is the description of behaviour, the tests are the proof.
 4. **Tests first.** Write the failing test at the nearest useful boundary, watch it fail for the right reason,
    then make it pass. A fix without a test that would fail on revert is not finished.
 5. **Docs in the same change.** Every user-visible change updates the relevant guide and the changelog in the
    same pull request. Documentation claims are tested (see below), so a stale sentence fails the build.
 6. **Keep the diff focused.** One problem per pull request. If public behaviour and internal structure both
    have to move, split them unless one is meaningless without the other.
-7. **Before pushing:** `just preflight`, then `git diff --check`. If you touched anything the browser exercises,
-   `just e2e` as well.
+7. **Before pushing:** `just preflight`, then `git diff --check`. Run `just e2e` as well when you touched
+   `packages/studyloop/src/studyloop/web/` (routes, static JS, CSS, HTML), the session transports under
+   `session/`, or anything under `tests/e2e/`.
 
 Commit messages: an imperative subject line, and a body that says **why** (what was wrong, what the change
 makes true), not a restatement of the diff. If an AI assistant helped write the change, say so with a
@@ -167,8 +186,8 @@ the unit suite on Python 3.12 and 3.13, the JavaScript tests, the browser suite,
 smoke, and the web, content and semantic dependency profiles. A red job blocks merging; fix it or explain in
 the pull request exactly which unrelated failure you are seeing and where it is tracked.
 
-Two nightly workflows run on a fresh macOS runner: the **tmux integration UAT** (03:00 UTC, also triggerable
-manually) and the **install check** (03:30 UTC). They catch what a developer machine hides: a hard-coded
+Two nightly workflows run on fresh runners: the **tmux integration UAT** on macOS (03:00 UTC, also triggerable
+manually) and the **install check** on Ubuntu and macOS (03:30 UTC). They catch what a developer machine hides: a hard-coded
 path, a dependency that only resolves from the workspace, a lock file that drifted.
 
 The dependency lock is enforced (`uv sync --locked`). If you change a dependency, run `uv lock`, commit
@@ -179,7 +198,7 @@ The dependency lock is enforced (`uv sync --locked`). If you change a dependency
 - **The published site is an allowlist.** `mkdocs.yml` names every public page. A new file under `docs/` is
   invisible to the site until it is written for readers and added to both the allowlist and the navigation.
   `docs/adr/` and `docs/architecture/` are public in the repository for the reasoning they carry.
-- **Every documented claim must be true**, and the true ones are guarded: CLI examples in the reference are
+- **Every documented claim must be true**, and many are machine-checked: CLI examples in the reference are
   resolved against the real Click commands, prompt strings in the setup guide are checked against the wizard
   code, the break table is parsed and compared with the constants, third-party notices are counted against the
   vendored manifest. When you change behaviour, expect a docs test to fail until the page catches up.
@@ -233,7 +252,7 @@ friction was), then the smallest change that would help. The philosophy page exp
 4. Accessibility and low-energy paths.
 5. New capability, in the order the roadmap gives.
 
-Issues are triaged within a few days. Reactions and clear reproductions move things up.
+The maintainer reads every new issue; there is no response-time promise yet. Clear reproductions move things up.
 
 ## AI usage, and models through a LiteLLM gateway
 
@@ -262,21 +281,22 @@ today a row's base URL is fixed in the registry, so a per-machine proxy address 
 override that does not exist yet — open an issue and propose it there first; and keys named `*_API_KEY`,
 `*_TOKEN`, `*_SECRET` are deliberately scrubbed from every process StudyLoop spawns
 (`session/child_env.py`), so a gateway key set for StudyLoop never reaches a mentor child. That is a feature.
+Never commit a gateway hostname, port or key: read them from environment variables and keep the values in
+your untracked `.env`.
 
-**How the maintainers use one.** Plans and large changes are reviewed by three or four models from different
-families through a LiteLLM gateway before a human reads them: each model gets the same brief, works in
-isolation, and every load-bearing claim it makes is checked against the source before it counts. The
-arbitration is recorded with the change. Contributors do not need this — CI and human review are the gate — but
-if you run your own multi-model review, keep keys and transcripts out of the pull request and cite the
-verified findings, not the model's opinion.
+Large changes to this project have been reviewed by several models from different families through such a
+gateway before a human read them, with each claim checked against the source; that is optional practice, not
+a requirement. If you run a multi-model review of your own, cite the verified findings and keep keys and
+transcripts out of the pull request.
 
 ## Security
 
 Report vulnerabilities privately through
 [GitHub's advisory form](https://github.com/NetDevAutomate/StudyLoop/security/advisories/new); see
 [`SECURITY.md`](https://github.com/NetDevAutomate/StudyLoop/blob/main/SECURITY.md) for the supported line
-and the model. In code: secrets live in the encrypted store, never in `config.yaml` or the repository; the
-LAN password reaches the web process through its environment, not argv; test hatches that replace the agent
+and the model. In code: API keys live in the encrypted store, never in the repository; the LAN password may be set in
+`config.yaml` (written with mode 0600) or generated, and reaches the web process through its environment,
+not argv; test hatches that replace the agent
 binary are snapshotted at import and refused when they arrive from a `.env`. Pre-commit runs secret detection
 and bandit; keep them installed.
 
