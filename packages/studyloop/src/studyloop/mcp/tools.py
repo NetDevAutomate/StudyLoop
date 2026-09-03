@@ -6,7 +6,6 @@ lifespan AppState for shared DB/settings access.
 
 from __future__ import annotations
 
-import dataclasses
 import json
 import logging
 from datetime import datetime
@@ -517,19 +516,12 @@ def register_tools(mcp: FastMCP) -> None:
             course: Course name. Omit to aggregate across all courses.
             limit: Maximum cards to return.
         """
-        from studyloop.services.review import list_course_summaries
-        from studyloop.settings import resolve_study_dirs
+        # Delegated so the second-brain layer can answer the same question
+        # without importing this module -- it pulls in fastmcp, an optional
+        # extra, and one implementation of "which cards are due" is the point.
+        from studyloop.learning.review_service import due_cards
 
-        if course is not None:
-            due = get_due(course)
-            cards = [{"course": course, **dataclasses.asdict(c)} for c in due]
-        else:
-            cards = []
-            for summary in list_course_summaries(resolve_study_dirs()):
-                name = summary["name"]
-                cards.extend({"course": name, **dataclasses.asdict(c)} for c in get_due(name))
-
-        cards = cards[:limit]
+        cards = due_cards(course=course, limit=limit)
         return {"due_cards": cards, "count": len(cards)}
 
     @mcp.tool()
