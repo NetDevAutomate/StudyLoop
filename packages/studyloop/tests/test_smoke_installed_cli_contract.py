@@ -27,6 +27,30 @@ def test_smoke_installed_cli_checks_expected_bin_dir_and_session_export() -> Non
     assert 'require_on_path "session-export"' in script_text
 
 
+def test_smoke_installed_cli_isolates_the_session_database_and_state_dir() -> None:
+    """STUDYLOOP_CONFIG alone does not move session_db or state_dir off the
+
+    machine's real ``~/.config/studyloop/sessions.db`` /
+    ``~/.local/share/studyloop`` -- both are resolved independently of which
+    config file is active (settings.py's ``_default_session_db``/
+    ``_default_state_dir``), so every doctor/self-test check in this script
+    reads real session history regardless of the isolated config. A machine
+    whose real session DB has accumulated FTS index drift makes `doctor`
+    report a "fail" status, which this script's own allowed-status check then
+    rejects -- breaking the smoke test for a reason that has nothing to do
+    with the release under test. STUDYLOOP_DB and STUDYLOOP_STATE_DIR must be
+    isolated the same way STUDYLOOP_CONFIG already is.
+    """
+    repo_root = Path(__file__).resolve().parents[3]
+    script = repo_root / "scripts" / "smoke-installed-cli.sh"
+    script_text = script.read_text()
+
+    assert 'export STUDYLOOP_DB="${STUDYLOOP_DB:-$(mktemp -d)/sessions.db}"' in script_text
+    assert (
+        'export STUDYLOOP_STATE_DIR="${STUDYLOOP_STATE_DIR:-$(mktemp -d)/state}"' in script_text
+    )
+
+
 def test_smoke_uv_tool_install_uses_isolated_tool_home_and_runs_cli_smoke() -> None:
     repo_root = Path(__file__).resolve().parents[3]
     script = repo_root / "scripts" / "smoke-uv-tool-install.sh"
