@@ -1,0 +1,314 @@
+"""The only code in StudyLoop that writes into a learner's vault.
+
+Deliberately one module, and deliberately small. A vault holds notes the learner
+wrote by hand; a second writer somewhere else in the codebase would be a second
+place for the containment and ownership rules to be forgotten. Template
+installation reuses this rather than adding its own.
+
+Three rules, enforced in this order:
+
+1. **Containment.** The resolved target must sit under the resolved vault root.
+   Checked on resolved paths, so ``..``, an absolute folder and a symlinked
+   directory are all caught — the third is the one a string check misses, and it
+   is a perfectly ordinary thing for a learner to have set up.
+2. **Ownership.** A file is replaced only when its frontmatter carries
+   StudyLoop's marker AND that marker names this projection. A learner's own note
+   in the way is refused; so is the projection of a plan that has been renamed,
+   because losing the note under the old name would be silent data loss.
+3. **Atomicity.** Write a sibling temp file, fsync it, copy the existing mode
+   across, then ``os.replace``. Obsidian watches the directory, so a partially
+   written note is visible in the UI — and ``os.replace`` is only atomic within
+   one filesystem, which is why the temp file is a sibling and never in ``/tmp``.
+
+:func:`projection_path` returns a :class:`VaultTarget` rather than a bare path so
+that the vault-relative label travels with it. Every message and every reported
+path in this feature is vault-relative; deriving that string at each call site
+would be one more place to accidentally leak an absolute home directory into
+JSON an agent may echo.
+"""
+
+from __future__ import annotations
+
+import logging
+import os
+import stat
+import tempfile
+from dataclasses import dataclass
+from enum import Enum
+from pathlib import Path, PurePosixPath
+from typing import TYPE_CHECKING, Any
+
+import yaml
+
+from studyloop.second_brain.core import SecondBrainError
+from studyloop.second_brain.projection import OWNERSHIP_KEY
+
+if TYPE_CHECKING:
+    from studyloop.second_brain.projection import ProjectionIdentity
+
+logger = logging.getLogger(__name__)
+
+
+class WriteOutcome(Enum):
+    """What a write actually did.
+
+    ``UNCHANGED`` is a first-class outcome rather than a silent no-op because the
+    CLI reports it: a learner republishing at every wind-down should see that
+    nothing needed rewriting.
+    """
+
+    WRITTEN = "written"
+    UNCHANGED = "unchanged"
+
+
+@dataclass(frozen=True)
+class VaultTarget:
+    """A checked write location inside a vault."""
+
+    #: Absolute path on this machine. Never reported to a caller.
+    path: Path
+    #: Vault-relative POSIX label, e.g. ``Study/Plans/python-decorators.md``.
+    #: This is what appears in results, messages and JSON.
+    relative: str
+    #: The resolved vault root the containment check was made against.
+    root: Path
+
+
+def _resolved_root(vault: Path) -> Path:
+    root = Path(vault).expanduser()
+    if not root.is_dir():
+        raise SecondBrainError(
+            f"Vault path is not a directory: {root}. "
+            "Mount it, or point second_brain.vault_path somewhere else."
+        )
+    return root.resolve()
+
+
+def projection_path(vault: Path, folder: str, relative: str) -> VaultTarget:
+    """Resolve ``<vault>/<folder>/<relative>``, refusing any escape.
+
+    ``relative`` is a POSIX-style path inside the StudyLoop folder, e.g.
+    ``Plans/python-decorators.md``.
+
+    The containment check runs against the resolved deepest EXISTING ancestor,
+    which is what catches a symlinked ``Study`` directory pointing outside the
+    vault: ``Path.resolve()`` on a path whose parents do not exist yet cannot
+    follow the symlink that matters. Because a symlink can appear between this
+    check and the write, :func:`write_projection` re-checks before replacing.
+    """
+    root = _resolved_root(vault)
+
+    if Path(folder).is_absolute() or Path(relative).is_absolute():
+        raise SecondBrainError(
+            f"Refusing to write outside the vault: '{folder}/{relative}' is not a "
+            "relative path inside the configured folder."
+        )
+
+    candidate = PurePosixPath(str(folder).replace("\\", "/")) / PurePosixPath(
+        str(relative).replace("\\", "/")
+    )
+    if ".." in candidate.parts:
+        raise SecondBrainError(f"Refusing to write outside the vault: '{candidate}' contains '..'.")
+
+    target = (root / candidate).expanduser()
+    probe = _nearest_existing(target)
+    try:
+        probe.resolve().relative_to(root)
+    except ValueError as exc:
+        raise SecondBrainError(
+            f"Refusing to write outside the vault: '{candidate}' resolves through "
+            f"{probe.name}, which is not under the configured vault."
+        ) from exc
+
+    return VaultTarget(path=target, relative=candidate.as_posix(), root=root)
+
+
+def _nearest_existing(target: Path) -> Path:
+    """The deepest ancestor of ``target`` that exists."""
+    probe = target
+    while not probe.exists() and probe != probe.parent:
+        probe = probe.parent
+    return probe
+
+
+def marker_from_text(text: str) -> dict[str, Any] | None:
+    """Extract a StudyLoop ownership marker from a document's frontmatter.
+
+    ``None`` covers every "not ours" case — no frontmatter, unparseable
+    frontmatter, frontmatter without the marker key, a marker that does not claim
+    ownership. They are collapsed on purpose: each means ownership is unknown, and
+    unknown ownership must produce the same refusal rather than a different code
+    path per shape.
+    """
+    if not text.startswith("---\n"):
+        return None
+    _, _, rest = text.partition("---\n")
+    frontmatter_text, separator, _ = rest.partition("\n---")
+    if not separator:
+        return None
+    try:
+        frontmatter = yaml.safe_load(frontmatter_text)
+    except yaml.YAMLError:
+        return None
+    if not isinstance(frontmatter, dict):
+        return None
+    marker = frontmatter.get(OWNERSHIP_KEY)
+    if not isinstance(marker, dict) or marker.get("owned") is not True:
+        return None
+    return marker
+
+
+def read_text_if_present(path: Path) -> str | None:
+    """The file's text, or ``None`` when it does not exist.
+
+    Read-first-and-catch rather than ``exists()`` then read. Two reasons: a vault
+    is a directory Obsidian and a sync client are both writing to, so the file can
+    disappear between the two calls; and this repository's structural guard
+    (``tests/test_no_exists_then_read_race.py``) fails any ``exists()``-then-read
+    pair outright, having been bitten by exactly that shape before.
+
+    A file that exists but cannot be decoded returns ``""`` — present, contents
+    unknown — so the caller treats it as "something is there" rather than "nothing
+    is there", which is the safe direction when the question is whether to
+    overwrite.
+    """
+    try:
+        return path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return None
+    except (OSError, UnicodeDecodeError):
+        return ""
+
+
+def read_marker(path: Path) -> dict[str, Any] | None:
+    """Return the file's StudyLoop ownership marker, or ``None``."""
+    text = read_text_if_present(path)
+    if text is None:
+        return None
+    return marker_from_text(text)
+
+
+def _assert_replaceable(
+    target: VaultTarget, identity: ProjectionIdentity, existing_text: str
+) -> None:
+    marker = marker_from_text(existing_text)
+    if marker is None:
+        raise SecondBrainError(
+            f"Refusing to overwrite '{target.relative}': it is not marked as "
+            "StudyLoop-owned. Move or rename that note, then retry."
+        )
+    same_projection = (
+        marker.get("kind") == identity.kind
+        and marker.get("plan_id") == identity.plan_id
+        and marker.get("learning_record") == identity.learning_record
+    )
+    if not same_projection:
+        raise SecondBrainError(
+            f"Refusing to overwrite '{target.relative}': its StudyLoop ownership "
+            "marker belongs to a different projection."
+        )
+
+
+def write_projection(
+    target: VaultTarget,
+    rendered: str,
+    identity: ProjectionIdentity,
+    *,
+    create_only: bool = False,
+) -> WriteOutcome:
+    """Install ``rendered`` at ``target``, atomically and idempotently.
+
+    ``create_only`` is for template installation: never replace anything, even a
+    file StudyLoop owns, because a template the learner has edited is theirs.
+    """
+    path = target.path
+    existing_text = read_text_if_present(path)
+
+    if existing_text is not None:
+        if create_only:
+            raise SecondBrainError(f"'{target.relative}' already exists; leaving it alone.")
+        _assert_replaceable(target, identity, existing_text)
+        # Compared against the file's ACTUAL bytes, not against the content_hash
+        # recorded in its marker. The marker records what StudyLoop last INTENDED
+        # to write, so a projection the learner has edited by hand still carries
+        # the hash of the correct content -- comparing against it would report
+        # "unchanged" and leave the edit in place, silently turning the vault into
+        # a second source of truth. Both sides come from the same renderer, so byte
+        # equality is exact and needs no hash reasoning at all.
+        if existing_text == rendered:
+            logger.debug("second brain: %s is already current", target.relative)
+            return WriteOutcome.UNCHANGED
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Re-check containment now that the parents exist: a symlink could have been
+    # created since projection_path ran. The residual TOCTOU window is accepted --
+    # it cannot be closed with POSIX path APIs alone -- but narrowing it to the
+    # microseconds before the replace is worth the extra call.
+    try:
+        path.parent.resolve().relative_to(target.root)
+    except ValueError as exc:
+        raise SecondBrainError(
+            f"Refusing to write outside the vault: '{target.relative}' no longer "
+            "resolves under the configured vault."
+        ) from exc
+
+    # Replace-by-rename creates a NEW inode, so an existing note's mode has to be
+    # copied across or a learner who tightened its permissions silently loses that.
+    try:
+        existing_mode = stat.S_IMODE(path.stat().st_mode)
+    except OSError:
+        existing_mode = 0o644
+
+    # delete=False, and closed by the `with handle:` block below before the
+    # rename: a context manager here would delete the file we are about to
+    # os.replace into place.
+    handle = tempfile.NamedTemporaryFile(  # noqa: SIM115
+        mode="w",
+        encoding="utf-8",
+        dir=path.parent,
+        prefix=f".{path.name}.",
+        suffix=".tmp",
+        delete=False,
+    )
+    temp_path = Path(handle.name)
+    try:
+        with handle:
+            handle.write(rendered)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.chmod(temp_path, existing_mode)
+        os.replace(temp_path, path)
+    except OSError as exc:
+        temp_path.unlink(missing_ok=True)
+        raise SecondBrainError(
+            f"Could not write '{target.relative}': {exc}. The existing note was left untouched."
+        ) from exc
+    return WriteOutcome.WRITTEN
+
+
+def read_user_note(target: VaultTarget) -> str | None:
+    """Read a user-owned sibling note, or ``None`` when it is absent.
+
+    Read-only by construction: there is no write path for a file StudyLoop does
+    not own, and a missing note is a normal answer rather than an error — a
+    learner who has not written anything yet has nothing to pull.
+    """
+    try:
+        return target.path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return None
+    except (OSError, UnicodeDecodeError) as exc:
+        raise SecondBrainError(f"Could not read '{target.relative}': {exc}") from exc
+
+
+__all__ = [
+    "VaultTarget",
+    "WriteOutcome",
+    "marker_from_text",
+    "projection_path",
+    "read_marker",
+    "read_text_if_present",
+    "read_user_note",
+    "write_projection",
+]
