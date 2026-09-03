@@ -262,6 +262,33 @@ class TestConfigShow:
         assert result.exit_code == 0
         assert "Display current configuration" in result.output
 
+    def test_config_show_warns_about_unknown_top_level_keys(
+        self, runner: CliRunner, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """R-34: `config show` is the other place (besides `doctor`) a user
+
+        checks their config -- a misspelled or retired key must be named
+        here too, not just in `doctor`.
+        """
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text("web_port: 9000\nmispelled_lan_passwrod: secret123\n")
+        monkeypatch.setattr("studyloop.settings._CONFIG_PATH", config_file)
+
+        result = runner.invoke(cli, ["config", "show"])
+        assert result.exit_code == 0
+        assert "mispelled_lan_passwrod" in result.output
+
+    def test_config_show_no_warning_for_a_fully_known_config(
+        self, runner: CliRunner, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text("web_port: 9000\nbrowser: firefox\n")
+        monkeypatch.setattr("studyloop.settings._CONFIG_PATH", config_file)
+
+        result = runner.invoke(cli, ["config", "show"])
+        assert result.exit_code == 0
+        assert "unknown" not in result.output.lower()
+
 
 # ---------------------------------------------------------------------------
 # help text
