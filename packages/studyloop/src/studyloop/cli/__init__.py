@@ -75,6 +75,8 @@ from studyloop.cli._lazy import LazyGroup
         "prune": "studyloop.cli._focus:prune",
         # _plan.py — structured study plans
         "plan": "studyloop.cli._plan:plan_group",
+        # _brain.py — optional second-brain projections (Obsidian, xTiles)
+        "brain": "studyloop.cli._brain:brain_group",
         # _exercise.py — the three topic exercise formats and their review pipeline
         "exercise": "studyloop.cli._exercise:exercise_group",
     },
