@@ -38,6 +38,14 @@ _TOOL_LINKS: dict[str, tuple[LinkSpec, ...]] = {
             str(_HOME / ".kiro/skills/tutor-progress-tracker"),
         ),
         LinkSpec("agents/kiro/skills/study-speak", str(_HOME / ".kiro/skills/study-speak")),
+        # Opt-in and self-gating: inert unless the learner's provider is xtiles
+        # AND an `xtiles` MCP server is connected, so installing it
+        # unconditionally costs a silent file rather than an unwanted offer
+        # (T5 C5 / DECISIONS §F18).
+        LinkSpec(
+            "agents/kiro/skills/studyloop-xtiles-wind-down",
+            str(_HOME / ".kiro/skills/studyloop-xtiles-wind-down"),
+        ),
         LinkSpec(
             "agents/mcp/study-speak-server.py",
             str(_HOME / ".kiro/agents/mcp/study-speak-server.py"),
@@ -47,6 +55,10 @@ _TOOL_LINKS: dict[str, tuple[LinkSpec, ...]] = {
         LinkSpec(
             "agents/claude/socratic-mentor.md",
             str(_HOME / ".claude/agents/socratic-mentor.md"),
+        ),
+        LinkSpec(
+            "agents/claude/skills/studyloop-xtiles-wind-down",
+            str(_HOME / ".claude/skills/studyloop-xtiles-wind-down"),
         ),
     ),
     "opencode": (
