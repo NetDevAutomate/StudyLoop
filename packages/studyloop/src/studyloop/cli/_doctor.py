@@ -81,6 +81,7 @@ def _get_registry():
         check_obsidian_vault,
         check_pandoc,
         check_review_directories,
+        check_second_brain,
     )
     from studyloop.doctor.core import (
         check_agent_session_tools,
@@ -122,6 +123,13 @@ def _get_registry():
         if raw.get("obsidian") or raw.get("obsidian_base"):
             config_checks.insert(0, check_obsidian_vault)
             config_checks.insert(1, check_obsidian_export)
+        # The second brain is opt-in in the same way, and for a stronger reason:
+        # a learner with no `second_brain:` section has nothing to diagnose, and
+        # rows about an unconfigured integration are exactly the noise that
+        # teaches people to stop reading doctor output. `provider: none` is
+        # handled by the check itself, which returns no rows.
+        if raw.get("second_brain"):
+            config_checks.append(check_second_brain)
     for fn in config_checks:
         registry.register("config")(fn)
     registry.register("deps")(check_optional_deps)
