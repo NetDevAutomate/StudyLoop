@@ -16,7 +16,7 @@ export const meta = {
 // "provided model identifier is invalid"). The cross-region INFERENCE-PROFILE
 // id `us.anthropic.claude-sonnet-4-6` works and was proven (5+5, 0 errors).
 // ---------------------------------------------------------------------------
-const REPO = '/Users/user/code/personal/tools/StudyLoop'
+const REPO = '/path/to/StudyLoop' // set to your checkout before running
 const PUBLISHER = 'CodeWithMosh'
 const SOURCE_COURSE = 'Complete_SQL_Mastery'
 const SECTIONS = 'study-notes/getting-started-0025,study-notes/data-types-0035'

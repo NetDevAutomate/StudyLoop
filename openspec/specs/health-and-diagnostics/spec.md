@@ -148,7 +148,7 @@ re-runs. An optional `--sync/--skip-sync` flag controls whether
 - **WHEN** `studyloop install tools` runs from a directory where
   `find_repo_root()` returns `None`
 - **THEN** `require_repo_root()` raises `InstallError` with message
-  "This command requires a source checkout of socratic-study-mentor"
+  "This command requires a source checkout of studyloop"
 
 ### Requirement: upgrade orchestrates component-scoped updates with dry-run support
 `studyloop upgrade` (`cli/_upgrade.py`) SHALL accept

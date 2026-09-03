@@ -1,18 +1,18 @@
 """Cross-machine state sync using agent-session-tools infrastructure.
 
 Uses the existing session-sync merge logic (SQLite + rsync) rather than
-reinventing sync. The Mac Mini acts as the hub — all machines push/pull to it.
+reinventing sync. One machine acts as the hub — all machines push/pull to it.
 
 Config lives at ~/.config/studyloop/config.yaml
 
 Host schema:
   hosts:
-    macmini:
+    hub:
       hostname: study-hub
       ip_address:
-        primary: 192.168.1.22
-        secondary: 192.168.1.12   # optional, fallback for wifi
-      user: user
+        primary: 192.168.1.20
+        secondary: 192.168.1.21   # optional, fallback for wifi
+      user: alex
       state_json: ~/.config/studyloop/state.json
       sessions_db: ~/.config/studyloop/sessions.db
 

@@ -41,7 +41,7 @@ from studyloop.settings import (  # noqa: E402
 
 # Study-notes directory on local MacBook. Long slug trips detect-secrets'
 # base64 entropy heuristic; not a secret.
-_OBSIDIAN_BASE = "/Users/user/Obsidian/Personal/2-Areas/Study/Courses/Udemy"
+_OBSIDIAN_BASE = str(Path.home() / "Obsidian/Personal/Study/Courses/Udemy")
 _COURSE_SLUG = (
     "Ultimate_AWS_Data_Engineering_Bootcamp_with_Real_World_Labs"  # pragma: allowlist secret
 )
