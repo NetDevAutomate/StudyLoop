@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from unittest.mock import patch
 
+import click
 import pytest
 from click.testing import CliRunner
 
@@ -107,6 +108,7 @@ class TestDoctorCommand:
         assert "not one of" in result.output.lower()
 
         category_param = next(p for p in doctor.params if p.name == "category")
+        assert isinstance(category_param.type, click.Choice)
         assert "updates" not in category_param.type.choices
 
     def test_fix_applies_and_reruns(self, runner: CliRunner):
