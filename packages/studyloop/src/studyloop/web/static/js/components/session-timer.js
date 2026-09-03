@@ -74,6 +74,7 @@ export function sessionTimer() {
       messageTimeout: null,
       sessionActive: false,
       confirmingEnd: false,
+      endError: '', // R-70: set when /api/session/end fails; keeps the dialog open
       // Park-first friction modal (3-topic rule)
       confirmingParkFirst: false,
       parkFirstTopics: [],
@@ -335,6 +336,7 @@ export function sessionTimer() {
         // that is the ONE state where the learner needs End and has no session
         // of their own to end it from.
         if (!this.sessionActive && !this.conflictSession) return;
+        this.endError = '';
         this.confirmingEnd = true;
       },
 
@@ -368,17 +370,30 @@ export function sessionTimer() {
       },
 
       async confirmEndSession() {
-        this.confirmingEnd = false;
         if (!this.sessionActive) {
           /* No session of our own, but one we do not own is blocking Start: the
              dialog was opened by the picker's recovery End, so honour the
              confirmation here too instead of dropping the click. */
+          this.confirmingEnd = false;
           if (this.conflictSession) await this._releaseConflictSession();
           return;
         }
+        // R-70: this used to clear confirmingEnd (closing the dialog) BEFORE
+        // the fetch even started, so a failed POST looked identical to a
+        // successful one -- the public guide says ending from here is what
+        // saves the summary and evidence. Now the dialog stays open (and the
+        // same button retries) until the server actually confirms the end.
+        this.endError = '';
+        let ended = false;
         try {
-          await fetch('/api/session/end', { method: 'POST' });
-        } catch { /* best effort */ }
+          const res = await fetch('/api/session/end', { method: 'POST' });
+          ended = res.ok;
+        } catch { /* ended stays false; network error */ }
+        if (!ended) {
+          this.endError = 'Could not end the session — try again.';
+          return;
+        }
+        this.confirmingEnd = false;
         window.dispatchEvent(new CustomEvent('study-session-stop', { detail: { origin: 'study' } }));
         this.sessionActive = false;
         clearInterval(this.interval);
@@ -459,13 +474,21 @@ export function sessionTimer() {
       },
 
       /* The actual release. Separate from endConflictSession() so the confirm
-         dialog can call it directly without re-entering the two-phase gate. */
+         dialog can call it directly without re-entering the two-phase gate.
+         Still tears down regardless of the fetch outcome -- a stuck conflict
+         block is worse than a lost error -- but R-70 adds a toast so a
+         failure is not completely silent. */
       async _releaseConflictSession() {
         this.confirmingEnd = false;
         const epoch = ++this._conflictEpoch;
         try {
-          await fetch('/api/session/end', { method: 'POST' });
-        } catch { /* best effort — a stuck conflict block is worse than a lost error */ }
+          const res = await fetch('/api/session/end', { method: 'POST' });
+          if (!res.ok) {
+            Alpine.store('toast').show('Session may not have ended cleanly');
+          }
+        } catch {
+          Alpine.store('toast').show('Session may not have ended cleanly — offline?');
+        }
         if (epoch !== this._conflictEpoch) return;
         this._clearConflict();
         this.starting = false;

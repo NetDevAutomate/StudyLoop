@@ -1728,6 +1728,9 @@
                       aria-label="End body double session" @click="endSession()">End session</button>
               <div id="bd-end-confirm" class="bd-end-confirm" x-show="confirmingEnd">
                 <span>End this session?</span>
+                <!-- R-70: shown when /api/session/end fails; the dialog stays
+                     open (confirmingEnd is untouched) and "Yes, end it" retries. -->
+                <span id="bd-end-error" class="bd-end-error" role="alert" x-show="endError" x-text="endError"></span>
                 <button id="bd-end-confirm-yes" type="button" class="bulk-btn" @click="confirmEnd()">Yes, end it</button>
                 <button id="bd-end-cancel" type="button" class="bulk-btn" @click="cancelEnd()">Keep going</button>
               </div>
@@ -2186,9 +2189,12 @@
             <p x-text="conflictSession && !conflictIsOwn
                        ? 'End the live session in ' + (conflictOwnerLabel || 'the other view') + '?'
                        : 'End the current study session?'"></p>
+            <!-- R-70: shown when /api/session/end fails; the dialog stays open
+                 (confirmingEnd is untouched) and "End session" retries. -->
+            <p class="end-confirm-error" role="alert" x-show="endError" x-text="endError"></p>
             <div class="end-confirm-actions">
               <button class="end-confirm-btn end-confirm-cancel"
-                      @click="confirmingEnd = false">Keep going</button>
+                      @click="confirmingEnd = false; endError = ''">Keep going</button>
               <button class="end-confirm-btn end-confirm-yes"
                       data-testid="study-end-confirm-yes"
                       @click="confirmEndSession()">End session</button>

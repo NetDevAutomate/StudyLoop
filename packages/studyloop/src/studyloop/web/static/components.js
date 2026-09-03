@@ -1342,8 +1342,15 @@ function reviewApp(defaultMode) {
     },
 
     async _recordReview(cardHash, correct, cardType) {
+      // R-70: this used to swallow every failure silently. There is no
+      // dialog here to keep open -- the caller has already advanced past
+      // this card by the time the response comes back -- so a toast is the
+      // surface: same defect shape (a failed write looked identical to a
+      // successful one) as /api/session/end, fixed the way this codebase
+      // already surfaces background-write failures elsewhere (park/dismiss/
+      // save all use the same Alpine.store('toast') pattern).
       try {
-        await fetch('/api/review', {
+        const res = await fetch('/api/review', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1353,7 +1360,12 @@ function reviewApp(defaultMode) {
             card_type: cardType,
           }),
         });
-      } catch { /* best effort */ }
+        if (!res.ok) {
+          Alpine.store('toast').show('Could not save that review — try again');
+        }
+      } catch {
+        Alpine.store('toast').show('Could not save that review — offline?');
+      }
     },
 
     // ------------------------------------------------------------------
@@ -3216,6 +3228,7 @@ function bodyDoubleSession() {
     focusCollapsed: false, captureCollapsed: false, captureTab: 'note',
     activity: '', agent: '', transport: 'pty', energy: 5, agents: [],
     sessionActive: false, liveActivity: '', confirmingEnd: false,
+    endError: '', // R-70: set when /api/session/end fails; keeps the dialog open
     starting: false, startError: '',
     /* ---- origin-aware session recovery --------------------------------
      * There is ONE session slot. When the Study Session view holds it, this
@@ -3613,9 +3626,14 @@ function bodyDoubleSession() {
       const origin = (this.conflictSession && this.conflictSession.origin) || 'study';
       /* Bump BEFORE the await: a probe in flight must not restore the banner. */
       this._conflictEpoch += 1;
+      // Still tears down regardless of the fetch outcome -- a stuck banner is
+      // worse -- but R-70 adds a toast so a failure is not completely silent.
       try {
-        await fetch('/api/session/end', { method: 'POST' });
-      } catch { /* tear the UI down regardless — a stuck banner is worse */ }
+        const res = await fetch('/api/session/end', { method: 'POST' });
+        if (!res.ok) Alpine.store('toast').show('Session may not have ended cleanly');
+      } catch {
+        Alpine.store('toast').show('Session may not have ended cleanly — offline?');
+      }
       window.dispatchEvent(new CustomEvent('study-session-stop', { detail: { origin } }));
       const pomodoro = Alpine.store('pomodoro');
       if (pomodoro) pomodoro.stop();
@@ -3668,16 +3686,27 @@ function bodyDoubleSession() {
       }));
     },
 
-    endSession() { this.confirmingEnd = true; },
-    cancelEnd() { this.confirmingEnd = false; },
+    endSession() { this.endError = ''; this.confirmingEnd = true; },
+    cancelEnd() { this.confirmingEnd = false; this.endError = ''; },
     async confirmEnd() {
       /* Bumped before the await for the same reason as endConflictSession():
          a conflict probe in flight must not raise a banner for the session we
          are in the middle of ending. */
       this._conflictEpoch += 1;
+      // R-70: this used to tear the UI down regardless of the fetch outcome,
+      // so a failed POST looked identical to a successful one -- the public
+      // guide says ending from here is what saves the summary and evidence.
+      // Now the dialog stays open (and the same button retries) on failure.
+      this.endError = '';
+      let ended = false;
       try {
-        await fetch('/api/session/end', { method: 'POST' });
-      } catch { /* tear the UI down regardless — a stuck "live" strip is worse */ }
+        const res = await fetch('/api/session/end', { method: 'POST' });
+        ended = res.ok;
+      } catch { /* ended stays false; network error */ }
+      if (!ended) {
+        this.endError = 'Could not end the session — try again.';
+        return;
+      }
       window.dispatchEvent(new CustomEvent('study-session-stop', {
         detail: { origin: 'body-double' },
       }));
