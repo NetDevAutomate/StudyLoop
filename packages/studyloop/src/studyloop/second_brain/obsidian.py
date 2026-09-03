@@ -6,12 +6,18 @@ selected ``provider: obsidian``. ``tests/test_second_brain_optionality.py``
 asserts it is absent from ``sys.modules`` on every disabled path — a real
 assertion precisely because the module exists.
 
-The backend is the thin part. It decides WHAT to publish and gathers the data;
-the rendering is pure (:mod:`~studyloop.second_brain.projection`), the writing is
-one guarded module (:mod:`~studyloop.second_brain.obsidian_writer`), and the
-optional CLI is one adapter (:mod:`~studyloop.second_brain.obsidian_cli`). Keeping
-those apart is what makes the safety rules testable in isolation from the
-question of which notes a wind-down should produce.
+The backend is the thin part. It decides WHAT to publish and gathers the data; the
+rendering is pure (:mod:`~studyloop.second_brain.projection`) and the writing is one
+guarded module (:mod:`~studyloop.second_brain.obsidian_writer`). Keeping those apart
+is what makes the safety rules testable in isolation from the question of which notes
+a wind-down should produce.
+
+There is deliberately no path through the official Obsidian CLI. An adapter for it
+was written and then withdrawn before release: it sent notes to whichever vault the
+running desktop app answered for, with no way to tie that vault to the configured
+`vault_path`, and it passed the whole plan text as a command-line argument, where any
+other user on the machine could read it from the process table. Writing files
+directly is what the feature always needed; see the 0.2.0 review record.
 
 Layout inside ``<vault>/<folder>/`` (``Study`` by default)::
 
@@ -39,6 +45,7 @@ from studyloop.second_brain.core import (
 )
 from studyloop.second_brain.obsidian_writer import (
     WriteOutcome,
+    classify_write,
     projection_path,
     read_user_note,
     write_projection,
@@ -105,16 +112,6 @@ class ObsidianBackend:
         root = self.vault_root
         return root.is_dir() and os.access(root, os.W_OK)
 
-    def effective_cli_mode(self) -> str:
-        """``"cli"`` or ``"files"`` for this moment.
-
-        Resolved on demand rather than cached: the answer depends on whether the
-        desktop app is running, which changes while StudyLoop is not looking.
-        """
-        from studyloop.second_brain.obsidian_cli import resolve_cli_mode
-
-        return resolve_cli_mode(self._config)
-
     def describe(self) -> BrainDescription:
         available = self.is_available()
         if available:
@@ -132,10 +129,6 @@ class ObsidianBackend:
             supports_pull_notes=True,
             vault_path=str(self.vault_root),
             folder=self._config.folder,
-            # The EFFECTIVE mode, not the configured one: `auto` is not an answer
-            # a learner can act on. Probed only when the vault is usable, so a
-            # status call on a missing vault never spawns anything.
-            use_cli=self.effective_cli_mode() == "cli" if available else False,
             detail=detail,
         )
 
@@ -182,23 +175,13 @@ class ObsidianBackend:
         rendered: str,
         identity: ProjectionIdentity,
     ) -> tuple[WriteOutcome, tuple[str, ...]]:
-        """Write one projection, letting Obsidian create it first when it can.
+        """Write one projection through the guarded writer.
 
-        When the CLI is usable, an ABSENT note is created through Obsidian so the
-        learner's own template and plugin hooks fire; the canonical bytes are then
-        installed by the writer regardless. Those hooks are therefore transient by
-        design — the final content is always the projection, which is what makes
-        the idempotence check meaningful.
+        One path, on purpose. The writer is where containment, ownership and
+        atomicity live, so anything that wrote a note some other way would be a
+        second place for those rules to be forgotten.
         """
-        warnings: list[str] = []
-        if not target.path.exists() and self.effective_cli_mode() == "cli":
-            from studyloop.second_brain.obsidian_cli import create_note
-
-            if not create_note(self._config, target.relative, rendered):
-                warnings.append(
-                    f"Obsidian could not create '{target.relative}'; wrote the file directly."
-                )
-        return write_projection(target, rendered, identity), tuple(warnings)
+        return write_projection(target, rendered, identity), ()
 
     def _bucket(
         self, outcome: WriteOutcome, target: VaultTarget
@@ -231,26 +214,70 @@ class ObsidianBackend:
         except InvalidPlanIdError as exc:
             raise SecondBrainError(f"Not a usable plan id: {plan_id!r}.") from exc
 
-    def dry_run_targets_for_today(self) -> str:
-        self._require_available()
-        return self._target(TODAY_RELATIVE).relative
+    def plan_dry_run(self, plan_id: str | None) -> PublishResult:
+        """What publishing would do, classified exactly as a real publish would.
 
-    def dry_run_targets_for_plan(self, plan: StudyPlan) -> tuple[str, ...]:
+        ``plan_id=None`` means today's note. Each target is rendered and compared
+        against what is on disk through the same helpers ``_install`` uses, so a note
+        that is already current reports ``unchanged`` and one the learner owns reports
+        a refusal in ``skipped`` -- rather than every target reporting "would write",
+        which over-promised in one direction and under-warned in the other.
+        """
         self._require_available()
-        targets = [self._target(f"Plans/{plan.plan_id}.md").relative]
-        targets.extend(
-            self._target(f"Learning Records/{plan.plan_id}/LR-{record.number:04d}.md").relative
-            for record in plan.learning_records
+        written: list[str] = []
+        unchanged: list[str] = []
+        skipped: list[str] = []
+
+        if plan_id is None:
+            identity = self._identity("today-projection", None)
+            plans: list[tuple[VaultTarget, str, ProjectionIdentity]] = [
+                (self._target(TODAY_RELATIVE), render_today(self._today_data(), identity), identity)
+            ]
+            operation: str = "publish_today"
+        else:
+            plan = self._load(plan_id)
+            plan_identity = self._identity("plan-projection", plan.plan_id)
+            plans = [
+                (
+                    self._target(f"Plans/{plan.plan_id}.md"),
+                    render_plan_projection(plan, plan_identity, backlinks=self._backlinks(plan)),
+                    plan_identity,
+                )
+            ]
+            for record in plan.learning_records:
+                record_identity = self._identity(
+                    "learning-record-projection", plan.plan_id, record.number
+                )
+                plans.append(
+                    (
+                        self._target(f"Learning Records/{plan.plan_id}/LR-{record.number:04d}.md"),
+                        render_learning_record_projection(plan, record, record_identity),
+                        record_identity,
+                    )
+                )
+            operation = "publish_plan"
+
+        for target, rendered, identity in plans:
+            verdict = classify_write(target, rendered, identity)
+            if verdict.outcome is WriteOutcome.UNCHANGED:
+                unchanged.append(target.relative)
+            elif verdict.refusal is not None:
+                skipped.append(verdict.refusal)
+            else:
+                written.append(target.relative)
+
+        return PublishResult(
+            provider=self.provider,
+            operation=operation,  # type: ignore[arg-type]
+            written=tuple(written),
+            unchanged=tuple(unchanged),
+            skipped=tuple(skipped),
         )
-        return tuple(targets)
 
-    def _backlink_footer(self, plan: StudyPlan) -> str:
+    def _backlinks(self, plan: StudyPlan) -> tuple[str, ...]:
         from studyloop.second_brain.backlinks import wikilinks_for
 
-        links = wikilinks_for(plan, self.vault_root, enabled=self._config.backlinks)
-        if not links:
-            return ""
-        return "\n## Related notes\n\n" + "\n".join(f"- {link}" for link in links) + "\n"
+        return tuple(wikilinks_for(plan, self.vault_root, enabled=self._config.backlinks))
 
     # -- operations ---------------------------------------------------------
 
@@ -264,7 +291,12 @@ class ObsidianBackend:
         warnings: list[str] = []
 
         identity = self._identity("plan-projection", plan.plan_id)
-        rendered = render_plan_projection(plan, identity) + self._backlink_footer(plan)
+        # Backlinks go THROUGH the renderer, not after it. Appending them to the
+        # finished document left the recorded content_hash covering only part of the
+        # file, for the commonest note kind -- so the marker did not mean what its
+        # name says. Idempotence was unaffected (that compares bytes), but a future
+        # schema consumer reading the hash would have been wrong.
+        rendered = render_plan_projection(plan, identity, backlinks=self._backlinks(plan))
         target = self._target(f"Plans/{plan.plan_id}.md")
         outcome, notes = self._install(target, rendered, identity)
         warnings.extend(notes)
@@ -306,23 +338,12 @@ class ObsidianBackend:
             target, render_today(self._today_data(), identity), identity
         )
         written, unchanged = self._bucket(outcome, target)
-
-        extra: list[str] = list(warnings)
-        if self._config.daily_note:
-            from studyloop.second_brain.obsidian_cli import daily_append
-            from studyloop.settings import load_settings
-
-            # The daily note is the learner's file. It is linked, at most once a
-            # day, only with both opt-ins in place; the stamp lives in the state
-            # directory so no bookkeeping file is written into the vault.
-            daily_append(self._config, load_settings().state_dir)
-
         return PublishResult(
             provider=self.provider,
             operation="publish_today",
             written=written,
             unchanged=unchanged,
-            warnings=tuple(extra),
+            warnings=warnings,
         )
 
     def publish_learning_record(self, plan_id: str, record_number: int) -> PublishResult:
@@ -358,12 +379,10 @@ class ObsidianBackend:
         StudyLoop — an empty file created "helpfully" would be one more piece of
         StudyLoop clutter in a vault.
         """
-        from studyloop.planning.store import validate_plan_id
-
-        try:
-            valid_id = validate_plan_id(plan_id)
-        except Exception as exc:
-            raise SecondBrainError(f"Not a usable plan id: {plan_id!r}.") from exc
+        # normalise_plan_id already maps the store's own error type to
+        # SecondBrainError. A bare `except Exception` here caught anything at all,
+        # including bugs, and reported them as a bad plan id.
+        valid_id = self.normalise_plan_id(plan_id)
 
         target = self._target(f"Plans/{valid_id}.notes.md")
         text = read_user_note(target)

@@ -165,10 +165,22 @@ def test_defaults_of_every_field(config_file) -> None:
     config = load_settings().second_brain
     assert config.folder == "Study"
     assert config.backlinks is True
-    assert config.use_cli == "auto"
-    assert config.vault_name is None
-    assert config.template is None
-    assert config.daily_note is False
+
+
+@pytest.mark.parametrize("key", ["use_cli", "vault_name", "template", "daily_note"])
+def test_a_retired_cli_adapter_key_is_reported_not_ignored(config_file, key) -> None:
+    """The Obsidian CLI adapter was withdrawn before release; its keys must be loud.
+
+    Silently dropping `daily_note: true` would leave a learner believing StudyLoop
+    was still appending a line to their own daily note. There is nothing to migrate --
+    the file writer always produced the final bytes -- so naming the key and saying it
+    is gone is the whole of the fix.
+    """
+    config_file({"second_brain": {"provider": "obsidian", key: True}})
+    with pytest.raises(ConfigError) as excinfo:
+        load_settings()
+    assert key in str(excinfo.value)
+    assert "withdrawn" in str(excinfo.value)
 
 
 def test_invalid_provider_is_config_error(config_file) -> None:
@@ -179,29 +191,6 @@ def test_invalid_provider_is_config_error(config_file) -> None:
     assert "second_brain.provider" in message
     assert "none, obsidian, xtiles" in message
     assert "\n" not in message.strip()
-
-
-def test_invalid_use_cli_value_is_config_error(config_file) -> None:
-    config_file({"second_brain": {"provider": "obsidian", "use_cli": "sometimes"}})
-    with pytest.raises(ConfigError) as excinfo:
-        load_settings()
-    assert "second_brain.use_cli" in str(excinfo.value)
-    assert "auto, on, off" in str(excinfo.value)
-
-
-@pytest.mark.parametrize(
-    ("raw", "expected"),
-    [
-        pytest.param(True, "on", id="yaml-true-is-on"),
-        pytest.param(False, "off", id="yaml-false-is-off"),
-        pytest.param("ON", "on", id="case-insensitive"),
-        pytest.param(" auto ", "auto", id="whitespace-tolerated"),
-    ],
-)
-def test_use_cli_bool_aliases_map_to_on_off(config_file, raw, expected) -> None:
-    """``use_cli: false`` is what a learner naturally writes for a flag."""
-    config_file({"second_brain": {"provider": "obsidian", "use_cli": raw}})
-    assert load_settings().second_brain.use_cli == expected
 
 
 def test_absolute_folder_is_config_error(config_file) -> None:
@@ -222,18 +211,11 @@ def test_empty_folder_is_config_error(config_file) -> None:
         load_settings()
 
 
-@pytest.mark.parametrize("key", ["backlinks", "daily_note"])
-def test_non_boolean_flag_is_config_error(config_file, key) -> None:
+def test_non_boolean_flag_is_config_error(config_file) -> None:
     """``backlinks: maybe`` must not be coerced to ``True`` by truthiness."""
-    config_file({"second_brain": {"provider": "obsidian", key: "maybe"}})
-    with pytest.raises(ConfigError, match=rf"second_brain\.{key}"):
+    config_file({"second_brain": {"provider": "obsidian", "backlinks": "maybe"}})
+    with pytest.raises(ConfigError, match=r"second_brain\.backlinks"):
         load_settings()
-
-
-@pytest.mark.parametrize("key", ["vault_name", "template"])
-def test_string_or_null_fields_accept_null(config_file, key) -> None:
-    config_file({"second_brain": {"provider": "obsidian", key: None}})
-    assert getattr(load_settings().second_brain, key) is None
 
 
 def test_non_mapping_section_is_config_error(config_file) -> None:

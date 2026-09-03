@@ -77,10 +77,10 @@ def _reject_absolute(values: tuple[str, ...], field: str) -> list[str]:
 class BrainDescription:
     """What a backend is, and what it can currently do.
 
-    Nine fields, so an agent (and ``studyloop doctor``) can decide everything
-    it needs from one ``studyloop brain status --json`` call: whether to offer a
-    publish at wind-down (``configured and supports_publish``), whether a pull
-    is possible, and where notes would land.
+    Eight fields, so an agent (and ``studyloop doctor``) can decide everything it
+    needs from one ``studyloop brain status --json`` call: whether to offer a publish
+    at wind-down (``configured and supports_publish``), whether a pull is possible,
+    and where notes would land.
 
     ``vault_path`` is the only absolute path any ``brain`` JSON may carry: it is
     the learner's own configured path, and hiding it would make a
@@ -94,10 +94,6 @@ class BrainDescription:
     supports_pull_notes: bool
     vault_path: str | None
     folder: str | None
-    #: The EFFECTIVE Obsidian-CLI mode, not the configured one: ``use_cli:
-    #: auto`` resolves to a real yes/no at call time, and the learner needs to
-    #: know which they got.
-    use_cli: bool
     detail: str
 
     def to_json_dict(self) -> dict[str, object]:
@@ -109,7 +105,6 @@ class BrainDescription:
             "supports_pull_notes": bool(self.supports_pull_notes),
             "vault_path": self.vault_path,
             "folder": self.folder,
-            "use_cli": bool(self.use_cli),
             "detail": self.detail,
         }
 
@@ -213,7 +208,6 @@ class _InertBackend:
             supports_pull_notes=False,
             vault_path=None,
             folder=None,
-            use_cli=False,
             detail=self._detail,
         )
 
@@ -283,7 +277,6 @@ class XtilesStageOneBackend(_InertBackend):
             supports_pull_notes=False,
             vault_path=None,
             folder=None,
-            use_cli=False,
             detail=self._detail,
         )
 

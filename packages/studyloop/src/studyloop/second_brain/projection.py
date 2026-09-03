@@ -63,6 +63,11 @@ PROJECTED_PLAN_KEYS: tuple[str, ...] = (
 #: is that it can be read at a glance before deciding to sit down.
 TODAY_SECTION_HEADINGS: tuple[str, ...] = ("Next action", "Due reviews", "Active topics")
 
+#: Heading for the wikilinks section, when backlinks are enabled and match.
+#: Not part of PLAN_SECTION_HEADINGS: it is StudyLoop's addition to the projection,
+#: not a section of the plan document, and the template guard compares those.
+RELATED_HEADING = "Related notes"
+
 #: Bounds on Today. Chosen so the note stays a decision aid rather than a backlog:
 #: an unbounded due list is the thing a learner avoids looking at.
 MAX_TODAY_ALTERNATES = 3
@@ -175,11 +180,22 @@ def _bullets(items: list[str], *, empty: str) -> list[str]:
     return [f"- {item}" for item in items] + [""]
 
 
-def render_plan_projection(plan: StudyPlan, identity: ProjectionIdentity) -> str:
+def render_plan_projection(
+    plan: StudyPlan,
+    identity: ProjectionIdentity,
+    *,
+    backlinks: tuple[str, ...] = (),
+) -> str:
     """Render a plan as the note StudyLoop owns inside the vault.
 
     Section order comes from :data:`PLAN_SECTION_HEADINGS`, the same constant the
     plan document and the vault template use, so all three cannot drift apart.
+
+    ``backlinks`` are rendered HERE rather than appended by the caller. Appending
+    them to a finished document left the recorded ``content_hash`` covering only the
+    part before the footer, so for the commonest note kind the marker did not mean
+    what its name says. The hash is stamped by :func:`_finalise` at the end of this
+    function, so anything that must be covered by it has to pass through here.
     """
     frontmatter = {
         "title": plan.title,
@@ -248,6 +264,11 @@ def render_plan_projection(plan: StudyPlan, identity: ProjectionIdentity) -> str
 
     out.append(f"## {PLAN_SECTION_HEADINGS[5]}\n")
     out.append(f"{plan.notes or '_No notes._'}\n")
+
+    if backlinks:
+        out.append(f"## {RELATED_HEADING}\n")
+        out.extend(f"- {link}" for link in backlinks)
+        out.append("")
 
     return _finalise("\n".join(out))
 
@@ -329,6 +350,7 @@ __all__ = [
     "OWNERSHIP_KEY",
     "OWNERSHIP_SCHEMA",
     "PROJECTED_PLAN_KEYS",
+    "RELATED_HEADING",
     "TODAY_SECTION_HEADINGS",
     "ProjectionIdentity",
     "ProjectionKind",

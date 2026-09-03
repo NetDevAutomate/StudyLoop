@@ -154,46 +154,25 @@ marker, which is what makes a note you create from one permanently yours.
 There is also an optional Dataview query page listing your published plans. It needs
 the community Dataview plugin; without it the page is harmless plain text.
 
-### The optional Obsidian CLI adapter
+### Why there is no Obsidian CLI integration
 
-StudyLoop writes files directly, and that is all it needs. The
-[official Obsidian CLI](https://obsidian.md/cli) is an optional extra that adds two
-things: your own Obsidian template and plugin hooks fire when a note is first
-created, and — if you opt in twice — one link to today's study appears in your daily
-note.
+Obsidian ships an official CLI, and an adapter for it was written for this release
+and then withdrawn before it shipped. Two reasons, both found in review:
 
-It requires the Obsidian **desktop app to be running**, so StudyLoop probes for it
-rather than assuming:
+- It sent notes to whichever vault the running desktop app answered for, and there
+  was no way to tie that vault to the one you configured. With more than one vault
+  open, a publish could put your plan in the wrong one.
+- It passed the whole plan text as a command-line argument, where any other user on
+  the machine could read it out of the process table.
 
-```text
-obsidian eval '<script>' [vault=<name>]
-obsidian create name=<path> [template=<name>] content=<text> [vault=<name>]
-obsidian daily:append content=<text> [vault=<name>]
-```
+Writing files directly is what this feature always needed — the adapter only added
+the chance for your own Obsidian template to fire on a note StudyLoop then
+overwrote anyway. Nothing here runs an external program, and a test asserts that.
 
-`use_cli` has three settings, and the difference between them is what you are told:
-
-| Setting | Behaviour |
-| --- | --- |
-| `auto` *(default)* | Use the CLI if the binary is installed and Obsidian answers. Otherwise write files, quietly. |
-| `on` | Same, but log one warning when it cannot be used — you asked for it, so silence would be wrong. |
-| `off` | Never run a subprocess at all. |
-
-Whatever happens, the note gets written. A failed CLI call costs you a template
-hook, never a note. `studyloop brain status` and `studyloop doctor` report which
-mode is actually in use, not just which one you configured.
-
-If you have several vaults open, set `vault_name`. A probe that answers for a
-different vault is treated as a failure — writing your study notes into the wrong
-vault is worse than not using the CLI.
-
-### The daily note
-
-`daily_note: true` appends **one line** to today's daily note, at most once a
-calendar day, and only when the CLI adapter is actually in use. It is the only
-thing StudyLoop writes into a file you own, which is why it needs a second explicit
-opt-in and is off by default. The once-a-day record is kept in StudyLoop's state
-directory, never in your vault.
+If you had `use_cli`, `vault_name`, `template` or `daily_note` in your config from a
+pre-release build, StudyLoop now tells you they are gone rather than ignoring them —
+`daily_note` in particular wrote into your own daily note, and you should know it no
+longer does.
 
 ### Two StudyLoop folders in one vault
 
@@ -326,11 +305,12 @@ second_brain:
   vault_path: ~/Obsidian/Personal
   folder: Study               # the folder inside the vault StudyLoop owns
   backlinks: true             # [[wikilinks]] to your notes, when the matcher is available
-  use_cli: auto               # auto | on | off
-  vault_name:                 # for the CLI, when you have several vaults
-  template:                   # your own Obsidian template to create notes from
-  daily_note: false           # one link line in today's daily note (needs the CLI)
 ```
+
+Four keys, and that is the whole surface. `STUDYLOOP_SECOND_BRAIN_VAULT` also exists
+and overrides the DEFAULT vault location — it is there so the test suite can never
+reach a real vault, it never selects a provider, and an explicit `vault_path` always
+wins over it. If you have it set in a shell profile, unset it.
 
 `vault_path` is optional: if you already configured a vault for the session-memory
 export, or an `obsidian_base`, StudyLoop uses that. Configuring a vault does **not**
@@ -353,9 +333,13 @@ already at that path. Move or rename it; StudyLoop will not overwrite it for you
 **My edits to a published note keep disappearing.** They will. Put your own notes in
 the sibling `.notes.md`, which StudyLoop only ever reads.
 
-**The Obsidian CLI is installed but not being used.** The desktop app has to be
-running, and — if you set `vault_name` — the right vault has to be the one that
-answers. `studyloop doctor` reports what it found.
+**A note StudyLoop published disappeared from my vault.** Nothing here deletes.
+Check whether you renamed it — a renamed projection becomes yours, and the next
+publish recreates the canonical one under the original name.
+
+**I deleted a plan and its projection is still there.** Publishing never deletes, so
+the note stays until you remove it. That is deliberate: deleting notes is exactly the
+class of action this feature will not take without being asked.
 
 **Backlinks are not appearing.** They need the vault topic matcher from
 `agent-session-tools`. Without it, publishing continues and logs one warning.
@@ -366,7 +350,6 @@ Every claim about someone else's software, with the date it was checked.
 
 | Claim | Source | Verified on |
 | --- | --- | --- |
-| An official Obsidian CLI exists; it drives a running desktop app | <https://obsidian.md/cli> | 2026-09-03 |
 | Dataview is a community plugin, not built in | <https://github.com/blacksmithgu/obsidian-dataview> | 2026-09-03 |
 | One hosted xTiles MCP server, at <https://mcp.xtiles.app/mcp>; one browser authorisation, no API key to copy or store | <https://help.xtiles.app/en/articles/16126651-how-to-connect-xtiles-to-other-ai-tools> | 2026-09-03 |
 | MCP works on every xTiles plan, Free included, with some limitations on Free | <https://help.xtiles.app/en/articles/16126651-how-to-connect-xtiles-to-other-ai-tools> | 2026-09-03 |

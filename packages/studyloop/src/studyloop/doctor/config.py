@@ -240,11 +240,16 @@ def check_second_brain() -> list[CheckResult]:
 
     Returns ``[]`` when there is no ``second_brain`` section or the provider is
     ``none``. A learner who has never configured a second brain must not see rows
-    about software they do not use — the setup wizard does not ask about it, so
-    reporting on it would be reporting on nothing. Same reasoning the Obsidian
-    export checks above are registered conditionally for; the registration in
-    ``cli/_doctor.py`` enforces it, and this early return makes the function safe
-    to call unconditionally.
+    about software they do not use, and rows about an unconfigured integration are
+    exactly the noise that teaches people to stop reading doctor output. Same
+    reasoning the Obsidian export checks above are registered conditionally for; the
+    registration in ``cli/_doctor.py`` enforces it, and this early return makes the
+    function safe to call unconditionally.
+
+    (``studyloop config init`` DOES offer to enable this, after the learner has
+    accepted a vault. That is the only wizard that asks, it defaults to no, and
+    declining writes nothing -- so absence of the section still means the learner
+    never opted in.)
 
     Nothing here is ever ``fail``. A vault on an unmounted drive deserves a
     warning, but it is not a broken installation, and ``doctor`` is what a learner
@@ -332,25 +337,4 @@ def check_second_brain() -> list[CheckResult]:
         )
     )
 
-    # The EFFECTIVE mode, not the configured one: `auto` is not an answer a learner
-    # can act on. resolve_cli_mode never probes when the mode is `off`, so this
-    # cannot spawn Obsidian for someone who switched it off.
-    from studyloop.second_brain.obsidian_cli import resolve_cli_mode
-
-    effective = resolve_cli_mode(config)
-    binary = "yes" if shutil.which("obsidian") else "no"
-    results.append(
-        CheckResult(
-            "config",
-            "second_brain_cli",
-            "info",
-            f"Obsidian CLI: configured {config.use_cli}, binary on PATH {binary}, "
-            f"in use now: {effective}",
-            ""
-            if effective == "cli" or config.use_cli == "off"
-            else "The Obsidian desktop app must be running for the CLI adapter; "
-            "notes are written directly otherwise.",
-            False,
-        )
-    )
     return results

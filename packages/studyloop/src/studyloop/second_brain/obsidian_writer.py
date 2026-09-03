@@ -16,9 +16,17 @@ Three rules, enforced in this order:
    in the way is refused; so is the projection of a plan that has been renamed,
    because losing the note under the old name would be silent data loss.
 3. **Atomicity.** Write a sibling temp file, fsync it, copy the existing mode
-   across, then ``os.replace``. Obsidian watches the directory, so a partially
-   written note is visible in the UI — and ``os.replace`` is only atomic within
-   one filesystem, which is why the temp file is a sibling and never in ``/tmp``.
+   across, re-check that the target has not been exchanged, then ``os.replace``.
+   Obsidian watches the directory, so a partially written note is visible in the UI —
+   and ``os.replace`` is only atomic within one filesystem, which is why the temp file
+   is a sibling and never in ``/tmp``.
+
+Known limitation, stated rather than papered over: an attacker who can already write
+to the vault directory can exchange an ANCESTOR for a symlink between the containment
+re-check and the rename. Closing that needs descriptor-relative, no-follow operations
+(``openat``/``renameat`` with ``O_NOFOLLOW``), which have no portable equivalent on
+Windows. The checks here narrow the window to microseconds and detect an exchange of
+the target itself; they do not eliminate the ancestor case.
 
 :func:`projection_path` returns a :class:`VaultTarget` rather than a bare path so
 that the vault-relative label travels with it. Every message and every reported
@@ -158,6 +166,22 @@ def marker_from_text(text: str) -> dict[str, Any] | None:
     return marker
 
 
+def _file_identity(path: Path) -> tuple[int, int, int] | None:
+    """A stable identity for whatever is at ``path``, or ``None`` when absent.
+
+    Device, inode and creation-or-change time. Used to detect that the target was
+    exchanged between the ownership check and the replace: a content comparison would
+    miss an exchange for a file that happens to have the same bytes, and a
+    modification-time comparison has second-or-worse granularity on some filesystems.
+    ``lstat`` so a symlink appearing in the window is itself the change.
+    """
+    try:
+        info = os.lstat(path)
+    except (FileNotFoundError, NotADirectoryError):
+        return None
+    return (info.st_dev, info.st_ino, info.st_ctime_ns)
+
+
 def read_text_if_present(path: Path) -> str | None:
     """The file's text, or ``None`` when it does not exist.
 
@@ -209,6 +233,50 @@ def _assert_replaceable(
         )
 
 
+@dataclass(frozen=True)
+class WriteVerdict:
+    """What a write WOULD do, decided without doing it.
+
+    ``refusal`` carries the message a real write would raise, so a dry run can report
+    the same refusal the learner would actually hit rather than promising a write that
+    cannot happen.
+    """
+
+    outcome: WriteOutcome
+    refusal: str | None = None
+
+
+def classify_write(
+    target: VaultTarget, rendered: str, identity: ProjectionIdentity
+) -> WriteVerdict:
+    """Decide the outcome of a write without performing it.
+
+    Shares every check with :func:`write_projection` -- symlink refusal, ownership,
+    byte equality -- because the alternative is a second, untested description of what
+    the writer does, which is exactly how a dry run comes to disagree with reality.
+    """
+    path = target.path
+    try:
+        if stat.S_ISLNK(os.lstat(path).st_mode):
+            return WriteVerdict(
+                WriteOutcome.WRITTEN,
+                f"Refusing to overwrite '{target.relative}': it is a symbolic link.",
+            )
+    except FileNotFoundError:
+        return WriteVerdict(WriteOutcome.WRITTEN)
+
+    existing_text = read_text_if_present(path)
+    if existing_text is None:
+        return WriteVerdict(WriteOutcome.WRITTEN)
+    try:
+        _assert_replaceable(target, identity, existing_text)
+    except SecondBrainError as exc:
+        return WriteVerdict(WriteOutcome.WRITTEN, str(exc))
+    if existing_text == rendered:
+        return WriteVerdict(WriteOutcome.UNCHANGED)
+    return WriteVerdict(WriteOutcome.WRITTEN)
+
+
 def write_projection(
     target: VaultTarget,
     rendered: str,
@@ -222,7 +290,23 @@ def write_projection(
     file StudyLoop owns, because a template the learner has edited is theirs.
     """
     path = target.path
+
+    # A symlink is the learner's own content, whatever it points at. Following it to
+    # validate the referent's marker and then calling os.replace would destroy the
+    # LINK -- a file StudyLoop never owned and cannot recreate -- while reporting
+    # success. lstat, not exists(), because exists() follows.
+    try:
+        if stat.S_ISLNK(os.lstat(path).st_mode):
+            raise SecondBrainError(
+                f"Refusing to overwrite '{target.relative}': it is a symbolic link, "
+                "which StudyLoop does not own. Replace it with a regular file or move "
+                "it aside."
+            )
+    except FileNotFoundError:
+        pass
+
     existing_text = read_text_if_present(path)
+    identity_before = _file_identity(path)
 
     if existing_text is not None:
         if create_only:
@@ -278,6 +362,18 @@ def write_projection(
             handle.flush()
             os.fsync(handle.fileno())
         os.chmod(temp_path, existing_mode)
+        # Re-check what is at the target NOW, not what was there when ownership was
+        # validated. A vault is a directory Obsidian and a sync client are both
+        # writing to, so a note can appear -- or be replaced by one the learner
+        # owns -- in the window between the two, and os.replace would delete it
+        # without ever having seen its frontmatter. Compared by inode identity
+        # rather than by content, because the content could coincide.
+        if _file_identity(path) != identity_before:
+            temp_path.unlink(missing_ok=True)
+            raise SecondBrainError(
+                f"Refusing to overwrite '{target.relative}': it changed while StudyLoop "
+                "was preparing the new version. Nothing was written; try again."
+            )
         os.replace(temp_path, path)
     except OSError as exc:
         temp_path.unlink(missing_ok=True)
@@ -305,6 +401,8 @@ def read_user_note(target: VaultTarget) -> str | None:
 __all__ = [
     "VaultTarget",
     "WriteOutcome",
+    "WriteVerdict",
+    "classify_write",
     "marker_from_text",
     "projection_path",
     "read_marker",

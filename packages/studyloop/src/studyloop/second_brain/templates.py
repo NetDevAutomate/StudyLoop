@@ -127,9 +127,23 @@ def install_templates(vault: Path) -> list[str]:
         source="studyloop/data/templates/obsidian",
     )
 
+    # Preflight EVERY target before writing any. Writing as we go left a learner with
+    # some templates installed and some not when a later one already existed, and the
+    # exception carried no record of which had landed -- so "it failed" and "it half
+    # worked" were indistinguishable.
+    targets = [
+        (name, projection_path(vault, folder, f"{INSTALL_SUBFOLDER}/{name}"))
+        for name in TEMPLATE_NAMES
+    ]
+    existing = [target.relative for _name, target in targets if target.path.exists()]
+    if existing:
+        raise SecondBrainError(
+            f"Already present, so nothing was installed: {', '.join(existing)}. "
+            "Move or remove those files, then retry."
+        )
+
     installed: list[str] = []
-    for name in TEMPLATE_NAMES:
-        target = projection_path(vault, folder, f"{INSTALL_SUBFOLDER}/{name}")
+    for name, target in targets:
         write_projection(target, read_template(name), identity, create_only=True)
         installed.append(target.relative)
     return installed
