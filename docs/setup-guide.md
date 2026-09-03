@@ -226,17 +226,31 @@ Run the interactive wizard to configure your study environment:
 studyloop setup
 ```
 
-This walks you through three core questions:
+Two questions on the happy path, three at most, and every one of them accepts
+Enter (blank is a valid, first-class answer, not a degraded one):
 
-1. **Knowledge bridging** — Do you want to leverage a topic you already know well (e.g. networking, cooking, music theory) so the mentor can draw analogies to new topics you're studying?
-2. **Study material location** — Where are your study sources? The default is `~/Obsidian/Personal/Study`.
-3. **Obsidian vault** — Do you want to integrate with an existing Obsidian vault? If so, provide the base path (e.g. `~/Obsidian/Personal`).
+1. **Where do your study notes live?** A folder of `.md`/`.txt` files;
+   sub-folders become topics. Leave it blank if you have none yet — your
+   study sessions become the source instead, which the wizard treats as the
+   better source anyway, not a fallback.
+2. **Focus on up to 3 topics to start?** Asked only if question 1 found a
+   notes folder with sub-folders to suggest — ranked by note count, offered
+   as a comma-separated default you can edit or accept as-is.
+3. **Which AI assistant should run your study sessions?** Asked only when
+   more than one supported harness is detected on `PATH`. Exactly one found →
+   used automatically, no prompt. None found → skipped; studyloop works
+   standalone and you can install one later.
 
-The wizard creates or updates `~/.config/studyloop/config.yaml` with your choices. You can re-run it at any time to change settings.
+The wizard creates or updates `~/.config/studyloop/config.yaml` with your
+answers, preserving everything else in the file untouched. You can re-run it
+at any time — a second run defaults every prompt to what you answered last
+time, so accepting every default changes nothing.
 
-`studyloop config init` is the older low-level config initializer. Prefer
-`studyloop setup` for first-run setup because it also covers current install,
-agent, and Obsidian export checks.
+`studyloop config init` is a separate, older wizard with its own three
+questions (knowledge bridging, Google NotebookLM integration, and an
+Obsidian vault path) and its own defaults. `studyloop setup` is the
+recommended first-run path; `config init` remains for the bridging/
+NotebookLM/Obsidian options it alone asks about.
 
 ### Manual Configuration
 

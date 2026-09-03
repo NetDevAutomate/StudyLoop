@@ -90,6 +90,13 @@ experience may change before `1.0.0`.
 
 ### Fixed
 
+- `docs/setup-guide.md`'s "Interactive Setup" section described
+  `studyloop config init`'s three questions (knowledge bridging, a "study
+  material location" question `setup` never asks, an Obsidian vault path)
+  under the `studyloop setup` heading. It now describes `setup`'s real,
+  shorter flow (notes folder, optional focus-topic confirmation, optional
+  harness pick) and correctly separates out `config init`'s own three
+  questions instead of conflating the two commands.
 - Removed the dangling `GEMINI.md` symlink at the repo root (it pointed at
   `agents/gemini/GEMINI.md`, which no longer exists now that Gemini CLI is
   not a supported mentor harness). A guard test now fails the suite if any
