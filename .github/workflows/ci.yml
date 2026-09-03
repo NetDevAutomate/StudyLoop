@@ -46,9 +46,8 @@ jobs:
       - name: Run bandit (SAST)
         # Skip list mirrors .pre-commit-config.yaml's bandit hook, which
         # documents each rule. B608 (dynamic SQL) in particular is skipped
-        # project-wide because every hit -- verified individually in the
-        # 2026-09 remediation review (reviews/2026-09-02-full-repo-review/
-        # agents/02-security.md) -- interpolates only a server-side
+        # project-wide because every hit was verified individually in the
+        # 2026-09 security review: each interpolates only a server-side
         # allowlisted column name or a `?`-placeholder count, never raw
         # user data; actual values always go through bound parameters.
         run: uv run --group dev bandit --recursive --skip B101,B104,B105,B106,B107,B108,B110,B310,B404,B603,B606,B607,B608 packages/
