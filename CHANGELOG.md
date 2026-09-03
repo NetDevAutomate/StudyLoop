@@ -90,6 +90,22 @@ experience may change before `1.0.0`.
 
 ### Fixed
 
+- `docs/first-week.md` said "All eight agent CLIs"; the pre-release contract
+  is five (Kiro CLI, Codex, Claude Code as core; OpenCode and pi as
+  preview). Corrected.
+- The "Web PWA" section of `docs/cli-reference.md` is now "Web UI" and
+  states the app is installable but does not work offline, matching the
+  qualifier already used on `docs/index.md`/`docs/web-ui-guide.md`.
+- The study-plan brain-dump field's hint claimed "the study-plan agent can
+  turn it into the fields below" — no agent decomposition is wired;
+  `submitPlan()` keeps the text verbatim. Hint now says so.
+- `docs/agent-install.md`'s OpenCode section conflated two different
+  mechanisms under one "installs" narrative: the global
+  `studyloop install agents --tool opencode` write to
+  `~/.config/opencode/agents/`, and the separate project-local
+  `.opencode/agents/study-mentor.md` + `.opencode/opencode.json` that
+  `studyloop study --agent opencode` writes at session start. Split into
+  two clearly-labelled paragraphs.
 - `releases/v0.1.0.md` hardcoded "502 tests" — a number that goes stale the
   moment the suite grows — in direct violation of the rule its own sibling
   public page, `CONTRIBUTING.md`, states in the imperative. Replaced with a

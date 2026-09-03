@@ -450,9 +450,9 @@ Also runs automatically before `studyloop study` when zombies are detected.
 on the machine, not just orphaned ones — use it if you want a clean slate
 rather than routine tidy-up.
 
-### Web PWA
+### Web UI
 
-`studyloop web` launches a progressive web app for flashcard and quiz review. By default it binds to `127.0.0.1`; use `--lan` to expose it on your network with HTTP Basic Auth.
+`studyloop web` launches the browser workspace for flashcard and quiz review. It is installable as a PWA, but does not work offline — there is no service worker, so the StudyLoop server must stay reachable. By default it binds to `127.0.0.1`; use `--lan` to expose it on your network with HTTP Basic Auth.
 
 ```bash
 studyloop web                    # Serve on 127.0.0.1:8567
