@@ -48,6 +48,33 @@ Standard end-of-session tasks from session-protocol.md:
 
 4. Set next review dates via spaced repetition schedule.
 
+5. Offer the second brain — **only if one is configured, and only once**:
+
+   ```bash
+   studyloop brain status --json
+   ```
+
+   If **both** `configured` and `supports_publish` are `true`, offer exactly once,
+   in one sentence:
+
+   <!-- wind-down-offer -->
+   Want me to publish today's study record and this plan to your Obsidian vault (Study/Today.md and Study/Plans/<plan-id>.md)? Yes or no — I'll only ask once.
+   <!-- /wind-down-offer -->
+
+   On **yes**:
+
+   ```bash
+   studyloop brain publish --today --plan <plan-id>
+   ```
+
+   On **no**, or in any other case, **say nothing about second brains at all** and
+   continue the wind-down. Do not repeat the offer later in the session.
+
+   Both flags are required, not just `configured`. A learner on xTiles *is*
+   configured but has no programmatic backend (`supports_publish: false`), so
+   offering the publish command would name something that cannot work — and would
+   do it at the end of every session.
+
 ### Phase 2: Consolidation Guidance (spoken if voice mode is active)
 
 After the session wrap, the agent delivers consolidation guidance. This is the novel part — most study tools skip this entirely.

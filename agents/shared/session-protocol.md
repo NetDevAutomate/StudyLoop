@@ -290,6 +290,8 @@ Follow the full wind-down protocol in `wind-down-protocol.md`. Summary of the th
 studyloop progress "<concept>" -t <topic> -c <confidence>
 studyloop session end --notes "<summary>"  # Flush parking lot to DB, export to Obsidian
 ```
+
+**Second brain (only if one is configured)** — If `studyloop brain status --json` reports both `configured` and `supports_publish` as true, offer ONCE to publish (`studyloop brain publish --today --plan <plan-id>`); otherwise say nothing about second brains.
 Confidence levels: `struggling`, `learning`, `confident`, `mastered`
 
 Ask the learner: "How confident do you feel about [concept]? (struggling/learning/confident/mastered)"
