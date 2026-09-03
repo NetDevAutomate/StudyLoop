@@ -82,7 +82,7 @@ dev = [
 requires-dist = [
     { name = "agent-session-tools", extras = ["tokens", "tui", "watch", "semantic", "tts"], marker = "extra == 'all'" },
     { name = "einops", marker = "extra == 'semantic'", specifier = ">=0.8.2" },
-    { name = "fastmcp", specifier = ">=3.1.1" },
+    { name = "fastmcp", specifier = ">=3.1.1,<4" },
     { name = "kokoro-onnx", marker = "extra == 'tts'", specifier = ">=0.4.0" },
     { name = "mcp", extras = ["cli"], marker = "extra == 'tts'", specifier = ">=1.0.0,<2" },
     { name = "numpy", marker = "extra == 'semantic'", specifier = ">=1.24.0" },

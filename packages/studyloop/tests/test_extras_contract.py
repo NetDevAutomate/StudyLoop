@@ -78,3 +78,61 @@ def test_no_uv_source_maps_the_dropped_agent_session_tools_extra() -> None:
         pyproject = tomllib.load(pyproject_file)
     sources = pyproject.get("tool", {}).get("uv", {}).get("sources", {})
     assert "agent-session-tools" not in sources
+
+
+# ---------------------------------------------------------------------------
+# R-30b: every mcp/fastmcp dependency, anywhere, carries an upper bound.
+# ---------------------------------------------------------------------------
+
+import re  # noqa: E402
+
+_DEP_NAME_RE = re.compile(r"^([A-Za-z0-9_.\-]+)")
+
+_ALL_PYPROJECTS = (
+    REPO_ROOT / "pyproject.toml",
+    REPO_ROOT / "packages" / "studyloop" / "pyproject.toml",
+    REPO_ROOT / "packages" / "agent-session-tools" / "pyproject.toml",
+)
+
+
+def _iter_all_dependency_specs():
+    """Yield (label, spec) for every dependency string in all three
+
+    pyproject.toml files: base [project.dependencies],
+    [project.optional-dependencies.*], and [dependency-groups.*].
+    """
+    for path in _ALL_PYPROJECTS:
+        with path.open("rb") as pyproject_file:
+            data = tomllib.load(pyproject_file)
+        rel = path.relative_to(REPO_ROOT)
+        project = data.get("project", {})
+        for spec in project.get("dependencies", []):
+            yield (f"{rel}", spec)
+        for extra, specs in project.get("optional-dependencies", {}).items():
+            for spec in specs:
+                yield (f"{rel} [{extra}]", spec)
+        for group, specs in data.get("dependency-groups", {}).items():
+            for spec in specs:
+                if isinstance(spec, str):
+                    yield (f"{rel} (dependency-groups.{group})", spec)
+
+
+def test_every_mcp_and_fastmcp_dependency_has_an_upper_bound() -> None:
+    """R-30b: `fastmcp>=3.1.1` (no upper bound) resolved to fastmcp 4.0.2 in a
+
+    fresh (non-locked) install, which transitively pulled in mcp==2.1.1 /
+    mcp-types==2.1.1 -- the exact unbounded-transitive-dependency risk R-30
+    already fixed for the *direct* mcp[cli] requirement. This scans every
+    dependency string in all three pyproject.toml files (base deps, every
+    optional-dependencies extra, every dependency-groups group) for anything
+    named mcp or fastmcp and requires an upper bound on each, so neither
+    package can silently regress into this again.
+    """
+    offenders = [
+        f"{label}: {spec!r}"
+        for label, spec in _iter_all_dependency_specs()
+        if (match := _DEP_NAME_RE.match(spec))
+        and match.group(1).lower() in {"mcp", "fastmcp"}
+        and "<" not in spec
+    ]
+    assert not offenders, "mcp/fastmcp dependency with no upper bound:\n" + "\n".join(offenders)

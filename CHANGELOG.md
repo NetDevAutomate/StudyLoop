@@ -56,6 +56,9 @@ experience may change before `1.0.0`.
   unlocked install (a future `pip install`/`uv tool install` outside this
   repo's lockfile) can no longer select the 2.x release that renamed
   `FastMCP` and breaks `studyloop-mcp`/`session-db-mcp` at import.
+- `fastmcp` (agent-session-tools) is now pinned `>=3.1.1,<4`: an unlocked
+  install previously resolved fastmcp 4.x, which transitively pulled in
+  the same broken mcp 2.x release the pin above already guards against.
 - The workspace-root `pyproject.toml` version now matches
   `packages/studyloop/pyproject.toml`'s (both `0.1.0`); the release-consistency
   check now fails if the two ever disagree again.
