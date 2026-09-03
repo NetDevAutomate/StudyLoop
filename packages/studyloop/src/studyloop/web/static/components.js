@@ -897,7 +897,6 @@ function reviewApp(defaultMode) {
     // populated — so waiting on it returns while the session fetch is still in
     // flight. That gap is what made the banner tests intermittent.
     _initDone: false,
-    heatmapDays: [],
     history: [],
 
     // Course-list scaling: search box + collapsible publisher groups.
@@ -1060,7 +1059,6 @@ function reviewApp(defaultMode) {
         if (res.ok) {
           this.courses = await res.json();
           await this._loadHistory();
-          this._buildHeatmap();
         }
       } catch { /* courses unavailable */ }
       finally { this.coursesLoading = false; }
@@ -1107,22 +1105,10 @@ function reviewApp(defaultMode) {
       this.history = items;
     },
 
-    _buildHeatmap() {
-      // Simple 90-day heatmap placeholder — real implementation would
-      // query per-day review counts from the API
-      const days = [];
-      const now = new Date();
-      for (let i = 89; i >= 0; i--) {
-        const d = new Date(now);
-        d.setDate(d.getDate() - i);
-        days.push({
-          date: d.toISOString().slice(0, 10),
-          count: 0,
-          level: 'level-0',
-        });
-      }
-      this.heatmapDays = days;
-    },
+    // R-60: the 90-day study heatmap was removed here (not wired to real
+    // data, per-day counts were never queried) rather than shipped as a
+    // permanently-empty grid. Re-add in 0.2.0 under ADR-0006's
+    // asymmetric-visibility constraint (hide the debt, show the payoff).
 
     // ------------------------------------------------------------------
     // Navigation

@@ -472,7 +472,7 @@ studyloop web --lan --password SECRET
 | `R` | Retry wrong answers | After session |
 | `Esc` | Back to home | Anywhere |
 
-**Features:** Source/chapter filter, card count limiter (10/20/50/100/All), due cards badge, session history, 90-day study heatmap, Pomodoro timer (25min/5min), OpenDyslexic font toggle, dark/light theme, PWA installable.
+**Features:** Source/chapter filter, card count limiter (10/20/50/100/All), due cards badge, session history, Pomodoro timer (25min/5min), OpenDyslexic font toggle, dark/light theme, PWA installable.
 
 **Live session dashboard** (`/session`): Real-time SSE activity feed, energy-adaptive timer, topic counters, and a **terminal panel** showing the live session. The panel renders one of two surfaces: **xterm.js** driven by a PTY streamed over a WebSocket (`transport: "pty"`), or **ACP chat** for structured-event agents (`transport: "acp"`). It is draggable (stacked or side-by-side), has a layout toggle and panel-swap buttons, and can be popped out to a separate window (pop-out auto-closes when returning inline). The panel reattaches by itself after a page refresh — it reads `GET /api/session/state` on init and adopts a live session it owns.
 

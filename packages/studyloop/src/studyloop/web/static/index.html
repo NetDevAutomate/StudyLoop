@@ -1183,16 +1183,6 @@
                     </div>
                   </div>
                 </template>
-                <!-- Heatmap -->
-                <div x-show="heatmapDays.length" class="heatmap-section">
-                  <h3 style="font-size:1rem;color:var(--text-muted);margin-bottom:8px">Study Activity</h3>
-                  <div class="heatmap">
-                    <template x-for="day in heatmapDays" :key="day.date">
-                      <div class="heatmap-day" :class="day.level"
-                           :title="day.date + ': ' + day.count + ' session' + (day.count !== 1 ? 's' : '')"></div>
-                    </template>
-                  </div>
-                </div>
                 <!-- Recent history -->
                 <div x-show="history.length" class="history-section">
                   <h3>Recent Sessions</h3>

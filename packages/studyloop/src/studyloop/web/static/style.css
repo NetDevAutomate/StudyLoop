@@ -1204,31 +1204,9 @@ body[data-font="opendyslexic"] .card-content {
 .pomo-ring .fill { stroke: var(--accent); transition: stroke-dashoffset 1s linear; }
 .pomodoro.break .pomo-ring .fill { stroke: var(--green); }
 
-/* --- Heatmap --- */
-.heatmap-section {
-  margin-top: 24px;
-  width: 100%;
-  max-width: 800px;
-}
-
-.heatmap {
-  display: flex;
-  gap: 3px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.heatmap-day {
-  width: 14px;
-  height: 14px;
-  border-radius: 3px;
-  background: var(--bg-card);
-}
-
-.heatmap-day.l1 { background: rgba(122,162,247,0.25); }
-.heatmap-day.l2 { background: rgba(122,162,247,0.5); }
-.heatmap-day.l3 { background: rgba(122,162,247,0.75); }
-.heatmap-day.l4 { background: var(--accent); }
+/* R-60: the 90-day study heatmap (.heatmap-section/.heatmap/.heatmap-day)
+   was removed -- it was never wired to real per-day data. Re-add in 0.2.0
+   under ADR-0006's asymmetric-visibility constraint. */
 
 /* --- Session Dashboard --- */
 .header-link {
