@@ -98,6 +98,11 @@ experience may change before `1.0.0`.
 
 ### Fixed
 
+- `THIRD-PARTY-NOTICES.md` linked Apache-2.0 and MPL-2.0 (DOMPurify,
+  Fuse.js) instead of reproducing them; both licences require the licence
+  text to accompany redistribution (Apache-2.0 §4, MPL-2.0 §3.1). Both are
+  now reproduced in full; confirmed neither project ships an upstream
+  `NOTICE` file at its pinned version.
 - `THIRD-PARTY-NOTICES.md` said `vendor/` "ships 26 third-party files";
   four of those 26 are first-party `@font-face` glue CSS sheets this repo
   wrote itself, not third-party. Split into 22 genuinely third-party plus
