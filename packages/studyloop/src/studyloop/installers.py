@@ -232,9 +232,15 @@ def install_workspace_tools(
         cmd = ["uv", "tool", "install"]
         # Both packages install with their [all] aggregate extra so a single
         # `./scripts/install.sh` yields a fully working tool — web UI, content
-        # generation, Bedrock (boto3), MCP server, NotebookLM, TUI, TTS, and
+        # generation, Bedrock (boto3), MCP server, NotebookLM, TUI, and
         # semantic session search. Partial extras here are how "No module
         # named 'boto3'/'mcp'" surfaced in otherwise-green installs.
+        #
+        # studyloop's own [all] does NOT include agent-session-tools (R-29):
+        # it is not published, so it cannot resolve as a wheel extra outside
+        # this workspace. `--with-editable` below is the real, unconditional
+        # mechanism that makes it a hard dependency of THIS install path
+        # regardless of any extra (DECISIONS.md B1).
         if package_name == "agent-session-tools":
             cmd.append(f"{pkg_dir}[all]")
         elif package_name == "studyloop":
