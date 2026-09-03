@@ -7,6 +7,8 @@ experience may change before `1.0.0`.
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-03
+
 ### Added
 
 - A learner-focused Web UI for starting Study Sessions, Body Double sessions,
