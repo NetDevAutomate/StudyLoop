@@ -262,7 +262,7 @@ An earlier tier ran Kokoro-82M in the page itself, via transformers.js on WebGPU
 - **It self-downgraded to a silent tier** rather than failing visibly.
 - **It occasionally spoke Mandarin**, for reasons never established.
 
-A server has none of those limits. The design notes for the removed tier are kept at `docs/archive/browser-neural-tts-design.md`.
+A server has none of those limits. The design notes for the removed tier are kept at `private-docs/browser-neural-tts-design.md`.
 
 ### English voices only, deliberately
 

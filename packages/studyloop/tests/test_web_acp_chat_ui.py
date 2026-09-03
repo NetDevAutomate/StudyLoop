@@ -10,7 +10,7 @@ Covers:
 
 Port 18576 — 18575 is taken by test_web_acp_agent_matrix.py.
 
-Plan: docs/plans/2026-05-27-001-feat-acp-chat-ui-plan.md §U3
+Plan: private-docs/2026-05-27-001-feat-acp-chat-ui-plan.md §U3
 """
 
 # ruff: noqa: E501

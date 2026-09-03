@@ -6,7 +6,7 @@ and quiz modes. Each test stubs ``/api/courses``, ``/api/sources``,
 ``/api/cards`` with Playwright route interception so the tests run
 without real content on disk.
 
-Plan: docs/plans/2026-05-09-refactor-agent-session-transport-plan.md
+Plan: private-docs/2026-05-09-refactor-agent-session-transport-plan.md
       §Test Strategy — "ALL web UI functions".
 """
 

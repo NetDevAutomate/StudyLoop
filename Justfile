@@ -121,7 +121,7 @@ spec-check:
     if command -v openspec >/dev/null 2>&1; then \
         openspec validate --specs --all; \
     else \
-        echo "openspec CLI not found — skipping spec validation (see docs/openspec.md)"; \
+        echo "openspec CLI not found — skipping spec validation (see the OpenSpec section of docs/contributing.md)"; \
     fi
 
 audit:

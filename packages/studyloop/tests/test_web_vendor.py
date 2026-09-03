@@ -1,7 +1,7 @@
 """Tests for vendored static assets — local-first, no-CDN serving.
 
 Also: regression tests for the session-options cache poisoning fix
-(docs/issues/0005-vendor-picker-lists-repo-directories.md).
+(private-docs/0005-vendor-picker-lists-repo-directories.md).
 """
 
 from __future__ import annotations

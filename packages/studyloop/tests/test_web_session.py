@@ -502,7 +502,7 @@ class TestStartSessionAPI:
 
         Locks in the Phase 0 decision that agent selection is always respected:
         no `null`-fallback substitution, no silent routing to the first detected
-        binary. Matches docs/plans/2026-05-09-refactor-agent-session-transport-plan.md
+        binary. Matches private-docs/2026-05-09-refactor-agent-session-transport-plan.md
         Phase 0 acceptance criteria.
         """
         with (

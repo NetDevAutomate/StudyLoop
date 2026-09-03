@@ -54,7 +54,7 @@ os.environ["TERM"] = "dumb"
 #    monkeypatched function does not cross the process boundary. That gap is
 #    how the suite previously migrated the learner's real ``sessions.db`` and
 #    wrote a poisoned picker cache into their real state dir. See
-#    ``docs/issues/0005-vendor-picker-lists-repo-directories.md``.
+#    ``private-docs/0005-vendor-picker-lists-repo-directories.md``.
 #
 # Individual tests may still point these at their own tmp_path; the default
 # below only guarantees that *nothing* lands in the real user directories.

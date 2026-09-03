@@ -17,7 +17,7 @@ Port **18575** — the plan allocates one port per e2e test file
 (18570 nav, 18571 review, 18572 lifecycle, 18573 stores, 18574 PTY
 matrix, 18575 here).
 
-Plan: docs/plans/2026-05-09-refactor-agent-session-transport-plan.md §2.3
+Plan: private-docs/2026-05-09-refactor-agent-session-transport-plan.md §2.3
 """
 
 from __future__ import annotations

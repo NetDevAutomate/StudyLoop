@@ -4,7 +4,7 @@ Focuses on lock semantics (TOCTOU safety), idempotency, failure-path cleanup,
 and session_state.json writes. Uses StubTransport (conftest.py) so we never
 touch pty.fork() here — PTY end-to-end coverage lives in test_pty_transport.py.
 
-Plan: docs/plans/2026-05-09-refactor-agent-session-transport-plan.md §1.4
+Plan: private-docs/2026-05-09-refactor-agent-session-transport-plan.md §1.4
 """
 
 from __future__ import annotations

@@ -148,6 +148,11 @@ unconditionally, alongside whichever of these extras you choose.
 | `mcp` | MCP server integration |
 | `all` | `content`, `bedrock`, `notebooklm`, `tui`, `web`, and `mcp` together |
 
+Inside AWS, or anywhere you already have an AWS profile: install the `bedrock` extra and set
+`backend: bedrock` under the top-level `card_generator:` block in `config.yaml`. Card and quiz generation then calls
+Bedrock's Converse API with your profile's SigV4 credentials; no API key is stored by StudyLoop.
+
+
 ### Developer Install
 
 If you are contributing to the repo or running from source, prefer `uv sync` in the checkout:

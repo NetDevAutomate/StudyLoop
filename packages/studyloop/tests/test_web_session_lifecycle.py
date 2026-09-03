@@ -12,7 +12,7 @@ a real PTY child. Covers:
   - ws_url is opened after a successful start
   - end-session confirmation flow
 
-Plan: docs/plans/2026-05-09-refactor-agent-session-transport-plan.md
+Plan: private-docs/2026-05-09-refactor-agent-session-transport-plan.md
       §Test Strategy — "full picker flow" + "error states".
 """
 

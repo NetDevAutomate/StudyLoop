@@ -49,7 +49,7 @@
  * propagates for free.
  *
  * Source: ghostty-web@0.4.0 (MIT) — https://github.com/coder/ghostty-web
- * Evaluation: docs/explorations/ghostty-web-evaluation.md
+ * Evaluation: private-docs/ghostty-web-evaluation.md
  */
 
 (function () {

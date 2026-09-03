@@ -8,7 +8,7 @@ its stdin verbatim, and exits cleanly on Ctrl-D (EOF).
 Skipped entirely on Windows. pty.fork() has no Windows equivalent and the
 plan explicitly scopes this transport to POSIX hosts.
 
-Plan: docs/plans/2026-05-09-refactor-agent-session-transport-plan.md §1.2
+Plan: private-docs/2026-05-09-refactor-agent-session-transport-plan.md §1.2
 """
 
 from __future__ import annotations

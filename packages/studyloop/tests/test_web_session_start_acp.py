@@ -5,7 +5,7 @@ Mirrors ``test_web_session_start_pty.py``. Swaps out the real
 subprocess is spawned here — genuine ACP coverage lives in
 ``test_acp_transport.py``.
 
-Plan: docs/plans/2026-05-09-refactor-agent-session-transport-plan.md §2.2
+Plan: private-docs/2026-05-09-refactor-agent-session-transport-plan.md §2.2
 (Amendment #10).
 """
 

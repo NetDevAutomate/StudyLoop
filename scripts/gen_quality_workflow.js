@@ -297,7 +297,7 @@ const validateResults = await parallel(
 phase('Report')
 const reportPayload = JSON.stringify({ genResults, validateResults }, null, 2)
 await agent(
-  `Write a markdown report to ${REPO}/docs/handoffs/2026-06-01-gen-quality-workflow-report.md ` +
+  `Write a markdown report to ${REPO}/reviews/gen-quality/2026-06-01-gen-quality-workflow-report.md ` +
     `summarising this autonomous generation+quality run. Use the Write tool.\n\n` +
     `Here is the structured data (per-provider judge results and Playwright/API ` +
     `validation):\n\n\`\`\`json\n${reportPayload}\n\`\`\`\n\n` +
@@ -324,5 +324,5 @@ return {
   allApproved: failed.length === 0,
   genResults,
   validateResults,
-  reportPath: `${REPO}/docs/handoffs/2026-06-01-gen-quality-workflow-report.md`,
+  reportPath: `${REPO}/reviews/gen-quality/2026-06-01-gen-quality-workflow-report.md`,
 }

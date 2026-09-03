@@ -25,7 +25,7 @@
  * imported because components.js is not yet a module; when it is split, these
  * become real imports.
  *
- * KNOWN GAPS (see docs/handoffs/2026-08-22-frontend-modularisation-findings.md)
+ * KNOWN GAPS (see private-docs/2026-08-22-frontend-modularisation-findings.md)
  * ---------------------------------------------------------------------------
  * LOAD-TIME ADOPTION. init() registers a study-session-start listener, but on a
  * page reload that event was dispatched before the page existed, so a listener

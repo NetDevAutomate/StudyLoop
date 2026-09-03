@@ -1,6 +1,6 @@
 """Playwright e2e tests for studyloop web --dev (ghostty dev engine).
 
-Journey matrix from docs/explorations/multiplexer-impact-map.md Part 4:
+Journey matrix from private-docs/multiplexer-impact-map.md Part 4:
 - B1: Renderer boots (ghostty-web global, meta tag, Terminal patched)
 - B2: PTY bytes render in terminal (visible text content)
 - B3: Keystrokes echo (typed input appears in terminal)

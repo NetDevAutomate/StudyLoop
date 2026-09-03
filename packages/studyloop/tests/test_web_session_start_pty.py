@@ -7,7 +7,7 @@ now that ttyd retirement stage 3 deleted the legacy branch it used to force.
 Uses a factory-swap so we never spawn a real PTY child — real PTY coverage
 lives in test_pty_transport.py.
 
-Plan: docs/plans/2026-05-09-refactor-agent-session-transport-plan.md §1.5b
+Plan: private-docs/2026-05-09-refactor-agent-session-transport-plan.md §1.5b
 (Amendment #5).
 """
 

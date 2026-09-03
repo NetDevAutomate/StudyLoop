@@ -13,7 +13,7 @@ with a synthetic response and verifies the component's reaction:
 Real agent streams are out of scope; they need a real PTY, which the
 ``test_pty_transport.py`` unit tests cover at the transport layer.
 
-Plan: docs/plans/2026-05-09-refactor-agent-session-transport-plan.md §1.7
+Plan: private-docs/2026-05-09-refactor-agent-session-transport-plan.md §1.7
 """
 
 from __future__ import annotations

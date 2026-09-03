@@ -5,7 +5,7 @@ Why this exists
 A browser refresh closes the session WebSocket. Releasing the active session
 on that close kills the agent child (``transport.end()``) and wipes the IPC
 state, so an accidental ⌘R used to destroy a live mentoring session outright.
-See ``docs/handoffs/2026-08-04-ws-refresh-destroys-session-handoff.md``.
+See ``private-docs/2026-08-04-ws-refresh-destroys-session-handoff.md``.
 
 The transport already supports reattaching: ``events()`` is a thin drain over
 an ``asyncio.Queue`` that a WebSocket-independent reader task fills, and that

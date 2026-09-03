@@ -3,7 +3,7 @@
 Launches a CLI agent as a child with a controlling PTY. Streams raw
 output bytes and lifecycle events on the AgentSessionTransport contract.
 
-Design notes live in docs/plans/2026-05-09-refactor-agent-session-
+Design notes live in private-docs/2026-05-09-refactor-agent-session-
 transport-plan.md §PTYTransport. Key choices:
 
 - raw `pty.fork()` (not ptyprocess/pexpect)

@@ -359,7 +359,7 @@ def get_db_path(config: dict[str, Any] | None = None) -> Path:
     module resolves the DB independently of ``studyloop.settings``, so it needs
     its own guard; honouring the env var in only one of the two was why the
     real database was still being written during test runs. See
-    ``docs/issues/0005-vendor-picker-lists-repo-directories.md``.
+    ``private-docs/0005-vendor-picker-lists-repo-directories.md``.
     """
     if config is None:
         config = load_config()

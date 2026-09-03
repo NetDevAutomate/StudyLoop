@@ -32,7 +32,7 @@ Deliberate limitations, stated so the numbers are not over-trusted
 * A control is counted as actuated when its ``data-testid`` or ``id`` appears in
   an actuating call in a browser test. Text- and class-based selectors are NOT
   credited — that is intentional: they are the fragile pattern this audit exists
-  to drive out (see docs/handoffs/2026-08-04-web-ui-e2e-coverage-gaps.md §3.3).
+  to drive out (see private-docs/2026-08-04-web-ui-e2e-coverage-gaps.md §3.3).
   Expect the first run to under-report real coverage; the fix is to add hooks,
   not to loosen the check.
 * Controls inside ``<template x-for>`` are counted once (as authored), not once

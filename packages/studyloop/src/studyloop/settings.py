@@ -37,7 +37,7 @@ def _default_session_db() -> Path:
     ``agent_session_tools.config_loader.get_db_path``. All three must honour
     the override or a test run reaches the learner's real database through
     whichever one was missed. See
-    ``docs/issues/0005-vendor-picker-lists-repo-directories.md``.
+    ``private-docs/0005-vendor-picker-lists-repo-directories.md``.
     """
     if env_db := os.environ.get("STUDYLOOP_DB"):
         return Path(env_db).expanduser()
@@ -51,7 +51,7 @@ def _default_state_dir() -> Path:
     spawns) can redirect writable state away from the learner's real
     ``~/.local/share/studyloop``. Caches persisted there are trusted on read,
     so a leaked test artefact becomes a production defect — see
-    ``docs/issues/0005-vendor-picker-lists-repo-directories.md``.
+    ``private-docs/0005-vendor-picker-lists-repo-directories.md``.
     """
     if env_dir := os.environ.get("STUDYLOOP_STATE_DIR"):
         return Path(env_dir).expanduser()

@@ -23,7 +23,7 @@ review objected to class ceremony for a singleton. The compromise is a
 module with a lock — no `StudySessionManager` class, no `app.state`
 wiring, just three small async functions.
 
-See docs/plans/2026-05-09-refactor-agent-session-transport-plan.md §1.4.
+See private-docs/2026-05-09-refactor-agent-session-transport-plan.md §1.4.
 """
 
 from __future__ import annotations
