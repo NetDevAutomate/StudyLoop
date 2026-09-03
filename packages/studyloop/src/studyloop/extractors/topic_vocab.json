@@ -72,7 +72,6 @@
     "relation-extraction",
     "graph-build",
     "chunk",
-    "example-project",
     "semantic-layer"
   ],
   "software-development": [
