@@ -629,7 +629,13 @@ def load_settings() -> Settings:
     # scalar top-level fields -- driven by module-level _SCALAR_FIELDS mapping
     for key, coerce in _SCALAR_FIELDS:
         if key in raw:
-            setattr(settings, key, coerce(raw[key]))  # type: ignore[operator]
+            try:
+                setattr(settings, key, coerce(raw[key]))  # type: ignore[operator]
+            except (TypeError, ValueError) as exc:
+                raise ConfigError(
+                    f"Invalid value for '{key}' in {get_config_path()}: {raw[key]!r} "
+                    f"({exc}). Fix the value or remove the key to use the default."
+                ) from exc
 
     # --- topics (bespoke: legacy support + path resolution) -----------------
     raw_topics = raw.get("topics", [])

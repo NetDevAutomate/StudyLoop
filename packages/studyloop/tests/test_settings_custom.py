@@ -280,6 +280,26 @@ def test_scalar_int_fields(tmp_path):
     assert s.web_port == 1234
 
 
+def test_bad_scalar_value_raises_config_error_not_a_raw_traceback(tmp_path):
+    """R-34: `web_port: "abc"` used to raise a bare ValueError straight out
+
+    of load_settings() -- an unhandled Python traceback for the exact class
+    of mistake ConfigError exists to make friendly. load_raw_config()
+    already wraps its own failure modes (bad YAML, non-mapping) this way;
+    the _SCALAR_FIELDS coercion loop did not.
+    """
+    config_path = _write_config(tmp_path, {"web_port": "abc"})
+    from studyloop.settings import ConfigError
+
+    try:
+        _load(config_path)
+    except ConfigError as exc:
+        assert "web_port" in exc.message
+        assert "abc" in exc.message
+    else:
+        raise AssertionError("Expected ConfigError")
+
+
 def test_scalar_str_fields(tmp_path):
     config_path = _write_config(
         tmp_path,

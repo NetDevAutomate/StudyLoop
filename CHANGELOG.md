@@ -90,6 +90,11 @@ experience may change before `1.0.0`.
 
 ### Fixed
 
+- A bad scalar config value (e.g. `web_port: "abc"`) now raises a one-line
+  actionable error naming the key, the file, and the bad value, instead of
+  an unhandled Python traceback. `studyloop config show` now also warns
+  about unknown or retired top-level config keys (a misspelled key, or one
+  left over from a removed feature) — `doctor` already did.
 - `docs/tui-guide.md`'s break-schedule table disagreed with the actual
   energy-adaptive thresholds in three numbers and both the Medium/High band
   boundaries (doc: Medium 4-7 = 20/45/90, High 8-10 = 25/50/120; code:
