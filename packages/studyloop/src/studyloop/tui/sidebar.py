@@ -363,7 +363,7 @@ class SidebarApp(App[None]):
         ("p", "toggle_pause", "Pause/Resume"),
         ("s", "toggle_pomodoro", "Start/Stop Pomodoro"),
         ("r", "reset_timer", "Reset"),
-        ("plus_sign", "pomo_focus_up", "+5min focus"),
+        ("plus", "pomo_focus_up", "+5min focus"),
         ("minus", "pomo_focus_down", "-5min focus"),
         ("Q", "end_session", "End Session"),
         ("q", "quit", "Quit sidebar"),
