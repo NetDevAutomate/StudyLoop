@@ -214,6 +214,36 @@ class ObsidianBackend:
                 "Mount it, or run: studyloop brain enable obsidian --vault <new path>"
             )
 
+    # -- dry run ------------------------------------------------------------
+    #
+    # Computed from the same layout and through the same containment-checked path
+    # builder as a real publish, so a dry run still refuses a vault escape and
+    # every path it reports is one a publish could actually write. Reporting a
+    # hand-assembled string instead would make `--dry-run` a separate, untested
+    # description of what the code does.
+
+    def normalise_plan_id(self, plan_id: str) -> str:
+        """The canonical form of a plan id, for a caller that needs it up front."""
+        from studyloop.planning.store import InvalidPlanIdError, validate_plan_id
+
+        try:
+            return validate_plan_id(plan_id)
+        except InvalidPlanIdError as exc:
+            raise SecondBrainError(f"Not a usable plan id: {plan_id!r}.") from exc
+
+    def dry_run_targets_for_today(self) -> str:
+        self._require_available()
+        return self._target(TODAY_RELATIVE).relative
+
+    def dry_run_targets_for_plan(self, plan: StudyPlan) -> tuple[str, ...]:
+        self._require_available()
+        targets = [self._target(f"Plans/{plan.plan_id}.md").relative]
+        targets.extend(
+            self._target(f"Learning Records/{plan.plan_id}/LR-{record.number:04d}.md").relative
+            for record in plan.learning_records
+        )
+        return tuple(targets)
+
     def _backlink_footer(self, plan: StudyPlan) -> str:
         from studyloop.second_brain.backlinks import wikilinks_for
 
