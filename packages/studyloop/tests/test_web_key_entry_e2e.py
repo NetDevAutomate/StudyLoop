@@ -11,19 +11,21 @@ Port 18582 (sisters use 18580 content-gen, 18581 struggling-topics).
 from __future__ import annotations
 
 import json
-import os
-import subprocess
 import sys
-import time
-import urllib.error
-import urllib.request
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 
+_tests_dir = str(Path(__file__).parent)
+if _tests_dir not in sys.path:
+    sys.path.insert(0, _tests_dir)
+
+from _playwright_helpers import start_web_server  # noqa: E402
+
 if TYPE_CHECKING:
+    import subprocess
     from collections.abc import Generator
-    from pathlib import Path
 
     from playwright.sync_api import Browser, Page
 
@@ -47,25 +49,9 @@ def stub_config(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def server(stub_config: Path) -> Generator[subprocess.Popen, None, None]:
-    env = os.environ.copy()
-    env["STUDYLOOP_CONFIG"] = str(stub_config)
-    proc = subprocess.Popen(
-        [sys.executable, "-m", "studyloop.cli", "web", "--port", str(WEB_PORT)],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        env=env,
-    )
-    for _ in range(40):
-        try:
-            urllib.request.urlopen(f"http://127.0.0.1:{WEB_PORT}/", timeout=1)
-            break
-        except urllib.error.HTTPError:
-            break
-        except Exception:
-            time.sleep(0.3)
-    else:
-        proc.kill()
-        raise RuntimeError(f"web server failed to start on {WEB_PORT}")
+    """C13/R-49g: routed through the shared, hermetic ``start_web_server``
+    instead of a hand-rolled ``env = os.environ.copy()`` + polling loop."""
+    proc = start_web_server(WEB_PORT, extra_env={"STUDYLOOP_CONFIG": str(stub_config)})
     try:
         yield proc
     finally:

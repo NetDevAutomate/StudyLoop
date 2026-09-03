@@ -36,11 +36,10 @@ def start_study_session(
         )
         conn.commit()
         return study_id
-    except sqlite3.OperationalError:
-        logger.warning(
-            "Failed to insert study session — sessions DB may lack schema",
-            exc_info=True,
-        )
+    except sqlite3.OperationalError as exc:
+        if not _connection.is_missing_table_error(exc):
+            logger.warning("start_study_session failed: %s", exc)
+            raise
         return None
     finally:
         conn.close()
@@ -74,7 +73,10 @@ def update_persona_hash(study_id: str, persona_hash: str) -> bool:
         )
         conn.commit()
         return True
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as exc:
+        if not _connection.is_missing_table_error(exc):
+            logger.warning("update_persona_hash failed: %s", exc)
+            raise
         return False
     finally:
         conn.close()
@@ -109,7 +111,10 @@ def end_study_session(
         )
         conn.commit()
         return True
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as exc:
+        if not _connection.is_missing_table_error(exc):
+            logger.warning("end_study_session failed: %s", exc)
+            raise
         return False
     finally:
         conn.close()
@@ -137,7 +142,10 @@ def abort_study_session(study_id: str, reason: str) -> bool:
         )
         conn.commit()
         return True
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as exc:
+        if not _connection.is_missing_table_error(exc):
+            logger.warning("abort_study_session failed: %s", exc)
+            raise
         return False
     finally:
         conn.close()
@@ -167,7 +175,10 @@ def get_study_session_stats(days: int = 30) -> list[dict]:
             (f"-{days} days",),
         ).fetchall()
         return [dict(r) for r in rows]
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as exc:
+        if not _connection.is_missing_table_error(exc):
+            logger.warning("get_study_session_stats failed: %s", exc)
+            raise
         return []
     finally:
         conn.close()
@@ -197,7 +208,10 @@ def get_energy_session_data(days: int = 30) -> list[dict]:
             (f"-{days} days",),
         ).fetchall()
         return [dict(r) for r in rows]
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as exc:
+        if not _connection.is_missing_table_error(exc):
+            logger.warning("get_energy_session_data failed: %s", exc)
+            raise
         return []
     finally:
         conn.close()
@@ -223,7 +237,10 @@ def get_last_study_session() -> dict | None:
             """
         ).fetchone()
         return dict(row) if row else None
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as exc:
+        if not _connection.is_missing_table_error(exc):
+            logger.warning("get_last_study_session failed: %s", exc)
+            raise
         return None
     finally:
         conn.close()
@@ -303,7 +320,10 @@ def get_last_session_summary() -> dict | None:
                 for r in in_progress
             ],
         }
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as exc:
+        if not _connection.is_missing_table_error(exc):
+            logger.warning("get_last_session_summary failed: %s", exc)
+            raise
         return None
     finally:
         conn.close()
@@ -342,7 +362,10 @@ def get_persona_effectiveness(persona_hash: str | None = None) -> list[dict]:
 
         rows = conn.execute(sql, params).fetchall()
         return [dict(r) for r in rows]
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as exc:
+        if not _connection.is_missing_table_error(exc):
+            logger.warning("get_persona_effectiveness failed: %s", exc)
+            raise
         return []
     finally:
         conn.close()

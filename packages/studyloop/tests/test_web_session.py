@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 pytest = __import__("pytest")
 pytest.importorskip("fastapi")
 
-from unittest.mock import MagicMock, patch  # noqa: E402
+from unittest.mock import AsyncMock, MagicMock, patch  # noqa: E402
 
 from fastapi import Request  # noqa: E402  # pyright: ignore[reportMissingImports]
 from fastapi.routing import APIRoute  # noqa: E402  # pyright: ignore[reportMissingImports]
@@ -198,6 +198,40 @@ class TestSessionSSE:
         assert "activity-item" in sse_line
         assert "counter-wins" in sse_line
         assert "session-meta" in sse_line
+
+    def test_mtime_or_zero_survives_a_vanishing_file(self) -> None:
+        """R-06: the SSE loop's change-detection stat() must not race
+        clear_session_files(), which unlinks these same files from an
+        executor thread (session/active.py:130-131) -- the exact race
+        28a431b fixed for parse_topics_file/parse_parking_file, reachable
+        here too (that commit's own message named it: "any client polling
+        session state while a grace window expires could hit it") but never
+        patched until now."""
+        from studyloop.web.routes.session._dashboard import _mtime_or_zero
+
+        class _VanishingFile:
+            def stat(self) -> None:
+                raise FileNotFoundError(2, "No such file or directory")
+
+        assert _mtime_or_zero(_VanishingFile()) == 0.0  # type: ignore[arg-type]
+
+    def test_mtime_or_zero_tolerates_any_oserror(self) -> None:
+        """Not just a missing file -- any OSError (e.g. a permissions
+        error) must degrade to 0.0, not raise into the SSE generator."""
+        from studyloop.web.routes.session._dashboard import _mtime_or_zero
+
+        class _Denied:
+            def stat(self) -> None:
+                raise PermissionError(13, "Permission denied")
+
+        assert _mtime_or_zero(_Denied()) == 0.0  # type: ignore[arg-type]
+
+    def test_mtime_or_zero_reports_a_real_mtime(self, tmp_path: Path) -> None:
+        from studyloop.web.routes.session._dashboard import _mtime_or_zero
+
+        f = tmp_path / "session-state.json"
+        f.write_text("{}")
+        assert _mtime_or_zero(f) == f.stat().st_mtime
 
 
 class TestRenderFunctions:
@@ -421,47 +455,44 @@ class TestStartSessionAPI:
     """
 
     def test_start_rejects_active_session(self, client: TestClient) -> None:
-        """Legacy-path 409 when a session is already live."""
-        mock_backend = MagicMock()
-        mock_backend.is_available.return_value = True
-        with (
-            patch("studyloop.multiplexer.get_backend", return_value=mock_backend),
-            patch("studyloop.web.routes.session.is_session_active", return_value=True),
-        ):
+        """PTY-path 409 when a session is already live.
+
+        Retargeted from the legacy ttyd path (ttyd retirement stage 3, which
+        deleted ``_start_ttyd_session`` — see the manifest). The PTY path's
+        conflict check is ``_session_conflict()``, which reads
+        ``studyloop.session.active.current()``, not the legacy
+        ``is_session_active`` flag this test used to patch.
+        """
+        mock_current = MagicMock(study_session_id="test-123", config=MagicMock(agent="claude"))
+        with patch("studyloop.session.active.current", new=AsyncMock(return_value=mock_current)):
             resp = client.post(
                 "/api/session/start",
-                json={"topic": "Python", "energy": 5, "transport": "ttyd"},
+                json={"topic": "Python", "energy": 5},
             )
         assert resp.status_code == 409
         assert "already active" in resp.json()["error"]
 
-    def test_start_rejects_no_tmux(self, client: TestClient) -> None:
-        """transport=ttyd requires a multiplexer — 503 when unavailable.
+    def test_start_rejects_ttyd_transport_with_422(self, client: TestClient) -> None:
+        """``{"transport": "ttyd"}`` is rejected structurally, not downgraded.
 
-        The default (pty) path no longer consults the multiplexer, so this
-        assertion is specific to the legacy ttyd opt-in.
+        Mandatory test for R-05 (ttyd retirement stage 3): before this stage,
+        an unrecognised body transport silently resolved to "pty" — a caller
+        asking for ttyd got a different transport than it asked for, with no
+        error. ``StartSessionRequest.transport`` is now
+        ``Literal["pty", "acp"]``, so Pydantic itself rejects "ttyd" with 422
+        before the handler ever runs.
         """
-        mock_backend = MagicMock()
-        mock_backend.is_available.return_value = False
-        with patch("studyloop.multiplexer.get_backend", return_value=mock_backend):
-            resp = client.post(
-                "/api/session/start",
-                json={"topic": "Python", "energy": 5, "transport": "ttyd"},
-            )
-        assert resp.status_code == 503
-        error_msg = resp.json()["error"]
-        assert "multiplexer" in error_msg.lower() or "not available" in error_msg
+        resp = client.post(
+            "/api/session/start",
+            json={"topic": "Python", "energy": 5, "transport": "ttyd"},
+        )
+        assert resp.status_code == 422
 
     def test_start_rejects_unknown_agent(self, client: TestClient) -> None:
-        mock_backend = MagicMock()
-        mock_backend.is_available.return_value = True
-        with (
-            patch("studyloop.multiplexer.get_backend", return_value=mock_backend),
-            patch("studyloop.web.routes.session.is_session_active", return_value=False),
-        ):
+        with patch("studyloop.session.active.current", new=AsyncMock(return_value=None)):
             resp = client.post(
                 "/api/session/start",
-                json={"topic": "Python", "energy": 5, "agent": "nonexistent", "transport": "ttyd"},
+                json={"topic": "Python", "energy": 5, "agent": "nonexistent"},
             )
         assert resp.status_code == 400
         assert "Unknown agent" in resp.json()["error"]
@@ -474,16 +505,13 @@ class TestStartSessionAPI:
         binary. Matches docs/plans/2026-05-09-refactor-agent-session-transport-plan.md
         Phase 0 acceptance criteria.
         """
-        mock_backend = MagicMock()
-        mock_backend.is_available.return_value = True
         with (
-            patch("studyloop.multiplexer.get_backend", return_value=mock_backend),
-            patch("studyloop.web.routes.session.is_session_active", return_value=False),
+            patch("studyloop.session.active.current", new=AsyncMock(return_value=None)),
             patch("shutil.which", return_value=None),
         ):
             resp = client.post(
                 "/api/session/start",
-                json={"topic": "Python", "energy": 5, "agent": "pi", "transport": "ttyd"},
+                json={"topic": "Python", "energy": 5, "agent": "pi"},
             )
         assert resp.status_code == 503
         error = resp.json()["error"]

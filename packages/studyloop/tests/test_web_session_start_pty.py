@@ -2,9 +2,10 @@
 
 Covers: transport selection (body + env override + default), single-session
 invariant via active.acquire, binary-missing 503 with install_hint, response
-body shape including ws_url, and that the ttyd branch stays reachable
-untouched. Uses a factory-swap so we never spawn a real PTY child — real
-PTY coverage lives in test_pty_transport.py.
+body shape including ws_url, and that STUDYLOOP_TRANSPORT=ttyd is rejected
+now that ttyd retirement stage 3 deleted the legacy branch it used to force.
+Uses a factory-swap so we never spawn a real PTY child — real PTY coverage
+lives in test_pty_transport.py.
 
 Plan: docs/plans/2026-05-09-refactor-agent-session-transport-plan.md §1.5b
 (Amendment #5).
@@ -14,7 +15,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from _helpers import run_async
@@ -144,8 +145,20 @@ class TestPtyStartHappyPath:
         _stub_db,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """An explicit source-test child replaces the vendor process entirely."""
-        monkeypatch.setenv("STUDYLOOP_TEST_AGENT_CMD", "test-agent {persona_file}")
+        """An explicit source-test child replaces the vendor process entirely.
+
+        R-09c: the read sites consult studyloop.test_hatch_env(), an
+        import-time os.environ snapshot -- not os.environ directly -- so
+        monkeypatch.setenv() alone no longer reaches them (this process
+        already imported studyloop long before this test ran). Monkeypatch
+        the accessor itself, which is exactly how a real caller observes
+        "the hatch was exported before studyloop was imported."
+        """
+
+        def _fake_hatch(name: str) -> str | None:
+            return "test-agent {persona_file}" if name == "STUDYLOOP_TEST_AGENT_CMD" else None
+
+        monkeypatch.setattr("studyloop.test_hatch_env", _fake_hatch)
         monkeypatch.setattr("shutil.which", lambda _name: None)
 
         with patch("studyloop.web.routes.session.is_session_active", return_value=False):
@@ -188,6 +201,30 @@ class TestPtyStartHappyPath:
         assert body["ws_url"] == "/api/session/ws?study_session_id=study-pty-1"
         # active.acquire should have run.
         assert run_async(active.current()) is not None
+
+    def test_pty_start_records_the_server_process_pid(
+        self,
+        client: TestClient,
+        _mock_agent_available,
+        _stub_db,
+    ) -> None:
+        """R-01b: a fresh PTY start writes `pid == os.getpid()` into the
+        claim, so a later `studyloop study` invocation (a different
+        process) can check whether this web server process is still alive
+        (claim_blocks_cli_start)."""
+        import os
+
+        with patch("studyloop.web.routes.session.is_session_active", return_value=False):
+            resp = client.post(
+                "/api/session/start",
+                json={"topic": "Python", "energy": 5, "agent": "claude", "transport": "pty"},
+            )
+
+        assert resp.status_code == 201, resp.text
+
+        from studyloop.session_state import read_session_state
+
+        assert read_session_state().get("pid") == os.getpid()
 
     def test_pty_is_default_when_body_and_env_unset(
         self,
@@ -397,25 +434,26 @@ class TestPtyStartAcquireFailureRollback:
 
 
 class TestPtyEnvOverride:
-    def test_env_ttyd_routes_through_legacy(
+    def test_env_ttyd_is_rejected_not_downgraded(
         self,
         client: TestClient,
         _mock_agent_available,
         monkeypatch,
     ) -> None:
-        """STUDYLOOP_TRANSPORT=ttyd forces the legacy branch even when the
-        body asks for pty — operator-level kill switch (plan §1.9)."""
+        """STUDYLOOP_TRANSPORT=ttyd is rejected with 422, not silently
+        downgraded to pty (R-05).
+
+        Before ttyd retirement stage 3, this env var forced the legacy
+        tmux+ttyd branch even when the body asked for pty — an operator-level
+        kill switch (plan §1.9). That branch is now gone; a naive deletion
+        would have left the env var falling through to "pty" silently, which
+        is exactly the "caller asked for X, got Y with no error" defect R-05
+        exists to close.
+        """
         monkeypatch.setenv("STUDYLOOP_TRANSPORT", "ttyd")
-        mock_backend = MagicMock()
-        mock_backend.is_available.return_value = False
-        with (
-            patch("studyloop.multiplexer.get_backend", return_value=mock_backend),
-            patch("studyloop.web.routes.session.is_session_active", return_value=False),
-        ):
-            resp = client.post(
-                "/api/session/start",
-                json={"topic": "Python", "energy": 5, "agent": "claude", "transport": "pty"},
-            )
-        # Legacy branch hits the multiplexer check first → 503
-        assert resp.status_code == 503
-        assert "not available" in resp.json()["error"]
+        resp = client.post(
+            "/api/session/start",
+            json={"topic": "Python", "energy": 5, "agent": "claude", "transport": "pty"},
+        )
+        assert resp.status_code == 422
+        assert "ttyd" in resp.json()["error"]

@@ -1,0 +1,9 @@
+{
+  "study_session_id": "web-sess-1",
+  "topic": "Async IO",
+  "mode": "focus",
+  "agent": "claude",
+  "energy": 6,
+  "transport": "pty",
+  "tmux_session": null
+}

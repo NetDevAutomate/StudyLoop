@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 import sqlite3
 from datetime import UTC, datetime, timedelta
 
 from . import _connection
+
+logger = logging.getLogger(__name__)
 
 
 def _get_study_terms() -> list[str]:
@@ -80,7 +83,15 @@ def topic_frequency(topic_keywords: list[str], days: int = 30) -> list[dict]:
     try:
         rows = conn.execute(query, [*topic_keywords, cutoff]).fetchall()
         return [dict(r) for r in rows]
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as exc:
+        # R-22b: a bare `except sqlite3.OperationalError: return []` cannot
+        # tell a genuinely missing table (an old schema, pre-migration --
+        # safe to treat as "no matches") apart from a real lock/timeout
+        # fault, which used to read back indistinguishably as "topic never
+        # mentioned" instead of surfacing the failure.
+        if not _connection.is_missing_table_error(exc):
+            logger.warning("topic_frequency failed: %s", exc)
+            raise
         return []
     finally:
         conn.close()
@@ -108,7 +119,11 @@ def struggle_topics(days: int = 30, min_sessions: int = 3) -> list[dict]:
         """,
             [cutoff],
         ).fetchall()
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as exc:
+        # R-22b: see topic_frequency's comment above -- same reasoning.
+        if not _connection.is_missing_table_error(exc):
+            logger.warning("struggle_topics failed: %s", exc)
+            raise
         return []
     finally:
         conn.close()

@@ -258,3 +258,10 @@ class TestCheckObsidianExport:
         assert len(results) == 1
         assert results[0].status == "warn"
         assert str(missing_vault) in results[0].message
+
+
+# check_unknown_config_keys (R-34) lives in cli/_doctor.py, not doctor/config.py
+# — see test_cli_doctor.py::TestUnknownConfigKeysCheck. doctor/config.py is
+# owned by a different remediation lane (m5); the ttyd-retirement lane (m1)
+# that needs this check for the orphaned ttyd_port key put it in a module it
+# owns instead.

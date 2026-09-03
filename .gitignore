@@ -503,6 +503,9 @@ docs/architecture/*
 # Un-ignored 2026-05-31 — pi/omp harness integration doc (C4 diagrams), linked
 # from docs/architecture.md and the agent-install / troubleshooting guides.
 !docs/architecture/pi-omp-harness-integration.md
+# Un-ignored 2026-09-02 — session-authority contract (M2 remediation lane),
+# linked from ADR-0009 and tested against by tests/test_session_authority_matrix.py.
+!docs/architecture/session-authority.md
 
 # Demo recordings (large, local-only)
 demos/

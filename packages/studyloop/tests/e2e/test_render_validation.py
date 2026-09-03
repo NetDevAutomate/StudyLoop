@@ -144,6 +144,11 @@ def test_spa_html_renders_without_console_errors(page: Page, env) -> None:
         goto_view(page, "body-double")
         assert_stacked_no_overlap(page, ".body-double-header h2", ".body-double-header p")
 
+        # R-13 / ttyd retirement stage 4: script-src 'self' has no
+        # 'unsafe-inline' or nonce exception, so a regression that puts an
+        # inline <script> back in index.html shows up here, named, rather
+        # than as an unexplained blank panel.
+        _watch(page).assert_no_csp_violations()
         _watch(page).assert_clean("booting the SPA and opening Body Double")
     except Exception:
         diag(page, "render-html", _watch(page))

@@ -35,7 +35,6 @@ def test_defaults_when_no_config_file(tmp_path):
 
         s = load_settings()
 
-    assert s.ttyd_port == 7681
     assert s.web_port == 8567
     assert s.browser == ""
     assert s.topics == []
@@ -135,6 +134,93 @@ def test_write_raw_config_creates_parent_and_round_trips(monkeypatch, tmp_path):
     assert load_raw_config() == {"browser": "brave", "web_port": 9000}
 
 
+def test_write_raw_config_locks_file_to_owner_only(monkeypatch, tmp_path):
+    """R-14: config.yaml can hold lan_password in plaintext -- must be 0600."""
+    from studyloop.settings import write_raw_config
+
+    config_path = tmp_path / "config.yaml"
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
+
+    written_path = write_raw_config({"lan_password": "correct-horse-battery-staple"})
+
+    assert written_path.stat().st_mode & 0o777 == 0o600
+
+
+def test_write_raw_config_file_is_never_wider_than_0600_before_chmod(monkeypatch, tmp_path):
+    """R-14b: the previous fix wrote config.yaml (landing at the process
+    umask mode, typically 0644, with the plaintext lan_password already in
+    it) and only chmod'd it AFTER -- a real window where the file sits
+    group/world-readable. This spies on Path.chmod to observe the file's
+    mode at the instant just before chmod runs (the tail of that window)
+    and asserts it is ALREADY 0600, i.e. the file was created at 0600 and
+    chmod has nothing left to tighten."""
+    from studyloop.settings import write_raw_config
+
+    config_path = tmp_path / "config.yaml"
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
+
+    modes_observed_just_before_chmod: list[int] = []
+    original_chmod = Path.chmod
+
+    def spy_chmod(self, mode, *args, **kwargs):
+        modes_observed_just_before_chmod.append(self.stat().st_mode & 0o777)
+        return original_chmod(self, mode, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "chmod", spy_chmod)
+
+    write_raw_config({"lan_password": "correct-horse-battery-staple"})
+
+    assert modes_observed_just_before_chmod, "chmod was never called on the config file"
+    assert modes_observed_just_before_chmod[-1] == 0o600, (
+        f"config.yaml existed at mode {oct(modes_observed_just_before_chmod[-1])} "
+        "before chmod ran -- the plaintext lan_password was briefly readable "
+        "wider than 0600"
+    )
+
+
+def test_write_raw_config_locks_new_parent_dir_to_owner_only(monkeypatch, tmp_path):
+    from studyloop.settings import write_raw_config
+
+    config_path = tmp_path / "nested" / "config.yaml"
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
+
+    write_raw_config({"browser": "brave"})
+
+    assert config_path.parent.stat().st_mode & 0o777 == 0o700
+
+
+def test_write_raw_config_repairs_a_pre_existing_0644_file(monkeypatch, tmp_path):
+    """An existing 0644 config.yaml (e.g. from before this fix) is tightened
+    to 0600 the next time it is saved, not just on first creation."""
+    from studyloop.settings import write_raw_config
+
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text("browser: firefox\n")
+    config_path.chmod(0o644)
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
+    assert config_path.stat().st_mode & 0o777 == 0o644
+
+    write_raw_config({"browser": "brave"})
+
+    assert config_path.stat().st_mode & 0o777 == 0o600
+
+
+def test_write_raw_config_leaves_pre_existing_dir_permissions_alone(monkeypatch, tmp_path):
+    """Only a NEWLY created parent dir is locked to 0700; a pre-existing dir's
+    permissions are not silently overridden (someone may have deliberately
+    loosened them for another local tool to read)."""
+    from studyloop.settings import write_raw_config
+
+    config_dir = tmp_path / "existing"
+    config_dir.mkdir(mode=0o755)
+    config_path = config_dir / "config.yaml"
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
+
+    write_raw_config({"browser": "brave"})
+
+    assert config_dir.stat().st_mode & 0o777 == 0o755
+
+
 def test_load_raw_config_rejects_invalid_yaml(monkeypatch, tmp_path):
     from studyloop.settings import ConfigError, load_raw_config
 
@@ -188,10 +274,9 @@ def test_scalar_path_fields_are_expanded(tmp_path):
 
 
 def test_scalar_int_fields(tmp_path):
-    config_path = _write_config(tmp_path, {"ttyd_port": 9999, "web_port": 1234})
+    config_path = _write_config(tmp_path, {"web_port": 1234})
     s = _load(config_path)
 
-    assert s.ttyd_port == 9999
     assert s.web_port == 1234
 
 
@@ -221,7 +306,6 @@ def test_absent_scalar_fields_keep_defaults(tmp_path):
     s = _load(config_path)
 
     assert s.browser == "chrome"
-    assert s.ttyd_port == 7681  # unchanged default
     assert s.web_port == 8567  # unchanged default
 
 
@@ -698,3 +782,56 @@ def test_bare_content_key(tmp_path, monkeypatch):
 
     # Falls back to ContentConfig defaults; the key point is no AttributeError.
     assert load_settings().content.base_path
+
+
+# ---------------------------------------------------------------------------
+# Unknown top-level config keys (R-34) — feeds the doctor's unknown-key check
+# ---------------------------------------------------------------------------
+
+
+def test_known_top_level_keys_covers_every_settings_field():
+    """Every Settings dataclass field name must be in the known-keys set, or
+    a real, currently-supported key would false-positive as unknown."""
+    import dataclasses
+
+    from studyloop.settings import Settings, known_top_level_keys
+
+    known = known_top_level_keys()
+    for f in dataclasses.fields(Settings):
+        assert f.name in known, f"Settings field {f.name!r} missing from known_top_level_keys()"
+
+
+def test_known_top_level_keys_covers_raw_only_sections():
+    """review/tts/focus are read directly from load_raw_config() by consumers
+    other than load_settings() and are not Settings fields — they must still
+    be known, or every config.yaml using them false-positives as unknown."""
+    from studyloop.settings import known_top_level_keys
+
+    known = known_top_level_keys()
+    for section in ("review", "tts", "focus"):
+        assert section in known
+
+
+def test_unknown_top_level_keys_flags_a_retired_field(tmp_path, monkeypatch):
+    _write_raw(tmp_path, "ttyd_port: 7681\nweb_port: 9000\n", monkeypatch)
+    from studyloop.settings import unknown_top_level_keys
+
+    assert unknown_top_level_keys() == ["ttyd_port"]
+
+
+def test_unknown_top_level_keys_flags_a_typo():
+    from studyloop.settings import unknown_top_level_keys
+
+    assert unknown_top_level_keys({"web_prot": 9000}) == ["web_prot"]
+
+
+def test_unknown_top_level_keys_empty_for_a_fully_known_config(tmp_path, monkeypatch):
+    _write_raw(
+        tmp_path,
+        "web_port: 9000\nbrowser: firefox\nreview:\n  directories: []\n"
+        "tts:\n  backend: kokoro\nfocus:\n  max_active: 3\n",
+        monkeypatch,
+    )
+    from studyloop.settings import unknown_top_level_keys
+
+    assert unknown_top_level_keys() == []

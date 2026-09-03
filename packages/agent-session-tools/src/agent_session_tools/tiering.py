@@ -33,7 +33,7 @@ import sqlite3
 import subprocess
 import sys
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -573,7 +573,10 @@ def prune_hot(
     if not hot.exists():
         raise FileNotFoundError(f"Hot database not found: {hot}")
 
-    cutoff = (datetime.now() - timedelta(days=days)).isoformat()
+    # R-20: this cutoff is compared against sessions.updated_at (UTC-sourced
+    # transcript timestamps) and feeds prune's DELETE. A naive local-time
+    # cutoff shifts the boundary by the machine's UTC offset.
+    cutoff = (datetime.now(UTC) - timedelta(days=days)).isoformat()
     size_before = hot.stat().st_size
     stats = PruneStats(dry_run=dry_run)
 
@@ -778,7 +781,9 @@ def refocus(
     fts_query = topics_fts_query(topics)
     if not fts_query:
         raise ValueError("refocus requires at least one topic")
-    since = (datetime.now() - timedelta(days=days)).isoformat()
+    # R-20: gates messages.timestamp (UTC-sourced) -- same naive-local-time
+    # skew as prune's cutoff above.
+    since = (datetime.now(UTC) - timedelta(days=days)).isoformat()
     stats = RefocusStats(topics=list(topics), dry_run=dry_run)
 
     conn = sqlite3.connect(hot)

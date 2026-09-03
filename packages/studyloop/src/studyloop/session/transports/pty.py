@@ -225,6 +225,17 @@ class PTYTransport:
         self._ended = False
         self._cancel_requested = False
 
+    @property
+    def pid(self) -> int | None:
+        """The forked child's pid once ``start()`` has run, else ``None``.
+
+        C4 (council): the route layer reads this after ``acquire()``
+        succeeds to record it on the claim as ``child_pid`` -- purely
+        informational (for `clean`/`doctor`'s future orphan reporting,
+        R-01g); nothing in this lane signals or kills it.
+        """
+        return self._state.pid if self._state is not None else None
+
     # ---- AgentSessionTransport ---------------------------------------------
 
     async def start(self, config: SessionConfig) -> None:

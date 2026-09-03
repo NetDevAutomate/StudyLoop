@@ -132,5 +132,7 @@ part of the supported quick path.
 4. Restart `studyloop web` and try one small session.
 5. Use [Troubleshooting](troubleshooting.md) if the agent remains unavailable.
 
-Do not install `ttyd` for the Web UI. Current live sessions use StudyLoop's
-terminal or chat surfaces; the retired ttyd iframe is not a learner-facing path.
+`ttyd` is fully retired and installing it enables nothing: live sessions use
+StudyLoop's own terminal (xterm.js over a WebSocket) or chat (ACP) surfaces,
+and the server no longer spawns, proxies, or accepts a `ttyd` transport value
+at all.

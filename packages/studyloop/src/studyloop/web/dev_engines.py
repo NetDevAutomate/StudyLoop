@@ -129,10 +129,10 @@ def describe_terminal_engine(dev_mode: bool, engine: str | None) -> dict[str, An
     """Describe the renderer that will actually paint the terminal.
 
     This is the *renderer* axis, not the *transport* axis. ``--dev`` swaps
-    ``window.Terminal``; the session transport picker (``pty`` / ``acp`` /
-    ``ttyd``) chooses how the agent process is driven. Conflating the two is
-    exactly the confusion that made ``--dev`` look like it "still showed
-    xterm.js, ACP and Legacy (ttyd)" — it does, because those are transports.
+    ``window.Terminal``; the session transport picker (``pty`` / ``acp``,
+    ``ttyd`` retired) chooses how the agent process is driven. Conflating
+    the two is exactly the confusion that made ``--dev`` look like it
+    "still showed xterm.js and ACP" — it does, because those are transports.
 
     Args:
         dev_mode: Whether the app was created with ``--dev``.

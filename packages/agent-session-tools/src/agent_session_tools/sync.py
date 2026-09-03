@@ -125,9 +125,13 @@ TABLE_SYNC_COLUMNS = {
         "win_count",
         "struggle_count",
         "topic_slug",
+        "updated_at",
     ],
+    # R-19e: no "id" -- INTEGER PRIMARY KEY AUTOINCREMENT is a per-machine
+    # counter, not a cross-machine identity (arbitration A5). "sync_key" is
+    # the stable, migration-backfilled conflict target instead.
     "teach_back_scores": [
-        "id",
+        "sync_key",
         "concept",
         "topic",
         "session_id",
@@ -140,9 +144,11 @@ TABLE_SYNC_COLUMNS = {
         "question_angle",
         "notes",
         "created_at",
+        "updated_at",
     ],
+    # R-19e: see teach_back_scores' comment above -- same reasoning.
     "knowledge_bridges": [
-        "id",
+        "sync_key",
         "source_concept",
         "source_domain",
         "target_concept",
@@ -156,9 +162,13 @@ TABLE_SYNC_COLUMNS = {
         "updated_at",
     ],
     "concepts": ["id", "name", "domain", "description", "created_at", "updated_at"],
-    "concept_aliases": ["alias", "concept_id"],
+    "concept_aliases": ["alias", "concept_id", "updated_at"],
+    # R-19e: no "id" either -- but concept_relations already has a real
+    # natural key (UNIQUE(source_concept_id, target_concept_id,
+    # relation_type), migrations.py migrate_v12), so no sync_key column is
+    # needed here; the fix is just using that constraint as the conflict
+    # target (GLOBAL_TABLE_PRIMARY_KEYS below) instead of the autoincrement id.
     "concept_relations": [
-        "id",
         "source_concept_id",
         "target_concept_id",
         "relation_type",
@@ -169,9 +179,10 @@ TABLE_SYNC_COLUMNS = {
         "created_at",
         "updated_at",
     ],
-    "message_concepts": ["message_id", "concept_id", "confidence"],
+    "message_concepts": ["message_id", "concept_id", "confidence", "updated_at"],
+    # R-19e: see teach_back_scores' comment above -- same reasoning.
     "parked_topics": [
-        "id",
+        "sync_key",
         "study_session_id",
         "session_id",
         "topic_tag",
@@ -185,15 +196,44 @@ TABLE_SYNC_COLUMNS = {
         "source",
         "tech_area",
         "priority",
+        "updated_at",
     ],
+    # R-19e: see teach_back_scores' comment above -- same reasoning.
     "scrub_log": [
-        "id",
+        "sync_key",
         "session_id",
         "message_id",
         "entity_type",
         "placeholder",
         "scrubbed_at",
+        "updated_at",
     ],
+}
+
+# Primary/conflict key columns per GLOBAL_SYNC_TABLES row, used to build the
+# recency-gated upsert in `_build_global_upsert_select_sql` (R-19 / D1). These
+# match each table's `CREATE TABLE` in migrations.py exactly -- SQLite's
+# `ON CONFLICT(...)` target must name a unique index or the table's own
+# PRIMARY KEY/UNIQUE constraint.
+GLOBAL_TABLE_PRIMARY_KEYS: dict[str, list[str]] = {
+    "study_progress": ["id"],
+    "study_sessions": ["id"],
+    # R-19e (arbitration A5): these four were "id" (INTEGER PRIMARY KEY
+    # AUTOINCREMENT, a per-machine counter, not a cross-machine identity --
+    # two machines' row #1s collide silently). Now a migration-backfilled,
+    # trigger-maintained sync_key column (migrations.py migrate_v30).
+    "teach_back_scores": ["sync_key"],
+    "knowledge_bridges": ["sync_key"],
+    "concepts": ["id"],
+    "concept_aliases": ["alias", "concept_id"],
+    # R-19e: also "id" before -- concept_relations already had a real
+    # natural key (UNIQUE(source_concept_id, target_concept_id,
+    # relation_type), migrate_v12), so it needs no new column, just this
+    # conflict-target change.
+    "concept_relations": ["source_concept_id", "target_concept_id", "relation_type"],
+    "message_concepts": ["message_id", "concept_id"],
+    "parked_topics": ["sync_key"],
+    "scrub_log": ["sync_key"],
 }
 
 # Module-level logger — does NOT configure the root logger (no basicConfig here).
@@ -477,6 +517,86 @@ def _build_insert_select_sql(
     )
 
 
+def _build_global_upsert_select_sql(table: str) -> str:
+    """Build a SELECT emitting a recency-gated upsert for one global-sync table.
+
+    R-19 / D1: unlike the session-scoped ``SYNC_TABLES`` (where the caller has
+    already restricted the row set to sessions that are new/newer on the
+    source side -- see ``_get_sync_state`` -- so a blind ``INSERT OR REPLACE``
+    is safe), every row of a ``GLOBAL_SYNC_TABLES`` table is dumped on every
+    sync with no per-row filter. Without a recency check, a stale machine's
+    dump silently reverts a newer row the destination already has (a board
+    move, a teach-back score, a progress update).
+
+    So the gate has to travel with the row instead of living in a Python-side
+    filter: emit ``INSERT ... ON CONFLICT(<pk>) DO UPDATE SET ... WHERE
+    excluded.updated_at > COALESCE(<table>.updated_at, '')``. SQLite evaluates
+    that WHERE clause on the destination, at apply time, against the
+    destination's own current row -- so this is correct whether the
+    generated SQL is streamed into a local file or piped into a remote
+    ``sqlite3`` over SSH; no round-trip to read the destination first is
+    needed. If the destination row is newer (or equal), the ON CONFLICT
+    branch's WHERE is false, so SQLite neither inserts (conflict) nor
+    updates (WHERE unmet) -- the destination row survives untouched.
+
+    R-19b (M3 council, arbitration A1/A1'): a bare ``excluded.updated_at >
+    <table>.updated_at`` is NULL-falsy -- SQL comparisons involving NULL
+    evaluate to NULL, and a NULL WHERE result is treated as false. A
+    destination row whose ``updated_at`` is NULL therefore could never be
+    overwritten by *any* source row, however new, freezing it forever. The
+    ``COALESCE(<table>.updated_at, <very old date>)`` on the destination side
+    treats a NULL destination as "older than any real timestamp", so a dated
+    source row now correctly wins. The source side is deliberately left
+    bare: a NULL *source* `updated_at` (``excluded.updated_at > ...``) still
+    evaluates to NULL/false and is skipped -- "no signal" from the incoming
+    row should never win, only a destination with no signal should lose.
+    Both halves of this decision are covered by `test_sync_r19.py`.
+
+    R-19f (M3 council, arbitration X1): both sides are wrapped in SQLite's
+    ``datetime()`` rather than compared as bare strings. Every current
+    writer of a ``GLOBAL_SYNC_TABLES`` ``updated_at`` uses SQL
+    ``datetime('now')``/``CURRENT_TIMESTAMP`` (both produce the same
+    canonical ``YYYY-MM-DD HH:MM:SS`` form -- confirmed table-by-table in
+    `evidence/M3/R-19f/00-dod.md`), so today's writes never actually hit a
+    mismatch here. But real format heterogeneity for timestamps genuinely
+    exists elsewhere in this codebase (the `sessions.updated_at` exporters:
+    kiro/codex's UTC-aware ``isoformat()``, Claude's raw ``...Z`` passthrough,
+    opencode's naive ``isoformat()``), and a bare string compare is silently
+    wrong across formats that put a different character at the same
+    position -- e.g. ``'...T00:00:01Z' > '...23:59:59'`` is true by pure
+    lexical accident (``'T' > ' '`` in ASCII), even though 00:00:01 is hours
+    *earlier* the same day. `datetime()` normalizes any SQLite-recognised
+    time-string (space- or T-separated, Z-suffixed, +HH:MM-offset, with or
+    without fractional seconds) to the same canonical form before comparing,
+    so this gate is not silently wrong if a future writer -- or a foreign
+    row synced in from an older/different format -- ever disagrees with
+    today's uniform writers. ``datetime()`` of an empty string or NULL
+    returns NULL, so the destination fallback uses ``'0001-01-01'`` (a real
+    parseable "infinitely old" date), not ``''`` -- an empty-string fallback
+    wrapped in ``datetime()`` would silently turn back into NULL and
+    reopen the R-19b bug it's meant to prevent.
+    """
+    columns = TABLE_SYNC_COLUMNS[table]
+    pk_columns = GLOBAL_TABLE_PRIMARY_KEYS[table]
+    quoted_columns = [_quote_identifier(column) for column in columns]
+    literal_expr = " || ',' || ".join(f"quote({col})" for col in quoted_columns)
+    update_columns = [c for c in columns if c not in pk_columns]
+    set_clause = ", ".join(
+        f"{_quote_identifier(c)} = excluded.{_quote_identifier(c)}"
+        for c in update_columns
+    )
+    conflict_target = ", ".join(_quote_identifier(c) for c in pk_columns)
+    updated_at_col = _quote_identifier("updated_at")
+    return (
+        f"SELECT 'INSERT INTO {table} "
+        f"({', '.join(quoted_columns)}) VALUES (' || {literal_expr} || ') "
+        f"ON CONFLICT({conflict_target}) DO UPDATE SET {set_clause} "
+        f"WHERE datetime(excluded.{updated_at_col}) > "
+        f"datetime(COALESCE({table}.{updated_at_col}, ''0001-01-01''));' "
+        f"FROM {table};"
+    )
+
+
 def _build_dump_queries(
     session_ids: set[str], available_tables: set[str] | None = None
 ) -> list[str]:
@@ -506,7 +626,7 @@ def _build_dump_queries(
     for table in GLOBAL_SYNC_TABLES:
         if not _has_table(table):
             continue
-        queries.append(_build_insert_select_sql(table))
+        queries.append(_build_global_upsert_select_sql(table))
     return queries
 
 
@@ -670,6 +790,97 @@ def _stream_sql_to_target(sql: str, target: Path | tuple[str, str]) -> bool:
 
 
 from agent_session_tools.maintenance import create_backup  # noqa: E402
+
+
+# Remote backups older than the newest N per destination are rotated out on
+# every call -- otherwise unbounded `.bak-<timestamp>` copies accumulate next
+# to the remote DB forever (M3 council, arbitration A9). Mirrors
+# `create_backup`'s local retention default (maintenance.py:database.backup_retention).
+_REMOTE_BACKUP_RETENTION = 5
+
+
+def _remote_backup(host: str, remote_db: str) -> str | None:
+    """Back up the remote DB to a timestamped copy before writing to it.
+
+    Mirrors `create_backup`'s naming (``<stem>.bak-<timestamp>`` next to the
+    original) but runs the copy on the remote host over SSH, since the file
+    is not locally reachable. R-19 / D1: `pull` already backs up the side
+    that can lose data (`create_backup(local_db)`); `push` and the remote
+    side of `sync` did not back up the *remote* -- the side their own writes
+    can revert -- at all. Returns the remote backup path, or None if there is
+    nothing to back up (remote DB absent) or the copy failed (logged, not
+    raised here -- R-19d makes the *callers* decide whether a failed backup
+    blocks the write; this function's only job is to attempt one and report
+    whether it succeeded).
+
+    R-19c (M3 council, arbitration A2): this used to be a plain `cp -p` of
+    the remote file. In WAL mode, data committed but not yet checkpointed
+    into the main `.db` file lives in the sibling `-wal` file -- a file copy
+    of just the `.db` file silently misses it (verified directly: a row
+    committed with no explicit checkpoint was present in a `.backup()` copy
+    and absent from a `cp -p` of the same database at the same instant). The
+    sqlite3 CLI's `.backup` dot-command is the same WAL-aware mechanism as
+    Python's `sqlite3.Connection.backup()` (used by `maintenance.create_backup`
+    for the equivalent local fix) -- it can run against the remote file over
+    SSH without a live Python connection to it.
+    """
+    _ensure_mux_dir()
+    remote_path = _quote_remote_path(remote_db)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_path = f"{remote_db}.bak-{timestamp}"
+    backup_sql = shlex.quote(f".backup '{backup_path}'")
+    # Retention runs in the same SSH round-trip as the backup itself: list
+    # this destination's own `.bak-*` copies newest-first, keep the newest
+    # _REMOTE_BACKUP_RETENTION, delete the rest. The `while read` loop (not
+    # `xargs`) is deliberate -- xargs's "don't run the command on empty
+    # input" behaviour is a GNU extension (`-r`/`--no-run-if-empty`); BSD
+    # xargs (macOS, most remote endpoints in practice) lacks the flag, and a
+    # bare `xargs rm` on empty input still invokes `rm` with no arguments on
+    # some platforms. A `while read` loop is a no-op on empty input on every
+    # POSIX shell, with no flag to get wrong.
+    rotate_cmd = (
+        f"ls -t {remote_path}.bak-* 2>/dev/null | tail -n +{_REMOTE_BACKUP_RETENTION + 1} "
+        '| while read -r f; do rm -f "$f"; done'
+    )
+    result = subprocess.run(
+        [
+            "ssh",
+            *_SSH_MUX_OPTS,
+            host,
+            f"test -f {remote_path} && sqlite3 {remote_path} {backup_sql} && ({rotate_cmd})",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        logger.warning(
+            "Remote backup skipped for %s:%s (%s)",
+            host,
+            remote_db,
+            result.stderr.strip() or "remote DB not found",
+        )
+        return None
+    logger.info("Remote backup created: %s:%s", host, backup_path)
+    return backup_path
+
+
+def _backup_destination(target: Path | tuple[str, str]) -> Path | str | None:
+    """Back up whatever `_stream_sql_to_target` is about to write to.
+
+    R-19 / D1: `pull` has always backed up its destination
+    (`create_backup(local_db)`, above in `pull()`) before applying a dump --
+    it is the side that can lose data. `push` and the remote side of `sync`
+    write to the *other* machine and took no backup at all. This dispatches
+    to the same local `create_backup` `pull` uses when `target` is a local
+    Path, or to `_remote_backup` when it is a (host, remote_db) tuple, so
+    every write path backs up its destination the same way.
+    """
+    if isinstance(target, Path):
+        if not target.exists():
+            return None
+        return create_backup(target)
+    host, remote_db = target
+    return _remote_backup(host, remote_db)
 
 
 def show_db_stats(db_path: Path, label: str = "Database") -> None:
@@ -864,6 +1075,22 @@ def push(
 
     sql = _dump_delta_sql(local_db, all_ids)
 
+    # Back up the remote before writing to it — R-19 / D1: `pull` has always
+    # backed up its destination; `push` writes to the remote and, until now,
+    # took no backup of the side it can revert.
+    #
+    # R-19d (M3 council, arbitration A3): a failed backup used to be silently
+    # ignored (the return value was discarded) -- the write proceeded anyway.
+    # The whole point of the backup is recoverability if the recency gate
+    # somehow doesn't save the day, so a failed backup must abort the write,
+    # not merely log a warning and continue.
+    if _backup_destination((host, remote_db)) is None:
+        console.print(
+            f"[red]❌ Could not back up the remote destination "
+            f"({host}:{remote_db}) — refusing to push without a backup[/red]"
+        )
+        raise typer.Exit(1)
+
     console.print("[bold]Streaming to remote...[/bold]")
     if _stream_sql_to_target(sql, (host, remote_db)):
         console.print(
@@ -987,6 +1214,23 @@ def sync(
     if push_ids:
         console.print(f"\n[bold]Step 2: Pushing {len(push_ids)} sessions...[/bold]")
         sql = _dump_delta_sql(local_db, push_ids)
+        # Back up the remote before this step writes to it — R-19 / D1: the
+        # local side is already backed up above (`create_backup(local_db)`,
+        # gated on the same `no_backup` flag); the remote side of a two-way
+        # sync gets the same protection pull has always given its own
+        # destination.
+        #
+        # R-19d: a failed backup must abort this step's write, same as push.
+        if (
+            sql.strip()
+            and not no_backup
+            and _backup_destination((host, remote_db)) is None
+        ):
+            console.print(
+                f"[red]❌ Could not back up the remote destination "
+                f"({host}:{remote_db}) — refusing to push without a backup[/red]"
+            )
+            raise typer.Exit(1)
         if sql.strip() and not _stream_sql_to_target(sql, (host, remote_db)):
             console.print("[red]❌ Failed to push[/red]")
             raise typer.Exit(1)

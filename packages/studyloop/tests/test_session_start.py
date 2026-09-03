@@ -5,6 +5,8 @@ No conftest.py (pluggy conflict with agent-session-tools). All fixtures inline.
 
 from __future__ import annotations
 
+import os
+import time
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -109,12 +111,23 @@ class TestStartSessionPreflightFailures:
         assert "No AI agent" in exc_info.value.message
 
     def test_raises_when_session_already_active(self):
-        active_state = {"study_session_id": "x"}
+        """A CLI claim whose recorded multiplexer session is still alive
+        blocks (R-01b: claim_blocks_cli_start, not the old unconditional
+        is_session_active() check). ``mux_session`` must be set and its
+        backend stubbed to report it alive -- a claim with no recorded
+        session name is stale by definition (see
+        test_a_dead_cli_claim_is_reclaimed_by_a_cli_start in
+        test_session_authority_matrix.py) and must NOT reach this far."""
+        active_state = {"study_session_id": "x", "mux_session": "study-x"}
         with (
             patch("studyloop.tmux.is_tmux_available", return_value=True),
             patch("studyloop.agent_launcher.shutil.which", return_value="/usr/bin/claude"),
             patch("studyloop.session_state.read_session_state", return_value=active_state),
             patch("studyloop.session_state.STATE_FILE") as sf,
+            patch(
+                "studyloop.multiplexer.get_backend",
+                return_value=MagicMock(session_exists=lambda name: True),
+            ),
             patch("studyloop.session.cleanup.auto_clean_zombies"),
             pytest.raises(SessionStartError) as exc_info,
         ):
@@ -146,7 +159,8 @@ class TestStartSessionHappyPath:
         with (
             patch("studyloop.tmux.shutil.which", return_value="/usr/bin/tmux"),
             patch("studyloop.tmux.subprocess.run", side_effect=_tmux_side_effect),
-            patch("studyloop.tmux.LOCK_FILE", tmp_path / "lock"),
+            # C12: the lock now follows session_state.SESSION_DIR,
+            # already patched below to tmp_path.
             patch("studyloop.tmux.os.execvp"),
             patch("studyloop.agent_launcher.shutil.which", return_value="/usr/bin/claude"),
             patch("studyloop.session_state.read_session_state", return_value={}),
@@ -172,7 +186,8 @@ class TestStartSessionHappyPath:
         with (
             patch("studyloop.tmux.shutil.which", return_value="/usr/bin/tmux"),
             patch("studyloop.tmux.subprocess.run", side_effect=_tmux_side_effect),
-            patch("studyloop.tmux.LOCK_FILE", tmp_path / "lock"),
+            # C12: the lock now follows session_state.SESSION_DIR,
+            # already patched below to tmp_path.
             patch("studyloop.tmux.os.execvp"),
             patch("studyloop.agent_launcher.shutil.which", return_value="/usr/bin/claude"),
             patch("studyloop.session_state.read_session_state", return_value={}),
@@ -203,7 +218,8 @@ class TestStartSessionHappyPath:
         with (
             patch("studyloop.tmux.shutil.which", return_value="/usr/bin/tmux"),
             patch("studyloop.tmux.subprocess.run", side_effect=_tmux_side_effect),
-            patch("studyloop.tmux.LOCK_FILE", tmp_path / "lock"),
+            # C12: the lock now follows session_state.SESSION_DIR,
+            # already patched below to tmp_path.
             patch("studyloop.tmux.os.execvp"),
             patch("studyloop.agent_launcher.shutil.which", return_value="/usr/bin/claude"),
             patch("studyloop.session_state.read_session_state", return_value={}),
@@ -230,6 +246,107 @@ class TestStartSessionHappyPath:
             )
 
         assert "study-old-session-abcd1234" in created_names
+
+
+class TestNoTtydSpawnOnStudyPath:
+    """R-03: plain ``studyloop study`` must never spawn ttyd, even when installed.
+
+    Puts a working ``ttyd`` shim on PATH and proves the CLI study path never
+    invokes it. Before stage 2 of the ttyd retirement, ``start_session()``
+    unconditionally called ``start_ttyd_background()``, which shelled out to
+    whatever ``ttyd`` it found on PATH with an empty password whenever neither
+    ``--web`` nor ``--lan`` was passed (R-03: a writable, unauthenticated
+    terminal on ``127.0.0.1:7681``).
+    """
+
+    def test_fake_ttyd_on_path_is_never_invoked(self, tmp_path, monkeypatch):
+        marker = tmp_path / "ttyd-was-spawned"
+        bin_dir = tmp_path / "fakebin"
+        bin_dir.mkdir()
+        fake_ttyd = bin_dir / "ttyd"
+        fake_ttyd.write_text(f"#!/bin/sh\ntouch {marker}\n")
+        fake_ttyd.chmod(0o755)
+        monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}")
+
+        with (
+            patch("studyloop.tmux.shutil.which", return_value="/usr/bin/tmux"),
+            patch("studyloop.tmux.subprocess.run", side_effect=_tmux_side_effect),
+            # C12: the lock now follows session_state.SESSION_DIR,
+            # already patched below to tmp_path.
+            patch("studyloop.tmux.os.execvp"),
+            # NOTE: this patches the process-wide `shutil.which` (all modules
+            # share the one `shutil` module object), so it must resolve "ttyd"
+            # for real — not just stub "claude" — or this test cannot tell
+            # apart "ttyd was never looked up" from "the patch masked it".
+            patch(
+                "studyloop.agent_launcher.shutil.which",
+                side_effect=lambda name: str(fake_ttyd) if name == "ttyd" else "/usr/bin/claude",
+            ),
+            patch("studyloop.session_state.read_session_state", return_value={}),
+            patch("studyloop.session_state.STATE_FILE", tmp_path / "state.json"),
+            patch("studyloop.session_state.SESSION_DIR", tmp_path),
+            patch("studyloop.session_state.TOPICS_FILE", tmp_path / "topics.md"),
+            patch("studyloop.session_state.PARKING_FILE", tmp_path / "parking.md"),
+            patch("studyloop.history.start_study_session", return_value="abc12345"),
+            patch("studyloop.session.cleanup.auto_clean_zombies"),
+            patch.dict("os.environ", {"TMUX": "/tmp/tmux"}),
+        ):
+            start_session("Python Decorators", "claude", "study", "elapsed", 7, False)
+
+        # Poll rather than check once: a real spawn is an async subprocess, so
+        # a single immediate check could pass by luck even with the spawn
+        # still present and merely slow to touch the marker.
+        for _ in range(20):
+            if marker.exists():
+                break
+            time.sleep(0.05)
+        assert not marker.exists(), (
+            "ttyd was spawned from the CLI study path even with no --web/--lan; "
+            "this is exactly the unauthenticated-terminal regression R-03 describes."
+        )
+
+
+class TestWebPasswordViaEnvNotArgv:
+    """R-10: the --lan password must reach the spawned web process via the
+    environment, never argv — argv is visible to any other local user via
+    `ps`/`/proc/<pid>/cmdline` for the process's whole lifetime.
+    """
+
+    def test_password_reaches_child_via_env_not_argv(self, tmp_path, monkeypatch):
+        marker = tmp_path / "web-spawn-dump.txt"
+        bin_dir = tmp_path / "fakebin"
+        bin_dir.mkdir()
+        fake_studyloop = bin_dir / "studyloop"
+        fake_studyloop.write_text(
+            "#!/bin/sh\n"
+            f'ps -p $$ -o command= > "{marker}"\n'
+            f'echo "env:$STUDYLOOP_WEB_PASSWORD" >> "{marker}"\n'
+            "sleep 2\n"
+        )
+        fake_studyloop.chmod(0o755)
+        monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}")
+
+        from studyloop.session.orchestrator import start_web_background
+
+        with (
+            patch("studyloop.session.orchestrator._kill_port_occupant"),
+            patch("studyloop.session.orchestrator._open_browser"),
+            patch("studyloop.session_state.write_session_state"),
+        ):
+            start_web_background("study-test", lan=True, password="s3cr3t-pw")
+
+        # Poll: the fake process needs a moment to run `ps` on itself.
+        for _ in range(60):
+            if marker.exists() and marker.stat().st_size > 0:
+                break
+            time.sleep(0.05)
+        assert marker.exists(), "fake studyloop process never ran"
+        lines = marker.read_text().splitlines()
+        argv_line = lines[0] if lines else ""
+        assert "s3cr3t-pw" not in argv_line, f"password leaked into argv: {argv_line!r}"
+        assert "env:s3cr3t-pw" in lines, (
+            f"password did not reach the child via STUDYLOOP_WEB_PASSWORD: {lines!r}"
+        )
 
 
 class TestStartSessionRollback:

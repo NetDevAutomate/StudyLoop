@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import sqlite3
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import TYPE_CHECKING
 
 from studyloop.settings import (
@@ -118,7 +118,13 @@ def suggest_focus(days: int = 30, limit: int = 6) -> list[tuple[str, str]]:
     3. Configured course topics (declared intent)
     """
     suggestions: dict[str, str] = {}
-    cutoff = (datetime.now() - timedelta(days=days)).isoformat()
+    # R-20: study_sessions.started_at is written via SQLite's own
+    # datetime('now') ("YYYY-MM-DD HH:MM:SS", UTC, no offset suffix) --
+    # match that format exactly (strftime, not isoformat) so the string
+    # comparison below stays correct, and derive it from real UTC rather
+    # than the naive local wall clock, which shifted this window by the
+    # machine's UTC offset.
+    cutoff = (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
 
     conn = _connect_sessions_db()
     if conn is not None:

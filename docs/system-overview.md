@@ -208,16 +208,19 @@ Target:
 - herdr as the default multiplexer once its journey suite is green
 - macOS/iOS apps use the same local API later
 
-The ttyd browser surface is **already gone** ([ADR-0005](adr/0005-retire-ttyd-browser-surface.md)).
-It was removed as part of the PTY refresh work: a page reload no longer kills a
-live session — the server holds a disconnected session in a detach grace window
-(90 s by default) — and the console re-adopts that session on load, restoring
-the terminal automatically. If a reload leaves an empty pane, the usual cause is
-a grace window that expired; see
+ttyd is **fully retired** — both the browser surface
+([ADR-0005](adr/0005-retire-ttyd-browser-surface.md)) and the server transport
+that ADR deliberately kept ([ADR-0008](adr/0008-retire-ttyd-entirely.md)).
+Nothing installs, spawns, or proxies a ttyd process any more; the `/terminal/`
+route and `terminal_proxy.py` are deleted, and `POST /api/session/start
+{"transport": "ttyd"}` / `STUDYLOOP_TRANSPORT=ttyd` are both rejected with an
+error rather than accepted or silently downgraded. The browser terminal is
+xterm.js over a WebSocket (PTY) or ACP chat; a page reload no longer kills a
+live session either way — the server holds a disconnected session in a detach
+grace window (90 s by default), and the console re-adopts that session on
+load, restoring the terminal automatically. If a reload leaves an empty pane,
+the usual cause is a grace window that expired; see
 [the troubleshooting entry](troubleshooting.md#the-terminal-is-empty-after-a-page-refresh).
-The ttyd **server** transport
-(`STUDYLOOP_TRANSPORT=ttyd`, the `/terminal/` proxy) is retained for maintainers,
-but a session started that way has no browser renderer and reports `unavailable`.
 
 ```mermaid
 flowchart TD

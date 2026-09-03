@@ -1,0 +1,11 @@
+{
+  "study_session_id": "cli-sess-1",
+  "topic": "Decorators",
+  "mode": "focus",
+  "agent": "claude",
+  "energy": 5,
+  "mux_session": "study-decorators-cli1234",
+  "tmux_session": "study-decorators-cli1234",
+  "mux_main_pane": "%0",
+  "tmux_main_pane": "%0"
+}
