@@ -325,22 +325,6 @@ class TestKillBackgroundProcesses:
 
         mock_kill.assert_not_called()
 
-    def test_port_fallback_called_for_ttyd(self):
-        """_kill_port_occupant is called for ttyd_port when present."""
-        state = {"ttyd_port": 7681}
-        mock_kill_port = MagicMock()
-
-        with (
-            patch("subprocess.run", MagicMock(return_value=MagicMock(stdout=""))),
-            patch("os.kill"),
-            patch("studyloop.session.orchestrator._kill_port_occupant", mock_kill_port),
-        ):
-            from studyloop.session.cleanup import _kill_background_processes
-
-            _kill_background_processes(state)
-
-        mock_kill_port.assert_any_call(7681, expected_cmd="ttyd")
-
     def test_port_fallback_called_for_web(self):
         """_kill_port_occupant is called for web_port when present."""
         state = {"web_port": 8567}
@@ -414,8 +398,11 @@ class TestCleanupTmuxAndFiles:
 
             _cleanup_tmux_and_files(session_name=None, persona_file=None)  # must not raise
 
-    def test_kills_tmux_sessions(self, tmp_path):
-        """kill_all_study_sessions is called with the current session name."""
+    def test_kills_only_its_own_tmux_session(self, tmp_path):
+        """R-02: only this session's own name is killed, never every
+        study-* session on the machine. kill_all_study_sessions() is no
+        longer reachable from here at all -- see
+        docs/architecture/session-authority.md clause 4."""
         mock_backend = MagicMock()
         with (
             patch("studyloop.multiplexer.get_backend", return_value=mock_backend),
@@ -427,9 +414,25 @@ class TestCleanupTmuxAndFiles:
 
             _cleanup_tmux_and_files(session_name="study-python-abc", persona_file=None)
 
-        mock_backend.kill_all_study_sessions.assert_called_once_with(
-            current_session="study-python-abc"
-        )
+        mock_backend.kill_session.assert_called_once_with("study-python-abc")
+        mock_backend.kill_all_study_sessions.assert_not_called()
+
+    def test_kills_no_session_when_pty_or_acp_owns_none(self, tmp_path):
+        """PTY/ACP sessions own no multiplexer session (session_name=None) --
+        nothing is killed, not even as a fallback to the blunt sweep."""
+        mock_backend = MagicMock()
+        with (
+            patch("studyloop.multiplexer.get_backend", return_value=mock_backend),
+            patch("studyloop.session_state.TOPICS_FILE", tmp_path / "topics.md"),
+            patch("studyloop.session_state.PARKING_FILE", tmp_path / "parking.md"),
+            patch("studyloop.session_state.SESSION_DIR", tmp_path),
+        ):
+            from studyloop.session.cleanup import _cleanup_tmux_and_files
+
+            _cleanup_tmux_and_files(session_name=None, persona_file=None)
+
+        mock_backend.kill_session.assert_not_called()
+        mock_backend.kill_all_study_sessions.assert_not_called()
 
     def test_ipc_files_removed(self, tmp_path):
         """TOPICS_FILE and PARKING_FILE are deleted if they exist."""

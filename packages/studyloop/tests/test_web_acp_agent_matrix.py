@@ -23,14 +23,14 @@ Plan: docs/plans/2026-05-09-refactor-agent-session-transport-plan.md §2.3
 from __future__ import annotations
 
 import json
-import os
-import subprocess
 import sys
-import time
 import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import subprocess
 
 import pytest
 
@@ -47,6 +47,7 @@ if str(_tests_dir) not in sys.path:
 from _playwright_helpers import (  # noqa: E402
     clean_ipc,
     effective_credentials,
+    start_web_server,
 )
 
 if TYPE_CHECKING:
@@ -105,33 +106,20 @@ def _start_web_server_with_stub_acp() -> subprocess.Popen:
     - STUDYLOOP_TEST_ACP_CMD: argv the route spawns instead of kiro-cli/gemini.
     - STUB_ACP_PROMPT_UPDATES: scripted session/update notification flow.
     - STUB_ACP_PROMPT_STOP_REASON: stopReason returned after the notification.
+
+    C13/R-49g: routed through the shared ``start_web_server`` (hermetic
+    child env, refuses to spawn against the developer's real HOME/config
+    dir) instead of a hand-rolled ``env = {**os.environ, ...}`` + polling
+    loop.
     """
-    env = {
-        **os.environ,
-        "STUDYLOOP_TEST_ACP_CMD": _stub_acp_cmd(),
-        "STUB_ACP_PROMPT_UPDATES": json.dumps(_STUB_PROMPT_UPDATES),
-        "STUB_ACP_PROMPT_STOP_REASON": "end_turn",
-    }
-    cmd = [sys.executable, "-m", "studyloop.cli", "web", "--port", str(WEB_PORT)]
-    proc = subprocess.Popen(
-        cmd,
-        env=env,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
+    return start_web_server(
+        WEB_PORT,
+        extra_env={
+            "STUDYLOOP_TEST_ACP_CMD": _stub_acp_cmd(),
+            "STUB_ACP_PROMPT_UPDATES": json.dumps(_STUB_PROMPT_UPDATES),
+            "STUB_ACP_PROMPT_STOP_REASON": "end_turn",
+        },
     )
-    for _ in range(40):
-        try:
-            urllib.request.urlopen(f"http://127.0.0.1:{WEB_PORT}/", timeout=1)
-            return proc
-        except urllib.error.HTTPError as exc:
-            if exc.code in (401, 403):
-                return proc
-            time.sleep(0.3)
-        except Exception:
-            time.sleep(0.3)
-    proc.kill()
-    msg = f"Test web server failed to start on port {WEB_PORT}"
-    raise RuntimeError(msg)
 
 
 @pytest.fixture(scope="class")
@@ -835,7 +823,9 @@ class TestU2ChatPanelMount:
               catch { return null; }
             }"""
         )
-        # Must NOT be 'acp-chat' — either 'xterm' or 'ttyd-iframe'
+        # Must NOT be 'acp-chat' — either 'xterm' or 'unavailable'
+        # ('ttyd-iframe' was never a real terminalMode value; that surface
+        # never existed here — see live-agent-console.js:49)
         assert terminal_mode != "acp-chat", (
             f"PTY transport must not produce terminalMode='acp-chat', got {terminal_mode!r}"
         )

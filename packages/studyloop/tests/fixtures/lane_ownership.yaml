@@ -54,6 +54,23 @@ lanes:
     - packages/studyloop/src/studyloop/herdr.py
     - packages/studyloop/src/studyloop/cli/_study.py
     - packages/studyloop/src/studyloop/cli/_clean.py
+    # R-01b: `studyloop session start`'s own is_session_active() guard,
+    # unmapped until this lane's follow-up item closed the CLI-side
+    # stale-claim gap (DECISIONS.md §E19/§E20).
+    - packages/studyloop/src/studyloop/cli/_session.py
+    # R-02b (DECISIONS §E17): the sidebar's End Session key called
+    # kill_all_study_sessions() directly, reproducing R-02 through a third
+    # surface the original review's finding didn't name. Dual-owned with m5,
+    # which has not started and will later own the rest of this file for
+    # R-32 (the dead "+5min focus" keybinding).
+    - packages/studyloop/src/studyloop/tui/sidebar.py
+    # R-09c (DECISIONS §E12: "R-09c ... goes to M2"). The brief's own text
+    # for this item requires exposing the import-time
+    # STUDYLOOP_TEST_*-snapshot accessor IN studyloop/__init__.py (the
+    # module that already snapshots the pre-dotenv key names for R-09/R-09b);
+    # dual-owned with m4, which owns the rest of the file (R-09, R-09b's
+    # sibling scrub logic).
+    - packages/studyloop/src/studyloop/__init__.py
 
   m3: # data safety (lane/m3-data-safety)
     - packages/agent-session-tools/**
@@ -73,6 +90,10 @@ lanes:
     # R-15 sites (DECISIONS §E4)
     - packages/studyloop/src/studyloop/cli/_practice.py
     - packages/studyloop/src/studyloop/content/generators/prompts.py
+    # R-09b: second unscrubbed dotenv loader (DECISIONS §E12). Dual-owned with
+    # m3, which already owns the whole agent-session-tools/** glob above; m3
+    # is told not to touch this specific file.
+    - packages/agent-session-tools/src/agent_session_tools/config_loader.py
 
   m5: # public contract, packaging, functional UX (lane/m5-contract-packaging) — after M2 merges
     - pyproject.toml

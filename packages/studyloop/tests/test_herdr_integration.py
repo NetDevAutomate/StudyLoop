@@ -26,20 +26,13 @@ from __future__ import annotations
 
 import os
 import shutil
-import subprocess
-import sys
 import time
-from pathlib import Path
 
 import pytest
 from harness.agents import long_running_agent
 from harness.multiplexer import MultiplexerHarness
 
 pytestmark = [pytest.mark.integration]
-
-# IPC files
-CONFIG_DIR = Path.home() / ".config" / "studyloop"
-STATE_FILE = CONFIG_DIR / "session-state.json"
 
 
 # ---------------------------------------------------------------------------
@@ -66,7 +59,9 @@ skip_no_herdr = pytest.mark.skipif(not has_herdr, reason="herdr not available")
 )
 def mux(request, tmp_path):
     """Parameterised multiplexer harness — both backends run the same journey."""
-    with MultiplexerHarness.from_backend_name(request.param) as harness:
+    session_dir = tmp_path / "session-ipc"
+    session_dir.mkdir(parents=True, exist_ok=True)
+    with MultiplexerHarness.from_backend_name(request.param, session_dir) as harness:
         yield harness
 
 
@@ -86,7 +81,9 @@ def mux_cli(request, tmp_path):
     tmux tests use subprocess.run (tmux attach fails gracefully without a
     terminal; the detached session is the thing we test).
     """
-    with MultiplexerHarness.from_backend_name(request.param) as harness:
+    session_dir = tmp_path / "session-ipc"
+    session_dir.mkdir(parents=True, exist_ok=True)
+    with MultiplexerHarness.from_backend_name(request.param, session_dir) as harness:
         yield harness
 
 
@@ -181,7 +178,23 @@ class TestEndFromOutside:
     """T8: `studyloop study --end` from a separate process kills session."""
 
     def test_end_from_separate_process(self, mux_cli: MultiplexerHarness, agent_cmd: str):
-        """Session killed when --end is run from an external process."""
+        """Session killed when --end is run from an external process.
+
+        Was hand-rolling the subprocess env inline, WITHOUT
+        STUDYLOOP_SESSION_DIR -- so the `--end` subprocess read/wrote the
+        real ~/.config/studyloop (the exact thing R-49 and this suite's own
+        module docstring forbid), found no session there, and did nothing.
+        This passed anyway before R-02's fix, purely by accident: the old
+        end path called kill_all_study_sessions(), which kills every
+        study-* session on the machine regardless of which claim triggered
+        it, so it swept up this test's session as a side effect even though
+        it never found this session's own claim. R-02's fix (kill only the
+        claim's own name) correctly stopped doing that, which is what
+        surfaced this test's own isolation bug. Fixed by using the
+        harness's own end_study_via_cli(), which already sets
+        STUDYLOOP_SESSION_DIR correctly (see TestQQuits above, which does
+        this right).
+        """
         state = mux_cli.start_study_session("test-end-outside", agent_cmd=agent_cmd)
         session_name = state.get("mux_session") or state.get("tmux_session")
         assert session_name
@@ -190,21 +203,7 @@ class TestEndFromOutside:
         mux_cli.assert_session_exists(session_name)
 
         # End from a separate process (simulates user in another terminal)
-        env = os.environ.copy()
-        env.pop("TMUX", None)
-        env.pop("HERDR_ENV", None)
-        if mux_cli.is_herdr:
-            env["STUDYLOOP_MULTIPLEXER"] = "herdr"
-        else:
-            env["STUDYLOOP_MULTIPLEXER"] = "tmux"
-
-        subprocess.run(
-            [sys.executable, "-m", "studyloop.cli", "study", "--end"],
-            capture_output=True,
-            text=True,
-            env=env,
-            timeout=15,
-        )
+        mux_cli.end_study_via_cli()
 
         mux_cli.wait_for_session_gone(session_name, timeout=15)
 
@@ -251,7 +250,9 @@ class TestAttachFromOutside:
 
     def test_workspace_creation_from_non_herdr_shell(self, tmp_path):
         """herdr workspace create works when invoked from a plain shell."""
-        with MultiplexerHarness.from_backend_name("herdr") as mux:
+        session_dir = tmp_path / "session-ipc"
+        session_dir.mkdir(parents=True, exist_ok=True)
+        with MultiplexerHarness.from_backend_name("herdr", session_dir) as mux:
             # Ensure we're NOT inside herdr
             env = os.environ.copy()
             env.pop("HERDR_ENV", None)
@@ -274,13 +275,15 @@ class TestAttachFromOutside:
             content = mux.wait_for_pane_content(pane_id, r"ATTACH_TEST_OK", timeout=10)
             assert "ATTACH_TEST_OK" in content
 
-    def test_full_study_session_from_non_herdr_shell(self, agent_cmd: str):
+    def test_full_study_session_from_non_herdr_shell(self, agent_cmd: str, tmp_path):
         """Full study session lifecycle from a non-herdr shell.
 
         Uses pexpect PTY so herdr TUI can launch after os.execvp.
         Proves: workspace created → agent running → end tears down → no residue.
         """
-        with MultiplexerHarness.from_backend_name("herdr") as mux:
+        session_dir = tmp_path / "session-ipc"
+        session_dir.mkdir(parents=True, exist_ok=True)
+        with MultiplexerHarness.from_backend_name("herdr", session_dir) as mux:
             # Start a study session (the real flow: create workspace → agent → sidebar)
             state = mux.start_study_session(
                 "test-attach-full",

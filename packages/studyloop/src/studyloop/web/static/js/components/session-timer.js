@@ -328,8 +328,8 @@ export function sessionTimer() {
 
       endSession() {
         // In-page confirm, NOT native confirm(): Chrome can auto-dismiss
-        // native dialogs while the embedded ttyd terminal iframe holds
-        // focus, which made agent sessions impossible to end.
+        // native dialogs while the embedded xterm.js terminal holds focus,
+        // which made agent sessions impossible to end.
         //
         // A conflict counts as something to end even though we own no session:
         // that is the ONE state where the learner needs End and has no session

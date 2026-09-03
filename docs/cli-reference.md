@@ -43,7 +43,7 @@ studyloop now --modality hands-on --interleave adaptive
 studyloop chat-note NOTE.md --mode recall      # Build a Socratic context pack
 studyloop chat-note NOTE.md --mode diagram --voice
 studyloop practice verify TASKS.json --task 1 --notes "what passed"
-studyloop practice verify TASKS.json --task 1 --run-command --workdir . --timeout 120
+studyloop practice verify TASKS.json --task 1 --run-command --yes --workdir . --timeout 120
 studyloop recap today                    # One win, repair target, due item, next action
 studyloop recap today --speak            # Speak through study-speak
 studyloop recap today --audio-file recap.wav
@@ -154,7 +154,7 @@ Run `studyloop study` without a topic to open the textual picker for body double
 - `--password SECRET` sets the LAN authentication password (used with `--lan`)
 
 **Session lifecycle:**
-- **Start:** `studyloop study "topic"` — creates tmux session, agent, sidebar
+- **Start:** `studyloop study "topic"` — creates tmux session, agent, sidebar. Refuses with "A session is already active" only when a prior session's owner is confirmed still alive (its tmux session, or — for a web session — its server process); a claim left behind by a crashed session is reclaimed automatically, with a warning logged naming the stale session, instead of refusing forever.
 - **Exit:** quit Claude normally (`/exit`, Ctrl+C) — auto-cleans up tmux, IPC files, switches back to previous session. Session directory preserved.
 - **Resume:** `studyloop study --resume` — if tmux alive, reattaches. If ended, rebuilds tmux and passes `-r` to the agent to continue the conversation from history.
 - **End explicitly:** `studyloop study --end` or sidebar `Q` — same cleanup as quitting Claude
@@ -253,9 +253,11 @@ Modes are `recall`, `diagram`, `trace`, `teachback`, and `repair`. The command v
 
 `studyloop practice verify` records an attempt against a generated practice deck. Command verification only runs when `--run-command` is explicit; non-command tasks use notes plus expected-artifact checks as a rubric. Newer generated decks can also carry rubric items, evidence prompts, setup commands, and per-task command timeouts.
 
+A command-verification task's command comes from the practice-deck JSON — possibly LLM-generated — so it is always printed before it runs. With `--run-command`, actually executing it additionally requires `--yes` (needed in non-interactive contexts such as scripts or CI) or an interactive `y` at the prompt; without either, the command is shown but nothing executes and the process exits with status 2.
+
 ```bash
 studyloop practice verify course-practice.json --task 1 --notes "diagram matched"
-studyloop practice verify course-practice.json --task 2 --run-command --workdir . --timeout 120
+studyloop practice verify course-practice.json --task 2 --run-command --yes --workdir . --timeout 120
 ```
 
 `studyloop recap today` compresses the day into one win, one repair target, one due item, and one next action. `--speak` calls `study-speak`, so the local-Kokoro / Kokoro-server / macOS backend configuration is inherited. `--audio-file` saves the same recap as a local audio file, preferring the Kokoro server when configured and falling back to macOS `say`.
@@ -428,9 +430,13 @@ studyloop bridge list --source-domain networking --target-domain python
 ```bash
 studyloop clean --dry-run         # Preview zombie tmux sessions, orphan dirs, stale state
 studyloop clean                   # Apply cleanup (respects lock; safe with --resume)
+studyloop clean --all             # Also kill every study-* session, live or dead, not just zombies
 ```
 
 Also runs automatically before `studyloop study` when zombies are detected.
+`--all` is a deliberate, broader sweep: it ends every running study session
+on the machine, not just orphaned ones — use it if you want a clean slate
+rather than routine tidy-up.
 
 ### Web PWA
 
@@ -458,10 +464,12 @@ studyloop web --lan --password SECRET
 
 **Live session dashboard** (`/session`): Real-time SSE activity feed, energy-adaptive timer, topic counters, and a **terminal panel** showing the live session. The panel renders one of two surfaces: **xterm.js** driven by a PTY streamed over a WebSocket (`transport: "pty"`), or **ACP chat** for structured-event agents (`transport: "acp"`). It is draggable (stacked or side-by-side), has a layout toggle and panel-swap buttons, and can be popped out to a separate window (pop-out auto-closes when returning inline). The panel reattaches by itself after a page refresh — it reads `GET /api/session/state` on init and adopts a live session it owns.
 
-There is **no browser terminal fallback**: the ttyd iframe surface was retired.
-Installing ttyd no longer enables anything user-visible in the dashboard. The
-`ttyd` **server** transport still exists for maintainers, but a session started
-that way has no browser renderer and reports an explicit `unavailable` state.
+There is **no ttyd fallback of any kind**: ttyd has been fully retired.
+Installing ttyd enables nothing — `studyloop` no longer spawns, proxies, or
+accepts a `transport` value for it anywhere, server or browser.
+`POST /api/session/start {"transport": "ttyd"}` and
+`STUDYLOOP_TRANSPORT=ttyd` are both rejected with an error, not silently
+downgraded to another transport.
 
 **Voice:** Server-side Kokoro. The browser posts to StudyLoop's own authenticated `/api/tts/speak`, which proxies to the Kokoro server named by `tts.openvox_base_url`; with none reachable it falls back to the OS's Web Speech voices, then to silence. Off until enabled in the header.
 - **Read once** — speaker icon on card or `T` key
@@ -472,7 +480,6 @@ that way has no browser renderer and reports an explicit `unavailable` state.
 
 ```yaml
 web_port: 8567       # web dashboard port (default 8567)
-ttyd_port: 7681      # ttyd server transport port (default 7681) — maintainer-only; no browser surface
 browser: ""          # auto-open browser: chrome, safari, firefox, brave, or empty for system default
 lan_password: ""     # persistent password for --lan mode (auto-generated if empty)
 ```

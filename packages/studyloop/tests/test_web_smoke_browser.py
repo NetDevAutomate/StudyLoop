@@ -27,6 +27,7 @@ from _playwright_helpers import (  # noqa: E402
     web_page_fixture_factory,
     web_server_fixture_factory,
 )
+from e2e._env import ConsoleWatch  # noqa: E402
 
 if TYPE_CHECKING:
     from playwright.sync_api import Page, Route
@@ -190,6 +191,22 @@ def test_app_loads_with_today_nav_default(web_page: Page) -> None:
     assert web_page.locator(".brand").is_visible()
     assert web_page.locator('.sidebar-btn:has-text("Today")').is_visible()
     assert web_page.locator('.sidebar-btn:has-text("Flashcards")').is_visible()
+
+
+def test_no_csp_violations_on_default_load(web_page: Page) -> None:
+    """R-13c smoke coverage: the default-mode CSP (no --dev, no data:
+    exception) must ship on the document response with zero violations.
+
+    This is the fast (~seconds, not the ~8 min full e2e suite) proof that
+    R-13c's new object-src/base-uri/frame-ancestors/form-action directives
+    and the dev_mode-gated connect-src don't break first render. The
+    dev_mode=True case (ghostty WASM bootstrap) is covered by
+    test_ghostty_dev_terminal.py in the full suite, not here — this file's
+    server never passes --dev.
+    """
+    watch = ConsoleWatch(web_page)
+    _goto(web_page)
+    watch.assert_no_csp_violations()
 
 
 def test_generate_panel_renders_provider_controls(web_page: Page) -> None:

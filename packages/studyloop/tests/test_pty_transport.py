@@ -211,6 +211,17 @@ async def _collect_until(
 
 @pytest.mark.asyncio
 class TestHappyPath:
+    async def test_pid_property_reflects_the_forked_child(
+        self, transport: PTYTransport, config: SessionConfig
+    ) -> None:
+        """C4: the route layer needs the child's pid, after start(), to
+        record it on the claim as child_pid -- for clean/doctor's future
+        orphan reporting (R-01g), never to kill it on reclaim."""
+        assert transport.pid is None
+        await transport.start(config)
+        assert isinstance(transport.pid, int)
+        assert transport.pid > 0
+
     async def test_start_emits_started_event_first(
         self, transport: PTYTransport, config: SessionConfig
     ) -> None:

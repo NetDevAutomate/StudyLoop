@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import os
 import sqlite3
-from datetime import datetime, timedelta
+import time
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
+
+import pytest
 
 
 from agent_session_tools.maintenance import (
@@ -177,6 +181,40 @@ class TestCreateBackup:
         row = conn.execute("SELECT COUNT(*) FROM sessions").fetchone()
         conn.close()
         assert row[0] == 1
+
+    def test_backup_captures_uncheckpointed_wal_data(self, tmp_path):
+        """R-19c (M3 council, arbitration A2/X1 extension): a plain file
+        copy of a WAL-mode database can miss committed data still sitting
+        in the sibling `-wal` file. A writer's COMMIT+close alone is not
+        enough to reproduce this -- SQLite opportunistically checkpoints
+        when a write connection closes and nothing else is actively
+        pinning the WAL, which would silently flush the row into the main
+        file and make the bug invisible. A reader with an open transaction
+        pins the WAL frames so the write genuinely stays WAL-only; the
+        backup must still contain it.
+        """
+        db_path = _make_db(tmp_path)
+        reader = sqlite3.connect(db_path)
+        reader.execute("PRAGMA journal_mode=WAL")
+        reader.execute("BEGIN")
+        reader.execute("SELECT COUNT(*) FROM sessions").fetchone()
+
+        _insert_session(db_path, "wal-only", "2024-01-01T10:00:00")
+
+        backup_dir = tmp_path / "backups"
+        with patch(
+            "agent_session_tools.maintenance.get_backup_dir", return_value=backup_dir
+        ):
+            backup_path = create_backup(db_path)
+        reader.close()
+
+        assert backup_path is not None
+        backup_conn = sqlite3.connect(backup_path)
+        count = backup_conn.execute(
+            "SELECT COUNT(*) FROM sessions WHERE id = 'wal-only'"
+        ).fetchone()[0]
+        backup_conn.close()
+        assert count == 1, "the backup must include data still in the -wal file"
 
     def test_backup_dir_created_if_absent(self, tmp_path):
         db_path = _make_db(tmp_path)
@@ -604,6 +642,58 @@ class TestDeleteOld:
             _delete_old(db_path, days=30, confirm=False, backup=True)
 
         mock_backup.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# R-20: cutoff must be real UTC, not naive local time. updated_at is
+# UTC-sourced (exporters/claude.py, exporters/codex.py); a naive
+# datetime.now() cutoff shifts the delete/archive boundary by the machine's
+# local UTC offset. Runs the boundary case under two non-UTC zones.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def _restore_tz():
+    original = os.environ.get("TZ")
+
+    def _set(tz: str) -> None:
+        os.environ["TZ"] = tz
+        time.tzset()
+
+    yield _set
+
+    if original is None:
+        os.environ.pop("TZ", None)
+    else:
+        os.environ["TZ"] = original
+    time.tzset()
+
+
+class TestDeleteOldUtcCutoff:
+    @pytest.mark.parametrize("tz", ["Pacific/Auckland", "America/Los_Angeles"])
+    def test_minute_inside_kept_minute_outside_deleted(self, tz, tmp_path, _restore_tz):
+        db_path = _make_db(tmp_path)
+        days = 1
+        cutoff_instant = datetime.now(UTC) - timedelta(days=days)
+        inside = (cutoff_instant + timedelta(minutes=1)).isoformat()
+        outside = (cutoff_instant - timedelta(minutes=1)).isoformat()
+
+        _insert_session(db_path, "s-in", inside)
+        _insert_session(db_path, "s-out", outside)
+
+        _restore_tz(tz)
+        with patch("agent_session_tools.maintenance.create_backup"):
+            _delete_old(db_path, days=days, confirm=True, backup=False)
+
+        remaining = {
+            r[0] for r in sqlite3.connect(db_path).execute("SELECT id FROM sessions")
+        }
+        assert "s-in" in remaining, (
+            f"a session 1 minute inside the UTC cutoff must survive under TZ={tz}"
+        )
+        assert "s-out" not in remaining, (
+            f"a session 1 minute outside the UTC cutoff must be deleted under TZ={tz}"
+        )
 
 
 # ---------------------------------------------------------------------------

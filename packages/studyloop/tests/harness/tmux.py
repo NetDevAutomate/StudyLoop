@@ -6,7 +6,10 @@ No fixed sleeps — everything uses wait_for() polling.
 
 from __future__ import annotations
 
+import contextlib
+import os
 import re
+import signal
 import subprocess
 from typing import TYPE_CHECKING
 
@@ -83,15 +86,59 @@ class TmuxHarness:
         return result.returncode == 0
 
     def kill_session(self, name: str) -> None:
-        """Kill a tmux session and wait until it's gone."""
+        """Kill a tmux session and everything running in it.
+
+        R-49c (M3 council, arbitration N1, machine-observed): `tmux
+        kill-session` sends SIGHUP to each pane's leader process and hopes
+        it dies -- and, if it forwards the signal, that its children die
+        too. That is not a given: a pane leader that ignores or is slow to
+        act on SIGHUP survives, `tmux has-session` correctly reports the
+        session gone regardless (tmux's own bookkeeping, not a promise
+        about the process), and the process is now an orphan with no
+        tmux session and no pytest process left to ever signal it again
+        (confirmed directly: a pane leader with `trap '' HUP` survives a
+        real `tmux kill-session` untouched). Captures every pane's PID --
+        which is also its process-group id, since tmux makes each pane's
+        leader a new group leader -- *before* asking tmux to kill the
+        session, then sends that group SIGTERM/SIGKILL directly
+        afterward, independent of whether tmux's own signal delivery
+        happened to work this time.
+        """
+        pgids = []
+        for pane in self.list_panes(name):
+            with contextlib.suppress(ValueError):
+                pgids.append(int(pane["pid"]))
+
         self._tmux("kill-session", "-t", name)
         for _ in range(20):
             if not self.session_exists(name):
-                return
+                break
             time.sleep(0.1)
-        # Last resort
-        self._tmux("kill-session", "-t", name)
+        else:
+            # Last resort
+            self._tmux("kill-session", "-t", name)
+            time.sleep(0.3)
+
+        self.kill_process_groups(pgids)
+
+    @staticmethod
+    def kill_process_groups(pgids: list[int]) -> None:
+        """SIGTERM, then SIGKILL after a grace period, every process group.
+
+        Best-effort: a group that's already fully gone raises
+        `ProcessLookupError`/`PermissionError` from `os.killpg`, suppressed
+        -- this is a cleanup backstop, not a correctness-critical path,
+        and must never raise out of a test's teardown.
+        """
+        if not pgids:
+            return
+        for pgid in pgids:
+            with contextlib.suppress(ProcessLookupError, PermissionError):
+                os.killpg(pgid, signal.SIGTERM)
         time.sleep(0.3)
+        for pgid in pgids:
+            with contextlib.suppress(ProcessLookupError, PermissionError):
+                os.killpg(pgid, signal.SIGKILL)
 
     def list_panes(self, session: str) -> list[dict[str, str]]:
         """List panes in a session with their IDs and commands."""

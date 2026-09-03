@@ -13,12 +13,44 @@ import os
 import re
 import shutil
 import subprocess
-from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-LOCK_FILE = Path("~/.config/studyloop/studyloop-tmux.lock").expanduser()
 MIN_TMUX_VERSION = (3, 1)  # display-popup + pane-border-lines
+
+
+def _lock_file() -> Path:
+    """Return the current tmux coordination lock path.
+
+    C12 (R-49f, council): resolved lazily, at CALL time, from
+    ``session_state.SESSION_DIR`` -- not bound to a module-level constant
+    at this module's own import time (the previous shape, a hardcoded
+    ``~/.config/studyloop/studyloop-tmux.lock``). Two reasons this
+    matters, not just one:
+
+    1. A user who sets ``STUDYLOOP_SESSION_DIR`` to relocate their config
+       dir gets this lock relocated with it, instead of a stale
+       ``~/.config/studyloop`` reference that no longer matches where the
+       rest of their session state lives.
+    2. The C8/R-49d test-suite isolation fixture already redirects
+       ``session_state.SESSION_DIR`` for every unit test; deriving from
+       it -- rather than a separate hardcoded default -- means this file
+       is covered by that same redirect with no fixture change needed.
+
+    Default behaviour (``STUDYLOOP_SESSION_DIR`` unset) is unchanged:
+    ``~/.config/studyloop/studyloop-tmux.lock``, since that is
+    ``session_state.SESSION_DIR``'s own default. The machine-wide
+    serialisation property this lock provides (one lock file, one path,
+    shared by every StudyLoop process on the machine) is unchanged in
+    production -- only where that one path lives can now move.
+    """
+    from studyloop.session_state import SESSION_DIR
+
+    return SESSION_DIR / "studyloop-tmux.lock"
 
 
 def _tmux(*args: str, check: bool = False) -> subprocess.CompletedProcess[str]:
@@ -93,8 +125,9 @@ def create_session(
 
     Uses a file lock to prevent concurrent creation races.
     """
-    LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with open(LOCK_FILE, "w") as f:
+    lock_path = _lock_file()
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(lock_path, "w") as f:
         fcntl.flock(f, fcntl.LOCK_EX)
         try:
             args = ["new-session", "-d", "-s", name]

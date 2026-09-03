@@ -99,7 +99,11 @@ trap 'exit 0' TERM INT
 echo "Mock agent started"
 sleep 2
 # Write to IPC file directly (sidebar polls this)
-PARKING_FILE="$HOME/.config/studyloop/session-parking.md"
+# R-49: honour STUDYLOOP_SESSION_DIR (set by the harness that launched this
+# session) instead of always writing to the real ~/.config/studyloop -- this
+# script bypasses the studyloop CLI on purpose (see the docstring above), so
+# it has to redirect itself.
+PARKING_FILE="${STUDYLOOP_SESSION_DIR:-$HOME/.config/studyloop}/session-parking.md"
 echo "- What about metaclasses?" >> "$PARKING_FILE"
 # Stay alive
 while true; do sleep 1; done
@@ -148,7 +152,11 @@ studyloop topic "First-Class Functions" --status learning \
 sleep 1
 
 # Park a question via IPC file (more reliable in tests than CLI)
-PARKING_FILE="$HOME/.config/studyloop/session-parking.md"
+# R-49: honour STUDYLOOP_SESSION_DIR (set by the harness that launched this
+# session) instead of always writing to the real ~/.config/studyloop -- this
+# script bypasses the studyloop CLI on purpose (see the docstring above), so
+# it has to redirect itself.
+PARKING_FILE="${STUDYLOOP_SESSION_DIR:-$HOME/.config/studyloop}/session-parking.md"
 echo "- How do decorators interact with class methods?" >> "$PARKING_FILE"
 
 # Stay alive until killed

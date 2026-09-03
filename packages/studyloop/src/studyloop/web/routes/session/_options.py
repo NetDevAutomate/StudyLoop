@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 import threading
 import time
 from pathlib import Path
@@ -39,7 +38,7 @@ def _terminal_engine_option(state: Any) -> dict[str, Any]:
 
     Delegates to ``studyloop.web.dev_engines.describe_terminal_engine`` — the
     single source of truth for the renderer axis (xterm.js vs the ``--dev``
-    engine), as opposed to the session transport axis (pty/acp/ttyd).
+    engine), as opposed to the session transport axis (pty/acp).
     """
     from studyloop.web.dev_engines import describe_terminal_engine
 
@@ -461,7 +460,12 @@ def _agent_options() -> list[dict[str, object]]:
         detected = set(detect_agents())
         # Browser tests inject a test-local child command while exercising the
         # real Codex adapter/picker contract. No fake adapter is shipped.
-        if os.environ.get("STUDYLOOP_TEST_AGENT_CMD"):
+        # Reads the import-time snapshot (R-09c), not os.environ directly, so
+        # a dotenv loader that runs later in the process cannot re-inject
+        # this key -- see studyloop.test_hatch_env.
+        from studyloop import test_hatch_env
+
+        if test_hatch_env("STUDYLOOP_TEST_AGENT_CMD"):
             detected.add("codex")
         return [
             {

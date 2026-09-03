@@ -403,7 +403,7 @@ def register_tools(mcp: FastMCP) -> None:
         state.
 
         Returns ``{"ended": True, "topic": <resolved topic>}`` after
-        the session's tmux/ttyd/PTY resources have been torn down and
+        the session's tmux/PTY resources have been torn down and
         the IPC files cleared.
         """
         from studyloop.session.cleanup import end_session_common

@@ -543,7 +543,7 @@ class TestEndSession:
             }"""
         )
         # The in-page confirm dialog appears (no native confirm() — Chrome
-        # auto-dismisses those while the ttyd iframe holds focus).
+        # auto-dismisses those while the embedded xterm.js terminal holds focus).
         dialog = web_page.locator(".end-confirm-dialog")
         dialog.wait_for(state="visible", timeout=3000)
         # Scoped to the dialog: .end-confirm-yes appears 3x in the SPA, so an

@@ -82,27 +82,29 @@ The live console has two renderers, chosen by the session's `transport`:
 Anything else has **no browser renderer**. The console reports an explicit
 `unavailable` state — status `No terminal available`, plus a message naming the
 transport it cannot render and telling you to end the session and start it again
-on the browser terminal or ACP.
+on the browser terminal or ACP. In practice this should not happen any more:
+`ttyd` (the only other transport that ever existed) is fully retired, both the
+browser surface and the server transport
+([ADR-0005](adr/0005-retire-ttyd-browser-surface.md),
+[ADR-0008](adr/0008-retire-ttyd-entirely.md)). `STUDYLOOP_TRANSPORT=ttyd` and
+`{"transport": "ttyd"}` are both rejected outright (422/error) rather than
+accepted and rendered as `unavailable` — if you see this state, it means the
+server returned a transport value this console genuinely doesn't recognise,
+which is worth reporting as a bug rather than working around.
 
-The usual cause is `STUDYLOOP_TRANSPORT=ttyd` in the environment. That path is
-still honoured server-side, but it is no longer a browser rendering option:
+If the environment sets `STUDYLOOP_TRANSPORT` to anything other than `pty`,
+unset it and start a new session:
 
 ```bash
 env | grep STUDYLOOP_TRANSPORT
-```
-
-Unset it and start a new session:
-
-```bash
 unset STUDYLOOP_TRANSPORT
 studyloop web
 ```
 
-Installing `ttyd` does **not** fix this and is not required for the terminal
-panel. The ttyd browser surface was retired deliberately, because without the
-binary the old iframe rendered an empty frame that was indistinguishable from a
-hang. The retired design record remains in the repository for maintainers,
-including the reasoning and the server path that remains.
+Installing `ttyd` does **nothing** — no code path spawns, proxies, or accepts
+it any more. The retired design records remain in the repository for
+maintainers, including the reasoning for retiring first the browser surface
+and then the server transport.
 
 If the transport is already `pty` and the panel still reports no terminal, the
 server did not return a connection for the session. Ending and restarting the
