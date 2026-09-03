@@ -1,1 +1,0 @@
-agents/gemini/GEMINI.md
