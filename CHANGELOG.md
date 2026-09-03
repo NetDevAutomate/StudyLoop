@@ -90,6 +90,11 @@ experience may change before `1.0.0`.
 
 ### Fixed
 
+- `session-query list --since 7d` on `docs/setup-guide.md` and
+  `docs/cli-reference.md` raised an unhandled traceback if pasted verbatim —
+  `query_utils.parse_date` only accepts `YYYY-MM-DD` or `last-N-days`. Both
+  pages now show `--since last-7-days`, matching the fix already applied to
+  `docs/first-week.md`.
 - `docs/setup-guide.md`'s "Interactive Setup" section described
   `studyloop config init`'s three questions (knowledge bridging, a "study
   material location" question `setup` never asks, an Obsidian vault path)
