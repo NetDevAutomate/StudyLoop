@@ -158,9 +158,13 @@ lanes:
     - README.md
     # SOLE owner for this campaign (DECISIONS §F17 supersedes F13): m5 finished
     # with 0.1.0, so both pyproject files move here for the live_obsidian marker
-    # and the project-URL entry.
+    # and the project-URL entry. uv.lock comes with them: `just release-check`
+    # runs pip-audit against the LOCKED versions, so a security bump is a lock
+    # refresh, and it cannot be split from the campaign that has to leave that
+    # gate green.
     - pyproject.toml
     - packages/studyloop/pyproject.toml
+    - uv.lock
 
   m9: # second-brain process artefacts (lane/m9-second-brain-spec) — parallel with m7
     # Split out of m7 so the OpenSpec change, ADR and contract page can be
