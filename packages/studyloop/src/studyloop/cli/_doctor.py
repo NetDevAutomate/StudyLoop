@@ -76,6 +76,7 @@ def _get_registry():
         check_config_file,
         check_python_version,
         check_studyloop_installed,
+        check_tmux_available,
     )
     from studyloop.doctor.database import check_review_db, check_sessions_db
     from studyloop.doctor.deps import check_optional_deps
@@ -88,6 +89,7 @@ def _get_registry():
         check_studyloop_installed,
         check_agent_session_tools,
         check_config_file,
+        check_tmux_available,
     ]:
         registry.register("core")(fn)
     for fn in [check_review_db, check_sessions_db]:

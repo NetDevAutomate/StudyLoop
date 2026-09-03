@@ -90,6 +90,9 @@ experience may change before `1.0.0`.
 
 ### Fixed
 
+- `studyloop doctor` now checks for tmux (3.1+, `studyloop study`'s hard
+  dependency) under the `core` category, with an install hint, instead of
+  giving no signal at all before a first `studyloop study` fails outright.
 - A bad scalar config value (e.g. `web_port: "abc"`) now raises a one-line
   actionable error naming the key, the file, and the bad value, instead of
   an unhandled Python traceback. `studyloop config show` now also warns
