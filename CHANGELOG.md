@@ -31,6 +31,11 @@ experience may change before `1.0.0`.
   have configured one.
 - The project website, [www.studyloop.dev](https://www.studyloop.dev/), is linked
   from the README and the documentation home.
+- xTiles users can move today's study and their whole plan into xTiles through
+  their assistant's MCP connector: the Second Brain guide ships the three prompts,
+  and `studyloop install agents` installs an opt-in wind-down skill into every
+  harness it detects. The skill is silent unless your provider is `xtiles` and an
+  `xtiles` server is connected, and StudyLoop stores no xTiles credential.
 
 ### Changed
 
