@@ -7,6 +7,14 @@ experience may change before `1.0.0`.
 
 ## [Unreleased]
 
+### Added
+
+- An optional second-brain layer: `studyloop brain status` reports whether a
+  provider is configured, and `studyloop brain publish --plan <id>` publishes a
+  projection of that plan. Nothing is written anywhere until you opt in with a
+  `second_brain:` section in `config.yaml`, and nothing ever writes back to the
+  plan document.
+
 ## [0.1.0] - 2026-09-03
 
 ### Added
