@@ -6,7 +6,7 @@ Hardware / backends:
 - **Local Ollama** on MacBook Pro M4 Max, 128 GB unified memory, localhost:11434
 - **AWS Bedrock** via profile `bedrock-prod`, region `us-east-1`, inference profile `us.anthropic.claude-sonnet-4-6`
 
-Source material: 3 AWS Data Engineering Bootcamp study-notes from the user's Obsidian vault (`Ultimate_AWS_Data_Engineering_Bootcamp_with_Real_World_Labs/study-notes/`). Same inputs for all three providers; same prompts; same pydantic schema constraint.
+Source material: 3 AWS Data Engineering Bootcamp study-notes from a local Obsidian vault (`Ultimate_AWS_Data_Engineering_Bootcamp_with_Real_World_Labs/study-notes/`). Same inputs for all three providers; same prompts; same pydantic schema constraint.
 
 ## Performance — cards/min and wall time
 

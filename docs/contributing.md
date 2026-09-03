@@ -17,10 +17,10 @@ constraints behind the decisions here.
 **Licensing.** Contributions are accepted under the repository's [MIT License](https://github.com/NetDevAutomate/StudyLoop/blob/main/LICENSE)
 (inbound = outbound). No CLA and no DCO sign-off is required.
 
-**Conduct.** Be kind and specific; assume the other person is tired. Learners' private material (session
-transcripts, notes, struggles) is never quoted in public threads. Report a conduct concern privately to the
-maintainer through the contact in [`SECURITY.md`](https://github.com/NetDevAutomate/StudyLoop/blob/main/SECURITY.md);
-a formal code of conduct is on the list for the next release.
+**Conduct.** The project follows the [Contributor Covenant 2.1](https://github.com/NetDevAutomate/StudyLoop/blob/main/CODE_OF_CONDUCT.md);
+it names the reporting contact and the enforcement ladder. Beyond it: be kind and specific, assume the other
+person is tired, and never quote learners' private material (session transcripts, notes, struggles) in public
+threads.
 
 ## Contents
 
