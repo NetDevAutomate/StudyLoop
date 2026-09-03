@@ -1,12 +1,13 @@
 # Target Architecture
 
 > Direction the project is moving toward. Living document — updated as decisions land. For the system as it works today, see [Current Architecture](current.md).
+> Last updated: 2026-09-03.
 
 ---
 
 ## Direction in one paragraph
 
-StudyLoop is moving from a tmux + assistant-CLI core to a **local-first, web-first, plugin-based** study platform. The web/PWA replaces tmux as the primary learner UI. ACP becomes the preferred transport (currently Kiro + Gemini). PTY remains the fallback for agents that don't speak ACP. ttyd is retired ([ADR-0008](../adr/0008-retire-ttyd-entirely.md)) — every web session now uses PTY or ACP. Native macOS / iOS clients use the same local HTTP + WebSocket API later.
+StudyLoop is moving from a tmux + assistant-CLI core to a **local-first, web-first, plugin-based** study platform. The web/PWA replaces tmux as the primary learner UI. ACP becomes the preferred transport (currently Kiro only — no other mentor harness speaks ACP). PTY remains the fallback for agents that don't speak ACP. ttyd is retired ([ADR-0008](../adr/0008-retire-ttyd-entirely.md)) — every web session now uses PTY or ACP. Native macOS / iOS clients use the same local HTTP + WebSocket API later.
 
 ---
 
@@ -29,8 +30,8 @@ flowchart TB
     end
 
     subgraph "Agent CLIs"
-      ACPAgents["ACP-capable agents<br/>(Kiro, Gemini, …)"]
-      PTYAgents["PTY-only agents<br/>(Claude, Codex,<br/>OpenCode)"]
+      ACPAgents["ACP-capable agents<br/>(Kiro)"]
+      PTYAgents["PTY-only agents<br/>(Claude, Codex,<br/>OpenCode, pi)"]
     end
 
     Learner -->|"primary path"| StudyLoop
