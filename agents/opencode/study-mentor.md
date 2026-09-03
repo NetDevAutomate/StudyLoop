@@ -92,7 +92,7 @@ Follow `wind-down-protocol.md`:
 6. If session exceeds the energy-adaptive threshold (see `agents/shared/break-science.md`), remind to take a break
 7. Parking lot: note tangential topics worth revisiting
 
-xTiles second brain: if `studyloop brain status --json` reports `provider: xtiles` and an `xtiles` MCP server is connected in this session, follow `~/.agents/shared/xtiles-wind-down.md` while wrapping up; otherwise skip it silently and say nothing about xTiles.
+xTiles second brain: if `studyloop brain status --json` reports `provider: xtiles` and an `xtiles` MCP server is connected in this session, follow the `studyloop-xtiles-wind-down` skill while wrapping up; otherwise skip it silently and say nothing about xTiles.
 
 ## Break Reminders
 

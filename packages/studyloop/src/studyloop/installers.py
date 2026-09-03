@@ -18,6 +18,21 @@ class InstallError(RuntimeError):
 
 @dataclass(frozen=True, slots=True)
 class LinkSpec:
+    """One symlink to create: ``target`` -> ``source``.
+
+    ``source`` is normally a repository-relative path. It may instead be an
+    absolute path or one starting with ``~``, which means "link to this location on
+    disk, wherever it came from". That form exists for the skills hub: a skill is
+    installed once into ``~/.agents/skills/`` and each harness's own skills
+    directory then links to THAT, not back to the repository.
+
+    Two links in a chain rather than several in parallel, because the alternative
+    drifts. With parallel links, adding a harness means another repo-relative row,
+    and Codex -- which reads ``~/.agents/skills`` natively -- would get a redundant
+    second path to the same skill. With a hub, Codex is served by the hub alone and
+    every other harness is one link away from the same bytes.
+    """
+
     source: str
     target: str
 
@@ -38,14 +53,6 @@ _TOOL_LINKS: dict[str, tuple[LinkSpec, ...]] = {
             str(_HOME / ".kiro/skills/tutor-progress-tracker"),
         ),
         LinkSpec("agents/kiro/skills/study-speak", str(_HOME / ".kiro/skills/study-speak")),
-        # Opt-in and self-gating: inert unless the learner's provider is xtiles
-        # AND an `xtiles` MCP server is connected, so installing it
-        # unconditionally costs a silent file rather than an unwanted offer
-        # (T5 C5 / DECISIONS §F18).
-        LinkSpec(
-            "agents/kiro/skills/studyloop-xtiles-wind-down",
-            str(_HOME / ".kiro/skills/studyloop-xtiles-wind-down"),
-        ),
         LinkSpec(
             "agents/mcp/study-speak-server.py",
             str(_HOME / ".kiro/agents/mcp/study-speak-server.py"),
@@ -55,10 +62,6 @@ _TOOL_LINKS: dict[str, tuple[LinkSpec, ...]] = {
         LinkSpec(
             "agents/claude/socratic-mentor.md",
             str(_HOME / ".claude/agents/socratic-mentor.md"),
-        ),
-        LinkSpec(
-            "agents/claude/skills/studyloop-xtiles-wind-down",
-            str(_HOME / ".claude/skills/studyloop-xtiles-wind-down"),
         ),
     ),
     "opencode": (
@@ -71,7 +74,33 @@ _TOOL_LINKS: dict[str, tuple[LinkSpec, ...]] = {
     "pi": (LinkSpec("agents/pi/AGENTS.md", str(_HOME / ".pi/agent/AGENTS.md")),),
 }
 
-_SHARED_LINKS: tuple[LinkSpec, ...] = (LinkSpec("agents/shared", str(_HOME / ".agents/shared")),)
+#: The canonical location of the xTiles wind-down skill, and the name every
+#: harness link points at. Not a StudyLoop invention: Codex reads
+#: ``~/.agents/skills`` as its USER scope and OpenCode lists it as a global search
+#: path, so the hub is a directory those two already look in.
+XTILES_SKILL_NAME = "studyloop-xtiles-wind-down"
+XTILES_SKILL_HUB = _HOME / ".agents/skills" / XTILES_SKILL_NAME
+
+_SHARED_LINKS: tuple[LinkSpec, ...] = (
+    LinkSpec("agents/shared", str(_HOME / ".agents/shared")),
+    # The skill itself, installed once. Opt-in and self-gating: inert unless the
+    # learner's provider is xtiles AND an `xtiles` MCP server is connected, so
+    # installing it unconditionally costs a silent file rather than an unwanted
+    # offer (T5 C5 / DECISIONS §F18). Codex needs no further link -- this IS its
+    # user-scope skills directory.
+    LinkSpec(f"agents/skills/{XTILES_SKILL_NAME}", str(XTILES_SKILL_HUB)),
+)
+
+#: Each harness's own skills directory, for the ones whose location is documented.
+#: pi is absent on purpose: no pi skills directory is documented, so it gets a
+#: self-gated paragraph in its AGENTS.md instead of a link to a guessed path.
+XTILES_SKILL_LINKS: dict[str, LinkSpec] = {
+    "kiro": LinkSpec(str(XTILES_SKILL_HUB), str(_HOME / ".kiro/skills" / XTILES_SKILL_NAME)),
+    "claude": LinkSpec(str(XTILES_SKILL_HUB), str(_HOME / ".claude/skills" / XTILES_SKILL_NAME)),
+    "opencode": LinkSpec(
+        str(XTILES_SKILL_HUB), str(_HOME / ".config/opencode/skills" / XTILES_SKILL_NAME)
+    ),
+}
 
 _AGENT_CHOICES = RELEASE_HARNESSES
 
@@ -273,6 +302,17 @@ def _render_target(template: str, repo_root: Path) -> Path:
     return Path(template.format(repo_root=repo_root)).expanduser()
 
 
+def _render_source(source: str, repo_root: Path) -> Path:
+    """Resolve a :class:`LinkSpec` source to a real path.
+
+    Absolute or ``~``-prefixed sources link to an existing location on disk (the
+    skills hub); everything else is repository-relative, as it always was.
+    """
+    if source.startswith("~") or Path(source).is_absolute():
+        return Path(source).expanduser()
+    return repo_root / source
+
+
 def _points_to(target: Path, source: Path) -> bool:
     """True if symlink ``target`` points at ``source`` (relative or absolute form)."""
     current = Path(os.readlink(target))
@@ -284,7 +324,7 @@ def _points_to(target: Path, source: Path) -> bool:
 def _link_paths(repo_root: Path, specs: tuple[LinkSpec, ...], *, uninstall: bool) -> int:
     changed = 0
     for spec in specs:
-        source = repo_root / spec.source
+        source = _render_source(spec.source, repo_root)
         target = _render_target(spec.target, repo_root)
         # In-repo targets use relative links so they survive repo moves and
         # syncing between machines with different absolute paths.
@@ -374,6 +414,11 @@ def install_agent_definitions(
 
     for tool in selected:
         summary[tool] = _link_paths(repo_root, _TOOL_LINKS[tool], uninstall=uninstall)
+        # The xTiles skill, linked from the hub the shared pass installed above.
+        # Ordering matters and is not incidental: _SHARED_LINKS runs first, so the
+        # hub exists before anything points at it.
+        if skill_link := XTILES_SKILL_LINKS.get(tool):
+            summary[tool] += _link_paths(repo_root, (skill_link,), uninstall=uninstall)
         if tool == "claude":
             summary[tool] += _configure_claude(repo_root, uninstall=uninstall)
 

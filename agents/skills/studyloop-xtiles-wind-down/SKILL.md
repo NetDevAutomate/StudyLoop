@@ -5,10 +5,14 @@ description: At the end of a StudyLoop study session (wind-down phase), when `st
 
 # StudyLoop → xTiles wind-down (opt-in)
 
-Installed by `studyloop install agents` into every detected harness, and inert
-until both gates below are true. StudyLoop does not talk to xTiles itself: the
-learner's assistant holds both connections, so this file is instructions for you,
-not a feature of the CLI.
+Installed once into `~/.agents/skills/` and symlinked into each supported harness's
+own skills directory by `studyloop install agents`. One body, so the offer rule
+cannot drift between harnesses; see `references/harnesses.md` for what differs per
+harness (invocation, install path) and why nothing else does.
+
+Inert until both gates below are true. StudyLoop does not talk to xTiles itself:
+the learner's assistant holds both connections, so this file is instructions for
+you, not a feature of the CLI.
 
 Use only during Phase 1 of `~/.agents/shared/wind-down-protocol.md`, after progress
 has been recorded with `studyloop progress "<concept>" -t <topic> -c <confidence>`.

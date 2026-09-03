@@ -43,7 +43,7 @@ session close.
 
 At wind-down, if `studyloop brain status --json` reports `provider: xtiles` and an
 `xtiles` MCP server is connected in this session, follow
-`~/.agents/shared/xtiles-wind-down.md`. Otherwise skip it silently and say nothing
+the `studyloop-xtiles-wind-down` skill. Otherwise skip it silently and say nothing
 about xTiles — the learner has not asked for it.
 
 ## Identity
