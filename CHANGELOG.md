@@ -284,6 +284,13 @@ experience may change before `1.0.0`.
 
 ### Security
 
+- The Claude adapter's launch command (executed via `/bin/sh -c`) is now
+  built with `shlex.quote()` around both the binary path and the persona
+  file path. Neither is attacker-controlled in the normal flow, but the
+  persona path comes from `tempfile.mkstemp()` under `$TMPDIR`, which can
+  contain a space — previously breaking the command outright rather than
+  posing an injection risk, but unquoted shell interpolation is the wrong
+  shape regardless of today's inputs.
 - Closed a gap where a `.env` file planted in or above the directory
   `studyloop` is run from could set the test-only `STUDYLOOP_TEST_AGENT_CMD`
   / `STUDYLOOP_TEST_ACP_CMD` hatch and get an attacker-chosen shell command

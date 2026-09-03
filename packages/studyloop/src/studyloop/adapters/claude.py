@@ -6,6 +6,7 @@ with 0600 permissions so persona content is not world-readable.
 
 from __future__ import annotations
 
+import shlex
 import shutil
 from typing import TYPE_CHECKING
 
@@ -21,11 +22,19 @@ def _claude_launch(persona_path: Path, resume: bool) -> str:
 
     Resolves to absolute path because tmux panes run non-interactive
     shells which don't source .zshrc (~/.local/bin not in PATH).
+
+    Quoted with shlex.quote() because the caller (web/routes/session/
+    _transport.py) executes this string via `/bin/sh -c` -- persona_path
+    comes from tempfile.mkstemp() under $TMPDIR, which can contain a space
+    (a custom $TMPDIR, or a home directory with one), and binary is quoted
+    defensively for the same reason even though shutil.which() rarely
+    returns a path with spaces (R-35).
     """
-    binary = shutil.which("claude") or "claude"
+    binary = shlex.quote(shutil.which("claude") or "claude")
+    quoted_persona = shlex.quote(str(persona_path))
     if resume:
-        return f"{binary} -r --append-system-prompt-file {persona_path}"
-    return f"{binary} --append-system-prompt-file {persona_path}"
+        return f"{binary} -r --append-system-prompt-file {quoted_persona}"
+    return f"{binary} --append-system-prompt-file {quoted_persona}"
 
 
 ADAPTER = AgentAdapter(
