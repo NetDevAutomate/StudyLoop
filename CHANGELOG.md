@@ -98,6 +98,10 @@ experience may change before `1.0.0`.
 
 ### Fixed
 
+- `THIRD-PARTY-NOTICES.md` said `vendor/` "ships 26 third-party files";
+  four of those 26 are first-party `@font-face` glue CSS sheets this repo
+  wrote itself, not third-party. Split into 22 genuinely third-party plus
+  4 named first-party files.
 - Ending a Study Session or Body Double session used to close the
   confirmation dialog and tear down the session state before the
   `/api/session/end` request even resolved, so a failed request looked

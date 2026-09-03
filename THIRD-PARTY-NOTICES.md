@@ -79,13 +79,21 @@ SOFTWARE.
 
 ## Vendored web assets
 
-`packages/studyloop/src/studyloop/web/static/vendor/` ships 26 third-party
-files with no build step: four accessible/dyslexia-friendly font families
-(SIL OFL) and eight JavaScript libraries (MIT, BSD, or Apache-2.0/MPL-2.0).
-The exact file list, upstream URL, version, and a sha256 per file are checked
-by `packages/studyloop/tests/test_vendor_manifest.py` against
-`vendor/MANIFEST` (R-75) — this section is the licence record; that file and
-test are the provenance record.
+`packages/studyloop/src/studyloop/web/static/vendor/` ships 26 vendored
+files with no build step: **22 are third-party** — four accessible/
+dyslexia-friendly font families (SIL OFL, the `.woff`/`.woff2` binaries) and
+eight JavaScript libraries (MIT, BSD, or Apache-2.0/MPL-2.0), plus two
+third-party CSS files (`highlight-tokyo-night-dark.css`, `xterm-6.0.0.css`).
+**The other 4 are first-party**: `atkinson-hyperlegible.css`, `inter.css`,
+`lexend.css`, and `opendyslexic-400.css` are `@font-face` glue sheets this
+repo wrote itself, referencing the third-party font binaries above — they
+carry no third-party copyright and need no licence notice, but they are
+still recorded in `vendor/MANIFEST` for provenance (drift/tamper detection),
+which is why the file count there is 26, not 22. The exact file list,
+upstream URL (or `local` for the four first-party files), version, and a
+sha256 per file are checked by `packages/studyloop/tests/test_vendor_manifest.py`
+against `vendor/MANIFEST` (R-75) — this section is the licence record; that
+file and test are the provenance record.
 
 ### Fonts (four families, SIL Open Font License 1.1)
 
