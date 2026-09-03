@@ -67,10 +67,28 @@ def _xtiles(_vault: Path) -> SecondBrain:
     return get_backend(settings)
 
 
-#: Registered backends. T2 appends the Obsidian case with ``writes=True``.
+def _obsidian(vault: Path) -> SecondBrain:
+    """The writing backend, with the CLI adapter off.
+
+    ``use_cli="off"`` so the contract table gives the same answers on a machine
+    with the real Obsidian CLI installed as on one without; the adapter has its
+    own tests. ``backlinks=False`` for the same reason — the matcher lives in a
+    sibling package that may or may not be present.
+    """
+    from studyloop.second_brain import get_backend
+
+    settings = Settings()
+    settings.second_brain = SecondBrainConfig(
+        provider="obsidian", vault_path=vault, use_cli="off", backlinks=False
+    )
+    return get_backend(settings)
+
+
+#: Registered backends. A new provider adds one row and inherits every invariant.
 BACKEND_CASES: list[BackendCase] = [
     BackendCase("null", _null, writes=False),
     BackendCase("xtiles", _xtiles, writes=False),
+    BackendCase("obsidian", _obsidian, writes=True),
 ]
 
 
