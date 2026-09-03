@@ -376,14 +376,24 @@ class TestLiveSessionBannerClearedOnStop:
         )
 
         # Step 5: Banner must be gone — liveSession cleared by the stop listener.
-        page.wait_for_function(
-            """() => {
-              const banner = document.querySelector('.session-indicator');
-              if (!banner) return true;
-              return window.getComputedStyle(banner).display === 'none';
-            }""",
-            timeout=5000,
-        )
+        #
+        # R-55a: this used to be a page.wait_for_function polling the banner's
+        # computed style. That poll runs INSIDE the page's own JS context via
+        # requestAnimationFrame, which is exactly what starves under the "machine
+        # load" this flaked on (dozens of other browser tests' renderers
+        # contending for the same CPU) -- the condition can already be true while
+        # the poll itself is not scheduled often enough to observe it before its
+        # deadline. Locator.wait_for() polls at the Playwright/CDP layer instead,
+        # independent of whether THIS page's render loop gets scheduled, and it
+        # is one of this suite's readiness-budget calls (_readiness.SCALED_CALLS),
+        # so STUDYLOOP_E2E_TIMEOUT_SCALE still widens it for diagnosis without
+        # this call's normal timeout being touched. No x-transition is involved:
+        # `.session-indicator` uses a plain x-show (confirmed in index.html), and
+        # Alpine's x-show without x-transition toggles `display` synchronously --
+        # there is no animation timer to disable here, unlike the sibling
+        # x-transition.opacity fade _readiness.py documents as already fixed
+        # elsewhere. Do not widen this timeout; the mechanism change is the fix.
+        page.locator(".session-indicator").wait_for(state="hidden", timeout=5000)
 
         live = _get_alpine_live_session(page)
         assert live is None, f"liveSession must be null after stop, got: {live!r}"
