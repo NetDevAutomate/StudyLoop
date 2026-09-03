@@ -90,6 +90,10 @@ experience may change before `1.0.0`.
 
 ### Fixed
 
+- `releases/v0.1.0.md` hardcoded "502 tests" — a number that goes stale the
+  moment the suite grows — in direct violation of the rule its own sibling
+  public page, `CONTRIBUTING.md`, states in the imperative. Replaced with a
+  pointer to the release-gate evidence.
 - `docs/cli-reference.md` now documents the 8 `content` subcommands that
   manage NotebookLM notebooks/podcast syllabi (`autopilot`, `delete`,
   `download`, `generate`, `list`, `status`, `syllabus`) and the fast content
