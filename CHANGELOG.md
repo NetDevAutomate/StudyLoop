@@ -24,6 +24,18 @@ experience may change before `1.0.0`.
   (`studyloop brain template --install`); it mirrors the plan document's sections,
   so a plan you write by hand in your vault and one StudyLoop published look the
   same. Templates carry no ownership marker, so a note you make from one is yours.
+- `studyloop brain` publishes plans and today's study to a configured second brain,
+  pulls your notes back on request, and `studyloop config init` can enable it when
+  you point StudyLoop at a vault. `studyloop doctor` reports the provider, the
+  vault and whether the optional Obsidian CLI is actually in use — but only if you
+  have configured one.
+- The project website, [www.studyloop.dev](https://www.studyloop.dev/), is linked
+  from the README and the documentation home.
+
+### Changed
+
+- The wind-down protocol offers, once, to publish the session to your second brain
+  when one is configured that can be published to. It says nothing otherwise.
 
 ## [0.1.0] - 2026-09-03
 
