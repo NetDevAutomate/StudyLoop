@@ -177,6 +177,116 @@ def _isolate_real_studyloop_config_dir(
             monkeypatch.setattr(module, attr, target)
 
 
+# ---------------------------------------------------------------------------
+# Second-brain vault isolation (R-84): the learner's real Obsidian vault must
+# be unreachable from the unit suite.
+# ---------------------------------------------------------------------------
+#
+# Same class of hazard as C8 (~/.config/studyloop) and C11 (the tmux server),
+# with one extra twist: the second-brain layer's whole job is to WRITE notes
+# into a directory the learner also edits by hand, so a test that falls through
+# isolation does not corrupt a cache — it corrupts the learner's notes.
+#
+# Why an environment variable and not a monkeypatched dataclass default:
+# ``dataclasses`` binds a ``default_factory`` into the generated ``__init__``
+# as a closure variable when the CLASS is created, so reassigning
+# ``SecondBrainConfig.__dataclass_fields__["vault_path"].default_factory``
+# provably does nothing (verified — the original factory still runs). Reading
+# an override inside the factory at CALL time is the pattern the rest of this
+# file already relies on (``STUDYLOOP_STATE_DIR``, ``STUDYLOOP_DB``,
+# ``STUDYLOOP_SESSION_DIR``, ``STUDYLOOP_PLANS_DIR``), and it is the only
+# mechanism that also crosses the subprocess boundary — a CLI test that shells
+# out inherits the environment, never a monkeypatched attribute.
+#
+# The env var never selects a PROVIDER (ADR-0010 D10 forbids that): with
+# ``provider: none`` an isolated vault path is still never written to.
+
+#: The home directory this process really started with, captured before any
+#: fixture can redirect it.
+_REAL_HOME = Path.home()
+
+#: The default vault root. Only the StudyLoop-owned folder inside it is
+#: watched — the vault as a whole is the learner's, may be enormous, and is
+#: written by Obsidian itself while the suite runs.
+_REAL_VAULT_ROOT = _REAL_HOME / "Obsidian" / "Personal"
+_REAL_VAULT_WATCHED_NAMES = ("Study",)
+
+_SECOND_BRAIN_VAULT_ENV = "STUDYLOOP_SECOND_BRAIN_VAULT"
+
+_TEST_VAULT_ROOT = Path(tempfile.mkdtemp(prefix="studyloop-test-vault-"))
+os.environ.setdefault(_SECOND_BRAIN_VAULT_ENV, str(_TEST_VAULT_ROOT / "vault"))
+
+
+def _is_under_real_home(candidate: object) -> bool:
+    """True when ``candidate`` resolves inside the process's original home."""
+    if candidate in (None, ""):
+        return False
+    try:
+        Path(str(candidate)).expanduser().resolve().relative_to(_REAL_HOME.resolve())
+    except (ValueError, OSError):
+        return False
+    return True
+
+
+@pytest.fixture(autouse=True)
+def _isolate_second_brain_vault(
+    tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Belt-and-braces layer over the env var set at import time above.
+
+    The env var covers every in-process caller and every subprocess. This
+    fixture additionally rewrites a ``Settings`` whose ``second_brain.vault_path``
+    still resolves under the real home — which happens when a test writes its own
+    ``config.yaml`` naming ``~/Obsidian/...``, or when the resolution chain falls
+    back to ``obsidian_base`` (whose default is the real vault and which older
+    tests legitimately set).
+
+    Defined AFTER ``_isolate_state_dir`` on purpose: autouse function fixtures in
+    one conftest run in definition order, so this wraps that fixture's already
+    patched ``load_settings`` rather than replacing it.
+    """
+    isolated = tmp_path_factory.mktemp("studyloop-isolated-vault")
+    monkeypatch.setenv(_SECOND_BRAIN_VAULT_ENV, str(isolated))
+
+    from studyloop import settings as _settings_mod
+
+    _original_load = _settings_mod.load_settings
+
+    def _patched_load_settings():
+        resolved = _original_load()
+        second_brain = getattr(resolved, "second_brain", None)
+        if second_brain is not None and _is_under_real_home(
+            getattr(second_brain, "vault_path", None)
+        ):
+            second_brain.vault_path = isolated
+        return resolved
+
+    monkeypatch.setattr(_settings_mod, "load_settings", _patched_load_settings)
+
+
+def _snapshot_real_vault() -> dict[str, float]:
+    """List the StudyLoop-owned surface of the real vault with mtimes.
+
+    Names AND mtimes, so an in-place rewrite of an existing projection is
+    caught as well as a new file.
+    """
+    snapshot: dict[str, float] = {}
+    for name in _REAL_VAULT_WATCHED_NAMES:
+        entry = _REAL_VAULT_ROOT / name
+        if not entry.exists():
+            continue
+        paths = [entry] if entry.is_file() else [entry, *entry.rglob("*")]
+        for path in paths:
+            try:
+                snapshot[str(path)] = path.stat().st_mtime
+            except OSError:
+                continue
+    return snapshot
+
+
+_real_vault_snapshot: dict[str, float] = {}
+
+
 # The session-runtime surface the fixture above targets and the guard below
 # watches -- deliberately NOT the whole ~/.config/studyloop tree. That
 # directory also holds sessions.db (the real learner's history database,
@@ -250,10 +360,12 @@ _TMUX_TMPDIR_ROOT = Path(tempfile.mkdtemp(prefix="studyloop-test-tmux-"))
 
 
 def pytest_sessionstart(session) -> None:
-    """Snapshot the real session-runtime surface (C8) and isolate tmux's
-    own socket directory (C11) before any test runs."""
-    global _studyloop_session_runtime_snapshot
+    """Snapshot the real session-runtime surface (C8) and the real vault's
+    StudyLoop folder (R-84), and isolate tmux's own socket directory (C11),
+    before any test runs."""
+    global _studyloop_session_runtime_snapshot, _real_vault_snapshot
     _studyloop_session_runtime_snapshot = _snapshot_studyloop_session_runtime()
+    _real_vault_snapshot = _snapshot_real_vault()
 
     os.environ["TMUX_TMPDIR"] = str(_TMUX_TMPDIR_ROOT)
     os.environ.pop("TMUX", None)
@@ -658,6 +770,7 @@ def pytest_sessionfinish(session, exitstatus) -> None:
                     session.exitstatus = 1
 
     _check_real_studyloop_config_dir_untouched(session)
+    _check_real_vault_untouched(session)
     _kill_and_report_private_tmux_socket(session)
 
 
@@ -702,6 +815,44 @@ def _kill_and_report_private_tmux_socket(session) -> None:
         "R-49e: a real tmux session was left running in the unit suite's "
         "private socket directory at session finish -- a test fell "
         f"through tmux isolation (now killed):\n{listing.stdout}"
+    )
+    reporter = session.config.pluginmanager.get_plugin("terminalreporter")
+    if reporter is not None:  # pragma: no cover - no terminal plugin
+        reporter.write_sep("!", message, red=True, bold=True)
+    session.exitstatus = 1
+
+
+def _check_real_vault_untouched(session) -> None:
+    """R-84 backstop: fail the whole run if the real vault's StudyLoop folder
+    changed during it.
+
+    The autouse isolation fixture and the ``STUDYLOOP_SECOND_BRAIN_VAULT``
+    default are the primary defence; this is the loud failure for the day one of
+    them has a gap. Same synthetic-``session`` guard as
+    ``_check_real_studyloop_config_dir_untouched`` and the same reasoning:
+    ``test_readiness_scaling.py`` calls ``pytest_sessionfinish`` directly with a
+    hand-built stand-in, and that call must not police this machine.
+    """
+    if not isinstance(session, pytest.Session):
+        return
+    after = _snapshot_real_vault()
+    if after == _real_vault_snapshot:
+        return
+    before = _real_vault_snapshot
+    added = sorted(set(after) - set(before))
+    removed = sorted(set(before) - set(after))
+    changed = sorted(p for p in (set(after) & set(before)) if after[p] != before[p])
+    detail_lines = []
+    if added:
+        detail_lines.append(f"  created: {added}")
+    if removed:
+        detail_lines.append(f"  removed: {removed}")
+    if changed:
+        detail_lines.append(f"  modified: {changed}")
+    message = (
+        f"R-84: {_REAL_VAULT_ROOT}/Study changed during this run -- a test fell "
+        "through second-brain vault isolation (or Obsidian itself wrote there "
+        "while the suite ran):\n" + "\n".join(detail_lines)
     )
     reporter = session.config.pluginmanager.get_plugin("terminalreporter")
     if reporter is not None:  # pragma: no cover - no terminal plugin
