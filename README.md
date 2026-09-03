@@ -9,6 +9,9 @@ explaining, and being asked the next useful question. It pairs a browser workspa
 with AI mentors such as Kiro, keeps track of where you left off, and turns real
 practice into evidence you can revisit.
 
+**[www.studyloop.dev](https://www.studyloop.dev/)** — what StudyLoop is, who it is
+for, and what it honestly cannot do yet.
+
 ![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue)
 ![License MIT](https://img.shields.io/badge/license-MIT-green)
 ![CI](https://github.com/NetDevAutomate/StudyLoop/actions/workflows/ci.yml/badge.svg)
@@ -119,6 +122,10 @@ pull request process.
 - [Read the contribution guide](CONTRIBUTING.md)
 
 ## Guides
+
+The project website, [www.studyloop.dev](https://www.studyloop.dev/), is the
+shortest way to decide whether StudyLoop suits you. The guides below are the
+detail.
 
 - [Setup Guide](docs/setup-guide.md) — install and configure the current release
 - [Your First Week](docs/first-week.md) — reach a useful first routine gradually

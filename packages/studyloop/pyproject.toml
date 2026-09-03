@@ -51,7 +51,7 @@ studyloop = "studyloop.cli:cli"
 studyloop-mcp = "studyloop.mcp.server:main"
 
 [project.urls]
-Homepage = "https://github.com/NetDevAutomate/StudyLoop"
+Homepage = "https://www.studyloop.dev/"
 Repository = "https://github.com/NetDevAutomate/StudyLoop"
 Issues = "https://github.com/NetDevAutomate/StudyLoop/issues"
 Documentation = "https://github.com/NetDevAutomate/StudyLoop/tree/main/docs"
