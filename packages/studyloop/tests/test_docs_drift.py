@@ -257,10 +257,21 @@ def _validate_example(example: str, root: click.Group, root_ctx: click.Context) 
     return problems
 
 
+#: Pages whose fenced ``studyloop ...`` lines must resolve against the real CLI.
+#:
+#: second-brain.md joins the list because its whole purpose is to tell a learner
+#: which commands to run: a guide naming a command that does not exist is worse
+#: than no guide, since the learner concludes the tool is broken rather than the
+#: page.
+_STUDYLOOP_EXAMPLE_DOCS = ("cli-reference.md", "second-brain.md")
+
+
 def _build_studyloop_cases() -> list[tuple[str, str]]:
     doc_cases = [
-        (f"cli-reference.md:{line_no}", text)
-        for line_no, text in _iter_fenced_lines(DOCS_DIR / "cli-reference.md", _STUDYLOOP_LINE_RE)
+        (f"{doc_name}:{line_no}", text)
+        for doc_name in _STUDYLOOP_EXAMPLE_DOCS
+        if (DOCS_DIR / doc_name).is_file()
+        for line_no, text in _iter_fenced_lines(DOCS_DIR / doc_name, _STUDYLOOP_LINE_RE)
     ]
     root = _load_cli_group()
     ctx = click.Context(root, info_name="studyloop")
@@ -401,6 +412,11 @@ def _known_top_level_keys() -> set[str]:
 
     keys: set[str] = {name for name, _coerce in settings_mod._SCALAR_FIELDS}
     keys.update(_RAW_GET_RE.findall(_static_function_source(settings_mod, "load_settings")))
+    # `second_brain` is parsed in its own helper rather than inline in
+    # load_settings (the section needs real validation, not a one-line coercion),
+    # so the scan has to look there too or the key derivation silently loses it --
+    # which is exactly what test_known_key_derivation_has_not_shrunk caught.
+    keys.update(_RAW_GET_RE.findall(_static_function_source(settings_mod, "_resolve_second_brain")))
     keys.update(_RAW_GET_RE.findall(_static_function_source(settings_mod, "resolve_study_dirs")))
     keys.update(_DATA_GET_RE.findall(_static_function_source(settings_mod, "get_db_path")))
     keys.update(_CONFIG_GET_RE.findall(_static_function_source(shared_mod, "_resolve_hosts")))
@@ -430,9 +446,15 @@ def _iter_yaml_blocks(doc_path: Path) -> list[tuple[int, int, str]]:
     return blocks
 
 
+#: Pages whose fenced ```yaml blocks are checked against the real config keys.
+_YAML_BLOCK_DOCS = ("setup-guide.md", "cli-reference.md", "second-brain.md")
+
+
 def _yaml_block_params() -> list:
     params = []
-    for doc_name in ("setup-guide.md", "cli-reference.md"):
+    for doc_name in _YAML_BLOCK_DOCS:
+        if not (DOCS_DIR / doc_name).is_file():
+            continue
         for idx, start_line, _text in _iter_yaml_blocks(DOCS_DIR / doc_name):
             location = f"{doc_name}:{start_line}"
             params.append(pytest.param(doc_name, idx, id=location))
@@ -447,7 +469,11 @@ def _yaml_block_params() -> list:
 #: let a block whose every key was misspelled pass silently (M0 council finding
 #: A5, openai.gpt-5.6-sol); now such a block fails with the unknown keys listed.
 _NON_CONFIG_MARKER_KEYS: frozenset[str] = frozenset(
-    {"name", "tasks", "type", "id", "created", "on", "jobs", "site_name"}
+    # `studyloop` is the second-brain ownership marker, which only ever appears in
+    # a published note's FRONTMATTER -- never in config.yaml. Its presence is the
+    # clearest possible signal that a fenced yaml block is an example note rather
+    # than an example config, which is exactly what this mechanism is for.
+    {"name", "tasks", "type", "id", "created", "on", "jobs", "site_name", "studyloop"}
 )
 
 #: Keys that must ALWAYS be in the derived known-key set. The derivation reads
@@ -456,7 +482,9 @@ _NON_CONFIG_MARKER_KEYS: frozenset[str] = frozenset(
 #: in evidence/M0/0.8-doc-drift/01-drift-found.md) would otherwise only surface
 #: when a doc happened to mention the lost key (M0 council finding A2,
 #: deepseek-r1). Extend this list when a new section is added to config.yaml.
-_SENTINEL_KNOWN_KEYS: frozenset[str] = frozenset({"web_port", "browser", "lan_password", "tts"})
+_SENTINEL_KNOWN_KEYS: frozenset[str] = frozenset(
+    {"web_port", "browser", "lan_password", "tts", "second_brain"}
+)
 
 
 def test_non_config_markers_never_overlap_real_config_keys() -> None:
