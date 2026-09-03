@@ -76,3 +76,73 @@ def test_notices_names_every_first_party_glue_file() -> None:
     assert not missing, (
         f"first-party glue file(s) not named/acknowledged in THIRD-PARTY-NOTICES.md: {missing}"
     )
+
+
+# ---------------------------------------------------------------------------
+# D2: every licence family named in the JS-libraries table has its full text
+# reproduced somewhere in the file (Apache-2.0 §4, MPL-2.0 §3.1 both require
+# the licence text to accompany redistribution -- a link is not enough).
+# ---------------------------------------------------------------------------
+
+#: licence identifier (as it appears in the "Licence" column of the
+#: JavaScript-libraries table, after splitting a cell like "Apache-2.0 OR
+#: MPL-2.0" on " OR ") -> a distinctive phrase that only appears inside that
+#: licence's own full text.
+_LICENCE_FULL_TEXT_MARKERS: dict[str, str] = {
+    "MIT": ("Permission is hereby granted, free of charge, to any person obtaining a copy"),
+    "Zero-Clause BSD (0BSD)": (
+        "Permission to use, copy, modify, and/or distribute this software for"
+    ),
+    "BSD-3-Clause": "Redistributions of source code must retain the above copyright notice",
+    "Apache-2.0": "TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION",
+    "MPL-2.0": "Exhibit A - Source Code Form License Notice",
+}
+
+
+def _js_library_licence_cells() -> list[str]:
+    """Every "Licence" column value from the JavaScript-libraries table."""
+    text = NOTICES.read_text(encoding="utf-8")
+    lines = text.splitlines()
+    header_idx = next(
+        i for i, line in enumerate(lines) if line.startswith("| Library | Version | Licence")
+    )
+    cells = []
+    for line in lines[header_idx + 2 :]:  # +2 skips the header and the |---| separator row
+        if not line.startswith("|"):
+            break
+        columns = [c.strip() for c in line.split("|")]
+        # columns[0] is '' (before the leading |); Licence is the 3rd cell.
+        cells.append(columns[3])
+    return cells
+
+
+def test_js_library_table_parses_to_real_rows() -> None:
+    """Sanity check the table parser found rows, not zero."""
+    cells = _js_library_licence_cells()
+    assert len(cells) >= 8, f"expected >=8 JS-library rows, parsed {len(cells)}: {cells}"
+
+
+def test_every_named_licence_family_has_its_full_text_present() -> None:
+    text = NOTICES.read_text(encoding="utf-8")
+    named: set[str] = set()
+    for cell in _js_library_licence_cells():
+        # "Apache-2.0 OR MPL-2.0 (recipient's choice)" -> {"Apache-2.0", "MPL-2.0"}
+        for token in re.split(r"\s+OR\s+", cell):
+            token = re.sub(r"\s*\(.*\)$", "", token).strip()
+            if token in _LICENCE_FULL_TEXT_MARKERS:
+                named.add(token)
+
+    assert named, "parsed zero recognised licence identifiers from the JS-libraries table"
+
+    missing = [family for family in named if _LICENCE_FULL_TEXT_MARKERS[family] not in text]
+    assert not missing, (
+        f"licence family named in the JS-libraries table with no full text "
+        f"present in THIRD-PARTY-NOTICES.md: {missing}"
+    )
+
+
+def test_notices_reproduces_apache_and_mpl_text_not_just_a_link() -> None:
+    """D2's specific complaint: Apache-2.0/MPL-2.0 were only linked."""
+    text = NOTICES.read_text(encoding="utf-8")
+    assert _LICENCE_FULL_TEXT_MARKERS["Apache-2.0"] in text
+    assert _LICENCE_FULL_TEXT_MARKERS["MPL-2.0"] in text
