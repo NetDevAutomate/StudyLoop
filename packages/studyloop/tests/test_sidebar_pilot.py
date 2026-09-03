@@ -255,6 +255,43 @@ class TestSidebarKeyBindings:
             state = json.loads((state_dir / "session-state.json").read_text())
             assert state.get("paused_at") is not None, "paused_at should be set after pressing p"
 
+    @pytest.mark.asyncio
+    async def test_plus_key_lengthens_pomodoro_focus(self, state_dir):
+        """R-32: BINDINGS registered "plus_sign", but Textual's own name for
+
+        the '+' key is "plus" -- textual.keys._character_to_key('+') returns
+        'plus', so the old binding could never match a real key event and
+        pressing '+' did nothing. docs/tui-guide.md documents '+' as
+        lengthening the Pomodoro focus period by 5 minutes; this drives it
+        through the real Textual pilot rather than calling the action method
+        directly, so a wrong key NAME (not just a wrong action) is caught.
+        """
+        from studyloop.tui.sidebar import SidebarApp, TimerWidget
+
+        _write_state(
+            state_dir,
+            {
+                "study_session_id": "test-123",
+                "topic": "Test",
+                "energy": 5,
+                "mode": "study",
+                "started_at": "2026-04-02T12:00:00+00:00",
+                "paused_at": None,
+                "total_paused_seconds": 0,
+            },
+        )
+
+        async with SidebarApp().run_test(size=(40, 20)) as pilot:
+            timer = pilot.app.query_one("#timer", TimerWidget)
+            before = timer.pomo_focus
+
+            await pilot.press("+")
+            await pilot.pause()
+
+            assert timer.pomo_focus == before + 5 * 60, (
+                "pressing '+' should lengthen the Pomodoro focus period by 5 minutes"
+            )
+
 
 # ---------------------------------------------------------------------------
 # _mtime_or_zero (C7) -- the IPC poll's exists()-then-stat() TOCTOU, the same

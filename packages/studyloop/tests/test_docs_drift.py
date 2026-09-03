@@ -38,14 +38,14 @@ traceback. Two independent checks, both fast, no network, no subprocess:
     reads. See ``_known_top_level_keys`` for exactly which functions that
     is derived from and why it's more than just studyloop.settings.
 
-One known-drift case the review found (R-31) is still pinned as
-``pytest.mark.xfail(strict=True, ...)`` on the exact failing case, so this
-suite is green today, and the moment it's fixed the xfail flips to an
-unexpected pass -- which `strict=True` turns into a hard failure, forcing
-whoever fixed it to also delete the marker. R-61's equivalent markers were
-removed once the docs were corrected (the fix, not a marker deletion alone,
-made ``test_session_query_since_examples`` pass honestly). Nothing else is
-xfailed: any other drift this suite finds is a real, unmarked failure.
+Both known-drift cases the review found (R-31, R-61) were once pinned as
+``pytest.mark.xfail(strict=True, ...)`` on the exact failing case, so the
+suite stayed green while unfixed, and the moment either fix landed the
+xfail would have flipped to an unexpected pass -- which `strict=True` turns
+into a hard failure, forcing whoever fixed it to also delete the marker.
+Both fixes have now landed and both markers are gone; the corresponding
+cases pass honestly like everything else. Nothing is xfailed any more: any
+drift this suite finds from here is a real, unmarked failure.
 """
 
 from __future__ import annotations
@@ -268,41 +268,23 @@ def _build_studyloop_cases() -> list[tuple[str, str]]:
     return doc_cases + click_cases
 
 
-# Exact (location, example) signatures the review already found and filed as
-# R-31: `studyloop backlog`'s `list`/`add` help text tells users to run
-# `studyloop topics ...` -- a different, real top-level command (the `topics`
-# lazy_subcommand routes to _sync.py, not _topics.py's group, which is
-# mounted at `backlog`). See cli/_topics.py:34,36,38,101,103,132 and
-# cli/__init__.py:63. Only the four examples that actually carry an
-# `--option` get caught here -- the two bare `studyloop topics list` /
-# `studyloop topics resolve 42` lines have nothing to validate beyond
-# positional count, which this test deliberately doesn't check.
-_R31_XFAIL_EXAMPLES = {
-    'studyloop topics add "Python decorators" --tech Python',
-    'studyloop topics add "Window functions" --tech SQL --note "Need for analytics work"',
-    "studyloop topics list --tech Python",
-    "studyloop topics list --source struggled",
-}
+# R-31 (fixed): `studyloop backlog`'s `list`/`add`/`resolve` Examples:
+# docstrings used to say `studyloop topics ...` -- a different, real
+# top-level command (the `topics` lazy_subcommand routes to _sync.py, not
+# _topics.py's group, which is mounted at `backlog`). See
+# cli/_topics.py:34,36,38,101,103,132 (now all say `backlog`) and
+# cli/__init__.py:63. No xfail marker needed any more -- this is a plain
+# param builder, and the four examples that carry an `--option` (the two
+# bare `studyloop topics list` / `studyloop topics resolve 42` lines were
+# never caught here, since positional count isn't validated) now resolve
+# for real.
 
 
 def _studyloop_example_params() -> list:
-    params = []
-    for location, example in _build_studyloop_cases():
-        if example in _R31_XFAIL_EXAMPLES:
-            marks = pytest.mark.xfail(
-                strict=True,
-                reason=(
-                    "R-31: cli/_topics.py's Examples: docstrings say "
-                    "'studyloop topics ...' but that group is mounted at "
-                    "'studyloop backlog' -- 'topics' is a different real "
-                    "command (_sync.py). Fix is in cli/_topics.py, owned by "
-                    "another lane; remove this marker when it's renamed."
-                ),
-            )
-            params.append(pytest.param(location, example, marks=marks, id=location))
-        else:
-            params.append(pytest.param(location, example, id=location))
-    return params
+    return [
+        pytest.param(location, example, id=location)
+        for location, example in _build_studyloop_cases()
+    ]
 
 
 @pytest.mark.parametrize(("location", "example"), _studyloop_example_params())

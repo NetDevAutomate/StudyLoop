@@ -90,6 +90,14 @@ experience may change before `1.0.0`.
 
 ### Fixed
 
+- `studyloop backlog add`/`list`/`resolve --help` told you to run
+  `studyloop topics ...` — a different real command that rejects those
+  arguments. The examples now say `studyloop backlog ...`, matching
+  `suggest`'s docstring, which was already correct.
+- The TUI sidebar's `+5min focus` key was dead: the binding was registered
+  as `"plus_sign"`, but Textual's real name for the `+` key is `"plus"`, so
+  pressing `+` never fired. Fixed; `docs/tui-guide.md`'s claim that `+`
+  lengthens the Pomodoro focus period is now true.
 - `session-query list --since 7d` on `docs/setup-guide.md` and
   `docs/cli-reference.md` raised an unhandled traceback if pasted verbatim —
   `query_utils.parse_date` only accepts `YYYY-MM-DD` or `last-N-days`. Both
