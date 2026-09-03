@@ -205,7 +205,7 @@ def require_repo_root(start: Path | None = None) -> Path:
     """Return the repo root or raise an install error."""
     repo_root = find_repo_root(start)
     if repo_root is None:
-        msg = "This command requires a source checkout of socratic-study-mentor."
+        msg = "This command requires a source checkout of studyloop."
         raise InstallError(msg)
     return repo_root
 

@@ -20,6 +20,17 @@ from studyloop.installers import (
     require_repo_root,
 )
 
+# R-38: "updates" is a real category in the data model (CheckResult allows
+# it, and _apply_fixes has a real branch for it), but check_pypi_versions is
+# deliberately never registered -- nothing is published yet, so it can only
+# ever produce zero results. Advertising it as a `--category` choice made it
+# look like a working category that silently does nothing. Hide it from the
+# CLI's choice list until a release exists to check against; re-add it to
+# this set (not VALID_CATEGORIES, which stays as-is) once check_pypi_versions
+# is registered in _get_registry().
+_HIDDEN_UNTIL_RELEASE_EXISTS = frozenset({"updates"})
+_VISIBLE_CATEGORIES = sorted(VALID_CATEGORIES - _HIDDEN_UNTIL_RELEASE_EXISTS)
+
 
 def check_unknown_config_keys() -> list[CheckResult]:
     """Warn about top-level config.yaml keys no consumer reads any more.
@@ -260,7 +271,7 @@ def _apply_fixes(results: list[CheckResult]) -> list[str]:
 @click.option("--fix", is_flag=True, help="Apply safe automatic fixes before reporting.")
 @click.option(
     "--category",
-    type=click.Choice(sorted(VALID_CATEGORIES)),
+    type=click.Choice(_VISIBLE_CATEGORIES),
     default=None,
     help="Check specific category",
 )

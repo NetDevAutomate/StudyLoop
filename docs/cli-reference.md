@@ -28,11 +28,23 @@ studyloop content ingest --dry-run        # Plan source ingest
 studyloop content import-review DIR --course COURSE  # Import existing JSON artefacts
 studyloop content process SOURCE          # Legacy optional NotebookLM upload path
 studyloop content from-obsidian DIR       # Legacy optional NotebookLM path
+studyloop content index                   # Build/refresh the fast content index
+studyloop content index --force           # Full re-index (ignore mtimes)
+
+# Content pipeline -- NotebookLM podcast-syllabus subcommands (legacy, optional)
+studyloop content syllabus -n NOTEBOOK_ID # Generate a podcast syllabus, save as a plan
+studyloop content generate -n NOTEBOOK_ID -c "1-3" # Generate audio/video overviews for a chapter range
+studyloop content autopilot               # Generate the next pending syllabus episode
+studyloop content status                  # Show syllabus progress for chunked generation
+studyloop content list                    # List notebooks, or sources within a notebook
+studyloop content download -n NOTEBOOK_ID # Download audio/video artifacts from a notebook
+studyloop content delete -n NOTEBOOK_ID --yes # Delete a notebook and all its contents
 
 # Sync & topics
 studyloop sync [TOPIC] --all --dry-run    # Legacy optional notebook sync
 studyloop status [TOPIC]                  # Show sync status
 studyloop topics                          # List configured topics
+studyloop topic NAME [-s STATUS] [-n NOTE] # Log a topic to the session activity feed (used by AI agents)
 studyloop audio TOPIC                     # Legacy optional audio overview
 studyloop dedup [TOPIC] --all --dry-run   # Remove duplicate notebook sources
 
@@ -217,7 +229,7 @@ agent/harness files.
 | `1` | Warnings or failures that can be fixed — run `studyloop doctor --fix` |
 | `2` | Core failure — a fundamental component is broken (e.g. wrong Python version) |
 
-**Check categories:** `core` (Python, packages, config), `database` (review DB, sessions DB), `config` (Obsidian vault + `.obsidian/` marker, Obsidian export config, review dirs, pandoc), `deps` (optional packages), `agents` (AI tool definitions), `voice` (local Kokoro model files, `afplay`, and Kokoro-server reachability when configured), `harness` (session-export wiring), `updates` (source-install/version metadata).
+**Check categories:** `core` (Python, packages, config, tmux), `database` (review DB, sessions DB), `config` (Obsidian vault + `.obsidian/` marker, Obsidian export config, review dirs, pandoc), `deps` (optional packages), `agents` (AI tool definitions), `voice` (local Kokoro model files, `afplay`, and Kokoro-server reachability when configured), `harness` (session-export wiring). There is no `updates` category yet — it would only ever report "no release found" until studyloop is actually published somewhere.
 
 ### Spaced Repetition Intervals
 
