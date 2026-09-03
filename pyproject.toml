@@ -39,7 +39,7 @@ dev = [
     # timeout turns any such hang into an ordinary, attributable failure.
     "pytest-timeout>=2.3",
     "respx>=0.23.1",
-    "mcp[cli]>=1.0.0",
+    "mcp[cli]>=1.0.0,<2",
     "bandit>=1.8",
     "pymupdf>=1.25",
     "notebooklm-py>=0.3.4",
