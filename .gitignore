@@ -242,6 +242,11 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+# The rule above is setuptools' build-artifact MANIFEST (generated next to
+# setup.py), not this repo's tracked, hand-maintained provenance record for
+# vendored web assets (R-75) -- same trap class as R-67 (the bare `MANIFEST`
+# pattern would otherwise silently swallow `git add` for this file forever).
+!packages/studyloop/src/studyloop/web/static/vendor/MANIFEST
 
 # PyInstaller
 #  Usually these files are written by a python script from a template

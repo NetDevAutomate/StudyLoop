@@ -30,6 +30,13 @@ experience may change before `1.0.0`.
   htmx + the SSE extension, marked, DOMPurify, highlight.js, mermaid, Fuse.js,
   xterm.js + its three addons) — not just the one design-influence credit it
   previously had.
+- `web/static/vendor/MANIFEST`: upstream URL, version, and sha256 for every
+  vendored web asset, checked by a test that recomputes each hash and fails
+  on a mismatch or an unlisted file. Every non-local URL was re-fetched and
+  byte-compared while writing this — which also confirms two things a prior
+  review flagged as unverified: htmx's current licence is Zero-Clause BSD
+  (not BSD-2-Clause), and the vendored xterm.js "6.0.0" is a real upstream
+  tag, not a typo.
 
 ### Changed
 
