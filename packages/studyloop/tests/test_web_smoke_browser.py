@@ -684,7 +684,6 @@ def _stub_review_routes(page: Page, mode: str, cards: list[dict]) -> None:
     page.route("**/api/session/state", lambda r: r.fulfill(json={}))
     page.route("**/api/stats/**", lambda r: r.fulfill(json={}))
     page.route("**/api/history**", lambda r: r.fulfill(json=[]))
-    page.route("**/api/heatmap**", lambda r: r.fulfill(json=[]))
     page.route(
         "**/api/sources/python-basics**",
         lambda r: r.fulfill(json=["ch1"]),

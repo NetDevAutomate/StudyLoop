@@ -77,6 +77,11 @@ experience may change before `1.0.0`.
 - First-party session-harness claims for Gemini CLI, Antigravity, Grok, and
   local-model launchers.
 - Session exporters outside the five-harness pre-release contract.
+- The 90-day study heatmap from the Flashcards panel. It was a
+  placeholder that always rendered 90 empty cells with no real per-day
+  data behind it — advertised as a working feature while doing nothing.
+  Will return in 0.2.0 wired to real review counts, under the
+  asymmetric-visibility design in [ADR-0006](docs/adr/0006-bridge-aware-deferred-topics.md).
 - Public pages that exposed implementation notes, internal architecture detail,
   or release-planning material.
 - `ttyd` entirely — the browser terminal fallback and the server transport
