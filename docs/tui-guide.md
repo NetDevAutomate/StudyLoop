@@ -133,8 +133,8 @@ Appears automatically based on elapsed time and energy level. The sidebar uses e
 | Energy Level | Micro Break | Short Break | Long Break |
 |--------------|-------------|-------------|------------|
 | Low (1-3) | 15 min | 30 min | 60 min |
-| Medium (4-7) | 20 min | 45 min | 90 min |
-| High (8-10) | 25 min | 50 min | 120 min |
+| Medium (4-6) | 20 min | 40 min | 75 min |
+| High (7-10) | 25 min | 50 min | 90 min |
 
 The banner is colour-coded (blue for micro, amber for short, red for long) and auto-dismisses when the timer is paused.
 
