@@ -129,7 +129,17 @@ pull request process.
 - [CLI Reference](docs/cli-reference.md) — complete command details
 - [AuDHD Learning Philosophy](docs/audhd-learning-philosophy.md) — why the workflow is designed this way
 
-## License
+## License and acknowledgements
 
-MIT — see [LICENSE](LICENSE). Third-party work that influenced StudyLoop is
-credited in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+MIT — see [LICENSE](LICENSE).
+
+StudyLoop's study-plan shape (mission first, learning records kept like
+decision records, primary sources over recalled knowledge) is adapted from
+Matt Pocock's [`teach` skill](https://github.com/mattpocock/skills/tree/main/skills/productivity/teach),
+published under the MIT License, Copyright (c) 2026 Matt Pocock. The ideas
+were re-implemented rather than copied; his copyright notice and the MIT
+permission notice are kept in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)
+so they travel with any portion that is ever reused verbatim.
+
+Vendored fonts and JavaScript libraries, with their licences, are listed in the
+same file.
