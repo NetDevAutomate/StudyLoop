@@ -8,6 +8,7 @@ helpers explicitly, following the precedent set in
 
 from __future__ import annotations
 
+import os
 import socket
 import subprocess
 import sys
@@ -26,10 +27,119 @@ if TYPE_CHECKING:
     from playwright.sync_api import Browser, BrowserContext, Page
 
 
-CONFIG_DIR = Path.home() / ".config" / "studyloop"
-STATE_FILE = CONFIG_DIR / "session-state.json"
-TOPICS_FILE = CONFIG_DIR / "session-topics.md"
-PARKING_FILE = CONFIG_DIR / "session-parking.md"
+# ---------------------------------------------------------------------------
+# Child-process env isolation (C13/R-49g, council)
+# ---------------------------------------------------------------------------
+#
+# The verifier's `just e2e` run on 1f544e7 created ~150 real directories
+# under the developer's real ~/.config/studyloop/sessions/ and deleted the
+# real session-oneline.txt. Root cause: several e2e/e2e-marked test files
+# spawned a real `studyloop web` (or CLI) subprocess with `env=None` or
+# `extra_env` merged over `os.environ` -- inheriting the developer's real
+# HOME with no STUDYLOOP_SESSION_DIR override, so `session_state.SESSION_DIR`
+# resolved to the real ~/.config/studyloop inside the spawned process.
+# session/cleanup.py's own oneline.unlink() then deleted the real file the
+# next time ANY session (in that unisolated process) ended.
+#
+# Fixed at the one choke point every such spawn should go through:
+# `start_web_server`'s `extra_env` path now layers on an ISOLATED base
+# (`_isolated_child_env`), not `os.environ`, and every path (`env=` too)
+# is checked by `_refuse_if_env_reaches_real_dirs` before the subprocess
+# ever starts -- a backstop for the day some other caller's `env=` has a
+# gap, not just a fix for the one gap found here.
+
+
+def _isolated_child_env(extra_env: Mapping[str, str] | None = None) -> dict[str, str]:
+    """Build a hermetic child env for a spawned studyloop process.
+
+    HOME/XDG_*/TMPDIR/STUDYLOOP_SESSION_DIR all point under a fresh,
+    private temp directory -- never the developer's real ``~/.config``,
+    ``~/.local/share``, or ``~/.cache``. ``PATH`` (and a couple of locale
+    vars, when already set) are preserved from the real environment so
+    real binaries (``tmux``, ``node``, ``uv``) are still found; everything
+    else is built fresh rather than inherited, so a test that forgets to
+    isolate some OTHER var cannot silently fall back to the developer's
+    real one.
+
+    ``extra_env`` is layered on top -- a caller's own explicit overrides
+    (``STUDYLOOP_CONFIG``, ``STUDYLOOP_TEST_AGENT_CMD``, a caller-chosen
+    ``STUDYLOOP_SESSION_DIR``, ...) always win over this base.
+    """
+    home = Path(tempfile.mkdtemp(prefix="studyloop-e2e-home-"))
+    xdg_config = home / ".config"
+    xdg_state = home / ".local" / "state"
+    xdg_cache = home / ".cache"
+    tmp_dir = home / "tmp"
+    session_dir = xdg_config / "studyloop"
+    for directory in (xdg_config, xdg_state, xdg_cache, tmp_dir, session_dir):
+        directory.mkdir(parents=True, exist_ok=True)
+
+    child_env = {
+        "PATH": os.environ.get("PATH", ""),
+        "HOME": str(home),
+        "TMPDIR": str(tmp_dir),
+        "XDG_CONFIG_HOME": str(xdg_config),
+        "XDG_STATE_HOME": str(xdg_state),
+        "XDG_CACHE_HOME": str(xdg_cache),
+        "STUDYLOOP_SESSION_DIR": str(session_dir),
+        "LANG": os.environ.get("LANG", "C"),
+        "LC_ALL": os.environ.get("LC_ALL", "C"),
+        "NO_COLOR": "1",
+        "TERM": "dumb",
+        "PYTHONHASHSEED": "0",
+    }
+    # conftest.py sets these once, process-wide, to a tmp path (never the
+    # developer's real sessions.db/state dir) via os.environ.setdefault --
+    # the existing hermetic-DB net settings.get_db_path() relies on. Without
+    # propagating them, a child that gets no explicit STUDYLOOP_CONFIG falls
+    # through to its OWN, unrelated default under the fresh fake HOME above:
+    # still safe (never real), but orphaned from the parent test process's
+    # sessions.db, so an assertion made in-process (e.g.
+    # get_last_study_session()) can never see what the child wrote.
+    for shared_key in ("STUDYLOOP_DB", "STUDYLOOP_STATE_DIR"):
+        if shared_value := os.environ.get(shared_key):
+            child_env[shared_key] = shared_value
+    if extra_env:
+        child_env.update(extra_env)
+    return child_env
+
+
+def _refuse_if_env_reaches_real_dirs(child_env: dict[str, str]) -> None:
+    """Raise if ``child_env`` would let a spawned process reach the
+    developer's real config/session directories (C13/R-49g).
+
+    Checked on EVERY spawn through :func:`start_web_server`, whether the
+    caller passed ``env=`` (a complete, hermetic environment the caller
+    built itself -- e.g. ``e2e._env.build_test_world``) or ``extra_env=``
+    (now merged over :func:`_isolated_child_env`, not ``os.environ``) --
+    this is the backstop for the day either path has a gap, not the
+    primary defence.
+    """
+    real_home = os.path.realpath(str(Path.home()))
+    home = child_env.get("HOME")
+    if not home:
+        msg = "start_web_server: child env has no HOME set -- refusing to spawn (C13/R-49g)"
+        raise RuntimeError(msg)
+    if os.path.realpath(home) == real_home:
+        msg = (
+            f"start_web_server: child env's HOME ({home!r}) is the developer's "
+            "real home directory -- refusing to spawn a process that could "
+            "read or write the real ~/.config/studyloop (C13/R-49g). Build the "
+            "child env from an isolated base (e2e._env.build_test_world, or "
+            "this module's _isolated_child_env) instead of inheriting "
+            "os.environ wholesale."
+        )
+        raise RuntimeError(msg)
+
+    real_session_dir = os.path.realpath(str(Path.home() / ".config" / "studyloop"))
+    session_dir = child_env.get("STUDYLOOP_SESSION_DIR")
+    if session_dir and os.path.realpath(session_dir) == real_session_dir:
+        msg = (
+            f"start_web_server: child env's STUDYLOOP_SESSION_DIR ({session_dir!r}) "
+            "is the developer's real ~/.config/studyloop -- refusing to spawn "
+            "(C13/R-49g)."
+        )
+        raise RuntimeError(msg)
 
 
 def start_web_server(
@@ -63,13 +173,19 @@ def start_web_server(
     ``extra_args`` is appended to the ``studyloop web`` command line — used to
     select an experimental terminal renderer, e.g. ``["--dev"]`` or
     ``["--dev-engine", "ghostty"]``.
-    """
-    import os
 
+    C13/R-49g: ``extra_env`` is now merged over :func:`_isolated_child_env`'s
+    hermetic base, not ``os.environ`` -- the "original contract" this
+    docstring used to describe (inheriting the real environment) is what
+    let several callers spawn a real ``studyloop web`` against the
+    developer's real ``~/.config/studyloop``. Every resulting ``child_env``,
+    from either path, is checked by :func:`_refuse_if_env_reaches_real_dirs`
+    before the subprocess starts.
+    """
     if env is not None and extra_env is not None:
         msg = (
             "start_web_server: pass either env (complete, hermetic) or "
-            "extra_env (merged over os.environ), not both"
+            "extra_env (merged over an isolated base), not both"
         )
         raise ValueError(msg)
 
@@ -90,7 +206,8 @@ def start_web_server(
         )
         raise RuntimeError(msg)
 
-    child_env = dict(env) if env is not None else {**os.environ, **(extra_env or {})}
+    child_env = dict(env) if env is not None else _isolated_child_env(extra_env)
+    _refuse_if_env_reaches_real_dirs(child_env)
     cmd = [sys.executable, "-m", "studyloop.cli", "web", "--port", str(port)]
     if extra_args:
         cmd.extend(extra_args)
@@ -260,9 +377,22 @@ def effective_credentials() -> tuple[str, str]:
 
 
 def clean_ipc() -> None:
-    """Wipe session-state IPC files (a no-op if they don't exist)."""
-    for f in (STATE_FILE, TOPICS_FILE, PARKING_FILE):
-        f.unlink(missing_ok=True)
+    """No-op kept for the ~35 existing call sites (C13/R-49g).
+
+    This used to unlink ``session-state.json`` / ``session-topics.md`` /
+    ``session-parking.md`` under the developer's REAL ``~/.config/studyloop``
+    -- a leftover from when spawned servers inherited the real environment
+    and shared that directory with the test process, so "stale IPC from an
+    earlier run" was a real thing to clean up before asserting against a
+    fresh server.
+
+    Every server this helper module starts now gets its own hermetic,
+    freshly-``mkdtemp``'d session directory (see ``_isolated_child_env``),
+    so there is no shared real-directory IPC state left to go stale, and
+    deleting the developer's real session files was never something a test
+    should do. Kept as a callable no-op -- rather than deleted -- so none of
+    the existing call sites need to change.
+    """
 
 
 # ---------------------------------------------------------------------------

@@ -20,13 +20,14 @@ Plan quote (Amendment #1):
 
 from __future__ import annotations
 
-import subprocess
 import sys
-import time
 import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import subprocess
 
 import pytest
 
@@ -43,6 +44,7 @@ if _tests_dir not in sys.path:
 from _playwright_helpers import (  # noqa: E402
     clean_ipc,
     effective_credentials,
+    start_web_server,
 )
 
 if TYPE_CHECKING:
@@ -71,37 +73,15 @@ def _start_web_server_with_stub_agent() -> subprocess.Popen:
     """Spin up a studyloop server where every PTY agent launch is a
     benign ``echo ready; cat`` that reads stdin forever.
 
-    Isolated from the plain ``start_web_server`` in _playwright_helpers
-    because the env var has to reach the child via subprocess.Popen;
-    setting os.environ in the test process wouldn't survive into the
-    uvicorn worker.
+    C13/R-49g: routed through the shared ``start_web_server`` (which now
+    builds a hermetic child env and refuses to spawn against the
+    developer's real HOME/config dir) instead of a hand-rolled
+    ``env = {**os.environ, ...}`` + polling loop -- the env var still
+    reaches the child via ``extra_env``, same as before.
     """
-    import os
-
-    env = {
-        **os.environ,
-        "STUDYLOOP_TEST_AGENT_CMD": "echo agent-stub-ready; exec cat",
-    }
-    cmd = [sys.executable, "-m", "studyloop.cli", "web", "--port", str(WEB_PORT)]
-    proc = subprocess.Popen(
-        cmd,
-        env=env,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
+    return start_web_server(
+        WEB_PORT, extra_env={"STUDYLOOP_TEST_AGENT_CMD": "echo agent-stub-ready; exec cat"}
     )
-    for _ in range(40):
-        try:
-            urllib.request.urlopen(f"http://127.0.0.1:{WEB_PORT}/", timeout=1)
-            return proc
-        except urllib.error.HTTPError as exc:
-            if exc.code in (401, 403):
-                return proc
-            time.sleep(0.3)
-        except Exception:
-            time.sleep(0.3)
-    proc.kill()
-    msg = f"Test web server failed to start on port {WEB_PORT}"
-    raise RuntimeError(msg)
 
 
 @pytest.fixture(scope="class")

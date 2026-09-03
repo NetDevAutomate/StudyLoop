@@ -19,14 +19,10 @@ Port: 18581 (unique; siblings use 18580).
 from __future__ import annotations
 
 import json
-import os
 import sqlite3
-import subprocess
 import sys
-import time
-import urllib.error
-import urllib.request
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -35,9 +31,15 @@ pytest.importorskip("playwright")
 pytest.importorskip("fastapi")
 pytest.importorskip("uvicorn")
 
+_tests_dir = str(Path(__file__).parent)
+if _tests_dir not in sys.path:
+    sys.path.insert(0, _tests_dir)
+
+from _playwright_helpers import start_web_server  # noqa: E402
+
 if TYPE_CHECKING:
+    import subprocess
     from collections.abc import Generator
-    from pathlib import Path
 
     from playwright.sync_api import Browser, Page, Route
 
@@ -156,33 +158,10 @@ card_generator:
 def server(stub_config: Path) -> Generator[subprocess.Popen, None, None]:
     """Bring up ``studyloop web`` with the tmp config; tear down at end.
 
-    Mirrors the pattern in test_web_content_gen_e2e.py exactly.
+    C13/R-49g: routed through the shared, hermetic ``start_web_server``
+    instead of a hand-rolled ``env = os.environ.copy()`` + polling loop.
     """
-    env = os.environ.copy()
-    env["STUDYLOOP_CONFIG"] = str(stub_config)
-    cmd = [
-        sys.executable,
-        "-m",
-        "studyloop.cli",
-        "web",
-        "--port",
-        str(WEB_PORT),
-    ]
-    proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env)
-    for _ in range(40):
-        try:
-            urllib.request.urlopen(f"http://127.0.0.1:{WEB_PORT}/", timeout=1)
-            break
-        except urllib.error.HTTPError as exc:
-            if exc.code in (401, 403):
-                break
-            time.sleep(0.3)
-        except Exception:
-            time.sleep(0.3)
-    else:
-        proc.kill()
-        msg = f"Web server failed to start on port {WEB_PORT}"
-        raise RuntimeError(msg)
+    proc = start_web_server(WEB_PORT, extra_env={"STUDYLOOP_CONFIG": str(stub_config)})
     try:
         yield proc
     finally:
