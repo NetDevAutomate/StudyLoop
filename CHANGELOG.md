@@ -90,6 +90,11 @@ experience may change before `1.0.0`.
 
 ### Fixed
 
+- `docs/tui-guide.md`'s break-schedule table disagreed with the actual
+  energy-adaptive thresholds in three numbers and both the Medium/High band
+  boundaries (doc: Medium 4-7 = 20/45/90, High 8-10 = 25/50/120; code:
+  Medium 4-6 = 20/40/75, High 7-10 = 25/50/90). Table corrected to match
+  `logic/break_logic.py`.
 - `studyloop backlog add`/`list`/`resolve --help` told you to run
   `studyloop topics ...` — a different real command that rejects those
   arguments. The examples now say `studyloop backlog ...`, matching
