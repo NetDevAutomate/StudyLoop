@@ -241,9 +241,14 @@ class TestDumpDeltaSql:
 
         sql = _dump_delta_sql(db_path, {"test-session-001"})
 
+        # Session-scoped tables: the caller has already restricted the row
+        # set to this session, so a blind INSERT OR REPLACE is correct.
+        for table in ("session_learning_metadata", "file_references"):
+            assert f"INSERT OR REPLACE INTO {table}" in sql
+
+        # GLOBAL_SYNC_TABLES: R-19's recency gate replaces the blind
+        # INSERT OR REPLACE with a conditional upsert (see test_sync_r19.py).
         for table in (
-            "session_learning_metadata",
-            "file_references",
             "study_progress",
             "study_sessions",
             "teach_back_scores",
@@ -251,7 +256,12 @@ class TestDumpDeltaSql:
             "parked_topics",
             "scrub_log",
         ):
-            assert f"INSERT OR REPLACE INTO {table}" in sql
+            assert f"INSERT INTO {table}" in sql
+            assert f"INSERT OR REPLACE INTO {table}" not in sql
+            assert "ON CONFLICT" in sql
+            # R-19f: compared through datetime(), not as a bare string
+            # (see test_sync_r19.py for the mismatched-format regression test).
+            assert 'datetime(excluded."updated_at") >' in sql
 
 
 # --- _stream_sql_to_target (local path only) ---

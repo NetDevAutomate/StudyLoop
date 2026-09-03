@@ -1,0 +1,36 @@
+# vendor/MANIFEST -- provenance record for packages/studyloop/src/studyloop/web/static/vendor/
+# (R-75). One line per non-dev vendored file: path, version, sha256, source_url.
+# 'local' means repo-authored @font-face glue CSS (not a single fetched artifact).
+# Verified by fetching every non-local URL and comparing sha256 on 2026-09-03,
+# except htmx-2.0.4.min.js, whose vendored copy carries one extra trailing
+# newline byte versus upstream (content otherwise identical -- confirmed via cmp).
+# Checked by test_vendor_manifest.py, which recomputes every hash and fails on
+# a mismatch or an unlisted file.
+#
+# path	version	sha256	source_url
+css/atkinson-hyperlegible.css	n/a	9f1276c73a8168e4ad636bc29b99fc13d78c3220651907e53118dad143ac4030	local
+css/files/atkinson-hyperlegible-latin-400.woff2	v12	a60206dd4793eb886952e48dc3e1c1d59942c004b2ab1e0086e7ccd156a7852d	https://fonts.gstatic.com/s/atkinsonhyperlegible/v12/9Bt23C1KxNDXMspQ1lPyU89-1h6ONRlW45G04pIoWQeCbA.woff2
+css/files/atkinson-hyperlegible-latin-700.woff2	v12	1cc7c0c5fbf16d1be3cb6d95c89fc0afd0e11f264e239ac97c64a326c5d88fe4	https://fonts.gstatic.com/s/atkinsonhyperlegible/v12/9Bt73C1KxNDXMspQ1lPyU89-1h6ONRlW45G8Wbc9dCWPRl-uFQ.woff2
+css/files/inter-latin-ext.woff2	v20	a28eb6d3ccb534ae0c94ca999371df024aab60b08c3c8a5720ee9e32fa0faaa2	https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa25L7W0Q5n-wU.woff2
+css/files/inter-latin.woff2	v20	c940764593d0fe5d596be327ca7558855e018039fb78509aa21921fd3644c3e4	https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2
+css/files/lexend-latin-400.woff2	v26	1ec8f6ee2750554b4bc59ff0b507d316a82a7ba37e0e5bebc41d3bd9b9faad46	https://fonts.gstatic.com/s/lexend/v26/wlpwgwvFAVdoq2_v-6QU82RHaA.woff2
+css/files/lexend-latin-700.woff2	v26	1ec8f6ee2750554b4bc59ff0b507d316a82a7ba37e0e5bebc41d3bd9b9faad46	https://fonts.gstatic.com/s/lexend/v26/wlpwgwvFAVdoq2_v-6QU82RHaA.woff2
+css/files/opendyslexic-latin-400-normal.woff	fontsource-5.2.5	be2fbf9c1b0dddd39a182e497cb011b43ae588b2ebb80370377d2fffaa3b4c4a	https://cdn.jsdelivr.net/npm/@fontsource/opendyslexic/files/opendyslexic-latin-400-normal.woff
+css/files/opendyslexic-latin-400-normal.woff2	fontsource-5.2.5	f007004af3cda5d8076e57c943f8cc8d00a0da25988b1ae1048683d60e7cac1a	https://cdn.jsdelivr.net/npm/@fontsource/opendyslexic/files/opendyslexic-latin-400-normal.woff2
+css/highlight-tokyo-night-dark.css	11.9.0	3c24d046d2e1e02b9e8beb641f9dc639c76ff44ad89f0fbac9eab9062d55f51b	https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.9.0/styles/tokyo-night-dark.min.css
+css/inter.css	n/a	574b68b06ad5fe9fa75354f58ca8e5e6a165c330e66272d90b0a5b209ef8ef71	local
+css/lexend.css	n/a	cbb0d8bae10bb2cf7ea9a80cbbd2ade19872faeed8ec378f9d5535d7ce6202b8	local
+css/opendyslexic-400.css	n/a	4c0b962bf27475b8327add2da769fba1383e781abfadcecf7299f94167927a97	local
+css/xterm-6.0.0.css	6.0.0	854a7c0fb70e8b1a083c16797ab827299fb18744f5ad34f227b48337e33293c6	https://cdn.jsdelivr.net/npm/@xterm/xterm@6.0.0/css/xterm.css
+js/alpine-3.14.8.min.js	3.14.8	b600e363d99d95444db54acbfb2deffec9ae792aa99a09229bcda078e5b55643	https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js
+js/fuse-7.0.0.min.js	7.0.0	e3621b53cb77b4ec306dec41ed95511e6dd80d17fae5a04f3e346d214b9f8f92	https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js
+js/highlight-11.9.0.min.js	11.9.0	837a6fa5b0c736b52bbde2b2b6190f305da3fc9ed41681db5321507057b5c846	https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.9.0/highlight.min.js
+js/htmx-2.0.4.min.js	2.0.4	69caefd0da92269066e725d7fe175e26b9d50c962e3056459c0c477154cdb9d3	https://cdn.jsdelivr.net/npm/htmx.org@2.0.4/dist/htmx.min.js
+js/htmx-ext-sse-2.2.2.js	2.2.2	83eca6fa0611fe2b0bf1700b424b88b5eced38ef448ef9760a2ea08fbc875611	https://cdn.jsdelivr.net/npm/htmx-ext-sse@2.2.2/sse.js
+js/marked-12.0.0.min.js	12.0.0	eb1f6b19880bc80a5fe34c6a61885173b60edda455ba7a33c98714db17d39f99	https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js
+js/mermaid-11.4.1.min.js	11.4.1	a43bc1afd446f9c4cc66ac5dd45d02e8d65e26fc5344ec0ef787f88d6ddb6f9e	https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js
+js/purify-3.1.0.min.js	3.1.0	ab4cfb31862e0144459d6c8472d658c42b0922cd9998ddc9608a093522fb2364	https://cdn.jsdelivr.net/npm/dompurify@3.1.0/dist/purify.min.js
+js/xterm-6.0.0.js	6.0.0	14903579ff54664cd72f8e8699e6961a6272c21863ec1c3b118cdc8af5d4a972	https://cdn.jsdelivr.net/npm/@xterm/xterm@6.0.0/lib/xterm.js
+js/xterm-addon-clipboard-0.2.0.js	0.2.0	ddae2ca81f1cadfe74d960dd1436eb334606d6aa674cab1f06683cffc22cbec5	https://cdn.jsdelivr.net/npm/@xterm/addon-clipboard@0.2.0/lib/addon-clipboard.js
+js/xterm-addon-fit-0.11.0.js	0.11.0	ba3ea256ce0620a0992a197d6c9baea64823fc93d8da07a9e366ca9943c18527	https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.11.0/lib/addon-fit.js
+js/xterm-addon-webgl-0.19.0.js	0.19.0	b85f8d4b3e9756bebb757e3fe47134d70f03ea3d6b187624426d2e2b65dec06c	https://cdn.jsdelivr.net/npm/@xterm/addon-webgl@0.19.0/lib/addon-webgl.js

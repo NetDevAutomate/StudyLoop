@@ -8,11 +8,18 @@ from __future__ import annotations
 
 import fcntl
 import json
+import logging
 import os
 import threading
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+logger = logging.getLogger(__name__)
 
 SESSION_DIR = Path(os.environ.get("STUDYLOOP_SESSION_DIR", Path.home() / ".config" / "studyloop"))
 STATE_FILE = SESSION_DIR / "session-state.json"
@@ -46,8 +53,16 @@ def read_session_state() -> dict:
     ``tmux_session``. Same for ``mux_main_pane``/``mux_sidebar_pane``.
     This allows both old and new writers to coexist during migration.
     """
+    # Read first and handle failure, rather than checking exists() and then
+    # reading: session release calls clear_session_files() on an executor
+    # thread, exactly the race 28a431b fixed for parse_topics_file/
+    # parse_parking_file below. The exists() check here was already
+    # redundant -- FileNotFoundError is an OSError, already caught -- but a
+    # future edit that narrowed this except clause (e.g. to just
+    # json.JSONDecodeError, "since exists() already guards missing files")
+    # would silently reopen the exact race (R-08).
     try:
-        state = json.loads(STATE_FILE.read_text()) if STATE_FILE.exists() else {}
+        state = json.loads(STATE_FILE.read_text())
     except (json.JSONDecodeError, OSError):
         return {}
 
@@ -60,11 +75,14 @@ def read_session_state() -> dict:
         state["mux_sidebar_pane"] = state["tmux_sidebar_pane"]
 
     # A PTY/ACP session owns no multiplexer. ``write_session_state`` is a
-    # read-merge-write, so a PTY session started after a legacy ttyd session
-    # inherits that session's dead ``tmux_session`` key. Left in place, zombie
-    # detection then classifies the live PTY session as a dead tmux session and
-    # deletes its state file. Drop the inherited multiplexer keys so a live PTY
-    # session is never mistaken for a dead tmux session.
+    # read-merge-write, so a PTY session started after a CLI tmux session
+    # (``studyloop study``) inherits that session's dead ``tmux_session`` key.
+    # Left in place, zombie detection then classifies the live PTY session as
+    # a dead tmux session and deletes its state file. Drop the inherited
+    # multiplexer keys so a live PTY session is never mistaken for a dead
+    # tmux session. (Renamed from "legacy ttyd session" during ttyd
+    # retirement stage 5 — the leak was never ttyd-specific, any tmux-backed
+    # CLI session triggers it.)
     if state.get("transport") in ("pty", "acp"):
         state.pop("tmux_session", None)
         state.pop("mux_session", None)
@@ -132,6 +150,74 @@ def write_session_state(updates: dict) -> None:
                 return
             current.update(updates)
             _write_file_secure(STATE_FILE, json.dumps(current, indent=2, default=str))
+        finally:
+            fcntl.flock(lock_fd, fcntl.LOCK_UN)
+            os.close(lock_fd)
+
+
+def try_claim_session(
+    reservation: dict,
+    blocks: Callable[[dict], bool],
+    *,
+    on_reclaim: Callable[[dict], None] | None = None,
+) -> dict | None:
+    """Atomically check-then-claim the single-session slot (C1, council).
+
+    Under the SAME file lock ``write_session_state`` uses: read the
+    current claim once; if ``blocks(state)`` is True, return that state
+    UNCHANGED (refused, nothing written) -- the caller builds its own
+    409/exit-1 from it, exactly as it would have from its own read.
+    Otherwise, if the current state names a claim that has not been
+    explicitly ended (a stale one, since ``blocks`` just said no) and
+    ``on_reclaim`` was given, call ``on_reclaim(state)`` -- this is where a
+    caller clears inherited IPC files (C2) and logs the reclaim (C4/R-01b)
+    -- THEN write ``reservation`` as the new claim, REPLACING whatever was
+    there, and return ``None``.
+
+    Closes the race C1 named: before this, every start path read the file
+    (unlocked), decided "not blocked," did real work (spawn a transport,
+    create a DB record), and only THEN wrote its claim. A second start
+    landing in that window read the same "not blocked" state and could
+    race the first one's eventual write. Now the read, the reclaim side
+    effect, and the reservation write all happen inside one flock
+    acquisition, so any concurrent caller's own ``try_claim_session`` call
+    is guaranteed to see either this reservation (and treat it as live,
+    since its own recorded pid/mux_session names a real, running process)
+    or a fully-formed prior claim -- never the gap between them.
+
+    A ``blocks`` that (wrongly) treats a fresh reservation as never-live
+    would let two callers both "win" — that failure mode belongs to
+    ``blocks``, not to this function: ``claim_blocks_web_start``/
+    ``claim_blocks_cli_start`` are written so a reservation's own pid/
+    mux_session makes it look genuinely live to anyone else who reads it.
+
+    **C10 (council): REPLACE, never merge, when writing the reservation.**
+    An earlier version wrote ``{**current, **reservation}`` -- correct
+    only when there was no prior claim to begin with. When ``blocks``
+    returns False because the PRIOR claim is stale (the reclaim path),
+    that prior claim's own fields the reservation does not name
+    (``mux_session``/``tmux_session``, ``child_pid``, ``session_dir``,
+    ``agent``, ``energy``, ``topic``, ...) would resurrect into the BRAND
+    NEW session's state -- e.g. a stale CLI claim's ``mux_session``
+    leaking into a freshly-started web session's state, so that ending
+    the web session could later call ``kill_session`` on a tmux name that
+    is not its own, the exact shape of invariant R-02 exists to prevent.
+    A fresh start (blocked=False) never inherits: the new state is
+    EXACTLY ``dict(reservation)``, whether the prior claim was empty,
+    ended, or genuinely stale.
+    """
+    _ensure_session_dir()
+    with _state_lock:
+        lock_fd = os.open(str(_lock_file()), os.O_WRONLY | os.O_CREAT, 0o600)
+        try:
+            fcntl.flock(lock_fd, fcntl.LOCK_EX)
+            current = read_session_state()
+            if blocks(current):
+                return current
+            if on_reclaim is not None and _claim_exists(current):
+                on_reclaim(current)
+            _write_file_secure(STATE_FILE, json.dumps(dict(reservation), indent=2, default=str))
+            return None
         finally:
             fcntl.flock(lock_fd, fcntl.LOCK_UN)
             os.close(lock_fd)
@@ -243,3 +329,201 @@ def is_session_active() -> bool:
         return False
     # Session marked as ended by cleanup — not active
     return state.get("mode") != "ended"
+
+
+def reclaim_log_message(state: dict) -> str:
+    """The "reclaiming a stale claim" warning both start paths log,
+    identically (R-01b required exact-wording parity between the CLI and
+    web paths; building it once here, rather than duplicating it, keeps
+    that guarantee mechanical instead of a promise to remember).
+
+    C4 (council): appends the previous owner's recorded ``child_pid`` when
+    present, so a human (or `clean`/`doctor`, R-01g, 0.2.0) reading the log
+    has it to hand -- reclaim itself never acts on ``child_pid`` (pid
+    reuse makes killing an old child unsafe, and it may be the user's own
+    still-useful agent).
+    """
+    session_id = state.get("study_session_id")
+    transport = state.get("transport", "cli")
+    child_pid = state.get("child_pid")
+    base = f"Reclaiming stale session claim id={session_id} transport={transport}"
+    if child_pid is not None:
+        base += f" child_pid={child_pid}"
+    return base + " — its owner is no longer alive"
+
+
+def _claim_exists(state: dict) -> bool:
+    """Whether ``state`` names a claim that hasn't been explicitly ended."""
+    return bool(state.get("study_session_id")) and state.get("mode") != "ended"
+
+
+def _cli_owned_claim_is_live(state: dict) -> bool:
+    """Whether a CLI-owned claim's recorded multiplexer session still exists.
+
+    Shared by :func:`claim_blocks_web_start` and :func:`claim_blocks_cli_start`
+    — both ask the same question of a CLI-owned claim, just from different
+    callers. No name recorded, or the multiplexer backend can't be reached,
+    means "can't confirm it's alive" — treated conservatively as NOT
+    blocking (stale), same as a session whose tmux server was killed
+    outside StudyLoop.
+    """
+    session_name = state.get("mux_session") or state.get("tmux_session")
+    if not session_name:
+        return False
+
+    from studyloop.multiplexer import get_backend
+
+    try:
+        return bool(get_backend().session_exists(session_name))
+    except Exception as exc:
+        # C5 (council): fail open is correct here -- a backend that cannot
+        # be reached has no live sessions FROM HERE, and blocking a start
+        # forever because tmux itself is broken would be worse than a
+        # false reclaim. But silently swallowing the exception hid a
+        # broken backend from anyone debugging "why did this reclaim when
+        # I expected it to block" -- log it.
+        logger.warning(
+            "could not confirm liveness of multiplexer session %s: %s",
+            session_name,
+            exc,
+        )
+        return False
+
+
+def _pid_is_alive(pid: object) -> bool:
+    """Whether ``pid`` names a process this machine still has running.
+
+    ``os.kill(pid, 0)`` sends no signal, only asks the kernel whether the
+    pid exists and is reachable: ``ProcessLookupError`` means it doesn't
+    (dead); ``PermissionError`` means it does but is owned by someone else
+    (still counts as alive — a real process is sitting on that pid, and
+    treating it as free risks two processes touching the state file at
+    once). Any other failure, or a non-int ``pid`` (a claim written before
+    this field existed will not reach here — callers check for it first —
+    but a corrupt file might), is treated as dead: invalid input can't name
+    a live process.
+    """
+    if not isinstance(pid, int):
+        return False
+    import os
+
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except OSError:
+        return False
+    return True
+
+
+def _reservation_pid_is_live_and_foreign(state: dict) -> bool:
+    """Whether ``state``'s recorded ``pid`` is alive and is not this
+    process's own (C9, council).
+
+    Checked BEFORE either owner-type branch in both
+    :func:`claim_blocks_web_start` and :func:`claim_blocks_cli_start`. A
+    reservation (``mode="starting"``, ``try_claim_session``, C1) always
+    carries ``pid`` from the moment it is written, but has no
+    ``mux_session`` yet (the CLI chooses that name later in its own start
+    flow) and no in-process singleton either (the web path's singleton is
+    populated only after ``active.acquire()`` succeeds, well after the
+    reservation is claimed). Judging a CLI-owned claim purely by
+    ``mux_session`` existence — the pre-C9 rule — therefore read a fresh
+    reservation as stale to anyone else checking it, silently reclaiming
+    the winner's own claim and defeating ``try_claim_session``'s locking
+    with a liveness signal that could not see who actually won.
+
+    No ``pid`` recorded, or the recorded pid IS this process, defers to
+    the per-owner-type checks below (a claim shape that predates this
+    field, or this process's own earlier, stale claim -- the ordinary
+    crash-then-restart case, not a live reservation somebody else holds).
+    """
+    pid = state.get("pid")
+    if pid is None or pid == os.getpid():
+        return False
+    return _pid_is_alive(pid)
+
+
+def claim_blocks_web_start(state: dict) -> bool:
+    """Whether a file claim should block a new web PTY/ACP session start.
+
+    Call this only AFTER confirming the in-process singleton
+    (``session/active.py``) is empty — see
+    docs/architecture/session-authority.md clause 2 (R-01) for the full
+    contract. Given that precondition:
+
+    - No claim at all (``study_session_id`` unset, or ``mode == "ended"``)
+      never blocks.
+    - **C9 (council):** a claim whose recorded ``pid`` is alive and
+      foreign blocks immediately, before either owner-type branch below —
+      see :func:`_reservation_pid_is_live_and_foreign`. This is what lets
+      a fresh CLI reservation (no ``mux_session`` yet) read as live to a
+      concurrent web start, instead of being silently reclaimed.
+    - A CLI-owned claim (no ``transport`` key, or one outside
+      ``{"pty", "acp"}``) that the pid check above did not already resolve
+      blocks iff its recorded multiplexer session (``mux_session``/
+      ``tmux_session``) still exists (see :func:`_cli_owned_claim_is_live`).
+    - A web-owned claim (``transport`` in ``{"pty", "acp"}``) that the pid
+      check above did not already resolve is stale — this codebase runs
+      one web server process per machine (see ``session/active.py``'s own
+      docstring), so a claim reaching this far with no live foreign pid is
+      this process's own earlier, crashed instance (the crash-then-restart
+      cell), not a genuinely live one.
+    """
+    if not _claim_exists(state):
+        return False
+    if _reservation_pid_is_live_and_foreign(state):
+        return True
+    if state.get("transport") in ("pty", "acp"):
+        return False
+    return _cli_owned_claim_is_live(state)
+
+
+def claim_blocks_cli_start(state: dict) -> bool:
+    """Whether a file claim should block a new CLI (``studyloop study``) start.
+
+    The CLI's own start path (R-01b) has no in-process singleton to rule a
+    web-owned claim out with, unlike :func:`claim_blocks_web_start` — so it
+    checks both owner shapes for real:
+
+    - No claim at all never blocks.
+    - **C9 (council):** a claim whose recorded ``pid`` is alive and
+      foreign blocks immediately, before either owner-type branch below —
+      see :func:`_reservation_pid_is_live_and_foreign`. Without this, a
+      second, concurrent CLI start judged a fresh CLI reservation (no
+      ``mux_session`` yet — that name is chosen later in the CLI's own
+      flow) purely by ``mux_session`` existence, read it as stale, and
+      silently reclaimed the FIRST start's own reservation — the C1 lock
+      makes the read consistent, but this liveness gap defeated it.
+    - A CLI-owned claim that the pid check above did not already resolve
+      blocks iff its recorded multiplexer session still exists
+      (:func:`_cli_owned_claim_is_live`, shared with
+      ``claim_blocks_web_start``).
+    - A web-owned claim (``transport`` in ``{"pty", "acp"}``) that the pid
+      check above did not already resolve: **no ``pid`` recorded blocks
+      conservatively** — a claim written by a build before this field
+      existed can't be verified either way, and the existing "already
+      active" message already tells the user how to end it explicitly,
+      which is safer than silently reclaiming a claim this process cannot
+      confirm is actually dead. (A recorded-but-dead pid falls through to
+      here too, and correctly does not block — the pid check above only
+      ever returns early on *live* pids.)
+
+    Residual risk, accepted: pid reuse. If a claim's owner process dies and
+    the OS recycles its pid for an unrelated process before this check
+    runs, that unrelated process reads as "alive" and the claim still
+    blocks — a false block, not a false reclaim, so the failure mode is
+    "tell the user to run `--end`", not "clobber a live session's state".
+    """
+    if not _claim_exists(state):
+        return False
+    if _reservation_pid_is_live_and_foreign(state):
+        return True
+    if state.get("transport") not in ("pty", "acp"):
+        return _cli_owned_claim_is_live(state)
+    pid = state.get("pid")
+    if pid is None:
+        return True
+    return _pid_is_alive(pid)

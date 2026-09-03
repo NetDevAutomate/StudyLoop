@@ -1,0 +1,145 @@
+# Lane-ownership map for the 2026-09 remediation (M0 item 0.7).
+#
+# Source of truth for WHY each lane owns what:
+#   reviews/2026-09-02-full-repo-review/IMPLEMENTATION-PLAN.md §3 (the six lanes)
+#   reviews/2026-09-02-full-repo-review/DECISIONS.md §E3–E5 (the corrections below)
+#   reviews/2026-09-02-full-repo-review/briefs/M<n>-lane.md (each lane's file list)
+# Every literal path here exists in `git ls-files` at the M0 head except the two
+# forward-declared files noted inline. Path corrections to the plan's shorthand
+# are in evidence/M0/0.7-lane-ownership/04-map-corrections.md.
+#
+# Semantics (see tests/_lane_ownership.py): a changed file that matches a
+# `shared` pattern is always fine; one that matches this lane's list (alone or
+# jointly with other lanes) is fine; one that matches ONLY other lanes' lists
+# is a violation; one that matches nothing is "unmapped" and logged, not failed.
+# m0 (foundations) is exempt by branch name. Dual ownership is deliberate where
+# two lanes touch one file in different regions (DECISIONS.md §E5): the second
+# lane to merge rebases and reruns its gate.
+#
+# Patterns are fnmatch against the repo-root-relative path; `*` crosses `/`.
+
+lanes:
+  m1: # ttyd retirement stages 2–7 — owns the deletion manifest (lane/m1-ttyd-stages-2-7)
+    # the web trio (index.html + components.js + style.css) and the module tree
+    - packages/studyloop/src/studyloop/web/static/index.html
+    - packages/studyloop/src/studyloop/web/static/components.js
+    - packages/studyloop/src/studyloop/web/static/style.css
+    - packages/studyloop/src/studyloop/web/static/js/**
+    # server side of the ttyd surface
+    - packages/studyloop/src/studyloop/web/routes/terminal_proxy.py
+    - packages/studyloop/src/studyloop/session/orchestrator.py
+    - packages/studyloop/src/studyloop/session/start.py
+    - packages/studyloop/src/studyloop/session/cleanup.py
+    - packages/studyloop/src/studyloop/session_state.py
+    - packages/studyloop/src/studyloop/web/routes/session/_transport.py
+    - packages/studyloop/src/studyloop/web/routes/session/_models.py
+    - packages/studyloop/src/studyloop/web/routes/session/_start.py
+    - packages/studyloop/src/studyloop/web/routes/session/_ipc.py
+    - packages/studyloop/src/studyloop/web/routes/session/_dashboard.py
+    - packages/studyloop/src/studyloop/web/services/session_start.py
+    # stage 4 headers (R-13, DECISIONS §E1) and stage 5 ttyd_port removal — shared
+    # with m4 in DISTINCT regions (§E5)
+    - packages/studyloop/src/studyloop/web/app.py
+    - packages/studyloop/src/studyloop/settings.py
+    # stage 7 comment fix
+    - packages/studyloop/src/studyloop/cli/_doctor.py
+
+  m2: # one session authority (lane/m2-session-authority) — after M1 merges
+    - packages/studyloop/src/studyloop/session/**
+    - packages/studyloop/src/studyloop/session_runtime/**
+    - packages/studyloop/src/studyloop/session_state.py
+    - packages/studyloop/src/studyloop/web/routes/session/**
+    - packages/studyloop/src/studyloop/web/services/session_start.py
+    - packages/studyloop/src/studyloop/tmux.py
+    - packages/studyloop/src/studyloop/herdr.py
+    - packages/studyloop/src/studyloop/cli/_study.py
+    - packages/studyloop/src/studyloop/cli/_clean.py
+    # R-01b: `studyloop session start`'s own is_session_active() guard,
+    # unmapped until this lane's follow-up item closed the CLI-side
+    # stale-claim gap (DECISIONS.md §E19/§E20).
+    - packages/studyloop/src/studyloop/cli/_session.py
+    # R-02b (DECISIONS §E17): the sidebar's End Session key called
+    # kill_all_study_sessions() directly, reproducing R-02 through a third
+    # surface the original review's finding didn't name. Dual-owned with m5,
+    # which has not started and will later own the rest of this file for
+    # R-32 (the dead "+5min focus" keybinding).
+    - packages/studyloop/src/studyloop/tui/sidebar.py
+    # R-09c (DECISIONS §E12: "R-09c ... goes to M2"). The brief's own text
+    # for this item requires exposing the import-time
+    # STUDYLOOP_TEST_*-snapshot accessor IN studyloop/__init__.py (the
+    # module that already snapshots the pre-dotenv key names for R-09/R-09b);
+    # dual-owned with m4, which owns the rest of the file (R-09, R-09b's
+    # sibling scrub logic).
+    - packages/studyloop/src/studyloop/__init__.py
+
+  m3: # data safety (lane/m3-data-safety)
+    - packages/agent-session-tools/**
+    - packages/studyloop/src/studyloop/history/**
+    - packages/studyloop/src/studyloop/review_db.py
+    - packages/studyloop/src/studyloop/content/index.py
+    # R-20 and R-22 sites (DECISIONS §E4)
+    - packages/studyloop/src/studyloop/focus.py
+    - packages/studyloop/src/studyloop/learning/mastery.py
+
+  m4: # security hardening (lane/m4-security)
+    - packages/studyloop/src/studyloop/__init__.py
+    - packages/studyloop/src/studyloop/session/child_env.py   # also under m2's session/**
+    - packages/studyloop/src/studyloop/web/app.py             # ONLY the openapi_url line (R-16); §E5
+    - packages/studyloop/src/studyloop/settings.py            # ONLY the config write path (R-14); §E5
+    - packages/studyloop/src/studyloop/learning/practice.py
+    # R-15 sites (DECISIONS §E4)
+    - packages/studyloop/src/studyloop/cli/_practice.py
+    - packages/studyloop/src/studyloop/content/generators/prompts.py
+    # R-09b: second unscrubbed dotenv loader (DECISIONS §E12). Dual-owned with
+    # m3, which already owns the whole agent-session-tools/** glob above; m3
+    # is told not to touch this specific file.
+    - packages/agent-session-tools/src/agent_session_tools/config_loader.py
+
+  m5: # public contract, packaging, functional UX (lane/m5-contract-packaging) — after M2 merges
+    - pyproject.toml
+    - packages/studyloop/pyproject.toml
+    - packages/agent-session-tools/pyproject.toml
+    - uv.lock
+    - THIRD-PARTY-NOTICES.md
+    - SECURITY.md            # forward-declared: created by m5 (R-66)
+    - GEMINI.md              # dangling symlink m5 removes (R-66)
+    - releases/**
+    - README.md
+    - scripts/check-release-consistency.py
+    - packages/studyloop/src/studyloop/web/static/vendor/**
+    # the web trio for R-60 / R-64 / R-70 — nothing else is live on it once M1 has merged
+    - packages/studyloop/src/studyloop/web/static/index.html
+    - packages/studyloop/src/studyloop/web/static/components.js
+    - packages/studyloop/src/studyloop/web/static/style.css
+    - packages/studyloop/src/studyloop/web/static/js/**
+    # CLI/TUI/settings copy and behaviour fixes (R-31..R-40)
+    - packages/studyloop/src/studyloop/cli/_topics.py
+    - packages/studyloop/src/studyloop/cli/_doctor.py
+    - packages/studyloop/src/studyloop/tui/sidebar.py
+    - packages/studyloop/src/studyloop/settings.py
+    - packages/studyloop/src/studyloop/doctor/**
+    - packages/studyloop/src/studyloop/adapters/claude.py
+    - packages/studyloop/src/studyloop/installers.py
+
+  m6: # quality, performance, a11y — post-release (lane/m6-quality-ux)
+    - packages/studyloop/src/studyloop/web/static/index.html
+    - packages/studyloop/src/studyloop/web/static/components.js
+    - packages/studyloop/src/studyloop/web/static/style.css
+    - packages/studyloop/src/studyloop/web/static/js/**
+    - packages/studyloop/src/studyloop/history/**
+    - packages/studyloop/src/studyloop/content/index.py
+
+# Any lane may touch these. Docs and the changelog are shared because plan
+# principle 6 requires them to land in the same commit as the code they
+# describe (DECISIONS.md §E3); the coordinator resolves adjacent-line CHANGELOG
+# conflicts at merge.
+shared:
+  - packages/*/tests/**
+  - tests/**
+  - reviews/**
+  - docs/**
+  - CHANGELOG.md
+  - .github/**
+  - Justfile
+  - .pre-commit-config.yaml
+  - .ci-standards.yaml     # forward-declared: created by lane/m0-ci-standards

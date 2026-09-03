@@ -317,7 +317,6 @@ class Settings:
     content: ContentConfig = field(default_factory=ContentConfig)
     agents: AgentsConfig = field(default_factory=AgentsConfig)
     card_generator: CardGeneratorConfig = field(default_factory=CardGeneratorConfig)
-    ttyd_port: int = 7681
     web_port: int = 8567
     browser: str = ""  # empty = system default; or "chrome", "safari", "firefox", "brave"
     pomodoro: PomodoroConfig = field(default_factory=PomodoroConfig)
@@ -438,10 +437,39 @@ def resolve_study_dirs() -> list[str]:
 
 
 def write_raw_config(data: dict[str, Any]) -> Path:
-    """Write raw YAML config to the active config path and return the path."""
+    """Write raw YAML config to the active config path and return the path.
+
+    ``config.yaml`` can hold ``lan_password`` in plaintext, so the file is
+    locked to owner-only (0600) after every write, and the config dir is
+    locked to 0700 the first time this function creates it -- the same
+    posture ``secrets.py`` uses for the encrypted secrets store. A config
+    directory that already existed (and whose permissions someone may have
+    deliberately loosened, e.g. to share read access with another local
+    tool) is left alone; only the file itself is re-tightened on every save,
+    which also repairs a pre-existing 0644 file on its next write.
+
+    R-14b: ``Path.write_text`` followed by a separate ``chmod`` left a real
+    window -- for a BRAND NEW file, ``write_text`` creates it at the process
+    umask mode (typically 0644) and only ``chmod`` afterward narrows it, so
+    the plaintext ``lan_password`` briefly sat on disk wider than 0600.
+    ``os.open`` with ``O_CREAT`` and an explicit mode creates a new file at
+    that mode atomically -- there is no window where it exists any wider.
+    ``O_CREAT``'s mode argument is a no-op on an ALREADY-existing file (POSIX
+    leaves its current permissions alone), which is exactly why the
+    unconditional ``chmod`` below is kept: it is what repairs a pre-existing
+    0644 file (from before this fix shipped) on its next save.
+    """
     config_path = get_config_path()
-    config_path.parent.mkdir(parents=True, exist_ok=True)
-    config_path.write_text(yaml.dump(data, default_flow_style=False, sort_keys=False))
+    parent = config_path.parent
+    dir_already_existed = parent.exists()
+    parent.mkdir(parents=True, exist_ok=True)
+    if not dir_already_existed:
+        parent.chmod(0o700)
+    content = yaml.dump(data, default_flow_style=False, sort_keys=False)
+    fd = os.open(config_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as handle:
+        handle.write(content)
+    config_path.chmod(0o600)
     return config_path
 
 
@@ -454,12 +482,56 @@ _SCALAR_FIELDS: list[tuple[str, object]] = [
     ("state_dir", _path),
     ("sync_remote", str),
     ("sync_user", str),
-    ("ttyd_port", int),
     ("web_port", int),
     ("browser", str),
     ("lan_username", str),
     ("lan_password", str),
 ]
+
+# Top-level config.yaml sections read directly from load_raw_config() by a
+# consumer OTHER than load_settings() (never via _SCALAR_FIELDS or a Settings
+# dataclass field) — R-34's unknown-key check needs these named or every one
+# of them false-positives as "unknown". Add a name here in the same commit
+# that adds a new top-level raw.get(...) call site.
+_RAW_ONLY_SECTIONS: frozenset[str] = frozenset(
+    {
+        "review",  # resolve_study_dirs() — review.directories
+        "tts",  # learning/voice.py, doctor/voice.py
+        "focus",  # focus.py — the body-double focus-contract section
+    }
+)
+
+
+def known_top_level_keys() -> frozenset[str]:
+    """Every top-level config.yaml key some consumer recognises.
+
+    Single source of truth for "is this key known" — used by the doctor's
+    unknown-key report (R-34) so a retired or misspelled key is surfaced
+    instead of silently doing nothing. Union of the three ways a key becomes
+    known: a scalar field (_SCALAR_FIELDS), a nested dataclass-backed section
+    (every ``Settings`` field name), or a raw-only section a consumer reads
+    directly (_RAW_ONLY_SECTIONS).
+    """
+    from dataclasses import fields as _dataclass_fields
+
+    scalar_names = {name for name, _ in _SCALAR_FIELDS}
+    dataclass_names = {f.name for f in _dataclass_fields(Settings)}
+    return frozenset(scalar_names | dataclass_names | _RAW_ONLY_SECTIONS)
+
+
+def unknown_top_level_keys(raw: dict[str, Any] | None = None) -> list[str]:
+    """Top-level config.yaml keys no consumer recognises.
+
+    ``load_settings()`` and every other reader of ``load_raw_config()``
+    silently ignores a key it doesn't look for — a retired field (e.g. the
+    ttyd retirement's ``ttyd_port``) or a typo becomes inert with no signal.
+    Returns the sorted list of such keys so a caller (the doctor check,
+    ``config show``) can name them. Reads the real config file when ``raw``
+    is not supplied.
+    """
+    if raw is None:
+        raw = load_raw_config()
+    return sorted(set(raw) - known_top_level_keys())
 
 
 def _slugify_topic_name(name: str) -> str:
@@ -557,7 +629,13 @@ def load_settings() -> Settings:
     # scalar top-level fields -- driven by module-level _SCALAR_FIELDS mapping
     for key, coerce in _SCALAR_FIELDS:
         if key in raw:
-            setattr(settings, key, coerce(raw[key]))  # type: ignore[operator]
+            try:
+                setattr(settings, key, coerce(raw[key]))  # type: ignore[operator]
+            except (TypeError, ValueError) as exc:
+                raise ConfigError(
+                    f"Invalid value for '{key}' in {get_config_path()}: {raw[key]!r} "
+                    f"({exc}). Fix the value or remove the key to use the default."
+                ) from exc
 
     # --- topics (bespoke: legacy support + path resolution) -----------------
     raw_topics = raw.get("topics", [])

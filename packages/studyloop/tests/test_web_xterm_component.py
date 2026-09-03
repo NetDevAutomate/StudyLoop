@@ -18,11 +18,7 @@ Plan: docs/plans/2026-05-09-refactor-agent-session-transport-plan.md §1.7
 
 from __future__ import annotations
 
-import subprocess
 import sys
-import time
-import urllib.error
-import urllib.request
 from pathlib import Path
 
 import pytest
@@ -31,13 +27,14 @@ pytest.importorskip("playwright")
 pytest.importorskip("fastapi")
 pytest.importorskip("uvicorn")
 
+_tests_dir = str(Path(__file__).parent)
+if _tests_dir not in sys.path:
+    sys.path.insert(0, _tests_dir)
+
+from _playwright_helpers import start_web_server  # noqa: E402
+
 pytestmark = [pytest.mark.e2e]
 
-
-CONFIG_DIR = Path.home() / ".config" / "studyloop"
-STATE_FILE = CONFIG_DIR / "session-state.json"
-TOPICS_FILE = CONFIG_DIR / "session-topics.md"
-PARKING_FILE = CONFIG_DIR / "session-parking.md"
 
 WEB_PORT = 18568
 
@@ -45,32 +42,14 @@ WEB_PORT = 18568
 # ---------------------------------------------------------------------------
 # Fixtures (adapted from test_web_terminal.py)
 # ---------------------------------------------------------------------------
-
-
-@pytest.fixture()
-def _clean_ipc():
-    for f in (STATE_FILE, TOPICS_FILE, PARKING_FILE):
-        f.unlink(missing_ok=True)
-    yield
-    for f in (STATE_FILE, TOPICS_FILE, PARKING_FILE):
-        f.unlink(missing_ok=True)
-
-
-def _start_web_server(port: int = WEB_PORT) -> subprocess.Popen:
-    cmd = [sys.executable, "-m", "studyloop.cli", "web", "--port", str(port)]
-    proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    for _ in range(30):
-        try:
-            urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=1)
-            return proc
-        except urllib.error.HTTPError as exc:
-            if exc.code in (401, 403):
-                return proc
-            time.sleep(0.3)
-        except Exception:
-            time.sleep(0.3)
-    proc.kill()
-    raise RuntimeError(f"Web server failed to start on port {port}")
+#
+# C13/R-49g: this file used to define its own CONFIG_DIR/STATE_FILE/etc
+# (Path.home()-derived, real) plus a _clean_ipc fixture that unlinked them
+# directly in the test process, and its own _start_web_server() with no env
+# isolation at all. Both are gone: start_web_server() (shared,
+# _playwright_helpers) now spawns into a fresh, isolated session dir every
+# call, so there is no stale REAL IPC to clean between runs -- the thing
+# _clean_ipc existed for cannot happen anymore.
 
 
 def _get_effective_credentials() -> tuple[str, str]:
@@ -87,8 +66,8 @@ _USER, _PASS = _get_effective_credentials()
 
 
 @pytest.fixture()
-def web_server(_clean_ipc):
-    proc = _start_web_server()
+def web_server():
+    proc = start_web_server(WEB_PORT)
     yield proc
     proc.terminate()
     try:
@@ -132,14 +111,14 @@ class TestXtermPickerDefaults:
         """The ttyd BROWSER surface was retired in ADR-0005, so the dropdown
         must no longer offer it.
 
-        The UI surface is deliberately NARROWER than the API surface here: the
-        server still honours ``STUDYLOOP_TRANSPORT=ttyd`` for maintainers, so
-        ``POST /api/session/start`` continues to accept ``transport=ttyd``.
-        What was removed is the browser's ability to *choose* it, because
-        choosing it rendered nothing — there is no iframe left to mount. If
-        this assertion ever fails because ``ttyd`` came back into the dropdown,
-        check that a renderer came back with it; a selectable transport with no
-        renderer is the silent-blank defect ADR-0005 exists to prevent.
+        The server-side transport axis is gone too as of ttyd retirement
+        stage 3: ``POST /api/session/start`` now structurally rejects
+        ``transport=ttyd`` with 422 (see test_web_session.py and
+        test_web_session_start_pty.py), so the UI and API surfaces agree.
+        If this assertion ever fails because ``ttyd`` came back into the
+        dropdown, check that a renderer came back with it; a selectable
+        transport with no renderer is the silent-blank defect ADR-0005
+        exists to prevent.
         """
         web_page.goto(f"http://127.0.0.1:{WEB_PORT}/#study-session")
         web_page.wait_for_selector("#transport-select", state="attached", timeout=5000)

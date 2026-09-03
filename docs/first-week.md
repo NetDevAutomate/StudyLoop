@@ -157,7 +157,7 @@ The graph is Mermaid by default, so it can be pasted into Obsidian.
 | Every LLM provider in Settings | One working backend is enough for generation |
 | NotebookLM sync commands | Legacy optional path; not required for core study |
 | `session-export --obsidian` | Opt-in vault mirror; enable when you want Dataview notes |
-| All eight agent CLIs | Start with the one you already use daily |
+| All five agent CLIs | Start with the one you already use daily |
 
 ## Where to go next
 

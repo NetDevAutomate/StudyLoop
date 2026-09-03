@@ -537,3 +537,26 @@ class TestAcpStartPersonaInjection:
         assert state.get("persona_hash") == resp.json()["persona_hash"]
         # Path field stays absent — nothing is written to disk on the ACP path.
         assert "persona_file" not in state
+
+    def test_session_state_records_the_server_process_pid(
+        self,
+        client: TestClient,
+        _stub_acp_factory,
+        _mock_kiro_available,
+        _stub_db,
+    ) -> None:
+        """R-01b: a fresh ACP start writes `pid == os.getpid()` into the
+        claim, same as the PTY path (see claim_blocks_cli_start)."""
+        import os
+
+        with patch("studyloop.web.routes.session.is_session_active", return_value=False):
+            resp = client.post(
+                "/api/session/start",
+                json={"topic": "SQL", "energy": 5, "agent": "kiro", "transport": "acp"},
+            )
+
+        assert resp.status_code == 201, resp.text
+
+        from studyloop.session_state import read_session_state
+
+        assert read_session_state().get("pid") == os.getpid()

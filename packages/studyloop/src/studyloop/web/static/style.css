@@ -393,7 +393,7 @@ header {
   flex: 1;
   overflow-y: auto;
   min-height: 0;
-  position: relative; /* containing block for absolutely-positioned split-container */
+  position: relative; /* containing block for absolutely-positioned session-active-layout */
 }
 
 /* Main within content-area (for app.js compatibility) */
@@ -1071,7 +1071,7 @@ body[data-font="opendyslexic"] .card-content {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 300; /* above pomodoro (100) and the ttyd iframe */
+  z-index: 300; /* above pomodoro (100) */
 }
 
 .end-confirm-dialog {
@@ -1084,6 +1084,16 @@ body[data-font="opendyslexic"] .card-content {
 }
 
 .end-confirm-dialog p { margin: 0 0 16px; }
+
+.end-confirm-error {
+  margin: -8px 0 16px;
+  padding: 8px 10px;
+  background: rgba(247, 118, 142, 0.1);
+  border: 1px solid var(--red);
+  border-radius: var(--radius);
+  color: var(--red);
+  font-size: 0.85rem;
+}
 
 .end-confirm-actions {
   display: flex;
@@ -1204,31 +1214,9 @@ body[data-font="opendyslexic"] .card-content {
 .pomo-ring .fill { stroke: var(--accent); transition: stroke-dashoffset 1s linear; }
 .pomodoro.break .pomo-ring .fill { stroke: var(--green); }
 
-/* --- Heatmap --- */
-.heatmap-section {
-  margin-top: 24px;
-  width: 100%;
-  max-width: 800px;
-}
-
-.heatmap {
-  display: flex;
-  gap: 3px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.heatmap-day {
-  width: 14px;
-  height: 14px;
-  border-radius: 3px;
-  background: var(--bg-card);
-}
-
-.heatmap-day.l1 { background: rgba(122,162,247,0.25); }
-.heatmap-day.l2 { background: rgba(122,162,247,0.5); }
-.heatmap-day.l3 { background: rgba(122,162,247,0.75); }
-.heatmap-day.l4 { background: var(--accent); }
+/* R-60: the 90-day study heatmap (.heatmap-section/.heatmap/.heatmap-day)
+   was removed -- it was never wired to real per-day data. Re-add in 0.2.0
+   under ADR-0006's asymmetric-visibility constraint. */
 
 /* --- Session Dashboard --- */
 .header-link {
@@ -1664,168 +1652,10 @@ body[data-font="opendyslexic"] .card-content {
   .counter-bar { gap: 12px; padding: 10px 16px; font-size: 0.8rem; }
 }
 
-/* When split-container is present, override main's centering */
-main:has(.split-container) {
-  align-items: stretch;
-  justify-content: flex-start;
-  padding: 0;
-}
-main:has(.split-container) .session-dashboard {
-  max-width: none;
-}
-
-/* Split container fills content-area via absolute positioning.
-   No hardcoded header height — works regardless of actual header size. */
-.content-area .split-container {
-  position: absolute;
-  inset: 0;
-  height: auto;
-}
 .content-area .session-dashboard {
   max-width: none;
 }
 
-/* Split-pane layout — Split.js handles sizing and gutter creation.
-   Container must be display:flex flex-direction:column.
-   Height comes from absolute positioning in content-area (no calc needed). */
-.split-container {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  overflow: hidden;
-}
-.split-panel {
-  overflow: hidden;
-  min-height: 0;
-}
-/* Dashboard content must fill its panel so resize is visible */
-.split-dashboard {
-  display: flex;
-  flex-direction: column;
-}
-.split-dashboard .session-dashboard {
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-}
-/* The activity feed is wrapped in a classless SSE div (<div hx-ext="sse">).
-   That wrapper is the actual flex child — IT must grow, not just .activity-feed.
-   Target: .session-dashboard > wrapper > .activity-feed chain. */
-.split-dashboard .session-dashboard > [hx-ext="sse"] {
-  flex: 1 1 0px;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-.split-dashboard .session-dashboard > [hx-ext="sse"] > .activity-feed {
-  flex: 1 1 0px;
-  min-height: 100px;
-  max-height: none;
-}
-/* Terminal content must fill its panel too */
-.split-terminal {
-  display: flex;
-  flex-direction: column;
-}
-.split-terminal .terminal-panel {
-  flex: 1;
-  min-height: 0;
-}
-
-/* Split.js gutter — the drag handle between panels */
-.gutter {
-  background: var(--bg-card);
-  cursor: row-resize;
-  user-select: none;
-  -webkit-user-select: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.15s;
-  flex-shrink: 0;
-}
-.gutter:hover {
-  background: color-mix(in srgb, var(--accent) 15%, var(--bg-card));
-}
-.gutter:active {
-  background: color-mix(in srgb, var(--accent) 25%, var(--bg-card));
-}
-/* Visible drag handle pill inside the gutter */
-.gutter::after {
-  content: '';
-  width: 48px;
-  height: 5px;
-  border-radius: 3px;
-  background: var(--border);
-  transition: background 0.15s, transform 0.15s;
-}
-.gutter:hover::after {
-  background: var(--accent);
-  transform: scaleX(1.3);
-}
-.gutter:active::after {
-  background: var(--accent);
-  transform: scaleX(1.5);
-}
-
-/* Terminal panel */
-.terminal-panel {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-}
-.terminal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.4rem 0.8rem;
-  background: var(--bg-secondary, var(--bg-card));
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-.terminal-title {
-  font-weight: 600;
-  font-size: 0.85rem;
-}
-.terminal-controls {
-  display: flex;
-  gap: 0.3rem;
-}
-.terminal-content {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-}
-.terminal-iframe {
-  width: 100%;
-  height: 100%;
-  position: absolute;
-  top: 0;
-  left: 0;
-  border: none;
-  background: #1a1b26;
-}
-.terminal-placeholder {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 10;
-  background: var(--bg);
-  padding: 2rem;
-  text-align: center;
-  color: var(--text-muted);
-  font-style: italic;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-}
 .terminal-unavailable {
   position: absolute;
   top: 0;
@@ -1841,12 +1671,6 @@ main:has(.split-container) .session-dashboard {
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.placeholder-hint {
-  font-size: 0.85rem;
-  font-style: normal;
-  color: var(--text-muted);
 }
 
 /* ==========================================================================
@@ -1908,7 +1732,6 @@ main:has(.split-container) .session-dashboard {
   background: var(--bg);
 }
 
-.agent-console-surface,
 .embedded-terminal-panel {
   flex: 1;
   min-height: 0;
@@ -2084,41 +1907,6 @@ main:has(.split-container) .session-dashboard {
 .agent-choice-check {
   color: var(--green);
   font-weight: 700;
-}
-
-.session-terminal-iframe {
-  width: 100%;
-  height: 100%;
-  position: absolute;
-  inset: 0;
-  border: none;
-  background: #1a1b26;
-}
-
-/* Floating popout button */
-.terminal-popout-btn {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 20;
-  background: rgba(26, 27, 38, 0.8);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0.4;
-  transition: opacity 0.2s;
-}
-.terminal-popout-btn:hover {
-  opacity: 1;
-  border-color: var(--accent);
-  color: var(--text);
 }
 
 /* --- Bottom status bar --- */
@@ -5312,6 +5100,11 @@ body[data-palette="everforest"] {
   border-radius: 10px;
   color: var(--text);
   font-size: 0.8rem;
+}
+
+.bd-end-error {
+  color: var(--red);
+  font-weight: 650;
 }
 
 /* --- Terminal console --------------------------------------------------- */

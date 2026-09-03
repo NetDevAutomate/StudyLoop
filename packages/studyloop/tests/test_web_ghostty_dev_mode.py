@@ -17,14 +17,16 @@ Pattern copied from test_web_wterm_dev_mode.py + _playwright_helpers.py.
 
 from __future__ import annotations
 
-import subprocess
 import sys
 import time
-import urllib.error
 import urllib.request
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
+
+if TYPE_CHECKING:
+    import subprocess
 
 _tests_dir = str(Path(__file__).resolve().parent)
 if _tests_dir not in sys.path:
@@ -39,11 +41,6 @@ pytest.importorskip("uvicorn")
 pytestmark = [pytest.mark.e2e]
 
 
-CONFIG_DIR = Path.home() / ".config" / "studyloop"
-STATE_FILE = CONFIG_DIR / "session-state.json"
-TOPICS_FILE = CONFIG_DIR / "session-topics.md"
-PARKING_FILE = CONFIG_DIR / "session-parking.md"
-
 # Unique port for ghostty tests (won't collide with wterm's 18570/18571)
 WEB_GHOSTTY_PORT = 18580
 
@@ -51,15 +48,6 @@ WEB_GHOSTTY_PORT = 18580
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
-
-
-@pytest.fixture()
-def _clean_ipc():
-    for f in (STATE_FILE, TOPICS_FILE, PARKING_FILE):
-        f.unlink(missing_ok=True)
-    yield
-    for f in (STATE_FILE, TOPICS_FILE, PARKING_FILE):
-        f.unlink(missing_ok=True)
 
 
 def _start_ghostty_dev_server(port: int = WEB_GHOSTTY_PORT) -> subprocess.Popen:
@@ -90,7 +78,7 @@ _USER, _PASS = _get_effective_credentials()
 
 
 @pytest.fixture()
-def ghostty_web_server(_clean_ipc):
+def ghostty_web_server():
     proc = _start_ghostty_dev_server()
     yield proc
     proc.terminate()
@@ -361,8 +349,6 @@ def _start_ghostty_dev_server_with_real_pty(
 @pytest.fixture(scope="module")
 def ghostty_pty_server():
     """Class-scoped server with a real PTY stub agent."""
-    for f in (STATE_FILE, TOPICS_FILE, PARKING_FILE):
-        f.unlink(missing_ok=True)
     proc = _start_ghostty_dev_server_with_real_pty()
     yield proc
     # End any lingering session before teardown
@@ -385,8 +371,6 @@ def ghostty_pty_server():
     except Exception:
         proc.kill()
         proc.wait(timeout=5)
-    for f in (STATE_FILE, TOPICS_FILE, PARKING_FILE):
-        f.unlink(missing_ok=True)
 
 
 @pytest.fixture()
@@ -1008,24 +992,11 @@ class TestDefaultModeRegression:
         """Regression: default mode uses xterm.js, not ghostty-web."""
         port = WEB_GHOSTTY_PORT + 1  # 18581
 
-        for f in (STATE_FILE, TOPICS_FILE, PARKING_FILE):
-            f.unlink(missing_ok=True)
-
-        # Start server WITHOUT --dev
-        cmd = [sys.executable, "-m", "studyloop.cli", "web", "--port", str(port)]
-        proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        # Start server WITHOUT --dev, through the shared hardened launcher
+        # (isolated env + refusal guard) rather than a bare, unisolated
+        # subprocess.Popen — see C13/R-49g.
+        proc = start_web_server(port)
         try:
-            for _ in range(30):
-                try:
-                    urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=1)
-                    break
-                except urllib.error.HTTPError as exc:
-                    if exc.code in (401, 403):
-                        break
-                    time.sleep(0.3)
-                except Exception:
-                    time.sleep(0.3)
-
             ctx_args = {}
             if _PASS:
                 ctx_args["http_credentials"] = {"username": _USER, "password": _PASS}

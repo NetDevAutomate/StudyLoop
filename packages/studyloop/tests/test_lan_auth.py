@@ -10,7 +10,6 @@ Tests:
 - 200 returned when correct password sent
 - Auth applies to API routes
 - Auth applies to static files
-- Auth applies to terminal proxy routes
 - Auto-generated password is 16+ chars
 - Password stored in settings and loaded from YAML config
 """
@@ -146,10 +145,6 @@ class TestPasswordProtection:
         resp = protected_client.get("/style.css")
         assert resp.status_code == 401
 
-    def test_terminal_proxy_returns_401_without_auth(self, protected_client: TestClient) -> None:
-        resp = protected_client.get("/terminal/")
-        assert resp.status_code == 401
-
 
 # ---------------------------------------------------------------------------
 # Password set -> WebSocket scopes are protected too
@@ -169,7 +164,6 @@ class TestWebSocketPasswordProtection:
         [
             "/api/session/ws?study_session_id=study-1",
             "/api/content/generate/ws?job_id=gen-x",
-            "/terminal/ws",
         ],
     )
     def test_websocket_without_auth_closes_1008(
@@ -345,57 +339,3 @@ class TestBasicAuthMiddlewareExists:
         from studyloop.web.auth import BasicAuthMiddleware
 
         assert callable(BasicAuthMiddleware)
-
-
-# ---------------------------------------------------------------------------
-# app.state is the single source of truth for LAN credentials (auth divergence)
-# ---------------------------------------------------------------------------
-
-
-class TestLanCredentialsOnAppState:
-    """create_app must store the resolved LAN creds so the ttyd path can't
-    diverge from the app's BasicAuthMiddleware by re-reading config.yaml."""
-
-    def test_create_app_stores_credentials_on_state(self) -> None:
-        app = create_app(username="alice", password="hunter2")
-        assert app.state.lan_username == "alice"
-        assert app.state.lan_password == "hunter2"
-
-    def test_create_app_stores_empty_password_when_unset(self) -> None:
-        app = create_app()
-        assert app.state.lan_password == ""
-
-    def test_ttyd_credentials_read_from_app_state(self) -> None:
-        """ttyd creds come from app.state (CLI-resolved), never a config re-read."""
-        from unittest.mock import MagicMock
-
-        from studyloop.web.routes.session._start import _ttyd_credentials
-
-        request = MagicMock()
-        request.app.state.lan_username = "cli_user"
-        request.app.state.lan_password = "cli_pass_never_in_config"  # pragma: allowlist secret
-
-        assert _ttyd_credentials(request) == ("cli_user", "cli_pass_never_in_config")
-
-    def test_ttyd_credentials_fail_closed_without_app_state(self) -> None:
-        """request=None (no app.state) → refuse, don't return blank creds."""
-        from fastapi import HTTPException
-
-        from studyloop.web.routes.session._start import _ttyd_credentials
-
-        with pytest.raises(HTTPException) as exc:
-            _ttyd_credentials(None)
-        assert exc.value.status_code == 500
-        assert "auth divergence" in exc.value.detail
-
-    def test_ttyd_credentials_empty_when_no_password_set(self) -> None:
-        """No LAN password (local-only mode) → blank creds, ttyd stays open locally."""
-        from unittest.mock import MagicMock
-
-        from studyloop.web.routes.session._start import _ttyd_credentials
-
-        request = MagicMock()
-        request.app.state.lan_username = "study"
-        request.app.state.lan_password = ""
-
-        assert _ttyd_credentials(request) == ("study", "")

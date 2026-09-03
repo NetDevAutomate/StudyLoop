@@ -154,10 +154,12 @@ def _teardown_agent(state: dict) -> None:
 
 
 def _kill_background_processes(state: dict) -> None:
-    """Kill web dashboard and ttyd processes by PID, then by port as fallback.
+    """Kill the web dashboard process by PID, then by port as fallback.
 
-    PID-based kill is tried first (fast). Port-based kill handles orphaned
-    processes whose PIDs were lost between code paths.
+    PID-based kill is tried first (fast). Port-based kill handles an orphaned
+    process whose PID was lost between code paths. ttyd is no longer spawned
+    (ttyd retirement stage 2), so there is nothing left to kill here for it —
+    this only tears down what stage 2 could still create.
     """
     import contextlib
     import os
@@ -165,7 +167,7 @@ def _kill_background_processes(state: dict) -> None:
 
     # PID-based kill — verify command matches to guard against PID recycling.
     # "studyloop" matches both the binary and "python -m studyloop.cli".
-    pid_checks = {"web_pid": "studyloop", "ttyd_pid": "ttyd"}
+    pid_checks = {"web_pid": "studyloop"}
     for pid_key, expected in pid_checks.items():
         pid = state.get(pid_key)
         if not pid:
@@ -185,10 +187,6 @@ def _kill_background_processes(state: dict) -> None:
     # Port-based fallback
     from studyloop.session.orchestrator import _kill_port_occupant
 
-    ttyd_port = state.get("ttyd_port")
-    if ttyd_port:
-        with contextlib.suppress(Exception):
-            _kill_port_occupant(int(ttyd_port), expected_cmd="ttyd")
     web_port = state.get("web_port")
     if web_port:
         with contextlib.suppress(Exception):
@@ -196,7 +194,20 @@ def _kill_background_processes(state: dict) -> None:
 
 
 def _cleanup_tmux_and_files(session_name: str | None, persona_file: str | None) -> None:
-    """Kill multiplexer study sessions and remove transient IPC files.
+    """Kill the ending session's own multiplexer session and remove transient
+    IPC files.
+
+    R-02: this used to call ``kill_all_study_sessions()``, which kills every
+    ``study-*`` session on the machine unconditionally -- so ending session A
+    also killed session B's tmux, and once R-01's web/CLI double-start bug let
+    two sessions coexist, ending EITHER one destroyed the other. Kill only
+    this session's own name instead (``None`` for PTY/ACP sessions, which own
+    no multiplexer session, so nothing is killed here). The blunt "kill
+    everything" sweep keeps its exact semantics as
+    ``kill_all_study_sessions()`` itself -- it is simply no longer called from
+    here. See docs/architecture/session-authority.md clause 4; the one
+    remaining deliberate caller is ``studyloop clean --all``
+    (``cli/_clean.py``).
 
     Keeps session-state.json (mode=ended) so the dashboard can render a
     summary view before the next session starts.
@@ -216,10 +227,11 @@ def _cleanup_tmux_and_files(session_name: str | None, persona_file: str | None) 
     with contextlib.suppress(OSError):
         oneline.unlink()
 
-    # Kill all study sessions via the multiplexer protocol
-    with contextlib.suppress(Exception):
-        mux = get_backend()
-        mux.kill_all_study_sessions(current_session=session_name)
+    # Kill only this session's own multiplexer session (none for PTY/ACP).
+    if session_name:
+        with contextlib.suppress(Exception):
+            mux = get_backend()
+            mux.kill_session(session_name)
 
     # Clear transient IPC files but KEEP session-state.json (mode=ended)
     for f in [TOPICS_FILE, PARKING_FILE, oneline]:

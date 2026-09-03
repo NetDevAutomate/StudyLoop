@@ -20,17 +20,33 @@ if TYPE_CHECKING:
 
 @click.command()
 @click.option("--dry-run", is_flag=True, help="Show what would be cleaned without acting.")
-def clean(dry_run: bool) -> None:
+@click.option(
+    "--all",
+    "kill_all",
+    is_flag=True,
+    help=(
+        "Also kill every study-* session on this machine, live or dead -- "
+        "not just zombies. Ending a single session no longer does this "
+        "blanket sweep (R-02); this is the one deliberate, explicit place "
+        "left that still reaches for it."
+    ),
+)
+def clean(dry_run: bool, kill_all: bool) -> None:
     """Remove orphaned study sessions, directories, and state files.
 
     Cleans up artifacts left behind by crashed or stale study sessions:
     zombie tmux sessions, leftover session directories, and stale state files.
+    ``--all`` widens the session sweep from "zombies only" to "every
+    study-* session, live or dead" -- the one place ``kill_all_study_sessions``
+    is still reachable from in this codebase.
 
     Examples:
 
         studyloop clean --dry-run
 
         studyloop clean
+
+        studyloop clean --all
     """
     import fcntl
     import shutil
@@ -39,7 +55,7 @@ def clean(dry_run: bool) -> None:
     from studyloop.logic.clean_logic import CleanResult, DirInfo, plan_clean
     from studyloop.multiplexer import get_backend
     from studyloop.session_state import SESSION_DIR, STATE_FILE, read_session_state
-    from studyloop.tmux import LOCK_FILE
+    from studyloop.tmux import _lock_file
 
     mux = get_backend()
 
@@ -70,13 +86,32 @@ def clean(dry_run: bool) -> None:
         state_file_exists=STATE_FILE.exists(),
     )
 
+    # --all widens the session list plan_clean decided on (zombies only) to
+    # every study-* session that exists right now. Only the session field --
+    # dirs/state decisions are unaffected by --all.
+    sweep_everything = kill_all and bool(study_sessions)
+    if sweep_everything:
+        plan = CleanResult(
+            sessions_to_kill=list(study_sessions),
+            dirs_to_remove=plan.dirs_to_remove,
+            state_to_clean=plan.state_to_clean,
+            warnings=plan.warnings,
+        )
+
     # ── EXECUTE — follow the plan ────────────────────────────────
     execution_warnings: list[str] = []
     if not dry_run:
-        for name in plan.sessions_to_kill:
-            success = mux.kill_session(name)
-            if not success:
-                execution_warnings.append(f"Failed to confirm kill: {name}")
+        if sweep_everything:
+            # The one remaining call site of kill_all_study_sessions() in
+            # this codebase (R-02): a deliberate, explicit "kill everything"
+            # sweep, kept exactly for this command, never for a single
+            # session's own end path.
+            mux.kill_all_study_sessions(current_session=None)
+        else:
+            for name in plan.sessions_to_kill:
+                success = mux.kill_session(name)
+                if not success:
+                    execution_warnings.append(f"Failed to confirm kill: {name}")
 
         for path in plan.dirs_to_remove:
             try:
@@ -85,8 +120,9 @@ def clean(dry_run: bool) -> None:
                 execution_warnings.append(f"Partial delete {path.name}: {e}")
 
         if plan.state_to_clean:
-            LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
-            with open(LOCK_FILE, "w") as f:
+            lock_path = _lock_file()
+            lock_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(lock_path, "w") as f:
                 fcntl.flock(f, fcntl.LOCK_EX)
                 try:
                     # Re-read under lock to prevent TOCTOU with --resume

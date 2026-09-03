@@ -20,6 +20,53 @@ from studyloop.installers import (
     require_repo_root,
 )
 
+# R-38: "updates" is a real category in the data model (CheckResult allows
+# it, and _apply_fixes has a real branch for it), but check_pypi_versions is
+# deliberately never registered -- nothing is published yet, so it can only
+# ever produce zero results. Advertising it as a `--category` choice made it
+# look like a working category that silently does nothing. Hide it from the
+# CLI's choice list until a release exists to check against; re-add it to
+# this set (not VALID_CATEGORIES, which stays as-is) once check_pypi_versions
+# is registered in _get_registry().
+_HIDDEN_UNTIL_RELEASE_EXISTS = frozenset({"updates"})
+_VISIBLE_CATEGORIES = sorted(VALID_CATEGORIES - _HIDDEN_UNTIL_RELEASE_EXISTS)
+
+
+def check_unknown_config_keys() -> list[CheckResult]:
+    """Warn about top-level config.yaml keys no consumer reads any more.
+
+    R-34: an unknown or retired key (e.g. ``ttyd_port``, dropped in the ttyd
+    retirement) silently does nothing today — ``load_settings()`` only ever
+    reads the keys it looks for, so a stale key from an old config is neither
+    applied nor reported. This is the report; the fix (deleting the key) is
+    the user's. Lives here rather than in ``doctor/config.py`` (owned by a
+    different remediation lane, m5, in the same window this was added) —
+    the registry below wires it into the same "config" category regardless
+    of which module defines it.
+    """
+    try:
+        from studyloop.settings import unknown_top_level_keys
+
+        unknown = unknown_top_level_keys()
+    except Exception:
+        return []
+
+    if not unknown:
+        return []
+
+    keys = ", ".join(unknown)
+    return [
+        CheckResult(
+            "config",
+            "unknown_config_keys",
+            "warn",
+            f"Unknown or retired config.yaml key(s): {keys}. StudyLoop no longer "
+            "reads them; they are silently inert.",
+            f"Remove {keys} from ~/.config/studyloop/config.yaml.",
+            False,
+        )
+    ]
+
 
 def _get_registry():
     """Build and return a fully-loaded CheckerRegistry."""
@@ -40,6 +87,7 @@ def _get_registry():
         check_config_file,
         check_python_version,
         check_studyloop_installed,
+        check_tmux_available,
     )
     from studyloop.doctor.database import check_review_db, check_sessions_db
     from studyloop.doctor.deps import check_optional_deps
@@ -52,6 +100,7 @@ def _get_registry():
         check_studyloop_installed,
         check_agent_session_tools,
         check_config_file,
+        check_tmux_available,
     ]:
         registry.register("core")(fn)
     for fn in [check_review_db, check_sessions_db]:
@@ -60,6 +109,7 @@ def _get_registry():
         check_active_topic_limit,
         check_review_directories,
         check_pandoc,
+        check_unknown_config_keys,
     ]
     # Obsidian is an OPT-IN integration, so its checks are registered only when
     # the config actually mentions it. A user who never had Obsidian should not
@@ -75,8 +125,10 @@ def _get_registry():
     for fn in config_checks:
         registry.register("config")(fn)
     registry.register("deps")(check_optional_deps)
-    # check_system_binaries (bin_ttyd) is gone: ADR-0005 retired the ttyd
-    # browser surface, so reporting ttyd's absence is noise with no signal.
+    # check_system_binaries (bin_ttyd) is gone: ttyd is fully retired
+    # (ADR-0005, ADR-0008) -- nothing installs, spawns, or reads a ttyd
+    # process any more, so reporting its absence would be noise with no
+    # signal regardless of whether the binary happens to be on PATH.
     registry.register("agents")(check_agent_definitions)
     registry.register("agents")(check_agent_smoke_tests)
     registry.register("harness")(check_harness_export)
@@ -219,7 +271,7 @@ def _apply_fixes(results: list[CheckResult]) -> list[str]:
 @click.option("--fix", is_flag=True, help="Apply safe automatic fixes before reporting.")
 @click.option(
     "--category",
-    type=click.Choice(sorted(VALID_CATEGORIES)),
+    type=click.Choice(_VISIBLE_CATEGORIES),
     default=None,
     help="Check specific category",
 )

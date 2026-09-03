@@ -164,3 +164,63 @@ def test_docs_deploy_job_is_push_only() -> None:
     steps = [step.get("uses", "") for step in deploy["steps"]]
     assert any("actions/upload-pages-artifact" in s for s in steps)
     assert any("actions/deploy-pages" in s for s in steps)
+
+
+def _bandit_skip_list_from_run(run_command: str) -> list[str]:
+    match = re.search(r"--skip\s+(\S+)", run_command)
+    assert match, f"no --skip found in: {run_command!r}"
+    return match.group(1).split(",")
+
+
+def test_sast_job_bandit_skip_excludes_b602() -> None:
+    """B6b: owner decision B6 ("keep the skip list; a specific nosec at the
+    one real site") is only honoured if B602 is NOT ALSO in the global
+    skip list -- otherwise the nosec at practice.py's shell=True line is
+    redundant and the skip-list comment's claim ("B602 has its one real hit
+    suppressed with a specific nosec rather than skipped here") is false."""
+    data = _workflow()
+    sast_run = data["jobs"]["sast"]["steps"][-1]["run"]
+    skipped = _bandit_skip_list_from_run(sast_run)
+    assert "B602" not in skipped, (
+        "ci.yml's sast job still skips B602 globally -- the practice.py "
+        "nosec is then redundant and the comment claiming otherwise is false"
+    )
+
+
+def test_pre_commit_bandit_skip_excludes_b602() -> None:
+    data = yaml.safe_load((REPO_ROOT / ".pre-commit-config.yaml").read_text(encoding="utf-8"))
+    bandit_hooks = [
+        hook
+        for repo in data["repos"]
+        for hook in repo.get("hooks", [])
+        if hook.get("id") == "bandit"
+    ]
+    assert len(bandit_hooks) == 1
+    args = bandit_hooks[0]["args"]
+    skip_index = args.index("--skip") + 1
+    skipped = args[skip_index].split(",")
+    assert "B602" not in skipped, (
+        ".pre-commit-config.yaml's bandit hook still skips B602 globally -- "
+        "the practice.py nosec is then redundant and the comment claiming "
+        "otherwise is false"
+    )
+
+
+def test_sast_and_pre_commit_bandit_skip_lists_agree() -> None:
+    """The two skip lists are meant to be the same list in two places."""
+    data = _workflow()
+    sast_skipped = set(_bandit_skip_list_from_run(data["jobs"]["sast"]["steps"][-1]["run"]))
+
+    precommit_data = yaml.safe_load(
+        (REPO_ROOT / ".pre-commit-config.yaml").read_text(encoding="utf-8")
+    )
+    bandit_hook = next(
+        hook
+        for repo in precommit_data["repos"]
+        for hook in repo.get("hooks", [])
+        if hook.get("id") == "bandit"
+    )
+    args = bandit_hook["args"]
+    precommit_skipped = set(args[args.index("--skip") + 1].split(","))
+
+    assert sast_skipped == precommit_skipped

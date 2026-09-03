@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 from studyloop.doctor.models import CheckResult
+from studyloop.tmux import is_tmux_available
 
 
 def _get_config_path() -> Path:
@@ -124,3 +125,25 @@ def check_config_file() -> list[CheckResult]:
                 fix_auto=False,
             )
         ]
+
+
+def check_tmux_available() -> list[CheckResult]:
+    """R-36: `studyloop study` requires tmux 3.1+, but nothing checked for it.
+
+    Reuses tmux.py's own `is_tmux_available()` (missing binary OR below
+    `MIN_TMUX_VERSION` both return False there) rather than re-implementing
+    version detection here.
+    """
+    if is_tmux_available():
+        return [CheckResult("core", "tmux_available", "pass", "tmux available", "", False)]
+    return [
+        CheckResult(
+            "core",
+            "tmux_available",
+            "warn",
+            "tmux not found or below the minimum supported version — "
+            "'studyloop study' will fail to start a session",
+            "Install tmux 3.1+: brew install tmux (macOS) or apt install tmux (Linux)",
+            fix_auto=False,
+        )
+    ]
