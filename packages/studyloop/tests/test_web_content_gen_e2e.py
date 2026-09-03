@@ -9,7 +9,6 @@ Mirrors the harness pattern used by ``test_web_navigation.py``.
 
 from __future__ import annotations
 
-import os
 import subprocess
 import sys
 import time
@@ -23,6 +22,16 @@ import pytest
 pytest.importorskip("playwright")
 pytest.importorskip("fastapi")
 pytest.importorskip("uvicorn")
+
+# Sibling-module import: tests/ has no __init__.py.
+_tests_dir = str(Path(__file__).parent)
+if _tests_dir not in sys.path:
+    sys.path.insert(0, _tests_dir)
+
+from _playwright_helpers import (  # noqa: E402
+    _isolated_child_env,
+    _refuse_if_env_reaches_real_dirs,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -91,8 +100,11 @@ card_generator:
 @pytest.fixture
 def server(stub_config: Path) -> Generator[subprocess.Popen, None, None]:
     """Bring up ``studyloop web`` with our tmp config; tear down at end."""
-    env = os.environ.copy()
-    env["STUDYLOOP_CONFIG"] = str(stub_config)
+    # C13/R-49g: isolated hermetic env, not os.environ.copy() -- this
+    # spawns a real studyloop web server and must never be able to resolve
+    # HOME/STUDYLOOP_SESSION_DIR back to the developer's real config dir.
+    env = _isolated_child_env({"STUDYLOOP_CONFIG": str(stub_config)})
+    _refuse_if_env_reaches_real_dirs(env)
     cmd = [
         sys.executable,
         str(Path(__file__).resolve().parent / "_content_test_server.py"),
