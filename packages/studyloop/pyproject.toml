@@ -30,7 +30,7 @@ bedrock = ["studyloop[content]", "boto3>=1.40"]
 notebooklm = ["notebooklm-py>=0.3.4"]
 tui = ["textual>=0.80"]
 web = ["fastapi>=0.115", "uvicorn[standard]>=0.34", "httpx>=0.27", "websockets>=12.0", "cryptography>=42.0"]
-mcp = ["mcp[cli]>=1.0.0"]
+mcp = ["mcp[cli]>=1.0.0,<2"]
 # The session DB (cross-harness knowledge base) lives in the sibling
 # agent-session-tools workspace package. Declaring it as an extra means a
 # plain `uv tool install studyloop[sessions]` pulls it in, so the studyloop
