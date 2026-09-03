@@ -90,7 +90,7 @@ Follow `wind-down-protocol.md`:
 2. End session: `studyloop session end --notes "<summary>"` — flushes parking lot to DB, exports to Obsidian
 3. Export the real Codex conversation: `session-export --codex-only`
 4. Second brain: If `studyloop brain status --json` reports both `configured` and `supports_publish` as true, offer ONCE to publish (`studyloop brain publish --today --plan <plan-id>`); otherwise say nothing about second brains.
-   - xTiles: if that same status reports `provider: xtiles` and an `xtiles` MCP server is connected in this session, follow `~/.agents/shared/xtiles-wind-down.md` instead; otherwise skip this step silently and say nothing about xTiles.
+   - xTiles: if that same status reports `provider: xtiles` and an `xtiles` MCP server is connected in this session, follow the `studyloop-xtiles-wind-down` skill instead; otherwise skip this step silently and say nothing about xTiles.
 5. Suggest next review based on spaced repetition intervals
 5. Suggest a concrete next study block in prose (no calendar CLI exists yet)
 6. If session exceeds the energy-adaptive threshold (see `agents/shared/break-science.md`), remind to take a break

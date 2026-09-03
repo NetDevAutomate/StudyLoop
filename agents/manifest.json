@@ -1,20 +1,12 @@
 {
   "version": 1,
   "agents": {
-    "claude/skills/studyloop-xtiles-wind-down/SKILL.md": {
-      "hash": "279d6daa87d188cb",
-      "updated": "2026-09-03"
-    },
     "claude/socratic-mentor.md": {
       "hash": "42880ffa80484ec9",
       "updated": "2026-09-03"
     },
     "codex/AGENTS.md": {
-      "hash": "ed550ab1175c6e27",
-      "updated": "2026-09-03"
-    },
-    "kiro/skills/studyloop-xtiles-wind-down/SKILL.md": {
-      "hash": "279d6daa87d188cb",
+      "hash": "23dc3d4fbdea89c3",
       "updated": "2026-09-03"
     },
     "kiro/study-mentor.json": {
@@ -22,11 +14,11 @@
       "updated": "2026-09-03"
     },
     "opencode/study-mentor.md": {
-      "hash": "ab9acc55eb965145",
+      "hash": "0ff72c058de9f7d2",
       "updated": "2026-09-03"
     },
     "pi/AGENTS.md": {
-      "hash": "760419dec666272b",
+      "hash": "8706855f619c71b5",
       "updated": "2026-09-03"
     },
     "shared/audhd-framework.md": {
@@ -61,8 +53,12 @@
       "hash": "d9d0dde390e03b4c",
       "updated": "2026-09-03"
     },
-    "shared/xtiles-wind-down.md": {
-      "hash": "9eab50ea70be2023",
+    "skills/studyloop-xtiles-wind-down/SKILL.md": {
+      "hash": "aa31c59092ffe929",
+      "updated": "2026-09-03"
+    },
+    "skills/studyloop-xtiles-wind-down/references/harnesses.md": {
+      "hash": "e3f0ebc00ee792a8",
       "updated": "2026-09-03"
     }
   }
