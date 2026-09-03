@@ -21,6 +21,15 @@ experience may change before `1.0.0`.
   wind-down workflows.
 - A strict public-documentation build and a separate internal audit/archive
   area.
+- `SECURITY.md`: how to report a vulnerability, the supported-version policy
+  (`0.1.x` only, pre-1.0), and a two-sentence summary of the LAN-password and
+  encrypted-secrets-store threat model.
+- `THIRD-PARTY-NOTICES.md` now credits all 26 vendored web assets under
+  `web/static/vendor/` — four SIL OFL font families (Atkinson Hyperlegible,
+  Inter, Lexend, OpenDyslexic) and eight JavaScript libraries (Alpine.js,
+  htmx + the SSE extension, marked, DOMPurify, highlight.js, mermaid, Fuse.js,
+  xterm.js + its three addons) — not just the one design-influence credit it
+  previously had.
 
 ### Changed
 
@@ -74,6 +83,10 @@ experience may change before `1.0.0`.
 
 ### Fixed
 
+- Removed the dangling `GEMINI.md` symlink at the repo root (it pointed at
+  `agents/gemini/GEMINI.md`, which no longer exists now that Gemini CLI is
+  not a supported mentor harness). A guard test now fails the suite if any
+  tracked symlink ever points at a missing target again.
 - Cross-machine sync (`session-sync push`/`pull`/`sync`) no longer overwrites
   global tables (`study_progress`, `study_sessions`, `teach_back_scores`,
   `knowledge_bridges`, `concepts`, `concept_aliases`, `concept_relations`,
