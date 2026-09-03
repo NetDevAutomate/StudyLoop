@@ -5,7 +5,7 @@ variables, so each test configures exactly the wire-level behaviour
 it wants to exercise. No real Kiro/Gemini binaries required; real-CLI
 coverage lives in the Playwright matrix that Phase 2 PR-C will add.
 
-Plan: docs/plans/2026-05-09-refactor-agent-session-transport-plan.md
+Plan: private-docs/2026-05-09-refactor-agent-session-transport-plan.md
       Amendment #9 §Phase 2 PR-A.
 """
 

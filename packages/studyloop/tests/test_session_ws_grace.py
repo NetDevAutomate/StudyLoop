@@ -1,7 +1,7 @@
 """WS detach grace period + single-attach policy.
 
 Covers the fix for "a browser refresh destroys the live study session"
-(``docs/handoffs/2026-08-04-ws-refresh-destroys-session-handoff.md``): a WS
+(``private-docs/2026-08-04-ws-refresh-destroys-session-handoff.md``): a WS
 close used to run ``active.release()`` unconditionally, which called
 ``transport.end()`` (killing the agent child) and wiped the IPC state.
 

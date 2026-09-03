@@ -3,7 +3,7 @@
 Implements the ``AgentSessionTransport`` Protocol against Kiro CLI
 (and any future admitted agent that speaks the spec-canonical
 method names confirmed by the Phase 1.5 capture spike in
-``docs/research/2026-05-10-acp-event-shapes.md``).
+``private-docs/2026-05-10-acp-event-shapes.md``).
 
 Wire format:
 - NDJSON over stdio (one JSON object per line).

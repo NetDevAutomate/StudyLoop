@@ -1,85 +1,27 @@
 # Contributing to StudyLoop
 
-Thank you for helping improve an AuDHD-aware learning tool. Contributions can
-be code, documentation, accessibility feedback, screenshots, reproducible bug
-reports, or honest accounts of where the workflow created too much friction.
+Thank you for helping improve an AuDHD-aware learning tool. The full contributor guide lives in the
+documentation: **[docs/contributing.md](docs/contributing.md)** (published at
+<https://netdevautomate.github.io/StudyLoop/contributing/>). It covers the development environment,
+repository layout, how changes are made and tested, CI, documentation standards, the changelog, pull
+requests, issues, prioritisation, AI usage and models through a LiteLLM gateway, and security.
 
-## Supported release scope
-
-The pre-release has five first-party mentor harnesses:
-
-- Kiro CLI, Codex, and Claude Code are core.
-- OpenCode and pi are preview integrations.
-
-Do not add another harness to a drive-by pull request. Start with an issue that
-defines its persona mechanism, launch and resume commands, session store,
-exporter, health check, failure behavior, and live acceptance path.
-
-## Development setup
+The short version:
 
 ```bash
 git clone https://github.com/NetDevAutomate/StudyLoop.git studyloop
 cd studyloop
 uv sync --all-packages --all-extras
 uv run playwright install chromium
+uv run pre-commit install
+just preflight
 ```
 
-The workspace contains two Python packages:
+- Branch from `main` with a `feat/`, `fix/`, `docs/` or `test/` prefix; never `lane/`.
+- Tests first; docs and changelog in the same change; `just preflight` green before you push.
+- Never include credentials, session transcripts, personal hostnames or unredacted local configuration in
+  issues, fixtures, screenshots or logs.
+- Security concerns go through [GitHub's private advisory form](https://github.com/NetDevAutomate/StudyLoop/security/advisories/new), never a public issue.
 
-- `packages/studyloop` owns the learner-facing CLI, Web UI, mentor adapters,
-  planning, review, and content workflows.
-- `packages/agent-session-tools` owns session import, SQLite search, sync, and
-  optional Obsidian mirroring.
-
-Mentor assets live under `agents/`. Shared methodology belongs under
-`agents/shared/`; harness-specific launch or export behavior belongs in that
-harness's own directory.
-
-## Test and evidence rules
-
-Tests may use isolated deterministic fixtures. Those fixtures must remain in
-the test tree and must not be selectable or packaged as product backends.
-Product data, screenshots, demos, release notes, and manual acceptance evidence
-must come from real behavior; never present placeholder data as a live result.
-
-Before opening a pull request, run:
-
-```bash
-just release-check
-just docs
-```
-
-For a narrow change, run the nearest focused tests while iterating, then the
-release gate before handoff. If global checks have a known unrelated failure,
-report it separately and include the narrower evidence for your change.
-
-Do not copy a test total into a document or release note. The executing gate is
-the authority and its current output belongs in machine-readable release
-evidence. Automated green also does not replace a manual learner-journey check.
-
-## Public documentation boundary
-
-`mkdocs.yml` is an explicit allowlist. A new file under `docs/` is internal by
-default and will not be published until it is deliberately rewritten for users
-and added to the allowlist and navigation.
-
-Keep these internal unless there is a specific reason to publish them:
-
-- audits and release evidence;
-- implementation plans and handoffs;
-- architecture investigations and ADRs;
-- agent instructions and model-review transcripts;
-- historical debugging notes.
-
-## Pull requests
-
-Keep each pull request focused and answer:
-
-1. What learner or contributor problem does this solve?
-2. What changed?
-3. Which automated checks passed?
-4. Which live or manual journey was checked?
-5. What remains unverified?
-
-Never include credentials, private session transcripts, personal hostnames, or
-unredacted local configuration in issues, fixtures, screenshots, or logs.
+StudyLoop is a 0.1.x pre-release with five first-party mentor harnesses (Kiro CLI, Codex and Claude Code are
+core; OpenCode and pi are preview). Proposals for another harness start with an issue, not a pull request.

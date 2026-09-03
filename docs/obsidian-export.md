@@ -6,7 +6,7 @@ and shared across the supported harnesses — Kiro CLI, Codex, Claude Code,
 OpenCode, and pi all flow into one folder, so your hand-written notes stay clean.
 
 > Looking for the implementation spec or the GraphRAG follow-up? See
-> `docs/designs/obsidian-export.md` and `docs/designs/obsidian-graphrag-roadmap.md`.
+> `private-docs/obsidian-export.md` and `private-docs/obsidian-graphrag-roadmap.md`.
 
 ## What it produces
 

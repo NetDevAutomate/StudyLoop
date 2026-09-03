@@ -5,7 +5,7 @@ The nav store is the skeleton the rest of the UI hangs off; if this
 regresses, every downstream view test fails for the same underlying
 reason. Run these first in the e2e suite order.
 
-Plan: docs/plans/2026-05-09-refactor-agent-session-transport-plan.md
+Plan: private-docs/2026-05-09-refactor-agent-session-transport-plan.md
       §Test Strategy — "navigation between tabs".
 """
 

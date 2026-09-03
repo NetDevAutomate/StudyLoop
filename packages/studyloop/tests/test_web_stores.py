@@ -5,7 +5,7 @@ font, pomodoro timer — and sit at the root of the app so a regression
 ripples everywhere. The test covers the store methods directly (no
 reliance on timer-driven real time).
 
-Plan: docs/plans/2026-05-09-refactor-agent-session-transport-plan.md
+Plan: private-docs/2026-05-09-refactor-agent-session-transport-plan.md
       §Test Strategy — "theme/voice toggles", "pomodoro timer controls".
 """
 

@@ -6,7 +6,7 @@ then formats it as markdown for injection into the agent persona.
 The imperative shell (_study.py) gathers raw data and populates BriefingData.
 This module only does pure transformation: data -> formatted string.
 
-See docs/plans/2026-04-05-feat-study-briefing-cohesive-loop-plan.md for design.
+See private-docs/2026-04-05-feat-study-briefing-cohesive-loop-plan.md for design.
 """
 
 from __future__ import annotations

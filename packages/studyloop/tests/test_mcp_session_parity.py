@@ -4,7 +4,7 @@ The web UI exposes a study-options picker and an end-session button;
 these tests lock the matching MCP tools so an agent driving
 studyloop via MCP has the same power the browser has.
 
-Plan: docs/plans/2026-05-09-refactor-agent-session-transport-plan.md §1.10
+Plan: private-docs/2026-05-09-refactor-agent-session-transport-plan.md §1.10
 """
 
 from __future__ import annotations

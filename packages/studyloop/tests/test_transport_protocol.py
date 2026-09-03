@@ -4,7 +4,7 @@ No behaviour lives in transport.py; it's pure contract. These tests guard the
 contract from silent breakage: symbol presence, dataclass frozenness, event
 union composition, and the error-hierarchy decision.
 
-Plan: docs/plans/2026-05-09-refactor-agent-session-transport-plan.md §1.1
+Plan: private-docs/2026-05-09-refactor-agent-session-transport-plan.md §1.1
 """
 
 from __future__ import annotations

@@ -4,7 +4,7 @@ and "how the UI observes it".
 Carries raw PTY bytes plus lifecycle events for one live agent session.
 Intentionally narrow so PTY- and ACP-style adapters can both satisfy it.
 
-See docs/plans/2026-05-09-refactor-agent-session-transport-plan.md
+See private-docs/2026-05-09-refactor-agent-session-transport-plan.md
 §Protocol for the full design rationale.
 """
 

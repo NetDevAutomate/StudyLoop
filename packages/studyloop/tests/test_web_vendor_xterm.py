@@ -9,7 +9,7 @@ a blank terminal pane in the browser.
 This test does NOT exercise the terminal itself (that's §1.7 with the
 Alpine component). It's a pure file-existence + reference check.
 
-Plan: docs/plans/2026-05-09-refactor-agent-session-transport-plan.md §1.6
+Plan: private-docs/2026-05-09-refactor-agent-session-transport-plan.md §1.6
 """
 
 from __future__ import annotations

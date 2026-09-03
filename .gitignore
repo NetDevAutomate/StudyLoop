@@ -620,3 +620,33 @@ scripts/local/
 # working material but reads as a defect list to anyone who finds it in a public
 # repo. Public-facing conclusions belong in docs/ or an ADR instead.
 /reviews/
+
+# Internal planning, handoffs, audits, research and evidence live in the private
+# repo (~/code/personal/tools/studyloop-private), never here. Public docs are the
+# mkdocs.yml allowlist plus docs/adr and docs/architecture.
+docs/handoffs/
+docs/archive/
+docs/audit/
+docs/research/
+docs/superpowers/
+docs/plans/
+docs/planning/
+docs/brainstorms/
+docs/explorations/
+docs/issues/
+docs/designs/
+docs/course-explorer/
+docs/desktop-mcp/
+docs/migrations/
+docs/standards/
+docs/troubleshooting/
+
+# Process docs folded into docs/contributing.md and kept privately
+docs/openspec.md
+docs/ownership.md
+docs/ci.md
+docs/e2e-test-harness.md
+docs/release-process.md
+docs/mcp.md
+docs/audhd-deep-technical-learning-roadmap.md
+docs/audhd-learning-loop-implementation.md

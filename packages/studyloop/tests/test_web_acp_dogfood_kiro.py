@@ -16,7 +16,7 @@ not authenticated.
 
 Port 18577 — distinct from 18575/18576 used by the stub-driven e2e suites.
 
-Plan: docs/plans/2026-05-28-001-fix-acp-dogfood-hotfix-plan.md §U5
+Plan: private-docs/2026-05-28-001-fix-acp-dogfood-hotfix-plan.md §U5
 """
 
 from __future__ import annotations

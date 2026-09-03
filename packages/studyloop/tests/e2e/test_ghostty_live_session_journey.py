@@ -30,7 +30,7 @@ The child is a source-test module injected behind the real Codex adapter, which 
 stable line-oriented markers — ``FAKE-AGENT READY``, ``FAKE-AGENT VERDICT:`` — so
 the transcript is parseable without an LLM.
 
-Plan/analysis: docs/explorations/ghostty-web-evaluation.md
+Plan/analysis: private-docs/ghostty-web-evaluation.md
 """
 
 from __future__ import annotations
@@ -564,7 +564,7 @@ class TestLiveRefresh:
     terminated the study session. It was verified engine-independent (a default
     xterm.js server with no ``--dev`` died the same way within half a second),
     so it never had anything to do with libghostty. Full diagnosis:
-    ``docs/handoffs/2026-08-04-ws-refresh-destroys-session-handoff.md``.
+    ``private-docs/2026-08-04-ws-refresh-destroys-session-handoff.md``.
 
     Note the synthetic counterparts in ``test_ghostty_dev_terminal.py`` passed
     throughout, because they write session state to disk with no live WebSocket

@@ -994,7 +994,7 @@ def test_phase9_everything_survives_a_reload(page: Page, bd_env: RunningServer) 
         # for an unrelated reason — the server's detach-grace work refuses the
         # second attach with a 403 while the previous connection's attach entry
         # is still held (see
-        # docs/handoffs/2026-08-04-ws-refresh-destroys-session-handoff.md,
+        # private-docs/2026-08-04-ws-refresh-destroys-session-handoff.md,
         # "Diagnosed, reproduced, not fixed"). That belongs to that change and
         # its own test module; a durability test failing for it would be
         # reporting the wrong defect.

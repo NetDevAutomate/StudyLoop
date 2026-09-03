@@ -4,7 +4,7 @@ Exercises the REAL multiplexer lifecycle end-to-end against live
 tmux and herdr backends. Each test proves observable user behaviour,
 not internal function calls.
 
-Journey matrix from docs/explorations/multiplexer-impact-map.md Part 4:
+Journey matrix from private-docs/multiplexer-impact-map.md Part 4:
 - T1: Session starts and creates expected panes
 - T2: Pane layout correct (2 panes, sidebar sized correctly)
 - T3: Sidebar renders timer content

@@ -4,7 +4,7 @@ Exercises the new transport-based WS route against a ``StubTransport``
 installed through ``active.acquire`` — no real ``pty.fork()``. Real-PTY
 coverage stays in ``test_pty_transport.py``.
 
-Plan: docs/plans/2026-05-09-refactor-agent-session-transport-plan.md §1.5
+Plan: private-docs/2026-05-09-refactor-agent-session-transport-plan.md §1.5
 
 Tests are synchronous so FastAPI's ``TestClient.websocket_connect()``
 (which runs its own portal) doesn't collide with ``pytest-asyncio``'s

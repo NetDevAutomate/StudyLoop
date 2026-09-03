@@ -30,7 +30,7 @@ ways, and both are used deliberately:
 * canvas pixel sampling — proves the *renderer* actually repainted, which is
   what catches "theme value updated but nothing redrew" bugs.
 
-Plan/analysis: docs/explorations/ghostty-web-evaluation.md
+Plan/analysis: private-docs/ghostty-web-evaluation.md
 """
 
 from __future__ import annotations
