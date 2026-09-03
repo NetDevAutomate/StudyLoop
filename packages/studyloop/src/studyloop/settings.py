@@ -9,7 +9,7 @@ from __future__ import annotations
 import os
 import re
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 import click
@@ -279,6 +279,76 @@ class ObsidianConfig:
     granularity: str = "both"
 
 
+#: Test-isolation override for the default second-brain vault root.
+#:
+#: Deliberately NOT a provider switch (ADR-0010 forbids selecting a provider
+#: from the environment, because that would authorise writes into the learner's
+#: own files without a deliberate config change). This only moves the DEFAULT
+#: location, and only matters once a provider is configured.
+#:
+#: It has to be read here, at call time, rather than monkeypatched in a fixture:
+#: ``dataclasses`` binds a ``default_factory`` into the generated ``__init__``
+#: when the class is created, so reassigning the ``Field``'s attribute later is
+#: ignored — and a monkeypatched attribute does not cross a subprocess boundary,
+#: which a CLI test needs. Same pattern as ``STUDYLOOP_STATE_DIR`` and
+#: ``STUDYLOOP_DB`` above.
+SECOND_BRAIN_VAULT_ENV = "STUDYLOOP_SECOND_BRAIN_VAULT"
+
+#: The values ``second_brain.use_cli`` accepts, and what each means.
+#:
+#: Tri-state rather than a boolean because "use the Obsidian CLI" has three
+#: honest answers, not two: ``on`` (I have it, tell me when it is unusable),
+#: ``auto`` (use it if it happens to be there, quietly) and ``off`` (never spawn
+#: a subprocess). Collapsing ``auto`` into ``on`` would make a learner without
+#: the desktop app running see a warning on every publish.
+USE_CLI_MODES = ("auto", "on", "off")
+
+#: Providers a learner may select for ``second_brain.provider``.
+SECOND_BRAIN_PROVIDERS = ("none", "obsidian", "xtiles")
+
+
+def _default_second_brain_vault() -> Path:
+    """The vault root used when nothing in the config names one."""
+    if env_vault := os.environ.get(SECOND_BRAIN_VAULT_ENV):
+        return Path(env_vault).expanduser()
+    return Path.home() / "Obsidian" / "Personal"
+
+
+@dataclass
+class SecondBrainConfig:
+    """Configuration for the optional second-brain layer (R-84, ADR-0010).
+
+    Default ``provider: none``: with no section at all StudyLoop imports no
+    backend, writes no file and offers nothing. An existing Obsidian vault in
+    the config is a LOCATION, never consent — a learner who set one up for the
+    session-memory export has not asked for study notes to appear in it.
+
+    ``vault_path`` is resolved once, at settings load, from the raw config keys
+    (see ``load_settings``); a directly constructed instance keeps the default
+    below.
+    """
+
+    provider: str = "none"
+    vault_path: Path = field(default_factory=_default_second_brain_vault)
+    #: StudyLoop-owned folder inside the vault. Relative, no ``..``: every
+    #: write target must resolve under the vault root.
+    folder: str = "Study"
+    #: Add ``[[wikilinks]]`` to the learner's own notes when the export sink's
+    #: topic matcher is importable.
+    backlinks: bool = True
+    #: One of ``USE_CLI_MODES``. Stored as a string, not a bool, so ``auto``
+    #: can mean "decide at call time".
+    use_cli: str = "auto"
+    #: ``vault=`` for the CLI adapter, for a learner with several vaults.
+    vault_name: str | None = None
+    #: ``template=`` for ``obsidian create``.
+    template: str | None = None
+    #: Append one link line to today's daily note, at most once a day, through
+    #: the CLI. The only write into a note the learner owns, so it needs a
+    #: second explicit opt-in on top of the CLI being active.
+    daily_note: bool = False
+
+
 @dataclass
 class AgentsConfig:
     """Configuration for AI agent detection and priority."""
@@ -323,6 +393,7 @@ class Settings:
     lan_username: str = "study"  # username for HTTP Basic Auth when using --lan
     lan_password: str = ""  # password for HTTP Basic Auth when using --lan (empty = auto-generate)
     obsidian: ObsidianConfig = field(default_factory=ObsidianConfig)
+    second_brain: SecondBrainConfig = field(default_factory=SecondBrainConfig)
 
 
 def _path(value: object) -> Path:
@@ -619,6 +690,134 @@ def _topic_from_raw(raw: object, settings: Settings, position: int) -> TopicConf
     )
 
 
+def _second_brain_bool(raw: object, key: str) -> bool:
+    """Coerce a second-brain flag, refusing anything that is not a real bool.
+
+    ``bool("maybe")`` is ``True``, so truthiness would turn a typo into a
+    silently enabled feature — for ``daily_note`` that means writing into the
+    learner's own daily note because they misspelled a word.
+    """
+    if isinstance(raw, bool):
+        return raw
+    raise ConfigError(
+        f"Invalid value for 'second_brain.{key}' in {get_config_path()}: {raw!r}. "
+        "Use true or false."
+    )
+
+
+def _second_brain_optional_str(raw: object, key: str) -> str | None:
+    """Coerce an optional string field, treating blank as absent."""
+    if raw is None:
+        return None
+    if isinstance(raw, bool) or not isinstance(raw, str | int | float):
+        raise ConfigError(
+            f"Invalid value for 'second_brain.{key}' in {get_config_path()}: {raw!r}. "
+            "Use a text value or remove the key."
+        )
+    text = str(raw).strip()
+    return text or None
+
+
+def _second_brain_use_cli(raw: object) -> str:
+    """Normalise ``use_cli`` to one of ``USE_CLI_MODES``.
+
+    YAML ``true``/``false`` are accepted as ``on``/``off`` because that is what a
+    learner naturally writes for something presented as a switch, and because
+    ``use_cli: false`` was the documented default before ``auto`` existed —
+    breaking those configs would be a silent behaviour change on upgrade.
+    """
+    if isinstance(raw, bool):
+        return "on" if raw else "off"
+    mode = str(raw).strip().lower()
+    if mode in USE_CLI_MODES:
+        return mode
+    raise ConfigError(
+        f"Invalid value for 'second_brain.use_cli' in {get_config_path()}: {raw!r}. "
+        f"Use one of: {', '.join(USE_CLI_MODES)}."
+    )
+
+
+def _second_brain_folder(raw: object) -> str:
+    """Validate the StudyLoop-owned folder name.
+
+    Rejected here rather than at write time so a mistake is reported once, when
+    the learner edits the config, instead of on every publish. An absolute path
+    or a ``..`` component would put the folder outside the vault the learner
+    named, which is the boundary the whole feature rests on.
+    """
+    folder = str(raw).strip()
+    if not folder:
+        raise ConfigError(
+            f"Invalid value for 'second_brain.folder' in {get_config_path()}: "
+            "it must name a folder inside the vault."
+        )
+    candidate = PurePosixPath(folder.replace("\\", "/"))
+    if candidate.is_absolute() or Path(folder).is_absolute() or ".." in candidate.parts:
+        raise ConfigError(
+            f"Invalid value for 'second_brain.folder' in {get_config_path()}: {folder!r}. "
+            "Use a relative folder inside the vault, without '..'."
+        )
+    return folder
+
+
+def _resolve_second_brain(raw: dict[str, Any], settings: Settings) -> SecondBrainConfig:
+    """Build :class:`SecondBrainConfig` from the raw config mapping.
+
+    ``vault_path`` resolution order — explicit ``second_brain.vault_path``, then
+    the export sink's ``obsidian.vault_path``, then legacy ``obsidian_base``,
+    then the dataclass default. Presence is decided from the RAW keys, never
+    from ``settings.obsidian``: ``ObsidianConfig.vault_path`` always has a
+    value, so asking the dataclass whether a vault was configured always
+    answers yes and the legacy fallback becomes unreachable.
+    """
+    section = raw.get("second_brain")
+    if section is None:
+        section = {}
+    if not isinstance(section, dict):
+        raise ConfigError(
+            f"Invalid config in {get_config_path()}: 'second_brain' must be a mapping "
+            "such as 'second_brain: {provider: obsidian}'."
+        )
+
+    provider = str(section.get("provider", "none")).strip().lower()
+    if provider not in SECOND_BRAIN_PROVIDERS:
+        raise ConfigError(
+            f"Invalid value for 'second_brain.provider' in {get_config_path()}: "
+            f"{section.get('provider')!r}. Use one of: {', '.join(SECOND_BRAIN_PROVIDERS)}."
+        )
+
+    defaults = SecondBrainConfig()
+
+    if section.get("vault_path") is not None:
+        vault_path = _path(section["vault_path"])
+    elif env_vault := os.environ.get(SECOND_BRAIN_VAULT_ENV):
+        # Test isolation outranks the LEGACY fallbacks below but never an
+        # explicit second_brain.vault_path. It has to sit here, not merely in
+        # the dataclass default: `obsidian_base` defaults to the real
+        # ~/Obsidian, and `load_raw_config()` reads the learner's real
+        # config.yaml whenever STUDYLOOP_CONFIG is unset — so without this the
+        # resolution chain hands the unit suite the learner's real vault, which
+        # is precisely what the isolation exists to prevent.
+        vault_path = Path(env_vault).expanduser()
+    elif (raw.get("obsidian") or {}).get("vault_path") is not None:
+        vault_path = _path(raw["obsidian"]["vault_path"])
+    elif raw.get("obsidian_base") is not None:
+        vault_path = _path(raw["obsidian_base"])
+    else:
+        vault_path = defaults.vault_path
+
+    return SecondBrainConfig(
+        provider=provider,
+        vault_path=vault_path,
+        folder=_second_brain_folder(section.get("folder", defaults.folder)),
+        backlinks=_second_brain_bool(section.get("backlinks", defaults.backlinks), "backlinks"),
+        use_cli=_second_brain_use_cli(section.get("use_cli", defaults.use_cli)),
+        vault_name=_second_brain_optional_str(section.get("vault_name"), "vault_name"),
+        template=_second_brain_optional_str(section.get("template"), "template"),
+        daily_note=_second_brain_bool(section.get("daily_note", defaults.daily_note), "daily_note"),
+    )
+
+
 def load_settings() -> Settings:
     """Load settings from config file, falling back to defaults."""
     settings = Settings()
@@ -690,6 +889,11 @@ def load_settings() -> Settings:
     else:
         # No obsidian: section at all — still align vault_path with obsidian_base
         settings.obsidian = ObsidianConfig(vault_path=settings.obsidian_base)
+
+    # --- second_brain (R-84): validated even when absent, so a typo in a
+    # section the learner just added is reported on the next command rather
+    # than the next publish.
+    settings.second_brain = _resolve_second_brain(raw, settings)
 
     ct = raw.get("content") or {}
     if ct:
