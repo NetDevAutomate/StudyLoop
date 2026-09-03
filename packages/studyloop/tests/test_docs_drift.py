@@ -27,8 +27,9 @@ traceback. Two independent checks, both fast, no network, no subprocess:
     packages/agent-session-tools/pyproject.toml) that a Click-tree walk
     can't resolve. ``test_session_query_since_examples`` instead calls the
     real date-parsing function the CLI uses for `--since` directly. This is
-    where R-61 lives, so it's covered even though it's outside the
-    `studyloop` tree.
+    where R-61 lived (docs said ``--since 7d``, which
+    ``agent_session_tools.query_utils.parse_date`` rejects) until both pages
+    were corrected to ``--since last-7-days``.
 
 (b) ``test_yaml_block_keys_are_known`` -- every fenced ```yaml block in
     docs/setup-guide.md and docs/cli-reference.md (docs/configuration.md
@@ -37,12 +38,14 @@ traceback. Two independent checks, both fast, no network, no subprocess:
     reads. See ``_known_top_level_keys`` for exactly which functions that
     is derived from and why it's more than just studyloop.settings.
 
-Both known-drift cases the review already found (R-31, R-61) are pinned as
+One known-drift case the review found (R-31) is still pinned as
 ``pytest.mark.xfail(strict=True, ...)`` on the exact failing case, so this
-suite is green today, and the moment either fix lands the xfail flips to an
+suite is green today, and the moment it's fixed the xfail flips to an
 unexpected pass -- which `strict=True` turns into a hard failure, forcing
-whoever fixed it to also delete the marker. Nothing else is xfailed: any
-other drift this suite finds is a real, unmarked failure.
+whoever fixed it to also delete the marker. R-61's equivalent markers were
+removed once the docs were corrected (the fix, not a marker deletion alone,
+made ``test_session_query_since_examples`` pass honestly). Nothing else is
+xfailed: any other drift this suite finds is a real, unmarked failure.
 """
 
 from __future__ import annotations
@@ -330,24 +333,10 @@ def _build_session_query_since_cases() -> list[tuple[str, str, str]]:
 
 
 def _session_query_since_params() -> list:
-    params = []
-    for location, _example, since_value in _build_session_query_since_cases():
-        if since_value == "7d":
-            marks = pytest.mark.xfail(
-                strict=True,
-                reason=(
-                    "R-61: docs show 'session-query list --since 7d' on two "
-                    "pages, but agent_session_tools.query_utils.parse_date "
-                    "only accepts YYYY-MM-DD or last-N-days and raises "
-                    "ValueError on '7d'. Fix is in the docs, owned by "
-                    "another lane; remove this marker when it's corrected "
-                    "to e.g. '--since last-7-days'."
-                ),
-            )
-            params.append(pytest.param(location, since_value, marks=marks, id=location))
-        else:
-            params.append(pytest.param(location, since_value, id=location))
-    return params
+    return [
+        pytest.param(location, since_value, id=location)
+        for location, _example, since_value in _build_session_query_since_cases()
+    ]
 
 
 @pytest.mark.parametrize(("location", "since_value"), _session_query_since_params())

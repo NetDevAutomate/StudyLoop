@@ -661,7 +661,7 @@ Repeat `--sources` when selecting more than one.
 
 ```bash
 session-query stats-cmd            # Show database statistics
-session-query list --since 7d      # List recent sessions
+session-query list --since last-7-days  # List recent sessions
 session-query search-cmd "python"  # Search across all sessions
 ```
 

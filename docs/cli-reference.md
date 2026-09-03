@@ -501,7 +501,7 @@ AI session export, search, and cross-machine sync.
 session-export [--sources SOURCE ...]    # Export AI sessions to SQLite
 session-export [--obsidian] [--obsidian-vault PATH] [--obsidian-backfill] [--obsidian-dry-run]
 session-query search-cmd QUERY           # Full-text search across sessions
-session-query list --since 7d            # List recent sessions
+session-query list --since last-7-days   # List recent sessions
 session-query show SESSION_ID            # Show session details
 session-query context SESSION_ID         # Generate context for resuming
 session-query continue SESSION_ID        # Continuation context for resuming work
