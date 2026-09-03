@@ -20,6 +20,10 @@ experience may change before `1.0.0`.
   the folder you name, and it reads your personal notes for a plan only when you
   ask it to with `studyloop brain pull`. Republishing an unchanged plan writes
   nothing at all.
+- An Obsidian study-plan template ships with StudyLoop
+  (`studyloop brain template --install`); it mirrors the plan document's sections,
+  so a plan you write by hand in your vault and one StudyLoop published look the
+  same. Templates carry no ownership marker, so a note you make from one is yours.
 
 ## [0.1.0] - 2026-09-03
 
