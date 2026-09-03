@@ -66,6 +66,7 @@ exclude_docs: |
   !/content-pipeline.md
   !/voice-output.md
   !/obsidian-export.md
+  !/second-brain.md
   !/tui-guide.md
   !/agent-install.md
   !/cli-reference.md
@@ -89,6 +90,7 @@ nav:
     - Content Pipeline: content-pipeline.md
     - Voice Output: voice-output.md
     - Obsidian Export: obsidian-export.md
+    - Second Brain: second-brain.md
   - Interfaces:
     - TUI Guide: tui-guide.md
     - Agent Installation: agent-install.md

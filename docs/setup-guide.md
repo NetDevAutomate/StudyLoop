@@ -257,6 +257,13 @@ Obsidian vault path) and its own defaults. `studyloop setup` is the
 recommended first-run path; `config init` remains for the bridging/
 NotebookLM/Obsidian options it alone asks about.
 
+After you accept a vault path, `config init` asks one follow-up: whether to
+publish your study plans and today's study into that vault as well. It defaults
+to **no** and writes nothing when declined — pointing StudyLoop at a vault so a
+mentor can read your notes is not the same as asking it to write into one. Saying
+yes sets `second_brain.provider: obsidian`; see
+[Second Brain](second-brain.md) for what is then written and where.
+
 ### Manual Configuration
 
 All configuration lives in a single YAML file: `~/.config/studyloop/config.yaml`. This file is shared between `studyloop` and all `session-*` tools — use the same file on every machine.
