@@ -14,6 +14,12 @@ experience may change before `1.0.0`.
   projection of that plan. Nothing is written anywhere until you opt in with a
   `second_brain:` section in `config.yaml`, and nothing ever writes back to the
   plan document.
+- Publish your study plans, today's next action and due reviews into an Obsidian
+  vault as safe, idempotent notes StudyLoop owns. Your own notes are never
+  overwritten: StudyLoop writes only files carrying its own marker, only inside
+  the folder you name, and it reads your personal notes for a plan only when you
+  ask it to with `studyloop brain pull`. Republishing an unchanged plan writes
+  nothing at all.
 
 ## [0.1.0] - 2026-09-03
 
