@@ -93,9 +93,11 @@ first setup if `config.yaml` does not exist yet.
 1. Verify Python 3.12+ is installed
 2. Install `uv` if not already available
 3. Run `uv sync`
-4. Delegate to `studyloop install tools` — installs both packages with their
-   `[all]` extras, so web UI, content generation, Bedrock, MCP, NotebookLM,
-   TUI, TTS, and semantic session search all work out of the box
+4. Delegate to `studyloop install tools` — installs `studyloop[all]` (web UI,
+   content generation, Bedrock, MCP, NotebookLM, TUI) and
+   `agent-session-tools[all]` (TTS, semantic session search), and always adds
+   `agent-session-tools` into the `studyloop` tool venv too — that part is not
+   gated behind any extra, so it happens on every source install
 5. Delegate to `studyloop install agents`
 6. Run lightweight installed CLI smoke checks
 
@@ -128,6 +130,14 @@ checkout installs because they keep the two tool venvs wired together.
 
 ### Optional Extras
 
+These are `studyloop`'s own extras — every one of them installs from a bare
+built wheel, with no workspace checkout required. There is no `sessions`
+extra: `agent-session-tools` (the session DB / cross-harness knowledge base)
+is not published anywhere, so it cannot be an installable extra of a wheel.
+It is instead a hard dependency of the source-install path described above —
+`studyloop install tools` and `./scripts/install.sh` always add it,
+unconditionally, alongside whichever of these extras you choose.
+
 | Extra | Use |
 |-------|-----|
 | `content` | PDF splitting and local content processing |
@@ -136,8 +146,7 @@ checkout installs because they keep the two tool venvs wired together.
 | `tui` | terminal UI dependencies |
 | `web` | FastAPI web UI |
 | `mcp` | MCP server integration |
-| `sessions` | `agent-session-tools` import/session DB integration |
-| `all` | all StudyLoop package extras |
+| `all` | `content`, `bedrock`, `notebooklm`, `tui`, `web`, and `mcp` together |
 
 ### Developer Install
 

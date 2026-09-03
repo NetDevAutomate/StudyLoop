@@ -36,6 +36,22 @@ experience may change before `1.0.0`.
   at the prompt) in addition to `--run-command` before it actually executes a
   practice deck's verification command; the resolved command is always
   printed first. Without confirmation, nothing runs and the command exits 2.
+- `mcp[cli]` is now pinned `>=1.0.0,<2` everywhere it is declared, so an
+  unlocked install (a future `pip install`/`uv tool install` outside this
+  repo's lockfile) can no longer select the 2.x release that renamed
+  `FastMCP` and breaks `studyloop-mcp`/`session-db-mcp` at import.
+- The workspace-root `pyproject.toml` version now matches
+  `packages/studyloop/pyproject.toml`'s (both `0.1.0`); the release-consistency
+  check now fails if the two ever disagree again.
+- Removed the `studyloop[sessions]` extra and dropped `sessions` from
+  `studyloop[all]`: `agent-session-tools` is not published, so it can never
+  resolve as a wheel extra outside this repo's own workspace, and the extra
+  was never actually what delivered it into the CLI tool venv anyway --
+  `studyloop install tools`/`./scripts/install.sh` already add it
+  unconditionally, independent of any extra. `studyloop[all]` still expands to
+  `content`, `bedrock`, `notebooklm`, `tui`, `web`, and `mcp`; every one of
+  those (plus `all` itself) is now proven, per-extra, to install and import
+  from a bare built wheel with no workspace present.
 
 ### Removed
 
