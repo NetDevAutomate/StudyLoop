@@ -47,14 +47,25 @@ any target that resolves outside the vault or lacks the marker.
 - **THEN** every publish operation is refused before any write
 
 ### Requirement: Republishing unchanged content performs no write
-`ObsidianBackend` SHALL compare the rendered projection's content hash with the
-marker of the existing file and, when equal, return the path under
+`ObsidianBackend` SHALL compare the rendered projection against the existing
+file's own contents and, when they are identical, return the path under
 `PublishResult.unchanged` without calling `os.replace` or changing `st_mtime_ns`.
+The comparison SHALL NOT use the `content_hash` recorded in the existing file's
+ownership marker: that value records what StudyLoop last intended to write, so a
+projection the learner has edited by hand still carries the hash of the correct
+content and would be reported as unchanged, leaving the edit in place and making
+the vault a second source of truth.
 
 #### Scenario: Publish twice
 - **WHEN** `publish_plan(<id>)` runs twice with the plan unchanged
 - **THEN** the second result lists the path under `unchanged` and the file's
   mtime is identical
+
+#### Scenario: An edited projection is restored
+- **WHEN** the learner appends a line to `Study/Plans/<id>.md` and
+  `publish_plan(<id>)` runs again
+- **THEN** the file is rewritten from the plan document and the appended line is
+  gone
 
 ### Requirement: Publishing never modifies the plan file
 No operation of any `SecondBrain` backend SHALL write to
