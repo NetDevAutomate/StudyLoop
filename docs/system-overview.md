@@ -1,5 +1,7 @@
 # System Overview
 
+> Last updated: 2026-09-03.
+
 This page explains how the active system fits together from a user and operator perspective.
 
 For deeper diagrams, see:
@@ -27,7 +29,7 @@ flowchart TB
 
     subgraph "Interactive Study"
         Picker["studyloop study<br/>session picker"]
-        Agent["Selected assistant<br/>Claude/Codex/Gemini/Kiro/OpenCode"]
+        Agent["Selected assistant<br/>Claude/Codex/Kiro (core)<br/>OpenCode/pi (preview)"]
         Tmux["Multiplexer<br/>tmux (default) | herdr (opt-in)<br/>+ Textual sidebar"]
         Web["Web/PWA<br/>dashboard + review"]
         Explorer["Course Explorer<br/>(browse + read + search<br/>study material)"]
