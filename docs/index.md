@@ -4,6 +4,11 @@ StudyLoop is a local-first study companion for active learning with an AI mentor
 It is designed for learners who benefit from one clear focus, short Socratic
 questions, visible progress, and a dependable way to return after a break.
 
+If you are still deciding whether StudyLoop fits how you study, start at
+[www.studyloop.dev](https://www.studyloop.dev/) — it explains the three modes by
+the problem each one solves, and is candid about what is not shipped yet. These
+pages are the detail behind it.
+
 <figure markdown="span">
   ![StudyLoop Study Session using Kiro](images/studyloop-study-session.png)
   <figcaption>A real StudyLoop session with live Kiro responses; the topic and learner reply were supplied when recording.</figcaption>
