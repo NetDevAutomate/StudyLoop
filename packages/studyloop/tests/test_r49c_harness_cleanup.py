@@ -1,6 +1,6 @@
 """R-49c: the tmux test harness must not leak processes past a killed session.
 
-Machine-observed (not council-flagged): `pgrep -f pytest-of-user` found 75
+Machine-observed (not council-flagged): `pgrep -f pytest-of-<user>` found 75
 orphaned wrapper-agent shell processes from four finished pytest runs, hours
 after those runs ended, with no tmux session and no pytest process left
 tracking them -- the most plausible cause of harness-matrix contention another

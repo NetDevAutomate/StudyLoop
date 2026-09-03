@@ -34,8 +34,8 @@ entry in config.yaml).
 ```yaml
 database:
   path: ~/.config/studyloop/sessions.db          # hot — keep local
-  full_db_path: /Volumes/DataStore/StudyLoop/DB/sessions_full.db
-  snapshot_dir: /Volumes/DataStore/StudyLoop/Backups
+  full_db_path: /Volumes/<external-drive>/StudyLoop/DB/sessions_full.db
+  snapshot_dir: /Volumes/<external-drive>/StudyLoop/Backups
   snapshot_retention: 7
   snapshot_interval_days: 7                      # 0 = manual only
   sync_mode: always                              # or: daily
@@ -45,9 +45,9 @@ database:
 
 hosts:
   macmini:
-    user: user
+    user: alex
     sessions_db: ~/.config/studyloop/sessions.db
-    full_db: /Volumes/DataStore/StudyLoop/DB/sessions_full.db  # for --tier full
+    full_db: /Volumes/<external-drive>/StudyLoop/DB/sessions_full.db  # for --tier full
     ip_address: {primary: 192.168.1.10}
 ```
 
@@ -105,7 +105,7 @@ session-sync sync HOST --tier full    # consolidate records across machines
 
 ```bash
 # 1. Copy the record into place
-cp /Volumes/DataStore/StudyLoop/DB/sessions_full.db ~/.config/studyloop/sessions.db
+cp /Volumes/<external-drive>/StudyLoop/DB/sessions_full.db ~/.config/studyloop/sessions.db
 # 2. Trim it back to a working set
 studyloop prune --days 30 --apply
 # 3. Verify
@@ -119,8 +119,8 @@ background sync missed.
 
 ```bash
 # Restore the newest snapshot
-cp /Volumes/DataStore/StudyLoop/Backups/sessions_full_snapshot_<newest>.db \
-   /Volumes/DataStore/StudyLoop/DB/sessions_full.db
+cp /Volumes/<external-drive>/StudyLoop/Backups/sessions_full_snapshot_<newest>.db \
+   /Volumes/<external-drive>/StudyLoop/DB/sessions_full.db
 # Refill the gap since that snapshot from the hot DB
 session-maint sync-full
 ```
