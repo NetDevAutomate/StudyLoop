@@ -1085,6 +1085,16 @@ body[data-font="opendyslexic"] .card-content {
 
 .end-confirm-dialog p { margin: 0 0 16px; }
 
+.end-confirm-error {
+  margin: -8px 0 16px;
+  padding: 8px 10px;
+  background: rgba(247, 118, 142, 0.1);
+  border: 1px solid var(--red);
+  border-radius: var(--radius);
+  color: var(--red);
+  font-size: 0.85rem;
+}
+
 .end-confirm-actions {
   display: flex;
   gap: 10px;
@@ -5090,6 +5100,11 @@ body[data-palette="everforest"] {
   border-radius: 10px;
   color: var(--text);
   font-size: 0.8rem;
+}
+
+.bd-end-error {
+  color: var(--red);
+  font-weight: 650;
 }
 
 /* --- Terminal console --------------------------------------------------- */

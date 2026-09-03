@@ -95,6 +95,18 @@ experience may change before `1.0.0`.
 
 ### Fixed
 
+- Ending a Study Session or Body Double session used to close the
+  confirmation dialog and tear down the session state before the
+  `/api/session/end` request even resolved, so a failed request looked
+  identical to a successful one — the setup guide says ending from here is
+  what saves the summary and evidence. The dialog now stays open with an
+  error message and a working retry (the same button) until the server
+  actually confirms the end. The two "no confirmation, resolve a blocking
+  session immediately" paths keep their existing behaviour (tear down
+  regardless — a stuck banner is worse) but now show a toast on failure
+  instead of staying silent. Flashcard/quiz review recording
+  (`/api/review`) also now shows a toast on failure instead of silently
+  discarding it.
 - `docs/first-week.md` said "All eight agent CLIs"; the pre-release contract
   is five (Kiro CLI, Codex, Claude Code as core; OpenCode and pi as
   preview). Corrected.
