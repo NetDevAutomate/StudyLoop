@@ -123,8 +123,9 @@ experience may change before `1.0.0`.
   `.opencode/agents/study-mentor.md` + `.opencode/opencode.json` that
   `studyloop study --agent opencode` writes at session start. Split into
   two clearly-labelled paragraphs.
-- `releases/v0.1.0.md` hardcoded "502 tests" — a number that goes stale the
-  moment the suite grows — in direct violation of the rule its own sibling
+- `releases/v0.1.0.md` hardcoded a numeric test-total claim — a number that
+  goes stale the moment the suite grows — in direct violation of the rule
+  its own sibling
   public page, `CONTRIBUTING.md`, states in the imperative. Replaced with a
   pointer to the release-gate evidence.
 - `docs/cli-reference.md` now documents the 8 `content` subcommands that
