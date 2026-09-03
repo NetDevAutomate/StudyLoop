@@ -45,7 +45,7 @@ Three constraints shape the answer:
 
 - `second-brain`: the `SecondBrain` protocol and its backends, the projection
   contract (ownership marker, vault boundary, atomic idempotent writes), the
-  explicit read-only pull, the optional CLI adapter, and the wind-down offer
+  explicit read-only pull, and the wind-down offer
   gate.
 
 ### Modified Capabilities
@@ -59,7 +59,7 @@ Three constraints shape the answer:
 ## Impact
 
 - `packages/studyloop/src/studyloop/second_brain/` — NEW: `core`, `factory`,
-  `obsidian`, `obsidian_cli`, `projection`, `backlinks`, `templates`.
+  `obsidian`, `obsidian_writer`, `projection`, `backlinks`, `templates`.
 - `packages/studyloop/src/studyloop/cli/_brain.py` — NEW: the `brain` group.
 - `packages/studyloop/src/studyloop/cli/__init__.py` — one lazy registration.
 - `packages/studyloop/src/studyloop/settings.py` — the `second_brain` section.

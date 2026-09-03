@@ -67,6 +67,29 @@ the vault a second source of truth.
 - **THEN** the file is rewritten from the plan document and the appended line is
   gone
 
+### Requirement: A symlink at the target path is never replaced
+`write_projection` SHALL refuse, using `lstat` rather than `exists`, when the target
+is a symbolic link. The link is content the learner created and StudyLoop cannot
+recreate; validating the referent's ownership marker and then calling `os.replace`
+would destroy the link itself while reporting success.
+
+#### Scenario: A learner symlinks a projection to somewhere else in the vault
+- **WHEN** `Study/Plans/<id>.md` is a symlink to another note inside the vault
+- **THEN** `publish_plan(<id>)` raises `SecondBrainError` naming the link, and both
+  the link and its target are unchanged
+
+### Requirement: A target exchanged during preparation is refused
+`write_projection` SHALL capture the target's device, inode and change time when it
+validates ownership, re-check them immediately before `os.replace`, and refuse when
+they differ. A vault is written by Obsidian and by sync clients, so a note the
+learner owns can appear in the window between the ownership check and the rename,
+and `os.replace` would delete it without ever having read its frontmatter.
+
+#### Scenario: A note appears after the ownership check
+- **WHEN** the target is replaced by a different file between validation and rename
+- **THEN** the write is refused, the temporary file is removed, and the message says
+  nothing was written
+
 ### Requirement: Publishing never modifies the plan file
 No operation of any `SecondBrain` backend SHALL write to
 `STUDYLOOP_PLANS_DIR/<id>.md`; the plan bytes SHALL be identical before and
@@ -87,18 +110,29 @@ SHALL return a `PullNotesResult` with `found: false` when it is absent;
 - **WHEN** `studyloop brain pull <id>` runs and the sibling note does not exist
 - **THEN** the command exits 0, reports `found: false`, and creates nothing
 
-### Requirement: The Obsidian CLI adapter is opt-in and degrades to the file writer
-`studyloop.second_brain.obsidian_cli.resolve_cli_mode()` SHALL return `cli`
-only when `second_brain.use_cli` is `on` or `auto`, `shutil.which("obsidian")`
-succeeds and a probe subprocess (argv list, `shell=False`, `timeout=10`) exits
-0; otherwise `files`. With `use_cli: on` a failed probe SHALL log one WARNING;
-with `auto` it SHALL log at DEBUG only; with `off` no subprocess SHALL be
-spawned. The backend SHALL never prompt.
+### Requirement: No operation of this feature runs an external program
+No module under `studyloop.second_brain` SHALL spawn a subprocess. An adapter for
+the official Obsidian CLI was implemented and withdrawn before release: it sent
+notes to whichever vault the running desktop app answered for, with no way to bind
+that vault to the configured `vault_path`, and it passed the rendered plan as a
+command-line argument, where any other local user could read it from the process
+table. The guarded file writer SHALL be the only path that produces a note.
 
-#### Scenario: The Obsidian app is not running
-- **WHEN** `use_cli: on` and the probe fails
-- **THEN** the projection is written by the file writer, one WARNING is logged,
-  and the command exits 0
+#### Scenario: Publishing with subprocess spawning made to fail
+- **WHEN** `subprocess.run` and `subprocess.Popen` are replaced with functions that
+  raise, and `publish_today()` runs
+- **THEN** the note is written and nothing raises
+
+### Requirement: Retired configuration keys are reported rather than ignored
+`load_settings()` SHALL raise `ConfigError` naming any of `use_cli`, `vault_name`,
+`template` or `daily_note` found under `second_brain`, because a learner who set
+`daily_note: true` authorised a write into a note they own and must be told it no
+longer happens.
+
+#### Scenario: A pre-release config still names daily_note
+- **WHEN** `config.yaml` contains `second_brain: {provider: obsidian, daily_note: true}`
+- **THEN** `studyloop brain status` exits 1 with one line naming `daily_note` and
+  stating the adapter was withdrawn
 
 ### Requirement: The wind-down protocol offers publishing once and only when a publishing provider is configured
 `agents/shared/wind-down-protocol.md` SHALL instruct the agent to run
