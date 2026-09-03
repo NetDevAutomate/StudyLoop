@@ -69,9 +69,7 @@ def test_expected_prompts_are_real_prompts_in_setup_py() -> None:
 def test_setup_guide_names_setups_real_prompts() -> None:
     guide = _setup_guide_text()
     missing = [prompt for prompt in _DOC_PROMPTS if prompt not in guide]
-    assert not missing, (
-        f"docs/setup-guide.md is missing setup's real prompt string(s): {missing}"
-    )
+    assert not missing, f"docs/setup-guide.md is missing setup's real prompt string(s): {missing}"
 
 
 def test_setup_guide_no_longer_describes_config_inits_questions_as_setups() -> None:

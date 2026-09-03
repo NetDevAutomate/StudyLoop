@@ -44,14 +44,7 @@ def test_cli_reference_web_ui_not_web_pwa_and_states_offline_limit() -> None:
 
 def test_index_html_plan_hint_does_not_claim_agent_decomposition() -> None:
     index_html = (
-        REPO_ROOT
-        / "packages"
-        / "studyloop"
-        / "src"
-        / "studyloop"
-        / "web"
-        / "static"
-        / "index.html"
+        REPO_ROOT / "packages" / "studyloop" / "src" / "studyloop" / "web" / "static" / "index.html"
     )
     text = index_html.read_text(encoding="utf-8")
     assert "study-plan agent can turn it" not in text
