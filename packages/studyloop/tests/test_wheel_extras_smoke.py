@@ -22,6 +22,7 @@ Slow: one wheel build plus one fresh venv + pip install per extra. Marked
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import zipfile
@@ -123,4 +124,88 @@ def test_extra_installs_and_imports_from_a_bare_wheel(
     assert check.returncode == 0, (
         f"studyloop[{extra}]'s entry module(s) did not import from a bare wheel install "
         f"(ran: {import_line!r}):\n{check.stdout}\n{check.stderr}"
+    )
+
+
+def test_bare_wheel_with_no_extras_and_no_agent_session_tools_still_works(
+    built_wheel: Path, tmp_path: Path
+) -> None:
+    """D2 (council)/D3: a plain `pip install studyloop` (no extras, no
+
+    sibling `agent-session-tools`) must still give a working CLI. Every
+    other test in this file installs an extra; nothing until now proved the
+    *unextended* base case -- the one a real `pip install studyloop` user
+    with no extras and no workspace actually gets. `studyloop --version` and
+    `studyloop doctor --help` are both eager Click options that must not
+    require `agent_session_tools` to be importable, and `import studyloop.cli`
+    must not eagerly import anything that isn't a hard dependency.
+    """
+    venv_dir = tmp_path / "venv-bare"
+    venv_proc = subprocess.run(
+        ["uv", "venv", str(venv_dir)], capture_output=True, text=True, timeout=60
+    )
+    assert venv_proc.returncode == 0, f"uv venv failed:\n{venv_proc.stdout}\n{venv_proc.stderr}"
+    python = venv_dir / "bin" / "python"
+    studyloop_bin = venv_dir / "bin" / "studyloop"
+
+    install = subprocess.run(
+        ["uv", "pip", "install", "--python", str(python), str(built_wheel)],
+        capture_output=True,
+        text=True,
+        timeout=180,
+    )
+    assert install.returncode == 0, (
+        f"installing bare studyloop (no extras) from the wheel failed:\n"
+        f"{install.stdout}\n{install.stderr}"
+    )
+    assert "agent-session-tools" not in install.stdout.lower(), (
+        "a bare install must not pull in agent-session-tools -- it is not a "
+        f"dependency of any extra-less install:\n{install.stdout}"
+    )
+
+    # Isolated away from the real machine's config/session DB, matching
+    # scripts/smoke-installed-cli.sh's isolation -- defensive here since
+    # --version/--help are expected to be eager, no-config-load Click
+    # options, but never assume that of a real subprocess invocation.
+    isolated_env = {
+        **os.environ,
+        "STUDYLOOP_CONFIG": str(tmp_path / "isolated-config" / "config.yaml"),
+        "STUDYLOOP_DB": str(tmp_path / "isolated-config" / "sessions.db"),
+        "STUDYLOOP_STATE_DIR": str(tmp_path / "isolated-state"),
+    }
+
+    version_check = subprocess.run(
+        [str(studyloop_bin), "--version"],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        env=isolated_env,
+    )
+    assert version_check.returncode == 0, (
+        f"studyloop --version failed on a bare install:\n"
+        f"{version_check.stdout}\n{version_check.stderr}"
+    )
+
+    doctor_help = subprocess.run(
+        [str(studyloop_bin), "doctor", "--help"],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        env=isolated_env,
+    )
+    assert doctor_help.returncode == 0, (
+        f"studyloop doctor --help failed on a bare install:\n"
+        f"{doctor_help.stdout}\n{doctor_help.stderr}"
+    )
+
+    import_check = subprocess.run(
+        [str(python), "-c", "import studyloop.cli"],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        env=isolated_env,
+    )
+    assert import_check.returncode == 0, (
+        f"import studyloop.cli failed on a bare install with no extras:\n"
+        f"{import_check.stdout}\n{import_check.stderr}"
     )
