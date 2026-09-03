@@ -308,9 +308,11 @@ def test_install_templates_refuses_existing(tmp_path) -> None:
     target.parent.mkdir(parents=True)
     target.write_text("# My edited version\n")
 
-    with pytest.raises(SecondBrainError, match="already exists"):
+    with pytest.raises(SecondBrainError, match="nothing was installed"):
         install_templates(vault)
     assert target.read_text() == "# My edited version\n"
+    # All-or-nothing: no OTHER template landed either.
+    assert sorted(p.name for p in target.parent.iterdir()) == ["Today.md"]
 
 
 def test_install_templates_uses_the_configured_folder(tmp_path) -> None:

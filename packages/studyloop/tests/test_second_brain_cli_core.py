@@ -24,7 +24,6 @@ STATUS_KEYS = {
     "supports_pull_notes",
     "vault_path",
     "folder",
-    "use_cli",
     "detail",
 }
 
@@ -58,7 +57,6 @@ def test_status_json_disabled_shape(config) -> None:
         "supports_pull_notes": False,
         "vault_path": None,
         "folder": None,
-        "use_cli": False,
         "detail": "Second brain is not configured.",
     }
 

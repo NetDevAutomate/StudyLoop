@@ -60,6 +60,14 @@ def _publish_payload(
     }
 
 
+def _emit(provider: str, results: list[PublishResult], *, dry_run: bool, as_json: bool) -> None:
+    """Render one publish outcome, in whichever form was asked for."""
+    if as_json:
+        click.echo(json.dumps(_publish_payload(provider, results, dry_run=dry_run), indent=2))
+        return
+    _print_publish(results, dry_run=dry_run)
+
+
 def _print_publish(results: list[PublishResult], *, dry_run: bool) -> None:
     """Human form: say what changed, what did not, and what was declined.
 
@@ -137,6 +145,11 @@ def publish_cmd(
     from studyloop.second_brain import get_backend
     from studyloop.second_brain.core import SecondBrainError
 
+    if plan_ids and today_only:
+        _fail("--today publishes only today's note; drop --plan, or drop --today.")
+    if publish_all and plan_ids:
+        _fail("--all publishes every plan; drop --plan, or drop --all.")
+
     backend = get_backend()
     description = backend.describe()
 
@@ -144,19 +157,17 @@ def publish_cmd(
         # Deliberately exit 0 with a reason rather than failing: an unconfigured
         # feature is a state the caller asked about.
         results = [backend.publish_today()]
-        if as_json:
-            click.echo(
-                json.dumps(
-                    _publish_payload(description.provider, results, dry_run=dry_run),
-                    indent=2,
-                )
-            )
-        else:
-            _print_publish(results, dry_run=dry_run)
+        _emit(description.provider, results, dry_run=dry_run, as_json=as_json)
         return
 
     if not description.supports_publish:
-        _fail(f"{description.provider} cannot be published to programmatically. See {GUIDE}.")
+        # Exit 0, not 1. This is not something the learner can fix -- xTiles has no
+        # programmatic backend by design -- and this module promises that a wind-down
+        # protocol can run `publish` unconditionally. Failing here would break that
+        # for every xTiles learner, at the end of every session.
+        results = [backend.publish_today()]
+        _emit(description.provider, results, dry_run=dry_run, as_json=as_json)
+        return
 
     try:
         selected = _selected_plan_ids(plan_ids, publish_all=publish_all, today_only=today_only)
@@ -167,12 +178,7 @@ def publish_cmd(
     except SecondBrainError as exc:
         _fail(str(exc))
 
-    if as_json:
-        click.echo(
-            json.dumps(_publish_payload(description.provider, results, dry_run=dry_run), indent=2)
-        )
-        return
-    _print_publish(results, dry_run=dry_run)
+    _emit(description.provider, results, dry_run=dry_run, as_json=as_json)
 
 
 def _selected_plan_ids(
@@ -198,34 +204,18 @@ def _publish(backend, plan_ids: list[str], *, today: bool) -> list[PublishResult
 
 
 def _dry_run_results(backend, plan_ids: list[str], *, today: bool) -> list[PublishResult]:
-    """Report the paths a publish WOULD write, without writing.
+    """Report what a publish WOULD do, without doing it.
 
-    Computed from the same layout the backend uses, through the same
-    containment-checked path builder — so a dry run still refuses a vault escape,
-    and a path it reports is a path a real publish could actually write.
+    Classified through the SAME ownership and byte-equality checks a real publish
+    uses, so `--dry-run` reports `unchanged` for a note that is already current and
+    refuses one the learner owns. Reporting every target as "would write" was
+    misleading in both directions: it promised writes that would be refused, and
+    churn that would not happen.
     """
-    from studyloop.planning import load_plan
-    from studyloop.second_brain.core import PublishResult
-
-    results: list[PublishResult] = []
-    if today:
-        results.append(
-            PublishResult(
-                provider=backend.provider,
-                operation="publish_today",
-                written=(backend.dry_run_targets_for_today(),),
-            )
-        )
-    for plan_id in plan_ids:
-        plan = load_plan(backend.normalise_plan_id(plan_id))
-        results.append(
-            PublishResult(
-                provider=backend.provider,
-                operation="publish_plan",
-                written=backend.dry_run_targets_for_plan(plan),
-            )
-        )
-    return results
+    return [
+        *([backend.plan_dry_run(None)] if today else []),
+        *(backend.plan_dry_run(plan_id) for plan_id in plan_ids),
+    ]
 
 
 @brain_group.command("pull")
@@ -289,9 +279,8 @@ def enable_cmd(
 
     from studyloop.settings import (
         ConfigError,
-        get_config_path,
         load_raw_config,
-        load_settings,
+        resolve_second_brain,
         write_raw_config,
     )
 
@@ -316,21 +305,40 @@ def enable_cmd(
             section["use_cli"] = cli_mode
 
     raw["second_brain"] = section
-    path = write_raw_config(raw)
 
-    # Load it back before reporting success. A command that writes a config the
-    # loader then rejects is worse than no command: the learner is left with a
-    # broken file they did not hand-edit.
+    # Validate BEFORE writing. Writing first and checking afterwards left the learner
+    # with a broken config file they never edited and no way back -- the check could
+    # only report the damage, not prevent it.
     try:
-        load_settings()
+        resolved = resolve_second_brain(raw)
     except ConfigError as exc:
-        _fail(f"Wrote {path} but it does not load: {exc}")
+        _fail(f"That would not be a valid configuration, so nothing was written: {exc}")
+
+    if (
+        provider == "obsidian"
+        and vault is None
+        and not raw.get("second_brain", {}).get("vault_path")
+    ):
+        # A guessed vault is worse than no vault. Without an explicit path the
+        # resolution chain bottoms out at a hard-coded ~/Obsidian/Personal, which may
+        # be a real vault the learner uses for something else -- and this command's
+        # whole job is to record a deliberate choice.
+        _fail(
+            "No vault is configured, and StudyLoop will not guess one. "
+            "Run: studyloop brain enable obsidian --vault <path>"
+        )
+
+    path = write_raw_config(raw)
 
     if as_json:
         click.echo(json.dumps({"config_path": str(path), "second_brain": section}, indent=2))
         return
 
-    console.print(f"Wrote second_brain to {get_config_path()}", soft_wrap=True)
+    console.print(f"Wrote second_brain to {path}", soft_wrap=True)
+    if provider == "obsidian":
+        # Print the resolved path. A learner who omitted --vault because an older key
+        # already named one should be able to see WHICH directory they just authorised.
+        console.print(f"Vault: {resolved.vault_path}", soft_wrap=True)
     if provider == "xtiles":
         console.print(
             "xTiles has no programmatic backend: StudyLoop ships prompts and an "

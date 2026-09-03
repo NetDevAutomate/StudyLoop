@@ -125,7 +125,7 @@ def test_results_reject_absolute_reported_paths(bad_path: str) -> None:
         ).to_json_dict()
 
 
-def test_brain_description_json_has_exactly_nine_keys() -> None:
+def test_brain_description_json_has_exactly_eight_keys() -> None:
     payload = BrainDescription(
         provider="none",
         configured=False,
@@ -134,7 +134,6 @@ def test_brain_description_json_has_exactly_nine_keys() -> None:
         supports_pull_notes=False,
         vault_path=None,
         folder=None,
-        use_cli=False,
         detail="Second brain is not configured.",
     ).to_json_dict()
     assert set(payload) == {
@@ -145,7 +144,6 @@ def test_brain_description_json_has_exactly_nine_keys() -> None:
         "supports_pull_notes",
         "vault_path",
         "folder",
-        "use_cli",
         "detail",
     }
     assert all(isinstance(payload[k], bool) for k in ("configured", "available"))

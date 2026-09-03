@@ -54,7 +54,6 @@ def obsidian(config, vault):
             "second_brain": {
                 "provider": "obsidian",
                 "vault_path": str(vault),
-                "use_cli": "off",
                 "backlinks": False,
             },
         }
@@ -86,7 +85,7 @@ def _run(*args: str):
 def test_status_human_lines(obsidian) -> None:
     result = _run("status")
     assert result.exit_code == 0
-    for field in ("provider", "configured", "available", "folder", "use_cli"):
+    for field in ("provider", "configured", "available", "folder"):
         assert field in result.output
 
 
@@ -189,7 +188,6 @@ def test_publish_missing_vault_exit_1_nothing_written(config, tmp_path) -> None:
             "second_brain": {
                 "provider": "obsidian",
                 "vault_path": str(tmp_path / "not-mounted"),
-                "use_cli": "off",
             },
         }
     )
@@ -292,24 +290,54 @@ def test_enable_preserves_existing_second_brain_subkeys(config, vault) -> None:
             "second_brain": {
                 "provider": "obsidian",
                 "vault_path": "/old",
-                "daily_note": True,
-                "vault_name": "Personal",
+                "folder": "Learning",
+                "backlinks": False,
             },
         }
     )
     _run("enable", "obsidian", "--vault", str(vault))
     written = yaml.safe_load(path.read_text())["second_brain"]
     assert written["vault_path"] == str(vault)
-    assert written["daily_note"] is True
-    assert written["vault_name"] == "Personal"
+    assert written["folder"] == "Learning"
+    assert written["backlinks"] is False
 
 
-def test_enable_accepts_folder_and_cli_mode(config, vault) -> None:
+def test_enable_accepts_a_folder(config, vault) -> None:
     path = config({"topics": []})
-    _run("enable", "obsidian", "--vault", str(vault), "--folder", "Learning", "--cli", "on")
+    _run("enable", "obsidian", "--vault", str(vault), "--folder", "Learning")
     written = yaml.safe_load(path.read_text())["second_brain"]
     assert written["folder"] == "Learning"
-    assert written["use_cli"] == "on"
+
+
+def test_enable_refuses_to_guess_a_vault(config) -> None:
+    """A guessed vault is worse than none: it may be a vault used for something else.
+
+    Without an explicit path the resolution chain bottoms out at a hard-coded
+    ~/Obsidian/Personal, and this command's whole job is to record a deliberate choice.
+    """
+    path = config({"topics": []})
+    result = _run("enable", "obsidian")
+    assert result.exit_code == 1
+    assert "--vault" in result.output
+    assert "second_brain" not in (yaml.safe_load(path.read_text()) or {})
+
+
+def test_enable_prints_the_resolved_vault(config, vault) -> None:
+    """A learner who omitted --vault must be able to see what they authorised."""
+    config({"topics": [], "obsidian_base": str(vault)})
+    result = _run("enable", "obsidian", "--vault", str(vault))
+    assert result.exit_code == 0, result.output
+    assert str(vault) in result.output
+
+
+def test_enable_leaves_the_config_untouched_when_it_would_not_load(config, vault) -> None:
+    """Validate first, write second. The old order could only report the damage."""
+    original = {"topics": [], "second_brain": {"provider": "obsidian", "folder": "../escape"}}
+    path = config(original)
+    result = _run("enable", "obsidian", "--vault", str(vault))
+    assert result.exit_code == 1
+    assert "nothing was written" in result.output
+    assert yaml.safe_load(path.read_text())["second_brain"]["folder"] == "../escape"
 
 
 def test_enable_refuses_missing_vault_without_create(config, tmp_path) -> None:
@@ -420,3 +448,73 @@ def test_template_install_needs_a_vault(config) -> None:
 def test_template_install_json_lists_paths(obsidian) -> None:
     payload = json.loads(_run("template", "--install", "--json").output)
     assert any(path.endswith("StudyLoop/Today.md") for path in payload["installed"])
+
+
+# ---------------------------------------------------------------------------
+# Post-review corrections (P2 arbitration)
+# ---------------------------------------------------------------------------
+
+
+def test_publish_for_xtiles_exits_zero_with_a_skipped_result(config) -> None:
+    """Not learner-fixable, so not an error.
+
+    This module promises a wind-down protocol can run `publish` unconditionally.
+    Exiting 1 here broke that for every xTiles learner, at the end of every session.
+    """
+    config({"topics": [], "second_brain": {"provider": "xtiles"}})
+    result = _run("publish", "--json")
+    assert result.exit_code == 0, result.output
+    payload = json.loads(result.output)
+    assert payload["provider"] == "xtiles"
+    assert payload["operations"][0]["written"] == []
+    assert payload["operations"][0]["skipped"]
+
+
+def test_publish_rejects_plan_with_today(obsidian) -> None:
+    """Silently discarding --plan was worse than refusing the combination."""
+    _seed("python-decorators")
+    result = _run("publish", "--plan", "python-decorators", "--today")
+    assert result.exit_code == 1
+    assert "--today" in result.output
+
+
+def test_publish_rejects_plan_with_all(obsidian) -> None:
+    _seed("python-decorators")
+    result = _run("publish", "--plan", "python-decorators", "--all")
+    assert result.exit_code == 1
+    assert "--all" in result.output
+
+
+def test_dry_run_reports_unchanged_for_an_already_current_note(obsidian) -> None:
+    """A dry run classified everything as "would write", in both wrong directions."""
+    _seed("python-decorators")
+    _run("publish", "--plan", "python-decorators")
+    result = _run("publish", "--plan", "python-decorators", "--dry-run", "--json")
+    payload = json.loads(result.output)
+    operation = payload["operations"][0]
+    assert operation["written"] == []
+    assert operation["unchanged"] == ["Study/Plans/python-decorators.md"]
+
+
+def test_dry_run_reports_a_refusal_it_would_actually_hit(obsidian) -> None:
+    _seed("python-decorators")
+    note = obsidian / "Study" / "Plans" / "python-decorators.md"
+    note.parent.mkdir(parents=True)
+    note.write_text("# Mine\n")
+    result = _run("publish", "--plan", "python-decorators", "--dry-run", "--json")
+    payload = json.loads(result.output)
+    operation = payload["operations"][0]
+    assert operation["written"] == []
+    assert any("not marked as StudyLoop-owned" in reason for reason in operation["skipped"])
+
+
+def test_template_install_is_all_or_nothing(obsidian) -> None:
+    """A partial install and a failure were indistinguishable to the learner."""
+    existing = obsidian / "Templates" / "StudyLoop" / "Today.md"
+    existing.parent.mkdir(parents=True)
+    existing.write_text("# Mine\n")
+
+    result = _run("template", "--install")
+    assert result.exit_code == 1
+    assert "nothing was installed" in result.output
+    assert sorted(p.name for p in existing.parent.iterdir()) == ["Today.md"]

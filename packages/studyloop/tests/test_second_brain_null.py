@@ -32,7 +32,6 @@ def test_describe_reports_unconfigured() -> None:
     assert description.supports_pull_notes is False
     assert description.vault_path is None
     assert description.folder is None
-    assert description.use_cli is False
     assert description.detail == "Second brain is not configured."
 
 

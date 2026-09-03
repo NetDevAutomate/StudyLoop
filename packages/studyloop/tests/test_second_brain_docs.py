@@ -98,35 +98,44 @@ def test_documented_config_keys_equal_second_brain_config_fields(guide: str) -> 
 def test_the_documented_defaults_match_the_dataclass(guide: str) -> None:
     """A wrong default is worse than no default: it is a specific false claim."""
     assert "provider: none" in guide or "none (default)" in guide
-    assert "use_cli: auto" in guide or "auto | on | off" in guide
-    assert "daily_note: false" in guide
+    assert "backlinks: true" in guide
 
 
 # ---------------------------------------------------------------------------
-# C5 — quoted obsidian commands match what the adapter builds
+# The withdrawn CLI adapter must not survive in the documentation
 # ---------------------------------------------------------------------------
 
 
-def test_quoted_obsidian_commands_match_the_adapter(guide: str) -> None:
-    """The CLI grammar is unversioned, so a quoted command is a claim.
+RETIRED_KEYS = ("use_cli", "vault_name", "template", "daily_note")
 
-    Compared against a constant the adapter exports rather than against prose, so
-    a change to what the code actually runs breaks this test instead of leaving the
-    page quietly wrong.
+
+def test_the_guide_does_not_offer_the_withdrawn_cli_adapter(guide: str) -> None:
+    """Cut before release, so it must not appear as something a learner can configure.
+
+    Scoped to fenced blocks and command lines, not to prose. The guide SHOULD name
+    these keys — a learner upgrading from a pre-release build needs to be told that
+    `daily_note` no longer writes into their daily note. What it must not do is
+    present them as available configuration, or quote a command the code never runs.
     """
-    from studyloop.second_brain.obsidian_cli import DOCUMENTED_COMMANDS
+    for block in _FENCE_RE.findall(guide):
+        for gone in RETIRED_KEYS:
+            assert f"{gone}:" not in block, (
+                f"the guide still offers the withdrawn {gone!r} in a fenced block"
+            )
+        for line in block.splitlines():
+            assert not line.strip().startswith("obsidian "), (
+                f"the guide quotes an obsidian CLI command the code never runs: {line.strip()!r}"
+            )
 
-    quoted = {
-        line.strip()
-        for block in _FENCE_RE.findall(guide)
-        for line in block.splitlines()
-        if line.strip().startswith("obsidian ")
-    }
-    unexpected = quoted - set(DOCUMENTED_COMMANDS)
-    assert not unexpected, (
-        f"the guide quotes obsidian command(s) the adapter does not build: {sorted(unexpected)}. "
-        f"Adapter forms: {sorted(DOCUMENTED_COMMANDS)}"
-    )
+
+def test_the_guide_explains_that_the_retired_keys_are_gone(guide: str) -> None:
+    """The complement: silence would leave an upgrading learner guessing.
+
+    `daily_note: true` used to append a line to a file they own. Someone who set it
+    has to be told it stopped, not left to notice.
+    """
+    assert "daily_note" in guide
+    assert "withdrawn" in guide or "no longer" in guide
 
 
 # ---------------------------------------------------------------------------

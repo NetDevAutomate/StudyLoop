@@ -46,7 +46,7 @@ def backend(vault, plans_dir, monkeypatch):
     """
     settings = Settings()
     settings.second_brain = SecondBrainConfig(
-        provider="obsidian", vault_path=vault, use_cli="off", backlinks=False
+        provider="obsidian", vault_path=vault, backlinks=False
     )
     return get_backend(settings)
 
@@ -200,7 +200,7 @@ def test_an_unknown_plan_is_a_one_line_error(backend) -> None:
 def test_a_missing_vault_is_refused_before_anything_is_written(plans_dir, tmp_path) -> None:
     settings = Settings()
     settings.second_brain = SecondBrainConfig(
-        provider="obsidian", vault_path=tmp_path / "not-mounted", use_cli="off"
+        provider="obsidian", vault_path=tmp_path / "not-mounted"
     )
     _seed()
     with pytest.raises(SecondBrainError, match="does not exist or is not writable"):
@@ -246,13 +246,21 @@ def test_today_survives_a_completely_empty_machine(backend, vault) -> None:
         assert heading in text
 
 
-def test_today_does_not_touch_the_daily_note_by_default(backend, monkeypatch) -> None:
-    """``daily_note`` is off, so nothing is appended to a file the learner owns."""
+def test_publish_today_never_spawns_a_subprocess(backend, monkeypatch) -> None:
+    """Nothing in this feature runs an external program any more.
+
+    The Obsidian CLI adapter was withdrawn before release: it could send notes to a
+    vault other than the configured one, and it passed the whole plan text as a
+    command-line argument where any other user on the machine could read it from the
+    process table. This is the guard that keeps it out.
+    """
+    import subprocess
 
     def _explode(*args: object, **kwargs: object):
-        raise AssertionError("the daily note was touched without the second opt-in")
+        raise AssertionError("the second-brain layer spawned a subprocess")
 
-    monkeypatch.setattr("studyloop.second_brain.obsidian_cli.daily_append", _explode)
+    monkeypatch.setattr(subprocess, "run", _explode)
+    monkeypatch.setattr(subprocess, "Popen", _explode)
     backend.publish_today()
 
 
@@ -333,9 +341,7 @@ def test_backlinks_are_appended_when_enabled(vault, plans_dir, monkeypatch) -> N
         raising=True,
     )
     settings = Settings()
-    settings.second_brain = SecondBrainConfig(
-        provider="obsidian", vault_path=vault, use_cli="off", backlinks=True
-    )
+    settings.second_brain = SecondBrainConfig(provider="obsidian", vault_path=vault, backlinks=True)
     _seed()
     get_backend(settings).publish_plan(PLAN_ID)
     text = (vault / "Study" / "Plans" / "python-decorators.md").read_text()

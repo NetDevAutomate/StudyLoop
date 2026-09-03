@@ -16,7 +16,6 @@ run against any vault but a dedicated throwaway one. Three gates, all required:
 * ``STUDYLOOP_LIVE_OBSIDIAN_VAULT`` names the vault, and it must be in
   :data:`ALLOWED_LIVE_VAULTS`. A vault named anything else is **failed, not
   skipped** — skipping would hide a typo, and the typo is the dangerous case.
-* the ``obsidian`` binary answers a probe, i.e. the desktop app is running.
 
 Every test cleans up what it created and then asserts the cleanup, so a run leaves
 the vault as it found it. The session-finish guard in ``conftest.py`` watches the
@@ -32,7 +31,6 @@ the code actually writes rather than what someone remembered it writing.
 from __future__ import annotations
 
 import os
-import shutil
 from pathlib import Path
 
 import pytest
@@ -108,8 +106,6 @@ def backend(live_vault: Path):
     settings.second_brain = SecondBrainConfig(
         provider="obsidian",
         vault_path=live_vault,
-        use_cli="on",
-        vault_name=os.environ["STUDYLOOP_LIVE_OBSIDIAN_VAULT"],
         backlinks=False,
     )
     return get_backend(settings)
@@ -150,37 +146,6 @@ def _remove(paths: list[Path], vault: Path) -> None:
             directory = directory.parent
 
 
-def test_the_probe_answers_when_the_app_is_running(live_vault: Path) -> None:
-    """Records what every unit test can only assume: the real grammar works.
-
-    Skips -- with the exact thing to do -- when the desktop app is not running.
-    That is a precondition of somebody else's software, not a defect in this one,
-    and a test that fails for a missing precondition is indistinguishable from a
-    broken feature in a log.
-
-    The skip cannot hide anything, because the round trip below RECORDS which write
-    path it actually took. So a run without the app produces a green result that
-    says plainly it did not exercise the CLI, rather than a green result that
-    implies it did.
-    """
-    if shutil.which("obsidian") is None:
-        pytest.skip("the obsidian CLI is not installed on this machine")
-
-    from studyloop.second_brain.obsidian_cli import resolve_cli_mode
-
-    config = SecondBrainConfig(
-        provider="obsidian",
-        vault_path=live_vault,
-        use_cli="on",
-        vault_name=os.environ["STUDYLOOP_LIVE_OBSIDIAN_VAULT"],
-    )
-    if resolve_cli_mode(config) != "cli":
-        pytest.skip(
-            "the obsidian CLI did not answer: start the Obsidian desktop app, open "
-            f"the {os.environ['STUDYLOOP_LIVE_OBSIDIAN_VAULT']!r} vault, and rerun"
-        )
-
-
 def test_full_round_trip_create_validate_remove(
     backend, live_vault: Path, evidence_dir: Path
 ) -> None:
@@ -197,21 +162,11 @@ def test_full_round_trip_create_validate_remove(
     plan = _seed(records=2)
     created: list[Path] = []
 
-    # Recorded, not assumed. Whoever reads this evidence has to be able to tell
-    # whether the CLI path was exercised or whether the file writer did the work,
-    # because the two are not the same claim.
-    effective = backend.effective_cli_mode()
-    assert effective in {"cli", "files"}
     lines: list[str] = [
         "# Live Obsidian round trip",
         "",
-        f"Write path exercised: **{effective}**"
-        + (
-            ""
-            if effective == "cli"
-            else " — the desktop app was not answering, so the CLI adapter was NOT"
-            " exercised by this run."
-        ),
+        "Write path: the guarded file writer. There is no other path -- the optional "
+        "Obsidian CLI adapter was withdrawn before release.",
         "",
     ]
 
@@ -273,7 +228,7 @@ def test_full_round_trip_create_validate_remove(
         mine_before = intruder.read_bytes()
         settings = Settings()
         settings.second_brain = SecondBrainConfig(
-            provider="obsidian", vault_path=live_vault, use_cli="off", backlinks=False
+            provider="obsidian", vault_path=live_vault, backlinks=False
         )
         renamed = _seed_second_plan()
         try:

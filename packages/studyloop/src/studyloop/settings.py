@@ -294,17 +294,17 @@ class ObsidianConfig:
 #: ``STUDYLOOP_DB`` above.
 SECOND_BRAIN_VAULT_ENV = "STUDYLOOP_SECOND_BRAIN_VAULT"
 
-#: The values ``second_brain.use_cli`` accepts, and what each means.
-#:
-#: Tri-state rather than a boolean because "use the Obsidian CLI" has three
-#: honest answers, not two: ``on`` (I have it, tell me when it is unusable),
-#: ``auto`` (use it if it happens to be there, quietly) and ``off`` (never spawn
-#: a subprocess). Collapsing ``auto`` into ``on`` would make a learner without
-#: the desktop app running see a warning on every publish.
-USE_CLI_MODES = ("auto", "on", "off")
-
 #: Providers a learner may select for ``second_brain.provider``.
 SECOND_BRAIN_PROVIDERS = ("none", "obsidian", "xtiles")
+
+#: Keys the optional Obsidian CLI adapter used, withdrawn before 0.2.0 shipped.
+#:
+#: Reported as an error rather than ignored. A learner who wrote ``daily_note: true``
+#: asked for a write into their own daily note; silently dropping the key would let
+#: them believe it was still happening. There is no migration to perform -- the file
+#: writer was always what produced the final bytes -- so naming the keys and saying
+#: they are gone is the whole of it.
+_RETIRED_SECOND_BRAIN_KEYS = frozenset({"use_cli", "vault_name", "template", "daily_note"})
 
 
 def _default_second_brain_vault() -> Path:
@@ -336,17 +336,6 @@ class SecondBrainConfig:
     #: Add ``[[wikilinks]]`` to the learner's own notes when the export sink's
     #: topic matcher is importable.
     backlinks: bool = True
-    #: One of ``USE_CLI_MODES``. Stored as a string, not a bool, so ``auto``
-    #: can mean "decide at call time".
-    use_cli: str = "auto"
-    #: ``vault=`` for the CLI adapter, for a learner with several vaults.
-    vault_name: str | None = None
-    #: ``template=`` for ``obsidian create``.
-    template: str | None = None
-    #: Append one link line to today's daily note, at most once a day, through
-    #: the CLI. The only write into a note the learner owns, so it needs a
-    #: second explicit opt-in on top of the CLI being active.
-    daily_note: bool = False
 
 
 @dataclass
@@ -693,47 +682,15 @@ def _topic_from_raw(raw: object, settings: Settings, position: int) -> TopicConf
 def _second_brain_bool(raw: object, key: str) -> bool:
     """Coerce a second-brain flag, refusing anything that is not a real bool.
 
-    ``bool("maybe")`` is ``True``, so truthiness would turn a typo into a
-    silently enabled feature — for ``daily_note`` that means writing into the
-    learner's own daily note because they misspelled a word.
+    ``bool("maybe")`` is ``True``, so truthiness would turn a typo into a silently
+    enabled feature: a learner who wrote ``backlinks: mabye`` would get backlinks and
+    a full vault scan on every publish, having asked for the opposite.
     """
     if isinstance(raw, bool):
         return raw
     raise ConfigError(
         f"Invalid value for 'second_brain.{key}' in {get_config_path()}: {raw!r}. "
         "Use true or false."
-    )
-
-
-def _second_brain_optional_str(raw: object, key: str) -> str | None:
-    """Coerce an optional string field, treating blank as absent."""
-    if raw is None:
-        return None
-    if isinstance(raw, bool) or not isinstance(raw, str | int | float):
-        raise ConfigError(
-            f"Invalid value for 'second_brain.{key}' in {get_config_path()}: {raw!r}. "
-            "Use a text value or remove the key."
-        )
-    text = str(raw).strip()
-    return text or None
-
-
-def _second_brain_use_cli(raw: object) -> str:
-    """Normalise ``use_cli`` to one of ``USE_CLI_MODES``.
-
-    YAML ``true``/``false`` are accepted as ``on``/``off`` because that is what a
-    learner naturally writes for something presented as a switch, and because
-    ``use_cli: false`` was the documented default before ``auto`` existed —
-    breaking those configs would be a silent behaviour change on upgrade.
-    """
-    if isinstance(raw, bool):
-        return "on" if raw else "off"
-    mode = str(raw).strip().lower()
-    if mode in USE_CLI_MODES:
-        return mode
-    raise ConfigError(
-        f"Invalid value for 'second_brain.use_cli' in {get_config_path()}: {raw!r}. "
-        f"Use one of: {', '.join(USE_CLI_MODES)}."
     )
 
 
@@ -760,7 +717,7 @@ def _second_brain_folder(raw: object) -> str:
     return folder
 
 
-def _resolve_second_brain(raw: dict[str, Any], settings: Settings) -> SecondBrainConfig:
+def resolve_second_brain(raw: dict[str, Any]) -> SecondBrainConfig:
     """Build :class:`SecondBrainConfig` from the raw config mapping.
 
     ``vault_path`` resolution order — explicit ``second_brain.vault_path``, then
@@ -777,6 +734,14 @@ def _resolve_second_brain(raw: dict[str, Any], settings: Settings) -> SecondBrai
         raise ConfigError(
             f"Invalid config in {get_config_path()}: 'second_brain' must be a mapping "
             "such as 'second_brain: {provider: obsidian}'."
+        )
+
+    retired = sorted(set(section) & _RETIRED_SECOND_BRAIN_KEYS)
+    if retired:
+        raise ConfigError(
+            f"Retired key(s) in 'second_brain' in {get_config_path()}: "
+            f"{', '.join(retired)}. The optional Obsidian CLI adapter was withdrawn; "
+            "remove these keys. StudyLoop writes notes directly."
         )
 
     provider = str(section.get("provider", "none")).strip().lower()
@@ -811,10 +776,6 @@ def _resolve_second_brain(raw: dict[str, Any], settings: Settings) -> SecondBrai
         vault_path=vault_path,
         folder=_second_brain_folder(section.get("folder", defaults.folder)),
         backlinks=_second_brain_bool(section.get("backlinks", defaults.backlinks), "backlinks"),
-        use_cli=_second_brain_use_cli(section.get("use_cli", defaults.use_cli)),
-        vault_name=_second_brain_optional_str(section.get("vault_name"), "vault_name"),
-        template=_second_brain_optional_str(section.get("template"), "template"),
-        daily_note=_second_brain_bool(section.get("daily_note", defaults.daily_note), "daily_note"),
     )
 
 
@@ -893,7 +854,7 @@ def load_settings() -> Settings:
     # --- second_brain (R-84): validated even when absent, so a typo in a
     # section the learner just added is reported on the next command rather
     # than the next publish.
-    settings.second_brain = _resolve_second_brain(raw, settings)
+    settings.second_brain = resolve_second_brain(raw)
 
     ct = raw.get("content") or {}
     if ct:

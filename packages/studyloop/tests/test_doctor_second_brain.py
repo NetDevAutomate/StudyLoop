@@ -52,7 +52,6 @@ def test_rows_obsidian_ok(config, tmp_path) -> None:
             "second_brain": {
                 "provider": "obsidian",
                 "vault_path": str(vault),
-                "use_cli": "off",
             }
         }
     )
@@ -60,8 +59,21 @@ def test_rows_obsidian_ok(config, tmp_path) -> None:
     assert rows["second_brain_provider"].status == "info"
     assert rows["second_brain_vault"].status == "pass"
     assert rows["second_brain_folder"].status == "info"
-    assert rows["second_brain_cli"].status == "info"
     assert all(row.category == "config" for row in rows.values())
+
+
+def test_no_row_mentions_the_withdrawn_cli_adapter(config, tmp_path) -> None:
+    """The adapter was cut before release; doctor must not report on it.
+
+    A row about a feature that does not exist is worse than no row: it tells the
+    learner to go looking for a setting they cannot find.
+    """
+    vault = tmp_path / "vault"
+    vault.mkdir()
+    config({"second_brain": {"provider": "obsidian", "vault_path": str(vault)}})
+    rows = check_second_brain()
+    assert not any("cli" in row.name for row in rows)
+    assert not any("obsidian CLI" in row.message for row in rows)
 
 
 def test_rows_vault_missing_warns(config, tmp_path) -> None:
@@ -75,30 +87,6 @@ def test_no_row_is_ever_a_failure(config, tmp_path) -> None:
     """A missing vault is a warning, never a blocking failure."""
     config({"second_brain": {"provider": "obsidian", "vault_path": str(tmp_path / "gone")}})
     assert all(row.status != "fail" for row in check_second_brain())
-
-
-def test_cli_row_reports_the_effective_mode(config, tmp_path, monkeypatch) -> None:
-    """``auto`` is not an answer a learner can act on, so doctor resolves it."""
-    vault = tmp_path / "vault"
-    vault.mkdir()
-    config({"second_brain": {"provider": "obsidian", "vault_path": str(vault), "use_cli": "auto"}})
-    monkeypatch.setattr("studyloop.second_brain.obsidian_cli.shutil.which", lambda name: None)
-    row = _rows(check_second_brain())["second_brain_cli"]
-    assert "auto" in row.message
-    assert "files" in row.message
-
-
-def test_off_mode_never_probes(config, tmp_path, monkeypatch) -> None:
-    """``doctor`` must not spawn Obsidian for a learner who switched it off."""
-    vault = tmp_path / "vault"
-    vault.mkdir()
-    config({"second_brain": {"provider": "obsidian", "vault_path": str(vault), "use_cli": "off"}})
-
-    def _explode(*args: object, **kwargs: object):
-        raise AssertionError("doctor spawned a subprocess with use_cli off")
-
-    monkeypatch.setattr("studyloop.second_brain.obsidian_cli.subprocess.run", _explode)
-    assert _rows(check_second_brain())["second_brain_cli"].status == "info"
 
 
 def test_rows_xtiles_info(config) -> None:

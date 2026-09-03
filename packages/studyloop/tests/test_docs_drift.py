@@ -416,7 +416,7 @@ def _known_top_level_keys() -> set[str]:
     # load_settings (the section needs real validation, not a one-line coercion),
     # so the scan has to look there too or the key derivation silently loses it --
     # which is exactly what test_known_key_derivation_has_not_shrunk caught.
-    keys.update(_RAW_GET_RE.findall(_static_function_source(settings_mod, "_resolve_second_brain")))
+    keys.update(_RAW_GET_RE.findall(_static_function_source(settings_mod, "resolve_second_brain")))
     keys.update(_RAW_GET_RE.findall(_static_function_source(settings_mod, "resolve_study_dirs")))
     keys.update(_DATA_GET_RE.findall(_static_function_source(settings_mod, "get_db_path")))
     keys.update(_CONFIG_GET_RE.findall(_static_function_source(shared_mod, "_resolve_hosts")))

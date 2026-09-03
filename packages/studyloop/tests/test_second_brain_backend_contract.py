@@ -70,16 +70,14 @@ def _xtiles(_vault: Path) -> SecondBrain:
 def _obsidian(vault: Path) -> SecondBrain:
     """The writing backend, with the CLI adapter off.
 
-    ``use_cli="off"`` so the contract table gives the same answers on a machine
-    with the real Obsidian CLI installed as on one without; the adapter has its
-    own tests. ``backlinks=False`` for the same reason — the matcher lives in a
-    sibling package that may or may not be present.
+    ``backlinks=False`` so the contract table gives the same answers whether or not
+    the sibling package holding the vault topic matcher is installed.
     """
     from studyloop.second_brain import get_backend
 
     settings = Settings()
     settings.second_brain = SecondBrainConfig(
-        provider="obsidian", vault_path=vault, use_cli="off", backlinks=False
+        provider="obsidian", vault_path=vault, backlinks=False
     )
     return get_backend(settings)
 
@@ -128,7 +126,7 @@ def test_describe_shape(backend_case) -> None:
     description = backend.describe()
     assert isinstance(description, BrainDescription)
     payload = description.to_json_dict()
-    assert len(payload) == 9
+    assert len(payload) == 8
     for key in ("configured", "available", "supports_publish", "supports_pull_notes"):
         assert isinstance(payload[key], bool), key
     assert isinstance(backend.is_available(), bool)
