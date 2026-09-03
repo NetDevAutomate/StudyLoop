@@ -39,3 +39,4 @@ the code and ask "why on earth is it done this way?" — it gets an ADR, and
 | [0007](0007-dev-only-vendored-assets.md) | Dev-only vendored assets live in git, not in the wheel | Accepted | `vendor/dev/` |
 | [0008](0008-retire-ttyd-entirely.md) | Retire ttyd entirely; the Web UI owns interactive sessions | Accepted | ttyd retirement stages 2-7 |
 | [0009](0009-one-session-authority.md) | The session-state file is the claim; the in-process slot is a cache | Proposed | M2 session-authority remediation |
+| [0010](0010-second-brains-are-projections.md) | Second brains are projections; plan Markdown is the source of truth | Proposed | `second-brain` |
