@@ -273,3 +273,138 @@ def test_no_absolute_home_paths_or_identifiers_in_the_guide(guide: str) -> None:
     """Public hygiene: a guide is the easiest place for a real path to leak."""
     assert "/Users/" not in guide
     assert "/home/" not in guide
+
+
+# ---------------------------------------------------------------------------
+# The guide's worked examples must be real output
+# ---------------------------------------------------------------------------
+#
+# A hand-written example of a generated file is a second implementation of the
+# renderer, maintained by nobody. These compare the page's examples against what
+# the code actually produces, and write the real output into the review tree so a
+# doc author (or a screenshot) is working from truth rather than memory.
+
+
+def test_the_documented_ownership_marker_matches_a_real_one(guide: str) -> None:
+    """Every key shown in the guide's marker example is a key the writer emits.
+
+    Checked in both directions. An invented key teaches the learner to look for
+    something that is not there; a missing one hides part of what StudyLoop stamps
+    into their notes, which is the thing they are being asked to trust.
+    """
+    import yaml
+    from test_second_brain_templates import full_plan
+
+    from studyloop.second_brain.obsidian_writer import marker_from_text
+    from studyloop.second_brain.projection import (
+        OWNERSHIP_KEY,
+        ProjectionIdentity,
+        render_plan_projection,
+    )
+
+    real = marker_from_text(
+        render_plan_projection(
+            full_plan(),
+            ProjectionIdentity(
+                kind="plan-projection",
+                plan_id="python-decorators",
+                learning_record=None,
+                source="STUDYLOOP_PLANS_DIR/python-decorators.md",
+            ),
+        )
+    )
+    assert real is not None
+
+    blocks = [
+        parsed
+        for block in _YAML_FENCE_RE.findall(guide)
+        if isinstance(parsed := yaml.safe_load(block), dict) and OWNERSHIP_KEY in parsed
+    ]
+    assert blocks, "the guide shows no `studyloop:` marker example"
+
+    documented = set()
+    for parsed in blocks:
+        documented.update(parsed[OWNERSHIP_KEY] or {})
+
+    invented = documented - set(real)
+    assert not invented, (
+        f"the guide's marker example shows key(s) the writer never emits: {sorted(invented)}"
+    )
+
+    # The guide abbreviates the hash, so `owned`, `schema`, `kind` and `plan_id`
+    # are the identity fields it must not omit.
+    for required in ("owned", "schema", "kind", "plan_id"):
+        assert required in documented, f"the marker example omits {required!r}"
+
+
+def test_the_documented_vault_layout_matches_what_the_backend_writes(guide: str) -> None:
+    """The folder tree in the guide is where notes really go.
+
+    Derived from the backend's own path building rather than from a reading of the
+    prose, so moving a note in code fails here instead of leaving a learner hunting
+    for a file that has quietly moved.
+    """
+    from studyloop.second_brain.obsidian import TODAY_RELATIVE
+
+    assert TODAY_RELATIVE in guide, f"the guide does not show {TODAY_RELATIVE}"
+    for fragment in (
+        "Plans/",
+        ".notes.md",
+        "Learning Records/",
+    ):
+        assert fragment in guide, f"the guide does not show {fragment}"
+
+
+def test_write_documentation_samples(tmp_path) -> None:
+    """Render the real projections into the review tree, for docs and screenshots.
+
+    Not an assertion about the docs — an artefact FOR them. Whoever writes or
+    screenshots an example of a published note should be looking at genuine output,
+    and this makes that a by-product of a normal test run rather than a manual step
+    somebody has to remember.
+    """
+    from test_second_brain_templates import full_plan
+
+    from studyloop.second_brain.projection import (
+        ProjectionIdentity,
+        TodayData,
+        render_plan_projection,
+        render_today,
+    )
+
+    evidence = REPO_ROOT / "reviews" / "2026-09-03-second-brain" / "evidence" / "m7" / "doc-samples"
+    try:
+        evidence.mkdir(parents=True, exist_ok=True)
+    except OSError:  # pragma: no cover - a read-only checkout is a valid state
+        pytest.skip("the review tree is not writable here")
+
+    plan_sample = render_plan_projection(
+        full_plan(),
+        ProjectionIdentity(
+            kind="plan-projection",
+            plan_id="python-decorators",
+            learning_record=None,
+            source="STUDYLOOP_PLANS_DIR/python-decorators.md",
+        ),
+    )
+    today_sample = render_today(
+        TodayData(
+            primary="Recall how a closure captures a cell variable",
+            primary_reason="Due today, and it blocks the next milestone.",
+            primary_minutes=25,
+            alternates=("Re-read PEP 318", "Write one decorator from memory"),
+            due_cards=({"course": "Python", "card_hash": "abc123", "next_review": "2026-09-03"},),
+            focus_topics=("python",),
+        ),
+        ProjectionIdentity(
+            kind="today-projection", plan_id=None, learning_record=None, source="studyloop"
+        ),
+    )
+
+    (evidence / "Study-Plans-python-decorators.md").write_text(plan_sample, encoding="utf-8")
+    (evidence / "Study-Today.md").write_text(today_sample, encoding="utf-8")
+
+    # Sanity: a sample nobody can read is not documentation.
+    assert plan_sample.startswith("---\n")
+    assert "## Mission" in plan_sample
+    assert "## Next action" in today_sample
