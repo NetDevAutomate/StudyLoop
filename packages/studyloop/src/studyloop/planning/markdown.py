@@ -61,15 +61,36 @@ _LINK_RE = re.compile(r"^\[([^\]]*)\]\(([^)]*)\)\s*(?:[—-]\s*(.*))?$")
 _LR_HEADING_RE = re.compile(r"^LR-(\d+)\s*(?:[—-]\s*(.*))?$", re.IGNORECASE)
 _BOLD_RE = re.compile(r"\*\*(.*?)\*\*")
 
+#: The plan document's ``##`` sections, in the order ``render_plan`` emits them.
+#:
+#: One source of truth for three artefacts that must agree: this renderer, the
+#: Obsidian projection of a plan, and the vault template a learner writes notes
+#: from. Three copies drift, and the drift is invisible — a template whose
+#: sections no longer match the document still looks perfectly fine on its own.
+#: ``tests/test_second_brain_templates.py`` is the guard.
+PLAN_SECTION_HEADINGS: tuple[str, ...] = (
+    "Mission",
+    "Milestones",
+    "Learning Records",
+    "Resources",
+    "Checkpoints",
+    "Notes",
+)
+
+#: The ``###`` sections nested under Mission, in render order.
+MISSION_SUBSECTION_HEADINGS: tuple[str, ...] = (
+    "Why",
+    "Success looks like",
+    "Constraints",
+    "Out of scope",
+)
+
 #: Headings the parser understands at ``##`` level, normalised to lower case.
-_KNOWN_SECTIONS = {
-    "mission",
-    "milestones",
-    "learning records",
-    "resources",
-    "checkpoints",
-    "notes",
-}
+#:
+#: Derived, not written out again: a section the renderer emits but the parser
+#: does not recognise is silently swept into ``StudyPlan.notes`` on the next
+#: round trip, losing structure with no error anywhere.
+_KNOWN_SECTIONS = {heading.lower() for heading in PLAN_SECTION_HEADINGS}
 
 # Placeholders written for empty sections so a gap is *visible* in the rendered
 # document rather than looking complete. They are defined once and consumed by
@@ -476,6 +497,21 @@ def render_milestone(milestone: Milestone) -> str:
     return f"- [{box}] {text}"
 
 
+def _h2(index: int) -> str:
+    """Render one ``##`` heading from :data:`PLAN_SECTION_HEADINGS`.
+
+    Indexed rather than named so the renderer cannot emit a heading that is not
+    in the constant, which is what keeps the parser's derived
+    ``_KNOWN_SECTIONS`` and this output in step.
+    """
+    return f"## {PLAN_SECTION_HEADINGS[index]}"
+
+
+def _h3(index: int) -> str:
+    """Render one ``###`` heading from :data:`MISSION_SUBSECTION_HEADINGS`."""
+    return f"### {MISSION_SUBSECTION_HEADINGS[index]}"
+
+
 def render_plan(plan: StudyPlan) -> str:
     """Render a :class:`StudyPlan` as its canonical Markdown document."""
     out: list[str] = []
@@ -484,23 +520,23 @@ def render_plan(plan: StudyPlan) -> str:
     out.append(f"# {plan.title}")
     out.append("")
 
-    out.append("## Mission")
+    out.append(_h2(0))
     out.append("")
-    out.append("### Why")
+    out.append(_h3(0))
     out.append("")
     out.append(plan.mission.why or PLACEHOLDER_WHY)
     out.append("")
-    out.append("### Success looks like")
+    out.append(_h3(1))
     out.append("")
     out.extend(_render_bullets(plan.mission.success, empty=PLACEHOLDER_SUCCESS))
-    out.append("### Constraints")
+    out.append(_h3(2))
     out.append("")
     out.extend(_render_bullets(plan.mission.constraints, empty=PLACEHOLDER_CONSTRAINTS))
-    out.append("### Out of scope")
+    out.append(_h3(3))
     out.append("")
     out.extend(_render_bullets(plan.mission.out_of_scope, empty=PLACEHOLDER_OUT_OF_SCOPE))
 
-    out.append("## Milestones")
+    out.append(_h2(1))
     out.append("")
     if plan.milestones:
         out.extend(render_milestone(m) for m in plan.milestones)
@@ -508,7 +544,7 @@ def render_plan(plan: StudyPlan) -> str:
         out.append(PLACEHOLDER_MILESTONES)
     out.append("")
 
-    out.append("## Learning Records")
+    out.append(_h2(2))
     out.append("")
     if plan.learning_records:
         for record in plan.learning_records:
@@ -523,7 +559,7 @@ def render_plan(plan: StudyPlan) -> str:
         out.append(PLACEHOLDER_LEARNING_RECORDS)
         out.append("")
 
-    out.append("## Resources")
+    out.append(_h2(3))
     out.append("")
     if plan.resources:
         for resource in plan.resources:
@@ -538,7 +574,7 @@ def render_plan(plan: StudyPlan) -> str:
         out.append(PLACEHOLDER_RESOURCES)
     out.append("")
 
-    out.append("## Checkpoints")
+    out.append(_h2(4))
     out.append("")
     out.append("| When | Phase | Verdict | Summary | Session |")
     out.append("| --- | --- | --- | --- | --- |")
@@ -553,7 +589,7 @@ def render_plan(plan: StudyPlan) -> str:
         )
     out.append("")
 
-    out.append("## Notes")
+    out.append(_h2(5))
     out.append("")
     out.append(plan.notes or PLACEHOLDER_NOTES)
     out.append("")
