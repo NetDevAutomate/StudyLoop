@@ -90,6 +90,22 @@ experience may change before `1.0.0`.
 
 ### Fixed
 
+- `docs/cli-reference.md` now documents the 8 `content` subcommands that
+  manage NotebookLM notebooks/podcast syllabi (`autopilot`, `delete`,
+  `download`, `generate`, `list`, `status`, `syllabus`) and the fast content
+  index (`index`), plus `studyloop topic` (singular) — the command AI
+  agents run every session to log activity, which had no public reference
+  entry at all. `docs/content-pipeline.md` gained a short table for the
+  NotebookLM subcommands and a paragraph on `content index`.
+- `studyloop doctor --category updates` was an advertised, `--help`-listed
+  choice that always produced zero results (nothing is published, so its
+  one check is deliberately unregistered) and an unreachable `--fix`
+  branch. Removed from the CLI's category choices until a release exists
+  to check against; `docs/cli-reference.md`'s category list updated to
+  match, and now mentions the new tmux check under `core`.
+- The error `studyloop install tools/agents` and `doctor --fix` raise
+  outside a source checkout named a pre-`studyctl`-rename project
+  ("socratic-study-mentor") instead of studyloop.
 - `studyloop doctor` now checks for tmux (3.1+, `studyloop study`'s hard
   dependency) under the `core` category, with an install hint, instead of
   giving no signal at all before a first `studyloop study` fails outright.

@@ -91,6 +91,24 @@ class TestDoctorCommand:
         mock_reg.return_value.run_category.assert_called_once_with("core")
         assert result.exit_code == 0
 
+    def test_category_updates_is_hidden_until_a_release_exists(self, runner: CliRunner):
+        """R-38: `--category updates` was an advertised, `--help`-listed
+
+        choice that always produced zero results (check_pypi_versions is
+        deliberately unregistered -- nothing is published yet). A `--fix`
+        branch for it was unreachable dead code. Rather than a real category
+        silently doing nothing, it should not be offered as a choice at all
+        until a release exists.
+        """
+        from studyloop.cli._doctor import doctor
+
+        result = runner.invoke(doctor, ["--category", "updates"])
+        assert result.exit_code != 0
+        assert "not one of" in result.output.lower()
+
+        category_param = next(p for p in doctor.params if p.name == "category")
+        assert "updates" not in category_param.type.choices
+
     def test_fix_applies_and_reruns(self, runner: CliRunner):
         from studyloop.cli._doctor import doctor
 
