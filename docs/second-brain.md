@@ -63,6 +63,33 @@ this feature, and there is nothing for it to leak.
 
 ## Obsidian
 
+### The workflow, end to end
+
+What you actually do, once. Steps 4 and 5 are the loop you repeat; everything
+above them happens on the first day only.
+
+```mermaid
+flowchart TD
+    S1["1. studyloop brain enable obsidian --vault ~/MyVault"] --> S2["2. studyloop brain publish --dry-run<br/><i>lists what it would write, writes nothing</i>"]
+    S2 --> S3["3. studyloop brain publish<br/><i>today's note + every active plan</i>"]
+    S3 --> S4["4. Read it in Obsidian<br/>Study/Today.md · Study/Plans/&lt;plan-id&gt;.md"]
+    S4 --> S5["5. Think, and write in your OWN file<br/>Study/Plans/&lt;plan-id&gt;.notes.md"]
+    S5 --> S6["6. studyloop brain pull &lt;plan-id&gt;<br/><i>hands your notes back to you</i>"]
+    S6 --> S7["7. You decide what belongs in the plan<br/>studyloop plan milestone / status,<br/>or edit the plan document itself"]
+    S7 --> S3
+
+    S3 -.->|"a projection you hand-edited"| W["Replaced on the next publish,<br/>with a warning naming the file"]
+    S3 -.->|"a file StudyLoop does not own"| R["Refused. Publish stops and says which file."]
+
+    classDef you fill:#eceaff,stroke:#4c3fbb,color:#231d63
+    classDef danger fill:#fff1dc,stroke:#a9741a,color:#673e05
+    class S4,S5,S7 you
+    class W,R danger
+```
+
+The purple steps are the ones only you can do. Nothing on this diagram sends
+anything anywhere: every arrow is a file on your own disk.
+
 ### Where notes go
 
 Everything lives under one folder you name (`Study` by default):
@@ -194,6 +221,47 @@ the one provider StudyLoop does not write to itself. The pattern is two MCP serv
 and one assistant: you connect StudyLoop's MCP server and xTiles' hosted connector
 to the same assistant, then ask it to move today's study into your planner.
 Obsidian remains the free, local option, and nothing in StudyLoop needs xTiles.
+
+### The workflow, end to end
+
+The shape to hold on to: **StudyLoop never talks to xTiles.** It answers your
+assistant's questions, and your assistant is the only thing holding both
+connections. That is why the dashed boundary below matters more than any of the
+steps — it is the line your study text crosses, and it only ever crosses because
+you ran a prompt.
+
+```mermaid
+flowchart TD
+    subgraph LOCAL["Your machine"]
+        direction TB
+        SL["StudyLoop<br/><i>plans, next action, due reviews</i>"]
+        CFG["studyloop brain enable xtiles<br/><i>records the choice; stores no credential</i>"]
+        ASSIST["Your assistant<br/><i>Claude Code, Kiro, Codex …</i>"]
+        SKILL["studyloop install agents<br/><i>wind-down skill, silent unless both gates pass</i>"]
+        CFG --- SL
+        SKILL --- ASSIST
+        SL <-->|"StudyLoop MCP server<br/>get_next_action · get_due_cards"| ASSIST
+    end
+
+    YOU(["You run one of the three prompts"]) --> ASSIST
+
+    ASSIST ==>|"the prompt, your plan text,<br/>today's action, due reviews"| MODEL["Your assistant's model service<br/><i>Anthropic, for Claude Code</i>"]
+    ASSIST ==>|"xTiles MCP connector<br/><i>browser sign-in, held by the assistant</i>"| XT["xTiles' cloud<br/><i>project · pages · planner task</i>"]
+    XT --> READ(["You open xTiles and see it"])
+
+    classDef local fill:#eceaff,stroke:#4c3fbb,color:#231d63
+    classDef remote fill:#fff1dc,stroke:#a9741a,color:#673e05
+    classDef human fill:#e4f7ee,stroke:#1c7a52,color:#0f4530
+    class SL,CFG,ASSIST,SKILL local
+    class MODEL,XT remote
+    class YOU,READ human
+```
+
+Read the arrow weights: the thin lines stay on your machine, the thick ones leave
+it. Nothing leaves until you run a prompt, and StudyLoop is not on either of the
+thick arrows — it cannot see what was sent, and it cannot verify what arrived.
+That is also why removing the `xtiles` server from your assistant's own MCP
+settings is how you end this, not a StudyLoop command.
 
 ### What you need
 
