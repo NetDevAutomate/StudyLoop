@@ -324,7 +324,12 @@ def test_main_controls_have_accessible_button_names(web_page: Page) -> None:
         "Courses",
         "Settings",
     ):
-        assert web_page.get_by_role("button", name=name).is_visible()
+        # exact=True, because these are substring-matched otherwise and the
+        # empty-state CTA "Generate content →" (index.html, Today view) also
+        # matches "Generate" — a strict-mode violation on any machine with no
+        # decks, which is CI's state and rarely a dev machine's. Red on main
+        # twice, 2026-09-04.
+        assert web_page.get_by_role("button", name=name, exact=True).is_visible()
 
 
 def test_failed_struggling_post_shows_error_without_success(web_page: Page) -> None:
