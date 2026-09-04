@@ -237,6 +237,7 @@ class ObsidianBackend:
         written: list[str] = []
         unchanged: list[str] = []
         skipped: list[str] = []
+        warnings: list[str] = []
 
         if plan_id is None:
             identity = self._identity("today-projection", None)
@@ -273,6 +274,16 @@ class ObsidianBackend:
                 unchanged.append(target.relative)
             elif verdict.refusal is not None:
                 skipped.append(verdict.refusal)
+            elif verdict.outcome is WriteOutcome.REPLACED:
+                # The dry run must preview the warning a real publish prints
+                # (O4): "would write" alone hid that saying yes replaces the
+                # learner's own edits.
+                written.append(target.relative)
+                warnings.append(
+                    f"would replace your edits in '{target.relative}' — a projection "
+                    "is regenerated from the plan, so write beside it in "
+                    f"'{target.relative.removesuffix('.md')}.notes.md' instead."
+                )
             else:
                 written.append(target.relative)
 
@@ -282,6 +293,7 @@ class ObsidianBackend:
             written=tuple(written),
             unchanged=tuple(unchanged),
             skipped=tuple(skipped),
+            warnings=tuple(warnings),
         )
 
     def _backlinks(self, plan: StudyPlan) -> tuple[str, ...]:
