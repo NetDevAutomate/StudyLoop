@@ -382,15 +382,15 @@ cannot find, so it creates a second one.
 Adds a page and a task, so this too works on Free.
 
 ```text
-We are finishing a study session. Summarise what I covered in three bullets and one insight, then: (1) in xTiles, add that summary as a new learning record page under my "<plan title>" project, titled "LR — <date> — <topic>"; (2) add ONE planner task titled "Review: <concept>" on the next review date from get_due_cards. If get_due_cards returns no cards, do not invent a date; skip the Review task and the progress writes and say why. If we reviewed cards, record each one in StudyLoop with record_study_progress, passing the card_hash that get_due_cards returned. Ask before writing to xTiles; do not repeat the offer if I decline.
+We are finishing a study session. Summarise what I covered in three bullets and one insight, then: (1) record that summary in StudyLoop first, with record_plan_learning for plan "<plan-id>", titled "<topic>" — the plan document is the source of truth; (2) in xTiles, add the same summary as a new learning record page under my "<plan title>" project, titled "LR — <date> — <topic>"; (3) add ONE planner task titled "Review: <concept>" on the next review date from get_due_cards. If get_due_cards returns no cards, do not invent a date; skip the Review task and the progress writes and say why. If we reviewed cards, record each one in StudyLoop with record_study_progress, passing the card_hash that get_due_cards returned. Ask before writing to xTiles; do not repeat the offer if I decline.
 ```
 
 A limit worth knowing: `get_due_cards` returns cards that are **already due** —
 it is not a source of the next review date. With nothing due there is no date to
 schedule, which is why the prompt tells your assistant to skip rather than
-invent one. And the learning record this writes lives **only in xTiles**: it is
-not written back into the plan document, so for this content the plan is not the
-source of truth until you record it there yourself.
+invent one. The prompt records into the plan **first** (via
+`record_plan_learning`, or `studyloop plan record` at a shell) so the xTiles
+page is a projection of a record the plan already has — never the only copy.
 
 Your mentor offers this last one for you. `studyloop install agents` installs an
 opt-in wind-down skill into every harness it finds, and it stays silent unless

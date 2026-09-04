@@ -17,10 +17,17 @@ notes come back only when the learner asks).
 ## Decision
 
 1. The plan Markdown under `STUDYLOOP_PLANS_DIR` is the only source of truth.
-   Backends render **projections** of it; nothing in a backend, the CLI or an
-   agent protocol writes the plan file. Pulling notes is an explicit command
-   that returns text for the learner and agent to fold in through
-   `studyloop plan …`.
+   Backends render **projections** of it; **nothing in the second-brain layer
+   writes it** — no backend, no `brain` command, no agent protocol.
+   `studyloop plan …` is its only writer, and it writes through `render_plan`
+   (parse → mutate the model → `save_plan`), so the document's shape stays the
+   renderer's business. Pulling notes is an explicit command that returns text
+   for the learner and agent to fold in through `studyloop plan …`.
+   *(Amended 2026-09-04: the original clause said "nothing in a backend, the
+   CLI or an agent protocol writes the plan file", which was untrue on the day
+   it shipped — `plan new`, `plan milestone`, `plan status`, `plan evaluate
+   --record` and `plan reindex` all write it, by design. The rule the code
+   obeys, stated above, is what the clause always meant.)*
 2. Providers hide behind a small runtime-checkable `SecondBrain` protocol
    (six methods), selected only from configuration (`second_brain.provider`,
    default `none`); no environment variable selects a provider. With `none`

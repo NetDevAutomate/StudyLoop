@@ -20,7 +20,7 @@ import re
 from pathlib import Path
 
 from .markdown import parse_plan, render_plan
-from .models import StudyPlan, slugify, utc_now_iso
+from .models import LearningRecord, StudyPlan, slugify, utc_now_iso
 
 logger = logging.getLogger(__name__)
 
@@ -199,3 +199,66 @@ def unique_plan_id(title: str) -> str:
         candidate = f"{base}-{counter}"
         counter += 1
     return candidate
+
+
+def record_learning(
+    plan_id: str,
+    title: str,
+    *,
+    body: str = "",
+    status: str = "active",
+) -> tuple[LearningRecord, bool]:
+    """Append a learning record to ``plan_id``. Returns ``(record, created)``.
+
+    The R-93 writer: before this, :class:`LearningRecord` was constructed in
+    exactly one place — the Markdown parser — so a record existed only if the
+    learner typed it into the plan document by hand, and an xTiles wind-down's
+    learning record lived only in xTiles (inverting ADR-0010).
+
+    Parse → append → :func:`save_plan`, never an append of raw Markdown:
+    ``save_plan`` re-renders the whole document through ``render_plan``, so the
+    on-disk shape cannot drift from the renderer that the projection and
+    template guards already pin (``### LR-0004 — Title`` is the renderer's
+    business, not this function's).
+
+    Idempotent the same way the vault writer is: re-recording an existing
+    record (same title and body, case-preserved, whitespace-trimmed the way the
+    parser trims) is a no-op that returns ``(existing, False)`` and leaves the
+    file's bytes untouched. Numbering is ``max(existing) + 1`` so records can
+    cite each other and be superseded rather than renumbered.
+
+    Raises :class:`PlanNotFoundError` / :class:`InvalidPlanIdError` from the
+    load, and :class:`ValueError` for an empty title.
+    """
+    title = title.strip()
+    if not title:
+        msg = "a learning record needs a title"
+        raise ValueError(msg)
+    body = body.strip()
+    # H1-H3 lines in a body would be re-parsed as new sections or new records
+    # on the next load (_split_sections / _subsection_items split on them, and
+    # _subsection_items does not honour code fences), silently corrupting the
+    # document's structure. Refuse rather than mangle; H4+ is safe prose.
+    for line in body.splitlines():
+        if re.match(r"\A#{1,3}\s", line.strip()):
+            msg = (
+                "a learning record body cannot contain #, ## or ### headings "
+                f"(found {line.strip()!r}); use #### or deeper, or plain prose"
+            )
+            raise ValueError(msg)
+    status = status.strip() or "active"
+
+    plan = load_plan(plan_id)
+    for existing in plan.learning_records:
+        if existing.title == title and existing.body == body:
+            return existing, False
+
+    record = LearningRecord(
+        number=max((r.number for r in plan.learning_records), default=0) + 1,
+        title=title,
+        body=body,
+        status=status,
+    )
+    plan.learning_records.append(record)
+    save_plan(plan)
+    return record, True

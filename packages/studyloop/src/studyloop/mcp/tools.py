@@ -90,6 +90,41 @@ def register_tools(mcp: FastMCP) -> None:
         return {"status": "recorded"}
 
     @mcp.tool()
+    def record_plan_learning(
+        plan_id: str, title: str, body: str = "", status: str = "active"
+    ) -> dict[str, Any]:
+        """Append a learning record to a study plan (the wind-down's first write).
+
+        Record what was learned into the plan document BEFORE any second-brain
+        projection is offered: the plan Markdown is the source of truth
+        (ADR-0010), and a learning record that exists only in a second brain
+        is a record the plan does not have.
+
+        Idempotent: calling again with the same title and body changes nothing
+        and reports created=false, so a retry is always safe.
+
+        Args:
+            plan_id: The study plan id (from `studyloop plan list`).
+            title: What was learned, in one line.
+            body: The record's body, as Markdown prose.
+            status: Record status (default "active").
+        """
+        from studyloop.planning import record_learning
+        from studyloop.planning.store import InvalidPlanIdError, PlanNotFoundError
+
+        try:
+            record, created = record_learning(plan_id, title, body=body, status=status)
+        except (PlanNotFoundError, InvalidPlanIdError, ValueError) as exc:
+            raise ToolError(str(exc)) from exc
+        return {
+            "plan_id": plan_id,
+            "number": record.number,
+            "title": record.title,
+            "status": record.status,
+            "created": created,
+        }
+
+    @mcp.tool()
     def generate_flashcards(course: str, chapter: int, content: str) -> dict[str, Any]:
         """Save agent-generated flashcards to a course directory.
 
