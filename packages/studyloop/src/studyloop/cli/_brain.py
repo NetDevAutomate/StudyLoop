@@ -113,6 +113,36 @@ def status_cmd(as_json: bool) -> None:
         console.print(f"{key}: {value}", soft_wrap=True)
 
 
+@brain_group.command("wind-down")
+@click.option(
+    "--connector",
+    "connectors",
+    multiple=True,
+    metavar="NAME",
+    help="An MCP server attached in this session. Repeatable; only 'xtiles' matters.",
+)
+@click.option("--json", "as_json", is_flag=True, help="Machine-readable output.")
+def wind_down_cmd(connectors: tuple[str, ...], as_json: bool) -> None:
+    """Decide the one second-brain offer for this session's wind-down.
+
+    Emits channel/offer/sentence/reason. If offer is true, say the sentence
+    verbatim, once; otherwise say nothing about second brains. Connector state
+    is per-session — which is why this is not a field on ``brain status``, and
+    why the caller must pass --connector for each MCP server it can see.
+    """
+    from studyloop.second_brain import get_backend
+    from studyloop.second_brain.wind_down import decide_wind_down
+
+    payload = decide_wind_down(get_backend().describe(), connectors).to_json_dict()
+    if as_json:
+        # click.echo for the same reason as status: Rich soft-wraps long lines,
+        # and the sentence is a long line.
+        click.echo(json.dumps(payload, indent=2))
+        return
+    for key, value in payload.items():
+        console.print(f"{key}: {value}", soft_wrap=True)
+
+
 @brain_group.command("publish")
 @click.option(
     "--plan",
