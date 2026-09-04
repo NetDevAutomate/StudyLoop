@@ -118,7 +118,7 @@ def _seed(records: int = 2) -> StudyPlan:
         status="active",
         topics=["python"],
         mission=Mission(
-            why="Confirm the real CLI grammar and the real write path against a running app.",
+            why="Confirm the real write path against a real vault, end to end.",
             success=["A projection appears in the vault and republishing is a no-op"],
             constraints=["Throwaway vault only"],
             out_of_scope=["The learner's real vault"],
@@ -237,7 +237,17 @@ def test_full_round_trip_create_validate_remove(
         finally:
             assert intruder.read_bytes() == mine_before
 
-        # -- documentation evidence -----------------------------------------
+        # -- collect the documentation evidence, write it after cleanup ------
+        lines.append("## Validated on disk")
+        lines.append("")
+        lines.append("- every created file carries the `studyloop:` ownership marker")
+        lines.append("- the plan projection contains the title, the mission and `LR-0001`")
+        lines.append("- `Today.md` contains all three headings")
+        lines.append("- republishing wrote nothing and left every mtime unchanged")
+        lines.append(
+            "- a hand-written `Study/Plans/live-obsidian-mine.md` was refused, byte-for-byte intact"
+        )
+        lines.append("")
         lines.append("## Rendered plan projection")
         lines.append("")
         lines.append("```markdown")
@@ -250,15 +260,13 @@ def test_full_round_trip_create_validate_remove(
         lines.append(today_note.read_text(encoding="utf-8").rstrip())
         lines.append("```")
         lines.append("")
-        (evidence_dir / "round-trip.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
-        (evidence_dir / "tree.txt").write_text(
+        tree_before_removal = (
             "\n".join(
                 sorted(
                     p.relative_to(live_vault).as_posix() for p in (live_vault / "Study").rglob("*")
                 )
             )
-            + "\n",
-            encoding="utf-8",
+            + "\n"
         )
     finally:
         # -- remove ---------------------------------------------------------
@@ -267,6 +275,24 @@ def test_full_round_trip_create_validate_remove(
     for path in created:
         assert not path.exists(), f"{path} survived cleanup"
     assert not (live_vault / "Study" / "Learning Records" / PLAN_ID).exists()
+
+    # Written only now, so evidence exists for a run that completed the WHOLE
+    # round trip. A bundle written before cleanup would have described a passing
+    # create-and-validate even when removal then failed, which is the half of
+    # this test that protects a real vault.
+    lines.append("## Removed")
+    lines.append("")
+    lines.append("Every file above was deleted and its absence asserted; the empty")
+    lines.append("`Study/Learning Records/<plan>/` directory was pruned. The vault is as")
+    lines.append("the run found it.")
+    lines.append("")
+    (evidence_dir / "round-trip.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (evidence_dir / "tree.txt").write_text(
+        "# Vault contents at the validation step, BEFORE the round trip removed them.\n"
+        "# Nothing here survives the test; see the Removed section of round-trip.md.\n"
+        + tree_before_removal,
+        encoding="utf-8",
+    )
 
 
 def _seed_second_plan() -> StudyPlan:
