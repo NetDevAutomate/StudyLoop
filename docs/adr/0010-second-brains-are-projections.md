@@ -1,6 +1,7 @@
 # ADR-0010 — Second brains are projections; plan Markdown is the source of truth
 
-**Status:** Proposed, 2026-09-03. Motivated by change `openspec/changes/second-brain/`
+**Status:** Accepted, 2026-09-04 (proposed 2026-09-03; shipped as `v0.2.0`; clause 1
+amended 2026-09-04). Motivated by change `openspec/changes/archive/2026-09-04-second-brain/`
 (R-84, 0.2.0). Contract: `docs/architecture/second-brain.md`.
 
 ## Context
