@@ -163,3 +163,42 @@ def test_no_automatic_publish_call_sites() -> None:
                 if "second_brain" in line or "cli._brain" in line:
                     offenders.append(f"{path.relative_to(src)}:{number}: {line.strip()}")
     assert offenders == [], "automatic second-brain call sites:\n" + "\n".join(offenders)
+
+
+def test_no_second_brain_module_can_run_an_external_program() -> None:
+    """The withdrawn Obsidian CLI adapter must not come back by accident.
+
+    A static check over the whole package rather than a ``monkeypatch`` on
+    ``subprocess.run``: the per-operation patches elsewhere prove that one code
+    path did not spawn anything during one test, which is a weaker claim than
+    "no module in this package can". Writing the file directly is the only
+    Obsidian path, and ADR-0010 records why.
+
+    Parsed rather than grepped: the first version matched the word ``subprocess``
+    in a docstring that *promised* there was no subprocess, so the guard failed on
+    the very comment explaining the rule.
+    """
+    import ast
+    from pathlib import Path
+
+    banned_calls = {"system", "popen", "execv", "execve", "execvp", "execl", "spawnv", "spawnl"}
+    src = Path(__file__).resolve().parents[1] / "src" / "studyloop" / "second_brain"
+    offenders: list[str] = []
+    for path in sorted(src.rglob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        where = path.relative_to(src.parent)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    if alias.name.split(".")[0] == "subprocess":
+                        offenders.append(f"{where}:{node.lineno}: import {alias.name}")
+            elif isinstance(node, ast.ImportFrom):
+                if (node.module or "").split(".")[0] == "subprocess":
+                    offenders.append(f"{where}:{node.lineno}: from {node.module} import ...")
+            elif isinstance(node, ast.Attribute) and node.attr in banned_calls:
+                value = node.value
+                if isinstance(value, ast.Name) and value.id == "os":
+                    offenders.append(f"{where}:{node.lineno}: os.{node.attr}")
+    assert offenders == [], "second-brain modules reaching for a child process:\n" + "\n".join(
+        offenders
+    )

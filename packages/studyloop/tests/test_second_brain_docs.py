@@ -417,3 +417,42 @@ def test_write_documentation_samples(tmp_path) -> None:
     assert plan_sample.startswith("---\n")
     assert "## Mission" in plan_sample
     assert "## Next action" in today_sample
+
+
+def test_every_test_the_contract_page_cites_actually_exists() -> None:
+    """The contract page's whole value is that each clause names its proof.
+
+    Found the hard way: the page still cited `test_obsidian_cli.py` after the CLI
+    adapter was withdrawn, so a clause that no longer held pointed at a file that
+    no longer existed, and nothing failed. A citation nobody checks is decoration.
+
+    Module names are verified to exist; `::name` suffixes are verified to appear
+    in that module. Leading `~` marks a clause whose named test is illustrative
+    rather than a literal node id, and is skipped.
+    """
+    from pathlib import Path
+
+    tests_dir = Path(__file__).resolve().parent
+    page = (tests_dir.parents[2] / "docs" / "architecture" / "second-brain.md").read_text(
+        encoding="utf-8"
+    )
+
+    cited = re.findall(r"`(~?)(test_[a-z0-9_]+\.py)(::[a-zA-Z0-9_~]+)?`", page)
+    assert cited, "the contract page cites no tests at all"
+
+    missing: list[str] = []
+    for illustrative, module, node in cited:
+        if illustrative:
+            continue
+        path = tests_dir / module
+        if not path.is_file():
+            missing.append(module)
+            continue
+        if node:
+            name = node.removeprefix("::").lstrip("~")
+            if f"def {name}(" not in path.read_text(encoding="utf-8"):
+                missing.append(f"{module}::{name}")
+
+    assert not missing, "the contract page cites tests that do not exist: " + ", ".join(
+        sorted(set(missing))
+    )

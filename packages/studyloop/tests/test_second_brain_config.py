@@ -7,10 +7,10 @@ for the session-memory export has not asked StudyLoop to start writing study
 notes into it. So every legacy key is readable as a vault LOCATION and none of
 them may switch the provider on.
 
-*A typo must be loud.* An unknown provider or a bad ``use_cli`` value silently
-falling back to "off" is the worst outcome: the learner believes they opted in,
-nothing is ever written, and there is no signal. Each one is a one-line
-``ConfigError`` instead.
+*A typo must be loud.* An unknown provider, or a key retired with the withdrawn
+CLI adapter, silently falling back to "off" is the worst outcome: the learner
+believes they opted in, nothing is ever written, and there is no signal. Each one
+is a one-line ``ConfigError`` instead.
 """
 
 from __future__ import annotations

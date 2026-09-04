@@ -253,19 +253,12 @@ def pull_cmd(plan_id: str, as_json: bool) -> None:
 @click.argument("provider", type=click.Choice(["obsidian", "xtiles", "none"]))
 @click.option("--vault", "vault", metavar="PATH", help="Vault path (Obsidian).")
 @click.option("--folder", "folder", metavar="NAME", help="Folder inside the vault.")
-@click.option(
-    "--cli",
-    "cli_mode",
-    type=click.Choice(["auto", "on", "off"]),
-    help="Use the official Obsidian CLI when it answers. Default: auto.",
-)
 @click.option("--create", is_flag=True, help="Create the vault folder if it is missing.")
 @click.option("--json", "as_json", is_flag=True, help="Machine-readable output.")
 def enable_cmd(
     provider: str,
     vault: str | None,
     folder: str | None,
-    cli_mode: str | None,
     create: bool,
     as_json: bool,
 ) -> None:
@@ -301,8 +294,6 @@ def enable_cmd(
             section["vault_path"] = str(resolved)
         if folder is not None:
             section["folder"] = folder
-        if cli_mode is not None:
-            section["use_cli"] = cli_mode
 
     raw["second_brain"] = section
 

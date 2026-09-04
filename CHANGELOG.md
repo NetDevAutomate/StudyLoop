@@ -7,6 +7,8 @@ experience may change before `1.0.0`.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-04
+
 ### Added
 
 - An optional second-brain layer: `studyloop brain status` reports whether a
@@ -27,9 +29,8 @@ experience may change before `1.0.0`.
   same. Templates carry no ownership marker, so a note you make from one is yours.
 - `studyloop brain` publishes plans and today's study to a configured second brain,
   pulls your notes back on request, and `studyloop config init` can enable it when
-  you point StudyLoop at a vault. `studyloop doctor` reports the provider, the
-  vault and whether the optional Obsidian CLI is actually in use — but only if you
-  have configured one.
+  you point StudyLoop at a vault. `studyloop doctor` reports the provider, the vault
+  and whether that vault is writable — but only if you have configured one.
 - The project website, [www.studyloop.dev](https://www.studyloop.dev/), is linked
   from the README and the documentation home.
 - xTiles users can move today's study and their whole plan into xTiles through
