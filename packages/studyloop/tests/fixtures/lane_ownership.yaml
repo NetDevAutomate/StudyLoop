@@ -165,6 +165,14 @@ lanes:
     - pyproject.toml
     - packages/studyloop/pyproject.toml
     - uv.lock
+    # The release note is part of the version bump, not a separate act: the root
+    # and package versions, `releases/v<version>.md` and the built artefacts are
+    # all one atomic claim, enforced together by
+    # scripts/check-release-consistency.py. m5 owned `releases/**` for 0.1.0 and
+    # has finished, so 0.2.0's note comes here with the two pyproject files
+    # rather than leaving the bump un-landable.
+    - releases/**
+    - scripts/prepare-release.py
 
   m9: # second-brain process artefacts (lane/m9-second-brain-spec) — parallel with m7
     # Split out of m7 so the OpenSpec change, ADR and contract page can be
