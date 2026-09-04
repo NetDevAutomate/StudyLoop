@@ -290,3 +290,79 @@ def test_create_only_write_refuses_an_existing_file(vault) -> None:
     write_projection(target, "# Template\n", _identity(), create_only=True)
     with pytest.raises(SecondBrainError, match="already exists"):
         write_projection(target, "# Template\n", _identity(), create_only=True)
+
+
+# ---------------------------------------------------------------------------
+# O1/O4/O7 — the 2026-09-04 review's residuals
+# ---------------------------------------------------------------------------
+
+
+def test_no_directory_is_created_outside_the_vault(vault, tmp_path) -> None:
+    """O1: containment is checked BEFORE mkdir, on the nearest existing ancestor.
+
+    mkdir(parents=True) used to run first, so an ancestor swapped for a symlink
+    between projection_path and the write created directories OUTSIDE the vault
+    before the file write was refused. The refusal is not enough on its own —
+    the test's point is that nothing appears on the far side of the link.
+    """
+    outside = tmp_path / "elsewhere"
+    outside.mkdir()
+    target = projection_path(vault, "Study", "Plans/python-decorators.md")
+    # The ancestor swap, after path validation, before the write.
+    (vault / "Study").symlink_to(outside, target_is_directory=True)
+
+    with pytest.raises(SecondBrainError, match="outside the vault"):
+        write_projection(target, _rendered(), _identity())
+
+    assert list(outside.iterdir()) == [], "directories were created outside the vault"
+
+
+def test_classify_write_previews_the_replace_warning(vault) -> None:
+    """O4: a dry run must say 'would replace', not 'would write'.
+
+    classify_write returned WRITTEN for an owned-and-changed note, so --dry-run
+    could not preview the warning that was added precisely so a learner is told
+    before losing text.
+    """
+    from studyloop.second_brain.obsidian_writer import classify_write
+
+    target = projection_path(vault, "Study", "Plans/python-decorators.md")
+    write_projection(target, _rendered(), _identity())
+
+    plan = full_plan()
+    plan.mission.why = "Edited by hand since the last publish."
+    changed = render_plan_projection(plan, _identity())
+
+    assert classify_write(target, changed, _identity()).outcome is WriteOutcome.REPLACED
+    # And the counterpart: a first write must still be WRITTEN, or the warning
+    # appears on every publish and the learner learns to ignore it.
+    fresh = projection_path(vault, "Study", "Plans/other.md")
+    assert classify_write(fresh, changed, _identity()).outcome is WriteOutcome.WRITTEN
+
+
+def test_unreadable_mode_on_an_existing_note_refuses_the_replace(vault, monkeypatch) -> None:
+    """O7: never default a real note's mode to 0o644.
+
+    A learner who chmod-ed a note to 0o600 must not have it silently reopened
+    as 0o644 because one stat failed. New files keep the 0o644 default; an
+    existing note whose mode cannot be read refuses instead.
+    """
+    target = projection_path(vault, "Study", "Plans/python-decorators.md")
+    write_projection(target, _rendered(), _identity())
+
+    real_stat = Path.stat
+
+    def failing_stat(self, *args, **kwargs):
+        if self == target.path:
+            raise PermissionError(13, "Permission denied", str(self))
+        return real_stat(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "stat", failing_stat)
+
+    plan = full_plan()
+    plan.mission.why = "Changed."
+    with pytest.raises(SecondBrainError, match="permissions"):
+        write_projection(target, render_plan_projection(plan, _identity()), _identity())
+
+    monkeypatch.undo()
+    assert "Changed." not in target.path.read_text(), "the note was replaced anyway"

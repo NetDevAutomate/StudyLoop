@@ -242,6 +242,27 @@ def _assert_replaceable(
         )
 
 
+def _assert_parent_contained(target: VaultTarget, *, when: str) -> None:
+    """Refuse when ``target``'s directory no longer resolves under the vault.
+
+    Resolved on the nearest EXISTING ancestor: ``Path.resolve`` on a path whose
+    directories do not exist yet cannot follow a symlink that would be followed
+    once they do, so checking the unbuilt parent directly would pass exactly
+    when it matters (O1). ``when`` names the call site in the message so a
+    refusal says which window it caught.
+    """
+    ancestor = target.path.parent
+    while not ancestor.exists():
+        ancestor = ancestor.parent
+    try:
+        ancestor.resolve().relative_to(target.root)
+    except ValueError as exc:
+        raise SecondBrainError(
+            f"Refusing to write outside the vault: '{target.relative}' no longer "
+            f"resolves under the configured vault (checked {when})."
+        ) from exc
+
+
 @dataclass(frozen=True)
 class WriteVerdict:
     """What a write WOULD do, decided without doing it.
@@ -283,7 +304,11 @@ def classify_write(
         return WriteVerdict(WriteOutcome.WRITTEN, str(exc))
     if existing_text == rendered:
         return WriteVerdict(WriteOutcome.UNCHANGED)
-    return WriteVerdict(WriteOutcome.WRITTEN)
+    # REPLACED, not WRITTEN (O4): the real publish distinguishes creating a
+    # note from overwriting a learner's edits, and warns on the latter. A dry
+    # run that said "would write" for both could not preview the one warning
+    # that was added precisely so a learner is told before losing text.
+    return WriteVerdict(WriteOutcome.REPLACED)
 
 
 def write_projection(
@@ -336,26 +361,38 @@ def write_projection(
         # StudyLoop wrote it. Recorded so the caller can say so.
         was_replaced = True
 
+    # Containment check BEFORE anything is created (O1, 2026-09-04 review):
+    # mkdir(parents=True) used to run first, so an ancestor swapped for a
+    # symlink between projection_path and here created directories OUTSIDE the
+    # vault before the file write was refused. Checked on the nearest EXISTING
+    # ancestor, because resolve() on a not-yet-created path cannot see where a
+    # hostile symlink would send its children.
+    _assert_parent_contained(target, when="before creating directories")
+
     path.parent.mkdir(parents=True, exist_ok=True)
 
     # Re-check containment now that the parents exist: a symlink could have been
     # created since projection_path ran. The residual TOCTOU window is accepted --
     # it cannot be closed with POSIX path APIs alone -- but narrowing it to the
     # microseconds before the replace is worth the extra call.
-    try:
-        path.parent.resolve().relative_to(target.root)
-    except ValueError as exc:
-        raise SecondBrainError(
-            f"Refusing to write outside the vault: '{target.relative}' no longer "
-            "resolves under the configured vault."
-        ) from exc
+    _assert_parent_contained(target, when="after creating directories")
 
     # Replace-by-rename creates a NEW inode, so an existing note's mode has to be
     # copied across or a learner who tightened its permissions silently loses that.
+    # A file that vanished between the read above and this stat is a new file for
+    # mode purposes (the inode-identity check below still refuses the replace);
+    # any OTHER stat failure on an existing note is refused rather than defaulted
+    # (O7): silently re-opening a note the learner had locked down to 0o600 as
+    # 0o644 is exactly the loss the copy exists to prevent.
     try:
         existing_mode = stat.S_IMODE(path.stat().st_mode)
-    except OSError:
+    except FileNotFoundError:
         existing_mode = 0o644
+    except OSError as exc:
+        raise SecondBrainError(
+            f"Could not read the permissions of '{target.relative}': {exc}. "
+            "Refusing to replace it, so its mode cannot be silently widened."
+        ) from exc
 
     # delete=False, and closed by the `with handle:` block below before the
     # rename: a context manager here would delete the file we are about to
@@ -387,6 +424,14 @@ def write_projection(
                 f"Refusing to overwrite '{target.relative}': it changed while StudyLoop "
                 "was preparing the new version. Nothing was written; try again."
             )
+        # And containment one last time, immediately before the replace (O1):
+        # everything above narrowed the window; this closes it to the rename
+        # itself, which is as far as POSIX path APIs can take it.
+        try:
+            _assert_parent_contained(target, when="before the replace")
+        except SecondBrainError:
+            temp_path.unlink(missing_ok=True)
+            raise
         os.replace(temp_path, path)
     except OSError as exc:
         temp_path.unlink(missing_ok=True)

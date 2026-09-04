@@ -48,6 +48,13 @@ experience may change before `1.0.0`.
 
 ### Fixed
 
+- The Obsidian publisher closed three review residuals: containment is now
+  checked before any directory is created (a hostile ancestor symlink can no
+  longer cause directories outside the vault) and once more immediately before
+  the atomic replace; `--dry-run` now says "would replace your edits in …" —
+  with the same warning a real publish prints — instead of a plain "would
+  write"; and a note whose permissions cannot be read is refused rather than
+  silently rewritten with default permissions.
 - `get_study_history` (the MCP tool) and `studyloop plan evaluate` no longer
   fail when searching session history: the full-text query joined two tables
   that both carry a `content` column without qualifying it, and OR'd multiple
