@@ -204,11 +204,16 @@ def test_plan_authority_language_is_present(guide: str) -> None:
 
 
 def test_the_wind_down_offer_matches_the_agent_protocol(guide: str) -> None:
-    """One sentence, two files, byte-identical.
+    """One sentence, THREE locations, byte-identical (WD-3).
 
     Documentation describing a slightly different offer than the one the agent
     makes is how a learner ends up unable to tell whether the tool is behaving.
+    The third location is the CLI's own copy — what
+    ``studyloop brain wind-down --json`` actually emits — so the command, the
+    protocol and the guide cannot drift apart.
     """
+    from studyloop.second_brain.wind_down import PUBLISH_OFFER_SENTENCE
+
     protocol = (REPO_ROOT / "agents" / "shared" / "wind-down-protocol.md").read_text(
         encoding="utf-8"
     )
@@ -222,6 +227,34 @@ def test_the_wind_down_offer_matches_the_agent_protocol(guide: str) -> None:
         )
 
     assert extract(guide) == extract(protocol)
+    assert extract(protocol) == PUBLISH_OFFER_SENTENCE
+
+
+def test_the_xtiles_offer_matches_the_skill(guide: str) -> None:
+    """The xTiles channel's sentence, pinned skill ↔ CLI (WD-3, D1).
+
+    A separate sentence from the publish offer on purpose: the two channels are
+    two rules, and pinning them to one sentence would recreate the conjunction
+    the design council rejected. The skill renders it as a blockquote, so the
+    leading ``>`` is stripped before comparing.
+    """
+    from studyloop.second_brain.wind_down import XTILES_OFFER_SENTENCE
+
+    skill = (REPO_ROOT / "agents" / "skills" / "studyloop-xtiles-wind-down" / "SKILL.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert "<!-- xtiles-wind-down-offer -->" in skill
+    sentence = (
+        skill.split("<!-- xtiles-wind-down-offer -->", 1)[1]
+        .split("<!-- /xtiles-wind-down-offer -->", 1)[0]
+        .strip()
+        .removeprefix(">")
+        .strip()
+    )
+
+    assert sentence == XTILES_OFFER_SENTENCE
+    assert sentence != ""
 
 
 # ---------------------------------------------------------------------------

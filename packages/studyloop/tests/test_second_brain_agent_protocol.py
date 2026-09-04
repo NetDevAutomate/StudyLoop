@@ -45,14 +45,16 @@ def _extract_offer(path: Path) -> str:
 
 
 def test_the_wind_down_protocol_gates_the_offer_on_both_flags() -> None:
-    """`configured` alone is not enough.
+    """`configured` alone is not enough — and the decision is the CLI's.
 
     xTiles stage 1 IS configured but cannot be published to, so an agent that
     checked only `configured` would offer a command that cannot work — and would do
-    it at the end of every session.
+    it at the end of every session. Since WD-1 the protocol delegates the decision
+    to `studyloop brain wind-down --json`, but it must still EXPLAIN the two
+    flags, or a reader cannot tell why the command answers as it does.
     """
     text = WIND_DOWN.read_text(encoding="utf-8")
-    assert "studyloop brain status --json" in text
+    assert "studyloop brain wind-down --json" in text
     assert "supports_publish" in text
     assert "configured" in text
 

@@ -17,23 +17,35 @@ you, not a feature of the CLI.
 Use only during Phase 1 of `~/.agents/shared/wind-down-protocol.md`, after progress
 has been recorded with `studyloop progress "<concept>" -t <topic> -c <confidence>`.
 
-## Gate — both halves, checked every session
+## Gate — decided by the CLI, checked every session
+
+Run the decision command, naming each MCP server connected in this session:
+
+```bash
+studyloop brain wind-down --json --connector xtiles
+```
+
+Offer only when it answers `"channel": "xtiles"` with `"offer": true`. That
+happens exactly when both halves of the gate hold:
 
 1. `studyloop brain status --json` reports `provider: xtiles`. Any other provider
    means this file does not apply: an Obsidian learner has already been offered the
    publish command in Phase 1, and a learner on `none` has chosen neither.
 2. An MCP server named `xtiles` is connected in this session — its tools are
-   visible to you. If it is not, do nothing and say nothing about xTiles. Do not
-   suggest they connect one; an offer to set up a service they never asked for is
-   the thing this gate exists to prevent.
+   visible to you, and you passed `--connector xtiles` to say so. If it is not,
+   do nothing and say nothing about xTiles. Do not suggest they connect one; an
+   offer to set up a service they never asked for is the thing this gate exists
+   to prevent.
 
-If either half is false, continue the wind-down without mentioning xTiles at all.
+If `offer` is false, continue the wind-down without mentioning xTiles at all.
 
 ## The offer
 
-Offer once, in one line:
+Offer once, in one line — the `sentence` the command returned, verbatim:
 
+<!-- xtiles-wind-down-offer -->
 > Want me to add today's learning record and the next review to your xTiles project? Yes or no — I'll only ask once.
+<!-- /xtiles-wind-down-offer -->
 
 On **yes**, follow prompt P3 from the Second Brain guide: one learning-record page
 under the plan's project, one dated planner task for the next review, then say what

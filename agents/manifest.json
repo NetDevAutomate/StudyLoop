@@ -3,63 +3,63 @@
   "agents": {
     "claude/socratic-mentor.md": {
       "hash": "42880ffa80484ec9",
-      "updated": "2026-09-03"
+      "updated": "2026-09-04"
     },
     "codex/AGENTS.md": {
       "hash": "23dc3d4fbdea89c3",
-      "updated": "2026-09-03"
+      "updated": "2026-09-04"
     },
     "kiro/study-mentor.json": {
       "hash": "c9f2302ebc8d3c39",
-      "updated": "2026-09-03"
+      "updated": "2026-09-04"
     },
     "opencode/study-mentor.md": {
       "hash": "0ff72c058de9f7d2",
-      "updated": "2026-09-03"
+      "updated": "2026-09-04"
     },
     "pi/AGENTS.md": {
       "hash": "8706855f619c71b5",
-      "updated": "2026-09-03"
+      "updated": "2026-09-04"
     },
     "shared/audhd-framework.md": {
       "hash": "8b694064b100741f",
-      "updated": "2026-09-03"
+      "updated": "2026-09-04"
     },
     "shared/break-science.md": {
       "hash": "74541a44431f7f6a",
-      "updated": "2026-09-03"
+      "updated": "2026-09-04"
     },
     "shared/knowledge-bridging.md": {
       "hash": "adb4221cda83498f",
-      "updated": "2026-09-03"
+      "updated": "2026-09-04"
     },
     "shared/network-bridges.md": {
       "hash": "8af4732b77cc15ae",
-      "updated": "2026-09-03"
+      "updated": "2026-09-04"
     },
     "shared/session-protocol.md": {
       "hash": "b58178df20cb9008",
-      "updated": "2026-09-03"
+      "updated": "2026-09-04"
     },
     "shared/socratic-engine.md": {
       "hash": "42738fba9479ec14",
-      "updated": "2026-09-03"
+      "updated": "2026-09-04"
     },
     "shared/teach-back-protocol.md": {
       "hash": "9bbe8831f1c74837",
-      "updated": "2026-09-03"
+      "updated": "2026-09-04"
     },
     "shared/wind-down-protocol.md": {
-      "hash": "d9d0dde390e03b4c",
-      "updated": "2026-09-03"
+      "hash": "486c2e70b07e5b0c",
+      "updated": "2026-09-04"
     },
     "skills/studyloop-xtiles-wind-down/SKILL.md": {
-      "hash": "aa31c59092ffe929",
-      "updated": "2026-09-03"
+      "hash": "251c56e167ebf160",
+      "updated": "2026-09-04"
     },
     "skills/studyloop-xtiles-wind-down/references/harnesses.md": {
       "hash": "e3f0ebc00ee792a8",
-      "updated": "2026-09-03"
+      "updated": "2026-09-04"
     }
   }
 }

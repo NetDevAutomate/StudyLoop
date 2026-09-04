@@ -48,14 +48,18 @@ Standard end-of-session tasks from session-protocol.md:
 
 4. Set next review dates via spaced repetition schedule.
 
-5. Offer the second brain — **only if one is configured, and only once**:
+5. Offer the second brain — **only if the decision command says to, and only once**:
 
    ```bash
-   studyloop brain status --json
+   studyloop brain wind-down --json --connector <name>
    ```
 
-   If **both** `configured` and `supports_publish` are `true`, offer exactly once,
-   in one sentence:
+   Pass one `--connector NAME` for each MCP server connected in this session
+   (only `xtiles` affects the decision; omit the flag when none are). The
+   command answers with `channel`, `offer`, `sentence` and `reason`.
+
+   If `offer` is `true`, say `sentence` **verbatim, exactly once**. For the
+   `publish` channel that sentence is:
 
    <!-- wind-down-offer -->
    Want me to publish today's study record and this plan to your Obsidian vault (Study/Today.md and Study/Plans/<plan-id>.md)? Yes or no — I'll only ask once.
@@ -67,13 +71,20 @@ Standard end-of-session tasks from session-protocol.md:
    studyloop brain publish --today --plan <plan-id>
    ```
 
-   On **no**, or in any other case, **say nothing about second brains at all** and
-   continue the wind-down. Do not repeat the offer later in the session.
+   For the `xtiles` channel, follow the `studyloop-xtiles-wind-down` skill,
+   which carries its own pinned sentence.
 
-   Both flags are required, not just `configured`. A learner on xTiles *is*
-   configured but has no programmatic backend (`supports_publish: false`), so
-   offering the publish command would name something that cannot work — and would
-   do it at the end of every session.
+   If `offer` is `false`, or on **no**, **say nothing about second brains at
+   all** and continue the wind-down. Do not repeat the offer later in the
+   session.
+
+   The command computes two separate rules — not one conjunction. `configured`
+   plus `supports_publish` (both from `studyloop brain status --json`) selects
+   the publish offer; provider `xtiles` plus a connected `xtiles` connector
+   selects the skill's offer. A learner on xTiles *is* configured but has no
+   programmatic backend (`supports_publish: false`), so the publish sentence
+   would name something that cannot work — which is why the decision lives in
+   the command rather than in this prose.
 
 ### Phase 2: Consolidation Guidance (spoken if voice mode is active)
 

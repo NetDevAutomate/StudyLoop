@@ -7,6 +7,15 @@ experience may change before `1.0.0`.
 
 ## [Unreleased]
 
+### Added
+
+- `studyloop brain wind-down --json [--connector NAME]...` answers the one
+  question the end-of-session protocol needs: which second-brain offer to make,
+  if any. It returns the channel, whether to offer, the exact sentence to say,
+  and why — so an agent no longer derives the decision from flags, and the
+  offer sentence cannot drift between the CLI, the protocol, the skill and the
+  guide (they are pinned byte-identical by tests).
+
 ### Fixed
 
 - `get_study_history` (the MCP tool) and `studyloop plan evaluate` no longer
