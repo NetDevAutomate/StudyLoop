@@ -124,6 +124,11 @@ FULL_PAGE_ENV = "STUDYLOOP_LIVE_XTILES_ALLOW_FULL_PAGE_SHOT"
 #: timeout before anyone looked.
 DEFAULT_LOGIN_PATH = "/user/login"
 
+#: Text that means the page is xTiles' not-found page rather than a view.
+#:
+#: Needed because an absence on a 404 looks exactly like a successful deletion.
+_NOT_FOUND_MARKERS = ("Page not found", "Oops!", "Return to Home")
+
 #: A prefix shorter than this is not a scope, it is a substring that could match
 #: anything in the owner's workspace.
 MIN_PROBE_LENGTH = 12
@@ -429,18 +434,40 @@ def _require_loaded_xtiles_view(page, probe: str) -> None:
             f"ended up on {_origin(page.url)}, not the host under test ({expected}). "
             "An absence there proves nothing."
         )
-    # Something of the app's own chrome must be present. Deliberately weak and
-    # structural rather than a brittle selector: what matters is "this is an
-    # application view that finished rendering", not which build of it.
+    # "The app rendered, and this is not an error page."
+    #
+    # The first version waited for `main`/`nav`/`[role=main]`. Measured against the
+    # real signed-in app: it has NONE of those — zero landmark elements on any page.
+    # So that check could only ever fail, which is its own kind of useless.
+    #
+    # It did earn its place immediately though: `https://xtiles.app/my/tasks`
+    # redirects to `/en/tasks`, which is a **404 page**, and the check refused to
+    # read an absence from it. That is exactly the failure mode a council flagged —
+    # an absent probe on an error page proving nothing about deletion.
+    #
+    # So the property is stated directly instead of through a proxy: something
+    # rendered, and it is not the not-found page.
+    body = page.locator("body")
     try:
-        page.locator("main, [role='main'], nav, [role='navigation']").first.wait_for(
-            state="visible", timeout=20000
+        body.wait_for(state="visible", timeout=20000)
+        page.wait_for_function(
+            "() => document.body && document.body.innerText.trim().length > 40",
+            timeout=20000,
         )
     except Exception as exc:
         pytest.fail(
-            f"no application chrome rendered at {_redact(page.url)} within 20s, so an "
-            f"absent {probe!r} would prove nothing about deletion. ({exc})"
+            f"nothing rendered at {_redact(page.url)} within 20s, so an absent "
+            f"{probe!r} would prove nothing about deletion. ({exc})"
         )
+
+    text = body.inner_text()
+    for marker in _NOT_FOUND_MARKERS:
+        if marker.lower() in text.lower():
+            pytest.fail(
+                f"{_redact(page.url)} is an error page ({marker!r}), so nothing can "
+                f"be concluded from {probe!r} being absent. Measured: /my/tasks "
+                "redirects to a 404 — check the URL your assistant returned."
+            )
 
 
 def test_the_assistants_write_is_visible_to_the_learner(
