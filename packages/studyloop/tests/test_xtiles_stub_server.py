@@ -88,7 +88,9 @@ async def test_handshake_tools_and_call_log(tmp_path: Path) -> None:
         assert not tile_call.isError
         # The one bit of response fidelity the prompts depend on: the planner
         # tile is the shape that returns a URL.
-        assert "resource_url" in tile_call.content[0].text
+        tile_payload = tile_call.content[0]
+        assert tile_payload.type == "text"
+        assert "resource_url" in tile_payload.text
 
         page_call = await session.call_tool(
             "xtiles_create_view_from_markdown",
