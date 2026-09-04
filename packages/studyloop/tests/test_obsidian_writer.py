@@ -200,8 +200,22 @@ def test_changed_content_is_replaced(vault) -> None:
     plan = full_plan()
     plan.mission.why = "A different reason entirely."
     changed = render_plan_projection(plan, _identity())
-    assert write_projection(target, changed, _identity()) is WriteOutcome.WRITTEN
+    # REPLACED, not WRITTEN. The distinction was added after a validation council
+    # noticed that a learner whose hand-edited projection was overwritten saw the
+    # same `written <path>` line as a first publish — the writer always knew the
+    # difference, and now says so. This test's own name was already the right word.
+    assert write_projection(target, changed, _identity()) is WriteOutcome.REPLACED
     assert "A different reason entirely." in target.path.read_text()
+
+
+def test_a_first_write_is_written_not_replaced(vault) -> None:
+    """The counterpart, so REPLACED carries information.
+
+    If a first write also reported REPLACED, the warning it drives would appear on
+    every publish and a learner would learn to ignore it.
+    """
+    target = projection_path(vault, "Study", "Plans/python-decorators.md")
+    assert write_projection(target, _rendered(), _identity()) is WriteOutcome.WRITTEN
 
 
 def test_atomic_replace_occurs_in_target_directory(vault, monkeypatch) -> None:

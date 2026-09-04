@@ -63,9 +63,18 @@ class WriteOutcome(Enum):
     ``UNCHANGED`` is a first-class outcome rather than a silent no-op because the
     CLI reports it: a learner republishing at every wind-down should see that
     nothing needed rewriting.
+
+    ``REPLACED`` exists for the same reason one level up. The writer always knew the
+    difference between creating a note and overwriting one whose bytes had drifted --
+    it compares them to decide whether to write at all -- but it reported both as
+    ``WRITTEN``. So a learner who had typed into a projection saw the identical
+    success line as someone publishing for the first time, and their words were gone
+    with nothing said. A validation council found that by reading the journey
+    evidence; the information was one frame below the surface that needed it.
     """
 
     WRITTEN = "written"
+    REPLACED = "replaced"
     UNCHANGED = "unchanged"
 
 
@@ -307,6 +316,7 @@ def write_projection(
 
     existing_text = read_text_if_present(path)
     identity_before = _file_identity(path)
+    was_replaced = False
 
     if existing_text is not None:
         if create_only:
@@ -322,6 +332,9 @@ def write_projection(
         if existing_text == rendered:
             logger.debug("second brain: %s is already current", target.relative)
             return WriteOutcome.UNCHANGED
+        # Owned, present, and different: the learner has edited this note since
+        # StudyLoop wrote it. Recorded so the caller can say so.
+        was_replaced = True
 
     path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -380,7 +393,7 @@ def write_projection(
         raise SecondBrainError(
             f"Could not write '{target.relative}': {exc}. The existing note was left untouched."
         ) from exc
-    return WriteOutcome.WRITTEN
+    return WriteOutcome.REPLACED if was_replaced else WriteOutcome.WRITTEN
 
 
 def read_user_note(target: VaultTarget) -> str | None:

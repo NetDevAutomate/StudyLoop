@@ -328,3 +328,183 @@ def test_template_install_round_trip(backend, live_vault: Path) -> None:
 
     for path in paths:
         assert not path.exists()
+
+
+# ---------------------------------------------------------------------------
+# A glance at the real application, when it is already showing the test vault.
+#
+# The rule, chosen over two alternatives by arbitration
+# (reviews/2026-09-04-user-harness/PLAN.md): this NEVER launches Obsidian and never
+# switches its vault. One planner proposed opening the throwaway vault through an
+# `obsidian://` URI; that was rejected because registering a stranger vault in the
+# vault switcher of a tool the owner uses daily is an unverified side effect on a
+# real environment, and no documentation image is worth it.
+#
+# So this observes, or it stands aside:
+#
+#   app not running        -> skip, and say the file evidence still stands
+#   running, wrong vault   -> FAIL. A capture would photograph someone's real notes.
+#   running, right vault   -> capture that one window
+#
+# The capture mechanism itself is UNVERIFIED end to end: Obsidian was not running at
+# any point while this was written, and reading a window's title needs macOS
+# Accessibility permission that a terminal may not hold. Every branch therefore
+# reports what it could not do rather than guessing, and the evidence file records
+# which branch ran.
+# ---------------------------------------------------------------------------
+
+#: Opt-in for the screen-rectangle capture. Separate from STUDYLOOP_LIVE_OBSIDIAN
+#: because it carries a different question: not "may I touch a vault" but "may I
+#: photograph a region of your screen".
+ALLOW_SCREEN_RECT_ENV = "STUDYLOOP_LIVE_OBSIDIAN_ALLOW_SCREEN_RECT"
+
+_WINDOW_TITLE_SCRIPT = """
+tell application "System Events"
+    if not (exists process "Obsidian") then return "NOT_RUNNING"
+    tell process "Obsidian"
+        if (count of windows) is 0 then return "NO_WINDOWS"
+        return name of window 1
+    end tell
+end tell
+"""
+
+_WINDOW_BOUNDS_SCRIPT = """
+tell application "System Events"
+    tell process "Obsidian"
+        set p to position of window 1
+        set s to size of window 1
+        return (item 1 of p as text) & "," & (item 2 of p as text) & "," & ¬
+               (item 1 of s as text) & "," & (item 2 of s as text)
+    end tell
+end tell
+"""
+
+
+def _obsidian_is_running() -> bool:
+    """Cheap, permission-free check before anything that needs Accessibility."""
+    import subprocess
+
+    return (
+        subprocess.run(["pgrep", "-x", "Obsidian"], capture_output=True, check=False).returncode
+        == 0
+    )
+
+
+def _osascript(script: str) -> tuple[bool, str]:
+    """Run AppleScript. Returns (ok, output-or-reason).
+
+    Accessibility permission is the usual reason this fails, and the failure has to
+    be reported rather than treated as "no window" — the two are not the same, and
+    conflating them would let a wrong-vault window through as a skip.
+    """
+    import subprocess
+
+    completed = subprocess.run(
+        ["osascript", "-e", script], capture_output=True, text=True, check=False
+    )
+    if completed.returncode != 0:
+        return False, (completed.stderr or completed.stdout).strip()
+    return True, completed.stdout.strip()
+
+
+def test_the_throwaway_vault_window_is_captured_when_already_open(
+    live_vault: Path, evidence_dir: Path
+) -> None:
+    """Observe the real app, or stand aside and say why."""
+    import subprocess
+
+    if not _obsidian_is_running():
+        (evidence_dir / "DEGRADED.txt").write_text(
+            "Obsidian was not running, so no window was captured.\n\n"
+            "This is not a failure. StudyLoop's only Obsidian integration is writing\n"
+            "files, and `test_full_round_trip_create_validate_remove` proves that\n"
+            "against this same vault. A picture of the application is a nice-to-have\n"
+            "on top of it.\n\n"
+            "To capture one: open Obsidian on the "
+            f"{ALLOWED_LIVE_VAULTS[0]} vault and rerun.\n",
+            encoding="utf-8",
+        )
+        pytest.skip(
+            "Obsidian is not running; the file-level round trip still stands. "
+            f"Open the {ALLOWED_LIVE_VAULTS[0]} vault to capture a window."
+        )
+
+    ok, title = _osascript(_WINDOW_TITLE_SCRIPT)
+    if not ok:
+        (evidence_dir / "DEGRADED.txt").write_text(
+            "Obsidian is running, but its window title could not be read:\n"
+            f"  {title}\n\n"
+            "This is usually macOS Accessibility permission, which the terminal\n"
+            "running the tests must be granted. No capture was attempted: without\n"
+            "the title there is no way to prove the window belongs to the throwaway\n"
+            "vault rather than to real notes.\n",
+            encoding="utf-8",
+        )
+        pytest.skip(f"cannot read Obsidian's window title ({title}); no capture attempted")
+
+    if title in {"NOT_RUNNING", "NO_WINDOWS"}:
+        pytest.skip(f"Obsidian reports {title}; nothing to capture")
+
+    # The one branch that must FAIL rather than skip. A window showing a vault we do
+    # not recognise is, by definition, someone's real notes.
+    if not any(allowed in title for allowed in ALLOWED_LIVE_VAULTS):
+        pytest.fail(
+            f"Obsidian's front window is {title!r}, which does not name an allowed "
+            f"throwaway vault ({', '.join(ALLOWED_LIVE_VAULTS)}). Refusing to "
+            "capture: that window is showing real notes. Switch Obsidian to the "
+            "test vault, or close it and let this skip."
+        )
+
+    ok, bounds = _osascript(_WINDOW_BOUNDS_SCRIPT)
+    if not ok:
+        pytest.skip(f"window bounds unavailable ({bounds}); no capture attempted")
+
+    # `-R` captures a screen RECTANGLE, not a window. Whatever sits on top of that
+    # rectangle at that moment -- another app, a notification, a password manager, a
+    # tooltip -- is in the image. A validation council caught the first version of
+    # this claiming "window rectangle only, never the desktop", which is materially
+    # stronger than what the flag does. Obtaining a real CGWindowID for `-l` needs a
+    # native window-list binding this repo does not depend on.
+    #
+    # So the capture takes its own opt-in. The risk here is that a human ends up with
+    # a picture of something they did not mean to publish, and the only real
+    # mitigation is that they said yes to this specific thing.
+    if not os.environ.get(ALLOW_SCREEN_RECT_ENV):
+        (evidence_dir / "DEGRADED.txt").write_text(
+            "Obsidian is open on the throwaway vault, and no capture was taken.\n\n"
+            "The only mechanism available without a native window-list binding is\n"
+            "`screencapture -R<rect>`, which grabs a screen RECTANGLE. Anything\n"
+            "overlapping the window at that instant is included: another application,\n"
+            "a notification, a password manager, a tooltip.\n\n"
+            f"Set {ALLOW_SCREEN_RECT_ENV}=1 to take it anyway, knowing that, and look\n"
+            "at the image before it goes anywhere.\n",
+            encoding="utf-8",
+        )
+        pytest.skip(
+            f"set {ALLOW_SCREEN_RECT_ENV}=1 to allow a screen-rectangle capture "
+            "(it can include whatever overlaps the window)"
+        )
+
+    target = evidence_dir / "window.png"
+    captured = subprocess.run(
+        ["screencapture", "-x", f"-R{bounds}", str(target)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert captured.returncode == 0, f"screencapture failed: {captured.stderr or captured.stdout}"
+    assert target.is_file() and target.stat().st_size > 0, "no image was written"
+
+    (evidence_dir / "window.txt").write_text(
+        "Live Obsidian glance\n"
+        "====================\n\n"
+        f"Window title : {title}\n"
+        f"Vault segment: matched one of {ALLOWED_LIVE_VAULTS}\n"
+        f"Captured     : {target.name}\n"
+        f"Mechanism    : screencapture -R{bounds} -- a SCREEN RECTANGLE where the\n"
+        "               window was, NOT a window capture. Anything overlapping that\n"
+        "               rectangle is in the image. Look before publishing.\n\n"
+        "The app was already open on the throwaway vault. This test never launches\n"
+        "Obsidian and never switches its vault.\n",
+        encoding="utf-8",
+    )

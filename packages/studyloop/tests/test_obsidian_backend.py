@@ -347,3 +347,62 @@ def test_backlinks_are_appended_when_enabled(vault, plans_dir, monkeypatch) -> N
     text = (vault / "Study" / "Plans" / "python-decorators.md").read_text()
     assert "## Related notes" in text
     assert "[[Python]]" in text
+
+
+def test_replacing_an_edited_projection_warns_by_name(backend, vault) -> None:
+    """A discarded edit must be distinguishable from an ordinary write.
+
+    Found by a validation council reading the journey evidence rather than the code.
+    `test_edited_projection_is_replaced_from_source` already proved the *bytes* are
+    replaced, and the journey asserted that the output "names the file" — but the
+    output for a replaced edit was `written Study/Plans/<id>.md`, character for
+    character what a first publish prints. So a learner who spent ten minutes typing
+    into the projection saw a success line and no hint that their words were gone.
+
+    The writer already knew: it compares the file's actual bytes against the render
+    and only reaches the replace when they differ. That information was being
+    discarded one frame below the surface that needed it.
+    """
+    _seed("python-decorators")
+    first = backend.publish_plan("python-decorators")
+    assert first.written, first
+
+    note = vault / "Study" / "Plans" / "python-decorators.md"
+    note.write_text(
+        note.read_text(encoding="utf-8") + "\n\nI typed this by hand.\n",
+        encoding="utf-8",
+    )
+
+    result = backend.publish_plan("python-decorators")
+    assert "Study/Plans/python-decorators.md" in result.written
+
+    assert result.warnings, (
+        "replacing a hand-edited projection produced no warning, so the CLI has "
+        "nothing to show that distinguishes it from a first write"
+    )
+    warning = "\n".join(result.warnings)
+    assert "Study/Plans/python-decorators.md" in warning, (
+        f"the warning does not name the file whose edit was discarded: {warning!r}"
+    )
+    assert "replaced" in warning.lower() or "edit" in warning.lower(), (
+        f"the warning does not say what happened to the learner's text: {warning!r}"
+    )
+
+
+def test_a_first_write_produces_no_replacement_warning(backend) -> None:
+    """The counterpart, so the warning means something.
+
+    A warning on every publish is a warning nobody reads.
+    """
+    _seed("python-decorators")
+    result = backend.publish_plan("python-decorators")
+    assert result.written
+    assert not [w for w in result.warnings if "replaced" in w.lower()], result.warnings
+
+
+def test_an_unchanged_republish_produces_no_replacement_warning(backend) -> None:
+    _seed("python-decorators")
+    backend.publish_plan("python-decorators")
+    result = backend.publish_plan("python-decorators")
+    assert result.unchanged
+    assert not [w for w in result.warnings if "replaced" in w.lower()], result.warnings

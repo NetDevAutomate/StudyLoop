@@ -154,6 +154,18 @@ release-consistency:
 prepare-release version:
     uv run python scripts/prepare-release.py {{version}}
 
+# The user-representative journeys: the real CLI driven through a learner's week in
+# a hermetic world. Default-on (they run in `just test`), so this recipe is only for
+# running them alone while iterating.
+journeys:
+    uv run --group dev pytest packages/studyloop/tests/journeys/ -v
+
+# Publishable pictures of the notes StudyLoop writes. Rendered for reading and
+# labelled in their own pixels as NOT being Obsidian -- see the script's docstring
+# for why a screenshot of the app itself is a separate, opt-in thing.
+vault-screenshots out:
+    uv run python scripts/capture-vault-screenshots.py --out {{out}}
+
 # The two opt-in second-brain checks against real products. Neither runs in
 # `preflight`, `release-check` or CI: one writes into a real Obsidian vault, the
 # other signs in to a real xTiles account. Both refuse to run without an explicit
