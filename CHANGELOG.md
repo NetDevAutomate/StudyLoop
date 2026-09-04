@@ -16,6 +16,25 @@ experience may change before `1.0.0`.
   offer sentence cannot drift between the CLI, the protocol, the skill and the
   guide (they are pinned byte-identical by tests).
 
+### Changed
+
+- The xTiles guidance now matches what a person actually saw running the three
+  prompts end to end (Kiro CLI 2.21.0, 2026-09-04). The planner prompt creates a
+  planner tile and reports its URL — the one shape the live UI check validates.
+  The project prompt no longer promises a Kanban board or refreshing collection
+  pages: the connector cannot create board views and refuses to patch collection
+  pages on any tier. The wind-down prompt now says to skip the Review task when
+  `get_due_cards` returns nothing due, rather than inventing a date. The guide
+  also now says that the next action and due reviews sent to xTiles reflect your
+  whole study history (they are not plan-scoped), that per-write permission
+  prompts are xTiles' statement about its connector and what you see depends on
+  your assistant, that the xTiles learning record is not written back into the
+  plan document, and that planner tiles can be removed through the connector
+  while pages and projects must be deleted in the xTiles interface by hand.
+- `studyloop install agents` no longer links the xTiles wind-down skill into
+  `~/.config/opencode/skills`: OpenCode already lists the shared skills hub as a
+  global search path, so the extra link risked a duplicate listing.
+
 ### Fixed
 
 - `get_study_history` (the MCP tool) and `studyloop plan evaluate` no longer

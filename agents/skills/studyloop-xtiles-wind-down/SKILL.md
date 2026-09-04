@@ -57,7 +57,9 @@ On **no**, continue the wind-down and do not raise it again this session.
 ## What this sends, and where
 
 The summary, the plan title and the next review date go to the model service
-backing this session and, through the connector, to xTiles' cloud. xTiles asks
+backing this session and, through the connector, to xTiles' cloud. The due
+reviews come from the learner's whole study state, not one plan's — nothing in
+these tools is plan-scoped. xTiles asks
 permission per request, and your assistant reaches only what the learner's own
 xTiles account can already see — nothing is shared with other users. StudyLoop
 stores no xTiles credential and keeps no copy of what was written: the sign-in
