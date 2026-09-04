@@ -7,6 +7,14 @@ experience may change before `1.0.0`.
 
 ## [Unreleased]
 
+### Fixed
+
+- `get_study_history` (the MCP tool) and `studyloop plan evaluate` no longer
+  fail when searching session history: the full-text query joined two tables
+  that both carry a `content` column without qualifying it, and OR'd multiple
+  `MATCH` constraints, which FTS5 refuses. Multi-word topics such as
+  "window functions" now also match as phrases rather than scattered terms.
+
 ## [0.2.0] - 2026-09-04
 
 ### Added
