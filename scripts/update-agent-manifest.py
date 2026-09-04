@@ -18,7 +18,9 @@ TRACKED_FILES: dict[str, list[str]] = {
         "claude/study-setup.md",
         "claude/study-audio.md",
     ],
-    "kiro": ["kiro/study-mentor.json"],
+    "kiro": [
+        "kiro/study-mentor.json",
+    ],
     "opencode": ["opencode/study-mentor.md"],
     "codex": ["codex/AGENTS.md"],
     "pi": ["pi/AGENTS.md"],
@@ -33,6 +35,10 @@ SHARED_FILES = [
     "shared/network-bridges.md",
     "shared/break-science.md",
     "shared/wind-down-protocol.md",
+    # The xTiles skill: one body plus its per-harness notes, installed once into
+    # ~/.agents/skills and symlinked into each harness from there.
+    "skills/studyloop-xtiles-wind-down/SKILL.md",
+    "skills/studyloop-xtiles-wind-down/references/harnesses.md",
 ]
 
 

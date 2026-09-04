@@ -7,6 +7,55 @@ experience may change before `1.0.0`.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-04
+
+### Added
+
+- An optional second-brain layer: `studyloop brain status` reports whether a
+  provider is configured, and `studyloop brain publish --plan <id>` publishes a
+  projection of that plan. Nothing is written anywhere until you opt in with a
+  `second_brain:` section in `config.yaml`, and nothing ever writes back to the
+  plan document.
+- Publish your study plans, today's next action and due reviews into an Obsidian
+  vault as safe, idempotent notes StudyLoop owns. Your own notes are never
+  overwritten: StudyLoop writes only files carrying its own marker, only inside
+  the folder you name, never through a symbolic link, and it reads your personal
+  notes for a plan only when you ask it to with `studyloop brain pull`.
+  Republishing an unchanged plan writes nothing at all. Nothing in this feature
+  runs an external program or stores a credential.
+- An Obsidian study-plan template ships with StudyLoop
+  (`studyloop brain template --install`); it mirrors the plan document's sections,
+  so a plan you write by hand in your vault and one StudyLoop published look the
+  same. Templates carry no ownership marker, so a note you make from one is yours.
+- `studyloop brain` publishes plans and today's study to a configured second brain,
+  pulls your notes back on request, and `studyloop config init` can enable it when
+  you point StudyLoop at a vault. `studyloop doctor` reports the provider, the vault
+  and whether that vault is writable — but only if you have configured one.
+- The project website, [www.studyloop.dev](https://www.studyloop.dev/), is linked
+  from the README and the documentation home.
+- xTiles users can move today's study and their whole plan into xTiles through
+  their assistant's MCP connector: the Second Brain guide ships the three prompts,
+  and `studyloop install agents` installs an opt-in wind-down skill into every
+  harness it detects. The skill is silent unless your provider is `xtiles` and an
+  `xtiles` server is connected, and StudyLoop stores no xTiles credential.
+
+### Changed
+
+- The wind-down protocol offers, once, to publish the session to your second brain
+  when one is configured that can be published to. It says nothing otherwise.
+
+### Notes for anyone who ran a pre-release build
+
+- An optional Obsidian CLI adapter existed during development and was **withdrawn
+  before release**, after a multi-model review found that it could write into a vault
+  other than the one you configured, and that it passed your plan text as a
+  command-line argument where other users on the machine could read it. StudyLoop
+  writes notes directly instead, which is all this feature ever needed.
+- The keys `use_cli`, `vault_name`, `template` and `daily_note` are gone. If any of
+  them is still in your `config.yaml`, StudyLoop now says so and stops rather than
+  ignoring it — `daily_note` used to append a line to your own daily note, and you
+  should know that it no longer does.
+
 ## [0.1.0] - 2026-09-03
 
 ### Added

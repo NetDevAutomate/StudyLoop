@@ -3,7 +3,7 @@ name = "studyloop-workspace"
 # Must equal packages/studyloop/pyproject.toml's version -- enforced by
 # scripts/check-release-consistency.py (R-39; this drifted to 1.0.0 while the
 # package sat at 0.1.0, unnoticed because the script never read this file).
-version = "0.1.0"
+version = "0.2.0"
 description = "StudyLoop: AuDHD-aware Socratic mentoring with AI session management"
 requires-python = ">=3.12"
 readme = "README.md"
@@ -91,7 +91,7 @@ exclude = [
 
 [tool.pytest.ini_options]
 testpaths = ["packages/agent-session-tools/tests", "packages/studyloop/tests"]
-addopts = "--import-mode=importlib -m 'not integration and not e2e and not live_kiro and not live_provider'"
+addopts = "--import-mode=importlib -m 'not integration and not e2e and not live_kiro and not live_provider and not live_obsidian'"
 # Multi-package workspace: both packages/studyloop/tests/ and
 # packages/agent-session-tools/tests/ have their own conftest.py.
 # Without this, pytest's plugin manager tries to register both under
@@ -119,5 +119,6 @@ markers = [
     "e2e: end-to-end tests requiring full stack (tmux, ttyd, web server)",
     "live_kiro: dogfood tests that spawn a real kiro-cli acp child",
     "live_provider: tests that call a real LLM provider",
+    "live_obsidian: tests that write into a dedicated throwaway Obsidian vault on the owner's machine and read the notes back (opt in with -m live_obsidian)",
     "allow_server_errors: test deliberately drives the server into an unhandled exception, so the per-test server-log check is skipped for it",
 ]

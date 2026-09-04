@@ -96,8 +96,6 @@ lanes:
     - packages/agent-session-tools/src/agent_session_tools/config_loader.py
 
   m5: # public contract, packaging, functional UX (lane/m5-contract-packaging) — after M2 merges
-    - pyproject.toml
-    - packages/studyloop/pyproject.toml
     - packages/agent-session-tools/pyproject.toml
     - uv.lock
     - THIRD-PARTY-NOTICES.md
@@ -128,6 +126,67 @@ lanes:
     - packages/studyloop/src/studyloop/web/static/js/**
     - packages/studyloop/src/studyloop/history/**
     - packages/studyloop/src/studyloop/content/index.py
+
+  # ── 2026-09 second-brain campaign (R-84, 0.2.0) ────────────────────────────
+  # Source of truth: reviews/2026-09-03-second-brain/IMPLEMENTATION-PLAN.md §4
+  # and plans/T7-openspec-adr-contract-foundations.md §4.2.
+
+  m7: # second-brain core (lane/m7-second-brain-core)
+    - packages/studyloop/src/studyloop/second_brain/**
+    - packages/studyloop/src/studyloop/cli/_brain.py
+    - packages/studyloop/src/studyloop/cli/__init__.py      # one lazy registration line
+    - packages/studyloop/src/studyloop/settings.py          # second_brain section only (§E5)
+    - packages/studyloop/src/studyloop/shared.py            # config init Q3 follow-up
+    - packages/studyloop/src/studyloop/doctor/config.py     # check_second_brain
+    - packages/studyloop/src/studyloop/cli/_doctor.py       # registration
+    - packages/studyloop/src/studyloop/planning/markdown.py # heading constants (T3)
+    - packages/studyloop/src/studyloop/planning/__init__.py
+    - packages/studyloop/src/studyloop/learning/review_service.py  # due-card extraction (T2)
+    - packages/studyloop/src/studyloop/mcp/tools.py         # due-card delegation only (T2)
+    - packages/studyloop/src/studyloop/data/templates/**    # Obsidian templates (T3)
+    - agents/shared/wind-down-protocol.md
+    - agents/shared/session-protocol.md
+    - agents/claude/socratic-mentor.md
+    - agents/codex/AGENTS.md
+    - agents/manifest.json
+    - mkdocs.yml
+    # The project website (https://www.studyloop.dev) is referenced from these
+    # three surfaces in the same commit, so a reader arriving at any of them can
+    # find the others. README.md and the packaging metadata were m5's for 0.1.0;
+    # m5 has finished, and splitting one link across two lanes would leave the
+    # repo advertising a site from one place and not the other.
+    - README.md
+    # SOLE owner for this campaign (DECISIONS §F17 supersedes F13): m5 finished
+    # with 0.1.0, so both pyproject files move here for the live_obsidian marker
+    # and the project-URL entry. uv.lock comes with them: `just release-check`
+    # runs pip-audit against the LOCKED versions, so a security bump is a lock
+    # refresh, and it cannot be split from the campaign that has to leave that
+    # gate green.
+    - pyproject.toml
+    - packages/studyloop/pyproject.toml
+    - uv.lock
+    # The release note is part of the version bump, not a separate act: the root
+    # and package versions, `releases/v<version>.md` and the built artefacts are
+    # all one atomic claim, enforced together by
+    # scripts/check-release-consistency.py. m5 owned `releases/**` for 0.1.0 and
+    # has finished, so 0.2.0's note comes here with the two pyproject files
+    # rather than leaving the bump un-landable.
+    - releases/**
+    - scripts/prepare-release.py
+
+  m9: # second-brain process artefacts (lane/m9-second-brain-spec) — parallel with m7
+    # Split out of m7 so the OpenSpec change, ADR and contract page can be
+    # written while the code lands: the two sets of files are disjoint, and the
+    # artefacts only restate decisions the approved plans already fixed.
+    - openspec/changes/second-brain/**
+    - docs/adr/**
+    - docs/architecture/second-brain.md
+    - .gitignore
+
+  m8: # xTiles stage 1 (lane/m8-xtiles-stage1) — after m7 and m9 merge (§F18)
+    - agents/**                                             # skill body, wrappers, AGENTS.md paragraphs, manifest
+    - scripts/update-agent-manifest.py
+    - packages/studyloop/src/studyloop/installers.py        # two LinkSpec rows; reassigned from m5
 
 # Any lane may touch these. Docs and the changelog are shared because plan
 # principle 6 requires them to land in the same commit as the code they

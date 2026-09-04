@@ -321,6 +321,7 @@ class TestWebPasswordViaEnvNotArgv:
             "#!/bin/sh\n"
             f'ps -p $$ -o command= > "{marker}"\n'
             f'echo "env:$STUDYLOOP_WEB_PASSWORD" >> "{marker}"\n'
+            f'echo "done" >> "{marker}"\n'
             "sleep 2\n"
         )
         fake_studyloop.chmod(0o755)
@@ -335,14 +336,23 @@ class TestWebPasswordViaEnvNotArgv:
         ):
             start_web_background("study-test", lan=True, password="s3cr3t-pw")
 
-        # Poll: the fake process needs a moment to run `ps` on itself.
-        for _ in range(60):
-            if marker.exists() and marker.stat().st_size > 0:
+        # Poll for the child's OWN completion sentinel, not for a non-empty file.
+        # The script writes argv first and the environment line second, so "the
+        # file has bytes in it" was true between the two writes: on a loaded
+        # machine this test read a one-line file and reported that the password
+        # never reached the child, which is indistinguishable in a log from the
+        # security regression it exists to catch.
+        lines: list[str] = []
+        for _ in range(200):
+            try:
+                lines = marker.read_text().splitlines()
+            except FileNotFoundError:
+                lines = []
+            if lines and lines[-1] == "done":
                 break
             time.sleep(0.05)
-        assert marker.exists(), "fake studyloop process never ran"
-        lines = marker.read_text().splitlines()
-        argv_line = lines[0] if lines else ""
+        assert lines, "fake studyloop process never ran"
+        argv_line = lines[0]
         assert "s3cr3t-pw" not in argv_line, f"password leaked into argv: {argv_line!r}"
         assert "env:s3cr3t-pw" in lines, (
             f"password did not reach the child via STUDYLOOP_WEB_PASSWORD: {lines!r}"

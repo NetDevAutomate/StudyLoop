@@ -386,6 +386,25 @@ Omitted answers are left **explicitly blank** in the document rather than invent
 
 `studyloop plan interview` exists so an agent can learn what to ask before proposing a plan.
 
+### Second brain
+
+Publish projections of a plan and of today's study into wherever you already keep your thinking. Off by default; see the Second Brain guide.
+
+```bash
+studyloop brain status --json              # provider, whether it can publish, where notes land
+studyloop brain enable obsidian --vault ~/Obsidian/Personal
+studyloop brain publish                    # today's note plus every active plan
+studyloop brain publish --today --dry-run  # show what would be written, write nothing
+studyloop brain publish --plan python-decorators
+studyloop brain pull python-decorators     # print your own notes for a plan
+studyloop brain template --print "Study Plan.md"
+studyloop brain template --install         # copy the templates into your vault
+```
+
+Nothing is written anywhere until you opt in, and nothing ever writes back to the plan document — the plan Markdown stays the single source of truth. StudyLoop writes only files carrying its own `studyloop:` frontmatter marker, so a note you wrote by hand is never overwritten; `brain pull` reads the sibling `Study/Plans/<plan-id>.notes.md` that StudyLoop never touches.
+
+`brain publish` with no selector means today's note plus every plan whose status is `active`. Use `--all` to include drafts and finished plans. Republishing an unchanged plan writes nothing and leaves the file's timestamp alone.
+
 ### Topic exercises
 
 Each exercise set carries all three formats — **blank slate**, **completion**, and **multiple choice**. The completion exercise is sliced from the reference solution, so one authored task yields both code formats.

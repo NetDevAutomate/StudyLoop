@@ -115,6 +115,10 @@ exact folder with:
 studyloop plan path
 ```
 
+The plan document is the **single source of truth**. If you publish a plan into a
+second brain (see [Second Brain](second-brain.md)), what appears there is a
+projection: regenerated from this document and never read back into it.
+
 Because the document is the source of truth, it remains readable and editable
 without the Web UI. Checkpoint history is also indexed in the session database.
 

@@ -148,8 +148,9 @@ class TestConfigInit:
         config_file = tmp_path / "config.yaml"
         monkeypatch.setattr("studyloop.shared.CONFIG_PATH", config_file)
 
-        # Simulate: yes bridging, "cooking" domain, yes nlm, yes obsidian, path, no agent install
-        user_input = "y\ncooking\ny\ny\n~/MyVault\nn\n"
+        # Simulate: yes bridging, "cooking" domain, yes nlm, yes obsidian, path,
+        # yes publish into the vault, no agent install
+        user_input = "y\ncooking\ny\ny\n~/MyVault\ny\nn\n"
         result = runner.invoke(cli, ["config", "init"], input=user_input)
         assert result.exit_code == 0
         assert "Configuration saved" in result.output
@@ -160,6 +161,12 @@ class TestConfigInit:
         assert config["knowledge_domains"]["primary"] == "cooking"
         assert config["notebooklm"]["enabled"] is True
         assert config["obsidian_base"] == "~/MyVault"
+        # Saying yes to the vault follow-up is the ONLY way this wizard enables a
+        # second brain -- see test_config_init_defaults for the declined path.
+        assert config["second_brain"] == {
+            "provider": "obsidian",
+            "vault_path": "~/MyVault",
+        }
 
     def test_config_init_all_no(
         self, runner: CliRunner, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
@@ -186,11 +193,20 @@ class TestConfigInit:
         config_file = tmp_path / "config.yaml"
         monkeypatch.setattr("studyloop.shared.CONFIG_PATH", config_file)
 
-        # All empty = accept defaults: yes bridging, "networking", no nlm, yes obsidian
-        user_input = "\n\n\n\n\n\n"
+        # All empty = accept defaults: yes bridging, "networking", no nlm, yes
+        # obsidian, default vault path, NO publishing into it, no agent install
+        user_input = "\n\n\n\n\n\n\n"
         result = runner.invoke(cli, ["config", "init"], input=user_input)
         assert result.exit_code == 0
         assert "Configuration saved" in result.output
+
+        import yaml
+
+        # Accepting every default must never start writing into the learner's
+        # vault: a vault configured so the mentor can READ notes is not consent to
+        # WRITE into it, so the follow-up defaults to No and writes nothing.
+        config = yaml.safe_load(config_file.read_text())
+        assert "second_brain" not in config
 
     def test_config_init_skip_agents(
         self, runner: CliRunner, monkeypatch: pytest.MonkeyPatch, tmp_path: Path

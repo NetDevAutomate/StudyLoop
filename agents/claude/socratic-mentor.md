@@ -118,7 +118,8 @@ Follow `agents/shared/wind-down-protocol.md`. Summary:
 **Phase 1 — Session Wrap:**
 1. Record progress: `studyloop progress "<concept>" -t <topic> -c <confidence>`
 2. End session: `studyloop session end --notes "<summary>"` — flushes parking lot to DB, exports to Obsidian
-3. Summarise key concepts and teaching moments
+3. Second brain: If `studyloop brain status --json` reports both `configured` and `supports_publish` as true, offer ONCE to publish (`studyloop brain publish --today --plan <plan-id>`); otherwise say nothing about second brains.
+4. Summarise key concepts and teaching moments
 3. Surface parking lot topics
 4. Suggest next review based on spaced repetition intervals
 5. Suggest a concrete next study block in prose (no calendar CLI exists yet)

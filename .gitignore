@@ -511,6 +511,9 @@ docs/architecture/*
 # Un-ignored 2026-09-02 — session-authority contract (M2 remediation lane),
 # linked from ADR-0009 and tested against by tests/test_session_authority_matrix.py.
 !docs/architecture/session-authority.md
+# Un-ignored 2026-09 — second-brain projection contract (R-84), linked from ADR-0010
+# and docs/second-brain.md; tested against by tests/test_second_brain_*.py.
+!docs/architecture/second-brain.md
 
 # Demo recordings (large, local-only)
 demos/

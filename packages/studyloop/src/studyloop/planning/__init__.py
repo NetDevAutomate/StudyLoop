@@ -27,7 +27,12 @@ from .evaluation import (
     evaluate_plan,
 )
 from .index import checkpoint_history, indexed_plans, reindex_all
-from .markdown import parse_plan, render_plan
+from .markdown import (
+    MISSION_SUBSECTION_HEADINGS,
+    PLAN_SECTION_HEADINGS,
+    parse_plan,
+    render_plan,
+)
 from .models import (
     PLAN_STATUSES,
     Checkpoint,
@@ -64,6 +69,8 @@ from .store import (
 __all__ = [
     "CHECKPOINT_PHASES",
     "INTERVIEW",
+    "MISSION_SUBSECTION_HEADINGS",
+    "PLAN_SECTION_HEADINGS",
     "PLAN_STATUSES",
     "Checkpoint",
     "ConceptEvidence",

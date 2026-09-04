@@ -46,8 +46,29 @@ from _lane_ownership import (  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "lane_ownership.yaml"
-INTEGRATION_BRANCH = "integration/2026-09-remediation"
+
+#: Integration branches, newest campaign first. The guard diffs against the
+#: first one that exists.
+#:
+#: An ordered tuple rather than a single constant because a lane cut for a NEW
+#: campaign must not be measured against the PREVIOUS campaign's integration
+#: branch: everything merged into `main` in between (the 0.1.0 release, seven
+#: hygiene rewrites) then shows up in the lane's own diff and gets blamed on
+#: whichever lane happens to be running. Newest-first ordering means each
+#: campaign's lanes automatically pick their own baseline, and an old lane
+#: branch still resolves once its integration branch is deleted.
+INTEGRATION_BRANCHES = (
+    "integration/2026-09-second-brain",
+    "integration/2026-09-remediation",
+)
+#: Backwards-compatible alias: the newest integration branch.
+INTEGRATION_BRANCH = INTEGRATION_BRANCHES[0]
 FALLBACK_BRANCH = "main"
+
+#: A verifier checks a lane out DETACHED in its own worktree, where the newest
+#: integration branch may not be the one this lane was actually cut from. This
+#: names the baseline explicitly; it is the sibling of ``STUDYLOOP_LANE_BRANCH``.
+INTEGRATION_BRANCH_ENV = "STUDYLOOP_INTEGRATION_BRANCH"
 
 
 # ---------------------------------------------------------------------------
@@ -76,6 +97,36 @@ def test_current_branch_honours_the_lane_branch_env_override(monkeypatch) -> Non
     assert _current_branch() == "lane/m4-security"
     monkeypatch.setenv(LANE_BRANCH_ENV, "   ")
     assert _current_branch() != "   "  # blank override is ignored, git is consulted
+
+
+def test_merge_base_prefers_newest_existing_integration_branch(monkeypatch) -> None:
+    """The newest campaign's integration branch is the baseline when it exists.
+
+    Without this, a lane cut for the second campaign is diffed against the
+    first campaign's integration branch and every commit merged to main in
+    between is attributed to the running lane.
+    """
+    monkeypatch.delenv(INTEGRATION_BRANCH_ENV, raising=False)
+    module = sys.modules[__name__]
+
+    monkeypatch.setattr(module, "_branch_exists", lambda name: True)
+    assert _merge_base_ref() == INTEGRATION_BRANCHES[0]
+
+    monkeypatch.setattr(module, "_branch_exists", lambda name: name == INTEGRATION_BRANCHES[-1])
+    assert _merge_base_ref() == INTEGRATION_BRANCHES[-1]
+
+    monkeypatch.setattr(module, "_branch_exists", lambda name: False)
+    assert _merge_base_ref() == FALLBACK_BRANCH
+
+
+def test_merge_base_env_override_wins(monkeypatch) -> None:
+    """A verifier's explicit baseline outranks branch discovery."""
+    module = sys.modules[__name__]
+    monkeypatch.setattr(module, "_branch_exists", lambda name: True)
+    monkeypatch.setenv(INTEGRATION_BRANCH_ENV, "integration/somewhere-else")
+    assert _merge_base_ref() == "integration/somewhere-else"
+    monkeypatch.setenv(INTEGRATION_BRANCH_ENV, "   ")
+    assert _merge_base_ref() == INTEGRATION_BRANCHES[0]
 
 
 @pytest.mark.parametrize(
@@ -195,9 +246,20 @@ def _branch_exists(name: str) -> bool:
 
 
 def _merge_base_ref() -> str:
-    """The shared point every lane compares against: integration if it
-    exists yet, else main (M0 runs before the integration branch is cut)."""
-    return INTEGRATION_BRANCH if _branch_exists(INTEGRATION_BRANCH) else FALLBACK_BRANCH
+    """The shared point every lane compares against.
+
+    ``STUDYLOOP_INTEGRATION_BRANCH`` wins when set (a verifier's detached
+    worktree names its own baseline); otherwise the newest integration branch
+    that exists; otherwise ``main`` (a foundation lane runs before any
+    integration branch is cut).
+    """
+    override = os.environ.get(INTEGRATION_BRANCH_ENV, "").strip()
+    if override:
+        return override
+    for name in INTEGRATION_BRANCHES:
+        if _branch_exists(name):
+            return name
+    return FALLBACK_BRANCH
 
 
 def _changed_files() -> list[str]:
