@@ -125,8 +125,26 @@ studyloop doctor --category config
   `AgentMemory/`.
 - Re-exports never duplicate: the content hash drives idempotent skips.
 
+## AgentMemory exports versus Study projections
+
+If you also use the [second-brain layer](second-brain.md), your vault has two
+StudyLoop folders. They hold different things and neither reads the other.
+
+| | `AgentMemory/` (this page) | `Study/` ([Second Brain](second-brain.md)) |
+| --- | --- | --- |
+| What it contains | one note per AI coding session | your study plans, today's action, due reviews, learning records |
+| Where it comes from | the sessions database, via `session-export --obsidian` | your plan Markdown documents |
+| Written by | `agent-session-tools` | `studyloop brain publish` |
+| Turned on with | `obsidian.export_enabled` | `second_brain.provider` |
+| Your own notes | not applicable | `Study/Plans/<plan-id>.notes.md`, which StudyLoop only reads |
+
+The split is deliberate: session memory is machine-generated history, while a study
+plan is material you read and revise. Mixing them would put a wall of transcript
+notes in the folder you open to decide what to study.
+
 ## Related
 
+- [Second Brain](second-brain.md) — publishing plans and today's study into a vault
 - [Setup Guide → Obsidian session-memory export](setup-guide.md#obsidian-session-memory-export)
 - [CLI Reference → Obsidian Vault Export](cli-reference.md#obsidian-vault-export-opt-in)
 - [Architecture Overview](architecture.md)

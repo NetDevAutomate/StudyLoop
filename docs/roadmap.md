@@ -27,6 +27,10 @@ The next product improvements are:
 - a guided planning conversation that turns a learner's own words into a useful
   plan without silently inventing goals or evidence;
 - stronger continuity between active plans, Today, review, and the next session;
+- a choice of second brain, so a plan and today's next action can appear where a
+  learner already keeps their thinking. Obsidian is the free, local option and
+  works now; support for a connected visual planner is served through the
+  learner's own assistant rather than by StudyLoop holding a credential;
 - clearer in-product explanations when an agent, voice backend, or optional
   integration is unavailable;
 - broader manual accessibility testing and more contributor-friendly UI evidence.

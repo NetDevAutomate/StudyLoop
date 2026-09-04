@@ -122,8 +122,16 @@ class TestToolRegistration:
 
 
 # ---------------------------------------------------------------------------
-# get_due_cards — thin wrapper over review.get_due / list_course_summaries
+# get_due_cards — thin wrapper over learning.review_service.due_cards
 # ---------------------------------------------------------------------------
+#
+# The aggregation moved out of mcp/tools.py into
+# studyloop.learning.review_service so the second-brain layer can answer the same
+# question without importing this module (it pulls in fastmcp, an optional extra).
+# These patch targets follow it: the parity these tests defend is that the MCP
+# tool and every other surface report the SAME due set, which is exactly what one
+# shared implementation buys. Patching studyloop.mcp.tools.get_due would now
+# silently patch nothing and the tests would pass against an empty result.
 
 
 class TestGetDueCards:
@@ -139,7 +147,7 @@ class TestGetDueCards:
             review_count=3,
         )
         tool = _get_tool("get_due_cards")
-        with patch("studyloop.mcp.tools.get_due", return_value=[card]) as mock_get_due:
+        with patch("studyloop.services.review.get_due", return_value=[card]) as mock_get_due:
             result = tool(course="python-basics")
 
         mock_get_due.assert_called_once_with("python-basics")
@@ -173,7 +181,7 @@ class TestGetDueCards:
                 return_value=["/fake/dir"],
             ),
             patch(
-                "studyloop.mcp.tools.get_due",
+                "studyloop.services.review.get_due",
                 side_effect=lambda c: [card_a] if c == "course-a" else [card_b],
             ),
         ):
@@ -187,7 +195,7 @@ class TestGetDueCards:
 
         cards = [CardProgress(f"h{i}", True, 2.5, 1, "2026-07-12", 1) for i in range(5)]
         tool = _get_tool("get_due_cards")
-        with patch("studyloop.mcp.tools.get_due", return_value=cards):
+        with patch("studyloop.services.review.get_due", return_value=cards):
             result = tool(course="python-basics", limit=2)
 
         assert result["count"] == 2

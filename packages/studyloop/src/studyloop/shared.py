@@ -364,6 +364,7 @@ def init_interactive_config(console: object) -> Path:
     )
 
     obsidian_base = current_obsidian
+    publish_to_vault = False
     if use_obsidian:
         obsidian_base = _prompt_text(
             "  Base path of your Obsidian vault",
@@ -377,6 +378,25 @@ def init_interactive_config(console: object) -> Path:
                 f"  [yellow]⚠ Path {resolved} does not exist yet — "
                 f"you can create it later.[/yellow]\n"
             )
+
+        # Asked only AFTER a vault was accepted, and only ever defaulting to No.
+        # A vault configured so the mentor can READ notes is not consent to start
+        # WRITING into it, and a default-Yes would opt people in through a prompt
+        # they skimmed. Answering No writes nothing at all: absence already means
+        # off, and a config full of explicit defaults invites the belief that
+        # deleting a key changes behaviour.
+        publish_to_vault = _prompt_yn(
+            "  Also publish your study plans and today's study into this vault\n"
+            "  (a Study/ folder StudyLoop owns)?",
+            default=False,
+        )
+        if publish_to_vault:
+            console.print(
+                "  [dim]StudyLoop will write into Study/ and never touch your own "
+                "notes. Publish with: studyloop brain publish[/dim]\n"
+            )
+        else:
+            console.print("  [dim]Skipped — nothing will be written to your vault.[/dim]\n")
     else:
         obsidian_base = ""
         console.print("  [dim]Skipped — no Obsidian vault configured.[/dim]\n")
@@ -394,6 +414,14 @@ def init_interactive_config(console: object) -> Path:
         del config["knowledge_domains"]
 
     config["notebooklm"] = notebooklm_config
+
+    if publish_to_vault:
+        # Merged, not replaced: a learner who set daily_note or a folder by hand
+        # must not lose it by re-running the wizard.
+        second_brain = dict(config.get("second_brain") or {})
+        second_brain["provider"] = "obsidian"
+        second_brain["vault_path"] = obsidian_base
+        config["second_brain"] = second_brain
 
     # Ensure topics key exists
     config.setdefault("topics", [])

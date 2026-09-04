@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 from pathlib import Path
 
@@ -232,3 +233,108 @@ def check_obsidian_export() -> list[CheckResult]:
             False,
         )
     ]
+
+
+def check_second_brain() -> list[CheckResult]:
+    """Report the optional second-brain layer, when one is configured.
+
+    Returns ``[]`` when there is no ``second_brain`` section or the provider is
+    ``none``. A learner who has never configured a second brain must not see rows
+    about software they do not use, and rows about an unconfigured integration are
+    exactly the noise that teaches people to stop reading doctor output. Same
+    reasoning the Obsidian export checks above are registered conditionally for; the
+    registration in ``cli/_doctor.py`` enforces it, and this early return makes the
+    function safe to call unconditionally.
+
+    (``studyloop config init`` DOES offer to enable this, after the learner has
+    accepted a vault. That is the only wizard that asks, it defaults to no, and
+    declining writes nothing -- so absence of the section still means the learner
+    never opted in.)
+
+    Nothing here is ever ``fail``. A vault on an unmounted drive deserves a
+    warning, but it is not a broken installation, and ``doctor`` is what a learner
+    runs when something ELSE is wrong.
+    """
+    try:
+        settings = _load_settings()
+    except Exception as exc:
+        # A malformed section must not take down every other check with it.
+        return [
+            CheckResult(
+                "config",
+                "second_brain_config",
+                "warn",
+                f"The second_brain section does not load: {exc}",
+                "Fix the second_brain section in config.yaml, or remove it.",
+                False,
+            )
+        ]
+
+    config = getattr(settings, "second_brain", None)
+    if config is None or config.provider == "none":
+        return []
+
+    if config.provider == "xtiles":
+        return [
+            CheckResult(
+                "config",
+                "second_brain_provider",
+                "info",
+                "Second brain: xTiles (no programmatic backend; prompts and an "
+                "opt-in assistant skill)",
+                "See docs/second-brain.md for the xTiles setup and the three prompts.",
+                False,
+            )
+        ]
+
+    results = [
+        CheckResult(
+            "config",
+            "second_brain_provider",
+            "info",
+            f"Second brain: {config.provider}",
+            "",
+            False,
+        )
+    ]
+
+    vault = Path(config.vault_path).expanduser()
+    if vault.is_dir() and os.access(vault, os.W_OK):
+        results.append(
+            CheckResult("config", "second_brain_vault", "pass", f"Vault: {vault}", "", False)
+        )
+    elif vault.is_dir():
+        results.append(
+            CheckResult(
+                "config",
+                "second_brain_vault",
+                "warn",
+                f"Vault is not writable: {vault}",
+                f"Check the permissions on {vault}",
+                False,
+            )
+        )
+    else:
+        results.append(
+            CheckResult(
+                "config",
+                "second_brain_vault",
+                "warn",
+                f"Vault not found: {vault}",
+                "Mount it, or run: studyloop brain enable obsidian --vault <path>",
+                False,
+            )
+        )
+
+    results.append(
+        CheckResult(
+            "config",
+            "second_brain_folder",
+            "info",
+            f"StudyLoop writes into {config.folder}/ inside the vault",
+            "",
+            False,
+        )
+    )
+
+    return results
