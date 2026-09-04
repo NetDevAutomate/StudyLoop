@@ -296,11 +296,15 @@ copy or store, and xTiles also publishes a connector in Claude's Connectors
 Directory if you would rather not add the URL by hand. Tool names appear only
 after you have signed in.
 
-This is written for Claude Code, which is where it was tested. StudyLoop installs
-the wind-down skill into every harness it detects, but whether Kiro, Codex,
-OpenCode or pi can complete xTiles' browser authorisation is not something this
-page has verified — the skill stays silent unless an `xtiles` server is actually
-connected, so an untested harness costs you nothing.
+This is written for Claude Code. Exercised end to end by a person on 2026-09-04
+with an xTiles Plus account and Kiro CLI 2.21.0 — not yet run in Claude Code. The
+planner and wind-down prompts wrote what they describe; the project prompt created
+the project but not the board or the visible page structure it promises (see that
+prompt's section). StudyLoop installs the wind-down skill into every harness it
+detects: installation paths are verified against each vendor's documentation, but
+whether Kiro, Codex, OpenCode or pi can complete xTiles' browser authorisation is
+not something this page has verified — the skill stays silent unless an `xtiles`
+server is actually connected, so an untested harness costs you nothing.
 
 ### Checking it yourself
 
@@ -315,6 +319,8 @@ just live-xtiles "<url>" "<title prefix>" # is it actually visible in xTiles?
 The xTiles one answers the question its connector cannot answer about itself:
 whether what your assistant wrote is *visible in the interface*. A write can
 succeed at the API and still render nowhere, and the interface is where you live.
+Of the three prompts below, only the planner one returns a URL to check — a
+planner tile is the one shape this live check has actually validated.
 
 It needs a session captured in a real browser window rather than a stored
 password, because `xtiles.app` sign-in is behind reCAPTCHA and fails silently
@@ -326,30 +332,46 @@ match your own content.
 
 When you run one of these prompts, the plan text, today's next action, the due
 reviews and the session's learning record go to your assistant's model service —
-Anthropic, for Claude Code — and through the connector to xTiles' cloud. Nothing
-is sent unless you run a prompt. xTiles asks permission per request, and states
-that your assistant only gets what your own account can already see and that
-nothing is shared with other users. Your sign-in lives in your assistant's own MCP
+Anthropic, for Claude Code — and through the connector to xTiles' cloud. The next
+action and the due reviews are your **whole study state**, not the named plan's:
+`get_next_action` and `get_due_cards` are not plan-scoped, so the title and reason
+sent to xTiles come from your entire study history even when the prompt names one
+plan. Nothing is sent unless you run a prompt. xTiles states that its connector
+asks permission per request, that your assistant only gets what your own account
+can already see, and that nothing is shared with other users — what you are
+actually shown per request depends on your assistant, and in a recorded Kiro CLI
+run no per-write prompt surfaced. Your sign-in lives in your assistant's own MCP
 settings rather than in StudyLoop, and that is also where you end it: remove the
 `xtiles` server there.
 
+One more boundary worth knowing before you write anything: cleanup is uneven.
+Planner tiles can be removed through the connector (by patching the planner
+page); pages and projects have no delete tool and have to be deleted in the
+xTiles interface by hand.
+
 ### Today into your planner
 
-Creates one task, so it works on any plan including Free.
+Creates one planner tile, so it works on any plan including Free. This is the one
+prompt that returns a URL you can check, and the shape the live UI check has
+validated.
 
 ```text
-Using the StudyLoop tools, call get_next_action with energy "medium", time_minutes 25 and modality "recall", and get_due_cards with limit 20. Then, in xTiles, add ONE task to today's planner titled "Study: <primary concept>" with the recommendation's reason and estimated minutes in the body, and a checklist of the due reviews, one line per card and at most 20. Do not create a project. Ask me before writing if the planner already has a "Study:" task today.
+Using the StudyLoop tools, call get_next_action with energy "medium", time_minutes 25 and modality "recall", and get_due_cards with limit 20. Then, in xTiles, add ONE item to today's planner as a tile built from Markdown, titled "Study: <primary concept>", with the recommendation's reason and estimated minutes, and a checklist of the due reviews, one line per card and at most 20. Do not create a project. Ask me before writing if the planner already has a "Study:" tile today, and tell me the page URL when you are done.
 ```
 
 ### Your plan as a project
 
-Creating the project works on Free. Refreshing one — editing pages that are
-already there — is the paid case: Plus for a personal space, Pro for a shared one.
-No MCP tool returns plan Markdown, so paste it in from
+Creating the project works on Free, but know the connector's own limits before
+tier limits: it cannot create a board view, and pages that are collections
+(tables, boards) cannot be refreshed through it at all — they return an error
+regardless of what you pay. Normal text pages refresh in place. Expect the
+project URL to open on the home page; the other pages may not be visible from
+there in the interface even when the connector reports them created. No MCP tool
+returns plan Markdown, so paste it in from
 `studyloop plan show <plan-id> --markdown`.
 
 ```text
-Here is my StudyLoop study plan as Markdown, pasted from the CLI. In xTiles, create or refresh a project named "<plan title>" with pages Mission, Milestones, Learning Records, Resources, Checkpoints and Today. Put the Mission text on the home page, the milestones on a Kanban board (done/not done), the learning records as one page each, the resources in a table, and checkpoints as dated tasks. Update existing pages in place; do not delete anything. Tell me what you changed.
+Here is my StudyLoop study plan as Markdown, pasted from the CLI. In xTiles, create or refresh a project named "<plan title>" with pages Mission, Milestones, Learning Records, Resources, Checkpoints and Today. Put the Mission text on the home page, the milestones in a table with a Status column (done/not done), the learning records as one page each, the resources in a table, and checkpoints as dated tasks. Refresh normal pages in place; do not try to refresh tables or boards, and do not delete anything. Tell me what you changed, and say which pages could not be refreshed.
 ```
 
 Name the project exactly, every time. A renamed project is a project this prompt
@@ -360,8 +382,15 @@ cannot find, so it creates a second one.
 Adds a page and a task, so this too works on Free.
 
 ```text
-We are finishing a study session. Summarise what I covered in three bullets and one insight, then: (1) in xTiles, add that summary as a new learning record page under my "<plan title>" project, titled "LR — <date> — <topic>"; (2) add ONE planner task titled "Review: <concept>" on the next review date from get_due_cards. If we reviewed cards, record each one in StudyLoop with record_study_progress, passing the card_hash that get_due_cards returned. Ask before writing to xTiles; do not repeat the offer if I decline.
+We are finishing a study session. Summarise what I covered in three bullets and one insight, then: (1) in xTiles, add that summary as a new learning record page under my "<plan title>" project, titled "LR — <date> — <topic>"; (2) add ONE planner task titled "Review: <concept>" on the next review date from get_due_cards. If get_due_cards returns no cards, do not invent a date; skip the Review task and the progress writes and say why. If we reviewed cards, record each one in StudyLoop with record_study_progress, passing the card_hash that get_due_cards returned. Ask before writing to xTiles; do not repeat the offer if I decline.
 ```
+
+A limit worth knowing: `get_due_cards` returns cards that are **already due** —
+it is not a source of the next review date. With nothing due there is no date to
+schedule, which is why the prompt tells your assistant to skip rather than
+invent one. And the learning record this writes lives **only in xTiles**: it is
+not written back into the plan document, so for this content the plan is not the
+source of truth until you record it there yourself.
 
 Your mentor offers this last one for you. `studyloop install agents` installs an
 opt-in wind-down skill into every harness it finds, and it stays silent unless
@@ -372,6 +401,7 @@ server is connected in that session.
 
 ```bash
 studyloop brain status --json              # provider, whether it can publish, where notes land
+studyloop brain wind-down --json --connector xtiles  # the one offer to make at wind-down, if any
 studyloop brain enable obsidian --vault ~/Obsidian/Personal
 studyloop brain publish                    # today's note plus every active plan
 studyloop brain publish --all              # every plan, whatever its status
@@ -382,8 +412,10 @@ studyloop brain template --install
 studyloop brain enable none                # turn it off again
 ```
 
-`studyloop brain status --json` is what an agent reads. It publishes only when both
-`configured` and `supports_publish` are true, which is why a learner on xTiles is
+`studyloop brain wind-down --json` is what an agent reads at the end of a session:
+it answers with the channel, whether to offer, the exact sentence to say and why.
+The publish offer is made only when both `configured` and `supports_publish` are
+true (both visible in `brain status --json`), which is why a learner on xTiles is
 never offered a command that cannot work.
 
 At the end of a session your mentor offers this once, and only when a provider that
@@ -393,7 +425,8 @@ can publish is configured:
 Want me to publish today's study record and this plan to your Obsidian vault (Study/Today.md and Study/Plans/<plan-id>.md)? Yes or no — I'll only ask once.
 <!-- /wind-down-offer -->
 
-Say no and it will not ask again.
+The skill instructs your assistant to offer once and to drop the subject on a no;
+that behaviour has not yet been observed in a recorded session.
 
 ## Configuration reference
 
