@@ -87,8 +87,10 @@ Standard end-of-session tasks from session-protocol.md:
 
    If `offer` is `false`, or on **no**, **say nothing about second brains at
    all** and continue the wind-down. Do not repeat the offer later in the
-   session. "No second brain is configured, so nothing to offer" and "running
-   the second brain check now" are violations, not courtesies.
+   session. "No second brain is configured, so nothing to offer", "running
+   the second brain check now", and "the learner declined, so no xTiles
+   write happens" are all violations, not courtesies — a declined offer is
+   acknowledged by moving on, never by naming what was declined.
 
    The command computes two separate rules — not one conjunction. `configured`
    plus `supports_publish` (both from `studyloop brain status --json`) selects
