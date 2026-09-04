@@ -48,15 +48,26 @@ Standard end-of-session tasks from session-protocol.md:
 
 4. Set next review dates via spaced repetition schedule.
 
-5. Offer the second brain — **only if the decision command says to, and only once**:
+5. Offer the second brain — **only if the decision command says to, and only
+   once**. Run this step silently: never announce, name or narrate it in any
+   state — the learner hears either the offer sentence or nothing at all.
 
    ```bash
    studyloop brain wind-down --json --connector <name>
    ```
 
-   Pass one `--connector NAME` for each MCP server connected in this session
-   (only `xtiles` affects the decision; omit the flag when none are). The
-   command answers with `channel`, `offer`, `sentence` and `reason`.
+   ```bash
+   studyloop brain wind-down --json
+   ```
+
+   That is the whole command when no MCP tools are visible to you. Add
+   `--connector <server>` for each MCP server whose tools you can actually
+   see in this session — MCP tools are named `mcp__<server>__…`, so the
+   server name is read off the tools themselves, and only `xtiles` affects
+   the decision. The flag is a statement of fact about this session, not part
+   of the command's syntax: **naming a connector whose tools you cannot see
+   fabricates an offer for a service the session cannot reach.** The command
+   answers with `channel`, `offer`, `sentence` and `reason`.
 
    If `offer` is `true`, say `sentence` **verbatim, exactly once**. For the
    `publish` channel that sentence is:
@@ -76,7 +87,8 @@ Standard end-of-session tasks from session-protocol.md:
 
    If `offer` is `false`, or on **no**, **say nothing about second brains at
    all** and continue the wind-down. Do not repeat the offer later in the
-   session.
+   session. "No second brain is configured, so nothing to offer" and "running
+   the second brain check now" are violations, not courtesies.
 
    The command computes two separate rules — not one conjunction. `configured`
    plus `supports_publish` (both from `studyloop brain status --json`) selects
