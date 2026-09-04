@@ -124,9 +124,15 @@ class TestRecordLearning:
         assert load_plan("decorators").learning_records[0].body.startswith("#### a sub-note")
 
 
+def _record(*args: str):
+    """Module-level on purpose: the CLI coverage gate resolves bare-name
+    helpers from a test's source, not attribute calls on the class."""
+    return CliRunner().invoke(cli, ["plan", "record", *args])
+
+
 class TestPlanRecordCli:
     def _run(self, *args: str):
-        return CliRunner().invoke(cli, ["plan", "record", *args])
+        return _record(*args)
 
     def test_json_shape(self) -> None:
         _seed()
