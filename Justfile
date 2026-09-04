@@ -148,6 +148,15 @@ smoke-extras:
 build-release:
     ./scripts/build-release.sh
 
+# WD-5/WD-6: the live wind-down gate checks, captured through Claude Code
+# headless against the LiteLLM gateway (no vendor credential; the key is read
+# from the proxy's own config at runtime). Opt-in — burns gateway spend
+# (estimate: reviews/2026-09-04-gate-checks/ESTIMATE.md). Writes transcripts
+# and the pass/fail summary under reviews/…/evidence/gate-checks/.
+gate-checks:
+    STUDYLOOP_EVIDENCE_DIR={{justfile_directory()}}/reviews/2026-09-04-gate-checks/evidence/gate-checks \
+        uv run --group dev pytest packages/studyloop/tests/live/test_wind_down_transcripts.py -m live_provider -q
+
 release-consistency:
     uv run python scripts/check-release-consistency.py --skip-wheel
 
