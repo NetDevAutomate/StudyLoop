@@ -79,7 +79,7 @@ exclude = ["src/studyloop/web/static/vendor/dev"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--tb=short -m 'not integration and not e2e and not live_kiro and not live_provider and not live_obsidian'"
+addopts = "--tb=short -m 'not integration and not e2e and not live_kiro and not live_provider and not live_obsidian and not live_xtiles'"
 # MUST be duplicated from the workspace-root pyproject.toml. pytest resolves
 # rootdir from its arguments, so `pytest packages/studyloop/tests/foo.py` makes
 # THIS file the configfile and the root one is never read -- the root setting
@@ -98,6 +98,7 @@ markers = [
     "live_kiro: dogfood tests that spawn a real kiro-cli acp child (requires Kiro auth + network; opt in with -m live_kiro)",
     "live_provider: tests that call a real LLM provider (OpenAI/OpenRouter/Gemini/MiniMax/Anthropic). Burns API quota; opt in with -m live_provider",
     "live_obsidian: tests that write into a dedicated throwaway Obsidian vault on the owner's machine and read the notes back (opt in with -m live_obsidian)",
+    "live_xtiles: opt-in Playwright checks against the owner's real xTiles account, validating in the UI what an assistant wrote through the MCP connector (needs a one-time sign-in; opt in with -m live_xtiles)",
     "allow_server_errors: test deliberately drives the server into an unhandled exception, so the per-test server-log check is skipped for it",
 ]
 

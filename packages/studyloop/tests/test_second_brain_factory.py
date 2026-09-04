@@ -76,12 +76,22 @@ def test_xtiles_selection_imports_no_api_client() -> None:
 
     The assertion is on ``sys.modules`` rather than on source text because the
     thing that must not happen is an import at runtime, not a string in a file.
+
+    Scoped to ``studyloop.`` modules on purpose. The first version searched the
+    whole of ``sys.modules`` for the substring, which passed only for as long as
+    nothing else in the process happened to have "xtiles" in its name — then
+    `test_xtiles_journey.py` and `test_xtiles_live.py` were added and the assertion
+    started failing in the full suite while still passing on its own. The property
+    is about what StudyLoop imports; a test module's own name is not evidence of
+    anything.
     """
     for name in list(sys.modules):
         if name.startswith("studyloop.second_brain.obsidian"):
             del sys.modules[name]
     get_backend(_settings(provider="xtiles")).describe()
-    assert not [n for n in sys.modules if "xtiles" in n.lower()]
+    assert not [
+        name for name in sys.modules if name.startswith("studyloop.") and "xtiles" in name.lower()
+    ]
     assert "studyloop.second_brain.obsidian" not in sys.modules
 
 

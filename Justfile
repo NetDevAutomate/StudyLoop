@@ -154,6 +154,31 @@ release-consistency:
 prepare-release version:
     uv run python scripts/prepare-release.py {{version}}
 
+# The two opt-in second-brain checks against real products. Neither runs in
+# `preflight`, `release-check` or CI: one writes into a real Obsidian vault, the
+# other signs in to a real xTiles account. Both refuse to run without an explicit
+# opt-in, and both are deselected by default in BOTH pyproject files.
+live-obsidian:
+    STUDYLOOP_LIVE_OBSIDIAN=1 \
+    STUDYLOOP_LIVE_OBSIDIAN_VAULT=StudyLoop-Live-Test \
+    STUDYLOOP_LIVE_OBSIDIAN_VAULT_PATH=~/Obsidian/StudyLoop-Live-Test \
+    uv run --group dev pytest -m live_obsidian -v
+
+# Needs a session captured once (`just xtiles-auth`) and the URL your assistant
+# returned. PROBE is the distinctive title prefix the assistant was told to use --
+# every assertion is scoped to it, and a short one is refused.
+live-xtiles url probe:
+    STUDYLOOP_LIVE_XTILES=1 \
+    STUDYLOOP_LIVE_XTILES_URL="{{url}}" \
+    STUDYLOOP_LIVE_XTILES_PROBE="{{probe}}" \
+    uv run --group dev pytest -m live_xtiles -v
+
+# One-time, needs a real window: xtiles.app sign-in is behind reCAPTCHA, so a
+# headless password login cannot pass it (evidence: reviews/2026-09-03-second-brain
+# /evidence/m8/xtiles-live/00-why-a-captured-session.md).
+xtiles-auth:
+    uv run python scripts/xtiles-live-auth.py
+
 preflight: lint typecheck test test-js docs release-consistency spec-check
 
 release-check: test test-js lint typecheck shellcheck docs audit audit-full release-consistency smoke-installed smoke-extras

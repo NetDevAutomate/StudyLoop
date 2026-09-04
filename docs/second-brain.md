@@ -292,6 +292,26 @@ OpenCode or pi can complete xTiles' browser authorisation is not something this
 page has verified — the skill stays silent unless an `xtiles` server is actually
 connected, so an untested harness costs you nothing.
 
+### Checking it yourself
+
+Two opt-in checks exist, and neither runs in a normal test run:
+
+```bash
+just live-obsidian                       # a throwaway vault: publish, read back, remove
+just xtiles-auth                         # once, in a real window
+just live-xtiles "<url>" "<title prefix>" # is it actually visible in xTiles?
+```
+
+The xTiles one answers the question its connector cannot answer about itself:
+whether what your assistant wrote is *visible in the interface*. A write can
+succeed at the API and still render nowhere, and the interface is where you live.
+
+It needs a session captured in a real browser window rather than a stored
+password, because `xtiles.app` sign-in is behind reCAPTCHA and fails silently
+under automation. Every assertion is scoped to a title prefix you supply, and a
+missing or short prefix is refused rather than skipped — an unscoped check would
+match your own content.
+
 ### What leaves your machine
 
 When you run one of these prompts, the plan text, today's next action, the due

@@ -156,6 +156,7 @@ The suite is layered by what each layer can prove and what it needs from the mac
 | Integration | `pytest -m integration` | Real tmux and herdr sessions, real SQLite | tmux installed; herdr optional |
 | Browser (e2e) | `just e2e` (`pytest -m e2e`) | The Web UI journeys against a real server with fake agents | Playwright Chromium; one run per machine |
 | Live | `pytest -m live_kiro`, `pytest -m live_provider` | A real Kiro child, a real LLM provider | Credentials and quota; opt-in only |
+| Live, second brain | `just live-obsidian`, `just live-xtiles <url> <probe>` | That a projection really lands in a vault and is really removed again; that what an assistant wrote is visible in xTiles' own interface | A throwaway Obsidian vault; a captured xTiles session (`just xtiles-auth`). Opt-in, and refused rather than skipped when the safety scope is missing |
 
 **Rules that keep the suite honest.**
 
@@ -167,6 +168,11 @@ The suite is layered by what each layer can prove and what it needs from the mac
   the guard.
 - Prove a new test is not vacuous: revert the fix locally and watch it fail, or say in the pull request why
   it cannot be reverted.
+- A live test that touches a real account must be **deselected by default in both `pyproject.toml` files**, and
+  its safety scope must FAIL rather than skip when absent. Opting in is the owner's choice, so a missing opt-in
+  is a skip; but once opted in, a missing scope means the assertions match anything on the page, and skipping
+  there hides a mistake that could read real content into a log. `test_xtiles_live_guards.py` enforces both on
+  every commit, because a deselected test's own guarantees are never exercised by CI.
 - Do not widen a timeout to fix a flaky test. Find the mechanism (a state event, a locator condition) and
   wait on that.
 - Do not copy test totals into documentation. A guard rejects three-digit "N tests" claims in `docs/` and
