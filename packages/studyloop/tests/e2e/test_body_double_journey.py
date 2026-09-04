@@ -51,7 +51,12 @@ if _tests_dir not in sys.path:
     sys.path.insert(0, _tests_dir)
 
 from _playwright_paths import PLAYWRIGHT_ARTIFACTS as RESULTS  # noqa: E402
-from e2e._env import RunningServer, build_test_world, start_server  # noqa: E402
+from e2e._env import (  # noqa: E402
+    RunningServer,
+    await_async_predicate,
+    build_test_world,
+    start_server,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -293,8 +298,10 @@ def _park(page: Page, question: str, notes: str = "") -> None:
 
     # The invariant the product actually guarantees: one more pending topic
     # exists server-side. Polled through the page so it shares the browser's
-    # origin and auth, exactly as _api does.
-    page.wait_for_function(
+    # origin and auth, exactly as _api does. await_async_predicate, not
+    # wait_for_function: the latter does not await async predicates (_env.py).
+    await_async_predicate(
+        page,
         """async (want) => {
             const r = await fetch('/api/backlog');
             if (!r.ok) return false;
@@ -302,7 +309,8 @@ def _park(page: Page, question: str, notes: str = "") -> None:
             return (b.active_count + b.parking_lot_count) >= want;
         }""",
         arg=expected,
-        timeout=15_000,
+        timeout=15.0,
+        what=f"backlog to reach {expected} pending topics",
     )
     # Only now is the form guaranteed quiescent: submitPark() clears the
     # question field in its success path, so returning before that lands would
@@ -619,9 +627,16 @@ def test_phase5_notes_are_structured_markdown_and_preview_renders(
         # then races the second POST. The write itself is durable once it returns
         # -- add_note commits before responding -- so polling the count is the
         # honest signal. test_phase8 already polls a count for this reason.
-        page.wait_for_function(
+        #
+        # await_async_predicate, not wait_for_function: the previous de-flake
+        # used wait_for_function with an async predicate, which never awaits
+        # the Promise and so never waited at all — red on main twice,
+        # 2026-09-04. See _env.await_async_predicate.
+        await_async_predicate(
+            page,
             "async () => (await (await fetch('/api/notes')).json()).active_total === 2",
-            timeout=10_000,
+            timeout=10.0,
+            what="both notes to land server-side",
         )
 
         notes = _api(page, "/api/notes")
@@ -1092,8 +1107,10 @@ def test_phase10_park_form_survives_a_draft_typed_while_a_save_is_in_flight(
         page.locator("#bd-park-submit").click()
         page.locator("#bd-park-question").fill("Race second tangent")
 
-        # Let the first save complete server-side.
-        page.wait_for_function(
+        # Let the first save complete server-side. await_async_predicate, not
+        # wait_for_function, which never awaits an async predicate (_env.py).
+        await_async_predicate(
+            page,
             """async (want) => {
                 const r = await fetch('/api/backlog');
                 if (!r.ok) return false;
@@ -1101,7 +1118,8 @@ def test_phase10_park_form_survives_a_draft_typed_while_a_save_is_in_flight(
                 return (b.active_count + b.parking_lot_count) >= want;
             }""",
             arg=total + 1,
-            timeout=15_000,
+            timeout=15.0,
+            what="the first park to land server-side",
         )
 
         # The draft must still be there. Before the fix this was '' and the next

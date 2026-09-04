@@ -468,3 +468,35 @@ def goto_view(page: Page, view: str) -> None:
     page.wait_for_function("() => !!window.Alpine && !!window.Alpine.store('nav')", timeout=15000)
     page.evaluate("(v) => window.Alpine.store('nav').go(v)", view)
     page.wait_for_timeout(250)
+
+
+def await_async_predicate(
+    page: Page,
+    js: str,
+    *,
+    arg: object = None,
+    timeout: float = 15.0,
+    what: str = "async page predicate",
+    poll_ms: int = 200,
+) -> None:
+    """Poll an ``async`` JS predicate until truthy, from Python.
+
+    Exists because ``page.wait_for_function`` does NOT await a returned
+    Promise: the Promise object itself is truthy, so an ``async () => …``
+    predicate passes on its first poll no matter what it would resolve to —
+    the wait is silently a no-op. (Verified:
+    ``wait_for_function("async () => false")`` returns instantly.) That
+    no-op is exactly how phase 5 of the body-double journey went red on CI
+    twice on 2026-09-04: its "wait until the server holds both notes" guard
+    never waited, and the read raced the second POST.
+
+    ``page.evaluate`` DOES await, so this loop drives it from Python with a
+    deadline. Sync predicates should keep using ``wait_for_function``, which
+    polls in-page and is cheaper.
+    """
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if page.evaluate(js, arg):
+            return
+        page.wait_for_timeout(poll_ms)
+    raise AssertionError(f"timed out after {timeout:.0f}s waiting for {what}")
