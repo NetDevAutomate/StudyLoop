@@ -456,3 +456,44 @@ def test_every_test_the_contract_page_cites_actually_exists() -> None:
     assert not missing, "the contract page cites tests that do not exist: " + ", ".join(
         sorted(set(missing))
     )
+
+
+def test_both_providers_have_a_user_workflow_diagram(guide: str) -> None:
+    """A learner who reads diagrams should not have to read only one of them.
+
+    The guide originally had a single abstract data-flow diagram for Obsidian and
+    nothing at all for xTiles — which is backwards, because xTiles is the provider
+    where a picture answers the question that matters (what leaves the machine).
+    Both providers now carry a workflow diagram, and this asserts they stay.
+    """
+    diagrams = re.findall(r"```mermaid\n(.*?)```", guide, flags=re.DOTALL)
+    assert len(diagrams) >= 3, (
+        f"expected the data-flow diagram plus one workflow per provider, found {len(diagrams)}"
+    )
+
+    obsidian = [d for d in diagrams if "brain enable obsidian" in d]
+    xtiles = [d for d in diagrams if "brain enable xtiles" in d]
+    assert obsidian, "no Obsidian workflow diagram names the command that starts it"
+    assert xtiles, "no xTiles workflow diagram names the command that starts it"
+
+
+def test_the_xtiles_diagram_draws_the_machine_boundary(guide: str) -> None:
+    """The one thing this diagram exists to show.
+
+    A flowchart of xTiles steps that does not distinguish local from remote is
+    worse than no diagram: it implies StudyLoop talks to xTiles, which is the
+    single most important thing about this provider that is NOT true. The
+    boundary must be a visible grouping, both destinations must be named, and
+    the prose must say which arrows leave.
+    """
+    diagrams = re.findall(r"```mermaid\n(.*?)```", guide, flags=re.DOTALL)
+    xtiles = next((d for d in diagrams if "brain enable xtiles" in d), "")
+    assert xtiles, "no xTiles workflow diagram"
+
+    assert "subgraph" in xtiles, "the local/remote boundary is not drawn as a grouping"
+    assert "Your machine" in xtiles
+    # Both remote destinations, because naming only xTiles would hide the hop
+    # through the assistant's model service that the prose already admits to.
+    assert "model service" in xtiles, "the assistant's model service is not on the diagram"
+    assert "xTiles' cloud" in xtiles, "xTiles' cloud is not named as a destination"
+    assert "==>" in xtiles, "nothing distinguishes an arrow that leaves the machine"
