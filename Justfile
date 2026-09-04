@@ -151,6 +151,19 @@ build-release:
 release-consistency:
     uv run python scripts/check-release-consistency.py --skip-wheel
 
+# The release-mode superset: everything above PLUS the openspec guards — a
+# change with commits since the last tag must be archived or carry a
+# `deferred: <reason>`, and archive entries ADDED since the last tag must pass
+# `openspec validate` (soft-skipped when the CLI is absent, same convention as
+# spec-check; not `--archived --all`, because a July archive predating this
+# guard has unticked tasks nobody has evidence to reconcile, and re-failing
+# every future release on it would teach people to ignore the gate).
+# Deliberately NOT part of preflight: open changes are legal during a cycle;
+# only shipping one is not. Both guards would have fired on the 0.2.0 cut
+# (2026-09-04 review, Q5).
+release-consistency-shipped:
+    uv run python scripts/check-release-consistency.py --skip-wheel --release
+
 prepare-release version:
     uv run python scripts/prepare-release.py {{version}}
 
@@ -193,7 +206,7 @@ xtiles-auth:
 
 preflight: lint typecheck test test-js docs release-consistency spec-check
 
-release-check: test test-js lint typecheck shellcheck docs audit audit-full release-consistency smoke-installed smoke-extras
+release-check: test test-js lint typecheck shellcheck docs audit audit-full release-consistency-shipped smoke-installed smoke-extras
 
 # "Would GitHub Actions pass?" locally, before pushing. `check` runs the
 # host-answerable gates (lint, typecheck, test, sast, audit, docs, ...); `lint`

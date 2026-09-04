@@ -200,7 +200,7 @@ def validate_new_archives(repo_root: Path) -> None:
         repo_root, "diff", "--name-only", f"{last_tag}..HEAD", "--", "openspec/changes/archive/"
     )
     new_names = sorted(
-        {parts[2] for line in changed.splitlines() if len(parts := line.split("/")) > 3}
+        {parts[3] for line in changed.splitlines() if len(parts := line.split("/")) > 4}
     )
     if not new_names:
         return
