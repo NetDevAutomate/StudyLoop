@@ -232,7 +232,7 @@ you ran a prompt.
 
 ```mermaid
 flowchart TD
-    subgraph LOCAL["Your machine"]
+    subgraph LOCAL["Your machine — configuration only"]
         direction TB
         SL["StudyLoop<br/><i>plans, next action, due reviews</i>"]
         CFG["studyloop brain enable xtiles<br/><i>records the choice; stores no credential</i>"]
@@ -243,10 +243,13 @@ flowchart TD
         SL <-->|"StudyLoop MCP server<br/>get_next_action · get_due_cards"| ASSIST
     end
 
+    SETUP(["claude mcp add … then sign in"]) --> ASSIST
+    ASSIST -.->|"setup traffic: attaching the connector<br/>and authorising it in a browser"| XT
+
     YOU(["You run one of the three prompts"]) --> ASSIST
 
-    ASSIST ==>|"the prompt, your plan text,<br/>today's action, due reviews"| MODEL["Your assistant's model service<br/><i>Anthropic, for Claude Code</i>"]
-    ASSIST ==>|"xTiles MCP connector<br/><i>browser sign-in, held by the assistant</i>"| XT["xTiles' cloud<br/><i>project · pages · planner task</i>"]
+    ASSIST ==>|"STUDY CONTENT<br/>whatever that prompt includes<br/>or fetches for itself"| MODEL["Your assistant's model service<br/><i>Anthropic, for Claude Code</i>"]
+    ASSIST ==>|"STUDY CONTENT<br/>through the xTiles connector"| XT["xTiles' cloud<br/><i>project · pages · planner task</i>"]
     XT --> READ(["You open xTiles and see it"])
 
     classDef local fill:#eceaff,stroke:#4c3fbb,color:#231d63
@@ -254,14 +257,21 @@ flowchart TD
     classDef human fill:#e4f7ee,stroke:#1c7a52,color:#0f4530
     class SL,CFG,ASSIST,SKILL local
     class MODEL,XT remote
-    class YOU,READ human
+    class YOU,SETUP,READ human
 ```
 
-Read the arrow weights: the thin lines stay on your machine, the thick ones leave
-it. Nothing leaves until you run a prompt, and StudyLoop is not on either of the
-thick arrows — it cannot see what was sent, and it cannot verify what arrived.
-That is also why removing the `xtiles` server from your assistant's own MCP
-settings is how you end this, not a StudyLoop command.
+Read the arrow weights. **Thick arrows carry your study content**, and nothing
+crosses them until you run a prompt. The dashed arrow is setup: attaching the
+connector and authorising it in a browser is itself traffic to xTiles, so the box
+is labelled *configuration only* rather than pretending the network is untouched
+until later — the honest claim is about study content, not about packets.
+
+Which content crosses depends on the prompt: the planner prompt sends today's
+action and your due reviews, which it fetches through StudyLoop's MCP server; the
+project prompt sends the plan Markdown you pasted in. StudyLoop is on neither
+thick arrow — it cannot see what was sent and cannot verify what arrived. That is
+also why removing the `xtiles` server from your assistant's own MCP settings is
+how you end this, not a StudyLoop command.
 
 ### What you need
 

@@ -52,8 +52,20 @@ Three gates, and a probe prefix that scopes everything this file looks at:
   accident or read the owner's real content into a log.
 
 Nothing here writes to xTiles, and nothing asserts against text that does not
-carry the probe prefix. The account's real content is never read into an
-assertion message or an artefact.
+carry the probe prefix.
+
+On artefacts, stated precisely because the first version of this paragraph was
+false while the code took full-page screenshots: screenshots are **cropped to the
+matched element**, URLs are recorded without their query string or fragment, and
+no whole-page capture is taken unless ``STUDYLOOP_LIVE_XTILES_ALLOW_FULL_PAGE_SHOT``
+is set. A full-page capture of a signed-in workspace *is* the account's real
+content on disk. Two council seats from different families caught the
+contradiction; they were right, and the claim now matches the behaviour.
+
+Credentials are only ever typed into an origin on :data:`CREDENTIAL_ORIGINS`, and
+the URL under test must share the host's origin -- otherwise a stray environment
+variable would be enough to POST a real password to someone else's server, or to
+open an unrelated site carrying a live xTiles session.
 """
 
 from __future__ import annotations
@@ -61,6 +73,7 @@ from __future__ import annotations
 import os
 import re
 from pathlib import Path
+from urllib.parse import urlparse
 
 import pytest
 
@@ -85,6 +98,26 @@ CREDENTIAL_KEYS = ("XTILES_USERNAME", "XTILES_PASSWORD")
 #: assumed -- a test that signed production credentials into a dev box, or the
 #: reverse, would be a confusing failure at best.
 DEFAULT_HOST = "https://xtiles.app"
+
+#: Origins a username and password may be typed into. Reviewed in a diff, never
+#: supplied at run time.
+#:
+#: A council seat found the hole this closes: with only an "is it https" check,
+#: anyone who could set ``STUDYLOOP_LIVE_XTILES_HOST`` -- a stray shell export, a
+#: CI variable, a copied command -- would have the real xTiles password POSTed to
+#: their server by a test that reported success. "Configurable and https" is not
+#: a security property; an allowlist is.
+CREDENTIAL_ORIGINS = frozenset({"https://xtiles.app", "https://app.xtiles.app"})
+
+#: Opt-in for a host outside the allowlist, e.g. a local dev instance. Deliberately
+#: separate from the host variable, so pointing somewhere new is a decision rather
+#: than a typo, and named so it reads like what it is.
+ALLOW_UNLISTED_HOST_ENV = "STUDYLOOP_LIVE_XTILES_I_TRUST_THIS_HOST"
+
+#: Opt-in for a whole-page screenshot on failure. Off by default: a full-page
+#: capture of a signed-in workspace is the account's real content written to disk,
+#: which is the opposite of what this module promises.
+FULL_PAGE_ENV = "STUDYLOOP_LIVE_XTILES_ALLOW_FULL_PAGE_SHOT"
 
 #: Where the sign-in form actually lives. ``/login`` is an app route that
 #: renders a dashboard shell and no form at all -- aiming at it cost one
@@ -169,6 +202,18 @@ def _sign_in(page, host: str, username: str, password: str) -> None:
     breaks it says so and points at the captured-session route, because a login
     redesign should cost one command rather than a debugging session.
     """
+    # Refuse BEFORE typing. This is the last point at which a real password can be
+    # kept off the wire, so the check belongs here rather than at the fixture that
+    # read the host: a future caller reaching _sign_in directly is still safe.
+    origin = _origin(host)
+    if origin not in CREDENTIAL_ORIGINS and not os.environ.get(ALLOW_UNLISTED_HOST_ENV):
+        pytest.fail(
+            f"refusing to type xTiles credentials into {origin}. Allowed: "
+            f"{', '.join(sorted(CREDENTIAL_ORIGINS))}. If this really is your own "
+            f"instance, set {ALLOW_UNLISTED_HOST_ENV}=1 -- deliberately, and knowing "
+            "that whatever answers that origin receives your username and password."
+        )
+
     login_path = os.environ.get("STUDYLOOP_LIVE_XTILES_LOGIN_PATH", DEFAULT_LOGIN_PATH)
     login_url = f"{host.rstrip('/')}/{login_path.lstrip('/')}"
     page.goto(login_url, wait_until="domcontentloaded")
@@ -208,7 +253,7 @@ def _sign_in(page, host: str, username: str, password: str) -> None:
     # captured-session route exists precisely for this and is the supported path.
     protected = "recaptcha" in page.content().lower()
     pytest.fail(
-        f"still on {page.url} after submitting the sign-in form."
+        f"still on {_redact(page.url)} after submitting the sign-in form."
         + (
             "\n\nThe page is protected by reCAPTCHA, which a headless browser will "
             "not pass. Credential sign-in only works on a host without it (a dev "
@@ -256,6 +301,14 @@ def target_url(probe: str) -> str:
         )
     if not url.startswith("https://"):
         pytest.fail(f"STUDYLOOP_LIVE_XTILES_URL must be an https URL; got {url!r}")
+
+    host = os.environ.get("STUDYLOOP_LIVE_XTILES_HOST", DEFAULT_HOST)
+    if _origin(url) != _origin(host):
+        pytest.fail(
+            f"STUDYLOOP_LIVE_XTILES_URL is on {_origin(url)} but the host under test "
+            f"is {_origin(host)}. Refusing: opening an unrelated site with a saved "
+            "xTiles session hands that site whatever the session's cookies allow."
+        )
     return url
 
 
@@ -323,56 +376,128 @@ def signed_in_page(probe: str, target_url: str):
             browser.close()
 
 
+def _origin(url: str) -> str:
+    """Scheme and host, lowercased, with no port shorthand games."""
+    parsed = urlparse(url)
+    return f"{parsed.scheme.lower()}://{parsed.netloc.lower()}"
+
+
+def _redact(url: str) -> str:
+    """Origin and path only.
+
+    A returned xTiles URL can carry query parameters, a fragment or a share token
+    -- ``?nvi=<base64>`` is a documented shape for addressing a single tile. Those
+    end up in evidence files and failure messages, which are read by other people
+    and committed to a disk, so they are cut here rather than trusted to be dull.
+    """
+    parsed = urlparse(url)
+    suffix = " (query redacted)" if parsed.query or parsed.fragment else ""
+    return f"{_origin(url)}{parsed.path}{suffix}"
+
+
 def _looks_signed_out(page) -> bool:
     return any(hint in page.url for hint in ("/user/login", "/signin", "/auth"))
+
+
+def _probe_locator(page, probe: str):
+    """Locate by text through the API, not through a selector string.
+
+    The original interpolated a caller-supplied string into Playwright's selector
+    grammar, where a chaining operator or a quote inside the prefix would be parsed
+    as syntax rather than matched as text. ``get_by_text`` takes the string as a
+    string.
+    """
+    return page.get_by_text(probe, exact=False).filter(visible=True)
+
+
+def _require_loaded_xtiles_view(page, probe: str) -> None:
+    """Prove the page really is a loaded xTiles view before believing an absence.
+
+    Absence of the probe is only evidence of deletion if the view actually
+    rendered. An error page, a redirect, a lazy list that has not populated, or the
+    wrong account all show zero matches -- so a removal test without this check
+    passes in every one of the cases it was written to detect.
+    """
+    if _looks_signed_out(page):
+        pytest.fail(
+            f"redirected to {_redact(page.url)} — the saved session has expired. "
+            "Recreate it: env -u VIRTUAL_ENV uv run python scripts/xtiles-live-auth.py"
+        )
+    expected = _origin(os.environ.get("STUDYLOOP_LIVE_XTILES_HOST", DEFAULT_HOST))
+    if _origin(page.url) != expected:
+        pytest.fail(
+            f"ended up on {_origin(page.url)}, not the host under test ({expected}). "
+            "An absence there proves nothing."
+        )
+    # Something of the app's own chrome must be present. Deliberately weak and
+    # structural rather than a brittle selector: what matters is "this is an
+    # application view that finished rendering", not which build of it.
+    try:
+        page.locator("main, [role='main'], nav, [role='navigation']").first.wait_for(
+            state="visible", timeout=20000
+        )
+    except Exception as exc:
+        pytest.fail(
+            f"no application chrome rendered at {_redact(page.url)} within 20s, so an "
+            f"absent {probe!r} would prove nothing about deletion. ({exc})"
+        )
 
 
 def test_the_assistants_write_is_visible_to_the_learner(
     signed_in_page, probe: str, evidence_dir: Path
 ) -> None:
-    """The half the API-level round trip could not prove.
+    """That the item the assistant wrote is FINDABLE in the interface.
 
     A connector write can return an id and still be invisible in the interface —
     wrong space, wrong day, rendered empty. This is the learner's own view of it.
+
+    Scope of the claim, stated precisely because the first version of this
+    docstring overstated it: this is a **scoped-presence check**. It proves an
+    element carrying the probe prefix is visible, and compares the fields the
+    caller chose to assert. It does not compare a whole expected payload — the
+    connector round trip already proves the payload survives the API, and this
+    test exists for the different question of whether the UI shows it at all.
     """
     page = signed_in_page
 
     if os.environ.get("STUDYLOOP_LIVE_XTILES_EXPECT_REMOVED") == "1":
         pytest.skip("this run is checking removal; see the removal test")
 
-    if _looks_signed_out(page):
-        pytest.fail(
-            f"redirected to {page.url} — the saved session has expired. "
-            "Recreate it: env -u VIRTUAL_ENV uv run python scripts/xtiles-live-auth.py"
-        )
+    _require_loaded_xtiles_view(page, probe)
 
-    match = page.locator(f"text={probe} >> visible=true").first
+    match = _probe_locator(page, probe).first
     try:
         match.wait_for(state="visible", timeout=20000)
     except Exception as exc:
-        shot = evidence_dir / "not-found.png"
-        page.screenshot(path=str(shot), full_page=True)
         pytest.fail(
-            f"nothing carrying the probe prefix {probe!r} is visible at {page.url}.\n"
-            f"A screenshot of what was there instead: {shot}\n"
+            f"nothing carrying the probe prefix {probe!r} is visible at "
+            f"{_redact(page.url)}.\n"
             "Either the assistant did not write it, wrote it somewhere else, or "
-            f"xTiles renders it in a way this check cannot see. ({exc})"
+            f"xTiles renders it in a way this check cannot see. ({exc})\n"
+            f"No screenshot was taken: a picture of what IS there is a picture of "
+            f"the account's real content. Set {FULL_PAGE_ENV}=1 to allow one, "
+            "knowing it lands in the review tree."
         )
 
     # Assert against the probe-scoped element only. Reading the page's whole text
     # into an assertion would put the owner's real workspace into a test log.
-    assert probe in match.inner_text()
+    matched_text = match.inner_text().strip()
+    assert probe in matched_text
 
-    shot = evidence_dir / "visible-in-xtiles.png"
-    page.screenshot(path=str(shot))
+    # Crop to the matched element. The previous version screenshotted the page --
+    # which is the owner's entire workspace, written to disk, directly contradicting
+    # this module's own promise that real content never reaches an artefact. Two
+    # council seats found the same thing; they were right.
+    match.screenshot(path=str(evidence_dir / "visible-in-xtiles.png"))
     (evidence_dir / "visible-in-xtiles.txt").write_text(
         "Live xTiles UI check — the assistant's write, seen by the learner\n"
         "================================================================\n\n"
-        f"URL under test : {page.url}\n"
-        f"Probe prefix   : {probe}\n"
-        f"Matched text   : {match.inner_text().strip()[:200]}\n\n"
-        "Nothing was written or deleted by this check. Only the element carrying\n"
-        "the probe prefix was read; the rest of the workspace was not.\n",
+        f"View under test : {_redact(page.url)}\n"
+        f"Probe prefix    : {probe}\n"
+        f"Matched text    : {matched_text[:200]}\n\n"
+        "Nothing was written or deleted by this check. The screenshot is cropped to\n"
+        "the matched element, and the URL is recorded without its query string, so\n"
+        "neither carries the surrounding workspace.\n",
         encoding="utf-8",
     )
 
@@ -386,6 +511,10 @@ def test_the_item_is_gone_once_it_has_been_deleted(
     returns 404; this proves the interface agrees, which is not the same claim —
     a deleted item that still renders is exactly the kind of thing an API check
     cannot see.
+
+    The view must be proven loaded first. Without that, this test passes on an
+    error page, a redirect, an empty lazy list and the wrong account — every
+    failure mode it was written to catch.
     """
     if os.environ.get("STUDYLOOP_LIVE_XTILES_EXPECT_REMOVED") != "1":
         pytest.skip(
@@ -393,24 +522,27 @@ def test_the_item_is_gone_once_it_has_been_deleted(
         )
 
     page = signed_in_page
-    if _looks_signed_out(page):
-        pytest.fail(f"redirected to {page.url} — the saved session has expired.")
+    _require_loaded_xtiles_view(page, probe)
 
-    count = page.locator(f"text={probe} >> visible=true").count()
+    matches = _probe_locator(page, probe)
+    count = matches.count()
     if count:
-        shot = evidence_dir / "still-present.png"
-        page.screenshot(path=str(shot), full_page=True)
+        # Cropped to the offender, not the page: the finding is "this survived",
+        # and the rest of the workspace is not part of it.
+        matches.first.screenshot(path=str(evidence_dir / "still-present.png"))
         pytest.fail(
-            f"{count} element(s) carrying {probe!r} are still visible at {page.url} "
-            f"after deletion. Screenshot: {shot}"
+            f"{count} element(s) carrying {probe!r} are still visible at "
+            f"{_redact(page.url)} after deletion. Cropped screenshot: "
+            f"{evidence_dir / 'still-present.png'}"
         )
 
     (evidence_dir / "removed-from-xtiles.txt").write_text(
         "Live xTiles UI check — removal, seen by the learner\n"
         "==================================================\n\n"
-        f"URL under test : {page.url}\n"
-        f"Probe prefix   : {probe}\n"
-        "Result         : no visible element carries the probe prefix.\n\n"
+        f"View under test : {_redact(page.url)}\n"
+        f"Probe prefix    : {probe}\n"
+        "Result          : the view rendered, and no visible element carries the\n"
+        "                  probe prefix.\n\n"
         "The API round trip proves the id returns 404; this proves the interface\n"
         "agrees, which is a different claim.\n",
         encoding="utf-8",
