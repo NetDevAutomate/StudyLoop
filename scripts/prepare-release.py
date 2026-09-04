@@ -55,6 +55,7 @@ def main(argv: list[str] | None = None) -> int:
 
     repo_root = args.repo_root.resolve()
     pyproject_path = repo_root / "packages" / "studyloop" / "pyproject.toml"
+    root_pyproject_path = repo_root / "pyproject.toml"
     release_note_path = repo_root / "releases" / f"v{version}.md"
 
     pyproject_text = pyproject_path.read_text(encoding="utf-8")
@@ -63,16 +64,32 @@ def main(argv: list[str] | None = None) -> int:
         print(f"could not find project version in {pyproject_path}", file=sys.stderr)
         return 1
 
+    # Both files, or the release is unpreparable. `check-release-consistency.py`
+    # refuses a root version that disagrees with the package (R-39), so bumping
+    # only the package left `just preflight` failing on the very commit that
+    # prepared the release.
+    try:
+        root_pyproject_text = root_pyproject_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        print(f"cannot read {root_pyproject_path}: {exc}", file=sys.stderr)
+        return 1
+    new_root_pyproject_text = replace_version(root_pyproject_text, version)
+    if new_root_pyproject_text == root_pyproject_text:
+        print(f"could not find project version in {root_pyproject_path}", file=sys.stderr)
+        return 1
+
     if release_note_path.exists() and not args.force:
         print(f"release note already exists: {release_note_path}", file=sys.stderr)
         return 1
 
     if args.dry_run:
         print(f"would update {pyproject_path}")
+        print(f"would update {root_pyproject_path}")
         print(f"would write {release_note_path}")
         return 0
 
     pyproject_path.write_text(new_pyproject_text, encoding="utf-8")
+    root_pyproject_path.write_text(new_root_pyproject_text, encoding="utf-8")
     release_note_path.write_text(release_note_text(version), encoding="utf-8")
     print(f"prepared StudyLoop {version}")
     return 0
