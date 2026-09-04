@@ -181,12 +181,22 @@ class ObsidianBackend:
         atomicity live, so anything that wrote a note some other way would be a
         second place for those rules to be forgotten.
         """
-        return write_projection(target, rendered, identity), ()
+        outcome = write_projection(target, rendered, identity)
+        if outcome is WriteOutcome.REPLACED:
+            # Named, and phrased as what happened to THEIR text rather than as what
+            # StudyLoop did. "written" alone was indistinguishable from a first
+            # publish, which is how a learner lost an edit without being told.
+            return outcome, (
+                f"replaced your edits in '{target.relative}' — a projection is "
+                "regenerated from the plan, so write beside it in "
+                f"'{target.relative.removesuffix('.md')}.notes.md' instead.",
+            )
+        return outcome, ()
 
     def _bucket(
         self, outcome: WriteOutcome, target: VaultTarget
     ) -> tuple[tuple[str, ...], tuple[str, ...]]:
-        if outcome is WriteOutcome.WRITTEN:
+        if outcome in {WriteOutcome.WRITTEN, WriteOutcome.REPLACED}:
             return (target.relative,), ()
         return (), (target.relative,)
 
