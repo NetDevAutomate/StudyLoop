@@ -38,11 +38,11 @@ def plans_dir(tmp_path, monkeypatch):
 
 @pytest.fixture()
 def backend(vault, plans_dir, monkeypatch):
-    """An Obsidian backend with the CLI adapter firmly off.
+    """An Obsidian backend writing files directly.
 
-    ``use_cli="off"`` on purpose: these tests are about the file writer, and a
-    developer with the real Obsidian CLI installed must not get different results
-    from one who has not.
+    There is no other path: the adapter for the official Obsidian CLI was
+    withdrawn before release, so a developer who happens to have that binary
+    installed gets exactly the same results as one who does not.
     """
     settings = Settings()
     settings.second_brain = SecondBrainConfig(

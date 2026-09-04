@@ -119,6 +119,6 @@ markers = [
     "e2e: end-to-end tests requiring full stack (tmux, ttyd, web server)",
     "live_kiro: dogfood tests that spawn a real kiro-cli acp child",
     "live_provider: tests that call a real LLM provider",
-    "live_obsidian: tests that drive the real Obsidian CLI against a dedicated test vault on the owner's machine (requires the desktop app running; opt in with -m live_obsidian)",
+    "live_obsidian: tests that write into a dedicated throwaway Obsidian vault on the owner's machine and read the notes back (opt in with -m live_obsidian)",
     "allow_server_errors: test deliberately drives the server into an unhandled exception, so the per-test server-log check is skipped for it",
 ]

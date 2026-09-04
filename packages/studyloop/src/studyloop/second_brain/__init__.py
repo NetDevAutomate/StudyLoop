@@ -2,7 +2,7 @@
 
 Import boundary, deliberately enforced: this package's ``__init__`` re-exports
 from :mod:`studyloop.second_brain.core` and :mod:`studyloop.second_brain.factory`
-and NOTHING else. A provider module (``obsidian``, ``obsidian_cli``,
+and NOTHING else. A provider module (``obsidian``,
 ``projection``, ``backlinks``, ``templates``) is imported only inside
 :func:`studyloop.second_brain.factory.get_backend`, after the provider has been
 selected from configuration.

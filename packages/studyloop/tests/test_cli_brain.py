@@ -16,7 +16,7 @@ import pytest
 import yaml
 from click.testing import CliRunner
 
-from studyloop.cli._brain import brain_group
+from studyloop.cli._brain import brain_group, enable_cmd
 from studyloop.planning import Mission, StudyPlan, create_plan
 from studyloop.planning.store import plan_path
 
@@ -47,7 +47,7 @@ def config(tmp_path, monkeypatch):
 
 @pytest.fixture()
 def obsidian(config, vault):
-    """A configured Obsidian provider with the CLI adapter off."""
+    """A configured Obsidian provider writing files directly."""
     config(
         {
             "topics": [],
@@ -518,3 +518,25 @@ def test_template_install_is_all_or_nothing(obsidian) -> None:
     assert result.exit_code == 1
     assert "nothing was installed" in result.output
     assert sorted(p.name for p in existing.parent.iterdir()) == ["Today.md"]
+
+
+def test_enable_offers_no_option_that_writes_a_retired_key(config, vault) -> None:
+    """The withdrawn CLI adapter left ``--cli`` behind, and it could only ever fail.
+
+    ``--cli`` wrote ``use_cli`` into the section, which ``resolve_second_brain``
+    now rejects — so the option validated its own output into an error and told the
+    learner their configuration was invalid. An option whose every value is refused
+    is not a safety net, it is a trap: remove it rather than explain it.
+    """
+    from studyloop.settings import _RETIRED_SECOND_BRAIN_KEYS
+
+    option_names = {
+        name.lstrip("-").replace("-", "_")
+        for param in enable_cmd.params
+        for name in getattr(param, "opts", [])
+    }
+    assert option_names.isdisjoint(_RETIRED_SECOND_BRAIN_KEYS)
+    assert "cli" not in option_names
+
+    help_text = _run("enable", "--help").output
+    assert "--cli" not in help_text
