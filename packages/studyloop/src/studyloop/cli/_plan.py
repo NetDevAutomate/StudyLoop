@@ -11,6 +11,7 @@ pastes into the conversation at each of the three session checkpoints.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import NoReturn
 
 import click
@@ -30,6 +31,7 @@ from studyloop.planning import (
     load_plan_text,
     plans_dir,
     readiness,
+    record_learning,
     reindex_all,
     save_plan,
     seed_from_history,
@@ -340,6 +342,60 @@ def plan_status(plan_id: str, status: str) -> None:
     plan.status = status
     save_plan(plan)
     console.print(f"[green]{plan.plan_id}[/green] → {status}")
+
+
+@plan_group.command("record")
+@click.argument("plan_id")
+@click.option("--title", required=True, help="What was learned, in one line.")
+@click.option("--body", default="", help="The record's body, as Markdown prose.")
+@click.option(
+    "--body-file",
+    type=click.Path(exists=True, dir_okay=False),
+    default=None,
+    help="Read the body from a file instead of --body.",
+)
+@click.option(
+    "--status",
+    default="active",
+    show_default=True,
+    help="Record status (e.g. active, superseded).",
+)
+@click.option("--json", "as_json", is_flag=True, help="Machine-readable output.")
+def plan_record(
+    plan_id: str, title: str, body: str, body_file: str | None, status: str, as_json: bool
+) -> None:
+    """Append a learning record to a plan — the wind-down's 'record first' step.
+
+    Parses the document, appends the record to the model, and re-renders the
+    whole file, so the on-disk shape stays the renderer's business (ADR-0010).
+    Re-running with the same title and body is a no-op, which makes it safe for
+    an agent to retry.
+    """
+    if body and body_file:
+        _fail("Pass --body or --body-file, not both.")
+    if body_file:
+        body = Path(body_file).read_text(encoding="utf-8")
+    plan = _load(plan_id)  # maps not-found/invalid-id to the friendly failure
+    try:
+        record, created = record_learning(plan.plan_id, title, body=body, status=status)
+    except ValueError as exc:
+        _fail(str(exc))
+    if as_json:
+        click.echo(
+            json.dumps(
+                {
+                    "plan_id": plan.plan_id,
+                    "number": record.number,
+                    "title": record.title,
+                    "status": record.status,
+                    "created": created,
+                },
+                indent=2,
+            )
+        )
+        return
+    verb = "recorded" if created else "already recorded (no change)"
+    console.print(f"[green]LR-{record.number:04d}[/green] — {record.title}: {verb}")
 
 
 @plan_group.command("reindex")

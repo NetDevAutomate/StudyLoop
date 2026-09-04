@@ -9,6 +9,17 @@ experience may change before `1.0.0`.
 
 ### Added
 
+- `studyloop plan record <plan-id> --title <title> [--body … | --body-file …]`
+  appends a learning record to a plan document, with a matching MCP tool
+  (`record_plan_learning`) so a mentor can record what was learned at
+  wind-down. Before this, a learning record existed only if you typed it into
+  the plan by hand — and an xTiles wind-down's record lived only in xTiles.
+  The write goes through the plan renderer (never appended as raw text),
+  numbering continues from the highest existing record, and re-running with
+  the same title and body changes nothing. The xTiles wind-down now records
+  into the plan first, so the xTiles page is a projection of a record the plan
+  already has. ADR-0010 was amended to state the rule the code obeys:
+  `studyloop plan …` is the plan document's only writer.
 - `studyloop brain wind-down --json [--connector NAME]...` answers the one
   question the end-of-session protocol needs: which second-brain offer to make,
   if any. It returns the channel, whether to offer, the exact sentence to say,

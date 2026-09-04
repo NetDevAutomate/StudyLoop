@@ -47,10 +47,14 @@ Offer once, in one line — the `sentence` the command returned, verbatim:
 > Want me to add today's learning record and the next review to your xTiles project? Yes or no — I'll only ask once.
 <!-- /xtiles-wind-down-offer -->
 
-On **yes**, follow prompt P3 from the Second Brain guide: one learning-record page
-under the plan's project, one dated planner task for the next review, then say what
-you wrote. Ask before each write, and if xTiles refuses a write, report what it
-said rather than retrying.
+On **yes**, record into the plan **first**: `studyloop plan record <plan-id>
+--title "<topic>" --body "<the summary>"` (or the `record_plan_learning` MCP
+tool). The plan document is the source of truth, and the xTiles page must be a
+projection of a record it already has — never the only copy. Then follow prompt
+P3 from the Second Brain guide: one learning-record page under the plan's
+project, one dated planner task for the next review, then say what you wrote.
+Ask before each write, and if xTiles refuses a write, report what it said
+rather than retrying.
 
 On **no**, continue the wind-down and do not raise it again this session.
 
