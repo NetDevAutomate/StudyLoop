@@ -336,3 +336,195 @@ def test_the_host_under_test_is_explicit(source: str) -> None:
         "both the host and the target URL must be https-checked; a session cookie "
         "on a plain-http request is a session cookie on the wire"
     )
+
+
+def test_credentials_are_only_typed_into_an_allowlisted_origin(source: str) -> None:
+    """The hole a council seat found, closed and now held closed.
+
+    With only an "is it https" check on the host, anyone who could set
+    ``STUDYLOOP_LIVE_XTILES_HOST`` — a stray shell export, a CI variable, a copied
+    command — would have the real xTiles password POSTed to their server by a test
+    that then reported success. "Configurable and https" is not a security
+    property.
+
+    The refusal must live inside ``_sign_in``, before anything is typed, so that a
+    future caller reaching it directly is still covered.
+    """
+    assert "CREDENTIAL_ORIGINS" in source, "no origin allowlist"
+    assert "frozenset(" in source, "the allowlist is mutable"
+
+    tree = ast.parse(source, filename=str(LIVE_MODULE))
+    sign_in = next(
+        (
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.FunctionDef) and node.name == "_sign_in"
+        ),
+        None,
+    )
+    assert sign_in is not None, "no _sign_in"
+
+    # The allowlist must be used as a TEST that refuses, not merely mentioned.
+    #
+    # The first version of this guard asserted only that the name appeared somewhere
+    # in _sign_in, and a mutation replacing the whole condition with a constant
+    # sailed through it -- the name was still there, interpolated into the refusal
+    # message inside the now-dead branch. A guard that a bypass passes is exactly
+    # what this file exists to catch, found in this file.
+    gates = [
+        node
+        for node in ast.walk(sign_in)
+        if isinstance(node, ast.If)
+        and any(
+            isinstance(inner, ast.Compare)
+            and any(
+                isinstance(name, ast.Name) and name.id == "CREDENTIAL_ORIGINS"
+                for name in ast.walk(inner)
+            )
+            for inner in ast.walk(node.test)
+        )
+        and any(
+            isinstance(call, ast.Call)
+            and isinstance(call.func, ast.Attribute)
+            and call.func.attr == "fail"
+            for call in ast.walk(node)
+        )
+    ]
+    assert gates, (
+        "_sign_in has no `if <origin compared against CREDENTIAL_ORIGINS>: "
+        "pytest.fail(...)` gate. The allowlist is decoration unless it decides "
+        "whether the password is typed at all."
+    )
+
+    # And that gate has to come before the first fill(), or it is decoration anyway.
+    check_line = min(node.lineno for node in gates)
+    first_fill = min(
+        (
+            node.lineno
+            for node in ast.walk(sign_in)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "fill"
+        ),
+        default=None,
+    )
+    assert first_fill is not None, "_sign_in no longer fills anything"
+    assert check_line < first_fill, (
+        f"the origin check (line {check_line}) runs after the first fill "
+        f"(line {first_fill}): the password is already on its way"
+    )
+
+
+def test_the_target_url_must_share_the_hosts_origin(source: str) -> None:
+    """A saved session must not be carried to an unrelated site.
+
+    Opening an attacker-supplied URL in a context holding live xTiles cookies
+    hands that site whatever those cookies allow.
+    """
+    tree = ast.parse(source, filename=str(LIVE_MODULE))
+    target = next(
+        (
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.FunctionDef) and node.name == "target_url"
+        ),
+        None,
+    )
+    assert target is not None, "no target_url fixture"
+    body = ast.dump(target)
+    assert "_origin" in body, "target_url does not compare origins"
+    assert "fail" in body, "an origin mismatch does not fail the run"
+
+
+def test_no_full_page_screenshot_without_an_explicit_opt_in(source: str) -> None:
+    """The claim and the code have to agree.
+
+    The module promises the account's real content never reaches an artefact. The
+    first version took ``page.screenshot(full_page=True)`` on failure — which is
+    the entire signed-in workspace, written to the review tree. Screenshots are
+    cropped to the matched element now; a whole-page capture needs a named opt-in.
+    """
+    tree = ast.parse(source, filename=str(LIVE_MODULE))
+    offenders: list[str] = []
+    for node in ast.walk(tree):
+        if not (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "screenshot"
+        ):
+            continue
+        target = node.func.value
+        # A screenshot of a `page` is the whole viewport; of a locator, one element.
+        if isinstance(target, ast.Name) and target.id == "page":
+            offenders.append(f"line {node.lineno}: page.screenshot(...)")
+        if any(kw.arg == "full_page" for kw in node.keywords):
+            offenders.append(f"line {node.lineno}: full_page=")
+
+    assert offenders == [], (
+        "screenshots must be cropped to the matched element, not the page:\n" + "\n".join(offenders)
+    )
+    assert "FULL_PAGE_ENV" in source, "no named opt-in for a whole-page capture"
+
+
+def test_recorded_urls_are_redacted(source: str) -> None:
+    """A returned xTiles URL can carry a share token in its query string.
+
+    ``?nvi=<base64>`` is a documented shape for addressing one tile. Evidence files
+    and failure messages are read by other people and land on a disk, so the query
+    string and fragment are cut rather than trusted to be dull.
+    """
+    assert "def _redact(" in source, "no redaction helper"
+
+    tree = ast.parse(source, filename=str(LIVE_MODULE))
+    raw: list[str] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.JoinedStr):
+            continue
+        for part in node.values:
+            if not isinstance(part, ast.FormattedValue):
+                continue
+            value = part.value
+            # `page.url` interpolated directly, rather than through _redact(...)
+            if (
+                isinstance(value, ast.Attribute)
+                and value.attr == "url"
+                and isinstance(value.value, ast.Name)
+                and value.value.id == "page"
+            ):
+                raw.append(f"line {node.lineno}")
+    assert raw == [], (
+        "page.url is interpolated verbatim into a message or artefact; use "
+        f"_redact(page.url): {', '.join(raw)}"
+    )
+
+
+def test_the_probe_is_not_interpolated_into_a_selector_string(source: str) -> None:
+    """A caller-supplied string belongs in an argument, not in a grammar.
+
+    The original built the locator by interpolating the prefix into Playwright's
+    selector grammar, so a prefix containing the chaining operator or a quote would
+    be parsed as syntax rather than matched as text — and a malformed one could
+    widen the match instead of narrowing it.
+
+    Checked on the parse tree, not the text. A literal example of the bad pattern
+    written into a docstring made the text version fail on the comment explaining
+    the rule: the fourth time that exact mistake has happened in this repo.
+    """
+    tree = ast.parse(source, filename=str(LIVE_MODULE))
+    offenders: list[str] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.JoinedStr):
+            continue
+        literal = "".join(
+            part.value
+            for part in node.values
+            if isinstance(part, ast.Constant) and isinstance(part.value, str)
+        )
+        if ">>" in literal or literal.startswith(("text=", "css=", "xpath=")):
+            offenders.append(f"line {node.lineno}: {literal!r}")
+
+    assert offenders == [], (
+        "a value is interpolated into a Playwright selector string; pass it as an "
+        "argument instead (page.get_by_text(probe, exact=False)):\n" + "\n".join(offenders)
+    )
+    assert "get_by_text(" in source, "no text locator built through the API"
