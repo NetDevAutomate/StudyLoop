@@ -29,8 +29,10 @@ Three constraints shape the answer:
 - **An Obsidian backend** writing projections into `<vault>/<folder>/`
   (`Study/Plans/<plan_id>.md`, `Study/Today.md`): atomic, idempotent, refusing
   any target outside the vault or lacking StudyLoop's `studyloop:` frontmatter
-  marker. The official Obsidian CLI is an opt-in adapter that degrades to the
-  file writer whenever the app is not answering.
+  marker. Plain files and nothing else: an official-Obsidian-CLI adapter was
+  built and withdrawn before release (design D4), and the four config keys it
+  used (`use_cli`, `vault_name`, `template`, `daily_note`) are refused with an
+  error naming them rather than silently ignored (design D12).
 - **A `studyloop brain` command group** — `status`, `publish`, `pull`, `enable`,
   `template` — lazily registered, each with `--json`.
 - **A once-only wind-down offer**: the protocol offers a publish exactly once,
@@ -88,9 +90,10 @@ Three constraints shape the answer:
 - **Writes into a learner's real files.** Mitigated by the ownership marker, the
   vault-boundary refusal, atomic replace, and a test suite that cannot resolve
   the real vault at all.
-- **The Obsidian CLI grammar is unversioned.** Mitigated by keeping it an
-  optional adapter behind a probe: a grammar change costs one file and degrades
-  to plain files meanwhile.
+- **The Obsidian CLI grammar is unversioned.** Resolved by withdrawal: the
+  opt-in adapter was built, reviewed and removed before release (design D4);
+  plain files carry the whole feature, and its four config keys are refused
+  with an error naming them.
 - **A learner edits a projection and loses the edit.** Accepted and documented:
   edits are replaced on the next publish with a warning, and personal notes
   belong in the sibling `.notes.md` file that StudyLoop only ever reads.
