@@ -20,6 +20,7 @@ no remote publication or backup is implied.
 | 11 — Source to decision | Can code enforce evidence requirements without blocking justified choices? | `e1428be` | `python -m experiments.evidence_context.source_decision`; source_decision/GUIDE.md, RESULTS.md and saved learning walkthrough |
 | 12 — Real retrieval pilot | Which selected history reaches and helps the answer? | `27e6900` | `retrieval_matrix/trial.py` and `report.py`; GUIDE.md, RESULTS.md, private real-answer replay |
 | 13 — Equivalent storage | Which engine serves the same nodes, edges and rows? | `6fff879` | `storage_matrix/benchmark.py` and `query_diagnostic.py`; GUIDE.md and RESULTS.md |
+| 14 — Evidence replacement | Do reviewed results improve answers, and what still fails? | `ec8bbc1` | `evidence_selection/runner.py` and `viewer.py`; GUIDE.md, RESULTS.md and reviewer audit |
 
 Stage 3 uses its own lifecycle adapter and database schema. It does not modify the
 stage 1 evidence store, and does not require stage 1 demo output. Stage 2 uses
@@ -245,18 +246,51 @@ checks. The private replay passed browser checks for 32 entries, Q3 filtering an
 expansion. Both new stages passed the commit hooks. Source DB and production config
 were not modified by these experiments; graph stores are disposable snapshots.
 
+## Stage 14 commands
+
+```sh
+uv run python -m experiments.evidence_context.evidence_selection.viewer \
+  --directory experiments/evidence_context/.private/stage-14/run \
+  --output /tmp/stage-14-walkthrough.html
+open /tmp/stage-14-walkthrough.html
+uv run --group dev pytest experiments/evidence_context/tests/test_evidence_selection.py -q
+```
+
+Checkpoint `ec8bbc1` preserves 24 fresh answer calls: four development questions,
+original/reviewed/reviewed-plus-nearby conditions, two repeats each. The answering
+prompt/model remained fixed. Q3's reviewed conditions supplied all four required
+reported-result facts and recovered them in the answers; interpretation still failed.
+Clean packs overstated validation, while filled packs promoted a correction in progress
+to completion. These are oracle controls, not a deployed automatic retriever. Actual
+context lengths differ under one shared ceiling; order/density remain confounds.
+
+Three providers returned design reviews. The initial twelve-answer review had two
+responders whose blanket criticisms included demonstrable misreadings. A focused
+three-answer audit returned all four providers; Fable and Grok correctly distinguished
+qualified decisions, validation overclaims and completion overclaims. Other disagreements
+and response-contract defects are retained. This is not general reviewer calibration
+or full-trial consensus. No answer was regenerated or automatically accepted.
+
+All 212 evidence-context tests passed. Browser checks confirmed 24 replay entries,
+six filtered Q3 drafts, expansion and no page errors. Commit checks passed. Private
+transcripts/outputs remain in the ignored .private archive alongside the learning tree;
+a Git clone deliberately does not contain them. The Stage8 exercise remains unchanged.
+
 ## Next evidence gate
 
-Use an independently reviewed, budget-matched complete-evidence control for the failed
-episode. Keep model, prompt and scoring fixed so we can separate retrieval omissions
-from answer misuse. Then test episode identity, execution state and validation
-applicability on new independently labelled examples. This supersedes the prior
-next-step suggestion to gather a first real sample: the sample now exists, but it is
-development data and does not satisfy the real held-out efficacy requirement.
+The complete-evidence control has now run. Next, represent reported event state,
+evidence basis and target identity separately, then test whether a verifier can allow
+a reported cleanup outcome while withholding an unsupported completed-fix claim.
+Review findings must identify exact answer/source clauses and be tested against honest
+qualified answers as well as overclaims. Preserve false blocks and reviewer disagreement.
+
+Use new independently labelled cases before claiming general efficacy or building an
+automatic extraction/retrieval integration. Stage14 reused development questions and
+known labels; it does not satisfy the held-out requirement. A later distraction study
+should counterbalance positions and actual lengths rather than change several factors.
 
 Keep SQLite canonical and indexes replaceable while investigating information value.
 A new engine race needs a named workload and a fair optimized-query baseline. Work/
 personal scope, correction/forgetting through derived indexes, capture health and
-installation ownership remain requirements for integration, not proven by these
-microbenchmarks. No DSPy integration, production prompt promotion or migration occurred.
-The optional Stage 8 learning exercise remains saved unchanged.
+installation ownership remain requirements for integration. No DSPy integration,
+production prompt promotion or migration occurred.
