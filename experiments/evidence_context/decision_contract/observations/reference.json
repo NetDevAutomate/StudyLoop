@@ -1,0 +1,280 @@
+[
+  {
+    "case": "reports_only",
+    "answer": {
+      "source_assessments": [
+        {
+          "id": "S1",
+          "provenance": "report",
+          "applicability": "not_validation",
+          "reason": "An agent report is a claim, not an observed check."
+        },
+        {
+          "id": "S2",
+          "provenance": "report",
+          "applicability": "not_validation",
+          "reason": "An agent report is a claim, not an observed check."
+        }
+      ],
+      "decision": {
+        "sufficiency": "insufficient",
+        "recommendation": "none",
+        "reason_code": "no_applicable_observation",
+        "basis_ids": [
+          "S1",
+          "S2"
+        ],
+        "explanation": "No applicable check establishes a choice under this decision's requirements.",
+        "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r2, workload=eight writers, environment=fixture-local, metric=reopen correctness",
+        "next_check": "Obtain a comparative check with recorded revision, workload, environment and metric."
+      }
+    }
+  },
+  {
+    "case": "matching_artifact",
+    "answer": {
+      "source_assessments": [
+        {
+          "id": "S1",
+          "provenance": "report",
+          "applicability": "not_validation",
+          "reason": "An agent report is a claim, not an observed check."
+        },
+        {
+          "id": "S2",
+          "provenance": "report",
+          "applicability": "not_validation",
+          "reason": "An agent report is a claim, not an observed check."
+        },
+        {
+          "id": "S3",
+          "provenance": "artifact",
+          "applicability": "applicable",
+          "reason": "Revision, workload, environment and metric match the target."
+        }
+      ],
+      "decision": {
+        "sufficiency": "supported",
+        "recommendation": "B",
+        "reason_code": "applicable_observation",
+        "basis_ids": [
+          "S3"
+        ],
+        "explanation": "Applicable fixture checks support B for the stated target.",
+        "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r2, workload=eight writers, environment=fixture-local, metric=reopen correctness",
+        "next_check": "Reproduce independently before applying this synthetic finding to a real system."
+      }
+    }
+  },
+  {
+    "case": "wrong_revision",
+    "answer": {
+      "source_assessments": [
+        {
+          "id": "S1",
+          "provenance": "report",
+          "applicability": "not_validation",
+          "reason": "An agent report is a claim, not an observed check."
+        },
+        {
+          "id": "S2",
+          "provenance": "report",
+          "applicability": "not_validation",
+          "reason": "An agent report is a claim, not an observed check."
+        },
+        {
+          "id": "S3",
+          "provenance": "artifact",
+          "applicability": "inapplicable",
+          "reason": "revision: tested r1, needed r2"
+        }
+      ],
+      "decision": {
+        "sufficiency": "insufficient",
+        "recommendation": "none",
+        "reason_code": "no_applicable_observation",
+        "basis_ids": [
+          "S1",
+          "S2",
+          "S3"
+        ],
+        "explanation": "No applicable check establishes a choice under this decision's requirements.",
+        "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r2, workload=eight writers, environment=fixture-local, metric=reopen correctness",
+        "next_check": "Obtain a comparative check with recorded revision, workload, environment and metric."
+      }
+    }
+  },
+  {
+    "case": "unknown_revision",
+    "answer": {
+      "source_assessments": [
+        {
+          "id": "S1",
+          "provenance": "report",
+          "applicability": "not_validation",
+          "reason": "An agent report is a claim, not an observed check."
+        },
+        {
+          "id": "S2",
+          "provenance": "report",
+          "applicability": "not_validation",
+          "reason": "An agent report is a claim, not an observed check."
+        },
+        {
+          "id": "S3",
+          "provenance": "artifact",
+          "applicability": "unknown",
+          "reason": "Missing scope: revision; do not assume a match."
+        }
+      ],
+      "decision": {
+        "sufficiency": "insufficient",
+        "recommendation": "none",
+        "reason_code": "no_applicable_observation",
+        "basis_ids": [
+          "S1",
+          "S2",
+          "S3"
+        ],
+        "explanation": "No applicable check establishes a choice under this decision's requirements.",
+        "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r2, workload=eight writers, environment=fixture-local, metric=reopen correctness",
+        "next_check": "Obtain a comparative check with recorded revision, workload, environment and metric."
+      }
+    }
+  },
+  {
+    "case": "conflicting_checks",
+    "answer": {
+      "source_assessments": [
+        {
+          "id": "S3",
+          "provenance": "artifact",
+          "applicability": "applicable",
+          "reason": "Revision, workload, environment and metric match the target."
+        },
+        {
+          "id": "S4",
+          "provenance": "artifact",
+          "applicability": "applicable",
+          "reason": "Revision, workload, environment and metric match the target."
+        }
+      ],
+      "decision": {
+        "sufficiency": "insufficient",
+        "recommendation": "none",
+        "reason_code": "conflicting_observations",
+        "basis_ids": [
+          "S3",
+          "S4"
+        ],
+        "explanation": "Applicable checks disagree; matching scope does not reconcile their results.",
+        "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r2, workload=eight writers, environment=fixture-local, metric=reopen correctness",
+        "next_check": "Reproduce both checks under the target conditions and investigate the discrepancy."
+      }
+    }
+  },
+  {
+    "case": "wrong_metric",
+    "answer": {
+      "source_assessments": [
+        {
+          "id": "S1",
+          "provenance": "report",
+          "applicability": "not_validation",
+          "reason": "An agent report is a claim, not an observed check."
+        },
+        {
+          "id": "S2",
+          "provenance": "report",
+          "applicability": "not_validation",
+          "reason": "An agent report is a claim, not an observed check."
+        },
+        {
+          "id": "S3",
+          "provenance": "artifact",
+          "applicability": "inapplicable",
+          "reason": "metric: tested throughput, needed reopen correctness"
+        }
+      ],
+      "decision": {
+        "sufficiency": "insufficient",
+        "recommendation": "none",
+        "reason_code": "no_applicable_observation",
+        "basis_ids": [
+          "S1",
+          "S2",
+          "S3"
+        ],
+        "explanation": "No applicable check establishes a choice under this decision's requirements.",
+        "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r2, workload=eight writers, environment=fixture-local, metric=reopen correctness",
+        "next_check": "Obtain a comparative check with recorded revision, workload, environment and metric."
+      }
+    }
+  },
+  {
+    "case": "conditional_fit",
+    "answer": {
+      "source_assessments": [
+        {
+          "id": "S1",
+          "provenance": "report",
+          "applicability": "not_validation",
+          "reason": "An agent report is a claim, not an observed check."
+        },
+        {
+          "id": "S2",
+          "provenance": "report",
+          "applicability": "not_validation",
+          "reason": "An agent report is a claim, not an observed check."
+        }
+      ],
+      "decision": {
+        "sufficiency": "conditional",
+        "recommendation": "B",
+        "reason_code": "requirement_fit_only",
+        "basis_ids": [
+          "S2"
+        ],
+        "explanation": "Reports describe B as fitting the requirement, without measuring success.",
+        "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r2, workload=eight writers, environment=fixture-local, metric=reopen correctness",
+        "next_check": "Run a check of the proposed option against the complete target scope."
+      }
+    }
+  },
+  {
+    "case": "validated_fit",
+    "answer": {
+      "source_assessments": [
+        {
+          "id": "S1",
+          "provenance": "report",
+          "applicability": "not_validation",
+          "reason": "An agent report is a claim, not an observed check."
+        },
+        {
+          "id": "S2",
+          "provenance": "report",
+          "applicability": "not_validation",
+          "reason": "An agent report is a claim, not an observed check."
+        },
+        {
+          "id": "S3",
+          "provenance": "artifact",
+          "applicability": "applicable",
+          "reason": "Revision, workload, environment and metric match the target."
+        }
+      ],
+      "decision": {
+        "sufficiency": "supported",
+        "recommendation": "B",
+        "reason_code": "applicable_observation",
+        "basis_ids": [
+          "S3"
+        ],
+        "explanation": "Applicable fixture checks support B for the stated target.",
+        "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r2, workload=eight writers, environment=fixture-local, metric=reopen correctness",
+        "next_check": "Reproduce independently before applying this synthetic finding to a real system."
+      }
+    }
+  }
+]

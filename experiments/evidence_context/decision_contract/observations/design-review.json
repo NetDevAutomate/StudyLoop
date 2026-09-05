@@ -1,0 +1,108 @@
+{
+  "grok-4.6": {
+    "executive_summary": "The contract structurally separates provenance, applicability, and sufficiency, and it correctly treats measured abstention as a first-class outcome. It does not by itself prevent false assurance: 'supported' plus a letter recommendation can still be over-read as validation of synthetic metadata. Accept only as a locked pre-run fixture spec, not as evidence quality.",
+    "recommended_decision": "Lock the eight expected labels below, add negative fixtures for dual/zero requirement_match and mode/artifact precedence, and run answer models only as a schema/contract probe.",
+    "confidence": 0.8,
+    "assumptions": [
+      "The three concepts are provenance (source kind), applicability (use for this target), and sufficiency (what may be decided).",
+      "Exact four-field artifact match is the sole empirical bar; reports are never empirical.",
+      "requirement_fit may be conditional only when no applicable artifact exists and exactly one option has requirement_match true.",
+      "These cases are authored synthetic fixtures, not holdout or verification evidence."
+    ],
+    "reasons": [
+      "reports_only: insufficient/none. Measured mode, reports not_validation, no applicable artifact. Ambiguity: basis_ids all reports vs empty; S2 'Later advice' invites recency.",
+      "matching_artifact: supported/B on S3 only. Exact scope match. Ambiguity: whether S3 text is treated as entailed or only metadata-matched.",
+      "wrong_revision: insufficient/none. r1 is a known mismatch so inapplicable, not unknown. Ambiguity: whether r1 is wrongly inferred to cover r2.",
+      "unknown_revision: insufficient/none. Missing revision with no mismatch is unknown. Ambiguity: omitted key vs empty value vs implementers collapsing unknown into inapplicable.",
+      "conflicting_checks: insufficient/none, cite S3 and S4. Ambiguity: whether an uninvestigated discrepancy is used to pick a side.",
+      "wrong_metric: insufficient/none. throughput is a known mismatch so inapplicable. Ambiguity: unknown vs inapplicable if metric text is ignored.",
+      "conditional_fit: conditional/B on S2. No applicable artifact; exactly one requirement_match true. Ambiguity: field vs prose as the match authority; whether S1 must also be cited.",
+      "validated_fit: supported/B on S3. Applicable artifacts outrank requirement_fit. Ambiguity: mode label may tempt conditional/B and citing S2+S3.",
+      "Distinction holds if graders score abstention as correct and never treat report provenance as a decision label. False assurance remains unless limitation/next_check are content-checked."
+    ],
+    "risks": [
+      "'supported' on synthetic metadata-matched artifacts reads like real validation.",
+      "Structured conclusion/requirement_match can be trusted without reading source text.",
+      "unknown and inapplicable will be swapped without classifier tests.",
+      "Graders may still reject correct none answers, recreating the prior conflation.",
+      "Eight cases omit dual-match, zero-match, empty sources, and requirement_fit plus conflicting artifacts."
+    ],
+    "disagreements": [
+      "validated_fit could be read as still conditional because decision_mode is requirement_fit; the written rule makes that path only 'with no applicable artifacts.'",
+      "basis_ids for measured gaps are underspecified (all sources vs only the explanatory subset).",
+      "A narrower contract could forbid recommendation letters unless sufficiency is supported, to reduce false assurance."
+    ],
+    "missing_information": [
+      "Golden source_assessments and decision objects for all eight cases.",
+      "Negative fixtures: two requirement_match true, zero true, measured reports with requirement_match true, requirement_fit plus conflicting artifacts, empty source list.",
+      "Exact-match, known-mismatch, and missing-field classifier tests, including string-normalization policy.",
+      "Grader checks that limitations disclaim authenticity/reproduction/stats/entailment and that conditional text says proposal suitability, not measured success.",
+      "A recency-ban test on S2-style wording."
+    ]
+  },
+  "claude-fable-5-1": {
+    "executive_summary": "The contract separates provenance (report|artifact), per-source applicability, and decision sufficiency more cleanly than the prior stage, and the eight cases exercise each axis at least once. However, it still uses a single 'insufficient' label for two different states (no applicable evidence vs contradictory applicable evidence), leaves basis_ids citation rules partly ambiguous for inapplicable/unknown artifacts, does not explicitly state that applicable artifacts override requirement_fit mode, and lacks adversarial cases (conclusion/text mismatch, injected instructions, scope casing, both-options requirement_match). It is fit for a narrow probe only if paired with schema and consistency validators; it is not evidence about real verification.",
+    "recommended_decision": "Approve the contract for the Stage 8 probe with three edits before answer-model runs: (1) state explicitly that any applicable artifact supersedes requirement_fit mode; (2) fix basis_ids rule for insufficient decisions to 'all supplied source IDs'; (3) add a sufficiency detail field or an explicit 'conflicting' explanation requirement; and add at least four adversarial cases plus automated consistency checks listed below.",
+    "confidence": 0.78,
+    "assumptions": [
+      "Expected labels are graded on sufficiency, recommendation, applicability and basis_ids, with reasons checked for presence and rough content rather than exact strings.",
+      "Scope matching is intended as exact string equality on the four keys; extra keys in artifact scope are not disqualifying.",
+      "The eight cases are a smoke probe of contract comprehension, not a measure of evidence-extraction quality."
+    ],
+    "reasons": [
+      "reports_only: S1,S2 not_validation; insufficient/none; basis S1,S2. Ambiguity: 'Later advice' baits recency but the contract forbids it, so this cleanly tests the prior-stage failure.",
+      "matching_artifact: S3 applicable; supported/B; basis S3; S1,S2 not_validation with exclusion reasons. Ambiguity: 'consistent applicable artifacts' is trivially met by one artifact; the limitation field must carry the single-observation caveat.",
+      "wrong_revision: S3 inapplicable (r1 vs r2); insufficient/none. Ambiguity: contract says cite 'available sources explaining the gap' \u2014 unclear whether basis_ids is S3 only or S1,S2,S3; grader must accept a defined set.",
+      "unknown_revision: S3 unknown (revision missing, no known mismatch); insufficient/none. Ambiguity: 'Only the attached scope was tested' may tempt a model to read the missing key as 'any revision' \u2014 correct behavior is unknown, not applicable.",
+      "conflicting_checks: S3,S4 both applicable, contradictory; insufficient/none; basis S3,S4. Ambiguity: the same label 'insufficient' is used as for empty evidence, so the distinction lives only in explanation text and is hard to grade.",
+      "wrong_metric: S3 inapplicable (throughput); insufficient/none; basis S1,S2,S3. Ambiguity: the text openly says reopen correctness was not measured, so this only tests metric matching when the mismatch is announced.",
+      "conditional_fit: requirement_fit, no artifacts, exactly one requirement_match true; conditional/B; basis S2. Ambiguity: S1 has conclusion 'A' while its text says A fails the requirement \u2014 a conclusion/text contradiction that the contract does not tell the model how to treat.",
+      "validated_fit: S3 applicable; supported/B; basis S3 (S2 optional). Ambiguity: the contract only says requirement_fit applies 'with no applicable artifacts'; it never states precedence, so a model answering conditional/B with basis S2 has a defensible reading."
+    ],
+    "risks": [
+      "All eight cases have a 'well-behaved' expected path; a model that pattern-matches scope keys and requirement_match flags will pass without demonstrating it reads source text, producing false assurance about robustness.",
+      "Using 'supported' for a single synthetic artifact invites overreading downstream despite disclaimers; the label may leak into summaries stripped of the 'within supplied scope' qualifier.",
+      "No case tests prompt injection in source text, conclusion fields that contradict text, both options with requirement_match true, requirement_match true in measured mode, an applicable artifact concluding 'neither', or scope values differing by case/whitespace.",
+      "Nonempty-string requirements for reason/limitation/next_check are satisfied by boilerplate; without semantic checks they give an illusion of auditability.",
+      "Ambiguous basis_ids rules will generate spurious grading failures on correct abstentions \u2014 the exact failure mode the stage aims to fix."
+    ],
+    "disagreements": [
+      "The brief frames the contract as distinguishing three concepts, but sufficiency still collapses 'no applicable evidence' and 'contradicted evidence' into one value; I would add a sub-field or a fourth value rather than rely on explanation prose.",
+      "Requiring exact metadata match for applicability is appropriate for this probe but should be labeled as a probe-specific rule; otherwise later stages may inherit an overly brittle notion of applicability that rejects legitimately transferable artifacts.",
+      "In validated_fit I would accept basis_ids of S3 or S2+S3, and the contract should say so; forcing S3-only penalizes a reasonable and more transparent citation."
+    ],
+    "missing_information": [
+      "The grading rubric: which fields are scored, whether basis_ids is set-equality or superset, and how reasons are judged.",
+      "Whether the answer-model prompt includes the contract verbatim or a paraphrase, and whether source text is delimited to support 'treat as data'.",
+      "Implementation tests I would expect: schema key exactness; basis_ids subset of supplied IDs and nonempty; sufficiency/recommendation pairing invariants (supported\u21d2A|B, insufficient\u21d2none, conditional only in requirement_fit); applicability of every report is not_validation; every source has a reason; no applicable artifact cited when scope mismatches; scope-normalization behavior.",
+      "Additional cases needed to change confidence: injected instruction in a source text, artifact conclusion contradicting its text, two requirement_match=true reports, requirement_match=true in measured mode, inapplicable artifact alongside requirement_fit reports (should yield conditional, not supported), and an artifact whose scope has an extra unrelated key."
+    ]
+  },
+  "qwen3-coder": {
+    "executive_summary": "The contract distinguishes provenance, applicability, and sufficiency clearly but introduces ambiguity in requirement_fit mode where measured outcomes override explicit requirement claims. Several cases lack necessary artifact alignment or contain conflicting data, leading to insufficient or conditional decisions.",
+    "recommended_decision": "Approve with mandatory clarification on handling requirement_fit precedence over measured results and add explicit gate for scope alignment verification.",
+    "confidence": 0.85,
+    "assumptions": [
+      "All sources are synthetically generated and treated as logically consistent within their own context."
+    ],
+    "reasons": [
+      "Contract correctly separates artifact-based measurement from report-based requirement fit.",
+      "Applicability logic enforces strict scope matching which prevents false equivalencies.",
+      "Decision rules properly reject unsupported recommendations when artifacts conflict or are absent."
+    ],
+    "risks": [
+      "Requirement_fit mode may be misused to bypass empirical validation if not tightly constrained.",
+      "Ambiguity arises when validated artifacts contradict prior requirement assertions without reconciliation mechanism.",
+      "Missing revision field in one case leads to unknown applicability despite otherwise valid scope."
+    ],
+    "disagreements": [
+      "Whether validated_fit should prioritize empirical outcome over initial requirement assertion is debatable under current framing.",
+      "There's tension between excluding reports from validation while allowing them to drive conditional decisions based on requirement_match."
+    ],
+    "missing_information": [
+      "Explicit rule defining precedence between requirement_fit claims and subsequent contradictory empirical findings.",
+      "Gate ensuring all artifact scopes include full target dimensions before declaring applicability.",
+      "Mechanism for resolving discrepancies between multiple applicable artifacts measuring same target."
+    ]
+  }
+}

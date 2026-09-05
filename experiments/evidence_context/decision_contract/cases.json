@@ -1,0 +1,311 @@
+{
+  "kind": "synthetic_contract_probe",
+  "cases": [
+    {
+      "id": "reports_only",
+      "question": "Which option is justified for reopen correctness?",
+      "target": {
+        "revision": "r2",
+        "workload": "eight writers",
+        "environment": "fixture-local",
+        "metric": "reopen correctness"
+      },
+      "decision_mode": "measured",
+      "sources": [
+        {
+          "id": "S1",
+          "provenance": "report",
+          "scope": {},
+          "conclusion": "A",
+          "requirement_match": false,
+          "text": "I believe A retains entries correctly. No test was run."
+        },
+        {
+          "id": "S2",
+          "provenance": "report",
+          "scope": {},
+          "conclusion": "B",
+          "requirement_match": false,
+          "text": "Later advice: I believe B retains entries correctly. No test was run."
+        }
+      ]
+    },
+    {
+      "id": "matching_artifact",
+      "question": "Which option is justified for reopen correctness?",
+      "target": {
+        "revision": "r2",
+        "workload": "eight writers",
+        "environment": "fixture-local",
+        "metric": "reopen correctness"
+      },
+      "decision_mode": "measured",
+      "sources": [
+        {
+          "id": "S1",
+          "provenance": "report",
+          "scope": {},
+          "conclusion": "A",
+          "requirement_match": false,
+          "text": "I believe A retains entries correctly. No test was run."
+        },
+        {
+          "id": "S2",
+          "provenance": "report",
+          "scope": {},
+          "conclusion": "B",
+          "requirement_match": false,
+          "text": "Later advice: I believe B retains entries correctly. No test was run."
+        },
+        {
+          "id": "S3",
+          "provenance": "artifact",
+          "scope": {
+            "revision": "r2",
+            "workload": "eight writers",
+            "environment": "fixture-local",
+            "metric": "reopen correctness"
+          },
+          "conclusion": "B",
+          "requirement_match": false,
+          "text": "Synthetic reopen check: A lost the last committed entry, B retained it. Only the attached scope was tested."
+        }
+      ]
+    },
+    {
+      "id": "wrong_revision",
+      "question": "Which option is justified for reopen correctness?",
+      "target": {
+        "revision": "r2",
+        "workload": "eight writers",
+        "environment": "fixture-local",
+        "metric": "reopen correctness"
+      },
+      "decision_mode": "measured",
+      "sources": [
+        {
+          "id": "S1",
+          "provenance": "report",
+          "scope": {},
+          "conclusion": "A",
+          "requirement_match": false,
+          "text": "I believe A retains entries correctly. No test was run."
+        },
+        {
+          "id": "S2",
+          "provenance": "report",
+          "scope": {},
+          "conclusion": "B",
+          "requirement_match": false,
+          "text": "Later advice: I believe B retains entries correctly. No test was run."
+        },
+        {
+          "id": "S3",
+          "provenance": "artifact",
+          "scope": {
+            "revision": "r1",
+            "workload": "eight writers",
+            "environment": "fixture-local",
+            "metric": "reopen correctness"
+          },
+          "conclusion": "B",
+          "requirement_match": false,
+          "text": "Synthetic reopen check: A lost the last committed entry, B retained it. Only the attached scope was tested."
+        }
+      ]
+    },
+    {
+      "id": "unknown_revision",
+      "question": "Which option is justified for reopen correctness?",
+      "target": {
+        "revision": "r2",
+        "workload": "eight writers",
+        "environment": "fixture-local",
+        "metric": "reopen correctness"
+      },
+      "decision_mode": "measured",
+      "sources": [
+        {
+          "id": "S1",
+          "provenance": "report",
+          "scope": {},
+          "conclusion": "A",
+          "requirement_match": false,
+          "text": "I believe A retains entries correctly. No test was run."
+        },
+        {
+          "id": "S2",
+          "provenance": "report",
+          "scope": {},
+          "conclusion": "B",
+          "requirement_match": false,
+          "text": "Later advice: I believe B retains entries correctly. No test was run."
+        },
+        {
+          "id": "S3",
+          "provenance": "artifact",
+          "scope": {
+            "workload": "eight writers",
+            "environment": "fixture-local",
+            "metric": "reopen correctness"
+          },
+          "conclusion": "B",
+          "requirement_match": false,
+          "text": "Synthetic reopen check: A lost the last committed entry, B retained it. Only the attached scope was tested."
+        }
+      ]
+    },
+    {
+      "id": "conflicting_checks",
+      "question": "Which option is justified for reopen correctness?",
+      "target": {
+        "revision": "r2",
+        "workload": "eight writers",
+        "environment": "fixture-local",
+        "metric": "reopen correctness"
+      },
+      "decision_mode": "measured",
+      "sources": [
+        {
+          "id": "S3",
+          "provenance": "artifact",
+          "scope": {
+            "revision": "r2",
+            "workload": "eight writers",
+            "environment": "fixture-local",
+            "metric": "reopen correctness"
+          },
+          "conclusion": "B",
+          "requirement_match": false,
+          "text": "Synthetic reopen check: A lost the last committed entry, B retained it. Only the attached scope was tested."
+        },
+        {
+          "id": "S4",
+          "provenance": "artifact",
+          "scope": {
+            "revision": "r2",
+            "workload": "eight writers",
+            "environment": "fixture-local",
+            "metric": "reopen correctness"
+          },
+          "conclusion": "A",
+          "requirement_match": false,
+          "text": "A separate synthetic reopen check under this same scope: B lost the last entry, A retained it. The discrepancy has not been investigated."
+        }
+      ]
+    },
+    {
+      "id": "wrong_metric",
+      "question": "Which option is justified for reopen correctness?",
+      "target": {
+        "revision": "r2",
+        "workload": "eight writers",
+        "environment": "fixture-local",
+        "metric": "reopen correctness"
+      },
+      "decision_mode": "measured",
+      "sources": [
+        {
+          "id": "S1",
+          "provenance": "report",
+          "scope": {},
+          "conclusion": "A",
+          "requirement_match": false,
+          "text": "I believe A retains entries correctly. No test was run."
+        },
+        {
+          "id": "S2",
+          "provenance": "report",
+          "scope": {},
+          "conclusion": "B",
+          "requirement_match": false,
+          "text": "Later advice: I believe B retains entries correctly. No test was run."
+        },
+        {
+          "id": "S3",
+          "provenance": "artifact",
+          "scope": {
+            "revision": "r2",
+            "workload": "eight writers",
+            "environment": "fixture-local",
+            "metric": "throughput"
+          },
+          "conclusion": "B",
+          "requirement_match": false,
+          "text": "Synthetic throughput check: B processed more records per second than A. Reopen correctness was not measured."
+        }
+      ]
+    },
+    {
+      "id": "conditional_fit",
+      "question": "Which option is justified for reopen correctness?",
+      "target": {
+        "revision": "r2",
+        "workload": "eight writers",
+        "environment": "fixture-local",
+        "metric": "reopen correctness"
+      },
+      "decision_mode": "requirement_fit",
+      "sources": [
+        {
+          "id": "S1",
+          "provenance": "report",
+          "scope": {},
+          "conclusion": "A",
+          "requirement_match": false,
+          "text": "I recommend A for its simple design. It assumes a single writer and does not meet the current multi-writer requirement."
+        },
+        {
+          "id": "S2",
+          "provenance": "report",
+          "scope": {},
+          "conclusion": "B",
+          "requirement_match": true,
+          "text": "B is described as coordinating eight writers. This is a requirement-fit proposal, not measured reopen correctness."
+        }
+      ]
+    },
+    {
+      "id": "validated_fit",
+      "question": "Which option is justified for reopen correctness?",
+      "target": {
+        "revision": "r2",
+        "workload": "eight writers",
+        "environment": "fixture-local",
+        "metric": "reopen correctness"
+      },
+      "decision_mode": "requirement_fit",
+      "sources": [
+        {
+          "id": "S1",
+          "provenance": "report",
+          "scope": {},
+          "conclusion": "A",
+          "requirement_match": false,
+          "text": "I recommend A for its simple design. It assumes a single writer and does not meet the current multi-writer requirement."
+        },
+        {
+          "id": "S2",
+          "provenance": "report",
+          "scope": {},
+          "conclusion": "B",
+          "requirement_match": true,
+          "text": "B is described as coordinating eight writers. This is a requirement-fit proposal, not measured reopen correctness."
+        },
+        {
+          "id": "S3",
+          "provenance": "artifact",
+          "scope": {
+            "revision": "r2",
+            "workload": "eight writers",
+            "environment": "fixture-local",
+            "metric": "reopen correctness"
+          },
+          "conclusion": "B",
+          "requirement_match": false,
+          "text": "Synthetic reopen check: A lost the last committed entry, B retained it. Only the attached scope was tested."
+        }
+      ]
+    }
+  ]
+}

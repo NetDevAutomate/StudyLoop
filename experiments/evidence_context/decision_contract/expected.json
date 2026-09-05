@@ -1,0 +1,79 @@
+{
+  "reports_only": {
+    "sufficiency": "insufficient",
+    "recommendation": "none",
+    "applicability": {
+      "S1": "not_validation",
+      "S2": "not_validation"
+    },
+    "reason_code": "no_applicable_observation"
+  },
+  "matching_artifact": {
+    "sufficiency": "supported",
+    "recommendation": "B",
+    "applicability": {
+      "S1": "not_validation",
+      "S2": "not_validation",
+      "S3": "applicable"
+    },
+    "reason_code": "applicable_observation"
+  },
+  "wrong_revision": {
+    "sufficiency": "insufficient",
+    "recommendation": "none",
+    "applicability": {
+      "S1": "not_validation",
+      "S2": "not_validation",
+      "S3": "inapplicable"
+    },
+    "reason_code": "no_applicable_observation"
+  },
+  "unknown_revision": {
+    "sufficiency": "insufficient",
+    "recommendation": "none",
+    "applicability": {
+      "S1": "not_validation",
+      "S2": "not_validation",
+      "S3": "unknown"
+    },
+    "reason_code": "no_applicable_observation"
+  },
+  "conflicting_checks": {
+    "sufficiency": "insufficient",
+    "recommendation": "none",
+    "applicability": {
+      "S3": "applicable",
+      "S4": "applicable"
+    },
+    "reason_code": "conflicting_observations"
+  },
+  "wrong_metric": {
+    "sufficiency": "insufficient",
+    "recommendation": "none",
+    "applicability": {
+      "S1": "not_validation",
+      "S2": "not_validation",
+      "S3": "inapplicable"
+    },
+    "reason_code": "no_applicable_observation"
+  },
+  "conditional_fit": {
+    "sufficiency": "conditional",
+    "recommendation": "B",
+    "applicability": {
+      "S1": "not_validation",
+      "S2": "not_validation"
+    },
+    "reason_code": "requirement_fit_only"
+  },
+  "validated_fit": {
+    "sufficiency": "supported",
+    "recommendation": "B",
+    "applicability": {
+      "S1": "not_validation",
+      "S2": "not_validation",
+      "S3": "applicable"
+    },
+    "reason_code": "applicable_observation"
+  }
+}
