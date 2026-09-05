@@ -246,6 +246,11 @@ def _validate_example(example: str, root: click.Group, root_ctx: click.Context) 
                 problems.append(
                     f"{opt!r} is not a declared option of resolved command {current.name!r}"
                 )
+            elif current is root and opt == "--dev":
+                # Model Click's root-option parsing: LazyGroup resolves its
+                # developer-only commands from ctx.params after --dev has
+                # been consumed, so command descent must see the same state.
+                current_ctx.params["dev"] = True
         elif still_descending and isinstance(current, click.Group):
             sub = current.get_command(current_ctx, token)
             if sub is not None:

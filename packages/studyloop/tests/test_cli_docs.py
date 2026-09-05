@@ -60,35 +60,55 @@ def _studyloop_examples() -> list[list[str]]:
     return examples
 
 
+def _root_context_and_command_tokens(tokens: list[str]) -> tuple[click.Context, list[str]]:
+    """Apply documented root options before resolving the command tree.
+
+    The exercise preview is intentionally reached as ``studyloop --dev
+    exercise …``. Click parses ``--dev`` into the root context before asking
+    LazyGroup for ``exercise``; the docs validator must model that same order
+    rather than treating every leading option as the end of command descent.
+    """
+    root = cast("click.Command", cli)
+    ctx = click.Context(root)
+    command_tokens = list(tokens)
+    while command_tokens and command_tokens[0].startswith("-"):
+        token = command_tokens.pop(0)
+        if token == "--dev":
+            ctx.params["dev"] = True
+    return ctx, command_tokens
+
+
 def _known_command_prefix(tokens: list[str]) -> tuple[str, ...]:
     command = cast("click.Command", cli)
+    ctx, command_tokens = _root_context_and_command_tokens(tokens)
     prefix: list[str] = []
-    for token in tokens:
+    for token in command_tokens:
         if not isinstance(command, click.Group):
             break
         if token.startswith("-"):
             break
-        ctx = click.Context(command)
         child = command.get_command(ctx, token)
         if child is None:
             break
         prefix.append(token)
+        ctx = click.Context(child, parent=ctx, info_name=token)
         command = child
     return tuple(prefix)
 
 
 def _has_unknown_group_subcommand(tokens: list[str]) -> bool:
     command = cast("click.Command", cli)
-    for token in tokens:
+    ctx, command_tokens = _root_context_and_command_tokens(tokens)
+    for token in command_tokens:
         if not isinstance(command, click.Group):
             return False
         if token.startswith("-"):
             return False
 
-        ctx = click.Context(command)
         child = command.get_command(ctx, token)
         if child is None:
             return True
+        ctx = click.Context(child, parent=ctx, info_name=token)
         command = child
     # A bare group is normally a documentation error — `studyloop content` on its
     # own does nothing. The exception is a group declared with
@@ -106,6 +126,10 @@ def test_known_command_prefix_common_examples() -> None:
         "generate-cards",
     )
     assert _known_command_prefix(["doctor", "--fix"]) == ("doctor",)
+    assert _known_command_prefix(["--dev", "exercise", "list"]) == (
+        "exercise",
+        "list",
+    )
     assert _known_command_prefix(["session", "start", "--topic", "Python"]) == (
         "session",
         "start",
