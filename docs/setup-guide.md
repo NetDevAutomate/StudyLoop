@@ -857,6 +857,42 @@ The package isn't on your PATH. Either:
 - Run via `uv run studyloop` instead
 - Or ensure `uv sync` completed successfully and your shell can find uv-installed scripts
 
+### `ModuleNotFoundError: No module named 'studyloop'`
+
+If `~/.local/bin/studyloop` exists but fails while importing `studyloop.cli`,
+the generated launcher is present but its editable uv tool environment is stale
+or no longer points at the checkout. This can happen after moving the repository,
+renaming the package, or updating the workspace without refreshing the global
+tool. Do not edit `~/.local/bin/studyloop`; uv generates that file.
+
+From the repository root, use the project-owned repair first:
+
+```bash
+./scripts/install.sh --tools-only
+```
+
+This force-refreshes the workspace tools and runs the installed-CLI smoke checks.
+To recreate only the StudyLoop tool environment, use the equivalent scoped
+command:
+
+```bash
+uv sync --all-packages
+uv tool install --editable './packages/studyloop[all]' \
+  --with-editable ./packages/agent-session-tools \
+  --force
+```
+
+Verify that the global tool and the current checkout report the same version:
+
+```bash
+studyloop --version
+uv run studyloop --version
+```
+
+Both versions should match `packages/studyloop/pyproject.toml`. If they do not,
+run `uv tool list --show-paths` to identify which tool environment supplies the
+global launcher.
+
 ### `session-export` finds no sessions
 
 Check that the AI tool's data directory exists:
