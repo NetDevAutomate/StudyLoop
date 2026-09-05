@@ -40,3 +40,7 @@ Each retrieval uses one SQLite read snapshot. Source-version expansion is capped
 The initial private, four-message development run returned the same two passages per project in both arms. Relationship metadata increased payload sizes (MailGraph 3,259 to 4,751 bytes; StudyLoop 4,299 to 5,813 bytes). These selected examples are too small and too curated to measure efficacy, latency or recall. They demonstrate why the keyword baseline must remain in the evaluation.
 
 See [ARBITRATION.md](ARBITRATION.md) for council decisions and [tests/SAFEGUARDS.md](tests/SAFEGUARDS.md) for the limits of the synthetic tests.
+
+## StudyLoop and standalone acceptance scope
+
+[REQUIREMENTS.md](REQUIREMENTS.md) adds explicit boundaries, explanation, correction, forgetting, capture health and shared installation contracts. It separates tested retrieval behaviour from unrun lifecycle/integration gates and sets a scope ceiling. No standalone extraction is part of this experiment.

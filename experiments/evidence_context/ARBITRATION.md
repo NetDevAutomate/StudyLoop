@@ -43,3 +43,14 @@ The four-message private development demonstration retrieved the same passages i
 - Build independent held-out labels, including insufficient-evidence cases, with a shuffled-link control and fixed model/token budget.
 - Measure real decision usefulness and costs before adding automatic extraction, semantic retrieval or another engine.
 - Design source correction/deletion propagation and validation-artifact ingestion before considering production integration.
+
+## StudyLoop / SessionWeave requirements extension
+
+User-requested scope adds explicit boundaries, retrieval explanations, correction
+and forgetting propagation, capture health, and shared installation ownership.
+See REQUIREMENTS.md for acceptance scenarios, hard gates, unrun status and scope
+ceiling. Five new regressions check whole-pack boundary disclosure and grounded
+retrieval reasons; the complete suite now passes 65 tests. Focused Pyright and
+Ruff pass. This extension has local validation only, not a new model council
+review. Lifecycle, two-replica deletion, health and installer tests remain NOT RUN;
+no production or standalone integration is claimed.
