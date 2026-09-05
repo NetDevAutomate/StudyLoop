@@ -16,7 +16,7 @@ is `none` or the section is absent, without importing
 skipped result without touching the filesystem.
 
 #### Scenario: Status with no configuration
-- **WHEN** JSON-formatted `studyloop brain status` runs with no `second_brain` section
+- **WHEN** `studyloop brain status --json` runs with no `second_brain` section
 - **THEN** it prints `configured: false` and `studyloop.second_brain.obsidian`
   is not in `sys.modules`, and no file is created anywhere
 
