@@ -16,7 +16,9 @@ These env vars affect only the test process, never user runtime.
 
 from __future__ import annotations
 
+import contextlib
 import os
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -24,6 +26,30 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+
+
+@pytest.fixture(autouse=True)
+def _close_sqlite_connections_created_by_tests(monkeypatch):
+    """Close direct sqlite handles after every test, including failures.
+
+    Coverage's forced GC made Python 3.13 expose dozens of handles created by
+    test helpers that return raw in-memory connections. Track the real boundary
+    once; explicit closes remain valid and production ownership is untouched.
+    """
+    real_connect = sqlite3.connect
+    opened: list[sqlite3.Connection] = []
+
+    def tracked_connect(*args, **kwargs):
+        connection = real_connect(*args, **kwargs)
+        opened.append(connection)
+        return connection
+
+    monkeypatch.setattr(sqlite3, "connect", tracked_connect)
+    yield
+    for connection in reversed(opened):
+        with contextlib.suppress(sqlite3.ProgrammingError):
+            connection.close()
+
 
 # conftest.py is loaded BEFORE its own directory is on sys.path -- pytest adds the
 # rootdir while collecting test modules, not while importing the conftest itself --
