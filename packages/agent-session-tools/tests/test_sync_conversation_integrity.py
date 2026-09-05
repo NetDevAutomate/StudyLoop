@@ -300,3 +300,159 @@ def test_schema_preflight_current_and_newer(migrated_db, monkeypatch):
     conn.execute(f"PRAGMA user_version={CURRENT_VERSION + 1}")
     with pytest.raises(RuntimeError, match="newer than this tool"):
         sync_mod._require_current_schema(path)
+
+
+@pytest.mark.parametrize("legacy", [False, True])
+def test_parked_natural_key_merges_preserving_target_identity(
+    migrated_db, tmp_path, legacy
+):
+    from agent_session_tools.sync import _dump_delta_sql
+
+    conn, path = migrated_db
+    conn.execute("INSERT INTO sessions(id,source) VALUES('s','codex')")
+    conn.execute(
+        "INSERT INTO study_sessions(id,topic,started_at) VALUES('study','python','2026-01-01')"
+    )
+    conn.execute(
+        "INSERT INTO parked_topics(id,sync_key,study_session_id,question,context,updated_at) VALUES(1,'source-key','study','Question','newer context','2026-02-01')"
+    )
+    conn.commit()
+    sql = _dump_delta_sql(path, {"s"})
+    target_path = tmp_path / "parked-target.db"
+    with sqlite3.connect(target_path) as target:
+        conn.backup(target)
+        target.execute(
+            "UPDATE parked_topics SET id=99,sync_key='target-key',context='older context',updated_at='2026-01-01'"
+        )
+        if legacy:
+            target.execute("DROP INDEX uix_parked_topics_question_source_pending")
+            target.execute(
+                "CREATE UNIQUE INDEX uix_parked_topics_session_question ON parked_topics(study_session_id,question,source)"
+            )
+    assert _stream_sql_to_target(sql, target_path)
+    with sqlite3.connect(target_path) as target:
+        assert target.execute(
+            "SELECT id,sync_key,context FROM parked_topics"
+        ).fetchall() == [(99, "target-key", "newer context")]
+
+
+def test_concept_natural_key_remaps_incoming_references(migrated_db, tmp_path):
+    from agent_session_tools.sync import _dump_delta_sql
+
+    conn, path = migrated_db
+    conn.execute("INSERT INTO sessions(id,source) VALUES('s','codex')")
+    conn.execute(
+        "INSERT INTO messages(id,session_id,role,content) VALUES('m','s','assistant','evidence')"
+    )
+    conn.execute(
+        "INSERT INTO concepts(id,name,domain,description,updated_at) VALUES('source-concept','Closures','python','new description','2026-02-01')"
+    )
+    conn.execute(
+        "INSERT INTO concept_aliases(alias,concept_id) VALUES('closure','source-concept')"
+    )
+    conn.execute(
+        "INSERT INTO message_concepts(message_id,concept_id) VALUES('m','source-concept')"
+    )
+    conn.commit()
+    sql = _dump_delta_sql(path, {"s"})
+    target_path = tmp_path / "concept-target.db"
+    with sqlite3.connect(target_path) as target:
+        conn.backup(target)
+        target.execute("DELETE FROM concept_aliases")
+        target.execute("DELETE FROM message_concepts")
+        target.execute(
+            "UPDATE concepts SET id='target-concept',description='old description',updated_at='2026-01-01'"
+        )
+    assert _stream_sql_to_target(sql, target_path)
+    with sqlite3.connect(target_path) as target:
+        assert target.execute("SELECT id,description FROM concepts").fetchall() == [
+            ("target-concept", "new description")
+        ]
+        assert target.execute("SELECT concept_id FROM concept_aliases").fetchall() == [
+            ("target-concept",)
+        ]
+        assert target.execute("SELECT concept_id FROM message_concepts").fetchall() == [
+            ("target-concept",)
+        ]
+        assert target.execute("PRAGMA foreign_key_check").fetchall() == []
+
+
+def test_complete_parked_variants_archived_idempotently_and_propagated(
+    migrated_db, tmp_path
+):
+    import json
+    from agent_session_tools.sync import _dump_delta_sql
+
+    conn, path = migrated_db
+    conn.execute("ALTER TABLE parked_topics ADD COLUMN extra_notes TEXT")
+    conn.execute("INSERT INTO sessions(id,source) VALUES('s','codex')")
+    conn.execute(
+        "INSERT INTO parked_topics(id,sync_key,question,context,extra_notes,status,updated_at) VALUES(1,'source-key','Repeated question','new source context','source note outside allowlist','pending','2026-02-01')"
+    )
+    conn.commit()
+    sql = _dump_delta_sql(path, {"s"})
+    target_path = tmp_path / "archive-target.db"
+    with sqlite3.connect(target_path) as target:
+        conn.backup(target)
+        target.execute(
+            "UPDATE parked_topics SET id=9,sync_key='target-key',context='original target context',extra_notes='original target note',updated_at='2026-01-01'"
+        )
+    assert _stream_sql_to_target(sql, target_path)
+    with sqlite3.connect(target_path) as target:
+        snapshots = [
+            json.loads(row[0])
+            for row in target.execute(
+                "SELECT row_json FROM sync_row_archive WHERE table_name='parked_topics'"
+            )
+        ]
+        assert any(
+            row["sync_key"] == "source-key"
+            and row["context"] == "new source context"
+            and row["extra_notes"] == "source note outside allowlist"
+            and row["status"] == "pending"
+            for row in snapshots
+        )
+        assert any(
+            row["sync_key"] == "target-key"
+            and row["context"] == "original target context"
+            and row["extra_notes"] == "original target note"
+            for row in snapshots
+        )
+        original_count = len(snapshots)
+    assert _stream_sql_to_target(sql, target_path)
+    with sqlite3.connect(target_path) as target:
+        assert (
+            target.execute("SELECT count(*) FROM sync_row_archive").fetchone()[0]
+            == original_count
+        )
+    # Reverse sync carries archived source variants even when no live row has
+    # that original sync key any more.
+    onward_sql = _dump_delta_sql(target_path, {"s"})
+    assert _stream_sql_to_target(onward_sql, path)
+    archived = [
+        json.loads(row[0])
+        for row in conn.execute("SELECT row_json FROM sync_row_archive")
+    ]
+    assert all(row in archived for row in snapshots)
+
+
+def test_same_concept_id_different_meaning_aborts(migrated_db, tmp_path):
+    from agent_session_tools.sync import _dump_delta_sql
+
+    conn, path = migrated_db
+    conn.execute("INSERT INTO sessions(id,source) VALUES('s','codex')")
+    conn.execute(
+        "INSERT INTO concepts(id,name,domain) VALUES('same','Closures','python')"
+    )
+    conn.commit()
+    sql = _dump_delta_sql(path, {"s"})
+    target_path = tmp_path / "identity-target.db"
+    with sqlite3.connect(target_path) as target:
+        conn.backup(target)
+        target.execute("UPDATE concepts SET name='Different meaning'")
+    assert not _stream_sql_to_target(sql, target_path)
+    with sqlite3.connect(target_path) as target:
+        assert (
+            target.execute("SELECT name FROM concepts").fetchone()[0]
+            == "Different meaning"
+        )

@@ -58,3 +58,31 @@ warning; they require explicit review with `session-repair --from-db SNAPSHOT`.
 Thus reconciliation does not promise that conflicting databases become identical.
 Per-destination writes are transactional and backups precede writes. Initial
 seeding transfers a consistent SQLite backup, never a live database file.
+
+## Parked-topic history across database variants
+
+Some older databases enforce one parked question per study session, while newer
+databases enforce one pending question across sessions. Their current views
+cannot both hold every duplicate event. Sync resolves those known natural-key
+collisions using the global metadata timestamp rule, preserving the destination
+row ID and sync key. This policy applies to learning metadata, never conversation
+message content.
+
+Before merging, sync stores complete original parked rows from both machines in
+`sync_row_archive`, including columns outside the current-view sync allowlist
+(such as notes, board fields, and park counts). It also snapshots the resulting
+current rows. Archiving and merging share one transaction. The composite key of
+table name and JSON serialized with sorted column names makes identical snapshots
+idempotent. Archive rows travel in subsequent syncs, so original variants remain
+recoverable on other machines. The command reports newly preserved snapshots.
+
+For read-only inspection:
+
+```sql
+SELECT row_json FROM sync_row_archive WHERE table_name = 'parked_topics';
+```
+
+The parked-topic UI presents the merged current view; the archive retains its
+original variants for explicit review or restoration. Optional fields excluded
+from the current-view allowlist are preserved in the archive rather than forced
+into incompatible legacy table constraints.

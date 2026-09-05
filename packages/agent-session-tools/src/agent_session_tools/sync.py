@@ -602,11 +602,9 @@ def _build_insert_select_sql(
 def _build_global_upsert_select_sql(table: str) -> str:
     """Build a SELECT emitting a recency-gated upsert for one global-sync table.
 
-    R-19 / D1: unlike the session-scoped ``SYNC_TABLES`` (where the caller has
-    already restricted the row set to sessions that are new/newer on the
-    source side -- see ``_get_sync_state`` -- so a blind ``INSERT OR REPLACE``
-    is safe), every row of a ``GLOBAL_SYNC_TABLES`` table is dumped on every
-    sync with no per-row filter. Without a recency check, a stale machine's
+    Every row of a ``GLOBAL_SYNC_TABLES`` table is dumped with no per-row
+    filter. Session-scoped rows use a separate conservative merge policy;
+    global learning state instead retains its existing recency policy. Without a recency check, a stale machine's
     dump silently reverts a newer row the destination already has (a board
     move, a teach-back score, a progress update).
 
@@ -661,7 +659,24 @@ def _build_global_upsert_select_sql(table: str) -> str:
     columns = TABLE_SYNC_COLUMNS[table]
     pk_columns = GLOBAL_TABLE_PRIMARY_KEYS[table]
     quoted_columns = [_quote_identifier(column) for column in columns]
-    literal_expr = " || ',' || ".join(f"quote({col})" for col in quoted_columns)
+    concept_columns = {
+        "concepts": {"id"},
+        "concept_aliases": {"concept_id"},
+        "concept_relations": {"source_concept_id", "target_concept_id"},
+        "message_concepts": {"concept_id"},
+    }.get(table, set())
+
+    def emitted_value(column: str) -> str:
+        quoted = _quote_identifier(column)
+        if column in concept_columns:
+            return (
+                "'(SELECT target_id FROM sync_concept_ids WHERE source_id=' || quote("
+                + quoted
+                + ") || ')'"
+            )
+        return f"quote({quoted})"
+
+    literal_expr = " || ',' || ".join(emitted_value(column) for column in columns)
     update_columns = [c for c in columns if c not in pk_columns]
     set_clause = ", ".join(
         f"{_quote_identifier(c)} = excluded.{_quote_identifier(c)}"
@@ -669,13 +684,75 @@ def _build_global_upsert_select_sql(table: str) -> str:
     )
     conflict_target = ", ".join(_quote_identifier(c) for c in pk_columns)
     updated_at_col = _quote_identifier("updated_at")
+    # parked_topics has the sync UUID plus known natural uniqueness: modern
+    # pending(question,source), or the legacy session/question/source tuple.
+    # Catch that table's alternative constraints without changing its schema;
+    # preserve destination id/sync_key and apply the same recency policy.
+    conflict_clause = (
+        "ON CONFLICT" if table == "parked_topics" else f"ON CONFLICT({conflict_target})"
+    )
     return (
         f"SELECT 'INSERT INTO {table} "
         f"({', '.join(quoted_columns)}) VALUES (' || {literal_expr} || ') "
-        f"ON CONFLICT({conflict_target}) DO UPDATE SET {set_clause} "
+        f"{conflict_clause} DO UPDATE SET {set_clause} "
         f"WHERE datetime(excluded.{updated_at_col}) > "
         f"datetime(COALESCE({table}.{updated_at_col}, ''0001-01-01''));' "
         f"FROM {table};"
+    )
+
+
+def _build_concept_map_select_sql() -> str:
+    """Emit transient source-ID mappings before inserting concepts/edges.
+
+    A natural name/domain match keeps the destination concept ID, ensuring
+    pre-existing references remain valid; incoming references use the map.
+    """
+    return """
+    SELECT 'INSERT INTO sync_concept_ids(source_id,target_id,name,domain) VALUES ('
+      || quote(id) || ', COALESCE((SELECT id FROM concepts WHERE name='
+      || quote(name) || ' AND domain=' || quote(domain) || '), '
+      || quote(id) || '), ' || quote(name) || ', ' || quote(domain) || ');'
+    FROM concepts;
+    """
+
+
+def _parked_json_expression(columns: list[str]) -> str:
+    pairs = []
+    for column in sorted(columns):
+        pairs.extend(["'" + column.replace("'", "''") + "'", _quote_identifier(column)])
+    return "json_object(" + ", ".join(pairs) + ")"
+
+
+def _build_parked_archive_select_sql(columns: list[str]) -> str:
+    """Emit complete original source rows, including host-specific columns."""
+    prefix = "INSERT OR IGNORE INTO sync_row_archive(table_name,row_json) VALUES ('parked_topics',"
+    escaped = prefix.replace("'", "''")
+    return f"SELECT '{escaped}' || quote({_parked_json_expression(columns)}) || ');' FROM parked_topics;"
+
+
+def _remote_dump_queries(host: str, db_path: str, session_ids: set[str]) -> list[str]:
+    tables = set(
+        _remote_sql(
+            host, db_path, "SELECT name FROM sqlite_master WHERE type='table'"
+        ).splitlines()
+    )
+    message_columns = set(
+        _remote_sql(
+            host, db_path, "SELECT name FROM pragma_table_info('messages')"
+        ).splitlines()
+    )
+    parked_columns = (
+        _remote_sql(
+            host, db_path, "SELECT name FROM pragma_table_info('parked_topics')"
+        ).splitlines()
+        if "parked_topics" in tables
+        else []
+    )
+    return _build_dump_queries(
+        session_ids,
+        tables,
+        include_seq="seq" in message_columns,
+        parked_columns=parked_columns,
     )
 
 
@@ -684,6 +761,7 @@ def _build_dump_queries(
     available_tables: set[str] | None = None,
     *,
     include_seq: bool = False,
+    parked_columns: list[str] | None = None,
 ) -> list[str]:
     """Build SQL queries that emit replayable INSERT statements."""
 
@@ -691,6 +769,12 @@ def _build_dump_queries(
         return available_tables is None or table in available_tables
 
     queries: list[str] = []
+    if parked_columns and _has_table("parked_topics"):
+        queries.append(_build_parked_archive_select_sql(parked_columns))
+    if available_tables is not None and "sync_row_archive" in available_tables:
+        queries.append(
+            "SELECT 'INSERT OR IGNORE INTO sync_row_archive(table_name,row_json) VALUES (' || quote(table_name) || ',' || quote(row_json) || ');' FROM sync_row_archive"
+        )
     if session_ids:
         placeholders = ",".join(f"'{sid}'" for sid in session_ids)
         if _has_table("sessions"):
@@ -713,6 +797,8 @@ def _build_dump_queries(
     for table in GLOBAL_SYNC_TABLES:
         if not _has_table(table):
             continue
+        if table == "concepts":
+            queries.append(_build_concept_map_select_sql())
         queries.append(_build_global_upsert_select_sql(table))
     return queries
 
@@ -788,10 +874,10 @@ def _get_sync_state(
 
 
 def _dump_delta_sql(db_path: Path, session_ids: set[str]) -> str:
-    """Generate INSERT OR REPLACE SQL for the given session IDs.
+    """Generate additive replayable SQL from a consistent source read snapshot.
 
-    Uses sqlite3 .mode insert for proper quoting, then transforms to
-    INSERT OR REPLACE so both new and updated rows are handled.
+    Includes the selected conversations, global learning metadata, and durable
+    parked-topic snapshots; all values are quoted by SQLite itself.
     """
     if not session_ids:
         return ""
@@ -810,8 +896,14 @@ def _dump_delta_sql(db_path: Path, session_ids: set[str]) -> str:
         include_seq = any(
             row[1] == "seq" for row in conn.execute("PRAGMA table_info(messages)")
         )
+        parked_columns = [
+            row[1] for row in conn.execute("PRAGMA table_info(parked_topics)")
+        ]
         for query in _build_dump_queries(
-            session_ids, available_tables, include_seq=include_seq
+            session_ids,
+            available_tables,
+            include_seq=include_seq,
+            parked_columns=parked_columns,
         ):
             lines.extend(row[0] for row in conn.execute(query).fetchall())
         return "\n".join(lines) + ("\n" if lines else "")
@@ -821,7 +913,7 @@ def _dump_delta_sql(db_path: Path, session_ids: set[str]) -> str:
 
 # FTS repair appended to every import. Two reasons this must rebuild from
 # the messages table rather than use FTS5's ('rebuild') command:
-# 1. The streamed INSERT OR REPLACE statements fire insert triggers but NOT
+# 1. Legacy INSERT OR REPLACE statements fired insert triggers but NOT
 #    delete triggers (SQLite's REPLACE skips them unless recursive_triggers
 #    is on), so every updated session leaks orphaned FTS rows.
 # 2. ('rebuild') rebuilds the inverted index from the FTS table's OWN
@@ -838,7 +930,15 @@ _FTS_REPAIR_SQL = (
 _SYNC_TRANSACTION_PREFIX = """
 PRAGMA foreign_keys=ON;
 BEGIN IMMEDIATE;
+CREATE TABLE IF NOT EXISTS sync_row_archive(table_name TEXT NOT NULL, row_json TEXT NOT NULL, PRIMARY KEY(table_name,row_json)) WITHOUT ROWID;
+CREATE TEMP TABLE sync_archive_before(n INTEGER);
+INSERT INTO sync_archive_before SELECT count(*) FROM sync_row_archive;
 CREATE TEMP TABLE sync_conflicts(message_id TEXT PRIMARY KEY);
+CREATE TEMP TABLE sync_concept_ids(source_id TEXT PRIMARY KEY, target_id TEXT NOT NULL, name TEXT, domain TEXT);
+CREATE TEMP TRIGGER sync_concept_identity BEFORE INSERT ON sync_concept_ids
+WHEN EXISTS(SELECT 1 FROM concepts WHERE id=NEW.target_id AND (name IS NOT NEW.name OR domain IS NOT NEW.domain))
+BEGIN SELECT RAISE(ABORT, 'Concept identity conflict'); END;
+
 CREATE TEMP TRIGGER sync_message_identity BEFORE INSERT ON main.messages
 WHEN EXISTS(SELECT 1 FROM messages WHERE id=NEW.id AND session_id != NEW.session_id)
 BEGIN SELECT RAISE(ABORT, 'Message identity conflict'); END;
@@ -860,12 +960,32 @@ def _stream_sql_to_target(sql: str, target: Path | tuple[str, str]) -> bool:
     if not sql.strip():
         return True
 
+    if isinstance(target, Path):
+        with sqlite3.connect(f"file:{target}?mode=ro", uri=True) as conn:
+            parked_columns = [
+                row[1] for row in conn.execute("PRAGMA table_info(parked_topics)")
+            ]
+    else:
+        parked_columns = _remote_sql(
+            target[0], target[1], "SELECT name FROM pragma_table_info('parked_topics')"
+        ).splitlines()
+    archive_target = (
+        (
+            "INSERT OR IGNORE INTO sync_row_archive(table_name,row_json) SELECT 'parked_topics', "
+            + _parked_json_expression(parked_columns)
+            + " FROM parked_topics;\n"
+        )
+        if parked_columns
+        else ""
+    )
     sql = (
         _SYNC_TRANSACTION_PREFIX
+        + archive_target
         + sql
         + "\n"
         + _FTS_REPAIR_SQL
-        + "\nSELECT 'sync_conflicts|' || count(*) FROM sync_conflicts;\nCOMMIT;\n"
+        + archive_target
+        + "\nSELECT 'sync_conflicts|' || count(*) FROM sync_conflicts;\nSELECT 'sync_archived|' || ((SELECT count(*) FROM sync_row_archive)-(SELECT n FROM sync_archive_before));\nCOMMIT;\n"
     )
 
     if isinstance(target, Path):
@@ -896,6 +1016,10 @@ def _stream_sql_to_target(sql: str, target: Path | tuple[str, str]) -> bool:
         )
         return False
     for line in result.stdout.splitlines():
+        if line.startswith("sync_archived|") and line.split("|", 1)[1] != "0":
+            console.print(
+                f"[dim]Preserved {line.split('|', 1)[1]} original metadata snapshots in sync_row_archive.[/dim]"
+            )
         if line.startswith("sync_conflicts|") and line.split("|", 1)[1] != "0":
             console.print(
                 f"[yellow]Retained destination content for {line.split('|', 1)[1]} divergent message(s); review with session-repair merge. No content was overwritten.[/yellow]"
@@ -1134,16 +1258,7 @@ def pull(
 
     # Dump from remote
     _validate_session_ids(all_ids)
-    commands = _build_dump_queries(
-        all_ids,
-        include_seq=bool(
-            _remote_sql(
-                host,
-                remote_db,
-                "SELECT name FROM pragma_table_info('messages') WHERE name='seq'",
-            )
-        ),
-    )
+    commands = _remote_dump_queries(host, remote_db, all_ids)
     result = subprocess.run(
         [
             "ssh",
@@ -1361,16 +1476,7 @@ def sync(
     if pull_ids:
         console.print(f"\n[bold]Step 1: Pulling {len(pull_ids)} sessions...[/bold]")
         _validate_session_ids(pull_ids)
-        commands = _build_dump_queries(
-            pull_ids,
-            include_seq=bool(
-                _remote_sql(
-                    host,
-                    remote_db,
-                    "SELECT name FROM pragma_table_info('messages') WHERE name='seq'",
-                )
-            ),
-        )
+        commands = _remote_dump_queries(host, remote_db, pull_ids)
 
         result = subprocess.run(
             [
