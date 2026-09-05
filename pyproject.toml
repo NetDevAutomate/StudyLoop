@@ -32,6 +32,10 @@ dev = [
     "pyright>=1.1",
     "pre-commit>=4.0",
     "httpx>=0.28.1",
+    # Starlette 1.3's TestClient prefers the successor package and emits a
+    # deprecation warning when only legacy httpx is installed. Pinned exactly
+    # because this is a new dependency with an independent major-version line.
+    "httpx2==2.12.0",
     "pexpect>=4.9.0",
     "textual>=8.0.2",
     "pytest-asyncio>=1.3.0",

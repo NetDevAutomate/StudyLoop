@@ -34,7 +34,19 @@ from studyloop.session.transports.pty import (
     _build_child_env,
 )
 
-pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="PTY transport is POSIX-only")
+pytestmark = [
+    pytest.mark.skipif(sys.platform == "win32", reason="PTY transport is POSIX-only"),
+    # Python 3.13 warns whenever forkpty() is called from a process that has
+    # more than one thread. The threads here belong to pytest's plugin/runtime
+    # machinery; these tests deliberately exercise PTYTransport's real
+    # pty.fork contract and immediately exec /bin/cat in the child. Scope the
+    # filter to this exact stdlib warning and this module — never suppress
+    # DeprecationWarning globally.
+    pytest.mark.filterwarnings(
+        r"ignore:This process .* is multi-threaded, use of forkpty\(\) may lead to "
+        r"deadlocks in the child\.:DeprecationWarning"
+    ),
+]
 
 
 # ---------------------------------------------------------------------------
