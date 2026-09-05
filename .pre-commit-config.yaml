@@ -53,6 +53,26 @@ repos:
     - packages/
 - repo: local
   hooks:
+  - id: check-commit-author
+    name: Check commit author is NetDevAutomate
+    entry: >-
+      bash -c '
+      author="${GIT_AUTHOR_NAME:-$(git config user.name)}";
+      email="${GIT_AUTHOR_EMAIL:-$(git config user.email)}";
+      cname="${GIT_COMMITTER_NAME:-$(git config user.name)}";
+      cemail="${GIT_COMMITTER_EMAIL:-$(git config user.email)}";
+      if [ "$author" != "NetDevAutomate" ] || [ "$email" != "andy.taylor@mail.com" ] ||
+      [ "$cname" != "NetDevAutomate" ] || [ "$cemail" != "andy.taylor@mail.com" ]; then
+      echo "ERROR: Commits must be authored by NetDevAutomate <andy.taylor@mail.com>";
+      echo "  author:    $author <$email>";
+      echo "  committer: $cname <$cemail>";
+      echo "Fix: git config user.name NetDevAutomate && git config user.email andy.taylor@mail.com";
+      echo "(and do not pass --author or set GIT_AUTHOR_NAME/GIT_COMMITTER_NAME)";
+      exit 1; fi'
+    language: system
+    always_run: true
+    pass_filenames: false
+    stages: [pre-commit]
   - id: no-aws-tokens
     name: Check for AWS tokens
     entry: (?i)(AWS_BEARER_TOKEN\w*|aws_access_key_id|aws_secret_access_key)\s*[=:]\s*["']?[A-Za-z0-9/+=]{20,}
