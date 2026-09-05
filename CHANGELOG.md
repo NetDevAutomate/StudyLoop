@@ -35,6 +35,17 @@ experience may change before `1.0.0`.
   remain available for evaluation and can return to the supported surface if
   learner demand demonstrates value.
 
+### Fixed
+
+- Release validation now runs without the three warning classes found during
+  the 0.3.0 readiness pass: hook JSON merges no longer use an
+  `exists()`-then-`read_text()` TOCTOU shape; Starlette TestClient uses the
+  exact-pinned `httpx2==2.12.0` successor package; and the real PTY transport
+  tests scope Python 3.13's multithreaded `forkpty()` warning to that one
+  intentional test module. PyMuPDF's known SWIG `__module__` deprecation is
+  likewise filtered by exact extension-type message only, leaving unrelated
+  deprecations visible.
+
 ## [0.2.1] - 2026-09-05
 
 ### Added

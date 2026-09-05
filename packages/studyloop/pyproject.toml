@@ -80,6 +80,11 @@ exclude = ["src/studyloop/web/static/vendor/dev"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--tb=short -m 'not integration and not e2e and not live_kiro and not live_provider and not live_obsidian and not live_xtiles'"
+filterwarnings = [
+    # PyMuPDF's SWIG-generated extension types omit __module__ on Python 3.13.
+    # Exact upstream warning only; do not hide unrelated deprecations.
+    "ignore:builtin type (SwigPyPacked|SwigPyObject|swigvarlink) has no __module__ attribute:DeprecationWarning",
+]
 # MUST be duplicated from the workspace-root pyproject.toml. pytest resolves
 # rootdir from its arguments, so `pytest packages/studyloop/tests/foo.py` makes
 # THIS file the configfile and the root one is never read -- the root setting
