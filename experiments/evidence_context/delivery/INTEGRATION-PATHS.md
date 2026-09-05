@@ -14,6 +14,8 @@ all paths have been secured. Paths below are relative to `packages/`.
 | Snapshots/restore | `agent-session-tools/.../tiering.py:create_snapshot`; `studyloop/.../cli/_backup.py`; sync destination backups | Identify managed restore entry points; merge active tombstones before any restored content can be served. State external original/backup retention limits precisely. |
 | Installation | `studyloop/.../installers.py`; CLI install/agent/tool commands | Move memory-owned setup/doctor and packaged skill registration into independent agent-session-tools; StudyLoop delegates a versioned interface. |
 | Health and StudyLoop consumer | `studyloop/.../doctor/{agents,harness,database,config}.py`; session/agent startup | Distinguish installed/registered/attempt/success/lag/error states; request scoped historical bundles, expose missing validation and conflicts. |
+| StudyLoop transcript consumers | `studyloop/.../cli/_extract.py`; `extractors/eval_runner.py`; `history/{sessions,search,streaks}.py` | Scope before transcript bodies, FTS snippets, latest-ID selection and aggregate activity; use shared policy owner. Live extractor calls must never receive excluded messages. |
+| StudyLoop learning derivations | `studyloop/.../history/{progress,teachback,sessions}.py`; `extractors/pipeline.py`; notes, parking, bridges and backlog | Global learner tables do not currently carry complete source/scope lineage. Give these records ownership before calling the entire StudyLoop result scoped or deletable. |
 
 The `...` in these entries denotes `src/agent_session_tools` or `src/studyloop`,
 respectively. This list was obtained from current file/function discovery and must
@@ -25,7 +27,8 @@ be extended by call-path and SQL inspection before a completeness claim.
   projects overnight. Installation/configuration must make work/personal boundaries
   explicit; missing policy must not become an unscoped fallback.
 - A trusted local configuration operation can reclassify a project, but durable
-  assignment/scope history and sync conflict handling are not implemented yet.
+  assignment/scope history now exists for Stage19 policy application. Sync conflict
+  handling and a fully audited explicit per-session administrative interface remain.
 - Existing SQL sync includes global learning tables and can seed a whole DB. Both
   are potential policy bypasses even if ordinary session rows are filtered.
 - New context tables add references and derived text. Existing maintenance/pruning
@@ -35,3 +38,7 @@ be extended by call-path and SQL inspection before a completeness claim.
   operation, active tombstone restore mechanism or complete purge of managed copies.
 - Source variants can arise from different machine/locator/parser metadata. Retrieval
   must avoid counting those as independent corroboration or additional conversations.
+
+Stage19 covers the listed core CLI/MCP/semantic historical readers with explicit
+configuration and read snapshots. That progress does not cover the separate
+StudyLoop-specific consumers or transfer/lifecycle paths in this inventory.

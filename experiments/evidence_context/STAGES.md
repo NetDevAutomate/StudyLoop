@@ -393,6 +393,35 @@ The eleven-section walkthrough passed expansion/mobile/error checks. See
 [canonical_sources/COUNCIL-DECISION.md](canonical_sources/COUNCIL-DECISION.md) for the
 limited two-provider implementation coverage and rejected factual review allegations.
 
+## Stage 19 commands
+
+```sh
+uv run python -m experiments.evidence_context.scope_boundary.runner --output /tmp/evidence-stage-19
+open /tmp/evidence-stage-19/walkthrough.html
+uv run pytest packages/agent-session-tools/tests/test_context_scope.py packages/agent-session-tools/tests/test_context_public_scope.py packages/agent-session-tools/tests/test_context_policy_cli.py experiments/evidence_context/tests/test_scope_boundary.py -q
+```
+
+Stage19 connects explicit scope configuration to existing core CLI/MCP, FTS,
+vector candidate reads, direct/prefix lookup, stats and attached history. The
+offline lesson runs eight actual CLI subprocesses on synthetic sources; a separate
+test exercises MCP stdio. Config drift blocks reads until audited apply. Policy
+preview leaves an older source database unchanged. No owner settings are changed.
+
+The guide explains assignment precedence, absent projects, old-schema inspection,
+and why changing engines would not fix a missing boundary. Read transactions pin
+policy and source rows together. Browser checks confirmed eight sections, actual
+expansion, a visible personal result and mobile fit. A missing favicon was corrected.
+
+Fable, Qwen and Mistral supplied usable focused reviews; Grok returned no text.
+The review found a contract mismatch and a misleading empty-result path, both now
+covered by regression tests. It did not review all caller code or approve release.
+See [scope_boundary/GUIDE.md](scope_boundary/GUIDE.md) and
+[scope_boundary/COUNCIL-DECISION.md](scope_boundary/COUNCIL-DECISION.md).
+The package regression passed 1,190 tests; the experiment suite passed 252 with one
+optional dependency skip. The independently runnable Stage19 check passed 35 tests.
+Workspace pyright and lint passed. StudyLoop-specific reads, native capture, sync
+and managed deletion remain required.
+
 ## Production delivery direction
 
 The user has now authorized the full implementation and StudyLoop integration while

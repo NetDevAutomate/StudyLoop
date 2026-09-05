@@ -174,17 +174,22 @@ def resolve_session_id(conn: sqlite3.Connection, user_input: str) -> str:
     Raises:
         ValueError: If session not found or ambiguous
     """
-    # Try exact match first (fastest)
+    from .context.scope import visibility_sql
+
+    visible, params = visibility_sql(conn, "s.id")
+    # Resolve only visible IDs; disambiguation must not name hidden projects.
     exact = conn.execute(
-        "SELECT id FROM sessions WHERE id = ?", (user_input,)
+        "SELECT id FROM sessions s WHERE id = ? AND " + visible, (user_input, *params)
     ).fetchone()
     if exact:
         return exact[0]
 
     # Try prefix match
     matches = conn.execute(
-        "SELECT id, source, project_path FROM sessions WHERE id LIKE ? LIMIT 10",
-        (f"{user_input}%",),
+        "SELECT id, source, project_path FROM sessions s WHERE id LIKE ? AND "
+        + visible
+        + " LIMIT 10",
+        (f"{user_input}%", *params),
     ).fetchall()
 
     if len(matches) == 0:

@@ -10,6 +10,8 @@ from typing import Annotated
 
 import typer
 
+from agent_session_tools.context.scope import visibility_sql, ScopeError
+
 from agent_session_tools.profiles import (
     BUILTIN_PROFILES,
     create_profile,
@@ -48,15 +50,18 @@ db_option = typer.Option("-d", "--db", help="Database path (default: from config
 
 def _resolve_write_session_id(conn, session_id: str) -> str:
     """Resolve a session ID for write commands without allowing ambiguous matches."""
+    visible, params = visibility_sql(conn, "s.id")
     exact = conn.execute(
-        "SELECT id FROM sessions WHERE id = ?", (session_id,)
+        "SELECT id FROM sessions s WHERE id = ? AND " + visible, (session_id, *params)
     ).fetchone()
     if exact:
         return exact[0]
 
     matches = conn.execute(
-        "SELECT id FROM sessions WHERE id LIKE ? ORDER BY id LIMIT 11",
-        (f"{session_id}%",),
+        "SELECT id FROM sessions s WHERE id LIKE ? AND "
+        + visible
+        + " ORDER BY id LIMIT 11",
+        (f"{session_id}%", *params),
     ).fetchall()
 
     if not matches:
@@ -277,8 +282,12 @@ def tag(
         print(f"✅ Removed tags from {resolved_id[:20]}...: {', '.join(remove)}")
 
     # Always show current tags
+    visible, params = visibility_sql(conn, "t.session_id")
     current_tags = conn.execute(
-        "SELECT tag FROM session_tags WHERE session_id = ? ORDER BY tag", (resolved_id,)
+        "SELECT tag FROM session_tags t WHERE session_id = ? AND "
+        + visible
+        + " ORDER BY tag",
+        (resolved_id, *params),
     ).fetchall()
 
     if current_tags:
@@ -312,8 +321,10 @@ def note(
         print(f"✅ Note saved for {resolved_id[:20]}...")
 
     elif edit:
+        visible, params = visibility_sql(conn, "n.session_id")
         current_note = conn.execute(
-            "SELECT notes FROM session_notes WHERE session_id = ?", (resolved_id,)
+            "SELECT notes FROM session_notes n WHERE session_id = ? AND " + visible,
+            (resolved_id, *params),
         ).fetchone()
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as tmp:
@@ -344,9 +355,11 @@ def note(
                 os.unlink(tmp.name)
 
     else:
+        visible, params = visibility_sql(conn, "n.session_id")
         note_row = conn.execute(
-            "SELECT notes, updated_at FROM session_notes WHERE session_id = ?",
-            (resolved_id,),
+            "SELECT notes, updated_at FROM session_notes n WHERE session_id = ? AND "
+            + visible,
+            (resolved_id, *params),
         ).fetchone()
 
         if note_row:
@@ -490,9 +503,13 @@ def path() -> None:
 
 def main() -> int:
     """CLI entry point for session query."""
-    app()
+    try:
+        app()
+    except ScopeError as exc:
+        typer.secho(str(exc), fg=typer.colors.YELLOW, err=True)
+        return 2
     return 0
 
 
 if __name__ == "__main__":
-    app()
+    raise SystemExit(main())

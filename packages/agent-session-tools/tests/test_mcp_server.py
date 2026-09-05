@@ -439,7 +439,12 @@ def test_mcp_search_and_list_expand_only_configured_project_aliases(
 
     config = tmp_path / "aliases.yaml"
     config.write_text(
-        json.dumps({"project_aliases": {"/current/webapp": ["/projects/webapp"]}})
+        json.dumps(
+            {
+                "memory": {"default_scope": "unclassified"},
+                "project_aliases": {"/current/webapp": ["/projects/webapp"]},
+            }
+        )
     )
     monkeypatch.setenv("STUDYLOOP_CONFIG", str(config))
     tools = _get_tools()

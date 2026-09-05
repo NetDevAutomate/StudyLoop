@@ -19,7 +19,7 @@ from agent_session_tools.context.store import (
     ContextStore,
     NativeSource,
 )
-from agent_session_tools.migrations import migrate
+from agent_session_tools.migrations import CURRENT_VERSION, migrate
 
 PERSONAL = Access(scope=Scope.PERSONAL)
 WORK = Access(scope=Scope.WORK)
@@ -304,7 +304,7 @@ def test_migration_failure_is_atomic_and_retry_preserves_legacy(temp_db, monkeyp
         "SELECT 1 FROM sqlite_master WHERE name='context_projects'"
     ).fetchone()
     migrate(conn)
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 31
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == CURRENT_VERSION
     assert (
         conn.execute("SELECT content FROM messages WHERE id='old-msg'").fetchone()[0]
         == "old words"
@@ -406,7 +406,7 @@ def test_failed_upgrade_preserves_callers_outer_transaction(temp_db, monkeypatch
     assert conn.execute("PRAGMA user_version").fetchone()[0] == 30
     conn.commit()
     migrate(conn)
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 31
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == CURRENT_VERSION
 
 
 def test_newer_database_is_not_silently_accepted(store):

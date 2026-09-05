@@ -22,6 +22,8 @@ from pathlib import Path
 from typing import Any
 
 from agent_session_tools.query_utils import build_project_filter
+from agent_session_tools.context.scope import visibility_sql
+from agent_session_tools.context.legacy import session_record, session_messages
 
 try:
     from fastmcp import FastMCP
@@ -41,8 +43,9 @@ def _get_db_path() -> Path:
 def _get_connection(db_path: Path | None = None) -> sqlite3.Connection:
     """Open a read-only database connection with Row factory."""
     path = db_path or _get_db_path()
-    conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+    conn = sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)
     conn.row_factory = sqlite3.Row
+    conn.execute("BEGIN")
     return conn
 
 
@@ -97,7 +100,9 @@ def _create_server() -> FastMCP:
                 JOIN messages_fts ON messages_fts.rowid = m.rowid
                 WHERE messages_fts MATCH ?
             """
-            params: list[Any] = [fts_query]
+            visible, scope_params = visibility_sql(conn, "s.id")
+            sql += " AND " + visible
+            params: list[Any] = [fts_query, *scope_params]
 
             if source:
                 sql += " AND s.source = ?"
@@ -140,9 +145,10 @@ def _create_server() -> FastMCP:
             sql = """
                 SELECT id, source, project_path, git_branch,
                        created_at, updated_at, session_type
-                FROM sessions WHERE 1=1
+                FROM sessions s WHERE 1=1
             """
-            params: list[Any] = []
+            visible, params = visibility_sql(conn, "s.id")
+            sql += " AND " + visible
 
             if source:
                 sql += " AND source = ?"
@@ -177,18 +183,11 @@ def _create_server() -> FastMCP:
 
             resolved_id = resolve_session_id(conn, session_id)
 
-            session = conn.execute(
-                "SELECT * FROM sessions WHERE id = ?", (resolved_id,)
-            ).fetchone()
+            session = session_record(conn, resolved_id)
             if not session:
                 return {"error": f"Session not found: {session_id}"}
 
-            messages = conn.execute(
-                """SELECT id, role, content, model, timestamp, metadata
-                   FROM messages WHERE session_id = ?
-                   ORDER BY seq, timestamp""",
-                (resolved_id,),
-            ).fetchall()
+            messages = session_messages(conn, resolved_id)
 
             return {
                 "session": _row_to_dict(session),
@@ -232,18 +231,11 @@ def _create_server() -> FastMCP:
 
             resolved_id = resolve_session_id(conn, session_id)
 
-            session = conn.execute(
-                "SELECT * FROM sessions WHERE id = ?", (resolved_id,)
-            ).fetchone()
+            session = session_record(conn, resolved_id)
             if not session:
                 return f"Session not found: {session_id}"
 
-            messages = conn.execute(
-                """SELECT role, content, model, timestamp, metadata
-                   FROM messages WHERE session_id = ?
-                   ORDER BY seq, timestamp""",
-                (resolved_id,),
-            ).fetchall()
+            messages = session_messages(conn, resolved_id)
 
             if not messages:
                 return f"No messages in session: {session_id}"
@@ -293,17 +285,27 @@ def _create_server() -> FastMCP:
         try:
             db_path = _get_db_path()
 
-            total_sessions = conn.execute("SELECT COUNT(*) FROM sessions").fetchone()[0]
-            total_messages = conn.execute("SELECT COUNT(*) FROM messages").fetchone()[0]
+            visible, scope_params = visibility_sql(conn, "s.id")
+            visible_messages, message_params = visibility_sql(conn, "m.session_id")
+            total_sessions = conn.execute(
+                "SELECT COUNT(*) FROM sessions s WHERE " + visible, scope_params
+            ).fetchone()[0]
+            total_messages = conn.execute(
+                "SELECT COUNT(*) FROM messages m WHERE " + visible_messages,
+                message_params,
+            ).fetchone()[0]
 
             sources = conn.execute(
-                "SELECT source, COUNT(*) as count FROM sessions "
-                "GROUP BY source ORDER BY count DESC"
+                "SELECT source, COUNT(*) as count FROM sessions s WHERE "
+                + visible
+                + " GROUP BY source ORDER BY count DESC",
+                scope_params,
             ).fetchall()
 
             date_range = conn.execute(
                 "SELECT MIN(created_at) as earliest, MAX(updated_at) as latest "
-                "FROM sessions"
+                "FROM sessions s WHERE " + visible,
+                scope_params,
             ).fetchone()
 
             size_bytes = db_path.stat().st_size if db_path.exists() else 0
@@ -355,13 +357,13 @@ def _create_server() -> FastMCP:
             from agent_session_tools.scrubber import ScrubReport, create_scrubber
 
             migrate(conn)
+            conn.execute("BEGIN" if dry_run else "BEGIN IMMEDIATE")
             scrubber = create_scrubber()
             report = ScrubReport()
 
-            query = (
-                "SELECT id, session_id, content FROM messages WHERE content IS NOT NULL"
-            )
-            params: list[str] = []
+            query = "SELECT id, session_id, content FROM messages m WHERE content IS NOT NULL"
+            visible, params = visibility_sql(conn, "m.session_id")
+            query += " AND " + visible
             if session_id:
                 query += " AND session_id = ?"
                 params.append(session_id)
@@ -390,7 +392,6 @@ def _create_server() -> FastMCP:
             }
 
             if not dry_run and updates:
-                conn.execute("BEGIN")
                 conn.executemany(
                     "UPDATE messages SET content = ? WHERE id = ?", updates
                 )

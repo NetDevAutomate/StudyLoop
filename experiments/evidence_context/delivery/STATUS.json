@@ -1,14 +1,14 @@
 {
   "goal": "active",
-  "previous_goal_turn": "initial goal turn; Stage16 checkpoint verified as completed prior work",
-  "current_stage": "18 canonical storage complete as internal checkpoint; production integration remains",
+  "previous_goal_turn": "progress: Stage17 and Stage18 checkpoints completed; complete production objective remains active",
+  "current_stage": "19 explicit scope and core reader checkpoint; StudyLoop consumers, capture and lifecycle remain",
   "requirements": {
-    "P01": "partial: additive v31, atomic failure/retry/outer savepoint, newer-version refusal and live-WAL compaction tested; installed upgrade/restore audit remains",
+    "P01": "partial: v31/v32 additive migrations, atomic policy audit, unchanged old-DB preview and compaction policy-head copying tested; installed upgrade/restore audit remains",
     "P02": "not yet proven",
     "P03": "partial: source-owned contract and canonical immutable source/citation tests pass; trusted native parser and public adapters remain",
     "P04": "partial: internal scoped lexical source lookup, exact version/offset citations and why-selected fields; rich retrieval/decision interfaces remain",
     "P05": "partial: proposed correction/conflict links preserve both branches; decision applicability and semantic review remain",
-    "P06": "partial: internal direct/search/assertion/relation scope tests pass; legacy CLI/MCP/semantic paths still unprotected",
+    "P06": "partial: explicit configuration, audited apply, snapshot guards, legacy CLI/MCP/semantic/federated reads covered; StudyLoop-specific and derived-data paths remain",
     "P07": "not yet proven",
     "P08": "partial: low-level tombstone insert suppression and direct canonical dependency cleanup tested; full purge, reimport, sync, restore and derived lifecycle remain",
     "P09": "not yet proven",
@@ -16,8 +16,8 @@
     "P11": "not yet proven",
     "P12": "not yet proven",
     "P13": "not yet proven",
-    "P14": "stages1-17 checkpointed; stage18 runnable demo/guide and council arbitration added; saved exercise unchanged",
-    "P15": "partial: 1156 package tests pass; full release acceptance and independent final review remain"
+    "P14": "stages1-18 checkpointed; Stage19 independently runnable CLI demo and guide added; saved exercise unchanged",
+    "P15": "partial: 1190 package tests, 252 experiment tests and workspace type/lint checks pass; installed full release acceptance remains"
   },
   "completed_checkpoints": {
     "stage16": "6c736c5",
@@ -25,26 +25,26 @@
     "stage18": "3502407"
   },
   "current_findings": [
-    "Stage17 saved replay improves eligible release to10/10 in both arms but two narrative control errors remain; not semantic efficacy.",
-    "Stage18 internal ContextStore requires explicit Access and immutable native records; no public adapters wired yet.",
-    "Full regression exposed new-FTS shadow-table copying; compaction now rebuilds all virtual indexes from canonical records.",
-    "A populated-source regression reproduced live WAL data loss from immutable compaction; mode=ro plus read snapshot fixes it.",
-    "v26 test fixtures now include actual base messages schema; v31 requires valid sessions/messages tables.",
-    "Stage18 council full/focused rounds each had only Qwen/Mistral usable; their concrete scope/Unicode/hash allegations were contradicted by code and tests. No three-provider review consensus.",
-    "Project scope/assignment audit history, complete deletion propagation, actual native capture, legacy API filtering, scoped sync and shared installers remain required."
+    "Stage19 has no implicit scope default; project filters do not change request authority.",
+    "Policy plan uses an in-memory copy; apply records project/session changes and audit atomically.",
+    "Legacy databases with configured projects require policy application even for unclassified inspection.",
+    "All guarded core reads now pin policy and body queries to a read snapshot; caller ends each request transaction.",
+    "Core MCP stdio and CLI subprocess tests exclude work/unclassified bodies from personal output.",
+    "The focused council returned Fable, Qwen and Mistral; Grok returned no text. Useful contract corrections accepted; no whole-implementation approval.",
+    "StudyLoop extraction, evaluation, history search/resume/streaks directly read transcript tables and need shared scope integration.",
+    "Global learner state lacks complete source/scope lineage; native capture, protected sync, managed deletion/restore and shared installer remain required."
   ],
   "next_actions": [
-    "Implement explicit scope configuration/audit and close legacy read paths using INTEGRATION-PATHS.md; Stage18 checkpoint and checks complete.",
-    "Inventory every production source read/write/derived copy and implement explicit persisted configuration/audit with legacy read guards.",
-    "Integrate native tool capture with stable source identities, actual parser receipts, per-run capture telemetry; validate real archives read-only.",
-    "Implement production forgetting and scoped versioned sync/restore before exposing the new tools; keep canonical SQLite.",
-    "Complete shared install/doctor ownership, packaged skill and installed StudyLoop journeys, then full P01-P15 audit."
+    "Complete StudyLoop-specific transcript read boundaries and independently runnable consumer acceptance stage.",
+    "Integrate native tool capture with stable source identities, parser receipts and persisted health; validate real archives read-only.",
+    "Implement versioned scope-restricted sync and complete managed forgetting/restore, including global learning data ownership.",
+    "Complete shared install/doctor/skill ownership, fresh installed journeys and full P01-P15 audit."
   ],
   "verification": {
-    "package_tests": "1156 passed",
-    "experiment_tests": "251 passed, 1 optional dependency skip",
+    "package_tests": "1190 passed; focused independently runnable Stage19 checks: 35 passed",
+    "experiment_tests": "252 passed, 1 optional dependency skip",
     "workspace_pyright": "0 errors",
     "commit_hooks": "passed for 106b65a and 3502407",
-    "browser": "Stage17 40 cards/8 controls/8 fresh cases; Stage18 11 sections; filtering, quote expansion and mobile fit checked"
+    "browser": "Stage19: eight sections, personal expansion and mobile fit; favicon correction checked"
   }
 }

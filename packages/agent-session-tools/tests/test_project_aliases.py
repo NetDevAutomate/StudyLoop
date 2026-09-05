@@ -13,13 +13,14 @@ def aliases(tmp_path, monkeypatch):
     config.write_text(
         json.dumps(
             {
+                "memory": {"default_scope": "unclassified"},
                 "project_aliases": {
                     "/current/personal/studyloop": [
                         "/old/person/studyloop",
                         "-old-person-studyloop",
                         "/worktrees/known/studyloop",
                     ],
-                }
+                },
             }
         )
     )

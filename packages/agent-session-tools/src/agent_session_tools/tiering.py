@@ -328,6 +328,10 @@ def compact_database(source: Path, dest: Path) -> CompactStats:
         ordered += sorted(common - set(first))
 
         with conn:
+            if "context_policy_state" in common:
+                # The destination migration seeds a singleton. Preserve the
+                # source's applied policy instead of colliding with that seed.
+                conn.execute("DELETE FROM context_policy_state")
             for table in ordered:
                 copied = _copy_table(conn, table, "src")
                 if copied:

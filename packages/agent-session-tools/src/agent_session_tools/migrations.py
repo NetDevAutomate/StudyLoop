@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Current schema version - increment when adding new migrations
-CURRENT_VERSION = 31
+CURRENT_VERSION = 32
 
 # Migration functions: version -> (description, migration_func)
 MIGRATIONS: dict[int, tuple[str, Callable[[sqlite3.Connection], None]]] = {}
@@ -1375,6 +1375,27 @@ def migrate_v31(conn: sqlite3.Connection) -> None:
     from .context.schema import install
 
     install(conn)
+
+
+@migration(32, "Add explicit scope policy state and classification audit")
+def migrate_v32(conn: sqlite3.Connection) -> None:
+    import hashlib
+
+    conn.execute(
+        "ALTER TABLE context_session_projects ADD COLUMN assignment_kind TEXT NOT NULL DEFAULT 'explicit' CHECK(assignment_kind IN ('explicit','root_policy','sync'))"
+    )
+    conn.execute(
+        "CREATE TABLE context_policy_state(id INTEGER PRIMARY KEY CHECK(id=1),digest TEXT NOT NULL,applied_at TEXT)"
+    )
+    conn.execute(
+        "INSERT INTO context_policy_state VALUES (1,?,NULL)",
+        (hashlib.sha256(b"{}").hexdigest(),),
+    )
+    conn.execute("""CREATE TABLE context_scope_audit (
+        id TEXT PRIMARY KEY, action TEXT NOT NULL, subject_id TEXT NOT NULL,
+        before_json TEXT NOT NULL, after_json TEXT NOT NULL, actor TEXT NOT NULL,
+        policy_digest TEXT NOT NULL, recorded_at TEXT NOT NULL
+    )""")
 
 
 def check_migration_status(db_path: Path) -> dict:

@@ -27,6 +27,10 @@ ENV_FILE = CONFIG_DIR / ".env"
 
 # Fallback defaults
 DEFAULT_CONFIG = {
+    "memory": {
+        "default_scope": None,
+        "projects": {},
+    },
     "database": {
         "path": str(CONFIG_DIR / "sessions.db"),
         "archive_path": str(CONFIG_DIR / "sessions_archive.db"),
