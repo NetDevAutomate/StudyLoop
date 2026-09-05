@@ -21,6 +21,7 @@ no remote publication or backup is implied.
 | 12 — Real retrieval pilot | Which selected history reaches and helps the answer? | `27e6900` | `retrieval_matrix/trial.py` and `report.py`; GUIDE.md, RESULTS.md, private real-answer replay |
 | 13 — Equivalent storage | Which engine serves the same nodes, edges and rows? | `6fff879` | `storage_matrix/benchmark.py` and `query_diagnostic.py`; GUIDE.md and RESULTS.md |
 | 14 — Evidence replacement | Do reviewed results improve answers, and what still fails? | `ec8bbc1` | `evidence_selection/runner.py` and `viewer.py`; GUIDE.md, RESULTS.md and reviewer audit |
+| 15 — Separate evidence claims | Can state, basis and target stay distinct through code-owned release? | `4914967` | `assertion_gate/runner.py` and `viewer.py`; GUIDE.md, RESULTS.md and COUNCIL-DECISION.md |
 
 Stage 3 uses its own lifecycle adapter and database schema. It does not modify the
 stage 1 evidence store, and does not require stage 1 demo output. Stage 2 uses
@@ -276,21 +277,57 @@ six filtered Q3 drafts, expansion and no page errors. Commit checks passed. Priv
 transcripts/outputs remain in the ignored .private archive alongside the learning tree;
 a Git clone deliberately does not contain them. The Stage8 exercise remains unchanged.
 
+## Stage 15 commands
+
+```sh
+uv run python -m experiments.evidence_context.assertion_gate.runner --output /tmp/evidence-stage-15
+uv run python -m experiments.evidence_context.assertion_gate.viewer \
+  --directory /tmp/evidence-stage-15 --output /tmp/evidence-stage-15/walkthrough.html
+open /tmp/evidence-stage-15/walkthrough.html
+uv run --group dev pytest experiments/evidence_context/tests/test_assertion_gate.py -q
+```
+
+Checkpoint `4914967` preserves the independently runnable synthetic contract demo.
+Default execution is offline. An explicit `--live` runs at most 32 gateway calls;
+the saved actual trial replaces one synthetic case with the private historical anchor.
+The guide provides a separate command for that private replay.
+
+All 32 actual responses parsed. Expected released ID sets were raw 13/16 and annotated
+16/16, but this is conditional conformance, not extraction accuracy: annotated inputs
+reveal labels, and two raw cases have identical text but different hidden provenance.
+Three raw basis mismatches withheld claims: one promoted a report to observation;
+two conservatively reported an observation whose origin was absent from the input.
+Code-owned prose retained attribution even where advisory drafts said verified.
+
+Eighteen ordinary controls matched; two source-hash-preserving annotation forgeries
+were accepted and remain explicit semantic trust gaps. State-only rendering also
+omits outcome details and useful abstention explanations. All 232 experiment tests
+passed. Browser checks covered actual and offline replays, filtering, expansion and
+mobile layout. Commit hooks passed; source/prompt/bundle hashes remained frozen.
+
+Design review had three usable providers; full result review had two. A focused
+five-draft retry had Fable, Qwen and Mistral, all recommending source-backed annotation;
+Grok timed out. This is not full-trial three-provider consensus. Reviewer mistakes,
+original replies and the distinction between integrity and semantic correctness are
+preserved in the council decision. No production DB/configuration changed.
+
 ## Next evidence gate
 
-The complete-evidence control has now run. Next, represent reported event state,
-evidence basis and target identity separately, then test whether a verifier can allow
-a reported cleanup outcome while withholding an unsupported completed-fix claim.
-Review findings must identify exact answer/source clauses and be tested against honest
-qualified answers as well as overclaims. Preserve false blocks and reviewer disagreement.
+Test how the annotation ledger is produced. Compare transcript-only annotation with
+transcript plus actual capture-origin metadata on new independently labelled cases.
+Do not disclose expected state/basis labels. Measure provenance, target applicability,
+unsupported promotion, unknown preservation and justified claim retention separately.
+Distinguish altered artifacts from incorrectly interpreted but faithfully preserved
+artifacts: signatures or hashes cannot establish semantic correctness.
 
-Use new independently labelled cases before claiming general efficacy or building an
-automatic extraction/retrieval integration. Stage14 reused development questions and
-known labels; it does not satisfy the held-out requirement. A later distraction study
-should counterbalance positions and actual lengths rather than change several factors.
+Keep the Stage 15 gate frozen. More permissive weaker-claim rules and richer outcome/
+abstention fields should be separate variants, so their utility and false-withholding
+cost can be measured. A completed event does not by itself mean a passed check.
+Use independent held-out cases before claiming general efficacy or promoting an
+extraction/retrieval integration. Prior development pilots do not satisfy that gate.
 
 Keep SQLite canonical and indexes replaceable while investigating information value.
 A new engine race needs a named workload and a fair optimized-query baseline. Work/
 personal scope, correction/forgetting through derived indexes, capture health and
 installation ownership remain requirements for integration. No DSPy integration,
-production prompt promotion or migration occurred.
+production prompt promotion or migration occurred. The Stage 8 exercise is unchanged.
