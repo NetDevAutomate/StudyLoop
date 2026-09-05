@@ -1136,6 +1136,32 @@ class TestKeyboardInput:
         )
         assert "keypath" in _buffer_text(dev_page)
 
+    def test_p_key_in_terminal_does_not_open_quick_park(self, dev_page) -> None:
+        """A 'p' typed into the terminal stays in the terminal.
+
+        Regression guard for the quick-park 'p' hotkey firing on terminal
+        input: the ghostty mount keeps focus on a DIV, so the hotkey's
+        INPUT/TEXTAREA/SELECT allowlist did not exempt it. Typing any word
+        containing 'p' opened the park dialog mid-word, which stole focus and
+        swallowed the remaining keystrokes — the recurring CI flake where
+        'keypath' reached onData as 'keyp' and the dialog held 'ath'.
+        """
+        _mount_terminal(dev_page)
+        dev_page.evaluate(
+            """() => {
+              window.__emitted = [];
+              window.__studyloopGhostty.adapter.onData((d) => window.__emitted.push(d));
+            }"""
+        )
+        dev_page.click(".xterm-mount")
+        dev_page.keyboard.type("python")
+        dev_page.wait_for_function("() => (window.__emitted || []).length >= 6", timeout=10_000)
+        assert dev_page.evaluate("() => window.Alpine.store('quickPark').open") is False, (
+            "quick-park dialog opened on a 'p' typed into the terminal"
+        )
+        emitted = dev_page.evaluate("() => window.__emitted")
+        assert "".join(emitted) == "python", f"keystrokes were lost or diverted: {emitted!r}"
+
     def test_handler_returning_false_consumes_the_key(self, dev_page) -> None:
         """xterm semantics preserved: false means the app consumed the key.
 

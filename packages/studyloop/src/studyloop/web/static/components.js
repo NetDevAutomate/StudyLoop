@@ -322,6 +322,23 @@ document.addEventListener("alpine:init", () => {
     saving: false,
     show() { this.open = true; this.text = ""; },
     hide() { this.open = false; },
+    // True when a bare 'p' keypress should open the dialog: only if it is
+    // not headed for a text-entry surface. The tagName allowlist alone is
+    // not enough — the ghostty terminal keeps focus on a DIV
+    // (.xterm-mount), so a 'p' typed mid-word into the terminal opened
+    // this dialog, which then stole focus and swallowed the rest of the
+    // word (the cause of a recurring e2e flake: "keypath" arrived as
+    // "keyp" + a park dialog holding "ath").
+    hotkeyShouldOpen(event) {
+      if (event.key !== "p" || event.metaKey || event.ctrlKey || event.altKey) return false;
+      if (this.open) return false;
+      const t = event.target;
+      if (!(t instanceof Element)) return true;
+      if (["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName)) return false;
+      if (t.isContentEditable) return false;
+      if (t.closest(".xterm-mount")) return false;
+      return true;
+    },
     async save() {
       const q = this.text.trim();
       if (!q || this.saving) return;

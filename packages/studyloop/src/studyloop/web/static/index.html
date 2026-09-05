@@ -2968,9 +2968,11 @@
   </div>
 
   <!-- Quick-park brain-dump — capture a tangent without leaving the task.
-       Floating button + 'p' shortcut; in-page overlay (native dialogs banned). -->
+       Floating button + 'p' shortcut; in-page overlay (native dialogs banned).
+       The open-guard lives in $store.quickPark.hotkeyShouldOpen so the
+       terminal (and any text-entry surface) can be exempted in one place. -->
   <div x-data
-       @keydown.window="($event.key === 'p' && !$event.metaKey && !$event.ctrlKey && !$event.altKey && !['INPUT','TEXTAREA','SELECT'].includes($event.target.tagName) && !$store.quickPark.open) ? ($event.preventDefault(), $store.quickPark.show()) : null">
+       @keydown.window="$store.quickPark.hotkeyShouldOpen($event) ? ($event.preventDefault(), $store.quickPark.show()) : null">
     <button class="quick-park-btn" @click="$store.quickPark.show()"
             title="Park a thought for later (P)">＋ Park a thought</button>
 
