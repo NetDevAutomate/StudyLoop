@@ -356,7 +356,8 @@ open /tmp/evidence-stage-17/walkthrough.html
 uv run --group dev pytest experiments/evidence_context/tests/test_provenance_ownership.py packages/agent-session-tools/tests/test_context_provenance.py -q
 ```
 
-The source-owned adapter replays forty saved Stage16 proposals without new model calls.
+Checkpoint `106b65a` preserves this stage. The source-owned adapter replays forty
+saved Stage16 proposals without new model calls.
 Eligible coverage becomes capture 10/10 (previously 8/10) and text 10/10 (previously 2/10),
 with no incorrect final fields among those releases. Both conditions now receive trusted
 metadata in code; this is not a new model-quality comparison. Eight controls preserve
@@ -378,7 +379,8 @@ open /tmp/evidence-stage-18/walkthrough.html
 uv run --group dev pytest packages/agent-session-tools/tests/test_context_store.py experiments/evidence_context/tests/test_canonical_sources.py -q
 ```
 
-This offline lesson uses the actual package's new canonical SQLite schema/storage
+Checkpoint `3502407` preserves this stage. This offline lesson uses the actual
+package's new canonical SQLite schema/storage
 on synthetic fixtures. It demonstrates immutable source versions, exact Unicode
 citations, explicit scope, cross-harness proposed correction links and reclassification.
 No installed capture/sync, semantic arbitration or complete forgetting is claimed.

@@ -21,7 +21,8 @@
   },
   "completed_checkpoints": {
     "stage16": "6c736c5",
-    "stage17": "106b65a"
+    "stage17": "106b65a",
+    "stage18": "3502407"
   },
   "current_findings": [
     "Stage17 saved replay improves eligible release to10/10 in both arms but two narrative control errors remain; not semantic efficacy.",
@@ -33,10 +34,17 @@
     "Project scope/assignment audit history, complete deletion propagation, actual native capture, legacy API filtering, scoped sync and shared installers remain required."
   ],
   "next_actions": [
-    "Finish Stage18 checkpoint and preserve exact test evidence.",
+    "Implement explicit scope configuration/audit and close legacy read paths using INTEGRATION-PATHS.md; Stage18 checkpoint and checks complete.",
     "Inventory every production source read/write/derived copy and implement explicit persisted configuration/audit with legacy read guards.",
     "Integrate native tool capture with stable source identities, actual parser receipts, per-run capture telemetry; validate real archives read-only.",
     "Implement production forgetting and scoped versioned sync/restore before exposing the new tools; keep canonical SQLite.",
     "Complete shared install/doctor ownership, packaged skill and installed StudyLoop journeys, then full P01-P15 audit."
-  ]
+  ],
+  "verification": {
+    "package_tests": "1156 passed",
+    "experiment_tests": "251 passed, 1 optional dependency skip",
+    "workspace_pyright": "0 errors",
+    "commit_hooks": "passed for 106b65a and 3502407",
+    "browser": "Stage17 40 cards/8 controls/8 fresh cases; Stage18 11 sections; filtering, quote expansion and mobile fit checked"
+  }
 }
