@@ -15,6 +15,7 @@ no remote publication or backup is implied.
 | 6 — Conflict arbitration | Does the answer resolve conflicting evidence responsibly? | `66902e2` | `python -m experiments.evidence_context.arbitration_lab`; arbitration_lab/GUIDE.md, RESULTS.md and versioned prompts |
 | 7 — Bounded prompt loop | Does our score recognise a better evidence-based decision? | `f3a8457` | `python -m experiments.evidence_context.prompt_loop`; prompt_loop/GUIDE.md, RESULTS.md and COUNCIL-DECISION.md |
 | 8 — Decision contract | Which sources apply, and what decision do they justify? | `f7f6796` | `python -m experiments.evidence_context.decision_contract`; decision_contract/GUIDE.md, RESULTS.md and expandable HTML walkthrough |
+| 9 — Code-owned release | Can model drafts override missing metadata or enter released prose? | `d7a9c8f` | `python -m experiments.evidence_context.acceptance_gate`; acceptance_gate/GUIDE.md, RESULTS.md and replay walkthrough |
 
 Stage 3 uses its own lifecycle adapter and database schema. It does not modify the
 stage 1 evidence store, and does not require stage 1 demo output. Stage 2 uses
@@ -134,13 +135,30 @@ correctly, but the model invented a missing revision in one case. Choice matches
 reviewed the design; two returned valid result reviews after Grok failed twice.
 The optional revision-classification exercise is saved for a later dedicated session.
 
+## Stage 9 commands
+
+```sh
+uv run python -m experiments.evidence_context.acceptance_gate --output /tmp/evidence-stage-9
+open /tmp/evidence-stage-9/walkthrough.html
+uv run --group dev pytest experiments/evidence_context/tests/test_acceptance_gate.py -q
+```
+
+Checkpoint `d7a9c8f` preserves the snapshot-bound draft comparison and code-owned
+release. Offline mode replays eight actual drafts and eighteen controls/challenges;
+`--live` makes twelve calls. Four live drafts diverged on missing scope, including
+both injected-source drafts; none supplied the released decision/prose. Draft agreement
+was 3/6 prompt-only and 5/6 in a precomputed-answer copy control. The release is always
+policy-rendered, so this is conformance measurement, not model-answer certification.
+Both council rounds returned all three providers. Upstream metadata forgery remains
+an explicit blind spot. All 153 evidence-context tests passed at this checkpoint.
+
 ## Next evidence gate, then further stages
 
-Test a deterministic metadata boundary that preserves unknown fields and checks
-applicability before accepting generated decisions, with new missing-field variants
-and metadata/text contradictions. This does not establish metadata authenticity.
-Separate unsafe endorsements from cautious label deviations and check explanations
-against sources. See [decision_contract/COUNCIL-DECISION.md](decision_contract/COUNCIL-DECISION.md).
+Challenge the correspondence between original source text and extracted metadata or
+claims, with independently reviewed expectations. Preserve unknowns and exact source
+spans rather than inventing source facts. The policy needs independent checking too;
+consistent execution does not establish its correctness. See
+[acceptance_gate/COUNCIL-DECISION.md](acceptance_gate/COUNCIL-DECISION.md).
 No DSPy integration, production prompt promotion or database-engine selection yet.
 
 Keep the real 3–5 disjoint-question pilot with independent pre-result labels as the
