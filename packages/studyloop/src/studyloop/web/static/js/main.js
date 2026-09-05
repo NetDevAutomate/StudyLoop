@@ -45,6 +45,7 @@
  */
 
 import { extractChunkText, energyBand } from './lib/chunk-text.js';
+import { isTextEntryTarget } from './lib/text-entry.js';
 import { THRESHOLDS } from './lib/timer-thresholds.js';
 
 import { generatePanel } from './components/generate-panel.js';
@@ -58,6 +59,12 @@ import { settingsPanel } from './components/settings-panel.js';
    code without renaming anything. */
 window._extractChunkText = extractChunkText;
 window.energyBand = energyBand;
+
+/* The one shared answer to "is this keyboard event headed for a text-entry
+   surface?" — every global single-key hotkey (quick-park 'p', reviewApp's
+   flashcard/quiz keys) must consult it instead of rolling its own tagName
+   allowlist. components.js reads it as a free identifier at event time. */
+window.isTextEntryTarget = isTextEntryTarget;
 
 /* Free-variable dependency of session-timer.js - see the header note. */
 window.THRESHOLDS = THRESHOLDS;

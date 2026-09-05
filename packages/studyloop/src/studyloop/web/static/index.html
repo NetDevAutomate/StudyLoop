@@ -2950,6 +2950,7 @@
        (extracted from this file's former inline <script> one at a time):
          THRESHOLDS              -> js/lib/timer-thresholds.js
          energyBand()             -> js/lib/chunk-text.js (unit-tested)
+         isTextEntryTarget()      -> js/lib/text-entry.js (unit-tested)
          generatePanel()          -> js/components/generate-panel.js (unit-tested)
          settingsPanel()          -> js/components/settings-panel.js
          sessionTimer()           -> js/components/session-timer.js (unit-tested)
@@ -2969,8 +2970,9 @@
 
   <!-- Quick-park brain-dump — capture a tangent without leaving the task.
        Floating button + 'p' shortcut; in-page overlay (native dialogs banned).
-       The open-guard lives in $store.quickPark.hotkeyShouldOpen so the
-       terminal (and any text-entry surface) can be exempted in one place. -->
+       The open-guard lives in $store.quickPark.hotkeyShouldOpen, which
+       delegates the "is this a text-entry surface?" question to the shared
+       js/lib/text-entry.js helper. -->
   <div x-data
        @keydown.window="$store.quickPark.hotkeyShouldOpen($event) ? ($event.preventDefault(), $store.quickPark.show()) : null">
     <button class="quick-park-btn" @click="$store.quickPark.show()"

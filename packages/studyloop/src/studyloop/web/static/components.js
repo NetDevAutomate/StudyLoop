@@ -323,21 +323,14 @@ document.addEventListener("alpine:init", () => {
     show() { this.open = true; this.text = ""; },
     hide() { this.open = false; },
     // True when a bare 'p' keypress should open the dialog: only if it is
-    // not headed for a text-entry surface. The tagName allowlist alone is
-    // not enough — the ghostty terminal keeps focus on a DIV
-    // (.xterm-mount), so a 'p' typed mid-word into the terminal opened
-    // this dialog, which then stole focus and swallowed the rest of the
-    // word (the cause of a recurring e2e flake: "keypath" arrived as
-    // "keyp" + a park dialog holding "ath").
+    // not headed for a text-entry surface (see js/lib/text-entry.js — the
+    // terminal keeps focus on a DIV, so a tagName allowlist here once let
+    // a 'p' typed mid-word into the terminal open this dialog, which then
+    // stole focus and swallowed the rest of the word).
     hotkeyShouldOpen(event) {
       if (event.key !== "p" || event.metaKey || event.ctrlKey || event.altKey) return false;
       if (this.open) return false;
-      const t = event.target;
-      if (!(t instanceof Element)) return true;
-      if (["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName)) return false;
-      if (t.isContentEditable) return false;
-      if (t.closest(".xterm-mount")) return false;
-      return true;
+      return !isTextEntryTarget(event);
     },
     async save() {
       const q = this.text.trim();
@@ -1413,6 +1406,13 @@ function reviewApp(defaultMode) {
     // ------------------------------------------------------------------
 
     handleKey(event) {
+      // Same rule as every global hotkey (js/lib/text-entry.js): keystrokes
+      // headed for a text-entry surface are input, not shortcuts. Without
+      // this, typing into the quick-park dialog while the flashcards view
+      // is active answers cards ('y'/'n'/'s'/'t') and space both flips the
+      // card and is swallowed by preventDefault.
+      if (isTextEntryTarget(event)) return;
+
       const key = event.key.toLowerCase();
 
       if (this.view === 'study') {
