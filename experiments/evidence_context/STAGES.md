@@ -22,6 +22,7 @@ no remote publication or backup is implied.
 | 13 — Equivalent storage | Which engine serves the same nodes, edges and rows? | `6fff879` | `storage_matrix/benchmark.py` and `query_diagnostic.py`; GUIDE.md and RESULTS.md |
 | 14 — Evidence replacement | Do reviewed results improve answers, and what still fails? | `ec8bbc1` | `evidence_selection/runner.py` and `viewer.py`; GUIDE.md, RESULTS.md and reviewer audit |
 | 15 — Separate evidence claims | Can state, basis and target stay distinct through code-owned release? | `4914967` | `assertion_gate/runner.py` and `viewer.py`; GUIDE.md, RESULTS.md and COUNCIL-DECISION.md |
+| 16 — Source-backed annotations | Can captured origins ground labels without semantic overclaim? | `6c736c5` | `source_annotations/runner.py` and `viewer.py`; GUIDE.md, RESULTS.md and council audit |
 
 Stage 3 uses its own lifecycle adapter and database schema. It does not modify the
 stage 1 evidence store, and does not require stage 1 demo output. Stage 2 uses
@@ -311,23 +312,58 @@ Grok timed out. This is not full-trial three-provider consensus. Reviewer mistak
 original replies and the distinction between integrity and semantic correctness are
 preserved in the council decision. No production DB/configuration changed.
 
+## Stage 16 commands
+
+```sh
+uv run python -m experiments.evidence_context.source_annotations.runner --output /tmp/evidence-stage-16
+open /tmp/evidence-stage-16/walkthrough.html
+uv run --group dev pytest experiments/evidence_context/tests/test_source_annotations.py -q
+```
+
+Checkpoint `6c736c5` preserves the source-origin recorder, annotation trial and replay.
+Default execution runs six disposable local fixture processes and registers four
+narrative fixtures; it makes no gateway calls. Explicit `--live` permits forty calls.
+The guide gives a separate private actual-answer replay command.
+
+All forty model responses parsed. Origin agreement under information-available
+expectations was text 2/20 and capture 14/20; this is fixture contract conformance,
+not human-gold accuracy. Six capture responses still assigned observed to missing,
+rejected or narrative origins. Both spoofed-report repeats overrode an actual
+conversation_message receipt. The predeclared promotion criterion failed.
+
+Source-aware release retained 8/10 capture-arm justified instances with no inapplicable
+live release. The text arm retained 2/10 through unsupported inferences that happened
+to match the hidden receipts; do not count those as good model reasoning. Integrity-only
+controls accepted six incorrect annotations; adding source checks reduced that to two.
+Wrong narrative state and target still passed with genuine quotes and valid hashes.
+
+All 247 evidence-context tests passed. Browser checks covered forty actual cards, four
+filtered spoof cards, ten offline cards, fourteen controls and mobile rendering. Commit
+hooks passed; trial sources, prompt and inputs remained frozen. Earlier stages, installed
+configuration, production DB and saved exercise are unchanged.
+
+All four providers reviewed design. Full result review returned Qwen/Mistral, whose
+promotion recommendations contradicted the failed criterion and were rejected. A
+six-example focused audit returned all four; Fable/Grok correctly distinguished the
+violations from honest report/failed-process cases and favored code-owned provenance.
+Reviewer mistakes remain recorded. This is not four-provider full-trial consensus.
+
 ## Next evidence gate
 
-Test how the annotation ledger is produced. Compare transcript-only annotation with
-transcript plus actual capture-origin metadata on new independently labelled cases.
-Do not disclose expected state/basis labels. Measure provenance, target applicability,
-unsupported promotion, unknown preservation and justified claim retention separately.
-Distinguish altered artifacts from incorrectly interpreted but faithfully preserved
-artifacts: signatures or hashes cannot establish semantic correctness.
+Compare the frozen drafts under the existing reject-on-disagreement adapter and a
+new variant where code derives origin/scope from verified receipts. Keep original
+model proposals and disagreements visible. Process execution/identity can be tied
+to invocation receipts; narrative state/target still need semantic support.
 
-Keep the Stage 15 gate frozen. More permissive weaker-claim rules and richer outcome/
-abstention fields should be separate variants, so their utility and false-withholding
-cost can be measured. A completed event does not by itself mean a passed check.
-Use independent held-out cases before claiming general efficacy or promoting an
-extraction/retrieval integration. Prior development pilots do not satisfy that gate.
+Score final released fields, not just whether a bad input was rejected: a source-owned
+adapter can repair a proposal correctly. Track repaired claims, withheld useful claims
+and residual semantic errors separately. Retain integrity controls and the two narrative
+failures, then use new independently reviewed cases with negation, conditional execution
+and body/envelope identity conflicts. Do not retune prompts to make the old deck pass.
 
 Keep SQLite canonical and indexes replaceable while investigating information value.
 A new engine race needs a named workload and a fair optimized-query baseline. Work/
-personal scope, correction/forgetting through derived indexes, capture health and
-installation ownership remain requirements for integration. No DSPy integration,
-production prompt promotion or migration occurred. The Stage 8 exercise is unchanged.
+personal filtering must occur before model retrieval; post-answer withholding is not
+privacy isolation. Correction/forgetting through derived indexes, capture health and
+installation ownership remain integration requirements. No DSPy integration, production
+prompt promotion or migration occurred. The Stage 8 exercise is unchanged.
