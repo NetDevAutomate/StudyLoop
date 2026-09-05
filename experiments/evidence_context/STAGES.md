@@ -16,6 +16,7 @@ no remote publication or backup is implied.
 | 7 — Bounded prompt loop | Does our score recognise a better evidence-based decision? | `f3a8457` | `python -m experiments.evidence_context.prompt_loop`; prompt_loop/GUIDE.md, RESULTS.md and COUNCIL-DECISION.md |
 | 8 — Decision contract | Which sources apply, and what decision do they justify? | `f7f6796` | `python -m experiments.evidence_context.decision_contract`; decision_contract/GUIDE.md, RESULTS.md and expandable HTML walkthrough |
 | 9 — Code-owned release | Can model drafts override missing metadata or enter released prose? | `d7a9c8f` | `python -m experiments.evidence_context.acceptance_gate`; acceptance_gate/GUIDE.md, RESULTS.md and replay walkthrough |
+| 10 — Metadata value | Does source-backed metadata improve decisions? | `620090a` | `python -m experiments.evidence_context.metadata_value`; metadata_value/GUIDE.md, RESULTS.md and actual-answer replay |
 
 Stage 3 uses its own lifecycle adapter and database schema. It does not modify the
 stage 1 evidence store, and does not require stage 1 demo output. Stage 2 uses
@@ -152,13 +153,33 @@ policy-rendered, so this is conformance measurement, not model-answer certificat
 Both council rounds returned all three providers. Upstream metadata forgery remains
 an explicit blind spot. All 153 evidence-context tests passed at this checkpoint.
 
+## Stage 10 commands
+
+```sh
+uv run python -m experiments.evidence_context.metadata_value --output /tmp/evidence-stage-10
+open /tmp/evidence-stage-10/walkthrough.html
+uv run python -m experiments.evidence_context.metadata_value.normalization_audit --input experiments/evidence_context/metadata_value/observations --output /tmp/evidence-stage-10-answers.json
+open /tmp/evidence-stage-10-answers.html
+uv run --group dev pytest experiments/evidence_context/tests/test_metadata_value.py experiments/evidence_context/tests/test_metadata_normalization.py -q
+```
+
+Checkpoint `620090a` preserves the source verifier and 64-call pilot. The
+first walkthrough is offline/reference; the second replays actual answers without
+provider calls. Original strict JSON parsing accepted only 9/56 answer drafts. A separate
+post-hoc fence-only diagnostic found choice matches of raw 12/16, original extraction
+14/16 and checked 12/16. The gain was one missing-revision case repeated twice; checked
+introduced a report-only regression. All conditions failed duplicate revision. These
+are development category scores, not validated answer quality. All 173 experiment
+tests passed. See the council decision for review coverage and limitations.
+
 ## Next evidence gate, then further stages
 
-Challenge the correspondence between original source text and extracted metadata or
-claims, with independently reviewed expectations. Preserve unknowns and exact source
-spans rather than inventing source facts. The policy needs independent checking too;
-consistent execution does not establish its correctness. See
-[acceptance_gate/COUNCIL-DECISION.md](acceptance_gate/COUNCIL-DECISION.md).
+Independently annotate the metadata pilot's failure cases, including quote origin,
+then connect source correspondence checks to the code-owned acceptance boundary as
+a separate adapter stage. Keep source kind, scope applicability and decision permission
+separate. Challenge unsupported acceptance and false rejection with positive controls.
+The policy needs independent checking: consistent execution does not establish its
+correctness. See [metadata_value/COUNCIL-DECISION.md](metadata_value/COUNCIL-DECISION.md).
 No DSPy integration, production prompt promotion or database-engine selection yet.
 
 Keep the real 3–5 disjoint-question pilot with independent pre-result labels as the
