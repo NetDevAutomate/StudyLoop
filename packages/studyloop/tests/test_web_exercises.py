@@ -58,8 +58,16 @@ QUESTIONS = [
 def client(tmp_path, monkeypatch):
     """App with an isolated exercises directory."""
     monkeypatch.setenv(exercise_store.EXERCISES_DIR_ENV, str(tmp_path / "exercises"))
-    with TestClient(create_app()) as test_client:
+    with TestClient(create_app(dev_mode=True)) as test_client:
         yield test_client
+
+
+def test_exercise_routes_are_absent_without_dev_mode() -> None:
+    app = create_app()
+    route_paths = {getattr(route, "path", "") for route in app.routes}
+    assert not any(path.startswith("/api/exercises") for path in route_paths)
+    with TestClient(app) as production_client:
+        assert production_client.get("/api/exercises").status_code == 404
 
 
 @pytest.fixture

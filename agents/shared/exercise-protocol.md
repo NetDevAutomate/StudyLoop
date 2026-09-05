@@ -1,4 +1,11 @@
-# Exercise Protocol
+# Exercise Protocol (Developer Preview)
+
+> **Development gate:** This protocol is dormant in normal mentor sessions.
+> Exercise value is still being evaluated against the mentor's existing
+> Socratic workflow. Use it only in an explicitly opted-in development session:
+> CLI commands are `studyloop --dev exercise …`; MCP tools exist only when the
+> server configuration launches `studyloop-mcp --dev`. Do not tell a learner
+> that exercises are generally available.
 
 How to run the three topic exercise formats, and how to turn a score into
 mentoring instead of a verdict. Read by the Socratic mentor whenever a session
@@ -24,25 +31,26 @@ covered.
 
 ## The contract
 
-`studyloop exercise` is the only way you touch an exercise document. Never
+`studyloop --dev exercise` is the only way you touch an exercise document. Never
 hand-edit the file.
 
 ```bash
-studyloop exercise list [--plan ID]          # what exists, and which formats are missing
-studyloop exercise show ID                   # structure + what is still unauthored
-studyloop exercise show ID --markdown        # the learner-safe document (answers stripped)
-studyloop exercise from-milestone PLAN_ID    # draft a set from the plan's next milestone
-studyloop exercise import FILE.md            # author a full set, answers included
-studyloop exercise review ID --kind blank_slate --stdin [--record]
-studyloop exercise review ID --kind multiple_choice --answer 0:b
+studyloop --dev exercise list [--plan ID]          # what exists, and which formats are missing
+studyloop --dev exercise show ID                   # structure + what is still unauthored
+studyloop --dev exercise show ID --markdown        # the learner-safe document (answers stripped)
+studyloop --dev exercise from-milestone PLAN_ID    # draft a set from the plan's next milestone
+studyloop --dev exercise import FILE.md            # author a full set, answers included
+studyloop --dev exercise review ID --kind blank_slate --stdin [--record]
+studyloop --dev exercise review ID --kind multiple_choice --answer 0:b
 ```
 
-The MCP equivalents are `exercise_list`, `exercise_get`, `exercise_create`,
-`exercise_import`, and `exercise_review`.
+The MCP equivalents — present only when the server was launched with
+`studyloop-mcp --dev` — are `exercise_list`, `exercise_get`,
+`exercise_create`, `exercise_import`, and `exercise_review`.
 
 ## Do not read the answer
 
-`exercise show ID --markdown` and `exercise_get` **withhold** the reference
+`studyloop --dev exercise show ID --markdown` and `exercise_get` **withhold** the reference
 solution and the marked correct option by default. That is deliberate, and it
 protects you as much as the learner: an agent that has not read the answer cannot
 leak it under pressure.

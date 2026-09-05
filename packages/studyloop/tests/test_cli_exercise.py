@@ -75,13 +75,29 @@ def runner(tmp_path, monkeypatch):
 def authored(runner, tmp_path):
     document = tmp_path / "closures.md"
     document.write_text(AUTHORED, encoding="utf-8")
-    result = runner.invoke(cli, ["exercise", "import", str(document)])
+    result = runner.invoke(cli, ["--dev", "exercise", "import", str(document)])
     assert result.exit_code == 0, result.output
     return "python--closures"
 
 
+def test_exercise_is_hidden_without_dev_flag(runner) -> None:
+    help_result = runner.invoke(cli, ["--help"])
+    assert help_result.exit_code == 0
+    assert "exercise" not in help_result.output
+
+    invoke_result = runner.invoke(cli, ["exercise", "list"])
+    assert invoke_result.exit_code == 2
+    assert "No such command 'exercise'" in invoke_result.output
+
+
+def test_dev_flag_exposes_exercise_command(runner) -> None:
+    result = runner.invoke(cli, ["--dev", "exercise", "--help"])
+    assert result.exit_code == 0
+    assert "Author and review the three topic exercise formats" in result.output
+
+
 def test_list_is_honest_when_empty(runner) -> None:
-    result = runner.invoke(cli, ["exercise", "list"])
+    result = runner.invoke(cli, ["--dev", "exercise", "list"])
     assert result.exit_code == 0
     assert "No exercise sets yet" in result.output
 
@@ -92,7 +108,7 @@ def test_new_creates_all_three_formats(runner, tmp_path) -> None:
     result = runner.invoke(
         cli,
         [
-            *["exercise", "new"],
+            *["--dev", "exercise", "new"],
             "--topic",
             "closures",
             "--plan",
@@ -115,7 +131,7 @@ def test_new_creates_all_three_formats(runner, tmp_path) -> None:
 
 
 def test_show_markdown_hides_the_answer(runner, authored) -> None:
-    result = runner.invoke(cli, ["exercise", "show", authored, "--markdown"])
+    result = runner.invoke(cli, ["--dev", "exercise", "show", authored, "--markdown"])
     assert result.exit_code == 0
     assert "nonlocal count" not in result.output
     assert "- [x]" not in result.output
@@ -124,21 +140,21 @@ def test_show_markdown_hides_the_answer(runner, authored) -> None:
 
 
 def test_show_with_answers_is_the_authoring_view(runner, authored) -> None:
-    result = runner.invoke(cli, ["exercise", "show", authored, "--with-answers"])
+    result = runner.invoke(cli, ["--dev", "exercise", "show", authored, "--with-answers"])
     assert result.exit_code == 0
     assert "nonlocal count" in result.output
     assert "- [x]" in result.output
 
 
 def test_show_reports_missing_formats(runner, authored) -> None:
-    result = runner.invoke(cli, ["exercise", "show", authored])
+    result = runner.invoke(cli, ["--dev", "exercise", "show", authored])
     assert result.exit_code == 0
     assert "Not fully authored" in result.output
     assert "completion" in result.output.lower()
 
 
 def test_show_rejects_an_unknown_set(runner) -> None:
-    result = runner.invoke(cli, ["exercise", "show", "nope"])
+    result = runner.invoke(cli, ["--dev", "exercise", "show", "nope"])
     assert result.exit_code == 1
     assert "No exercise set with id" in result.output
 
@@ -146,7 +162,7 @@ def test_show_rejects_an_unknown_set(runner) -> None:
 def test_review_scores_a_weak_attempt_and_asks_questions(runner, authored) -> None:
     result = runner.invoke(
         cli,
-        ["exercise", "review", authored, "--kind", "blank_slate", "--stdin"],
+        ["--dev", "exercise", "review", authored, "--kind", "blank_slate", "--stdin"],
         input="def make_counter():\n    pass\n",
     )
     assert result.exit_code == 0, result.output
@@ -158,7 +174,7 @@ def test_review_scores_a_weak_attempt_and_asks_questions(runner, authored) -> No
 
 
 def test_review_requires_a_submission_source(runner, authored) -> None:
-    result = runner.invoke(cli, ["exercise", "review", authored, "--kind", "blank_slate"])
+    result = runner.invoke(cli, ["--dev", "exercise", "review", authored, "--kind", "blank_slate"])
     assert result.exit_code == 1
     assert "--file" in result.output
 
@@ -166,14 +182,34 @@ def test_review_requires_a_submission_source(runner, authored) -> None:
 def test_review_accepts_letter_answers_for_multiple_choice(runner, authored) -> None:
     right = runner.invoke(
         cli,
-        ["exercise", "review", authored, "--kind", "multiple_choice", "--answer", "0:b", "--json"],
+        [
+            "--dev",
+            "exercise",
+            "review",
+            authored,
+            "--kind",
+            "multiple_choice",
+            "--answer",
+            "0:b",
+            "--json",
+        ],
     )
     assert right.exit_code == 0, right.output
     assert json.loads(right.output)["review"]["score"] == 100
 
     wrong = runner.invoke(
         cli,
-        ["exercise", "review", authored, "--kind", "multiple_choice", "--answer", "0:a", "--json"],
+        [
+            "--dev",
+            "exercise",
+            "review",
+            authored,
+            "--kind",
+            "multiple_choice",
+            "--answer",
+            "0:a",
+            "--json",
+        ],
     )
     review = json.loads(wrong.output)["review"]
     assert review["score"] == 0
@@ -183,7 +219,16 @@ def test_review_accepts_letter_answers_for_multiple_choice(runner, authored) -> 
 def test_review_rejects_a_malformed_answer(runner, authored) -> None:
     result = runner.invoke(
         cli,
-        ["exercise", "review", authored, "--kind", "multiple_choice", "--answer", "zero:a"],
+        [
+            "--dev",
+            "exercise",
+            "review",
+            authored,
+            "--kind",
+            "multiple_choice",
+            "--answer",
+            "zero:a",
+        ],
     )
     assert result.exit_code == 1
     assert "expected 'question:choice'" in result.output
@@ -192,7 +237,7 @@ def test_review_rejects_a_malformed_answer(runner, authored) -> None:
 def test_review_of_a_missing_format_fails_cleanly(runner, authored) -> None:
     result = runner.invoke(
         cli,
-        ["exercise", "review", authored, "--kind", "completion", "--stdin"],
+        ["--dev", "exercise", "review", authored, "--kind", "completion", "--stdin"],
         input="x",
     )
     assert result.exit_code == 1
@@ -202,13 +247,13 @@ def test_review_of_a_missing_format_fails_cleanly(runner, authored) -> None:
 def test_import_rejects_an_unparseable_file(runner, tmp_path) -> None:
     bad = tmp_path / "bad.md"
     bad.write_bytes(b"\xff\xfe not utf 8")
-    result = runner.invoke(cli, ["exercise", "import", str(bad)])
+    result = runner.invoke(cli, ["--dev", "exercise", "import", str(bad)])
     assert result.exit_code == 1
     assert "Could not parse" in result.output
 
 
 def test_path_prints_the_documents_directory(runner) -> None:
-    result = runner.invoke(cli, ["exercise", "path"])
+    result = runner.invoke(cli, ["--dev", "exercise", "path"])
     assert result.exit_code == 0
     assert "exercises" in result.output
 
@@ -228,7 +273,9 @@ def test_from_milestone_seeds_from_the_plan(runner, tmp_path, monkeypatch) -> No
     )
     create_plan(plan)
 
-    result = runner.invoke(cli, ["exercise", "from-milestone", "master-closures", "--json"])
+    result = runner.invoke(
+        cli, ["--dev", "exercise", "from-milestone", "master-closures", "--json"]
+    )
     assert result.exit_code == 0, result.output
     payload = json.loads(result.output)
     assert payload["set"]["concepts"] == ["closures", "cell variables"]
@@ -236,5 +283,5 @@ def test_from_milestone_seeds_from_the_plan(runner, tmp_path, monkeypatch) -> No
 
 
 def test_from_milestone_rejects_a_planless_id(runner) -> None:
-    result = runner.invoke(cli, ["exercise", "from-milestone", "nope"])
+    result = runner.invoke(cli, ["--dev", "exercise", "from-milestone", "nope"])
     assert result.exit_code == 1

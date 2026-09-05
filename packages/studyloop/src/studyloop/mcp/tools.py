@@ -35,8 +35,14 @@ def _safe_course_dir(base: Path, course: str, subdir: str) -> Path:
     return resolved
 
 
-def register_tools(mcp: FastMCP) -> None:
-    """Register all studyloop MCP tools on the server."""
+def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
+    """Register StudyLoop's production MCP tool inventory.
+
+    Exercise tools are a developer preview whose value is still being
+    evaluated against the mentor's existing Socratic workflow. They are
+    absent by default — not registered-and-erroring — and are added only by
+    ``studyloop-mcp --dev`` through ``include_exercises=True``.
+    """
 
     @mcp.tool()
     def list_courses() -> dict[str, Any]:
@@ -741,6 +747,13 @@ def register_tools(mcp: FastMCP) -> None:
 
         row_id = park_topic(question, topic_tag=topic_tag, context=context, source="struggled")
         return {"status": "logged", "id": row_id}
+
+    # ── Exercise sets — developer preview only ───────────────────────
+    # Return after the complete production inventory has been registered.
+    # This keeps exercise tools out of tools/list entirely unless the MCP
+    # process was explicitly launched with `studyloop-mcp --dev`.
+    if not include_exercises:
+        return
 
     # ── Exercise sets — blank slate / completion / multiple choice ───
 

@@ -91,16 +91,16 @@ studyloop plan evaluate PLAN_ID [--phase start|mid|end] [--record] [--study-id I
 studyloop plan reindex                    # Rebuild the plan index in the sessions DB
 studyloop plan path                       # Print the plan document directory
 
-# Topic exercises (blank slate / completion / multiple choice)
-studyloop exercise new --topic TOPIC [--plan ID] [--requirement R] [--reference FILE]
-studyloop exercise from-milestone PLAN_ID [--index N]  # Draft from a plan milestone
-studyloop exercise import PATH            # Import a hand-authored exercise document
-studyloop exercise list [--plan ID] [--topic T] [--json]
-studyloop exercise show SET_ID [--markdown]      # Learner-safe (answers withheld)
-studyloop exercise show SET_ID --with-answers    # Author use only
-studyloop exercise review SET_ID [--kind blank_slate|completion|multiple_choice]
-studyloop exercise review SET_ID --file ANSWER.py --record  # Score + write confidence
-studyloop exercise path                   # Print the exercise document directory
+# Topic exercises — DEVELOPER PREVIEW (hidden unless root --dev is set)
+studyloop --dev exercise new --topic TOPIC [--plan ID] [--requirement R] [--reference FILE]
+studyloop --dev exercise from-milestone PLAN_ID [--index N]  # Draft from a plan milestone
+studyloop --dev exercise import PATH            # Import a hand-authored exercise document
+studyloop --dev exercise list [--plan ID] [--topic T] [--json]
+studyloop --dev exercise show SET_ID [--markdown]      # Learner-safe (answers withheld)
+studyloop --dev exercise show SET_ID --with-answers    # Author use only
+studyloop --dev exercise review SET_ID [--kind blank_slate|completion|multiple_choice]
+studyloop --dev exercise review SET_ID --file ANSWER.py --record  # Score + write confidence
+studyloop --dev exercise path                   # Print the exercise document directory
 
 # Focus & retention
 studyloop focus                           # Show current focus topics (max 3)
@@ -410,16 +410,16 @@ Nothing is written anywhere until you opt in, and nothing ever writes back to th
 Each exercise set carries all three formats — **blank slate**, **completion**, and **multiple choice**. The completion exercise is sliced from the reference solution, so one authored task yields both code formats.
 
 ```bash
-studyloop exercise new --topic "generators" \
+studyloop --dev exercise new --topic "generators" \
   --requirement "Yields lazily" --requirement "Handles empty input" \
   --reference solution.py --reveal 0.4 --language python
-studyloop exercise from-milestone PLAN_ID --index 0   # Seed from a plan milestone
-studyloop exercise import hand-written.md             # `- [x]` marks the correct option
-studyloop exercise list --plan PLAN_ID
-studyloop exercise show SET_ID --markdown             # Learner-safe: no answers
-studyloop exercise show SET_ID --with-answers         # Author use only
-studyloop exercise review SET_ID --kind completion --file attempt.py --record
-studyloop exercise review SET_ID --kind multiple_choice --answer 0:a --answer 1:b,c
+studyloop --dev exercise from-milestone PLAN_ID --index 0   # Seed from a plan milestone
+studyloop --dev exercise import hand-written.md             # `- [x]` marks the correct option
+studyloop --dev exercise list --plan PLAN_ID
+studyloop --dev exercise show SET_ID --markdown             # Learner-safe: no answers
+studyloop --dev exercise show SET_ID --with-answers         # Author use only
+studyloop --dev exercise review SET_ID --kind completion --file attempt.py --record
+studyloop --dev exercise review SET_ID --kind multiple_choice --answer 0:a --answer 1:b,c
 ```
 
 `show` withholds reference solutions and marked-correct choices unless `--with-answers` is passed, so pasting the output into a study session cannot hand over the solution. `review` output carries questions, never the solution; a completion attempt is scored on what the learner **added**, with criteria the starter code already satisfied marked `given` and excluded. `--record` writes the derived confidence to `study_progress`.

@@ -111,12 +111,14 @@ def build_custom_adapter(name: str, config: dict) -> AgentAdapter:
         if mcp_config is True:
             _fmt = "generic"
             _path = None
+            _dev = False
         else:
             _fmt = mcp_config.get("format", "generic")
             _path = mcp_config.get("path")
+            _dev = bool(mcp_config.get("dev", False))
 
         def _mcp_setup(session_dir: Path) -> None:
-            write_mcp_config(session_dir, fmt=_fmt, path=_path)
+            write_mcp_config(session_dir, fmt=_fmt, path=_path, dev=_dev)
 
         mcp_fn = _mcp_setup
 

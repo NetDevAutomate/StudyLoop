@@ -75,6 +75,22 @@ class TestMcpConfigWriter:
         assert entry["type"] == "local"
         assert "command" in entry
 
+    def test_dev_flag_is_explicit_in_generic_mcp_config(self, tmp_path, monkeypatch):
+        from studyloop.adapters import _strategies
+
+        monkeypatch.setattr(_strategies, "_mcp_command", lambda: ["studyloop-mcp"])
+        _strategies.write_mcp_config(tmp_path, fmt="generic", dev=True)
+        data = json.loads((tmp_path / ".mcp.json").read_text())
+        assert data["mcpServers"]["studyloop-mcp"]["args"] == ["--dev"]
+
+    def test_dev_flag_is_explicit_in_opencode_mcp_config(self, tmp_path, monkeypatch):
+        from studyloop.adapters import _strategies
+
+        monkeypatch.setattr(_strategies, "_mcp_command", lambda: ["studyloop-mcp"])
+        _strategies.write_mcp_config(tmp_path, fmt="opencode", dev=True)
+        data = json.loads((tmp_path / ".opencode" / "opencode.json").read_text())
+        assert data["mcp"]["studyloop-mcp"]["command"] == ["studyloop-mcp", "--dev"]
+
     def test_custom_path_override(self, tmp_path):
         from studyloop.adapters._strategies import write_mcp_config
 

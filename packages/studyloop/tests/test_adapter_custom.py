@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import stat
 from unittest.mock import patch
 
@@ -119,6 +120,21 @@ class TestCustomAgentFromConfig:
         assert adapter.mcp_setup is not None
         adapter.mcp_setup(tmp_path)
         assert (tmp_path / ".mcp.json").exists()
+
+    def test_mcp_dev_flag_is_forwarded_to_generated_config(self, tmp_path):
+        from studyloop.adapters._custom import build_custom_adapter
+
+        config = {
+            "binary": "agent",
+            "strategy": "cli-flag",
+            "launch": "{binary}",
+            "mcp": {"format": "generic", "dev": True},
+        }
+        adapter = build_custom_adapter("agent", config)
+        assert adapter.mcp_setup is not None
+        adapter.mcp_setup(tmp_path)
+        entry = json.loads((tmp_path / ".mcp.json").read_text())["mcpServers"]["studyloop-mcp"]
+        assert entry["args"][-1] == "--dev"
 
     def test_mcp_bool_true_means_generic(self, tmp_path):
         from studyloop.adapters._custom import build_custom_adapter

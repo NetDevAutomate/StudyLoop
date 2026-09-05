@@ -1,7 +1,12 @@
 # body-double-session Specification
 
 ## Purpose
-TBD - created by archiving change body-double-own-agent-picker. Update Purpose after archive.
+
+Define Body Double as a first-class session surface with its own freeform
+activity picker, origin-addressed live-agent console, shared single-session
+ownership, and no study-topic park-first friction. The capability preserves
+the independent Pomodoro workflow while making agent-backed body doubling
+behave honestly across PTY and ACP transports.
 
 ## Requirements
 

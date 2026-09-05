@@ -1,11 +1,37 @@
-# Topic Exercises
+# Topic Exercises (Developer Preview)
+
+> [!WARNING]
+> This capability is not part of StudyLoop's supported learner surface. Its
+> value alongside the mentor's existing Socratic workflow is still unproven.
+> It is retained for evaluation and may be reconsidered if learners ask for it.
+> Access requires an explicit development gate: `studyloop --dev exercise …`,
+> `studyloop web --dev` for the HTTP API, or `studyloop-mcp --dev` in an MCP
+> server config. Normal CLI help, MCP `tools/list`, and the production web API
+> do not expose exercises.
+
+For a generic MCP config, the development flag is explicit in the server's
+`args` array:
+
+```json
+{
+  "mcpServers": {
+    "studyloop-mcp": {
+      "command": "studyloop-mcp",
+      "args": ["--dev"]
+    }
+  }
+}
+```
+
+Removing `--dev` removes every `exercise_*` tool from discovery; the tools do
+not remain registered behind runtime errors.
 
 Every topic in a study plan gets exercises in **three shapes**. The learner
 attempts one, StudyLoop scores it, and the gaps come back as *questions* rather
 than as the answer.
 
 The `study-mentor` / `socratic-mentor` agents run these during sessions. Both go
-through `studyloop exercise`. See
+through `studyloop --dev exercise`. See
 [`agents/shared/exercise-protocol.md`](https://github.com/NetDevAutomate/StudyLoop/blob/main/agents/shared/exercise-protocol.md)
 for the agent-facing rules.
 
@@ -105,7 +131,7 @@ The Markdown document is the source of truth:
 ```
 
 Override with `STUDYLOOP_EXERCISES_DIR`; find the active directory with
-`studyloop exercise path`. Losing the database never loses an exercise.
+`studyloop --dev exercise path`. Losing the database never loses an exercise.
 
 ### Document shape
 
@@ -187,20 +213,20 @@ rather than dropped.
 ## CLI
 
 ```bash
-studyloop exercise list [--plan ID] [--topic T]   # what exists, which formats are missing
-studyloop exercise show ID                        # structure + what is unauthored
-studyloop exercise show ID --markdown             # the learner-safe document
-studyloop exercise show ID --with-answers         # authoring view
+studyloop --dev exercise list [--plan ID] [--topic T]   # what exists, which formats are missing
+studyloop --dev exercise show ID                        # structure + what is unauthored
+studyloop --dev exercise show ID --markdown             # the learner-safe document
+studyloop --dev exercise show ID --with-answers         # authoring view
 
-studyloop exercise from-milestone PLAN_ID         # draft from the plan's next milestone
-studyloop exercise new --topic T --requirement R --reference sol.py [--reveal 0.4]
-studyloop exercise import FILE.md                 # author a full set, answers included
+studyloop --dev exercise from-milestone PLAN_ID         # draft from the plan's next milestone
+studyloop --dev exercise new --topic T --requirement R --reference sol.py [--reveal 0.4]
+studyloop --dev exercise import FILE.md                 # author a full set, answers included
 
-studyloop exercise review ID --kind blank_slate --stdin [--record]
-studyloop exercise review ID --kind completion --file attempt.py
-studyloop exercise review ID --kind multiple_choice --answer 0:b --answer 1:a,c
+studyloop --dev exercise review ID --kind blank_slate --stdin [--record]
+studyloop --dev exercise review ID --kind completion --file attempt.py
+studyloop --dev exercise review ID --kind multiple_choice --answer 0:b --answer 1:a,c
 
-studyloop exercise path                           # where documents live
+studyloop --dev exercise path                           # where documents live
 ```
 
 `--record` writes the derived confidence into `study_progress`, so a weak result
@@ -240,22 +266,25 @@ Two write guards worth knowing about:
   as a successful save. Fetch with `?include_reference=true` to edit the authored
   document, or pass `"allow_answer_loss": true` when the removal is intended.
 
-## MCP tools
+## MCP tools (`studyloop-mcp --dev` only)
 
-`exercise_list`, `exercise_get`, `exercise_create`, `exercise_import`,
-`exercise_review`.
+When the MCP server command includes `--dev`, it registers `exercise_list`,
+`exercise_get`, `exercise_create`, `exercise_import`, and `exercise_review`.
+Without that flag none of those names appears in `tools/list`.
 
 `exercise_get` withholds answers by default. That protects the agent as much as
 the learner: an agent that has not read the solution cannot leak it under
 pressure — and it does not need to, because `exercise_review` scores the attempt
 and returns the questions to ask.
 
-## Web UI — not yet built
+## Web UI — not built; API is dev-only
 
-!!! warning "There is no Exercises panel in the browser yet"
-    **The CLI is the way to do exercises today.** The backend is complete — `web/routes/exercises.py` serves the whole REST surface above, and it is wired into the app — but **no browser UI consumes it**. There is no Exercises section in the Study Plans view, no tabs, no attempt editor.
-
-    A previous version of this page described that panel in the present tense, as though you could go and use it. You cannot. Use [the CLI](#cli) instead; nothing about the exercise model or the scoring is missing, only the browser surface.
+!!! warning "There is no Exercises panel in the browser"
+    The backend REST surface in `web/routes/exercises.py` is registered only by
+    `studyloop web --dev`; the normal app has no `/api/exercises` routes. No
+    browser UI consumes it: there is no Exercises section in Study Plans, no
+    tabs, and no attempt editor. For development evaluation use the gated
+    [CLI](#cli), MCP server, or API. None is a supported learner workflow yet.
 
 ### The planned design
 
@@ -283,4 +312,4 @@ plausible fiction — so the failure mode is a set that refuses to flatter, not 
 that quietly passes everyone.
 
 Fill the gaps with the learner, or from a primary source, using
-`studyloop exercise import`.
+`studyloop --dev exercise import`.

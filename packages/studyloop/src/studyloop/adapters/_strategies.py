@@ -105,6 +105,7 @@ def write_mcp_config(
     *,
     fmt: str = "generic",
     path: str | None = None,
+    dev: bool = False,
 ) -> None:
     """Write the MCP server configuration JSON for the given agent format.
 
@@ -119,11 +120,15 @@ def write_mcp_config(
         fmt: Target config format. Must be one of the supported strings.
         path: Override the default config file path (relative to
             ``session_dir``). If omitted the format-specific default is used.
+        dev: Add ``--dev`` to the MCP command, exposing developer-preview
+            tools (currently exercises). False keeps the production inventory.
 
     Raises:
         ValueError: If ``fmt`` is not a recognised format string.
     """
     cmd = _mcp_command()
+    if dev:
+        cmd = [*cmd, "--dev"]
 
     if fmt == "generic":
         default_path = ".mcp.json"

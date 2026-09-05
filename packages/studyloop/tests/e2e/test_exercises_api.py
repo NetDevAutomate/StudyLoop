@@ -64,7 +64,7 @@ def api(tmp_path_factory):
     # STUDYLOOP_SESSION_DIR with it, so exercise documents land under this
     # tmp root rather than the learner's real ~/.config/studyloop. There is no
     # exercises_dir parameter and none is needed.
-    env = launch_env(root, PORT)
+    env = launch_env(root, PORT, extra_args=["--dev"])
 
     class Api:
         base = env.base_url

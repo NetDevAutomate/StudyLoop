@@ -7,6 +7,20 @@ experience may change before `1.0.0`.
 
 ## [Unreleased]
 
+### Changed
+
+- Topic exercises are now an explicit developer preview rather than part of
+  the supported learner surface. Their value alongside the mentor's existing
+  Socratic workflow is still unproven, so normal CLI help, MCP discovery and
+  the production web API no longer expose them. Opt in deliberately with
+  `studyloop --dev exercise …`, an MCP config that launches
+  `studyloop-mcp --dev`, or `studyloop web --dev` for the HTTP API. Removing
+  the flag removes the surface entirely (unknown CLI command, no `exercise_*`
+  tools in `tools/list`, no `/api/exercises` routes) rather than leaving a
+  registered command that fails at runtime. The implementation and documents
+  remain available for evaluation and can return to the supported surface if
+  learner demand demonstrates value.
+
 ## [0.2.1] - 2026-09-05
 
 ### Added

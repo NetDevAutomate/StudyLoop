@@ -12,18 +12,41 @@ import click
 
 
 class LazyGroup(click.Group):
-    """Click group that lazy-loads subcommands from dotted import paths."""
+    """Click group that lazy-loads subcommands from dotted import paths.
 
-    def __init__(self, *args, lazy_subcommands: dict[str, str] | None = None, **kwargs):
+    ``dev_subcommands`` are omitted from help and command resolution unless
+    the root command was invoked with ``--dev``. Hiding at the group boundary
+    matters: an experimental command should not look supported and then fail
+    after import — it should not be part of the production CLI surface at all.
+    """
+
+    def __init__(
+        self,
+        *args,
+        lazy_subcommands: dict[str, str] | None = None,
+        dev_subcommands: set[str] | None = None,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
         self._lazy_subcommands = lazy_subcommands or {}
+        self._dev_subcommands = dev_subcommands or set()
+
+    @staticmethod
+    def _dev_enabled(ctx: click.Context) -> bool:
+        return bool(ctx.params.get("dev", False))
 
     def list_commands(self, ctx: click.Context) -> list[str]:
         base = super().list_commands(ctx)
-        lazy = sorted(self._lazy_subcommands.keys())
+        lazy = sorted(
+            name
+            for name in self._lazy_subcommands
+            if name not in self._dev_subcommands or self._dev_enabled(ctx)
+        )
         return base + lazy
 
     def get_command(self, ctx: click.Context, cmd_name: str) -> click.BaseCommand | None:  # type: ignore[override]
+        if cmd_name in self._dev_subcommands and not self._dev_enabled(ctx):
+            return None
         if cmd_name in self._lazy_subcommands:
             return self._resolve(cmd_name)
         return super().get_command(ctx, cmd_name)

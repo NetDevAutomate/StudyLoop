@@ -237,7 +237,6 @@ def create_app(
         cards,
         content_gen,
         courses,
-        exercises,
         explorer,
         history,
         mastery,
@@ -260,7 +259,14 @@ def create_app(
     app.include_router(explorer.router, prefix="/api")
     app.include_router(artefacts.router)
     app.include_router(body_double.router, prefix="/api")
-    app.include_router(exercises.router, prefix="/api")
+    # Topic exercises are a developer preview. Keep the router absent (404),
+    # rather than registered-and-refusing, unless the web process was started
+    # explicitly with `studyloop web --dev`; otherwise the API would remain a
+    # hidden production backdoor after CLI/MCP discovery was gated.
+    if dev_mode:
+        from studyloop.web.routes import exercises
+
+        app.include_router(exercises.router, prefix="/api")
     app.include_router(notes.router, prefix="/api")
     app.include_router(parking.router, prefix="/api")
     app.include_router(plans.router, prefix="/api")

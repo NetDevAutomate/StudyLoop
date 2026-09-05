@@ -2,10 +2,15 @@
 
 Provides study tools to AI coding assistants via stdio transport.
 Register with: ``claude mcp add studyloop-mcp``
+
+The normal server exposes only supported production tools. Exercise tools are
+an explicitly gated developer preview: launch ``studyloop-mcp --dev`` (or put
+``"--dev"`` in the MCP server's args array) to include them in ``tools/list``.
 """
 
 from __future__ import annotations
 
+import argparse
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -43,17 +48,42 @@ async def lifespan(server: FastMCP):
     db.close()
 
 
-mcp = FastMCP("studyloop", lifespan=lifespan)
+def build_mcp(*, dev: bool = False) -> FastMCP:
+    """Build a server with the production or explicit developer inventory.
 
-# Register tools from tools module
-from studyloop.mcp.tools import register_tools  # noqa: E402
+    Args:
+        dev: Include developer-preview tools (currently the exercise pipeline).
+            False means the tools are absent from discovery, not merely blocked
+            when called.
+    """
+    server = FastMCP("studyloop", lifespan=lifespan)
 
-register_tools(mcp)
+    from studyloop.mcp.tools import register_tools
+
+    register_tools(server, include_exercises=dev)
+    return server
+
+
+# Import-time server used by unit tests and ordinary `studyloop-mcp`: production
+# inventory only. main() builds a separate dev registry only when --dev is set.
+mcp = build_mcp()
+
+
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Run the StudyLoop MCP server over stdio.")
+    parser.add_argument(
+        "--dev",
+        action="store_true",
+        help="Expose developer-preview tools (currently: exercises).",
+    )
+    return parser.parse_args()
 
 
 def main() -> None:
     """Entry point for studyloop-mcp command."""
-    mcp.run(transport="stdio")
+    args = _parse_args()
+    server = build_mcp(dev=True) if args.dev else mcp
+    server.run(transport="stdio")
 
 
 if __name__ == "__main__":

@@ -55,7 +55,7 @@ def _load(set_id: str) -> ExerciseSet:
     try:
         return load_set(set_id)
     except ExerciseSetNotFoundError:
-        _fail(f"No exercise set with id {set_id!r}. Try: studyloop exercise list")
+        _fail(f"No exercise set with id {set_id!r}. Try: studyloop --dev exercise list")
     except InvalidSetIdError as exc:
         _fail(str(exc))
 
@@ -89,7 +89,7 @@ def exercise_list(plan_id: str, topic: str, as_json: bool) -> None:
     if not sets:
         console.print(
             "[dim]No exercise sets yet. Create one: "
-            "studyloop exercise new --topic ... --requirement ...[/dim]"
+            "studyloop --dev exercise new --topic ... --requirement ...[/dim]"
         )
         return
 

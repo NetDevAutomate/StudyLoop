@@ -10,8 +10,12 @@ import pytest
 
 pytest.importorskip("mcp")
 
-from studyloop.mcp.server import mcp
+from studyloop.mcp.server import build_mcp, mcp
 from studyloop.planning.exercises import store as exercise_store
+
+# Exercise tools are intentionally absent from the production MCP inventory;
+# only a server launched with `studyloop-mcp --dev` gets this registry.
+dev_mcp = build_mcp(dev=True)
 
 REFERENCE = """def make_counter():
     count = 0
@@ -68,7 +72,7 @@ def make_counter():
 
 
 def _tool(name: str):
-    tools = mcp._tool_manager._tools
+    tools = dev_mcp._tool_manager._tools
     if name not in tools:
         msg = f"Tool {name!r} not found. Available: {sorted(tools)}"
         raise KeyError(msg)
@@ -85,7 +89,14 @@ def imported():
     return _tool("exercise_import")(markdown=AUTHORED)
 
 
-def test_all_exercise_tools_are_registered() -> None:
+def test_exercise_tools_are_absent_from_production_mcp() -> None:
+    production_names = set(mcp._tool_manager._tools)
+    assert not production_names.intersection(
+        {"exercise_list", "exercise_get", "exercise_review", "exercise_create", "exercise_import"}
+    )
+
+
+def test_all_exercise_tools_are_registered_in_dev_mcp() -> None:
     for name in (
         "exercise_list",
         "exercise_get",

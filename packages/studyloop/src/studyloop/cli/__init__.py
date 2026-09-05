@@ -80,10 +80,20 @@ from studyloop.cli._lazy import LazyGroup
         # _exercise.py — the three topic exercise formats and their review pipeline
         "exercise": "studyloop.cli._exercise:exercise_group",
     },
+    dev_subcommands={"exercise"},
+)
+@click.option(
+    "--dev",
+    is_flag=True,
+    help="Expose experimental developer-only commands.",
 )
 @click.version_option()
-def cli() -> None:
+def cli(dev: bool) -> None:
     """studyloop — AuDHD study pipeline: content, review, and session tracking."""
+    # `dev` is consumed by LazyGroup during help/command resolution. Keeping
+    # the value in the callback signature makes Click expose it as a real,
+    # documented gate rather than an environment-variable backdoor.
+    del dev
 
 
 __all__ = ["cli"]
