@@ -1,0 +1,1053 @@
+[
+  {
+    "name": "valid_measurement",
+    "expected": "draft_agrees",
+    "boundary": "metadata",
+    "expectation_met": true,
+    "result": {
+      "status": "draft_agrees",
+      "reasons": [],
+      "checks": {
+        "integrity": true,
+        "provenance": true,
+        "applicability": true,
+        "decision": true,
+        "basis_coverage": true,
+        "all_mechanical_checks": true,
+        "explanation_entailment": "separate_review_required",
+        "learner_value": "not_measured"
+      },
+      "snapshot_id": "Snapshot02",
+      "policy_version": "stage8-f7f6796",
+      "release_kind": "policy_rendered",
+      "draft_prose": "not_released_or_semantically_validated",
+      "release_notice": "Draft fields agree; policy rendering follows, not model prose.",
+      "released_answer": {
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "An agent report is a claim, not an observed check."
+          },
+          {
+            "id": "S2",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "An agent report is a claim, not an observed check."
+          },
+          {
+            "id": "S3",
+            "provenance": "artifact",
+            "applicability": "applicable",
+            "reason": "Revision, workload, environment and metric match the target."
+          }
+        ],
+        "decision": {
+          "sufficiency": "supported",
+          "recommendation": "B",
+          "reason_code": "applicable_observation",
+          "basis_ids": [
+            "S3"
+          ],
+          "explanation": "Applicable fixture checks support B for the stated target.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r2, workload=eight writers, environment=fixture-local, metric=reopen correctness",
+          "next_check": "Reproduce independently before applying this synthetic finding to a real system."
+        }
+      }
+    }
+  },
+  {
+    "name": "valid_reports_only",
+    "expected": "draft_agrees",
+    "boundary": "metadata",
+    "expectation_met": true,
+    "result": {
+      "status": "draft_agrees",
+      "reasons": [],
+      "checks": {
+        "integrity": true,
+        "provenance": true,
+        "applicability": true,
+        "decision": true,
+        "basis_coverage": true,
+        "all_mechanical_checks": true,
+        "explanation_entailment": "separate_review_required",
+        "learner_value": "not_measured"
+      },
+      "snapshot_id": "Snapshot07",
+      "policy_version": "stage8-f7f6796",
+      "release_kind": "policy_rendered",
+      "draft_prose": "not_released_or_semantically_validated",
+      "release_notice": "Draft fields agree; policy rendering follows, not model prose.",
+      "released_answer": {
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "An agent report is a claim, not an observed check."
+          },
+          {
+            "id": "S2",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "An agent report is a claim, not an observed check."
+          }
+        ],
+        "decision": {
+          "sufficiency": "insufficient",
+          "recommendation": "none",
+          "reason_code": "no_applicable_observation",
+          "basis_ids": [
+            "S1",
+            "S2"
+          ],
+          "explanation": "No applicable check establishes a choice under this decision's requirements.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r2, workload=eight writers, environment=fixture-local, metric=reopen correctness",
+          "next_check": "Obtain a comparative check with recorded revision, workload, environment and metric."
+        }
+      }
+    }
+  },
+  {
+    "name": "valid_conflicting_checks",
+    "expected": "draft_agrees",
+    "boundary": "metadata",
+    "expectation_met": true,
+    "result": {
+      "status": "draft_agrees",
+      "reasons": [],
+      "checks": {
+        "integrity": true,
+        "provenance": true,
+        "applicability": true,
+        "decision": true,
+        "basis_coverage": true,
+        "all_mechanical_checks": true,
+        "explanation_entailment": "separate_review_required",
+        "learner_value": "not_measured"
+      },
+      "snapshot_id": "Snapshot03",
+      "policy_version": "stage8-f7f6796",
+      "release_kind": "policy_rendered",
+      "draft_prose": "not_released_or_semantically_validated",
+      "release_notice": "Draft fields agree; policy rendering follows, not model prose.",
+      "released_answer": {
+        "source_assessments": [
+          {
+            "id": "S3",
+            "provenance": "artifact",
+            "applicability": "applicable",
+            "reason": "Revision, workload, environment and metric match the target."
+          },
+          {
+            "id": "S4",
+            "provenance": "artifact",
+            "applicability": "applicable",
+            "reason": "Revision, workload, environment and metric match the target."
+          }
+        ],
+        "decision": {
+          "sufficiency": "insufficient",
+          "recommendation": "none",
+          "reason_code": "conflicting_observations",
+          "basis_ids": [
+            "S3",
+            "S4"
+          ],
+          "explanation": "Applicable checks disagree; matching scope does not reconcile their results.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r2, workload=eight writers, environment=fixture-local, metric=reopen correctness",
+          "next_check": "Reproduce both checks under the target conditions and investigate the discrepancy."
+        }
+      }
+    }
+  },
+  {
+    "name": "valid_conditional_fit",
+    "expected": "draft_agrees",
+    "boundary": "metadata",
+    "expectation_met": true,
+    "result": {
+      "status": "draft_agrees",
+      "reasons": [],
+      "checks": {
+        "integrity": true,
+        "provenance": true,
+        "applicability": true,
+        "decision": true,
+        "basis_coverage": true,
+        "all_mechanical_checks": true,
+        "explanation_entailment": "separate_review_required",
+        "learner_value": "not_measured"
+      },
+      "snapshot_id": "Snapshot04",
+      "policy_version": "stage8-f7f6796",
+      "release_kind": "policy_rendered",
+      "draft_prose": "not_released_or_semantically_validated",
+      "release_notice": "Draft fields agree; policy rendering follows, not model prose.",
+      "released_answer": {
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "An agent report is a claim, not an observed check."
+          },
+          {
+            "id": "S2",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "An agent report is a claim, not an observed check."
+          }
+        ],
+        "decision": {
+          "sufficiency": "conditional",
+          "recommendation": "B",
+          "reason_code": "requirement_fit_only",
+          "basis_ids": [
+            "S2"
+          ],
+          "explanation": "Reports describe B as fitting the requirement, without measuring success.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r2, workload=eight writers, environment=fixture-local, metric=reopen correctness",
+          "next_check": "Run a check of the proposed option against the complete target scope."
+        }
+      }
+    }
+  },
+  {
+    "name": "invent_missing_revision",
+    "expected": "draft_diverges",
+    "boundary": "metadata",
+    "expectation_met": true,
+    "result": {
+      "status": "draft_diverges",
+      "reasons": [
+        "applicability_mismatch",
+        "decision_mismatch",
+        "basis_coverage_mismatch"
+      ],
+      "checks": {
+        "integrity": true,
+        "provenance": true,
+        "applicability": false,
+        "decision": false,
+        "basis_coverage": false,
+        "all_mechanical_checks": false,
+        "explanation_entailment": "separate_review_required",
+        "learner_value": "not_measured"
+      },
+      "snapshot_id": "Snapshot11",
+      "policy_version": "stage8-f7f6796",
+      "release_kind": "policy_rendered",
+      "draft_prose": "not_released_or_semantically_validated",
+      "release_notice": "Draft withheld; independent policy fallback follows.",
+      "released_answer": {
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "An agent report is a claim, not an observed check."
+          },
+          {
+            "id": "S2",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "An agent report is a claim, not an observed check."
+          },
+          {
+            "id": "S3",
+            "provenance": "artifact",
+            "applicability": "unknown",
+            "reason": "Missing scope: revision; do not assume a match."
+          }
+        ],
+        "decision": {
+          "sufficiency": "insufficient",
+          "recommendation": "none",
+          "reason_code": "no_applicable_observation",
+          "basis_ids": [
+            "S1",
+            "S2",
+            "S3"
+          ],
+          "explanation": "No applicable check establishes a choice under this decision's requirements.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r2, workload=eight writers, environment=fixture-local, metric=reopen correctness",
+          "next_check": "Obtain a comparative check with recorded revision, workload, environment and metric."
+        }
+      }
+    }
+  },
+  {
+    "name": "invent_missing_environment",
+    "expected": "draft_diverges",
+    "boundary": "metadata",
+    "expectation_met": true,
+    "result": {
+      "status": "draft_diverges",
+      "reasons": [
+        "applicability_mismatch",
+        "decision_mismatch",
+        "basis_coverage_mismatch"
+      ],
+      "checks": {
+        "integrity": true,
+        "provenance": true,
+        "applicability": false,
+        "decision": false,
+        "basis_coverage": false,
+        "all_mechanical_checks": false,
+        "explanation_entailment": "separate_review_required",
+        "learner_value": "not_measured"
+      },
+      "snapshot_id": "Snapshot12",
+      "policy_version": "stage8-f7f6796",
+      "release_kind": "policy_rendered",
+      "draft_prose": "not_released_or_semantically_validated",
+      "release_notice": "Draft withheld; independent policy fallback follows.",
+      "released_answer": {
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "An agent report is a claim, not an observed check."
+          },
+          {
+            "id": "S2",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "An agent report is a claim, not an observed check."
+          },
+          {
+            "id": "S3",
+            "provenance": "artifact",
+            "applicability": "unknown",
+            "reason": "Missing scope: environment; do not assume a match."
+          }
+        ],
+        "decision": {
+          "sufficiency": "insufficient",
+          "recommendation": "none",
+          "reason_code": "no_applicable_observation",
+          "basis_ids": [
+            "S1",
+            "S2",
+            "S3"
+          ],
+          "explanation": "No applicable check establishes a choice under this decision's requirements.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r2, workload=eight writers, environment=fixture-local, metric=reopen correctness",
+          "next_check": "Obtain a comparative check with recorded revision, workload, environment and metric."
+        }
+      }
+    }
+  },
+  {
+    "name": "invent_missing_workload",
+    "expected": "draft_diverges",
+    "boundary": "metadata",
+    "expectation_met": true,
+    "result": {
+      "status": "draft_diverges",
+      "reasons": [
+        "applicability_mismatch",
+        "decision_mismatch",
+        "basis_coverage_mismatch"
+      ],
+      "checks": {
+        "integrity": true,
+        "provenance": true,
+        "applicability": false,
+        "decision": false,
+        "basis_coverage": false,
+        "all_mechanical_checks": false,
+        "explanation_entailment": "separate_review_required",
+        "learner_value": "not_measured"
+      },
+      "snapshot_id": "Snapshot13",
+      "policy_version": "stage8-f7f6796",
+      "release_kind": "policy_rendered",
+      "draft_prose": "not_released_or_semantically_validated",
+      "release_notice": "Draft withheld; independent policy fallback follows.",
+      "released_answer": {
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "An agent report is a claim, not an observed check."
+          },
+          {
+            "id": "S2",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "An agent report is a claim, not an observed check."
+          },
+          {
+            "id": "S3",
+            "provenance": "artifact",
+            "applicability": "unknown",
+            "reason": "Missing scope: workload; do not assume a match."
+          }
+        ],
+        "decision": {
+          "sufficiency": "insufficient",
+          "recommendation": "none",
+          "reason_code": "no_applicable_observation",
+          "basis_ids": [
+            "S1",
+            "S2",
+            "S3"
+          ],
+          "explanation": "No applicable check establishes a choice under this decision's requirements.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r2, workload=eight writers, environment=fixture-local, metric=reopen correctness",
+          "next_check": "Obtain a comparative check with recorded revision, workload, environment and metric."
+        }
+      }
+    }
+  },
+  {
+    "name": "invent_missing_metric",
+    "expected": "draft_diverges",
+    "boundary": "metadata",
+    "expectation_met": true,
+    "result": {
+      "status": "draft_diverges",
+      "reasons": [
+        "applicability_mismatch",
+        "decision_mismatch",
+        "basis_coverage_mismatch"
+      ],
+      "checks": {
+        "integrity": true,
+        "provenance": true,
+        "applicability": false,
+        "decision": false,
+        "basis_coverage": false,
+        "all_mechanical_checks": false,
+        "explanation_entailment": "separate_review_required",
+        "learner_value": "not_measured"
+      },
+      "snapshot_id": "Snapshot14",
+      "policy_version": "stage8-f7f6796",
+      "release_kind": "policy_rendered",
+      "draft_prose": "not_released_or_semantically_validated",
+      "release_notice": "Draft withheld; independent policy fallback follows.",
+      "released_answer": {
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "An agent report is a claim, not an observed check."
+          },
+          {
+            "id": "S2",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "An agent report is a claim, not an observed check."
+          },
+          {
+            "id": "S3",
+            "provenance": "artifact",
+            "applicability": "unknown",
+            "reason": "Missing scope: metric; do not assume a match."
+          }
+        ],
+        "decision": {
+          "sufficiency": "insufficient",
+          "recommendation": "none",
+          "reason_code": "no_applicable_observation",
+          "basis_ids": [
+            "S1",
+            "S2",
+            "S3"
+          ],
+          "explanation": "No applicable check establishes a choice under this decision's requirements.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r2, workload=eight writers, environment=fixture-local, metric=reopen correctness",
+          "next_check": "Obtain a comparative check with recorded revision, workload, environment and metric."
+        }
+      }
+    }
+  },
+  {
+    "name": "invent_two_missing_fields",
+    "expected": "draft_diverges",
+    "boundary": "metadata",
+    "expectation_met": true,
+    "result": {
+      "status": "draft_diverges",
+      "reasons": [
+        "applicability_mismatch",
+        "decision_mismatch",
+        "basis_coverage_mismatch"
+      ],
+      "checks": {
+        "integrity": true,
+        "provenance": true,
+        "applicability": false,
+        "decision": false,
+        "basis_coverage": false,
+        "all_mechanical_checks": false,
+        "explanation_entailment": "separate_review_required",
+        "learner_value": "not_measured"
+      },
+      "snapshot_id": "Snapshot15",
+      "policy_version": "stage8-f7f6796",
+      "release_kind": "policy_rendered",
+      "draft_prose": "not_released_or_semantically_validated",
+      "release_notice": "Draft withheld; independent policy fallback follows.",
+      "released_answer": {
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "An agent report is a claim, not an observed check."
+          },
+          {
+            "id": "S2",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "An agent report is a claim, not an observed check."
+          },
+          {
+            "id": "S3",
+            "provenance": "artifact",
+            "applicability": "unknown",
+            "reason": "Missing scope: revision, metric; do not assume a match."
+          }
+        ],
+        "decision": {
+          "sufficiency": "insufficient",
+          "recommendation": "none",
+          "reason_code": "no_applicable_observation",
+          "basis_ids": [
+            "S1",
+            "S2",
+            "S3"
+          ],
+          "explanation": "No applicable check establishes a choice under this decision's requirements.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r2, workload=eight writers, environment=fixture-local, metric=reopen correctness",
+          "next_check": "Obtain a comparative check with recorded revision, workload, environment and metric."
+        }
+      }
+    }
+  },
+  {
+    "name": "ignore_wrong_revision",
+    "expected": "draft_diverges",
+    "boundary": "metadata",
+    "expectation_met": true,
+    "result": {
+      "status": "draft_diverges",
+      "reasons": [
+        "applicability_mismatch",
+        "decision_mismatch",
+        "basis_coverage_mismatch"
+      ],
+      "checks": {
+        "integrity": true,
+        "provenance": true,
+        "applicability": false,
+        "decision": false,
+        "basis_coverage": false,
+        "all_mechanical_checks": false,
+        "explanation_entailment": "separate_review_required",
+        "learner_value": "not_measured"
+      },
+      "snapshot_id": "Snapshot08",
+      "policy_version": "stage8-f7f6796",
+      "release_kind": "policy_rendered",
+      "draft_prose": "not_released_or_semantically_validated",
+      "release_notice": "Draft withheld; independent policy fallback follows.",
+      "released_answer": {
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "An agent report is a claim, not an observed check."
+          },
+          {
+            "id": "S2",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "An agent report is a claim, not an observed check."
+          },
+          {
+            "id": "S3",
+            "provenance": "artifact",
+            "applicability": "inapplicable",
+            "reason": "revision: tested r1, needed r2"
+          }
+        ],
+        "decision": {
+          "sufficiency": "insufficient",
+          "recommendation": "none",
+          "reason_code": "no_applicable_observation",
+          "basis_ids": [
+            "S1",
+            "S2",
+            "S3"
+          ],
+          "explanation": "No applicable check establishes a choice under this decision's requirements.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r2, workload=eight writers, environment=fixture-local, metric=reopen correctness",
+          "next_check": "Obtain a comparative check with recorded revision, workload, environment and metric."
+        }
+      }
+    }
+  },
+  {
+    "name": "promote_report_to_artifact",
+    "expected": "draft_diverges",
+    "boundary": "metadata",
+    "expectation_met": true,
+    "result": {
+      "status": "draft_diverges",
+      "reasons": [
+        "provenance_mismatch",
+        "applicability_mismatch",
+        "decision_mismatch",
+        "basis_coverage_mismatch"
+      ],
+      "checks": {
+        "integrity": true,
+        "provenance": false,
+        "applicability": false,
+        "decision": false,
+        "basis_coverage": false,
+        "all_mechanical_checks": false,
+        "explanation_entailment": "separate_review_required",
+        "learner_value": "not_measured"
+      },
+      "snapshot_id": "Snapshot16",
+      "policy_version": "stage8-f7f6796",
+      "release_kind": "policy_rendered",
+      "draft_prose": "not_released_or_semantically_validated",
+      "release_notice": "Draft withheld; independent policy fallback follows.",
+      "released_answer": {
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "An agent report is a claim, not an observed check."
+          },
+          {
+            "id": "S2",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "An agent report is a claim, not an observed check."
+          },
+          {
+            "id": "S3",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "An agent report is a claim, not an observed check."
+          }
+        ],
+        "decision": {
+          "sufficiency": "insufficient",
+          "recommendation": "none",
+          "reason_code": "no_applicable_observation",
+          "basis_ids": [
+            "S1",
+            "S2",
+            "S3"
+          ],
+          "explanation": "No applicable check establishes a choice under this decision's requirements.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r2, workload=eight writers, environment=fixture-local, metric=reopen correctness",
+          "next_check": "Obtain a comparative check with recorded revision, workload, environment and metric."
+        }
+      }
+    }
+  },
+  {
+    "name": "suppress_conflicting_check",
+    "expected": "draft_diverges",
+    "boundary": "metadata",
+    "expectation_met": true,
+    "result": {
+      "status": "draft_diverges",
+      "reasons": [
+        "decision_mismatch",
+        "basis_coverage_mismatch"
+      ],
+      "checks": {
+        "integrity": true,
+        "provenance": true,
+        "applicability": true,
+        "decision": false,
+        "basis_coverage": false,
+        "all_mechanical_checks": false,
+        "explanation_entailment": "separate_review_required",
+        "learner_value": "not_measured"
+      },
+      "snapshot_id": "Snapshot03",
+      "policy_version": "stage8-f7f6796",
+      "release_kind": "policy_rendered",
+      "draft_prose": "not_released_or_semantically_validated",
+      "release_notice": "Draft withheld; independent policy fallback follows.",
+      "released_answer": {
+        "source_assessments": [
+          {
+            "id": "S3",
+            "provenance": "artifact",
+            "applicability": "applicable",
+            "reason": "Revision, workload, environment and metric match the target."
+          },
+          {
+            "id": "S4",
+            "provenance": "artifact",
+            "applicability": "applicable",
+            "reason": "Revision, workload, environment and metric match the target."
+          }
+        ],
+        "decision": {
+          "sufficiency": "insufficient",
+          "recommendation": "none",
+          "reason_code": "conflicting_observations",
+          "basis_ids": [
+            "S3",
+            "S4"
+          ],
+          "explanation": "Applicable checks disagree; matching scope does not reconcile their results.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r2, workload=eight writers, environment=fixture-local, metric=reopen correctness",
+          "next_check": "Reproduce both checks under the target conditions and investigate the discrepancy."
+        }
+      }
+    }
+  },
+  {
+    "name": "invent_citation",
+    "expected": "draft_diverges",
+    "boundary": "metadata",
+    "expectation_met": true,
+    "result": {
+      "status": "draft_diverges",
+      "reasons": [
+        "integrity_mismatch",
+        "basis_coverage_mismatch"
+      ],
+      "checks": {
+        "integrity": false,
+        "provenance": true,
+        "applicability": true,
+        "decision": true,
+        "basis_coverage": false,
+        "all_mechanical_checks": false,
+        "explanation_entailment": "separate_review_required",
+        "learner_value": "not_measured"
+      },
+      "snapshot_id": "Snapshot02",
+      "policy_version": "stage8-f7f6796",
+      "release_kind": "policy_rendered",
+      "draft_prose": "not_released_or_semantically_validated",
+      "release_notice": "Draft withheld; independent policy fallback follows.",
+      "released_answer": {
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "An agent report is a claim, not an observed check."
+          },
+          {
+            "id": "S2",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "An agent report is a claim, not an observed check."
+          },
+          {
+            "id": "S3",
+            "provenance": "artifact",
+            "applicability": "applicable",
+            "reason": "Revision, workload, environment and metric match the target."
+          }
+        ],
+        "decision": {
+          "sufficiency": "supported",
+          "recommendation": "B",
+          "reason_code": "applicable_observation",
+          "basis_ids": [
+            "S3"
+          ],
+          "explanation": "Applicable fixture checks support B for the stated target.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r2, workload=eight writers, environment=fixture-local, metric=reopen correctness",
+          "next_check": "Reproduce independently before applying this synthetic finding to a real system."
+        }
+      }
+    }
+  },
+  {
+    "name": "stale_snapshot",
+    "expected": "draft_diverges",
+    "boundary": "metadata",
+    "expectation_met": true,
+    "result": {
+      "status": "draft_diverges",
+      "reasons": [
+        "stale_or_wrong_snapshot"
+      ],
+      "checks": {},
+      "snapshot_id": "Snapshot02",
+      "policy_version": "stage8-f7f6796",
+      "release_kind": "policy_rendered",
+      "draft_prose": "not_released_or_semantically_validated",
+      "release_notice": "Draft withheld; independent policy fallback follows.",
+      "released_answer": {
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "An agent report is a claim, not an observed check."
+          },
+          {
+            "id": "S2",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "An agent report is a claim, not an observed check."
+          },
+          {
+            "id": "S3",
+            "provenance": "artifact",
+            "applicability": "applicable",
+            "reason": "Revision, workload, environment and metric match the target."
+          }
+        ],
+        "decision": {
+          "sufficiency": "supported",
+          "recommendation": "B",
+          "reason_code": "applicable_observation",
+          "basis_ids": [
+            "S3"
+          ],
+          "explanation": "Applicable fixture checks support B for the stated target.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r2, workload=eight writers, environment=fixture-local, metric=reopen correctness",
+          "next_check": "Reproduce independently before applying this synthetic finding to a real system."
+        }
+      }
+    }
+  },
+  {
+    "name": "override_input_metadata",
+    "expected": "draft_diverges",
+    "boundary": "metadata",
+    "expectation_met": true,
+    "result": {
+      "status": "draft_diverges",
+      "reasons": [
+        "invalid_envelope"
+      ],
+      "checks": {},
+      "snapshot_id": "Snapshot02",
+      "policy_version": "stage8-f7f6796",
+      "release_kind": "policy_rendered",
+      "draft_prose": "not_released_or_semantically_validated",
+      "release_notice": "Draft withheld; independent policy fallback follows.",
+      "released_answer": {
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "An agent report is a claim, not an observed check."
+          },
+          {
+            "id": "S2",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "An agent report is a claim, not an observed check."
+          },
+          {
+            "id": "S3",
+            "provenance": "artifact",
+            "applicability": "applicable",
+            "reason": "Revision, workload, environment and metric match the target."
+          }
+        ],
+        "decision": {
+          "sufficiency": "supported",
+          "recommendation": "B",
+          "reason_code": "applicable_observation",
+          "basis_ids": [
+            "S3"
+          ],
+          "explanation": "Applicable fixture checks support B for the stated target.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r2, workload=eight writers, environment=fixture-local, metric=reopen correctness",
+          "next_check": "Reproduce independently before applying this synthetic finding to a real system."
+        }
+      }
+    }
+  },
+  {
+    "name": "malformed_answer",
+    "expected": "draft_diverges",
+    "boundary": "metadata",
+    "expectation_met": true,
+    "result": {
+      "status": "draft_diverges",
+      "reasons": [
+        "invalid_answer_schema"
+      ],
+      "checks": {},
+      "snapshot_id": "Snapshot02",
+      "policy_version": "stage8-f7f6796",
+      "release_kind": "policy_rendered",
+      "draft_prose": "not_released_or_semantically_validated",
+      "release_notice": "Draft withheld; independent policy fallback follows.",
+      "released_answer": {
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "An agent report is a claim, not an observed check."
+          },
+          {
+            "id": "S2",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "An agent report is a claim, not an observed check."
+          },
+          {
+            "id": "S3",
+            "provenance": "artifact",
+            "applicability": "applicable",
+            "reason": "Revision, workload, environment and metric match the target."
+          }
+        ],
+        "decision": {
+          "sufficiency": "supported",
+          "recommendation": "B",
+          "reason_code": "applicable_observation",
+          "basis_ids": [
+            "S3"
+          ],
+          "explanation": "Applicable fixture checks support B for the stated target.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r2, workload=eight writers, environment=fixture-local, metric=reopen correctness",
+          "next_check": "Reproduce independently before applying this synthetic finding to a real system."
+        }
+      }
+    }
+  },
+  {
+    "name": "forged_prose_is_not_released",
+    "expected": "draft_agrees",
+    "boundary": "prose",
+    "expectation_met": true,
+    "result": {
+      "status": "draft_agrees",
+      "reasons": [],
+      "checks": {
+        "integrity": true,
+        "provenance": true,
+        "applicability": true,
+        "decision": true,
+        "basis_coverage": true,
+        "all_mechanical_checks": true,
+        "explanation_entailment": "separate_review_required",
+        "learner_value": "not_measured"
+      },
+      "snapshot_id": "Snapshot02",
+      "policy_version": "stage8-f7f6796",
+      "release_kind": "policy_rendered",
+      "draft_prose": "not_released_or_semantically_validated",
+      "release_notice": "Draft fields agree; policy rendering follows, not model prose.",
+      "released_answer": {
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "An agent report is a claim, not an observed check."
+          },
+          {
+            "id": "S2",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "An agent report is a claim, not an observed check."
+          },
+          {
+            "id": "S3",
+            "provenance": "artifact",
+            "applicability": "applicable",
+            "reason": "Revision, workload, environment and metric match the target."
+          }
+        ],
+        "decision": {
+          "sufficiency": "supported",
+          "recommendation": "B",
+          "reason_code": "applicable_observation",
+          "basis_ids": [
+            "S3"
+          ],
+          "explanation": "Applicable fixture checks support B for the stated target.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r2, workload=eight writers, environment=fixture-local, metric=reopen correctness",
+          "next_check": "Reproduce independently before applying this synthetic finding to a real system."
+        }
+      }
+    }
+  },
+  {
+    "name": "upstream_forgery_blind_spot",
+    "expected": "draft_agrees",
+    "boundary": "authenticity_not_checked",
+    "expectation_met": true,
+    "result": {
+      "status": "draft_agrees",
+      "reasons": [],
+      "checks": {
+        "integrity": true,
+        "provenance": true,
+        "applicability": true,
+        "decision": true,
+        "basis_coverage": true,
+        "all_mechanical_checks": true,
+        "explanation_entailment": "separate_review_required",
+        "learner_value": "not_measured"
+      },
+      "snapshot_id": "Snapshot17",
+      "policy_version": "stage8-f7f6796",
+      "release_kind": "policy_rendered",
+      "draft_prose": "not_released_or_semantically_validated",
+      "release_notice": "Draft fields agree; policy rendering follows, not model prose.",
+      "released_answer": {
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "An agent report is a claim, not an observed check."
+          },
+          {
+            "id": "S2",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "An agent report is a claim, not an observed check."
+          },
+          {
+            "id": "S3",
+            "provenance": "artifact",
+            "applicability": "applicable",
+            "reason": "Revision, workload, environment and metric match the target."
+          }
+        ],
+        "decision": {
+          "sufficiency": "supported",
+          "recommendation": "B",
+          "reason_code": "applicable_observation",
+          "basis_ids": [
+            "S3"
+          ],
+          "explanation": "Applicable fixture checks support B for the stated target.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r2, workload=eight writers, environment=fixture-local, metric=reopen correctness",
+          "next_check": "Reproduce independently before applying this synthetic finding to a real system."
+        }
+      }
+    }
+  }
+]
