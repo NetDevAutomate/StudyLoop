@@ -1,0 +1,31 @@
+{
+  "goal": "active",
+  "previous_goal_turn": "initial goal turn; Stage16 checkpoint verified as completed prior work",
+  "current_stage": "17 and production boundary design",
+  "requirements": {
+    "P01": "not yet proven",
+    "P02": "not yet proven",
+    "P03": "not yet proven",
+    "P04": "not yet proven",
+    "P05": "not yet proven",
+    "P06": "not yet proven",
+    "P07": "not yet proven",
+    "P08": "not yet proven",
+    "P09": "not yet proven",
+    "P10": "not yet proven",
+    "P11": "not yet proven",
+    "P12": "not yet proven",
+    "P13": "not yet proven",
+    "P14": "not yet proven",
+    "P15": "not yet proven"
+  },
+  "completed_checkpoints": {
+    "stage16": "6c736c5"
+  },
+  "current_findings": [
+    "Learning worktree clean at 9c278fc; main has unrelated uncommitted work.",
+    "Codex exporter currently omits native tool-call/output events; Kiro currently extracts prose only.",
+    "Current MCP historical context drops tool_use/tool_result and has no explicit scope boundary.",
+    "Existing sync streams SQL with global learning tables; scoped transport/deletion propagation need real integration."
+  ]
+}

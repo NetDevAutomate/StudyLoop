@@ -348,22 +348,36 @@ six-example focused audit returned all four; Fable/Grok correctly distinguished 
 violations from honest report/failed-process cases and favored code-owned provenance.
 Reviewer mistakes remain recorded. This is not four-provider full-trial consensus.
 
-## Next evidence gate
+## Stage 17 commands
 
-Compare the frozen drafts under the existing reject-on-disagreement adapter and a
-new variant where code derives origin/scope from verified receipts. Keep original
-model proposals and disagreements visible. Process execution/identity can be tied
-to invocation receipts; narrative state/target still need semantic support.
+```sh
+uv run python -m experiments.evidence_context.provenance_ownership.runner --output /tmp/evidence-stage-17
+open /tmp/evidence-stage-17/walkthrough.html
+uv run --group dev pytest experiments/evidence_context/tests/test_provenance_ownership.py packages/agent-session-tools/tests/test_context_provenance.py -q
+```
 
-Score final released fields, not just whether a bad input was rejected: a source-owned
-adapter can repair a proposal correctly. Track repaired claims, withheld useful claims
-and residual semantic errors separately. Retain integrity controls and the two narrative
-failures, then use new independently reviewed cases with negation, conditional execution
-and body/envelope identity conflicts. Do not retune prompts to make the old deck pass.
+The source-owned adapter replays forty saved Stage16 proposals without new model calls.
+Eligible coverage becomes capture 10/10 (previously 8/10) and text 10/10 (previously 2/10),
+with no incorrect final fields among those releases. Both conditions now receive trusted
+metadata in code; this is not a new model-quality comparison. Eight controls preserve
+two wrong narrative releases through the legacy renderer. Eight fresh synthetic cases
+expose captured facts separately from unverified interpretations.
 
-Keep SQLite canonical and indexes replaceable while investigating information value.
-A new engine race needs a named workload and a fair optimized-query baseline. Work/
-personal filtering must occur before model retrieval; post-answer withholding is not
-privacy isolation. Correction/forgetting through derived indexes, capture health and
-installation ownership remain integration requirements. No DSPy integration, production
-prompt promotion or migration occurred. The Stage 8 exercise is unchanged.
+All four council providers reviewed production boundaries and the fresh cases before
+execution. Their mistakes and useful exit-status presentation feedback are documented.
+The combined experiment and new production-contract check ran 264 passing tests, with
+one optional dependency test skipped. Browser checks covered forty cards, eight controls,
+eight fresh cases, filtering and mobile layout. See
+[provenance_ownership/GUIDE.md](provenance_ownership/GUIDE.md) for the runnable lesson.
+
+## Production delivery direction
+
+The user has now authorized the full implementation and StudyLoop integration while
+preserving these stages. [delivery/GOAL.md](delivery/GOAL.md) records the complete shipping
+requirements; [delivery/ARCHITECTURE.md](delivery/ARCHITECTURE.md) explains the decisions.
+Stage17 alone does not satisfy that goal. SQLite remains canonical. Next: bind provenance
+to immutable stored sources, explicit scope and exact citations, then enforce those
+boundaries throughout legacy query/export/sync and installation paths.
+
+The earlier experiment-only checkpoints retain their original scope and limitations.
+The Stage8 exercise is unchanged.
