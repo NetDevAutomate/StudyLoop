@@ -53,6 +53,7 @@ import { liveAgentConsole } from './components/live-agent-console.js';
 import { plansPanel, registerPlansStore } from './components/plans-panel.js';
 import { sessionTimer } from './components/session-timer.js';
 import { settingsPanel } from './components/settings-panel.js';
+import { todayPanel } from './components/today-panel.js';
 
 /* Shared helpers. Legacy global names preserved exactly: the markup and the
    remaining inline script still call these identifiers, so this refactor moves
@@ -78,6 +79,7 @@ window.liveAgentConsole = liveAgentConsole;
 window.plansPanel = plansPanel;
 window.sessionTimer = sessionTimer;
 window.settingsPanel = settingsPanel;
+window.todayPanel = todayPanel;
 
 /* The plan panel is the first component here needing an Alpine STORE as well as a
    factory, because its two halves live in different DOM subtrees: the plan list is

@@ -17,9 +17,9 @@
 
 ## 4. Learner can launch one configured provider only from an explicit click
 
-- [ ] 4.1 Extract Today state into an importable module and load launch state without navigation, verified by Node tests for initialization, none, enabled, disabled, and refresh behavior.
-- [ ] 4.2 Add one selected-provider Today action with protected xTiles and current-context Obsidian click behavior, verified by unit and marked browser tests for one navigation per click and no automatic opening.
-- [ ] 4.3 Add active, muted, disabled, and configuration-guidance states to the Settings Second Brain section without URL disclosure or web saving, verified by Node and marked browser state-matrix tests with a clean console.
+- [x] 4.1 Extract Today state into an importable module and load launch state without navigation, verified by Node tests for initialization, none, enabled, disabled, and refresh behavior.
+- [x] 4.2 Add one selected-provider Today action with protected xTiles and current-context Obsidian click behavior, verified by unit and marked browser tests for one navigation per click and no automatic opening.
+- [x] 4.3 Add active, muted, disabled, and configuration-guidance states to the Settings Second Brain section without URL disclosure or web saving, verified by Node and marked browser state-matrix tests with a clean console.
 
 ## 5. Learner can install and trust the complete 0.3.0 launcher release
 
