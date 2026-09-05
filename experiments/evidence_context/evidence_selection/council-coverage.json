@@ -1,0 +1,64 @@
+{
+  "design-council": {
+    "selected_models": [
+      "claude-fable-5-1",
+      "grok-4.6",
+      "qwen3-coder",
+      "mistral-large-3"
+    ],
+    "responding_models": [
+      "claude-fable-5-1",
+      "qwen3-coder",
+      "mistral-large-3"
+    ],
+    "provider_buckets": [
+      "anthropic",
+      "mistral",
+      "qwen"
+    ],
+    "failed_models": {
+      "grok-4.6": "TimeoutError: timed out"
+    }
+  },
+  "result-council": {
+    "selected_models": [
+      "claude-fable-5-1",
+      "grok-4.6",
+      "qwen3-coder",
+      "mistral-large-3"
+    ],
+    "responding_models": [
+      "qwen3-coder",
+      "mistral-large-3"
+    ],
+    "provider_buckets": [
+      "mistral",
+      "qwen"
+    ],
+    "failed_models": {
+      "claude-fable-5-1": "ValueError: model did not return a JSON object",
+      "grok-4.6": "TimeoutError: timed out"
+    }
+  },
+  "review-audit-council": {
+    "selected_models": [
+      "claude-fable-5-1",
+      "grok-4.6",
+      "qwen3-coder",
+      "mistral-large-3"
+    ],
+    "responding_models": [
+      "claude-fable-5-1",
+      "grok-4.6",
+      "qwen3-coder",
+      "mistral-large-3"
+    ],
+    "provider_buckets": [
+      "anthropic",
+      "mistral",
+      "qwen",
+      "xai"
+    ],
+    "failed_models": {}
+  }
+}
