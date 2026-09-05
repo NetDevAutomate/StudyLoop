@@ -73,11 +73,14 @@ def extract_and_write(
     """
     from studyloop.history.progress import _record_progress_on_connection
 
-    results = extractor_fn(messages, session_id)
-    for result in results:
-        result.validate()  # defensive: never write an invalid row
+    def validated_results():
+        results = extractor_fn(messages, session_id)
+        for result in results:
+            result.validate()  # validate the entire batch before its first write
+        return results
+
     if dry_run:
-        return len(results)
+        return len(validated_results())
 
     owns_connection = connection is None
     conn = connection
@@ -89,6 +92,15 @@ def extract_and_write(
         raise RuntimeError("Could not open sessions database for progress write")
 
     try:
+        from agent_session_tools.context.legacy import legacy_global_visible
+        from agent_session_tools.context.scope import ScopeError
+
+        if not legacy_global_visible(conn):
+            raise ScopeError(
+                "Progress writes require source-owned learning records for classified context. "
+                "Use --dry-run for scoped inspection while ownership integration is pending."
+            )
+        results = validated_results()
         for result in results:
             _record_progress_on_connection(
                 conn,

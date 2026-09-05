@@ -7,6 +7,9 @@ import sqlite3
 import uuid
 from datetime import UTC, datetime
 
+from agent_session_tools.context.legacy import legacy_global_visible
+from agent_session_tools.context.scope import active_policy, visibility_sql
+
 from . import _connection, search
 
 logger = logging.getLogger(__name__)
@@ -157,6 +160,8 @@ def get_study_session_stats(days: int = 30) -> list[dict]:
     if not conn:
         return []
     try:
+        if not legacy_global_visible(conn):
+            return []
         rows = conn.execute(
             """
             SELECT COALESCE(topic_slug, topic) AS course,
@@ -256,14 +261,19 @@ def get_last_session_summary() -> dict | None:
     if not conn:
         return None
     try:
+        policy = active_policy()
+        scope = policy.request_scope()
+        visible, params = visibility_sql(conn, "s.id", policy=policy, scope=scope)
         # Find the most recent session
         session = conn.execute(
-            """
+            f"""
             SELECT s.id, s.source, s.project_path, s.created_at, s.updated_at
             FROM sessions s
+            WHERE {visible}
             ORDER BY COALESCE(s.updated_at, s.created_at) DESC
             LIMIT 1
-            """
+            """,
+            params,
         ).fetchone()
         if not session:
             return None
@@ -271,25 +281,34 @@ def get_last_session_summary() -> dict | None:
         session_id = session["id"]
 
         # Get last few messages for context
+        visible_messages, message_params = visibility_sql(
+            conn, "m.session_id", policy=policy, scope=scope
+        )
         messages = conn.execute(
-            """
-            SELECT role, content FROM messages
-            WHERE session_id = ? AND role IN ('user', 'assistant')
-            ORDER BY COALESCE(seq, rowid) DESC
+            f"""
+            SELECT m.role, m.content FROM messages m
+            WHERE m.session_id = ? AND m.role IN ('user', 'assistant')
+              AND {visible_messages}
+            ORDER BY COALESCE(m.seq, m.rowid) DESC
             LIMIT 6
             """,
-            (session_id,),
+            (session_id, *message_params),
         ).fetchall()
 
-        # Get concepts currently in progress
-        in_progress = conn.execute(
-            """
-            SELECT concept, topic, confidence FROM study_progress
-            WHERE confidence IN ('struggling', 'learning')
-            ORDER BY last_seen DESC
-            LIMIT 5
-            """
-        ).fetchall()
+        # Global progress rows can combine multiple conversations. A last-source
+        # pointer cannot establish ownership of the whole merged record. Retain
+        # legacy inspection only for an explicitly unclassified, unassigned DB.
+        progress_visible = legacy_global_visible(conn)
+        in_progress = []
+        if progress_visible:
+            in_progress = conn.execute(
+                """
+                SELECT concept, topic, confidence FROM study_progress
+                WHERE confidence IN ('struggling', 'learning')
+                ORDER BY last_seen DESC
+                LIMIT 5
+                """
+            ).fetchall()
 
         # Extract topic keywords from recent messages
         study_terms = search._get_study_terms()
@@ -319,6 +338,11 @@ def get_last_session_summary() -> dict | None:
                 {"concept": r["concept"], "topic": r["topic"], "confidence": r["confidence"]}
                 for r in in_progress
             ],
+            "concepts_scope_status": (
+                "explicit_unclassified_legacy_inspection"
+                if progress_visible
+                else "withheld_missing_scope_lineage"
+            ),
         }
     except sqlite3.OperationalError as exc:
         if not _connection.is_missing_table_error(exc):

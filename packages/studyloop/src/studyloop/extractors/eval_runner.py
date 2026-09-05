@@ -29,6 +29,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from agent_session_tools.context.legacy import session_messages, session_record
 from studyloop.extractors.llm import INITIAL_PROMPT, extract_struggles
 from studyloop.extractors.pipeline import pre_filter
 
@@ -76,15 +77,12 @@ def _load(path: Path) -> Any:
 
 
 def _fetch_messages(conn: sqlite3.Connection, session_id: str) -> list[dict[str, Any]]:
-    rows = conn.execute(
-        "SELECT role, content FROM messages WHERE session_id = ? ORDER BY seq",
-        (session_id,),
-    ).fetchall()
+    rows = session_messages(conn, session_id)
     return [{"role": r["role"], "content": r["content"]} for r in rows]
 
 
 def _session_source(conn: sqlite3.Connection, session_id: str) -> str | None:
-    row = conn.execute("SELECT source FROM sessions WHERE id = ?", (session_id,)).fetchone()
+    row = session_record(conn, session_id)
     return row["source"] if row else None
 
 
@@ -247,7 +245,7 @@ def run_eval(
     split_cfg = _load(_SPLIT_PATH)
     session_ids = split_cfg[split]
 
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path.resolve().as_uri() + "?mode=ro", uri=True)
     conn.row_factory = sqlite3.Row
 
     scores: list[SessionScore] = []
@@ -257,8 +255,13 @@ def run_eval(
             entry = golden.get(sid)
             if entry is None:
                 continue
-            messages = _fetch_messages(conn, sid)
             source = _session_source(conn, sid)
+            if source is None:
+                unavailable = score_session(entry, [])
+                unavailable.error = "Session unavailable in the configured scope"
+                scores.append(unavailable)
+                continue
+            messages = _fetch_messages(conn, sid)
             # Mirror production exactly: the real pipeline only extracts from
             # sessions that pass pre_filter (kiro_cli source + <50% tool-noise).
             # Sessions the pipeline would skip produce zero rows here too — and

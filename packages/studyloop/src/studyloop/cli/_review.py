@@ -266,6 +266,11 @@ def resume() -> None:
         for c in summary["concepts_in_progress"]:
             emoji = "\U0001f527" if c["confidence"] == "struggling" else "\U0001f4d6"
             console.print(f"  {emoji} {c['concept']} ({c['topic']}) \u2014 {c['confidence']}")
+    elif summary.get("concepts_scope_status") == "withheld_missing_scope_lineage":
+        console.print(
+            "\n[dim]Learning-progress context is withheld until its "
+            "work/personal scope is known.[/dim]"
+        )
 
     streak_data = get_study_streaks()
     if streak_data["current_streak"] > 0:

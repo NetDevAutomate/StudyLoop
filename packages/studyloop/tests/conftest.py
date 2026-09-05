@@ -69,6 +69,23 @@ if TYPE_CHECKING:
     from studyloop.session.transport import SessionConfig, TransportEventT
 
 
+@pytest.fixture(autouse=True)
+def _isolate_memory_policy(monkeypatch):
+    """Classify legacy fixtures explicitly without replacing StudyLoop test config."""
+    from agent_session_tools.context import scope
+
+    original_load = scope.load_config
+
+    def fixture_policy_config():
+        # Honor a test's own config, but never fall through to the owner's file.
+        if os.environ.get("STUDYLOOP_CONFIG"):
+            return original_load()
+        return {"memory": {"projects": {}}}
+
+    monkeypatch.setattr(scope, "load_config", fixture_policy_config)
+    monkeypatch.setenv("SESSION_CONTEXT_SCOPE", "unclassified")
+
+
 # ---------------------------------------------------------------------------
 # Test isolation: redirect state_dir to a temp directory so no test leaks
 # into ~/.local/share/studyloop. The env vars set at import time above are

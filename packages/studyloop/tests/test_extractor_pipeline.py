@@ -84,7 +84,10 @@ def tmp_db(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     conn.row_factory = sqlite3.Row
     conn.execute(_STUDY_PROGRESS_DDL)
     conn.execute("CREATE TABLE sessions (id TEXT PRIMARY KEY, source TEXT, updated_at TEXT)")
-    conn.execute("CREATE TABLE messages (session_id TEXT, role TEXT, content TEXT, seq INTEGER)")
+    conn.execute(
+        "CREATE TABLE messages (session_id TEXT, role TEXT, content TEXT, "
+        "seq INTEGER, timestamp TEXT)"
+    )
     conn.commit()
     conn.close()
 
@@ -460,11 +463,7 @@ def test_cli_records_source_session_provenance(tmp_db: Path, monkeypatch) -> Non
 
 
 def test_cli_incremental_dry_run_no_write(tmp_db: Path) -> None:
-    """(g) `--incremental --session-id FAKE --dry-run` exits 0, writes nothing.
-
-    A non-existent session id yields zero messages → pre_filter rejects it
-    (source is None) → no rows. Either way, dry-run guarantees no DB write.
-    """
+    """An unavailable direct ID fails clearly without writing progress."""
     result = CliRunner().invoke(
         extract_struggles_cmd,
         [
@@ -476,5 +475,6 @@ def test_cli_incremental_dry_run_no_write(tmp_db: Path) -> None:
             "example.live-model",
         ],
     )
-    assert result.exit_code == 0, result.output
+    assert result.exit_code == 1, result.output
+    assert "Session unavailable in the configured scope" in result.output
     assert _count_struggling(tmp_db) == 0

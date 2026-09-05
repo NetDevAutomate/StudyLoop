@@ -285,10 +285,14 @@ def record_progress(
 
 def get_wins(days: int = 30) -> list[dict]:
     """Find concepts that improved in confidence over the given period."""
+    from agent_session_tools.context.legacy import legacy_global_visible
+
     conn = _connection._connect()
     if not conn:
         return []
     try:
+        if not legacy_global_visible(conn):
+            return []
         rows = conn.execute(
             """
             SELECT topic, concept, confidence, first_seen, last_seen, session_count

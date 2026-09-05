@@ -20,6 +20,8 @@ from typing import TYPE_CHECKING, Any
 
 import click
 
+from agent_session_tools.context.legacy import session_ids, session_messages, session_record
+from agent_session_tools.context.scope import ScopeError
 from studyloop.cli._shared import console
 from studyloop.harnesses import RELEASE_HARNESSES, SESSION_SOURCE_BY_HARNESS
 
@@ -46,24 +48,18 @@ def _get_extractor(model: str):
 
 def _fetch_messages(conn, session_id: str) -> list[dict[str, Any]]:
     """Return ordered message dicts for a session."""
-    rows = conn.execute(
-        "SELECT role, content FROM messages WHERE session_id = ? ORDER BY seq",
-        (session_id,),
-    ).fetchall()
+    rows = session_messages(conn, session_id)
     return [{"role": r["role"], "content": r["content"]} for r in rows]
 
 
 def _session_source(conn, session_id: str) -> str | None:
-    row = conn.execute("SELECT source FROM sessions WHERE id = ?", (session_id,)).fetchone()
+    row = session_record(conn, session_id)
     return row["source"] if row else None
 
 
 def _most_recent_session(conn, source: str) -> str | None:
-    row = conn.execute(
-        "SELECT id FROM sessions WHERE source = ? ORDER BY updated_at DESC LIMIT 1",
-        (source,),
-    ).fetchone()
-    return row["id"] if row else None
+    ids = session_ids(conn, source=source, limit=1)
+    return ids[0] if ids else None
 
 
 def _sessions_for_source(conn, source: str, limit: int | None) -> list[str]:
@@ -73,12 +69,7 @@ def _sessions_for_source(conn, source: str, limit: int | None) -> list[str]:
     is approximated as every session for the source. Idempotent upsert makes
     re-processing safe, so the worst case is redundant (cheap, deduped) work.
     """
-    sql = "SELECT id FROM sessions WHERE source = ? ORDER BY updated_at DESC"
-    params: tuple[Any, ...] = (source,)
-    if limit is not None:
-        sql += " LIMIT ?"
-        params = (source, limit)
-    return [r["id"] for r in conn.execute(sql, params).fetchall()]
+    return session_ids(conn, source=source, limit=limit)
 
 
 def _process_one(
@@ -92,6 +83,8 @@ def _process_one(
     from studyloop.extractors.pipeline import extract_and_write, pre_filter
 
     source = _session_source(conn, session_id)
+    if source is None:
+        raise ScopeError("Session unavailable in the configured scope")
     messages: Sequence[dict[str, Any]] = _fetch_messages(conn, session_id)
     if not pre_filter(session_id, source, messages):
         console.print(f"[dim]skip[/dim] {session_id} (source={source}, filtered)")
@@ -120,14 +113,23 @@ def _process_one(
     default=None,
     help="Harness used to select latest/full sessions when no session id is supplied.",
 )
-@click.option("--dry-run", is_flag=True, help="Print what would be written; do not write.")
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Run the selected model and report results without progress writes.",
+)
 @click.option(
     "--model",
     required=True,
     envvar="STUDYLOOP_EXTRACTOR_MODEL",
     help="Live Bedrock model ID (or set STUDYLOOP_EXTRACTOR_MODEL).",
 )
-@click.option("--limit", type=int, default=None, help="Cap sessions processed (with --full).")
+@click.option(
+    "--limit",
+    type=click.IntRange(min=1),
+    default=None,
+    help="Cap sessions processed (with --full).",
+)
 def extract_struggles_cmd(
     incremental: bool,
     full: bool,
@@ -177,6 +179,8 @@ def extract_struggles_cmd(
                 return
             for sid in targets:
                 total += _process_one(conn, sid, extractor_fn, dry_run=dry_run)
+    except ScopeError as exc:
+        raise click.ClickException(str(exc)) from exc
     finally:
         conn.close()
 

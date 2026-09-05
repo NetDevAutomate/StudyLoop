@@ -6,6 +6,8 @@ import logging
 import sqlite3
 from datetime import UTC, datetime, timedelta
 
+from agent_session_tools.context.scope import visibility_sql
+
 from . import _connection
 
 logger = logging.getLogger(__name__)
@@ -28,14 +30,17 @@ def get_study_streaks() -> dict:
     if not conn:
         return empty
     try:
+        visible, params = visibility_sql(conn, "s.id")
         # Get distinct study days (dates only) from last 90 days
         rows = conn.execute(
-            """
+            f"""
             SELECT DISTINCT DATE(COALESCE(s.updated_at, s.created_at)) as study_date
             FROM sessions s
             WHERE s.created_at > datetime('now', '-90 days')
+              AND {visible}
             ORDER BY study_date DESC
-            """
+            """,
+            params,
         ).fetchall()
 
         if not rows:
@@ -68,11 +73,11 @@ def get_study_streaks() -> dict:
         # Sessions this week
         week_start = today - timedelta(days=today.weekday())
         sessions_this_week = conn.execute(
-            """
-            SELECT COUNT(*) as cnt FROM sessions
-            WHERE DATE(COALESCE(updated_at, created_at)) >= ?
+            f"""
+            SELECT COUNT(*) as cnt FROM sessions s
+            WHERE DATE(COALESCE(s.updated_at, s.created_at)) >= ? AND {visible}
             """,
-            (week_start.isoformat(),),
+            (week_start.isoformat(), *params),
         ).fetchone()["cnt"]
 
         return {

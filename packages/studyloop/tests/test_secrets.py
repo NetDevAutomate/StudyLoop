@@ -43,6 +43,11 @@ def isolated_config(tmp_path: Path, monkeypatch: MonkeyPatch) -> Path:
     config_file.write_text("")
     monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_file))
 
+    from studyloop.secrets import _ENV_VAR_MAP
+
+    for name in _ENV_VAR_MAP.values():
+        monkeypatch.delenv(name, raising=False)
+
     # Force reimport of the module's cached path helpers on each test.
     # (The module-level functions call _config_dir() lazily so env-var
     # overrides take effect without needing to reload the module.)

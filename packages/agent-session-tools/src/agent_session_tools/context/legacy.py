@@ -6,7 +6,28 @@ return only rows visible under the explicitly configured current context scope.
 
 import sqlite3
 
-from .scope import visibility_sql
+from .provenance import Scope
+from .scope import active_policy, visibility_sql
+
+
+def legacy_global_visible(conn: sqlite3.Connection) -> bool:
+    """Merged legacy derivations have no trustworthy classified ownership.
+
+    Explicit unclassified inspection is retained only for an entirely unassigned
+    database. A pointer to the latest source cannot label a merged record.
+    """
+    policy = active_policy()
+    scope = policy.request_scope()
+    visibility_sql(conn, "s.id", policy=policy, scope=scope)
+    if scope != Scope.UNCLASSIFIED:
+        return False
+    has_assignments = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE name='context_session_projects'"
+    ).fetchone()
+    return (
+        not has_assignments
+        or not conn.execute("SELECT 1 FROM context_session_projects LIMIT 1").fetchone()
+    )
 
 
 def session_record(conn: sqlite3.Connection, session_id: str):
@@ -14,6 +35,23 @@ def session_record(conn: sqlite3.Connection, session_id: str):
     return conn.execute(
         "SELECT s.* FROM sessions s WHERE s.id=? AND " + clause, (session_id, *params)
     ).fetchone()
+
+
+def session_ids(conn: sqlite3.Connection, *, source: str, limit: int | None = None):
+    """Select IDs within policy before handing them to a transcript consumer."""
+    clause, params = visibility_sql(conn, "s.id")
+    query = (
+        "SELECT s.id FROM sessions s WHERE s.source=? AND "
+        + clause
+        + " ORDER BY s.updated_at DESC,s.id"
+    )
+    values = [source, *params]
+    if limit is not None:
+        if type(limit) is not int or limit < 1:
+            raise ValueError("Session limit must be a positive integer")
+        query += " LIMIT ?"
+        values.append(limit)
+    return [row[0] for row in conn.execute(query, values)]
 
 
 def session_messages(

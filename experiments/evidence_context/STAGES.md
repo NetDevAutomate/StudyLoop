@@ -23,6 +23,10 @@ no remote publication or backup is implied.
 | 14 — Evidence replacement | Do reviewed results improve answers, and what still fails? | `ec8bbc1` | `evidence_selection/runner.py` and `viewer.py`; GUIDE.md, RESULTS.md and reviewer audit |
 | 15 — Separate evidence claims | Can state, basis and target stay distinct through code-owned release? | `4914967` | `assertion_gate/runner.py` and `viewer.py`; GUIDE.md, RESULTS.md and COUNCIL-DECISION.md |
 | 16 — Source-backed annotations | Can captured origins ground labels without semantic overclaim? | `6c736c5` | `source_annotations/runner.py` and `viewer.py`; GUIDE.md, RESULTS.md and council audit |
+| 17 — Code-owned provenance | Which labels are observations versus interpretations? | `106b65a` | `provenance_ownership/runner.py`; GUIDE.md and council audit |
+| 18 — Canonical sources | Can immutable versions and exact citations preserve their boundaries? | `3502407` | `canonical_sources/runner.py`; GUIDE.md and council audit |
+| 19 — Scope before retrieval | Do existing readers enforce explicit context scope? | `3aa1b8a` | `scope_boundary/runner.py`; GUIDE.md and council audit |
+| 20 — StudyLoop consumers | Do scoped sources remain scoped in resume, extraction and history? | See Stage20 below | `consumer_scope/runner.py`; GUIDE.md and council audit |
 
 Stage 3 uses its own lifecycle adapter and database schema. It does not modify the
 stage 1 evidence store, and does not require stage 1 demo output. Stage 2 uses
@@ -401,7 +405,7 @@ open /tmp/evidence-stage-19/walkthrough.html
 uv run pytest packages/agent-session-tools/tests/test_context_scope.py packages/agent-session-tools/tests/test_context_public_scope.py packages/agent-session-tools/tests/test_context_policy_cli.py experiments/evidence_context/tests/test_scope_boundary.py -q
 ```
 
-Stage19 connects explicit scope configuration to existing core CLI/MCP, FTS,
+Checkpoint `3aa1b8a` preserves this stage. Stage19 connects explicit scope configuration to existing core CLI/MCP, FTS,
 vector candidate reads, direct/prefix lookup, stats and attached history. The
 offline lesson runs eight actual CLI subprocesses on synthetic sources; a separate
 test exercises MCP stdio. Config drift blocks reads until audited apply. Policy
@@ -421,6 +425,38 @@ The package regression passed 1,190 tests; the experiment suite passed 252 with 
 optional dependency skip. The independently runnable Stage19 check passed 35 tests.
 Workspace pyright and lint passed. StudyLoop-specific reads, native capture, sync
 and managed deletion remain required.
+
+## Stage 20 commands
+
+```sh
+uv run python -m experiments.evidence_context.consumer_scope.runner --output /tmp/evidence-stage-20
+open /tmp/evidence-stage-20/walkthrough.html
+uv run pytest packages/studyloop/tests/test_context_consumer_scope.py experiments/evidence_context/tests/test_consumer_scope.py -q
+```
+
+The independently runnable check passes eleven tests, including actual MCP stdio
+and a subprocess lesson. A newer work conversation does not replace personal
+resume context or enter the extractor. Unowned merged learning fields are withheld
+with an explanation, and classified writes into the old aggregate are refused
+before provider invocation. Dry-run explicitly still invokes the selected model.
+
+Final regression: 3,770 StudyLoop tests passed, four skipped and 704 deliberately
+deselected; 1,190 session-tools tests passed; 253 experiment tests passed with one
+optional dependency skip. Workspace pyright and lint pass. The browser check
+verified eight expandable results, the personal preview, missing-lineage status
+and mobile fit. These are workspace checks, not installed release acceptance.
+
+Three providers reviewed the increment; Grok timed out. Fable identified the
+unscoped write path and ambiguous invisible-ID handling, both corrected with tests.
+All three favored source-linked observations plus scoped, rebuildable summaries as
+the next design direction. That ownership implementation remains future work.
+See [consumer_scope/GUIDE.md](consumer_scope/GUIDE.md) and
+[consumer_scope/COUNCIL-DECISION.md](consumer_scope/COUNCIL-DECISION.md).
+
+The full regression also drove test-configuration isolation fixes and found two
+existing hook-installer file-read races. Secrets tests now remove ambient key
+fallbacks; provider credentials were removed from subsequent broad test processes.
+No secrets appear in the learning guide or committed artifacts.
 
 ## Production delivery direction
 

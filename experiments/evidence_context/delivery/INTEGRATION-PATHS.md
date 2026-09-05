@@ -42,3 +42,11 @@ be extended by call-path and SQL inspection before a completeness claim.
 Stage19 covers the listed core CLI/MCP/semantic historical readers with explicit
 configuration and read snapshots. That progress does not cover the separate
 StudyLoop-specific consumers or transfer/lifecycle paths in this inventory.
+
+Stage20 now covers the listed StudyLoop transcript consumers, and guards global
+resume/history/stats/wins fields conservatively when ownership is absent. Classified
+extractor persistence to the old global progress aggregate is refused before the
+provider call. This is not complete learning-data ownership: other readers/writers
+still require the source-linked observation and projection design described in
+`consumer_scope/GUIDE.md` and its council decision. Current guards must not be removed
+until that replacement has positive and negative persistence/lifecycle evidence.

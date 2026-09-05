@@ -56,3 +56,11 @@ class LazyGroup(click.Group):
         modname, attr_name = import_path.rsplit(":", 1)
         mod = importlib.import_module(modname)
         return getattr(mod, attr_name)
+
+    def invoke(self, ctx: click.Context):
+        from agent_session_tools.context.scope import ScopeError
+
+        try:
+            return super().invoke(ctx)
+        except ScopeError as exc:
+            raise click.ClickException(str(exc)) from exc
