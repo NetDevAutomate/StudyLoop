@@ -91,3 +91,12 @@ small-holdout protocol. See retrieval_eval/COUNCIL-DECISION.md. Final local chec
 113 tests, Ruff and Pyright pass. No real held-out efficacy or answer/learning
 benefit is claimed. The user explicitly values the validated explanation trail;
 retrieval_eval/EXPLANATION-RUBRIC.md preserves that separate outcome requirement.
+
+## Stage 6 observed arbitration pilot
+
+Two fixed-context prompt versions, one Qwen answering model, 24 parsed synthetic
+responses. The second prompt did not fix unsupported queue supersession. Three
+provider reviewers advised freezing prompts and obtaining independent evidence/label
+review. One reviewer confused actual model output with expected labels; the
+coordinator corrected that against frozen inputs. See arbitration_lab/COUNCIL-DECISION.md.
+No independent quality grading, real holdout efficacy or engine conclusion is claimed.

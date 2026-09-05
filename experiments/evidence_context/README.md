@@ -79,3 +79,12 @@ relationships and a rewired control using frozen inputs and exact required spans
 The [explanation rubric](retrieval_eval/EXPLANATION-RUBRIC.md) captures the learner's
 validated-context goal. The bundled demonstration is synthetic; independent
 real held-out labels and answer-quality measurements remain outstanding.
+
+## Stage 6: conflict arbitration
+
+[Guide](arbitration_lab/GUIDE.md), [observed results](arbitration_lab/RESULTS.md),
+[original prompt](arbitration_lab/PROMPT-v1.md) and [revised prompt](arbitration_lab/PROMPT-v2.md)
+preserve a 24-call synthetic development pilot. Both prompts failed to prevent
+an unsupported supersession inference in one case; successful parsing is not
+semantic validation. Default execution prepares prompts offline; live calls are
+explicit. The full suite contains 124 passing contract tests.

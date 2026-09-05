@@ -1,0 +1,120 @@
+{
+  "kind": "synthetic",
+  "at": "2026-01-01T12:00:00Z",
+  "cases": [
+    {
+      "id": "cache",
+      "question": "Which cache approach is justified for the current workload?",
+      "query": "cachepolicy",
+      "constraints": "Eight concurrent writers; reliability matters more than minimum code.",
+      "evidence": [
+        {
+          "key": "0",
+          "kind": "agent_report",
+          "text": "Cachepolicy: I recommend A, an in-process cache. This advice assumes a single-process toy workload."
+        },
+        {
+          "key": "1",
+          "kind": "agent_report",
+          "text": "The workload now has eight concurrent writers. I recommend B, a coordinated shared cache, for that requirement. Neither option has been benchmarked in the current environment."
+        }
+      ],
+      "reference_keys": [
+        "0",
+        "1"
+      ],
+      "expected": {
+        "conflict_kind": "changed_constraints",
+        "recommendation": "conditional",
+        "evidence_basis": "reported_only"
+      }
+    },
+    {
+      "id": "retry",
+      "question": "Which retry policy is supported by the available check?",
+      "query": "retrypolicy",
+      "constraints": "Use only the result for synthetic revision demo-r2 and the two-second deadline.",
+      "evidence": [
+        {
+          "key": "0",
+          "kind": "agent_report",
+          "text": "Retrypolicy: A, unlimited retry, should recover reliably. I recommend it. No measurements attached."
+        },
+        {
+          "key": "1",
+          "kind": "test_artifact",
+          "text": "Observed fixture check bounded-retry, revision demo-r2, environment synthetic single-worker: A exceeded the two-second deadline; B (bounded retries) completed within it. This corrects the earlier unlimited-retry recommendation. Only this scenario was tested."
+        }
+      ],
+      "reference_keys": [
+        "0",
+        "1"
+      ],
+      "expected": {
+        "conflict_kind": "correction",
+        "recommendation": "B",
+        "evidence_basis": "artifact_supported"
+      }
+    },
+    {
+      "id": "storage",
+      "question": "Which storage option is better supported for the reopen requirement?",
+      "query": "storagepolicy",
+      "constraints": "Reopen correctness on synthetic revision demo-r3; no claim about throughput.",
+      "evidence": [
+        {
+          "key": "0",
+          "kind": "agent_report",
+          "text": "Storagepolicy: use A. I am very confident A is best. No test output is attached."
+        },
+        {
+          "key": "1",
+          "kind": "agent_report",
+          "text": "I recommend B for reopen correctness, but my recommendation alone is not a test result."
+        },
+        {
+          "key": "2",
+          "kind": "test_artifact",
+          "text": "Observed fixture check reopen, revision demo-r3, environment synthetic local process: A lost the last committed entry after reopening; B retained it. This check measured reopen correctness only, not speed or scale."
+        }
+      ],
+      "reference_keys": [
+        "0",
+        "1",
+        "2"
+      ],
+      "expected": {
+        "conflict_kind": "unequal_evidence",
+        "recommendation": "B",
+        "evidence_basis": "artifact_supported"
+      }
+    },
+    {
+      "id": "queue",
+      "question": "Which queue should we choose based on the available performance evidence?",
+      "query": "queuepolicy",
+      "constraints": "Same workload and environment; do not guess performance.",
+      "evidence": [
+        {
+          "key": "0",
+          "kind": "agent_report",
+          "text": "Queuepolicy: A is faster for our workload. I did not run a benchmark."
+        },
+        {
+          "key": "1",
+          "kind": "agent_report",
+          "text": "Later advice: B is faster for the same workload and environment. I also did not run a benchmark."
+        }
+      ],
+      "reference_keys": [
+        "0",
+        "1"
+      ],
+      "expected": {
+        "conflict_kind": "unresolved",
+        "recommendation": "insufficient",
+        "evidence_basis": "insufficient"
+      }
+    }
+  ]
+}
