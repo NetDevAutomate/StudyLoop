@@ -16,7 +16,7 @@ is `none` or the section is absent, without importing
 skipped result without touching the filesystem.
 
 #### Scenario: Status with no configuration
-- **WHEN** `studyloop brain status --json` runs with no `second_brain` section
+- **WHEN** JSON-formatted `studyloop brain status` runs with no `second_brain` section
 - **THEN** it prints `configured: false` and `studyloop.second_brain.obsidian`
   is not in `sys.modules`, and no file is created anywhere
 
@@ -135,12 +135,43 @@ longer happens.
 - **THEN** `studyloop brain status` exits 1 with one line naming `daily_note` and
   stating the adapter was withdrawn
 
-### Requirement: The wind-down protocol offers publishing once and only when a publishing provider is configured
-`agents/shared/wind-down-protocol.md` SHALL instruct the agent to run
-`studyloop brain status --json` and offer `studyloop brain publish` exactly once
-when `configured` and `supports_publish` are both true, and to say nothing
-otherwise; the offer sentence SHALL be identical in `docs/second-brain.md`.
+### Requirement: Wind-down decisions are provider-specific and connector-aware
+At session wind-down the agent SHALL run `studyloop brain wind-down --json`,
+including `--connector xtiles` only when a connector named exactly `xtiles` is
+attached to that session. A disabled provider SHALL produce no offer. A
+configured, publish-capable Obsidian provider SHALL produce the pinned Obsidian
+publish offer. A configured xTiles provider SHALL produce the pinned xTiles
+offer only when the exact `xtiles` connector is attached. Declining either
+offer SHALL produce no publish or connector write. An accepted xTiles flow
+SHALL write the learning record to the source plan first, then invoke the
+assistant-owned xTiles connector. StudyLoop SHALL NOT become an xTiles API
+client or store xTiles credentials.
 
-#### Scenario: xTiles stage 1 configured
-- **WHEN** `provider: xtiles`
-- **THEN** `supports_publish` is false and the protocol makes no publish offer
+#### Scenario: No second-brain provider is configured
+- **WHEN** the wind-down command runs with `provider: none`
+- **THEN** it returns no offer, whether or not an `xtiles` connector is attached
+
+#### Scenario: Obsidian is configured for publishing
+- **WHEN** the wind-down command runs for a configured, publish-capable Obsidian
+  provider
+- **THEN** it returns the pinned Obsidian publish offer exactly once
+
+#### Scenario: xTiles is configured without its connector
+- **WHEN** the wind-down command runs with `provider: xtiles` and no connector
+  named exactly `xtiles`
+- **THEN** it returns no offer
+
+#### Scenario: xTiles is configured with its connector
+- **WHEN** the wind-down command runs with `provider: xtiles` and a connector
+  named exactly `xtiles`
+- **THEN** it returns the pinned xTiles offer exactly once
+
+#### Scenario: The learner declines an offer
+- **WHEN** the learner declines either the Obsidian or xTiles wind-down offer
+- **THEN** the agent performs no publish and no connector write
+
+#### Scenario: The learner accepts the xTiles offer
+- **WHEN** the learner accepts the xTiles wind-down offer
+- **THEN** the agent records the learning outcome in the source plan before
+  invoking the assistant-owned xTiles connector, while StudyLoop makes no
+  xTiles network call and stores no xTiles credential
