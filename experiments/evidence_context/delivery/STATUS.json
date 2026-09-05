@@ -1,6 +1,6 @@
 {
   "goal": "active",
-  "previous_goal_turn": "progress: Stage17 and Stage18 checkpoints completed; complete production objective remains active",
+  "previous_goal_turn": "progress: Stage19 explicit policy and Stage20 StudyLoop transcript consumers completed; source-linked learning ownership and remaining P01-P15 requirements still active",
   "current_stage": "20 StudyLoop transcript consumer boundary complete as increment; source-linked learning ownership is next",
   "requirements": {
     "P01": "partial: v31/v32 additive migrations, atomic policy audit, unchanged old-DB preview and compaction policy-head copying tested; installed upgrade/restore audit remains",
@@ -16,14 +16,15 @@
     "P11": "not yet proven",
     "P12": "not yet proven",
     "P13": "partial: actual StudyLoop resume/extractor/history functions, CLI subprocess and MCP stdio tests pass; rich canonical context at installed agent startup remains",
-    "P14": "stages1-19 checkpointed; Stage20 runnable consumer lesson, guide and council arbitration complete; Stage8 exercise unchanged",
+    "P14": "stages1-20 checkpointed with runnable guides and council arbitration; Stage8 exercise unchanged",
     "P15": "partial: 3770 StudyLoop,1190 session-tools,253 experiment tests pass; installed/native/scoped-sync/deletion/full release review remain"
   },
   "completed_checkpoints": {
     "stage16": "6c736c5",
     "stage17": "106b65a",
     "stage18": "3502407",
-    "stage19": "3aa1b8a"
+    "stage19": "3aa1b8a",
+    "stage20": "36189ff"
   },
   "current_findings": [
     "Stage19 3aa1b8a protects core historical readers using explicit scope and policy/body snapshots.",
@@ -45,7 +46,7 @@
     "package_tests": "1190 passed",
     "experiment_tests": "253 passed,1 optional dependency skip",
     "workspace_pyright": "0 errors",
-    "commit_hooks": "passed for Stage19 3aa1b8a after fixing test registry typing",
+    "commit_hooks": "Stage19 3aa1b8a and Stage20 36189ff passed all hooks including secrets scan,bandit,workspace pyright",
     "browser": "Stage20 eight sections, personal expansion, missing-lineage status and mobile fit; no browser errors",
     "studyloop_tests": "3770 passed,4 skipped,704 deselected",
     "focused_consumer_tests": "11 passed, including real MCP stdio"

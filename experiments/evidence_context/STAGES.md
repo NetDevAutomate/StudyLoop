@@ -26,7 +26,7 @@ no remote publication or backup is implied.
 | 17 — Code-owned provenance | Which labels are observations versus interpretations? | `106b65a` | `provenance_ownership/runner.py`; GUIDE.md and council audit |
 | 18 — Canonical sources | Can immutable versions and exact citations preserve their boundaries? | `3502407` | `canonical_sources/runner.py`; GUIDE.md and council audit |
 | 19 — Scope before retrieval | Do existing readers enforce explicit context scope? | `3aa1b8a` | `scope_boundary/runner.py`; GUIDE.md and council audit |
-| 20 — StudyLoop consumers | Do scoped sources remain scoped in resume, extraction and history? | See Stage20 below | `consumer_scope/runner.py`; GUIDE.md and council audit |
+| 20 — StudyLoop consumers | Do scoped sources remain scoped in resume, extraction and history? | `36189ff` | `consumer_scope/runner.py`; GUIDE.md and council audit |
 
 Stage 3 uses its own lifecycle adapter and database schema. It does not modify the
 stage 1 evidence store, and does not require stage 1 demo output. Stage 2 uses
@@ -434,7 +434,8 @@ open /tmp/evidence-stage-20/walkthrough.html
 uv run pytest packages/studyloop/tests/test_context_consumer_scope.py experiments/evidence_context/tests/test_consumer_scope.py -q
 ```
 
-The independently runnable check passes eleven tests, including actual MCP stdio
+Checkpoint `36189ff` preserves this stage. The independently runnable check passes
+eleven tests, including actual MCP stdio
 and a subprocess lesson. A newer work conversation does not replace personal
 resume context or enter the extractor. Unowned merged learning fields are withheld
 with an explanation, and classified writes into the old aggregate are refused
