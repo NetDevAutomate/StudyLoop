@@ -7,6 +7,8 @@ experience may change before `1.0.0`.
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-09-05
+
 ### Added
 
 - `studyloop plan record <plan-id> --title <title> [--body … | --body-file …]`
