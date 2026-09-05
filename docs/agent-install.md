@@ -74,6 +74,13 @@ That `AGENTS.md` carries one self-gated line about xTiles at wind-down, inert un
 
 Claude Code receives the `socratic-mentor` agent and a session-export hook. The installer merges the hook into existing settings and does not replace unrelated hooks.
 
+Configure Claude Code's model provider before starting a StudyLoop session. If
+you use AWS Bedrock, Claude Code needs Bedrock enabled and valid AWS credentials
+in its own settings or launch environment. A credit error from the direct
+Anthropic service is a reason to check which provider Claude Code is using;
+it does not establish that your Bedrock access is unavailable. StudyLoop's
+mentor installation does not configure or switch your model provider.
+
 It also receives the opt-in `studyloop-xtiles-wind-down` skill at `~/.claude/skills/`, as a symlink to the shared copy described below. It does nothing at all unless your provider is `xtiles` and an `xtiles` MCP server is connected.
 
 ### OpenCode
