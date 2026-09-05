@@ -1,0 +1,50 @@
+{
+  "records": [
+    {
+      "id": "a",
+      "project": "synthetic",
+      "at": "2026-01-01",
+      "text": "We plan to check the demo."
+    },
+    {
+      "id": "b",
+      "project": "synthetic",
+      "at": "2026-01-01",
+      "text": "The demo check was reported as passed."
+    },
+    {
+      "id": "c",
+      "project": "synthetic",
+      "at": "2026-01-01",
+      "text": "The report was corrected; one check was skipped."
+    },
+    {
+      "id": "isolated",
+      "project": "synthetic",
+      "at": "2026-01-01",
+      "text": "Unrelated example."
+    }
+  ],
+  "edges": [
+    [
+      "a",
+      "b",
+      "sequence"
+    ],
+    [
+      "a",
+      "b",
+      "same_file"
+    ],
+    [
+      "b",
+      "a",
+      "sequence"
+    ],
+    [
+      "b",
+      "c",
+      "sequence"
+    ]
+  ]
+}
