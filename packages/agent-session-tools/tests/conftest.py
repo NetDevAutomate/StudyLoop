@@ -1,5 +1,8 @@
 """Pytest configuration and shared fixtures."""
 
+from __future__ import annotations
+
+import contextlib
 import sqlite3
 import tempfile
 from pathlib import Path
@@ -7,6 +10,31 @@ from pathlib import Path
 import pytest
 
 from agent_session_tools.migrations import migrate
+
+
+@pytest.fixture(autouse=True)
+def _close_sqlite_connections_created_by_tests(monkeypatch):
+    """Close every sqlite connection a test opens, even on assertion failure.
+
+    Many unit helpers intentionally return in-memory connections to their test
+    rather than owning a fixture. Python 3.13 now reports those forgotten
+    handles as ResourceWarning during coverage's forced GC. Track the real
+    boundary once and close idempotently after each test; explicit closes and
+    the temp_db fixture remain valid.
+    """
+    real_connect = sqlite3.connect
+    opened: list[sqlite3.Connection] = []
+
+    def tracked_connect(*args, **kwargs):
+        connection = real_connect(*args, **kwargs)
+        opened.append(connection)
+        return connection
+
+    monkeypatch.setattr(sqlite3, "connect", tracked_connect)
+    yield
+    for connection in reversed(opened):
+        with contextlib.suppress(sqlite3.ProgrammingError):
+            connection.close()
 
 
 @pytest.fixture(autouse=True)
