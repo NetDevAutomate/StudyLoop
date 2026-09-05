@@ -139,6 +139,11 @@ jobs:
       - uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
       - run: uv sync --locked --all-packages --group dev --extra web
       - run: uv run playwright install --with-deps chromium
+        env:
+          # Playwright 1.58 still calls Node's deprecated url.parse during its
+          # installer only. Suppress that exact upstream warning code here;
+          # application/test Node warnings remain visible.
+          NODE_OPTIONS: "--disable-warning=DEP0169"
       - run: just test-browser-smoke
 
   e2e:
@@ -165,6 +170,11 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y tmux
       - run: uv sync --locked --all-packages --group dev --extra web
       - run: uv run playwright install --with-deps chromium
+        env:
+          # Playwright 1.58 still calls Node's deprecated url.parse during its
+          # installer only. Suppress that exact upstream warning code here;
+          # application/test Node warnings remain visible.
+          NODE_OPTIONS: "--disable-warning=DEP0169"
       # A missing dependency makes this suite SKIP rather than fail, so "0
       # failed" would survive a run that executed almost nothing. The floor is
       # set below the 500 currently passing so ordinary growth or a legitimate
