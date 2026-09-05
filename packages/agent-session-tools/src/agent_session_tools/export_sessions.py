@@ -183,7 +183,11 @@ def _run_export(
     print(f"  added:   {batch_stats.added}")
     print(f"  updated: {batch_stats.updated}")
     print(f"  skipped: {batch_stats.skipped} (unchanged since last export)")
-    print(f"  empty:   {batch_stats.empty} (no extractable messages)")
+    print(
+        f"  empty:   {batch_stats.empty} (no supported conversation or native records)"
+    )
+    if batch_stats.forgotten:
+        print(f"  retired: {batch_stats.forgotten} (excluded by forgetting policy)")
     if batch_stats.errors:
         print(f"  errors:  {batch_stats.errors}")
     if incremental and batch_stats.skipped:

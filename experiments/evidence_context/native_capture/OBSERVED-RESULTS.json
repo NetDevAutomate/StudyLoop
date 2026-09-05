@@ -1,0 +1,206 @@
+{
+  "sample_selection": "latest stable StudyLoop/MailGraph archives; at most 32MiB per JSONL file; not representative or exhaustive",
+  "selected_sessions": {
+    "codex": 2,
+    "claude_code": 2,
+    "grok": 2,
+    "kiro_cli": 2
+  },
+  "codex_originator_values": {
+    "Codex Desktop": 2
+  },
+  "capture_stats": {
+    "codex": {
+      "added": 2,
+      "updated": 0,
+      "skipped": 0,
+      "empty": 0,
+      "errors": 0,
+      "forgotten": 0,
+      "elapsed_seconds": 0.121
+    },
+    "claude_code": {
+      "added": 2,
+      "updated": 0,
+      "skipped": 0,
+      "empty": 0,
+      "errors": 0,
+      "forgotten": 0,
+      "elapsed_seconds": 0.222
+    },
+    "grok": {
+      "added": 2,
+      "updated": 0,
+      "skipped": 0,
+      "empty": 0,
+      "errors": 0,
+      "forgotten": 0,
+      "elapsed_seconds": 0.078
+    },
+    "kiro_cli": {
+      "added": 2,
+      "updated": 0,
+      "skipped": 0,
+      "empty": 0,
+      "errors": 0,
+      "forgotten": 0,
+      "elapsed_seconds": 0.029
+    }
+  },
+  "stored_body_hashes_valid": 1898,
+  "stored_body_count": 1898,
+  "legacy_message_count": 577,
+  "native_kind_counts": [
+    {
+      "harness": "claude_code",
+      "kind": "message:assistant/text",
+      "count": 79
+    },
+    {
+      "harness": "claude_code",
+      "kind": "message:user",
+      "count": 36
+    },
+    {
+      "harness": "claude_code",
+      "kind": "message:user/text",
+      "count": 4
+    },
+    {
+      "harness": "claude_code",
+      "kind": "tool_result",
+      "count": 324
+    },
+    {
+      "harness": "claude_code",
+      "kind": "tool_use",
+      "count": 324
+    },
+    {
+      "harness": "codex",
+      "kind": "custom_tool_call",
+      "count": 161
+    },
+    {
+      "harness": "codex",
+      "kind": "custom_tool_call_output",
+      "count": 161
+    },
+    {
+      "harness": "codex",
+      "kind": "event:CommandExecution",
+      "count": 162
+    },
+    {
+      "harness": "codex",
+      "kind": "function_call",
+      "count": 74
+    },
+    {
+      "harness": "codex",
+      "kind": "function_call_output",
+      "count": 74
+    },
+    {
+      "harness": "codex",
+      "kind": "message:assistant/output_text",
+      "count": 37
+    },
+    {
+      "harness": "codex",
+      "kind": "message:user/input_text",
+      "count": 32
+    },
+    {
+      "harness": "grok",
+      "kind": "message:assistant",
+      "count": 59
+    },
+    {
+      "harness": "grok",
+      "kind": "message:user/text",
+      "count": 2
+    },
+    {
+      "harness": "grok",
+      "kind": "tool_result",
+      "count": 268
+    },
+    {
+      "harness": "kiro_cli",
+      "kind": "CancelledToolUses",
+      "count": 2
+    },
+    {
+      "harness": "kiro_cli",
+      "kind": "ToolUse",
+      "count": 45
+    },
+    {
+      "harness": "kiro_cli",
+      "kind": "ToolUseResults",
+      "count": 43
+    },
+    {
+      "harness": "kiro_cli",
+      "kind": "message:assistant",
+      "count": 8
+    },
+    {
+      "harness": "kiro_cli",
+      "kind": "message:user",
+      "count": 3
+    }
+  ],
+  "revision_known": 0,
+  "native_machine_known": 0,
+  "source_files_unchanged_during_probe": true,
+  "claims": {
+    "archive_completeness": "not_established",
+    "installed_hook_runtime": "not_established",
+    "answer_accuracy_improvement": "not_measured"
+  },
+  "measured_on": "2026-09-06",
+  "origins_by_harness": [
+    {
+      "harness": "codex",
+      "native_records": 701,
+      "native_sessions": 2,
+      "origins": {
+        "conversation_message": 69,
+        "process_exit": 162,
+        "tool_result": 235,
+        "unknown": 235
+      }
+    },
+    {
+      "harness": "claude_code",
+      "native_records": 767,
+      "native_sessions": 2,
+      "origins": {
+        "conversation_message": 119,
+        "tool_result": 324,
+        "unknown": 324
+      }
+    },
+    {
+      "harness": "kiro_cli",
+      "native_records": 101,
+      "native_sessions": 2,
+      "origins": {
+        "conversation_message": 11,
+        "tool_result": 45,
+        "unknown": 45
+      }
+    },
+    {
+      "harness": "grok",
+      "native_records": 329,
+      "native_sessions": 2,
+      "origins": {
+        "conversation_message": 61,
+        "tool_result": 268
+      }
+    }
+  ]
+}

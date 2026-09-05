@@ -7,7 +7,9 @@ import sqlite3
 from pathlib import Path
 
 from ..utils import file_fingerprint
+from ..context.capture import capture_run
 from .base import ExportStats, commit_batch
+from .native import NativeCollector, grok_record
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +27,7 @@ class GrokExporter:
     def is_available(self) -> bool:
         return self.sessions_dir.exists()
 
+    @capture_run("grok-native-v1")
     def export_all(
         self, conn: sqlite3.Connection, incremental: bool = True, batch_size: int = 50
     ) -> ExportStats:
@@ -36,7 +39,7 @@ class GrokExporter:
                 info = summary.get("info", {})
                 session_id = "grok_" + str(info.get("id") or history.parent.name)
                 fingerprint = (
-                    "grok-v1:"
+                    "grok-v2:"
                     + file_fingerprint(history)
                     + ":"
                     + file_fingerprint(summary_path)
@@ -49,12 +52,22 @@ class GrokExporter:
                     stats.skipped += 1
                     continue
                 messages = []
+                native = NativeCollector(
+                    session_id,
+                    self.source_name,
+                    str(history.resolve()),
+                    "grok-native-v1",
+                )
                 # Parse the complete file before writing. A partially written or
                 # corrupt JSONL line must not replace the last good import.
                 for index, line in enumerate(history.read_text().splitlines()):
                     if not line.strip():
                         continue
                     record = json.loads(line)
+                    if not isinstance(record, dict):
+                        continue
+                    native_start = len(native.sources)
+                    grok_record(native, record, index + 1)
                     role = record.get("type")
                     if role not in {"user", "assistant"} or record.get(
                         "synthetic_reason"
@@ -74,6 +87,7 @@ class GrokExporter:
                     messages.append(
                         {
                             "id": f"{session_id}-{index + 1}",
+                            "native_sources": native.sources[native_start:],
                             "session_id": session_id,
                             "role": role,
                             "content": content,
@@ -84,18 +98,19 @@ class GrokExporter:
                         }
                     )
                 after = (
-                    "grok-v1:"
+                    "grok-v2:"
                     + file_fingerprint(history)
                     + ":"
                     + file_fingerprint(summary_path)
                 )
                 if after != fingerprint:
                     raise ValueError("Source changed while being read; retry export")
-                if not messages:
+                if not messages and not native.sources:
                     stats.empty += 1
                     continue
                 session = {
                     "id": session_id,
+                    "native_sources": native.sources,
                     "source": self.source_name,
                     "project_path": info.get("cwd"),
                     "git_branch": summary.get("head_branch"),

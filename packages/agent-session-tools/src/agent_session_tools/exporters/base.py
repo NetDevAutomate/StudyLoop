@@ -12,8 +12,9 @@ class ExportStats:
     added: int = 0
     updated: int = 0
     skipped: int = 0  # already up-to-date since last export (unchanged)
-    empty: int = 0  # no extractable messages (header-only, content-less)
+    empty: int = 0  # no supported conversation or native records
     errors: int = 0
+    forgotten: int = 0  # explicitly retired sessions, never reimported
 
     def __iadd__(self, other: "ExportStats") -> "ExportStats":
         self.added += other.added
@@ -21,6 +22,7 @@ class ExportStats:
         self.skipped += other.skipped
         self.empty += other.empty
         self.errors += other.errors
+        self.forgotten += other.forgotten
         return self
 
 
@@ -55,6 +57,26 @@ def commit_batch(
         return
 
     try:
+        from ..context.capture import available
+
+        if not conn.in_transaction:
+            conn.execute("BEGIN IMMEDIATE")
+        forgotten = set()
+        if available(conn, "context_tombstones"):
+            forgotten = {
+                session["id"]
+                for session in sessions
+                if conn.execute(
+                    "SELECT 1 FROM context_tombstones WHERE session_id=?",
+                    (session["id"],),
+                ).fetchone()
+            }
+            sessions = [s for s in sessions if s["id"] not in forgotten]
+            messages = [m for m in messages if m["session_id"] not in forgotten]
+        if not sessions:
+            conn.commit()
+            stats.forgotten += len(forgotten)
+            return
         session_columns = {
             row[1] for row in conn.execute("PRAGMA table_info(sessions)").fetchall()
         }
@@ -157,7 +179,11 @@ def commit_batch(
                     )
                 conn.execute("DELETE FROM messages WHERE id = ?", (message_id,))
 
+        from ..context.capture import capture_batch
+
+        capture_batch(conn, sessions, messages)
         conn.commit()
+        stats.forgotten += len(forgotten)
         # Publish counts only after persistence succeeds.
         # Update stats from session status flags
         for s in sessions:

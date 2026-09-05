@@ -12,6 +12,7 @@ import typer
 
 from ..config_loader import get_db_path, load_config
 from ..migrations import migrate
+from .capture import capture_health
 from .scope import ScopeError, ScopePolicy, apply_policy
 
 app = typer.Typer(help="Configure and inspect source-grounded session memory.")
@@ -25,6 +26,19 @@ DatabaseOption = Annotated[
 ActorOption = Annotated[
     str | None, typer.Option(help="Audit identity; defaults to current OS user")
 ]
+
+
+@app.command("health")
+def health(db: DatabaseOption = None) -> None:
+    """Read body-free operator capture diagnostics without migrating the database."""
+    path = (db or get_db_path(load_config())).expanduser().resolve()
+    if not path.is_file():
+        raise typer.BadParameter("Database does not exist")
+    conn = sqlite3.connect(path.as_uri() + "?mode=ro", uri=True)
+    try:
+        typer.echo(json.dumps(capture_health(conn), indent=2))
+    finally:
+        conn.close()
 
 
 @policy_app.command("plan")

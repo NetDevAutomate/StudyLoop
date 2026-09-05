@@ -22,7 +22,9 @@ from collections import defaultdict, deque
 from datetime import datetime, timezone
 from pathlib import Path
 
+from ..context.capture import capture_run
 from .base import ExportStats, commit_batch
+from .native import NativeCollector, kiro_entry
 
 # Kiro CLI database location
 KIRO_DB = Path.home() / "Library/Application Support/kiro-cli/data.sqlite3"
@@ -140,6 +142,7 @@ class KiroCliExporter:
         """Check if Kiro CLI data is available."""
         return KIRO_DB.exists()
 
+    @capture_run("kiro-native-v1")
     def export_all(
         self, conn: sqlite3.Connection, incremental: bool = True, batch_size: int = 50
     ) -> ExportStats:
@@ -206,7 +209,7 @@ class KiroCliExporter:
                 # Parser version invalidates previous incomplete imports even
                 # when the upstream timestamp has not changed (or v1 has none).
                 fingerprint = (
-                    "kiro-v4:" + hashlib.sha256(row["value"].encode()).hexdigest()
+                    "kiro-v5:" + hashlib.sha256(row["value"].encode()).hexdigest()
                 )
                 existing = conn.execute(
                     "SELECT updated_at, metadata FROM sessions WHERE id = ?",
@@ -263,8 +266,20 @@ class KiroCliExporter:
                 reserved_ids = set(positioned_ids.values())
                 used_ids: set[str] = set()
                 messages = []
+                native = NativeCollector(
+                    session_id,
+                    self.source_name,
+                    str(KIRO_DB.resolve())
+                    + "/"
+                    + ("conversations_v2" if use_v2 else "conversations")
+                    + "/"
+                    + conv_id,
+                    "kiro-native-v1",
+                )
                 seq = 0
-                for entry in history:
+                for entry_index, entry in enumerate(history):
+                    native_start = len(native.sources)
+                    kiro_entry(native, entry, entry_index)
                     # Entries are list-shaped (real format) or dict (legacy);
                     # _extract_text handles both. Skip other scalar junk.
                     if not isinstance(entry, (list, dict)):
@@ -304,6 +319,11 @@ class KiroCliExporter:
                         messages.append(
                             {
                                 "id": message_id,
+                                "native_sources": [
+                                    source
+                                    for source in native.sources[native_start:]
+                                    if source.native_kind.startswith("message:" + role)
+                                ],
                                 "session_id": session_id,
                                 "role": role,
                                 "content": text,
@@ -314,9 +334,10 @@ class KiroCliExporter:
                             }
                         )
 
-                if messages:
+                if messages or native.sources:
                     session_data = {
                         "id": session_id,
+                        "native_sources": native.sources,
                         "source": "kiro_cli",
                         "project_path": project_path,
                         "created_at": created_at,
@@ -345,8 +366,8 @@ class KiroCliExporter:
                         batch = []
                         batch_messages = []
                 else:
-                    # History present but no extractable text (e.g. only tool
-                    # results) — count as empty for an honest summary.
+                    # History exists but has no supported conversation or native
+                    # records. Supported tool-only histories are captured above.
                     stats.empty += 1
 
         # Commit final batch

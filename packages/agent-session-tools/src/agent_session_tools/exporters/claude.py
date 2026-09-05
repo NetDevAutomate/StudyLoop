@@ -8,7 +8,9 @@ import os
 from pathlib import Path
 
 from ..utils import file_fingerprint
+from ..context.capture import capture_run
 from .base import ExportStats, commit_batch
+from .native import NativeCollector, claude_record
 
 
 # Claude Code directories
@@ -34,6 +36,7 @@ class ClaudeCodeExporter:
         """Check if Claude Code data is available."""
         return self.projects_dir.exists()
 
+    @capture_run("claude-native-v1")
     def export_all(
         self, conn: sqlite3.Connection, incremental: bool = True, batch_size: int = 50
     ) -> ExportStats:
@@ -82,12 +85,12 @@ class ClaudeCodeExporter:
         """Return ``(session_data, messages, reason)``.
 
         ``reason`` explains a ``None`` session: ``"skipped"`` (unchanged
-        fingerprint) or ``"empty"`` (no extractable messages). It is ``None``
+        fingerprint) or ``"empty"`` (no supported native records). It is ``None``
         when a session is returned for import.
         """
         project_path = str(agent_file.parent).replace(str(self.projects_dir) + "/", "")
         session_id = agent_file.stem
-        fingerprint = "claude-v2:" + file_fingerprint(agent_file)
+        fingerprint = "claude-v3:" + file_fingerprint(agent_file)
 
         # Check if already imported with same fingerprint (incremental mode)
         if incremental:
@@ -96,6 +99,10 @@ class ClaudeCodeExporter:
             ).fetchone()
             if existing and existing[0] == fingerprint:
                 return None, [], "skipped"
+
+        native = NativeCollector(
+            session_id, self.source_name, str(agent_file.resolve()), "claude-native-v1"
+        )
 
         # Parse JSONL file
         messages = []
@@ -121,6 +128,8 @@ class ClaudeCodeExporter:
                     project_path = entry["cwd"]
                     cwd_found = True
                 source_session_id = source_session_id or entry.get("sessionId")
+                native_start = len(native.sources)
+                claude_record(native, entry, line_number)
                 msg = entry.get("message")
                 if not isinstance(msg, dict) or msg.get("role") not in {
                     "user",
@@ -173,6 +182,7 @@ class ClaudeCodeExporter:
                 messages.append(
                     {
                         "id": message_id,
+                        "native_sources": native.sources[native_start:],
                         "parent_id": entry.get("parentUuid"),
                         "role": role,
                         "content": content,
@@ -198,10 +208,10 @@ class ClaudeCodeExporter:
                     }
                 )
 
-        if fingerprint != "claude-v2:" + file_fingerprint(agent_file):
+        if fingerprint != "claude-v3:" + file_fingerprint(agent_file):
             raise ValueError("Transcript changed during export; retry when stable")
 
-        if not messages:
+        if not messages and not native.sources:
             return None, [], "empty"
 
         # Check if this is an update or new insert
@@ -211,6 +221,7 @@ class ClaudeCodeExporter:
 
         session_data = {
             "id": session_id,
+            "native_sources": native.sources,
             "source": "claude_code",
             "project_path": project_path,
             "git_branch": git_branch,
@@ -236,6 +247,7 @@ class ClaudeCodeExporter:
             [
                 {
                     "id": m["id"],
+                    "native_sources": m["native_sources"],
                     "session_id": session_id,
                     "role": m["role"],
                     "content": m["content"],

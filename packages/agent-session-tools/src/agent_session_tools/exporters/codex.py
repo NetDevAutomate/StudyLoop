@@ -44,7 +44,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from ..utils import file_fingerprint
+from ..context.capture import capture_run
 from .base import ExportStats, commit_batch
+from .native import NativeCollector, codex_record
 
 # Codex CLI session directory (rollout files live in a YYYY/MM/DD subtree)
 CODEX_SESSIONS_DIR = Path.home() / ".codex" / "sessions"
@@ -122,6 +124,7 @@ class CodexExporter:
         """Return True only when the Codex sessions directory exists."""
         return self.sessions_dir.exists() or self.archived_dir.exists()
 
+    @capture_run("codex-native-v1")
     def export_all(
         self, conn: sqlite3.Connection, incremental: bool = True, batch_size: int = 50
     ) -> ExportStats:
@@ -179,7 +182,7 @@ class CodexExporter:
         session is returned for import.
         """
         session_id = f"codex_{rollout_file.stem}"
-        fingerprint = "codex-v2:" + file_fingerprint(rollout_file)
+        fingerprint = "codex-v3:" + file_fingerprint(rollout_file)
 
         if incremental:
             existing = conn.execute(
@@ -188,6 +191,9 @@ class CodexExporter:
             if existing and existing[0] == fingerprint:
                 return None, [], "skipped"
 
+        native = NativeCollector(
+            session_id, self.source_name, str(rollout_file.resolve()), "codex-native-v1"
+        )
         messages: list[dict] = []
         first_ts: str | None = None
         last_ts: str | None = None
@@ -213,6 +219,9 @@ class CodexExporter:
                 otype = obj.get("type")
                 if not isinstance(obj.get("payload", {}), dict):
                     continue
+
+                native_start = len(native.sources)
+                codex_record(native, obj, line_number)
 
                 if otype == "session_meta":
                     payload = obj.get("payload", {}) or {}
@@ -263,6 +272,7 @@ class CodexExporter:
 
                 messages.append(
                     {
+                        "native_sources": native.sources[native_start:],
                         "role": role,
                         "content": content,
                         "model": payload.get("model")
@@ -276,10 +286,10 @@ class CodexExporter:
                     }
                 )
 
-        if fingerprint != "codex-v2:" + file_fingerprint(rollout_file):
+        if fingerprint != "codex-v3:" + file_fingerprint(rollout_file):
             raise ValueError("Transcript changed during export; retry when stable")
 
-        if not messages:
+        if not messages and not native.sources:
             return None, [], "empty"
 
         is_update = conn.execute(
@@ -288,6 +298,7 @@ class CodexExporter:
 
         session_data: dict = {
             "id": session_id,
+            "native_sources": native.sources,
             "source": "codex",
             "project_path": project_path or str(rollout_file.parent),
             "git_branch": git_branch,
@@ -309,6 +320,7 @@ class CodexExporter:
         message_rows = [
             {
                 "id": f"{session_id}-{idx + 1}",
+                "native_sources": m["native_sources"],
                 "session_id": session_id,
                 "role": m["role"],
                 "content": m["content"],
