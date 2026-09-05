@@ -214,6 +214,39 @@ Windows too, but a file locked by another program cannot be replaced — StudyLo
 reports that and leaves the existing note intact. Under WSL, point `vault_path` at
 the path the vault has *from the side StudyLoop runs on*.
 
+## What the projections look like
+
+### Obsidian — local file projections
+
+These images render the exact Markdown StudyLoop wrote into a hermetic throwaway
+vault. They are deliberately labelled **not Obsidian** inside the pixels: they
+show the projection files, not an imitation of Obsidian's desktop interface.
+
+![Today projection with next action, due reviews and active topics](images/studyloop-obsidian-today.png)
+
+![Study Plan projection with milestones, resources and learning state](images/studyloop-obsidian-plan.png)
+
+![Learner-owned sibling notes file that StudyLoop reads but never overwrites](images/studyloop-obsidian-notes.png)
+
+### xTiles — live connector output
+
+Three images are direct live-interface captures using synthetic probe data. The
+planner card is a documentation rendering of content read back from the live
+tile because the browser-extension capture clipped xTiles focus mode; the image
+labels that distinction inside its pixels. The brain-status image is a sanitized
+rendering of real CLI output, not xTiles UI. The project and planner tile were
+deleted after capture.
+
+![Verified planner-tile content rendered for documentation](images/studyloop-xtiles-planner-tile.png)
+
+![Synthetic Study Plan project with page navigation and Mission content](images/studyloop-xtiles-study-plan-project.png)
+
+![Milestones imported as a table with Status and Concepts columns](images/studyloop-xtiles-milestones-table.png)
+
+![Wind-down learning record projected into the synthetic xTiles project](images/studyloop-xtiles-learning-record.png)
+
+![StudyLoop status showing xTiles as a prompt-driven Stage 1 integration](images/studyloop-xtiles-brain-status.png)
+
 ## xTiles
 
 xTiles is a visual planner — projects, pages, tiles, a daily planner — and it is
