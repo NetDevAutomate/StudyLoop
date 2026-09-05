@@ -1,0 +1,29 @@
+{
+  "executive_summary": "Implementation exhibits correct boundary behavior and policy conformance but shows evidence of model drafting defects and measurement validity concerns. Four false blocks indicate advisory draft divergence from checked-only policy, while source-adapter alignment confirms syntactic parsing integrity. Explanation quality and citation validity remain unmeasured.",
+  "recommended_decision": "Approve with mandatory investigation into draft-policy divergence causes, particularly regarding extractor omissions and model endorsement of unsupported recommendations.",
+  "confidence": 0.85,
+  "assumptions": [
+    "Deterministic policies accurately reflect intended decision logic and are free of implementation defects."
+  ],
+  "reasons": [
+    "Source-adapter mode demonstrates perfect alignment with expected policy outcomes, validating core parsing and decision logic.",
+    "Checked-only mode reveals consistent handling of candidate field rejections, supporting controlled experimental design.",
+    "Four instances of draft divergence (C01, C05 x2, C11 x2) expose potential instability between metadata extraction and policy enforcement layers.",
+    "Model drafts show awareness of evidence boundaries yet occasionally recommend choices not supported by deterministic policy paths."
+  ],
+  "risks": [
+    "Unchecked draft-policy divergence may lead to overconfidence in model-generated recommendations where policy would abstain.",
+    "Natural language explanations could inadvertently encourage unsafe practices like inferring missing fields or overriding declared evidence bounds.",
+    "Lack of entailment measurement leaves open the possibility that high-quality citations mask logically unsound reasoning."
+  ],
+  "disagreements": [
+    "Whether draft telemetry should influence approval given its separation from policy-rendered content.",
+    "If coordinator retention of C01/C10 counterfactual pair undermines validity due to non-independence rather than intentional design.",
+    "Extent to which unsupported endorsements (C03, C11) represent drafting flaws versus unavoidable artifacts of synthetic fixtures."
+  ],
+  "missing_information": [
+    "Independent verification of explanation entailment and citation accuracy beyond locatability checks.",
+    "Real-world corpus performance to assess generalization beyond synthetic cases.",
+    "Human evaluation of next-check phrasing to ensure it discourages unsafe extrapolations or historical revision."
+  ]
+}

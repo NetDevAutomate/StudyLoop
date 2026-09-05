@@ -1,0 +1,94 @@
+{
+  "selected_models": [
+    "claude-fable-5-1",
+    "grok-4.6",
+    "qwen3-coder"
+  ],
+  "responding_models": [
+    "qwen3-coder"
+  ],
+  "provider_buckets": [
+    "qwen"
+  ],
+  "failed_models": {
+    "claude-fable-5-1": "ValueError: model did not return a JSON object",
+    "grok-4.6": "TimeoutError: timed out"
+  },
+  "recommendations": {
+    "qwen3-coder": "Approve with mandatory investigation into draft-policy divergence causes, particularly regarding extractor omissions and model endorsement of unsupported recommendations."
+  },
+  "confidence": {
+    "qwen3-coder": 0.85
+  },
+  "repeated_reasons": [],
+  "repeated_risks": [],
+  "assumption_themes": [
+    {
+      "theme": "Deterministic policies accurately reflect intended decision logic and are free of implementation defects.",
+      "models": [
+        "qwen3-coder"
+      ],
+      "variants": [
+        "Deterministic policies accurately reflect intended decision logic and are free of implementation defects."
+      ]
+    }
+  ],
+  "disagreement_themes": [
+    {
+      "theme": "Extent to which unsupported endorsements (C03, C11) represent drafting flaws versus unavoidable artifacts of synthetic fixtures.",
+      "models": [
+        "qwen3-coder"
+      ],
+      "variants": [
+        "Extent to which unsupported endorsements (C03, C11) represent drafting flaws versus unavoidable artifacts of synthetic fixtures."
+      ]
+    },
+    {
+      "theme": "If coordinator retention of C01/C10 counterfactual pair undermines validity due to non-independence rather than intentional design.",
+      "models": [
+        "qwen3-coder"
+      ],
+      "variants": [
+        "If coordinator retention of C01/C10 counterfactual pair undermines validity due to non-independence rather than intentional design."
+      ]
+    },
+    {
+      "theme": "Whether draft telemetry should influence approval given its separation from policy-rendered content.",
+      "models": [
+        "qwen3-coder"
+      ],
+      "variants": [
+        "Whether draft telemetry should influence approval given its separation from policy-rendered content."
+      ]
+    }
+  ],
+  "missing_information_themes": [
+    {
+      "theme": "Human evaluation of next-check phrasing to ensure it discourages unsafe extrapolations or historical revision.",
+      "models": [
+        "qwen3-coder"
+      ],
+      "variants": [
+        "Human evaluation of next-check phrasing to ensure it discourages unsafe extrapolations or historical revision."
+      ]
+    },
+    {
+      "theme": "Independent verification of explanation entailment and citation accuracy beyond locatability checks.",
+      "models": [
+        "qwen3-coder"
+      ],
+      "variants": [
+        "Independent verification of explanation entailment and citation accuracy beyond locatability checks."
+      ]
+    },
+    {
+      "theme": "Real-world corpus performance to assess generalization beyond synthetic cases.",
+      "models": [
+        "qwen3-coder"
+      ],
+      "variants": [
+        "Real-world corpus performance to assess generalization beyond synthetic cases."
+      ]
+    }
+  ]
+}

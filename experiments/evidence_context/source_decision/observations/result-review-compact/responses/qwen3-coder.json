@@ -1,0 +1,32 @@
+{
+  "model": "qwen3-coder",
+  "provider": "qwen",
+  "mode": "chat",
+  "response": {
+    "executive_summary": "The synthetic policy-conformance pilot demonstrates strong internal consistency but limited real-world applicability due to its封闭 design and lack of production claims. While the mechanisms show promise in controlled scenarios, critical gaps remain in handling ambiguous sources, authenticating artifacts, and ensuring robustness beyond scripted conditions.",
+    "recommended_decision": "Approve the current implementation for bounded use within synthetic environments, contingent on resolving known ambiguities in source parsing and clarifying artifact authenticity protocols.",
+    "confidence": 0.75,
+    "assumptions": [
+      "Synthetic data accurately reflects potential real-world edge cases despite no production claims being made."
+    ],
+    "reasons": [
+      "All 24 transport stops were correctly identified without false positives in the source_adapter mechanism.",
+      "Positive retention advisory shows perfect accuracy (8/8) when conditions align with expected patterns.",
+      "Checked_only mechanism effectively filters out unsupported recommendations, maintaining high precision at the cost of recall."
+    ],
+    "risks": [
+      "Source adapter fails to distinguish between artifact and report kinds reliably, risking misclassification of non-observed test outputs as valid inputs.",
+      "Ambiguous field declarations (e.g., duplicate revisions) lead to systematic rejection even when one value is correct, indicating brittleness in parsing logic.",
+      "Lack of model prose release obscures interpretability and limits feedback loops for iterative improvement."
+    ],
+    "disagreements": [
+      "Whether C05 dissent should be counted inside or outside block boundaries affects outcome labeling and highlights ambiguity in span extraction rules.",
+      "The exclusion of human gold standard labels may underestimate error rates since developer-authored rules can share correlated bugs undetected by blinded review."
+    ],
+    "missing_information": [
+      "Real-system deployment data showing how often these synthetic configurations occur in practice would validate generalizability.",
+      "Independent verification of source authenticity mechanisms could confirm whether reported limitations pose actual security risks."
+    ]
+  },
+  "error": null
+}

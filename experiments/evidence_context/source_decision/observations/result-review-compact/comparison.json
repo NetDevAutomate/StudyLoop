@@ -1,0 +1,178 @@
+{
+  "selected_models": [
+    "claude-fable-5-1",
+    "grok-4.6",
+    "qwen3-coder"
+  ],
+  "responding_models": [
+    "claude-fable-5-1",
+    "qwen3-coder"
+  ],
+  "provider_buckets": [
+    "anthropic",
+    "qwen"
+  ],
+  "failed_models": {
+    "grok-4.6": "ValueError: model did not return a JSON object"
+  },
+  "recommendations": {
+    "claude-fable-5-1": "Accept the pilot as conformance-only evidence for source_adapter; before any design commitment, run one bounded differential test of the parser boundary: ~20 hand-authored malformed sources (CRLF, trailing whitespace on markers, two or nested observed blocks, indented keys, key-case variants, identical winner lines inside and outside block, 'winner: C', a quote spanning lines) asserting that declarations() and declarations_with_spans() agree on block membership, no exception escapes release(), and every emitted span locator resolves; labels for these must be authored blind by a non-developer.",
+    "qwen3-coder": "Approve the current implementation for bounded use within synthetic environments, contingent on resolving known ambiguities in source parsing and clarifying artifact authenticity protocols."
+  },
+  "confidence": {
+    "claude-fable-5-1": 0.7,
+    "qwen3-coder": 0.75
+  },
+  "repeated_reasons": [],
+  "repeated_risks": [],
+  "assumption_themes": [
+    {
+      "theme": "declarations() in metadata_value.verify implements the same [observed]/[/observed] exact-line grammar as declarations_with_spans; the packet only summarizes it.",
+      "models": [
+        "claude-fable-5-1"
+      ],
+      "variants": [
+        "declarations() in metadata_value.verify implements the same [observed]/[/observed] exact-line grammar as declarations_with_spans; the packet only summarizes it."
+      ]
+    },
+    {
+      "theme": "Stage 8 derive() rejects provenance='report' and any None scope value; C03/C01 outputs are consistent with this but the policy code is not shown.",
+      "models": [
+        "claude-fable-5-1"
+      ],
+      "variants": [
+        "Stage 8 derive() rejects provenance='report' and any None scope value; C03/C01 outputs are consistent with this but the policy code is not shown."
+      ]
+    },
+    {
+      "theme": "Synthetic data accurately reflects potential real-world edge cases despite no production claims being made.",
+      "models": [
+        "qwen3-coder"
+      ],
+      "variants": [
+        "Synthetic data accurately reflects potential real-world edge cases despite no production claims being made."
+      ]
+    },
+    {
+      "theme": "The C06 repeat-2 'ValueError' originates from model output parsing, not from EvidenceSnapshot.freeze or the harness.",
+      "models": [
+        "claude-fable-5-1"
+      ],
+      "variants": [
+        "The C06 repeat-2 'ValueError' originates from model output parsing, not from EvidenceSnapshot.freeze or the harness."
+      ]
+    }
+  ],
+  "disagreement_themes": [
+    {
+      "theme": "'All 23 valid draft quotes locatable' is presented as a positive; C03/C11 show locatability is orthogonal to sufficiency and should not be a headline metric.",
+      "models": [
+        "claude-fable-5-1"
+      ],
+      "variants": [
+        "'All 23 valid draft quotes locatable' is presented as a positive; C03/C11 show locatability is orthogonal to sufficiency and should not be a headline metric."
+      ]
+    },
+    {
+      "theme": "The brief frames 0/24 as a headline; I would report 11/11 fixture conformance and treat the 24 figure as a model-telemetry count only.",
+      "models": [
+        "claude-fable-5-1"
+      ],
+      "variants": [
+        "The brief frames 0/24 as a headline; I would report 11/11 fixture conformance and treat the 24 figure as a model-telemetry count only."
+      ]
+    },
+    {
+      "theme": "The brief lists C05 as a checked_only 'false block'; given checked_only's stated contract (accept only verifier-matched candidate fields), abstaining on a proposal that cited an outside-block winner is correct-by-spec behavior, and labelling it false block conflates modes' contracts.",
+      "models": [
+        "claude-fable-5-1"
+      ],
+      "variants": [
+        "The brief lists C05 as a checked_only 'false block'; given checked_only's stated contract (accept only verifier-matched candidate fields), abstaining on a proposal that cited an outside-block winner is correct-by-spec behavior, and labelling it false block conflates modes' contracts."
+      ]
+    },
+    {
+      "theme": "The exclusion of human gold standard labels may underestimate error rates since developer-authored rules can share correlated bugs undetected by blinded review.",
+      "models": [
+        "qwen3-coder"
+      ],
+      "variants": [
+        "The exclusion of human gold standard labels may underestimate error rates since developer-authored rules can share correlated bugs undetected by blinded review."
+      ]
+    },
+    {
+      "theme": "Whether C05 dissent should be counted inside or outside block boundaries affects outcome labeling and highlights ambiguity in span extraction rules.",
+      "models": [
+        "qwen3-coder"
+      ],
+      "variants": [
+        "Whether C05 dissent should be counted inside or outside block boundaries affects outcome labeling and highlights ambiguity in span extraction rules."
+      ]
+    }
+  ],
+  "missing_information_themes": [
+    {
+      "theme": "Any real or non-developer-authored artifact samples to estimate over-blocking rate.",
+      "models": [
+        "claude-fable-5-1"
+      ],
+      "variants": [
+        "Any real or non-developer-authored artifact samples to estimate over-blocking rate."
+      ]
+    },
+    {
+      "theme": "Independent verification of source authenticity mechanisms could confirm whether reported limitations pose actual security risks.",
+      "models": [
+        "qwen3-coder"
+      ],
+      "variants": [
+        "Independent verification of source authenticity mechanisms could confirm whether reported limitations pose actual security risks."
+      ]
+    },
+    {
+      "theme": "Meaning and downstream use of requirement_match in Stage 8 policy.",
+      "models": [
+        "claude-fable-5-1"
+      ],
+      "variants": [
+        "Meaning and downstream use of requirement_match in Stage 8 policy."
+      ]
+    },
+    {
+      "theme": "Provenance of the C06 repeat-2 ValueError (model vs harness).",
+      "models": [
+        "claude-fable-5-1"
+      ],
+      "variants": [
+        "Provenance of the C06 repeat-2 ValueError (model vs harness)."
+      ]
+    },
+    {
+      "theme": "Real-system deployment data showing how often these synthetic configurations occur in practice would validate generalizability.",
+      "models": [
+        "qwen3-coder"
+      ],
+      "variants": [
+        "Real-system deployment data showing how often these synthetic configurations occur in practice would validate generalizability."
+      ]
+    },
+    {
+      "theme": "Source of declarations() and derive() to confirm grammar parity and provenance/None handling.",
+      "models": [
+        "claude-fable-5-1"
+      ],
+      "variants": [
+        "Source of declarations() and derive() to confirm grammar parity and provenance/None handling."
+      ]
+    },
+    {
+      "theme": "Whether C10's adapter output was byte-identical to C01's (expected, and if not, indicates proposal leakage into the decision path).",
+      "models": [
+        "claude-fable-5-1"
+      ],
+      "variants": [
+        "Whether C10's adapter output was byte-identical to C01's (expected, and if not, indicates proposal leakage into the decision path)."
+      ]
+    }
+  ]
+}

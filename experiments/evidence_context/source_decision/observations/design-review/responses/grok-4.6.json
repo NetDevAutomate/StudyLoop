@@ -1,0 +1,52 @@
+{
+  "model": "grok-4.6",
+  "provider": "xai",
+  "mode": "chat",
+  "response": {
+    "executive_summary": "Policy application is mostly mechanical and yields 4 supported choices (C01 B, C04 A, C05 A, C10 B) and 8 none. The proposed 24-call run should not proceed as designed: the case set is duplicated and under-powered, the declaration grammar is informal, and these model reviews are explicitly not independent gold.",
+    "recommended_decision": "Do not execute the 24-call experiment; lock a formal observed-block grammar, drop or replace the C01/C10 duplicate, add malformed-fence and in-block extra-key cases, and score both deterministic paths against a written oracle rather than this council.",
+    "confidence": 0.86,
+    "assumptions": [
+      "A declaration is a single in-block `key: value` line; only revision, workload, environment, metric, and winner are relevant.",
+      "Lines after [/observed] are ignored rather than making the block malformed.",
+      "Any duplicate required key is fatal even if one value equals the target.",
+      "Winner must be exactly the token A or B; kind must be exactly artifact.",
+      "Target fields are always complete, so equality is a four-field exact string match with no normalization specified."
+    ],
+    "reasons": [
+      "C01|B|artifact, one block, four fields equal target, single winner B",
+      "C02|none|environment fixture-west mismatches target fixture-east",
+      "C03|none|source.kind is report, not artifact",
+      "C04|A|artifact, one block, four fields equal target, single winner A",
+      "C05|A|outside winner/revision are not observed; in-block content is valid A",
+      "C06|none|missing winner declaration",
+      "C07|none|two observed blocks",
+      "C08|none|workload two writers mismatches target six writers",
+      "C09|none|duplicate winner declarations A and B",
+      "C10|B|artifact, one block, four fields equal target, single winner B",
+      "C11|none|duplicate revision declarations r1 and r2",
+      "C12|none|missing revision declaration"
+    ],
+    "risks": [
+      "C01 and C10 are the same positive case, so agreement and false-block rates will be inflated.",
+      "C05 is the only outside-block test; a parser that slurps trailing lines will diverge from this label and look like model error.",
+      "No case covers unclosed fences, extra in-block keys, blank values, or invalid winner tokens, so both release paths can share a silent hole.",
+      "Frozen-prompt double calls measure self-consistency, not label validity; developer-authored cases plus model reviews cannot calibrate false blocking.",
+      "Fixture-supplied kind makes the artifact/report gate theatrical unless the source-adapter authenticates provenance independently."
+    ],
+    "disagreements": [
+      "A stricter reading could mark C05 none on the theory that any trailing key: value is malformed, not merely unobserved.",
+      "Unknown in-block keys are unspecified; some will treat them as fatal, others as ignorable.",
+      "Duplicate same-value keys are untested; C11 only shows conflicting duplicates.",
+      "Conservative-vs-adapter field selection is not specified tightly enough for two implementers to match without further rules."
+    ],
+    "missing_information": [
+      "BNF or equivalent for observed blocks: spacing, case, unknown keys, duplicate same values, unclosed fences.",
+      "Whether trailing text is defined as ignore or malformed.",
+      "Exact conservative-path rule when a candidate has extra or conflicting winner/revision fields.",
+      "Whether these council strings will be used as gold despite the brief stating they are not independent human labels.",
+      "A non-duplicate positive matrix that separately varies winner A/B and outside-noise vs true omission."
+    ]
+  },
+  "error": null
+}

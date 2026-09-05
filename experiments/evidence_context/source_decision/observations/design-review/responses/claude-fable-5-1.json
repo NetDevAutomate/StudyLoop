@@ -1,0 +1,51 @@
+{
+  "model": "claude-fable-5-1",
+  "provider": "anthropic",
+  "mode": "chat",
+  "response": {
+    "executive_summary": "Applying the stated policy mechanically yields four supported choices (C01 B, C04 A, C05 A, C10 B) and eight 'none' outcomes. The policy is mostly unambiguous for this set, but C05 exposes a real specification gap: the policy says out-of-block lines are not observed declarations, yet a source-adapter reparse that scans the whole text rather than the block interior would count them as duplicates and flip C05 to none, so the two release paths can legitimately disagree on the same source. The case set is also thin: C01 and C10 are byte-identical, only four positives exist, and no case probes whitespace, case-folding, key ordering, unknown keys inside the block, unclosed tags, or tag-with-trailing-text edge conditions, so the experiment cannot distinguish a correct parser from a lucky one.",
+    "recommended_decision": "Freeze a written block-scoped grammar (tags on their own lines, exact byte equality for values, no normalization, unknown keys inside the block disallowed or explicitly ignored) before execution, replace the duplicate C10 with a formatting-edge case, and pre-register that C05 is the discriminating case between the conservative and source-adapter paths.",
+    "confidence": 0.82,
+    "assumptions": [
+      "Value comparison is exact string equality with no case-folding or whitespace trimming beyond the newline delimiter.",
+      "Block tags [observed] and [/observed] must appear on their own lines and the block interior is the only parsed region.",
+      "Only revision/workload/environment/metric/winner are required; presence of other keys inside the block is not addressed by the policy and is assumed absent in these fixtures.",
+      "source.id is not a policy input and differences in it would not affect labels."
+    ],
+    "reasons": [
+      "C01|B|artifact, single well-formed block, all four fields byte-equal to target, exactly one winner B",
+      "C02|none|environment fixture-west mismatches target fixture-east",
+      "C03|none|source.kind is report, not artifact, regardless of block content",
+      "C04|A|artifact, single block, all four fields match, exactly one winner A",
+      "C05|A|block is well-formed with one winner A and matching fields; trailing 'winner: B' and 'revision: r99' are outside the block and by policy are not observed declarations",
+      "C06|none|no winner declaration inside the block",
+      "C07|none|two [observed] blocks present, policy requires exactly one",
+      "C08|none|workload two writers mismatches target six writers",
+      "C09|none|duplicate winner declarations A and B inside the block",
+      "C10|B|artifact, single block, all fields match, one winner B; identical to C01",
+      "C11|none|duplicate revision declarations r1 and r2 inside the block",
+      "C12|none|revision declaration missing from block while target requires r2"
+    ],
+    "risks": [
+      "A source-adapter reparse that tokenizes the full source text instead of only the block interior will label C05 none, producing a path disagreement that looks like extractor error but is actually a grammar ambiguity.",
+      "With C01 and C10 identical, the effective positive set is three distinct cases; any false-blocking rate estimate will have very wide uncertainty.",
+      "24 calls with a frozen prompt measure prompt stability at best; two runs per case cannot separate stochastic variance from systematic extractor bias.",
+      "No case exercises an unclosed block, a tag with trailing text on the same line, a value with trailing whitespace, or a key with different casing, so a lenient parser would pass all 12 and still be wrong in production.",
+      "Fixture-supplied, unauthenticated provenance means C03's 'report' kind is a label, not a verified property; a real adversary would simply set kind to artifact.",
+      "Positive winner values are balanced 2 A / 2 B, but negatives skew heavily toward 'none' (8/12), so a degenerate extractor that always emits none scores 67% and may look acceptable on aggregate metrics."
+    ],
+    "disagreements": [
+      "The brief frames C05 as unambiguous under 'lines outside the block are not observed declarations'; I would argue it is the single most valuable case and should be pre-registered as a deliberate path-divergence probe rather than folded into the positive set.",
+      "The brief treats the source-adapter path as 'never a silent repair', but if it re-derives the full answer from source without reference to the candidate, it is not a release path for the model output at all; it is an independent oracle, and the experiment then measures whether the model is redundant rather than whether it is correct.",
+      "Counting C10 as a distinct case inflates apparent coverage; it should be replaced, not retained."
+    ],
+    "missing_information": [
+      "The exact reference grammar used by the source-adapter path, in particular whether it is block-scoped and how it handles duplicate keys, ordering, casing, and whitespace.",
+      "Whether a reference parser has already been run on these 12 fixtures and what it outputs for C05.",
+      "The definition of the pre-registered false-blocking metric and the sample size deemed sufficient to detect a meaningful rate with only four positives.",
+      "What the 'frozen prior answer prompt' contains and whether it embeds any of the target field values, which would let the model reconstruct answers without reading the source.",
+      "Whether the 'strict JSON' and 'complete-fence-only' measurements share a single model call or are separate calls, which affects whether the 24-call budget is actually 48."
+    ]
+  },
+  "error": null
+}
