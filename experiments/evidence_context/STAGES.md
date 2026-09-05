@@ -27,6 +27,7 @@ no remote publication or backup is implied.
 | 18 — Canonical sources | Can immutable versions and exact citations preserve their boundaries? | `3502407` | `canonical_sources/runner.py`; GUIDE.md and council audit |
 | 19 — Scope before retrieval | Do existing readers enforce explicit context scope? | `3aa1b8a` | `scope_boundary/runner.py`; GUIDE.md and council audit |
 | 20 — StudyLoop consumers | Do scoped sources remain scoped in resume, extraction and history? | `36189ff` | `consumer_scope/runner.py`; GUIDE.md and council audit |
+| 21 — Attributable assessments | Can each progress report retain its input, scope and correction history? | `918d18f` | `learning_observations/runner.py`; GUIDE.md and council audit |
 
 Stage 3 uses its own lifecycle adapter and database schema. It does not modify the
 stage 1 evidence store, and does not require stage 1 demo output. Stage 2 uses
@@ -458,6 +459,39 @@ The full regression also drove test-configuration isolation fixes and found two
 existing hook-installer file-read races. Secrets tests now remove ambient key
 fallbacks; provider credentials were removed from subsequent broad test processes.
 No secrets appear in the learning guide or committed artifacts.
+
+## Stage 21 commands
+
+```sh
+uv run python -m experiments.evidence_context.learning_observations.runner --output /tmp/evidence-stage-21
+open /tmp/evidence-stage-21/walkthrough.html
+uv run pytest packages/agent-session-tools/tests/test_context_observations.py packages/studyloop/tests/test_context_consumer_scope.py experiments/evidence_context/tests/test_learning_observations.py -q
+```
+
+Checkpoint `918d18f` adds immutable source-linked observations, explicit manual
+ownership, correction history and scoped StudyLoop progress projections. Eight
+expandable views show separation, disagreement, contribution removal, correction
+and reclassification. The ordered input manifest proves what the adapter supplied;
+it does not establish claim-specific support or semantic correctness.
+
+Validation: 3,778 StudyLoop tests passed, four skipped and 704 deliberately
+excluded; 1,201 session-tools tests passed; 254 experiment tests passed with one
+optional dependency skip. The final transaction/metadata changes passed 30 focused
+checks. Final commit hooks passed lint, types, security checks and secrets scanning.
+Browser inspection confirmed eight sections, actual conflict expansion, viewport
+fit and no browser errors. These are workspace checks, not release acceptance.
+
+Both bounded council rounds returned two usable provider buckets. Fable returned
+invalid responses; Grok timed out in the first round. The guide records accepted
+concerns and rejected recommendations with code/test evidence. The review is
+explicitly limited, not three-provider agreement.
+See [learning_observations/GUIDE.md](learning_observations/GUIDE.md) and
+[learning_observations/COUNCIL-DECISION.md](learning_observations/COUNCIL-DECISION.md).
+
+Stage20 remains exactly reproducible at `36189ff`. On newer code its runner detects
+that source-linked writes are available. Its earlier explanation of note
+concatenation is corrected in the current guide: the old writer retained notes
+when a newer update omitted them.
 
 ## Production delivery direction
 

@@ -1,55 +1,58 @@
 {
   "goal": "active",
-  "previous_goal_turn": "progress: Stage19 explicit policy and Stage20 StudyLoop transcript consumers completed; source-linked learning ownership and remaining P01-P15 requirements still active",
-  "current_stage": "20 StudyLoop transcript consumer boundary complete as increment; source-linked learning ownership is next",
+  "previous_goal_turn": "progress: Stage21 source-linked observations, StudyLoop projections, concurrency tests and independently runnable lesson implemented and checkpointed; full production goal remains active",
+  "current_stage": "21 source-linked learning observations complete as increment; native capture, complete learner ownership and lifecycle integration remain",
   "requirements": {
-    "P01": "partial: v31/v32 additive migrations, atomic policy audit, unchanged old-DB preview and compaction policy-head copying tested; installed upgrade/restore audit remains",
+    "P01": "partial: v31-v33 additive schema, immutable observations and atomic dependency purge tested; installed upgrade/restore audit remains",
     "P02": "not yet proven",
-    "P03": "partial: source-owned contract and canonical immutable source/citation tests pass; trusted native parser and public adapters remain",
-    "P04": "partial: internal scoped lexical source lookup, exact version/offset citations and why-selected fields; rich retrieval/decision interfaces remain",
-    "P05": "partial: proposed correction/conflict links preserve both branches; decision applicability and semantic review remain",
-    "P06": "partial: core readers and StudyLoop transcript consumers covered; mixed resume/history fields withheld; full learner-state ownership and other derived readers remain",
+    "P03": "partial: code-owned origin/scope and input manifests preserve source identity/order; native parser integration and public decision contract remain",
+    "P04": "partial: source/citation store plus observation input manifests, scoped progress readers and authority labels; bounded public rich retrieval and complete temporal/applicability integration remain",
+    "P05": "partial: concurrent report branches, explicit supersession, conflict projection and no retired-head reactivation tested; semantic decision sufficiency remains",
+    "P06": "partial: canonical/legacy source reads and progress-derived consumers covered; native record linkage and ownership of teachback, study_sessions, bridges and other learner state remain",
     "P07": "not yet proven",
-    "P08": "partial: low-level tombstone insert suppression and direct canonical dependency cleanup tested; full purge, reimport, sync, restore and derived lifecycle remain",
+    "P08": "partial: canonical dependency deletion purges observations; exact replay and legacy fallback retirement tested; complete session purge, exporter, scoped sync, restore and other indexes remain",
     "P09": "not yet proven",
     "P10": "not yet proven",
     "P11": "not yet proven",
     "P12": "not yet proven",
-    "P13": "partial: actual StudyLoop resume/extractor/history functions, CLI subprocess and MCP stdio tests pass; rich canonical context at installed agent startup remains",
-    "P14": "stages1-20 checkpointed with runnable guides and council arbitration; Stage8 exercise unchanged",
-    "P15": "partial: 3770 StudyLoop,1190 session-tools,253 experiment tests pass; installed/native/scoped-sync/deletion/full release review remain"
+    "P13": "partial: real StudyLoop progress writes/read projections, CLI/MCP consumer tests and subprocess lessons pass; installed agent startup with rich canonical context remains",
+    "P14": "stages1-21 checkpointed with runnable guides and council arbitration; Stage8 exercise unchanged",
+    "P15": "partial: 3778 StudyLoop full regression,1201 session-tools,254 experiment tests pass;30 final focused checks pass; release packaging/native/scoped-sync/deletion and strong independent review remain"
   },
   "completed_checkpoints": {
     "stage16": "6c736c5",
     "stage17": "106b65a",
     "stage18": "3502407",
     "stage19": "3aa1b8a",
-    "stage20": "36189ff"
+    "stage20": "36189ff",
+    "stage21": "918d18f"
   },
   "current_findings": [
-    "Stage19 3aa1b8a protects core historical readers using explicit scope and policy/body snapshots.",
-    "Stage20 actual StudyLoop readers keep newer work transcripts out of personal context; real MCP stdio checks config drift on the next request.",
-    "Global learning aggregates can mix notes from several sources; their latest-source pointer cannot establish ownership of the whole row.",
-    "Classified resume/history/stats/wins withhold those unowned fields, and extraction refuses classified aggregate writes before calling the provider.",
-    "The evaluator marks inaccessible sessions as unavailable; frozen scoring still must be interpreted alongside those errors.",
-    "Fable/Qwen/Mistral reviewed Stage20; Grok timed out. Accepted scoped-write refusal and clear direct-ID errors. Next use source-linked observations and rebuildable scoped projections.",
-    "Broader regression caught a fixture overriding unrelated config, transaction-test-double omissions, two old installer read races and ambient secrets fallback. Corrections and sanitized rerun pass."
+    "Stage21 918d18f stores immutable observations and dependencies in the independent memory package; StudyLoop owns confidence projection.",
+    "Legacy progress retained notes when newer calls omitted notes; it did not concatenate them. The Stage20 guide now corrects the mechanism.",
+    "New progress writes preserve input manifests and do not mirror content into the unowned aggregate. Work/personal views filter every contributing source.",
+    "Provider calls run outside a DB transaction. Subsequent immediate transaction rechecks access; provider-time policy/deletion changes leave no result/evidence writes.",
+    "Concurrent incompatible reports remain explicit; minimum confidence is a scheduling cue, not semantic arbitration. Recorded assessment time is distinct from source study time.",
+    "Local observation retirement prevents reactivation of prior heads and legacy fallback. Full source forgetting/sync/restore remains required.",
+    "Two council rounds returned only Qwen/Mistral; Fable produced invalid responses and Grok timed out. Review coverage is limited, not release approval.",
+    "Accepted review concerns on manifest semantics, transaction ownership and atomicity tests. Rejected holding a write lock throughout provider I/O based on actual tests and SQLite documentation."
   ],
   "next_actions": [
-    "Implement source-linked learning observations and rebuildable scoped projections. Preserve legacy rows unclassified; do not assign ownership from the latest source pointer.",
-    "Prove same-concept work/personal separation, source reclassification and forgetting one contribution; extend ownership across remaining learner tables/readers/writers.",
-    "Integrate native capture identities/receipts/health and validate real archives read-only.",
-    "Implement versioned scope-restricted sync plus complete managed forgetting/restore and derived lifecycle.",
-    "Finish shared install/doctor/skills, installed StudyLoop journeys, packaging and P01-P15 release audit."
+    "Integrate canonical native source capture and receipt/health telemetry for real Codex, Claude Code, Kiro and Grok archives, including capability-specific desktop evidence.",
+    "Complete ownership and projection of remaining StudyLoop learner tables; preserve assessment/source time distinctions in scheduling and presentation.",
+    "Implement versioned per-peer scoped sync and full managed forgetting/reimport/restore/index lifecycle; observation-only retirement is insufficient.",
+    "Expose bounded rich context/decision CLI and MCP with exact supporting citations, conflicts, provenance, target/revision applicability and capture health.",
+    "Finish shared selectable install/doctor/skills, installed package journeys, packaging and P01-P15 release audit with independent review."
   ],
   "verification": {
-    "package_tests": "1190 passed",
-    "experiment_tests": "253 passed,1 optional dependency skip",
-    "workspace_pyright": "0 errors",
-    "commit_hooks": "Stage19 3aa1b8a and Stage20 36189ff passed all hooks including secrets scan,bandit,workspace pyright",
-    "browser": "Stage20 eight sections, personal expansion, missing-lineage status and mobile fit; no browser errors",
-    "studyloop_tests": "3770 passed,4 skipped,704 deselected",
-    "focused_consumer_tests": "11 passed, including real MCP stdio"
+    "package_tests": "1201 passed; final affected observation tests included in30 focused checks",
+    "experiment_tests": "254 passed,1 optional dependency skip",
+    "workspace_pyright": "0 errors; final checkpoint commit hook passed",
+    "commit_hooks": "918d18f passed all hooks including secrets scan,bandit,workspace pyright",
+    "browser": "Stage21 eight sections, conflict expansion, viewport fit and no browser errors; final generated artifact rerun after metadata additions",
+    "studyloop_tests": "3778 passed,4 skipped,704 deselected; final additional transaction test and metadata changes covered by30 focused checks",
+    "focused_consumer_tests": "30 final focused checks across observation store, actual StudyLoop consumers and subprocess lesson",
+    "artifact": "studyloop-private/reviews/2026-09-06-stage21-observations/demo-final/walkthrough.html"
   },
   "operational_notice": "A secrets test printed an ambient API key in private failure output; tests now isolate fallback variables. Owner should rotate that key; no value saved in this status or learning artifacts."
 }
