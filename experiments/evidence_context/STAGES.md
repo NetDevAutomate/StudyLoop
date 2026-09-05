@@ -11,6 +11,7 @@ no remote publication or backup is implied.
 | 2 — Shared context requirements | What must StudyLoop and a standalone consumer both guarantee? | `46442cb` | `tests/test_shared_context_requirements.py`; REQUIREMENTS.md. This is an executable contract stage, not a separate visual demo. |
 | 3 — Correction and forgetting | Can offline replicas converge without resurrecting forgotten content? | `b44145a` | `python -m experiments.evidence_context.lifecycle_demo`; STUDY-GUIDE.md |
 | 4 — Capture health | Does configured capture actually yield recent history? | `ae2b250` | `python -m experiments.evidence_context.capture_health`; capture_health/GUIDE.md and COUNCIL-DECISION.md |
+| 5 — Retrieval measurement | Does returned context contain the required evidence? | `1b9a658` | `python -m experiments.evidence_context.retrieval_eval`; retrieval_eval/GUIDE.md, EXPLANATION-RUBRIC.md and COUNCIL-DECISION.md |
 
 Stage 3 uses its own lifecycle adapter and database schema. It does not modify the
 stage 1 evidence store, and does not require stage 1 demo output. Stage 2 uses
@@ -75,17 +76,25 @@ Checkpoint `ae2b250` can be opened in a detached worktree using the same procedu
 The council reconsidered the order using all four stages' evidence. See
 [capture_health/COUNCIL-DECISION.md](capture_health/COUNCIL-DECISION.md).
 
-## Revised planned stages — not implemented
+## Stage 5 commands
 
-5. Held-out retrieval-value evaluation before more integration: frozen local
-   questions/labels, keyword and relationships, shuffled-link control, explicit
-   missing-evidence cases, matched budgets and measured costs. No efficacy claims
-   from synthetic scaffolding or previously explored development cases.
-6. Use those results and a further council review to choose lifecycle-to-evidence
-   integration versus installed-package ownership tests. Both remain required
-   before production; neither is silently considered complete.
-7. Engine comparison only if measurements justify it. Capture health still needs
-   live detection and coverage watermarks before it can substantiate real history.
+```sh
+uv run python -m experiments.evidence_context.retrieval_eval --output /tmp/evidence-stage-5
+uv run --group dev pytest experiments/evidence_context/tests/test_retrieval_eval.py -q
+```
 
-The stage-4 council reviewed cross-stage results and stage-4 source. A full diverse
-implementation review of stage 3 remains outstanding before promotion.
+Checkpoint `1b9a658` preserves the runnable synthetic evaluator. It accepts a
+separate dataset, but independent real held-out labels and efficacy are not yet
+established. See retrieval_eval/HOLDOUT-PROTOCOL.md for that next evidence gate.
+
+## Next evidence gate, then further stages
+
+Prepare 3–5 disjoint real questions with independent pre-result evidence labels.
+The current synthetic run validates the scorer only. Retain the user's separate
+explanation/learning rubric for a later blinded answering evaluation. Council
+review of stage 5 did not justify changing engines or proceeding to integration.
+
+After real results, choose lifecycle-to-evidence integration versus installed
+package ownership tests. Both remain required before production. Capture health
+still needs live detection and coverage watermarks. A full diverse implementation
+review of stage 3 also remains outstanding before promotion.
