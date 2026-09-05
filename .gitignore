@@ -590,6 +590,10 @@ playwright/snapshots/*
 MagicMock/
 # Tavily skill installs dropped by harness plugins (tool artefacts, not project content)
 .agents/
+# Same reasoning for zcode's generated opsx command/skill installs: they mirror
+# the OpenSpec Plus set already tracked under .pi/, so tracking them again would
+# duplicate generated content once per AI tool.
+.zcode/
 # .pi holds BOTH tool artefacts and 12 deliberately-tracked OpenSpec files, so it
 # uses the `dir/*` form rather than `dir/`: git cannot re-include anything whose
 # parent directory is excluded by a trailing-slash pattern, which made the
