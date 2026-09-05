@@ -17,6 +17,7 @@ no remote publication or backup is implied.
 | 8 — Decision contract | Which sources apply, and what decision do they justify? | `f7f6796` | `python -m experiments.evidence_context.decision_contract`; decision_contract/GUIDE.md, RESULTS.md and expandable HTML walkthrough |
 | 9 — Code-owned release | Can model drafts override missing metadata or enter released prose? | `d7a9c8f` | `python -m experiments.evidence_context.acceptance_gate`; acceptance_gate/GUIDE.md, RESULTS.md and replay walkthrough |
 | 10 — Metadata value | Does source-backed metadata improve decisions? | `620090a` | `python -m experiments.evidence_context.metadata_value`; metadata_value/GUIDE.md, RESULTS.md and actual-answer replay |
+| 11 — Source to decision | Can code enforce evidence requirements without blocking justified choices? | `e1428be` | `python -m experiments.evidence_context.source_decision`; source_decision/GUIDE.md, RESULTS.md and saved learning walkthrough |
 
 Stage 3 uses its own lifecycle adapter and database schema. It does not modify the
 stage 1 evidence store, and does not require stage 1 demo output. Stage 2 uses
@@ -172,14 +173,37 @@ introduced a report-only regression. All conditions failed duplicate revision. T
 are development category scores, not validated answer quality. All 173 experiment
 tests passed. See the council decision for review coverage and limitations.
 
+## Stage 11 commands
+
+```sh
+uv run python -m experiments.evidence_context.source_decision --output /tmp/evidence-stage-11
+uv run python -m experiments.evidence_context.source_decision.viewer --input experiments/evidence_context/source_decision/observations --output /tmp/evidence-stage-11-learning.html
+open /tmp/evidence-stage-11-learning.html
+uv run python -m experiments.evidence_context.source_decision --replay experiments/evidence_context/source_decision/observations --output /tmp/evidence-stage-11-replay
+uv run --group dev pytest experiments/evidence_context/tests/test_source_decision.py -q
+```
+
+Checkpoint `e1428be` preserves twelve condition checks across eleven source/target
+pairs, with pre-run model-reviewed labels and one recorded dissent. The 24 draft calls
+produced 23 valid advisory decisions, including four unsupported choices on old cases.
+The matched-candidate gate withheld four justified outputs; explicit source rederivation
+matched all twelve condition labels, independently of model prose. Repeat policy outputs
+are not additional independent checks. The fresh cases had 17 valid correct advisory
+responses and one parsing failure. This is conformance, not efficacy or authenticity.
+
+All 201 evidence-context tests passed. All three providers labelled before execution;
+result review had one full-packet responder and two responders to a focused compact
+retry, insufficient for three-provider result consensus. The guide explains all
+limitations and the intentionally identical-source omission control.
+
 ## Next evidence gate, then further stages
 
-Independently annotate the metadata pilot's failure cases, including quote origin,
-then connect source correspondence checks to the code-owned acceptance boundary as
-a separate adapter stage. Keep source kind, scope applicability and decision permission
-separate. Challenge unsupported acceptance and false rejection with positive controls.
-The policy needs independent checking: consistent execution does not establish its
-correctness. See [metadata_value/COUNCIL-DECISION.md](metadata_value/COUNCIL-DECISION.md).
+Before integration, independently label a bounded set of parser-boundary examples and
+check declaration/span agreement, valid inputs, false blocking and locator integrity.
+Then inspect a small read-only real-source sample for capture provenance and available
+metadata before general conversation extraction or storage-engine comparison. Human
+review of explanation usefulness remains necessary. See
+[source_decision/COUNCIL-DECISION.md](source_decision/COUNCIL-DECISION.md).
 No DSPy integration, production prompt promotion or database-engine selection yet.
 
 Keep the real 3–5 disjoint-question pilot with independent pre-result labels as the
