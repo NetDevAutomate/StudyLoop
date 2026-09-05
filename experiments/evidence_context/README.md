@@ -64,3 +64,10 @@ integration remain unrun gates; scope reclassification is explicitly rejected.
 ## Revisit an individual stage
 
 [STAGES.md](STAGES.md) lists independent entry points, immutable commit checkpoints, exact run commands and the convention for keeping future stages reproducible.
+
+## Stage 4: capture health
+
+[Guide and runnable demo](capture_health/GUIDE.md) distinguish configured hooks,
+observed imports, failures and unknown coverage. [Council decision](capture_health/COUNCIL-DECISION.md)
+uses data from all four stages and moves held-out retrieval evaluation ahead of
+installation work. All three providers responded successfully this round.

@@ -74,3 +74,12 @@ The adapter does not exercise production sync, source identity reconciliation,
 backup restore, real vectors, the earlier evidence graph, health or installer
 contracts. REQUIREMENTS.md marks these remaining gaps explicitly. No production
 DBs or harness configuration were changed.
+
+## Stage 4 cross-stage council review
+
+All three providers returned valid responses on a brief containing measured
+stage 1–3 results/limits and stage 4 source/tests. The coordinator accepts their
+shared direction to measure retrieval value before additional integration.
+See capture_health/COUNCIL-DECISION.md for provenance, disagreements, corrections
+and the stage-5 decision. Post-review local validation reaches 98 tests; it is
+not a new review of the earlier lifecycle implementation.
