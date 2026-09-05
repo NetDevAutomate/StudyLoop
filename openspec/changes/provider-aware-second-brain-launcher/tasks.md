@@ -6,9 +6,9 @@
 
 ## 2. Configured providers resolve to exact and honest launch targets
 
-- [ ] 2.1 Add the immutable provider-neutral launch target and resolver, verified by the full none/Obsidian/xTiles truth table, the disabled-target invariant, and an import-boundary test proving launch policy has no provider-backend, network, web, or subprocess dependency.
-- [ ] 2.2 Enforce exact Obsidian containment, fallback, percent encoding, read-only-vault, and locality behavior, verified by path, symlink, reserved-character, Unicode, and remote/unknown tests.
-- [ ] 2.3 Preserve the exact SecondBrain protocol and BrainDescription contracts, verified by the existing protocol and provider factory regression suites.
+- [x] 2.1 Add the immutable provider-neutral launch target and resolver, verified by the full none/Obsidian/xTiles truth table, the disabled-target invariant, and an import-boundary test proving launch policy has no provider-backend, network, web, or subprocess dependency.
+- [x] 2.2 Enforce exact Obsidian containment, fallback, percent encoding, read-only-vault, and locality behavior, verified by path, symlink, reserved-character, Unicode, and remote/unknown tests.
+- [x] 2.3 Preserve the exact SecondBrain protocol and BrainDescription contracts, verified by the existing protocol and provider factory regression suites.
 
 ## 3. Browser clients can read safe launch state without gaining write authority
 
