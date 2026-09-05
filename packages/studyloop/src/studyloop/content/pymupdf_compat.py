@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import atexit
 import contextlib
-import gc
 import sys
 import warnings
 
@@ -39,11 +38,6 @@ def _label_swig_types() -> None:
     for module_name, module in tuple(sys.modules.items()):
         if module_name.startswith("pymupdf") and module is not None:
             values.extend(vars(module).values())
-    # Some document operations retain wrappers only inside the extension, not
-    # through a module global. Type objects are GC-tracked even when instances
-    # are not, so include the collector's inventory.
-    values.extend(gc.get_objects())
-
     for value in values:
         swig_type = _candidate_swig_type(value)
         if swig_type is None or swig_type in seen:
