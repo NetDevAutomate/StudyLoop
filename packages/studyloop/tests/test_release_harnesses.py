@@ -67,13 +67,14 @@ def test_pi_adapter_is_a_complete_release_adapter() -> None:
     assert callable(ADAPTER.launch_cmd)
 
 
-def test_pi_context_has_no_unmet_mcp_or_side_file_dependency() -> None:
+def test_pi_context_has_query_fallback_without_unmet_mcp_dependency() -> None:
     from pathlib import Path
 
     path = Path(__file__).resolve().parents[3] / "agents/pi/AGENTS.md"
     text = path.read_text(encoding="utf-8")
 
-    assert "session_search" not in text
+    assert "studyloop-session-memory" in text
+    assert "session_search" in text
+    assert "session-query search" in text
+    assert "when its MCP server is connected" in text
     assert "./session-db.md" not in text
-    assert "studyloop resume" in text
-    assert "studyloop struggles" in text

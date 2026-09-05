@@ -249,15 +249,21 @@ def _apply_fixes(results: list[CheckResult]) -> list[str]:
         actions.append(f"refreshed agent definitions ({changed} changes)")
 
     if needs("harness"):
-        # The session-export steering mandate + Claude Stop hook are deployed
-        # by install_agent_definitions (mandate + hook merge). Run it directly
-        # so the harness fix works even when the agents category is clean.
-        from studyloop.installers import install_claude_stop_hook, install_session_db_mandate
-
+        # Use the same top-level installers as `studyloop install tools/agents`
+        # so executables, query skills, steering and native hooks cannot drift
+        # into separate partial fix paths.
         repo_root = require_repo_root()
-        mandate = sum(install_session_db_mandate(repo_root).values())
-        hook = install_claude_stop_hook()
-        actions.append(f"wired session-export ({mandate} steering mandate(s), {hook} Claude hook)")
+        if any(
+            result.category == "harness"
+            and result.name.startswith("session_memory_executable_")
+            and result.status in ("warn", "fail")
+            for result in results
+        ):
+            install_workspace_tools(repo_root, sync_workspace=True, force=True)
+            actions.append("reinstalled session-memory tools")
+        summary = install_agent_definitions(repo_root)
+        changed = sum(summary.values())
+        actions.append(f"wired session memory ({changed} skill/hook/config changes)")
 
     if any(
         r.category == "updates" and r.status in ("warn", "fail") and r.fix_auto for r in results

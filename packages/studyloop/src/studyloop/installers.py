@@ -28,9 +28,9 @@ class LinkSpec:
 
     Two links in a chain rather than several in parallel, because the alternative
     drifts. With parallel links, adding a harness means another repo-relative row,
-    and Codex -- which reads ``~/.agents/skills`` natively -- would get a redundant
-    second path to the same skill. With a hub, Codex is served by the hub alone and
-    every other harness is one link away from the same bytes.
+    and harnesses that already read ``~/.agents/skills`` (Codex, OpenCode, pi)
+    would get redundant paths. With a hub, those three are served directly and
+    only Kiro/Claude need native-directory links.
     """
 
     source: str
@@ -69,9 +69,19 @@ _TOOL_LINKS: dict[str, tuple[LinkSpec, ...]] = {
             "agents/opencode/study-mentor.md",
             str(_HOME / ".config/opencode/agents/study-mentor.md"),
         ),
+        LinkSpec(
+            "agents/opencode/plugins/studyloop-session-export.js",
+            str(_HOME / ".config/opencode/plugins/studyloop-session-export.js"),
+        ),
     ),
     "codex": (LinkSpec("agents/codex/AGENTS.md", "{repo_root}/AGENTS.md"),),
-    "pi": (LinkSpec("agents/pi/AGENTS.md", str(_HOME / ".pi/agent/AGENTS.md")),),
+    "pi": (
+        LinkSpec("agents/pi/AGENTS.md", str(_HOME / ".pi/agent/AGENTS.md")),
+        LinkSpec(
+            "agents/pi/extensions/studyloop-session-export.ts",
+            str(_HOME / ".pi/agent/extensions/studyloop-session-export.ts"),
+        ),
+    ),
 }
 
 #: The canonical location of the xTiles wind-down skill, and the name every
@@ -80,9 +90,18 @@ _TOOL_LINKS: dict[str, tuple[LinkSpec, ...]] = {
 #: path, so the hub is a directory those two already look in.
 XTILES_SKILL_NAME = "studyloop-xtiles-wind-down"
 XTILES_SKILL_HUB = _HOME / ".agents/skills" / XTILES_SKILL_NAME
+SESSION_MEMORY_SKILL_NAME = "studyloop-session-memory"
+SESSION_MEMORY_SKILL_HUB = _HOME / ".agents/skills" / SESSION_MEMORY_SKILL_NAME
 
 _SHARED_LINKS: tuple[LinkSpec, ...] = (
     LinkSpec("agents/shared", str(_HOME / ".agents/shared")),
+    # Session memory is a release-harness invariant, not provider-specific.
+    # Codex, OpenCode and pi discover ~/.agents/skills directly; Kiro and
+    # Claude receive links from their documented native skill directories.
+    LinkSpec(
+        f"agents/skills/{SESSION_MEMORY_SKILL_NAME}",
+        str(SESSION_MEMORY_SKILL_HUB),
+    ),
     # The skill itself, installed once. Opt-in and self-gating: inert unless the
     # learner's provider is xtiles AND an `xtiles` MCP server is connected, so
     # installing it unconditionally costs a silent file rather than an unwanted
@@ -91,29 +110,36 @@ _SHARED_LINKS: tuple[LinkSpec, ...] = (
     LinkSpec(f"agents/skills/{XTILES_SKILL_NAME}", str(XTILES_SKILL_HUB)),
 )
 
-#: Each harness's own skills directory, for the ones whose location is documented.
-#: pi is absent on purpose: no pi skills directory is documented, so it gets a
-#: self-gated paragraph in its AGENTS.md instead of a link to a guessed path.
-#: OpenCode is absent too (2026-09-04 review, Q2): it lists ``~/.agents/skills``
-#: — the hub itself — as a global search path, so a second link into
-#: ``~/.config/opencode/skills`` was redundant at best, and whether OpenCode
-#: de-duplicates two hits by name is unverified.
+#: Each harness's own skills directory, only where an extra link is needed.
+#: Codex, OpenCode and pi are absent because all three officially discover the
+#: shared ``~/.agents/skills`` hub directly; duplicate native-directory links
+#: would create two discovery paths to the same skill.
 XTILES_SKILL_LINKS: dict[str, LinkSpec] = {
     "kiro": LinkSpec(str(XTILES_SKILL_HUB), str(_HOME / ".kiro/skills" / XTILES_SKILL_NAME)),
     "claude": LinkSpec(str(XTILES_SKILL_HUB), str(_HOME / ".claude/skills" / XTILES_SKILL_NAME)),
 }
 
+SESSION_MEMORY_SKILL_LINKS: dict[str, LinkSpec] = {
+    "kiro": LinkSpec(
+        str(SESSION_MEMORY_SKILL_HUB),
+        str(_HOME / ".kiro/skills" / SESSION_MEMORY_SKILL_NAME),
+    ),
+    "claude": LinkSpec(
+        str(SESSION_MEMORY_SKILL_HUB),
+        str(_HOME / ".claude/skills" / SESSION_MEMORY_SKILL_NAME),
+    ),
+}
+
 _AGENT_CHOICES = RELEASE_HARNESSES
 
 # ---------------------------------------------------------------------------
-# Cross-harness session-export wiring (W4)
+# Cross-harness session-memory wiring
 # ---------------------------------------------------------------------------
 #
 # The session DB is the single source of truth for cross-harness struggle
-# tracking. Each harness needs a steering-file mandate telling its agent to
-# run `session-export` at session end; Claude Code additionally gets a Stop
-# hook so export happens automatically. Codex carries the same mandate directly
-# in its installed ``AGENTS.md``, so it does not need a second steering file.
+# tracking. Every release harness gets the canonical query skill plus a native
+# automatic export hook. Steering mandates remain belt-and-braces reminders;
+# Codex carries that reminder directly in its installed AGENTS.md.
 
 
 @dataclass(frozen=True, slots=True)
@@ -136,6 +162,24 @@ _HARNESS_EXPORT: dict[str, _HarnessExport] = {
 _MANDATE_SENTINEL = "studyloop:session-export-mandate"
 # Sentinel inside the Claude Stop hook command (idempotent merge + doctor check).
 _HOOK_SENTINEL = "session-export --claude-only"
+_SESSION_HOOK_SENTINEL = "studyloop:session-export-hook"
+_CODEX_HOOK_SENTINEL = "session-export --codex-only"
+
+
+def _codex_hooks_path() -> Path:
+    return _HOME / ".codex/hooks.json"
+
+
+def _kiro_agent_path() -> Path:
+    return _HOME / ".kiro/agents/study-mentor.json"
+
+
+def _opencode_hook_path() -> Path:
+    return _HOME / ".config/opencode/plugins/studyloop-session-export.js"
+
+
+def _pi_hook_path() -> Path:
+    return _HOME / ".pi/agent/extensions/studyloop-session-export.ts"
 
 
 def _render_mandate(repo_root: Path, export_flag: str) -> str:
@@ -181,21 +225,26 @@ def install_claude_stop_hook() -> int:
     import json
 
     settings_path = _HOME / ".claude/settings.json"
-    if not settings_path.exists():
-        return 0  # no Claude settings to merge into; nothing to do
-    try:
-        data = json.loads(settings_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return 0
-    if not isinstance(data, dict):
-        return 0
+    data: dict = {}
+    if settings_path.exists():
+        try:
+            loaded = json.loads(settings_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise InstallError(
+                f"Cannot merge Claude hook into malformed {settings_path}: {exc}"
+            ) from exc
+        if not isinstance(loaded, dict):
+            raise InstallError(f"Cannot merge Claude hook: {settings_path} is not a JSON object")
+        data = loaded
+    else:
+        settings_path.parent.mkdir(parents=True, exist_ok=True)
 
     hooks = data.setdefault("hooks", {})
     if not isinstance(hooks, dict):
-        return 0
+        raise InstallError(f"Cannot merge Claude hook: {settings_path} hooks is not an object")
     stop = hooks.setdefault("Stop", [])
     if not isinstance(stop, list):
-        return 0
+        raise InstallError(f"Cannot merge Claude hook: {settings_path} hooks.Stop is not a list")
 
     # Idempotency: bail if any existing Stop hook already runs session-export.
     for group in stop:
@@ -217,6 +266,56 @@ def install_claude_stop_hook() -> int:
         }
     )
     settings_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    return 1
+
+
+def install_codex_session_end_hook() -> int:
+    """Merge StudyLoop's SessionEnd hook into ``~/.codex/hooks.json``.
+
+    Codex loads global hooks from this file for CLI and app sessions. Existing
+    hook groups are preserved; StudyLoop owns only the command carrying its
+    sentinel. Codex asks the user to trust new command-hook hashes before the
+    first execution — the installer cannot and must not bypass that review.
+    """
+    import json
+
+    path = _codex_hooks_path()
+    data: dict = {}
+    if path.exists():
+        try:
+            loaded = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise InstallError(f"Cannot merge Codex hook into malformed {path}: {exc}") from exc
+        if not isinstance(loaded, dict):
+            raise InstallError(f"Cannot merge Codex hook: {path} is not a JSON object")
+        data = loaded
+    else:
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+    hooks = data.setdefault("hooks", {})
+    if not isinstance(hooks, dict):
+        raise InstallError(f"Cannot merge Codex hook: {path} hooks is not an object")
+    groups = hooks.setdefault("SessionEnd", [])
+    if not isinstance(groups, list):
+        raise InstallError(f"Cannot merge Codex hook: {path} hooks.SessionEnd is not a list")
+
+    for group in groups:
+        for hook in (group or {}).get("hooks", []) if isinstance(group, dict) else []:
+            if _CODEX_HOOK_SENTINEL in str(hook.get("command", "")):
+                return 0
+
+    groups.append(
+        {
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": f"{_CODEX_HOOK_SENTINEL} >/dev/null 2>&1 || true",
+                    "timeout": 3,
+                }
+            ]
+        }
+    )
+    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
     return 1
 
 
@@ -420,16 +519,22 @@ def install_agent_definitions(
         # hub exists before anything points at it.
         if skill_link := XTILES_SKILL_LINKS.get(tool):
             summary[tool] += _link_paths(repo_root, (skill_link,), uninstall=uninstall)
+        if memory_link := SESSION_MEMORY_SKILL_LINKS.get(tool):
+            summary[tool] += _link_paths(repo_root, (memory_link,), uninstall=uninstall)
         if tool == "claude":
             summary[tool] += _configure_claude(repo_root, uninstall=uninstall)
 
-    # Cross-harness session-export wiring: steering mandate for every detected
-    # harness + a Stop hook for Claude. Skipped on uninstall.
+    # Cross-harness session-memory wiring: query skill links/static native
+    # hooks were installed above; add steering mandates and merge the two
+    # user-owned JSON hook registries without replacing existing groups.
+    # Skipped on uninstall so user-owned JSON is never destructively rewritten.
     if not uninstall:
         for tool, count in install_session_db_mandate(repo_root, tools=selected).items():
             summary[tool] = summary.get(tool, 0) + count
         if "claude" in selected:
             summary["claude"] = summary.get("claude", 0) + install_claude_stop_hook()
+        if "codex" in selected:
+            summary["codex"] = summary.get("codex", 0) + install_codex_session_end_hook()
 
     return summary
 

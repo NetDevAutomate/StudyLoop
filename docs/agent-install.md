@@ -92,13 +92,57 @@ Two separate mechanisms write two separate sets of files, at two different times
 
 Either path gets you the same mentor behaviour. StudyLoop does not choose or hard-code an OpenCode model; your working OpenCode provider and model remain authoritative.
 
-Both copies of the mentor definition carry the same self-gated xTiles line as Codex's, and OpenCode also gets the `studyloop-xtiles-wind-down` skill at `~/.config/opencode/skills/`, symlinked to the shared copy described below.
+Both copies of the mentor definition carry the same self-gated xTiles line as
+Codex's. OpenCode reads the shared `~/.agents/skills/` hub directly, so the
+installer does not create a redundant `~/.config/opencode/skills/` link.
 
 ### pi
 
 pi reads the project `AGENTS.md` and resumes through its native `--continue` option. Its session-export mandate writes real pi sessions to StudyLoop’s session database; it does not generate fixture or placeholder progress.
 
-Its `AGENTS.md` carries the same self-gated xTiles line, and like every other harness it says nothing about xTiles unless your provider is `xtiles` and an `xtiles` MCP server is connected.
+Its `AGENTS.md` carries the same self-gated xTiles line. pi discovers the
+shared `~/.agents/skills/` hub natively, so both the xTiles wind-down skill and
+the session-memory skill are available without a duplicate link.
+
+## Session memory and automatic export
+
+`studyloop install agents` installs one canonical
+`studyloop-session-memory` skill into `~/.agents/skills/`. Codex, OpenCode and
+pi discover that hub directly; Kiro and Claude receive links from their native
+skill directories. The skill prefers the `session_search` MCP tool and falls
+back to the installed `session-query` CLI, so a missing MCP registration never
+silently disables retrieval.
+
+The installer also installs a real lifecycle hook for every release harness:
+
+| Harness | Automatic export hook | Query path |
+|---|---|---|
+| Kiro CLI | `stop` hook in the global `study-mentor` agent | bundled `session-db-mcp`, plus skill fallback |
+| Codex | global `~/.codex/hooks.json` `SessionEnd` hook | shared skill + `session-query` |
+| Claude Code | global `~/.claude/settings.json` `Stop` hook | native skill link + `session-query` |
+| OpenCode | global plugin, `session.idle` event | shared skill + `session-query` |
+| pi | global extension, `session_shutdown` event | shared skill + `session-query` |
+
+All hooks run `session-export --<harness>-only` best-effort and never block
+session close. Codex reviews and trusts a newly installed command-hook hash on
+first use; StudyLoop does not bypass that security prompt.
+
+Check both layers (skill/query and hook/export), or repair them, with:
+
+```bash
+studyloop doctor --category harness
+studyloop doctor --category harness --fix
+```
+
+### Desktop applications
+
+Codex's official hook configuration is global (`~/.codex/hooks.json`) and is
+used by Codex sessions that load that config, including the Codex app. Claude
+Code's hook is installed into Claude Code's own `~/.claude/settings.json`.
+The consumer **Claude Desktop** application is a different product: this repo
+has no evidence that it supports Claude Code hooks or writes Claude Code's
+session store, so StudyLoop does not claim or fake support for it. Doctor
+reports only evidence-backed coding-harness integrations.
 
 ## Data integrity
 
@@ -120,33 +164,25 @@ For a clean removal:
 studyloop install agents --uninstall
 ```
 
-## One skill, symlinked into every harness
+## Shared skill hub
 
-The `studyloop-xtiles-wind-down` skill is installed **once**, into
-`~/.agents/skills/studyloop-xtiles-wind-down/`. Each harness's own skills directory
-is then a symlink to that one directory:
+StudyLoop installs canonical skills once under `~/.agents/skills/`:
 
 ```text
-~/.agents/skills/studyloop-xtiles-wind-down/   <- the only copy
-├── SKILL.md
-└── references/harnesses.md
-
-~/.kiro/skills/studyloop-xtiles-wind-down             -> the directory above
-~/.claude/skills/studyloop-xtiles-wind-down           -> the directory above
-~/.config/opencode/skills/studyloop-xtiles-wind-down  -> the directory above
+~/.agents/skills/
+├── studyloop-session-memory/
+│   └── SKILL.md
+└── studyloop-xtiles-wind-down/
+    ├── SKILL.md
+    └── references/harnesses.md
 ```
 
-`~/.agents/skills/` is not something StudyLoop made up: Codex reads it as its
-user-scope skills location and OpenCode lists it as a global search path. So Codex
-is served by that one directory with no link at all, and every other harness is one
-symlink away from exactly the same bytes.
+Codex, OpenCode and pi discover this directory directly. Kiro and Claude use
+symlinks from `~/.kiro/skills/` and `~/.claude/skills/`. One body per skill
+means an update reaches every supported harness without copy drift.
 
-Two consequences worth knowing. An edit to the skill reaches every harness at once,
-so they cannot drift apart — which matters here, because the rule the skill encodes
-is "offer once, only behind both gates, otherwise stay silent". And
-`studyloop install agents --uninstall` removes the links and the shared copy
-together.
-
-pi is the exception: no pi skills directory is documented anywhere, so pi gets the
-self-gated paragraph in its `AGENTS.md` and nothing else. If that changes, pi joins
-the list above.
+The xTiles skill remains self-gating: it is silent unless the configured
+second-brain provider is xTiles and an xTiles MCP server is connected. The
+session-memory skill is always relevant: it queries at session start and names
+the matching export command, while native hooks provide the automatic
+end-of-session safety net.

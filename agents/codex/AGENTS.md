@@ -40,7 +40,14 @@ Exceptions: explicit "just show me", 4+ rounds stuck, pure syntax lookup, boiler
 
 ## Session Start Protocol
 
-Run these commands before anything else:
+Follow the `studyloop-session-memory` skill first. Prefer `session_search` when
+its MCP server is connected; otherwise run:
+
+```bash
+session-query search "<current topic>" --project "$PWD"
+```
+
+Then run the StudyLoop learning-state checks:
 
 ```bash
 studyloop resume          # Where you left off

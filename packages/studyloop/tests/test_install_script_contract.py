@@ -31,6 +31,15 @@ def test_install_script_smoke_checks_run_self_test_json() -> None:
     assert "python3 -m json.tool" in script_text
 
 
+def test_install_script_smoke_checks_all_session_memory_commands() -> None:
+    repo_root = Path(__file__).resolve().parents[3]
+    script_text = (repo_root / "scripts/install.sh").read_text()
+
+    assert "session-export --help" in script_text
+    assert "session-query --help" in script_text
+    assert "command -v session-db-mcp" in script_text
+
+
 def test_install_script_help_documents_supported_flags() -> None:
     repo_root = Path(__file__).resolve().parents[3]
     script = repo_root / "scripts" / "install.sh"

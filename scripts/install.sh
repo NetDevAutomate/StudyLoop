@@ -77,6 +77,8 @@ run_smoke_checks() {
   studyloop --version
   studyloop --help >/dev/null
   session-export --help >/dev/null
+  session-query --help >/dev/null
+  command -v session-db-mcp >/dev/null
 
   set +e
   self_test_json=$(studyloop self-test --json)

@@ -15,17 +15,16 @@ See `~/.agents/shared/teach-back-protocol.md` for teach-back scoring.
 
 ## Session Memory
 
-At the **start** of each session, use StudyLoop's installed CLI to recover real
-learning context without requiring a pi extension:
+At the **start** of each session, follow the `studyloop-session-memory` skill.
+Prefer `session_search` when its MCP server is connected; otherwise use the
+installed CLI fallback:
 
 ```
-studyloop resume
-studyloop struggles
-studyloop review
+session-query search "<current topic>" --project "$PWD"
 ```
 
-Briefly mention relevant prior context before proceeding. If a command is
-unavailable, report that once and continue without inventing replacement data.
+Briefly mention relevant prior context before proceeding. If neither path is
+available, report that once and continue without inventing replacement data.
 
 ## Session Export
 

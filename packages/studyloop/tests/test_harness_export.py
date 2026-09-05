@@ -36,9 +36,20 @@ def home(tmp_path: Path):
         "claude": _HarnessExport(claude_rules, "claude-only"),
         "kiro": _HarnessExport(kiro_steer, "kiro-only"),
     }
+    skill_hub = tmp_path / ".agents/skills/studyloop-session-memory"
+    skill_links = {
+        "claude": installers.LinkSpec(
+            str(skill_hub), str(tmp_path / ".claude/skills/studyloop-session-memory")
+        ),
+        "kiro": installers.LinkSpec(
+            str(skill_hub), str(tmp_path / ".kiro/skills/studyloop-session-memory")
+        ),
+    }
     with (
         patch.object(installers, "_HOME", tmp_path),
         patch.object(installers, "_HARNESS_EXPORT", harness_map),
+        patch.object(installers, "SESSION_MEMORY_SKILL_HUB", skill_hub),
+        patch.object(installers, "SESSION_MEMORY_SKILL_LINKS", skill_links),
     ):
         yield tmp_path
 
@@ -97,15 +108,51 @@ class TestClaudeStopHook:
         assert installers.install_claude_stop_hook() == 1
         assert installers.install_claude_stop_hook() == 0  # already present
 
-    def test_noop_when_no_settings(self, home: Path):
-        # No ~/.claude/settings.json → nothing to merge into.
-        assert installers.install_claude_stop_hook() == 0
+    def test_creates_settings_when_absent(self, home: Path):
+        assert installers.install_claude_stop_hook() == 1
+        data = json.loads((home / ".claude/settings.json").read_text())
+        commands = [h["command"] for g in data["hooks"]["Stop"] for h in g["hooks"]]
+        assert any("session-export --claude-only" in command for command in commands)
 
     def test_creates_stop_array_when_absent(self, home: Path):
         self._write_settings(home, {})  # hooks dict with no Stop key
         assert installers.install_claude_stop_hook() == 1
         data = json.loads((home / ".claude/settings.json").read_text())
         assert len(data["hooks"]["Stop"]) == 1
+
+
+# ---------------------------------------------------------------------------
+# install_codex_session_end_hook
+# ---------------------------------------------------------------------------
+
+
+class TestCodexSessionEndHook:
+    def test_adds_hook_preserving_existing(self, home: Path):
+        path = home / ".codex/hooks.json"
+        path.parent.mkdir(parents=True)
+        path.write_text(
+            json.dumps(
+                {
+                    "hooks": {
+                        "SessionEnd": [{"hooks": [{"type": "command", "command": "existing-hook"}]}]
+                    }
+                }
+            )
+        )
+
+        assert installers.install_codex_session_end_hook() == 1
+        data = json.loads(path.read_text())
+        commands = [
+            hook["command"] for group in data["hooks"]["SessionEnd"] for hook in group["hooks"]
+        ]
+        assert "existing-hook" in commands
+        assert sum("session-export --codex-only" in command for command in commands) == 1
+        assert installers.install_codex_session_end_hook() == 0
+
+    def test_creates_global_hooks_file(self, home: Path):
+        assert installers.install_codex_session_end_hook() == 1
+        path = home / ".codex/hooks.json"
+        assert "session-export --codex-only" in path.read_text()
 
 
 # ---------------------------------------------------------------------------
@@ -117,31 +164,70 @@ class TestHarnessDoctorCheck:
     def test_warns_when_unwired_then_passes_after_fix(self, repo_root: Path, home: Path):
         from studyloop.doctor.harness import check_harness_export
 
-        # Settings with a Stop array but no export hook.
-        sp = home / ".claude/settings.json"
-        sp.parent.mkdir(parents=True, exist_ok=True)
-        sp.write_text(json.dumps({"hooks": {"Stop": []}}))
-
-        with patch.object(
-            installers, "detect_available_agent_tools", return_value=["claude", "kiro"]
+        with (
+            patch.object(installers, "detect_available_agent_tools", return_value=["claude"]),
+            patch("studyloop.doctor.harness.shutil.which", return_value="/usr/bin/tool"),
         ):
             before = {r.name: r.status for r in check_harness_export()}
-        # All warn before wiring.
         assert before["export_mandate_claude"] == "warn"
-        assert before["export_mandate_kiro"] == "warn"
-        assert before["claude_stop_hook"] == "warn"
+        assert before["session_memory_skill_claude"] == "warn"
+        assert before["session_export_hook_claude"] == "warn"
 
-        # Apply the fix.
-        installers.install_session_db_mandate(repo_root, tools=["claude", "kiro"])
+        # Apply the same three capability layers the top-level installer owns.
+        installers.install_session_db_mandate(repo_root, tools=["claude"])
         installers.install_claude_stop_hook()
+        skill = home / ".claude/skills/studyloop-session-memory/SKILL.md"
+        skill.parent.mkdir(parents=True)
+        skill.write_text("---\nname: studyloop-session-memory\n---\n")
 
-        with patch.object(
-            installers, "detect_available_agent_tools", return_value=["claude", "kiro"]
+        with (
+            patch.object(installers, "detect_available_agent_tools", return_value=["claude"]),
+            patch("studyloop.doctor.harness.shutil.which", return_value="/usr/bin/tool"),
         ):
             after = {r.name: r.status for r in check_harness_export()}
         assert after["export_mandate_claude"] == "pass"
-        assert after["export_mandate_kiro"] == "pass"
-        assert after["claude_stop_hook"] == "pass"
+        assert after["session_memory_skill_claude"] == "pass"
+        assert after["session_export_hook_claude"] == "pass"
+
+    def test_all_release_harnesses_get_skill_and_hook_results(self, home: Path):
+        from studyloop.doctor.harness import check_harness_export
+
+        skill_text = "---\nname: studyloop-session-memory\n---\n"
+        hub = home / ".agents/skills/studyloop-session-memory/SKILL.md"
+        hub.parent.mkdir(parents=True)
+        hub.write_text(skill_text)
+        for tool in ("claude", "kiro"):
+            native = home / f".{tool}/skills/studyloop-session-memory/SKILL.md"
+            native.parent.mkdir(parents=True)
+            native.write_text(skill_text)
+
+        kiro = home / ".kiro/agents/study-mentor.json"
+        kiro.parent.mkdir(parents=True, exist_ok=True)
+        kiro.write_text(
+            json.dumps({"hooks": {"stop": [{"command": "session-export --kiro-only || true"}]}})
+        )
+        opencode = home / ".config/opencode/plugins/studyloop-session-export.js"
+        opencode.parent.mkdir(parents=True)
+        opencode.write_text("// studyloop:session-export-hook\nsession-export --opencode-only")
+        pi = home / ".pi/agent/extensions/studyloop-session-export.ts"
+        pi.parent.mkdir(parents=True)
+        pi.write_text('// studyloop:session-export-hook\n["--pi-only"]')
+        installers.install_claude_stop_hook()
+        installers.install_codex_session_end_hook()
+
+        with (
+            patch.object(
+                installers,
+                "detect_available_agent_tools",
+                return_value=["kiro", "codex", "claude", "opencode", "pi"],
+            ),
+            patch("studyloop.doctor.harness.shutil.which", return_value="/usr/bin/tool"),
+        ):
+            results = {result.name: result.status for result in check_harness_export()}
+
+        for tool in ("kiro", "codex", "claude", "opencode", "pi"):
+            assert results[f"session_memory_skill_{tool}"] == "pass"
+            assert results[f"session_export_hook_{tool}"] == "pass"
 
     def test_results_are_auto_fixable_warnings(self, home: Path):
         from studyloop.doctor.harness import check_harness_export

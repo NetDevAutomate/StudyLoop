@@ -7,6 +7,20 @@ experience may change before `1.0.0`.
 
 ## [Unreleased]
 
+### Added
+
+- Session memory is now an installer/doctor invariant across all five release
+  harnesses. `studyloop install agents` installs one
+  `studyloop-session-memory` skill (MCP-first query with `session-query`
+  fallback) and a real automatic export hook for Kiro (`stop`), Codex
+  (`SessionEnd`), Claude Code (`Stop`), OpenCode (`session.idle`) and pi
+  (`session_shutdown`). Doctor checks the query/export executables, each
+  harness's reachable skill, steering mandate and native hook separately;
+  `doctor --fix` uses the same top-level installer rather than a drifting
+  partial repair path. Codex's global hook also covers Codex app sessions that
+  load `~/.codex/hooks.json`; consumer Claude Desktop remains explicitly
+  unverified rather than being conflated with Claude Code.
+
 ### Changed
 
 - Topic exercises are now an explicit developer preview rather than part of

@@ -1,20 +1,22 @@
-"""Doctor checks for cross-harness session-export wiring (W4).
+"""Doctor checks for cross-harness session-memory wiring.
 
-The session DB is StudyLoop's single source of truth for cross-harness
-struggle tracking. For it to stay populated, each coding harness needs:
+For every detected release harness StudyLoop requires three independent layers:
 
-1. A steering-file mandate telling its agent to run ``session-export`` at
-   session end (keyed on the ``studyloop:session-export-mandate`` sentinel).
-2. (Claude only) a ``Stop`` hook in ``~/.claude/settings.json`` that runs
-   ``session-export --claude-only`` automatically.
+1. ``session-query`` and ``session-export`` executables on PATH.
+2. The canonical ``studyloop-session-memory`` skill reachable from that harness
+   (MCP-first query with a deterministic CLI fallback).
+3. A real native lifecycle hook that automatically exports that harness's
+   transcript at session end. Prompt mandates are checked too, but do not count
+   as hooks.
 
-These checks warn (auto-fixable) when either is missing, so a machine that
-has silently stopped exporting sessions is caught by ``studyloop doctor``.
+Every warning is repaired by the same top-level installer used by
+``studyloop install agents`` so doctor and install cannot drift.
 """
 
 from __future__ import annotations
 
 import json
+import shutil
 
 from studyloop import installers
 from studyloop.doctor.models import CheckResult
@@ -68,7 +70,7 @@ def _claude_hook_result() -> CheckResult:
     if present:
         return CheckResult(
             category="harness",
-            name="claude_stop_hook",
+            name="session_export_hook_claude",
             status="pass",
             message="claude: session-export Stop hook registered",
             fix_hint="",
@@ -76,7 +78,7 @@ def _claude_hook_result() -> CheckResult:
         )
     return CheckResult(
         category="harness",
-        name="claude_stop_hook",
+        name="session_export_hook_claude",
         status="warn",
         message=(
             "claude: no session-export Stop hook in ~/.claude/settings.json — "
@@ -87,13 +89,156 @@ def _claude_hook_result() -> CheckResult:
     )
 
 
+def _skill_path(tool: str):
+    if link := installers.SESSION_MEMORY_SKILL_LINKS.get(tool):
+        return link.target
+    return installers.SESSION_MEMORY_SKILL_HUB
+
+
+def _session_memory_skill_result(tool: str) -> CheckResult:
+    from pathlib import Path
+
+    path = Path(_skill_path(tool)).expanduser() / "SKILL.md"
+    present = path.exists() and "name: studyloop-session-memory" in path.read_text(encoding="utf-8")
+    return CheckResult(
+        category="harness",
+        name=f"session_memory_skill_{tool}",
+        status="pass" if present else "warn",
+        message=(
+            f"{tool}: session-memory query skill installed"
+            if present
+            else f"{tool}: missing session-memory query skill at {path}"
+        ),
+        fix_hint="" if present else "studyloop doctor --fix  (installs agent skills)",
+        fix_auto=not present,
+    )
+
+
+def _text_hook_result(tool: str, path, command: str) -> CheckResult:
+    present = path.exists()
+    text = path.read_text(encoding="utf-8") if present else ""
+    present = present and installers._SESSION_HOOK_SENTINEL in text and command in text
+    return CheckResult(
+        category="harness",
+        name=f"session_export_hook_{tool}",
+        status="pass" if present else "warn",
+        message=(
+            f"{tool}: automatic session-export hook installed"
+            if present
+            else f"{tool}: missing automatic session-export hook at {path}"
+        ),
+        fix_hint="" if present else "studyloop doctor --fix  (installs session-end hook)",
+        fix_auto=not present,
+    )
+
+
+def _kiro_hook_result() -> CheckResult:
+    path = installers._kiro_agent_path()
+    present = False
+    if path.exists():
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            stop = (data.get("hooks", {}) or {}).get("stop", []) or []
+            present = any(
+                "session-export --kiro-only" in str(hook.get("command", ""))
+                for hook in stop
+                if isinstance(hook, dict)
+            )
+        except (OSError, json.JSONDecodeError):
+            present = False
+    return CheckResult(
+        category="harness",
+        name="session_export_hook_kiro",
+        status="pass" if present else "warn",
+        message=(
+            "kiro: automatic session-export stop hook installed in study-mentor agent"
+            if present
+            else "kiro: study-mentor agent has no automatic session-export stop hook"
+        ),
+        fix_hint="" if present else "studyloop doctor --fix  (reinstalls Kiro agent)",
+        fix_auto=not present,
+    )
+
+
+def _codex_hook_result() -> CheckResult:
+    path = installers._codex_hooks_path()
+    present = False
+    if path.exists():
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            groups = (data.get("hooks", {}) or {}).get("SessionEnd", []) or []
+            present = any(
+                installers._CODEX_HOOK_SENTINEL in str(hook.get("command", ""))
+                for group in groups
+                if isinstance(group, dict)
+                for hook in group.get("hooks", [])
+                if isinstance(hook, dict)
+            )
+        except (OSError, json.JSONDecodeError):
+            present = False
+    return CheckResult(
+        category="harness",
+        name="session_export_hook_codex",
+        status="pass" if present else "warn",
+        message=(
+            "codex: automatic SessionEnd export hook installed"
+            if present
+            else f"codex: missing SessionEnd export hook in {path}"
+        ),
+        fix_hint="" if present else "studyloop doctor --fix  (merges Codex SessionEnd hook)",
+        fix_auto=not present,
+    )
+
+
+def _executable_result(command: str) -> CheckResult:
+    present = shutil.which(command) is not None
+    purpose = {
+        "session-query": "prior sessions cannot be queried",
+        "session-export": "current sessions cannot be exported",
+        "session-db-mcp": "session_search cannot be provided over MCP",
+    }.get(command, "session-memory capability unavailable")
+    return CheckResult(
+        category="harness",
+        name=f"session_memory_executable_{command}",
+        status="pass" if present else "warn",
+        message=f"{command}: installed" if present else f"{command}: not found on PATH; {purpose}",
+        fix_hint="" if present else "studyloop install tools",
+        fix_auto=not present,
+    )
+
+
 def check_harness_export() -> list[CheckResult]:
-    """Verify each detected harness is wired to export sessions to the DB."""
-    results: list[CheckResult] = []
+    """Verify detected harnesses have query skill + automatic export hook."""
+    results: list[CheckResult] = [
+        _executable_result("session-query"),
+        _executable_result("session-export"),
+        _executable_result("session-db-mcp"),
+    ]
     detected = installers.detect_available_agent_tools()
     for tool in detected:
+        results.append(_session_memory_skill_result(tool))
         if tool in installers._HARNESS_EXPORT:
             results.append(_steering_result(tool))
-    if "claude" in detected:
-        results.append(_claude_hook_result())
+        if tool == "claude":
+            results.append(_claude_hook_result())
+        elif tool == "codex":
+            results.append(_codex_hook_result())
+        elif tool == "kiro":
+            results.append(_kiro_hook_result())
+        elif tool == "opencode":
+            results.append(
+                _text_hook_result(
+                    tool,
+                    installers._opencode_hook_path(),
+                    "session-export --opencode-only",
+                )
+            )
+        elif tool == "pi":
+            results.append(
+                _text_hook_result(
+                    tool,
+                    installers._pi_hook_path(),
+                    '"--pi-only"',
+                )
+            )
     return results

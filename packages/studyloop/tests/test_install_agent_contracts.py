@@ -44,9 +44,9 @@ _XTILES_REFERENCES = f"{_XTILES_SKILL_DIR}/references/harnesses.md"
 #: global search path, so a per-harness link was redundant at best.
 _XTILES_LINKED_HARNESSES = ("kiro", "claude")
 
-#: Codex needs no link of its own -- the hub IS its user-scope skills directory.
-#: OpenCode likewise lists the hub as a global search path.
-_XTILES_HUB_SERVED_HARNESSES = ("codex", "opencode")
+#: Codex, OpenCode and pi need no link of their own -- all discover the hub as
+#: a user/global skills directory.
+_XTILES_HUB_SERVED_HARNESSES = ("codex", "opencode", "pi")
 
 #: Harnesses whose definition file carries a self-gated paragraph as well.
 _XTILES_PARAGRAPH_FILES = (
@@ -236,8 +236,6 @@ def test_every_release_harness_can_reach_the_skill() -> None:
     covered: set[str] = {
         *_XTILES_LINKED_HARNESSES,
         *_XTILES_HUB_SERVED_HARNESSES,
-        # pi: paragraph only, its skills directory being undocumented.
-        "pi",
     }
     assert covered == release, (
         "every release harness must reach the xTiles skill somehow: "
@@ -264,11 +262,10 @@ def test_harness_links_point_at_the_hub_not_the_repository() -> None:
 
 
 def test_xtiles_paragraph_harnesses_name_the_skill_and_its_gate() -> None:
-    """Codex, pi and OpenCode also read a steering file.
+    """Codex, pi and OpenCode also carry a steering pointer.
 
-    They get one self-gated sentence each rather than a copy of the procedure. For
-    Codex and OpenCode this is belt-and-braces beside the skill itself; for pi it is
-    the only route, so its gate has to be stated there.
+    All three discover the hub directly; the paragraph is belt-and-braces and
+    states the provider gate without copying the procedure.
     """
     repo_root = _repo_root()
     for rel_path in _XTILES_PARAGRAPH_FILES:
@@ -356,6 +353,16 @@ def test_xtiles_skill_installed_for_each_detected_tool(tmp_path: Path, monkeypat
     )
     monkeypatch.setattr(
         installers,
+        "SESSION_MEMORY_SKILL_LINKS",
+        {
+            tool: installers.LinkSpec(
+                _rebase(spec.source, tmp_path), _rebase(spec.target, tmp_path)
+            )
+            for tool, spec in installers.SESSION_MEMORY_SKILL_LINKS.items()
+        },
+    )
+    monkeypatch.setattr(
+        installers,
         "_HARNESS_EXPORT",
         {
             tool: installers._HarnessExport(
@@ -398,3 +405,57 @@ def test_xtiles_skill_installed_for_each_detected_tool(tmp_path: Path, monkeypat
     remaining = sorted(tool for tool, path in installed.items() if path.exists())
     assert remaining == [], f"still installed after uninstall: {remaining}"
     assert not hub.exists(), "the hub survived uninstall"
+
+
+# ---------------------------------------------------------------------------
+# Session memory: every release harness gets one query skill + one real hook
+# ---------------------------------------------------------------------------
+
+
+def test_session_memory_skill_is_canonical_and_reaches_every_release_harness() -> None:
+    from studyloop.harnesses import RELEASE_HARNESSES
+
+    repo_root = _repo_root()
+    skill = repo_root / "agents/skills/studyloop-session-memory/SKILL.md"
+    text = skill.read_text(encoding="utf-8")
+    assert "name: studyloop-session-memory" in text
+    assert "session_search" in text
+    assert "session-query search" in text
+    assert "session-export --kiro-only" in text
+
+    # Kiro/Claude need native-directory links. Codex/OpenCode/pi all discover
+    # ~/.agents/skills directly, so the hub serves them without duplicate links.
+    linked = set(installers.SESSION_MEMORY_SKILL_LINKS)
+    hub_served = {"codex", "opencode", "pi"}
+    assert linked == {"kiro", "claude"}
+    assert linked | hub_served == set(RELEASE_HARNESSES)
+    assert any(
+        spec.source == "agents/skills/studyloop-session-memory"
+        and spec.target == str(installers.SESSION_MEMORY_SKILL_HUB)
+        for spec in installers._SHARED_LINKS
+    )
+
+
+def test_every_release_harness_has_a_real_session_export_hook_contract() -> None:
+    repo_root = _repo_root()
+
+    kiro = json.loads((repo_root / "agents/kiro/study-mentor.json").read_text())
+    assert any("session-export --kiro-only" in hook["command"] for hook in kiro["hooks"]["stop"])
+    assert "session-db" in kiro["mcpServers"]
+
+    opencode = repo_root / "agents/opencode/plugins/studyloop-session-export.js"
+    assert "session.idle" in opencode.read_text()
+    assert "session-export --opencode-only" in opencode.read_text()
+
+    pi = repo_root / "agents/pi/extensions/studyloop-session-export.ts"
+    assert "session_shutdown" in pi.read_text()
+    assert '"--pi-only"' in pi.read_text()
+
+    # Claude and Codex are merge functions because their global JSON files may
+    # already contain user hooks; their behavior is covered in
+    # test_harness_export.py. This assertion prevents a release harness from
+    # appearing without an explicit hook strategy decision.
+    strategies = {"kiro", "opencode", "pi", "claude", "codex"}
+    from studyloop.harnesses import RELEASE_HARNESSES
+
+    assert strategies == set(RELEASE_HARNESSES)

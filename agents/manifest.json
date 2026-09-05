@@ -6,20 +6,28 @@
       "updated": "2026-09-04"
     },
     "codex/AGENTS.md": {
-      "hash": "23dc3d4fbdea89c3",
-      "updated": "2026-09-04"
+      "hash": "1d1a2511034dc914",
+      "updated": "2026-09-05"
     },
     "kiro/study-mentor.json": {
-      "hash": "c9f2302ebc8d3c39",
-      "updated": "2026-09-04"
+      "hash": "cf4fae923e00c183",
+      "updated": "2026-09-05"
     },
     "opencode/study-mentor.md": {
       "hash": "0ff72c058de9f7d2",
       "updated": "2026-09-04"
     },
     "pi/AGENTS.md": {
-      "hash": "8706855f619c71b5",
-      "updated": "2026-09-04"
+      "hash": "09b07c3b757676ec",
+      "updated": "2026-09-05"
+    },
+    "opencode/plugins/studyloop-session-export.js": {
+      "hash": "769ed9efdda111a9",
+      "updated": "2026-09-05"
+    },
+    "pi/extensions/studyloop-session-export.ts": {
+      "hash": "5169fade780f0229",
+      "updated": "2026-09-05"
     },
     "shared/audhd-framework.md": {
       "hash": "8b694064b100741f",
@@ -37,6 +45,10 @@
       "hash": "8af4732b77cc15ae",
       "updated": "2026-09-04"
     },
+    "shared/session-db-mandate.md": {
+      "hash": "f35efc435d897d2e",
+      "updated": "2026-09-05"
+    },
     "shared/session-protocol.md": {
       "hash": "b58178df20cb9008",
       "updated": "2026-09-04"
@@ -52,6 +64,10 @@
     "shared/wind-down-protocol.md": {
       "hash": "5b1ec3303b8d1086",
       "updated": "2026-09-04"
+    },
+    "skills/studyloop-session-memory/SKILL.md": {
+      "hash": "1274ffd4915e81fd",
+      "updated": "2026-09-05"
     },
     "skills/studyloop-xtiles-wind-down/SKILL.md": {
       "hash": "a2e84febb865f24d",
