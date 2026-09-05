@@ -214,13 +214,14 @@ def _child_env(home: Path, config_path: Path) -> dict[str, str]:
         "STUDYLOOP_PLANS_DIR": str(home / "plans"),
         "DISABLE_AUTOUPDATER": "1",
         "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
-        # The gateway's anthropic-passthrough adapter (LiteLLM, Bedrock invoke
-        # path) dies on extended-thinking blocks: "API Error: Content block is
-        # not a text block", reproduced deterministically on prompts long
-        # enough to trigger thinking and absent on short ones (proxy logs,
-        # 2026-09-04). Thinking adds nothing to a protocol-following check, so
-        # it is off rather than worked around. Remove once the proxy is
-        # upgraded past the adapter bug.
+        # Thinking is off because it adds nothing to a protocol-following
+        # check and costs tokens. It USED to be mandatory: LiteLLM <= 1.99.x
+        # died on extended-thinking blocks over the Bedrock invoke path
+        # ("API Error: Content block is not a text block", proxy logs
+        # 2026-09-04). Fixed upstream (BerriAI/litellm PR #33315 + the
+        # bearer-token repair in #39166); the proxy runs v1.101.0-dev.2 as of
+        # 2026-09-05 and a forced thinking block streams cleanly through
+        # /v1/messages — verified with an explicit thinking-budget request.
         "MAX_THINKING_TOKENS": "0",
         "TERM": "dumb",
     }
