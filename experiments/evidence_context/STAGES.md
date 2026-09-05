@@ -12,6 +12,7 @@ no remote publication or backup is implied.
 | 3 — Correction and forgetting | Can offline replicas converge without resurrecting forgotten content? | `b44145a` | `python -m experiments.evidence_context.lifecycle_demo`; STUDY-GUIDE.md |
 | 4 — Capture health | Does configured capture actually yield recent history? | `ae2b250` | `python -m experiments.evidence_context.capture_health`; capture_health/GUIDE.md and COUNCIL-DECISION.md |
 | 5 — Retrieval measurement | Does returned context contain the required evidence? | `1b9a658` | `python -m experiments.evidence_context.retrieval_eval`; retrieval_eval/GUIDE.md, EXPLANATION-RUBRIC.md and COUNCIL-DECISION.md |
+| 6 — Conflict arbitration | Does the answer resolve conflicting evidence responsibly? | `66902e2` | `python -m experiments.evidence_context.arbitration_lab`; arbitration_lab/GUIDE.md, RESULTS.md and versioned prompts |
 
 Stage 3 uses its own lifecycle adapter and database schema. It does not modify the
 stage 1 evidence store, and does not require stage 1 demo output. Stage 2 uses
@@ -87,14 +88,28 @@ Checkpoint `1b9a658` preserves the runnable synthetic evaluator. It accepts a
 separate dataset, but independent real held-out labels and efficacy are not yet
 established. See retrieval_eval/HOLDOUT-PROTOCOL.md for that next evidence gate.
 
+## Stage 6 commands
+
+```sh
+uv run python -m experiments.evidence_context.arbitration_lab --output /tmp/evidence-stage-6-v1
+uv run python -m experiments.evidence_context.arbitration_lab --prompt-version v2 --output /tmp/evidence-stage-6-v2
+uv run --group dev pytest experiments/evidence_context/tests/test_arbitration_lab.py -q
+```
+
+Default execution prepares offline. The guide explains explicit paid live runs and
+includes readable preserved observations from both pilot rounds. Checkpoint
+`66902e2` pins this development stage. The user requested this arbitration probe;
+it does not replace or satisfy the independently labelled real-holdout gate.
+
 ## Next evidence gate, then further stages
 
-Prepare 3–5 disjoint real questions with independent pre-result evidence labels.
-The current synthetic run validates the scorer only. Retain the user's separate
-explanation/learning rubric for a later blinded answering evaluation. Council
-review of stage 5 did not justify changing engines or proceeding to integration.
+Freeze prompt tuning after v2's observed failure. Independently review the existing
+case semantics and blind-grade outputs, then test a task-level applicable-validation
+policy against those outputs without hardcoding expected answers. See
+arbitration_lab/COUNCIL-DECISION.md for accepted advice and corrected reviewer errors.
 
-After real results, choose lifecycle-to-evidence integration versus installed
-package ownership tests. Both remain required before production. Capture health
-still needs live detection and coverage watermarks. A full diverse implementation
-review of stage 3 also remains outstanding before promotion.
+Keep the real 3–5 disjoint-question pilot with independent pre-result labels as the
+precondition for efficacy claims. Learner understanding requires actual feedback.
+Lifecycle-to-evidence and installed-package ownership tests remain required before
+production. Capture health still needs real detection and watermarks; no engine
+selection follows from synthetic examples or successful response parsing.
