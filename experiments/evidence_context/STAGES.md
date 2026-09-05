@@ -14,6 +14,7 @@ no remote publication or backup is implied.
 | 5 — Retrieval measurement | Does returned context contain the required evidence? | `1b9a658` | `python -m experiments.evidence_context.retrieval_eval`; retrieval_eval/GUIDE.md, EXPLANATION-RUBRIC.md and COUNCIL-DECISION.md |
 | 6 — Conflict arbitration | Does the answer resolve conflicting evidence responsibly? | `66902e2` | `python -m experiments.evidence_context.arbitration_lab`; arbitration_lab/GUIDE.md, RESULTS.md and versioned prompts |
 | 7 — Bounded prompt loop | Does our score recognise a better evidence-based decision? | `f3a8457` | `python -m experiments.evidence_context.prompt_loop`; prompt_loop/GUIDE.md, RESULTS.md and COUNCIL-DECISION.md |
+| 8 — Decision contract | Which sources apply, and what decision do they justify? | `f7f6796` | `python -m experiments.evidence_context.decision_contract`; decision_contract/GUIDE.md, RESULTS.md and expandable HTML walkthrough |
 
 Stage 3 uses its own lifecycle adapter and database schema. It does not modify the
 stage 1 evidence store, and does not require stage 1 demo output. Stage 2 uses
@@ -117,13 +118,30 @@ because Fable failed structured output twice. Both amendments improved the obser
 queue recommendation, but a defective category proxy hid that change. The original
 selector and results remain frozen for study.
 
+## Stage 8 commands
+
+```sh
+uv run python -m experiments.evidence_context.decision_contract --output /tmp/evidence-stage-8
+open /tmp/evidence-stage-8/walkthrough.html
+uv run --group dev pytest experiments/evidence_context/tests/test_decision_contract.py -q
+```
+
+Checkpoint `f7f6796` preserves the contract, eight fixtures, reference walkthrough,
+pre-run expectations and sixteen actual model answers. Default execution is offline;
+`--live` makes sixteen bounded gateway calls. The reference handles unknown scope
+correctly, but the model invented a missing revision in one case. Choice matches were
+7/8 new versus 5/8 legacy; these are not general quality scores. Three providers
+reviewed the design; two returned valid result reviews after Grok failed twice.
+The optional revision-classification exercise is saved for a later dedicated session.
+
 ## Next evidence gate, then further stages
 
-Version the evaluator to separate source provenance from decision sufficiency and
-validation applicability, then review paired counterexamples before a fresh run.
-Do not infer equal answer quality from Stage 7's equal proxy scores. See
-[prompt_loop/COUNCIL-DECISION.md](prompt_loop/COUNCIL-DECISION.md) for the decision,
-reviewer errors and limits. No DSPy integration or production prompt promotion yet.
+Test a deterministic metadata boundary that preserves unknown fields and checks
+applicability before accepting generated decisions, with new missing-field variants
+and metadata/text contradictions. This does not establish metadata authenticity.
+Separate unsafe endorsements from cautious label deviations and check explanations
+against sources. See [decision_contract/COUNCIL-DECISION.md](decision_contract/COUNCIL-DECISION.md).
+No DSPy integration, production prompt promotion or database-engine selection yet.
 
 Keep the real 3–5 disjoint-question pilot with independent pre-result labels as the
 precondition for efficacy claims. Learner understanding requires actual feedback.
