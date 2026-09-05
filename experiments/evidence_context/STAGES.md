@@ -13,6 +13,7 @@ no remote publication or backup is implied.
 | 4 — Capture health | Does configured capture actually yield recent history? | `ae2b250` | `python -m experiments.evidence_context.capture_health`; capture_health/GUIDE.md and COUNCIL-DECISION.md |
 | 5 — Retrieval measurement | Does returned context contain the required evidence? | `1b9a658` | `python -m experiments.evidence_context.retrieval_eval`; retrieval_eval/GUIDE.md, EXPLANATION-RUBRIC.md and COUNCIL-DECISION.md |
 | 6 — Conflict arbitration | Does the answer resolve conflicting evidence responsibly? | `66902e2` | `python -m experiments.evidence_context.arbitration_lab`; arbitration_lab/GUIDE.md, RESULTS.md and versioned prompts |
+| 7 — Bounded prompt loop | Does our score recognise a better evidence-based decision? | `f3a8457` | `python -m experiments.evidence_context.prompt_loop`; prompt_loop/GUIDE.md, RESULTS.md and COUNCIL-DECISION.md |
 
 Stage 3 uses its own lifecycle adapter and database schema. It does not modify the
 stage 1 evidence store, and does not require stage 1 demo output. Stage 2 uses
@@ -101,12 +102,28 @@ includes readable preserved observations from both pilot rounds. Checkpoint
 `66902e2` pins this development stage. The user requested this arbitration probe;
 it does not replace or satisfy the independently labelled real-holdout gate.
 
+## Stage 7 commands
+
+```sh
+uv run python -m experiments.evidence_context.prompt_loop --output /tmp/evidence-stage-7
+uv run --group dev pytest experiments/evidence_context/tests/test_prompt_loop.py -q
+```
+
+Checkpoint `f3a8457` preserves this stage. Default execution is a scripted offline
+loop; explicit `--live` uses the gateway with at most 18 calls. The guide separates
+scripted demonstration from the preserved 16-call live run. Two full pre-loop
+councils reviewed sources and blinded answers; result review had two valid providers
+because Fable failed structured output twice. Both amendments improved the observed
+queue recommendation, but a defective category proxy hid that change. The original
+selector and results remain frozen for study.
+
 ## Next evidence gate, then further stages
 
-Freeze prompt tuning after v2's observed failure. Independently review the existing
-case semantics and blind-grade outputs, then test a task-level applicable-validation
-policy against those outputs without hardcoding expected answers. See
-arbitration_lab/COUNCIL-DECISION.md for accepted advice and corrected reviewer errors.
+Version the evaluator to separate source provenance from decision sufficiency and
+validation applicability, then review paired counterexamples before a fresh run.
+Do not infer equal answer quality from Stage 7's equal proxy scores. See
+[prompt_loop/COUNCIL-DECISION.md](prompt_loop/COUNCIL-DECISION.md) for the decision,
+reviewer errors and limits. No DSPy integration or production prompt promotion yet.
 
 Keep the real 3–5 disjoint-question pilot with independent pre-result labels as the
 precondition for efficacy claims. Learner understanding requires actual feedback.
