@@ -1,0 +1,159 @@
+{
+  "answers": 32,
+  "valid": 32,
+  "units": "4 development questions; repeats are not independent cases",
+  "arms": {
+    "keyword": {
+      "calls": 8,
+      "valid": 8,
+      "mean_context_tokens": 1269.0,
+      "citations": 22,
+      "unlocatable_quotes": 4,
+      "unsupported_validation_status": 0,
+      "negative_control_insufficient": 2,
+      "gateway_reported_answer_cost_usd": 0.00783984,
+      "calls_with_cost": 8,
+      "mean_answer_seconds": 3.419708249915857
+    },
+    "semantic": {
+      "calls": 8,
+      "valid": 8,
+      "mean_context_tokens": 1093.25,
+      "citations": 24,
+      "unlocatable_quotes": 1,
+      "unsupported_validation_status": 0,
+      "negative_control_insufficient": 2,
+      "gateway_reported_answer_cost_usd": 0.00790312,
+      "calls_with_cost": 8,
+      "mean_answer_seconds": 2.8734859113465063
+    },
+    "relationships": {
+      "calls": 8,
+      "valid": 8,
+      "mean_context_tokens": 1241.25,
+      "citations": 21,
+      "unlocatable_quotes": 3,
+      "unsupported_validation_status": 0,
+      "negative_control_insufficient": 2,
+      "gateway_reported_answer_cost_usd": 0.0076146,
+      "calls_with_cost": 8,
+      "mean_answer_seconds": 2.867133161489619
+    },
+    "combined": {
+      "calls": 8,
+      "valid": 8,
+      "mean_context_tokens": 1159.0,
+      "citations": 24,
+      "unlocatable_quotes": 1,
+      "unsupported_validation_status": 0,
+      "negative_control_insufficient": 2,
+      "gateway_reported_answer_cost_usd": 0.00780644,
+      "calls_with_cost": 8,
+      "mean_answer_seconds": 3.6017118490999565
+    }
+  },
+  "coverage": [
+    {
+      "question": "Q1",
+      "arm": "keyword",
+      "covered": 2,
+      "required": 3
+    },
+    {
+      "question": "Q1",
+      "arm": "semantic",
+      "covered": 2,
+      "required": 3
+    },
+    {
+      "question": "Q1",
+      "arm": "relationships",
+      "covered": 2,
+      "required": 3
+    },
+    {
+      "question": "Q1",
+      "arm": "combined",
+      "covered": 2,
+      "required": 3
+    },
+    {
+      "question": "Q2",
+      "arm": "keyword",
+      "covered": 3,
+      "required": 3
+    },
+    {
+      "question": "Q2",
+      "arm": "semantic",
+      "covered": 3,
+      "required": 3
+    },
+    {
+      "question": "Q2",
+      "arm": "relationships",
+      "covered": 3,
+      "required": 3
+    },
+    {
+      "question": "Q2",
+      "arm": "combined",
+      "covered": 3,
+      "required": 3
+    },
+    {
+      "question": "Q3",
+      "arm": "keyword",
+      "covered": 0,
+      "required": 4
+    },
+    {
+      "question": "Q3",
+      "arm": "semantic",
+      "covered": 0,
+      "required": 4
+    },
+    {
+      "question": "Q3",
+      "arm": "relationships",
+      "covered": 0,
+      "required": 4
+    },
+    {
+      "question": "Q3",
+      "arm": "combined",
+      "covered": 0,
+      "required": 4
+    },
+    {
+      "question": "Q4",
+      "arm": "keyword",
+      "covered": 0,
+      "required": 0
+    },
+    {
+      "question": "Q4",
+      "arm": "semantic",
+      "covered": 0,
+      "required": 0
+    },
+    {
+      "question": "Q4",
+      "arm": "relationships",
+      "covered": 0,
+      "required": 0
+    },
+    {
+      "question": "Q4",
+      "arm": "combined",
+      "covered": 0,
+      "required": 0
+    }
+  ],
+  "embedding": {
+    "dimensions": 768,
+    "seconds": 17.375747834099457,
+    "records": 1019
+  },
+  "warning": "Category conformance and quote location are not semantic validation."
+}
