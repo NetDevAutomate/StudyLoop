@@ -430,3 +430,21 @@ class TestSessionHotspotsExtended:
         # auth.py appears in both sess-auth-001 and sess-debug-002
         auth_row = next(r for r in result if r["file_path"] == "/src/auth.py")
         assert auth_row["session_count"] == 2
+
+
+def test_mcp_search_and_list_expand_only_configured_project_aliases(
+    mock_db_path, tmp_path, monkeypatch
+):
+    import json
+
+    config = tmp_path / "aliases.yaml"
+    config.write_text(
+        json.dumps({"project_aliases": {"/current/webapp": ["/projects/webapp"]}})
+    )
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(config))
+    tools = _get_tools()
+    found = tools["session_search"](query="middleware", project="/current/webapp")
+    assert found and all(row["session_id"] == "sess-auth-001" for row in found)
+    listed = tools["session_list"](project="/current/webapp")
+    assert len(listed) == 1
+    assert tools["session_search"](query="middleware", project="/work/webapp") == []

@@ -535,7 +535,7 @@ class TestKiroIncremental:
 
         # Non-incremental re-import should NOT skip
         stats2 = exporter.export_all(conn, incremental=False)
-        assert stats2.added == 1
+        assert stats2.updated == 1
         assert stats2.skipped == 0
 
 
@@ -575,3 +575,204 @@ class TestKiroSourceName:
     def test_source_name_value(self):
         exporter = KiroCliExporter()
         assert exporter.source_name == "kiro_cli"
+
+
+def test_dict_response_retains_answer_and_timestamp():
+    entry = _make_entry(user_prompt="Question", timestamp_ms=1766936938000)
+    entry["assistant"] = {"Response": {"content": "Final answer"}}
+    messages = _extract_text(entry)
+    assert [(r, text) for r, text, _ in messages] == [
+        ("user", "Question"),
+        ("assistant", "Final answer"),
+    ]
+    assert messages[0][2] == "2025-12-28T15:48:58+00:00"
+    assert messages[1][2] is None
+
+
+def test_imports_v1_only_conversations_when_v2_exists(
+    kiro_db, migrated_db, monkeypatch
+):
+    monkeypatch.setattr("agent_session_tools.exporters.kiro.KIRO_DB", kiro_db)
+    with sqlite3.connect(kiro_db) as source:
+        source.execute("CREATE TABLE conversations (key TEXT, value TEXT)")
+    _insert_v1(kiro_db, "/legacy", _make_conversation("legacy"))
+    _insert_v1(
+        kiro_db,
+        "/legacy",
+        _make_conversation("shared", [_make_entry(user_prompt="old")]),
+    )
+    _insert_v2(
+        kiro_db,
+        "/current",
+        _make_conversation("shared", [_make_entry(user_prompt="new")]),
+    )
+    conn, _ = migrated_db
+    stats = KiroCliExporter().export_all(conn)
+    assert stats.added == 2
+    assert (
+        conn.execute(
+            "SELECT content FROM messages WHERE session_id='kiro_shared'"
+        ).fetchone()[0]
+        == "new"
+    )
+
+
+def test_v1_continuation_without_timestamp_is_imported(
+    kiro_db_v1, migrated_db, monkeypatch
+):
+    monkeypatch.setattr("agent_session_tools.exporters.kiro.KIRO_DB", kiro_db_v1)
+    data = _make_conversation()
+    _insert_v1(kiro_db_v1, "/project", data)
+    conn, _ = migrated_db
+    exporter = KiroCliExporter()
+    exporter.export_all(conn)
+    old_ids = [row[0] for row in conn.execute("SELECT id FROM messages ORDER BY seq")]
+    data["history"].append({"assistant": {"Response": {"content": "Continued answer"}}})
+    with sqlite3.connect(kiro_db_v1) as source:
+        source.execute("UPDATE conversations SET value=?", (json.dumps(data),))
+    assert exporter.export_all(conn).updated == 1
+    rows = conn.execute("SELECT id, content FROM messages ORDER BY seq").fetchall()
+    assert len(rows) == 3
+    assert [row[0] for row in rows[:2]] == old_ids
+    assert rows[-1][1] == "Continued answer"
+    assert exporter.export_all(conn).skipped == 1
+
+
+def test_incomplete_old_import_repaired_without_timestamp_change(
+    kiro_db, migrated_db, monkeypatch
+):
+    monkeypatch.setattr("agent_session_tools.exporters.kiro.KIRO_DB", kiro_db)
+    data = _make_conversation(
+        history=[
+            {
+                "user": {"content": {"Prompt": {"prompt": "Question"}}},
+                "assistant": {"Response": {"content": "Answer"}},
+            }
+        ]
+    )
+    _insert_v2(kiro_db, "/project", data)
+    conn, _ = migrated_db
+    exporter = KiroCliExporter()
+    exporter.export_all(conn)
+    conn.execute("DELETE FROM messages WHERE role='assistant'")
+    conn.execute("UPDATE sessions SET metadata=NULL")
+    conn.commit()
+    assert exporter.export_all(conn).updated == 1
+    assert [
+        row[0] for row in conn.execute("SELECT role FROM messages ORDER BY seq")
+    ] == ["user", "assistant"]
+    assert exporter.export_all(conn, incremental=False).updated == 1
+    assert conn.execute("SELECT COUNT(*) FROM messages").fetchone()[0] == 2
+
+
+def test_empty_updated_source_preserves_exported_evidence(
+    kiro_db, migrated_db, monkeypatch
+):
+    monkeypatch.setattr("agent_session_tools.exporters.kiro.KIRO_DB", kiro_db)
+    _insert_v2(kiro_db, "/project", _make_conversation())
+    conn, _ = migrated_db
+    exporter = KiroCliExporter()
+    exporter.export_all(conn)
+    with sqlite3.connect(kiro_db) as source:
+        source.execute(
+            "UPDATE conversations_v2 SET value=?, updated_at=updated_at+1",
+            (json.dumps(_make_conversation(history=[])),),
+        )
+    assert exporter.export_all(conn).empty == 1
+    assert conn.execute("SELECT COUNT(*) FROM messages").fetchone()[0] == 2
+
+
+@pytest.mark.parametrize("timestamp", ["bad", {}, [], 10**1000])
+def test_invalid_metadata_timestamp_does_not_drop_prose(timestamp):
+    entry = _make_entry(user_prompt="Still useful", timestamp_ms=timestamp)
+    assert _extract_text(entry) == [("user", "Still useful", None)]
+
+
+def test_native_user_and_response_timestamps_are_distinct():
+    entry = _make_entry(
+        user_prompt="Question", assistant_text="Answer", timestamp_ms=1766936938000
+    )
+    entry["user"]["timestamp"] = "2025-12-28T15:48:57+00:00"
+    entry["request_metadata"]["stream_end_timestamp_ms"] = 1766936941000
+    assert _extract_text(entry) == [
+        ("user", "Question", "2025-12-28T15:48:57+00:00"),
+        ("assistant", "Answer", "2025-12-28T15:49:01+00:00"),
+    ]
+
+
+def test_model_and_source_limitations_preserved(kiro_db, migrated_db, monkeypatch):
+    monkeypatch.setattr("agent_session_tools.exporters.kiro.KIRO_DB", kiro_db)
+    entry = _make_entry(user_prompt="Question", assistant_text="Answer")
+    entry["request_metadata"] = {"model_id": "synthetic-model"}
+    data = _make_conversation(history=[entry])
+    data.update(
+        transcript=["unstructured archival text"],
+        latest_summary=["summary"],
+        next_message=None,
+    )
+    _insert_v2(kiro_db, "/project", data)
+    conn, _ = migrated_db
+    KiroCliExporter().export_all(conn)
+    rows = conn.execute(
+        "SELECT role, model, timestamp FROM messages ORDER BY seq"
+    ).fetchall()
+    assert [tuple(row) for row in rows] == [
+        ("user", None, None),
+        ("assistant", "synthetic-model", None),
+    ]
+    metadata = json.loads(conn.execute("SELECT metadata FROM sessions").fetchone()[0])
+    assert metadata["source_path"] == str(kiro_db)
+    assert metadata["kiro_transcript_entries"] == 1
+    assert metadata["kiro_has_summary"] is True
+    assert metadata["kiro_pending_message"] is False
+
+
+def test_native_position_stabilizes_repeated_text_with_retained_history(
+    kiro_db, migrated_db, monkeypatch
+):
+    monkeypatch.setattr("agent_session_tools.exporters.kiro.KIRO_DB", kiro_db)
+    history = [
+        _make_entry(
+            user_prompt="Repeat",
+            assistant_text="Same answer",
+            timestamp_ms=1766936938000,
+        ),
+        _make_entry(
+            user_prompt="Repeat",
+            assistant_text="Same answer",
+            timestamp_ms=1766936939000,
+        ),
+    ]
+    _insert_v2(kiro_db, "/project", _make_conversation(history=history))
+    conn, _ = migrated_db
+    exporter = KiroCliExporter()
+    exporter.export_all(conn)
+    before = [tuple(row) for row in conn.execute("SELECT * FROM messages ORDER BY id")]
+    # Historical extra occurrence sorts ahead of current source occurrences.
+    conn.execute(
+        "INSERT INTO messages(id,session_id,role,content,seq,metadata) VALUES (?,?,?,?,?,?)",
+        ("historical-repeat", "kiro_conv-001", "user", "Repeat", -1, "{}"),
+    )
+    conn.commit()
+    exporter.export_all(conn, incremental=False)
+    after = [
+        tuple(row)
+        for row in conn.execute(
+            "SELECT * FROM messages WHERE id!='historical-repeat' ORDER BY id"
+        )
+    ]
+    assert before == after
+    assert (
+        conn.execute(
+            "SELECT content FROM messages WHERE id='historical-repeat'"
+        ).fetchone()[0]
+        == "Repeat"
+    )
+    exporter.export_all(conn, incremental=False)
+    repeated = [
+        tuple(row)
+        for row in conn.execute(
+            "SELECT * FROM messages WHERE id!='historical-repeat' ORDER BY id"
+        )
+    ]
+    assert repeated == after

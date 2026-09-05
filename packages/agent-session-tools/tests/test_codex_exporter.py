@@ -16,6 +16,7 @@ metadata extraction, role filtering, and edge cases.
 """
 
 import json
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -28,7 +29,7 @@ from agent_session_tools.exporters.codex import CodexExporter
 # ---------------------------------------------------------------------------
 
 
-def _write_rollout(path: Path, lines: list[dict]) -> None:
+def _write_rollout(path: Path, lines: Sequence[object]) -> None:
     """Write a list of dicts as JSONL lines to a rollout file (parents created)."""
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", encoding="utf-8") as fh:
@@ -341,13 +342,9 @@ class TestCodexEdgeCases:
             fh.write("{not valid json\n")
             fh.write(json.dumps(_msg(role="assistant", text="also valid")) + "\n")
         stats = CodexExporter(sessions_dir=sessions_dir).export_all(conn)
-        assert stats.added == 1
-        assert (
-            conn.execute(
-                "SELECT COUNT(*) FROM messages WHERE session_id = 'codex_rollout-bad'"
-            ).fetchone()[0]
-            == 2
-        )
+        assert stats.errors == 1
+        assert stats.added == 0
+        assert conn.execute("SELECT COUNT(*) FROM messages").fetchone()[0] == 0
 
     def test_fingerprint_stored(self, sessions_dir, migrated_db):
         conn, _ = migrated_db
@@ -374,3 +371,50 @@ class TestCodexEdgeCases:
         CodexExporter(sessions_dir=sessions_dir).export_all(conn)
         row = conn.execute("SELECT project_path FROM sessions").fetchone()
         assert row["project_path"] == str(f.parent)
+
+
+def test_archived_desktop_rollout_and_turn_model(tmp_path, migrated_db, monkeypatch):
+    conn, _ = migrated_db
+    monkeypatch.setenv("CODEX_HOME", str(tmp_path))
+    _write_rollout(
+        tmp_path / "archived_sessions" / "rollout-archived.jsonl",
+        [
+            _session_meta(),
+            [],
+            {"type": "response_item", "payload": "bad"},
+            {"type": "turn_context", "payload": {"model": "example-model"}},
+            _msg(role="assistant", text="Archived answer"),
+        ],
+    )
+    exporter = CodexExporter()
+    assert exporter.is_available()
+    stats = exporter.export_all(conn)
+    assert stats.added == 1 and stats.errors == 0
+    assert conn.execute("SELECT model FROM messages").fetchone()[0] == "example-model"
+    assert exporter.export_all(conn).skipped == 1
+
+
+@pytest.mark.parametrize("failure", ["corrupt", "growing"])
+def test_bad_update_retains_prior_rollout(
+    sessions_dir, migrated_db, monkeypatch, failure
+):
+    from agent_session_tools.exporters import codex
+
+    conn, _ = migrated_db
+    path = _dated(sessions_dir, "rollout-safe.jsonl")
+    _write_rollout(path, [_msg(text="original")])
+    exporter = CodexExporter(sessions_dir)
+    exporter.export_all(conn)
+    original = conn.execute("SELECT import_fingerprint FROM sessions").fetchone()[0]
+    if failure == "corrupt":
+        with path.open("a") as out:
+            out.write('{"incomplete":')
+    else:
+        fingerprints = iter(["before", "after"])
+        monkeypatch.setattr(codex, "file_fingerprint", lambda _: next(fingerprints))
+    assert exporter.export_all(conn).errors == 1
+    assert conn.execute("SELECT content FROM messages").fetchone()[0] == "original"
+    assert (
+        conn.execute("SELECT import_fingerprint FROM sessions").fetchone()[0]
+        == original
+    )
