@@ -59,12 +59,12 @@ def extract_and_write(
     dry_run: bool = False,
     connection: Any | None = None,
 ) -> int:
-    """Run ``extractor_fn`` on a session and upsert each result.
+    """Run ``extractor_fn`` on a session and bind each result to its exact input.
 
     Returns the number of rows written (or that *would* be written when
-    ``dry_run`` is True).  Idempotent on re-run: record_progress() keys on a
-    uuid5 of (topic, concept), so re-processing the same session updates rather
-    than duplicates.
+    ``dry_run`` is True). Identical input and results deduplicate on the current
+    schema. Changed inputs remain separate reports. The legacy schema retains
+    its older aggregate behavior for explicitly unclassified inspection only.
 
     The DB-write path resolves its connection through
     ``studyloop.history._connection._connect`` — tests monkeypatch that to a
@@ -90,17 +90,48 @@ def extract_and_write(
         conn = _connection._connect()
     if conn is None:
         raise RuntimeError("Could not open sessions database for progress write")
+    if conn.in_transaction:
+        if owns_connection:
+            conn.close()
+        raise ValueError("End the caller transaction before invoking an external extractor")
 
     try:
         from agent_session_tools.context.legacy import legacy_global_visible
-        from agent_session_tools.context.scope import ScopeError
+        from agent_session_tools.context.legacy_sources import (
+            persist_session_input,
+            prepare_session_input,
+        )
+        from agent_session_tools.context.scope import ScopeError, active_policy
+        from studyloop.history import observations
 
-        if not legacy_global_visible(conn):
+        evidence_ids = None
+        policy = active_policy()
+        requested_scope = policy.request_scope()
+        captured = None
+        if observations.available(conn):
+            captured = prepare_session_input(conn, session_id)
+            if captured.messages != list(messages):
+                raise ValueError("Extractor input does not match the captured source snapshot")
+        elif not legacy_global_visible(conn):
             raise ScopeError(
                 "Progress writes require source-owned learning records for classified context. "
                 "Use --dry-run for scoped inspection while ownership integration is pending."
             )
+        # Release the read snapshot before network I/O. Recheck under the writer
+        # transaction afterwards so a concurrent scope change cannot admit data.
+        conn.rollback()
         results = validated_results()
+        conn.execute("BEGIN IMMEDIATE")
+        current_policy = active_policy()
+        if (current_policy.digest, current_policy.request_scope()) != (
+            policy.digest,
+            requested_scope,
+        ):
+            raise ScopeError("Context policy changed during extraction; retry in the current scope")
+        if captured is not None:
+            evidence_ids = persist_session_input(conn, captured)
+        elif observations.available(conn) or not legacy_global_visible(conn):
+            raise ScopeError("Context ownership changed during extraction; retry")
         for result in results:
             _record_progress_on_connection(
                 conn,
@@ -110,6 +141,8 @@ def extract_and_write(
                 notes=result.notes,
                 source_session_id=session_id,
                 created_by="extractor",
+                evidence_ids=evidence_ids,
+                input_snapshot=captured,
             )
         conn.commit()
     except Exception:

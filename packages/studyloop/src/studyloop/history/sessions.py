@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from agent_session_tools.context.legacy import legacy_global_visible
 from agent_session_tools.context.scope import active_policy, visibility_sql
 
-from . import _connection, search
+from . import _connection, observations, search
 
 logger = logging.getLogger(__name__)
 
@@ -299,16 +299,11 @@ def get_last_session_summary() -> dict | None:
         # pointer cannot establish ownership of the whole merged record. Retain
         # legacy inspection only for an explicitly unclassified, unassigned DB.
         progress_visible = legacy_global_visible(conn)
-        in_progress = []
-        if progress_visible:
-            in_progress = conn.execute(
-                """
-                SELECT concept, topic, confidence FROM study_progress
-                WHERE confidence IN ('struggling', 'learning')
-                ORDER BY last_seen DESC
-                LIMIT 5
-                """
-            ).fetchall()
+        in_progress = sorted(
+            (r for r in observations.rows(conn) if r["confidence"] in ("struggling", "learning")),
+            key=lambda row: row["last_seen"],
+            reverse=True,
+        )[:5]
 
         # Extract topic keywords from recent messages
         study_terms = search._get_study_terms()
@@ -335,11 +330,19 @@ def get_last_session_summary() -> dict | None:
             "topics_covered": sorted(topics_mentioned)[:5],
             "last_message_preview": preview,
             "concepts_in_progress": [
-                {"concept": r["concept"], "topic": r["topic"], "confidence": r["confidence"]}
+                {
+                    "concept": r["concept"],
+                    "topic": r["topic"],
+                    "confidence": r["confidence"],
+                    "confidence_status": r.get("confidence_status"),
+                    "observation_ids": r.get("observation_ids", []),
+                }
                 for r in in_progress
             ],
             "concepts_scope_status": (
-                "explicit_unclassified_legacy_inspection"
+                "scoped_observations"
+                if any(r.get("observation_ids") for r in in_progress)
+                else "explicit_unclassified_legacy_inspection"
                 if progress_visible
                 else "withheld_missing_scope_lineage"
             ),

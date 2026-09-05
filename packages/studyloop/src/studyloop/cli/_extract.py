@@ -89,6 +89,9 @@ def _process_one(
     if not pre_filter(session_id, source, messages):
         console.print(f"[dim]skip[/dim] {session_id} (source={source}, filtered)")
         return 0
+    # These preceding operations only read. Do not keep a database snapshot open
+    # during the provider call; the pipeline validates the input again itself.
+    conn.rollback()
     written = extract_and_write(
         session_id,
         messages,

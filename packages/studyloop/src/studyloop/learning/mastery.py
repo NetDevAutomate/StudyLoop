@@ -439,15 +439,11 @@ def _progress_by_concept(topic: str) -> dict[str, dict]:
     if not conn:
         return {}
     try:
-        rows = conn.execute(
-            """
-            SELECT concept, confidence, last_teachback_score
-            FROM study_progress
-            WHERE topic = ?
-            """,
-            (topic,),
-        ).fetchall()
-        return {str(row["concept"]).lower(): dict(row) for row in rows}
+        from studyloop.history import observations
+
+        return {
+            row["concept"].lower(): row for row in observations.rows(conn) if row["topic"] == topic
+        }
     except sqlite3.OperationalError as exc:
         if not _connection.is_missing_table_error(exc):
             logger.warning("_progress_by_concept failed: %s", exc)
@@ -635,26 +631,7 @@ def mastery_graph_mermaid(topic: str, *, max_edges: int | None = None) -> str:
 def weak_links_for_topic(topic: str) -> list[dict]:
     """Return struggling/low-score concepts that block downstream edges."""
     edges = list_dependencies(topic)
-    conn = _connect()
-    progress: dict[str, dict] = {}
-    if conn:
-        try:
-            rows = conn.execute(
-                """
-                SELECT concept, confidence, last_teachback_score, last_seen
-                FROM study_progress
-                WHERE topic = ?
-                """,
-                (topic,),
-            ).fetchall()
-            progress = {str(row["concept"]).lower(): dict(row) for row in rows}
-        except sqlite3.OperationalError as exc:
-            if not _connection.is_missing_table_error(exc):
-                logger.warning("weak_links_for_topic failed: %s", exc)
-                raise
-            progress = {}
-        finally:
-            conn.close()
+    progress = _progress_by_concept(topic)
 
     items: list[dict] = []
     for edge in edges:

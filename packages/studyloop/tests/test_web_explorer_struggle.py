@@ -1,7 +1,7 @@
 """Tests for POST /api/history/struggling-topics (Phase 5).
 
 Verifies that marking a lesson section as a struggle:
-  - writes a study_progress row with confidence='struggling'
+  - writes an explicitly owned observation with confidence='struggling'
   - persists provenance (source_course, source_section, created_by='web')
   - surfaces via GET /api/history/struggling-topics?days=90
 """
@@ -39,7 +39,7 @@ SCHEMA_PATH = (
 
 @pytest.fixture
 def migrated_db(tmp_path: Path) -> Path:
-    """Create a fresh DB bootstrapped with base schema + all migrations (incl. v22)."""
+    """Create a fresh DB with all migrations, including observation ownership."""
     from agent_session_tools.migrations import migrate
 
     db = tmp_path / "sessions.db"
@@ -59,10 +59,23 @@ def client(migrated_db: Path, monkeypatch: MonkeyPatch) -> TestClient:
     def _connect_migrated():
         conn = sqlite3.connect(migrated_db)
         conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys=ON")
         return conn
 
     monkeypatch.setattr("studyloop.history._connection._connect", _connect_migrated)
     return TestClient(create_app(study_dirs=[]))
+
+
+def _progress_rows(db: Path) -> list[dict]:
+    from studyloop.history import observations
+
+    conn = sqlite3.connect(db)
+    conn.execute("PRAGMA foreign_keys=ON")
+    try:
+        assert conn.execute("SELECT count(*) FROM study_progress").fetchone()[0] == 0
+        return observations.rows(conn)
+    finally:
+        conn.close()
 
 
 # ---------------------------------------------------------------------------
@@ -93,15 +106,7 @@ class TestPostStrugglingTopic:
                 "publisher": "deeplearning-ai",
             },
         )
-        conn = sqlite3.connect(migrated_db)
-        conn.row_factory = sqlite3.Row
-        row = conn.execute(
-            "SELECT confidence, source_course, source_section, source_publisher, created_by "
-            "FROM study_progress WHERE topic = ? AND concept = ?",
-            ("intro-to-pipelines", "intro-to-pipelines"),
-        ).fetchone()
-        conn.close()
-
+        row = next(r for r in _progress_rows(migrated_db) if r["concept"] == "intro-to-pipelines")
         assert row is not None
         assert row["confidence"] == "struggling"
         assert row["source_course"] == "deeplearning-ai/mlops-course"
@@ -119,13 +124,7 @@ class TestPostStrugglingTopic:
         assert resp.status_code == 200
         assert resp.json()["ok"] is True
 
-        conn = sqlite3.connect(migrated_db)
-        conn.row_factory = sqlite3.Row
-        row = conn.execute(
-            "SELECT source_publisher FROM study_progress WHERE concept = ?",
-            ("lesson-1-basics",),
-        ).fetchone()
-        conn.close()
+        row = next(r for r in _progress_rows(migrated_db) if r["concept"] == "lesson-1-basics")
         assert row is not None
         assert row["source_publisher"] is None
 
@@ -167,14 +166,7 @@ class TestPostStrugglingTopic:
         client.post("/api/history/struggling-topics", json=payload)
         client.post("/api/history/struggling-topics", json=payload)
 
-        conn = sqlite3.connect(migrated_db)
-        conn.row_factory = sqlite3.Row
-        rows = conn.execute(
-            "SELECT COUNT(*) AS cnt, MAX(session_count) AS sc "
-            "FROM study_progress WHERE topic = ? AND concept = ?",
-            ("lesson-1-basics", "lesson-1-basics"),
-        ).fetchone()
-        conn.close()
-        # Only one row (upsert on uuid5 id), with session_count = 2.
-        assert rows["cnt"] == 1
-        assert rows["sc"] == 2
+        rows = _progress_rows(migrated_db)
+        # Two explicit reports yield one current assessment and retained history.
+        assert len(rows) == 1
+        assert rows[0]["session_count"] == 2

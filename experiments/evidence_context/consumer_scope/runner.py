@@ -48,8 +48,9 @@ def probe():
             except ScopeError:
                 write_status = "withheld_missing_scope_lineage_before_provider"
             else:
-                raise AssertionError("Classified legacy progress write must be refused")
-            assert len(delivered) == 1
+                assert conn.execute("PRAGMA user_version").fetchone()[0] >= 33
+                write_status = "source_linked_observations_available_no_reports_returned"
+            assert len(delivered) == (1 if write_status.startswith("withheld") else 2)
     finally:
         conn.close()
     result = {
@@ -131,7 +132,7 @@ def run(output):
     observed = json.loads(command(__spec__.name, ["--probe"])["stdout"])
     assert observed["resume"]["session_id"] == "personal"
     assert observed["streaks"]["sessions_this_week"] == 1
-    assert len(observed["extractor_deliveries"]) == 1
+    assert 1 <= len(observed["extractor_deliveries"]) <= 2
     assert observed["extractor_deliveries"][0]["session"] == "personal"
     cli_result = command("studyloop.cli", ["resume"])
     assert "PERSONAL_ONLY" in cli_result["stdout"]

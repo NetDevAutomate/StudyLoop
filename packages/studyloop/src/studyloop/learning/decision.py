@@ -197,33 +197,24 @@ def _struggle_candidates(time_minutes: int) -> list[_Candidate]:
     if not conn:
         return []
     try:
-        columns = _table_columns(conn, "study_progress")
-        if not columns:
-            return []
-        select_cols = ["topic", "concept", "confidence", "last_seen", "session_count"]
-        if "last_teachback_score" in columns:
-            select_cols.append("last_teachback_score")
-        if "source_course" in columns:
-            select_cols.append("source_course")
-        if "source_section" in columns:
-            select_cols.append("source_section")
-        rows = conn.execute(
-            f"""
-            SELECT {", ".join(select_cols)}
-            FROM study_progress
-            WHERE confidence IN ('struggling', 'learning')
-               OR (last_teachback_score IS NOT NULL AND last_teachback_score < 14)
-            ORDER BY
-              CASE confidence
-                WHEN 'struggling' THEN 0
-                WHEN 'learning' THEN 1
-                ELSE 2
-              END,
-              COALESCE(last_teachback_score, 99) ASC,
-              last_seen DESC
-            LIMIT 12
-            """
-        ).fetchall()
+        from studyloop.history import observations
+
+        rows = [
+            row
+            for row in observations.rows(conn)
+            if row["confidence"] in ("struggling", "learning")
+            or (row.get("last_teachback_score") is not None and row["last_teachback_score"] < 14)
+        ]
+        rows.sort(key=lambda row: row["last_seen"], reverse=True)
+        rows.sort(
+            key=lambda row: (
+                {"struggling": 0, "learning": 1}.get(row["confidence"], 2),
+                row.get("last_teachback_score")
+                if row.get("last_teachback_score") is not None
+                else 99,
+            )
+        )
+        rows = rows[:12]
     except sqlite3.OperationalError:
         return []
     finally:

@@ -467,13 +467,6 @@ def _row_matches_topic_slug(row: _StrugglingTopicRow, topic_slug: str | None) ->
     return any(_slugify(candidate) == wanted for candidate in candidates if candidate)
 
 
-def _study_progress_columns(conn: sqlite3.Connection) -> set[str]:
-    try:
-        return {r["name"] for r in conn.execute("PRAGMA table_info(study_progress)")}
-    except sqlite3.OperationalError:
-        return set()
-
-
 def _query_struggling_topics(
     db_path: Path, cutoff_iso: str, topic_slug: str | None
 ) -> list[_StrugglingTopicRow]:
@@ -488,33 +481,25 @@ def _query_struggling_topics(
         return []
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys=ON")
     try:
-        columns = _study_progress_columns(conn)
-        optional_source_cols = [
-            col for col in ("source_course", "source_section", "source_publisher") if col in columns
+        from studyloop.history import observations
+
+        rows = [
+            row
+            for row in observations.rows(conn)
+            if row["confidence"] == "struggling" and row["last_seen"] > cutoff_iso
         ]
-        select_cols = ["topic", "concept", *optional_source_cols]
-        rows = conn.execute(
-            f"""
-            SELECT {", ".join(select_cols)}
-            FROM study_progress
-            WHERE confidence = 'struggling'
-              AND last_seen > ?
-            ORDER BY lower(topic), lower(concept)
-            """,
-            (cutoff_iso,),
-        ).fetchall()
+        rows.sort(key=lambda row: (row["topic"].lower(), row["concept"].lower()))
     except sqlite3.OperationalError:
         return []
     finally:
         conn.close()
     struggle_rows = []
     for r in rows:
-        source_course = r["source_course"] if "source_course" in optional_source_cols else None
-        source_section = r["source_section"] if "source_section" in optional_source_cols else None
-        source_publisher = (
-            r["source_publisher"] if "source_publisher" in optional_source_cols else None
-        )
+        source_course = r.get("source_course")
+        source_section = r.get("source_section")
+        source_publisher = r.get("source_publisher")
         struggle_rows.append(
             _StrugglingTopicRow(
                 topic=r["topic"],

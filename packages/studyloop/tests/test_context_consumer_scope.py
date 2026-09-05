@@ -6,6 +6,7 @@ import json
 import sqlite3
 from datetime import UTC, datetime, timedelta
 from importlib.resources import files
+from typing import cast
 
 import pytest
 from click.testing import CliRunner
@@ -114,21 +115,264 @@ def test_extractor_selection_and_body_reads_filter_before_provider(consumer_db):
         conn.close()
 
 
-def test_classified_progress_write_is_refused_before_provider(consumer_db):
+def test_mismatched_progress_input_is_refused_before_provider(consumer_db):
     from studyloop.extractors.pipeline import extract_and_write
 
     db, _, _ = consumer_db
     conn = sqlite3.connect(db)
+    conn.execute("PRAGMA foreign_keys=ON")
     conn.row_factory = sqlite3.Row
     called = []
     try:
         before = conn.execute("SELECT * FROM study_progress ORDER BY id").fetchall()
-        with pytest.raises(ScopeError, match="source-owned learning records"):
+        with pytest.raises(ValueError, match="does not match"):
             extract_and_write(
                 "personal", [], lambda *args: called.append(args) or [], connection=conn
             )
         assert called == []
         assert conn.execute("SELECT * FROM study_progress ORDER BY id").fetchall() == before
+    finally:
+        conn.close()
+
+
+@pytest.mark.parametrize("mutation", ["edit", "reclassify", "forget"])
+def test_extractor_releases_snapshot_and_rechecks_access(consumer_db, mutation):
+    from agent_session_tools.context.observations import ObservationStore
+    from agent_session_tools.context.provenance import Scope
+    from agent_session_tools.context.store import Access, ContextStore
+    from studyloop.extractors import ExtractorResult
+    from studyloop.extractors.pipeline import extract_and_write
+
+    db, config, settings = consumer_db
+    conn = sqlite3.connect(db)
+    conn.execute("PRAGMA foreign_keys=ON")
+    conn.row_factory = sqlite3.Row
+    messages = _extract._fetch_messages(conn, "personal")
+    conn.rollback()
+
+    def provider(received, session_id):
+        assert not conn.in_transaction
+        assert received == messages and session_id == "personal"
+        with sqlite3.connect(db, timeout=0.2) as other:
+            other.execute("PRAGMA foreign_keys=ON")
+            other.execute("BEGIN IMMEDIATE")
+            if mutation == "edit":
+                other.execute(
+                    "UPDATE messages SET content='CHANGED_AFTER_CALL' WHERE session_id='personal'"
+                )
+            elif mutation == "forget":
+                other.execute(
+                    "INSERT INTO context_tombstones(session_id,deletion_id,deleted_at) "
+                    "VALUES ('personal','fixture-deletion','2026-09-06')"
+                )
+            else:
+                settings["memory"]["projects"]["personal"]["scope"] = "work"
+                config.write_text(json.dumps(settings))
+                apply_policy(other, ScopePolicy.from_config(settings), actor="test", dry_run=False)
+        return [ExtractorResult("python", "generators", "learning", "MODEL_ASSESSMENT")]
+
+    try:
+        before = conn.execute("SELECT * FROM study_progress ORDER BY id").fetchall()
+        if mutation == "edit":
+            assert extract_and_write("personal", messages, provider, connection=conn) == 1
+            report = ObservationStore(conn).list("studyloop.progress")[0]
+            assert report["semantic_status"] == "unverified_interpretation"
+            from agent_session_tools.context.store import _hash, _json
+
+            assert report["payload"]["input_trace"]["fingerprint"] == _hash(_json(messages))
+            assert report["source_relationship"] == "captured_input"
+            sources = [
+                ContextStore(conn).source(ref["id"], Access(scope=Scope.PERSONAL))
+                for ref in report["sources"]
+            ]
+            assert all(source is not None for source in sources)
+            assert {source["body"] for source in sources if source is not None} == {
+                m["content"] for m in messages
+            }
+            assert all(source["origin"] == "unknown" for source in sources if source is not None)
+            assert "CHANGED_AFTER_CALL" not in json.dumps(sources)
+        else:
+            with pytest.raises(ScopeError):
+                extract_and_write("personal", messages, provider, connection=conn)
+            assert conn.execute("SELECT count(*) FROM context_observations").fetchone()[0] == 0
+            assert conn.execute("SELECT count(*) FROM context_evidence").fetchone()[0] == 0
+        assert conn.execute("SELECT * FROM study_progress ORDER BY id").fetchall() == before
+    finally:
+        conn.close()
+
+
+def test_extractor_preserves_borrowed_transaction_and_rolls_back_failed_batch(consumer_db):
+    from studyloop.extractors import ExtractorResult
+    from studyloop.extractors.pipeline import extract_and_write
+
+    db, _, _ = consumer_db
+    conn = sqlite3.connect(db)
+    conn.execute("PRAGMA foreign_keys=ON")
+    conn.row_factory = sqlite3.Row
+    try:
+        messages = _extract._fetch_messages(conn, "personal")
+        conn.rollback()
+        conn.execute("UPDATE sessions SET updated_at='caller-owned' WHERE id='personal'")
+        called = []
+        with pytest.raises(ValueError, match="caller transaction"):
+            extract_and_write(
+                "personal", messages, lambda *args: called.append(args) or [], connection=conn
+            )
+        assert not called and conn.in_transaction
+        assert (
+            conn.execute("SELECT updated_at FROM sessions WHERE id='personal'").fetchone()[0]
+            == "caller-owned"
+        )
+        conn.rollback()
+
+        def invalid_batch(*args):
+            # First report is valid; the second fails its write-time text check.
+            return [
+                ExtractorResult("python", "one", "learning"),
+                ExtractorResult("python", "two", "learning", notes=cast("str", 42)),
+            ]
+
+        with pytest.raises(ValueError, match="text fields"):
+            extract_and_write("personal", messages, invalid_batch, connection=conn)
+        assert conn.execute("SELECT count(*) FROM context_observations").fetchone()[0] == 0
+        assert conn.execute("SELECT count(*) FROM context_evidence").fetchone()[0] == 0
+        assert not conn.in_transaction
+    finally:
+        conn.close()
+
+
+def test_input_order_changes_binding_but_identical_replays_deduplicate(consumer_db):
+    from agent_session_tools.context.observations import ObservationStore
+    from studyloop.extractors import ExtractorResult
+    from studyloop.extractors.pipeline import extract_and_write
+
+    db, _, _ = consumer_db
+    conn = sqlite3.connect(db)
+    conn.execute("PRAGMA foreign_keys=ON")
+    conn.row_factory = sqlite3.Row
+
+    def provider(*args):
+        return [ExtractorResult("python", "generators", "learning")]
+
+    try:
+        original = _extract._fetch_messages(conn, "personal")
+        conn.rollback()
+        for _ in range(2):
+            extract_and_write("personal", original, provider, connection=conn)
+        assert conn.execute("SELECT count(*) FROM context_observations").fetchone()[0] == 1
+        conn.execute("UPDATE messages SET seq=1-seq WHERE session_id='personal'")
+        conn.commit()
+        reordered = _extract._fetch_messages(conn, "personal")
+        assert reordered == list(reversed(original))
+        conn.rollback()
+        extract_and_write("personal", reordered, provider, connection=conn)
+        reports = ObservationStore(conn).list("studyloop.progress")
+        assert len(reports) == 2
+        assert len({r["payload"]["input_trace"]["fingerprint"] for r in reports}) == 2
+        assert {s["id"] for s in reports[0]["sources"]} == {s["id"] for s in reports[1]["sources"]}
+    finally:
+        conn.close()
+
+
+def test_borrowed_progress_writer_leaves_commit_to_caller(consumer_db):
+    from studyloop.history.progress import _record_progress_on_connection
+
+    db, _, _ = consumer_db
+    conn = sqlite3.connect(db)
+    conn.execute("PRAGMA foreign_keys=ON")
+    try:
+        _record_progress_on_connection(conn, "python", "generators", "learning")
+        assert conn.in_transaction
+        conn.rollback()
+        assert conn.execute("SELECT count(*) FROM context_observations").fetchone()[0] == 0
+    finally:
+        conn.close()
+
+
+def test_same_concept_scopes_conflicts_reclassification_and_source_removal(
+    consumer_db, monkeypatch
+):
+    from agent_session_tools.context.legacy_sources import capture_session_input
+    from agent_session_tools.context.store import ContextStore
+    from studyloop.history import observations
+
+    db, _, _ = consumer_db
+    conn = sqlite3.connect(db)
+    conn.execute("PRAGMA foreign_keys=ON")
+    conn.row_factory = sqlite3.Row
+    try:
+        personal = observations.record(
+            conn,
+            "python",
+            "generators",
+            "learning",
+            "PERSONAL_NOTE",
+            source_session_id="personal",
+            created_by="extractor",
+        )
+        monkeypatch.setenv("SESSION_CONTEXT_SCOPE", "work")
+        observations.record(
+            conn,
+            "python",
+            "generators",
+            "confident",
+            "WORK_NOTE",
+            source_session_id="work",
+            created_by="extractor",
+        )
+        work_refs = capture_session_input(conn, "work").evidence_ids
+        conn.commit()
+        assert "PERSONAL_NOTE" not in json.dumps(observations.rows(conn))
+        monkeypatch.setenv("SESSION_CONTEXT_SCOPE", "personal")
+        own = observations.rows(conn)
+        assert len(own) == 1 and own[0]["observation_ids"] == [personal]
+        assert "WORK_NOTE" not in json.dumps(own)
+        assert own[0]["session_count"] == 1
+        conn.rollback()
+        ContextStore(conn).assign_session("work", "personal")
+        both = observations.rows(conn)
+        assert both[0]["confidence_status"] == "conflicting_reports"
+        assert both[0]["reported_confidences"] == ["learning", "confident"]
+        assert both[0]["session_count"] == 2
+        conn.execute("DELETE FROM context_evidence WHERE id=?", (work_refs[0],))
+        remaining = observations.rows(conn)
+        assert remaining[0]["session_count"] == 1
+        assert remaining[0]["confidence_status"] == "unverified_interpretation"
+        assert "WORK_NOTE" not in json.dumps(remaining)
+    finally:
+        conn.close()
+
+
+def test_manual_revision_does_not_copy_unbound_notes_and_retirement_blocks_legacy_fallback(
+    consumer_db, monkeypatch
+):
+    from agent_session_tools.context.observations import ObservationStore
+    from studyloop.history import observations
+
+    db, config, _ = consumer_db
+    # Explicit legacy inspection with no assigned projects is required to expose
+    # a fallback. This fixture contains a same-subject old aggregate as a trap.
+    settings = {"memory": {"default_scope": "unclassified", "projects": {}}}
+    config.write_text(json.dumps(settings))
+    conn = sqlite3.connect(db)
+    conn.execute("PRAGMA foreign_keys=ON")
+    conn.row_factory = sqlite3.Row
+    conn.execute("DELETE FROM context_session_projects")
+    conn.commit()
+    apply_policy(conn, ScopePolicy.from_config(settings), actor="fixture", dry_run=False)
+    try:
+        first = observations.record(
+            conn, "sql", "UNSCOPED_MERGED_CONTENT", "learning", "ORIGINAL_NOTE"
+        )
+        second = observations.record(conn, "sql", "UNSCOPED_MERGED_CONTENT", "confident")
+        current = next(r for r in observations.rows(conn) if r["topic"] == "sql")
+        assert current["notes"] is None and current["observation_ids"] == [second]
+        original = ObservationStore(conn).get(first)
+        assert original is not None and original["payload"]["notes"] == "ORIGINAL_NOTE"
+        assert ObservationStore(conn).forget(second)
+        assert not any(r["topic"] == "sql" for r in observations.rows(conn))
+        assert ObservationStore(conn).forget(first)
+        assert not any(r["topic"] == "sql" for r in observations.rows(conn))
     finally:
         conn.close()
 

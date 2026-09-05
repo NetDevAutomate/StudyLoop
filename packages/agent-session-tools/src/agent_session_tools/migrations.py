@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Current schema version - increment when adding new migrations
-CURRENT_VERSION = 32
+CURRENT_VERSION = 33
 
 # Migration functions: version -> (description, migration_func)
 MIGRATIONS: dict[int, tuple[str, Callable[[sqlite3.Connection], None]]] = {}
@@ -1396,6 +1396,13 @@ def migrate_v32(conn: sqlite3.Connection) -> None:
         before_json TEXT NOT NULL, after_json TEXT NOT NULL, actor TEXT NOT NULL,
         policy_digest TEXT NOT NULL, recorded_at TEXT NOT NULL
     )""")
+
+
+@migration(33, "Add source-linked observations, explicit owners and durable retirement")
+def migrate_v33(conn: sqlite3.Connection) -> None:
+    from .context.observation_schema import install
+
+    install(conn)
 
 
 def check_migration_status(db_path: Path) -> dict:

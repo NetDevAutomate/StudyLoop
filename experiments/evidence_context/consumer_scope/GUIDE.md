@@ -46,13 +46,15 @@ fail clearly. No original source body is erased by these read checks.
 ## The new finding: a pointer does not establish ownership of a merged record
 
 The existing `study_progress` table combines observations with the same topic and
-concept. It can append notes from several sessions while retaining a pointer to
-only the latest source session. Consider:
+concept. Its writer replaces notes when supplied and carries older notes forward
+when notes are omitted; its latest-source pointer can advance independently.
+The original Stage20 text incorrectly said it appended notes. Consider:
 
 1. A personal session reports difficulty with SQL windows.
 2. A work session discusses a confidential example of the same concept.
-3. Their notes are combined under the same concept key.
-4. Another personal session updates the latest-source pointer.
+3. The work note replaces the note under the shared concept key.
+4. Another personal session updates the latest-source pointer but omits notes,
+   leaving the work note in place.
 
 Labelling the whole row personal from that final pointer would expose earlier
 work content. A valid pointer is not evidence that it describes every component

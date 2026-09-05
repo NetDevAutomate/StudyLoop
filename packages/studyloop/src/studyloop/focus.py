@@ -129,34 +129,36 @@ def suggest_focus(days: int = 30, limit: int = 6) -> list[tuple[str, str]]:
     conn = _connect_sessions_db()
     if conn is not None:
         try:
+            from collections import Counter
+
+            from agent_session_tools.context.legacy import legacy_global_visible
+            from studyloop.history import observations
+
+            if legacy_global_visible(conn):
+                try:
+                    rows = conn.execute(
+                        """
+                        SELECT topic, COUNT(*) AS n FROM study_sessions
+                        WHERE started_at >= ? AND topic IS NOT NULL AND topic != ''
+                        GROUP BY LOWER(topic) ORDER BY n DESC LIMIT ?
+                        """,
+                        (cutoff, limit),
+                    ).fetchall()
+                    for row in rows:
+                        suggestions.setdefault(
+                            str(row[0]),
+                            f"{row[1]} study session(s) in the last {days} days",
+                        )
+                except sqlite3.OperationalError:
+                    pass
             try:
-                rows = conn.execute(
-                    """
-                    SELECT topic, COUNT(*) AS n FROM study_sessions
-                    WHERE started_at >= ? AND topic IS NOT NULL AND topic != ''
-                    GROUP BY LOWER(topic) ORDER BY n DESC LIMIT ?
-                    """,
-                    (cutoff, limit),
-                ).fetchall()
-                for row in rows:
-                    suggestions.setdefault(
-                        str(row[0]),
-                        f"{row[1]} study session(s) in the last {days} days",
-                    )
-            except sqlite3.OperationalError:
-                pass
-            try:
-                rows = conn.execute(
-                    """
-                    SELECT topic, COUNT(*) AS n FROM study_progress
-                    WHERE confidence IN ('struggling', 'learning')
-                      AND topic IS NOT NULL AND topic != ''
-                    GROUP BY LOWER(topic) ORDER BY n DESC LIMIT ?
-                    """,
-                    (limit,),
-                ).fetchall()
-                for row in rows:
-                    suggestions.setdefault(str(row[0]), f"{row[1]} concept(s) still in progress")
+                counts = Counter(
+                    row["topic"]
+                    for row in observations.rows(conn)
+                    if row["confidence"] in ("struggling", "learning")
+                )
+                for topic, count in counts.most_common(limit):
+                    suggestions.setdefault(topic, f"{count} concept(s) still in progress")
             except sqlite3.OperationalError:
                 pass
         finally:
@@ -187,6 +189,8 @@ def _connect_sessions_db() -> sqlite3.Connection | None:
             pass
         if not db.exists():
             return None
-        return sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+        conn = sqlite3.connect(db.resolve().as_uri() + "?mode=ro", uri=True)
+        conn.execute("PRAGMA foreign_keys=ON")
+        return conn
     except Exception:
         return None

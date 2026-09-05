@@ -403,7 +403,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
         topic_struggles = [s for s in struggles if topic.lower() in s.get("topic", "").lower()]
 
         # Wins (confident/mastered concepts)
-        wins = get_wins(days=days) if learning_visible else []
+        wins = get_wins(days=days)
         topic_wins = [w for w in wins if topic.lower() in w.get("topic", "").lower()]
 
         return {
@@ -413,6 +413,13 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
             "last_studied": last,
             "struggles": topic_struggles,
             "wins": topic_wins,
+            "wins_scope_status": (
+                "scoped_observations"
+                if any(w.get("observation_ids") for w in topic_wins)
+                else "explicit_unclassified_legacy_inspection"
+                if learning_visible
+                else "no_visible_observations"
+            ),
             "learning_scope_status": (
                 "explicit_unclassified_legacy_inspection"
                 if learning_visible
