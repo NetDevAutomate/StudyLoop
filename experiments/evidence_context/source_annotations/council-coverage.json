@@ -1,0 +1,80 @@
+{
+  "design-council": {
+    "selected_models": [
+      "claude-fable-5-1",
+      "grok-4.6",
+      "qwen3-coder",
+      "mistral-large-3"
+    ],
+    "responding_models": [
+      "claude-fable-5-1",
+      "grok-4.6",
+      "qwen3-coder",
+      "mistral-large-3"
+    ],
+    "provider_buckets": [
+      "anthropic",
+      "mistral",
+      "qwen",
+      "xai"
+    ],
+    "failed_models": {},
+    "recommendations": {
+      "claude-fable-5-1": "Run the 40-call trial only after (a) publishing per-arm expected tables (raw: basis and scope unknown for all ten; state/target from text only), (b) fixing whether the harness or annotator verifies hashes and reclassifying case 8 as an adapter test if the harness withholds the envelope, (c) filling case 7 expectations (completed, observed, parser.smoke@r7, scope=work), (d) defining target as executed identity from envelope in the capture arm and text-stated identity in raw, and (e) pinning temperature/seed; treat any 'observed' in the raw arm or on capture cases 2,4,5,8,9 as a stop condition.",
+      "grok-4.6": "Halt execution until a dual gold table (raw vs capture) is frozen; then run only if capture-arm cases 1/2/3/9 and raw-arm zero-observed are the stop rule.",
+      "qwen3-coder": "Accept with conditions: clarify case labels and scoring rules; separate integrity failures from semantic misinterpretations in evaluation.",
+      "mistral-large-3": "Reject the brief until provisional labels are replaced with explicit 'unscorable' placeholders for raw-arm cases, and a separate 'model_error' category is added for unsupported basis promotions. Execute only after these changes."
+    }
+  },
+  "result-council": {
+    "selected_models": [
+      "claude-fable-5-1",
+      "grok-4.6",
+      "qwen3-coder",
+      "mistral-large-3"
+    ],
+    "responding_models": [
+      "qwen3-coder",
+      "mistral-large-3"
+    ],
+    "provider_buckets": [
+      "mistral",
+      "qwen"
+    ],
+    "failed_models": {
+      "claude-fable-5-1": "ValueError: model did not return a JSON object",
+      "grok-4.6": "TimeoutError: timed out"
+    },
+    "recommendations": {
+      "qwen3-coder": "Promote the capture arm to production while retaining text arm for fallback, contingent on stricter basis/scope nulling and targeted retraining on origin-deficient cases.",
+      "mistral-large-3": "Promote the capture arm only, with a follow-up test isolating narrative target/scope interpretation failures by adding explicit negative cases (e.g., 'I ran parser.smoke@r8' or 'Running work project X')."
+    }
+  },
+  "result-council-focused": {
+    "selected_models": [
+      "claude-fable-5-1",
+      "grok-4.6",
+      "qwen3-coder",
+      "mistral-large-3"
+    ],
+    "responding_models": [
+      "claude-fable-5-1",
+      "grok-4.6",
+      "qwen3-coder",
+      "mistral-large-3"
+    ],
+    "provider_buckets": [
+      "anthropic",
+      "mistral",
+      "qwen",
+      "xai"
+    ],
+    "failed_models": {},
+    "recommendations": {
+      "claude-fable-5-1": "Run one bounded 40-call follow-up in which the code adapter derives basis (from envelope origin/receipt status), scope (from envelope context) and target-when-bound (envelope context.target non-null) and the model is restricted to state, target-only-when-envelope-target-is-null, and quote; use a held-out fixture set with deliberately varied bodies (in-progress/scheduled/negated wording, body-named target r8 vs envelope target r7, FAIL with nonzero returncode, spoof strings) and predeclare pass thresholds. This removes the basis/scope breach class by construction but must be reported as NOT validating state/target meaning: the adapter checks hash, origin, substring and equality, not entailment, exactly the gap that let 6/10 wrong narrative interpretations with valid hashes through the integrity-only control.",
+      "grok-4.6": "Run one pre-registered N=40 fixture replay that strips basis/scope from the model: code derives them only from verified envelopes (process_exit\u2192observed, conversation_message\u2192reported, unavailable/rejected\u2192unknown and scope null). Model emits only state, target, and quote. Score adapter exact-match separately from a locked quote\u2192state/target entailment rubric. Do not prompt-tune.",
+      "qwen3-coder": "Run a controlled mutation study comparing model classifications under origin-constrained prompting versus open prompting, holding the same 40-record dataset constant to isolate behavioral deltas.",
+      "mistral-large-3": "Run a bounded experiment using code-derived origin/scope from capture envelopes only, with no model inference of state/target. Measure field-level agreement with trusted receipts while excluding all narrative interpretation."
+    }
+  }
+}
