@@ -25,7 +25,8 @@
     "stage18": "3502407",
     "stage19": "3aa1b8a",
     "stage20": "36189ff",
-    "stage21": "918d18f"
+    "stage21": "918d18f",
+    "stage22": "3acbc6f"
   },
   "current_findings": [
     "Native capture retains conversation blocks, tool results and invocations separately. Only typed Codex terminal integer exit records get process_exit; no source text proves validation.",
@@ -45,8 +46,8 @@
   "verification": {
     "package_tests": "1237 passed",
     "experiment_tests": "255 passed,1 optional dependency skip",
-    "workspace_pyright": "0 errors; final checkpoint commit hook passed",
-    "commit_hooks": "918d18f passed all hooks including secrets scan,bandit,workspace pyright",
+    "workspace_pyright": "0 errors;3acbc6f workspace src+tests commit hook passed",
+    "commit_hooks": "3acbc6f passed all hooks including formatting,secrets scanning,Bandit and workspace pyright",
     "browser": "Stage22 five sections, expansion, viewport fits and no console errors",
     "studyloop_tests": "3778 passed,4 skipped,704 deselected; final additional transaction test and metadata changes covered by30 focused checks",
     "focused_consumer_tests": "45 StudyLoop consumer/extractor/CLI-contract passes;44 final native/export-CLI passes",

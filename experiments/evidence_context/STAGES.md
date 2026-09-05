@@ -28,6 +28,7 @@ no remote publication or backup is implied.
 | 19 — Scope before retrieval | Do existing readers enforce explicit context scope? | `3aa1b8a` | `scope_boundary/runner.py`; GUIDE.md and council audit |
 | 20 — StudyLoop consumers | Do scoped sources remain scoped in resume, extraction and history? | `36189ff` | `consumer_scope/runner.py`; GUIDE.md and council audit |
 | 21 — Attributable assessments | Can each progress report retain its input, scope and correction history? | `918d18f` | `learning_observations/runner.py`; GUIDE.md and council audit |
+| 22 — Native capture | Which authority can the actual session envelopes establish? | `3acbc6f` | `native_capture/runner.py`; GUIDE.md, observed aggregates and council audit |
 
 Stage 3 uses its own lifecycle adapter and database schema. It does not modify the
 stage 1 evidence store, and does not require stage 1 demo output. Stage 2 uses
@@ -493,14 +494,46 @@ that source-linked writes are available. Its earlier explanation of note
 concatenation is corrected in the current guide: the old writer retained notes
 when a newer update omitted them.
 
+## Stage 22 commands
+
+```sh
+uv run python -m experiments.evidence_context.native_capture.runner --output /tmp/evidence-stage-22
+open /tmp/evidence-stage-22/walkthrough.html
+uv run session-context health --db /tmp/evidence-stage-22/sessions.db
+uv run pytest packages/agent-session-tools/tests/test_native_capture.py experiments/evidence_context/tests/test_native_capture_lesson.py -q
+```
+
+Checkpoint `3acbc6f` integrates actual Codex, Claude Code, Kiro and Grok native
+capture, immutable rendering links, local tombstone replay protection and durable
+capture receipts. The five-view lesson is synthetic and isolated. The separate
+opt-in local audit imported eight real sessions: 1,898 native records, including
+872 tool results and 162 typed process exits, alongside 577 legacy messages.
+These are different units; no answer-quality multiplier is claimed. Both sampled
+Codex archives identified Codex Desktop. Revision and original machine stayed
+unknown where their source did not establish them.
+
+Validation: 1,237 session-tools tests, 255 experiment tests (one optional skip),
+45 StudyLoop compatibility tests and 44 final native/export-CLI checks passed.
+Commit hooks passed lint, formatting, secrets checks, Bandit and workspace types.
+Browser checks verified all five sections, expansion, viewport fit and no errors.
+Both council rounds obtained Meta/Qwen/Mistral responses; Grok timed out in the
+first. The guide records accepted findings and claims rejected against source and
+test evidence. This increment does not establish full archive or installed-hook
+coverage, scoped replica lifecycle, semantic accuracy or production readiness.
+
+See [native_capture/GUIDE.md](native_capture/GUIDE.md),
+[native_capture/COUNCIL-DECISION.md](native_capture/COUNCIL-DECISION.md) and
+[native_capture/OBSERVED-RESULTS.json](native_capture/OBSERVED-RESULTS.json).
+
 ## Production delivery direction
 
 The user has now authorized the full implementation and StudyLoop integration while
 preserving these stages. [delivery/GOAL.md](delivery/GOAL.md) records the complete shipping
 requirements; [delivery/ARCHITECTURE.md](delivery/ARCHITECTURE.md) explains the decisions.
 These checkpoints do not satisfy that goal. SQLite remains canonical. The internal
-source/citation boundary now exists; next enforce it throughout actual native capture,
-legacy query/export/sync, lifecycle and installation paths.
+source/citation boundary and native capture now exist; next complete bounded public
+retrieval/decisions, remaining learner ownership, scoped sync, lifecycle and
+installed capture/doctor acceptance.
 
 The earlier experiment-only checkpoints retain their original scope and limitations.
 The Stage8 exercise is unchanged.
