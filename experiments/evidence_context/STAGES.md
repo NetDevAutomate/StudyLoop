@@ -370,14 +370,35 @@ one optional dependency test skipped. Browser checks covered forty cards, eight 
 eight fresh cases, filtering and mobile layout. See
 [provenance_ownership/GUIDE.md](provenance_ownership/GUIDE.md) for the runnable lesson.
 
+## Stage 18 commands
+
+```sh
+uv run python -m experiments.evidence_context.canonical_sources.runner --output /tmp/evidence-stage-18
+open /tmp/evidence-stage-18/walkthrough.html
+uv run --group dev pytest packages/agent-session-tools/tests/test_context_store.py experiments/evidence_context/tests/test_canonical_sources.py -q
+```
+
+This offline lesson uses the actual package's new canonical SQLite schema/storage
+on synthetic fixtures. It demonstrates immutable source versions, exact Unicode
+citations, explicit scope, cross-harness proposed correction links and reclassification.
+No installed capture/sync, semantic arbitration or complete forgetting is claimed.
+
+The package regression passed 1,156 tests. Broader testing uncovered and fixed compaction
+of FTS shadow tables, then separately reproduced and fixed missing live WAL evidence.
+Migration failure/retry, outer-transaction rollback and newer-schema refusal are tested.
+The eleven-section walkthrough passed expansion/mobile/error checks. See
+[canonical_sources/GUIDE.md](canonical_sources/GUIDE.md) for the database reasoning and
+[canonical_sources/COUNCIL-DECISION.md](canonical_sources/COUNCIL-DECISION.md) for the
+limited two-provider implementation coverage and rejected factual review allegations.
+
 ## Production delivery direction
 
 The user has now authorized the full implementation and StudyLoop integration while
 preserving these stages. [delivery/GOAL.md](delivery/GOAL.md) records the complete shipping
 requirements; [delivery/ARCHITECTURE.md](delivery/ARCHITECTURE.md) explains the decisions.
-Stage17 alone does not satisfy that goal. SQLite remains canonical. Next: bind provenance
-to immutable stored sources, explicit scope and exact citations, then enforce those
-boundaries throughout legacy query/export/sync and installation paths.
+These checkpoints do not satisfy that goal. SQLite remains canonical. The internal
+source/citation boundary now exists; next enforce it throughout actual native capture,
+legacy query/export/sync, lifecycle and installation paths.
 
 The earlier experiment-only checkpoints retain their original scope and limitations.
 The Stage8 exercise is unchanged.

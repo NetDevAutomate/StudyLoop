@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Current schema version - increment when adding new migrations
-CURRENT_VERSION = 30
+CURRENT_VERSION = 31
 
 # Migration functions: version -> (description, migration_func)
 MIGRATIONS: dict[int, tuple[str, Callable[[sqlite3.Connection], None]]] = {}
@@ -112,7 +112,13 @@ def migrate(conn: sqlite3.Connection) -> list[str]:
     # Safe because the version only ever increases, and a migration in flight is
     # not yet committed -- so this read either sees the old version (and we go on
     # to take the lock and block) or the final one (and we correctly skip).
-    if get_user_version(conn) >= CURRENT_VERSION:
+    observed_version = get_user_version(conn)
+    if observed_version > CURRENT_VERSION:
+        raise RuntimeError(
+            f"Database schema v{observed_version} is newer than supported v{CURRENT_VERSION}; "
+            "upgrade agent-session-tools before accessing it"
+        )
+    if observed_version == CURRENT_VERSION:
         logger.debug(
             "Database already at version %d, no migrations needed", CURRENT_VERSION
         )
@@ -123,6 +129,8 @@ def migrate(conn: sqlite3.Connection) -> list[str]:
     owns_transaction = not conn.in_transaction
     if owns_transaction:
         conn.execute("BEGIN IMMEDIATE")
+    else:
+        conn.execute("SAVEPOINT context_schema_migration")
 
     try:
         # Re-read under the lock: another migrator may have finished the whole
@@ -130,13 +138,17 @@ def migrate(conn: sqlite3.Connection) -> list[str]:
         current = get_user_version(conn)
         applied: list[str] = []
 
-        if current >= CURRENT_VERSION:
+        if current > CURRENT_VERSION:
+            raise RuntimeError(f"Unsupported newer database schema: v{current}")
+        if current == CURRENT_VERSION:
             logger.debug(
                 "Another migrator brought the database to version %d while we waited",
                 current,
             )
             if owns_transaction:
                 conn.commit()
+            else:
+                conn.execute("RELEASE context_schema_migration")
             return applied
 
         logger.info(f"Migrating database from version {current} to {CURRENT_VERSION}")
@@ -144,8 +156,7 @@ def migrate(conn: sqlite3.Connection) -> list[str]:
 
         for version in range(current + 1, CURRENT_VERSION + 1):
             if version not in MIGRATIONS:
-                logger.warning(f"Missing migration for version {version}")
-                continue
+                raise RuntimeError(f"Missing migration for version {version}")
 
             description, migration_func = MIGRATIONS[version]
             logger.info(f"Applying migration v{version}: {description}")
@@ -166,12 +177,17 @@ def migrate(conn: sqlite3.Connection) -> list[str]:
             # migrations actually take effect. See PRAGMA_ONLY_VERSIONS.
             for version in pragma_only_applied:
                 MIGRATIONS[version][1](conn)
+        else:
+            conn.execute("RELEASE context_schema_migration")
 
         return applied
     except Exception as e:
         logger.error(f"Migration failed, rolling back the whole sequence: {e}")
         if owns_transaction:
             conn.rollback()
+        else:
+            conn.execute("ROLLBACK TO context_schema_migration")
+            conn.execute("RELEASE context_schema_migration")
         raise
 
 
@@ -1350,6 +1366,15 @@ def migrate_v30(conn: sqlite3.Connection) -> None:
                 WHERE id = NEW.id;
             END
         """)
+
+
+@migration(
+    31, "Add immutable evidence, scoped projects, citations and deletion suppression"
+)
+def migrate_v31(conn: sqlite3.Connection) -> None:
+    from .context.schema import install
+
+    install(conn)
 
 
 def check_migration_status(db_path: Path) -> dict:

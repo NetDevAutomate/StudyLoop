@@ -844,6 +844,9 @@ class TestMigrationV26:
         Creates a parked_topics table at the v17 schema level (before v26)
         with the old broken index that allows cross-session duplicates.
         """
+        # migrate() runs every later migration too; retain the actual base schema
+        # rather than a session-only mock that cannot support later message hooks.
+        conn.executescript(SCHEMA_PATH.read_text())
         conn.executescript("""
             CREATE TABLE IF NOT EXISTS study_sessions (
                 id TEXT PRIMARY KEY,
@@ -909,7 +912,7 @@ class TestMigrationV26:
         conn.row_factory = sqlite3.Row
         self._seed_pre_migration_duplicates(conn)
 
-        # Set user_version to 25 so only v26 runs
+        # Set user_version to 25 so v26 and all later migrations run
         set_user_version(conn, 25)
 
         migrate(conn)

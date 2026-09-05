@@ -56,7 +56,6 @@ _MESSAGE_CHILD_TABLES = ("message_embeddings", "message_concepts")
 # full DB if semantic search over history is ever needed.
 _SYNCED_TABLES = ("sessions", "messages", "file_references")
 
-_FTS_INTERNAL_PREFIX = "messages_fts"
 
 _MARKER_FILE = ".last_full_sync"
 _LOCK_FILE = ".full_sync.lock"
@@ -183,15 +182,14 @@ def _table_columns(
 
 
 def _user_tables(conn: sqlite3.Connection, schema: str = "main") -> list[str]:
-    rows = conn.execute(
-        f"SELECT name FROM {schema}.sqlite_master WHERE type='table' "
-        "AND name NOT LIKE 'sqlite_%'"
-    ).fetchall()
+    # PRAGMA table_list identifies virtual and shadow tables by type, so new
+    # FTS indexes are rebuilt by their source triggers instead of copying their
+    # internal pages into an already initialized destination. A name-prefix rule
+    # handled only messages_fts and broke when context_evidence_fts was added.
     return [
-        r[0]
-        for r in rows
-        if not r[0].startswith(_FTS_INTERNAL_PREFIX) or r[0] == "messages_fts"
-        # keep messages_fts out too — it is rebuilt via triggers, never copied
+        row[1]
+        for row in conn.execute(f"PRAGMA {schema}.table_list")
+        if row[0] == schema and row[2] == "table" and not row[1].startswith("sqlite_")
     ]
 
 
@@ -295,7 +293,7 @@ def compact_database(source: Path, dest: Path) -> CompactStats:
 
     The FTS index is rebuilt exactly once via the insert triggers on the
     destination — duplicated index rows in the source are left behind.
-    ``source`` is opened read-only (immutable) and never modified.
+    ``source`` is opened read-only, including its committed WAL, and never modified.
     """
     if not source.exists():
         raise FileNotFoundError(f"Source database not found: {source}")
@@ -307,23 +305,27 @@ def compact_database(source: Path, dest: Path) -> CompactStats:
     from agent_session_tools.export_sessions import init_db
 
     ensure_leaf_dir(dest.parent)
-    # init_db creates schema + migrations; reopen with URI processing enabled
-    # so the immutable ATTACH below is honoured (a non-URI connection would
-    # treat 'file:...?immutable=1' as a literal filename).
+    # URI mode=ro includes committed WAL records; immutable=1 would silently
+    # ignore a live writer's journal and lose recently captured conversations.
     init_db(str(dest)).close()
     conn = sqlite3.connect(f"file:{dest}", uri=True)
     stats = CompactStats(source_size_mb=source.stat().st_size / 1024 / 1024)
     try:
         conn.execute("PRAGMA foreign_keys=OFF")
-        conn.execute(f"ATTACH DATABASE 'file:{source}?immutable=1' AS src")
+        conn.execute(
+            "ATTACH DATABASE ? AS src", (source.resolve().as_uri() + "?mode=ro",)
+        )
+        # Hold a source read snapshot through introspection and every table copy.
+        conn.execute("BEGIN")
 
         src_tables = set(_user_tables(conn, "src")) - {"messages_fts"}
         dest_tables = set(_user_tables(conn, "main")) - {"messages_fts"}
         common = src_tables & dest_tables
         # Dependency order: parents before children; messages last of the
         # core pair so session FKs resolve. Everything else after.
-        ordered = [t for t in ("sessions", "messages") if t in common]
-        ordered += sorted(common - {"sessions", "messages"})
+        first = ("context_tombstones", "sessions", "messages")
+        ordered = [t for t in first if t in common]
+        ordered += sorted(common - set(first))
 
         with conn:
             for table in ordered:

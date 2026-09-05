@@ -1,31 +1,42 @@
 {
   "goal": "active",
   "previous_goal_turn": "initial goal turn; Stage16 checkpoint verified as completed prior work",
-  "current_stage": "17 and production boundary design",
+  "current_stage": "18 canonical storage complete as internal checkpoint; production integration remains",
   "requirements": {
-    "P01": "not yet proven",
+    "P01": "partial: additive v31, atomic failure/retry/outer savepoint, newer-version refusal and live-WAL compaction tested; installed upgrade/restore audit remains",
     "P02": "not yet proven",
-    "P03": "not yet proven",
-    "P04": "not yet proven",
-    "P05": "not yet proven",
-    "P06": "not yet proven",
+    "P03": "partial: source-owned contract and canonical immutable source/citation tests pass; trusted native parser and public adapters remain",
+    "P04": "partial: internal scoped lexical source lookup, exact version/offset citations and why-selected fields; rich retrieval/decision interfaces remain",
+    "P05": "partial: proposed correction/conflict links preserve both branches; decision applicability and semantic review remain",
+    "P06": "partial: internal direct/search/assertion/relation scope tests pass; legacy CLI/MCP/semantic paths still unprotected",
     "P07": "not yet proven",
-    "P08": "not yet proven",
+    "P08": "partial: low-level tombstone insert suppression and direct canonical dependency cleanup tested; full purge, reimport, sync, restore and derived lifecycle remain",
     "P09": "not yet proven",
     "P10": "not yet proven",
     "P11": "not yet proven",
     "P12": "not yet proven",
     "P13": "not yet proven",
-    "P14": "not yet proven",
-    "P15": "not yet proven"
+    "P14": "stages1-17 checkpointed; stage18 runnable demo/guide and council arbitration added; saved exercise unchanged",
+    "P15": "partial: 1156 package tests pass; full release acceptance and independent final review remain"
   },
   "completed_checkpoints": {
-    "stage16": "6c736c5"
+    "stage16": "6c736c5",
+    "stage17": "106b65a"
   },
   "current_findings": [
-    "Learning worktree clean at 9c278fc; main has unrelated uncommitted work.",
-    "Codex exporter currently omits native tool-call/output events; Kiro currently extracts prose only.",
-    "Current MCP historical context drops tool_use/tool_result and has no explicit scope boundary.",
-    "Existing sync streams SQL with global learning tables; scoped transport/deletion propagation need real integration."
+    "Stage17 saved replay improves eligible release to10/10 in both arms but two narrative control errors remain; not semantic efficacy.",
+    "Stage18 internal ContextStore requires explicit Access and immutable native records; no public adapters wired yet.",
+    "Full regression exposed new-FTS shadow-table copying; compaction now rebuilds all virtual indexes from canonical records.",
+    "A populated-source regression reproduced live WAL data loss from immutable compaction; mode=ro plus read snapshot fixes it.",
+    "v26 test fixtures now include actual base messages schema; v31 requires valid sessions/messages tables.",
+    "Stage18 council full/focused rounds each had only Qwen/Mistral usable; their concrete scope/Unicode/hash allegations were contradicted by code and tests. No three-provider review consensus.",
+    "Project scope/assignment audit history, complete deletion propagation, actual native capture, legacy API filtering, scoped sync and shared installers remain required."
+  ],
+  "next_actions": [
+    "Finish Stage18 checkpoint and preserve exact test evidence.",
+    "Inventory every production source read/write/derived copy and implement explicit persisted configuration/audit with legacy read guards.",
+    "Integrate native tool capture with stable source identities, actual parser receipts, per-run capture telemetry; validate real archives read-only.",
+    "Implement production forgetting and scoped versioned sync/restore before exposing the new tools; keep canonical SQLite.",
+    "Complete shared install/doctor ownership, packaged skill and installed StudyLoop journeys, then full P01-P15 audit."
   ]
 }
