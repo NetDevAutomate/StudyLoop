@@ -18,12 +18,14 @@ no remote publication or backup is implied.
 | 9 — Code-owned release | Can model drafts override missing metadata or enter released prose? | `d7a9c8f` | `python -m experiments.evidence_context.acceptance_gate`; acceptance_gate/GUIDE.md, RESULTS.md and replay walkthrough |
 | 10 — Metadata value | Does source-backed metadata improve decisions? | `620090a` | `python -m experiments.evidence_context.metadata_value`; metadata_value/GUIDE.md, RESULTS.md and actual-answer replay |
 | 11 — Source to decision | Can code enforce evidence requirements without blocking justified choices? | `e1428be` | `python -m experiments.evidence_context.source_decision`; source_decision/GUIDE.md, RESULTS.md and saved learning walkthrough |
+| 12 — Real retrieval pilot | Which selected history reaches and helps the answer? | `27e6900` | `retrieval_matrix/trial.py` and `report.py`; GUIDE.md, RESULTS.md, private real-answer replay |
+| 13 — Equivalent storage | Which engine serves the same nodes, edges and rows? | `6fff879` | `storage_matrix/benchmark.py` and `query_diagnostic.py`; GUIDE.md and RESULTS.md |
 
 Stage 3 uses its own lifecycle adapter and database schema. It does not modify the
 stage 1 evidence store, and does not require stage 1 demo output. Stage 2 uses
 stage 1 fixtures/code; its pinned checkpoint contains everything needed to run it.
-All examples below create temporary/synthetic data only. Use a new output path
-for every demo run; existing directories are deliberately not overwritten.
+Stages 1–11 use temporary/synthetic demo data. Stage 12 also provides an explicitly
+private real-transcript replay. Use a new output path for every demo run; existing directories are deliberately not overwritten.
 
 ## Run from the current worktree
 
@@ -196,18 +198,65 @@ result review had one full-packet responder and two responders to a focused comp
 retry, insufficient for three-provider result consensus. The guide explains all
 limitations and the intentionally identical-source omission control.
 
-## Next evidence gate, then further stages
+## Stage 12 commands
 
-Before integration, independently label a bounded set of parser-boundary examples and
-check declaration/span agreement, valid inputs, false blocking and locator integrity.
-Then inspect a small read-only real-source sample for capture provenance and available
-metadata before general conversation extraction or storage-engine comparison. Human
-review of explanation usefulness remains necessary. See
-[source_decision/COUNCIL-DECISION.md](source_decision/COUNCIL-DECISION.md).
-No DSPy integration, production prompt promotion or database-engine selection yet.
+```sh
+uv run --group dev pytest experiments/evidence_context/tests/test_retrieval_matrix.py -q
+uv run python -m experiments.evidence_context.retrieval_matrix.report \
+  --directory experiments/evidence_context/.private/stage-12/run \
+  --output /tmp/stage-12-replay.html
+open /tmp/stage-12-replay.html
+```
 
-Keep the real 3–5 disjoint-question pilot with independent pre-result labels as the
-precondition for efficacy claims. Learner understanding requires actual feedback.
-Lifecycle-to-evidence and installed-package ownership tests remain required before
-production. Capture health still needs real detection and watermarks; no engine
-selection follows from synthetic examples or successful response parsing.
+Checkpoint `27e6900` preserves a four-question real development pilot, 32 gateway
+answers and the unchanged prompt. Under pre-retrieval coordinator labels all four
+arms covered Q1 2/3, Q2 3/3, Q3 0/4 facts. Reviewer-label sensitivity is retained.
+All eight Q4 answers abstained. Schema compliance did not stop prose from promoting
+plans into results. No held-out efficacy or retriever superiority is established.
+Three providers labelled before retrieval; full result review returned only Qwen;
+a bounded focused retry also returned only Qwen. See the detailed council arbitration.
+
+The replay requires the owner's ignored private snapshot, which is deliberately not
+in a public Git clone. Synthetic tests run without that snapshot or provider calls.
+The private archive is alongside the learning checkout; Git does not back it up.
+
+## Stage 13 commands
+
+```sh
+uv run --with ladybug==0.20.2 python -m experiments.evidence_context.storage_matrix.benchmark \
+  --corpus experiments/evidence_context/storage_matrix/demo-corpus.json \
+  --output /tmp/stage-13-demo
+uv run python -m experiments.evidence_context.storage_matrix.query_diagnostic \
+  --directory /tmp/stage-13-demo
+uv run --with ladybug==0.20.2 --group dev pytest experiments/evidence_context/tests/test_storage_matrix.py -q
+```
+
+Checkpoint `6fff879` preserves the full SQLite/Ladybug/mixed benchmark and
+separate post-hoc SQL diagnostic. The committed fixture is tiny and synthetic; the
+actual measurement used 1,019 real nodes and ten disjoint copies. All 240 sampled
+query conditions returned identical rows across engines; 3,600 warm query timings
+were collected. A SQLite plan change reduced replicated two-hop median from 0.494ms
+to 0.019ms in a separate paired diagnostic. It is not substituted into the frozen
+engine race. No migration is justified. Grok and Qwen returned full storage reviews;
+Fable failed. No three-provider result consensus is claimed.
+
+All 206 evidence-context tests passed, including prior stages and new boundary/equality
+checks. The private replay passed browser checks for 32 entries, Q3 filtering and
+expansion. Both new stages passed the commit hooks. Source DB and production config
+were not modified by these experiments; graph stores are disposable snapshots.
+
+## Next evidence gate
+
+Use an independently reviewed, budget-matched complete-evidence control for the failed
+episode. Keep model, prompt and scoring fixed so we can separate retrieval omissions
+from answer misuse. Then test episode identity, execution state and validation
+applicability on new independently labelled examples. This supersedes the prior
+next-step suggestion to gather a first real sample: the sample now exists, but it is
+development data and does not satisfy the real held-out efficacy requirement.
+
+Keep SQLite canonical and indexes replaceable while investigating information value.
+A new engine race needs a named workload and a fair optimized-query baseline. Work/
+personal scope, correction/forgetting through derived indexes, capture health and
+installation ownership remain requirements for integration, not proven by these
+microbenchmarks. No DSPy integration, production prompt promotion or migration occurred.
+The optional Stage 8 learning exercise remains saved unchanged.
