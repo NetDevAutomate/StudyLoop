@@ -10,6 +10,7 @@ no remote publication or backup is implied.
 | 1 — Evidence retrieval | Can reviewed relationships add relevant evidence while preserving citations and bounds? | `c262c08` | `python -m experiments.evidence_context`; README.md and ARBITRATION.md |
 | 2 — Shared context requirements | What must StudyLoop and a standalone consumer both guarantee? | `46442cb` | `tests/test_shared_context_requirements.py`; REQUIREMENTS.md. This is an executable contract stage, not a separate visual demo. |
 | 3 — Correction and forgetting | Can offline replicas converge without resurrecting forgotten content? | `b44145a` | `python -m experiments.evidence_context.lifecycle_demo`; STUDY-GUIDE.md |
+| 4 — Capture health | Does configured capture actually yield recent history? | `ae2b250` | `python -m experiments.evidence_context.capture_health`; capture_health/GUIDE.md and COUNCIL-DECISION.md |
 
 Stage 3 uses its own lifecycle adapter and database schema. It does not modify the
 stage 1 evidence store, and does not require stage 1 demo output. Stage 2 uses
@@ -63,18 +64,28 @@ may need network access; the tests and demos do not call model providers.
 - Preserve synthetic fixtures; keep real transcripts and provider outputs private.
 - Keep council advice, coordinator decisions and test evidence distinguishable.
 
-## Planned stages — not implemented
+## Stage 4 commands
 
-4. Capture health: distinguish configured hooks from successful imports, partial
-   capture and stale history. Explain why empty retrieval may not mean no history.
-5. Installation ownership: temporary-environment setup/reinstall/upgrade/uninstall
-   contracts for a standalone consumer plus StudyLoop, preserving shared state.
-6. Evidence lifecycle integration: connect correction/deletion to the retrieval
-   store and its citations, and address identity, reclassification and restore gaps.
-7. Held-out decision evaluation: keyword versus relationships with shuffled-link
-   control; add semantic arms only when implemented. Fixed model/context budget,
-   lineage-separated cases, citation correctness, usefulness and operating costs.
-8. Engine comparison only if the earlier measurements identify a reason to run it.
+```sh
+uv run python -m experiments.evidence_context.capture_health --output /tmp/evidence-stage-4
+uv run --group dev pytest experiments/evidence_context/tests/test_capture_health.py -q
+```
 
-Before promoting the lifecycle design, seek a further diverse implementation
-review. The existing three-provider council covered initial design, not stage 3.
+Checkpoint `ae2b250` can be opened in a detached worktree using the same procedure.
+The council reconsidered the order using all four stages' evidence. See
+[capture_health/COUNCIL-DECISION.md](capture_health/COUNCIL-DECISION.md).
+
+## Revised planned stages — not implemented
+
+5. Held-out retrieval-value evaluation before more integration: frozen local
+   questions/labels, keyword and relationships, shuffled-link control, explicit
+   missing-evidence cases, matched budgets and measured costs. No efficacy claims
+   from synthetic scaffolding or previously explored development cases.
+6. Use those results and a further council review to choose lifecycle-to-evidence
+   integration versus installed-package ownership tests. Both remain required
+   before production; neither is silently considered complete.
+7. Engine comparison only if measurements justify it. Capture health still needs
+   live detection and coverage watermarks before it can substantiate real history.
+
+The stage-4 council reviewed cross-stage results and stage-4 source. A full diverse
+implementation review of stage 3 remains outstanding before promotion.
