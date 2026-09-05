@@ -1,0 +1,439 @@
+{
+  "calls": 32,
+  "arms": {
+    "raw": {
+      "responses": 16,
+      "valid": 16,
+      "all_expected_ids_released": 13,
+      "omitted_ids": 3,
+      "unexpected_ids": 0,
+      "blocked_claims": 3,
+      "cost_usd": 0.00343
+    },
+    "annotated": {
+      "responses": 16,
+      "valid": 16,
+      "all_expected_ids_released": 16,
+      "omitted_ids": 0,
+      "unexpected_ids": 0,
+      "blocked_claims": 0,
+      "cost_usd": 0.00392
+    }
+  },
+  "cases": [
+    {
+      "case": "separate_events",
+      "expected_ids": [
+        "E1",
+        "E2"
+      ],
+      "conditions": [
+        {
+          "id": "C10",
+          "arm": "annotated",
+          "repeat": 1,
+          "status": "valid",
+          "accepted": [
+            "E1",
+            "E2"
+          ],
+          "blocked": [],
+          "omitted": []
+        },
+        {
+          "id": "C17",
+          "arm": "raw",
+          "repeat": 0,
+          "status": "valid",
+          "accepted": [
+            "E1",
+            "E2"
+          ],
+          "blocked": [],
+          "omitted": []
+        },
+        {
+          "id": "C26",
+          "arm": "raw",
+          "repeat": 1,
+          "status": "valid",
+          "accepted": [
+            "E2"
+          ],
+          "blocked": [
+            "basis_mismatch"
+          ],
+          "omitted": [
+            "E1"
+          ]
+        },
+        {
+          "id": "C30",
+          "arm": "annotated",
+          "repeat": 0,
+          "status": "valid",
+          "accepted": [
+            "E1",
+            "E2"
+          ],
+          "blocked": [],
+          "omitted": []
+        }
+      ]
+    },
+    {
+      "case": "reported_pass",
+      "expected_ids": [
+        "E1"
+      ],
+      "conditions": [
+        {
+          "id": "C14",
+          "arm": "annotated",
+          "repeat": 0,
+          "status": "valid",
+          "accepted": [
+            "E1"
+          ],
+          "blocked": [],
+          "omitted": []
+        },
+        {
+          "id": "C16",
+          "arm": "raw",
+          "repeat": 1,
+          "status": "valid",
+          "accepted": [
+            "E1"
+          ],
+          "blocked": [],
+          "omitted": []
+        },
+        {
+          "id": "C22",
+          "arm": "raw",
+          "repeat": 0,
+          "status": "valid",
+          "accepted": [
+            "E1"
+          ],
+          "blocked": [],
+          "omitted": []
+        },
+        {
+          "id": "C32",
+          "arm": "annotated",
+          "repeat": 1,
+          "status": "valid",
+          "accepted": [
+            "E1"
+          ],
+          "blocked": [],
+          "omitted": []
+        }
+      ]
+    },
+    {
+      "case": "observed_pass",
+      "expected_ids": [
+        "E1"
+      ],
+      "conditions": [
+        {
+          "id": "C02",
+          "arm": "raw",
+          "repeat": 0,
+          "status": "valid",
+          "accepted": [],
+          "blocked": [
+            "basis_mismatch"
+          ],
+          "omitted": [
+            "E1"
+          ]
+        },
+        {
+          "id": "C05",
+          "arm": "raw",
+          "repeat": 1,
+          "status": "valid",
+          "accepted": [],
+          "blocked": [
+            "basis_mismatch"
+          ],
+          "omitted": [
+            "E1"
+          ]
+        },
+        {
+          "id": "C21",
+          "arm": "annotated",
+          "repeat": 0,
+          "status": "valid",
+          "accepted": [
+            "E1"
+          ],
+          "blocked": [],
+          "omitted": []
+        },
+        {
+          "id": "C25",
+          "arm": "annotated",
+          "repeat": 1,
+          "status": "valid",
+          "accepted": [
+            "E1"
+          ],
+          "blocked": [],
+          "omitted": []
+        }
+      ]
+    },
+    {
+      "case": "identical_report",
+      "expected_ids": [
+        "E1"
+      ],
+      "conditions": [
+        {
+          "id": "C06",
+          "arm": "annotated",
+          "repeat": 0,
+          "status": "valid",
+          "accepted": [
+            "E1"
+          ],
+          "blocked": [],
+          "omitted": []
+        },
+        {
+          "id": "C08",
+          "arm": "raw",
+          "repeat": 1,
+          "status": "valid",
+          "accepted": [
+            "E1"
+          ],
+          "blocked": [],
+          "omitted": []
+        },
+        {
+          "id": "C20",
+          "arm": "raw",
+          "repeat": 0,
+          "status": "valid",
+          "accepted": [
+            "E1"
+          ],
+          "blocked": [],
+          "omitted": []
+        },
+        {
+          "id": "C27",
+          "arm": "annotated",
+          "repeat": 1,
+          "status": "valid",
+          "accepted": [
+            "E1"
+          ],
+          "blocked": [],
+          "omitted": []
+        }
+      ]
+    },
+    {
+      "case": "unknown_state",
+      "expected_ids": [
+        "E1"
+      ],
+      "conditions": [
+        {
+          "id": "C01",
+          "arm": "annotated",
+          "repeat": 1,
+          "status": "valid",
+          "accepted": [
+            "E1"
+          ],
+          "blocked": [],
+          "omitted": []
+        },
+        {
+          "id": "C13",
+          "arm": "raw",
+          "repeat": 1,
+          "status": "valid",
+          "accepted": [
+            "E1"
+          ],
+          "blocked": [],
+          "omitted": []
+        },
+        {
+          "id": "C18",
+          "arm": "raw",
+          "repeat": 0,
+          "status": "valid",
+          "accepted": [
+            "E1"
+          ],
+          "blocked": [],
+          "omitted": []
+        },
+        {
+          "id": "C29",
+          "arm": "annotated",
+          "repeat": 0,
+          "status": "valid",
+          "accepted": [
+            "E1"
+          ],
+          "blocked": [],
+          "omitted": []
+        }
+      ]
+    },
+    {
+      "case": "wrong_revision",
+      "expected_ids": [],
+      "conditions": [
+        {
+          "id": "C19",
+          "arm": "annotated",
+          "repeat": 1,
+          "status": "valid",
+          "accepted": [],
+          "blocked": [],
+          "omitted": []
+        },
+        {
+          "id": "C23",
+          "arm": "raw",
+          "repeat": 1,
+          "status": "valid",
+          "accepted": [],
+          "blocked": [],
+          "omitted": []
+        },
+        {
+          "id": "C24",
+          "arm": "annotated",
+          "repeat": 0,
+          "status": "valid",
+          "accepted": [],
+          "blocked": [],
+          "omitted": []
+        },
+        {
+          "id": "C31",
+          "arm": "raw",
+          "repeat": 0,
+          "status": "valid",
+          "accepted": [],
+          "blocked": [],
+          "omitted": []
+        }
+      ]
+    },
+    {
+      "case": "unknown_target",
+      "expected_ids": [],
+      "conditions": [
+        {
+          "id": "C04",
+          "arm": "annotated",
+          "repeat": 1,
+          "status": "valid",
+          "accepted": [],
+          "blocked": [],
+          "omitted": []
+        },
+        {
+          "id": "C11",
+          "arm": "raw",
+          "repeat": 1,
+          "status": "valid",
+          "accepted": [],
+          "blocked": [],
+          "omitted": []
+        },
+        {
+          "id": "C12",
+          "arm": "annotated",
+          "repeat": 0,
+          "status": "valid",
+          "accepted": [],
+          "blocked": [],
+          "omitted": []
+        },
+        {
+          "id": "C15",
+          "arm": "raw",
+          "repeat": 0,
+          "status": "valid",
+          "accepted": [],
+          "blocked": [],
+          "omitted": []
+        }
+      ]
+    },
+    {
+      "case": "explicit_correction",
+      "expected_ids": [
+        "E2"
+      ],
+      "conditions": [
+        {
+          "id": "C03",
+          "arm": "raw",
+          "repeat": 1,
+          "status": "valid",
+          "accepted": [
+            "E2"
+          ],
+          "blocked": [],
+          "omitted": []
+        },
+        {
+          "id": "C07",
+          "arm": "annotated",
+          "repeat": 0,
+          "status": "valid",
+          "accepted": [
+            "E2"
+          ],
+          "blocked": [],
+          "omitted": []
+        },
+        {
+          "id": "C09",
+          "arm": "annotated",
+          "repeat": 1,
+          "status": "valid",
+          "accepted": [
+            "E2"
+          ],
+          "blocked": [],
+          "omitted": []
+        },
+        {
+          "id": "C28",
+          "arm": "raw",
+          "repeat": 0,
+          "status": "valid",
+          "accepted": [
+            "E2"
+          ],
+          "blocked": [],
+          "omitted": []
+        }
+      ]
+    }
+  ],
+  "controls": {
+    "total": 20,
+    "ordinary_matches": 18,
+    "declared_semantic_gaps": 2,
+    "advisory_prose_leaks": 0
+  }
+}

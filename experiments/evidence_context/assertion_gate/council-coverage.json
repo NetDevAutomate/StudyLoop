@@ -1,0 +1,78 @@
+{
+  "design-council": {
+    "selected_models": [
+      "claude-fable-5-1",
+      "grok-4.6",
+      "qwen3-coder",
+      "mistral-large-3"
+    ],
+    "responding_models": [
+      "claude-fable-5-1",
+      "qwen3-coder",
+      "mistral-large-3"
+    ],
+    "provider_buckets": [
+      "anthropic",
+      "mistral",
+      "qwen"
+    ],
+    "failed_models": {
+      "grok-4.6": "ValueError: chat response has no text content"
+    },
+    "recommendations": {
+      "claude-fable-5-1": "Approve the expected_ids as written, but before running: add a code-level offline probe that flips basis on identical_report to 'observed' and superseded_by on explicit_correction E2 to 'E9' and records that check() still returns None for the former and silently blocks nothing for the latter; score the raw arm on target/state/abstention only with basis marked 'not inferable'; rewrite the qualification string to state that basis, state and supersession labels are ledger-asserted and not verified by the gate.",
+      "qwen3-coder": "Approve the contract with a requirement for explicit demonstration of failure modes under forged or misleading metadata in an offline probe before production use.",
+      "mistral-large-3": "Reject the synthetic 'observed' basis in fixtures unless the trusted harness envelope is cryptographically attested; treat all synthetic evidence as 'reported' until proven otherwise."
+    }
+  },
+  "result-council": {
+    "selected_models": [
+      "claude-fable-5-1",
+      "grok-4.6",
+      "qwen3-coder",
+      "mistral-large-3"
+    ],
+    "responding_models": [
+      "qwen3-coder",
+      "mistral-large-3"
+    ],
+    "provider_buckets": [
+      "mistral",
+      "qwen"
+    ],
+    "failed_models": {
+      "claude-fable-5-1": "JSONDecodeError: Unterminated string starting at: line 12 column 5 (char 3224)",
+      "grok-4.6": "TimeoutError: timed out"
+    },
+    "recommendations": {
+      "qwen3-coder": "Proceed to a targeted follow-up experiment that tests adversarial basis manipulation under controlled annotation forgery, measuring release accuracy against known ground truth.",
+      "mistral-large-3": "Run a discriminating experiment comparing two gate variants: one strict (current) and one permissive (allowing basis='reported' when basis='observed' is expected) on 16 new synthetic cases with mixed honest/conservative/overstated claims. Measure false-withholding (strict gate blocks useful conservative reports) vs. false-acceptance (permissive gate allows overstated claims)."
+    }
+  },
+  "result-council-compact": {
+    "selected_models": [
+      "claude-fable-5-1",
+      "grok-4.6",
+      "qwen3-coder",
+      "mistral-large-3"
+    ],
+    "responding_models": [
+      "claude-fable-5-1",
+      "qwen3-coder",
+      "mistral-large-3"
+    ],
+    "provider_buckets": [
+      "anthropic",
+      "mistral",
+      "qwen"
+    ],
+    "failed_models": {
+      "grok-4.6": "TimeoutError: timed out"
+    },
+    "recommendations": {
+      "claude-fable-5-1": "Run one discriminating experiment: provenance-bound annotations. Extend each ledger record with an evidence_ref (for 'observed', a hash/ID of an actual tool artifact in a separate authenticated store; for 'reported', the original_message/passage ID already present on the anchor) and a signed ledger digest over (state, basis, target, evidence_ref, source_hash). Extend check() to fail 'basis_unbacked' or 'ledger_signature_failed' when these do not resolve. Falsifiable measurement: on a mixed set of at least 10 forged records (state or basis mutated, source unchanged, as in the two known gaps) and at least 10 legitimate records including real tool-backed 'observed' ones, releases of forged records must be 0 and releases of legitimate records must remain at the current control rate (18/18 pattern); additionally, once observed_pass's raw payload contains the artifact reference so it is no longer identical to identical_report, the C02/C05 'basis_mismatch' blocks should disappear across both repeats. If forged releases stay above 0 or legitimate releases drop, the design is refuted.",
+      "qwen3-coder": "Next, produce source-backed annotations to measure whether grounding claims in verifiable tool outputs improves basis discrimination over synthetic labels alone.",
+      "mistral-large-3": "Run a discriminating experiment adding source-backed annotations (e.g., signed tool artifacts) for all synthetic fixtures. Measure the false acceptance rate of forged annotations when the model is given both raw text and cryptographically verifiable provenance."
+    }
+  }
+}
