@@ -54,3 +54,23 @@ retrieval reasons; the complete suite now passes 65 tests. Focused Pyright and
 Ruff pass. This extension has local validation only, not a new model council
 review. Lifecycle, two-replica deletion, health and installer tests remain NOT RUN;
 no production or standalone integration is claimed.
+
+## Lifecycle experiment and learning record
+
+The next bounded experiment adds a separate SQLite lifecycle adapter with immutable
+parent versions, a grow-only deletion set, declared artifact dependencies and
+scoped serialized exchange. Twelve additional tests bring the suite to 77 passing
+cases; focused lint/type checks pass. The runnable synthetic demo converges after
+stale replay with empty lookups/search for the deleted source. An actual subprocess
+exit between tombstone insertion and purge verifies rollback followed by successful
+retry. These results are local tests; no additional council review was run.
+
+STUDY-GUIDE.md records context, alternatives, trade-offs, source references, schema
+explanations and learning exercises. Decisions are provisional: retain conflicting
+correction heads rather than timestamp arbitration; let deletion dominate later
+replay; invalidate whole dependent artifacts rather than guessing partial repairs.
+
+The adapter does not exercise production sync, source identity reconciliation,
+backup restore, real vectors, the earlier evidence graph, health or installer
+contracts. REQUIREMENTS.md marks these remaining gaps explicitly. No production
+DBs or harness configuration were changed.

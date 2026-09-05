@@ -44,3 +44,19 @@ See [ARBITRATION.md](ARBITRATION.md) for council decisions and [tests/SAFEGUARDS
 ## StudyLoop and standalone acceptance scope
 
 [REQUIREMENTS.md](REQUIREMENTS.md) adds explicit boundaries, explanation, correction, forgetting, capture health and shared installation contracts. It separates tested retrieval behaviour from unrun lifecycle/integration gates and sets a scope ceiling. No standalone extraction is part of this experiment.
+
+## Learn the decisions and run the lifecycle lab
+
+Start with [STUDY-GUIDE.md](STUDY-GUIDE.md): schema walkthrough, alternatives,
+why SQLite is the baseline, correction conflicts, deletion markers, index
+invalidation, evidence limits and an optional small learning exercise.
+
+```sh
+uv run python -m experiments.evidence_context.lifecycle_demo --output /tmp/sessionweave-lifecycle-study
+uv run --group dev pytest experiments/evidence_context/tests/test_lifecycle.py -q
+```
+
+The lifecycle adapter is separate from the earlier retrieval store. It uses actual
+temporary SQLite replicas and scoped JSON exchange, not production session-sync.
+The full suite now contains 77 passing tests. Capture health and installed-package
+integration remain unrun gates; scope reclassification is explicitly rejected.

@@ -28,3 +28,12 @@ alongside the curated relationship arm to detect curation bias. Keep the same
 source corpus, model, scope/cutoff rules, and context budget across arms. This
 control is a future evaluation requirement; the present contract tests do not
 measure it. An effective text-only baseline remains a valid outcome.
+
+## Lifecycle adapter coverage
+
+`test_lifecycle.py` uses two actual SQLite files and serialized snapshot exchange.
+It checks logical source deletion, direct lookup, historical heads, FTS rebuild,
+declared derived dependencies, scope filtering, atomic receive and process-exit
+rollback. It is a separate adapter, not a test of production session-sync or the
+earlier retrieval graph. No enabled vector backend or backup restore is tested.
+Passing these cases does not imply secure erasure of database file bytes.
