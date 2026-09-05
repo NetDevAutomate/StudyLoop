@@ -21,6 +21,8 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
+from agent_session_tools.query_utils import build_project_filter
+
 try:
     from fastmcp import FastMCP
 
@@ -78,7 +80,7 @@ def _create_server() -> FastMCP:
             query: Search terms (supports AND, OR, NOT operators)
             limit: Maximum results to return (default 10)
             source: Filter by tool source (claude, kiro, gemini, opencode, etc.)
-            project: Filter by project path substring
+            project: Filter by project name or full path with configured project aliases
         """
         conn = _get_connection()
         try:
@@ -101,8 +103,9 @@ def _create_server() -> FastMCP:
                 sql += " AND s.source = ?"
                 params.append(source)
             if project:
-                sql += " AND s.project_path LIKE ?"
-                params.append(f"%{project}%")
+                project_clause, project_params = build_project_filter(project)
+                sql += " AND " + project_clause
+                params.extend(project_params)
 
             sql += " ORDER BY bm25(messages_fts), m.timestamp DESC LIMIT ?"
             params.append(limit)
@@ -130,7 +133,7 @@ def _create_server() -> FastMCP:
             limit: Maximum sessions to return (default 20)
             offset: Skip first N sessions for pagination
             source: Filter by tool source
-            project: Filter by project path substring
+            project: Filter by project name or full path with configured project aliases
         """
         conn = _get_connection()
         try:
@@ -145,8 +148,11 @@ def _create_server() -> FastMCP:
                 sql += " AND source = ?"
                 params.append(source)
             if project:
-                sql += " AND project_path LIKE ?"
-                params.append(f"%{project}%")
+                project_clause, project_params = build_project_filter(
+                    project, "project_path"
+                )
+                sql += " AND " + project_clause
+                params.extend(project_params)
 
             sql += " ORDER BY updated_at DESC LIMIT ? OFFSET ?"
             params.extend([limit, offset])

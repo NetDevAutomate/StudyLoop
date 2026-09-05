@@ -655,6 +655,7 @@ class TestPushBacksUpRemoteBeforeWriting:
             sync_mod, "_resolve_remote", lambda remote, tier="hot": ("host", "/r.db")
         )
         monkeypatch.setattr(sync_mod, "_remote_db_exists", lambda host, db: True)
+        monkeypatch.setattr(sync_mod, "_require_current_schema", lambda target: None)
         monkeypatch.setattr(
             sync_mod,
             "_get_sync_state",

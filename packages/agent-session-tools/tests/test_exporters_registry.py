@@ -66,7 +66,7 @@ class TestExporterProtocolConformance:
 
 class TestRegistryContents:
     def test_exact_release_keys(self) -> None:
-        assert tuple(EXPORTERS) == ("claude", "codex", "kiro", "opencode", "pi")
+        assert tuple(EXPORTERS) == ("claude", "codex", "grok", "kiro", "opencode", "pi")
 
     def test_claude_key_exists(self) -> None:
         assert "claude" in EXPORTERS

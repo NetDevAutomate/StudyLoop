@@ -39,6 +39,7 @@ from agent_session_tools.query_db import (  # noqa: F401
 )
 from agent_session_tools.query_utils import (
     build_date_filter,
+    build_project_filter,
     check_thresholds,
     escape_fts_query,
     get_db_size,
@@ -70,6 +71,7 @@ def _search_schema(
     before: str | None,
     limit: int,
     exclude_main_sessions: bool = False,
+    project: str | None = None,
 ) -> list[sqlite3.Row]:
     """Run the FTS search against one schema (``main`` or the attached full DB)."""
     # FTS5 auxiliary functions (bm25) and MATCH need unqualified table
@@ -89,6 +91,10 @@ def _search_schema(
         WHERE 1=1
     """
     params: list = [fts_query]
+    if project:
+        project_clause, project_params = build_project_filter(project)
+        base_query += " AND " + project_clause
+        params.extend(project_params)
 
     if exclude_main_sessions:
         # Hot sessions also exist in the full DB (sync) — the full-DB pass
@@ -113,6 +119,7 @@ def search(
     before: str | None = None,
     output_format: str = "table",
     include_full: bool = True,
+    project: str | None = None,
 ) -> None:
     """Full-text search across message content with porter stemming.
 
@@ -129,7 +136,9 @@ def search(
 
     rows: list[tuple[sqlite3.Row, str]] = [
         (r, "local")
-        for r in _search_schema(conn, "main", fts_query, since, before, limit)
+        for r in _search_schema(
+            conn, "main", fts_query, since, before, limit, project=project
+        )
     ]
 
     full_attached = include_full and attach_full_db(conn)
@@ -144,6 +153,7 @@ def search(
                 before,
                 limit,
                 exclude_main_sessions=True,
+                project=project,
             )
         )
         # Merge across tiers: BM25 is more negative = more relevant.

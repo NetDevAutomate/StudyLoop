@@ -32,12 +32,13 @@ the payload.
 
 **Deduplication**: fingerprint-skip (``mtime:size``) like ``claude.py``.  Real
 rollouts carry no stable per-message id, so message ids are derived as
-``<session_id>-<seq>`` (deterministic + idempotent) and existing messages are
-deleted before a changed file is re-imported, so a re-import never duplicates
-or strands rows.
+``<session_id>-<seq>`` (deterministic + idempotent) and changed files are reconciled atomically by the shared batch writer,
+so unchanged message IDs retain their evidence links.
 """
 
 import json
+import logging
+import os
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -83,7 +84,10 @@ def _flatten_content(content: object) -> str | None:
                 if "text" in item and isinstance(item["text"], str):
                     parts.append(item["text"])
                 else:
-                    name = item.get("name") or item.get("function", {}).get("name", "")
+                    function = item.get("function")
+                    name = item.get("name") or (
+                        function.get("name", "") if isinstance(function, dict) else ""
+                    )
                     if name:
                         parts.append(f"[tool:{name}]")
             elif isinstance(item, str):
@@ -108,11 +112,15 @@ class CodexExporter:
             sessions_dir: Override the default ``~/.codex/sessions/`` directory.
                           Useful for unit tests pointing at a synthetic fixture.
         """
-        self.sessions_dir = sessions_dir or CODEX_SESSIONS_DIR
+        self.sessions_dir = sessions_dir or (
+            Path(os.environ.get("CODEX_HOME", str(CODEX_SESSIONS_DIR.parent)))
+            / "sessions"
+        )
+        self.archived_dir = self.sessions_dir.parent / "archived_sessions"
 
     def is_available(self) -> bool:
         """Return True only when the Codex sessions directory exists."""
-        return self.sessions_dir.exists()
+        return self.sessions_dir.exists() or self.archived_dir.exists()
 
     def export_all(
         self, conn: sqlite3.Connection, incremental: bool = True, batch_size: int = 50
@@ -129,7 +137,9 @@ class CodexExporter:
         batch: list[dict] = []
         batch_messages: list[dict] = []
 
-        for rollout_file in sorted(self.sessions_dir.rglob("rollout-*.jsonl")):
+        rollouts = set(self.sessions_dir.rglob("rollout-*.jsonl"))
+        rollouts.update(self.archived_dir.rglob("rollout-*.jsonl"))
+        for rollout_file in sorted(rollouts):
             try:
                 session_data, msgs, reason = self._process_rollout(
                     conn, rollout_file, incremental
@@ -138,15 +148,18 @@ class CodexExporter:
                     batch.append(session_data)
                     batch_messages.extend(msgs)
                     if len(batch) >= batch_size:
-                        commit_batch(conn, batch, batch_messages, stats)
-                        batch = []
-                        batch_messages = []
+                        ready, ready_messages = batch, batch_messages
+                        batch, batch_messages = [], []
+                        commit_batch(conn, ready, ready_messages, stats)
                 elif reason == "skipped":
                     stats.skipped += 1
                 elif reason == "empty":
                     stats.empty += 1
-            except Exception:
+            except Exception as exc:
                 stats.errors += 1
+                logging.getLogger(__name__).warning(
+                    "Session export deferred (%s): %s", type(exc).__name__, exc
+                )
 
         if batch:
             commit_batch(conn, batch, batch_messages, stats)
@@ -166,7 +179,7 @@ class CodexExporter:
         session is returned for import.
         """
         session_id = f"codex_{rollout_file.stem}"
-        fingerprint = file_fingerprint(rollout_file)
+        fingerprint = "codex-v2:" + file_fingerprint(rollout_file)
 
         if incremental:
             existing = conn.execute(
@@ -180,25 +193,51 @@ class CodexExporter:
         last_ts: str | None = None
         project_path: str | None = None
         git_branch: str | None = None
+        current_model: str | None = None
+        source_metadata: dict = {}
 
         with open(rollout_file, encoding="utf-8") as fh:
-            for raw_line in fh:
+            for line_number, raw_line in enumerate(fh, 1):
                 raw_line = raw_line.strip()
                 if not raw_line:
                     continue
                 try:
                     obj = json.loads(raw_line)
-                except json.JSONDecodeError:
-                    continue
+                except json.JSONDecodeError as exc:
+                    raise ValueError(
+                        "Malformed transcript JSON; source retained for retry"
+                    ) from exc
 
+                if not isinstance(obj, dict):
+                    continue
                 otype = obj.get("type")
+                if not isinstance(obj.get("payload", {}), dict):
+                    continue
 
                 if otype == "session_meta":
                     payload = obj.get("payload", {}) or {}
+                    source_metadata.update(
+                        {
+                            k: payload[k]
+                            for k in (
+                                "id",
+                                "source",
+                                "originator",
+                                "model_provider",
+                                "git",
+                            )
+                            if k in payload
+                        }
+                    )
                     project_path = payload.get("cwd") or project_path
                     git = payload.get("git") or {}
                     if isinstance(git, dict):
                         git_branch = git.get("branch") or git_branch
+                    continue
+
+                if otype == "turn_context":
+                    current_model = obj["payload"].get("model") or current_model
+                    project_path = project_path or obj["payload"].get("cwd")
                     continue
 
                 if otype != "response_item":
@@ -226,10 +265,19 @@ class CodexExporter:
                     {
                         "role": role,
                         "content": content,
-                        "model": payload.get("model"),
+                        "model": payload.get("model")
+                        or (current_model if role == "assistant" else None),
                         "timestamp": ts,
+                        "metadata": {
+                            "source_line": line_number,
+                            "channel": payload.get("channel"),
+                            "source_message_id": payload.get("id"),
+                        },
                     }
                 )
+
+        if fingerprint != "codex-v2:" + file_fingerprint(rollout_file):
+            raise ValueError("Transcript changed during export; retry when stable")
 
         if not messages:
             return None, [], "empty"
@@ -237,10 +285,6 @@ class CodexExporter:
         is_update = conn.execute(
             "SELECT 1 FROM sessions WHERE id = ?", (session_id,)
         ).fetchone()
-        if is_update:
-            # Message ids are positional; drop the old set so a shrunk or
-            # rewritten rollout cannot strand stale rows.
-            conn.execute("DELETE FROM messages WHERE session_id = ?", (session_id,))
 
         session_data: dict = {
             "id": session_id,
@@ -251,9 +295,15 @@ class CodexExporter:
             "updated_at": last_ts,
             "import_fingerprint": fingerprint,
             "metadata": json.dumps(
-                {"fingerprint": fingerprint, "rollout_file": rollout_file.name}
+                {
+                    "fingerprint": fingerprint,
+                    "rollout_file": rollout_file.name,
+                    "source_file": str(rollout_file),
+                    "session_meta": source_metadata,
+                }
             ),
             "status": "updated" if is_update else "added",
+            "replace_messages": True,
         }
 
         message_rows = [
@@ -264,7 +314,7 @@ class CodexExporter:
                 "content": m["content"],
                 "model": m["model"],
                 "timestamp": m["timestamp"],
-                "metadata": json.dumps({}),
+                "metadata": json.dumps(m["metadata"]),
                 "seq": idx + 1,
             }
             for idx, m in enumerate(messages)

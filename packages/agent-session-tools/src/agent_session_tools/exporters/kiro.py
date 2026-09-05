@@ -10,12 +10,15 @@ nested structure — each item has ``user``, ``assistant``, and
 ``request_metadata`` keys (NOT a flat ``role``/``content`` layout).
 
 User text lives at   ``msg["user"]["content"]["Prompt"]["prompt"]``.
-Assistant text lives at ``msg["assistant"]["ToolUse"]["content"]``.
+Assistant prose uses ``ToolUse.content`` or ``Response.content``.
+Both dict-shaped history entries and older turn-pair lists are supported.
 """
 
+import hashlib
 import json
 import sqlite3
 import uuid
+from collections import defaultdict, deque
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -37,11 +40,19 @@ def _extract_turn(turn: dict) -> tuple[str, str] | None:
     content = turn.get("content")
     if isinstance(content, dict):
         prompt = content.get("Prompt")
-        if isinstance(prompt, dict) and prompt.get("prompt"):
+        if (
+            isinstance(prompt, dict)
+            and isinstance(prompt.get("prompt"), str)
+            and prompt["prompt"]
+        ):
             return ("user", prompt["prompt"])
     for key in ("ToolUse", "Response"):
         block = turn.get(key)
-        if isinstance(block, dict) and block.get("content"):
+        if (
+            isinstance(block, dict)
+            and isinstance(block.get("content"), str)
+            and block["content"]
+        ):
             return ("assistant", block["content"])
     return None
 
@@ -68,32 +79,44 @@ def _extract_text(msg: object) -> list[tuple[str, str, str | None]]:
     if not isinstance(msg, dict):
         return results
 
-    # Legacy dict shape: top-level user/assistant blocks.
+    # Both generations use the same tagged assistant variants.
+    for role in ("user", "assistant"):
+        turn = msg.get(role)
+        if not isinstance(turn, dict):
+            continue
+        extracted = _extract_turn(turn)
+        if extracted:
+            results.append((extracted[0], extracted[1], None))
+        elif (
+            role == "assistant"
+            and isinstance(turn.get("content"), str)
+            and turn["content"]
+        ):
+            results.append(("assistant", turn["content"], None))
+
+    # Preserve actual request/response timing; list entries have no metadata.
+    meta = msg.get("request_metadata")
+    if not isinstance(meta, dict):
+        meta = {}
+    request_ts = _epoch_ms_to_iso(meta.get("request_start_timestamp_ms"))
+    response_ts = _epoch_ms_to_iso(meta.get("stream_end_timestamp_ms"))
     user = msg.get("user")
-    if isinstance(user, dict):
-        content = user.get("content", {})
-        if isinstance(content, dict):
-            prompt = content.get("Prompt", {})
-            if isinstance(prompt, dict) and prompt.get("prompt"):
-                results.append(("user", prompt["prompt"], None))
-
-    assistant = msg.get("assistant")
-    if isinstance(assistant, dict):
-        tool_use = assistant.get("ToolUse")
-        if isinstance(tool_use, dict) and tool_use.get("content"):
-            results.append(("assistant", tool_use["content"], None))
-        elif assistant.get("content") and isinstance(assistant["content"], str):
-            results.append(("assistant", assistant["content"], None))
-
-    # Extract timestamp from request_metadata if available (dict form only).
-    meta = msg.get("request_metadata", {})
-    if isinstance(meta, dict) and meta.get("request_start_timestamp_ms"):
-        ts_ms = meta["request_start_timestamp_ms"]
+    user_ts = user.get("timestamp") if isinstance(user, dict) else None
+    if isinstance(user_ts, str):
         try:
-            ts_iso = datetime.fromtimestamp(ts_ms / 1000, tz=timezone.utc).isoformat()
-            results = [(r, t, ts_iso if ts is None else ts) for r, t, ts in results]
-        except (ValueError, OSError):
-            pass
+            datetime.fromisoformat(user_ts)
+        except ValueError:
+            user_ts = None
+    else:
+        user_ts = None
+    results = [
+        (
+            role,
+            text,
+            (user_ts or request_ts) if role == "user" else response_ts,
+        )
+        for role, text, _ in results
+    ]
 
     return results
 
@@ -104,7 +127,7 @@ def _epoch_ms_to_iso(ms: int | None) -> str | None:
         return None
     try:
         return datetime.fromtimestamp(ms / 1000, tz=timezone.utc).isoformat()
-    except (ValueError, OSError):
+    except (TypeError, ValueError, OSError, OverflowError):
         return None
 
 
@@ -128,7 +151,9 @@ class KiroCliExporter:
         batch: list[dict] = []
         batch_messages: list[dict] = []
 
-        with sqlite3.connect(KIRO_DB) as kiro_conn:
+        with sqlite3.connect(
+            f"{KIRO_DB.resolve().as_uri()}?mode=ro", uri=True
+        ) as kiro_conn:
             kiro_conn.row_factory = sqlite3.Row
 
             # Prefer conversations_v2, fall back to v1
@@ -139,13 +164,16 @@ class KiroCliExporter:
                     "AND name IN ('conversations_v2','conversations')"
                 ).fetchall()
             ]
-            use_v2 = "conversations_v2" in tables
-            table = "conversations_v2" if use_v2 else "conversations"
-
-            if not tables:
-                return stats
-
-            for row in kiro_conn.execute(f"SELECT * FROM {table}"):  # noqa: S608
+            # v1 can contain conversations absent from v2. Prefer v2 only
+            # for duplicate conversation IDs, rather than ignoring all v1.
+            seen: set[str] = set()
+            rows = (
+                (table == "conversations_v2", row)
+                for table in ("conversations_v2", "conversations")
+                if table in tables
+                for row in kiro_conn.execute(f"SELECT * FROM {table}")  # noqa: S608
+            )
+            for use_v2, row in rows:
                 project_path = row["key"]
 
                 # v2 has conversation_id as a column; v1 only in JSON
@@ -153,41 +181,87 @@ class KiroCliExporter:
 
                 try:
                     data = json.loads(row["value"])
-                except json.JSONDecodeError:
+                except (json.JSONDecodeError, TypeError):
                     stats.errors += 1
                     continue
 
-                conv_id = conv_id_col or data.get("conversation_id", str(uuid.uuid4()))
+                if not isinstance(data, dict):
+                    stats.errors += 1
+                    continue
+                conv_id = conv_id_col or data.get("conversation_id")
+                if not isinstance(conv_id, str) or not conv_id:
+                    # Older records without an ID must remain stable across runs.
+                    conv_id = str(
+                        uuid.uuid5(uuid.NAMESPACE_URL, f"kiro:{project_path}")
+                    )
+                if conv_id in seen:
+                    continue
+                seen.add(conv_id)
                 session_id = f"kiro_{conv_id}"
 
                 # Timestamps from v2 columns (epoch ms)
                 created_at = _epoch_ms_to_iso(row["created_at"]) if use_v2 else None
                 updated_at = _epoch_ms_to_iso(row["updated_at"]) if use_v2 else None
 
-                # Check if already imported (incremental)
+                # Parser version invalidates previous incomplete imports even
+                # when the upstream timestamp has not changed (or v1 has none).
+                fingerprint = (
+                    "kiro-v4:" + hashlib.sha256(row["value"].encode()).hexdigest()
+                )
                 existing = conn.execute(
-                    "SELECT updated_at FROM sessions WHERE id = ?", (session_id,)
+                    "SELECT updated_at, metadata FROM sessions WHERE id = ?",
+                    (session_id,),
                 ).fetchone()
-
-                if existing and incremental:
-                    # If the session hasn't been updated, skip it
-                    if existing["updated_at"] == updated_at:
-                        stats.skipped += 1
-                        continue
-                    # Otherwise we'll re-import (updated)
-                    status = "updated"
-                    conn.execute(
-                        "DELETE FROM messages WHERE session_id = ?", (session_id,)
+                try:
+                    metadata = (
+                        json.loads(existing["metadata"] or "{}") if existing else {}
                     )
-                else:
-                    status = "added"
+                except (json.JSONDecodeError, TypeError):
+                    metadata = {}
+                if not isinstance(metadata, dict):
+                    metadata = {}
+                if (
+                    existing
+                    and incremental
+                    and existing["updated_at"] == updated_at
+                    and metadata.get("kiro_import_fingerprint") == fingerprint
+                ):
+                    stats.skipped += 1
+                    continue
+                status = "updated" if existing else "added"
 
                 # Extract messages from conversation history
                 history = data.get("history", [])
+                if not isinstance(history, list):
+                    stats.errors += 1
+                    continue
                 if not history:
                     stats.empty += 1
                     continue
 
+                # Retain IDs for unchanged evidence, including repeated text.
+                previous_ids: dict[tuple[str, str], deque[str]] = defaultdict(deque)
+                positioned_ids: dict[tuple[int, str, str], str] = {}
+                for old in conn.execute(
+                    "SELECT id, role, content, metadata FROM messages WHERE session_id = ? ORDER BY seq, id",
+                    (session_id,),
+                ):
+                    previous_ids[(old["role"], old["content"])].append(old["id"])
+                    try:
+                        message_metadata = json.loads(old["metadata"] or "{}")
+                    except (TypeError, json.JSONDecodeError):
+                        message_metadata = {}
+                    position = (
+                        message_metadata.get("kiro_source_position")
+                        if isinstance(message_metadata, dict)
+                        else None
+                    )
+                    if isinstance(position, int) and not isinstance(position, bool):
+                        positioned_ids.setdefault(
+                            (position, old["role"], old["content"]), old["id"]
+                        )
+                reserved_ids = set(positioned_ids.values())
+                used_ids: set[str] = set()
                 messages = []
                 seq = 0
                 for entry in history:
@@ -195,17 +269,47 @@ class KiroCliExporter:
                     # _extract_text handles both. Skip other scalar junk.
                     if not isinstance(entry, (list, dict)):
                         continue
+                    request_meta = (
+                        entry.get("request_metadata")
+                        if isinstance(entry, dict)
+                        else None
+                    )
+                    model = (
+                        request_meta.get("model_id")
+                        if isinstance(request_meta, dict)
+                        else None
+                    )
+                    if not isinstance(model, str):
+                        model = None
                     for role, text, timestamp in _extract_text(entry):
                         seq += 1
+                        ids = previous_ids[(role, text)]
+                        message_id = positioned_ids.get((seq, role, text))
+                        if message_id is None:
+                            while ids and (
+                                ids[0] in used_ids or ids[0] in reserved_ids
+                            ):
+                                ids.popleft()
+                            message_id = (
+                                ids.popleft()
+                                if ids
+                                else str(
+                                    uuid.uuid5(
+                                        uuid.NAMESPACE_URL,
+                                        f"{session_id}:{seq}:{role}:{text}",
+                                    )
+                                )
+                            )
+                        used_ids.add(message_id)
                         messages.append(
                             {
-                                "id": str(uuid.uuid4()),
+                                "id": message_id,
                                 "session_id": session_id,
                                 "role": role,
                                 "content": text,
-                                "model": None,
+                                "model": model if role == "assistant" else None,
                                 "timestamp": timestamp,
-                                "metadata": json.dumps({}),
+                                "metadata": json.dumps({"kiro_source_position": seq}),
                                 "seq": seq,
                             }
                         )
@@ -218,6 +322,21 @@ class KiroCliExporter:
                         "created_at": created_at,
                         "updated_at": updated_at,
                         "status": status,
+                        "metadata": json.dumps(
+                            {
+                                **metadata,
+                                "kiro_import_fingerprint": fingerprint,
+                                "source_path": str(KIRO_DB),
+                                "kiro_transcript_entries": len(
+                                    data.get("transcript", [])
+                                )
+                                if isinstance(data.get("transcript"), list)
+                                else 0,
+                                "kiro_has_summary": bool(data.get("latest_summary")),
+                                "kiro_pending_message": bool(data.get("next_message")),
+                            }
+                        ),
+                        "replace_messages": True,
                     }
                     batch.append(session_data)
                     batch_messages.extend(messages)

@@ -2,7 +2,7 @@
 """Sync sessions.db between machines.
 
 Streams SQL deltas over SSH instead of copying entire database files.
-Only new sessions and messages are transferred using INSERT OR IGNORE.
+Missing conversation fields are merged without deleting evidence-bearing rows.
 """
 
 from __future__ import annotations
@@ -13,6 +13,7 @@ import re
 import shlex
 import sqlite3
 import subprocess
+import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
@@ -452,13 +453,22 @@ def _seed_remote_db(host: str, remote_db: str, local_db: Path) -> bool:
         ["ssh", *_SSH_MUX_OPTS, host, f"mkdir -p {remote_dir}"],
         capture_output=True,
     )
-    # scp the database
-    scp_path = f"{host}:{remote_db}"
-    result = subprocess.run(
-        ["scp", "-o", f"ControlPath={_SSH_MUX_DIR}/%r@%h:%p", str(local_db), scp_path],
-        capture_output=True,
-        text=True,
-    )
+    # SQLite online backup includes committed WAL pages without copying a live DB.
+    with tempfile.TemporaryDirectory(prefix="session-sync-seed-") as tmp:
+        snapshot = Path(tmp) / "sessions.db"
+        with sqlite3.connect(local_db) as source, sqlite3.connect(snapshot) as dest:
+            source.backup(dest)
+        result = subprocess.run(
+            [
+                "scp",
+                "-o",
+                f"ControlPath={_SSH_MUX_DIR}/%r@%h:%p",
+                str(snapshot),
+                f"{host}:{remote_db}",
+            ],
+            capture_output=True,
+            text=True,
+        )
     return result.returncode == 0
 
 
@@ -500,20 +510,92 @@ def _quote_identifier(name: str) -> str:
     return '"' + name.replace('"', '""') + '"'
 
 
+def _require_current_schema(target: Path | tuple[str, str]) -> None:
+    """Reject incompatible databases before building or streaming a large dump.
+
+    Native repair applies migrations behind its backup; sync never guesses
+    missing columns or discards populated source fields to fit an old schema.
+    """
+    from agent_session_tools.migrations import CURRENT_VERSION
+
+    if isinstance(target, Path):
+        with sqlite3.connect(f"file:{target}?mode=ro", uri=True) as conn:
+            version = conn.execute("PRAGMA user_version").fetchone()[0]
+        location = "local machine"
+        path = str(target)
+    else:
+        host, path = target
+        raw = _remote_sql(host, path, "PRAGMA user_version")
+        try:
+            version = int(raw)
+        except ValueError as exc:
+            raise RuntimeError(
+                "Cannot read remote database schema version; no sync attempted"
+            ) from exc
+        location = f"remote machine {host}"
+    if version < CURRENT_VERSION:
+        raise RuntimeError(
+            f"Database schema v{version} on {location} is older than required v{CURRENT_VERSION}. "
+            f"Run session-repair --apply --db {shlex.quote(path)} on that machine, then retry session-sync all. "
+            "No conversation data has been transferred."
+        )
+    if version > CURRENT_VERSION:
+        raise RuntimeError(
+            f"Database schema v{version} on {location} is newer than this tool's v{CURRENT_VERSION}; "
+            "upgrade agent-session-tools on both machines before syncing."
+        )
+
+
 def _build_insert_select_sql(
     table: str,
     *,
     id_filter: str | None = None,
+    include_seq: bool = False,
 ) -> str:
-    """Build a SELECT that emits INSERT OR REPLACE statements for a table."""
-    columns = TABLE_SYNC_COLUMNS[table]
+    """Emit additive UPSERTs; never REPLACE rows carrying local evidence."""
+    columns = list(TABLE_SYNC_COLUMNS[table])
+    if table == "messages" and include_seq:
+        columns.append("seq")
     quoted_columns = [_quote_identifier(column) for column in columns]
     literal_expr = " || ',' || ".join(f"quote({col})" for col in quoted_columns)
     where_clause = f" WHERE {id_filter}" if id_filter else ""
+    if table in {"sessions", "messages"}:
+        # Only fill absent fields. A different nonempty message is a conflict,
+        # not a newer version merely because its session timestamp increased.
+        assignments = []
+        for col in columns:
+            if col in {"id", "source", "session_id"}:
+                continue
+            value = f"COALESCE(NULLIF({table}.{col}, ''), excluded.{col})"
+            if table == "messages" and col == "role":
+                value = "CASE WHEN COALESCE(messages.content, '') = '' THEN excluded.role ELSE messages.role END"
+            if table == "sessions" and col == "updated_at":
+                value = "CASE WHEN julianday(excluded.updated_at) > COALESCE(julianday(sessions.updated_at), 0) THEN excluded.updated_at ELSE COALESCE(sessions.updated_at, excluded.updated_at) END"
+            assignments.append(f"{col} = {value}")
+        suffix = " ON CONFLICT(id) DO UPDATE SET " + ", ".join(assignments) + ";"
+    else:
+        # Preserve destination annotations and union new tags/references.
+        suffix = " ON CONFLICT DO NOTHING;"
+    if table == "messages":
+        # Do not resurrect empty exporter artifacts absent at the destination.
+        # Existing empty IDs remain available to their evidence references.
+        # A source-only reference to an omitted row fails the transaction under
+        # foreign_keys=ON, requiring explicit repair instead of silently loss.
+        def literal(value: str) -> str:
+            return "'" + value.replace("'", "''") + "'"
+
+        prefix = f"INSERT INTO messages ({', '.join(quoted_columns)}) SELECT "
+        condition = " WHERE trim(coalesce("
+        between = ", '')) != '' OR EXISTS(SELECT 1 FROM messages WHERE id="
+        return (
+            f"SELECT {literal(prefix)} || {literal_expr} || {literal(condition)} "
+            f"|| quote(content) || {literal(between)} || quote(id) "
+            f"|| {literal(')' + suffix)} FROM messages{where_clause};"
+        )
+    suffix_literal = suffix.replace("'", "''")
     return (
-        f"SELECT 'INSERT OR REPLACE INTO {table} "
-        f"({', '.join(quoted_columns)}) VALUES (' || {literal_expr} || ');' "
-        f"FROM {table}{where_clause};"
+        f"SELECT 'INSERT INTO {table} ({', '.join(quoted_columns)}) VALUES (' "
+        f"|| {literal_expr} || '){suffix_literal}' FROM {table}{where_clause};"
     )
 
 
@@ -598,7 +680,10 @@ def _build_global_upsert_select_sql(table: str) -> str:
 
 
 def _build_dump_queries(
-    session_ids: set[str], available_tables: set[str] | None = None
+    session_ids: set[str],
+    available_tables: set[str] | None = None,
+    *,
+    include_seq: bool = False,
 ) -> list[str]:
     """Build SQL queries that emit replayable INSERT statements."""
 
@@ -619,7 +704,9 @@ def _build_dump_queries(
                 continue
             queries.append(
                 _build_insert_select_sql(
-                    table, id_filter=f"session_id IN ({placeholders})"
+                    table,
+                    id_filter=f"session_id IN ({placeholders})",
+                    include_seq=include_seq,
                 )
             )
 
@@ -663,7 +750,7 @@ def _timestamp_key(value: str | None) -> tuple[int, object]:
 
 
 def _get_sync_state(
-    local_db: Path, host: str, remote_db: str
+    local_db: Path, host: str, remote_db: str, reconcile: bool = False
 ) -> tuple[set[str], set[str]]:
     """Calculate new + updated session IDs by comparing updated_at timestamps.
 
@@ -694,7 +781,7 @@ def _get_sync_state(
     for sid in set(local_sessions) & set(remote_sessions):
         local_ts = local_sessions[sid] or ""
         remote_ts = remote_sessions[sid] or ""
-        if _timestamp_key(local_ts) > _timestamp_key(remote_ts):
+        if reconcile or _timestamp_key(local_ts) > _timestamp_key(remote_ts):
             updated_ids.add(sid)
 
     return new_ids, updated_ids
@@ -712,6 +799,7 @@ def _dump_delta_sql(db_path: Path, session_ids: set[str]) -> str:
     _validate_session_ids(session_ids)
     conn = sqlite3.connect(db_path)
     try:
+        conn.execute("BEGIN")
         available_tables = {
             row[0]
             for row in conn.execute(
@@ -719,7 +807,12 @@ def _dump_delta_sql(db_path: Path, session_ids: set[str]) -> str:
             ).fetchall()
         }
         lines: list[str] = []
-        for query in _build_dump_queries(session_ids, available_tables):
+        include_seq = any(
+            row[1] == "seq" for row in conn.execute("PRAGMA table_info(messages)")
+        )
+        for query in _build_dump_queries(
+            session_ids, available_tables, include_seq=include_seq
+        ):
             lines.extend(row[0] for row in conn.execute(query).fetchall())
         return "\n".join(lines) + ("\n" if lines else "")
     finally:
@@ -742,6 +835,23 @@ _FTS_REPAIR_SQL = (
 )
 
 
+_SYNC_TRANSACTION_PREFIX = """
+PRAGMA foreign_keys=ON;
+BEGIN IMMEDIATE;
+CREATE TEMP TABLE sync_conflicts(message_id TEXT PRIMARY KEY);
+CREATE TEMP TRIGGER sync_message_identity BEFORE INSERT ON main.messages
+WHEN EXISTS(SELECT 1 FROM messages WHERE id=NEW.id AND session_id != NEW.session_id)
+BEGIN SELECT RAISE(ABORT, 'Message identity conflict'); END;
+CREATE TEMP TRIGGER sync_session_identity BEFORE INSERT ON main.sessions
+WHEN EXISTS(SELECT 1 FROM sessions WHERE id=NEW.id AND source != NEW.source)
+BEGIN SELECT RAISE(ABORT, 'Session identity conflict'); END;
+CREATE TEMP TRIGGER sync_content_conflict BEFORE INSERT ON main.messages
+WHEN EXISTS(SELECT 1 FROM messages WHERE id=NEW.id AND COALESCE(content,'') != ''
+ AND COALESCE(NEW.content,'') != '' AND content != NEW.content)
+BEGIN INSERT OR IGNORE INTO sync_conflicts VALUES(NEW.id); END;
+"""
+
+
 def _stream_sql_to_target(sql: str, target: Path | tuple[str, str]) -> bool:
     """Stream SQL into a local DB or remote DB over SSH.
 
@@ -750,12 +860,17 @@ def _stream_sql_to_target(sql: str, target: Path | tuple[str, str]) -> bool:
     if not sql.strip():
         return True
 
-    # Append FTS repair (rebuild from messages — see _FTS_REPAIR_SQL note)
-    sql += "\n" + _FTS_REPAIR_SQL
+    sql = (
+        _SYNC_TRANSACTION_PREFIX
+        + sql
+        + "\n"
+        + _FTS_REPAIR_SQL
+        + "\nSELECT 'sync_conflicts|' || count(*) FROM sync_conflicts;\nCOMMIT;\n"
+    )
 
     if isinstance(target, Path):
         result = subprocess.run(
-            ["sqlite3", str(target)],
+            ["sqlite3", "-bail", str(target)],
             input=sql,
             capture_output=True,
             text=True,
@@ -768,7 +883,7 @@ def _stream_sql_to_target(sql: str, target: Path | tuple[str, str]) -> bool:
                 *_SSH_MUX_OPTS,
                 "-C",
                 host,
-                f"sqlite3 {_quote_remote_path(db_path)}",
+                f"sqlite3 -bail {_quote_remote_path(db_path)}",
             ],
             input=sql,
             capture_output=True,
@@ -776,16 +891,15 @@ def _stream_sql_to_target(sql: str, target: Path | tuple[str, str]) -> bool:
         )
 
     if result.returncode != 0:
-        stderr = result.stderr.strip()
-        # Filter out warnings about missing optional tables
-        errors = [
-            line
-            for line in stderr.splitlines()
-            if "Error" in line and "no such table" not in line
-        ]
-        if errors:
-            logger.error(f"SQL import errors: {chr(10).join(errors)}")
-            return False
+        logger.error(
+            "SQL import failed; transaction rolled back: %s", result.stderr.strip()
+        )
+        return False
+    for line in result.stdout.splitlines():
+        if line.startswith("sync_conflicts|") and line.split("|", 1)[1] != "0":
+            console.print(
+                f"[yellow]Retained destination content for {line.split('|', 1)[1]} divergent message(s); review with session-repair merge. No content was overwritten.[/yellow]"
+            )
     return True
 
 
@@ -929,6 +1043,13 @@ def pull(
     ] = None,
     no_backup: Annotated[bool, typer.Option("--no-backup", help="Skip backup")] = False,
     tier: Annotated[str, _tier_option] = "hot",
+    reconcile: Annotated[
+        bool,
+        typer.Option(
+            "--reconcile",
+            help="Revisit shared sessions even when timestamps are unchanged",
+        ),
+    ] = False,
 ) -> None:
     """Pull new sessions from remote via SQL streaming."""
     local_db = _local_db_for_tier(tier, db)
@@ -942,8 +1063,13 @@ def pull(
         console.print(f"[red]❌ Local database not found: {local_db}[/red]")
         raise typer.Exit(1)
 
-    if not no_backup:
-        create_backup(local_db)
+    _require_current_schema(local_db)
+
+    if not no_backup and create_backup(local_db) is None:
+        console.print(
+            "[red]Could not back up local destination; refusing to import without a backup.[/red]"
+        )
+        raise typer.Exit(1)
 
     show_db_stats(local_db, "Local (before)")
 
@@ -953,6 +1079,8 @@ def pull(
             f"[dim]Use 'session-sync push {remote}' to seed the remote first.[/dim]"
         )
         return
+
+    _require_current_schema((host, remote_db))
 
     # Calculate delta: what does remote have that's new or newer?
     console.print("\n[bold]Calculating delta...[/bold]")
@@ -991,7 +1119,8 @@ def pull(
     updated_ids = {
         sid
         for sid in set(remote_sessions) & set(local_sessions)
-        if _timestamp_key(remote_sessions[sid]) > _timestamp_key(local_sessions[sid])
+        if reconcile
+        or _timestamp_key(remote_sessions[sid]) > _timestamp_key(local_sessions[sid])
     }
     all_ids = new_ids | updated_ids
 
@@ -1005,13 +1134,30 @@ def pull(
 
     # Dump from remote
     _validate_session_ids(all_ids)
-    commands = _build_dump_queries(all_ids)
+    commands = _build_dump_queries(
+        all_ids,
+        include_seq=bool(
+            _remote_sql(
+                host,
+                remote_db,
+                "SELECT name FROM pragma_table_info('messages') WHERE name='seq'",
+            )
+        ),
+    )
     result = subprocess.run(
-        ["ssh", *_SSH_MUX_OPTS, "-C", host, f"sqlite3 {shlex.quote(remote_db)}"],
-        input="\n".join(commands),
+        [
+            "ssh",
+            *_SSH_MUX_OPTS,
+            "-C",
+            host,
+            f"sqlite3 -bail {_quote_remote_path(remote_db)}",
+        ],
+        input="BEGIN;\n" + "\n".join(commands) + "\nCOMMIT;",
         capture_output=True,
         text=True,
     )
+    if result.returncode != 0:
+        raise RuntimeError("Remote dump failed; no data imported")
     sql = result.stdout
 
     console.print("[bold]Importing...[/bold]")
@@ -1032,6 +1178,13 @@ def push(
         Path | None, typer.Option("--db", "-d", help="Local database path")
     ] = None,
     tier: Annotated[str, _tier_option] = "hot",
+    reconcile: Annotated[
+        bool,
+        typer.Option(
+            "--reconcile",
+            help="Revisit shared sessions even when timestamps are unchanged",
+        ),
+    ] = False,
 ) -> None:
     """Push new and updated sessions to remote via SQL streaming."""
     local_db = _local_db_for_tier(tier, db)
@@ -1043,6 +1196,8 @@ def push(
     if not local_db.exists():
         console.print(f"[red]❌ Local database not found: {local_db}[/red]")
         raise typer.Exit(1)
+
+    _require_current_schema(local_db)
 
     show_db_stats(local_db, "Local")
 
@@ -1061,8 +1216,12 @@ def push(
             raise typer.Exit(1)
         return
 
+    _require_current_schema((host, remote_db))
+
     console.print("\n[bold]Calculating delta...[/bold]")
-    new_ids, updated_ids = _get_sync_state(local_db, host, remote_db)
+    new_ids, updated_ids = _get_sync_state(
+        local_db, host, remote_db, reconcile=reconcile
+    )
     all_ids = new_ids | updated_ids
 
     if not all_ids:
@@ -1109,10 +1268,18 @@ def sync(
     ] = None,
     no_backup: Annotated[bool, typer.Option("--no-backup", help="Skip backup")] = False,
     tier: Annotated[str, _tier_option] = "hot",
+    reconcile: Annotated[
+        bool,
+        typer.Option(
+            "--reconcile",
+            help="Revisit shared sessions even when timestamps are unchanged",
+        ),
+    ] = False,
 ) -> None:
     """Two-way sync: stream deltas in both directions.
 
-    Both machines end up with the same data. In the hot tier, sessions
+    Missing conversation data is exchanged; conflicting nonempty messages
+    are retained on each destination and reported for review. In the hot tier, sessions
     pruned locally (present in the local full DB) are not pulled back.
     Use --tier full to consolidate the complete-history records.
     """
@@ -1127,8 +1294,15 @@ def sync(
         console.print(f"[red]❌ Local database not found: {local_db}[/red]")
         raise typer.Exit(1)
 
-    if not no_backup:
-        create_backup(local_db)
+    _require_current_schema(local_db)
+
+    if not no_backup and create_backup(local_db) is None:
+        console.print(
+            "[red]Could not back up local destination; refusing to import without a backup.[/red]"
+        )
+        raise typer.Exit(1)
+
+    _require_current_schema((host, remote_db))
 
     # Calculate deltas in both directions using one SSH call for remote state
     console.print("[bold]Calculating deltas...[/bold]")
@@ -1155,7 +1329,8 @@ def sync(
     push_updated = {
         sid
         for sid in set(local_sessions) & set(remote_sessions)
-        if _timestamp_key(local_sessions[sid]) > _timestamp_key(remote_sessions[sid])
+        if reconcile
+        or _timestamp_key(local_sessions[sid]) > _timestamp_key(remote_sessions[sid])
     }
     # Pull: remote new + remote newer (hot tier: minus locally-pruned)
     pull_new = set(remote_sessions) - set(local_sessions)
@@ -1170,7 +1345,8 @@ def sync(
     pull_updated = {
         sid
         for sid in set(local_sessions) & set(remote_sessions)
-        if _timestamp_key(remote_sessions[sid]) > _timestamp_key(local_sessions[sid])
+        if reconcile
+        or _timestamp_key(remote_sessions[sid]) > _timestamp_key(local_sessions[sid])
     }
 
     console.print(
@@ -1185,7 +1361,16 @@ def sync(
     if pull_ids:
         console.print(f"\n[bold]Step 1: Pulling {len(pull_ids)} sessions...[/bold]")
         _validate_session_ids(pull_ids)
-        commands = _build_dump_queries(pull_ids)
+        commands = _build_dump_queries(
+            pull_ids,
+            include_seq=bool(
+                _remote_sql(
+                    host,
+                    remote_db,
+                    "SELECT name FROM pragma_table_info('messages') WHERE name='seq'",
+                )
+            ),
+        )
 
         result = subprocess.run(
             [
@@ -1193,12 +1378,14 @@ def sync(
                 *_SSH_MUX_OPTS,
                 "-C",
                 host,
-                f"sqlite3 {_quote_remote_path(remote_db)}",
+                f"sqlite3 -bail {_quote_remote_path(remote_db)}",
             ],
-            input="\n".join(commands),
+            input="BEGIN;\n" + "\n".join(commands) + "\nCOMMIT;",
             capture_output=True,
             text=True,
         )
+        if result.returncode != 0:
+            raise RuntimeError("Remote dump failed; no data imported")
         sql = result.stdout
         if sql.strip() and not _stream_sql_to_target(sql, local_db):
             console.print("[red]❌ Failed to pull[/red]")
@@ -1245,6 +1432,54 @@ def sync(
     else:
         console.print("\n[green]✅ Sync complete![/green]")
     show_db_stats(local_db, "Final")
+
+
+@app.command("all")
+def sync_all(
+    db: Annotated[
+        Path | None, typer.Option("--db", "-d", help="Local database path")
+    ] = None,
+    tier: Annotated[str, _tier_option] = "hot",
+    reconcile: Annotated[
+        bool,
+        typer.Option(
+            "--reconcile/--incremental",
+            help="Revisit unchanged sessions (default) or use timestamp deltas",
+        ),
+    ] = True,
+) -> None:
+    """Push to every configured peer first, then pull from every peer.
+
+    Uses hosts (excluding this machine by hostname), or legacy endpoints.
+    Failures are reported per operation; other peers are still attempted.
+    """
+    peers = list(get_endpoints(_get_config()))
+    if not peers:
+        console.print(
+            "[yellow]No remote sync targets configured. Add hosts to config.yaml.[/yellow]"
+        )
+        raise typer.Exit(1)
+    failures = []
+    for phase, operation in (("push", push), ("pull", pull)):
+        for peer in peers:
+            console.print(f"\n[bold]{phase.title()} {peer}[/bold]")
+            try:
+                operation(remote=peer, db=db, tier=tier, reconcile=reconcile)
+            except Exception as exc:
+                failures.append((phase, peer))
+                console.print(
+                    f"[red]{phase.title()} {peer} failed ({type(exc).__name__}): {exc}[/red]"
+                )
+    if failures:
+        console.print(
+            "[red]Failed operations: "
+            + ", ".join(f"{phase} {peer}" for phase, peer in failures)
+            + "[/red]"
+        )
+        raise typer.Exit(1)
+    console.print(
+        f"[green]Completed push then pull for {len(peers)} configured peer(s).[/green]"
+    )
 
 
 @app.command()

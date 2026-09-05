@@ -79,7 +79,8 @@ def _resolve_write_session_id(conn, session_id: str) -> str:
 # ==================== Main Commands ====================
 
 
-@app.command()
+@app.command("search")
+@app.command("search-cmd", hidden=True)
 def search_cmd(
     query: Annotated[str, typer.Argument(help="Search query")],
     db: Annotated[Path | None, db_option] = None,
@@ -94,6 +95,12 @@ def search_cmd(
     output_format: Annotated[
         str, typer.Option("--output-format", help="Output format")
     ] = "table",
+    project: Annotated[
+        str | None,
+        typer.Option(
+            "--project", help="Project name or full path with configured aliases"
+        ),
+    ] = None,
     local_only: Annotated[
         bool,
         typer.Option(
@@ -110,7 +117,14 @@ def search_cmd(
     """
     conn = get_connection(db)
     search(
-        conn, query, limit, since, before, output_format, include_full=not local_only
+        conn,
+        query,
+        limit,
+        since,
+        before,
+        output_format,
+        include_full=not local_only,
+        project=project,
     )
     conn.close()
 

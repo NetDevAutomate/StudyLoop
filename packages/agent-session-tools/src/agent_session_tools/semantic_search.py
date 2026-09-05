@@ -70,7 +70,7 @@ class SearchContext:
     exclude_session_ids: list[str] = field(default_factory=list)
 
 
-from agent_session_tools.query_utils import escape_fts_query  # noqa: E402, F401
+from agent_session_tools.query_utils import build_project_filter, escape_fts_query  # noqa: E402, F401
 
 
 def hybrid_search(
@@ -164,8 +164,9 @@ def _fts_search(
 
     # Apply filters
     if context.project_path:
-        base_query += " AND s.project_path LIKE ?"
-        params.append(f"%{context.project_path}%")
+        project_clause, project_params = build_project_filter(context.project_path)
+        base_query += " AND " + project_clause
+        params.extend(project_params)
 
     if context.source:
         base_query += " AND s.source = ?"
@@ -237,8 +238,9 @@ def _vector_search(
 
     # Apply filters
     if context.project_path:
-        base_query += " AND s.project_path LIKE ?"
-        params.append(f"%{context.project_path}%")
+        project_clause, project_params = build_project_filter(context.project_path)
+        base_query += " AND " + project_clause
+        params.extend(project_params)
 
     if context.source:
         base_query += " AND s.source = ?"
