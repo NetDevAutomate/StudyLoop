@@ -30,7 +30,10 @@ hosts:
 Use each machine's actual hostname (without the `.local` suffix), SSH user,
 reachable addresses, and absolute database path. The current hostname is
 excluded automatically. Existing legacy `endpoints` configuration remains
-supported when `hosts` is absent. SSH authentication must already work.
+supported when `hosts` is absent. SSH authentication must already work. Authenticate and accept verified host keys
+once in a separate terminal before using `session-sync all`. Sync uses SSH batch
+mode so offline or unauthenticated peers fail without password prompts; connection
+timeouts and keepalive limits prevent an unreachable peer blocking the run.
 
 ```sh
 session-sync all

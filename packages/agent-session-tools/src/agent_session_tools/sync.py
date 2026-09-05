@@ -303,6 +303,14 @@ _SSH_MUX_DIR = (
 )
 _SSH_MUX_OPTS = [
     "-o",
+    "BatchMode=yes",
+    "-o",
+    "ConnectTimeout=10",
+    "-o",
+    "ServerAliveInterval=15",
+    "-o",
+    "ServerAliveCountMax=2",
+    "-o",
     "ControlMaster=auto",
     "-o",
     f"ControlPath={_SSH_MUX_DIR}/%r@%h:%p",
@@ -349,7 +357,7 @@ def _resolve_remote(remote: str, tier: str = "hot") -> tuple[str, str]:
             host = f"{username}@{ip}"
             try:
                 subprocess.run(
-                    ["ssh", *_SSH_MUX_OPTS, "-o", "ConnectTimeout=3", host, "true"],
+                    ["ssh", "-o", "ConnectTimeout=3", *_SSH_MUX_OPTS, host, "true"],
                     capture_output=True,
                     timeout=5,
                 )
@@ -461,8 +469,7 @@ def _seed_remote_db(host: str, remote_db: str, local_db: Path) -> bool:
         result = subprocess.run(
             [
                 "scp",
-                "-o",
-                f"ControlPath={_SSH_MUX_DIR}/%r@%h:%p",
+                *_SSH_MUX_OPTS,
                 str(snapshot),
                 f"{host}:{remote_db}",
             ],
@@ -773,7 +780,7 @@ def _build_dump_queries(
         queries.append(_build_parked_archive_select_sql(parked_columns))
     if available_tables is not None and "sync_row_archive" in available_tables:
         queries.append(
-            "SELECT 'INSERT OR IGNORE INTO sync_row_archive(table_name,row_json) VALUES (' || quote(table_name) || ',' || quote(row_json) || ');' FROM sync_row_archive"
+            "SELECT 'INSERT OR IGNORE INTO sync_row_archive(table_name,row_json) VALUES (' || quote(table_name) || ',' || quote(row_json) || ');' FROM sync_row_archive;"
         )
     if session_ids:
         placeholders = ",".join(f"'{sid}'" for sid in session_ids)
@@ -1272,7 +1279,14 @@ def pull(
         text=True,
     )
     if result.returncode != 0:
-        raise RuntimeError("Remote dump failed; no data imported")
+        raise RuntimeError(
+            "Remote dump failed; no data imported: "
+            + (
+                result.stderr.splitlines()[0]
+                if result.stderr
+                else f"exit {result.returncode}"
+            )
+        )
     sql = result.stdout
 
     console.print("[bold]Importing...[/bold]")
@@ -1491,7 +1505,14 @@ def sync(
             text=True,
         )
         if result.returncode != 0:
-            raise RuntimeError("Remote dump failed; no data imported")
+            raise RuntimeError(
+                "Remote dump failed; no data imported: "
+                + (
+                    result.stderr.splitlines()[0]
+                    if result.stderr
+                    else f"exit {result.returncode}"
+                )
+            )
         sql = result.stdout
         if sql.strip() and not _stream_sql_to_target(sql, local_db):
             console.print("[red]❌ Failed to pull[/red]")
