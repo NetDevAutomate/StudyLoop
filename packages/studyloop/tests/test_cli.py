@@ -146,7 +146,7 @@ class TestConfigInit:
     ) -> None:
         """Config init with all options enabled writes correct YAML."""
         config_file = tmp_path / "config.yaml"
-        monkeypatch.setattr("studyloop.shared.CONFIG_PATH", config_file)
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_file))
 
         # Simulate: yes bridging, "cooking" domain, yes nlm, yes obsidian, path,
         # yes publish into the vault, no agent install
@@ -173,7 +173,7 @@ class TestConfigInit:
     ) -> None:
         """Config init with all options declined."""
         config_file = tmp_path / "config.yaml"
-        monkeypatch.setattr("studyloop.shared.CONFIG_PATH", config_file)
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_file))
 
         user_input = "n\nn\nn\nn\n"
         result = runner.invoke(cli, ["config", "init"], input=user_input)
@@ -191,7 +191,7 @@ class TestConfigInit:
     ) -> None:
         """Config init accepting all defaults (just pressing Enter)."""
         config_file = tmp_path / "config.yaml"
-        monkeypatch.setattr("studyloop.shared.CONFIG_PATH", config_file)
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_file))
 
         # All empty = accept defaults: yes bridging, "networking", no nlm, yes
         # obsidian, default vault path, NO publishing into it, no agent install
@@ -213,7 +213,7 @@ class TestConfigInit:
     ) -> None:
         """Config init with --no-install-agents skips agent installation prompt."""
         config_file = tmp_path / "config.yaml"
-        monkeypatch.setattr("studyloop.shared.CONFIG_PATH", config_file)
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_file))
 
         user_input = "n\nn\nn\n"
         result = runner.invoke(cli, ["config", "init", "--no-install-agents"], input=user_input)
@@ -236,7 +236,7 @@ class TestConfigShow:
         self, runner: CliRunner, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         """Config show with no config file shows error message."""
-        monkeypatch.setattr("studyloop.settings._CONFIG_PATH", tmp_path / "nonexistent.yaml")
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(tmp_path / "nonexistent.yaml"))
         result = runner.invoke(cli, ["config", "show"])
         assert result.exit_code == 0
         assert "No config file found" in result.output
@@ -265,8 +265,7 @@ class TestConfigShow:
                 }
             )
         )
-        monkeypatch.setattr("studyloop.settings._CONFIG_PATH", config_file)
-        # config show imports settings._CONFIG_PATH which is already monkeypatched above
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_file))
 
         result = runner.invoke(cli, ["config", "show"])
         assert result.exit_code == 0
@@ -288,7 +287,7 @@ class TestConfigShow:
         """
         config_file = tmp_path / "config.yaml"
         config_file.write_text("web_port: 9000\nmispelled_lan_passwrod: secret123\n")
-        monkeypatch.setattr("studyloop.settings._CONFIG_PATH", config_file)
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_file))
 
         result = runner.invoke(cli, ["config", "show"])
         assert result.exit_code == 0
@@ -299,7 +298,7 @@ class TestConfigShow:
     ) -> None:
         config_file = tmp_path / "config.yaml"
         config_file.write_text("web_port: 9000\nbrowser: firefox\n")
-        monkeypatch.setattr("studyloop.settings._CONFIG_PATH", config_file)
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_file))
 
         result = runner.invoke(cli, ["config", "show"])
         assert result.exit_code == 0

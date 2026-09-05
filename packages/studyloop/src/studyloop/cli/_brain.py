@@ -143,6 +143,83 @@ def wind_down_cmd(connectors: tuple[str, ...], as_json: bool) -> None:
         console.print(f"{key}: {value}", soft_wrap=True)
 
 
+@brain_group.group("destination")
+def destination_group() -> None:
+    """Retain a reviewed provider destination without selecting that provider."""
+
+
+@destination_group.command("set")
+@click.option("--provider", type=click.Choice(["xtiles"]), required=True)
+@click.option("--url", "destination_url", required=True, metavar="URL")
+@click.option("--json", "as_json", is_flag=True, help="Machine-readable output.")
+def destination_set_cmd(provider: str, destination_url: str, as_json: bool) -> None:
+    """Retain a reviewed destination without changing provider consent."""
+    from urllib.parse import urlsplit
+
+    from studyloop.settings import ConfigError, load_settings, mutate_raw_config
+
+    def retain_destination(raw: dict[str, object]) -> dict[str, object]:
+        section_raw = raw.get("second_brain")
+        if section_raw is not None and not isinstance(section_raw, dict):
+            raise ConfigError("Invalid config: 'second_brain' must be a mapping.")
+        section = dict(section_raw or {})
+        section["xtiles_destination_url"] = destination_url
+        raw["second_brain"] = section
+        return raw
+
+    try:
+        path = mutate_raw_config(retain_destination)
+    except ConfigError as exc:
+        _fail(f"That would not be a valid configuration, so nothing was written: {exc}")
+
+    config = load_settings().second_brain
+    payload = {
+        "provider": config.provider,
+        "configured": config.xtiles_destination_url is not None,
+        "config_path": str(path),
+    }
+    if as_json:
+        click.echo(json.dumps(payload, indent=2))
+        return
+    host = urlsplit(destination_url).hostname or "xtiles.app"
+    console.print(f"Configured xTiles destination: {host}", soft_wrap=True)
+
+
+@destination_group.command("clear")
+@click.option("--provider", type=click.Choice(["xtiles"]), required=True)
+@click.option("--json", "as_json", is_flag=True, help="Machine-readable output.")
+def destination_clear_cmd(provider: str, as_json: bool) -> None:
+    """Clear a retained destination without changing provider consent."""
+    from studyloop.settings import ConfigError, load_settings, mutate_raw_config
+
+    def clear_destination(raw: dict[str, object]) -> dict[str, object]:
+        section_raw = raw.get("second_brain")
+        if section_raw is not None and not isinstance(section_raw, dict):
+            raise ConfigError("Invalid config: 'second_brain' must be a mapping.")
+        if section_raw is None:
+            return raw
+        section = dict(section_raw)
+        section.pop("xtiles_destination_url", None)
+        raw["second_brain"] = section
+        return raw
+
+    try:
+        path = mutate_raw_config(clear_destination)
+    except ConfigError as exc:
+        _fail(f"That would not be a valid configuration, so nothing was written: {exc}")
+
+    config = load_settings().second_brain
+    payload = {
+        "provider": config.provider,
+        "configured": config.xtiles_destination_url is not None,
+        "config_path": str(path),
+    }
+    if as_json:
+        click.echo(json.dumps(payload, indent=2))
+        return
+    console.print("Cleared xTiles destination.")
+
+
 @brain_group.command("publish")
 @click.option(
     "--plan",
@@ -300,59 +377,58 @@ def enable_cmd(
     """
     from pathlib import Path
 
-    from studyloop.settings import (
-        ConfigError,
-        load_raw_config,
-        resolve_second_brain,
-        write_raw_config,
-    )
+    from studyloop.settings import ConfigError, load_settings, mutate_raw_config
 
-    raw = load_raw_config()
-    section = dict(raw.get("second_brain") or {})
-    section["provider"] = provider
+    written_section: dict[str, object] = {}
 
-    if provider == "obsidian":
-        if vault is not None:
-            resolved = Path(vault).expanduser()
-            if not resolved.is_dir():
-                if not create:
-                    _fail(
-                        f"Vault path does not exist: {resolved}. "
-                        "Create it first, or rerun with --create."
-                    )
-                resolved.mkdir(parents=True, exist_ok=True)
-            section["vault_path"] = str(resolved)
-        if folder is not None:
-            section["folder"] = folder
+    def configure_provider(raw: dict[str, object]) -> dict[str, object]:
+        section_raw = raw.get("second_brain")
+        if section_raw is not None and not isinstance(section_raw, dict):
+            raise ConfigError("Invalid config: 'second_brain' must be a mapping.")
+        section = dict(section_raw or {})
+        section["provider"] = provider
 
-    raw["second_brain"] = section
+        if provider == "obsidian":
+            if vault is not None:
+                vault_path = Path(vault).expanduser()
+                if not vault_path.is_dir():
+                    if not create:
+                        _fail(
+                            f"Vault path does not exist: {vault_path}. "
+                            "Create it first, or rerun with --create."
+                        )
+                    vault_path.mkdir(parents=True, exist_ok=True)
+                section["vault_path"] = str(vault_path)
+            if folder is not None:
+                section["folder"] = folder
+            if vault is None and not section.get("vault_path"):
+                _fail(
+                    "No vault is configured, and StudyLoop will not guess one. "
+                    "Run: studyloop brain enable obsidian --vault <path>"
+                )
 
-    # Validate BEFORE writing. Writing first and checking afterwards left the learner
-    # with a broken config file they never edited and no way back -- the check could
-    # only report the damage, not prevent it.
+        raw["second_brain"] = section
+        written_section.clear()
+        written_section.update(section)
+        return raw
+
     try:
-        resolved = resolve_second_brain(raw)
+        path = mutate_raw_config(configure_provider)
     except ConfigError as exc:
         _fail(f"That would not be a valid configuration, so nothing was written: {exc}")
 
-    if (
-        provider == "obsidian"
-        and vault is None
-        and not raw.get("second_brain", {}).get("vault_path")
-    ):
-        # A guessed vault is worse than no vault. Without an explicit path the
-        # resolution chain bottoms out at a hard-coded ~/Obsidian/Personal, which may
-        # be a real vault the learner uses for something else -- and this command's
-        # whole job is to record a deliberate choice.
-        _fail(
-            "No vault is configured, and StudyLoop will not guess one. "
-            "Run: studyloop brain enable obsidian --vault <path>"
-        )
-
-    path = write_raw_config(raw)
+    resolved = load_settings().second_brain
 
     if as_json:
-        click.echo(json.dumps({"config_path": str(path), "second_brain": section}, indent=2))
+        redacted_section = {
+            key: value for key, value in written_section.items() if key != "xtiles_destination_url"
+        }
+        click.echo(
+            json.dumps(
+                {"config_path": str(path), "second_brain": redacted_section},
+                indent=2,
+            )
+        )
         return
 
     console.print(f"Wrote second_brain to {path}", soft_wrap=True)

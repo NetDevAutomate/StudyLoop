@@ -469,9 +469,10 @@ second_brain:
   vault_path: ~/Obsidian/Personal
   folder: Study               # the folder inside the vault StudyLoop owns
   backlinks: true             # [[wikilinks]] to your notes, when the matcher is available
+  xtiles_destination_url: null  # optional; set with `brain destination set`
 ```
 
-Four keys, and that is the whole surface. `STUDYLOOP_SECOND_BRAIN_VAULT` also exists
+Five keys, and that is the whole surface. `STUDYLOOP_SECOND_BRAIN_VAULT` also exists
 and overrides the DEFAULT vault location — it is there so the test suite can never
 reach a real vault, it never selects a provider, and an explicit `vault_path` always
 wins over it. If you have it set in a shell profile, unset it.

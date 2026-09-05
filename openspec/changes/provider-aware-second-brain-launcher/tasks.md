@@ -1,8 +1,8 @@
 ## 1. Assistant can retain a safe xTiles destination without changing provider consent
 
-- [ ] 1.1 Add optional validated xTiles destination parsing and redacted validation errors, verified by configuration tests covering accepted hosts, the complete rejection matrix, compatibility, and provider-selection isolation.
-- [ ] 1.2 Make every raw configuration mutation serialized, complete-result-validated, file-data-synced, atomic, permission-preserving, and failure-clean, verified by concurrency, reread-after-lock, unrelated-key, invalid-mutator, flush/sync, mode, replacement-failure, and temporary-file tests.
-- [ ] 1.3 Add destination set and clear behavior to the brain CLI and migrate brain enable to the shared mutation owner, verified by command discovery, host-only human output, JSON fields for provider/configured/config path, complete-URL exclusion, and unchanged provider consent.
+- [x] 1.1 Add optional validated xTiles destination parsing and redacted validation errors, verified by configuration tests covering accepted hosts, the complete rejection matrix, compatibility, and provider-selection isolation.
+- [x] 1.2 Make every raw configuration mutation serialized, complete-result-validated, file-data-synced, atomic, permission-preserving, and failure-clean, verified by concurrency, reread-after-lock, unrelated-key, invalid-mutator, flush/sync, mode, replacement-failure, and temporary-file tests.
+- [x] 1.3 Add destination set and clear behavior to the brain CLI and migrate brain enable to the shared mutation owner, verified by command discovery, host-only human output, JSON fields for provider/configured/config path, complete-URL exclusion, and unchanged provider consent.
 
 ## 2. Configured providers resolve to exact and honest launch targets
 

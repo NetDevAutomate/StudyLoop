@@ -14,6 +14,8 @@ import pytest
 import yaml
 from click.testing import CliRunner
 
+import studyloop.settings as settings
+from studyloop.cli import cli
 from studyloop.cli._brain import brain_group
 
 STATUS_KEYS = {
@@ -128,3 +130,124 @@ def test_publish_reports_a_backend_error_as_one_line(config, tmp_path) -> None:
     result = CliRunner().invoke(brain_group, ["publish", "--plan", "python-decorators"])
     assert result.exit_code == 1
     assert "Traceback" not in result.output
+
+
+def test_destination_set_retains_url_without_selecting_provider(config) -> None:
+    config_path = config({"topics": []})
+    destination = "https://app.xtiles.app/doc/private-study-plan"
+
+    result = CliRunner().invoke(
+        brain_group,
+        [
+            "destination",
+            "set",
+            "--provider",
+            "xtiles",
+            "--url",
+            destination,
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.output) == {
+        "provider": "none",
+        "configured": True,
+        "config_path": str(config_path),
+    }
+    assert destination not in result.output
+    raw = yaml.safe_load(config_path.read_text())
+    assert raw["second_brain"]["xtiles_destination_url"] == destination
+    assert raw["second_brain"].get("provider", "none") == "none"
+
+
+def test_destination_set_human_output_reports_only_reviewed_host(config) -> None:
+    config({"second_brain": {"provider": "none"}})
+    destination = "https://app.xtiles.app/doc/private-study-plan"
+
+    result = CliRunner().invoke(
+        brain_group,
+        [
+            "destination",
+            "set",
+            "--provider",
+            "xtiles",
+            "--url",
+            destination,
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Configured xTiles destination: app.xtiles.app" in result.output
+    assert destination not in result.output
+    assert "/doc/private-study-plan" not in result.output
+
+
+def test_destination_clear_leaves_selected_provider_unchanged(config) -> None:
+    destination = "https://xtiles.app/projects/private-study-plan"
+    config_path = config(
+        {
+            "second_brain": {
+                "provider": "xtiles",
+                "xtiles_destination_url": destination,
+            }
+        }
+    )
+
+    result = CliRunner().invoke(
+        brain_group,
+        ["destination", "clear", "--provider", "xtiles", "--json"],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.output) == {
+        "provider": "xtiles",
+        "configured": False,
+        "config_path": str(config_path),
+    }
+    assert destination not in result.output
+    raw = yaml.safe_load(config_path.read_text())
+    assert raw["second_brain"] == {"provider": "xtiles"}
+
+
+def test_enable_uses_shared_mutation_owner_and_keeps_destination_redacted(
+    config, monkeypatch
+) -> None:
+    destination = "https://xtiles.app/projects/private-study-plan"
+    config(
+        {
+            "unrelated": "kept",
+            "second_brain": {"xtiles_destination_url": destination},
+        }
+    )
+    real_mutate = settings.mutate_raw_config
+    mutation_count = 0
+
+    def track_mutation(mutator):
+        nonlocal mutation_count
+        mutation_count += 1
+        return real_mutate(mutator)
+
+    monkeypatch.setattr(settings, "mutate_raw_config", track_mutation)
+
+    result = CliRunner().invoke(brain_group, ["enable", "xtiles", "--json"])
+
+    assert result.exit_code == 0, result.output
+    assert mutation_count == 1
+    assert destination not in result.output
+    raw = settings.load_raw_config()
+    assert raw["unrelated"] == "kept"
+    assert raw["second_brain"] == {
+        "provider": "xtiles",
+        "xtiles_destination_url": destination,
+    }
+
+
+def test_destination_commands_are_discoverable_from_public_cli() -> None:
+    group_result = CliRunner().invoke(cli, ["brain", "destination", "--help"])
+    set_result = CliRunner().invoke(cli, ["brain", "destination", "set", "--help"])
+    clear_result = CliRunner().invoke(cli, ["brain", "destination", "clear", "--help"])
+
+    assert group_result.exit_code == 0, group_result.output
+    assert set_result.exit_code == 0, set_result.output
+    assert clear_result.exit_code == 0, clear_result.output
