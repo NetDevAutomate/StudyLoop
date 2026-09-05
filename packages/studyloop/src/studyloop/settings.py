@@ -794,6 +794,15 @@ def _xtiles_destination(raw: object) -> str | None:
     raise ConfigError(f"Invalid value for 'second_brain.xtiles_destination_url': {reason}.")
 
 
+def normalize_provider(raw: object) -> str:
+    """The one recognition rule for a raw ``second_brain.provider`` value.
+
+    Shared with the launch-target route's invalid-config fallback so the two
+    surfaces cannot drift: what this function recognizes, the fallback labels.
+    """
+    return str(raw).strip().lower()
+
+
 def resolve_second_brain(raw: dict[str, Any]) -> SecondBrainConfig:
     """Build :class:`SecondBrainConfig` from the raw config mapping.
 
@@ -821,7 +830,7 @@ def resolve_second_brain(raw: dict[str, Any]) -> SecondBrainConfig:
             "remove these keys. StudyLoop writes notes directly."
         )
 
-    provider = str(section.get("provider", "none")).strip().lower()
+    provider = normalize_provider(section.get("provider", "none"))
     if provider not in SECOND_BRAIN_PROVIDERS:
         raise ConfigError(
             f"Invalid value for 'second_brain.provider' in {get_config_path()}: "

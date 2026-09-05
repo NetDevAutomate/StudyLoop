@@ -52,6 +52,12 @@ class LaunchTarget:
 
 NO_PROVIDER_REASON = "No second brain provider is selected."
 
+PROVIDER_LABELS: dict[str, str] = {
+    "none": "Second Brain",
+    "obsidian": "Obsidian",
+    "xtiles": "xTiles",
+}
+
 SAME_DEVICE_REASON = "Obsidian opens only on the device running StudyLoop."
 
 VAULT_UNAVAILABLE_REASON = "The configured Obsidian vault is not an existing absolute directory."
@@ -94,14 +100,15 @@ def _contained_today(config: SecondBrainConfig) -> Path | None:
 
 
 def _resolve_obsidian(config: SecondBrainConfig, device_locality: DeviceLocality) -> LaunchTarget:
+    label = PROVIDER_LABELS["obsidian"]
     if device_locality != "local":
-        return _disabled("obsidian", "Obsidian", SAME_DEVICE_REASON, device_locality)
+        return _disabled("obsidian", label, SAME_DEVICE_REASON, device_locality)
     if not config.vault_path.is_absolute() or not config.vault_path.is_dir():
-        return _disabled("obsidian", "Obsidian", VAULT_UNAVAILABLE_REASON, "local")
+        return _disabled("obsidian", label, VAULT_UNAVAILABLE_REASON, "local")
     chosen = _contained_today(config) or config.vault_path
     return LaunchTarget(
         provider="obsidian",
-        label="Obsidian",
+        label=label,
         href=OBSIDIAN_URI_PREFIX + quote(str(chosen), safe=""),
         enabled=True,
         disabled_reason=None,
@@ -110,11 +117,12 @@ def _resolve_obsidian(config: SecondBrainConfig, device_locality: DeviceLocality
 
 
 def _resolve_xtiles(config: SecondBrainConfig) -> LaunchTarget:
+    label = PROVIDER_LABELS["xtiles"]
     if config.xtiles_destination_url is None:
-        return _disabled("xtiles", "xTiles", NO_DESTINATION_REASON, "not_applicable")
+        return _disabled("xtiles", label, NO_DESTINATION_REASON, "not_applicable")
     return LaunchTarget(
         provider="xtiles",
-        label="xTiles",
+        label=label,
         href=config.xtiles_destination_url,
         enabled=True,
         disabled_reason=None,
@@ -135,13 +143,14 @@ def resolve_launch_target(
             f"Invalid value for 'second_brain.provider': {config.provider!r}. "
             f"Choose one of: {', '.join(SECOND_BRAIN_PROVIDERS)}."
         )
-    return _disabled("none", "Second Brain", NO_PROVIDER_REASON, "not_applicable")
+    return _disabled("none", PROVIDER_LABELS["none"], NO_PROVIDER_REASON, "not_applicable")
 
 
 __all__ = [
     "NO_DESTINATION_REASON",
     "NO_PROVIDER_REASON",
     "OBSIDIAN_URI_PREFIX",
+    "PROVIDER_LABELS",
     "SAME_DEVICE_REASON",
     "VAULT_UNAVAILABLE_REASON",
     "DeviceLocality",

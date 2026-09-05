@@ -12,8 +12,8 @@
 
 ## 3. Browser clients can read safe launch state without gaining write authority
 
-- [ ] 3.1 Add the non-cacheable launch-target route with direct-peer locality and generic redacted invalid-config fallback, verified by exact-schema, loopback, forwarding-header, provider-state, and disclosure tests.
-- [ ] 3.2 Register the route before static handling and keep every mutation method, server-side desktop launch, redirect, subprocess path, and direct xTiles network client absent, verified by application routing, dependency-boundary, and repository web-gate tests.
+- [x] 3.1 Add the non-cacheable launch-target route with direct-peer locality and generic redacted invalid-config fallback, verified by exact-schema, loopback, forwarding-header, provider-state, and disclosure tests.
+- [x] 3.2 Register the route before static handling and keep every mutation method, server-side desktop launch, redirect, subprocess path, and direct xTiles network client absent, verified by application routing, dependency-boundary, and repository web-gate tests.
 
 ## 4. Learner can launch one configured provider only from an explicit click
 
