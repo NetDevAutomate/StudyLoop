@@ -1642,7 +1642,7 @@
           <!-- PICKER (idle). .bd-start-picker is the surface-scoping hook: this
                view is declared BEFORE the Study view in the document, so an
                unscoped picker selector resolves here first. -->
-          <section class="bd-card bd-start-picker" x-show="!sessionActive">
+          <section class="bd-card bd-start-picker" x-show="!sessionActive && !starting">
             <label class="bd-field">What are you working on?
               <input id="bd-activity-input" type="text" x-model="activity"
                      placeholder="e.g. Window functions"></label>
@@ -1718,6 +1718,14 @@
               </div>
             </template>
           </section>
+
+          <!-- ── Starting spinner (twin of the Study picker's, tasks §3.5).
+               bd- id so tests can address this one without strict-mode
+               collisions with the Study view's .session-starting. ── -->
+          <div id="bd-session-starting" class="session-starting" x-show="starting" x-transition>
+            <div class="spinner"></div>
+            <p>Starting session...</p>
+          </div>
 
           <!-- LIVE (session active). The strip is sticky so End stays reachable
                without scrolling back up mid-session. -->

@@ -3473,12 +3473,15 @@ function bodyDoubleSession() {
     async startSession() {
       this.starting = true;
       this.startError = '';
+      /* Trimmed once, used everywhere: the POST payload, the live label and
+         the dispatch detail must all carry the same topic string (§3.2). */
+      const topic = this.activity.trim();
       try {
         const res = await fetch('/api/session/start', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            topic: this.activity, energy: this.energy, agent: this.agent,
+            topic, energy: this.energy, agent: this.agent,
             transport: this.transport, origin: 'body-double',
           }),
         });
@@ -3498,15 +3501,15 @@ function bodyDoubleSession() {
         this.studySessionId = data.study_session_id || null;
         /* A start that succeeded proves nothing is blocking us any more. */
         this.conflictSession = null;
-        this.liveActivity = this.activity;
+        this.liveActivity = topic;
         /* Re-point the note composer at the live activity. refreshFocus() ran at
            init(), before any session existed, so its default fell back to the
            first focus slot - filing notes against the wrong topic for the whole
            session. A misfiled note is worse than an untagged one. */
-        this.noteTopic = this.activity;
+        this.noteTopic = topic;
         window.dispatchEvent(new CustomEvent('study-session-start', {
           detail: {
-            topic: this.activity, origin: 'body-double', energy: this.energy,
+            topic, origin: 'body-double', energy: this.energy,
             agent: this.agent || null,
             resolvedAgent: data.agent || this.agent || null,
             studySessionId: data.study_session_id || null,

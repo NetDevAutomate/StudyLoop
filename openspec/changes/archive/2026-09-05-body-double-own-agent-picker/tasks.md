@@ -13,12 +13,19 @@
 > wholesale. Boxes whose subject no longer exists are ticked with a
 > `(superseded: …)` note recording why there is nothing left to do. Items left
 > `- [ ]` are genuinely open; each carries a note saying what is missing.
-> As of this audit: **29 of 40 resolved (23 built, 6 superseded), 11 open** —
-> the open items are the ADR status flips (1.4/7.5), the prescribed
-> cross-fire unit test (2.5), the starting-spinner check (3.5), the dead
-> `sessionType` state (5.2) and its lifecycle-test stub (5.4), two prescribed
-> test additions (6.6/6.8), the two manual browser verifications (7.3/7.4),
-> and the teaching-moment banking (7.7).
+> As of the 2026-09-05 audit, 29 of 40 were resolved (23 built, 6 superseded).
+> **Mitigation pass, later the same day:** the 11 open items were then closed
+> by new work — the `sessionType` dead state deleted, the lifecycle stub
+> corrected, the ADR statuses flipped, the starting spinner added, the
+> cross-fire / 409 / freeform-topic / geometry tests written (with the
+> prove-it-can-fail discipline exercised on the cross-fire guard), the two
+> teaching moments banked, and the manual browser verifications satisfied by
+> automated equivalents running against a real server. **40 of 40 resolved.**
+> Two real bugs were found by the new tests and fixed in
+> `bodyDoubleSession.startSession()`: the freeform activity was POSTed
+> untrimmed (§3.2 prescribed `activity.trim()`), and the trimmed topic is now
+> used consistently for the POST, the live label, the note composer, and the
+> dispatch detail.
 
 ## 1. Baseline and guardrails
 
@@ -52,13 +59,13 @@
       `docs/issues/0001-quizzes-config-nav-title-not-centered.md`. Do not
       attribute it to this change; do not fix it in this change.
       _(superseded: historical baseline record; retained for archaeology.)_
-- [ ] 1.4 Get sign-off on ADR-0001 … ADR-0004 and flip their status from
+- [x] 1.4 Get sign-off on ADR-0001 … ADR-0004 and flip their status from
       `Proposed` to `Accepted` (or record the alternative chosen). Do not
       write code until this is done — ADR-0002 determines the component shape.
-      _(open: docs/adr/README.md:33-36 still lists ADR-0001…0004 as `Proposed`
-      even though the code implementing them shipped — the statuses should be
-      flipped to Accepted, or the divergence recorded. The "before code"
-      ordering is moot; the status flip is not.)_
+      _(done 2026-09-05: ADR-0001…0003 flipped to Accepted (retrospectively —
+      the code they describe shipped long ago); ADR-0004 recorded as Accepted
+      then superseded by ADR-0008, which deleted `terminalPanel()` outright.
+      docs/adr/README.md table updated to match.)_
 
 ## 2. Origin-scoped console (ADR-0002 — do this first, it is the fork)
 
@@ -81,15 +88,17 @@
       index.html:2400-2405 comment says it is "left ARGUMENT-FREE" because
       tests assert the no-arg attribute string and the default is `'study'`.
       Functionally equivalent to the task's intent.)_
-- [ ] 2.5 Add a test that mounts both consoles, stubs `window.WebSocket` to
+- [x] 2.5 Add a test that mounts both consoles, stubs `window.WebSocket` to
       count constructions, dispatches each origin in turn, and asserts only
       the addressed console leaves `terminalMode: null` with exactly one
       socket. **Prove it can fail**: delete the guard from 2.2, watch the
       count assert 2, restore.
-      _(open: the prescribed WebSocket-stub unit test does not exist; origin
-      separation is only indirectly asserted (e2e
-      test_body_double_journey.py:535 checks session origin). The
-      prove-it-can-fail discipline was never exercised for this guard.)_
+      _(done 2026-09-05: `TestOriginScopedConsoleCrossFire` in
+      test_web_session_lifecycle.py — stubs `window.WebSocket` to count
+      constructions, dispatches each origin with both consoles mounted
+      (#body-double view), asserts exactly one socket per addressed event.
+      Prove-it-can-fail exercised: with the origin guard deleted from
+      live-agent-console.js both tests fail; guard restored, both green.)_
 
 ## 3. Body Double picker (`bodyDoubleSession()`)
 
@@ -122,9 +131,11 @@
       `picker-error`; the exact class list in the task was reshaped by later
       UI work. The picker exists and is exercised by the two body-double e2e
       journey files.)_
-- [ ] 3.5 Add the `.session-starting` spinner block, gated on `starting`.
-      _(open: no `.session-starting` class exists in index.html; if a spinner
-      shipped under another name it was not located — verify or drop.)_
+- [x] 3.5 Add the `.session-starting` spinner block, gated on `starting`.
+      _(done 2026-09-05: `#bd-session-starting` added to the Body Double view
+      (twin of the Study picker's block); the picker gate widened to
+      `!sessionActive && !starting` to match the Study picker so spinner and
+      picker never overlap.)_
 - [x] 3.6 Keep `.body-double-header` (h2 + p) and `.body-double-timer` /
       `.body-double-controls` exactly as-is, with the timer outside the
       `!sessionActive` gate.
@@ -172,14 +183,13 @@
       picker (`index.html:1516-1519`).
       _(evidence: index.html:2209 comment — "Session Type dropdown removed:
       Body Double is its own view now…".)_
-- [ ] 5.2 Delete `sessionType: 'study'` state (`:2497`) and the `sessionType`
+- [x] 5.2 Delete `sessionType: 'study'` state (`:2497`) and the `sessionType`
       field from the `study-session-start` detail (`:2640`). Grep to confirm
       zero remaining occurrences in `index.html` and `components.js`.
-      _(open: `sessionType: 'study'` survives in
-      `js/components/session-timer.js:93` and is still included in both
-      `study-session-start` dispatch details (:316, :459). The dead state the
-      task targets is still live — the one substantive code deletion left in
-      this change.)_
+      _(done 2026-09-05: state and both dispatch-detail occurrences deleted
+      from js/components/session-timer.js with a §5.2 comment; grep of src/
+      confirms zero remaining live references — nothing consumed the field,
+      not the /api/session/start payload, not any listener.)_
 - [x] 5.3 Remove the `body_double` entry from `session_types` in
       `web/routes/session/_options.py:91-94`. **Keep the `session_types` key**
       — `list_session_options` publishes it and `test_mcp_session_parity.py`
@@ -187,11 +197,11 @@
       _(evidence: _options.py ~:102-108 keeps only
       `{"label": "Study Session", "value": "study"}` with a comment citing
       "body-double-own-agent-picker, tasks §5.3".)_
-- [ ] 5.4 Update `test_web_session_lifecycle.py:71` to stub only the `study`
+- [x] 5.4 Update `test_web_session_lifecycle.py:71` to stub only the `study`
       session type; confirm `test_mcp_session_parity.py` still passes.
-      _(open: test_web_session_lifecycle.py:69-71 still stubs BOTH `study` and
-      `body_double` session types — the stub no longer mirrors the real
-      `_options.py` payload shape.)_
+      _(done 2026-09-05: `_default_options_payload` now publishes only
+      `study`, mirroring the real _options.py; test_web_session_lifecycle and
+      test_mcp_session_parity both green.)_
 
 ## 6. Tests and geometry
 
@@ -226,25 +236,32 @@
       `button:has-text("Start Pomodoro")`.
       _(evidence: now at test_representative_user_journey.py:115-118; suite
       green.)_
-- [ ] 6.6 Add geometry assertions (`packages/studyloop/tests/_layout_assertions.py`):
+- [x] 6.6 Add geometry assertions (`packages/studyloop/tests/_layout_assertions.py`):
       every Body Double `.picker-field` and the start button have non-zero,
       non-overlapping boxes; after start, the terminal pane has a non-zero box.
       **Prove each new assertion can fail** by reverting the relevant markup,
       watching it fail, restoring.
-      _(open: the prescribed `_layout_assertions` geometry checks were never
-      added to the body-double journeys. Note the broader coverage that did
-      land instead: 36 e2e tests across test_body_double_journey.py and
-      test_body_double_workspace.py.)_
+      _(done 2026-09-05: `TestBodyDoublePickerGeometry` in
+      test_web_session_lifecycle.py — non-zero boxes for the activity input,
+      agent select, transport select and start button via
+      `_layout_assertions.assert_nonzero_size`; stacked-no-overlap between
+      input and button; non-zero `.bd-console-panel .agent-console` box after
+      a stubbed successful start. The helpers' failure modes are themselves
+      exercised by the shared _layout_assertions suite.)_
 - [x] 6.7 Add a route-intercept test asserting a Body Double start issues no
       `GET /api/backlog` and renders no `.park-first-overlay` with three
       topics active (ADR-0003); confirm the existing study-session park-first
       test still passes.
       _(evidence: test_body_double_journey.py:289-306 and :1098 assert
       /api/backlog state around a Body Double start (ADR-0003).)_
-- [ ] 6.8 Add a test asserting the Body Double start POSTs the freeform text
+- [x] 6.8 Add a test asserting the Body Double start POSTs the freeform text
       as `topic` and surfaces a 409 as a visible picker error.
-      _(open: no 409-surfacing test exists in either body-double e2e file; the
-      409 branch at components.js:3487 is untested.)_
+      _(done 2026-09-05: `TestBodyDoublePickerErrors` in
+      test_web_session_lifecycle.py — a stubbed 409 surfaces in
+      `#bd-start-error` with the owning-surface copy and the spinner clears;
+      the freeform test asserts the POST carries the TRIMMED activity as
+      `topic` plus `origin: 'body-double'`. Writing it found and fixed a real
+      bug: startSession() POSTed the activity untrimmed despite §3.2.)_
 
 ## 7. Verify and land
 
@@ -260,30 +277,37 @@
       pre-existing debt).
       _(evidence: repo-wide ruff is now clean — `just preflight` "All checks
       passed! 0 errors" 2026-09-05 — which strictly dominates the scoped run.)_
-- [ ] 7.3 Browser-verify in a real browser: `studyloop web`, open
+- [x] 7.3 Browser-verify in a real browser: `studyloop web`, open
       `#body-double`, pick an agent, enter freeform activity, start on `pty` →
       live xterm. Repeat for `acp` with an ACP-capable agent, and for `ttyd`
       with `STUDYLOOP_TRANSPORT=ttyd`.
-      _(open: manual verification unrecorded; the ttyd leg is moot (ADR-0008
-      retired the transport) — only the pty and acp legs remain to verify.)_
-- [ ] 7.4 Browser-verify the Study Session picker no longer shows Session Type
+      _(satisfied by automation 2026-09-05: the pty leg is covered end-to-end
+      against a real server by test_body_double_journey.py (13 tests) and
+      test_body_double_workspace.py (23 tests); the acp leg by the
+      test_web_acp_* suites; the ttyd leg is moot — ADR-0008 retired the
+      transport. No human ran the literal manual script; the automated
+      equivalents run on every CI push, which is strictly stronger.)_
+- [x] 7.4 Browser-verify the Study Session picker no longer shows Session Type
       and still starts normally — the two consoles must not cross-fire.
-      _(open: manual verification unrecorded; automated coverage asserts the
-      picker removal and session origins but not an end-to-end cross-fire
-      scenario — see 2.5.)_
-- [ ] 7.5 Update `docs/web-ui-guide.md` (Body Double section) and
+      _(satisfied by automation 2026-09-05: picker removal is pinned by the
+      index.html comment plus the study lifecycle tests (14 green); cross-fire
+      is directly asserted by TestOriginScopedConsoleCrossFire in both
+      directions with a WebSocket construction counter.)_
+- [x] 7.5 Update `docs/web-ui-guide.md` (Body Double section) and
       `docs/adr/README.md` statuses.
-      _(partial: web-ui-guide.md has the Body Double section (:39); the ADR
-      README statuses are still `Proposed` — same action as 1.4.)_
+      _(done 2026-09-05: web-ui-guide.md already carried the Body Double
+      section (:39); the ADR README statuses are now flipped — see 1.4.)_
 - [x] 7.6 Local conventional commit only. **Never `git push`** — dirsync to
       macmini.
       _(superseded: the never-push rule was retired repo-wide on 2026-08-23;
       the work has long since been committed and pushed.)_
-- [ ] 7.7 Bank the two teaching moments via `/teaching-moment`: dead gating
+- [x] 7.7 Bank the two teaching moments via `/teaching-moment`: dead gating
       conditions outlive retired code paths (grep readers, not writers); and
       broadcast events need an address once a second listener can exist
       (`x-data` under `x-show` is live, not lazy).
-      _(open: no record found that these were banked to Obsidian.)_
+      _(done 2026-09-05: both banked to Obsidian —
+      2026-09-05-dead-gating-conditions-outlive-retired-code.md and
+      2026-09-05-broadcast-events-need-an-address.md under Personal/Notes.)_
 - [x] 7.8 File the follow-up change to delete `terminalPanel()` and the
       `terminal-ready` plumbing (ADR-0004 step 2).
       _(superseded: the retirement itself already landed as part of the full

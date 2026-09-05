@@ -7,10 +7,10 @@
 > transport, `/terminal/` and the step-2 plan for `terminalPanel()` are
 > unaffected and still stand.
 
-- **Status**: Proposed
+- **Status**: Accepted; superseded by ADR-0008 (the interim "unmount, don't delete" state shipped, then ttyd's full retirement deleted `terminalPanel()` entirely)
 - **Date**: 2026-07-25
 - **Change**: `openspec/changes/body-double-own-agent-picker`
-- **Deciders**: repo owner (pending sign-off)
+- **Deciders**: repo owner
 
 ## Context
 

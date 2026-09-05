@@ -1,9 +1,9 @@
 # ADR-0002 — Origin-scoped addressing for `liveAgentConsole()`
 
-- **Status**: Proposed
+- **Status**: Accepted (2026-09-05 — implemented and shipped; accepted retrospectively during the body-double-own-agent-picker reconciliation)
 - **Date**: 2026-07-25
 - **Change**: `openspec/changes/body-double-own-agent-picker`
-- **Deciders**: repo owner (pending sign-off)
+- **Deciders**: repo owner
 
 ## Context
 

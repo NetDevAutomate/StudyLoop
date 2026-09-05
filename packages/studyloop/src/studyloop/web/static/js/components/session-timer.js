@@ -90,7 +90,10 @@ export function sessionTimer() {
       selectedLesson: '',
       topicInput: '',
       selectedOption: null,
-      sessionType: 'study',
+      /* sessionType removed (body-double-own-agent-picker §5.2): Body Double
+         is its own view with its own factory, so the Study picker has exactly
+         one type and nothing consumed the field — not the /api/session/start
+         payload, not any study-session-start listener. */
       targetKind: 'topic',
       agent: '',
       transport: 'pty',
@@ -313,7 +316,6 @@ export function sessionTimer() {
               // ignore the other's events (ADR-0002).
               origin: 'study',
               energy: this.energy,
-              sessionType: this.sessionType,
               targetKind: this.targetKind,
               targetPath: this.selectedOption?.path || null,
               agent: this.agent || null,
@@ -456,7 +458,6 @@ export function sessionTimer() {
               // Origin-scoped: the Body Double console ignores this (ADR-0002).
               origin: OWN_ORIGIN,
               energy: this.energy,
-              sessionType: this.sessionType,
               targetKind: this.targetKind,
               targetPath: null,
               agent: session.agent || this.agent || null,

@@ -30,10 +30,10 @@ the code and ask "why on earth is it done this way?" — it gets an ADR, and
 
 | ADR | Title | Status | Change |
 |---|---|---|---|
-| [0001](0001-body-double-reuses-session-start-endpoint.md) | Body Double reuses `POST /api/session/start` | Proposed | `body-double-own-agent-picker` |
-| [0002](0002-origin-scoped-live-agent-console.md) | Origin-scoped addressing for `liveAgentConsole()` | Proposed | `body-double-own-agent-picker` |
-| [0003](0003-body-double-exempt-from-park-first-friction.md) | Body Double is exempt from park-first friction | Proposed | `body-double-own-agent-picker` |
-| [0004](0004-retire-terminal-panel-from-body-double.md) | Unmount `terminalPanel()` without deleting it | Proposed | `body-double-own-agent-picker` |
+| [0001](0001-body-double-reuses-session-start-endpoint.md) | Body Double reuses `POST /api/session/start` | Accepted | `body-double-own-agent-picker` |
+| [0002](0002-origin-scoped-live-agent-console.md) | Origin-scoped addressing for `liveAgentConsole()` | Accepted | `body-double-own-agent-picker` |
+| [0003](0003-body-double-exempt-from-park-first-friction.md) | Body Double is exempt from park-first friction | Accepted | `body-double-own-agent-picker` |
+| [0004](0004-retire-terminal-panel-from-body-double.md) | Unmount `terminalPanel()` without deleting it | Superseded by ADR-0008 | `body-double-own-agent-picker` |
 | [0005](0005-retire-ttyd-browser-surface.md) | Retire the ttyd browser surface, keep the server transport | Superseded in part by ADR-0008 | `live-agent-console.js`, `index.html` |
 | [0006](0006-bridge-aware-deferred-topics.md) | Bridge-aware deferred topics, behind a testable 0.1.0 boundary | Proposed | `reviews/0.1.0-SCOPE-DECISION.md` |
 | [0007](0007-dev-only-vendored-assets.md) | Dev-only vendored assets live in git, not in the wheel | Accepted | `vendor/dev/` |

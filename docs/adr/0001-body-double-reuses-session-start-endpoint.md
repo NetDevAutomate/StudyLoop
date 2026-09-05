@@ -1,9 +1,9 @@
 # ADR-0001 — Body Double reuses `POST /api/session/start`
 
-- **Status**: Proposed
+- **Status**: Accepted (2026-09-05 — implemented and shipped; accepted retrospectively during the body-double-own-agent-picker reconciliation)
 - **Date**: 2026-07-25
 - **Change**: `openspec/changes/body-double-own-agent-picker`
-- **Deciders**: repo owner (pending sign-off)
+- **Deciders**: repo owner
 
 ## Context
 

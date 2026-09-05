@@ -33,6 +33,10 @@ _tests_dir = str(Path(__file__).parent)
 if _tests_dir not in sys.path:
     sys.path.insert(0, _tests_dir)
 
+from _layout_assertions import (  # noqa: E402
+    assert_nonzero_size,
+    assert_stacked_no_overlap,
+)
 from _playwright_helpers import (  # noqa: E402
     auth_context_fixture_factory,
     web_page_fixture_factory,
@@ -67,8 +71,10 @@ def _fulfill(route: Route, payload: object, status: int = 200) -> None:
 def _default_options_payload() -> dict:
     return {
         "session_types": [
+            # Mirrors the real _options.py payload: Body Double is its own
+            # top-level view, not a session type (body-double-own-agent-picker
+            # §5.3/§5.4), so the stub publishes only "study".
             {"label": "Study Session", "value": "study", "kind": "session_type"},
-            {"label": "Body Double", "value": "body_double", "kind": "session_type"},
         ],
         "topics": [
             {"label": "Python", "value": "Python", "kind": "topic", "path": "/P"},
@@ -507,6 +513,223 @@ class TestStartSessionFlow:
         err = web_page.locator(".picker-error")
         err.wait_for(state="visible", timeout=5000)
         assert "Network error" in (err.text_content() or "")
+
+
+# ---------------------------------------------------------------------------
+# Body Double picker: 409 surfacing + origin-scoped console cross-fire
+# (body-double-own-agent-picker tasks §6.8 and §2.5)
+# ---------------------------------------------------------------------------
+
+
+def _goto_body_double(page: Page) -> None:
+    page.goto(f"http://127.0.0.1:{WEB_PORT}/#body-double")
+    page.wait_for_load_state("domcontentloaded")
+    page.wait_for_function("() => !!window.Alpine", timeout=10000)
+
+
+class TestBodyDoublePickerErrors:
+    def _stub_start(self, page: Page, *, status: int, body: dict) -> None:
+        def handler(route: Route) -> None:
+            if route.request.method == "POST":
+                _fulfill(route, body, status=status)
+            else:
+                route.continue_()
+
+        page.route("**/api/session/start", handler)
+
+    def test_409_surfaces_as_visible_picker_error(self, web_page: Page) -> None:
+        """A 409 from /session/start must show a visible error in the Body
+        Double picker, not vanish (tasks §6.8 — the untested branch at
+        bodyDoubleSession.startSession's 409 handling)."""
+        _stub_options(web_page)
+        _stub_session_state(web_page)
+        _stub_topics_list(web_page)
+        self._stub_start(
+            web_page,
+            status=409,
+            body={"error": "A session is already active"},
+        )
+        _goto_body_double(web_page)
+
+        web_page.evaluate(
+            """() => {
+              const root = document.querySelector('[x-data="bodyDoubleSession()"]');
+              const d = window.Alpine.$data(root);
+              d.activity = 'Window functions';
+              d.agent = 'claude';
+            }"""
+        )
+        web_page.locator("#bd-start-session").click()
+
+        err = web_page.locator("#bd-start-error")
+        err.wait_for(state="visible", timeout=5000)
+        text = err.text_content() or ""
+        # Foreign-origin conflict copy NAMES the owning surface rather than
+        # echoing the server's generic message (components.js _applyConflict).
+        assert "session active" in text or "already active" in text, text
+        # The picker must remain usable — no session started, no spinner
+        # stuck. wait_for, not is_hidden(): x-transition fades it out.
+        web_page.locator("#bd-session-starting").wait_for(state="hidden", timeout=5000)
+
+    def test_freeform_activity_is_posted_as_topic(self, web_page: Page) -> None:
+        """The Body Double start POSTs the freeform text as `topic`
+        (tasks §6.8, first half)."""
+        _stub_options(web_page)
+        _stub_session_state(web_page)
+        _stub_topics_list(web_page)
+
+        captured: list[dict] = []
+
+        def handler(route: Route) -> None:
+            if route.request.method == "POST":
+                captured.append(json.loads(route.request.post_data or "{}"))
+                _fulfill(route, {"error": "A session is already active"}, status=409)
+            else:
+                route.continue_()
+
+        web_page.route("**/api/session/start", handler)
+        _goto_body_double(web_page)
+
+        web_page.evaluate(
+            """() => {
+              const root = document.querySelector('[x-data="bodyDoubleSession()"]');
+              const d = window.Alpine.$data(root);
+              d.activity = '  Window functions  ';
+              d.agent = 'claude';
+            }"""
+        )
+        web_page.locator("#bd-start-session").click()
+        web_page.locator("#bd-start-error").wait_for(state="visible", timeout=5000)
+
+        assert captured, "no POST /api/session/start captured"
+        assert captured[0]["topic"] == "Window functions"  # trimmed
+        assert captured[0]["origin"] == "body-double"
+
+
+class TestOriginScopedConsoleCrossFire:
+    """The two consoles must not react to each other's events (ADR-0002,
+    tasks §2.5). Both consoles are counted via a WebSocket stub installed
+    before dispatch, so a cross-fire shows up as a second construction."""
+
+    _WS_STUB = """() => {
+      window.__wsUrls = [];
+      window.WebSocket = class {
+        constructor(url) {
+          window.__wsUrls.push(String(url));
+          this.readyState = 0;
+          setTimeout(() => { if (this.onopen) this.onopen(); }, 0);
+        }
+        send() {}
+        close() { if (this.onclose) this.onclose({ code: 1000 }); }
+        addEventListener() {}
+        removeEventListener() {}
+      };
+    }"""
+
+    def _dispatch_start(self, page: Page, origin: str) -> None:
+        page.evaluate(
+            """(origin) => {
+              window.dispatchEvent(new CustomEvent('study-session-start', {
+                detail: {
+                  topic: 'cross-fire probe', origin, energy: 5,
+                  agent: 'claude', resolvedAgent: 'claude',
+                  studySessionId: 'ss-xfire-' + origin, transport: 'pty',
+                  wsUrl: '/api/session/ws?study_session_id=ss-xfire-' + origin,
+                }
+              }));
+            }""",
+            origin,
+        )
+
+    def test_study_start_does_not_wake_the_body_double_console(self, web_page: Page) -> None:
+        _stub_options(web_page)
+        _stub_session_state(web_page)
+        _stub_topics_list(web_page)
+        # Body Double view current: its console is mounted (x-if on nav),
+        # AND the study console exists too — the cross-fire arena.
+        _goto_body_double(web_page)
+        web_page.evaluate(self._WS_STUB)
+
+        self._dispatch_start(web_page, "study")
+        web_page.wait_for_timeout(500)
+
+        urls = web_page.evaluate("() => window.__wsUrls")
+        # The study console opens its socket; the Body Double console must
+        # not have opened a second one for a foreign-origin event.
+        assert len(urls) <= 1, f"cross-fire: {len(urls)} sockets for one event: {urls}"
+
+    def test_body_double_start_wakes_exactly_one_console(self, web_page: Page) -> None:
+        _stub_options(web_page)
+        _stub_session_state(web_page)
+        _stub_topics_list(web_page)
+        _goto_body_double(web_page)
+        web_page.evaluate(self._WS_STUB)
+
+        self._dispatch_start(web_page, "body-double")
+        web_page.wait_for_timeout(500)
+
+        urls = web_page.evaluate("() => window.__wsUrls")
+        assert len(urls) == 1, (
+            f"expected exactly the Body Double console to connect, got {len(urls)}: {urls}"
+        )
+
+
+class TestBodyDoublePickerGeometry:
+    """Body Double picker geometry (tasks §6.6): the fields and the start
+    button must have non-zero, non-overlapping boxes, and after a start the
+    terminal pane must have a non-zero box."""
+
+    def test_picker_fields_and_start_button_have_real_boxes(self, web_page: Page) -> None:
+        _stub_options(web_page)
+        _stub_session_state(web_page)
+        _stub_topics_list(web_page)
+        _goto_body_double(web_page)
+
+        web_page.locator("#bd-start-session").wait_for(state="visible", timeout=5000)
+        for selector in (
+            "#bd-activity-input",
+            "#bd-agent-select",
+            "#bd-transport-select",
+            "#bd-start-session",
+        ):
+            assert_nonzero_size(web_page, selector)
+        assert_stacked_no_overlap(web_page, "#bd-activity-input", "#bd-start-session")
+
+    def test_terminal_pane_has_nonzero_box_after_start(self, web_page: Page) -> None:
+        _stub_options(web_page)
+        _stub_session_state(web_page)
+        _stub_topics_list(web_page)
+
+        def start_handler(route: Route) -> None:
+            if route.request.method == "POST":
+                _fulfill(
+                    route,
+                    {
+                        "study_session_id": "ss-bd-geo",
+                        "topic": "geometry",
+                        "agent": "claude",
+                        "transport": "pty",
+                        "ws_url": "/api/session/ws?study_session_id=ss-bd-geo",
+                    },
+                    status=201,
+                )
+            else:
+                route.continue_()
+
+        web_page.route("**/api/session/start", start_handler)
+        _goto_body_double(web_page)
+
+        web_page.evaluate(
+            """() => {
+              const root = document.querySelector('[x-data="bodyDoubleSession()"]');
+              const d = window.Alpine.$data(root);
+              d.activity = 'geometry';
+              d.agent = 'claude';
+            }"""
+        )
+        web_page.locator("#bd-start-session").click()
+        web_page.locator(".bd-console-panel .agent-console").wait_for(state="visible", timeout=5000)
+        assert_nonzero_size(web_page, ".bd-console-panel .agent-console")
 
 
 # ---------------------------------------------------------------------------

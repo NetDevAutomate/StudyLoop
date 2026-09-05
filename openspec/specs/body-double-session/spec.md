@@ -1,18 +1,26 @@
-## ADDED Requirements
+# body-double-session Specification
+
+## Purpose
+TBD - created by archiving change body-double-own-agent-picker. Update Purpose after archive.
+
+## Requirements
 
 ### Requirement: Body Double has its own start picker
 The Body Double view SHALL render its own start picker while no session is
-active, containing: an agent `<select>`, the detected-agents card grid, a
-transport `<select>` (`pty` | `acp` | `ttyd`, with `acp` shown only when the
-selected agent reports `supports_acp` and `available`), an energy slider, a
-single freeform text input labelled for the current activity, and a start
-button. It SHALL NOT render the study-target cascade (target kind, topic,
-vendor, course, lesson) and SHALL NOT render a session-type selector.
+active and no start is in flight, containing: an agent `<select>`, a
+transport `<select>` (`pty` | `acp`, with `acp` carrying its own hint when
+the selected agent supports it), and a single freeform text input labelled
+for the current activity, plus a start button. It SHALL NOT render the
+study-target cascade (target kind, topic, vendor, course, lesson) and SHALL
+NOT render a session-type selector. While a start is in flight the view
+SHALL show a starting spinner in place of the picker.
 
-The picker SHALL reuse the existing `.session-start-picker`, `.picker-field`,
-`.picker-select`, `.picker-input`, `.picker-hint`, `.agent-choice-grid`, and
-`.start-session-btn` classes so Body Double and Study Session are visually
-identical surfaces.
+(As shipped, the picker uses the Body Double view's own `bd-`-prefixed
+markup — `#bd-activity-input`, `#bd-agent-select`, `#bd-transport-select`,
+`#bd-start-session` — sharing `.picker-select` / `.picker-hint` /
+`.picker-error` atoms with the Study picker rather than the full
+`.session-start-picker` block originally proposed. The `ttyd` transport
+option was removed by ADR-0008 before this spec was synced.)
 
 #### Scenario: Opening Body Double with no active session
 - **WHEN** the learner navigates to `#body-double` with no session active
@@ -55,28 +63,25 @@ No new endpoint and no session-type field SHALL be introduced. (ADR-0001)
 
 ### Requirement: Body Double uses the modern live agent console
 The Body Double view SHALL render the agent surface via
-`liveAgentConsole('body-double')` — xterm.js for `pty`, ACP chat for `acp`,
-and the same-origin `/terminal/` iframe via `_mountLegacyIframe()` for
-`ttyd`. It SHALL NOT mount `terminalPanel()`, and its terminal pane SHALL NOT
-be gated on `state.ttyd_port` or on a `terminal-ready` event. (ADR-0004)
+`liveAgentConsole('body-double')` — a terminal (xterm.js, or the ghostty
+canvas renderer under `--dev`) for `pty`, and the ACP chat surface for
+`acp`. The console SHALL exist in the DOM only while the Body Double view is
+current (`x-if` on nav, not `x-show`), so a hidden mount can never shadow
+the Study console's selectors. (ADR-0004; the interim "unmount
+`terminalPanel()`, don't delete it" state was later superseded by ADR-0008,
+which retired ttyd — and `terminalPanel()`, `_mountLegacyIframe()` and the
+`/terminal/` iframe with it.)
 
 #### Scenario: PTY session started from Body Double
 - **WHEN** a Body Double session starts on the `pty` transport
-- **THEN** an xterm.js terminal mounts in the Body Double terminal pane with a
+- **THEN** a terminal mounts in the Body Double terminal pane with a
   non-zero bounding box and connects to the returned `ws_url`
 
-#### Scenario: Legacy ttyd forced by the operator
-- **WHEN** `STUDYLOOP_TRANSPORT=ttyd` is set and a Body Double session starts
-- **THEN** the console mounts the `/terminal/` iframe through
-  `_mountLegacyIframe()`, not through `terminalPanel()`
-
-#### Scenario: No session has been started
-- **WHEN** the app is loaded and no session has been started
-- **THEN** every ttyd iframe `src` in the page is bound to a state field that
-  is empty until `_mountLegacyIframe()` runs, so no `/terminal/` request is
-  issued at page load (the lazy-load invariant currently asserted against
-  `activeTtydUrl` in `test_terminal_proxy.py`, re-expressed against
-  `legacyTtydUrl`)
+#### Scenario: The console is absent outside the Body Double view
+- **WHEN** any other view is current
+- **THEN** no Body Double console element exists in the DOM, so global
+  terminal selectors (e.g. `.xterm-mount`) cannot silently address a hidden
+  Body Double mount
 
 ### Requirement: Body Double starts skip the park-first friction
 A Body Double start SHALL NOT query `GET /api/backlog` and SHALL NOT render
