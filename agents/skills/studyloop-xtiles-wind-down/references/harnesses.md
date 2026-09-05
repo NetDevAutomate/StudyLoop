@@ -18,13 +18,14 @@ one place.
 | Codex | `~/.agents/skills/` — the hub itself, read natively; no extra link needed | <https://developers.openai.com/codex/skills>, 2026-09-03 |
 | Kiro CLI | `~/.kiro/skills/` | this repository already installs four skills there |
 | Claude Code | `~/.claude/skills/` | the Agent Skills convention |
-| OpenCode | `~/.config/opencode/skills/` | <https://opencode.ai/docs/skills/>, 2026-09-03 |
+| OpenCode | `~/.agents/skills/` — the hub itself, listed as a global search path; no extra link installed | <https://opencode.ai/docs/skills/>, 2026-09-03 |
 | pi | not verified — no skills-directory documentation found | — |
 
 `~/.agents/skills/` is not a StudyLoop invention: Codex reads it as its USER scope,
-and OpenCode lists it as a global search path. Using it as the hub means Codex is
-served by the hub alone, and it is why the hub is that directory rather than
-somewhere under `~/.studyloop/`.
+and OpenCode lists it as a global search path. Using it as the hub means Codex and
+OpenCode are served by the hub alone (a second OpenCode link would risk a duplicate
+listing nothing has verified it de-duplicates), and it is why the hub is that
+directory rather than somewhere under `~/.studyloop/`.
 
 pi gets a self-gated paragraph in its `AGENTS.md` instead. When a pi skills
 directory is documented, that paragraph is replaced by a link like the others.

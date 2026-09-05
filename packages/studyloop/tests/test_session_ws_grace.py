@@ -279,17 +279,28 @@ class TestGraceModule:
         # triple when an unrelated selection was large. Still comfortably inside
         # the 30s grace window above, so a pass here means the dead agent was
         # reaped rather than the window merely expiring.
+        #
+        # Poll for the SETTLED lifecycle — the timer popped from ``_pending`` —
+        # not the first observable effect. ``release()`` clears the slot, then
+        # awaits ``transport.end()`` and an executor hop before the grace
+        # task's ``finally`` pops the timer. Breaking out on "slot is empty"
+        # and immediately asserting "timer is gone" races that tail, and on a
+        # loaded CI runner loses (twice on ``main``, 2026-09-04). The pop is
+        # the last effect in ``_deferred_release``, so once it is observed the
+        # whole release has landed and every assert below runs against a
+        # settled state. The test still fails when the liveness poll is broken:
+        # the 30s grace window above can never expire inside this deadline.
         deadline = time.monotonic() + 15.0
         while time.monotonic() < deadline:
             await asyncio.sleep(0.1)
-            if await active.current() is None:
+            if not _grace.has_pending_release(config.study_session_id):
                 break
 
-        assert await active.current() is None, (
+        assert not _grace.has_pending_release(config.study_session_id), (
             "dead agent pinned the session slot — is_running() poll not working"
         )
+        assert await active.current() is None
         assert transport.end_calls == 1
-        assert not _grace.has_pending_release(config.study_session_id)
 
     async def test_release_now_cancels_the_timer_and_releases(self, config: SessionConfig) -> None:
         """Case 5 (unit half): explicit end during the window, no orphan timer."""

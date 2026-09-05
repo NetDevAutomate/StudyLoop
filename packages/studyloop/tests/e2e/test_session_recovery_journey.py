@@ -49,6 +49,7 @@ if _tests_dir not in sys.path:
     sys.path.insert(0, _tests_dir)
 
 from _playwright_helpers import start_web_server  # noqa: E402
+from e2e._env import await_async_predicate  # noqa: E402
 
 _TEST_AGENT_SCRIPT = Path(_tests_dir) / "_fake_agent.py"
 
@@ -283,13 +284,17 @@ class TestStudyPickerRecovery:
         dialog.wait_for(state="visible", timeout=5_000)
         page.locator("[data-testid='study-end-confirm-yes']").click()
 
-        page.wait_for_function(
+        # await_async_predicate, not wait_for_function, which never awaits an
+        # async predicate (_env.py).
+        await_async_predicate(
+            page,
             """async () => {
               const res = await fetch('/api/session/state');
               const s = await res.json();
               return !s.study_session_id;
             }""",
-            timeout=10_000,
+            timeout=10.0,
+            what="the session to be released server-side",
         )
         page.wait_for_function(
             """() => {
@@ -385,13 +390,17 @@ class TestStudyPickerRecovery:
         page.locator("#bd-conflict-end").wait_for(state="visible", timeout=5_000)
         page.locator("#bd-conflict-end").click()
 
-        page.wait_for_function(
+        # await_async_predicate, not wait_for_function, which never awaits an
+        # async predicate (_env.py).
+        await_async_predicate(
+            page,
             """async () => {
               const res = await fetch('/api/session/state');
               const state = await res.json();
               return !state.study_session_id;
             }""",
-            timeout=10_000,
+            timeout=10.0,
+            what="the conflicting session to be ended server-side",
         )
 
     def test_body_double_picker_can_reattach_its_own_session(

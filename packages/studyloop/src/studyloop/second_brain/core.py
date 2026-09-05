@@ -256,7 +256,7 @@ class NullBackend(_InertBackend):
 class XtilesStageOneBackend(_InertBackend):
     """``provider: xtiles`` — configured, but not programmatically reachable.
 
-    xTiles is served in stage 1 by documentation, three tested prompts and an
+    xTiles is served in stage 1 by documentation, three supplied prompts and an
     opt-in assistant skill: the learner's assistant talks to xTiles' own MCP
     connector, StudyLoop does not. Reporting ``configured=True`` with
     ``supports_publish=False`` is what stops the wind-down protocol offering a

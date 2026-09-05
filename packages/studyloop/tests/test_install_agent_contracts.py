@@ -40,10 +40,13 @@ _XTILES_REFERENCES = f"{_XTILES_SKILL_DIR}/references/harnesses.md"
 #: Harnesses whose skills directory is DOCUMENTED, and therefore linked.
 #: pi is absent deliberately: no pi skills directory is documented anywhere, so it
 #: gets a self-gated paragraph rather than a link to a guessed path.
-_XTILES_LINKED_HARNESSES = ("kiro", "claude", "opencode")
+#: opencode moved to the hub-served set (2026-09-04 review, Q2): the hub is on its
+#: global search path, so a per-harness link was redundant at best.
+_XTILES_LINKED_HARNESSES = ("kiro", "claude")
 
 #: Codex needs no link of its own -- the hub IS its user-scope skills directory.
-_XTILES_HUB_SERVED_HARNESSES = ("codex",)
+#: OpenCode likewise lists the hub as a global search path.
+_XTILES_HUB_SERVED_HARNESSES = ("codex", "opencode")
 
 #: Harnesses whose definition file carries a self-gated paragraph as well.
 _XTILES_PARAGRAPH_FILES = (
@@ -374,10 +377,14 @@ def test_xtiles_skill_installed_for_each_detected_tool(tmp_path: Path, monkeypat
     installed = {
         "kiro": tmp_path / ".kiro/skills/studyloop-xtiles-wind-down",
         "claude": tmp_path / ".claude/skills/studyloop-xtiles-wind-down",
-        "opencode": tmp_path / ".config/opencode/skills/studyloop-xtiles-wind-down",
     }
     missing = sorted(tool for tool, path in installed.items() if not (path / "SKILL.md").is_file())
     assert missing == [], f"no skill installed for: {missing}"
+
+    # OpenCode gets NO per-harness link (2026-09-04 review, Q2): the hub itself
+    # is on its global search path, and a second link would risk a duplicate
+    # listing that nothing has verified OpenCode de-duplicates.
+    assert not (tmp_path / ".config/opencode/skills/studyloop-xtiles-wind-down").exists()
 
     # Every harness reads the SAME bytes. Asserted through the link, not by
     # comparing content: two copies that happen to match today are still two copies.

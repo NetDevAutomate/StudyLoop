@@ -979,3 +979,108 @@ class TestListConcepts:
 
         monkeypatch.setattr(_conn, "_connect", lambda: None)
         assert hist.list_concepts() == []
+
+
+def _make_messages_db(tmp_path: Path) -> Path:
+    """The REAL export schema — messages + messages_fts + sync triggers.
+
+    Built from agent-session-tools' schema.sql rather than a hand-rolled
+    subset, because the R-92 bug only exists in the real shape: both
+    ``messages`` and ``messages_fts`` carry a ``content`` column, so an
+    unqualified ``content MATCH ?`` in their join is "ambiguous column
+    name: content".
+    """
+    schema = (
+        Path(__file__).resolve().parents[2]
+        / "agent-session-tools"
+        / "src"
+        / "agent_session_tools"
+        / "schema.sql"
+    ).read_text()
+    db_path = tmp_path / "sessions.db"
+    conn = sqlite3.connect(db_path)
+    conn.executescript(schema)
+    conn.execute("INSERT INTO sessions (id, source) VALUES ('s1', 'kiro_cli')")
+    conn.execute(
+        "INSERT INTO messages (id, session_id, role, content, timestamp) "
+        "VALUES ('m1', 's1', 'user', 'I keep mixing up sql window functions', ?)",
+        ((datetime.now(UTC) - timedelta(days=1)).isoformat(),),
+    )
+    conn.commit()
+    conn.close()
+    return db_path
+
+
+class TestTopicFrequencyR92:
+    """R-92: the FTS join must qualify ``messages_fts.content``.
+
+    ``get_study_history`` (the MCP tool) goes through ``topic_frequency``;
+    before the fix every call raised ``sqlite3.OperationalError: ambiguous
+    column name: content``, which R-22b then (correctly) re-raised rather
+    than masking as "topic never mentioned".
+    """
+
+    def _mock(self, db_path: Path, monkeypatch) -> None:
+        def mock_connect():
+            conn = sqlite3.connect(db_path, timeout=5)
+            conn.row_factory = sqlite3.Row
+            return conn
+
+        import studyloop.history._connection as _conn
+
+        monkeypatch.setattr(_conn, "_connect", mock_connect)
+
+    def test_matches_against_the_real_join_without_ambiguity(self, tmp_path, monkeypatch):
+        self._mock(_make_messages_db(tmp_path), monkeypatch)
+
+        import studyloop.history as hist
+
+        rows = hist.topic_frequency(["sql"], days=30)
+
+        assert len(rows) == 1
+        assert rows[0]["session_id"] == "s1"
+        assert "sql" in rows[0]["snippet"].lower()
+
+    def test_multiple_keywords_or_together(self, tmp_path, monkeypatch):
+        """Every placeholder in the OR chain must be qualified, not just one."""
+        self._mock(_make_messages_db(tmp_path), monkeypatch)
+
+        import studyloop.history as hist
+
+        rows = hist.topic_frequency(["spark", "window functions"], days=30)
+
+        assert len(rows) == 1, "second keyword in the OR chain did not match"
+
+    def test_phrase_keywords_do_not_match_scattered_terms(self, tmp_path, monkeypatch):
+        """Keywords with spaces are FTS5 phrases, not AND'd loose terms."""
+        db_path = _make_messages_db(tmp_path)
+        conn = sqlite3.connect(db_path)
+        conn.execute(
+            "INSERT INTO messages (id, session_id, role, content, timestamp) "
+            "VALUES ('m2', 's1', 'user', "
+            "'the functions of a window manager', ?)",
+            ((datetime.now(UTC) - timedelta(days=1)).isoformat(),),
+        )
+        conn.commit()
+        conn.close()
+        self._mock(db_path, monkeypatch)
+
+        import studyloop.history as hist
+
+        rows = hist.topic_frequency(["window functions"], days=30)
+
+        assert [r["session_id"] for r in rows] == ["s1"]
+        assert "window" in rows[0]["snippet"].lower()
+        # m2 has both words but not the phrase; matching it would mean the
+        # keyword was parsed as two loose terms.
+        assert len(rows) == 1
+
+    def test_no_keywords_returns_empty_without_touching_the_db(self, monkeypatch):
+        import studyloop.history as hist
+        import studyloop.history._connection as _conn
+
+        def explode():  # pragma: no cover - reaching this IS the failure
+            raise AssertionError("an empty keyword list must not open the DB")
+
+        monkeypatch.setattr(_conn, "_connect", explode)
+        assert hist.topic_frequency([], days=30) == []

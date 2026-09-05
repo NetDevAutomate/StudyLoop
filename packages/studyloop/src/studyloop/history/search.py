@@ -65,23 +65,38 @@ def topic_frequency(topic_keywords: list[str], days: int = 30) -> list[dict]:
 
     Returns list of {date, session_id, snippet} for sessions mentioning the topic.
     """
+    if not topic_keywords:
+        return []
+
     conn = _connection._connect()
     if not conn:
         return []
 
     cutoff = (datetime.now(UTC) - timedelta(days=days)).isoformat()
-    placeholders = " OR ".join("content MATCH ?" for _ in topic_keywords)
-    query = f"""
+    # ONE qualified MATCH, with the keywords OR'd inside the FTS5 query
+    # string (R-92). Two defects lived in the old
+    # `" OR ".join("content MATCH ?" ...)` shape:
+    #   * `content` is ambiguous — both messages_fts and messages carry the
+    #     column, so SQLite raised "ambiguous column name: content" on every
+    #     call through get_study_history, and R-22b (correctly) re-raised it;
+    #   * FTS5 refuses more than one MATCH constraint per table in a WHERE
+    #     ("unable to use function MATCH in the requested context"), so the
+    #     multi-keyword path — the normal path — was broken either way.
+    # Each keyword is double-quoted as an FTS5 phrase, because several study
+    # terms carry spaces ("window functions", "lake formation") and unquoted
+    # they would parse as separate AND'd terms.
+    match_expr = " OR ".join('"' + kw.replace('"', '""') + '"' for kw in topic_keywords)
+    query = """
         SELECT m.session_id, m.timestamp,
             snippet(messages_fts, 0, '>>>', '<<<', '...', 30) as snippet
         FROM messages_fts
         JOIN messages m ON messages_fts.rowid = m.rowid
-        WHERE ({placeholders}) AND m.timestamp > ?
+        WHERE messages_fts.content MATCH ? AND m.timestamp > ?
         ORDER BY m.timestamp DESC
         LIMIT 50
     """
     try:
-        rows = conn.execute(query, [*topic_keywords, cutoff]).fetchall()
+        rows = conn.execute(query, [match_expr, cutoff]).fetchall()
         return [dict(r) for r in rows]
     except sqlite3.OperationalError as exc:
         # R-22b: a bare `except sqlite3.OperationalError: return []` cannot

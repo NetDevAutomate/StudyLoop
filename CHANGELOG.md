@@ -7,6 +7,60 @@ experience may change before `1.0.0`.
 
 ## [Unreleased]
 
+### Added
+
+- `studyloop plan record <plan-id> --title <title> [--body … | --body-file …]`
+  appends a learning record to a plan document, with a matching MCP tool
+  (`record_plan_learning`) so a mentor can record what was learned at
+  wind-down. Before this, a learning record existed only if you typed it into
+  the plan by hand — and an xTiles wind-down's record lived only in xTiles.
+  The write goes through the plan renderer (never appended as raw text),
+  numbering continues from the highest existing record, and re-running with
+  the same title and body changes nothing. The xTiles wind-down now records
+  into the plan first, so the xTiles page is a projection of a record the plan
+  already has. ADR-0010 was amended to state the rule the code obeys:
+  `studyloop plan …` is the plan document's only writer.
+- `studyloop brain wind-down --json [--connector NAME]...` answers the one
+  question the end-of-session protocol needs: which second-brain offer to make,
+  if any. It returns the channel, whether to offer, the exact sentence to say,
+  and why — so an agent no longer derives the decision from flags, and the
+  offer sentence cannot drift between the CLI, the protocol, the skill and the
+  guide (they are pinned byte-identical by tests).
+
+### Changed
+
+- The xTiles guidance now matches what a person actually saw running the three
+  prompts end to end (Kiro CLI 2.21.0, 2026-09-04). The planner prompt creates a
+  planner tile and reports its URL — the one shape the live UI check validates.
+  The project prompt no longer promises a Kanban board or refreshing collection
+  pages: the connector cannot create board views and refuses to patch collection
+  pages on any tier. The wind-down prompt now says to skip the Review task when
+  `get_due_cards` returns nothing due, rather than inventing a date. The guide
+  also now says that the next action and due reviews sent to xTiles reflect your
+  whole study history (they are not plan-scoped), that per-write permission
+  prompts are xTiles' statement about its connector and what you see depends on
+  your assistant, that the xTiles learning record is not written back into the
+  plan document, and that planner tiles can be removed through the connector
+  while pages and projects must be deleted in the xTiles interface by hand.
+- `studyloop install agents` no longer links the xTiles wind-down skill into
+  `~/.config/opencode/skills`: OpenCode already lists the shared skills hub as a
+  global search path, so the extra link risked a duplicate listing.
+
+### Fixed
+
+- The Obsidian publisher closed three review residuals: containment is now
+  checked before any directory is created (a hostile ancestor symlink can no
+  longer cause directories outside the vault) and once more immediately before
+  the atomic replace; `--dry-run` now says "would replace your edits in …" —
+  with the same warning a real publish prints — instead of a plain "would
+  write"; and a note whose permissions cannot be read is refused rather than
+  silently rewritten with default permissions.
+- `get_study_history` (the MCP tool) and `studyloop plan evaluate` no longer
+  fail when searching session history: the full-text query joined two tables
+  that both carry a `content` column without qualifying it, and OR'd multiple
+  `MATCH` constraints, which FTS5 refuses. Multi-word topics such as
+  "window functions" now also match as phrases rather than scattered terms.
+
 ## [0.2.0] - 2026-09-04
 
 ### Added

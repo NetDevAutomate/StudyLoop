@@ -51,7 +51,12 @@ _tests_dir = str(Path(__file__).resolve().parent.parent)
 if _tests_dir not in sys.path:
     sys.path.insert(0, _tests_dir)
 
-from e2e._env import RunningServer, build_test_world, start_server  # noqa: E402
+from e2e._env import (  # noqa: E402
+    RunningServer,
+    await_async_predicate,
+    build_test_world,
+    start_server,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -735,7 +740,10 @@ class TestRefreshMaintainsSession:
         is visible: without this the test asserts on a race and fails with an
         opaque KeyError when it loses.
         """
-        page.wait_for_function(
+        # await_async_predicate, not wait_for_function, which never awaits an
+        # async predicate (_env.py).
+        await_async_predicate(
+            page,
             """async (id) => {
               const res = await fetch('/api/session/state', { cache: 'no-store' });
               if (!res.ok) return false;
@@ -743,7 +751,8 @@ class TestRefreshMaintainsSession:
               return state.study_session_id === id;
             }""",
             arg=session_id,
-            timeout=15_000,
+            timeout=15.0,
+            what=f"the server to report session {session_id}",
         )
 
     def test_session_state_survives_reload(self, dev_page) -> None:
