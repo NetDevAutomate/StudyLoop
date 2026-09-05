@@ -60,3 +60,7 @@ The lifecycle adapter is separate from the earlier retrieval store. It uses actu
 temporary SQLite replicas and scoped JSON exchange, not production session-sync.
 The full suite now contains 77 passing tests. Capture health and installed-package
 integration remain unrun gates; scope reclassification is explicitly rejected.
+
+## Revisit an individual stage
+
+[STAGES.md](STAGES.md) lists independent entry points, immutable commit checkpoints, exact run commands and the convention for keeping future stages reproducible.
