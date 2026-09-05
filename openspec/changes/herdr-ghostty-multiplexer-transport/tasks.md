@@ -15,11 +15,23 @@
 > **Re-audited 2026-09-05:** three boxes flipped on fresh evidence — the
 > test_clean.py mock migration had landed (:255), test_orchestrator.py was
 > deleted outright (nothing left to migrate), and the full suite was run green
-> at HEAD b0a0ae5 (4790 unit / 504 e2e). Now **56 of 67 ticked, 11 left open**:
-> the six T4.2 journey gaps, the T2.3 default flip blocked on them, the
-> test_tmux_backend.py rename, the STUDYLOOP_MULTIPLEXER settings.py docs, the
-> old-format state round-trip test, and the test_session_start.py mock
-> migration.
+> at HEAD b0a0ae5 (4790 unit / 504 e2e). That pass reached **56 of 67**.
+>
+> **Journey mitigation, 2026-09-05:** T2/T3/T7/T9/T10 now have live,
+> backend-parameterised integration journeys; T9 exercises the real
+> `auto_clean_zombies()` path. Those tests found and fixed two herdr 0.8.2
+> compatibility defects: `workspace list` no longer embeds pane IDs (now
+> resolved through `pane list`), and commands could be lost during zsh startup
+> (now gated on a 500ms quiet-shell window). **T6 remains xfailed on herdr
+> 0.8.2:** killing the TUI client kills the focused pane's foreground process
+> group even with a HUP-immune agent, leaving a bare shell. Herdr also ships no
+> Kiro integration (`herdr integration` lists Claude/Codex/etc., not Kiro).
+> The owner therefore explicitly superseded the planned default flip: tmux
+> remains the production default; herdr stays opt-in via
+> `STUDYLOOP_MULTIPLEXER=herdr`, and ghostty stays behind `studyloop web
+> --dev`. Now **62 of 67 resolved, 5 left open** (T6 plus four low-level
+> cleanup/docs tasks); the change is deferred pending upstream Kiro/detach
+> support, not release-blocking.
 
 ## Executive Summary
 
@@ -284,12 +296,17 @@ references herdr until T1.3's selection logic is enabled (and default is tmux).
   - Error handling: invalid JSON response → `MultiplexerError`.
 - [x] Implement remaining methods. (done: herdr.py `is_zombie_session` [uses `_get_session_start_time` from StudyLoop DB — Gap 5 workaround], `list_study_sessions`, `kill_all_study_sessions`, `configure_session_defaults` [no-op per D8], `is_server_running`; `_herdr()` maps CalledProcessError/TimeoutExpired/JSONDecodeError/FileNotFoundError → `MultiplexerError`. Note: `configure_session_defaults` is a logged no-op rather than issuing `workspace rename` + `report-metadata`)
 
-### T2.3 — Flip default (DEFERRED)
+### T2.3 — Keep tmux as the production default (DECIDED)
 
-- [ ] ⚠️ **BLOCKED: requires T4 journey tests green on herdr.** Once the
-  herdr journey suite passes, change `get_backend()` default from tmux to
-  herdr (one-line change: `prefer_herdr = True`). Until then, herdr is
-  opt-in via `STUDYLOOP_MULTIPLEXER=herdr`. _(confirmed still deferred: multiplexer.py `get_backend()` returns `TmuxBackend()` on no/empty env var; herdr remains opt-in — correctly not flipped, and T4.2 is not fully green)_
+- [x] The original plan was to flip `get_backend()` from tmux to herdr once
+  the T4 journeys were green. That default flip is **superseded by the repo
+  owner's 2026-09-05 decision**: herdr was never introduced as a production
+  default, has no built-in Kiro integration, and its 0.8.2 TUI-client detach
+  currently kills the focused pane's agent process (T6 xfail). `get_backend()`
+  SHALL therefore keep returning `TmuxBackend()` for an empty env var; herdr
+  remains an explicit experimental opt-in via
+  `STUDYLOOP_MULTIPLEXER=herdr`. Ghostty likewise remains dev-only via
+  `studyloop web --dev`. This is risk containment, not an unfinished flip.
 
 ---
 
@@ -375,21 +392,43 @@ All marked `@pytest.mark.integration`, skipif herdr not available.
 
 - [x] **T1 — Session starts**: `studyloop study "X"` → workspace exists,
   agent pane has child, sidebar pane alive, state file written. (done: test_herdr_integration.py `TestSessionStarts` — `test_session_created_and_state_written`, `test_agent_pane_has_child`, `test_state_has_study_session_id`)
-- [ ] **T2 — Pane layout**: 2 panes (main + sidebar), sidebar ≤30% width. _(not found: no pane-layout/width journey in test_herdr_integration.py)_
-- [ ] **T3 — Sidebar renders**: capture sidebar → timer/elapsed text visible. _(not found: no sidebar-render journey in test_herdr_integration.py)_
+- [x] **T2 — Pane layout**: 2 panes (main + sidebar), sidebar ≤30% width.
+  (done 2026-09-05: `TestPaneLayout` asserts distinct state IDs and both
+  panes in the real backend inventory; tmux geometry asserts sidebar ≤30%.
+  herdr 0.8.2 exposes pane count/identity but no width geometry, so its leg
+  proves the two-pane contract.)
+- [x] **T3 — Sidebar renders**: capture sidebar → timer/elapsed text visible.
+  (done 2026-09-05: `TestSidebarRenders` captures the real sidebar pane and
+  waits for timer/topic/StudyLoop content.)
 - [x] **T4 — Agent receives keys**: send text → verify echoed in pane. (done: test_herdr_integration.py `TestAgentReceivesKeys.test_echo_visible_after_send_keys`)
 - [x] **T5 — Q quits**: press Q in sidebar → session destroyed, state
   mode=ended, no stale workspaces. (done: test_herdr_integration.py `TestQQuits.test_end_via_cli_destroys_session`)
-- [ ] **T6 — Detach/reattach**: start → create a second workspace (simulates
-  user switching away) → focus back → agent still running. _(not found as described: `TestAttachFromOutside` covers the riskiest-assumption attach-from-outside case, but there is no detach-then-reattach journey)_
-- [ ] **T7 — Resume dead**: start → kill agent → `--resume` → new session
-  created with same topic. _(not found: no resume-dead journey in test_herdr_integration.py)_
+- [ ] **T6 — Detach/reattach**: start → disconnect the client → agent still
+  running and pane remains addressable. _(implemented as
+  `TestDetachPreservesSession`; tmux passes. Herdr 0.8.2 is deliberately
+  `xfail`: killing the connected TUI client kills the focused pane's
+  foreground process group even when the agent traps HUP, leaving a bare
+  shell. This is a verified upstream/integration limitation, not hidden by a
+  timeout; herdr stays opt-in.)_
+- [x] **T7 — Resume dead**: start → kill session → `--resume` → new session
+  created with same topic. (done 2026-09-05:
+  `TestResumeDead.test_resume_rebuilds_after_session_killed`; harness gained
+  `resume_study_via_cli()` with the herdr PTY attach path.)
 - [x] **T8 — End from outside**: start → `studyloop study --end` from
   separate process → session killed. (done: test_herdr_integration.py `TestEndFromOutside.test_end_from_separate_process`)
-- [ ] **T9 — Zombie handling**: create stale workspace (no children, >60s
-  age in DB) → `auto_clean_zombies()` kills it. _(not found: no zombie-handling journey in test_herdr_integration.py — HerdrBackend.is_zombie_session is unit-tested in test_herdr_backend.py, but the end-to-end auto_clean journey is absent)_
-- [ ] **T10 — Nested multiplexer**: set `HERDR_ENV=1` → studyloop study uses
-  `workspace focus` not `os.execvp`. _(not found: no nested-multiplexer journey in test_herdr_integration.py)_
+- [x] **T9 — Zombie handling**: create stale workspace (no children, >60s
+  age in DB) → `auto_clean_zombies()` kills it. (done 2026-09-05:
+  `TestZombieHandling` proves both sides — live agent is not zombie;
+  childless old workspace is zombie — then invokes the real
+  `auto_clean_zombies()` against an isolated state file and verifies the real
+  herdr workspace disappears. The journey found/fixed herdr 0.8.2's changed
+  pane inventory and shell-only process semantics.)
+- [x] **T10 — Nested multiplexer**: set `HERDR_ENV=1` → studyloop uses
+  `workspace focus` not `os.execvp`. (done 2026-09-05:
+  `TestNestedMultiplexer` pins the env-marker branch and calls the real
+  `HerdrBackend.switch_client()` / `workspace focus` against a live
+  workspace. Herdr itself has no Kiro integration, so this proves the
+  transport decision seam, not a Kiro-specific lifecycle.)
 - [x] **T11 — No residue**: after Q, zero `study-*` workspaces in `workspace
   list`. (done: test_herdr_integration.py `TestNoResidue`)
 

@@ -219,7 +219,13 @@ class HerdrBackend:
         return None
 
     def _get_workspace_panes(self, label: str) -> list[str]:
-        """Get pane IDs for a workspace by label."""
+        """Get pane IDs for a workspace by label.
+
+        herdr's `workspace list` stopped embedding a `panes` array (0.8.x
+        reports only `pane_count`), so pane identity comes from `pane list`
+        filtered by the workspace's id. The old inline-`panes` shape is kept
+        as a first try for older servers.
+        """
         try:
             result = self._herdr("workspace", "list")
         except MultiplexerError:
@@ -232,12 +238,33 @@ class HerdrBackend:
         elif isinstance(result, dict):
             workspaces = result.get("workspaces", [])
 
+        workspace_id: str | None = None
         for ws in workspaces:
             if isinstance(ws, dict) and ws.get("label") == label:
                 panes = ws.get("panes", [])
-                if isinstance(panes, list):
+                if isinstance(panes, list) and panes:
                     return panes
-        return []
+                workspace_id = ws.get("workspace_id")
+                break
+
+        if not workspace_id:
+            return []
+
+        # 0.8.x path: pane list carries pane_id + workspace_id for every pane.
+        try:
+            result = self._herdr("pane", "list")
+        except MultiplexerError:
+            return []
+        panes_payload: list = []
+        if isinstance(result, dict):
+            panes_payload = result.get("panes", [])
+        elif isinstance(result, list):
+            panes_payload = result
+        return [
+            p["pane_id"]
+            for p in panes_payload
+            if isinstance(p, dict) and p.get("workspace_id") == workspace_id and p.get("pane_id")
+        ]
 
     # ------------------------------------------------------------------
     # Detection
@@ -357,8 +384,37 @@ class HerdrBackend:
         # Cache the mapping
         self._workspace_cache[name] = workspace_id
 
-        # If a command was requested, run it in the initial pane
+        # If a command was requested, wait for the workspace shell to finish
+        # initialising before `pane run`. On zsh/oh-my-zsh hosts the shell can
+        # still be running startup helpers (mise, gem, colorls, etc.) when
+        # `workspace create` returns; sending the command into that window is
+        # intermittently lost. This was the root cause of herdr journeys that
+        # wrote session state successfully but left the agent pane at a bare
+        # prompt. Five seconds is a readiness ceiling, not a sleep: fast shells
+        # proceed on the first poll.
         if command and pane_id:
+            deadline = time.monotonic() + 10.0
+            idle_samples = 0
+            while time.monotonic() < deadline:
+                try:
+                    info = self._herdr("pane", "process-info", "--pane", pane_id)
+                    process_info = info.get("process_info", info) if isinstance(info, dict) else {}
+                    foreground = process_info.get("foreground_processes", [])
+                    shell_pid = process_info.get("shell_pid")
+                    busy = any(
+                        isinstance(proc, dict) and proc.get("pid") != shell_pid
+                        for proc in foreground
+                    )
+                    # One idle sample is not enough: zsh prompt hooks can launch
+                    # another helper immediately after the first finishes. Five
+                    # consecutive 100ms samples gives the shell a quiet window
+                    # before `pane run` hands it the agent command.
+                    idle_samples = idle_samples + 1 if foreground and not busy else 0
+                    if idle_samples >= 5:
+                        break
+                except MultiplexerError:
+                    idle_samples = 0
+                time.sleep(0.1)
             self._herdr("pane", "run", pane_id, command, json_output=False)
 
         # Protocol contract: return the initial pane_id (like tmux does).
@@ -609,7 +665,14 @@ class HerdrBackend:
 
         Uses herdr's structured process-info (single call, no PID parsing).
         Response structure (after envelope unwrap):
-          {"process_info": {"foreground_processes": [...], ...}}
+          {"process_info": {"foreground_processes": [...], "shell_pid": N}}
+
+        The pane's own shell always appears in foreground_processes (an idle
+        zsh at a prompt is "foreground" to herdr), so it must be excluded —
+        counting it made every idle pane look busy, which made herdr zombie
+        detection unable to ever flag a session. tmux semantics ("children
+        of the pane process") are matched by requiring a foreground process
+        that is not the shell itself.
         """
         try:
             result = self._herdr("pane", "process-info", "--pane", pane_id)
@@ -622,7 +685,10 @@ class HerdrBackend:
         # Navigate into the process_info wrapper
         process_info = result.get("process_info", result)
         foreground = process_info.get("foreground_processes", [])
-        return isinstance(foreground, list) and len(foreground) > 0
+        shell_pid = process_info.get("shell_pid")
+        if not isinstance(foreground, list):
+            return False
+        return any(isinstance(proc, dict) and proc.get("pid") != shell_pid for proc in foreground)
 
     def is_zombie_session(self, name: str, min_age_seconds: float = 60.0) -> bool:
         """Detect zombie study sessions.

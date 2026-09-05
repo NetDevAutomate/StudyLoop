@@ -322,6 +322,48 @@ class MultiplexerHarness:
             self._managed_sessions.append(session_name)
         return state
 
+    def resume_study_via_cli(self, *, timeout: float = 25) -> dict:
+        """Run `studyloop study --resume` and wait for a live rebuilt session.
+
+        Mirrors start_study_session's split: pexpect PTY for herdr (the
+        rebuilt session's attach path os.execvp's into the herdr TUI),
+        subprocess.run for tmux (attach fails gracefully; the detached
+        rebuilt session is the thing under test).
+
+        Returns the post-resume session state dict.
+        """
+        env = os.environ.copy()
+        env["STUDYLOOP_SESSION_DIR"] = str(self.session_dir)
+        env.pop("TMUX", None)
+        env.pop("TMUX_PANE", None)
+        env.pop("HERDR_ENV", None)
+        env["STUDYLOOP_MULTIPLEXER"] = "herdr" if self.is_herdr else "tmux"
+
+        cmd = [sys.executable, "-m", "studyloop.cli", "study", "--resume"]
+
+        if self.is_herdr:
+            self.kill_pty_child()
+            self._pty_child = pexpect.spawn(
+                " ".join(cmd),
+                env=cast("os._Environ[str]", env),
+                timeout=30,
+                encoding="utf-8",
+            )
+        else:
+            subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=30)
+
+        def _rebuilt() -> bool:
+            s = self._read_state()
+            name = s.get("mux_session") or s.get("tmux_session")
+            return bool(name and s.get("mux_main_pane") and self.session_exists(name))
+
+        self.wait_for(_rebuilt, timeout=timeout, msg="resume did not rebuild a live session")
+        state = self._read_state()
+        name = state.get("mux_session") or state.get("tmux_session")
+        if name and name not in self._managed_sessions:
+            self._managed_sessions.append(name)
+        return state
+
     def end_study_via_cli(self, *, backend_env: str | None = None) -> None:
         """Run `studyloop study --end` from a separate process.
 

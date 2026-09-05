@@ -220,19 +220,33 @@ class TestSessionLifecycle:
         assert "TOPIC=python" in env_values
 
     def test_create_session_with_command(self, mock_subprocess, backend):
-        """command= should use pane run after workspace create."""
-        mock_subprocess.return_value = _json_result(
+        """command= waits for a stable shell, then uses pane run.
+
+        Five consecutive idle process-info samples are the readiness gate:
+        one idle sample can sit between zsh prompt hooks, which is how the
+        real herdr integration journey intermittently lost the agent command.
+        """
+        created = _json_result(
             {
                 "workspace_id": "w8",
                 "tab_id": "w8:t1",
                 "pane_id": "w8:p1",
             }
         )
+        idle = _json_result(
+            {
+                "process_info": {
+                    "foreground_processes": [{"pid": 42, "name": "zsh"}],
+                    "shell_pid": 42,
+                }
+            }
+        )
+        mock_subprocess.side_effect = [created, idle, idle, idle, idle, idle, _make_result()]
         backend.create_session("study-cmd", command="kiro-cli chat")
 
-        # First call: workspace create. Second call: pane run.
-        assert mock_subprocess.call_count == 2
-        run_args = mock_subprocess.call_args_list[1][0][0]
+        # create + five idle readiness samples + pane run.
+        assert mock_subprocess.call_count == 7
+        run_args = mock_subprocess.call_args_list[-1][0][0]
         assert run_args[0] == "herdr"
         assert run_args[1] == "pane"
         assert run_args[2] == "run"
@@ -542,6 +556,46 @@ class TestProcessIntrospection:
             }
         )
         assert backend.pane_has_child_process("w5:p1") is False
+
+    def test_pane_shell_itself_is_not_a_child_process(self, mock_subprocess, backend):
+        """herdr reports the pane shell as foreground; match tmux child semantics."""
+        mock_subprocess.return_value = _json_result(
+            {
+                "process_info": {
+                    "shell_pid": 42,
+                    "foreground_processes": [{"pid": 42, "name": "zsh", "argv": ["-zsh"]}],
+                }
+            }
+        )
+        assert backend.pane_has_child_process("w5:p1") is False
+
+    def test_workspace_panes_fall_back_to_pane_list_for_herdr_08(self, mock_subprocess, backend):
+        """0.8.x workspace list has pane_count but no embedded pane IDs."""
+        mock_subprocess.side_effect = [
+            _json_result(
+                {
+                    "workspaces": [
+                        {
+                            "workspace_id": "w5",
+                            "label": "study-python",
+                            "pane_count": 2,
+                        }
+                    ]
+                }
+            ),
+            _json_result(
+                {
+                    "panes": [
+                        {"workspace_id": "w5", "pane_id": "w5:p1"},
+                        {"workspace_id": "w5", "pane_id": "w5:p2"},
+                        {"workspace_id": "other", "pane_id": "other:p1"},
+                    ]
+                }
+            ),
+        ]
+        assert backend._get_workspace_panes("study-python") == ["w5:p1", "w5:p2"]
+        pane_list_args = mock_subprocess.call_args_list[1][0][0]
+        assert pane_list_args[1:3] == ["pane", "list"]
 
     def test_pane_has_child_process_error(self, mock_subprocess, backend):
         """Process-info failure → False (pane may be gone)."""

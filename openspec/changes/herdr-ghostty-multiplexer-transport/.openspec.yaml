@@ -1,2 +1,10 @@
 schema: spec-driven
 created: 2026-07-28
+
+deferred: >-
+  Experimental opt-in only: tmux remains the production default and ghostty
+  remains behind web --dev. Herdr 0.8.2 has no Kiro integration and its TUI
+  client disconnect kills the focused pane's agent process (verified T6
+  xfail). Resume/layout/sidebar/zombie/nested journeys now exist; defer the
+  remaining detach gap and four low-level cleanup tasks pending upstream
+  Kiro/detach support. Not part of the current release.
