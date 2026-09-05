@@ -1,0 +1,49 @@
+{
+  "model": "grok-4.6",
+  "provider": "xai",
+  "mode": "chat",
+  "response": {
+    "executive_summary": "Stage10 cannot answer its stated goal. Six near-identical line logs plus a policy-complete answer prompt test instruction-following under planted faults, not whether metadata improves usefulness. The checker only rejects syntax it was built to reject; the metric cannot support even a scoped utility claim.",
+    "recommended_decision": "Do not run as a usefulness study. Either add non-trivial help-cases, kind/token controls, and a pre-registered no-generalization rule, or relabel this a 6-fixture fault-injection probe and drop the metadata-utility question.",
+    "confidence": 0.84,
+    "assumptions": [
+      "One sample per cell on one model; extractor output is overwritten on 4/6 cases.",
+      "Source kind may be structured in metadata arms but only implicit in raw text.",
+      "Answer prompt already encodes the full A/B/none rule, so metadata is a shortcut or distractor, not new evidence.",
+      "Checker is exact-line, unique-declaration, parse-equals-value inside the sole [observed] block."
+    ],
+    "reasons": [
+      "Usefulness is untested: every source is already a trivial key:value list. There is no hard-to-parse artifact where correct metadata could help. The design is biased toward neutral or harmful metadata.",
+      "Only clean_matching and wrong_winner have a justified choice. Four cells are none. That cannot measure improved usefulness.",
+      "Injected faults are rejected by construction (absent quote, value≠parse, non-unique line). This does not test wrong metadata that would pass the checker.",
+      "wrong_winner is the only cell that can show both block-vs-summary discipline and a metadata-induced miss of a justified A.",
+      "report_only tests fixture kind, not extraction or checking. If kind is not equally visible in the raw arm, conditions are not comparable.",
+      "Checked arm has extra tokens and a rejection channel the others lack; latency/tokens are unmatched, so no efficiency inference.",
+      "Correctness + unsupported endorsement + missed justified choice on predeclared fixtures only supports: did this model change answers under planted vs checked vs raw context. Not utility, mitigation in the wild, or production gating.",
+      "Prompt already says metadata is advisory and rejection ≠ absence. Compliance with that sentence is the real dependent variable."
+    ],
+    "risks": [
+      "Checker edges: whitespace, colon spacing, case, field synonyms, two [observed] blocks (sole fails closed), multiline values, quote that is an exact line but the wrong field, winner treated like a scope field.",
+      "Model treats checked-unknown as proof the source lacks the field (explicitly warned; still the likely miss on wrong_winner and clean extraction).",
+      "Raw arm fails report_only from missing structured kind, inflating a false metadata benefit.",
+      "Candidate arm looks worse only because faults were planted after extraction, not because extractors are dangerous.",
+      "Citation substring checks will greenwash answers that quote the observed block and still pick the injected winner.",
+      "Any write-up that says metadata helps or checking mitigates will overclaim a smoke test."
+    ],
+    "disagreements": [
+      "A defender can say the brief already disclaims authentication, entailment, holdout, and production, so a narrow probe is in-scope.",
+      "Six fixtures may be enough as a pre-live gate that the harness wires three arms and the checker rejects the four seeds.",
+      "Same prompt across arms is a real control; adding help-cases would confound format with metadata.",
+      "Checked-unknown leaving original text is the right non-repair policy even if models misuse it."
+    ],
+    "missing_information": [
+      "Exact payload per arm: is kind, field set, and rejection reason serialized, and is raw given the same kind field?",
+      "Extractor schema, parse rule after colon, uniqueness/whitespace/case policy, behavior with 0 or 2 [observed] blocks.",
+      "Decoding settings, whether 18 calls are single-shot, and any seed.",
+      "A pre-registered analysis that forbids usefulness language unless help-cases exist.",
+      "At least one noisy source with correct metadata (help) and one syntactically valid but target-wrong field that passes the checker (checker blind spot).",
+      "How unsupported endorsement vs missed justified choice will be scored when explanation and recommendation conflict."
+    ]
+  },
+  "error": null
+}

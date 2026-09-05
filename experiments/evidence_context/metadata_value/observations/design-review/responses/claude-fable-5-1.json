@@ -1,0 +1,50 @@
+{
+  "model": "claude-fable-5-1",
+  "provider": "anthropic",
+  "mode": "chat",
+  "response": {
+    "executive_summary": "Stage10 is a well-scoped fault-tolerance smoke test, not a utility study. The sources are 5-6 lines and the answer prompt already states the full decision rule, so the raw arm has everything it needs; metadata can only add noise or a nudge, never information. With 18 single-shot calls on one model, no repeats, a 4-of-6 'none' base rate, and faults that are mostly self-inconsistent (quote contradicts value), the design can show whether wrong metadata harms and whether the checker neutralizes those specific faults, but it cannot support any claim that metadata improves decision usefulness. The checker's rules are internally coherent for this syntax, but the fixtures were built by the same hands as the validator, so passing proves little beyond self-consistency.",
+    "recommended_decision": "Run it as a pilot with claims pre-registered as 'injected-fault robustness on synthetic logs' only; before running, add ≥5 repeated samples per cell (or documented deterministic decoding), add an always-'none' and always-follow-metadata baseline scorer, add at least two harder cases (a consistent fabricated quote whose value matches the target while the source disagrees, and a longer noisy source where metadata could plausibly help), log validator rejection reasons, and confirm case ids are not sent to the model.",
+    "confidence": 0.72,
+    "assumptions": [
+      "Source kind and the answer prompt are shown identically in all three arms; only the metadata block differs.",
+      "Case ids like 'wrong_winner' and 'injected_fault' objects are stripped from model inputs.",
+      "The checked arm renders rejected fields as 'unknown' without revealing the candidate value; otherwise the arms are not cleanly separated.",
+      "Citation substring checks are run against source text only, not against metadata quotes.",
+      "Decoding is non-deterministic at default settings, so single calls per cell carry material variance."
+    ],
+    "reasons": [
+      "The prompt encodes the complete decision procedure and the sources are tiny, so metadata is informationally redundant; any 'improvement' in the metadata arms would be a priming effect, not a usefulness effect.",
+      "Two of four injected faults (wrong_revision, wrong_winner) are self-refuting: the quote visibly contradicts the value. That is the easiest fault class and inflates apparent robustness of the candidate arm.",
+      "Expected choice is 'none' in 4/6 cases; a constant-'none' policy scores 67% with zero unsupported endorsements. Without a positive-case-rich set, 'missed justified choice' is under-tested.",
+      "In three of the four faulted cases, the checked arm's 'unknown' for the faulted field correlates with the correct answer 'none', so checked-arm wins may reflect a caution prior rather than source reconciliation; only wrong_winner (expected A) separates these.",
+      "report_only is the sharpest test: the validator will accept all five fields because syntax is fine, so a 'checked' badge appears on a source the rule says cannot justify a choice. This exposes whether checked metadata confers unearned legitimacy about provenance.",
+      "Six cases, one model, one call each cannot distinguish a real effect from sampling noise; the design has no power analysis and no repeats.",
+      "The stated non-claims (no authentication, no entailment, no production gate, Stage9 out of path) are appropriate and should be kept verbatim in any write-up."
+    ],
+    "risks": [
+      "Validator edge cases: CRLF or trailing whitespace on quoted lines; key case sensitivity ('Revision:'); 'winner:B' spacing variants; values containing colons; a field line placed outside the block but quoted verbatim; zero, unclosed, or nested [observed] markers; whether uniqueness is scoped to the block or the whole text (a 'winner: B' line after [/observed] would matter).",
+      "Value comparison semantics are unspecified: exact string vs normalized ('8 writers' vs 'eight writers'); either choice creates false rejects or false accepts depending on extractor phrasing.",
+      "Extractor output in the two un-faulted cases (clean_matching, report_only) is live and could itself be wrong, confounding the 'no fault' arms unless the preserved original extraction is validated first.",
+      "The raw arm receives metadata-handling instructions it cannot use, a minor but real prompt confound.",
+      "Explanation/citation quality is left to council review with no rubric; different reviewers may score 'auditable rationale' inconsistently.",
+      "Token/latency asymmetry (checked arm is longest) will be read as a cost of checking without a matched-length control.",
+      "Results will be overgeneralized to 'source-checking mitigates wrong metadata' when only four hand-built fault shapes on one syntax were tested."
+    ],
+    "disagreements": [
+      "The brief frames the goal as 'does metadata improve usefulness'; I disagree this design can address that question at all. It can address 'does wrong metadata degrade, and does checking recover' only.",
+      "Fixing four faults where the injected candidate value always equals the target is a design choice I would change: include a fault whose value matches the target with a fabricated but plausible quote (source says r1, metadata quotes 'revision: r2'). That is the realistic failure and the one where the candidate arm is most likely to fail.",
+      "Treating citation checks as 'traceability only' undersells them: a citation that appears in metadata but not in source is a direct, automatable measure of metadata contamination and should be scored."
+    ],
+    "missing_information": [
+      "Decoding parameters and whether repeated runs are planned; without variance estimates no conclusion is defensible.",
+      "The exact rendering of candidate and checked metadata blocks as seen by the model, including whether rejection reasons or candidate values leak into the checked arm.",
+      "Validator specification details: normalization rules, uniqueness scope, handling of malformed block markers, and how zero-block sources are treated.",
+      "The preserved original extractions for all six cases and whether they pass the validator unmodified.",
+      "A scoring rubric for explanation quality and a definition of 'usefulness' beyond A/B/none correctness.",
+      "Confirmation that fixture ids and injected_fault objects are excluded from all model inputs.",
+      "Any prior Stage9 results on the same fixtures that would indicate ceiling effects for the raw arm."
+    ]
+  },
+  "error": null
+}

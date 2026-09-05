@@ -1,0 +1,43 @@
+{
+  "executive_summary": "This synthetic pilot does not establish metadata utility. The extracted-vs-raw choice delta is only missing_revision twice. Checked nets zero by fixing that case and breaking report_only. Every arm endorses on duplicate_revision. Fence-stripping is a legitimate format diagnostic, not a replacement score. Labels, fixtures, and the decision rule share one author, so these are not independent outcomes.",
+  "recommended_decision": "Do not promote extracted or checked metadata from these scores. Independently re-label the 56 frozen answers for quote origin and checker-as-authority, then run one 8-call source-hidden probe on duplicate_revision and report_only only; no prompt edits, no other cases, no engine choice.",
+  "confidence": 0.76,
+  "assumptions": [
+    "Post-hoc removal of one complete fence left recommendation text unchanged.",
+    "Coordinator expected_choice values implement the written A/B/none rule.",
+    "Two temperature-0 repeats are paired observations, not a reliability estimate.",
+    "Source and target text were fully visible in every answer arm.",
+    "Cache independence is unknown, so near-duplicate answers may not be independent draws."
+  ],
+  "reasons": [
+    "All 8 live extractions already matched 40/40 grammar fields; the extracted arm never saw a natural extractor error, only later mutations on other arms.",
+    "On the four unfaulted cases, extracted matches raw on choices; checked is worse because both report_only answers endorse B.",
+    "Raw fails missing_revision twice; extracted abstains twice because the original extraction already had null revision. That single scenario is the entire raw-vs-extracted gain.",
+    "Checked also abstains on missing_revision, but both report_only answers treat syntax 'matched' fields as sufficient despite kind=report. Net choice_matches 12/16, same as raw, different errors.",
+    "Candidate follows the invented revision (2/2) and still recovers wrong_revision and wrong_winner because the original source remains visible.",
+    "Duplicate_revision is a shared failure: extracted null and checked ambiguous_source_field do not constrain the answerer, who re-reads r2 from the source and endorses B in all 8 answers.",
+    "Strict parse failed 47/56 on markdown fences; the audit recovers schema without content edits. Official invalid rate stays 47/56. Extracted had 7 natural parses versus 0 raw, which is a format effect, not a decision-quality effect.",
+    "citations_locatable is substring presence, not entailment. Two correct extracted wrong_revision abstentions cite target 'revision: r2', which is not in source. Choice match and citation integrity diverge."
+  ],
+  "risks": [
+    "Narrating diagnostic 14/16 or 12/16 as a result would launder a post-hoc parser change and agent-authored labels.",
+    "A checked wrapper can look like authenticity review; report_only shows that risk, but shipping a checker from this would overfit one fixture.",
+    "Source-visible design lets the model ignore both correct nulls and rejections, so any 'metadata value' estimate is confounded by re-reading the log.",
+    "Repeating live calls before independent labels would recreate the same evaluator defect.",
+    "Unequal tokens and unknown cache make cost, latency, and stability comparisons descriptive only."
+  ],
+  "disagreements": [
+    "The protocol claim that raw versus extracted estimates a clean-metadata context effect is not supported by the headline delta; that delta is a seeded-absence case, not clean context.",
+    "Calling checked a 'repair' of missing_revision overstates it: extracted already repaired that case without status codes, and checked simultaneously created a new endorsement class.",
+    "I would not treat recovered fences as evidence the model 'really' produced 56 valid answers; the frozen contract was strict JSON and most arms failed it.",
+    "False authority from checked wording is a hypothesis suggested by report_only echoing 'unique exact declaration'; it is not identified without an ablation, so it should not be written as a wording cause.",
+    "Choice_matches is the wrong headline once citation origin and kind-handling fail on otherwise 'correct' rows."
+  ],
+  "missing_information": [
+    "Independent pre-result labels for choice, quote origin (observed-block vs target vs metadata vs outside-block), and whether explanations treat matched status as authenticity.",
+    "Per-call token counts, request IDs, and cache-hit flags.",
+    "Any natural extractor miss on this grammar; ceiling extraction means fault recovery was never tested on live mistakes.",
+    "An ablation that holds fields fixed and varies only checker status text, or hides source while holding metadata fixed.",
+    "A second model or seed condition; one coder model cannot separate fixture regularity from method."
+  ]
+}

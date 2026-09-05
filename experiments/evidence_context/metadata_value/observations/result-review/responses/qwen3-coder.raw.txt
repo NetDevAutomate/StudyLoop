@@ -1,0 +1,30 @@
+{
+  "executive_summary": "Metadata checking adds minimal value and introduces regressions; raw source evaluation performs adequately on clean cases but fails systematically on edge cases involving missing or ambiguous fields.",
+  "recommended_decision": "Run a follow-up experiment comparing raw vs. extracted performance with clearer fault isolation and independent labeling.",
+  "confidence": 0.75,
+  "assumptions": [
+    "Model behavior is stable across repeats and conditions"
+  ],
+  "reasons": [
+    "Checked condition shows no improvement over raw and increases error in report-only and duplicate revision cases",
+    "Candidate arm exhibits high unsupported endorsement rate (50%) due to trusting injected faults",
+    "Raw arm outperforms others in clean matching and wrong winner scenarios, suggesting models can interpret source correctly without metadata",
+    "Normalization via post-hoc fence removal recovers most failed parses, indicating formatting issues rather than logical failures dominate strict parsing errors"
+  ],
+  "risks": [
+    "False confidence in metadata utility due to overlapping faults and insufficient negative controls",
+    "Unchecked metadata may lead to hallucinated justifications if adopted in downstream systems",
+    "Token imbalance between arms complicates cost-benefit interpretation despite descriptive intent",
+    "Lack of independent labeling limits ability to detect systematic bias or misunderstanding"
+  ],
+  "disagreements": [
+    "Whether the checked wrapper provides net benefit or falsely implies authority through apparent validation",
+    "If normalization should be considered part of the core process or a post-hoc correction that undermines experimental validity",
+    "The extent to which markdown fence failures reflect model limitations versus interface brittleness"
+  ],
+  "missing_information": [
+    "Independent human labels for all answer outputs to validate automated checks",
+    "Cache independence confirmation to rule out cross-condition contamination",
+    "Ablation study removing individual metadata fields to isolate their contributions"
+  ]
+}
