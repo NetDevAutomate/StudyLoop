@@ -71,3 +71,11 @@ integration remain unrun gates; scope reclassification is explicitly rejected.
 observed imports, failures and unknown coverage. [Council decision](capture_health/COUNCIL-DECISION.md)
 uses data from all four stages and moves held-out retrieval evaluation ahead of
 installation work. All three providers responded successfully this round.
+
+## Stage 5: retrieval usefulness
+
+[Guide and runnable evaluator](retrieval_eval/GUIDE.md) compare keyword, reviewed
+relationships and a rewired control using frozen inputs and exact required spans.
+The [explanation rubric](retrieval_eval/EXPLANATION-RUBRIC.md) captures the learner's
+validated-context goal. The bundled demonstration is synthetic; independent
+real held-out labels and answer-quality measurements remain outstanding.

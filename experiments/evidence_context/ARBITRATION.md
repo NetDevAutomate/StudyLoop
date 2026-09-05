@@ -83,3 +83,11 @@ shared direction to measure retrieval value before additional integration.
 See capture_health/COUNCIL-DECISION.md for provenance, disagreements, corrections
 and the stage-5 decision. Post-review local validation reaches 98 tests; it is
 not a new review of the earlier lifecycle implementation.
+
+## Stage 5 scorer review
+
+Three usable provider responses informed bounded scorer hardening and the next
+small-holdout protocol. See retrieval_eval/COUNCIL-DECISION.md. Final local checks:
+113 tests, Ruff and Pyright pass. No real held-out efficacy or answer/learning
+benefit is claimed. The user explicitly values the validated explanation trail;
+retrieval_eval/EXPLANATION-RUBRIC.md preserves that separate outcome requirement.
