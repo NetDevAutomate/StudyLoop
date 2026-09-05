@@ -94,12 +94,13 @@ _SHARED_LINKS: tuple[LinkSpec, ...] = (
 #: Each harness's own skills directory, for the ones whose location is documented.
 #: pi is absent on purpose: no pi skills directory is documented, so it gets a
 #: self-gated paragraph in its AGENTS.md instead of a link to a guessed path.
+#: OpenCode is absent too (2026-09-04 review, Q2): it lists ``~/.agents/skills``
+#: — the hub itself — as a global search path, so a second link into
+#: ``~/.config/opencode/skills`` was redundant at best, and whether OpenCode
+#: de-duplicates two hits by name is unverified.
 XTILES_SKILL_LINKS: dict[str, LinkSpec] = {
     "kiro": LinkSpec(str(XTILES_SKILL_HUB), str(_HOME / ".kiro/skills" / XTILES_SKILL_NAME)),
     "claude": LinkSpec(str(XTILES_SKILL_HUB), str(_HOME / ".claude/skills" / XTILES_SKILL_NAME)),
-    "opencode": LinkSpec(
-        str(XTILES_SKILL_HUB), str(_HOME / ".config/opencode/skills" / XTILES_SKILL_NAME)
-    ),
 }
 
 _AGENT_CHOICES = RELEASE_HARNESSES

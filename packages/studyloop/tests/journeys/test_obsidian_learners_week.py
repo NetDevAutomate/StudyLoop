@@ -213,6 +213,19 @@ def test_a_learners_week_in_order(world: JourneyWorld) -> None:
         projection + "\n\nI typed this into the projection by mistake.\n",
         encoding="utf-8",
     )
+    # O4 (2026-09-04 review): BEFORE the replace happens, the dry run must
+    # preview the warning — "would write" alone hid that saying yes replaces
+    # the learner's own edits, which defeats the one thing a preview is for.
+    preview = world.run("brain", "publish", "--dry-run")
+    assert preview.exit_code == 0, preview.output
+    preview_warnings = [detail for status, detail in preview.results() if status == "warning"]
+    assert any("replace your edits" in w for w in preview_warnings), (
+        "beat 10: the dry run did not warn that the learner's edits would be "
+        f"replaced; it printed:\n{preview.output}"
+    )
+    assert "I typed this into the projection by mistake." in world.read(PROJECTION), (
+        "beat 10: the DRY RUN itself replaced the edit"
+    )
     republished = world.run("brain", "publish")
     assert republished.exit_code == 0, republished.output
     assert "I typed this into the projection by mistake." not in world.read(PROJECTION), (

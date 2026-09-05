@@ -62,6 +62,7 @@ from .store import (
     load_plan_text,
     plan_path,
     plans_dir,
+    record_learning,
     save_plan,
     unique_plan_id,
 )
@@ -105,6 +106,7 @@ __all__ = [
     "plans_dir",
     "preferred_backend",
     "readiness",
+    "record_learning",
     "reindex_all",
     "render_plan",
     "save_plan",

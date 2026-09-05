@@ -1,0 +1,22 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "openspec-gate (early warning, not enforcement)",
+      "trigger": "PreToolUse",
+      "matcher": "execute_bash",
+      "action": {
+        "type": "command",
+        "command": "uv run python scripts/openspec-gate.py pre-tool-use"
+      }
+    },
+    {
+      "name": "openspec-remind",
+      "trigger": "UserPromptSubmit",
+      "action": {
+        "type": "command",
+        "command": "uv run python scripts/openspec-gate.py remind"
+      }
+    }
+  ]
+}
