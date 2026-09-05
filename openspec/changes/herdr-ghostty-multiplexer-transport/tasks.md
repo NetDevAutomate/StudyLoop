@@ -11,6 +11,15 @@
 > (mostly the herdr integration-journey gaps in T4.2, the deferred T2.3 default
 > flip, and a few unit-test mock-target migrations that still pass via
 > TmuxBackend delegation).
+>
+> **Re-audited 2026-09-05:** three boxes flipped on fresh evidence — the
+> test_clean.py mock migration had landed (:255), test_orchestrator.py was
+> deleted outright (nothing left to migrate), and the full suite was run green
+> at HEAD b0a0ae5 (4790 unit / 504 e2e). Now **56 of 67 ticked, 11 left open**:
+> the six T4.2 journey gaps, the T2.3 default flip blocked on them, the
+> test_tmux_backend.py rename, the STUDYLOOP_MULTIPLEXER settings.py docs, the
+> old-format state round-trip test, and the test_session_start.py mock
+> migration.
 
 ## Executive Summary
 
@@ -118,7 +127,7 @@ dependencies on T1's `multiplexer.py` (Protocol import).
 
 ## Track 1: Protocol Extraction + TmuxBackend
 
-**Dependency:** None (can start immediately).  
+**Dependency:** None (can start immediately).
 **Rollback:** Revert T1 commit(s) → all call-sites return to direct `tmux.*`
 imports. The module-level functions in `tmux.py` are preserved (not deleted),
 so reverting is clean.
@@ -211,22 +220,22 @@ so reverting is clean.
 
 ### T1.6 — Update existing unit tests
 
-- [ ] `test_orchestrator.py`: Change mock targets from `studyloop.tmux.*` to
-  `studyloop.multiplexer.get_backend` (return a mock `TmuxBackend`). _(partial: test_orchestrator.py no longer references `studyloop.tmux`, but it only covers ttyd/browser helpers — it does not mock `get_backend` because it never exercises `create_tmux_environment`'s mux calls)_
+- [x] `test_orchestrator.py`: Change mock targets from `studyloop.tmux.*` to
+  `studyloop.multiplexer.get_backend` (return a mock `TmuxBackend`). _(superseded 2026-09-05: test_orchestrator.py no longer exists — deleted in later refactors — so there is no mock target left to migrate)_
 - [ ] `test_session_start.py`: Same mock target change. _(partial: still patches `studyloop.tmux.is_tmux_available` / `shutil.which` / `subprocess.run` / `LOCK_FILE`; passes via TmuxBackend delegation rather than a `get_backend` mock)_
 - [x] `test_session_cleanup.py`: Same. (done: test_session_cleanup.py patches `studyloop.multiplexer.get_backend` with a mock backend)
-- [ ] `test_clean.py`: Same. _(partial: no `studyloop.multiplexer.get_backend` patch found in test_clean.py — mock-target migration not evidenced)_
+- [x] `test_clean.py`: Same. (done, verified 2026-09-05: test_clean.py:255 patches `studyloop.multiplexer.get_backend` — the earlier "not evidenced" note was stale)
 - [x] `test_sidebar_pilot.py`: Mock `studyloop.multiplexer.get_backend`
   instead of `studyloop.tmux._tmux`. (done: test_sidebar_pilot.py patches `studyloop.multiplexer.get_backend`)
-- [ ] Verify all existing tests pass: `VIRTUAL_ENV=.venv uv run --active
+- [x] Verify all existing tests pass: `VIRTUAL_ENV=.venv uv run --active
   pytest -q packages/studyloop/tests/ -m 'not integration and not e2e and
-  not live_kiro and not live_provider'` _(not verified in this reconcile — no suite run; recon reports the T1/T2/T3 unit + protocol tests passing)_
+  not live_kiro and not live_provider'` (done, verified 2026-09-05: full default-marker suite green at HEAD b0a0ae5 — 4790 passed, 4 skipped; full e2e also green — 504 passed)
 
 ---
 
 ## Track 2: HerdrBackend
 
-**Dependency:** T1.1 (Protocol definition must exist to import from).  
+**Dependency:** T1.1 (Protocol definition must exist to import from).
 **Rollback:** Delete `herdr.py` + `test_herdr_backend.py`. No production file
 references herdr until T1.3's selection logic is enabled (and default is tmux).
 
@@ -286,7 +295,7 @@ references herdr until T1.3's selection logic is enabled (and default is tmux).
 
 ## Track 3: ghostty-web Renderer
 
-**Dependency:** None (can start immediately, parallel with T1).  
+**Dependency:** None (can start immediately, parallel with T1).
 **Rollback:** Remove vendored files + revert `cli/_web.py` and `web/app.py`
 changes. wterm remains at `--dev` default (it's still there).
 
@@ -346,7 +355,7 @@ changes. wterm remains at `--dev` default (it's still there).
 ## Track 4: Journey Tests
 
 **Dependency:** T1.1 (Protocol), T2.1 (HerdrBackend basic), T3.4 (renderer
-injection). Can start the harness (T4.1) in parallel once T1.1 lands.  
+injection). Can start the harness (T4.1) in parallel once T1.1 lands.
 **Rollback:** Delete new test files. No production code depends on them.
 
 ### T4.1 — MultiplexerHarness
