@@ -1,0 +1,110 @@
+{
+  "manifest": {
+    "mode": "live_synthetic",
+    "development": [
+      "queue",
+      "retry"
+    ],
+    "post_selection_audit": [
+      "cache",
+      "storage"
+    ],
+    "independent_holdout": null,
+    "max_calls": 18,
+    "candidates": 2,
+    "repeats": 2,
+    "rules": {
+      "queue": {
+        "recommendation": [
+          "insufficient"
+        ],
+        "evidence_basis": [
+          "insufficient"
+        ]
+      },
+      "retry": {
+        "recommendation": [
+          "B"
+        ],
+        "evidence_basis": [
+          "artifact_supported"
+        ]
+      },
+      "cache": {
+        "recommendation": [
+          "B",
+          "conditional"
+        ],
+        "evidence_basis": [
+          "reported_only"
+        ]
+      },
+      "storage": {
+        "recommendation": [
+          "B"
+        ],
+        "evidence_basis": [
+          "artifact_supported"
+        ]
+      }
+    },
+    "model": "qwen3-coder",
+    "scorer_sha256": "private_exact_copy_preserved",
+    "limits": [
+      "All four cases were previously seen",
+      "Category proxy is not semantic quality",
+      "No engine comparison",
+      "No learner usefulness measurement"
+    ]
+  },
+  "winner": {
+    "id": "baseline",
+    "amendment": "",
+    "development": {
+      "integrity_passes": 4,
+      "proxy_passes": 2,
+      "total": 4
+    }
+  },
+  "candidates": [
+    {
+      "id": "baseline",
+      "amendment": "",
+      "development": {
+        "integrity_passes": 4,
+        "proxy_passes": 2,
+        "total": 4
+      }
+    },
+    {
+      "id": "candidate-1",
+      "amendment": "When evaluating evidence, strictly distinguish between agent reports and test artifacts. Agent reports stating performance or correctness without attached measurements must not be treated as corrections unless they explicitly reference and supersede prior advice. Test artifacts are authoritative only for their stated scope, environment, and limits. If a test artifact contradicts an agent report, classify the conflict as 'correction' only if the artifact explicitly invalidates the report's claim scope; otherwise, use 'unequal_evidence'.",
+      "development": {
+        "integrity_passes": 4,
+        "proxy_passes": 2,
+        "total": 4
+      }
+    },
+    {
+      "id": "candidate-2",
+      "amendment": "When evaluating conflicting advice, prioritize evidence that directly addresses the current constraints and question. If evidence contradicts prior advice under identical conditions and is supported by measurable outcomes, classify the conflict as a correction. Ensure that recommendations are grounded in artifact-supported evidence rather than reported opinions, and always cite the specific evidence used to justify the decision. If evidence is insufficient to resolve the conflict, clearly articulate what additional measurements are needed.",
+      "development": {
+        "integrity_passes": 4,
+        "proxy_passes": 2,
+        "total": 4
+      }
+    }
+  ],
+  "audit": {
+    "baseline": {
+      "integrity_passes": 2,
+      "proxy_passes": 2,
+      "total": 2
+    }
+  },
+  "calls": 16,
+  "known_cost_usd": 0.010034379999999999,
+  "calls_without_cost": 0,
+  "promotion": "not_authorized_by_this_development_experiment",
+  "publication_note": "Readable synthetic observation copy; evidence IDs aliased consistently. Exact private runner and inputs retained with original hash. No real transcripts."
+}

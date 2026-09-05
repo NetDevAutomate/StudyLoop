@@ -1,0 +1,122 @@
+{
+  "G01": {
+    "version": "v1",
+    "case": "retry",
+    "arm": "relationships"
+  },
+  "G02": {
+    "version": "v2",
+    "case": "retry",
+    "arm": "reference"
+  },
+  "G03": {
+    "version": "v1",
+    "case": "cache",
+    "arm": "relationships"
+  },
+  "G04": {
+    "version": "v2",
+    "case": "storage",
+    "arm": "relationships"
+  },
+  "G05": {
+    "version": "v1",
+    "case": "cache",
+    "arm": "keyword"
+  },
+  "G06": {
+    "version": "v1",
+    "case": "queue",
+    "arm": "reference"
+  },
+  "G07": {
+    "version": "v2",
+    "case": "cache",
+    "arm": "keyword"
+  },
+  "G08": {
+    "version": "v1",
+    "case": "cache",
+    "arm": "reference"
+  },
+  "G09": {
+    "version": "v2",
+    "case": "queue",
+    "arm": "keyword"
+  },
+  "G10": {
+    "version": "v2",
+    "case": "storage",
+    "arm": "keyword"
+  },
+  "G11": {
+    "version": "v2",
+    "case": "cache",
+    "arm": "relationships"
+  },
+  "G12": {
+    "version": "v1",
+    "case": "storage",
+    "arm": "reference"
+  },
+  "G13": {
+    "version": "v1",
+    "case": "storage",
+    "arm": "relationships"
+  },
+  "G14": {
+    "version": "v2",
+    "case": "retry",
+    "arm": "relationships"
+  },
+  "G15": {
+    "version": "v1",
+    "case": "retry",
+    "arm": "reference"
+  },
+  "G16": {
+    "version": "v2",
+    "case": "queue",
+    "arm": "relationships"
+  },
+  "G17": {
+    "version": "v2",
+    "case": "storage",
+    "arm": "reference"
+  },
+  "G18": {
+    "version": "v2",
+    "case": "queue",
+    "arm": "reference"
+  },
+  "G19": {
+    "version": "v1",
+    "case": "retry",
+    "arm": "keyword"
+  },
+  "G20": {
+    "version": "v1",
+    "case": "storage",
+    "arm": "keyword"
+  },
+  "G21": {
+    "version": "v2",
+    "case": "retry",
+    "arm": "keyword"
+  },
+  "G22": {
+    "version": "v1",
+    "case": "queue",
+    "arm": "relationships"
+  },
+  "G23": {
+    "version": "v2",
+    "case": "cache",
+    "arm": "reference"
+  },
+  "G24": {
+    "version": "v1",
+    "case": "queue",
+    "arm": "keyword"
+  }
+}

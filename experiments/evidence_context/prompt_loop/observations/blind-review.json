@@ -1,0 +1,154 @@
+{
+  "grok-4.6": {
+    "executive_summary": "Most answers track their own fixtures: artifact-backed B picks and withholds on missing checks are source-grounded. Four queue items treat a later unmeasured claim as a performance correction, which the no-guess constraint forbids. Heavy template duplication means n=24 overstates coverage.",
+    "recommended_decision": "Use as a LIMITED dev proxy only for (1) preferring a matching test artifact over an unmeasured agent report, (2) withholding when the required check is absent, and (3) refusing unmeasured supersession; do not score taxonomy, usefulness, real products, or generalization.",
+    "confidence": 0.82,
+    "assumptions": [
+      "Grade only support from each item's supplied evidence, not withheld expected labels or independent truth.",
+      "Near-duplicate fixtures are graded separately but do not add new behaviors.",
+      "Constraint-matching without a benchmark is allowed when the answer stays reported_only and does not assert measured reliability or speed."
+    ],
+    "reasons": [
+      "G01 | supported | Artifact Source05 shows A missed the demo-r2 two-second deadline and B met it; B plus the single-scenario limit is grounded.",
+      "G02 | supported | Same retry fixture; B and the stated single-scenario uncertainty follow the artifact, not the unmeasured A report.",
+      "G03 | supported | A is scoped to a single-process toy workload; B is proposed for eight writers; pick is constraint-aligned and marked reported_only.",
+      "G04 | supported | Source02 measures reopen on demo-r3: A lost the last commit, B retained it; B stays inside the no-throughput limit.",
+      "G05 | supported | Only Source04 exists and assumes a toy single-process load; conditional correctly withholds under eight writers.",
+      "G06 | unsupported | Both queue reports lack benchmarks; choosing B because later advice 'supersedes' A is unsupported supersession against do-not-guess.",
+      "G07 | supported | Same lone mismatched cache report as G05; conditional refuses to apply A to eight concurrent writers.",
+      "G08 | supported | Dual cache reports again; B is the only advice matching eight writers and no benchmark is invented.",
+      "G09 | supported | Sole queue report asserts A is faster with no benchmark; insufficient follows the no-guess constraint.",
+      "G10 | supported | Sole storage report is confident A with no test output; insufficient is correct for reopen correctness.",
+      "G11 | supported | Same dual cache reports; B is justified only as a constraint match, which the answer states.",
+      "G12 | supported | Reopen artifact shows B retained and A lost the last entry on demo-r3; B is artifact-grounded and scoped.",
+      "G13 | supported | Same reopen artifact and limited B recommendation as G12; no throughput inflation.",
+      "G14 | supported | Same retry artifact as G01; B is the policy that met the two-second demo-r2 check.",
+      "G15 | supported | Same retry artifact; rationale and uncertainty stay inside the one tested scenario.",
+      "G16 | unsupported | Identical unmeasured A-then-B queue pair; later advice is not performance evidence, so B violates no-guess.",
+      "G17 | supported | Reopen artifact contradicts untested A-confidence and supports B on demo-r3 only.",
+      "G18 | unsupported | Same queue pair; calling the second unbenchmarked report a correction and choosing B is unsupported supersession.",
+      "G19 | supported | Only an unmeasured A recommendation; insufficient is correct because the required demo-r2 deadline result is absent.",
+      "G20 | supported | Only untested A-confidence; insufficient correctly withholds a reopen-correctness pick.",
+      "G21 | supported | Same missing retry check as G19; insufficient does not treat the agent assertion as a result.",
+      "G22 | unsupported | Same unmeasured queue pair; superseding A with B without a benchmark is not available performance evidence.",
+      "G23 | supported | Dual cache reports; B matches eight writers and the answer flags the lack of reliability benchmarks.",
+      "G24 | supported | Sole unbenchmarked A-is-faster claim; insufficient respects the no-guess-performance constraint."
+    ],
+    "risks": [
+      "Four near-identical templates dominate the set, so a proxy would overweight retry-artifact, cache-constraint, queue-guess, and storage-reopen patterns.",
+      "Models could pass by fixture-pattern matching without learning evidence discipline on novel text.",
+      "Cache B items may be scored inconsistently if graders demand empirical reliability rather than constraint alignment."
+    ],
+    "disagreements": [
+      "Cache dual-report items (G03/G08/G11/G23) could be called needs_review if 'justified' is read as requiring a reliability benchmark.",
+      "conflict_kind and conditional-vs-insufficient labels differ across otherwise justified twins; those are taxonomic, not conclusion, disputes.",
+      "Queue dual-report items might be defended as following 'later advice' wording, but that still guesses performance."
+    ],
+    "missing_information": [
+      "A written rubric for when constraint-matching may select B versus must return insufficient.",
+      "Whether duplicate stems are intentional weights or accidental copies.",
+      "Held-out non-template fixtures to test the same rules off this wording."
+    ]
+  },
+  "claude-fable-5-1": {
+    "executive_summary": "Twenty-four answers over four synthetic scenarios (retry/deadline, cache/concurrency, storage/reopen, queue/performance), with heavy near-duplication. Where a test artifact exists (retry, storage), all answers correctly prefer the measured option and scope claims to the tested revision. Where only agent reports exist, single-report cases are correctly marked insufficient, and cache cases reasonably prefer B on the basis of A's self-declared scope mismatch while flagging the lack of benchmarks. The systematic failure is the two-report queue scenario: four answers (G06, G16, G18, G22) treat a later unbenchmarked assertion as a 'correction' that supersedes an earlier unbenchmarked assertion, directly violating the 'do not guess performance' constraint; the uncertainty caveat does not rescue a categorical recommendation built on recency alone. Twenty supported, four unsupported, none needing review.",
+    "recommended_decision": "Use this set only as a LIMITED development proxy for evidence-hierarchy discipline (artifact over report, recency is not evidence, insufficient when nothing is measured, scope claims to tested revision); do not use it to score real-world correctness, generalization beyond the fixture, fine-grained conflict_kind taxonomy, next_check quality, or learner usefulness, and treat the effective sample as four scenario types rather than twenty-four independent items.",
+    "confidence": 0.8,
+    "assumptions": [
+      "Fixture evidence is complete and the reviewer should not assume unseen artifacts exist.",
+      "Recommendation labels 'insufficient' and 'conditional' are both acceptable ways to decline an unsupported choice when the underlying conclusion is justified.",
+      "The 'do not guess performance' constraint applies equally to a later report that offers no measurement."
+    ],
+    "reasons": [
+      "G01 | supported | Artifact Source05 measures A over deadline and B within it for demo-r2; answer scopes to that scenario and flags single-scenario limit.",
+      "G02 | supported | Same artifact-grounded B recommendation; uncertainty correctly limits generalization to demo-r2 single-worker.",
+      "G03 | supported | A's report self-scopes to single-process; B is the only advice addressing eight writers; answer honestly labels reported_only and calls for benchmarks.",
+      "G04 | supported | Artifact Source02 shows A lost committed entry and B retained it; throughput correctly excluded; conflict_kind difference is immaterial.",
+      "G05 | supported | Only evidence is A scoped to single-process; declining to endorse A and requesting multi-writer testing is justified; 'conditional' vs 'insufficient' is label-level only.",
+      "G06 | unsupported | Constraint forbids guessing performance; both reports explicitly lack benchmarks; recency-based 'supersession' is unsupported and the caveat does not excuse a categorical B pick.",
+      "G07 | supported | Same single-report cache case; conclusion that A is not supported under eight writers matches evidence.",
+      "G08 | supported | B preferred on scope match with reported_only basis and stated lack of benchmarks; 'full production load' in next_check slightly overreaches a synthetic fixture but does not affect the conclusion.",
+      "G09 | supported | Single unbenchmarked report cannot satisfy a no-guessing constraint; insufficient is the correct call.",
+      "G10 | supported | Single confident report with no test output for reopen correctness; insufficient is correct and next_check is apt.",
+      "G11 | supported | Same cache reasoning as G03; uncertainty explicitly states recommendation rests on stated requirements, not measurement.",
+      "G12 | supported | Artifact-grounded B for reopen correctness; scope limited to the tested environment and requirement.",
+      "G13 | supported | Near-duplicate of G12 with correct artifact grounding and scoping.",
+      "G14 | supported | Artifact-grounded B for demo-r2 deadline; correctly notes single-scenario coverage.",
+      "G15 | supported | Same artifact basis; 'B outperforms A' is a mild generalization but the uncertainty restricts it to the tested scenario.",
+      "G16 | unsupported | Claims the second report 'explicitly superseded' the first; the report only says 'later advice' with no benchmark; recommending B guesses performance against the constraint.",
+      "G17 | supported | Artifact-grounded B; correctly characterizes both agent reports as lacking test support and limits conclusion to reopen correctness.",
+      "G18 | unsupported | Same recency-as-correction error; no measured evidence distinguishes A from B, so a categorical B recommendation is not supported.",
+      "G19 | supported | Only an unmeasured report for A; no demo-r2 result exists; insufficient is correct.",
+      "G20 | supported | Single unsubstantiated report; insufficient with a concrete reopen test as next_check is appropriate.",
+      "G21 | supported | Same as G19 with citation acknowledging the assertion lacks evidence.",
+      "G22 | unsupported | Explicitly says 'we must rely on the most recent explicit comparison' despite constraint forbidding performance guesses; supersession by recency is unsupported.",
+      "G23 | supported | B preferred on scope mismatch of A and B's stated fit for concurrency; reported_only and no-benchmark uncertainty stated; 'superseded' here refers to A's own stated scope, not a performance claim.",
+      "G24 | supported | Single unbenchmarked report; insufficient is the only constraint-compliant answer."
+    ],
+    "risks": [
+      "Near-duplicate answers inflate apparent sample size; a metric over 24 items really measures four scenario behaviors, so a single systematic error (queue recency) dominates the score.",
+      "The cache scenario is genuinely borderline between 'B' and 'insufficient/conditional'; a rigid expected label would penalize defensible answers in either direction.",
+      "Scoring on conflict_kind or evidence_basis labels would reward taxonomy matching rather than evidence reasoning.",
+      "All answers share a template, so the metric may not transfer to free-form outputs or to evidence with real ambiguity, stale timestamps, or partially relevant artifacts.",
+      "Uniform timestamps remove any test of temporal reasoning, so 'recency' handling is only probed via the explicit 'Later advice' wording."
+    ],
+    "disagreements": [
+      "One could argue the cache-scenario B recommendations (G03, G08, G11, G23) are also unsupported since the second report is just another opinion; I accept them because A's report disqualifies itself for the stated workload and the answers label the basis as reported_only, but a stricter reviewer would mark them needs_review.",
+      "One could argue 'conditional' (G05, G07) is a wrong label versus 'insufficient'; I treat this as immaterial because the substantive conclusion is correct.",
+      "Some may accept the queue B recommendations because the uncertainty admits no benchmark exists; I reject this because a caveat does not license a categorical choice the constraint expressly forbids."
+    ],
+    "missing_information": [
+      "Whether the grading rubric distinguishes 'conditional' from 'insufficient' or scores conflict_kind, which would change how G04, G05, G07 are treated.",
+      "Additional scenarios with partial or indirectly relevant artifacts, conflicting artifacts, or misaligned revisions, needed before the proxy can claim to measure evidence weighting rather than a keyword rule 'artifact beats report'.",
+      "Whether the withheld expected labels treat the cache scenario as B or insufficient; if the latter, four of my 'supported' calls would become disagreements with the key rather than errors in the answers.",
+      "Non-templated answers from the same models to test whether the observed discipline is prompt-scaffold-dependent."
+    ]
+  },
+  "qwen3-coder": {
+    "executive_summary": "Most answers correctly distinguish between artifact-supported and reported-only evidence, appropriately challenge unsupported recommendations, and acknowledge uncertainty where evidence is lacking. Several answers make consistent judgments about corrections, changed constraints, and insufficient evidence. However, some responses conflate recency of reports with validity, and a few miss opportunities to highlight missing empirical validation even when recommendations align with constraints.",
+    "recommended_decision": "Approve as a LIMITED development proxy metric for distinguishing evidence basis and handling corrections/conflicts, but not for validating empirical claims",
+    "confidence": 0.85,
+    "assumptions": [
+      "Synthetic fixtures simulate realistic enough conditions to reflect potential model reasoning patterns"
+    ],
+    "reasons": [
+      "G01 | supported | Test artifact directly contradicts prior recommendation by measuring deadline compliance",
+      "G02 | supported | Answer correctly identifies that test artifact overrides theoretical reliability claim",
+      "G03 | supported | Recognizes outdated assumption in original recommendation and justifies update based on new constraint",
+      "G04 | supported | Directly uses test artifact showing correctness outcome to justify selection",
+      "G05 | supported | Correctly flags insufficiency due to lack of alternatives and mismatched assumptions",
+      "G06 | needs_review | Recency bias: favors later report without benchmark evidence; could be equally unsupported",
+      "G07 | supported | Appropriately flags conditional support due to assumption-constraint mismatch",
+      "G08 | supported | Justifiably selects B based on alignment with concurrency requirement despite no benchmarks",
+      "G09 | supported | Properly rejects unmeasured assertion under performance-no-guessing constraint",
+      "G10 | supported | Correctly deems insufficient due to absence of test artifacts",
+      "G11 | supported | Accurately resolves conflict by selecting recommendation aligned with current constraints",
+      "G12 | supported | Uses direct test result to override conflicting agent reports lacking evidence",
+      "G13 | supported | Consistently applies artifact-supported logic over unsupported agent preferences",
+      "G14 | supported | Artifact clearly shows B meeting deadline where A fails",
+      "G15 | supported | Properly weights measured performance over theoretical reliability",
+      "G16 | needs_review | Prioritizes recency over evidence; both reports lack benchmarks",
+      "G17 | supported | Clearly distinguishes between unsupported claims and measured correctness",
+      "G18 | needs_review | Same issue as G16\u2014prefers newer unsupported claim without justification",
+      "G19 | supported | Correctly identifies absence of relevant test results",
+      "G20 | supported | Appropriately flags lack of evidence for reopen correctness",
+      "G21 | supported | Properly notes lack of applicable revision/deadline evidence",
+      "G22 | needs_review | Again prioritizes recency over substance in absence of real evidence",
+      "G23 | supported | Correctly handles changed constraints and selects appropriate recommendation",
+      "G24 | supported | Properly rejects single unmeasured assertion under performance constraints"
+    ],
+    "risks": [
+      "Answers may reward superficial consistency over critical evaluation when both options lack evidence",
+      "Recency bias appears in several cases where later unsupported reports are preferred",
+      "Some correct conclusions may reflect lucky alignment rather than robust reasoning"
+    ],
+    "disagreements": [
+      "Whether recency of agent reports should influence decision-making absent empirical contradiction",
+      "If repeated similar judgments indicate genuine understanding or template-following behavior"
+    ],
+    "missing_information": [
+      "Independent verification of whether models can generalize beyond exact scenario matches",
+      "Evidence of how these judgments correlate with downstream system reliability or performance"
+    ]
+  }
+}
