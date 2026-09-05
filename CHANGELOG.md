@@ -41,8 +41,10 @@ experience may change before `1.0.0`.
   also now says that the next action and due reviews sent to xTiles reflect your
   whole study history (they are not plan-scoped), that per-write permission
   prompts are xTiles' statement about its connector and what you see depends on
-  your assistant, that the xTiles learning record is not written back into the
-  plan document, and that planner tiles can be removed through the connector
+  your assistant, that the xTiles learning outcome is recorded in the source
+  plan before the assistant projects it into xTiles, that StudyLoop itself still
+  performs no xTiles network call, and that planner tiles can be removed through
+  the connector
   while pages and projects must be deleted in the xTiles interface by hand.
 - `studyloop install agents` no longer links the xTiles wind-down skill into
   `~/.config/opencode/skills`: OpenCode already lists the shared skills hub as a
