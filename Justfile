@@ -1,5 +1,10 @@
 set shell := ["bash", "-cu"]
 
+# PyMuPDF 1.27.2's SWIG extension emits one final Python 3.13 warning after
+# pytest has torn down its own warning filters. Exact message only; all other
+# deprecations remain visible. Remove when upstream swig/swig#2881 lands here.
+export PYTHONWARNINGS := "ignore:builtin type swigvarlink has no __module__ attribute:DeprecationWarning"
+
 default:
     @just --list
 

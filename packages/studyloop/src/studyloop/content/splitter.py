@@ -10,7 +10,7 @@ import logging
 import re
 from typing import TYPE_CHECKING
 
-import pymupdf
+from studyloop.content.pymupdf_compat import pymupdf
 
 if TYPE_CHECKING:
     from pathlib import Path

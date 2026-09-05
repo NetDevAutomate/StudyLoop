@@ -1,12 +1,24 @@
 """Unit tests for studyloop.content.splitter."""
 
-pymupdf = __import__("pytest").importorskip("pymupdf")
+pymupdf = __import__("pytest").importorskip("studyloop.content.pymupdf_compat").pymupdf
 
 from pathlib import Path  # noqa: E402
 
 import pytest  # noqa: E402
 
 from studyloop.content.splitter import sanitize_filename, split_pdf_by_chapters  # noqa: E402
+
+
+def test_pymupdf_swig_types_are_labelled_for_python_313() -> None:
+    """The compatibility import prevents the interpreter-shutdown warning."""
+    import sys
+
+    for module_name in ("pymupdf._mupdf", "pymupdf.mupdf"):
+        module = sys.modules[module_name]
+        for value in vars(module).values():
+            swig_type = type(value)
+            if swig_type.__name__ in {"SwigPyPacked", "SwigPyObject", "swigvarlink"}:
+                assert swig_type.__module__ == "pymupdf._mupdf"
 
 
 @pytest.fixture

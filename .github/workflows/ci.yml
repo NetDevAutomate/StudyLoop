@@ -9,6 +9,12 @@ on:
 permissions:
   contents: read
 
+env:
+  # PyMuPDF 1.27.2 / SWIG #2881: exact Python 3.13 shutdown warning only.
+  # Import-time warnings are repaired in pymupdf_compat; remove this when
+  # upstream generated types carry __module__ metadata.
+  PYTHONWARNINGS: "ignore:builtin type swigvarlink has no __module__ attribute:DeprecationWarning"
+
 jobs:
   lint:
     runs-on: ubuntu-latest

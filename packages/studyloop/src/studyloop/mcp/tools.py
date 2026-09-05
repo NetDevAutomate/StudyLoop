@@ -225,7 +225,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
             chapter: Chapter number (1-indexed).
         """
         try:
-            import pymupdf
+            from studyloop.content.pymupdf_compat import pymupdf
         except ImportError:
             raise ToolError(
                 "pymupdf not installed. Install with: uv pip install 'studyloop[content]'"

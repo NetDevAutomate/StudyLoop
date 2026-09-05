@@ -43,8 +43,9 @@ experience may change before `1.0.0`.
   exact-pinned `httpx2==2.12.0` successor package; and the real PTY transport
   tests scope Python 3.13's multithreaded `forkpty()` warning to that one
   intentional test module. PyMuPDF's known SWIG `__module__` deprecation is
-  likewise filtered by exact extension-type message only, leaving unrelated
-  deprecations visible.
+  handled at its import boundary and its surviving SWIG types are labelled,
+  preventing both import-time and interpreter-shutdown warnings without a
+  global pytest filter.
 
 ## [0.2.1] - 2026-09-05
 
