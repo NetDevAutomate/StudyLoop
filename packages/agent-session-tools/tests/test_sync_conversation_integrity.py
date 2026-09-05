@@ -456,3 +456,49 @@ def test_same_concept_id_different_meaning_aborts(migrated_db, tmp_path):
             target.execute("SELECT name FROM concepts").fetchone()[0]
             == "Different meaning"
         )
+
+
+def test_ssh_transport_is_noninteractive_and_bounded():
+    from agent_session_tools.sync import _SSH_MUX_OPTS
+
+    assert "BatchMode=yes" in _SSH_MUX_OPTS
+    assert "ConnectTimeout=10" in _SSH_MUX_OPTS
+    assert "ServerAliveInterval=15" in _SSH_MUX_OPTS
+    assert "ServerAliveCountMax=2" in _SSH_MUX_OPTS
+
+
+def test_concatenated_remote_dump_with_existing_archive(migrated_db):
+    import subprocess
+    from agent_session_tools.sync import _build_dump_queries
+
+    conn, path = migrated_db
+    conn.execute("INSERT INTO sessions(id,source) VALUES('s','codex')")
+    conn.execute(
+        "INSERT INTO messages(id,session_id,role,content) VALUES('m','s','assistant','evidence')"
+    )
+    conn.execute(
+        "CREATE TABLE sync_row_archive(table_name TEXT,row_json TEXT,PRIMARY KEY(table_name,row_json))"
+    )
+    conn.execute("INSERT INTO sync_row_archive VALUES('parked_topics','{}')")
+    conn.commit()
+    tables = {
+        row[0]
+        for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+    }
+    parked_columns = [
+        row[1] for row in conn.execute("PRAGMA table_info(parked_topics)")
+    ]
+    commands = _build_dump_queries(
+        {"s"}, tables, include_seq=True, parked_columns=parked_columns
+    )
+    # Exercise the remote sqlite CLI transport, not Python's per-query execute.
+    result = subprocess.run(
+        ["sqlite3", "-bail", str(path)],
+        input="BEGIN;\n" + "\n".join(commands) + "\nCOMMIT;",
+        text=True,
+        capture_output=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "INSERT OR IGNORE INTO sync_row_archive" in result.stdout
+    assert "INSERT INTO sessions" in result.stdout
+    assert "INSERT INTO messages" in result.stdout
