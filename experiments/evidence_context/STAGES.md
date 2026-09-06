@@ -32,6 +32,7 @@ no remote publication or backup is implied.
 | 23 — Agent context interface | Can installed CLI/MCP expose bounded sources and honest execution checks? | `1932c71` | `agent_context/runner.py`; GUIDE.md, installed lesson and council audit |
 | 24 — Complete disagreement groups | Which packing policy keeps contrary evidence inspectable under fixed budgets? | `23e5f29` | `contrary_selection/runner.py`; GUIDE.md, measurements and council audit |
 | 25 — Source-bound interpretation reviews | Can review evidence, disagreement and retirement remain inspectable without becoming native validation? | `0923305` | `interpretation_reviews/runner.py`; GUIDE.md, frozen pilot, installed lesson and council audit |
+| 26 — Learning record ownership | Can StudyLoop retain useful permitted assessments without leaking excluded or reclassified history? | `2d7118b` | `learning_ownership/runner.py`; GUIDE.md, installed lesson, migration rehearsal, benchmark and council audit |
 
 Stage 3 uses its own lifecycle adapter and database schema. It does not modify the
 stage 1 evidence store, and does not require stage 1 demo output. Stage 2 uses
@@ -624,6 +625,40 @@ code and additional integrity tests. See [interpretation_reviews/GUIDE.md](inter
 [COUNCIL-DECISION.md](interpretation_reviews/COUNCIL-DECISION.md) and
 [OBSERVED-RESULTS.json](interpretation_reviews/OBSERVED-RESULTS.json).
 
+## Stage 26 commands
+
+```sh
+uv run python -m experiments.evidence_context.learning_ownership.runner --output /tmp/evidence-stage-26
+open /tmp/evidence-stage-26/walkthrough.html
+uv run pytest packages/agent-session-tools/tests/test_context_record_owners.py packages/studyloop/tests/test_context_consumer_scope.py experiments/evidence_context/tests/test_learning_ownership_lesson.py --import-mode=importlib -q
+uv run python -m experiments.evidence_context.learning_ownership.benchmark --output /tmp/evidence-stage-26-benchmark
+```
+
+Checkpoint `2d7118b` adds explicit ownership for study sessions, teach-back scores
+and knowledge bridges. Real StudyLoop reads filter before notes, aggregates and
+limits; writes bind business rows, ownership and progress atomically. A source's
+reclassification affects its dependent records on the next request. Assessments
+retain their reported status, not native validation.
+
+The source and installed two-wheel lessons each passed eight actual API/MCP checks.
+The installed schema35-to36 upgrade preserved 62 rows across 49 existing tables
+with clean integrity/FK checks. On 50,000 synthetic project-owned records, the
+production scope predicate took a median 15.46 ms for counting and 20.35 ms for
+the latest twenty permitted records. No competing schema or engine was measured.
+
+The combined memory/experiment regression passed 1,564 tests with one optional
+skip. Full StudyLoop passed 3,782 tests, four skips and 704 deselections before
+final small changes; 70 final focused tests and rebuilt installed checks passed.
+Commit hooks passed workspace type checks, lint, formatting and security checks.
+The browser verified four sections, working expansion, viewport fit and no console
+errors. Both council rounds returned Meta, Qwen and Mistral reviews; their differing
+recommendations were checked against the code and full shipping contract.
+
+Remaining learner tables, scoped transfer/forgetting/restore, shared setup and
+installed agent startup remain required. See [learning_ownership/GUIDE.md](learning_ownership/GUIDE.md),
+[COUNCIL-DECISION.md](learning_ownership/COUNCIL-DECISION.md) and
+[OBSERVED-RESULTS.json](learning_ownership/OBSERVED-RESULTS.json).
+
 ## Production delivery direction
 
 The user has now authorized the full implementation and StudyLoop integration while
@@ -631,8 +666,9 @@ preserving these stages. [delivery/GOAL.md](delivery/GOAL.md) records the comple
 requirements; [delivery/ARCHITECTURE.md](delivery/ARCHITECTURE.md) explains the decisions.
 These checkpoints do not satisfy that goal. SQLite remains canonical. The internal
 source/citation boundary, native capture and bounded public interface now exist.
-Complete-group selection and attributed review history are now integrated. Next
-finish remaining learner ownership, followed by
+Complete-group selection, attributed review history and three StudyLoop learning
+record types are now integrated. Next finish the remaining learner ownership
+inventory and paths, followed by
 scoped sync/lifecycle, shared setup and installed StudyLoop startup/capture/doctor
 acceptance. A source-grounded execution check or proposed relationship does not
 finish general advice arbitration; review records do not certify semantic truth.

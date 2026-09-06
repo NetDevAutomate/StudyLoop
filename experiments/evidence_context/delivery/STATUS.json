@@ -1,23 +1,23 @@
 {
   "goal": "active",
-  "previous_goal_turn": "progress: Stage25 source-bound interpretation review and assessment history implemented, tested through installed CLI/MCP, frozen pilot and council reviewed; full production goal remains active",
-  "current_stage": "25 attributed interpretation review complete as increment; remaining learner ownership, scoped sync/lifecycle, shared setup and installed StudyLoop release acceptance remain",
+  "previous_goal_turn": "progress: Stage26 scoped learning ownership implemented; installed MCP, migration, benchmark and council review completed; full production goal remains active",
+  "current_stage": "26 ownership of three StudyLoop tables complete as increment; remaining learner inventory, scoped sync/lifecycle, shared setup and installed release acceptance remain",
   "requirements": {
-    "P01": "partial: additive v31-v35 schema; review-target migration rollback/retry preserves legacy rows and FK integrity; installed upgrade/restore audit remains",
+    "P01": "partial: additive v31-v36 schema; injected v36 failure/retry; installed schema35-to36 copy preserves62rows across49existing tables with FK/integrity checks; managed restore remains",
     "P02": "partial: actual four-harness exporters integrated and eight local real archives imported; Codex Desktop 0.153.0 observed; all native formats, other desktop coverage and installed end-to-end capture remain",
     "P03": "partial: native/provenance boundaries preserved; review documents cannot supply origin/authority/independence; fixed adapter producer and interpretation authority; full release audit remains",
     "P04": "partial: bounded CLI/MCP now includes exact source-bound reviews and claim assessments; standalone wheel8review journey checks pass; earlier60real citations verified; representative semantic usefulness and large-graph performance remain",
     "P05": "partial: typed source-bound review history, explicit supersession, concurrent disagreement and unsupported/uncertain statuses implemented; no recency/vote truth rule; generic semantic arbitration and real usefulness remain unproven",
-    "P06": "partial: every target/review source filters before review prose/counts/limits; next-request reclassification and future-time exclusion tested; remaining StudyLoop learner tables still need ownership",
+    "P06": "partial: source/review/observation scope plus owned study_sessions, teach_back_scores and knowledge_bridges; filtering before aggregate/LIMIT and live reclassification proven; remaining learner state and combined-request races need integration",
     "P07": "not yet proven",
-    "P08": "partial: review/target/source purge and tombstones tested; forgotten successors cannot reactivate previous reviews; exact request replay refused after forgetting; full scoped sync/restore/index lifecycle remains",
+    "P08": "partial: observations/reviews retire safely; mapped study/score/bridge bodies purge on logical source tombstone with FK checks; complete source cleanup, scoped replica/reimport/restore/index lifecycle remain",
     "P09": "partial: operator native capture receipts plus scope-filtered health accompany context; hook runtime/registration, archive census and doctor integration remain",
     "P10": "partial: fresh standalone wheel CLI/MCP stdio8review journey checks pass with StudyLoop absent; shared hook/install ownership and full package acceptance remain",
     "P11": "not yet proven",
     "P12": "not yet proven",
-    "P13": "partial: real StudyLoop progress writes/read projections, CLI/MCP consumer tests and subprocess lessons pass; installed agent startup with rich canonical context remains",
-    "P14": "stages1-25 independently runnable with pinned commits;Stage25 guide/6stepdemo/frozen3modelpilot/offlineformatdiagnostic/council arbitration recorded;Stage8 exercise unchanged",
-    "P15": "partial:1287 package regression passes before4additional tests;22final focused review/lesson passes;303experiment/StudyLoop passes,1optionalskip;0923305 workspace types/lint/secrets/Bandit hooks pass;full release audit remains"
+    "P13": "partial: fresh installed StudyLoop APIs and MCP stdio pass8ownership checks; source-linked pre-capture assessment refuses atomically; full installed agent/session startup with rich context remains",
+    "P14": "stages1-26 independently runnable with pinned commits;Stage26 guide/4viewdemo/migrationprobe/50kbenchmark/council arbitration recorded;Stage8 exercise unchanged",
+    "P15": "partial:1564combined memory/experiment passes,1optional skip;3782StudyLoop passes,4skips,704deselected before finalsmallchanges;70finalfocused checks and8rebuiltinstalled checks;2d7118b workspace lint/types/security hooks pass;full release audit remains"
   },
   "completed_checkpoints": {
     "stage16": "6c736c5",
@@ -29,37 +29,39 @@
     "stage22": "3acbc6f",
     "stage23": "1932c71",
     "stage24": "23e5f29",
-    "stage25": "0923305"
+    "stage25": "0923305",
+    "stage26": "2d7118b"
   },
   "current_findings": [
-    "Schema35 typed assertion/relation review targets bind immutable observations to exact target hashes. Every target source plus review citations remains a scope/purge dependency.",
-    "Actual CLI/MCP record attributed supported/unsupported/uncertain reviews and retain explicit revision history; cross-adapter supersession refused, same-adapter clients not independent identities.",
-    "Assess exposes claims, scoped sources, proposed contrary groups, reviews and coverage status. Semantic validation/reviewer independence/validation of change remain not established.",
-    "Standalone wheel-only and source journeys each pass8checks; full1287package regression passed before4additional tests,22final focused tests pass; workspace commit hooks pass.",
-    "Frozen3provider x3synthetic case pilot:Qwen accepted plain JSON;Meta/Mistral rejected Markdown wrappers;only3reviews stored. Strict end-to-end acceptance1/3providers.",
-    "Post-hoc offline one-fence removal,0newcalls/0DBwrites:9/9labels in permissive predeclared ranges and9/9quote bindings. Tinyconstructedcases,nohumanrating,norepresentativeaccuracyclaim.",
-    "Both council rounds returned3providers; accepted independence/format/scale limits; rejected alleged missing hash recheck/dangling targets/hidden coverage/future cutoff bugs against code and targeted tests.",
+    "Schema36 adds immutable ownership mappings for three mutable StudyLoop tables: exactly one native session, configured project or explicit scope. Ownership does not establish semantic authority.",
+    "Actual StudyLoop APIs and MCP get_study_history retain permitted sessions and scores, including same-concept personal/work separation. SQL filtering occurs before body/count/LIMIT; cross-scope mutations refused.",
+    "Business writes, owner binding and teachback progress share BEGIN IMMEDIATE and final policy check. Missing source capture raises and rolls back without partial assessment state.",
+    "Fresh installed wheels pass8API/MCPchecks. Schema35 upgrade copy preserves62rows across49old tables,FKempty,integrityok; injected migration rollback/retry passes.",
+    "50kproject-only fixture:25kpermitted,10iterations,countmedian15.46ms,latest20median20.35ms. Includespolicyresolution,notprocessstartup;no competing schema, mixed-owner or concurrentwriter benchmark.",
+    "Both council rounds returned3providers. Retain registry as tested increment; reject release approval and unsupported superiority/rowIDidentity claims. Remaining ownership/lifecycle gaps remain requirements.",
     "Full P01-P15 scope remains active. No owner DB/config/hooks changed."
   ],
   "next_actions": [
-    "Complete ownership/projection for remaining StudyLoop learner tables before scoped synchronization can carry their state.",
-    "Implement versioned per-peer scoped sync and managed forgetting/reimport/restore/index lifecycle with production transport, replay and crash/retry tests.",
-    "Finish selectable shared install/doctor/skills,desktop/native capability checks,installed StudyLoop startup and full P01-P15 release audit.",
-    "Evaluate harder source-grounding and usefulness cases with separate transport/binding/entailment/applicability/sufficiency measures;preserve frozen pilot and avoid tuning to its labels."
+    "Complete the Stage26 refreshed learner-state inventory: parking/session lifecycle/backlog, notes, practice, concepts/aliases/relations, dependencies and planning storage; trace all readers/writers before completeness claims.",
+    "Resolve installed startup before native capture without silently dropping source lineage; test combined request and concurrent policy changes.",
+    "Implement per-peer scoped sync and managed forgetting/reimport/restore/index lifecycle through production transport, replay and crash/retry tests.",
+    "Finish shared selectable installer/doctor/skills, native/desktop capability checks and full P01-P15 installed release audit.",
+    "Keep harder interpretation/usefulness evaluation separate from ownership/attribution checks; avoid tuning prompts to frozen labels."
   ],
   "verification": {
-    "package_tests": "1287 passed before4additional Stage25 tests;20final review tests pass",
-    "experiment_tests": "303 combined experiment/StudyLoop passes,1optional skip before additional pilot test;22final review/lesson/pilot passes",
-    "workspace_pyright": "0923305 workspace src+tests hook passed",
-    "commit_hooks": "0923305 formatting,lint,secrets,Bandit,workspace types passed",
-    "browser": "Stage25 sixsections,workingexpansion,viewportfits,no consoleerrors",
-    "studyloop_tests": "3778 passed,4 skipped,704 deselected; final additional transaction test and metadata changes covered by30 focused checks",
-    "focused_consumer_tests": "45 StudyLoop consumer/extractor/CLI-contract passes;44 final native/export-CLI passes",
-    "artifact": "studyloop-private/reviews/2026-09-06-stage25-interpretation-reviews/demo-installed/walkthrough.html",
+    "package_tests": "1564 combined memory-package/experiment passes,1optional skip,59.50s",
+    "experiment_tests": "included in1564combined passes;final focused70passes include actual subprocess lesson",
+    "workspace_pyright": "2d7118b workspace src+tests hook passed",
+    "commit_hooks": "2d7118b formatting/lint/secrets/Bandit/author/workspace types passed",
+    "browser": "Stage26 foursections,workingexpansion,viewportfits,no consoleerrors;own tab/server closed",
+    "studyloop_tests": "3782passed,4skipped,704deselected,195.70s beforefinalsmallchanges;70finalfocused and8rebuiltinstalledchecks pass",
+    "focused_consumer_tests": "70final ownership/consumer/MCP/lesson checks passed,2.75s",
+    "artifact": "studyloop-private/reviews/2026-09-06-stage26-learning-ownership/demo-installed-acceptance/walkthrough.html",
     "native_probe": "8 local real sessions imported without errors;1898/1898 body hashes match;source files unchanged",
-    "installed_component": "Fresh standalone wheel actualCLI/MCPstdio8review lifecyclechecks;StudyLoopabsent",
+    "installed_component": "Fresh two-wheel StudyLoop+memory runtime;actualAPI/MCPstdio8ownershipchecks;schema35-to36disposable-copyupgrade preserves62rows49tables",
     "real_retrieval": "6CLI queries,60exact citations and hashes verified,all<=32768bytes,no semantic relevance claim",
-    "live_review_pilot": "3calls,3constructedcases/model;strict acceptance1/3providers;post-hoc9/9permissivelabels+exactbindings,not semanticvalidation"
+    "live_review_pilot": "3calls,3constructedcases/model;strict acceptance1/3providers;post-hoc9/9permissivelabels+exactbindings,not semanticvalidation",
+    "ownership_benchmark": "50000project-onlyrecords:countmedian15.46ms,latest20median20.35ms;noengine/schema ranking"
   },
   "operational_notice": "A secrets test printed an ambient API key in private failure output; tests now isolate fallback variables. Owner should rotate that key; no value saved in this status or learning artifacts."
 }

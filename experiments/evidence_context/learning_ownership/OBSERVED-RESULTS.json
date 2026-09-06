@@ -104,5 +104,7 @@
     "shared install/doctor/skills",
     "installed agent startup and native capture gaps",
     "full release audit"
-  ]
+  ],
+  "implementation_checkpoint": "2d7118b",
+  "commit_hooks": "Workspace src+tests type checks, lint, formatting, secrets, Bandit and author checks passed"
 }

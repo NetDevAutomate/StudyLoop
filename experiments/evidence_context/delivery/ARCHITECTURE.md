@@ -95,6 +95,24 @@ Legacy global learning tables need explicit ownership or withholding. A peer wit
 the scoped/deletion protocol must be refused, with a useful upgrade diagnostic.
 The old unscoped SQL transport cannot be the fallback for protected data.
 
+Stage26 adds a memory-owned registry for study sessions, teach-back scores and
+knowledge bridges. Exactly one native session, configured project or explicit
+scope owns a record. Business writes, ownership and progress observations commit
+together. Shared SQL predicates filter before bodies, aggregates and limits;
+source/project owners follow current classification. Ownership remains distinct
+from semantic authority. The registry preserves business IDs and centralizes the
+contract, at the cost of a lookup and trigger-maintained business mappings rather
+than ordinary foreign keys to all business tables. Per-table typed owner columns
+remain a reasonable alternative, not yet comparatively benchmarked.
+
+The real installed StudyLoop MCP journey passed eight checks. A 50,000-row
+project-only fixture measured approximately 15 ms for a scoped count and 20 ms for
+the latest twenty rows. This proves neither schema superiority nor general scale.
+An installed schema35-to36 copy upgrade preserved all preexisting table rows.
+Remaining learner state, combined-request policy races, full managed source cleanup,
+scoped transfers and restore still require integration. This is a tested increment,
+not completion of the work/personal or lifecycle requirements.
+
 Durable content-free deletion metadata takes precedence over capture, corrections,
 sync, FTS/vector rebuild and managed restore. Reimport of original archives must be
 suppressed. Managed derived copies are purged. Original external transcripts and

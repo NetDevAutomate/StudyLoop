@@ -50,3 +50,28 @@ provider call. This is not complete learning-data ownership: other readers/write
 still require the source-linked observation and projection design described in
 `consumer_scope/GUIDE.md` and its council decision. Current guards must not be removed
 until that replacement has positive and negative persistence/lifecycle evidence.
+
+## Stage26 refresh
+
+Stage21 now stores source-bound/explicitly owned progress observations rather than
+writing new assessments into the legacy global progress aggregate. Stage26 adds
+ownership for `study_sessions`, `teach_back_scores` and `knowledge_bridges`, and
+uses it in their actual history/focus/MCP consumers. These increments are not a
+complete learner-state inventory or an authorization to transfer old global tables.
+
+The next learner audit must trace at least:
+
+| Stored state | Current entry points to inspect | Required behaviour |
+|---|---|---|
+| `parked_topics` | `parking.py`, `session/{start,resume,cleanup}.py`, `services/backlog.py`, `logic/backlog_logic.py`, CLI and UI consumers | Explicit ownership, scoped uniqueness and links to owned study sessions; purge dependencies |
+| `session_notes`, tags, learning metadata | `notes.py`, memory query/MCP writers/readers and source-derived annotations | Native-session lineage where present; no body-return or mutation bypass |
+| `practice_attempts` | `learning/practice.py` and exercise/agent consumers | Attempt body and score ownership, filtering before scheduling/aggregation, source lineage |
+| `concepts`, aliases, relations, message links | `history/concepts.py`, `history/bridges.py`, graph queries | Scope-safe identities and endpoints; classified bridge conversion without copying into global state |
+| `concept_dependencies` | `learning/mastery.py` seed/write/read paths | Distinguish public curriculum from personal observations and work-derived edges |
+| Plans and other learner state outside sessions.db | `planning/{store,index,multiplexer}.py`, `planning/exercises/store.py`, session/learning modules and their configured storage | Audit before claiming sessions.db is the only relevant state boundary; classify and protect any derivations |
+
+This table is a work queue from current schema/SQL inspection. Table names alone
+do not establish complete call-path coverage. Actual installed session startup must
+also handle an explicitly source-linked assessment before exported input exists.
+The current path rejects and rolls back that operation; it must not silently
+drop lineage to make the write succeed.
