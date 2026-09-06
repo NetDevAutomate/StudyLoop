@@ -125,6 +125,25 @@ schema repair; a failed migration stays a diagnosable error. The installed HTTP/
 lesson passes ten checks with the web extra. Mixed-dependency performance, remaining
 learner files/tables and response-wide policy consistency remain open.
 
+Stage28 adds optimistic permission validation for composed finite read responses.
+A request-local frame observes live policy/resolved scope and each helper snapshot's
+access generation. A separate read-only monitor detects committed revocation and
+file replacement before release. Schema38 increments a local instance/revision
+counter on the enumerated access/dependency/retirement writes; rollback preserves
+the committed generation, and an assignment changed back still advances it. The
+old generic data_version fallback was rejected because a newly opened monitor can
+miss an earlier revocation. Protected response APIs require the generation migration.
+
+Selected composed StudyLoop and legacy session-db MCP reads, canonical native context
+reads and finite HTTP GET/HEAD API responses use this guard. HTTP holds headers and
+body until validation, bounded at 8 MiB/1,024 messages. Normal mutations retain their
+transactional write guards; native writes now recheck resolved scope as well as policy.
+Actual HTTP/MCP and cancellation/threaded tests pass. Live SSE/WebSocket/session-file
+ownership remains separate required work. This guarantees the tested optimistic
+access boundary, not one historical snapshot of all facts or recall after valid
+delivery. Managed restore must preserve/advance local generation semantics; the
+counter is not shared conversation content. Compaction retains its new local identity.
+
 Durable content-free deletion metadata takes precedence over capture, corrections,
 sync, FTS/vector rebuild and managed restore. Reimport of original archives must be
 suppressed. Managed derived copies are purged. Original external transcripts and

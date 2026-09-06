@@ -1,23 +1,23 @@
 {
   "goal": "active",
-  "previous_goal_turn": "progress: Stage27 owned notes, parking, board metadata and practice implemented; installed HTTP/MCP, migration and council review completed; full production goal remains active",
-  "current_stage": "27 derived learner paths complete as increment; remaining learner inventory, response-wide policy consistency, scoped sync/lifecycle, shared setup and installed release acceptance remain",
+  "previous_goal_turn": "progress: Stage28 response consistency implemented and tested through installed HTTP/MCP, migration, cancellation/concurrency, benchmark and council; full production goal remains active",
+  "current_stage": "28 finite response access complete as increment; remaining learner/session-file ownership, live stream semantics, scoped sync/lifecycle and shared setup/startup remain",
   "requirements": {
-    "P01": "partial: transactional v31-v37 schema; schema37 interrupted retry and second-connection isolation tested; installed schema36-to37 copy preserves80rows across52old tables; legacy-board relocation separately proven; managed restore remains",
+    "P01": "partial: transactional v31-v38 migrations; schema38 failure/retry; installed schema37-to38 copy preserves67rows across56old tables with FK/integrity; compaction retains new access identity; managed restore remains",
     "P02": "partial: actual four-harness exporters integrated and eight local real archives imported; Codex Desktop 0.153.0 observed; all native formats, other desktop coverage and installed end-to-end capture remain",
     "P03": "partial: native/provenance boundaries preserved; review documents cannot supply origin/authority/independence; fixed adapter producer and interpretation authority; full release audit remains",
     "P04": "partial: bounded CLI/MCP now includes exact source-bound reviews and claim assessments; standalone wheel8review journey checks pass; earlier60real citations verified; representative semantic usefulness and large-graph performance remain",
     "P05": "partial: typed source-bound review history, explicit supersession, concurrent disagreement and unsupported/uncertain statuses implemented; no recency/vote truth rule; generic semantic arbitration and real usefulness remain unproven",
-    "P06": "partial: source/review/observation scope; owned study sessions/scores/bridges/notes/parked questions/practice; scope-specific board names; dual-parent visibility and project reclassification tested; remaining learner state and response-wide races remain",
+    "P06": "partial: scoped sources and owned learner rows plus finite HTTP/MCP response policy/generation validation; config switch/reassignment/forget/away-back/file replacement/cancellation/thread propagation tested; learner graphs/plans/IPC and live streams remain",
     "P07": "not yet proven",
-    "P08": "partial: linked study/score/bridge/note/card bodies purge on logical source tombstone; attempt deletion retires derived progress; complete source cleanup, scoped replica/reimport/restore/index lifecycle remain",
+    "P08": "partial: source/observation/owned-row retirement plus access-generation invalidation and compaction identity; full scoped replica/exporter/restore/index lifecycle remains",
     "P09": "partial: operator native capture receipts plus scope-filtered health accompany context; hook runtime/registration, archive census and doctor integration remain",
     "P10": "partial: fresh standalone wheel CLI/MCP stdio8review journey checks pass with StudyLoop absent; shared hook/install ownership and full package acceptance remain",
     "P11": "not yet proven",
     "P12": "not yet proven",
-    "P13": "partial: fresh installed StudyLoop web extra actual HTTP routes and MCP stdio pass10derived-record checks; route policy errors explicit409; full lifespan and agent/session startup remain",
-    "P14": "stages1-27 independently runnable with pinned commits;Stage27 guide/5viewdemo/installedupgrade/council arbitration recorded;Stage8 exercise unchanged",
-    "P15": "partial:1566combined memory/experiment passes1skip;3788StudyLoop passes4skip704deselected;30finalfocused tests;777c8b4 workspace lint/types/security hooks pass;full release audit remains"
+    "P13": "partial: fresh installed web extra HTTP/MCP8response checks and earlier10owned-row checks; full lifespan, live-session files/stream and agent startup remain",
+    "P14": "stages1-28 independently runnable with pinned commits;Stage28four-viewguide/installedmigration/overhead/council arbitration recorded;Stage8exercise unchanged",
+    "P15": "partial:1581memory/experiment passes1skip;3791StudyLoop passes4skip704deselected before final refinements;54finalfocused checks;fcecf6c8workspace lint/types/security hooks pass;fullreleaseaudit remains"
   },
   "completed_checkpoints": {
     "stage16": "6c736c5",
@@ -31,37 +31,39 @@
     "stage24": "23e5f29",
     "stage25": "0923305",
     "stage26": "2d7118b",
-    "stage27": "777c8b4"
+    "stage27": "777c8b4",
+    "stage28": "fcecf6c8"
   },
   "current_findings": [
-    "Schema37 extends immutable primary ownership to study_notes, parked_topics and practice_attempts, with typed study-parent and observation dependencies. Ownership is attribution/access, not truth.",
-    "Parking deduplicates only exact owner plus study parent; SQL sums only permitted occurrences. Notes/cards with two dependencies require both visible. Board names remain scoped.",
-    "Practice attempt and reported progress share transaction and dependency link. Working-directory project ownership follows reclassification; policy change during execution refuses persistence. Application study placeholders never invent native events.",
-    "Fresh installed wheels plus web extra pass10actualHTTP/MCPchecks. Installed schema36 upgrade preserves80rows52old tables,FKempty,integrityok. Unit historical-board relocation, migration rollback/retry and second-connection blocked writer pass.",
-    "Both councils returned3providers. Dissent about exposed migration trigger window disproved by targeted transaction test; whole-response policy consistency and semantic mastery limits accepted. No deployment approval.",
-    "Full P01-P15 scope remains active. No owner DB/config/hooks changed."
+    "A reproduced between-helper MCP scope switch previously returned without error. Request-local observations now reject differing live policy/resolved scope and keep the failed state sticky.",
+    "Schema38 local instance/revision detects committed access/dependency/retirement changes across helper snapshots, including assignment away-and-back. Protected response reads require this migration; generic data_version fallback rejected.",
+    "Finite HTTP GET/HEAD API responses buffer headers/body before validation, with 8MiB/1024message cap. Normal mutations preserve commit semantics; native writes recheck full policy and resolved scope.",
+    "Installed8HTTP/MCPchecks pass;37->38copy preserves67rows56tables,FKempty,integrityok. Cancellation closes monitors;16threaded requests reject intervening revocation and next unchanged batch succeeds.",
+    "Small installed paired-order benchmark:14.932ms median without outer guard,16.892ms with it,20iterations each;helper/policy included,transport/startup/scale excluded.",
+    "Both council rounds returned3providers. Cancellation/concurrency tests added; no broad release or universal-thread/recall claims accepted. Full P01-P15 remains active;owner DB/config/hooks untouched."
   ],
   "next_actions": [
-    "Finish learner ownership inventory: native session annotations/tags/learning metadata, concepts/aliases/relations/message links, dependencies, planning and session state files; trace actual readers and writers.",
-    "Pin or recheck the policy across whole combined HTTP/MCP responses; test concurrent changes and installed startup before native capture without dropping lineage.",
-    "Implement per-peer scoped sync and managed forgetting/reimport/restore/index lifecycle through production transport with replay/crash/retry tests.",
-    "Finish shared selectable installer/doctor/skills, native/desktop capability checks and full P01-P15 installed release audit.",
-    "Review practice command/artifact timing and cross-project assessment supersession; keep semantic usefulness separate from ownership/attribution."
+    "Complete native annotations/tags/learning metadata and learner concepts/aliases/relations/message links/dependencies ownership, then plans and IPC/session files; current concepts.py global reads and mastery.py joins remain concrete entry points.",
+    "Integrate scope/forgetting into live session SSE/WebSocket/IPC flow and installed startup; do not treat finite read guard as streaming ownership.",
+    "Implement per-peer scoped transport and managed forget/reimport/restore/index lifecycle; maintain local access-generation semantics during replacement and replay.",
+    "Finish selectable shared installer/doctor/skills, native/desktop checks and full P01-P15 installed release audit.",
+    "Review practice command/artifact timing and cross-project assessment supersession; retain semantic usefulness as a separate evidence gate."
   ],
   "verification": {
-    "package_tests": "1566combined memory/experiment passes,1optional skip,65.10s",
-    "experiment_tests": "included in1566combined;final30focused include actual HTTP/MCP lesson",
-    "workspace_pyright": "0errors0warnings;777c8b4 workspace src+tests hook passed",
-    "commit_hooks": "777c8b4 formatting/lint/secrets/Bandit/author/workspace types passed",
-    "browser": "Stage27five sections,allfive disclosures opened,viewportfits,no consoleerrors;own tab/server closed",
-    "studyloop_tests": "3788passed,4skipped,704deselected,167.11s;final30focused tests cover later test-only refinements",
-    "focused_consumer_tests": "30final schema/consumer/lesson checks passed,3.57s",
-    "artifact": "studyloop-private/reviews/2026-09-06-stage27-learner-paths/demo-installed-web/walkthrough.html",
+    "package_tests": "1581combined memory/experiment passes,1optional skip,65.90s before final added cancellation/concurrent tests",
+    "experiment_tests": "included in1581combined;final54focused include actualHTTP/MCPsubprocess lesson",
+    "workspace_pyright": "0errors0warnings;fcecf6c8workspace src+tests hook passed",
+    "commit_hooks": "fcecf6c8formatting/lint/secrets/Bandit/author/workspace types passed",
+    "browser": "Stage28four sections,allfour disclosures opened,viewportfits,no consoleerrors;own tab/server closed",
+    "studyloop_tests": "3791passed,4skipped,704deselected,167.50s before final refinements;63webfocused and54finalfocused checks pass",
+    "focused_consumer_tests": "54final response/consumer/cancellation/concurrent-batch/lesson checks passed,5.07s",
+    "artifact": "studyloop-private/reviews/2026-09-06-stage28-response-boundary/demo-installed/walkthrough.html",
     "native_probe": "8 local real sessions imported without errors;1898/1898 body hashes match;source files unchanged",
-    "installed_component": "fresh memory+StudyLoop wheels with web extra;10HTTP/MCPchecks;schema36-to37copy preserves80rows52tables",
+    "installed_component": "fresh memory+StudyLoop wheels with web extra;8response HTTP/MCPchecks;37-to38copy preserves67rows56tables",
     "real_retrieval": "6CLI queries,60exact citations and hashes verified,all<=32768bytes,no semantic relevance claim",
     "live_review_pilot": "3calls,3constructedcases/model;strict acceptance1/3providers;post-hoc9/9permissivelabels+exactbindings,not semanticvalidation",
-    "ownership_benchmark": "50000project-onlyrecords:countmedian15.46ms,latest20median20.35ms;noengine/schema ranking"
+    "ownership_benchmark": "50000project-onlyrecords:countmedian15.46ms,latest20median20.35ms;noengine/schema ranking",
+    "response_overhead": "20paired iterations each,2fictional sessions:14.932ms baseline directhistory vs16.892ms guarded;no transport/startup/scale comparison"
   },
   "operational_notice": "A secrets test printed an ambient API key in private failure output; tests now isolate fallback variables. Owner should rotate that key; no value saved in this status or learning artifacts."
 }

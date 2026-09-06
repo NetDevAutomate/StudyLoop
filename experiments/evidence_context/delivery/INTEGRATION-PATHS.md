@@ -97,3 +97,21 @@ Practice currently checks artifact presence before a command and reports confide
 using the existing heuristic. This is attributable application output, not validated
 learning. Preserve that distinction when integrating recommendation/decision logic;
 review command/artifact timing and same-scope cross-project supersession explicitly.
+
+## Stage28 refresh
+
+Finite HTTP API GET/HEAD responses now withhold headers/body until request-local
+policy/scope and participating database access generations validate. Selected
+composed MCP reads and canonical native context reads have the same completion
+check. The generation trigger allowlist is `context/response_schema.py:EVENTS`;
+new access-affecting storage must extend it and its tests. Missing schema38 produces
+an explicit policy-apply/migration diagnostic. Mutations are not wrapped as reads;
+their own transactions remain responsible for truthful commit outcomes.
+
+`/api/session/stream`, WebSockets and IPC/session files need explicit ownership and
+per-event semantics. The finite response wrapper deliberately cannot buffer an
+unending stream. Remaining native annotations/tags/learning metadata, concepts and
+relations, dependencies, plans and session files still require storage/call-path
+integration. Static inspection at this checkpoint reconfirms global concept reads
+in `history/concepts.py` and concept joins in `learning/mastery.py`; these are the
+next concrete learner-state entry points, not evidence of completed scope coverage.
