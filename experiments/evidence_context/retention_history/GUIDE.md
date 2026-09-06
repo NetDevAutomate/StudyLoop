@@ -131,9 +131,11 @@ rescued an incorrect interpretation of this one.
   retained history.
 - A → B and A → C → B are recorded as two deliveries without an independence claim.
 
-The combined memory/experiment run passed 1,760 tests with one optional skip before
+The implementation is preserved at `50de2d7f`. The combined memory/experiment run passed 1,760 tests with one optional skip before
 the final helper peer-binding check. The final focused run passed 42 tests, including
-that check and the new lesson. Type checking of the changed production modules passed.
+that check and the new lesson. The StudyLoop regression passed 3,823 tests with four skips and 704 deselections
+in 168.88 seconds. Full commit lint, formatting, secrets, Bandit and workspace
+source/test type checks passed.
 The standalone installed lesson passed all 15 checks; its five disclosures were opened
 in the browser and the layout fit the viewport. These are component-level results,
 not a production-release verdict or a semantic-answer-quality score.

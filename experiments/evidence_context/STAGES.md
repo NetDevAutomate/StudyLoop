@@ -39,12 +39,9 @@ no remote publication or backup is implied.
 | 30 — Session annotation grounding | Can reports about sessions retain honest authority, correction history and safe source identities? | `61ee4db5` | `session_annotations/runner.py`; GUIDE.md, installed CLI/MCP lesson, schema39 upgrade, history scale diagnostic and council arbitration |
 | 31 — Bounded annotation history | Can first-page reads stay cheap without hiding current disagreement or omitted evidence? | `f1883d7b` | `bounded_history/runner.py`; four-view CLI/MCP lesson, ordered-index upgrade, paged scale benchmark and council arbitration |
 | 32 — Scoped replica content | Can sources, reviews and learner identities retain their meaning through a permitted transfer? | `b05e6b4c` | `replica_content/runner.py`; five-view standalone-wheel lesson, dependency and identity tests, observed results and council arbitration. Content phase only; full sync remains open. |
-
 | 33 — Local forgetting and eviction | Can permanent source deletion survive native replay, crashes and index cleanup without making cache eviction permanent? | `389146b8` | `local_forgetting/runner.py`; five-view standalone-wheel lesson, reproduced cleanup race, archive retention tests and council arbitration. Peer/full-store/managed restore remain open. |
-
 | 34 — Durable replica lifecycle | Can known recipients reconcile permanent forgetting despite lost acknowledgements and stale content? | `1f5a5c56` | `replica_lifecycle/runner.py`; five-view standalone-wheel lesson, atomic receipts, typed retirement matrix and council arbitration. SSH, withdrawal and managed restore remain open. |
-
-| 35 — Grounded retention history | Which exact versions were captured locally or committed from a peer, without inventing permission or independence? | pending checkpoint | `retention_history/runner.py`; five-view standalone-wheel lesson, exact version and instance binding, unknown legacy history and council arbitration. Withdrawal/regrant and real sync remain open. |
+| 35 — Grounded retention history | Which exact versions were captured locally or committed from a peer, without inventing permission or independence? | `50de2d7f` | `retention_history/runner.py`; five-view standalone-wheel lesson, exact version and instance binding, unknown legacy history and council arbitration. Withdrawal/regrant and real sync remain open. |
 
 Stage 3 uses its own lifecycle adapter and database schema. It does not modify the
 stage 1 evidence store, and does not require stage 1 demo output. Stage 2 uses

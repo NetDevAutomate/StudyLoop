@@ -1,7 +1,7 @@
 {
   "goal": "active",
-  "previous_goal_turn": "progress: Stage35 schema43/capture/atomic contribution implementation;1760combined passes1skip before final helper binding guard;42finalfocused passes;15freshinstalled checks;full production goal remains active",
-  "current_stage": "35 implementation and installed lesson validated: exact local capture/peer contribution history; full withdrawal/regrant and configured SSH coordinator remain next",
+  "previous_goal_turn": "progress: Stage35committed50de2d7f;1760combined passes1skip before final helper guard;42finalfocusedpasses;15freshinstalledchecks;3823StudyLoop passed4skip704deselected;full goal remains active",
+  "current_stage": "35 complete as bounded capture/delivery-history checkpoint50de2d7f; next implement withdrawal/regrant and actual configured SSH/session-sync coordinator",
   "requirements": {
     "P01": "partial: transactional v31-v43 migrations; v42-to43 original data and failure rollback/retry tested, no inferred legacy-origin backfill; complete managed restore remains",
     "P02": "partial: actual four-harness exporters integrated and eight local real archives imported; Codex Desktop 0.153.0 observed; all native formats, other desktop coverage and installed end-to-end capture remain",
@@ -17,7 +17,7 @@
     "P12": "not yet proven",
     "P13": "partial: fresh installed graph HTTP/MCP10checks plus prior response/learner checks; full lifespan, live-session files/stream, installer and agent startup remain",
     "P14": "stages1-35 independently runnable; Stage35five-viewguide separates capture, delivery, upstream independence and permission, and documents corrected dependency test premise; saved exercises unchanged",
-    "P15": "partial:1760combined memory/experiment passed1skip before final helper guard;42finalfocusedpassed;15freshinstalledchecks; types and relevant lint pass; currentStudyLoopregression running; fullreleaseaudit remains"
+    "P15": "partial:1760combined memory/experiment passed1skip before final helper guard;42finalfocusedpassed;15freshinstalledchecks;3823StudyLoop passed4skip704deselected;50de2d7f full lint/types/secrets/Bandit hooks passed;full release audit remains"
   },
   "completed_checkpoints": {
     "stage16": "6c736c5",
@@ -38,7 +38,8 @@
     "stage31": "f1883d7b",
     "stage32": "b05e6b4c",
     "stage33": "389146b8",
-    "stage34": "1f5a5c56"
+    "stage34": "1f5a5c56",
+    "stage35": "50de2d7f"
   },
   "current_findings": [
     "SQLite remains canonical; earlier equal-information storage comparison did not establish answer-quality superiority for another engine.",
@@ -66,10 +67,10 @@
   "verification": {
     "package_tests": "1760combined memory/experiment passed1optional skip104.30s before final helper guard;42finalfocusedpassed5.20s includingguard/newlesson",
     "experiment_tests": "included in1676; new fictional content-phase lesson12checks",
-    "workspace_pyright": "1f5a5c56 full workspace src+tests hook passed",
-    "commit_hooks": "1f5a5c56 lint/format/secrets/Bandit/author/workspace types passed",
+    "workspace_pyright": "50de2d7f full workspace src+tests hook passed",
+    "commit_hooks": "50de2d7f lint/format/secrets/Bandit/author/workspace src+tests types passed",
     "browser": "Stage35five sections/allfive disclosures opened;viewportfits;screenshot inspected;ownserver/tabclosed;incidental favicon404",
-    "studyloop_tests": "3823passed4skipped704deselected171.19s against schema42 implementation",
+    "studyloop_tests": "3823passed4skipped704deselected168.88s against schema43 implementation",
     "focused_consumer_tests": "26finalledger cases passed3.77s;93content/ledger/tiering cases passed6.53s earlier;22review-ledger/lesson passed3.45s",
     "artifact": "studyloop-private/reviews/2026-09-06-stage35-withdrawal/demo-installed/walkthrough.html",
     "native_probe": "8 local real sessions imported without errors;1898/1898 body hashes match;source files unchanged",
