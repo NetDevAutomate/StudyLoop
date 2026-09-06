@@ -1,7 +1,7 @@
 {
   "goal": "active",
-  "previous_goal_turn": "progress: Stage32 content projection/import committed at b05e6b4c; final1676memory/experiment passes, installed12checks, three-provider design/review arbitration; full production goal remains active",
-  "current_stage": "32 content checkpoint complete; implement production lifecycle and configured-peer coordinator with unsafe fallback refusal",
+  "previous_goal_turn": "progress: Stage32 committed at b05e6b4c with1676combined passes and12installed checks; legacy protected-transport refusal committed4eb649fa with1425package passes,35focused checks and installed clean refusal; full production goal remains active",
+  "current_stage": "33 underway: legacy bypasses guarded; three-provider lifecycle design selected; actual purge, withdrawal, routing, coordinator and full acceptance remain",
   "requirements": {
     "P01": "partial: transactional v31-v40 migrations; installed schema39-to40 copy preserves34rows across57old tables; failure/retry tested; managed restore remains",
     "P02": "partial: actual four-harness exporters integrated and eight local real archives imported; Codex Desktop 0.153.0 observed; all native formats, other desktop coverage and installed end-to-end capture remain",
@@ -9,7 +9,7 @@
     "P04": "partial: bounded native sources/reviews/StudyLoop graph and session annotations; Stage31 selects scoped headers and preserves atomic current groups with history-only continuation, metadata/dependency preflight and VM budget; real semantic usefulness and consumer acceptance remain",
     "P05": "partial: source-bound reviews and native annotation history retain explicit supersession, competing reports, retirement and missing-predecessor disclosure; no automatic timestamp/vote truth rule; generic semantic arbitration and real usefulness remain unproven",
     "P06": "partial: learner graph/record boundaries plus native session notes/tags/learning metadata reads now scoped; native annotation writes guarded through editor concurrency; file/config/plan/IPC and streaming ownership remain",
-    "P07": "partial: reciprocal policy negotiation and scoped structured content projection/import tested, including excluded payload inspection and review-input closure; actual session-sync/SSH coordinator and legacy fallback guards remain",
+    "P07": "partial: reciprocal scoped structured content tests and legacy refusal guards now pass; actual structured session-sync/SSH coordinator, fresh remote config checks and full legacy coverage remain",
     "P08": "partial: correction links and local retirement preserved through content phase; full retirement reconciliation, scope withdrawal, stale replay, native reimport and managed restore remain",
     "P09": "partial: operator native capture receipts plus scope-filtered health accompany context; hook runtime/registration, archive census and doctor integration remain",
     "P10": "partial: fresh standalone memory-only wheel passes12content checks with StudyLoop absent; shared hook/install ownership and full package acceptance remain",
@@ -17,7 +17,7 @@
     "P12": "not yet proven",
     "P13": "partial: fresh installed graph HTTP/MCP10checks plus prior response/learner checks; full lifespan, live-session files/stream, installer and agent startup remain",
     "P14": "stages1-32 independently runnable and pinned; Stage32five-viewguide and provider arbitration preserve source-grounding/identity lessons; Stage8/DSPy exercises unchanged",
-    "P15": "partial:1676memory/experiment passes1skip;3823StudyLoop passes4skip704deselected include shared scope helpers; b05e6b4c full lint/types/security hooks pass; fullreleaseaudit remains"
+    "P15": "partial:1676combined Stage32 passes; after guard1425package passes and35focused passes;4eb649fa full lint/types/security hooks pass; installed guard prints clean refusal; fullreleaseaudit remains"
   },
   "completed_checkpoints": {
     "stage16": "6c736c5",
@@ -44,18 +44,22 @@
     "All six owned learner tables roundtrip; generated teach-back totals are recomputed rather than inserted. Native/study foreign keys are additional visibility dependencies.",
     "Identical retries are idempotent; divergent edits and unsolicited local ownership assignments roll back the whole phase. This preserves originals but is not convergence.",
     "Content APIs explicitly return sync_complete:false and lifecycle_reconciled:false. Legacy SQL/whole-DB transfer remains unsafe and unintegrated; lifecycle and actual coordinator are next.",
-    "Six successful Meta/Qwen/Mistral calls informed design/review. Final targeted refinements follow review, not a second council approval. Full product goal remains active."
+    "Six successful Meta/Qwen/Mistral calls informed design/review. Final targeted refinements follow review, not a second council approval. Full product goal remains active.",
+    "Legacy public push/pull/sync now refuse protected local context before remote resolution; dump/import transactions recheck DB protection; modern whole-file seeding refused even if context tables are empty. Structured coordinator is still not exposed.",
+    "A fresh installed standalone command exits1 with the required-path explanation and no traceback or fixture body; initial probe assertion needed whitespace normalization for Rich line wrapping.",
+    "Schema inventory found native message-to-source bindings absent from Stage32fixedtableprojection and SET NULL legacy learner dependencies. Full protocol must carry that binding and purge detached bodies explicitly.",
+    "Stage33Meta/Qwen/Mistral selected transactional distinction between permanent forget and reversible withdrawal with peer delivery tracking. Do not put reversible flags in permanent tombstones; existing parser guards treat any membership as permanent."
   ],
   "next_actions": [
-    "Implement durable lifecycle/withdrawal and real configured peer/SSH coordinator; guard unsafe SQL/full-DB fallback; test stale replay, native reimport, indexes and managed restore before reporting complete sync",
+    "Implement LIFECYCLE-DESIGN.md: production native/learner/observation purge and monotonic controls; distinct reversible withdrawal; peer ledger and actual configured SSH coordinator; include context_native_message_sources; prove stale replay, exporter, managed indexes/restore",
     "Implement explicit config/content/plan/session file ownership before enabling modern file-derived graph imports, then protect live SSE/WebSocket/IPC and full installed startup.",
     "Finish shared selectable installer/doctor/skills, four native and desktop capture checks, and fullP01-P15releaseaudit; preserve practice timing/cross-project assessment audit."
   ],
   "verification": {
     "package_tests": "1676combined memory/experiment passed1optional skip86.16s after final content/source guards",
     "experiment_tests": "included in1676; new fictional content-phase lesson12checks",
-    "workspace_pyright": "b05e6b4c full workspace src+tests hook passed",
-    "commit_hooks": "b05e6b4c lint/format/secrets/Bandit/author/workspace types passed",
+    "workspace_pyright": "4eb649fa full workspace src+tests hook passed",
+    "commit_hooks": "4eb649fa lint/format/secrets/Bandit/author/workspace types passed",
     "browser": "Stage31four sections/all disclosures opened,viewportfits,no captured consoleerrors;ownserver/tabclosed;finaldata regenerated after additive page guards,rendering unchanged",
     "studyloop_tests": "3823passed4skipped704deselected204.17s; shared explicitScope helpers included, later refinements only new replication package",
     "focused_consumer_tests": "30replica/lesson cases passed2.07s; included in1676",
@@ -69,7 +73,10 @@
     "graph_scale": "100/1000/5000visible plus equalexcluded shortbridges:17.647/34.158/110.561msmedians,5runs;32KiBresult but all-visible query",
     "graph_http_timing": "20finalinstalledASGI requests,1visibleedge:9.849msmedian10.502msmax;transport/startup excluded",
     "annotation_scale": "10/100/1000/10000versions:first page2.514/4.680/5.373/12.738msmedian5warmreads;33returned atscale and534SELECTs;fullcachedcontrol returnsall400.020msat10k; different workloads",
-    "replica_timing": "single fictional transfer:export8.192ms/import3.470ms; not a benchmark or network measurement"
+    "replica_timing": "single fictional transfer:export8.192ms/import3.470ms; not a benchmark or network measurement",
+    "guard_package_tests": "1425passed65.71s after legacy guards, before exception subtype/clean-message refinement;35focused cases rerun afterward and pass0.53s",
+    "installed_guard": "fresh memory-only wheel, actual session-sync push refusal:exit1, explained structured path, no traceback, no fixture body; StudyLoop absent",
+    "lifecycle_inventory": "disposable current-schema FK/identity-column inventory retained privately; no owner DB inspected or changed"
   },
   "operational_notice": "A secrets test printed an ambient API key in private failure output; tests now isolate fallback variables. Owner should rotate that key; no value saved in this status or learning artifacts."
 }

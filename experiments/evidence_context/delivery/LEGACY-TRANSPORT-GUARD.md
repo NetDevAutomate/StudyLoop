@@ -1,6 +1,6 @@
 # Refuse unsafe legacy transfer during structured integration
 
-This is an implementation checkpoint toward Stage33, not a completed new sync path.
+This is implementation checkpoint `4eb649fa` toward Stage33, not a completed new sync path.
 Stage32's runnable content lesson remains pinned at `b05e6b4c`.
 
 ## Behavior
@@ -50,7 +50,10 @@ uv run pytest packages/agent-session-tools/tests/test_legacy_replication_guard.p
 
 Observed: 35 focused tests pass; the complete memory package has 1,425 passing tests
 after the guards. Ruff/Pyright and the installed-entrypoint check are recorded at the
-checkpoint. The later exception subtype changes only clean CLI error rendering.
+checkpoint. A fresh installed standalone command also passes: exit 1, clear explanation,
+no traceback and no fixture body; StudyLoop is absent. The probe normalizes whitespace
+because Rich wraps the explanation across lines. The later exception subtype changes
+only clean CLI error rendering; the 35 focused tests were rerun afterward.
 
 ## Required continuation
 

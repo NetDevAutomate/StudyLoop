@@ -177,3 +177,25 @@ are preserved in `bounded_history/`. This closes the identified annotation read-
 increment, not graph-query work or semantic acceptance. Next priority is the real
 `sync.py` transfer path: unfiltered global SQL, whole-DB seeding and missing observation/
 owner/retirement transport are incompatible with the protected product contract.
+
+## Stage32 and lifecycle transition
+
+`replication/policy.py`, `snapshot.py` and `content.py` implement the scoped content
+phase. Sender SQL selects complete declared dependencies before payloads; receiver
+checks exact bindings and remaps integer learner IDs by stable ownership. Generated
+teach-back totals are recomputed. Conflicting edits and unsolicited local ownership
+assignments refuse the phase atomically. These are internal package APIs, not the
+completed CLI/SSH coordinator. Both completion flags remain explicitly false.
+
+`replication/legacy.py` now blocks the old transport for explicit scope/peer policy,
+applied classification, modern context or retirement state. Public operations check
+before resolving a remote; remote metadata checks and SQL transaction guards precede
+body selection/import. A modern schema cannot be whole-file seeded. This is a refusal
+boundary during integration, not certification of legacy SQL or a working replacement.
+
+Continue with `LIFECYCLE-DESIGN.md` and `LEGACY-TRANSPORT-GUARD.md`. Include native
+`context_native_message_sources` in full content transport and handle legacy learner
+`SET NULL` dependencies explicitly during purge. Source forgetting, reversible peer
+withdrawal, durable control routing, native reimport, managed restore/indexes and actual
+configured SSH process acceptance remain open, alongside shared setup/startup and
+file/live-state ownership. The full P01-P15 goal remains active.
