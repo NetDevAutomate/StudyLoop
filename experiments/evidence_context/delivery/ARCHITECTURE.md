@@ -113,6 +113,18 @@ Remaining learner state, combined-request policy races, full managed source clea
 scoped transfers and restore still require integration. This is a tested increment,
 not completion of the work/personal or lifecycle requirements.
 
+Stage27 extends this registry to notes, parked questions and practice attempts.
+Typed study-parent links require both the primary owner and the study parent to
+remain visible. Exact owner/parent identity controls pending-question deduplication;
+permitted frequencies are aggregated at read time. Board names have explicit scope.
+Application-only study placeholders can be owned before capture; native history is
+never fabricated. Practice attempts and derived reported progress commit together,
+retain application dependencies and follow project reclassification or deletion.
+This does not validate mastery. Canonical migrations replace ad hoc notes/parking
+schema repair; a failed migration stays a diagnosable error. The installed HTTP/MCP
+lesson passes ten checks with the web extra. Mixed-dependency performance, remaining
+learner files/tables and response-wide policy consistency remain open.
+
 Durable content-free deletion metadata takes precedence over capture, corrections,
 sync, FTS/vector rebuild and managed restore. Reimport of original archives must be
 suppressed. Managed derived copies are purged. Original external transcripts and

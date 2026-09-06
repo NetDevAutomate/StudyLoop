@@ -75,3 +75,25 @@ do not establish complete call-path coverage. Actual installed session startup m
 also handle an explicitly source-linked assessment before exported input exists.
 The current path rejects and rolls back that operation; it must not silently
 drop lineage to make the write succeed.
+
+## Stage27 refresh
+
+`parked_topics`, `study_notes`, scoped board metadata and `practice_attempts` now
+use shared ownership predicates in their actual StudyLoop APIs, CLI/HTTP readers
+and mutations. Practice progress and teach-back observations retain application
+record dependencies; local parent/attempt deletion purges those derivations.
+The exact-owner deduplication and dual native/study-parent rules are described in
+`learner_paths/GUIDE.md`. Actual HTTP routes and MCP stdio are exercised in the
+installed lesson; web lifespan and full session startup are not covered.
+
+The Stage26 row mentioning `session_notes` must not be mistaken for `study_notes`:
+source annotations (`session_notes`, tags, learning metadata) still require their
+own complete audit. Remaining concepts/aliases/relations/message links, dependencies,
+planning storage and session state files are required work. Consumer composition
+can still open several policy/DB snapshots in one response. No ownership increment
+authorizes the old raw SQL sync, whole-DB seed, managed restore or tiering paths.
+
+Practice currently checks artifact presence before a command and reports confidence
+using the existing heuristic. This is attributable application output, not validated
+learning. Preserve that distinction when integrating recommendation/decision logic;
+review command/artifact timing and same-scope cross-project supersession explicitly.

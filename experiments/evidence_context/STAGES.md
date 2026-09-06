@@ -33,6 +33,7 @@ no remote publication or backup is implied.
 | 24 — Complete disagreement groups | Which packing policy keeps contrary evidence inspectable under fixed budgets? | `23e5f29` | `contrary_selection/runner.py`; GUIDE.md, measurements and council audit |
 | 25 — Source-bound interpretation reviews | Can review evidence, disagreement and retirement remain inspectable without becoming native validation? | `0923305` | `interpretation_reviews/runner.py`; GUIDE.md, frozen pilot, installed lesson and council audit |
 | 26 — Learning record ownership | Can StudyLoop retain useful permitted assessments without leaking excluded or reclassified history? | `2d7118b` | `learning_ownership/runner.py`; GUIDE.md, installed lesson, migration rehearsal, benchmark and council audit |
+| 27 — Derived learner paths | Do notes, parked questions and practice reports retain every required owner through reclassification and deletion? | `777c8b4` | `learner_paths/runner.py`; GUIDE.md, installed HTTP/MCP lesson, migration rehearsal and council arbitration |
 
 Stage 3 uses its own lifecycle adapter and database schema. It does not modify the
 stage 1 evidence store, and does not require stage 1 demo output. Stage 2 uses
@@ -675,3 +676,23 @@ finish general advice arbitration; review records do not certify semantic truth.
 
 The earlier experiment-only checkpoints retain their original scope and limitations.
 The Stage8 exercise is unchanged.
+
+## Stage 27 commands
+
+```sh
+uv run python -m experiments.evidence_context.learner_paths.runner --output /tmp/evidence-stage-27
+open /tmp/evidence-stage-27/walkthrough.html
+uv run pytest packages/agent-session-tools/tests/test_context_learner_schema.py packages/studyloop/tests/test_context_consumer_scope.py experiments/evidence_context/tests/test_learner_paths_lesson.py --import-mode=importlib -q
+```
+
+Checkpoint `777c8b4` preserves schema37, scoped notes/parking/board/practice and
+record-to-observation dependencies. The five-view lesson passed ten checks through
+fresh installed wheels using the existing StudyLoop web extra, actual HTTP routes
+without lifespan startup, and MCP stdio. The installed schema36 copy preserved80
+rows across52old tables; a separate fixture verifies old board relocation and
+interrupted migration/retry. A second connection sees committed schema36 and cannot
+write during the rebuild. All1566memory/experiment checks and3788StudyLoop checks
+passed in their selected suites, plus30finalfocused checks; workspace hooks passed.
+Both council rounds returned3provider buckets. Full learner inventory, response-wide
+policy consistency, managed sync/lifecycle and installed startup remain required.
+See [learner_paths/GUIDE.md](learner_paths/GUIDE.md) for setup and claim limits.
