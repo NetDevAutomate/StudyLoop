@@ -105,7 +105,7 @@ def cli(*arguments):
     return json.loads(result.stdout)
 
 
-async def exercise(output, require_installed):
+async def exercise(output, require_installed, pressure=False):
     from fastmcp import Client
     from fastmcp.client.transports import StdioTransport
 
@@ -114,6 +114,13 @@ async def exercise(output, require_installed):
         assert importlib.util.find_spec("studyloop") is None
         assert (Path(sys.executable).parent / "session-context").is_file()
     conn, store, settings, ids, base, other, check = prepare(output)
+    if pressure:
+        for index in range(20):
+            store.capture(
+                replace(
+                    base, native_key=f"pressure-{index}", body="cache " + "additional detail " * 100
+                )
+            )
     requirements = [
         {
             "name": "unit tests",
@@ -167,7 +174,11 @@ async def exercise(output, require_installed):
             to_id=first["assertion_id"],
             relation="contradicts",
         )
-        history = await call("memory_search", query="cache")
+        history = await call(
+            "memory_search",
+            query="cache",
+            **({"max_sources": 2, "budget_bytes": 8192} if pressure else {}),
+        )
         assert {s["harness"] for s in history["sources"]} == {"codex", "kiro_cli"}
         assert {s["machine_id"] for s in history["sources"]} == {
             "fictional-laptop",
@@ -175,6 +186,9 @@ async def exercise(output, require_installed):
         }
         assert {s["project_id"] for s in history["sources"]} == {"studyloop", "mailgraph"}
         assert len(history["relationships"]) == 1
+        if pressure:
+            assert history["context_status"] == "incomplete_context"
+            assert history["conflict_review"]["returned_proposed_relations"] == 1
         assert "WORK_EXCLUDED" not in json.dumps(history)
         supported = cli("decide", "unit checks", str(request))
         assert supported["decision"]["sufficiency"] == "recorded_checks_satisfied"
@@ -223,6 +237,7 @@ async def exercise(output, require_installed):
             "whole_document_budget": True,
             "private_source_withheld": True,
             "reclassification_revokes_relationship": True,
+            **({"contrary_group_survives_lexical_pressure": True} if pressure else {}),
         },
     }
 
@@ -231,9 +246,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--require-installed", action="store_true")
+    parser.add_argument("--pressure", action="store_true")
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=False)
-    result = asyncio.run(exercise(args.output, args.require_installed))
+    result = asyncio.run(exercise(args.output, args.require_installed, args.pressure))
     (args.output / "results.json").write_text(json.dumps(result, indent=2))
     print(
         json.dumps(

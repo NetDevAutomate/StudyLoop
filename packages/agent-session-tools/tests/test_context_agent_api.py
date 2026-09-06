@@ -263,6 +263,7 @@ def test_proposal_cannot_write_native_authority_or_false_citation(fixture, tmp_p
         fixture["conn"].execute("SELECT count(*) FROM context_assertions").fetchone()[0]
         == 0
     )
+
     result = mcp["memory_propose"]("claim", "completed", [cite])
     assert result["semantic_status"] == "unverified_interpretation"
     row = fixture["conn"].execute("SELECT generator FROM context_assertions").fetchone()
@@ -271,6 +272,166 @@ def test_proposal_cannot_write_native_authority_or_false_citation(fixture, tmp_p
         mcp["memory_source"](fixture["ids"]["report"])["source"]["origin"]
         == "conversation_message"
     )
+
+
+def proposed_pair(fixture):
+    with open_context(fixture["path"], write=True) as context:
+        first = proposal(
+            context,
+            fixture["ids"]["report"],
+            fixture["sources"]["report"].body,
+            "Original report",
+        )
+        second = proposal(
+            context,
+            fixture["ids"]["contrary"],
+            fixture["sources"]["contrary"].body,
+            "Contrary report",
+        )
+        context.relate(second, first, "contradicts", producer="fixture")
+    return first, second
+
+
+@pytest.mark.parametrize("budget", [8192, 16384])
+def test_complete_contrary_group_displaces_lower_ranked_lexical_matches(
+    fixture, budget
+):
+    proposed_pair(fixture)
+    for i in range(8):
+        fixture["store"].capture(
+            replace(
+                fixture["sources"]["report"],
+                native_key=f"filler-{i}",
+                body="cache " + "details " * 150,
+            )
+        )
+    with open_context(fixture["path"]) as context:
+        result = context.search("cache", max_sources=2, budget_bytes=budget)
+    assert {s["id"] for s in result["sources"]} == {
+        fixture["ids"]["report"],
+        fixture["ids"]["contrary"],
+    }
+    assert len(result["relationships"]) == 1
+    assert result["conflict_review"]["returned_proposed_relations"] == 1
+    assert result["conflict_review"]["semantic_conflict_absence_established"] is False
+    assert result["context_status"] == "incomplete_context"
+    assert size(result) <= budget
+
+
+def test_group_that_cannot_fit_is_reported_without_a_dangling_relationship(fixture):
+    source = replace(
+        fixture["sources"]["contrary"], native_key="extra", body="Another source"
+    )
+    extra = fixture["store"].capture(source)
+    with open_context(fixture["path"], write=True) as context:
+        first = proposal(
+            context,
+            fixture["ids"]["report"],
+            fixture["sources"]["report"].body,
+            "Original",
+        )
+        second = context.propose(
+            statement="Needs two sources",
+            state="unknown",
+            target=None,
+            producer="fixture",
+            citations=[
+                {"evidence_id": eid, "start": 0, "end": len(body), "quote": body}
+                for eid, body in [
+                    (extra, source.body),
+                    (fixture["ids"]["contrary"], fixture["sources"]["contrary"].body),
+                ]
+            ],
+        )["assertion_id"]
+        context.relate(second, first, "corrects", producer="fixture")
+    with open_context(fixture["path"]) as context:
+        result = context.search("cache", max_sources=2)
+    assert result["relationships"] == []
+    assert result["conflict_review"]["status"] == "known_relations_omitted"
+    assert result["conflict_review"]["omitted_proposed_relations"] == 1
+    ids = {s["id"] for s in result["sources"]}
+    for assertion in result["assertions"]:
+        assert {c["evidence_id"] for c in assertion["citations"]} <= ids
+
+
+def test_hidden_relationships_do_not_consume_discovery_capacity_or_leak_counts(fixture):
+    first, second = proposed_pair(fixture)
+    with open_context(fixture["path"], write=True) as context:
+        for i in range(35):
+            context.relate(second, first, "contradicts", producer=f"hidden-{i}")
+        visible = proposal(
+            context,
+            fixture["ids"]["pass"],
+            fixture["sources"]["pass"].body,
+            "Visible contrary proposal",
+        )
+        context.relate(visible, first, "contradicts", producer="visible")
+    fixture["conn"].execute(
+        "UPDATE context_session_projects SET project_id='work',assignment_kind='explicit' "
+        "WHERE session_id='p2'"
+    )
+    fixture["conn"].commit()
+    with open_context(fixture["path"]) as context:
+        result = context.search("cache", max_sources=2)
+    assert result["conflict_review"]["known_proposed_relations"] == 1
+    assert result["conflict_review"]["returned_proposed_relations"] == 1
+    assert result["coverage"]["limits_reached"] == []
+    assert "Contrary report" not in json.dumps(result)
+    assert "hidden-" not in json.dumps(result)
+
+
+def test_discovery_cap_never_implies_that_all_proposed_conflicts_were_examined(fixture):
+    first, second = proposed_pair(fixture)
+    with open_context(fixture["path"], write=True) as context:
+        for i in range(30):
+            second = proposal(
+                context,
+                fixture["ids"]["contrary"],
+                fixture["sources"]["contrary"].body,
+                f"Alternative claim {i}",
+            )
+            context.relate(second, first, "contradicts", producer=f"proposal-{i}")
+    with open_context(fixture["path"]) as context:
+        result = context.search("cache", max_sources=40, budget_bytes=131072)
+    assert result["context_status"] == "incomplete_context"
+    assert "relationship_discovery" in result["coverage"]["limits_reached"]
+    assert result["conflict_review"]["known_proposed_relations"] == 24
+    assert result["conflict_review"]["semantic_conflict_absence_established"] is False
+
+
+def test_duplicate_relation_producers_do_not_increase_selection_priority(fixture):
+    first, second = proposed_pair(fixture)
+    with open_context(fixture["path"], write=True) as context:
+        for i in range(35):
+            context.relate(second, first, "contradicts", producer=f"repeated-{i}")
+    with open_context(fixture["path"]) as context:
+        result = context.search("cache")
+    assert result["conflict_review"]["known_proposed_relations"] == 1
+    assert len(result["relationships"]) == 1
+    assert result["coverage"]["limits_reached"] == []
+
+
+def test_contrary_group_can_be_discovered_below_the_initial_output_limit(fixture):
+    leading = fixture["store"].capture(
+        replace(fixture["sources"]["report"], native_key="leading", body="cache")
+    )
+    proposed_pair(fixture)
+    for i in range(6):
+        fixture["store"].capture(
+            replace(
+                fixture["sources"]["report"],
+                native_key=f"filler-{i}",
+                body="cache " + "detail " * 80,
+            )
+        )
+    with open_context(fixture["path"]) as context:
+        result = context.search("cache", max_sources=3)
+    assert {s["id"] for s in result["sources"]} == {
+        leading,
+        fixture["ids"]["report"],
+        fixture["ids"]["contrary"],
+    }
+    assert len(result["relationships"]) == 1
 
 
 @pytest.mark.parametrize("budget", [4096, 8192, 16384])

@@ -87,6 +87,7 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--python", type=Path, default=Path(sys.executable))
     parser.add_argument("--require-installed", action="store_true")
+    parser.add_argument("--pressure", action="store_true")
     args = parser.parse_args()
     output = args.output.resolve()
     if output.exists():
@@ -100,6 +101,8 @@ def main():
     ]
     if args.require_installed:
         command.append("--require-installed")
+    if args.pressure:
+        command.append("--pressure")
     completed = subprocess.run(command, check=True, text=True, capture_output=True, timeout=45)
     result = json.loads((output / "results.json").read_text())
     (output / "walkthrough.html").write_text(render(result))

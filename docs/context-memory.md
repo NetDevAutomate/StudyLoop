@@ -64,17 +64,31 @@ offsets and exact quote. Source lookup checks the full captured binding before
 returning an excerpt. Invisible and absent IDs both return `unavailable`.
 
 Search uses literal query words with SQLite FTS/BM25. The returned excerpt starts
-near an actual tokenizer match, including diacritic matching. A one-hop proposed
-relationship can add a source that lacks the query words. `why_selected` explains
-these routes. BM25 orders relevance; it does not rank truth or authority.
+near an actual tokenizer match, including diacritic matching. Discovery happens
+before response packing. The strongest lexical match is considered first, followed
+by complete proposed `contradicts`/`corrects` groups, remaining lexical matches and
+supporting material. A group includes both assertions and every supporting source;
+it is inserted together or omitted. `why_selected` explains source discovery and
+`selection_policy` records the packing policy. BM25 orders relevance, not truth.
+Giving a proposed disagreement inspection priority does not verify its label.
 
 Search defaults to 12 sources and a 32KiB response; it allows up to 40 sources and
 128KiB. The budget covers the entire compact UTF-8 JSON document, including
 metadata, citations, relationships, explanations and health. It excludes the CLI
 newline and MCP transport/SDK wrapping. Character counts and token counts differ.
-Look at `coverage.limits_reached` before treating an empty conflict list as useful
-evidence. Lexical candidates, relationship expansion, body size or response size
-may limit coverage. Narrow the query or inspect specific cited sources when needed.
+Read `context_status`, `conflict_review` and `coverage.limits_reached` before
+interpreting the evidence. Known proposed groups that could not fit are counted
+explicitly. Those counts cover this bounded, permitted discovery only; they are
+not a census of conflicts. Semantic absence of conflict is never asserted.
+Lexical candidates, relationship expansion, body size or response size may limit
+coverage. Narrow the query or inspect specific cited sources when needed.
+
+Repeated proposals with the same endpoints and relation label are represented once
+before the discovery limit, regardless of producer count. One stable identity is
+shown; it is not selected as more trustworthy. All proposals remain stored.
+Differently worded assertions are not automatically equated. Reviewing competing
+interpretations and potentially misleading labels remains part of decision support;
+this packing policy does not supply semantic approval.
 
 `as_of` excludes sources with later known native times and interpretations or
 relationships created later. Missing native time remains explicitly unknown.

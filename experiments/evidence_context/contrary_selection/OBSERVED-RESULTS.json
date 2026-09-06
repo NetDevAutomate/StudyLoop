@@ -1,0 +1,777 @@
+{
+  "cases": [
+    {
+      "case": {
+        "name": "two_slots",
+        "lexical": 12,
+        "sources": 2,
+        "budget": 16384,
+        "contrary": 1
+      },
+      "results": {
+        "lexical_first": {
+          "contrary_groups": 0,
+          "lexical_sources": 2,
+          "anchor_retained": true,
+          "response_bytes": 5630,
+          "status": "incomplete_context",
+          "conflict_review": {
+            "status": "known_relations_omitted",
+            "known_proposed_relations": 1,
+            "returned_proposed_relations": 0,
+            "omitted_proposed_relations": 1,
+            "semantic_conflict_absence_established": false
+          },
+          "limits": [
+            "contrary_relations",
+            "sources"
+          ]
+        },
+        "reserve_20": {
+          "contrary_groups": 1,
+          "lexical_sources": 1,
+          "anchor_retained": true,
+          "response_bytes": 5288,
+          "status": "incomplete_context",
+          "conflict_review": {
+            "status": "coverage_limited",
+            "known_proposed_relations": 1,
+            "returned_proposed_relations": 1,
+            "omitted_proposed_relations": 0,
+            "semantic_conflict_absence_established": false
+          },
+          "limits": [
+            "sources"
+          ]
+        },
+        "anchor_then_relations": {
+          "contrary_groups": 1,
+          "lexical_sources": 1,
+          "anchor_retained": true,
+          "response_bytes": 5299,
+          "status": "incomplete_context",
+          "conflict_review": {
+            "status": "coverage_limited",
+            "known_proposed_relations": 1,
+            "returned_proposed_relations": 1,
+            "omitted_proposed_relations": 0,
+            "semantic_conflict_absence_established": false
+          },
+          "limits": [
+            "sources"
+          ]
+        }
+      }
+    },
+    {
+      "case": {
+        "name": "three_slots",
+        "lexical": 12,
+        "sources": 3,
+        "budget": 16384,
+        "contrary": 1
+      },
+      "results": {
+        "lexical_first": {
+          "contrary_groups": 0,
+          "lexical_sources": 3,
+          "anchor_retained": true,
+          "response_bytes": 8157,
+          "status": "incomplete_context",
+          "conflict_review": {
+            "status": "known_relations_omitted",
+            "known_proposed_relations": 1,
+            "returned_proposed_relations": 0,
+            "omitted_proposed_relations": 1,
+            "semantic_conflict_absence_established": false
+          },
+          "limits": [
+            "contrary_relations",
+            "sources"
+          ]
+        },
+        "reserve_20": {
+          "contrary_groups": 1,
+          "lexical_sources": 2,
+          "anchor_retained": true,
+          "response_bytes": 7815,
+          "status": "incomplete_context",
+          "conflict_review": {
+            "status": "coverage_limited",
+            "known_proposed_relations": 1,
+            "returned_proposed_relations": 1,
+            "omitted_proposed_relations": 0,
+            "semantic_conflict_absence_established": false
+          },
+          "limits": [
+            "sources"
+          ]
+        },
+        "anchor_then_relations": {
+          "contrary_groups": 1,
+          "lexical_sources": 2,
+          "anchor_retained": true,
+          "response_bytes": 7826,
+          "status": "incomplete_context",
+          "conflict_review": {
+            "status": "coverage_limited",
+            "known_proposed_relations": 1,
+            "returned_proposed_relations": 1,
+            "omitted_proposed_relations": 0,
+            "semantic_conflict_absence_established": false
+          },
+          "limits": [
+            "sources"
+          ]
+        }
+      }
+    },
+    {
+      "case": {
+        "name": "six_slots",
+        "lexical": 12,
+        "sources": 6,
+        "budget": 32768,
+        "contrary": 1
+      },
+      "results": {
+        "lexical_first": {
+          "contrary_groups": 0,
+          "lexical_sources": 6,
+          "anchor_retained": true,
+          "response_bytes": 15739,
+          "status": "incomplete_context",
+          "conflict_review": {
+            "status": "known_relations_omitted",
+            "known_proposed_relations": 1,
+            "returned_proposed_relations": 0,
+            "omitted_proposed_relations": 1,
+            "semantic_conflict_absence_established": false
+          },
+          "limits": [
+            "contrary_relations",
+            "sources"
+          ]
+        },
+        "reserve_20": {
+          "contrary_groups": 1,
+          "lexical_sources": 5,
+          "anchor_retained": true,
+          "response_bytes": 15397,
+          "status": "incomplete_context",
+          "conflict_review": {
+            "status": "coverage_limited",
+            "known_proposed_relations": 1,
+            "returned_proposed_relations": 1,
+            "omitted_proposed_relations": 0,
+            "semantic_conflict_absence_established": false
+          },
+          "limits": [
+            "sources"
+          ]
+        },
+        "anchor_then_relations": {
+          "contrary_groups": 1,
+          "lexical_sources": 5,
+          "anchor_retained": true,
+          "response_bytes": 15408,
+          "status": "incomplete_context",
+          "conflict_review": {
+            "status": "coverage_limited",
+            "known_proposed_relations": 1,
+            "returned_proposed_relations": 1,
+            "omitted_proposed_relations": 0,
+            "semantic_conflict_absence_established": false
+          },
+          "limits": [
+            "sources"
+          ]
+        }
+      }
+    },
+    {
+      "case": {
+        "name": "byte_pressure",
+        "lexical": 12,
+        "sources": 12,
+        "budget": 8192,
+        "contrary": 1
+      },
+      "results": {
+        "lexical_first": {
+          "contrary_groups": 0,
+          "lexical_sources": 2,
+          "anchor_retained": true,
+          "response_bytes": 7131,
+          "status": "incomplete_context",
+          "conflict_review": {
+            "status": "known_relations_omitted",
+            "known_proposed_relations": 1,
+            "returned_proposed_relations": 0,
+            "omitted_proposed_relations": 1,
+            "semantic_conflict_absence_established": false
+          },
+          "limits": [
+            "contrary_relations",
+            "response_bytes"
+          ]
+        },
+        "reserve_20": {
+          "contrary_groups": 0,
+          "lexical_sources": 2,
+          "anchor_retained": true,
+          "response_bytes": 7128,
+          "status": "incomplete_context",
+          "conflict_review": {
+            "status": "known_relations_omitted",
+            "known_proposed_relations": 1,
+            "returned_proposed_relations": 0,
+            "omitted_proposed_relations": 1,
+            "semantic_conflict_absence_established": false
+          },
+          "limits": [
+            "contrary_relations",
+            "response_bytes"
+          ]
+        },
+        "anchor_then_relations": {
+          "contrary_groups": 1,
+          "lexical_sources": 1,
+          "anchor_retained": true,
+          "response_bytes": 5306,
+          "status": "incomplete_context",
+          "conflict_review": {
+            "status": "coverage_limited",
+            "known_proposed_relations": 1,
+            "returned_proposed_relations": 1,
+            "omitted_proposed_relations": 0,
+            "semantic_conflict_absence_established": false
+          },
+          "limits": [
+            "response_bytes"
+          ]
+        }
+      }
+    },
+    {
+      "case": {
+        "name": "larger_byte_budget",
+        "lexical": 12,
+        "sources": 12,
+        "budget": 12288,
+        "contrary": 1
+      },
+      "results": {
+        "lexical_first": {
+          "contrary_groups": 0,
+          "lexical_sources": 4,
+          "anchor_retained": true,
+          "response_bytes": 10692,
+          "status": "incomplete_context",
+          "conflict_review": {
+            "status": "known_relations_omitted",
+            "known_proposed_relations": 1,
+            "returned_proposed_relations": 0,
+            "omitted_proposed_relations": 1,
+            "semantic_conflict_absence_established": false
+          },
+          "limits": [
+            "contrary_relations",
+            "response_bytes"
+          ]
+        },
+        "reserve_20": {
+          "contrary_groups": 1,
+          "lexical_sources": 3,
+          "anchor_retained": true,
+          "response_bytes": 10350,
+          "status": "incomplete_context",
+          "conflict_review": {
+            "status": "coverage_limited",
+            "known_proposed_relations": 1,
+            "returned_proposed_relations": 1,
+            "omitted_proposed_relations": 0,
+            "semantic_conflict_absence_established": false
+          },
+          "limits": [
+            "response_bytes"
+          ]
+        },
+        "anchor_then_relations": {
+          "contrary_groups": 1,
+          "lexical_sources": 3,
+          "anchor_retained": true,
+          "response_bytes": 10361,
+          "status": "incomplete_context",
+          "conflict_review": {
+            "status": "coverage_limited",
+            "known_proposed_relations": 1,
+            "returned_proposed_relations": 1,
+            "omitted_proposed_relations": 0,
+            "semantic_conflict_absence_established": false
+          },
+          "limits": [
+            "response_bytes"
+          ]
+        }
+      }
+    },
+    {
+      "case": {
+        "name": "long_quotes",
+        "lexical": 10,
+        "sources": 8,
+        "budget": 16384,
+        "contrary": 1,
+        "long": true
+      },
+      "results": {
+        "lexical_first": {
+          "contrary_groups": 0,
+          "lexical_sources": 6,
+          "anchor_retained": true,
+          "response_bytes": 15306,
+          "status": "incomplete_context",
+          "conflict_review": {
+            "status": "known_relations_omitted",
+            "known_proposed_relations": 1,
+            "returned_proposed_relations": 0,
+            "omitted_proposed_relations": 1,
+            "semantic_conflict_absence_established": false
+          },
+          "limits": [
+            "contrary_relations",
+            "response_bytes"
+          ]
+        },
+        "reserve_20": {
+          "contrary_groups": 0,
+          "lexical_sources": 6,
+          "anchor_retained": true,
+          "response_bytes": 15303,
+          "status": "incomplete_context",
+          "conflict_review": {
+            "status": "known_relations_omitted",
+            "known_proposed_relations": 1,
+            "returned_proposed_relations": 0,
+            "omitted_proposed_relations": 1,
+            "semantic_conflict_absence_established": false
+          },
+          "limits": [
+            "contrary_relations",
+            "response_bytes"
+          ]
+        },
+        "anchor_then_relations": {
+          "contrary_groups": 1,
+          "lexical_sources": 3,
+          "anchor_retained": true,
+          "response_bytes": 13161,
+          "status": "incomplete_context",
+          "conflict_review": {
+            "status": "coverage_limited",
+            "known_proposed_relations": 1,
+            "returned_proposed_relations": 1,
+            "omitted_proposed_relations": 0,
+            "semantic_conflict_absence_established": false
+          },
+          "limits": [
+            "response_bytes"
+          ]
+        }
+      }
+    },
+    {
+      "case": {
+        "name": "multi_source_group",
+        "lexical": 10,
+        "sources": 4,
+        "budget": 32768,
+        "contrary": 1,
+        "extra": 2
+      },
+      "results": {
+        "lexical_first": {
+          "contrary_groups": 0,
+          "lexical_sources": 4,
+          "anchor_retained": true,
+          "response_bytes": 10685,
+          "status": "incomplete_context",
+          "conflict_review": {
+            "status": "known_relations_omitted",
+            "known_proposed_relations": 1,
+            "returned_proposed_relations": 0,
+            "omitted_proposed_relations": 1,
+            "semantic_conflict_absence_established": false
+          },
+          "limits": [
+            "contrary_relations",
+            "sources"
+          ]
+        },
+        "reserve_20": {
+          "contrary_groups": 0,
+          "lexical_sources": 4,
+          "anchor_retained": true,
+          "response_bytes": 10682,
+          "status": "incomplete_context",
+          "conflict_review": {
+            "status": "known_relations_omitted",
+            "known_proposed_relations": 1,
+            "returned_proposed_relations": 0,
+            "omitted_proposed_relations": 1,
+            "semantic_conflict_absence_established": false
+          },
+          "limits": [
+            "contrary_relations",
+            "sources"
+          ]
+        },
+        "anchor_then_relations": {
+          "contrary_groups": 1,
+          "lexical_sources": 1,
+          "anchor_retained": true,
+          "response_bytes": 8509,
+          "status": "incomplete_context",
+          "conflict_review": {
+            "status": "coverage_limited",
+            "known_proposed_relations": 1,
+            "returned_proposed_relations": 1,
+            "omitted_proposed_relations": 0,
+            "semantic_conflict_absence_established": false
+          },
+          "limits": [
+            "sources"
+          ]
+        }
+      }
+    },
+    {
+      "case": {
+        "name": "group_cannot_fit",
+        "lexical": 10,
+        "sources": 3,
+        "budget": 32768,
+        "contrary": 1,
+        "extra": 2
+      },
+      "results": {
+        "lexical_first": {
+          "contrary_groups": 0,
+          "lexical_sources": 3,
+          "anchor_retained": true,
+          "response_bytes": 8157,
+          "status": "incomplete_context",
+          "conflict_review": {
+            "status": "known_relations_omitted",
+            "known_proposed_relations": 1,
+            "returned_proposed_relations": 0,
+            "omitted_proposed_relations": 1,
+            "semantic_conflict_absence_established": false
+          },
+          "limits": [
+            "contrary_relations",
+            "sources"
+          ]
+        },
+        "reserve_20": {
+          "contrary_groups": 0,
+          "lexical_sources": 3,
+          "anchor_retained": true,
+          "response_bytes": 8154,
+          "status": "incomplete_context",
+          "conflict_review": {
+            "status": "known_relations_omitted",
+            "known_proposed_relations": 1,
+            "returned_proposed_relations": 0,
+            "omitted_proposed_relations": 1,
+            "semantic_conflict_absence_established": false
+          },
+          "limits": [
+            "contrary_relations",
+            "sources"
+          ]
+        },
+        "anchor_then_relations": {
+          "contrary_groups": 0,
+          "lexical_sources": 3,
+          "anchor_retained": true,
+          "response_bytes": 8165,
+          "status": "incomplete_context",
+          "conflict_review": {
+            "status": "known_relations_omitted",
+            "known_proposed_relations": 1,
+            "returned_proposed_relations": 0,
+            "omitted_proposed_relations": 1,
+            "semantic_conflict_absence_established": false
+          },
+          "limits": [
+            "contrary_relations",
+            "sources"
+          ]
+        }
+      }
+    },
+    {
+      "case": {
+        "name": "several_contrary",
+        "lexical": 12,
+        "sources": 3,
+        "budget": 32768,
+        "contrary": 5
+      },
+      "results": {
+        "lexical_first": {
+          "contrary_groups": 0,
+          "lexical_sources": 3,
+          "anchor_retained": true,
+          "response_bytes": 8157,
+          "status": "incomplete_context",
+          "conflict_review": {
+            "status": "known_relations_omitted",
+            "known_proposed_relations": 5,
+            "returned_proposed_relations": 0,
+            "omitted_proposed_relations": 5,
+            "semantic_conflict_absence_established": false
+          },
+          "limits": [
+            "contrary_relations",
+            "sources"
+          ]
+        },
+        "reserve_20": {
+          "contrary_groups": 1,
+          "lexical_sources": 2,
+          "anchor_retained": true,
+          "response_bytes": 7843,
+          "status": "incomplete_context",
+          "conflict_review": {
+            "status": "known_relations_omitted",
+            "known_proposed_relations": 5,
+            "returned_proposed_relations": 1,
+            "omitted_proposed_relations": 4,
+            "semantic_conflict_absence_established": false
+          },
+          "limits": [
+            "contrary_relations",
+            "sources"
+          ]
+        },
+        "anchor_then_relations": {
+          "contrary_groups": 2,
+          "lexical_sources": 1,
+          "anchor_retained": true,
+          "response_bytes": 7544,
+          "status": "incomplete_context",
+          "conflict_review": {
+            "status": "known_relations_omitted",
+            "known_proposed_relations": 5,
+            "returned_proposed_relations": 2,
+            "omitted_proposed_relations": 3,
+            "semantic_conflict_absence_established": false
+          },
+          "limits": [
+            "contrary_relations",
+            "sources"
+          ]
+        }
+      }
+    },
+    {
+      "case": {
+        "name": "proposed_correction",
+        "lexical": 12,
+        "sources": 2,
+        "budget": 16384,
+        "contrary": 1,
+        "relation": "corrects"
+      },
+      "results": {
+        "lexical_first": {
+          "contrary_groups": 0,
+          "lexical_sources": 2,
+          "anchor_retained": true,
+          "response_bytes": 5630,
+          "status": "incomplete_context",
+          "conflict_review": {
+            "status": "known_relations_omitted",
+            "known_proposed_relations": 1,
+            "returned_proposed_relations": 0,
+            "omitted_proposed_relations": 1,
+            "semantic_conflict_absence_established": false
+          },
+          "limits": [
+            "contrary_relations",
+            "sources"
+          ]
+        },
+        "reserve_20": {
+          "contrary_groups": 1,
+          "lexical_sources": 1,
+          "anchor_retained": true,
+          "response_bytes": 5285,
+          "status": "incomplete_context",
+          "conflict_review": {
+            "status": "coverage_limited",
+            "known_proposed_relations": 1,
+            "returned_proposed_relations": 1,
+            "omitted_proposed_relations": 0,
+            "semantic_conflict_absence_established": false
+          },
+          "limits": [
+            "sources"
+          ]
+        },
+        "anchor_then_relations": {
+          "contrary_groups": 1,
+          "lexical_sources": 1,
+          "anchor_retained": true,
+          "response_bytes": 5296,
+          "status": "incomplete_context",
+          "conflict_review": {
+            "status": "coverage_limited",
+            "known_proposed_relations": 1,
+            "returned_proposed_relations": 1,
+            "omitted_proposed_relations": 0,
+            "semantic_conflict_absence_established": false
+          },
+          "limits": [
+            "sources"
+          ]
+        }
+      }
+    },
+    {
+      "case": {
+        "name": "no_proposed_relation",
+        "lexical": 12,
+        "sources": 3,
+        "budget": 16384,
+        "contrary": 0
+      },
+      "results": {
+        "lexical_first": {
+          "contrary_groups": 0,
+          "lexical_sources": 3,
+          "anchor_retained": true,
+          "response_bytes": 7689,
+          "status": "incomplete_context",
+          "conflict_review": {
+            "status": "coverage_limited",
+            "known_proposed_relations": 0,
+            "returned_proposed_relations": 0,
+            "omitted_proposed_relations": 0,
+            "semantic_conflict_absence_established": false
+          },
+          "limits": [
+            "sources"
+          ]
+        },
+        "reserve_20": {
+          "contrary_groups": 0,
+          "lexical_sources": 3,
+          "anchor_retained": true,
+          "response_bytes": 7686,
+          "status": "incomplete_context",
+          "conflict_review": {
+            "status": "coverage_limited",
+            "known_proposed_relations": 0,
+            "returned_proposed_relations": 0,
+            "omitted_proposed_relations": 0,
+            "semantic_conflict_absence_established": false
+          },
+          "limits": [
+            "sources"
+          ]
+        },
+        "anchor_then_relations": {
+          "contrary_groups": 0,
+          "lexical_sources": 3,
+          "anchor_retained": true,
+          "response_bytes": 7697,
+          "status": "incomplete_context",
+          "conflict_review": {
+            "status": "coverage_limited",
+            "known_proposed_relations": 0,
+            "returned_proposed_relations": 0,
+            "omitted_proposed_relations": 0,
+            "semantic_conflict_absence_established": false
+          },
+          "limits": [
+            "sources"
+          ]
+        }
+      }
+    },
+    {
+      "case": {
+        "name": "all_fit",
+        "lexical": 2,
+        "sources": 12,
+        "budget": 32768,
+        "contrary": 1
+      },
+      "results": {
+        "lexical_first": {
+          "contrary_groups": 1,
+          "lexical_sources": 2,
+          "anchor_retained": true,
+          "response_bytes": 7840,
+          "status": "proposed_conflicts_require_review",
+          "conflict_review": {
+            "status": "proposed_relations_require_review",
+            "known_proposed_relations": 1,
+            "returned_proposed_relations": 1,
+            "omitted_proposed_relations": 0,
+            "semantic_conflict_absence_established": false
+          },
+          "limits": []
+        },
+        "reserve_20": {
+          "contrary_groups": 1,
+          "lexical_sources": 2,
+          "anchor_retained": true,
+          "response_bytes": 7837,
+          "status": "proposed_conflicts_require_review",
+          "conflict_review": {
+            "status": "proposed_relations_require_review",
+            "known_proposed_relations": 1,
+            "returned_proposed_relations": 1,
+            "omitted_proposed_relations": 0,
+            "semantic_conflict_absence_established": false
+          },
+          "limits": []
+        },
+        "anchor_then_relations": {
+          "contrary_groups": 1,
+          "lexical_sources": 2,
+          "anchor_retained": true,
+          "response_bytes": 7848,
+          "status": "proposed_conflicts_require_review",
+          "conflict_review": {
+            "status": "proposed_relations_require_review",
+            "known_proposed_relations": 1,
+            "returned_proposed_relations": 1,
+            "omitted_proposed_relations": 0,
+            "semantic_conflict_absence_established": false
+          },
+          "limits": []
+        }
+      }
+    }
+  ],
+  "claims": {
+    "semantic_accuracy": "not_measured",
+    "relation_labels": "synthetic_unverified_proposals",
+    "comparison": "same discovered evidence; full group dependencies; fixed budgets"
+  },
+  "observed_at": "2026-09-06",
+  "installed_journey": {
+    "checks_passed": 9,
+    "transport": "MCP stdio",
+    "studyloop_runtime_installed": false,
+    "keyword_distractors": 20,
+    "source_limit": 2,
+    "budget_bytes": 8192
+  }
+}
