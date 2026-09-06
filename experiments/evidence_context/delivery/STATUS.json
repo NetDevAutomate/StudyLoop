@@ -1,23 +1,23 @@
 {
   "goal": "active",
-  "previous_goal_turn": "progress: Stage22 native source capture, atomic rendering links, capture health and independently runnable lesson implemented and validated; full production goal remains active",
-  "current_stage": "22 native capture complete as increment; bounded retrieval, complete learner ownership, scoped sync/lifecycle and installed release acceptance remain",
+  "previous_goal_turn": "progress: Stage23 bounded CLI/MCP context, installed standalone journey and real citation probe implemented and validated; full P01-P15 production goal remains active",
+  "current_stage": "23 agent context interface complete as increment; contrary-evidence selection experiment, complete learner ownership, scoped sync/lifecycle and installed StudyLoop release acceptance remain",
   "requirements": {
     "P01": "partial: additive v31-v34 schema; immutable sources/observations/native links/capture receipts and atomic import tested; installed upgrade/restore audit remains",
     "P02": "partial: actual four-harness exporters integrated and eight local real archives imported; Codex Desktop 0.153.0 observed; all native formats, other desktop coverage and installed end-to-end capture remain",
-    "P03": "partial: native envelopes now supply code-owned origins and typed process exits; source machine/revision remain unknown without native evidence; public decision contract remains",
-    "P04": "partial: source/citation store plus observation input manifests, scoped progress readers and authority labels; bounded public rich retrieval and complete temporal/applicability integration remain",
-    "P05": "partial: concurrent report branches, explicit supersession, conflict projection and no retired-head reactivation tested; semantic decision sufficiency remains",
-    "P06": "partial: applied scope policy classifies native imports; progress consumers scoped; teachback, study_sessions, bridges and other learner ownership remain",
+    "P03": "partial: public CLI/MCP accepts exact citations and unverified proposals only; native origin/scope/generator cannot be overwritten; native/provenance adversarial checks pass; complete release audit remains",
+    "P04": "partial: installed standalone CLI and real MCP stdio retrieve scoped cross-project/harness/machine fixtures; 60 real-source citations verified within byte bounds; contrary-evidence selection under pressure and semantic usefulness evaluation remain",
+    "P05": "partial: proposed relationships surface contrary claims; explicit execution-contract decisions distinguish conflicts, unknown/inapplicable metadata and missing coverage; general advice arbitration and accepted corrections remain",
+    "P06": "partial: new CLI/MCP direct sources, proposals, all relation endpoints and health are scoped; long-running MCP reclassification and mid-write config drift tested; teachback, study_sessions, bridges and other learner ownership remain",
     "P07": "not yet proven",
     "P08": "partial: tombstones block native reimport without blocking other batch sessions; interrupted capture rolls back; full source purge, scoped sync, restore and all derived indexes remain",
-    "P09": "partial: body-free capture receipts and read-only session-context health show attempts and native backfill gaps; hook registration/runtime, complete archive census and doctor integration remain",
-    "P10": "not yet proven",
+    "P09": "partial: operator native capture receipts plus scope-filtered health accompany context; hook runtime/registration, archive census and doctor integration remain",
+    "P10": "partial: standalone wheel installed in separate environment, actual session-context and MCP stdio pass without StudyLoop import; shared hook/install ownership and full package acceptance remain",
     "P11": "not yet proven",
     "P12": "not yet proven",
     "P13": "partial: real StudyLoop progress writes/read projections, CLI/MCP consumer tests and subprocess lessons pass; installed agent startup with rich canonical context remains",
-    "P14": "stages1-22 independently runnable; Stage22 guide, measured real-data aggregates and two-round council arbitration recorded; Stage8 exercise unchanged",
-    "P15": "partial:1237 session-tools and255 experiment tests pass,1 optional skip;45 StudyLoop compatibility and44 final CLI/native checks pass; installed release acceptance remains"
+    "P14": "stages1-23 independently runnable with pinned commits; Stage23 guide, interface reference, installed lesson, local aggregate results and two council rounds recorded; Stage8 exercise unchanged",
+    "P15": "partial:1264 session-tools tests pass;300 experiment/StudyLoop compatibility passes with1 optional skip plus passing lesson retest; commit hooks including workspace types/security passed; full installed StudyLoop release acceptance remains"
   },
   "completed_checkpoints": {
     "stage16": "6c736c5",
@@ -26,33 +26,36 @@
     "stage19": "3aa1b8a",
     "stage20": "36189ff",
     "stage21": "918d18f",
-    "stage22": "3acbc6f"
+    "stage22": "3acbc6f",
+    "stage23": "1932c71"
   },
   "current_findings": [
-    "Native capture retains conversation blocks, tool results and invocations separately. Only typed Codex terminal integer exit records get process_exit; no source text proves validation.",
-    "Local probe:8 sessions,1898 native records,577 legacy messages,872 generic tool results,162 process exits;1898 stored hashes match. Both sampled Codex archives identify Codex Desktop0.153.0.",
-    "Revision and native origin machine remain unknown for all sampled records. Capture machine is separate; no semantic accuracy or full-coverage claim.",
-    "Legacy rows, native evidence and rendering links commit atomically. Rendering links mean rendered-from, not claim-specific support. Interrupted pending writes now roll back while receipt remains incomplete.",
-    "Native fingerprint upgrades backfill unchanged sources across all four actual exporters. Tombstoned sessions are excluded within the batch transaction.",
-    "Two council rounds each returned3 provider buckets Meta/Qwen/Mistral; Grok timed out in round1. Accepted missing-proof concerns; rejected claims contradicted by supplied type checks and metadata rules.",
-    "No owner DB/config/hooks changed. Full production contract remains active."
+    "Five memory CLI/MCP operations share one scoped versioned contract; full compact UTF8 JSON budget includes metadata, citations, proposed relationships, explanations and health; MCP transport wrapping excluded.",
+    "Standalone wheel and actual stdio journey passed8 acceptance checks without StudyLoop installed. Cross-project/harness/machine fixture sources retain exact citations and scope; live reclassification revokes dependencies.",
+    "Local six-query probe over8 real native archives:60 returned sources,60 unique,60 verified citations;1898 native body hashes valid;all source files unchanged. Queries took0.077-0.099s including Python startup.",
+    "Every query reached a retrieval bound;none of60 selected records supplied revision. Mechanical integrity does not measure semantic usefulness or recall.",
+    "Lexical-first source packing can crowd out a contrary relation. Both3-provider council rounds returned Meta/Qwen/Mistral; compare evidence allocations next, do not adopt unmeasured20percent reserve as fact.",
+    "Explicit recorded-check decisions retain validation_of_change:not_established. Unknown/mutable revision, contrary outcomes and truncated coverage cannot establish complete requested checks.",
+    "No owner DB/config/hooks changed; complete P01-P15 delivery objective remains active."
   ],
   "next_actions": [
-    "Expose bounded rich source/decision CLI and MCP with scoped access, exact support, conflicts, provenance, revision/target applicability and honest health context.",
-    "Complete ownership/projection for remaining StudyLoop learner tables and assessment/source time semantics.",
-    "Implement versioned per-peer scoped sync and full managed forgetting/reimport/restore/index lifecycle; local tombstone replay tests are insufficient.",
-    "Finish selectable install/doctor/skills, all native and desktop capability checks, varied/large backfill tests and installed P01-P15 release acceptance."
+    "Measure lexical-first versus contrary-evidence allocation under fixed byte/source budgets; surface incomplete conflict coverage clearly without pretending semantic completeness.",
+    "Complete ownership/projection for remaining StudyLoop learner tables and general advice/correction decision support.",
+    "Implement versioned per-peer scoped sync and full managed forgetting/reimport/restore/index lifecycle; existing local tombstone tests are insufficient.",
+    "Finish selectable shared install/doctor/skills, native/desktop capability checks, installed StudyLoop startup and full P01-P15 release acceptance."
   ],
   "verification": {
-    "package_tests": "1237 passed",
-    "experiment_tests": "255 passed,1 optional dependency skip",
-    "workspace_pyright": "0 errors;3acbc6f workspace src+tests commit hook passed",
-    "commit_hooks": "3acbc6f passed all hooks including formatting,secrets scanning,Bandit and workspace pyright",
-    "browser": "Stage22 five sections, expansion, viewport fits and no console errors",
+    "package_tests": "1264 passed",
+    "experiment_tests": "300 combined experiment/StudyLoop compatibility passes plus1 optional skip; lesson retest1 passed after editable-script fix (256 experiment passes and45 focused StudyLoop passes in total)",
+    "workspace_pyright": "0 errors;1932c71 workspace src+tests hook passed",
+    "commit_hooks": "1932c71 passed formatting,lint,secrets scanning,Bandit and workspace pyright",
+    "browser": "Stage23 six sections, expansion, viewport fits and no console errors",
     "studyloop_tests": "3778 passed,4 skipped,704 deselected; final additional transaction test and metadata changes covered by30 focused checks",
     "focused_consumer_tests": "45 StudyLoop consumer/extractor/CLI-contract passes;44 final native/export-CLI passes",
-    "artifact": "studyloop-private/reviews/2026-09-06-stage22-native-capture/demo-final/walkthrough.html",
-    "native_probe": "8 local real sessions imported without errors;1898/1898 body hashes match;source files unchanged"
+    "artifact": "studyloop-private/reviews/2026-09-06-stage23-agent-context/demo-installed/walkthrough.html",
+    "native_probe": "8 local real sessions imported without errors;1898/1898 body hashes match;source files unchanged",
+    "installed_component": "Separate wheel-only environment:8 real CLI/MCP stdio journey checks pass;site-packages verified;StudyLoop absent",
+    "real_retrieval": "6 CLI queries;60 exact citations and source hashes verified;all<=32768bytes;no semantic relevance claim"
   },
   "operational_notice": "A secrets test printed an ambient API key in private failure output; tests now isolate fallback variables. Owner should rotate that key; no value saved in this status or learning artifacts."
 }

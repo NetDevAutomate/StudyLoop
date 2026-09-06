@@ -29,6 +29,7 @@ no remote publication or backup is implied.
 | 20 — StudyLoop consumers | Do scoped sources remain scoped in resume, extraction and history? | `36189ff` | `consumer_scope/runner.py`; GUIDE.md and council audit |
 | 21 — Attributable assessments | Can each progress report retain its input, scope and correction history? | `918d18f` | `learning_observations/runner.py`; GUIDE.md and council audit |
 | 22 — Native capture | Which authority can the actual session envelopes establish? | `3acbc6f` | `native_capture/runner.py`; GUIDE.md, observed aggregates and council audit |
+| 23 — Agent context interface | Can installed CLI/MCP expose bounded sources and honest execution checks? | `1932c71` | `agent_context/runner.py`; GUIDE.md, installed lesson and council audit |
 
 Stage 3 uses its own lifecycle adapter and database schema. It does not modify the
 stage 1 evidence store, and does not require stage 1 demo output. Stage 2 uses
@@ -525,15 +526,47 @@ See [native_capture/GUIDE.md](native_capture/GUIDE.md),
 [native_capture/COUNCIL-DECISION.md](native_capture/COUNCIL-DECISION.md) and
 [native_capture/OBSERVED-RESULTS.json](native_capture/OBSERVED-RESULTS.json).
 
+## Stage 23 commands
+
+```sh
+uv run python -m experiments.evidence_context.agent_context.runner --output /tmp/evidence-stage-23
+open /tmp/evidence-stage-23/walkthrough.html
+uv run pytest packages/agent-session-tools/tests/test_context_agent_api.py experiments/evidence_context/tests/test_agent_context_lesson.py -q
+```
+
+Checkpoint `1932c71` exposes `session-context` search/source/propose/relate/decide
+and matching `memory_*` MCP tools. The six-view lesson tests real CLI and MCP
+stdio, cross-project/harness/machine fixture context, source citations, contrary
+execution outcomes, changed revisions, budgets and live scope reclassification.
+The guide includes a separate wheel-only runtime command; its eight acceptance
+checks passed without StudyLoop installed.
+
+Validation: 1,264 session-tools tests passed; 300 experiment/StudyLoop compatibility
+checks passed with one optional skip, followed by the passing lesson test after
+fixing its stale editable-script assumption. Workspace commit hooks passed lint,
+types, secrets checks and Bandit. Browser inspection verified all six sections,
+working expansion, viewport fit and no console errors. Six local CLI searches
+verified all 60 returned citations, within 32KiB. Every query hit a bound and no
+selected source supplied revision metadata. This is mechanical retrieval proof,
+not human-graded answer quality or production acceptance.
+
+Both council rounds returned Meta/Qwen/Mistral responses. Their strongest shared
+concern is contrary evidence being crowded out by lexical matches. The proposed
+20% reserve is unmeasured; compare allocation policies next while retaining the
+full delivery contract. See [agent_context/GUIDE.md](agent_context/GUIDE.md) and
+[agent_context/COUNCIL-DECISION.md](agent_context/COUNCIL-DECISION.md).
+
 ## Production delivery direction
 
 The user has now authorized the full implementation and StudyLoop integration while
 preserving these stages. [delivery/GOAL.md](delivery/GOAL.md) records the complete shipping
 requirements; [delivery/ARCHITECTURE.md](delivery/ARCHITECTURE.md) explains the decisions.
 These checkpoints do not satisfy that goal. SQLite remains canonical. The internal
-source/citation boundary and native capture now exist; next complete bounded public
-retrieval/decisions, remaining learner ownership, scoped sync, lifecycle and
-installed capture/doctor acceptance.
+source/citation boundary, native capture and bounded public interface now exist.
+Next measure contrary-evidence selection under pressure, then complete remaining
+learner ownership, scoped sync/lifecycle, shared setup and installed StudyLoop
+startup/capture/doctor acceptance. A source-grounded execution check does not
+finish general advice arbitration.
 
 The earlier experiment-only checkpoints retain their original scope and limitations.
 The Stage8 exercise is unchanged.
