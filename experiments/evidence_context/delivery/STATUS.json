@@ -1,7 +1,7 @@
 {
   "goal": "active",
   "previous_goal_turn": "progress: Stage31 bounded annotation pages and schema40 ordered index implemented and committed; 1646 memory/experiment tests, installed eight-check journey and upgrade pass; full production goal remains active",
-  "current_stage": "31 bounded history increment complete; scoped transport/lifecycle is next",
+  "current_stage": "31 bounded history checkpoint complete; scoped transport design selected after three-provider council; implementation and lifecycle acceptance remain",
   "requirements": {
     "P01": "partial: transactional v31-v40 migrations; installed schema39-to40 copy preserves34rows across57old tables; failure/retry tested; managed restore remains",
     "P02": "partial: actual four-harness exporters integrated and eight local real archives imported; Codex Desktop 0.153.0 observed; all native formats, other desktop coverage and installed end-to-end capture remain",
@@ -43,10 +43,11 @@
     "Full report rows and legacy bodies are sized before materialization; predecessors/sources/learner-record fanout capped at256. VM limit1million fails with no context, excludes IO/Python and final monitor work. Counts still grow with history.",
     "Installed10/100/1000/10000version first-page medians2.514/4.680/5.373/12.738ms versus full cached control1.609/5.114/37.778/400.020ms. The first page returns33versions atscale, so workloads differ; no semantic or engine ranking.",
     "Six council calls acrossMeta/Qwen/Mistral informed design/review. Unsupported missing-policy/fanout claims and production approval were rejected; metadata/legacy preflight and exact policy-staleness regression added.",
-    "Legacy SQL sync still exports global learner tables and cannot carry modern owned observations/retirement state. Versioned scoped transport must replace that path before production approval."
+    "Legacy SQL sync still exports global learner tables and cannot carry modern owned observations/retirement state. Versioned scoped transport must replace that path before production approval.",
+    "Transport design council3/3providers selected a structured protocol. UUIDs do not resolve mutable edits; old tombstones lack historical scope/delivery metadata. These remain implementation/test obligations, not assumed solved by the design."
   ],
   "next_actions": [
-    "Implement per-peer scoped transport plus managed forget/reimport/restore/index lifecycle; legacy SQL sync does not carry new observation/ownership tables. Maintain access generations and permanent retirement semantics.",
+    "Implement SCOPED-TRANSPORT-DESIGN.md: versioned peer negotiation and scoped structured data path; guard legacy SQL/whole-DB fallback; test learner identity mapping separately from mutable conflicts and durable retirement routing",
     "Implement explicit config/content/plan/session file ownership before enabling modern file-derived graph imports, then protect live SSE/WebSocket/IPC and full installed startup.",
     "Finish shared selectable installer/doctor/skills, four native and desktop capture checks, and fullP01-P15releaseaudit; preserve practice timing/cross-project assessment audit."
   ],
