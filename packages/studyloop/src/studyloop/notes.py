@@ -14,10 +14,9 @@ Three design decisions worth knowing:
   :func:`studyloop.markdown_notes.normalise_markdown` on every write, so the DB
   only ever holds clean Markdown — no HTML, no bespoke format. A note written
   in a body-double session still opens in Obsidian years later.
-* **``kind`` is a contract with the agent, not decoration.** ``plan`` rows are
-  what a mentor turns into a structured study plan; ``assessment`` / ``struggle``
-  / ``win`` rows plus ``confidence`` are what it reads to judge progress.
-  Classifying at capture time means the agent never has to guess from prose.
+* **``kind`` records the author's classification.** ``plan`` rows can seed a
+  study plan; ``assessment`` / ``struggle`` / ``win`` and ``confidence`` describe
+  reported progress. These labels do not independently validate understanding.
 * **Deletion is soft by default.** ``status='dismissed'`` keeps the row so an
   accidental clear is undoable, exactly like the parking lot. ``hard=True``
   exists for a genuine purge.
@@ -30,7 +29,10 @@ import re
 import sqlite3
 from typing import Any
 
-from studyloop.db import SCHEMA_LOCK, connect_db
+from agent_session_tools.context import records
+from agent_session_tools.context.learner_schema import NOTES_DDL
+from studyloop.db import SCHEMA_LOCK
+from studyloop.history._connection import owned_write
 from studyloop.markdown_notes import normalise_markdown, summarise_markdown
 from studyloop.settings import get_db_path
 
@@ -61,113 +63,24 @@ NOTE_KINDS: tuple[str, ...] = (
     "struggle",
 )
 
-_TABLE_DDL = """
-CREATE TABLE IF NOT EXISTS study_notes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    study_session_id TEXT REFERENCES study_sessions(id) ON DELETE SET NULL,
-    session_id TEXT REFERENCES sessions(id) ON DELETE SET NULL,
-    title TEXT NOT NULL,
-    body TEXT NOT NULL DEFAULT '',
-    topic TEXT,
-    kind TEXT NOT NULL DEFAULT 'note'
-        CHECK(kind IN ('note', 'question', 'plan', 'assessment', 'win', 'struggle')),
-    confidence INTEGER,
-    origin TEXT NOT NULL DEFAULT 'body-double',
-    status TEXT NOT NULL DEFAULT 'active'
-        CHECK(status IN ('active', 'dismissed')),
-    created_by TEXT NOT NULL DEFAULT 'web',
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT
-)
-"""
+_TABLE_DDL = NOTES_DDL
 
 _EDITABLE = ("title", "body", "topic", "kind", "confidence")
 
 
 def _connect() -> sqlite3.Connection:
-    """Open the session DB with ``study_notes`` guaranteed to exist.
-
-    Mirrors :func:`studyloop.parking._connect` deliberately, including its
-    self-healing CREATE: ``PRAGMA user_version`` can run ahead of the real
-    schema when a migration partially applies, and when that happens the
-    migration system *skips* the CREATE because it believes it already ran.
-    Checking for the table directly is the only reliable recovery.
-    """
+    """Use the memory-owned migration path; never swallow schema failures."""
     with SCHEMA_LOCK:
-        conn = connect_db(get_db_path(), row_factory=True)
-
-        # Base schema first. On a DB whose first writer is the notes panel there is
-        # no `sessions`/`study_sessions` table yet, so the FK targets below would
-        # not exist and every INSERT would fail under PRAGMA foreign_keys=ON.
-        #
-        # This used to import `ensure_schema` from studyloop.history._connection,
-        # which does not exist — the ImportError was swallowed by the except, so
-        # the healing never ran. init_db applies the canonical schema.sql and
-        # runs migrations; reconnect after, since it returns its own connection.
-        try:
-            conn.execute("SELECT 1 FROM sessions LIMIT 0")
-        except sqlite3.OperationalError:
-            logger.info("Initialising base session schema for study_notes")
-            conn.close()
-            try:
-                from agent_session_tools.export_sessions import init_db
-
-                init_db(str(get_db_path())).close()
-            except Exception:
-                logger.warning("Base schema init failed for study_notes", exc_info=True)
-            conn = connect_db(get_db_path(), row_factory=True)
-
-        try:
-            conn.execute("SELECT 1 FROM study_notes LIMIT 0")
-        except sqlite3.OperationalError:
-            logger.info("Creating study_notes table directly (migration drift recovery)")
-            conn.execute(_TABLE_DDL)
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_study_notes_status "
-                "ON study_notes(status, created_at DESC)"
-            )
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_study_notes_topic ON study_notes(topic)")
-            conn.commit()
-
-    return conn
+        return records.connect(get_db_path())
 
 
 def ensure_schema() -> None:
-    """Build the notes schema now, so no request has to do it later.
-
-    ``_connect`` probes for ``study_notes`` and creates it plus two indexes when
-    absent, under ``SCHEMA_LOCK``. Every notes route reaches it, and
-    ``GET /api/body-double/focus`` reaches it alongside the parking and history
-    bootstraps in a single request. Calling this once at startup means the probe
-    finds its table already there.
-    """
+    """Apply canonical migrations at startup; schema failures remain visible."""
     _connect().close()
 
 
-def _ensure_reference_rows(
-    conn: sqlite3.Connection,
-    *,
-    study_session_id: str | None,
-    session_id: str | None,
-) -> None:
-    """Create minimal FK parent rows for externally supplied session IDs.
-
-    The web layer knows a ``study_session_id`` before the history layer has
-    necessarily written its row; without this a note taken in the first seconds
-    of a session would be rejected by the foreign key.
-    """
-    if session_id:
-        conn.execute(
-            """INSERT OR IGNORE INTO sessions (id, source, created_at, updated_at)
-               VALUES (?, 'studyloop', datetime('now'), datetime('now'))""",
-            (session_id,),
-        )
-    if study_session_id:
-        conn.execute(
-            """INSERT OR IGNORE INTO study_sessions (id, started_at)
-               VALUES (?, datetime('now'))""",
-            (study_session_id,),
-        )
+def _ensure_reference_rows(conn, *, study_session_id, session_id):
+    records.ensure_study_reference(conn, study_session_id=study_session_id, session_id=session_id)
 
 
 def _row_to_note(row: sqlite3.Row) -> dict[str, Any]:
@@ -216,26 +129,34 @@ def add_note(
     clean_body = normalise_markdown(body or "")
     conn = _connect()
     try:
-        _ensure_reference_rows(conn, study_session_id=study_session_id, session_id=session_id)
-        cursor = conn.execute(
-            """INSERT INTO study_notes
-                   (study_session_id, session_id, title, body, topic, kind,
-                    confidence, origin, created_by)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (
-                study_session_id,
-                session_id,
-                title,
-                clean_body,
-                topic,
-                kind,
-                confidence,
-                origin,
-                created_by,
-            ),
-        )
-        conn.commit()
-        return int(cursor.lastrowid) if cursor.lastrowid else None
+        with owned_write(conn):
+            _ensure_reference_rows(conn, study_session_id=study_session_id, session_id=session_id)
+            cursor = conn.execute(
+                """INSERT INTO study_notes
+                       (study_session_id, session_id, title, body, topic, kind,
+                        confidence, origin, created_by)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    study_session_id,
+                    session_id,
+                    title,
+                    clean_body,
+                    topic,
+                    kind,
+                    confidence,
+                    origin,
+                    created_by,
+                ),
+            )
+            assert cursor.lastrowid is not None
+            records.bind(
+                conn,
+                "study_notes",
+                cursor.lastrowid,
+                session_id=session_id,
+                study_session_id=study_session_id,
+            )
+            return int(cursor.lastrowid)
     except sqlite3.Error:
         logger.exception("Could not store study note")
         return None
@@ -270,9 +191,12 @@ def list_notes(
     if study_session_id:
         clauses.append("study_session_id = ?")
         params.append(study_session_id)
-    where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
     conn = _connect()
     try:
+        scope_clause, scope_params = records.visible_sql(conn, "study_notes", "study_notes.id")
+        clauses.insert(0, scope_clause)
+        params = [*scope_params, *params]
+        where = "WHERE " + " AND ".join(clauses)
         # `id DESC` is not decoration: `created_at` has second granularity, so
         # notes written in the same second would otherwise come back in an
         # arbitrary order and "newest first" would not be stable between reads.
@@ -292,30 +216,28 @@ def list_notes(
 
 
 def count_notes(*, status: str = "active") -> int:
-    """Count notes with the given status (``'all'`` counts everything)."""
+    """Count only permitted notes, including soft-cleared notes when requested."""
     conn = _connect()
     try:
-        if status == "all":
-            row = conn.execute("SELECT COUNT(*) AS n FROM study_notes").fetchone()
-        else:
-            row = conn.execute(
-                "SELECT COUNT(*) AS n FROM study_notes WHERE status = ?", (status,)
-            ).fetchone()
-        return int(row["n"]) if row else 0
-    except sqlite3.Error:
-        return 0
+        clause, params = records.visible_sql(conn, "study_notes", "study_notes.id")
+        if status != "all":
+            clause += " AND status=?"
+            params.append(status)
+        return conn.execute("SELECT count(*) FROM study_notes WHERE " + clause, params).fetchone()[
+            0
+        ]
     finally:
         conn.close()
 
 
 def get_note(note_id: int) -> dict[str, Any] | None:
-    """Return one note by id, or ``None`` when it does not exist."""
     conn = _connect()
     try:
-        row = conn.execute("SELECT * FROM study_notes WHERE id = ?", (note_id,)).fetchone()
+        clause, params = records.visible_sql(conn, "study_notes", "study_notes.id")
+        row = conn.execute(
+            "SELECT * FROM study_notes WHERE id=? AND " + clause, [note_id, *params]
+        ).fetchone()
         return _row_to_note(row) if row else None
-    except sqlite3.Error:
-        return None
     finally:
         conn.close()
 
@@ -352,15 +274,17 @@ def update_note(note_id: int, **fields: Any) -> dict[str, Any] | None:
     assignments = ", ".join(f"{column} = ?" for column in updates)
     conn = _connect()
     try:
-        cursor = conn.execute(
-            f"UPDATE study_notes SET {assignments}, updated_at = datetime('now') WHERE id = ?",
-            (*updates.values(), note_id),
-        )
-        conn.commit()
-        if cursor.rowcount == 0:
-            return None
-        row = conn.execute("SELECT * FROM study_notes WHERE id = ?", (note_id,)).fetchone()
-        return _row_to_note(row) if row else None
+        with owned_write(conn):
+            if not records.is_visible(conn, "study_notes", note_id):
+                return None
+            cursor = conn.execute(
+                f"UPDATE study_notes SET {assignments}, updated_at = datetime('now') WHERE id = ?",
+                (*updates.values(), note_id),
+            )
+            if cursor.rowcount == 0:
+                return None
+            row = conn.execute("SELECT * FROM study_notes WHERE id = ?", (note_id,)).fetchone()
+            return _row_to_note(row) if row else None
     except sqlite3.Error:
         logger.exception("Could not update study note %s", note_id)
         return None
@@ -369,70 +293,54 @@ def update_note(note_id: int, **fields: Any) -> dict[str, Any] | None:
 
 
 def clear_notes(ids: list[int], *, hard: bool = False) -> int:
-    """Clear the given notes. Soft by default (recoverable), hard on request.
-
-    Returns the number of rows actually affected — which is how the caller
-    learns that an id was already gone.
-    """
     if not ids:
         return 0
-    placeholders = ", ".join("?" for _ in ids)
     conn = _connect()
     try:
-        if hard:
-            cursor = conn.execute(
-                f"DELETE FROM study_notes WHERE id IN ({placeholders})",
-                tuple(ids),
+        with owned_write(conn):
+            clause, params = records.visible_sql(conn, "study_notes", "study_notes.id")
+            verb = (
+                "DELETE FROM study_notes"
+                if hard
+                else "UPDATE study_notes SET status='dismissed',updated_at=datetime('now')"
             )
-        else:
-            cursor = conn.execute(
-                f"UPDATE study_notes SET status = 'dismissed', updated_at = datetime('now') "
-                f"WHERE id IN ({placeholders}) AND status = 'active'",
-                tuple(ids),
-            )
-        conn.commit()
-        return int(cursor.rowcount or 0)
-    except sqlite3.Error:
-        logger.exception("Could not clear study notes")
-        return 0
+            clause += " AND id IN (" + ",".join("?" for _ in ids) + ")"
+            if not hard:
+                clause += " AND status='active'"
+            return conn.execute(verb + " WHERE " + clause, [*params, *ids]).rowcount
     finally:
         conn.close()
 
 
 def clear_all_notes(*, hard: bool = False) -> int:
-    """Clear every active note. Soft by default so "clear all" stays undoable."""
     conn = _connect()
     try:
-        if hard:
-            cursor = conn.execute("DELETE FROM study_notes")
-        else:
-            cursor = conn.execute(
-                "UPDATE study_notes SET status = 'dismissed', updated_at = datetime('now') "
-                "WHERE status = 'active'"
+        with owned_write(conn):
+            clause, params = records.visible_sql(conn, "study_notes", "study_notes.id")
+            verb = (
+                "DELETE FROM study_notes"
+                if hard
+                else "UPDATE study_notes SET status='dismissed',updated_at=datetime('now')"
             )
-        conn.commit()
-        return int(cursor.rowcount or 0)
-    except sqlite3.Error:
-        logger.exception("Could not clear all study notes")
-        return 0
+            if not hard:
+                clause += " AND status='active'"
+            return conn.execute(verb + " WHERE " + clause, params).rowcount
     finally:
         conn.close()
 
 
 def restore_note(note_id: int) -> bool:
-    """Undo a soft clear for one note."""
     conn = _connect()
     try:
-        cursor = conn.execute(
-            "UPDATE study_notes SET status = 'active', updated_at = datetime('now') "
-            "WHERE id = ? AND status = 'dismissed'",
-            (note_id,),
-        )
-        conn.commit()
-        return bool(cursor.rowcount)
-    except sqlite3.Error:
-        logger.exception("Could not restore study note %s", note_id)
-        return False
+        with owned_write(conn):
+            clause, params = records.visible_sql(conn, "study_notes", "study_notes.id")
+            return bool(
+                conn.execute(
+                    "UPDATE study_notes SET status='active',updated_at=datetime('now') "
+                    "WHERE id=? AND status='dismissed' AND " + clause,
+                    [note_id, *params],
+                ).rowcount
+            )
     finally:
         conn.close()
 

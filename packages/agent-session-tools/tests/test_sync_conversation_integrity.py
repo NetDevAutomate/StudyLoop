@@ -325,7 +325,10 @@ def test_parked_natural_key_merges_preserving_target_identity(
             "UPDATE parked_topics SET id=99,sync_key='target-key',context='older context',updated_at='2026-01-01'"
         )
         if legacy:
-            target.execute("DROP INDEX uix_parked_topics_question_source_pending")
+            target.execute(
+                "DROP INDEX IF EXISTS uix_parked_topics_question_source_pending"
+            )
+            target.execute("DROP INDEX IF EXISTS uix_parked_topics_owned_pending")
             target.execute(
                 "CREATE UNIQUE INDEX uix_parked_topics_session_question ON parked_topics(study_session_id,question,source)"
             )

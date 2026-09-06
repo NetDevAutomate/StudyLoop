@@ -7,6 +7,7 @@ from importlib.resources import files
 import pytest
 
 from agent_session_tools.context import records
+from agent_session_tools.context.record_schema import TABLES as V36_TABLES
 from agent_session_tools.context.scope import ScopeError, ScopePolicy, apply_policy
 
 
@@ -70,7 +71,7 @@ def insert(conn, table, *, session_id=None, bind=True):
         raise
 
 
-@pytest.mark.parametrize("table", records.TABLES)
+@pytest.mark.parametrize("table", V36_TABLES)
 def test_project_ownership_follows_reclassification_and_never_guesses_legacy(
     owned_db, table
 ):
@@ -87,7 +88,7 @@ def test_project_ownership_follows_reclassification_and_never_guesses_legacy(
     assert not records.is_visible(conn, table, identity)
 
 
-@pytest.mark.parametrize("table", records.TABLES)
+@pytest.mark.parametrize("table", V36_TABLES)
 def test_native_session_owner_follows_assignment_and_purges_body_on_delete(
     owned_db, table
 ):
@@ -113,7 +114,7 @@ def test_native_session_owner_follows_assignment_and_purges_body_on_delete(
     assert conn.execute("PRAGMA foreign_key_check").fetchall() == []
 
 
-@pytest.mark.parametrize("table", records.TABLES)
+@pytest.mark.parametrize("table", V36_TABLES)
 def test_record_delete_removes_owner_without_recursion(owned_db, table):
     conn, _, _, _, _ = owned_db
     identity = insert(conn, table)

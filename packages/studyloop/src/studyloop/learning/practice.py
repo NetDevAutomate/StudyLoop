@@ -6,12 +6,14 @@ import json
 import subprocess
 import time
 import uuid
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
 
+from agent_session_tools.context import records
+from agent_session_tools.context.scope import ScopeError, active_policy
 from studyloop.content.schemas import PracticeDeck, PracticeTask
-from studyloop.history import _connection, record_progress
+from studyloop.history import _connection, observations
 
 
 @dataclass(frozen=True)
@@ -125,40 +127,66 @@ def _verification_timeout(task: PracticeTask, override: int | None) -> int:
     return 60
 
 
-def _record_attempt(result: PracticeVerificationResult, workdir: Path) -> None:
+def _record_attempt(
+    result: PracticeVerificationResult,
+    workdir: Path,
+    *,
+    topic: str,
+    concept: str,
+    policy_digest: str,
+    scope: str,
+) -> bool:
     conn = _connection._connect()
     if not conn:
-        return
+        return False
     try:
-        conn.execute(
-            """
+        identity = str(uuid.uuid4())
+        with _connection.owned_write(conn):
+            policy = active_policy()
+            if policy.digest != policy_digest or policy.request_scope().value != scope:
+                raise ScopeError("Context policy changed during practice; attempt not recorded")
+            conn.execute(
+                """
             INSERT INTO practice_attempts
                 (id, practice_path, task_index, task_prompt, verification_kind,
                  passed, notes, command, exit_code, stdout, stderr,
                  duration_seconds, expected_artifacts, missing_artifacts, workdir,
-                 created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 created_at,topic,concept)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (
-                str(uuid.uuid4()),
-                result.practice_path,
-                result.task_index,
-                result.task_prompt,
-                result.verification_kind,
-                1 if result.passed else 0,
-                result.notes,
-                result.command,
-                result.exit_code,
-                result.stdout[-8000:],
-                result.stderr[-8000:],
-                result.duration_seconds,
-                json.dumps(result.expected_artifacts or []),
-                json.dumps(result.missing_artifacts or []),
-                str(workdir),
-                datetime.now(UTC).isoformat(),
-            ),
-        )
-        conn.commit()
+                (
+                    identity,
+                    result.practice_path,
+                    result.task_index,
+                    result.task_prompt,
+                    result.verification_kind,
+                    1 if result.passed else 0,
+                    result.notes,
+                    result.command,
+                    result.exit_code,
+                    result.stdout[-8000:],
+                    result.stderr[-8000:],
+                    result.duration_seconds,
+                    json.dumps(result.expected_artifacts or []),
+                    json.dumps(result.missing_artifacts or []),
+                    str(workdir),
+                    datetime.now(UTC).isoformat(),
+                    topic,
+                    concept,
+                ),
+            )
+            owner_id = records.bind(conn, "practice_attempts", identity, owner_path=workdir)
+            observation_id = observations.record(
+                conn,
+                topic,
+                concept,
+                "confident" if result.passed else "struggling",
+                result.notes or f"Practice verification {'passed' if result.passed else 'failed'}",
+                created_by="practice-verify",
+                owner_path=workdir,
+            )
+            records.link_observation(conn, owner_id, observation_id)
+            return True
     finally:
         conn.close()
 
@@ -208,9 +236,15 @@ def verify_practice_task(
     the same show-then-confirm step itself; there is no other gate.
     """
     resolved = practice_path.expanduser().resolve()
+    wd = (workdir or Path.cwd()).expanduser().resolve()
+    policy = active_policy()
+    scope = policy.request_scope()
+    for path in (resolved, wd):
+        project = policy.project_for_path(path)
+        if project and project.scope != scope:
+            raise ScopeError("Practice content or working directory is outside the requested scope")
     deck = load_practice_deck(resolved)
     task = _task_at(deck, task_index)
-    wd = (workdir or Path.cwd()).expanduser().resolve()
     kind = _verification_kind(task)
     command = _verification_command(task)
     artifacts = _expected_artifacts(task)
@@ -266,15 +300,6 @@ def verify_practice_task(
         passed = bool(notes.strip()) and not missing
 
     duration = time.monotonic() - started
-    confidence = "confident" if passed else "struggling"
-    progress_recorded = record_progress(
-        topic=deck.title.lower(),
-        concept=task.expected_learning_outcome.lower(),
-        confidence=confidence,
-        notes=notes or f"Practice verification {'passed' if passed else 'failed'}",
-        created_by="practice-verify",
-    )
-
     result = PracticeVerificationResult(
         practice_path=str(resolved),
         task_index=task_index,
@@ -293,7 +318,51 @@ def verify_practice_task(
         evidence_prompts=evidence_prompts,
         setup_command=setup_command,
         timeout_seconds=effective_timeout,
-        progress_recorded=progress_recorded,
+        progress_recorded=False,
     )
-    _record_attempt(result, wd)
-    return result
+    recorded = _record_attempt(
+        result,
+        wd,
+        topic=deck.title.lower(),
+        concept=task.expected_learning_outcome.lower(),
+        policy_digest=policy.digest,
+        scope=scope.value,
+    )
+    return replace(result, progress_recorded=recorded)
+
+
+def list_practice_attempts(
+    *, topic: str | None = None, days: int | None = None, limit: int = 20
+) -> list[dict]:
+    """Return permitted application check reports; these are not native attestations."""
+    if type(limit) is not int or not 1 <= limit <= 200:
+        raise ValueError("Practice history limit must be between 1 and 200")
+    if days is not None and (type(days) is not int or days < 1):
+        raise ValueError("Practice history days must be a positive integer")
+    conn = _connection._connect()
+    if not conn:
+        return []
+    try:
+        clause, params = records.visible_sql(conn, "practice_attempts", "practice_attempts.id")
+        if topic is not None:
+            clause += " AND lower(topic) LIKE ?"
+            params.append("%" + topic.lower() + "%")
+        if days is not None:
+            clause += " AND julianday(created_at)>julianday('now',?)"
+            params.append(f"-{days} days")
+        rows = conn.execute(
+            "SELECT * FROM practice_attempts WHERE "
+            + clause
+            + " ORDER BY created_at DESC,id DESC LIMIT ?",
+            [*params, limit],
+        ).fetchall()
+        return [
+            {
+                **dict(row),
+                "authority": "application_report",
+                "validation_of_learning": "not_established",
+            }
+            for row in rows
+        ]
+    finally:
+        conn.close()

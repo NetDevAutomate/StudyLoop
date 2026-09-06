@@ -1,10 +1,7 @@
 """Tests for the parking-lot Kanban board layer (parking.py, v26).
 
-The fixture deliberately builds a **pre-v26** ``parked_topics`` table so every
-test also exercises ``_ensure_board_schema``'s drift recovery — the same
-self-healing path the v14-v17 fallback exists for. If board columns were only
-ever created by the migration, a user on a drifted DB would hit
-``no such column: board_column`` on their first board load.
+The fixture applies the actual pre-v26 migrations, then exercises the canonical
+upgrade to the current schema. Partial schemas are not silently called healthy.
 """
 
 from __future__ import annotations
@@ -22,35 +19,17 @@ if TYPE_CHECKING:
 
 @pytest.fixture()
 def board_db(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Temp DB with a LEGACY (pre-v26) parked_topics table."""
-    db_path = tmp_path / "board.db"
-    conn = sqlite3.connect(str(db_path))
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("CREATE TABLE study_sessions (id TEXT PRIMARY KEY, started_at TEXT)")
-    conn.execute(
-        "CREATE TABLE sessions (id TEXT PRIMARY KEY, source TEXT, created_at TEXT, updated_at TEXT)"
-    )
-    conn.execute("""
-        CREATE TABLE parked_topics (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            study_session_id TEXT REFERENCES study_sessions(id) ON DELETE SET NULL,
-            session_id TEXT REFERENCES sessions(id) ON DELETE SET NULL,
-            topic_tag TEXT,
-            question TEXT NOT NULL,
-            context TEXT,
-            status TEXT NOT NULL DEFAULT 'pending'
-                CHECK(status IN ('pending', 'scheduled', 'resolved', 'dismissed')),
-            scheduled_for TEXT,
-            resolved_at TEXT,
-            parked_at TEXT NOT NULL DEFAULT (datetime('now')),
-            created_by TEXT DEFAULT 'agent',
-            source TEXT NOT NULL DEFAULT 'parked'
-                CHECK(source IN ('parked', 'struggled', 'manual')),
-            tech_area TEXT,
-            priority INTEGER
-        )
-    """)
-    conn.commit()
+    """Exercise a genuine schema25 upgrade, not a partial-schema imitation."""
+    from importlib.resources import files
+
+    from agent_session_tools import migrations
+
+    db_path = tmp_path / "parking.db"
+    conn = sqlite3.connect(db_path)
+    conn.executescript(files("agent_session_tools").joinpath("schema.sql").read_text())
+    with monkeypatch.context() as historical:
+        historical.setattr(migrations, "CURRENT_VERSION", 25)
+        migrations.migrate(conn)
     conn.close()
     monkeypatch.setattr("studyloop.parking.get_db_path", lambda: db_path)
     return db_path
@@ -506,7 +485,10 @@ def _column_rows(board_db: Path) -> list[tuple[str, int]]:
     try:
         return [
             (r[0], r[1])
-            for r in conn.execute("SELECT key, position FROM board_columns ORDER BY position")
+            for r in conn.execute(
+                "SELECT key, position FROM context_board_columns "
+                "WHERE scope='unclassified' ORDER BY position"
+            )
         ]
     finally:
         conn.close()

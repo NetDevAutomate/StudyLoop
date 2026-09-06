@@ -51,7 +51,15 @@ class ObservationStore:
               LEFT JOIN context_projects p ON p.id=ow.project_id
               WHERE ow.observation_id=o.id AND (ow.fixed_scope=? OR ({project_clause}))))
         )"""
-        return clause, [*source_values, scope.value, *project_values]
+        from .records import observation_clause
+
+        records_clause, records_values = observation_clause(self.conn, policy)
+        return "(" + clause + ") AND " + records_clause, [
+            *source_values,
+            scope.value,
+            *project_values,
+            *records_values,
+        ]
 
     def _refs(self, identity: str) -> tuple[list[str], list[str]]:
         sources = [
@@ -120,6 +128,19 @@ class ObservationStore:
                 [identity, *values],
             ).fetchone()
         ]
+        record_dependencies = []
+        if self.conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE name='context_record_observations'"
+        ).fetchone():
+            record_dependencies = [
+                {"owner_id": r[0], "table": r[1], "record_id": r[2]}
+                for r in self.conn.execute(
+                    "SELECT dep.id,dep.table_name,dep.row_id FROM context_record_observations link "
+                    "JOIN context_record_owners dep ON dep.id=link.record_id "
+                    "WHERE link.observation_id=? ORDER BY dep.id",
+                    (row["id"],),
+                )
+            ]
         return {
             **row,
             "payload": json.loads(row["payload"]),
@@ -137,6 +158,11 @@ class ObservationStore:
             "why_available": "all contributing sources are visible"
             if refs
             else "explicit owner scope",
+            **(
+                {"record_dependencies": record_dependencies}
+                if record_dependencies
+                else {}
+            ),
         }
 
     def get(self, identity: str) -> dict[str, Any] | None:
@@ -184,6 +210,7 @@ class ObservationStore:
         evidence_ids: Sequence[str] = (),
         supersedes: Sequence[str] = (),
         request_key: str | None = None,
+        owner_path: Path | None = None,
     ) -> str:
         """Trusted adapter operation; scope is never supplied by model payload.
 
@@ -240,7 +267,11 @@ class ObservationStore:
                     raise ScopeError(
                         "Revision target unavailable or belongs to another subject"
                     )
-            project = policy.project_for_path(Path.cwd())
+            project = policy.project_for_path(owner_path or Path.cwd())
+            if owner_path and project and project.scope != scope:
+                raise ScopeError(
+                    "Observation working directory is outside the requested scope"
+                )
             if project is not None and project.scope != scope:
                 project = None  # The explicit process scope outranks CWD defaults.
             owner = (

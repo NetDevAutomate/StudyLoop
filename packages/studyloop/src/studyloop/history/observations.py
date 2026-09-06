@@ -18,6 +18,7 @@ from agent_session_tools.context.store import _hash, _json
 
 if TYPE_CHECKING:
     import sqlite3
+    from pathlib import Path
 
     from agent_session_tools.context.legacy_sources import SessionInput
 
@@ -49,6 +50,7 @@ def record(
     input_snapshot: SessionInput | None = None,
     last_teachback_score: int | None = None,
     angle: str | None = None,
+    owner_path: Path | None = None,
 ) -> str:
     """Record a report or source-derived proposal on the caller's transaction."""
     topic, concept = topic.lower().strip(), concept.lower().strip()
@@ -103,6 +105,7 @@ def record(
             evidence_ids=refs,
             supersedes=previous,
             request_key="same-input-and-result" if refs else None,
+            owner_path=owner_path,
         )
 
 
@@ -198,6 +201,13 @@ def rows(conn: sqlite3.Connection) -> list[dict[str, Any]]:
             "created_by": payload.get("created_by") if len(current) == 1 else "multiple_reports",
             "observation_ids": [e["id"] for e in current],
             "source_evidence_ids": sorted({ref["id"] for e in current for ref in e["sources"]}),
+            "record_dependencies": list(
+                {
+                    ref["owner_id"]: ref
+                    for e in current
+                    for ref in e.get("record_dependencies", [])
+                }.values()
+            ),
             "history_incomplete": any(e["history_incomplete"] for e in current),
         }
         for field in ("source_course", "source_section", "source_publisher", "source_session_id"):

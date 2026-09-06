@@ -1,0 +1,77 @@
+{
+  "stage": 27,
+  "schema": 37,
+  "status": "tested_increment_not_release_acceptance",
+  "memory_and_experiment_tests": {
+    "passed": 1566,
+    "skipped": 1,
+    "seconds": 65.1
+  },
+  "studyloop_tests": {
+    "passed": 3788,
+    "skipped": 4,
+    "deselected": 704,
+    "seconds": 167.11,
+    "scope": "before final test-only refinements"
+  },
+  "final_focused_tests": {
+    "passed": 30,
+    "seconds": 3.57
+  },
+  "workspace_pyright": {
+    "errors": 0,
+    "warnings": 0
+  },
+  "installed_checks": {
+    "http_notes_filter_before_limit": true,
+    "http_board_names_and_cards_scoped": true,
+    "dedup_keeps_different_owners": true,
+    "http_cross_scope_mutation_refused": true,
+    "practice_attempt_and_progress_recorded": true,
+    "mcp_exposes_scoped_practice": true,
+    "parent_reclassification_withholds_children": true,
+    "logical_parent_forget_purges_notes_and_cards": true,
+    "attempt_deletion_retires_derived_progress": true,
+    "foreign_keys_intact": true
+  },
+  "installed_runtime": "fresh local wheels; StudyLoop web extra; actual ASGI routes without lifespan and MCP stdio",
+  "installed_upgrade": {
+    "from_version": 36,
+    "to_version": 37,
+    "old_table_values_preserved": 52,
+    "old_rows_preserved": 80,
+    "legacy_board_names_moved": false,
+    "foreign_key_check": [],
+    "integrity_check": "ok",
+    "source_opened_read_only": true,
+    "limits": "Consistent disposable copy; compares original columns after additive columns and the explicit legacy-board relocation. Not managed restore or replica reconciliation."
+  },
+  "browser": {
+    "sections": 5,
+    "disclosures_opened": 5,
+    "viewport_fits": true,
+    "console_errors": 0,
+    "own_tab_and_server_closed": true
+  },
+  "council": {
+    "design_providers": [
+      "meta",
+      "qwen",
+      "mistral"
+    ],
+    "result_providers": [
+      "meta",
+      "qwen",
+      "mistral"
+    ],
+    "decision": "preserve increment; full goal remains active"
+  },
+  "limits": [
+    "No general semantic mastery or answer-quality claim",
+    "No full installed startup acceptance",
+    "No complete learner-state coverage",
+    "No full scoped sync/forget/reimport/restore/index lifecycle",
+    "No combined-request policy-race acceptance",
+    "No Stage27 comparative performance benchmark"
+  ]
+}

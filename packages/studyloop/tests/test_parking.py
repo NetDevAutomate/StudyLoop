@@ -13,60 +13,17 @@ if TYPE_CHECKING:
 
 @pytest.fixture()
 def parking_db(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Create a temp DB with the parked_topics table (post-v26 schema)."""
-    db_path = tmp_path / "test.db"
-    conn = sqlite3.connect(str(db_path))
-    conn.execute("PRAGMA journal_mode=WAL")
-    # Create the study_sessions table (FK target)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS study_sessions (
-            id TEXT PRIMARY KEY,
-            session_id TEXT,
-            topic TEXT,
-            energy_level TEXT,
-            started_at TEXT,
-            ended_at TEXT,
-            duration_minutes INTEGER,
-            pomodoro_cycles INTEGER DEFAULT 0,
-            notes TEXT
-        )
-    """)
-    # Create the sessions table (FK target)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS sessions (
-            id TEXT PRIMARY KEY,
-            source TEXT,
-            created_at TEXT,
-            updated_at TEXT
-        )
-    """)
-    # Create the parked_topics table (v14 + v15 + v16 + v17 + v26 schema)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS parked_topics (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            study_session_id TEXT REFERENCES study_sessions(id) ON DELETE SET NULL,
-            session_id TEXT REFERENCES sessions(id) ON DELETE SET NULL,
-            topic_tag TEXT,
-            question TEXT NOT NULL,
-            context TEXT,
-            status TEXT NOT NULL DEFAULT 'pending'
-                CHECK(status IN ('pending', 'scheduled', 'resolved', 'dismissed')),
-            scheduled_for TEXT,
-            resolved_at TEXT,
-            parked_at TEXT NOT NULL DEFAULT (datetime('now')),
-            created_by TEXT DEFAULT 'agent',
-            source TEXT NOT NULL DEFAULT 'parked'
-                CHECK(source IN ('parked', 'struggled', 'manual')),
-            tech_area TEXT,
-            priority INTEGER,
-            park_count INTEGER NOT NULL DEFAULT 1
-        )
-    """)
-    conn.execute("""
-        CREATE UNIQUE INDEX IF NOT EXISTS uix_parked_topics_question_source_pending
-        ON parked_topics (question, source) WHERE status = 'pending'
-    """)
-    conn.commit()
+    """Exercise a genuine schema26 upgrade, not a partial-schema imitation."""
+    from importlib.resources import files
+
+    from agent_session_tools import migrations
+
+    db_path = tmp_path / "parking.db"
+    conn = sqlite3.connect(db_path)
+    conn.executescript(files("agent_session_tools").joinpath("schema.sql").read_text())
+    with monkeypatch.context() as historical:
+        historical.setattr(migrations, "CURRENT_VERSION", 26)
+        migrations.migrate(conn)
     conn.close()
     monkeypatch.setattr("studyloop.parking.get_db_path", lambda: db_path)
     return db_path
@@ -257,15 +214,8 @@ def test_demote_nonexistent_returns_false(parking_db: Path) -> None:
 class TestParkingDeduplication:
     """Verify the partial unique index prevents concurrent pending duplicates."""
 
-    def test_same_question_different_sessions_yields_one_pending_row(
-        self, parking_db: Path
-    ) -> None:
-        """Park the same question under two distinct study_session_ids.
-
-        The partial index on (question, source) WHERE status='pending' means
-        the second INSERT OR IGNORE hits the constraint. Only one pending row
-        should exist, and park_count must be 2.
-        """
+    def test_same_question_different_sessions_preserves_each_parent(self, parking_db: Path) -> None:
+        """Different parent lineages remain separately forgettable; frequency still sums."""
         from studyloop.parking import park_topic
 
         id1 = park_topic(
@@ -280,18 +230,18 @@ class TestParkingDeduplication:
         )
         assert id1 is not None
         assert id2 is not None
-        # Both calls return the same row ID
-        assert id1 == id2
+        # Different parents must not be merged into one provenance record.
+        assert id1 != id2
 
-        # Verify exactly one pending row
+        # Both pending source records remain inspectable
         conn = sqlite3.connect(str(parking_db))
         conn.row_factory = sqlite3.Row
         rows = conn.execute(
             "SELECT * FROM parked_topics WHERE question = ? AND status = 'pending'",
             ("How do generators relate to closures?",),
         ).fetchall()
-        assert len(rows) == 1
-        assert rows[0]["park_count"] == 2
+        assert len(rows) == 2
+        assert sum(row["park_count"] for row in rows) == 2
         conn.close()
 
     def test_same_question_null_session_ids_yields_one_pending_row(self, parking_db: Path) -> None:

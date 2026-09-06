@@ -591,6 +591,274 @@ def test_source_linked_teachback_without_capture_refuses_without_partial_state(c
         assert conn.execute("SELECT count(*) FROM context_observations").fetchone()[0] == 0
 
 
+def test_notes_parking_and_board_metadata_are_scoped_before_limits_and_bulk_writes(
+    consumer_db, monkeypatch
+):
+    from studyloop import notes, parking
+
+    db, _, _ = consumer_db
+    monkeypatch.setattr(notes, "get_db_path", lambda: db)
+    monkeypatch.setattr(parking, "get_db_path", lambda: db)
+    study = sessions.start_study_session("python", "high", session_id="personal")
+    personal_note = notes.add_note("PERSONAL_NOTE", body="PERSONAL_BODY", study_session_id=study)
+    personal_park = parking.park_topic("Shared wording", session_id="personal")
+    assert personal_note and personal_park
+    assert parking.park_topic("Shared wording", session_id="personal") == personal_park
+    assert parking.add_board_column("Private") is not None
+    monkeypatch.setenv("SESSION_CONTEXT_SCOPE", "work")
+    work_ids = [notes.add_note(f"WORK_NOTE_{n}", body="WORK_BODY") for n in range(25)]
+    work_park = parking.park_topic("Shared wording", session_id="work")
+    assert work_park and work_park != personal_park
+    for _ in range(3):
+        parking.park_topic("Shared wording", session_id="work")
+    work_column = parking.add_board_column("Private")
+    assert work_column is not None and work_column["key"] == "private"
+    assert parking.add_board_column("WORK_COLUMN") is not None
+    assert notes.get_note(personal_note) is None
+    assert notes.update_note(personal_note, body="WRONG") is None
+    assert not parking.update_topic_priority(personal_park, 5)
+    monkeypatch.setenv("SESSION_CONTEXT_SCOPE", "personal")
+    assert [row["title"] for row in notes.list_notes(limit=1)] == ["PERSONAL_NOTE"]
+    assert notes.count_notes() == 1
+    assert "WORK_" not in notes.notes_markdown()
+    assert parking.get_topic_frequencies() == {"Shared wording": 2}
+    assert parking.get_board()["total"] == 1
+    assert "WORK_COLUMN" not in json.dumps(parking.get_board_columns())
+    assert not parking.move_parked_topic(work_park, "next")
+    assert not parking.rename_board_column("work-column", "LEAK")
+    assert notes.clear_all_notes(hard=True) == 1
+    assert parking.clear_all_parked_topics(hard=True) == 1
+    monkeypatch.setenv("SESSION_CONTEXT_SCOPE", "work")
+    assert notes.count_notes() == len(work_ids)
+    assert parking.get_topic_frequencies() == {"Shared wording": 4}
+    with sqlite3.connect(db) as conn:
+        assert conn.execute("PRAGMA foreign_key_check").fetchall() == []
+
+
+def test_notes_require_both_native_and_study_parent_scope_and_purge_dependencies(
+    consumer_db, monkeypatch
+):
+    from studyloop import notes, parking
+
+    db, _, _ = consumer_db
+    monkeypatch.setattr(notes, "get_db_path", lambda: db)
+    monkeypatch.setattr(parking, "get_db_path", lambda: db)
+    study = sessions.start_study_session("python", "high", session_id="personal")
+    # An application placeholder may be owned before native capture; native IDs are never invented.
+    placeholder_note = notes.add_note("APP_ONLY", study_session_id="application-before-capture")
+    assert placeholder_note
+    with pytest.raises(ScopeError, match="unavailable"):
+        notes.add_note("MUST_NOT_EXIST", session_id="unknown-native")
+    with sqlite3.connect(db) as conn:
+        assert not conn.execute("SELECT 1 FROM sessions WHERE id='unknown-native'").fetchone()
+        conn.execute(
+            "INSERT INTO sessions(id,source,project_path) "
+            "VALUES ('other-personal','fixture','/consumer/personal')"
+        )
+        conn.execute(
+            "INSERT INTO context_session_projects(session_id,project_id) "
+            "SELECT 'other-personal',project_id FROM context_session_projects "
+            "WHERE session_id='personal'"
+        )
+    identity = notes.add_note(
+        "TWO_DEPENDENCIES", session_id="other-personal", study_session_id=study
+    )
+    assert identity and notes.get_note(identity)
+    with sqlite3.connect(db) as conn:
+        conn.execute(
+            "UPDATE context_session_projects SET project_id='work' WHERE session_id='personal'"
+        )
+    assert notes.get_note(identity) is None
+    with sqlite3.connect(db) as conn:
+        conn.execute("PRAGMA foreign_keys=ON")
+        conn.execute(
+            "INSERT INTO context_tombstones VALUES ('personal','forget-parent','2026-09-06')"
+        )
+        assert not conn.execute("SELECT 1 FROM study_notes WHERE id=?", (identity,)).fetchone()
+        assert conn.execute("PRAGMA foreign_key_check").fetchall() == []
+    assert notes.get_note(placeholder_note)
+
+
+def test_web_reports_scope_setup_errors_without_returning_excluded_content(
+    consumer_db, monkeypatch
+):
+    from fastapi.testclient import TestClient
+
+    from studyloop import notes, parking
+    from studyloop.web.app import create_app
+
+    db, config, settings = consumer_db
+    monkeypatch.setattr(notes, "get_db_path", lambda: db)
+    monkeypatch.setattr(parking, "get_db_path", lambda: db)
+    monkeypatch.setenv("SESSION_CONTEXT_SCOPE", "work")
+    work_study = sessions.start_study_session("WORK_TOPIC", "high", session_id="work")
+    monkeypatch.setenv("SESSION_CONTEXT_SCOPE", "personal")
+    client = TestClient(create_app(study_dirs=[]))
+    response = client.post(
+        "/api/notes", json={"title": "must fail", "study_session_id": work_study}
+    )
+    assert response.status_code == 409
+    assert response.json()["code"] == "context_scope_unavailable"
+    assert "WORK_TOPIC" not in response.text
+    settings["memory"]["projects"]["personal"]["scope"] = "work"
+    config.write_text(json.dumps(settings))
+    response = client.get("/api/notes")
+    assert response.status_code == 409 and "policy apply" in response.text
+
+
+def test_practice_attempt_and_derived_progress_are_atomic_scoped_and_deletable(
+    consumer_db, tmp_path, monkeypatch
+):
+    import shlex
+    import sys
+    from pathlib import Path
+
+    from studyloop.history import observations
+    from studyloop.learning import practice
+
+    db, _, _ = consumer_db
+    command = shlex.join([sys.executable, "-c", "print('synthetic check')"])
+    deck = tmp_path / "practice.json"
+    deck.write_text(
+        json.dumps(
+            {
+                "title": "Python Practice",
+                "tasks": [
+                    {
+                        "taskType": "build",
+                        "prompt": "Synthetic check",
+                        "setup": "",
+                        "successCriteria": ["process exits"],
+                        "hint": "",
+                        "expectedLearningOutcome": "generators",
+                        "verification": {
+                            "kind": "command",
+                            "command": command,
+                            "successCriteria": ["process exits"],
+                        },
+                    }
+                ],
+            }
+        )
+    )
+    result = practice.verify_practice_task(
+        deck,
+        task_index=1,
+        workdir=tmp_path,
+        run_command=True,
+        confirmed_command=command,
+        notes="PERSONAL_PRACTICE",
+    )
+    assert result.passed and result.progress_recorded
+    attempts = practice.list_practice_attempts()
+    assert len(attempts) == 1
+    assert attempts[0]["validation_of_learning"] == "not_established"
+    with pytest.raises(ScopeError, match="outside"):
+        practice.verify_practice_task(
+            deck,
+            task_index=1,
+            workdir=Path("/consumer/work"),
+            run_command=True,
+            confirmed_command=command,
+        )
+    monkeypatch.setenv("SESSION_CONTEXT_SCOPE", "work")
+    assert practice.list_practice_attempts() == []
+    monkeypatch.setenv("SESSION_CONTEXT_SCOPE", "personal")
+    with sqlite3.connect(db) as conn:
+        conn.execute("PRAGMA foreign_keys=ON")
+        assert observations.rows(conn)
+        conn.rollback()
+        conn.execute("DELETE FROM practice_attempts")
+        conn.commit()
+        assert not observations.rows(conn)
+        assert conn.execute("PRAGMA foreign_key_check").fetchall() == []
+
+    def fail(*args, **kwargs):
+        raise RuntimeError("injected progress failure")
+
+    monkeypatch.setattr(practice.observations, "record", fail)
+    with pytest.raises(RuntimeError, match="injected"):
+        practice.verify_practice_task(
+            deck, task_index=1, workdir=tmp_path, run_command=True, confirmed_command=command
+        )
+    assert practice.list_practice_attempts() == []
+
+
+def test_practice_project_reclassification_and_policy_change_during_execution(
+    consumer_db, tmp_path, monkeypatch
+):
+    import subprocess
+    from types import SimpleNamespace
+
+    from studyloop.history import observations
+    from studyloop.learning import practice
+
+    db, config, settings = consumer_db
+    settings["memory"]["projects"]["personal"]["roots"].append(str(tmp_path))
+    config.write_text(json.dumps(settings))
+    with sqlite3.connect(db) as conn:
+        conn.execute("PRAGMA foreign_keys=ON")
+        apply_policy(conn, ScopePolicy.from_config(settings), actor="fixture", dry_run=False)
+    deck = SimpleNamespace(
+        title="Python Practice",
+        tasks=[SimpleNamespace(prompt="Synthetic check", expected_learning_outcome="generators")],
+    )
+    monkeypatch.setattr(practice, "load_practice_deck", lambda _: deck)
+    monkeypatch.setattr(practice, "_verification_kind", lambda _: "command")
+    monkeypatch.setattr(practice, "_verification_command", lambda _: "synthetic")
+    for name in ("_expected_artifacts", "_verification_rubric", "_verification_evidence_prompts"):
+        monkeypatch.setattr(practice, name, lambda _: [])
+    monkeypatch.setattr(practice, "_verification_setup_command", lambda _: "")
+    monkeypatch.setattr(practice, "_verification_timeout", lambda *_: 10)
+    monkeypatch.setattr(
+        practice.subprocess, "run", lambda *a, **k: subprocess.CompletedProcess(a, 0, "ok", "")
+    )
+
+    def verify():
+        return practice.verify_practice_task(
+            tmp_path / "deck.json",
+            task_index=1,
+            workdir=tmp_path,
+            run_command=True,
+            confirmed_command="synthetic",
+        )
+
+    assert verify().progress_recorded
+    with sqlite3.connect(db) as conn:
+        conn.execute("PRAGMA foreign_keys=ON")
+        owners = conn.execute(
+            "SELECT project_id FROM context_record_owners WHERE table_name='practice_attempts'"
+        ).fetchall()
+        assert owners == [("personal",)]
+        assert observations.rows(conn)
+        conn.rollback()
+        settings["memory"]["projects"]["personal"]["scope"] = "work"
+        config.write_text(json.dumps(settings))
+        apply_policy(conn, ScopePolicy.from_config(settings), actor="fixture", dry_run=False)
+        monkeypatch.setenv("SESSION_CONTEXT_SCOPE", "personal")
+        assert not observations.rows(conn)
+    assert practice.list_practice_attempts() == []
+
+    settings["memory"]["projects"]["personal"]["scope"] = "personal"
+    config.write_text(json.dumps(settings))
+    with sqlite3.connect(db) as conn:
+        conn.execute("PRAGMA foreign_keys=ON")
+        apply_policy(conn, ScopePolicy.from_config(settings), actor="fixture", dry_run=False)
+        before = conn.execute("SELECT COUNT(*) FROM practice_attempts").fetchone()[0]
+
+    def change_policy(*args, **kwargs):
+        settings["memory"]["projects"]["personal"]["scope"] = "work"
+        config.write_text(json.dumps(settings))
+        return subprocess.CompletedProcess(args, 0, "ran before policy changed", "")
+
+    monkeypatch.setattr(practice.subprocess, "run", change_policy)
+    with pytest.raises(ScopeError):
+        verify()
+    with sqlite3.connect(db) as conn:
+        conn.execute("PRAGMA foreign_keys=ON")
+        assert conn.execute("SELECT COUNT(*) FROM practice_attempts").fetchone()[0] == before
+
+
 def test_studyloop_stdio_history_keeps_scope_across_requests(consumer_db):
     import asyncio
     import os

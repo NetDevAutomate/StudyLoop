@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Current schema version - increment when adding new migrations
-CURRENT_VERSION = 36
+CURRENT_VERSION = 37
 
 # Migration functions: version -> (description, migration_func)
 MIGRATIONS: dict[int, tuple[str, Callable[[sqlite3.Connection], None]]] = {}
@@ -1422,6 +1422,13 @@ def migrate_v35(conn: sqlite3.Connection) -> None:
 @migration(36, "Own legacy learning sessions, teachbacks and bridges explicitly")
 def migrate_v36(conn: sqlite3.Connection) -> None:
     from .context.record_schema import install
+
+    install(conn)
+
+
+@migration(37, "Own learner notes, parking, practice and scoped board metadata")
+def migrate_v37(conn: sqlite3.Connection) -> None:
+    from .context.learner_schema import install
 
     install(conn)
 

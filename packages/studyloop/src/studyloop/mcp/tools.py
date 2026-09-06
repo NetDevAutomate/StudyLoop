@@ -384,6 +384,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
             last_studied,
             struggle_topics,
         )
+        from studyloop.learning.practice import list_practice_attempts
 
         conn = _connection._connect()
         try:
@@ -407,12 +408,14 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
         wins = get_wins(days=days)
         topic_wins = [w for w in wins if topic.lower() in w.get("topic", "").lower()]
         scores = get_teachback_history(topic=topic, days=days)
+        practice = list_practice_attempts(topic=topic, days=days)
 
         return {
             "topic": topic,
             "days": days,
             "session_stats": topic_stats,
             "teachback_scores": scores,
+            "practice_attempts": practice,
             "last_studied": last,
             "struggles": topic_struggles,
             "wins": topic_wins,
@@ -427,7 +430,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
                 "explicit_unclassified_legacy_inspection"
                 if learning_visible
                 else "scoped_learning_records"
-                if topic_stats or scores
+                if topic_stats or scores or practice
                 else "withheld_missing_scope_lineage"
             ),
         }

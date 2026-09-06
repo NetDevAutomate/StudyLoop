@@ -1032,8 +1032,13 @@ class TestMigrationV26:
 
         conn.close()
 
-    def test_migration_creates_partial_unique_index(self, tmp_path) -> None:
-        """The new partial index prevents two pending rows for same (question, source)."""
+    def test_migration_creates_partial_unique_index(
+        self, tmp_path, monkeypatch
+    ) -> None:
+        """The v26 index prevents two pending rows for the same question/source."""
+        from agent_session_tools import migrations
+
+        monkeypatch.setattr(migrations, "CURRENT_VERSION", 26)
         db_path = tmp_path / "dedup.db"
         conn = sqlite3.connect(str(db_path))
         self._seed_pre_migration_duplicates(conn)

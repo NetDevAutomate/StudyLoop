@@ -84,9 +84,11 @@ def record_teachback(
             )
 
             assert inserted.lastrowid is not None
-            records.bind(conn, "teach_back_scores", inserted.lastrowid, session_id=session_id)
+            owner_id = records.bind(
+                conn, "teach_back_scores", inserted.lastrowid, session_id=session_id
+            )
             if observations.available(conn):
-                observations.record(
+                observation_id = observations.record(
                     conn,
                     topic,
                     concept,
@@ -97,6 +99,7 @@ def record_teachback(
                     last_teachback_score=sum(scores),
                     angle=angle,
                 )
+                records.link_observation(conn, owner_id, observation_id)
                 return True
 
             # Upsert study_progress so teach-back evidence feeds review

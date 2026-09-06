@@ -426,8 +426,6 @@ def get_struggling_topics(days: int = 14) -> list[dict]:
                 source_publisher=r.get("source_publisher"),
             )
 
-        from agent_session_tools.context.legacy import legacy_global_visible
-
         # Source 2: owned study sessions, scoped before aggregation.
         try:
             from agent_session_tools.context import records
@@ -452,25 +450,21 @@ def get_struggling_topics(days: int = 14) -> list[dict]:
                 logger.warning("get_struggling_topics: study_sessions source failed: %s", exc)
                 raise
 
-        if not legacy_global_visible(conn):
-            for item in merged.values():
-                item.pop("_concepts", None)
-            return sorted(merged.values(), key=lambda row: row["last_seen"] or "", reverse=True)
-
         # Source 3: parked topics whose source is a struggle.
         try:
+            clause, scope_params = records.visible_sql(conn, "parked_topics")
             for r in conn.execute(
-                """
+                f"""
                 SELECT topic_tag      AS topic,
                        COUNT(*)       AS session_count,
                        MAX(parked_at) AS last_seen
-                FROM parked_topics
-                WHERE source = 'struggled'
+                FROM parked_topics r
+                WHERE ({clause}) AND source = 'struggled'
                   AND topic_tag IS NOT NULL
                   AND parked_at > datetime('now', ?)
                 GROUP BY topic_tag
                 """,
-                cutoff,
+                [*scope_params, *cutoff],
             ).fetchall():
                 _merge(r["topic"], 0, r["session_count"] or 0, r["last_seen"])
         except sqlite3.OperationalError as exc:

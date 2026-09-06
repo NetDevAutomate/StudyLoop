@@ -8,7 +8,6 @@ the whole stack — route → parking.py → sqlite — is in play.
 
 from __future__ import annotations
 
-import sqlite3
 from typing import TYPE_CHECKING
 
 import pytest
@@ -36,33 +35,10 @@ graph TD
 def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     """TestClient wired to a fresh temp DB (legacy schema → exercises healing)."""
     db_path = tmp_path / "api.db"
-    conn = sqlite3.connect(str(db_path))
-    conn.execute("CREATE TABLE study_sessions (id TEXT PRIMARY KEY, started_at TEXT)")
-    conn.execute(
-        "CREATE TABLE sessions (id TEXT PRIMARY KEY, source TEXT, created_at TEXT, updated_at TEXT)"
-    )
-    conn.execute("""
-        CREATE TABLE parked_topics (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            study_session_id TEXT,
-            session_id TEXT,
-            topic_tag TEXT,
-            question TEXT NOT NULL,
-            context TEXT,
-            status TEXT NOT NULL DEFAULT 'pending'
-                CHECK(status IN ('pending', 'scheduled', 'resolved', 'dismissed')),
-            scheduled_for TEXT,
-            resolved_at TEXT,
-            parked_at TEXT NOT NULL DEFAULT (datetime('now')),
-            created_by TEXT DEFAULT 'agent',
-            source TEXT NOT NULL DEFAULT 'parked'
-                CHECK(source IN ('parked', 'struggled', 'manual')),
-            tech_area TEXT,
-            priority INTEGER
-        )
-    """)
-    conn.commit()
-    conn.close()
+    from agent_session_tools.context import records
+
+    records.connect(db_path).close()
+    monkeypatch.setenv("STUDYLOOP_DB", str(db_path))
     monkeypatch.setattr("studyloop.parking.get_db_path", lambda: db_path)
 
     from studyloop.web.app import create_app
