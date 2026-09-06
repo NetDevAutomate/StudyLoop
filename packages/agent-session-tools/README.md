@@ -1,8 +1,15 @@
 # agent-session-tools
 
-AI session export, search, and sync tools — supports Claude Code, Codex CLI, Grok CLI, Kiro CLI, Gemini CLI, Aider, OpenCode, LiteLLM, RepoPrompt, pi, and oh-my-pi (omp).
+Export, search and sync local coding conversations from Claude Code, Codex,
+Grok CLI, Kiro CLI, OpenCode, pi and supported oh-my-pi archives. Grok is an
+import source, not a StudyLoop mentor or automatically installed hook.
 
 Part of [StudyLoop](https://github.com/NetDevAutomate/StudyLoop).
+
+This checkout contains the session-memory reliability candidate, awaiting release
+acceptance. SQLite remains the source of conversation history. Enforced
+work/personal boundaries, propagated forgetting and validated decision arbitration
+are not included. See the [conversation memory guide](../../docs/session-memory.md).
 
 ## Install
 
@@ -15,12 +22,28 @@ uv tool install ./packages/agent-session-tools
 | Command | Description |
 |---------|-------------|
 | `session-export` | Export AI coding sessions to SQLite |
+| `session-repair` | Inspect and repair imports, with explicit apply and backup |
 | `session-query` | Search and browse session history |
 | `session-maint` | Database maintenance and optimization |
 | `session-sync` | Sync sessions across machines |
 | `session-db-mcp` | MCP server — exposes session DB to AI tools |
 | `tutor-checkpoint` | Save/restore tutoring session state |
 | `study-speak` | Text-to-speech for study content |
+
+## Recover and share history
+
+Run `session-repair` to inspect an existing database, review the report, then use
+`session-repair --apply` to back up and apply recovered conversation rows. Run it
+locally on each machine before syncing. See [repair instructions](docs/session-repair.md).
+
+`session-sync all` pushes to every configured peer before pulling from every peer.
+Only use it where every destination is permitted to receive the entire selected
+database; search project filters are not transfer permissions. Sync does not
+propagate forgetting or guarantee convergence after conflicting edits.
+See [configuration and reconciliation](docs/sync-after-repair.md).
+
+Do not use this schema-30 candidate against a database upgraded by the context
+research branch. It is not a downgrade tool.
 
 ## MCP Server (session-db-mcp)
 

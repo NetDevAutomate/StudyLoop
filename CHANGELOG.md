@@ -9,6 +9,16 @@ experience may change before `1.0.0`.
 
 ### Added
 
+- A session-memory reliability candidate: `session-repair` inspects existing
+  imports and offers explicit, backed-up repair; `session-sync all` reconciles
+  configured peers by pushing to every peer before pulling from every peer.
+  Release acceptance is pending. The candidate retains the existing trusted
+  whole-database transport, without enforced work/personal scope, propagated
+  forgetting or validated decision arbitration.
+- Grok local transcript import through `session-export --grok-only`, separate
+  from StudyLoop's supported mentor and automatic-hook integrations.
+- A [conversation memory guide](docs/session-memory.md) covering repair,
+  verification, project-filter limits and permitted database sharing.
 - Session memory is now an installer/doctor invariant across all five release
   harnesses. `studyloop install agents` installs one
   `studyloop-session-memory` skill (MCP-first query with `session-query`
@@ -37,6 +47,16 @@ experience may change before `1.0.0`.
 
 ### Fixed
 
+- Conversation import and repair preserve stable message identities, retained
+  history and local annotations; changed Codex, Claude Code and Kiro transcripts
+  can be revisited without discarding unrelated history.
+- Sync reconciliation revisits shared sessions even when timestamps have not
+  changed, preserves different nonempty message content and archives conflicting
+  learner-row variants. SSH runs unattended with bounded connection attempts,
+  and a failed peer does not prevent attempts to other configured peers.
+- Secret-store tests isolate provider fallback variables as well as their
+  temporary configuration, preventing ambient credentials from entering the
+  observed failure assertions.
 - Release validation now runs without the three warning classes found during
   the 0.3.0 readiness pass: hook JSON merges no longer use an
   `exists()`-then-`read_text()` TOCTOU shape; Starlette TestClient uses the
