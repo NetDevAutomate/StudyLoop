@@ -1,7 +1,7 @@
 {
   "goal": "active",
-  "previous_goal_turn": "progress: Stage38 implemented; 1845 combined passed1skip, 93focused passed, 3823StudyLoop passed, 13installedSSH plus6finalwheelchecks; committing checkpoint; full goal active",
-  "current_stage": "38 final verification: actual standalone SSH, content generations, config fences and recovery; next scalable scoped transfer and full-store/restore",
+  "previous_goal_turn": "progress: Stage38 committed e48318ac;1845combined passed1skip108.86s;93focused passed;3823StudyLoop passed;13installedSSH plus6finalwheelchecks;full goal active",
+  "current_stage": "38 complete as bounded canonical SSH checkpoint e48318ac; next scalable scoped transfer and full-store/restore",
   "requirements": {
     "P01": "partial: transactional migrations through v46; v45-to46 failure rollback/retry and final wheel compaction preserve data/new instance; managed restore remains",
     "P02": "partial: actual four-harness exporters integrated and eight local real archives imported; Codex Desktop 0.153.0 observed; all native formats, other desktop coverage and installed end-to-end capture remain",
@@ -17,7 +17,7 @@
     "P12": "not yet proven",
     "P13": "partial: fresh installed graph HTTP/MCP10checks plus prior response/learner checks; full lifespan, live-session files/stream, installer and agent startup remain",
     "P14": "stages1-38 independently runnable; Stage38 five-view actual SSH guide documents counter defect, archival regression, council arbitration and limits; saved exercises unchanged",
-    "P15": "partial: 1845combined passed1skip108.86s;93focused passed;3823StudyLoop passed;13installedSSH plus6finalwheelchecks;commit hooks and full release audit remain"
+    "P15": "partial:1845combined passed1skip108.86s;93focused passed;3823StudyLoop passed;13installedSSH plus6finalwheelchecks;e48318ac full commit hooks pass;full release audit remains"
   },
   "completed_checkpoints": {
     "stage16": "6c736c5",
@@ -41,7 +41,8 @@
     "stage34": "1f5a5c56",
     "stage35": "50de2d7f",
     "stage36": "28fe15d0",
-    "stage37": "801a33e0"
+    "stage37": "801a33e0",
+    "stage38": "e48318ac"
   },
   "current_findings": [
     "SQLite remains canonical; earlier equal-information storage comparison did not establish answer-quality superiority for another engine.",
@@ -88,14 +89,14 @@
   "verification": {
     "package_tests": "1845 passed, 1 optional skip, 108.86s; final Stage38",
     "experiment_tests": "Stage38 five-view actual installed CLI/SSH lesson:13checks",
-    "workspace_pyright": "Full workspace source+tests passed in801a33e0commit hooks, including finaldirectedcases",
-    "commit_hooks": "801a33e0 lint/format/secrets/Bandit/author/full workspace source+test types passed",
-    "browser": "Five sections and five disclosures opened; viewport fits; screenshot inspected; own tab and server closed",
+    "workspace_pyright": "Full workspace source+tests passed in e48318ac commit hooks",
+    "commit_hooks": "e48318ac lint/format/secrets/Bandit/author/full workspace source+test types passed",
+    "browser": "Stage38 five sections and five disclosures opened; viewport fits; screenshot inspected; own tab and server closed",
     "studyloop_tests": "3823 passed, 4 skipped, 704 deselected, 183.48s; after content counter, before final tiering bookkeeping correction; 11 existing dependency/fork warnings",
     "focused_consumer_tests": "93 coordinator, tiering and context-store tests passed in 19.87s after counter and archival fixes",
     "artifact": "studyloop-private/reviews/2026-09-06-stage38-sync-coordinator/demo-installed-final/walkthrough.html",
     "native_probe": "8 local real sessions imported without errors;1898/1898 body hashes match;source files unchanged",
-    "installed_component": "Fresh memory-only wheel in new Python3.13 environment; StudyLoop absent; actual installed session-context; 18 checks pass",
+    "installed_component": "Fresh memory-only wheel with StudyLoop absent;13 actual CLI/SSH checks;final wheel separately passes6compaction/identity/FTS/FK checks",
     "real_retrieval": "6CLI queries,60exact citations and hashes verified,all<=32768bytes,no semantic relevance claim",
     "live_review_pilot": "3calls,3constructedcases/model;strict acceptance1/3providers;post-hoc9/9permissivelabels+exactbindings,not semanticvalidation",
     "ownership_benchmark": "50000project-onlyrecords:countmedian15.46ms,latest20median20.35ms;noengine/schema ranking",

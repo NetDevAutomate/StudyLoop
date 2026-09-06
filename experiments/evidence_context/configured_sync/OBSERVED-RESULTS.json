@@ -1,7 +1,7 @@
 {
   "stage": 38,
   "scope": "authenticated configured canonical SSH coordination; full production goal active",
-  "implementation_checkpoint": "pending commit",
+  "implementation_checkpoint": "e48318ac",
   "installed_checks": {
     "actual_cli_ssh_transfer": true,
     "excluded_work_never_transferred": true,
@@ -23,8 +23,8 @@
     "studyloop": "3823 passed, 4 skipped, 704 deselected, 183.48s; after content counter, before final tiering bookkeeping correction; 11 existing dependency/fork warnings",
     "standalone": "Fresh memory-only wheel, actual installed session-sync and loopback sshd; 13 checks pass; StudyLoop absent. Final rebuilt wheel separately passes six compaction/identity/FTS/FK checks.",
     "browser": "Five sections and five disclosures opened; viewport fits; screenshot inspected; own tab and server closed",
-    "pyright": "Workspace passed after content counter; final commit hooks pending",
-    "commit_hooks": "pending"
+    "pyright": "Full workspace source and tests passed in e48318ac commit hooks after all final corrections",
+    "commit_hooks": "e48318ac lint/format/secrets/Bandit/author/full workspace source+test types passed"
   },
   "failures_observed": [
     "Directed receiver mutation test exposed false unchanged: access revision does not track new bodies. Separate content revision and confirmation added.",

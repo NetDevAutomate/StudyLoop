@@ -294,3 +294,9 @@ This remains one configured canonical database per endpoint, with complete scope
 bounded to 32 MiB. Full sync stays false; `--tier full` is refused. Scalable transfer,
 full-store/managed restore, mutable divergence, shared setup/doctor and remaining
 consumer/ownership requirements must be completed before the full goal can ship.
+
+Checkpoint `e48318ac` passes 1,845 combined memory/experiment tests with one optional
+skip, 93 focused coordinator/tiering/store tests, 13 installed SSH checks and six final
+wheel compaction checks. The StudyLoop run passed 3,823 with four skips and 704
+deselected before the final tier bookkeeping correction; final commit hooks include
+full workspace source/test types, lint and security checks.
