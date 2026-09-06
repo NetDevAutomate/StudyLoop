@@ -36,6 +36,7 @@ no remote publication or backup is implied.
 | 27 — Derived learner paths | Do notes, parked questions and practice reports retain every required owner through reclassification and deletion? | `777c8b4` | `learner_paths/runner.py`; GUIDE.md, installed HTTP/MCP lesson, migration rehearsal and council arbitration |
 | 28 — Consistent response access | Can a composed response detect scope changes and revocation before releasing context? | `fcecf6c8` | `response_boundary/runner.py`; GUIDE.md, installed HTTP/MCP lesson, migration rehearsal, overhead measurement and council arbitration |
 | 29 — Grounded learner relationships | Can a graph retain source ownership and honest decision roles through corrections, forgetting and response budgets? | `8bfce3d3` | `concept_context/runner.py`; GUIDE.md, installed HTTP/MCP lesson, scale diagnostic and council arbitration |
+| 30 — Session annotation grounding | Can reports about sessions retain honest authority, correction history and safe source identities? | `61ee4db5` | `session_annotations/runner.py`; GUIDE.md, installed CLI/MCP lesson, schema39 upgrade, history scale diagnostic and council arbitration |
 
 Stage 3 uses its own lifecycle adapter and database schema. It does not modify the
 stage 1 evidence store, and does not require stage 1 demo output. Stage 2 uses
@@ -747,3 +748,28 @@ records accepted criticisms and rejected overclaims. File/config source ownershi
 native annotations, live streams, scoped sync/restore and shared installed setup
 remain production requirements. [concept_context/GUIDE.md](concept_context/GUIDE.md)
 explains why the old unowned imports cannot silently become personal/work context.
+
+## Stage 30 commands
+
+```sh
+uv run python -m experiments.evidence_context.session_annotations.runner --output /tmp/evidence-stage-30
+open /tmp/evidence-stage-30/walkthrough.html
+uv run pytest packages/agent-session-tools/tests/test_annotation_commands.py packages/agent-session-tools/tests/test_context_session_owners.py packages/agent-session-tools/tests/test_annotation_migration.py packages/agent-session-tools/tests/test_deduplication.py experiments/evidence_context/tests/test_session_annotation_lesson.py -q
+```
+
+Checkpoint `61ee4db5` preserves schema39, session-owned immutable annotations,
+correction/conflict history, guarded editor saves and source-preserving deduplication.
+The five-view lesson passes ten checks through fresh installed CLI/MCP paths.
+An installed schema38 copy preserves 53 rows across 57 old tables. Local retirement
+blocks stale legacy-shadow replay, and missing predecessors are disclosed.
+
+Final focused verification: 173 passed. Memory/experiment regression: 1,617 passed
+and one optional skip before final history disclosure; StudyLoop: 3,823 passed,
+four skips and 704 deselections before the final minor annotation changes. Workspace
+hooks passed. Five warm installed helper reads at 10/100/1,000 short versions measured
+9.342/66.119/656.720 ms medians; responses fit 32 KiB while query work grows with history.
+Both councils returned three providers. This establishes neither semantic answer
+quality nor a storage-engine advantage. Legacy SQL sync does not transport these
+new observation tables yet; scoped sync/lifecycle, files/live access and shared
+installation remain open. See [session_annotations/GUIDE.md](session_annotations/GUIDE.md)
+and [session_annotations/COUNCIL-DECISION.md](session_annotations/COUNCIL-DECISION.md).

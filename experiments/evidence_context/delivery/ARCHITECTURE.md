@@ -192,3 +192,20 @@ legacy-path policy enforcement, native capture and scoped sync, then shared setu
 StudyLoop consumption. These components need production-path tests and installed-wheel
 journeys. Synthetic adapter success, unit counts and council recommendations are
 insufficient substitutes for the full requirement-by-requirement release audit.
+
+
+## Implemented session annotation boundary (Stage30)
+
+Schema39 adds native-session ownership to immutable observations. An annotation is
+`about_session`, with reported authority; no captured-input evidence is fabricated.
+The parent controls scope and local deletion. Note/tag correction preserves preceding
+versions and names current conflicts explicitly. Missing predecessors and omitted
+bodies are disclosed separately. Writes check scope atomically, and editor saves
+revalidate a version/access/file snapshot after releasing all database locks.
+
+Permanent session/kind retirement blocks legacy mutable shadows after annotation
+forgetting. Classified or dependent sources are protected from physical dedup merges.
+These guarantees are local; scoped transport and managed restore still need to carry
+all observation, ownership and retirement state before this is releasable. A 32 KiB
+result limit does not bound the current history scan, so selective retrieval remains
+an implementation requirement. See the Stage30 guide and observed diagnostic.

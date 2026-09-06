@@ -138,3 +138,27 @@ fully audited across external consumers. Read output is bounded but projection w
 is not; the 100/1,000/5,000-row diagnostic quantifies that remaining requirement.
 Native annotations/tags/learning metadata, plans, session/IPC/stream files, all managed
 sync/restore/reimport paths and installer/skills/startup still require completion.
+
+
+## Stage30 refresh
+
+Native-session annotations now use `context/annotations.py`, schema39 session owners,
+and existing immutable observation history. `session-query note/tag` resolves scope
+inside a guarded write transaction; external editor saves recheck the version and
+access snapshot after releasing the editor's connection. `session-context annotations`
+and the real MCP `session_annotations` expose reported authority, current disagreement,
+byte coverage and incomplete predecessor history. Legacy learning metadata is a scoped
+unattributed read; this stage adds no producer for it.
+
+The old `deduplication.py` detector now scopes candidates before reading bodies.
+Physical merge refuses classified, owned or provenance-bound sources; legacy
+unclassified merging validates all IDs and rolls back atomically on failure.
+Migration/parent/observation retirement purges mutable annotation shadows, and stale
+shadow replay is refused. These local checks do not establish remote deletion behavior.
+
+The transport inventory is now especially consequential: existing `sync.py` still
+exports old mutable annotation tables and does not carry the new observation versions,
+session owners or retirement metadata. It must be replaced for the classified product
+path. Tiering, managed restore, exporter reimport, config/files/live IPC and shared
+installation/startup remain open. The new measured history scan cost also requires
+selective retrieval with explicit completeness and work bounds.
