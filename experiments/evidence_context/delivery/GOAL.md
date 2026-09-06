@@ -1,5 +1,11 @@
 # Production delivery goal
 
+> **Delivery scope updated 2026-09-06:** The full-product implementation is paused.
+> The current direction is the bounded reliability candidate on
+> `codex/session-memory-mvp`; see [MVP-REBASE.md](MVP-REBASE.md).
+> Instructions below describe the earlier full-product plan and are retained as
+> historical context, not a request to resume that work.
+
 User objective: continue until a production-ready design and implementation can ship
 as part of StudyLoop, preserving independently runnable stages and the educational
 reasoning repository. The user is sleeping; continue authorized work without routine

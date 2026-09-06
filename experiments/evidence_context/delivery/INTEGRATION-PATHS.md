@@ -1,5 +1,11 @@
 # Production boundary inventory
 
+> **Delivery scope updated 2026-09-06:** The full-product implementation is paused.
+> The current direction is the bounded reliability candidate on
+> `codex/session-memory-mvp`; see [MVP-REBASE.md](MVP-REBASE.md).
+> Instructions below describe the earlier full-product plan and are retained as
+> historical context, not a request to resume that work.
+
 ## Current Stage39 transport increment
 
 Complete scopes above the 32 MiB small-packet bound now use private SQLite staging

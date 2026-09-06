@@ -1,5 +1,9 @@
 # Independently runnable learning stages
 
+> **Current delivery direction:** The research implementation is paused in favour
+> of a smaller reliability release. See [delivery/MVP-REBASE.md](delivery/MVP-REBASE.md).
+> All learning stages below remain preserved; they are not release-readiness claims.
+
 Run commands from the experimental worktree root. Each stage has an immutable Git
 checkpoint so later changes cannot silently change the version you are studying.
 These are local commits: preserving the repository preserves the checkpoints;

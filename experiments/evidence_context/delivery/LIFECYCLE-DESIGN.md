@@ -1,5 +1,11 @@
 # Lifecycle implementation decision after scoped content
 
+> **Delivery scope updated 2026-09-06:** The full-product implementation is paused.
+> The current direction is the bounded reliability candidate on
+> `codex/session-memory-mvp`; see [MVP-REBASE.md](MVP-REBASE.md).
+> Instructions below describe the earlier full-product plan and are retained as
+> historical context, not a request to resume that work.
+
 Status: local lifecycle implemented at Stage33 `389146b8`; durable known-recipient
 permanent controls at Stage34 `1f5a5c56`. Actual SSH, reversible withdrawal/regrant,
 full-store and managed restore implementation and acceptance remain open. Stage32 is

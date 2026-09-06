@@ -1,7 +1,7 @@
 {
-  "goal": "active",
+  "goal": "full_product_paused_for_mvp_rebaseline",
   "previous_goal_turn": "progress: Stage40 committed a63d4859;1900combined+3826StudyLooppassed;47finalfocused;15finalinstalledCLI;all implementation hooks passed;full goal active",
-  "current_stage": "40 complete as bounded managed-history authority/permanent-cleanup checkpoint a63d4859; next modern full copy/regrant and managed restore",
+  "current_stage": "Stage40 preserved; unfinished Stage41 reconciliation paused. Active candidate: codex/session-memory-mvp.",
   "requirements": {
     "P01": "partial: migrations throughv46; WAL-consistent StudyLoop backup and refusal of unsafe protected whole-file restore; managed restore remains required",
     "P02": "partial: actual four-harness exporters integrated and eight local real archives imported; Codex Desktop 0.153.0 observed; all native formats, other desktop coverage and installed end-to-end capture remain",
@@ -95,10 +95,10 @@
     "Meta favored consolidation at design; Qwen/Mistral favored managed archive. Result reviews inform next modern-copy/restore work, but conditional production approval and unsupported stale-exposure assertions were rejected against current tests."
   ],
   "next_actions": [
-    "Complete useful modern full-history copying/refocus and fresh archive regrant coverage plus managed restore; compare consolidation before adding another durable protocol layer, preserving current lifecycle controls and replica instance/history",
-    "Measure and address changed-scope retransmission, resumable transfer and cumulative ledger scale without weakening exact manifests, current controls or regrant coverage",
-    "Implement explicit config/content/plan/session file ownership before enabling modern file-derived graph imports, then protect live SSE/WebSocket/IPC and full installed startup.",
-    "Finish shared selectable installer/doctor/skills, four native and desktop capture checks, and fullP01-P15releaseaudit; preserve practice timing/cross-project assessment audit."
+    "Complete only the fixed acceptance gates in codex/session-memory-mvp:MVP-RELEASE.md; no additional research or feature scope.",
+    "Validate installed StudyLoop and real two-endpoint same-trust sync using disposable databases.",
+    "Rehearse supported-database upgrade/repair/recovery, finish release checks and review; reconcile overlapping checkout work before merge.",
+    "Preserve the research branch, uncommitted reconciliation work and saved exercises. Do not resume P01-P15 implementation without a new explicit scope decision."
   ],
   "verification": {
     "package_tests": "1900passed1optional skip128.94s; final runtime.47managed/backup assertions pass4.10s afterward; no runtime change.",
@@ -137,5 +137,19 @@
     "managed_history": "34directedcases;3realprocess-exitphases,offline/pinnedreader/configchange/controlrace,scope,exact-reportversussessionforget;47finalmanaged+backuptests",
     "managed_cleanup_scale": "100/1000/5000perstore:0.572/5.653/35.389s;peak53.4/52.1/61.9MiB;singlefreshprocesscells;legacyfictionalrows"
   },
-  "operational_notice": "A secrets test printed an ambient API key in private failure output; tests now isolate fallback variables. Owner should rotate that key; no value saved in this status or learning artifacts."
+  "operational_notice": "A secrets test printed an ambient API key in private failure output; tests now isolate fallback variables. Owner should rotate that key; no value saved in this status or learning artifacts.",
+  "delivery_mode": "bounded_reliability_release",
+  "historical_next_actions_before_rebaseline": [
+    "Complete useful modern full-history copying/refocus and fresh archive regrant coverage plus managed restore; compare consolidation before adding another durable protocol layer, preserving current lifecycle controls and replica instance/history",
+    "Measure and address changed-scope retransmission, resumable transfer and cumulative ledger scale without weakening exact manifests, current controls or regrant coverage",
+    "Implement explicit config/content/plan/session file ownership before enabling modern file-derived graph imports, then protect live SSE/WebSocket/IPC and full installed startup.",
+    "Finish shared selectable installer/doctor/skills, four native and desktop capture checks, and fullP01-P15releaseaudit; preserve practice timing/cross-project assessment audit."
+  ],
+  "active_candidate": {
+    "branch": "codex/session-memory-mvp",
+    "implementation_checkpoint": "b6d213b3",
+    "status": "prepared; release acceptance pending",
+    "scope_document": "MVP-RELEASE.md",
+    "research_goal_completed": false
+  }
 }

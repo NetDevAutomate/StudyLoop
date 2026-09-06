@@ -1,5 +1,9 @@
 # Evidence context experiment
 
+> **Current delivery direction:** The research implementation is paused in favour
+> of a smaller reliability release. See [delivery/MVP-REBASE.md](delivery/MVP-REBASE.md).
+> All learning stages below remain preserved; they are not release-readiness claims.
+
 An isolated evaluation of versioned conversation evidence and relationship-assisted retrieval. This experiment does not change production sessions.db or claim that a graph database improves answer quality.
 
 ## Scope
