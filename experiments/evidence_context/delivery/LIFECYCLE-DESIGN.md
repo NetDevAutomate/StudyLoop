@@ -1,6 +1,7 @@
 # Lifecycle implementation decision after scoped content
 
-Status: design selected; implementation and acceptance remain open. Stage32 is
+Status: local lifecycle implemented and tested at Stage33 `389146b8`; peer/full-store/
+managed restore implementation and acceptance remain open. Stage32 is
 preserved at `b05e6b4c`. Its successful content transfer does not reconcile deletion.
 
 ## The concrete mismatch
@@ -15,10 +16,10 @@ withdrawal would also make that withdrawal permanent. Regranting access could th
 restore the source but fail to restore its original reports. Removing tombstones to
 work around that would risk undoing an actual forget.
 
-The current session tombstone insertion suppresses native reimport and removes some
-owned derivatives, but there is no complete production source-forget command that
-purges every native body. Implement and test that operation before treating its
-replication as solved.
+At the Stage32 starting point, session tombstone insertion suppressed native reimport and removed some
+owned derivatives, but there was no complete source-forget command. Stage33 now tests
+local native/learner/observation purge and canonical cleanup. Replication is still open;
+see the independently runnable `local_forgetting/GUIDE.md` checkpoint.
 
 ## Decision
 

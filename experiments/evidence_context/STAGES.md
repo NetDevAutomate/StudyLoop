@@ -40,6 +40,8 @@ no remote publication or backup is implied.
 | 31 — Bounded annotation history | Can first-page reads stay cheap without hiding current disagreement or omitted evidence? | `f1883d7b` | `bounded_history/runner.py`; four-view CLI/MCP lesson, ordered-index upgrade, paged scale benchmark and council arbitration |
 | 32 — Scoped replica content | Can sources, reviews and learner identities retain their meaning through a permitted transfer? | `b05e6b4c` | `replica_content/runner.py`; five-view standalone-wheel lesson, dependency and identity tests, observed results and council arbitration. Content phase only; full sync remains open. |
 
+| 33 — Local forgetting and eviction | Can permanent source deletion survive native replay, crashes and index cleanup without making cache eviction permanent? | `389146b8` | `local_forgetting/runner.py`; five-view standalone-wheel lesson, reproduced cleanup race, archive retention tests and council arbitration. Peer/full-store/managed restore remain open. |
+
 Stage 3 uses its own lifecycle adapter and database schema. It does not modify the
 stage 1 evidence store, and does not require stage 1 demo output. Stage 2 uses
 stage 1 fixtures/code; its pinned checkpoint contains everything needed to run it.
@@ -798,3 +800,13 @@ dependency fanout have explicit bounds; this is not a wall-clock guarantee. Scop
 transport/lifecycle and other full delivery requirements remain open. See
 [bounded_history/GUIDE.md](bounded_history/GUIDE.md) and
 [bounded_history/COUNCIL-DECISION.md](bounded_history/COUNCIL-DECISION.md).
+
+## Stage33 commands
+
+```sh
+uv run python -m experiments.evidence_context.local_forgetting.runner --output /tmp/evidence-stage33
+uv run pytest packages/agent-session-tools/tests/test_local_lifecycle.py packages/agent-session-tools/tests/test_tiering.py experiments/evidence_context/tests/test_local_forgetting_lesson.py -q
+```
+
+The [Stage33 guide](local_forgetting/GUIDE.md) explains the distinction between local
+forgetting, physical cleanup, eviction and still-pending peer/restore obligations.

@@ -199,3 +199,22 @@ Continue with `LIFECYCLE-DESIGN.md` and `LEGACY-TRANSPORT-GUARD.md`. Include nat
 withdrawal, durable control routing, native reimport, managed restore/indexes and actual
 configured SSH process acceptance remain open, alongside shared setup/startup and
 file/live-state ownership. The full P01-P15 goal remains active.
+
+
+## Stage33 local lifecycle checkpoint
+
+`389146b8` adds schema41 permanent retirement IDs and transaction-local eviction mode,
+actual `session-context forget` preview/apply plus retryable canonical `cleanup`, native
+message/source replication bindings and modern hot pruning with an archival proof.
+
+Final acceptance:1718combined memory/experiment passes,1skip;67lifecycle/tiering passes;
+16fresh installed memory-only CLI/native checks; full commit lint/types/security passes.
+The earlier same-stage StudyLoop run passed3823,4skip,704deselected. A second-writer race
+was reproduced against the old compactor and repaired by binding reconciliation,
+indexes and generation capture to the same transaction. Details and council arbitration
+are in `local_forgetting/GUIDE.md` and `COUNCIL-DECISION.md`.
+
+This completes a local primitive, not P07/P08. Controls have no peer routing/receipt
+ledger yet. Legacy protected transport remains refused. Full-store copies, managed
+restore, old unbound global state and rich consumers that only read hot still need
+explicit coverage. No owner DB, archive, configuration or live peer was modified.
