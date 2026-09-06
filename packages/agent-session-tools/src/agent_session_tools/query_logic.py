@@ -136,6 +136,29 @@ def search(
     falls back to local-only — reads are mount-opportunistic, never
     mount-dependent.
     """
+    from agent_session_tools.config_loader import load_config
+    from agent_session_tools.context.managed_history import (
+        _configured,
+        require_query_target,
+    )
+    from agent_session_tools.context.response import ScopeConflict, read_boundary
+
+    primary = next(
+        row[2] for row in conn.execute("PRAGMA database_list") if row[1] == "main"
+    )
+    require_query_target(primary)
+    configured = _configured(load_config())
+    with read_boundary():
+        rows = _search_rows(conn, query, limit, since, before, include_full, project)
+        output = _render_search(rows, query, output_format)
+        if _configured(load_config()) != configured:
+            raise ScopeConflict(
+                "Managed history configuration changed; no search output returned"
+            )
+    print(output, end="")
+
+
+def _search_rows(conn, query, limit, since, before, include_full, project):
     from agent_session_tools.query_db import FULL_SCHEMA, attach_full_db
 
     policy = active_policy()
@@ -176,7 +199,14 @@ def search(
         rows.sort(key=lambda item: (item[0]["rank"], item[0]["timestamp"] or ""))
         rows = rows[:limit]
 
-    results = rows
+    return rows
+
+
+def _render_search(results, query, output_format):
+    lines = []
+
+    def emit(value):
+        lines.append(str(value))
 
     if output_format == "json":
         # JSON output
@@ -194,35 +224,37 @@ def search(
                     "tier": tier,
                 }
             )
-        print(json.dumps(output, indent=2))
+        emit(json.dumps(output, indent=2))
 
     elif output_format == "markdown":
         # Markdown output
-        print("# Search Results\n")
-        print(f"**Query:** `{query}`")
-        print(f"**Results:** {len(results)}\n")
-        print("---\n")
+        emit("# Search Results\n")
+        emit(f"**Query:** `{query}`")
+        emit(f"**Results:** {len(results)}\n")
+        emit("---\n")
 
         for i, (r, tier) in enumerate(results, 1):
-            print(f"## Result {i}")
-            print(f"- **Source:** {r['source']}")
-            print(f"- **Project:** {r['project_path']}")
-            print(f"- **Session:** {r['session_id'][:20]}...")
-            print(f"- **Role:** {r['role']}")
-            print(f"- **Timestamp:** {r['timestamp'] or 'unknown'}")
+            emit(f"## Result {i}")
+            emit(f"- **Source:** {r['source']}")
+            emit(f"- **Project:** {r['project_path']}")
+            emit(f"- **Session:** {r['session_id'][:20]}...")
+            emit(f"- **Role:** {r['role']}")
+            emit(f"- **Timestamp:** {r['timestamp'] or 'unknown'}")
             if tier == "full":
-                print("- **Tier:** full history (pruned locally)")
-            print("**Preview:**")
-            print(f"```\n{r['preview']}\n```\n")
-            print("---\n")
+                emit("- **Tier:** full history (pruned locally)")
+            emit("**Preview:**")
+            emit(f"```\n{r['preview']}\n```\n")
+            emit("---\n")
 
     else:
         # Table output (default)
         for r, tier in results:
             tier_tag = " [full]" if tier == "full" else ""
-            print(f"\n[{r['source']}]{tier_tag} {r['project_path']}")
-            print(f"  {r['role']} @ {r['timestamp'] or 'unknown'}")
-            print(f"  {r['preview']}...")
+            emit(f"\n[{r['source']}]{tier_tag} {r['project_path']}")
+            emit(f"  {r['role']} @ {r['timestamp'] or 'unknown'}")
+            emit(f"  {r['preview']}...")
+
+    return "\n".join(lines) + "\n" if lines else ""
 
 
 def list_sessions(

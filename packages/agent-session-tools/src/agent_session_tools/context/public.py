@@ -63,6 +63,9 @@ def open_context(
 ):
     """Open one policy-checked snapshot, never silently migrate an agent request."""
     path = (db or get_db_path(load_config())).expanduser().resolve()
+    from .managed_history import require_query_target
+
+    require_query_target(path)
     conn = sqlite3.connect(
         path.as_uri() + ("?mode=rw" if write else "?mode=ro"), uri=True
     )

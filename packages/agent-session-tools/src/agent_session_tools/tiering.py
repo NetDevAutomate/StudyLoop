@@ -396,6 +396,8 @@ def sync_to_full(
     if not hot.exists():
         raise FileNotFoundError(f"Hot database not found: {hot}")
 
+    _require_legacy_copy(hot, full, cfg)
+
     from agent_session_tools.export_sessions import init_db
 
     ensure_leaf_dir(full.parent)
@@ -403,9 +405,11 @@ def sync_to_full(
     stats = SyncStats()
     try:
         conn.execute("PRAGMA foreign_keys=OFF")
-        conn.execute(f"ATTACH DATABASE '{hot}' AS hot")
+        conn.execute("ATTACH DATABASE ? AS hot", (str(hot),))
 
         with conn:
+            conn.execute("BEGIN IMMEDIATE")
+            _check_legacy_attached(conn, "hot", cfg)
             conn.execute(
                 """
                 CREATE TEMP TABLE changed_ids AS
@@ -453,6 +457,7 @@ def sync_to_full(
                         where="WHERE session_id IN (SELECT id FROM changed_ids)",
                     )
             conn.execute("DROP TABLE changed_ids")
+            _check_legacy_attached(conn, "hot", cfg)
 
         stats.sessions_total_full = conn.execute(
             "SELECT COUNT(*) FROM main.sessions"
@@ -467,6 +472,29 @@ def sync_to_full(
         stats.sessions_total_full,
     )
     return stats
+
+
+def _require_legacy_copy(hot, full, config):
+    """The old body-only copier must not discard modern lineage or lifecycle state."""
+    from contextlib import closing
+    from .replication.legacy import check_config, check_database
+
+    check_config(config)
+    for path in (hot, full):
+        if path.exists():
+            with closing(
+                sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)
+            ) as conn:
+                check_database(conn)
+
+
+def _check_legacy_attached(conn, schema, config):
+    from .replication.legacy import check_config, check_database
+
+    check_config(config)
+    check_config(load_config())
+    check_database(conn)
+    check_database(conn, schema)
 
 
 # ---------------------------------------------------------------------------
@@ -611,7 +639,7 @@ def prune_hot(
         conn.execute("PRAGMA busy_timeout=5000")
         modern = conn.execute("PRAGMA user_version").fetchone()[0] >= 41
         conn.execute("PRAGMA foreign_keys=ON" if modern else "PRAGMA foreign_keys=OFF")
-        conn.execute(f"ATTACH DATABASE '{full}' AS full")
+        conn.execute("ATTACH DATABASE ? AS full", (str(full),))
         if modern:
             # Hold verification and eviction in the same attached-DB transaction.
             conn.execute("BEGIN IMMEDIATE")
@@ -905,6 +933,8 @@ def refocus(
     if not hot.exists():
         raise FileNotFoundError(f"Hot database not found: {hot}")
 
+    _require_legacy_copy(hot, full, cfg)
+
     fts_query = topics_fts_query(topics)
     if not fts_query:
         raise ValueError("refocus requires at least one topic")
@@ -918,7 +948,9 @@ def refocus(
     try:
         conn.execute("PRAGMA busy_timeout=5000")
         conn.execute("PRAGMA foreign_keys=OFF")
-        conn.execute(f"ATTACH DATABASE '{full}' AS full")
+        conn.execute("ATTACH DATABASE ? AS full", (str(full),))
+        conn.execute("BEGIN IMMEDIATE")
+        _check_legacy_attached(conn, "full", cfg)
 
         # ---- 1. PULL: focus-matching recent sessions missing from hot ----
         full_focus_ids = _focus_session_ids(conn, "full", fts_query, since=since)
@@ -955,10 +987,14 @@ def refocus(
                         where="WHERE session_id IN (SELECT id FROM pull_ids)",
                     )
                 conn.execute("DROP TABLE pull_ids")
+                _check_legacy_attached(conn, "full", cfg)
 
         # ---- 2. Identify hot sessions matching focus (never pruned) ----
         keep_ids = _focus_session_ids(conn, "main", fts_query)
         stats.kept_in_focus = len(keep_ids)
+        _check_legacy_attached(conn, "full", cfg)
+        if conn.in_transaction:
+            conn.rollback()
         conn.execute("DETACH DATABASE full")
     finally:
         conn.close()

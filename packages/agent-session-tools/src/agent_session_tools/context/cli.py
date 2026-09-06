@@ -101,14 +101,27 @@ def forget(
 ) -> None:
     """Preview or apply local forgetting, with honest replica/restore status."""
     from .lifecycle import compact, forget_session
+    from .managed_history import forget_with_history, reconcile_full
+    from ..tiering import get_full_db_path
 
-    path = (db or get_db_path(load_config())).expanduser().resolve()
-    with open_context(path, write=apply) as context:
-        result = forget_session(context.conn, session_id, apply=apply)
+    config = load_config()
+    canonical = get_db_path(config).expanduser().resolve()
+    path = (db or canonical).expanduser().resolve()
+    if path == canonical and get_full_db_path(config) is not None:
+        result = forget_with_history(session_id, apply=apply)
+    else:
+        with open_context(path, write=apply) as context:
+            result = forget_session(context.conn, session_id, apply=apply)
     if apply:
-        result["canonical_file_cleanup"] = compact(path)
+        result["configured_full_cleanup"] = reconcile_full(hot=path, config=config)
+        result["canonical_file_cleanup"] = result["configured_full_cleanup"].get(
+            "canonical_cleanup"
+        ) or compact(path)
     typer.echo(_json(result))
-    if apply and not result["canonical_file_cleanup"]["complete"]:
+    if apply and (
+        not result["canonical_file_cleanup"]["complete"]
+        or not result["configured_full_cleanup"]["complete"]
+    ):
         raise typer.Exit(2)
 
 
@@ -116,8 +129,13 @@ def forget(
 def cleanup(db: DatabaseOption = None) -> None:
     """Retry canonical DB/WAL compaction after local forgetting; preserve live rows."""
     from .lifecycle import compact
+    from .managed_history import reconcile_full
 
-    result = compact((db or get_db_path(load_config())).expanduser().resolve())
+    path = (db or get_db_path(load_config())).expanduser().resolve()
+    full = reconcile_full(hot=path)
+    result = dict(full.get("canonical_cleanup") or compact(path))
+    result["configured_full_cleanup"] = full
+    result["complete"] = result["complete"] and full["complete"]
     typer.echo(_json(result))
     if not result["complete"]:
         raise typer.Exit(2)

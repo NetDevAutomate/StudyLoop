@@ -27,7 +27,7 @@ def connect(path):
 
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(path)
+    conn = sqlite3.connect(path.resolve().as_uri(), uri=True)
     try:
         path.chmod(0o600)
         conn.row_factory = sqlite3.Row

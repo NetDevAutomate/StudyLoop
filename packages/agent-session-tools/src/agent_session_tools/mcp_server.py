@@ -44,6 +44,9 @@ def _get_db_path() -> Path:
 def _get_connection(db_path: Path | None = None) -> sqlite3.Connection:
     """Open a read-only database connection with Row factory."""
     path = db_path or _get_db_path()
+    from .context.managed_history import require_query_target
+
+    require_query_target(path)
     conn = sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)
     conn.row_factory = sqlite3.Row
     conn.execute("BEGIN")

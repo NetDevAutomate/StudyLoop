@@ -46,6 +46,7 @@ no remote publication or backup is implied.
 | 37 — Deliberate quarantine recovery | Can explicit local intent resolve a retained copy without inventing provenance or deleting a fresh transfer on retry? | `801a33e0` | `quarantine_recovery/runner.py`; five-view installed CLI lesson, all six root kinds, exact previews and council arbitration. Real sync and managed restore remain open. |
 | 38 — Configured SSH coordination | Can actual CLI transfers preserve permission, forgetting and durable retry across authenticated processes? | `e48318ac` | `configured_sync/runner.py`; five-view installed SSH lesson, reproduced counter defect, late-change and failure tests, council arbitration. Large scopes and full-store/restore remain open. |
 | 39 — Larger complete histories | Can streaming reduce body-memory cost while retaining complete evidence and lifecycle checks? | `b57175b5` | `scalable_transfer/runner.py`; five-view installed large SSH lesson, paired projection diagnostic, withdrawal and final-commit race fixes. Deltas, full-store/restore and full release acceptance remain open. |
+| 40 — Current intent over older copies | Can archive-only history remain useful while permanent forgetting survives offline cleanup and native replay? | `pending-stage40-commit` | `managed_history/runner.py`; five-view standalone-wheel lesson, phase-crash tests, cleanup scale, corrected report-versus-source semantics and council arbitration. Modern full copying/regrant and managed restore remain open. |
 
 Stage 3 uses its own lifecycle adapter and database schema. It does not modify the
 stage 1 evidence store, and does not require stage 1 demo output. Stage 2 uses
@@ -882,3 +883,16 @@ one complete projection, how its exact source bindings survive, and why transfer
 withdrawal and forgetting must all work at the tested scale. It includes the failed
 large withdrawal, the final commit-request race, measured time/memory trade-offs and
 council arbitration. The installed lesson requires local OpenSSH; all data is fictional.
+
+## Stage40 commands
+
+```sh
+uv run python -m experiments.evidence_context.managed_history.runner --output /tmp/evidence-stage40
+uv run python -m experiments.evidence_context.managed_history.benchmark --output /tmp/evidence-stage40-measurements
+uv run pytest packages/agent-session-tools/tests/test_managed_history.py packages/agent-session-tools/tests/test_context_observations.py packages/agent-session-tools/tests/test_replica_ledger.py -q
+```
+
+The [Stage40 guide](managed_history/GUIDE.md) explains canonical-first retirement,
+read-only historical search, offline pending/retry, exact-report versus whole-source
+forgetting, WAL-aware backup and measured cleanup cost. The installed lesson requires
+only the standalone package and fictional local fixtures; no SSH peer is contacted.

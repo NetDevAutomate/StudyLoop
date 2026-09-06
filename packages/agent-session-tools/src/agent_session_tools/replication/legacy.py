@@ -7,6 +7,7 @@ It does not make legacy SQL a supported scoped replication protocol.
 from contextlib import closing
 from pathlib import Path
 import sqlite3
+import re
 
 from ..config_loader import load_config
 
@@ -31,8 +32,10 @@ def check_config(config):
         raise LegacySyncRefused(MESSAGE)
 
 
-def protected_queries(tables):
+def protected_queries(tables, schema=None):
     """Metadata-only existence predicates; no source identities or bodies returned."""
+    if schema is not None and not re.fullmatch(r"[A-Za-z_]\w*", schema):
+        raise ValueError("Invalid internal legacy schema")
     for table in sorted(tables):
         if (
             not table.startswith("context_")
@@ -41,6 +44,8 @@ def protected_queries(tables):
         ):
             continue
         quoted = '"' + table.replace('"', '""') + '"'
+        if schema is not None:
+            quoted = f"{schema}.{quoted}"
         condition = (
             " WHERE applied_at IS NOT NULL"
             if table == "context_policy_state"
@@ -51,11 +56,18 @@ def protected_queries(tables):
         yield f"SELECT 1 FROM {quoted}{condition} LIMIT 1"
 
 
-def check_database(conn):
+def check_database(conn, schema="main"):
+    if not re.fullmatch(r"[A-Za-z_]\w*", schema):
+        raise ValueError("Invalid internal legacy schema")
     tables = {
-        r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        r[0]
+        for r in conn.execute(
+            f"SELECT name FROM {schema}.sqlite_master WHERE type='table'"
+        )
     }
-    if any(conn.execute(query).fetchone() for query in protected_queries(tables)):
+    if any(
+        conn.execute(query).fetchone() for query in protected_queries(tables, schema)
+    ):
         raise LegacySyncRefused(MESSAGE)
 
 

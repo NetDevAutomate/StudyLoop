@@ -1,23 +1,23 @@
 {
   "goal": "active",
-  "previous_goal_turn": "progress: Stage39 committed b57175b5;1866combinedpassed1skip125.38s;15finalinstalledSSHchecks;full commit hooks passed;full goal active",
-  "current_stage": "39 complete as bounded scalable transfer checkpoint b57175b5; next full-store/restore and remaining production gates",
+  "previous_goal_turn": "progress: Stage39 committed b57175b5; Stage40 permanent managed-history repair now verified, commit pending; full goal active",
+  "current_stage": "40 verified bounded checkpoint; implementation commit pending; next modern full copy/regrant and managed restore",
   "requirements": {
-    "P01": "partial: transactional migrations through v46; v45-to46 failure rollback/retry and final wheel compaction preserve data/new instance; managed restore remains",
+    "P01": "partial: migrations throughv46; WAL-consistent StudyLoop backup and refusal of unsafe protected whole-file restore; managed restore remains required",
     "P02": "partial: actual four-harness exporters integrated and eight local real archives imported; Codex Desktop 0.153.0 observed; all native formats, other desktop coverage and installed end-to-end capture remain",
     "P03": "partial: native/provenance boundaries preserved; review documents cannot supply origin/authority/independence; fixed adapter producer and interpretation authority; full release audit remains",
-    "P04": "partial: bounded native sources/reviews/StudyLoop graph and session annotations; Stage31 selects scoped headers and preserves atomic current groups with history-only continuation, metadata/dependency preflight and VM budget; real semantic usefulness and consumer acceptance remain",
+    "P04": "partial: prior bounded rich context plus scoped read-only full archive search under current canonical controls and final response validation; full rich federation and semantic usefulness remain",
     "P05": "partial: source-bound reviews and native annotation history retain explicit supersession, competing reports, retirement and missing-predecessor disclosure; no automatic timestamp/vote truth rule; generic semantic arbitration and real usefulness remain unproven",
     "P06": "partial: learner graph/record boundaries plus native session notes/tags/learning metadata reads now scoped; native annotation writes guarded through editor concurrency; file/config/plan/IPC and streaming ownership remain",
     "P07": "partial: actual scoped SSH supports complete staged scopes above32MiB with atomic receipts and final source checks; incremental/ledger scale and full-store/restore remain",
-    "P08": "partial: canonical withdrawal preview now hashes first-before-images and passes large installed lifecycle; full-store and managed restore remain",
+    "P08": "partial: canonical/full permanent controls converge before canonical-first commit; archive-only scoped forgetting, offline retry, managed compaction and native replay tested; withdrawal/full regrant and managed restore remain",
     "P09": "partial: native capture receipts, scoped health and separate withdrawn count; hook runtime/registration, archive census and doctor integration remain",
-    "P10": "partial: final Stage39 standalone wheel, StudyLoop absent,15actualCLI/SSHchecks; shared setup and full package acceptance remain",
+    "P10": "partial: final Stage40 standalone wheel with StudyLoop absent passes15actualCLI checks; shared setup/full acceptance remain",
     "P11": "not yet proven",
     "P12": "not yet proven",
     "P13": "partial: fresh installed graph HTTP/MCP10checks plus prior response/learner checks; full lifespan, live-session files/stream, installer and agent startup remain",
-    "P14": "stages1-39 independently runnable; Stage39 five-view guide explains scale, source-binding preservation, withdrawal bottleneck and final commit race; exercises unchanged",
-    "P15": "partial:1866combinedpassed1skip125.38s;15finalinstalledSSHchecks;b57175b5fullhooks pass;full release audit remains"
+    "P14": "stages1-40 independently runnable; Stage40 records archive authority, cleanup cost, failed subject-purge interpretation and council arbitration; saved exercises unchanged",
+    "P15": "partial:1900memory/experiment passed1skip;3826StudyLoop passed4skip704deselected;47finalmanaged/backupchecks;15installedCLIchecks; commit hooks pending and full release audit remains"
   },
   "completed_checkpoints": {
     "stage16": "6c736c5",
@@ -85,25 +85,31 @@
     "A final commit-request race was reproduced: refusal at finish still left a receiver body. Source checks now run immediately before chunk and final commit pipe writes; both negative tests require body absence.",
     "1866finalcombinedchecks pass with1optional skip;15finalstandaloneCLI/SSHchecks pass. Protocolv2 live compatibility is explicit; historicalv1metadata recovery remains available.",
     "Single-sample512message diagnostic: snapshot88.4ms/93.9MiBpeak versus staging118.9ms/40.0MiBpeak.3072message snapshot refuses; staging674.7ms/42.4MiBpeak. No engine, semantic-quality or constant-memory claim.",
-    "Meta/Qwen/Mistral design and result reviews informed staging sequence, failure tests and limitations. Concrete evidence governed arbitration; full production approval remains absent."
+    "Meta/Qwen/Mistral design and result reviews informed staging sequence, failure tests and limitations. Concrete evidence governed arbitration; full production approval remains absent.",
+    "Stage40 reproduced a forgotten canonical session returning via stale full search. Attached archive queries now observe canonical retirement/denial controls, require read-only attachment and validate final output; direct managed-full overrides are refused.",
+    "Permanent control union converges before canonical-first intent commit and archive cleanup. Offline/busy/change conditions remain pending; actual process exits prove observed rollback/retry phases. Full sync and managed restore remain false.",
+    "Broad tests disproved a new blanket retired-subject purge: one-report forgetting must preserve other inspectable history, with explicit supersession preventing reactivation. Removed the blanket change; whole-session forgetting still removes archive-only dependent versions.",
+    "Final standalone native/CLI lesson passes15checks.1900combined and3826StudyLoop checks pass;47finalfocused assertions add denied archive-only forgetting and canonical reclassification coverage without runtime changes.",
+    "Final cleanup diagnostic100/1000/5000sessions perstore:0.572/5.653/35.389seconds,peakRSS53.4/52.1/61.9MiB including setup. Single samples, fictional legacy rows, no network/native fanout or engine/answer-quality comparison.",
+    "Meta favored consolidation at design; Qwen/Mistral favored managed archive. Result reviews inform next modern-copy/restore work, but conditional production approval and unsupported stale-exposure assertions were rejected against current tests."
   ],
   "next_actions": [
-    "Complete full-store forget/restore and hot/full consumer integration; preserve current retirement/withdrawal state before restoring older data and prove managed index/file coverage",
+    "Complete useful modern full-history copying/refocus and fresh archive regrant coverage plus managed restore; compare consolidation before adding another durable protocol layer, preserving current lifecycle controls and replica instance/history",
     "Measure and address changed-scope retransmission, resumable transfer and cumulative ledger scale without weakening exact manifests, current controls or regrant coverage",
     "Implement explicit config/content/plan/session file ownership before enabling modern file-derived graph imports, then protect live SSE/WebSocket/IPC and full installed startup.",
     "Finish shared selectable installer/doctor/skills, four native and desktop capture checks, and fullP01-P15releaseaudit; preserve practice timing/cross-project assessment audit."
   ],
   "verification": {
-    "package_tests": "1866 passed, 1 optional skip, 125.38s; final protocol v2, withdrawal binding and both final pre-write guards. Later lesson-only literal wrapping/import sorting does not change runtime.",
-    "experiment_tests": "Stage39 five-view actual final installed CLI/SSH lesson:15checks",
-    "workspace_pyright": "Final source and tests passed in b57175b5 commit hooks",
-    "commit_hooks": "b57175b5: lint/format/secrets/Bandit/author/full workspace source and test types passed",
-    "browser": "Final installed lesson: five sections and five disclosures opened; viewport fits; screenshot inspected; own tab and server closed.",
-    "studyloop_tests": "3823 passed, 4 skipped, 704 deselected, 181.69s; earlier in this stage before protocol/preview/final pre-write changes; 11 existing dependency/fork warnings. Final shared-runtime coverage is the combined run above.",
+    "package_tests": "1900passed1optional skip128.94s; final runtime.47managed/backup assertions pass4.10s afterward; no runtime change.",
+    "experiment_tests": "Stage40 five-view final installed native/CLI lesson15checks",
+    "workspace_pyright": "earlier Stage40 source0errors0warnings; final commit hook pending",
+    "commit_hooks": "pending Stage40 implementation commit",
+    "browser": "Stage40 five sections/five disclosures opened;viewport fits;screenshot inspected;ownedtab/serverclosedafterQA",
+    "studyloop_tests": "3826passed4skipped704deselected175.45s;11existingdependency/forkwarnings; final runtime.",
     "focused_consumer_tests": "93 coordinator, tiering and context-store tests passed in 19.87s after counter and archival fixes",
-    "artifact": "studyloop-private/reviews/2026-09-06-stage39-scalable-transfer/demo-installed-final/walkthrough.html",
+    "artifact": "studyloop-private/reviews/2026-09-06-stage40-managed-history/demo-installed-final/walkthrough.html",
     "native_probe": "8 local real sessions imported without errors;1898/1898 body hashes match;source files unchanged",
-    "installed_component": "Final rebuilt memory-only wheel installed into isolated Python3.13 environment with StudyLoop absent; 15 actual installed CLI/loopback SSH lifecycle checks pass, including large history, withdrawal, fresh regrant and reverse forgetting.",
+    "installed_component": "Final Stage40 wheel in fresh isolated Python3.13, StudyLoop absent; actual installed CLI15checks",
     "real_retrieval": "6CLI queries,60exact citations and hashes verified,all<=32768bytes,no semantic relevance claim",
     "live_review_pilot": "3calls,3constructedcases/model;strict acceptance1/3providers;post-hoc9/9permissivelabels+exactbindings,not semanticvalidation",
     "ownership_benchmark": "50000project-onlyrecords:countmedian15.46ms,latest20median20.35ms;noengine/schema ranking",
@@ -126,7 +132,9 @@
     "quarantine_recovery": "All6root kinds, explicit loss acknowledgement, stale plans/cursors, new facts, scope-file mutation, removed/readded peer, process exit37, pinned reader, historical retry and audit immutability tested;94finalfocused passed16.57s",
     "configured_ssh": "13 actual installed CLI/loopback SSH checks; five-view browser QA; final wheel six compaction checks",
     "scalable_transfer": "Final rebuilt memory-only wheel installed into isolated Python3.13 environment with StudyLoop absent; 15 actual installed CLI/loopback SSH lifecycle checks pass, including large history, withdrawal, fresh regrant and reverse forgetting.",
-    "projection_scale": "Single-sample512message diagnostic: snapshot88.4ms/93.9MiBpeak versus staging118.9ms/40.0MiBpeak.3072message snapshot refuses; staging674.7ms/42.4MiBpeak. No engine, semantic-quality or constant-memory claim."
+    "projection_scale": "Single-sample512message diagnostic: snapshot88.4ms/93.9MiBpeak versus staging118.9ms/40.0MiBpeak.3072message snapshot refuses; staging674.7ms/42.4MiBpeak. No engine, semantic-quality or constant-memory claim.",
+    "managed_history": "34directedcases;3realprocess-exitphases,offline/pinnedreader/configchange/controlrace,scope,exact-reportversussessionforget;47finalmanaged+backuptests",
+    "managed_cleanup_scale": "100/1000/5000perstore:0.572/5.653/35.389s;peak53.4/52.1/61.9MiB;singlefreshprocesscells;legacyfictionalrows"
   },
   "operational_notice": "A secrets test printed an ambient API key in private failure output; tests now isolate fallback variables. Owner should rotate that key; no value saved in this status or learning artifacts."
 }

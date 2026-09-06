@@ -228,19 +228,50 @@ def _visibility_sql(
             predicate = f"({unassigned} OR {assigned})"
         else:
             predicate = assigned
-    if _table(conn, "context_tombstones", schema):
-        predicate += f""" AND NOT EXISTS (SELECT 1 FROM {schema}.context_tombstones tomb
-            WHERE tomb.session_id={session_column})"""
     from .response import observe_database, observe_scope
     from .withdrawal_gate import predicate as withdrawal_predicate
 
-    if withdrawals:
-        predicate += " AND " + withdrawal_predicate(
-            conn, "session", session_column, schema=schema
-        )
+    # Managed archive rows retain their own classification, but an older copy
+    # cannot override current canonical lifecycle controls. Do not require the
+    # session to still exist in main: reversible hot pruning deliberately removes it.
+    control_schemas = (schema,) if schema == "main" else (schema, "main")
+    for control_schema in control_schemas:
+        if control_schema != schema and _table(
+            conn, "context_policy_state", control_schema
+        ):
+            state = conn.execute(
+                f"SELECT digest FROM {control_schema}.context_policy_state WHERE id=1"
+            ).fetchone()
+            if state is None or state[0] != policy.digest:
+                raise ScopeError(
+                    "Canonical scope policy must be applied before archive reads"
+                )
+        if _table(conn, "context_tombstones", control_schema):
+            predicate += f""" AND NOT EXISTS (
+                SELECT 1 FROM {control_schema}.context_tombstones tomb
+                WHERE tomb.session_id={session_column})"""
+        if _table(conn, "context_retirements", control_schema):
+            predicate += f""" AND NOT EXISTS (
+                SELECT 1 FROM {control_schema}.context_retirements retired
+                WHERE retired.kind='session' AND retired.object_id={session_column})"""
+        if withdrawals:
+            predicate += " AND " + withdrawal_predicate(
+                conn, "session", session_column, schema=control_schema
+            )
+            if (
+                control_schema == "main"
+                and schema != "main"
+                and _table(conn, "context_replica_denials", "main")
+            ):
+                # A fresh canonical regrant proves its received version, not an
+                # older archive-only body. Managed fresh-copy coverage is still
+                # required before that historical archive version can be exposed.
+                predicate += f""" AND NOT EXISTS (
+                    SELECT 1 FROM main.context_replica_denials history
+                    WHERE history.kind='session' AND history.object_id={session_column})"""
+        observe_database(conn, control_schema)
 
     observe_scope(policy, scope)
-    observe_database(conn, schema)
     return "(" + predicate + ")", params
 
 

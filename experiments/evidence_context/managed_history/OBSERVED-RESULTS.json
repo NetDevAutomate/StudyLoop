@@ -1,0 +1,118 @@
+{
+  "stage": 40,
+  "date": "2026-09-06",
+  "checkpoint": "pending-stage40-commit",
+  "schema": 46,
+  "goal_complete": false,
+  "baseline": "Forgotten canonical source returned from old full archive:1failed1passed.",
+  "corrections": [
+    "Search formatting fixtures now exercise a committed file-backed DB; guard unchanged.",
+    "Backup opens first and catches missing files instead of exists-then-open.",
+    "Removed incorrect blanket retired-subject purge; exact-report history semantics preserved.",
+    "Read-only ATTACH requires URI-enabled public connection factories on this SQLite build."
+  ],
+  "tests": {
+    "memory_and_experiments": {
+      "passed": 1900,
+      "skipped": 1,
+      "seconds": 128.94
+    },
+    "studyloop_default": {
+      "passed": 3826,
+      "skipped": 4,
+      "deselected": 704,
+      "warnings": 11,
+      "seconds": 175.45
+    },
+    "focused_after_semantic_correction": {
+      "passed": 138,
+      "seconds": 21.09
+    },
+    "final_managed_backup_assertions": {
+      "passed": 47,
+      "seconds": 4.1,
+      "note": "Added denial/archived-forget and canonical-reclassification assertions after broad runs; runtime unchanged."
+    }
+  },
+  "installed": {
+    "checks": {
+      "real_native_capture": true,
+      "actual_verified_hot_pruning": true,
+      "archive_only_source_retrieved": true,
+      "work_excluded_from_search": true,
+      "archive_only_forget_preview": true,
+      "online_permanent_cleanup_complete": true,
+      "offline_cleanup_reported_pending": true,
+      "returned_stale_archive_stays_hidden": true,
+      "cleanup_retry_completes": true,
+      "native_reimport_does_not_resurrect": true,
+      "unrelated_work_preserved_in_full": true,
+      "source_derived_report_purged": true,
+      "full_fts_and_fk_valid": true,
+      "full_file_lacks_forgotten_markers": true,
+      "external_native_files_unchanged": true
+    },
+    "wheel_sha256": "d6341102ac9af82d0cf89eb0ce8791c5b092565099d612d46409cc9897c98cfd",
+    "studyloop_absent": true,
+    "actual_console_entrypoints": true,
+    "private_artifact": "studyloop-private/reviews/2026-09-06-stage40-managed-history/demo-installed-final/walkthrough.html"
+  },
+  "benchmark": {
+    "rows": [
+      {
+        "sessions_per_store": 100,
+        "cleanup_seconds": 0.5721558330114931,
+        "closure_rounds": 2,
+        "peak_process_rss_bytes": 56033280,
+        "both_stores_empty": true
+      },
+      {
+        "sessions_per_store": 1000,
+        "cleanup_seconds": 5.65254050004296,
+        "closure_rounds": 2,
+        "peak_process_rss_bytes": 54640640,
+        "both_stores_empty": true
+      },
+      {
+        "sessions_per_store": 5000,
+        "cleanup_seconds": 35.38939041714184,
+        "closure_rounds": 2,
+        "peak_process_rss_bytes": 64946176,
+        "both_stores_empty": true
+      }
+    ],
+    "limits": "One fresh process per cell, fictional legacy rows, all sessions retired. Time includes two-store reconciliation and canonical/full compaction; peak RSS includes fixture setup. No native evidence, network, engine ranking or semantic usefulness comparison. Bounds are refusals, not a latency guarantee."
+  },
+  "council": {
+    "design_providers": [
+      "meta",
+      "qwen",
+      "mistral"
+    ],
+    "result_providers": [
+      "meta",
+      "qwen",
+      "mistral"
+    ],
+    "result_packet_characters": 137441,
+    "later_broad_and_final_wheel_seen_by_reviewers": false,
+    "production_approval": false
+  },
+  "browser": {
+    "sections": 5,
+    "opened_disclosures": 5,
+    "viewport_fits": true,
+    "screenshot_inspected": true,
+    "cleanup": "owned tab and server closed after QA"
+  },
+  "commit_hooks": "pending implementation commit",
+  "remaining": [
+    "Modern full copying/refocus and exact fresh archive regrant coverage",
+    "Managed restore preserving current controls and peer/instance history",
+    "Complete rich full-history consumer integration",
+    "Incremental transfer and cumulative receipt scale",
+    "Remaining file/live-state ownership",
+    "Shared selectable install,doctor,skills and full release acceptance"
+  ],
+  "limits": "One configured canonical/full pair. Permanent control cleanup only; withdrawal cleanup and managed restore are not asserted. External native originals/backups/owner data/config/hooks/peers unchanged. No semantic usefulness or engine ranking."
+}

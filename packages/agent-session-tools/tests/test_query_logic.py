@@ -35,9 +35,9 @@ def schema_path() -> Path:
 
 
 @pytest.fixture
-def db(schema_path: Path):
-    """In-memory database with schema + all migrations applied."""
-    conn = sqlite3.connect(":memory:")
+def db(schema_path: Path, tmp_path: Path):
+    """File-backed database so final-response checks observe real committed state."""
+    conn = sqlite3.connect((tmp_path / "query.db").as_uri(), uri=True)
     conn.row_factory = sqlite3.Row
     with open(schema_path) as f:
         conn.executescript(f.read())

@@ -319,3 +319,21 @@ skip, 93 focused coordinator/tiering/store tests, 13 installed SSH checks and si
 wheel compaction checks. The StudyLoop run passed 3,823 with four skips and 704
 deselected before the final tier bookkeeping correction; final commit hooks include
 full workspace source/test types, lint and security checks.
+
+## Stage40 managed historical authority
+
+The [Stage40 checkpoint](../managed_history/GUIDE.md) repairs stale full-archive
+search and permanent cleanup. Canonical retirement commits first; offline/archive
+cleanup remains pending until retry. Exact-report forgetting preserves other history;
+whole-session forgetting removes every dependent version in both stores. Full search
+uses current canonical controls, read-only attachment and final response validation.
+
+StudyLoop backup now preserves committed WAL via the SQLite backup API. Protected
+whole-file restore and legacy partial full-copy/refocus are refused pending managed
+replacements. This is an interim protection, not completion of those product features.
+
+The next implementation must restore useful modern full copying, exact fresh regrant
+coverage and managed restore. Compare consolidation before adding another durable
+protocol. Current retirement/withdrawal, explicit scope, replica identity/history,
+managed indexes and rich consumers must all survive. The full delivery goal remains
+active; shared setup/doctor/skills and complete installed acceptance are still required.

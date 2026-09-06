@@ -152,3 +152,21 @@ This is still a library protocol. Quarantine has no general operator reconciliat
 adoption command; actual configured SSH/session-sync coordination, fresh config-file
 fences, full-store/restore and complete consumer/install acceptance remain open.
 All receipts continue to report full sync as incomplete.
+
+## Stage40 managed historical authority
+
+The [Stage40 checkpoint](../managed_history/GUIDE.md) repairs stale full-archive
+search and permanent cleanup. Canonical retirement commits first; offline/archive
+cleanup remains pending until retry. Exact-report forgetting preserves other history;
+whole-session forgetting removes every dependent version in both stores. Full search
+uses current canonical controls, read-only attachment and final response validation.
+
+StudyLoop backup now preserves committed WAL via the SQLite backup API. Protected
+whole-file restore and legacy partial full-copy/refocus are refused pending managed
+replacements. This is an interim protection, not completion of those product features.
+
+The next implementation must restore useful modern full copying, exact fresh regrant
+coverage and managed restore. Compare consolidation before adding another durable
+protocol. Current retirement/withdrawal, explicit scope, replica identity/history,
+managed indexes and rich consumers must all survive. The full delivery goal remains
+active; shared setup/doctor/skills and complete installed acceptance are still required.

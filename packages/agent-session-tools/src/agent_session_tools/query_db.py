@@ -15,16 +15,15 @@ from agent_session_tools.config_loader import get_db_path, load_config
 
 logger = logging.getLogger(__name__)
 
-# Lazy config cache — populated on first use so that importing this module has
-# no side effects (no file I/O, no logging config, no directory creation).
+# Retained for older reset hooks; managed paths are refreshed on every operation.
+# Importing still performs no file I/O or directory creation.
 _config: dict | None = None
 
 
 def _get_config() -> dict:
-    """Return the loaded config, initialising on first call."""
+    """Read current configuration; removed archives must not survive in a cache."""
     global _config
-    if _config is None:
-        _config = load_config()
+    _config = load_config()
     return _config
 
 
@@ -41,7 +40,10 @@ def get_connection(db: Path | None = None) -> sqlite3.Connection:
             from the loaded config is used.
     """
     db_path = db if db else get_default_db_path()
-    conn = sqlite3.connect(db_path)
+    from .context.managed_history import require_query_target
+
+    require_query_target(db_path)
+    conn = sqlite3.connect(Path(db_path).expanduser().resolve().as_uri(), uri=True)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys=ON")
     conn.execute("PRAGMA busy_timeout=5000")
@@ -65,8 +67,31 @@ def attach_full_db(conn: sqlite3.Connection) -> bool:
         full = get_full_db_path(_get_config())
         if full is None or not full.exists():
             return False
-        conn.execute(f"ATTACH DATABASE ? AS {FULL_SCHEMA}", (str(full),))
+        existing = next(
+            (
+                row[2]
+                for row in conn.execute("PRAGMA database_list")
+                if row[1] == FULL_SCHEMA
+            ),
+            None,
+        )
+        if existing:
+            if Path(existing).resolve() != full.expanduser().resolve():
+                from .context.scope import ScopeError
+
+                raise ScopeError(
+                    "Archive configuration changed; reopen the query connection"
+                )
+            return True
+        conn.execute(
+            f"ATTACH DATABASE ? AS {FULL_SCHEMA}",
+            (full.expanduser().resolve().as_uri() + "?mode=ro",),
+        )
         return True
     except sqlite3.Error as exc:
-        logger.debug("full DB attach skipped: %s", exc)
-        return False
+        from .context.scope import ScopeError
+
+        raise ScopeError(
+            "Managed history could not be attached read-only; use the query connection "
+            "factory and an accessible full-history database"
+        ) from exc

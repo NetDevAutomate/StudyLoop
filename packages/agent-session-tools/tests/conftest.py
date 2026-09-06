@@ -38,7 +38,7 @@ def temp_db():
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
         db_path = Path(f.name)
 
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path.resolve().as_uri(), uri=True)
     conn.row_factory = sqlite3.Row
 
     # Initialize schema
