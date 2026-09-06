@@ -3,12 +3,14 @@
 from contextlib import closing
 import json
 from pathlib import Path
+from typing import Any
 
 from ..config_loader import get_db_path, load_config
 from ..context.provenance import Scope
 from ..context.store import _hash, _json, _now
 from . import fence, ledger, permissions
 from .policy import PeerPolicy, ReplicaError, _validate_hello, hello, open_read, state
+from .stream import Incoming, Outgoing
 
 SCOPES = tuple(s.value for s in Scope)
 
@@ -46,6 +48,17 @@ class Endpoint:
         self.received = False
         self.confirmed = False
         self.barrier = None
+        self.outgoing: Outgoing | None = None
+        self.incoming: Incoming | None = None
+        self.outgoing_id = None
+        self.incoming_id = None
+
+    def close(self):
+        for stream in (self.outgoing, self.incoming):
+            if stream is not None:
+                stream.close()
+        self.outgoing = self.incoming = None
+        self.outgoing_id = self.incoming_id = None
 
     def _path(self, config):
         return self.override or get_db_path(config).expanduser().resolve()
@@ -98,15 +111,19 @@ class Endpoint:
         self.check()
         if operation == "receive":
             self.before_body_release(arguments["snapshot"])
+        elif operation in ("stream_receive", "stream_commit"):
+            self._check_outgoing(arguments["offer_id"])
 
     def before_result(self, operation, result):
         self.check()
         if operation == "release":
             self.before_body_release(result)
+        elif operation in ("stream_open", "stream_next"):
+            self._check_outgoing(self.outgoing_id)
         elif operation == "finish":
             self._finish()
 
-    def call(self, operation, arguments):
+    def call(self, operation, arguments) -> Any:
         fields = {
             "hello": set(),
             "bind": {"remote"},
@@ -123,6 +140,7 @@ class Endpoint:
             "ack_retirements": {"receipt"},
             "ready": {"remote_heads"},
             "prepare": {"plan", "scope"},
+            "prepare_transfer": {"plan", "scope"},
             "accept": {"offer"},
             "record_acceptance": {"offer", "acceptance"},
             "release": {"offer"},
@@ -131,6 +149,12 @@ class Endpoint:
             "unchanged": {"plan", "scope"},
             "confirm_unchanged": {"plan", "scope"},
             "finish": set(),
+            "stream_open": {"offer"},
+            "stream_start": {"offer_id", "header"},
+            "stream_next": {"offer_id", "sequence"},
+            "stream_receive": {"offer_id", "chunk"},
+            "stream_commit": {"offer_id"},
+            "stream_close": set(),
         }
         if (
             not isinstance(operation, str)
@@ -141,15 +165,31 @@ class Endpoint:
             raise ReplicaError("Unsupported replica operation or arguments")
         if operation not in ("hello", "bind") and not self.bound:
             raise ReplicaError("Authenticate and bind the reciprocal replica first")
+        if operation == "stream_close":
+            self.close()
+            return {"staging_closed": True}
+        try:
+            return self._call_checked(operation, arguments)
+        except BaseException:
+            self.close()
+            raise
+
+    def _call_checked(self, operation, arguments):
         with fence.guarded(self.check):
             if operation in (
                 "prepare",
+                "prepare_transfer",
                 "accept",
                 "release",
                 "receive",
                 "unchanged",
                 "confirm_unchanged",
                 "finish",
+                "stream_open",
+                "stream_start",
+                "stream_next",
+                "stream_receive",
+                "stream_commit",
             ):
                 if self.barrier is None or self.barrier != self._control_digest():
                     raise ReplicaError(
@@ -324,6 +364,95 @@ class Endpoint:
         if plan.get("receiver", {}).get("node") != self.peer:
             raise ReplicaError("Plan does not match the authenticated peer")
         return ledger.prepare_offer(self.path, self.config, plan, scope)
+
+    def _prepare_transfer(self, plan, scope):
+        from .snapshot import SnapshotTooLarge
+
+        try:
+            return {"mode": "snapshot", "offer": self._prepare(plan, scope)}
+        except SnapshotTooLarge:
+            if plan.get("receiver", {}).get("node") != self.peer:
+                raise ReplicaError("Plan does not match authenticated peer")
+            offer = ledger.prepare_staged_offer(self.path, self.config, plan, scope)
+            return {"mode": "stream", "offer": offer}
+
+    def _check_outgoing(self, offer_id):
+        if self.outgoing is None or self.outgoing_id != offer_id:
+            raise ReplicaError("No matching outgoing stream")
+        self.before_body_release(self.outgoing.snapshot)
+        return self.outgoing
+
+    def _stream_open(self, offer):
+        if self.outgoing is not None:
+            raise ReplicaError("An outgoing stream is already open")
+        self.outgoing = Outgoing(
+            ledger.release_staged_content(self.path, self.config, self.peer, offer)
+        )
+        self.outgoing_id = offer["id"]
+        return self.outgoing.header()
+
+    def _stream_next(self, offer_id, sequence):
+        return self._check_outgoing(offer_id).next(sequence)
+
+    def _stream_start(self, offer_id, header):
+        from .snapshot import TABLES
+
+        if self.incoming is not None:
+            raise ReplicaError("An incoming stream is already open")
+        with ledger._write(self.path) as conn:
+            policy, _ = ledger._peer(conn, self.config, self.peer)
+            row = conn.execute(
+                "SELECT offer_json,status,receipt_json FROM context_replica_offers WHERE id=? AND direction='in' AND peer=?",
+                (offer_id, self.peer),
+            ).fetchone()
+            if row is None or not isinstance(header, dict):
+                raise ReplicaError("Stream has no accepted offer")
+            offer = json.loads(row[0])
+            if any(
+                header.get(k) != expected
+                for k, expected in {
+                    "sha256": offer["snapshot_sha256"],
+                    "plan": offer["plan"],
+                    "scope": offer["scope"],
+                    "contract": "session-replica-content/v1",
+                    "lifecycle_reconciled": False,
+                }.items()
+            ):
+                raise ReplicaError("Stream header differs from accepted offer")
+            if row[2] is not None:
+                return {"receipt": json.loads(row[2])}
+            if row[1] != "accepted" or ledger._retired(conn, offer["objects"]):
+                raise ReplicaError("Stream offer is unavailable")
+            permissions.check_offer(conn, self.peer, offer, "in")
+            if hello(conn, policy) != offer["plan"]["receiver"]:
+                raise ReplicaError("Receiver changed before staging")
+            columns = {
+                table: {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
+                for table in TABLES
+            }
+        self.incoming = Incoming(header, columns)
+        self.incoming_id = offer_id
+        return {"staging_opened": True, "committed": False}
+
+    def _check_incoming(self, offer_id):
+        if self.incoming is None or self.incoming_id != offer_id:
+            raise ReplicaError("No matching incoming stream")
+        if self._hello() != self.incoming.header["plan"]["receiver"]:
+            raise ReplicaError("Receiver changed during staging")
+        return self.incoming
+
+    def _stream_receive(self, offer_id, chunk):
+        return self._check_incoming(offer_id).append(chunk)
+
+    def _stream_commit(self, offer_id):
+        incoming = self._check_incoming(offer_id)
+        try:
+            return ledger.receive_content(
+                self.path, self.config, self.peer, offer_id, incoming.snapshot()
+            )
+        finally:
+            incoming.close()
+            self.incoming = self.incoming_id = None
 
     def _unchanged(self, plan, scope):
         from .policy import check_plan

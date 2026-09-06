@@ -16,9 +16,15 @@ from ..context.observations import ObservationStore
 from ..context.provenance import Scope
 from ..context.store import Access, ContextStore, _hash, _json
 from .policy import PeerPolicy, ReplicaError, check_plan, hello, open_read
+from .staging import Stage, StagedSnapshot
 
 MAX_ROWS = 100_000
 MAX_BYTES = 32 * 1024 * 1024
+
+
+class SnapshotTooLarge(ReplicaError):
+    """Only a size refusal permits the coordinator to choose staged transport."""
+
 
 NATIVE = (
     "sessions",
@@ -55,6 +61,7 @@ class Projection:
     conn: sqlite3.Connection
     rows: int = 0
     raw_bytes: int = 0
+    staging: Stage | None = None
 
     def selected(self, name, query, values=()):
         if name not in {
@@ -78,28 +85,46 @@ class Projection:
         columns = [r[1] for r in self.conn.execute(f"PRAGMA table_info({table})")]
         quoted = ['"' + c.replace('"', '""') + '"' for c in columns]
         sizes = "+".join(f"coalesce(length(CAST(r.{c} AS BLOB)),0)" for c in quoted)
-        n, byte_count = self.conn.execute(
-            f"SELECT count(*),coalesce(sum({sizes}),0) FROM {table} r WHERE {where}",
+        n, byte_count, largest = self.conn.execute(
+            f"SELECT count(*),coalesce(sum({sizes}),0),coalesce(max({sizes}),0) FROM {table} r WHERE {where}",
             values,
         ).fetchone()
         self.rows += n
         self.raw_bytes += byte_count
-        if self.rows > MAX_ROWS or self.raw_bytes > MAX_BYTES:
-            raise ReplicaError(
+        from .staging import MAX_RAW_ROW_BYTES, MAX_STAGED_BYTES, MAX_STAGED_ROWS, Stage
+
+        staged = isinstance(self.staging, Stage)
+        if (
+            self.rows > (MAX_STAGED_ROWS if staged else MAX_ROWS)
+            or self.raw_bytes > (MAX_STAGED_BYTES if staged else MAX_BYTES)
+            or (staged and largest > MAX_RAW_ROW_BYTES)
+        ):
+            raise SnapshotTooLarge(
                 "Snapshot exceeds transfer limits; no truncated snapshot returned"
             )
-        return [
+        order = ""
+        if staged:
+            info = list(self.conn.execute(f"PRAGMA table_info({table})"))
+            keys = [r[1] for r in sorted(info, key=lambda r: r[5]) if r[5]]
+            order = " ORDER BY " + ",".join('r."' + key + '"' for key in keys)
+        selected = (
             dict(row)
             for row in self.conn.execute(
                 "SELECT "
                 + ",".join("r." + c for c in quoted)
-                + f" FROM {table} r WHERE {where}",
+                + f" FROM {table} r WHERE {where}"
+                + order,
                 values,
             )
-        ]
+        )
+        return (
+            self.staging.add(table, selected)
+            if self.staging is not None
+            else list(selected)
+        )
 
 
-def _select(conn, policy, scope, *, _include_withdrawn=False):
+def _select(conn, policy, scope, *, _include_withdrawn=False, _staging=None):
     """Select authorized IDs; the withdrawal exception is only for local discard.
 
     No content-export or ordinary-reader entry point forwards that exception.
@@ -108,7 +133,7 @@ def _select(conn, policy, scope, *, _include_withdrawn=False):
     from ..context.withdrawal_gate import predicate
     from ..context.scope import _visibility_sql
 
-    selection = Projection(conn)
+    selection = Projection(conn, staging=_staging)
     visible, values = _visibility_sql(
         conn, "s.id", policy=policy, scope=scope, withdrawals=not _include_withdrawn
     )
@@ -218,10 +243,10 @@ def _select(conn, policy, scope, *, _include_withdrawn=False):
     return selection
 
 
-def collect(conn, policy, scope):
+def collect(conn, policy, scope, *, _staging=None):
     """Select native and owned derivative closure before materializing payloads."""
     scope = Scope(scope)
-    p = _select(conn, policy, scope)
+    p = _select(conn, policy, scope, _staging=_staging)
     rows = {}
     for table in NATIVE:
         key = "id" if table == "sessions" else "session_id"
@@ -322,6 +347,23 @@ def collect(conn, policy, scope):
 
 def export_snapshot(path, config, plan, scope):
     """Prepare a content snapshot; the lifecycle/SSH coordinator is a separate gate."""
+    return _export(path, config, plan, scope)
+
+
+def export_staged(path, config, plan, scope):
+    """Caller owns a complete disposable projection and must close it."""
+    stage = Stage()
+    try:
+        result = _export(path, config, plan, scope, staging=stage)
+        if not isinstance(result, StagedSnapshot):
+            raise ReplicaError("Staged export did not produce owned staging")
+        return result
+    except BaseException:
+        stage.close()
+        raise
+
+
+def _export(path, config, plan, scope, *, staging=None):
     check_plan(plan, scope=scope)
     peer = PeerPolicy.from_config(config, plan["receiver"]["node"])
     conn = open_read(path)
@@ -332,7 +374,11 @@ def export_snapshot(path, config, plan, scope):
             raise ReplicaError("Outgoing scope permission is withdrawn")
         if hello(conn, peer) != plan["sender"]:
             raise ReplicaError("Sender state changed after negotiation")
-        rows, legacy = collect(conn, peer.policy, scope)
+        rows, legacy = (
+            collect(conn, peer.policy, scope)
+            if staging is None
+            else collect(conn, peer.policy, scope, _staging=staging)
+        )
         result = {
             "contract": "session-replica-content/v1",
             "plan": plan,
@@ -341,15 +387,21 @@ def export_snapshot(path, config, plan, scope):
             "legacy_owned_table_gaps": legacy,
             "lifecycle_reconciled": False,
         }
-        if len(_json(result).encode()) > MAX_BYTES:
-            raise ReplicaError(
-                "Encoded snapshot exceeds transfer limit; no content returned"
-            )
-        result["sha256"] = _hash(_json(result))
-        if len(_json(result).encode()) > MAX_BYTES:
-            raise ReplicaError(
-                "Encoded snapshot exceeds transfer limit; no content returned"
-            )
+        if staging is not None:
+            from .staging import StagedSnapshot
+
+            staging.seal()
+            result = StagedSnapshot(staging, result)
+        else:
+            if len(_json(result).encode()) > MAX_BYTES:
+                raise SnapshotTooLarge(
+                    "Encoded snapshot exceeds transfer limit; no content returned"
+                )
+            result["sha256"] = _hash(_json(result))
+            if len(_json(result).encode()) > MAX_BYTES:
+                raise SnapshotTooLarge(
+                    "Encoded snapshot exceeds transfer limit; no content returned"
+                )
         if PeerPolicy.from_config(config, peer.peer) != peer:
             raise ReplicaError("Sender configuration changed during snapshot selection")
         # A separate fresh connection can observe reclassification during the read.

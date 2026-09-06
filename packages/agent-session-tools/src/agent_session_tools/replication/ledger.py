@@ -17,7 +17,7 @@ from ..context.store import ContextStore, _hash, _json, _now
 from .content import apply_in_transaction
 from .policy import PeerPolicy, ReplicaError, check_plan, hello, state
 from .retention import PeerContribution
-from .snapshot import MAX_BYTES, MAX_ROWS, _select, export_snapshot
+from .snapshot import MAX_BYTES, MAX_ROWS, _select, export_snapshot, export_staged
 
 OBJECTS = {
     "session": ("sessions", "sessions"),
@@ -201,9 +201,32 @@ def _existing_scope(conn, policy, scope, objects):
 
 def prepare_offer(path, config, plan, scope):
     """Persist an offer before returning metadata; no transcript is persisted in the ledger."""
-    snapshot = export_snapshot(path, config, plan, scope)
+    return _prepare_offer(path, config, plan, scope, export_snapshot)
+
+
+def prepare_staged_offer(path, config, plan, scope):
+    """Prepare the same metadata contract from a disposable complete projection."""
+    return _prepare_offer(path, config, plan, scope, export_staged)
+
+
+@contextmanager
+def _projection(factory, path, config, plan, scope):
+    from .staging import StagedSnapshot
+
+    snapshot = factory(path, config, plan, scope)
+    try:
+        yield snapshot
+    finally:
+        if isinstance(snapshot, StagedSnapshot):
+            snapshot.close()
+
+
+def _prepare_offer(path, config, plan, scope, factory):
     policy = PeerPolicy.from_config(config, plan["receiver"]["node"])
-    with _write(path) as conn:
+    with (
+        _projection(factory, path, config, plan, scope) as snapshot,
+        _write(path) as conn,
+    ):
         if hello(conn, policy) != plan["sender"]:
             raise ReplicaError("Sender state changed while preparing offer")
         from .permissions import current
@@ -336,6 +359,20 @@ def record_acceptance(path, config, peer_name, offer, acceptance):
 
 def release_content(path, config, peer_name, offer):
     """Revalidate and regenerate the exact accepted snapshot immediately before exposure."""
+    return _release_content(path, config, peer_name, offer, export_snapshot)
+
+
+def release_staged_content(path, config, peer_name, offer):
+    """Release caller-owned staging; no stored body survives a closed attempt."""
+    from .staging import StagedSnapshot
+
+    result = _release_content(path, config, peer_name, offer, export_staged)
+    if not isinstance(result, StagedSnapshot):
+        raise ReplicaError("Staged release did not produce owned staging")
+    return result
+
+
+def _release_content(path, config, peer_name, offer, factory):
     _offer(offer)
     with _write(path) as conn:
         _peer(
@@ -355,11 +392,15 @@ def release_content(path, config, peer_name, offer):
         from .permissions import check_offer
 
         check_offer(conn, peer_name, offer, "out")
-    result = export_snapshot(path, config, offer["plan"], offer["scope"])
+    result = factory(path, config, offer["plan"], offer["scope"])
     if (
         result["sha256"] != offer["snapshot_sha256"]
         or _manifest(result) != offer["objects"]
     ):
+        from .staging import StagedSnapshot
+
+        if isinstance(result, StagedSnapshot):
+            result.close()
         raise ReplicaError("Accepted snapshot changed before release")
     return result
 
@@ -382,11 +423,18 @@ def receive_content(path, config, peer_name, offer_id, snapshot):
             or snapshot.get("scope") != offer["scope"]
         ):
             raise ReplicaError("Content does not match its registered offer")
-        if (
-            len(_json(snapshot).encode()) > MAX_BYTES
-            or _hash(_json({k: v for k, v in snapshot.items() if k != "sha256"}))
-            != offer["snapshot_sha256"]
-        ):
+        from .staging import StagedSnapshot, binding
+
+        body = {k: v for k, v in snapshot.items() if k != "sha256"}
+        if isinstance(snapshot, StagedSnapshot):
+            binding(snapshot)
+            valid = binding(body)[0] == offer["snapshot_sha256"]
+        else:
+            valid = (
+                len(_json(snapshot).encode()) <= MAX_BYTES
+                and _hash(_json(body)) == offer["snapshot_sha256"]
+            )
+        if not valid:
             raise ReplicaError("Content binding failed before receipt lookup")
         if row["receipt_json"] is not None:
             return json.loads(row["receipt_json"])

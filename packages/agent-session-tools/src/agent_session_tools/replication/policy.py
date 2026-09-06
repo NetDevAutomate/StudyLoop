@@ -18,7 +18,7 @@ from ..context.scope import ScopeError, ScopePolicy
 from ..context.store import _hash, _json
 from ..migrations import CURRENT_VERSION
 
-PROTOCOL = "session-replica/v1"
+PROTOCOL = "session-replica/v2"
 
 
 class ReplicaError(ValueError):
@@ -141,7 +141,8 @@ def _validate_hello(value, *, controls_only=False, historical=False):
             "Unknown or malformed peer capability; no legacy fallback permitted"
         )
     if (
-        value["protocol"] != PROTOCOL
+        value["protocol"]
+        not in (("session-replica/v1", PROTOCOL) if historical else (PROTOCOL,))
         or type(value["schema"]) is not int
         or (
             not 42 <= value["schema"] <= CURRENT_VERSION
@@ -196,6 +197,8 @@ def negotiate(sender, receiver, *, historical=False):
         _validate_hello(value, historical=historical)
     if sender["schema"] != receiver["schema"]:
         raise ReplicaError("Replica schemas disagree")
+    if sender["protocol"] != receiver["protocol"]:
+        raise ReplicaError("Replica protocol versions disagree")
     if sender["node"] != receiver["peer"] or sender["peer"] != receiver["node"]:
         raise ReplicaError("Peer identities are not reciprocal")
     if (
@@ -220,7 +223,7 @@ def negotiate(sender, receiver, *, historical=False):
     return json.loads(
         _json(
             {
-                "protocol": PROTOCOL,
+                "protocol": sender["protocol"],
                 "sender": sender,
                 "receiver": receiver,
                 "scopes": allowed,

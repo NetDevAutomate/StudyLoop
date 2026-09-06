@@ -159,6 +159,221 @@ def reseal(value):
     value["sha256"] = _hash(_json({k: v for k, v in value.items() if k != "sha256"}))
 
 
+def staged_accepted(replicas):
+    from agent_session_tools.replication import ledger
+
+    a, b = replicas["a"], replicas["b"]
+    offered = ledger.prepare_staged_offer(
+        a["path"], a["config"], plan(replicas), "personal"
+    )
+    acceptance = ledger.accept_offer(b["path"], b["config"], "a", offered)
+    ledger.record_acceptance(a["path"], a["config"], "b", offered, acceptance)
+    return offered
+
+
+def test_staged_scope_above_old_limit_commits_with_exact_receipt(replicas):
+    from agent_session_tools.replication import ledger
+
+    seeded = seed(replicas)
+    a, b = replicas["a"], replicas["b"]
+    a["conn"].executemany(
+        "INSERT INTO messages(id,session_id,role,content) VALUES (?,'personal','user',?)",
+        ((f"large-{i:06d}", "fictional large message " * 800) for i in range(2300)),
+    )
+    a["conn"].commit()
+    with pytest.raises(ReplicaError, match="transfer limits"):
+        snapshot(replicas)
+    offered = staged_accepted(replicas)
+    with ledger.release_staged_content(a["path"], a["config"], "b", offered) as staged:
+        assert staged.encoded_bytes > 32 * 1024 * 1024
+        assert not b["conn"].execute("SELECT 1 FROM messages").fetchone()
+        receipt = ledger.receive_content(
+            b["path"], b["config"], "a", offered["id"], staged
+        )
+        assert (
+            ledger.receive_content(b["path"], b["config"], "a", offered["id"], staged)
+            == receipt
+        )
+    ledger.acknowledge_content(a["path"], a["config"], "b", receipt)
+    assert b["conn"].execute("SELECT count(*) FROM messages").fetchone()[0] == 2301
+    assert (
+        b["conn"]
+        .execute(
+            "SELECT 1 FROM context_evidence WHERE id=?",
+            (seeded["sources"]["personal"],),
+        )
+        .fetchone()
+    )
+    assert not b["conn"].execute("SELECT 1 FROM sessions WHERE id='work'").fetchone()
+    assert not b["conn"].execute("PRAGMA foreign_key_check").fetchall()
+
+
+def test_staged_receiver_mutation_rolls_back_without_receipt(replicas):
+    from agent_session_tools.replication import ledger
+
+    seed(replicas)
+    a, b = replicas["a"], replicas["b"]
+    offered = staged_accepted(replicas)
+    with ledger.release_staged_content(a["path"], a["config"], "b", offered) as staged:
+        b["conn"].execute(
+            "INSERT INTO sessions(id,source) VALUES ('new-local','codex')"
+        )
+        b["conn"].commit()
+        with pytest.raises(ReplicaError, match="Receiver state changed"):
+            ledger.receive_content(b["path"], b["config"], "a", offered["id"], staged)
+    assert not b["conn"].execute("SELECT 1 FROM messages").fetchone()
+    assert (
+        b["conn"]
+        .execute(
+            "SELECT receipt_json FROM context_replica_offers WHERE id=?",
+            (offered["id"],),
+        )
+        .fetchone()[0]
+        is None
+    )
+
+
+def test_staged_withdrawal_before_promotion_keeps_body_unavailable(replicas):
+    from agent_session_tools.replication import ledger, permissions
+
+    seed(replicas)
+    a, b = replicas["a"], replicas["b"]
+    offered = staged_accepted(replicas)
+    with ledger.release_staged_content(a["path"], a["config"], "b", offered) as staged:
+        packet = permissions.prepare_change(
+            a["path"], a["config"], "b", "personal", "withdraw"
+        )
+        permissions.apply_change(b["path"], b["config"], "a", packet)
+        with pytest.raises(ReplicaError):
+            ledger.receive_content(b["path"], b["config"], "a", offered["id"], staged)
+    assert not b["conn"].execute("SELECT 1 FROM messages").fetchone()
+
+
+def test_staged_cross_session_review_preserves_every_source(replicas):
+    from agent_session_tools.context.public import AgentContext
+    from agent_session_tools.context.reviews import ReviewStore
+    from agent_session_tools.replication import ledger
+
+    seeded = seed(replicas)
+    a, b = replicas["a"], replicas["b"]
+    conn = a["conn"]
+    conn.execute("INSERT INTO sessions(id,source) VALUES ('second','codex')")
+    conn.execute(
+        "INSERT INTO context_session_projects VALUES ('second','p','explicit')"
+    )
+    conn.commit()
+    store = ContextStore(conn)
+    extra = store.capture(
+        NativeSource(
+            session_id="second",
+            native_key="second-message",
+            harness="codex",
+            native_kind="message",
+            native_locator="fictional-second.jsonl:1",
+            parser_version="fixture",
+            machine_id="a",
+            body="Contrary report",
+            origin=Origin.CONVERSATION,
+        )
+    )
+    assertion = store.propose(
+        statement="Two reports disagree",
+        state=ExecutionState.UNKNOWN,
+        target=None,
+        generator="fixture",
+        access=Access(scope=Scope.PERSONAL),
+        citations=[
+            Citation(
+                evidence_id=seeded["sources"]["personal"],
+                start=0,
+                end=8,
+                quote="Observed",
+            ),
+            Citation(evidence_id=extra, start=0, end=8, quote="Contrary"),
+        ],
+    )
+    review = ReviewStore(AgentContext(conn)).append(
+        target_kind="assertion",
+        target_id=assertion,
+        verdict="uncertain",
+        rationale="Both reports need applicable validation.",
+        citations=[{"evidence_id": extra, "start": 0, "end": 8, "quote": "Contrary"}],
+        producer="fixture reviewer",
+    )
+    conn.commit()
+    offered = staged_accepted(replicas)
+    with ledger.release_staged_content(a["path"], a["config"], "b", offered) as staged:
+        ledger.receive_content(b["path"], b["config"], "a", offered["id"], staged)
+    assert (
+        b["conn"]
+        .execute(
+            "SELECT count(*) FROM context_citations WHERE assertion_id=?", (assertion,)
+        )
+        .fetchone()[0]
+        == 2
+    )
+    assert (
+        b["conn"]
+        .execute(
+            "SELECT count(*) FROM context_observation_sources WHERE observation_id=?",
+            (review,),
+        )
+        .fetchone()[0]
+        == 2
+    )
+    assert not b["conn"].execute("PRAGMA foreign_key_check").fetchall()
+
+
+def test_process_death_during_staged_promotion_rolls_back_body_and_receipt(replicas):
+    import os
+    import subprocess
+    import sys
+    from agent_session_tools.replication import ledger
+
+    seed(replicas)
+    a, b = replicas["a"], replicas["b"]
+    offered = staged_accepted(replicas)
+    script = """
+import json,os,sys
+from agent_session_tools.replication import ledger,content
+a,b,offer=json.loads(sys.argv[1])
+original=content._row
+def crash(conn,table,row,**kwargs):
+    result=original(conn,table,row,**kwargs)
+    if table=='messages': os._exit(39)
+    return result
+content._row=crash
+with ledger.release_staged_content(a['path'],a['config'],'b',offer) as snapshot:
+    ledger.receive_content(b['path'],b['config'],'a',offer['id'],snapshot)
+"""
+    args = [{"path": str(node["path"]), "config": node["config"]} for node in (a, b)]
+    result = subprocess.run(
+        [sys.executable, "-I", "-c", script, json.dumps([*args, offered])],
+        env=os.environ.copy(),
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 39, result.stderr
+    assert not b["conn"].execute("SELECT 1 FROM messages").fetchone()
+    assert (
+        b["conn"]
+        .execute(
+            "SELECT receipt_json FROM context_replica_offers WHERE id=?",
+            (offered["id"],),
+        )
+        .fetchone()[0]
+        is None
+    )
+    with ledger.release_staged_content(
+        a["path"], a["config"], "b", offered
+    ) as snapshot:
+        receipt = ledger.receive_content(
+            b["path"], b["config"], "a", offered["id"], snapshot
+        )
+    assert receipt["committed"]
+
+
 def test_reciprocal_negotiation_uses_project_ids_not_machine_roots(replicas):
     result = plan(replicas)
     assert result["scopes"] == ["personal"] and result["projects"] == {"p": "personal"}

@@ -12,7 +12,10 @@ from .wire import serve
 def run(peer):
     require_forced_command()
     endpoint = Endpoint(peer)
-    serve(endpoint, sys.stdin.fileno(), sys.stdout.fileno())
+    try:
+        serve(endpoint, sys.stdin.fileno(), sys.stdout.fileno())
+    finally:
+        endpoint.close()
 
 
 def main():

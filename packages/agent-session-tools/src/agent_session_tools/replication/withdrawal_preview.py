@@ -1,7 +1,8 @@
 """Inspect the real reversible purge before erasing any independently retained body.
 
 The caller owns an IMMEDIATE write transaction and the authenticated peer boundary.
-The rollback-only trace stays in memory, is bounded, and returns hashes/counts only.
+The rollback-only trace retains hashes rather than bodies, is bounded, and returns
+hashes/counts only.
 It does not grant permission, install denials or acknowledge physical cleanup.
 """
 
@@ -12,8 +13,9 @@ from uuid import uuid4
 from ..context.lifecycle import eviction, purge_session
 from ..context.store import _hash, _json
 from .policy import ReplicaError
-from .retention import _binding, _facts
-from .snapshot import MAX_BYTES, MAX_ROWS, TABLES
+from .retention import _binding_values, _facts
+from .snapshot import TABLES
+from .staging import MAX_STAGED_BYTES, MAX_STAGED_ROWS
 
 OBJECT_TABLES = {
     "evidence": "context_evidence",
@@ -49,7 +51,13 @@ def purge_objects(conn, objects):
 
 
 def preview(
-    conn, peer, objects, *, receipt_id=None, max_rows=MAX_ROWS, max_bytes=MAX_BYTES
+    conn,
+    peer,
+    objects,
+    *,
+    receipt_id=None,
+    max_rows=MAX_STAGED_ROWS,
+    max_bytes=MAX_STAGED_BYTES,
 ):
     """Return whether every changed canonical payload has only this peer's history.
 
@@ -88,7 +96,7 @@ def preview(
             if len(before) >= max_rows:
                 overflow = True
                 raise ValueError("Withdrawal footprint exceeds row limit")
-            before[key] = row
+            before[key] = _binding_values(table, row, keys[table])
         return 1
 
     conn.create_function(callback, 2, trace)
@@ -135,8 +143,7 @@ def preview(
     table_counts = {}
     fact_count = 0
     fact_bytes = 0
-    for (table, _), row in before.items():
-        binding = _binding(conn, table, row)
+    for (table, _), binding in before.items():
         facts = _facts(conn, binding, limit=max_rows - fact_count + 1)
         fact_count += len(facts)
         encoded_facts = [list(fact) for fact in facts]

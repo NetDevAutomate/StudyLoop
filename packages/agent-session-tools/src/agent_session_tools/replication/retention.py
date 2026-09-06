@@ -27,6 +27,11 @@ def _binding(conn, table, row):
     keys = [r[1] for r in sorted(info, key=lambda r: r[5]) if r[5]]
     if not keys or set(row) != {r[1] for r in info}:
         raise ValueError("Retention requires a complete row with a primary key")
+    return _binding_values(table, row, keys)
+
+
+def _binding_values(table, row, keys):
+    """Pure binding for an already schema-checked row and primary-key list."""
     # These two local bookkeeping fields can differ in an otherwise identical
     # accepted transfer. Content and semantic metadata remain in the binding.
     ignored = {

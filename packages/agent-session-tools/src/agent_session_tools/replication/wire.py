@@ -13,8 +13,8 @@ from .snapshot import MAX_BYTES
 
 MARKER = "session-replica-stdio-v1"
 MAX_FRAME = MAX_BYTES + 1024 * 1024
-MAX_SESSION_BYTES = 256 * 1024 * 1024
-MAX_REQUESTS = 1024
+MAX_SESSION_BYTES = 4 * 1024 * 1024 * 1024
+MAX_REQUESTS = 4096
 
 
 def _object(pairs):

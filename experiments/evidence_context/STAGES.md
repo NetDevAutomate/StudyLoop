@@ -45,6 +45,7 @@ no remote publication or backup is implied.
 | 36 — Permission withdrawal and regrant | Can current source-bound receipt coverage distinguish erasure, quarantine and safe re-exposure? | `28fe15d0` | `permission_withdrawal/runner.py`; six-view standalone-wheel lesson, generation/crash/cascade tests and council arbitration. Operator reconciliation, real sync and managed restore remain open. |
 | 37 — Deliberate quarantine recovery | Can explicit local intent resolve a retained copy without inventing provenance or deleting a fresh transfer on retry? | `801a33e0` | `quarantine_recovery/runner.py`; five-view installed CLI lesson, all six root kinds, exact previews and council arbitration. Real sync and managed restore remain open. |
 | 38 — Configured SSH coordination | Can actual CLI transfers preserve permission, forgetting and durable retry across authenticated processes? | `e48318ac` | `configured_sync/runner.py`; five-view installed SSH lesson, reproduced counter defect, late-change and failure tests, council arbitration. Large scopes and full-store/restore remain open. |
+| 39 — Larger complete histories | Can streaming reduce body-memory cost while retaining complete evidence and lifecycle checks? | This checkpoint; pin after commit | `scalable_transfer/runner.py`; five-view installed large SSH lesson, paired projection diagnostic, withdrawal and final-commit race fixes. Deltas, full-store/restore and full release acceptance remain open. |
 
 Stage 3 uses its own lifecycle adapter and database schema. It does not modify the
 stage 1 evidence store, and does not require stage 1 demo output. Stage 2 uses
@@ -867,3 +868,17 @@ The [Stage38 guide](configured_sync/GUIDE.md) explains real forced-command SSH,
 control-first retries, source/receiver content generations and the remaining large-scope
 and full-store boundaries. The demo requires local OpenSSH binaries and uses only
 disposable keys, a loopback server and fictional databases.
+
+## Stage39 commands
+
+```sh
+uv run python -m experiments.evidence_context.scalable_transfer.runner --output /tmp/evidence-stage39
+uv run python -m experiments.evidence_context.scalable_transfer.benchmark --output /tmp/evidence-stage39-measurements
+uv run pytest packages/agent-session-tools/tests/test_replica_staging.py packages/agent-session-tools/tests/test_replica_content.py packages/agent-session-tools/tests/test_replica_coordinator.py packages/agent-session-tools/tests/test_replica_ledger.py -q
+```
+
+The [Stage39 guide](scalable_transfer/GUIDE.md) explains why ordered chunks reconstruct
+one complete projection, how its exact source bindings survive, and why transfer,
+withdrawal and forgetting must all work at the tested scale. It includes the failed
+large withdrawal, the final commit-request race, measured time/memory trade-offs and
+council arbitration. The installed lesson requires local OpenSSH; all data is fictional.

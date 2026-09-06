@@ -1,7 +1,7 @@
 {
   "goal": "active",
-  "previous_goal_turn": "progress: Stage38 committed e48318ac;1845combined passed1skip108.86s;93focused passed;3823StudyLoop passed;13installedSSH plus6finalwheelchecks;full goal active",
-  "current_stage": "38 complete as bounded canonical SSH checkpoint e48318ac; next scalable scoped transfer and full-store/restore",
+  "previous_goal_turn": "progress: Stage39 final runtime1866passed1skip125.38s;15finalwheelactualSSHchecks;Stage38commit0f913ede; full goal active",
+  "current_stage": "39 verified; complete scoped staging and protocol v2; implementation commit pending",
   "requirements": {
     "P01": "partial: transactional migrations through v46; v45-to46 failure rollback/retry and final wheel compaction preserve data/new instance; managed restore remains",
     "P02": "partial: actual four-harness exporters integrated and eight local real archives imported; Codex Desktop 0.153.0 observed; all native formats, other desktop coverage and installed end-to-end capture remain",
@@ -9,15 +9,15 @@
     "P04": "partial: bounded native sources/reviews/StudyLoop graph and session annotations; Stage31 selects scoped headers and preserves atomic current groups with history-only continuation, metadata/dependency preflight and VM budget; real semantic usefulness and consumer acceptance remain",
     "P05": "partial: source-bound reviews and native annotation history retain explicit supersession, competing reports, retirement and missing-predecessor disclosure; no automatic timestamp/vote truth rule; generic semantic arbitration and real usefulness remain unproven",
     "P06": "partial: learner graph/record boundaries plus native session notes/tags/learning metadata reads now scoped; native annotation writes guarded through editor concurrency; file/config/plan/IPC and streaming ownership remain",
-    "P07": "partial: actual configured SSH/session-sync push/pull/all, explicit peer pins, current config-file fences, control-first recovery and receipts; 32MiB scope bound and full-store/restore remain",
-    "P08": "partial: permanent local/known-peer retirement, reversible canonical withdrawal, deliberate complete-local-copy discard and fresh covered regrant; preservation remains default; full-store and managed restore remain",
+    "P07": "partial: actual scoped SSH supports complete staged scopes above32MiB with atomic receipts and final source checks; incremental/ledger scale and full-store/restore remain",
+    "P08": "partial: canonical withdrawal preview now hashes first-before-images and passes large installed lifecycle; full-store and managed restore remain",
     "P09": "partial: native capture receipts, scoped health and separate withdrawn count; hook runtime/registration, archive census and doctor integration remain",
-    "P10": "partial: fresh standalone memory-only wheel passes 13 actual CLI/SSH checks plus final six compaction checks with StudyLoop absent; shared setup and full package acceptance remain",
+    "P10": "partial: final Stage39 standalone wheel, StudyLoop absent,15actualCLI/SSHchecks; shared setup and full package acceptance remain",
     "P11": "not yet proven",
     "P12": "not yet proven",
     "P13": "partial: fresh installed graph HTTP/MCP10checks plus prior response/learner checks; full lifespan, live-session files/stream, installer and agent startup remain",
-    "P14": "stages1-38 independently runnable; Stage38 five-view actual SSH guide documents counter defect, archival regression, council arbitration and limits; saved exercises unchanged",
-    "P15": "partial:1845combined passed1skip108.86s;93focused passed;3823StudyLoop passed;13installedSSH plus6finalwheelchecks;e48318ac full commit hooks pass;full release audit remains"
+    "P14": "stages1-39 independently runnable; Stage39 five-view guide explains scale, source-binding preservation, withdrawal bottleneck and final commit race; exercises unchanged",
+    "P15": "partial:1866finalcombinedpassed1skip125.38s;15finalinstalledSSHchecks;workspacepyright/lint pass; full release audit remains"
   },
   "completed_checkpoints": {
     "stage16": "6c736c5",
@@ -78,25 +78,31 @@
     "Broad tests exposed seeded-counter collision and invalid archival counter comparison. New-instance compaction keeps local counters; archival proof still compares actual rows. Overflow rolls back the triggering body write; excluded work invalidates shortcut without export.",
     "13 fresh installed CLI/real loopback SSH checks passed, including host-key refusal, forced-peer refusal, push-before-pull all, withdrawal/regrant and reverse forgetting. No real MacMini or owner data/config/hooks changed.",
     "Three Meta/Qwen/Mistral rounds informed design/results/correction. Concrete test evidence governs decisions; packet limits and rejected unsupported concerns remain documented.",
-    "Canonical phase completion remains distinct from full sync. Large scopes, cumulative ledger scale, full-store/restore, mutable divergence, shared setup/doctor and remaining consumers still block release readiness."
+    "Canonical phase completion remains distinct from full sync. Large scopes, cumulative ledger scale, full-store/restore, mutable divergence, shared setup/doctor and remaining consumers still block release readiness.",
+    "Stage39 complete staged scopes preserve cross-session closure, exact canonical hash, current controls and atomic content/receipt. Private SQLite stages are unavailable to canonical readers and discarded on close/refusal.",
+    "Installed large native history transferred, then old withdrawal preview hit footprint_limit. Retaining first-before-image bindings instead of whole bodies fixes the observed limit while unknown retention remains quarantined.",
+    "A final commit-request race was reproduced: refusal at finish still left a receiver body. Source checks now run immediately before chunk and final commit pipe writes; both negative tests require body absence.",
+    "1866finalcombinedchecks pass with1optional skip;15finalstandaloneCLI/SSHchecks pass. Protocolv2 live compatibility is explicit; historicalv1metadata recovery remains available.",
+    "Single-sample512message diagnostic: snapshot88.4ms/93.9MiBpeak versus staging118.9ms/40.0MiBpeak.3072message snapshot refuses; staging674.7ms/42.4MiBpeak. No engine, semantic-quality or constant-memory claim.",
+    "Meta/Qwen/Mistral design and result reviews informed staging sequence, failure tests and limitations. Concrete evidence governed arbitration; full production approval remains absent."
   ],
   "next_actions": [
-    "Make scoped transfer scalable beyond complete 32MiB snapshots while retaining exact offer/receipt binding, control-first retry, config fences and complete regrant coverage",
-    "Complete full-store forget/restore and hot/full consumer integration; retain current retirement/withdrawal state before restoring older data and prove managed index/file coverage",
+    "Complete full-store forget/restore and hot/full consumer integration; preserve current retirement/withdrawal state before restoring older data and prove managed index/file coverage",
+    "Measure and address changed-scope retransmission, resumable transfer and cumulative ledger scale without weakening exact manifests, current controls or regrant coverage",
     "Implement explicit config/content/plan/session file ownership before enabling modern file-derived graph imports, then protect live SSE/WebSocket/IPC and full installed startup.",
     "Finish shared selectable installer/doctor/skills, four native and desktop capture checks, and fullP01-P15releaseaudit; preserve practice timing/cross-project assessment audit."
   ],
   "verification": {
-    "package_tests": "1845 passed, 1 optional skip, 108.86s; final Stage38",
-    "experiment_tests": "Stage38 five-view actual installed CLI/SSH lesson:13checks",
-    "workspace_pyright": "Full workspace source+tests passed in e48318ac commit hooks",
-    "commit_hooks": "e48318ac lint/format/secrets/Bandit/author/full workspace source+test types passed",
-    "browser": "Stage38 five sections and five disclosures opened; viewport fits; screenshot inspected; own tab and server closed",
-    "studyloop_tests": "3823 passed, 4 skipped, 704 deselected, 183.48s; after content counter, before final tiering bookkeeping correction; 11 existing dependency/fork warnings",
+    "package_tests": "1866 passed, 1 optional skip, 125.38s; final protocol v2, withdrawal binding and both final pre-write guards. Later lesson-only literal wrapping/import sorting does not change runtime.",
+    "experiment_tests": "Stage39 five-view actual final installed CLI/SSH lesson:15checks",
+    "workspace_pyright": "Final workspace source and tests: 0 errors, 0 warnings before lesson-only formatting.",
+    "commit_hooks": "Stage39 pending; Stage38 hooks passed",
+    "browser": "Final installed lesson: five sections and five disclosures opened; viewport fits; screenshot inspected; own tab and server closed.",
+    "studyloop_tests": "3823 passed, 4 skipped, 704 deselected, 181.69s; earlier in this stage before protocol/preview/final pre-write changes; 11 existing dependency/fork warnings. Final shared-runtime coverage is the combined run above.",
     "focused_consumer_tests": "93 coordinator, tiering and context-store tests passed in 19.87s after counter and archival fixes",
-    "artifact": "studyloop-private/reviews/2026-09-06-stage38-sync-coordinator/demo-installed-final/walkthrough.html",
+    "artifact": "studyloop-private/reviews/2026-09-06-stage39-scalable-transfer/demo-installed-final/walkthrough.html",
     "native_probe": "8 local real sessions imported without errors;1898/1898 body hashes match;source files unchanged",
-    "installed_component": "Fresh memory-only wheel with StudyLoop absent;13 actual CLI/SSH checks;final wheel separately passes6compaction/identity/FTS/FK checks",
+    "installed_component": "Final rebuilt memory-only wheel installed into isolated Python3.13 environment with StudyLoop absent; 15 actual installed CLI/loopback SSH lifecycle checks pass, including large history, withdrawal, fresh regrant and reverse forgetting.",
     "real_retrieval": "6CLI queries,60exact citations and hashes verified,all<=32768bytes,no semantic relevance claim",
     "live_review_pilot": "3calls,3constructedcases/model;strict acceptance1/3providers;post-hoc9/9permissivelabels+exactbindings,not semanticvalidation",
     "ownership_benchmark": "50000project-onlyrecords:countmedian15.46ms,latest20median20.35ms;noengine/schema ranking",
@@ -117,7 +123,9 @@
     "withdrawal_crash": "Actual process exits during preview, purge and before receipt roll back body/permission;wholeTXabort originalerror preserved;FKrefusal no applied control",
     "withdrawal_concurrency": "Second reader sees committed copy during simulated purge;competingwriterlocked;duplicatepreparationonegeneration;readerblocksphysicalack;regrantbeforefinalreceiptpreventsoldcleanupack",
     "quarantine_recovery": "All6root kinds, explicit loss acknowledgement, stale plans/cursors, new facts, scope-file mutation, removed/readded peer, process exit37, pinned reader, historical retry and audit immutability tested;94finalfocused passed16.57s",
-    "configured_ssh": "13 actual installed CLI/loopback SSH checks; five-view browser QA; final wheel six compaction checks"
+    "configured_ssh": "13 actual installed CLI/loopback SSH checks; five-view browser QA; final wheel six compaction checks",
+    "scalable_transfer": "Final rebuilt memory-only wheel installed into isolated Python3.13 environment with StudyLoop absent; 15 actual installed CLI/loopback SSH lifecycle checks pass, including large history, withdrawal, fresh regrant and reverse forgetting.",
+    "projection_scale": "Single-sample512message diagnostic: snapshot88.4ms/93.9MiBpeak versus staging118.9ms/40.0MiBpeak.3072message snapshot refuses; staging674.7ms/42.4MiBpeak. No engine, semantic-quality or constant-memory claim."
   },
   "operational_notice": "A secrets test printed an ambient API key in private failure output; tests now isolate fallback variables. Owner should rotate that key; no value saved in this status or learning artifacts."
 }

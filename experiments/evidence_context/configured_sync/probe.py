@@ -23,7 +23,7 @@ from agent_session_tools.exporters.codex import CodexExporter
 from agent_session_tools.replication import coordinator, ssh
 
 
-def run(output, require_installed):
+def run(output, require_installed, *, large_messages=0):
     if require_installed and (
         "site-packages" not in coordinator.__file__
         or importlib.util.find_spec("studyloop") is not None
@@ -74,6 +74,24 @@ def run(output, require_installed):
                         },
                     },
                 ]
+                if large_messages and name == "laptop" and scope == "personal":
+                    events.extend(
+                        {
+                            "type": "response_item",
+                            "payload": {
+                                "type": "message",
+                                "role": "user",
+                                "content": [
+                                    {
+                                        "type": "input_text",
+                                        "text": f"STAGE39_LARGE_{i} "
+                                        + "fictional large history " * 800,
+                                    }
+                                ],
+                            },
+                        }
+                        for i in range(large_messages)
+                    )
                 (native / f"rollout-{name}-{scope}.jsonl").write_text(
                     "".join(json.dumps(v) + "\n" for v in events)
                 )
@@ -179,6 +197,18 @@ LogLevel ERROR
                     "unchanged_retry_sends_no_body": not repeated["transfers"]
                     and bool(repeated["unchanged"]),
                 }
+                if large_messages:
+                    with closing(sqlite3.connect(mini["db"])) as conn:
+                        large_received = conn.execute(
+                            "SELECT count(*) FROM messages WHERE content LIKE 'STAGE39_LARGE_%'"
+                        ).fetchone()[0]
+                    initial_checks.update(
+                        {
+                            "large_native_scope_used_stream": first["transfers"][0]["mode"]
+                            == "stream",
+                            "all_large_native_messages_received": large_received == large_messages,
+                        }
+                    )
                 all_output = invoke("all")
                 both = count(laptop, "mini", "personal") == 1 and count(laptop, "mini", "work") == 0
                 queued = json.loads(
@@ -242,10 +272,12 @@ LogLevel ERROR
             "require_installed": require_installed,
             "module": coordinator.__file__,
             "cli_command": cli_command,
+            "large_native_messages": large_messages,
         },
         "limits": (
-            "One configured canonical database per endpoint, complete scopes bounded to32MiB. "
-            "No full-store/managed restore or full product completion. Keys, authorization "
+            "One configured canonical database per endpoint. This fixture uses "
+            + ("the large-scope stream path. " if large_messages else "small scopes. ")
+            + "No full-store/managed restore or full product completion. Keys, authorization "
             "file and daemon were disposable and removed; fixture databases remain for study. "
             "No owner DB/config/hooks or real peer changed."
         ),

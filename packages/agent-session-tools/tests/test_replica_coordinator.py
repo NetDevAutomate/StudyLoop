@@ -447,6 +447,9 @@ def test_historical_offer_schema_can_recover_acceptance_but_not_release(replicas
     b.call("bind", {"remote": ah})
     plan = negotiate(ah, bh)
     plan["sender"]["schema"] = plan["receiver"]["schema"] = 45
+    plan["protocol"] = plan["sender"]["protocol"] = plan["receiver"]["protocol"] = (
+        "session-replica/v1"
+    )
     del plan["sender"]["state"]["content_revision"]
     del plan["receiver"]["state"]["content_revision"]
     old = ledger._seal(
@@ -617,4 +620,172 @@ def test_continuously_unstable_controls_stop_after_eight_rounds(replicas, monkey
     with pytest.raises(ReplicaError, match="Controls kept changing"):
         coordinator.synchronize(a, b, direction="push")
     assert len(calls) == 8
+    assert count(replicas["b"], "a_STAGE38_PERSONAL") == 0
+
+
+def test_two_process_large_scope_streams_and_retry_sends_no_body(replicas):
+    with ledger._write(replicas["a"]["db"]) as conn:
+        conn.executemany(
+            "INSERT INTO messages(id,session_id,role,content) VALUES (?,'codex_rollout-a-personal','user',?)",
+            (
+                (f"large-{i:06d}", "fictional streamed history " * 800)
+                for i in range(2300)
+            ),
+        )
+    result = exchange(replicas, "push")
+    assert result["transfers"][0]["mode"] == "stream"
+    with closing(sqlite3.connect(replicas["b"]["db"])) as conn:
+        assert (
+            conn.execute(
+                "SELECT count(*) FROM messages WHERE session_id='codex_rollout-a-personal'"
+            ).fetchone()[0]
+            == 2301
+        )
+        assert not conn.execute("PRAGMA foreign_key_check").fetchall()
+    assert count(replicas["b"], "a_STAGE38_WORK") == 0
+    repeated = exchange(replicas, "push")
+    assert not repeated["transfers"] and len(repeated["unchanged"]) == 1
+
+
+def streamed_endpoints(replicas, monkeypatch):
+    from agent_session_tools.replication import snapshot
+
+    # Force the same production stream path with small data for failure cases.
+    monkeypatch.setattr(snapshot, "MAX_BYTES", 1)
+    return local(replicas["a"]), local(replicas["b"])
+
+
+def test_lost_stream_commit_reply_recovers_only_the_durable_receipt(
+    replicas, monkeypatch
+):
+    a, b = streamed_endpoints(replicas, monkeypatch)
+    original = b._stream_commit
+
+    def lost(offer_id):
+        original(offer_id)
+        raise OSError("injected lost commit response")
+
+    monkeypatch.setattr(b, "_stream_commit", lost)
+    with pytest.raises(OSError, match="lost commit"):
+        coordinator.synchronize(a, b, direction="push")
+    assert a.outgoing is None and b.incoming is None
+    assert count(replicas["b"], "a_STAGE38_PERSONAL") == 1
+    retried = coordinator.synchronize(
+        local(replicas["a"]), local(replicas["b"]), direction="push"
+    )
+    assert retried["recovered"]["push"]["receipts"] == 1
+    assert not retried["transfers"]
+
+
+@pytest.mark.parametrize("change", ["withdraw", "forget", "config"])
+def test_midstream_change_discards_staging_without_canonical_promotion(
+    replicas, monkeypatch, change
+):
+    a, b = streamed_endpoints(replicas, monkeypatch)
+    original = b._stream_receive
+    changed = False
+
+    def mutate(offer_id, chunk):
+        nonlocal changed
+        result = original(offer_id, chunk)
+        if not changed:
+            changed = True
+            if change == "withdraw":
+                permissions.prepare_change(
+                    replicas["a"]["db"],
+                    replicas["a"]["config"],
+                    "b",
+                    "personal",
+                    "withdraw",
+                )
+            elif change == "forget":
+                with ledger._write(replicas["b"]["db"]) as conn:
+                    purge_session(conn, "codex_rollout-a-personal")
+            else:
+                cfg = json.loads(replicas["b"]["cfg"].read_text())
+                cfg["memory"]["sync"]["peers"]["a"]["allowed_scopes"] = []
+                replicas["b"]["cfg"].write_text(json.dumps(cfg))
+        return result
+
+    monkeypatch.setattr(b, "_stream_receive", mutate)
+    with pytest.raises(ReplicaError):
+        coordinator.synchronize(a, b, direction="push")
+    assert changed and a.outgoing is None and b.incoming is None
+    assert count(replicas["b"], "a_STAGE38_PERSONAL") == 0
+    with closing(sqlite3.connect(replicas["b"]["db"])) as conn:
+        assert not conn.execute(
+            "SELECT 1 FROM context_replica_offers WHERE receipt_json IS NOT NULL"
+        ).fetchone()
+
+
+@pytest.mark.parametrize("boundary", ["stream_receive", "stream_commit"])
+def test_source_change_after_encoding_is_checked_before_pipe_write(
+    replicas, monkeypatch, boundary
+):
+    a, _ = streamed_endpoints(replicas, monkeypatch)
+    changed = False
+    with closing(process(replicas["b"])) as b:
+
+        def before_send(operation, arguments):
+            nonlocal changed
+            if operation == boundary and not changed:
+                changed = True
+                permissions.prepare_change(
+                    replicas["a"]["db"],
+                    replicas["a"]["config"],
+                    "b",
+                    "personal",
+                    "withdraw",
+                )
+            a.before_remote_send(operation, arguments)
+
+        b.before_send = before_send
+        with pytest.raises(ReplicaError):
+            coordinator.synchronize(a, b, direction="push")
+    assert changed and a.outgoing is None
+    assert count(replicas["b"], "a_STAGE38_PERSONAL") == 0
+
+
+def test_incomplete_stream_never_commits_and_cleans_both_stages(replicas, monkeypatch):
+    a, b = streamed_endpoints(replicas, monkeypatch)
+    original = a._stream_next
+
+    def stop_after_first(offer_id, sequence):
+        return None if sequence else original(offer_id, sequence)
+
+    monkeypatch.setattr(a, "_stream_next", stop_after_first)
+    with pytest.raises(ReplicaError, match="Incomplete stream"):
+        coordinator.synchronize(a, b, direction="push")
+    assert a.outgoing is None and b.incoming is None
+    assert count(replicas["b"], "a_STAGE38_PERSONAL") == 0
+
+
+def test_live_old_protocol_refuses_before_binding_or_content(replicas):
+    a, b = local(replicas["a"]), local(replicas["b"])
+    old = b.call("hello", {})
+    old["protocol"] = "session-replica/v1"
+    with pytest.raises(ReplicaError, match="Incompatible replica protocol"):
+        a.call("bind", {"remote": old})
+    assert not a.bound
+
+
+@pytest.mark.parametrize("corrupt", ["sequence", "body"])
+def test_corrupted_stream_never_promotes_a_partial_copy(replicas, monkeypatch, corrupt):
+    a, b = streamed_endpoints(replicas, monkeypatch)
+    original = b._stream_receive
+
+    def changed(offer_id, chunk):
+        if corrupt == "sequence" and chunk["sequence"] == 1:
+            chunk = {**chunk, "sequence": 0}
+        elif corrupt == "body" and chunk["table"] == "sessions":
+            chunk = {
+                **chunk,
+                "rows": [{**row, "source": "altered-source"} for row in chunk["rows"]],
+            }
+        return original(offer_id, chunk)
+
+    monkeypatch.setattr(b, "_stream_receive", changed)
+    with pytest.raises(ReplicaError, match="out-of-order|content binding"):
+        coordinator.synchronize(a, b, direction="push")
+    assert a.outgoing is None and b.incoming is None
     assert count(replicas["b"], "a_STAGE38_PERSONAL") == 0

@@ -1,5 +1,24 @@
 # Production boundary inventory
 
+## Current Stage39 transport increment
+
+Complete scopes above the 32 MiB small-packet bound now use private SQLite staging
+and ordered row frames through the actual configured SSH coordinator. Sealing and
+final source/permission/dependency checks precede the atomic body/receipt commit.
+Live protocol v2 is required; historical v1 records remain metadata-only recoverable.
+
+The large installed lifecycle exposed withdrawal preview retaining whole body images.
+It now retains the first image's exact binding and looks up matching retention facts
+under the same writer lock. A separate final commit-request race was reproduced and
+fixed by extending the source check immediately before pipe writes. See
+[Stage39](../scalable_transfer/GUIDE.md) for verification and limitations.
+
+Staging is bounded to one GiB/one million rows; identifier sets and ledger history still
+scale with cardinality, changed scopes retransmit, and incomplete streams restart.
+This does not complete full-store/managed restore, ownership of files/live streams,
+shared installation/doctor or installed consumer acceptance. The historical inventory
+below retains each checkpoint's original boundary.
+
 Initial static inventory after Stage18. This is a routing aid, not evidence that
 all paths have been secured. Paths below are relative to `packages/`.
 

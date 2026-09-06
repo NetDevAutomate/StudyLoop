@@ -77,6 +77,43 @@ def _controls(left, right):
     raise ReplicaError("Controls kept changing; retry before transferring content")
 
 
+def _stream_transfer(sender, receiver, offer):
+    from .wire import MAX_REQUESTS
+
+    try:
+        header = sender.call("stream_open", {"offer": offer})
+        started = receiver.call(
+            "stream_start", {"offer_id": offer["id"], "header": header}
+        )
+        if "receipt" in started:
+            receipt = started["receipt"]
+        else:
+            for sequence in range(MAX_REQUESTS):
+                chunk = sender.call(
+                    "stream_next", {"offer_id": offer["id"], "sequence": sequence}
+                )
+                if chunk is None:
+                    break
+                receiver.call(
+                    "stream_receive", {"offer_id": offer["id"], "chunk": chunk}
+                )
+            else:
+                raise ReplicaError("Content stream exceeded its frame bound")
+            receipt = receiver.call("stream_commit", {"offer_id": offer["id"]})
+    except BaseException:
+        # The original refusal or transport failure remains the reported error.
+        # Connection owners also close staging on process exit/connection close.
+        for endpoint in (sender, receiver):
+            try:
+                endpoint.call("stream_close", {})
+            except Exception:
+                pass
+        raise
+    sender.call("stream_close", {})
+    receiver.call("stream_close", {})
+    return receipt
+
+
 def synchronize(local, remote, *, direction):
     if direction not in ("push", "pull", "sync"):
         raise ReplicaError("Invalid structured sync direction")
@@ -102,17 +139,27 @@ def synchronize(local, remote, *, direction):
                 receiver.call("confirm_unchanged", {"plan": plan, "scope": scope})
                 unchanged.append({"direction": label, "scope": scope})
                 continue
-            offer = sender.call("prepare", {"plan": plan, "scope": scope})
+            prepared = sender.call("prepare_transfer", {"plan": plan, "scope": scope})
+            if (
+                not isinstance(prepared, dict)
+                or set(prepared) != {"mode", "offer"}
+                or prepared["mode"] not in ("snapshot", "stream")
+            ):
+                raise ReplicaError("Invalid prepared transfer mode")
+            offer = prepared["offer"]
             acceptance = receiver.call("accept", {"offer": offer})
             sender.call("record_acceptance", {"offer": offer, "acceptance": acceptance})
             if acceptance["status"] != "accepted":
                 raise ReplicaError(
                     "A new retirement requires another control reconciliation"
                 )
-            body = sender.call("release", {"offer": offer})
-            receipt = receiver.call(
-                "receive", {"offer_id": offer["id"], "snapshot": body}
-            )
+            if prepared["mode"] == "stream":
+                receipt = _stream_transfer(sender, receiver, offer)
+            else:
+                body = sender.call("release", {"offer": offer})
+                receipt = receiver.call(
+                    "receive", {"offer_id": offer["id"], "snapshot": body}
+                )
             sender.call("ack_content", {"receipt": receipt})
             transfers.append(
                 {
@@ -120,6 +167,7 @@ def synchronize(local, remote, *, direction):
                     "scope": scope,
                     "offer_id": offer["id"],
                     "committed": True,
+                    "mode": prepared["mode"],
                 }
             )
     local.call("finish", {})
@@ -138,9 +186,11 @@ def synchronize(local, remote, *, direction):
 
 
 def run(peer, *, direction, db=None):
-    local = Endpoint(peer, db=db)
-    local.check()
-    with closing(ssh.connect(load_config(), peer)) as remote:
+    with (
+        closing(Endpoint(peer, db=db)) as local,
+        closing(ssh.connect(load_config(), peer)) as remote,
+    ):
+        local.check()
         remote.before_send = local.before_remote_send
         return synchronize(local, remote, direction=direction)
 

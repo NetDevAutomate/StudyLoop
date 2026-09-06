@@ -23,6 +23,10 @@ class ReplicaConflict(ReplicaError):
 
 
 def _unique(rows, key="id"):
+    from .staging import StagedRows
+
+    if isinstance(rows, StagedRows):
+        return rows.indexed(key)
     result = {}
     for row in rows:
         value = row.get(key)
@@ -119,6 +123,7 @@ def _closure(tables, policy, scope):
 
     owners = _unique(tables["context_record_owners"])
     app_rows = {t: _unique(tables[t]) for t in records.TABLES}
+    app_keys = {t: {str(key) for key in rows} for t, rows in app_rows.items()}
     paired = set()
     for row in owners.values():
         owned(row, "scope")
@@ -126,7 +131,7 @@ def _closure(tables, policy, scope):
         if table not in app_rows or (table, local) in paired:
             raise ReplicaError("Duplicate or unsupported learner ownership")
         paired.add((table, local))
-        if not any(str(key) == local for key in app_rows[table]):
+        if local not in app_keys[table]:
             raise ReplicaError("Learner owner lacks its included record")
     if sum(len(v) for v in app_rows.values()) != len(paired):
         raise ReplicaError("Learner body lacks explicit ownership")
@@ -266,7 +271,7 @@ def _review_bindings(conn, tables, access):
     from ..context.reviews import KIND, VERDICTS
 
     store = ContextStore(conn)
-    observations = {r["id"]: r for r in tables["context_observations"]}
+    observations = _unique(tables["context_observations"])
 
     def assertion(identity):
         row = store.assertion(identity, access)
@@ -398,10 +403,15 @@ def apply_in_transaction(conn, config, snapshot, contribution=None, before_apply
         or snapshot["lifecycle_reconciled"] is not False
     ):
         raise ReplicaError("Unsupported content phase contract")
-    if len(_json(snapshot).encode()) > MAX_BYTES:
+    from .staging import MAX_STAGED_ROWS, StagedRows, StagedSnapshot, binding
+
+    staged = isinstance(snapshot, StagedSnapshot)
+    if staged:
+        binding(snapshot)  # Recheck exact current bytes; do not trust cached size/hash.
+    elif len(_json(snapshot).encode()) > MAX_BYTES:
         raise ReplicaError("Snapshot exceeds transfer limit")
     body = {k: v for k, v in snapshot.items() if k != "sha256"}
-    if _hash(_json(body)) != snapshot["sha256"]:
+    if (binding(body)[0] if staged else _hash(_json(body))) != snapshot["sha256"]:
         raise ReplicaError("Snapshot content binding failed")
     plan, scope, tables = snapshot["plan"], snapshot["scope"], snapshot["tables"]
     check_plan(plan, scope=scope)
@@ -415,9 +425,15 @@ def apply_in_transaction(conn, config, snapshot, contribution=None, before_apply
         )
     if not isinstance(tables, dict) or set(tables) != set(TABLES):
         raise ReplicaError("Snapshot table coverage is invalid")
-    if (
-        any(not isinstance(rows, list) for rows in tables.values())
-        or sum(map(len, tables.values())) > MAX_ROWS
+    if isinstance(snapshot, StagedSnapshot):
+        valid_rows = snapshot.stage.sealed and all(
+            isinstance(rows, StagedRows) and rows.store is snapshot.stage
+            for rows in tables.values()
+        )
+    else:
+        valid_rows = all(isinstance(rows, list) for rows in tables.values())
+    if not valid_rows or sum(map(len, tables.values())) > (
+        MAX_STAGED_ROWS if staged else MAX_ROWS
     ):
         raise ReplicaError("Snapshot row limit exceeded")
     if hello(conn, peer) != plan["receiver"]:
