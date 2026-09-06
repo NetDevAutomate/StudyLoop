@@ -3000,7 +3000,7 @@ wheels = [
 
 [[package]]
 name = "studyloop"
-version = "0.2.1"
+version = "0.3.0"
 source = { editable = "packages/studyloop" }
 dependencies = [
     { name = "click" },
@@ -3092,7 +3092,7 @@ dev = [
 
 [[package]]
 name = "studyloop-workspace"
-version = "0.2.1"
+version = "0.3.0"
 source = { editable = "." }
 dependencies = [
     { name = "fastapi" },

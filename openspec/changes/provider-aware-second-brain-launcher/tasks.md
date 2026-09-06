@@ -23,7 +23,7 @@
 
 ## 5. Learner can install and trust the complete 0.3.0 launcher release
 
-- [ ] 5.1 Add an isolated installed-wheel web smoke that starts the packaged application, requests launch state, and loads every launcher asset; wire it into the release gate and verify it cannot import from the checkout.
+- [x] 5.1 Add an isolated installed-wheel web smoke that starts the packaged application, requests launch state, and loads every launcher asset; wire it into the release gate and verify it cannot import from the checkout.
 - [ ] 5.2 Record redacted connector evidence that an accessible xTiles page URL is HTTPS on exact host `xtiles.app`, has a non-home path, and has no userinfo, port, query, or fragment; verify the strict validator accepts that shape while continuing to reject query and fragment.
-- [ ] 5.3 Document same-device Obsidian behavior, the assistant destination handoff, honest disabled states, explicit-click navigation, and Settings guidance; update 0.3.0 version and release metadata and verify release consistency.
-- [ ] 5.4 Run formatting, lint, Pyright, Python, JavaScript, web, browser, end-to-end, OpenSpec, security, build, and installed-artifact gates; record exact outcomes and repair every failure before release review.
+- [x] 5.3 Document same-device Obsidian behavior, the assistant destination handoff, honest disabled states, explicit-click navigation, and Settings guidance; update 0.3.0 version and release metadata and verify release consistency.
+- [x] 5.4 Run formatting, lint, Pyright, Python, JavaScript, web, browser, end-to-end, OpenSpec, security, build, and installed-artifact gates; record exact outcomes and repair every failure before release review.
