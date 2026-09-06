@@ -1,0 +1,60 @@
+{
+  "stage": 33,
+  "date": "2026-09-06",
+  "scope": "Local canonical lifecycle checkpoint; full production goal remains active",
+  "schema": 41,
+  "verification": {
+    "combined_memory_experiment": "1718 passed, 1 optional skip, 94.60s after review fixes",
+    "focused_lifecycle_tiering": "67 passed, 5.58s after review fixes; 24 local lifecycle and43 existing tiering cases",
+    "studyloop": "3823 passed,4 skipped,704 deselected,181.11s; local lifecycle code review refinements followed, package regression rerun afterward",
+    "static": "Ruff check passes; targeted Pyright0errors0warnings; full commit hooks recorded in delivery status",
+    "installed": "Fresh standalone memory-only wheel; StudyLoop absent; 16checks pass; actual Codex export and session-context CLI",
+    "browser": "Five sections and five opened disclosures; viewport fits; visible rendering inspected; own tab/server closed; incidental missing favicon404",
+    "red_green_race": "Pre-review compact replay fails directed interleaving:complete true with newly retired source still present. Fixed transaction returns pending, retry purges source.",
+    "process_failures": "Real child death during purge in each mode rolls back; death before VACUUM retains cleanup job; pinned reader leaves retryable pending work"
+  },
+  "demo_checks": {
+    "actual_native_capture_has_rendering_links": true,
+    "preview_did_not_apply": true,
+    "actual_cli_applied_local_forgetting": true,
+    "canonical_file_cleanup_completed": true,
+    "unique_forgotten_marker_absent_from_canonical_files": true,
+    "native_source_removed": true,
+    "older_detachable_note_removed": true,
+    "content_free_correction_link_retained": true,
+    "actual_exporter_replay_suppressed": true,
+    "unrelated_work_source_preserved": true,
+    "foreign_keys_intact": true,
+    "eviction_did_not_mint_permanent_controls": true,
+    "eviction_mode_restored": true,
+    "eviction_primitive_allows_native_reimport": true,
+    "external_native_archives_unchanged": true,
+    "replica_and_restore_limits_explicit": true
+  },
+  "single_fixture_timing": {
+    "single_cli_forget_with_startup_ms": 85.531,
+    "limit": "Single fictional run, not a throughput or engine benchmark."
+  },
+  "council": {
+    "design_successful_providers": [
+      "meta",
+      "qwen",
+      "mistral"
+    ],
+    "review_successful_providers": [
+      "meta",
+      "qwen",
+      "mistral"
+    ],
+    "arbitration": "Review asked for changes; concrete transaction and archival coverage fixes follow review; no post-fix council approval claimed"
+  },
+  "limits": [
+    "No actual peer lifecycle propagation, receipt or fresh regrant",
+    "No full-store forget or complete managed backup restore",
+    "No universal erasure of unbound legacy semantic derivatives",
+    "No complete hot/full learner consumer coverage",
+    "Native archives, external backups and filesystem snapshots remain outside erasure coverage",
+    "No source/owner machine DB or config changed",
+    "No storage engine or semantic usefulness superiority inferred"
+  ]
+}

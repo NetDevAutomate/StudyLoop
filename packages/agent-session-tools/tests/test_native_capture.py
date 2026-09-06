@@ -10,6 +10,7 @@ from typer.testing import CliRunner
 
 from agent_session_tools.context.capture import capture_health, capture_run
 from agent_session_tools.context.cli import app
+from agent_session_tools.context.lifecycle import eviction
 from agent_session_tools.context.provenance import Origin
 from agent_session_tools.context.scope import ScopePolicy, apply_policy
 from agent_session_tools.context.store import ContextStore, _hash
@@ -340,7 +341,10 @@ def test_real_exporter_captures_native_only_session(
         "kiro-v5": "kiro-v4",
         "grok-v2": "grok-v1",
     }[current]
-    conn.execute("DELETE FROM context_evidence")
+    # Model a pre-capture archive, not a user's permanent forget. The modern
+    # DELETE trigger intentionally prevents a retired identity being backfilled.
+    with ContextStore(conn)._atomic(), eviction(conn):
+        conn.execute("DELETE FROM context_evidence")
     if harness == "kiro_cli":
         metadata["kiro_import_fingerprint"] = previous + ":" + rest
         conn.execute("UPDATE sessions SET metadata=?", (json.dumps(metadata),))

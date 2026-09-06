@@ -713,3 +713,30 @@ def test_peer_cannot_assign_ownership_to_an_identical_unowned_learner_row(replic
         dest["conn"].execute("SELECT count(*) FROM context_record_owners").fetchone()[0]
         == 0
     )
+
+
+@pytest.mark.parametrize("corrupt", [False, True])
+def test_native_rendering_link_survives_transfer_with_its_binding(replicas, corrupt):
+    ids = seed(replicas)
+    source = replicas["a"]["conn"]
+    source.execute(
+        "INSERT INTO context_native_message_sources VALUES (?,?,?)",
+        ("personal-m", ids["sources"]["personal"], _hash("Observed fixture result")),
+    )
+    source.commit()
+    incoming = snapshot(replicas)
+    assert len(incoming["tables"]["context_native_message_sources"]) == 1
+    dest = replicas["b"]
+    if corrupt:
+        incoming["tables"]["context_native_message_sources"][0][
+            "rendered_body_sha256"
+        ] = "0" * 64
+        reseal(incoming)
+        with pytest.raises(ReplicaError, match="Native rendering link"):
+            apply_content(dest["path"], dest["config"], incoming)
+        assert dest["conn"].execute("SELECT count(*) FROM messages").fetchone()[0] == 0
+    else:
+        apply_content(dest["path"], dest["config"], incoming)
+        assert dest["conn"].execute(
+            "SELECT rendered_body_sha256 FROM context_native_message_sources"
+        ).fetchone()[0] == _hash("Observed fixture result")

@@ -15,9 +15,8 @@ The tiering model:
 
 Safety invariants:
 
-- :func:`prune_hot` never deletes a session that is not verified present in
-  the full DB (id + content_hash match + message-count check). Worst case it
-  frees less space; it is mechanically incapable of losing data.
+- :func:`prune_hot` verifies retained messages and, for modern schemas, a complete
+  context/learner snapshot before eviction. Incomplete coverage retains hot data.
 - Directory creation only ever creates the *leaf* directory. If the parent
   does not exist (external volume unmounted), the operation is refused rather
   than silently writing to a phantom mountpoint path.
@@ -226,6 +225,7 @@ def _copy_table(
     dest_schema: str = "main",
     where: str = "",
     replace: bool = False,
+    ignore: bool = False,
 ) -> int:
     """Copy ``table`` rows using the column intersection of both schemas."""
     src_cols = _table_columns(conn, table, src_schema)
@@ -234,7 +234,9 @@ def _copy_table(
     if not cols:
         return 0
     col_list = ", ".join(cols)
-    verb = "INSERT OR REPLACE" if replace else "INSERT"
+    verb = (
+        "INSERT OR REPLACE" if replace else "INSERT OR IGNORE" if ignore else "INSERT"
+    )
     cur = conn.execute(
         f"{verb} INTO {dest_schema}.{table} ({col_list}) "
         f"SELECT {col_list} FROM {src_schema}.{table} {where}"
@@ -325,6 +327,7 @@ def compact_database(source: Path, dest: Path) -> CompactStats:
         # access generation; copying the source singleton would both collide
         # with that row and erase the replacement identity observed by readers.
         common.discard("context_access_state")
+        common.discard("context_lifecycle_mode")
         # Dependency order: parents before children; messages last of the
         # core pair so session FKs resolve. Everything else after.
         first = ("context_tombstones", "sessions", "messages")
@@ -337,7 +340,16 @@ def compact_database(source: Path, dest: Path) -> CompactStats:
                 # source's applied policy instead of colliding with that seed.
                 conn.execute("DELETE FROM context_policy_state")
             for table in ordered:
-                copied = _copy_table(conn, table, "src")
+                copied = _copy_table(
+                    conn,
+                    table,
+                    "src",
+                    ignore=table
+                    in {
+                        "context_retirements",
+                        "context_erasure_pending",
+                    },
+                )
                 if copied:
                     stats.tables_copied[table] = copied
                     logger.info("compact: copied %s rows into %s", copied, table)
@@ -560,12 +572,12 @@ def prune_hot(
     """Delete sessions older than ``days`` from the hot DB — but only those
     verified present in the full DB.
 
-    Verification per session: same id in full DB, matching ``content_hash``,
-    and the full DB holds at least as many messages for it. Sessions failing
-    verification are skipped and reported, never deleted. Sessions in
-    ``keep_session_ids`` (e.g. focus-topic matches during a refocus) are
-    excluded from candidacy entirely. Learning tables (study_progress,
-    concepts, card_reviews, ...) are never touched.
+    Modern schemas also require exact message-row retention and a complete
+    context/learner snapshot in full. This conservative whole-context check can
+    retain more hot sessions when any report is not yet archived. Eviction removes
+    dependent owned records from hot without permanently retiring their identities;
+    the verified copies remain in full. It is distinct from global forgetting.
+    Sessions failing verification or in ``keep_session_ids`` are retained.
     """
     cfg = config or load_config()
     hot = hot or get_db_path(cfg)
@@ -594,8 +606,12 @@ def prune_hot(
     conn.row_factory = sqlite3.Row
     try:
         conn.execute("PRAGMA busy_timeout=5000")
-        conn.execute("PRAGMA foreign_keys=OFF")
+        modern = conn.execute("PRAGMA user_version").fetchone()[0] >= 41
+        conn.execute("PRAGMA foreign_keys=ON" if modern else "PRAGMA foreign_keys=OFF")
         conn.execute(f"ATTACH DATABASE '{full}' AS full")
+        if modern:
+            # Hold verification and eviction in the same attached-DB transaction.
+            conn.execute("BEGIN IMMEDIATE")
 
         candidate_ids = [
             r["id"]
@@ -629,6 +645,34 @@ def prune_hot(
             """
         ).fetchall()
         verified = {r["id"] for r in verified_rows}
+        if modern:
+            if not _archive_context_complete(conn):
+                verified = set()
+            else:
+                columns = [
+                    r[1] for r in conn.execute("PRAGMA main.table_info(messages)")
+                ]
+                selected = ",".join(
+                    '"' + column.replace('"', '""') + '"' for column in columns
+                )
+                verified = {
+                    sid
+                    for sid in verified
+                    if not conn.execute(
+                        "SELECT 1 FROM (SELECT * FROM main.sessions WHERE id=? "
+                        "EXCEPT SELECT * FROM full.sessions WHERE id=?) LIMIT 1",
+                        (sid, sid),
+                    ).fetchone()
+                    and not conn.execute(
+                        f"SELECT 1 FROM (SELECT {selected} FROM main.messages WHERE session_id=? "
+                        f"EXCEPT SELECT {selected} FROM full.messages WHERE session_id=?) LIMIT 1",
+                        (sid, sid),
+                    ).fetchone()
+                    and not conn.execute(
+                        "SELECT 1 FROM full.context_tombstones WHERE session_id=?",
+                        (sid,),
+                    ).fetchone()
+                }
         stats.verified = len(verified)
         stats.skipped_unverified = stats.candidates - stats.verified
         stats.skipped_ids = [c for c in candidate_ids if c not in verified]
@@ -649,33 +693,18 @@ def prune_hot(
         message_child = _dependent_tables(conn, "messages")
 
         with conn:
-            conn.execute("CREATE TEMP TABLE prune_ids (id TEXT PRIMARY KEY)")
-            conn.executemany(
-                "INSERT INTO prune_ids VALUES (?)", [(v,) for v in verified]
-            )
-            # message-scoped dependents first (need message ids present)
-            for table, fk_col in message_child:
-                conn.execute(
-                    f"DELETE FROM {table} WHERE {fk_col} IN "
-                    "(SELECT id FROM messages WHERE session_id IN "
-                    "(SELECT id FROM prune_ids))"
-                )
-            stats.messages_deleted = conn.execute(
-                "DELETE FROM messages WHERE session_id IN (SELECT id FROM prune_ids)"
-            ).rowcount
-            for table, fk_col in session_child:
-                conn.execute(
-                    f"DELETE FROM {table} WHERE {fk_col} IN (SELECT id FROM prune_ids)"
-                )
-            if _table_exists(conn, "file_references"):
-                conn.execute(
-                    "DELETE FROM file_references WHERE session_id IN "
-                    "(SELECT id FROM prune_ids)"
-                )
-            stats.sessions_deleted = conn.execute(
-                "DELETE FROM sessions WHERE id IN (SELECT id FROM prune_ids)"
-            ).rowcount
-            conn.execute("DROP TABLE prune_ids")
+            if modern:
+                from .context.lifecycle import eviction, purge_session
+
+                with eviction(conn):
+                    for sid in verified:
+                        stats.messages_deleted += conn.execute(
+                            "SELECT count(*) FROM messages WHERE session_id=?", (sid,)
+                        ).fetchone()[0]
+                        purge_session(conn, sid, permanent=False)
+                        stats.sessions_deleted += 1
+            else:
+                _prune_legacy_rows(conn, verified, session_child, message_child, stats)
 
         conn.execute("DETACH DATABASE full")
         if vacuum:
@@ -693,6 +722,90 @@ def prune_hot(
         stats.skipped_unverified,
     )
     return stats
+
+
+def _archive_context_complete(conn):
+    """Conservative whole-context retention proof; compare rows inside SQLite."""
+    from .context import records
+
+    local = {
+        r[0]
+        for r in conn.execute("SELECT name FROM main.sqlite_master WHERE type='table'")
+    }
+    remote = {
+        r[0]
+        for r in conn.execute("SELECT name FROM full.sqlite_master WHERE type='table'")
+    }
+    bookkeeping = {
+        "context_access_state",
+        "context_policy_state",
+        "context_lifecycle_mode",
+        "context_erasure_pending",
+        "context_capture_runs",
+    }
+    # Include older payloads with no observation wrapper: a matching native hash
+    # alone says nothing about a newly edited note or an unarchived file reference.
+    tables = (
+        set(records.TABLES)
+        | {
+            "session_notes",
+            "session_tags",
+            "session_learning_metadata",
+            "file_references",
+            "scrub_log",
+            "session_embeddings",
+            "message_embeddings",
+            "message_concepts",
+        }
+        | {
+            t
+            for t in local
+            if t.startswith("context_")
+            and not t.startswith("context_evidence_fts")
+            and t not in bookkeeping
+        }
+    )
+    if not tables <= remote or conn.execute("PRAGMA full.foreign_key_check").fetchone():
+        return False
+    for table in sorted(tables):
+        quoted = '"' + table.replace('"', '""') + '"'
+        columns = [r[1] for r in conn.execute(f"PRAGMA main.table_info({quoted})")]
+        full_columns = {r[1] for r in conn.execute(f"PRAGMA full.table_info({quoted})")}
+        if not set(columns) <= full_columns:
+            return False
+        selected = ",".join('"' + c.replace('"', '""') + '"' for c in columns)
+        if conn.execute(
+            f"SELECT 1 FROM (SELECT {selected} FROM main.{quoted} EXCEPT SELECT {selected} FROM full.{quoted}) LIMIT 1"
+        ).fetchone():
+            return False
+    return True
+
+
+def _prune_legacy_rows(conn, verified, session_child, message_child, stats):
+    conn.execute("CREATE TEMP TABLE prune_ids (id TEXT PRIMARY KEY)")
+    conn.executemany("INSERT INTO prune_ids VALUES (?)", [(v,) for v in verified])
+    # message-scoped dependents first (need message ids present)
+    for table, fk_col in message_child:
+        conn.execute(
+            f"DELETE FROM {table} WHERE {fk_col} IN "
+            "(SELECT id FROM messages WHERE session_id IN "
+            "(SELECT id FROM prune_ids))"
+        )
+    stats.messages_deleted = conn.execute(
+        "DELETE FROM messages WHERE session_id IN (SELECT id FROM prune_ids)"
+    ).rowcount
+    for table, fk_col in session_child:
+        conn.execute(
+            f"DELETE FROM {table} WHERE {fk_col} IN (SELECT id FROM prune_ids)"
+        )
+    if _table_exists(conn, "file_references"):
+        conn.execute(
+            "DELETE FROM file_references WHERE session_id IN (SELECT id FROM prune_ids)"
+        )
+    stats.sessions_deleted = conn.execute(
+        "DELETE FROM sessions WHERE id IN (SELECT id FROM prune_ids)"
+    ).rowcount
+    conn.execute("DROP TABLE prune_ids")
 
 
 # ---------------------------------------------------------------------------

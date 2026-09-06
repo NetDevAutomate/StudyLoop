@@ -42,7 +42,11 @@ def protected_queries(tables):
             continue
         quoted = '"' + table.replace('"', '""') + '"'
         condition = (
-            " WHERE applied_at IS NOT NULL" if table == "context_policy_state" else ""
+            " WHERE applied_at IS NOT NULL"
+            if table == "context_policy_state"
+            else " WHERE mode!='ordinary'"
+            if table == "context_lifecycle_mode"
+            else ""
         )
         yield f"SELECT 1 FROM {quoted}{condition} LIMIT 1"
 

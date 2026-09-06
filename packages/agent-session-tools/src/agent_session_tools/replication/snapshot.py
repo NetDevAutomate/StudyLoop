@@ -32,6 +32,7 @@ NATIVE = (
 CONTEXT = (
     "context_session_projects",
     "context_evidence",
+    "context_native_message_sources",
     "context_assertions",
     "context_citations",
     "context_relations",
@@ -202,6 +203,10 @@ def collect(conn, policy, scope):
         rows[table] = p.read(table, predicate)
     rows["context_session_projects"] = p.read(
         "context_session_projects", "r.session_id IN (SELECT id FROM replica_sessions)"
+    )
+    rows["context_native_message_sources"] = p.read(
+        "context_native_message_sources",
+        "r.message_id IN (SELECT id FROM replica_messages) AND r.evidence_id IN (SELECT id FROM replica_evidence)",
     )
     for table, selection in (
         ("context_evidence", "evidence"),

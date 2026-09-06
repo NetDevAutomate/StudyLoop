@@ -368,7 +368,6 @@ class TestPruneUtcCutoff:
         self, tz, tiered_config, _restore_tz
     ):
         _make_hot_db(tiered_config["hot"], sessions=2)
-        sync_to_full()
 
         days = 1
         cutoff_instant = datetime.now(UTC) - timedelta(days=days)
@@ -380,6 +379,10 @@ class TestPruneUtcCutoff:
         conn.execute("UPDATE sessions SET updated_at = ? WHERE id = 's1'", (outside,))
         conn.commit()
         conn.close()
+
+        # Archive the actual metadata being tested. Modern pruning must refuse
+        # an unarchived timestamp edit just as it refuses an unarchived note.
+        sync_to_full()
 
         _restore_tz(tz)
         prune_hot(days=days, dry_run=False)

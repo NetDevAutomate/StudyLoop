@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Current schema version - increment when adding new migrations
-CURRENT_VERSION = 40
+CURRENT_VERSION = 41
 
 # Migration functions: version -> (description, migration_func)
 MIGRATIONS: dict[int, tuple[str, Callable[[sqlite3.Connection], None]]] = {}
@@ -1453,6 +1453,13 @@ def migrate_v40(conn: sqlite3.Connection) -> None:
         "CREATE INDEX context_observations_ordered "
         "ON context_observations(kind,subject,recorded_at,id)"
     )
+
+
+@migration(41, "Durable retirement identities and explicit lifecycle modes")
+def migrate_v41(conn: sqlite3.Connection) -> None:
+    from .context.lifecycle_schema import install
+
+    install(conn)
 
 
 def check_migration_status(db_path: Path) -> dict:

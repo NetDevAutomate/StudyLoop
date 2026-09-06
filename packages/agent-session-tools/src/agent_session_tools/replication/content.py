@@ -47,6 +47,18 @@ def _closure(tables, policy, scope):
             raise ReplicaError("Incoming session is outside the negotiated scope")
     messages = _unique(tables["messages"])
     evidence = _unique(tables["context_evidence"])
+    for row in tables["context_native_message_sources"]:
+        message = messages.get(row["message_id"])
+        source = evidence.get(row["evidence_id"])
+        if (
+            message is None
+            or source is None
+            or message["session_id"] != source["session_id"]
+            or _hash(message["content"] or "") != row["rendered_body_sha256"]
+        ):
+            raise ReplicaError(
+                "Native rendering link lacks its exact included message/source binding"
+            )
     for table in (
         "messages",
         "context_evidence",
@@ -419,6 +431,7 @@ def apply_content(path, config, snapshot):
             "messages",
             "context_session_projects",
             "context_evidence",
+            "context_native_message_sources",
             "context_assertions",
             "context_citations",
             "context_relations",

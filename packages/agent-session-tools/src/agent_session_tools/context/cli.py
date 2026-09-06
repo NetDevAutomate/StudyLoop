@@ -30,6 +30,39 @@ ActorOption = Annotated[
 ]
 
 
+@app.command("forget")
+def forget(
+    session_id: str,
+    db: DatabaseOption = None,
+    apply: Annotated[
+        bool,
+        typer.Option("--apply", help="Permanently forget this visible session locally"),
+    ] = False,
+) -> None:
+    """Preview or apply local forgetting, with honest replica/restore status."""
+    from .lifecycle import compact, forget_session
+
+    path = (db or get_db_path(load_config())).expanduser().resolve()
+    with open_context(path, write=apply) as context:
+        result = forget_session(context.conn, session_id, apply=apply)
+    if apply:
+        result["canonical_file_cleanup"] = compact(path)
+    typer.echo(_json(result))
+    if apply and not result["canonical_file_cleanup"]["complete"]:
+        raise typer.Exit(2)
+
+
+@app.command("cleanup")
+def cleanup(db: DatabaseOption = None) -> None:
+    """Retry canonical DB/WAL compaction after local forgetting; preserve live rows."""
+    from .lifecycle import compact
+
+    result = compact((db or get_db_path(load_config())).expanduser().resolve())
+    typer.echo(_json(result))
+    if not result["complete"]:
+        raise typer.Exit(2)
+
+
 @app.command("annotations")
 def annotation_history(
     session_id: str,

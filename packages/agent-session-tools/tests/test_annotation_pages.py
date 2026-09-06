@@ -272,6 +272,7 @@ def test_large_dependency_set_is_explicitly_unavailable(history_db):
 def test_history_index_migration_is_additive_and_recoverable(tmp_path, monkeypatch):
     from agent_session_tools import migrations
 
+    monkeypatch.setattr(migrations, "CURRENT_VERSION", 40)
     with monkeypatch.context() as old:
         old.setattr(migrations, "CURRENT_VERSION", 39)
         conn = records.connect(tmp_path / "upgrade.db")
