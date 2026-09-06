@@ -16,6 +16,7 @@ uv tool install ./packages/agent-session-tools
 |---------|-------------|
 | `session-export` | Export AI coding sessions to SQLite |
 | `session-query` | Search and browse session history |
+| `session-context` | Scoped source retrieval, exact citations, proposed relationships and recorded-check assessment |
 | `session-maint` | Database maintenance and optimization |
 | `session-sync` | Sync sessions across machines |
 | `session-db-mcp` | MCP server — exposes session DB to AI tools |
@@ -24,7 +25,8 @@ uv tool install ./packages/agent-session-tools
 
 ## MCP Server (session-db-mcp)
 
-Exposes the session database as 7 MCP tools via stdio transport. Any MCP-compatible AI tool can search, browse, and retrieve context from past sessions.
+Exposes session history and source-grounded context through stdio. Any compatible
+MCP client can use the same configured scope policy as the CLI.
 
 ```json
 {
@@ -37,6 +39,12 @@ Exposes the session database as 7 MCP tools via stdio transport. Any MCP-compati
 ```
 
 **Tools:** `session_search`, `session_list`, `session_show`, `session_context`, `session_stats`, `session_clean`, `session_hotspots`
+
+**Rich context tools:** `memory_search`, `memory_source`, `memory_propose`,
+`memory_relate`, `memory_decide`. Prefer these for exact source citations,
+provenance, proposed relationships and explicit execution requirements. A recorded
+check is not an approval to ship. See the [context interface guide](../../docs/context-memory.md)
+for scope configuration, examples and limits.
 
 ## Obsidian Vault Export
 

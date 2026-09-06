@@ -53,10 +53,15 @@ class Access:
 
     scope: Scope
     projects: frozenset[str] | None = None
+    include_unassigned: bool = False
 
     def __post_init__(self) -> None:
         if not isinstance(self.scope, Scope):
             raise ValueError("An explicit scope is required")
+        if type(self.include_unassigned) is not bool or (
+            self.include_unassigned and self.scope != Scope.UNCLASSIFIED
+        ):
+            raise ValueError("Only unclassified access can include unassigned sources")
         if self.projects is not None:
             if not isinstance(self.projects, frozenset):
                 raise ValueError("Projects must be a frozen set")
@@ -257,9 +262,12 @@ class ContextStore:
             (SELECT 1 FROM context_tombstones t WHERE t.session_id=e.session_id)"""
         values: list[Any] = [access.scope.value]
         if access.projects is not None:
-            if not access.projects:
-                return "0", []
-            clause += " AND p.id IN (" + ",".join("?" for _ in access.projects) + ")"
+            projects = "0"
+            if access.projects:
+                projects = "p.id IN (" + ",".join("?" for _ in access.projects) + ")"
+            if access.include_unassigned:
+                projects = "(" + projects + " OR sp.session_id IS NULL)"
+            clause += " AND " + projects
             values.extend(sorted(access.projects))
         return clause, values
 

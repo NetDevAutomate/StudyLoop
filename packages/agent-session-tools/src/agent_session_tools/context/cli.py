@@ -14,6 +14,8 @@ from ..config_loader import get_db_path, load_config
 from ..migrations import migrate
 from .capture import capture_health
 from .scope import ScopeError, ScopePolicy, apply_policy
+from .public import open_context
+from .store import _json
 
 app = typer.Typer(help="Configure and inspect source-grounded session memory.")
 policy_app = typer.Typer(help="Preview or apply explicitly configured project scopes.")
@@ -39,6 +41,114 @@ def health(db: DatabaseOption = None) -> None:
         typer.echo(json.dumps(capture_health(conn), indent=2))
     finally:
         conn.close()
+
+
+@app.command("search")
+def search(
+    query: str,
+    db: DatabaseOption = None,
+    project: str | None = None,
+    max_sources: int = 12,
+    budget_bytes: int = 32768,
+    as_of: str | None = None,
+) -> None:
+    """Retrieve bounded, scoped native context with exact citations and explanations."""
+    with open_context(db, project=project) as context:
+        typer.echo(
+            _json(
+                context.search(
+                    query,
+                    max_sources=max_sources,
+                    budget_bytes=budget_bytes,
+                    as_of=as_of,
+                )
+            )
+        )
+
+
+@app.command("source")
+def source(
+    evidence_id: str,
+    db: DatabaseOption = None,
+    project: str | None = None,
+    start: int = 0,
+    length: int = 2000,
+    budget_bytes: int = 32768,
+) -> None:
+    """Read an exact excerpt of a visible immutable source version."""
+    with open_context(db, project=project) as context:
+        typer.echo(
+            _json(
+                context.source(
+                    evidence_id, start=start, length=length, budget_bytes=budget_bytes
+                )
+            )
+        )
+
+
+def _input(path: Path):
+    if path.stat().st_size > 65536:
+        raise ValueError("Input document exceeds 64KiB")
+    return json.loads(path.read_text())
+
+
+@app.command("propose")
+def propose(
+    document: Path, db: DatabaseOption = None, project: str | None = None
+) -> None:
+    """Store an unverified interpretation backed by exact source citations.
+
+    JSON document fields: statement,state,target,citations. Source provenance cannot
+    be supplied or changed by a proposal. Citation fields: evidence_id,start,end,quote.
+    """
+    value = _input(document)
+    if not isinstance(value, dict) or set(value) != {
+        "statement",
+        "state",
+        "target",
+        "citations",
+    }:
+        raise ValueError("Proposal accepts only statement,state,target,citations")
+    with open_context(db, write=True, project=project) as context:
+        result = context.propose(**value, producer="agent:session-context-cli")
+    typer.echo(_json(result))
+
+
+@app.command("relate")
+def relate(
+    from_id: str,
+    to_id: str,
+    relation: str,
+    db: DatabaseOption = None,
+    project: str | None = None,
+) -> None:
+    """Propose supports, contradicts or corrects; never silently adopt a correction."""
+    with open_context(db, write=True, project=project) as context:
+        result = context.relate(
+            from_id, to_id, relation, producer="agent:session-context-cli"
+        )
+    typer.echo(_json(result))
+
+
+@app.command("decide")
+def decide(
+    query: str,
+    requirements: Path,
+    db: DatabaseOption = None,
+    project: str | None = None,
+    budget_bytes: int = 32768,
+    as_of: str | None = None,
+) -> None:
+    """Assess a JSON list of execution requirements against captured records.
+
+    Each requirement needs name,project_id,target,revision,expected_exit_code and
+    optional not_before. A matched execution contract does not validate a change.
+    """
+    value = _input(requirements)
+    with open_context(db, project=project) as context:
+        typer.echo(
+            _json(context.decide(query, value, budget_bytes=budget_bytes, as_of=as_of))
+        )
 
 
 @policy_app.command("plan")
@@ -90,7 +200,7 @@ def _policy_command(db: Path | None, actor: str | None, *, persist: bool) -> Non
 def main() -> int:
     try:
         app()
-    except ScopeError as exc:
+    except (ValueError, RuntimeError, sqlite3.Error, OSError) as exc:
         typer.secho(str(exc), fg=typer.colors.YELLOW, err=True)
         return 2
     return 0

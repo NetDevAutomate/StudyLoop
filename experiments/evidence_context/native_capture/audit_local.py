@@ -59,7 +59,7 @@ def codex_meta(path):
     return {}
 
 
-def audit(limit):
+def audit(limit, *, inspect=None):
     import agent_session_tools.exporters.kiro as kiro
     from agent_session_tools.context.capture import capture_health
     from agent_session_tools.exporters.claude import ClaudeCodeExporter
@@ -189,6 +189,8 @@ def audit(limit):
                     "answer_accuracy_improvement": "not_measured",
                 },
             }
+            if inspect is not None:
+                report["context_probe"] = inspect(conn)
             conn.close()
             report["source_files_unchanged_during_probe"] = all(
                 [digest(p) for p in paths] == fingerprints[name] for name, paths in selected.items()

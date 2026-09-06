@@ -250,6 +250,11 @@ class TestServerCreation:
         tools = run_async(mcp._list_tools())
         tool_names = {t.name for t in tools}
         expected = {
+            "memory_search",
+            "memory_source",
+            "memory_propose",
+            "memory_relate",
+            "memory_decide",
             "session_search",
             "session_list",
             "session_show",
