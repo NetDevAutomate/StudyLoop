@@ -1,7 +1,7 @@
 {
   "stage": 36,
   "scope": "bounded canonical withdrawal/regrant; full production goal active",
-  "implementation_checkpoint": "pending",
+  "implementation_checkpoint": "28fe15d0",
   "sqlite_runtime": "3.53.1",
   "installed_checks": {
     "actual_native_import": true,
@@ -34,7 +34,7 @@
     "browser": "Six sections and six disclosures opened; viewport fit; screenshot inspected; own tab/server closed; incidental favicon404",
     "standalone": "Fresh memory-only wheel installed in new environment; StudyLoop absent; 18 checks pass",
     "types": "Full workspace source and tests: zero errors, warnings or informations",
-    "commit_hooks": "pending"
+    "commit_hooks": "28fe15d0: lint, formatting, secrets, Bandit, author and full workspace source/test types passed"
   },
   "failures_reproduced_and_fixed": [
     "Whole-transaction SQLite abort masked by cleanup of missing tables/savepoints and a new mode-reset transaction",

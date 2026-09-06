@@ -1,7 +1,7 @@
 {
   "goal": "active",
-  "previous_goal_turn": "progress: Stage36 ordered withdrawal/regrant implemented;1790combined passed1skip;72finalfocused passed;18freshinstalledchecks;3823StudyLoop passed4skip704deselected;full goal remains active",
-  "current_stage": "36 bounded canonical withdrawal/regrant validated; preserving checkpoint; operator quarantine reconciliation, real authenticated sync and full-store/restore remain",
+  "previous_goal_turn": "progress: Stage36 committed28fe15d0;1790combined passed1skip;72finalfocused passed;18freshinstalledchecks;3823StudyLoop passed4skip704deselected;full goal remains active",
+  "current_stage": "36 complete as bounded canonical permission checkpoint28fe15d0; next explicit quarantine reconciliation, authenticated sync and full-store/restore",
   "requirements": {
     "P01": "partial: transactional v31-v44 migrations; v43-to44 additive migration and failure rollback/retry tested; managed restore remains",
     "P02": "partial: actual four-harness exporters integrated and eight local real archives imported; Codex Desktop 0.153.0 observed; all native formats, other desktop coverage and installed end-to-end capture remain",
@@ -17,7 +17,7 @@
     "P12": "not yet proven",
     "P13": "partial: fresh installed graph HTTP/MCP10checks plus prior response/learner checks; full lifespan, live-session files/stream, installer and agent startup remain",
     "P14": "stages1-36 independently runnable; Stage36 six-view guide distinguishes receipt, permission, purge eligibility and regrant coverage; council objections and reproduced failures documented; saved exercises unchanged",
-    "P15": "partial:1790combined memory/experiment passed1skip;72finalfocusedpassed;18freshinstalledchecks;3823StudyLoop passed4skip704deselected;full workspace types passed;commit hooks and full release audit remain"
+    "P15": "partial:1790combined passed1skip;72finalfocused;18freshinstalledchecks;3823StudyLoop passed4skip704deselected;28fe15d0 full commit hooks passed;full release audit remains"
   },
   "completed_checkpoints": {
     "stage16": "6c736c5",
@@ -39,7 +39,8 @@
     "stage32": "b05e6b4c",
     "stage33": "389146b8",
     "stage34": "1f5a5c56",
-    "stage35": "50de2d7f"
+    "stage35": "50de2d7f",
+    "stage36": "28fe15d0"
   },
   "current_findings": [
     "SQLite remains canonical; earlier equal-information storage comparison did not establish answer-quality superiority for another engine.",
@@ -74,7 +75,7 @@
     "package_tests": "1790combined memory/experiment passed1optional skip124.56s on final implementation;72finalfocused passed11.44s with3laterdirectedcases",
     "experiment_tests": "Stage36 six-view actual standalone protocol lesson:18checks; included in final combined/focused suites",
     "workspace_pyright": "Full workspace src+tests:0errors0warnings0informations",
-    "commit_hooks": "Stage36 pending checkpoint hooks",
+    "commit_hooks": "28fe15d0 lint/format/secrets/Bandit/author/fullworkspace src+tests types passed",
     "browser": "Stage36six sections/allsix disclosures opened;viewportfits;screenshotinspected;ownserver/tabclosed;incidental favicon404",
     "studyloop_tests": "3823passed4skipped704deselected176.58s against schema44 implementation;11existing dependency/fork warnings",
     "focused_consumer_tests": "26finalledger cases passed3.77s;93content/ledger/tiering cases passed6.53s earlier;22review-ledger/lesson passed3.45s",

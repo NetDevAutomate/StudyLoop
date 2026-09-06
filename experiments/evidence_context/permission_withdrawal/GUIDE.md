@@ -155,6 +155,12 @@ acknowledgement for the older generation.
 
 ## Evidence and remaining work
 
+The implementation checkpoint is `28fe15d0`. The final combined memory/experiment
+run passed 1,790 tests with one optional skip in 124.56 seconds. The final focused
+run passed 72 cases, including three additional council-directed tests. StudyLoop
+passed 3,823 tests with four skips and 704 deselections in 176.58 seconds. Full
+commit lint, formatting, secrets, Bandit and source/test type checks passed.
+
 See [OBSERVED-RESULTS.json](OBSERVED-RESULTS.json) for exact run counts and
 [COUNCIL-DECISION.md](COUNCIL-DECISION.md) for the reviewers' objections and arbitration.
 These tests establish bounded local protocol behavior. They do not establish complete
