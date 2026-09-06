@@ -218,3 +218,23 @@ This completes a local primitive, not P07/P08. Controls have no peer routing/rec
 ledger yet. Legacy protected transport remains refused. Full-store copies, managed
 restore, old unbound global state and rich consumers that only read hot still need
 explicit coverage. No owner DB, archive, configuration or live peer was modified.
+
+
+## Stage34 known-recipient retirement checkpoint
+
+`1f5a5c56` adds schema42 durable peer bindings, offers, accepted object/scope history,
+atomic content receipts and permanent-control batches/acknowledgements. `apply_content`
+now delegates to a caller-transaction variant so the ledger receipt can commit with
+content. Only existing recorded peer/object boundaries can receive retirement controls;
+unknown legacy history is not invented. These remain internal APIs, not authenticated
+SSH endpoints or completed `session-sync` commands.
+
+Acceptance:1740combined memory/experiment passes1skip, then5additional typed-artifact cases;
+26finalledger cases pass;3823StudyLoop passes4skip704deselected;20fresh installed standalone
+checks;full commit lint/types/security passes. A reproduced post-compaction receipt race
+now leaves completion pending. Five-view guide/demo and council arbitration are preserved.
+
+Next: distinct reversible withdrawal/denial and fresh regrant, actual authenticated
+configured SSH coordinator, mutable conflict handling, complete full-store/restore and
+hot/full consumers. Keep full-sync false and legacy protected-transfer refusal until
+those paths satisfy the full goal. No owner machine data/config or peer was changed.

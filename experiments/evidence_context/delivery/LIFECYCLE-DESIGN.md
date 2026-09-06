@@ -1,7 +1,8 @@
 # Lifecycle implementation decision after scoped content
 
-Status: local lifecycle implemented and tested at Stage33 `389146b8`; peer/full-store/
-managed restore implementation and acceptance remain open. Stage32 is
+Status: local lifecycle implemented at Stage33 `389146b8`; durable known-recipient
+permanent controls at Stage34 `1f5a5c56`. Actual SSH, reversible withdrawal/regrant,
+full-store and managed restore implementation and acceptance remain open. Stage32 is
 preserved at `b05e6b4c`. Its successful content transfer does not reconcile deletion.
 
 ## The concrete mismatch
@@ -112,3 +113,14 @@ The brief already distinguished offline acknowledgement from local completion an
 explicitly included a ledger candidate; criticisms assuming otherwise do not change
 the requirements. The responses supplied no complete algorithm or measured performance.
 Their agreement is design input, not implementation evidence or release approval.
+
+
+## Stage34 implementation evidence
+
+The durable offer/receipt and permanent-control state machine is preserved in
+`replica_lifecycle/GUIDE.md`. It pins both endpoint instances, records prospective
+recipient scope before body exposure, commits content with its receipt and routes
+permanent controls through that retained history. Empty current peer scopes can still
+process previously known controls; new bodies remain disallowed. The result remains
+`sync_complete:false`. This does not implement the withdrawal/regrant or real SSH
+sequence described above, nor infer missing historical delivery knowledge.

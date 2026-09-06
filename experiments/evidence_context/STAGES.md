@@ -42,6 +42,8 @@ no remote publication or backup is implied.
 
 | 33 — Local forgetting and eviction | Can permanent source deletion survive native replay, crashes and index cleanup without making cache eviction permanent? | `389146b8` | `local_forgetting/runner.py`; five-view standalone-wheel lesson, reproduced cleanup race, archive retention tests and council arbitration. Peer/full-store/managed restore remain open. |
 
+| 34 — Durable replica lifecycle | Can known recipients reconcile permanent forgetting despite lost acknowledgements and stale content? | `1f5a5c56` | `replica_lifecycle/runner.py`; five-view standalone-wheel lesson, atomic receipts, typed retirement matrix and council arbitration. SSH, withdrawal and managed restore remain open. |
+
 Stage 3 uses its own lifecycle adapter and database schema. It does not modify the
 stage 1 evidence store, and does not require stage 1 demo output. Stage 2 uses
 stage 1 fixtures/code; its pinned checkpoint contains everything needed to run it.
@@ -810,3 +812,13 @@ uv run pytest packages/agent-session-tools/tests/test_local_lifecycle.py package
 
 The [Stage33 guide](local_forgetting/GUIDE.md) explains the distinction between local
 forgetting, physical cleanup, eviction and still-pending peer/restore obligations.
+
+## Stage34 commands
+
+```sh
+uv run python -m experiments.evidence_context.replica_lifecycle.runner --output /tmp/evidence-stage34
+uv run pytest packages/agent-session-tools/tests/test_replica_ledger.py experiments/evidence_context/tests/test_replica_lifecycle_lesson.py -q
+```
+
+The [Stage34 guide](replica_lifecycle/GUIDE.md) explains prospective delivery, historical
+receipts, known-recipient permanent controls and the remaining real transport boundary.
