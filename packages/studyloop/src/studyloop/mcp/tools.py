@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any
 from mcp.server.fastmcp import FastMCP  # noqa: TC002 — used at runtime as param type
 from mcp.server.fastmcp.exceptions import ToolError
 
+from agent_session_tools.context.response import consistent_read
 from studyloop.services.review import get_due, get_stats, record_review
 from studyloop.settings import load_settings
 
@@ -271,6 +272,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
     # ── Study Backlog / Session-DB Tools ─────────────────────────
 
     @mcp.tool()
+    @consistent_read
     def get_study_backlog(
         tech_area: str | None = None,
         source: str | None = None,
@@ -302,6 +304,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
         }
 
     @mcp.tool()
+    @consistent_read
     def get_topic_suggestions(
         limit: int = 10,
         current_topic: str | None = None,
@@ -361,6 +364,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
         }
 
     @mcp.tool()
+    @consistent_read
     def get_study_history(
         topic: str,
         days: int = 30,
@@ -629,6 +633,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
         }
 
     @mcp.tool()
+    @consistent_read
     def get_next_action(
         energy: str = "medium",
         time_minutes: int = 25,
@@ -666,6 +671,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
         return plan.to_json_dict()
 
     @mcp.tool()
+    @consistent_read
     def get_active_topics() -> dict[str, Any]:
         """Get the active study backlog topics, capped at the AuDHD 3-topic limit.
 

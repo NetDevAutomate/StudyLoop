@@ -120,21 +120,24 @@ class ScopePolicy:
     def request_scope(
         self, *, cwd: Path | None = None, override: str | None = None
     ) -> Scope:
+        from .response import observe_scope
+
         explicit = (
             override if override is not None else os.getenv("SESSION_CONTEXT_SCOPE")
         )
         if explicit is not None:
             try:
-                return Scope(explicit)
+                resolved = Scope(explicit)
             except ValueError as exc:
                 raise ScopeError(
                     "SESSION_CONTEXT_SCOPE must be personal, work or unclassified"
                 ) from exc
+            return observe_scope(self, resolved)
         project = self.project_for_path(cwd or Path.cwd())
         if project:
-            return project.scope
+            return observe_scope(self, project.scope)
         if self.default_scope is not None:
-            return self.default_scope
+            return observe_scope(self, self.default_scope)
         raise ScopeError(
             "No context scope configured. Set memory.default_scope or a project root in "
             "config.yaml, then use session-context policy apply. Scope is never inferred from a harness."
@@ -144,7 +147,11 @@ class ScopePolicy:
 def active_policy() -> ScopePolicy:
     # Do not reuse query_db's lazy cache: scope revocation/configuration changes
     # must take effect on the next request in a long-running MCP process.
-    return ScopePolicy.from_config(load_config())
+    from .response import observe_policy
+
+    policy = ScopePolicy.from_config(load_config())
+    observe_policy(policy)
+    return policy
 
 
 def _table(conn: sqlite3.Connection, name: str, schema: str) -> bool:
@@ -223,6 +230,10 @@ def visibility_sql(
     if _table(conn, "context_tombstones", schema):
         predicate += f""" AND NOT EXISTS (SELECT 1 FROM {schema}.context_tombstones tomb
             WHERE tomb.session_id={session_column})"""
+    from .response import observe_database, observe_scope
+
+    observe_scope(policy, scope)
+    observe_database(conn, schema)
     return "(" + predicate + ")", params
 
 

@@ -321,6 +321,10 @@ def compact_database(source: Path, dest: Path) -> CompactStats:
         src_tables = set(_user_tables(conn, "src")) - {"messages_fts"}
         dest_tables = set(_user_tables(conn, "main")) - {"messages_fts"}
         common = src_tables & dest_tables
+        # A compacted database is a new local instance. Retain its initialized
+        # access generation; copying the source singleton would both collide
+        # with that row and erase the replacement identity observed by readers.
+        common.discard("context_access_state")
         # Dependency order: parents before children; messages last of the
         # core pair so session FKs resolve. Everything else after.
         first = ("context_tombstones", "sessions", "messages")

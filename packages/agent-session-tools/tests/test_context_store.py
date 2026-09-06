@@ -331,6 +331,15 @@ def test_compaction_preserves_live_wal_evidence_and_rebuilds_fts(store, tmp_path
         assert [row["id"] for row in copied.search("journal", PERSONAL)] == [eid]
         assert not conn.execute("PRAGMA foreign_key_check").fetchall()
         assert not any("_fts" in table for table in stats.tables_copied)
+        assert (
+            conn.execute("SELECT instance FROM context_access_state").fetchone()[0]
+            != (
+                store.conn.execute(
+                    "SELECT instance FROM context_access_state"
+                ).fetchone()[0]
+            )
+        )
+        assert "context_access_state" not in stats.tables_copied
     finally:
         conn.close()
 

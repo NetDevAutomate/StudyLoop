@@ -219,6 +219,10 @@ def create_app(
             content={"code": "context_scope_unavailable", "detail": str(exc)},
         )
 
+    from studyloop.web.context_response import ContextResponseMiddleware
+
+    app.add_middleware(ContextResponseMiddleware)
+
     # Store config on app state for route access
     app.state.study_dirs = study_dirs or []
     app.state.dev_mode = dev_mode

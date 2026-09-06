@@ -442,6 +442,140 @@ def test_memory_config_is_recognised_by_studyloop(consumer_db):
     assert "memory" not in unknown_top_level_keys()
 
 
+def test_mcp_combined_history_refuses_scope_switch_between_helpers(consumer_db, monkeypatch):
+    from studyloop import history
+    from studyloop.history import observations
+    from studyloop.mcp.server import mcp
+
+    db, _, _ = consumer_db
+    monkeypatch.setenv("SESSION_CONTEXT_SCOPE", "work")
+    with sqlite3.connect(db) as conn:
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys=ON")
+        observations.record(
+            conn,
+            "python",
+            "private-concept",
+            "confident",
+            "WORK_RESPONSE_BODY",
+            source_session_id="work",
+            created_by="extractor",
+        )
+    monkeypatch.setenv("SESSION_CONTEXT_SCOPE", "personal")
+    original = history.last_studied
+
+    def switch(*args, **kwargs):
+        value = original(*args, **kwargs)
+        monkeypatch.setenv("SESSION_CONTEXT_SCOPE", "work")
+        return value
+
+    monkeypatch.setattr(history, "last_studied", switch)
+    with pytest.raises(ScopeError, match=r"changed|consistent"):
+        mcp._tool_manager._tools["get_study_history"].fn(topic="python")
+
+
+@pytest.mark.parametrize("mutation", ["scope", "reassign", "away_and_back", "forget"])
+def test_http_withholds_already_assembled_notes_before_sending(consumer_db, monkeypatch, mutation):
+    from fastapi.testclient import TestClient
+
+    from agent_session_tools.context.store import ContextStore
+    from studyloop import notes
+    from studyloop.web.app import create_app
+    from studyloop.web.routes import notes as routes
+
+    db, _, _ = consumer_db
+    notes.add_note("PERSONAL_RESPONSE_BODY", session_id="personal")
+    original = routes.count_notes
+
+    def change_after_final_query(*args, **kwargs):
+        result = original(*args, **kwargs)
+        if mutation == "scope":
+            monkeypatch.setenv("SESSION_CONTEXT_SCOPE", "work")
+        else:
+            with sqlite3.connect(db) as conn:
+                conn.execute("PRAGMA foreign_keys=ON")
+                if mutation == "forget":
+                    conn.execute(
+                        "INSERT INTO context_tombstones VALUES (?,?,?)",
+                        ("personal", "http-test", "2026-09-06"),
+                    )
+                else:
+                    ContextStore(conn).assign_session("personal", "work")
+                    if mutation == "away_and_back":
+                        ContextStore(conn).assign_session("personal", "personal")
+        return result
+
+    monkeypatch.setattr(routes, "count_notes", change_after_final_query)
+    response = TestClient(create_app()).get("/api/notes")
+    assert response.status_code == 409
+    assert "PERSONAL_RESPONSE_BODY" not in response.text
+    assert "Retry" in response.json()["detail"]
+    assert response.headers["x-content-type-options"] == "nosniff"
+
+
+def test_http_read_guard_does_not_treat_normal_mutation_as_failed(consumer_db):
+    from fastapi.testclient import TestClient
+
+    from studyloop.web.app import create_app
+
+    client = TestClient(create_app())
+    posted = client.post("/api/notes", json={"title": "ONE_COMMITTED_NOTE"})
+    assert posted.status_code == 201
+    listed = client.get("/api/notes")
+    assert listed.status_code == 200
+    assert [row["title"] for row in listed.json()["notes"]] == ["ONE_COMMITTED_NOTE"]
+
+
+@pytest.mark.parametrize("cancel_at", ["assembly", "release"])
+def test_asgi_cancellation_releases_frame_without_early_content(consumer_db, cancel_at):
+    import asyncio
+
+    from agent_session_tools.context.response import read_boundary
+    from studyloop import notes
+    from studyloop.web.context_response import ContextResponseMiddleware
+
+    notes.add_note("CANCELLED_PRIVATE_BODY", session_id="personal")
+
+    async def run():
+        ready = asyncio.Event()
+        frames = []
+        transmitted = []
+
+        async def application(scope, receive, send):
+            with read_boundary() as frame:
+                notes.list_notes()
+                frames.append(frame)
+                await send({"type": "http.response.start", "status": 200, "headers": []})
+                await send({"type": "http.response.body", "body": b"CANCELLED_PRIVATE_BODY"})
+                ready.set()
+                if cancel_at == "assembly":
+                    await asyncio.Event().wait()
+
+        async def receive():
+            return {"type": "http.request", "body": b""}
+
+        async def send(message):
+            assert frames[0].closed  # Validation/cleanup precedes transport release.
+            if cancel_at == "release":
+                raise asyncio.CancelledError
+            transmitted.append(message)
+
+        task = asyncio.create_task(
+            ContextResponseMiddleware(application)(
+                {"type": "http", "method": "GET", "path": "/api/notes"}, receive, send
+            )
+        )
+        await ready.wait()
+        if cancel_at == "assembly":
+            task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        assert transmitted == []
+        assert frames[0].closed and frames[0].monitors == {}
+
+    asyncio.run(run())
+
+
 def test_owned_sessions_scores_and_bridges_keep_useful_history_in_each_scope(
     consumer_db, monkeypatch
 ):

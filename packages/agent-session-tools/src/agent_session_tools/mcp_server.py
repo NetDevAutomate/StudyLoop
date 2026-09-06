@@ -23,6 +23,7 @@ from typing import Any
 
 from agent_session_tools.query_utils import build_project_filter
 from agent_session_tools.context.scope import visibility_sql
+from agent_session_tools.context.response import consistent_read
 from agent_session_tools.context.legacy import session_record, session_messages
 
 try:
@@ -226,6 +227,7 @@ def _create_server() -> FastMCP:
     @mcp.tool(
         annotations={"readOnlyHint": True, "idempotentHint": True},
     )
+    @consistent_read
     def session_search(
         query: str,
         limit: int = 10,
@@ -281,6 +283,7 @@ def _create_server() -> FastMCP:
     @mcp.tool(
         annotations={"readOnlyHint": True, "idempotentHint": True},
     )
+    @consistent_read
     def session_list(
         limit: int = 20,
         offset: int = 0,
@@ -329,6 +332,7 @@ def _create_server() -> FastMCP:
     @mcp.tool(
         annotations={"readOnlyHint": True, "idempotentHint": True},
     )
+    @consistent_read
     def session_show(session_id: str) -> dict[str, Any]:
         """Return full session content including all messages.
 
@@ -360,6 +364,7 @@ def _create_server() -> FastMCP:
     @mcp.tool(
         annotations={"readOnlyHint": True, "idempotentHint": True},
     )
+    @consistent_read
     def session_context(
         session_id: str,
         format: str = "compressed",
@@ -433,6 +438,7 @@ def _create_server() -> FastMCP:
     @mcp.tool(
         annotations={"readOnlyHint": True, "idempotentHint": True},
     )
+    @consistent_read
     def session_stats() -> dict[str, Any]:
         """Return database statistics.
 
@@ -569,6 +575,7 @@ def _create_server() -> FastMCP:
     @mcp.tool(
         annotations={"readOnlyHint": True, "idempotentHint": True},
     )
+    @consistent_read
     def session_hotspots(
         project: str | None = None,
         days: int = 7,

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import re
 import sqlite3
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -18,6 +18,7 @@ from typing import Any
 from ..config_loader import get_db_path, load_config
 from .provenance import ExecutionState, Scope
 from .scope import ScopeError, active_policy, visibility_sql
+from .response import read_boundary
 from .store import Access, Citation, ContextStore, _hash, _json
 
 VERSION = "session-context/v1"
@@ -68,16 +69,19 @@ def open_context(
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys=ON")
     try:
-        conn.execute("BEGIN IMMEDIATE" if write else "BEGIN")
-        context = AgentContext(conn, project=project)
-        yield context
-        if write:
-            # A write that ran while the config file changed is not published.
-            if active_policy().digest != context.policy.digest:
-                raise ScopeError(
-                    "Project scope configuration changed during the request"
-                )
-            conn.commit()
+        with nullcontext() if write else read_boundary():
+            conn.execute("BEGIN IMMEDIATE" if write else "BEGIN")
+            context = AgentContext(conn, project=project)
+            yield context
+            if write:
+                # Check the resolved boundary too: default/env scope changes do
+                # not alter the durable project-classification digest.
+                latest = active_policy()
+                if latest != context.policy or latest.request_scope() != context.scope:
+                    raise ScopeError(
+                        "Context scope configuration changed during the request"
+                    )
+                conn.commit()
     finally:
         conn.rollback()
         conn.close()
