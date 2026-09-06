@@ -1,23 +1,23 @@
 {
   "goal": "active",
-  "previous_goal_turn": "progress: Stage36 committed28fe15d0;1790combined passed1skip;72finalfocused passed;18freshinstalledchecks;3823StudyLoop passed4skip704deselected;full goal remains active",
-  "current_stage": "36 complete as bounded canonical permission checkpoint28fe15d0; next explicit quarantine reconciliation, authenticated sync and full-store/restore",
+  "previous_goal_turn": "progress: Stage36 committed28fe15d0; full goal remains active",
+  "current_stage": "37 implemented and under final verification: explicit local quarantine discard; next authenticated configured sync coordinator",
   "requirements": {
-    "P01": "partial: transactional v31-v44 migrations; v43-to44 additive migration and failure rollback/retry tested; managed restore remains",
+    "P01": "partial: transactional v31-v45 migrations; v44-to45 additive migration and failure rollback/retry tested; managed restore remains",
     "P02": "partial: actual four-harness exporters integrated and eight local real archives imported; Codex Desktop 0.153.0 observed; all native formats, other desktop coverage and installed end-to-end capture remain",
     "P03": "partial: native/provenance boundaries preserved; review documents cannot supply origin/authority/independence; fixed adapter producer and interpretation authority; full release audit remains",
     "P04": "partial: bounded native sources/reviews/StudyLoop graph and session annotations; Stage31 selects scoped headers and preserves atomic current groups with history-only continuation, metadata/dependency preflight and VM budget; real semantic usefulness and consumer acceptance remain",
     "P05": "partial: source-bound reviews and native annotation history retain explicit supersession, competing reports, retirement and missing-predecessor disclosure; no automatic timestamp/vote truth rule; generic semantic arbitration and real usefulness remain unproven",
     "P06": "partial: learner graph/record boundaries plus native session notes/tags/learning metadata reads now scoped; native annotation writes guarded through editor concurrency; file/config/plan/IPC and streaming ownership remain",
-    "P07": "partial: scoped content, durable offers/receipts, exact peer contributions and ordered withdrawal/regrant implemented; stale packets and regrant coverage tested; authenticated SSH/session-sync coordinator, fresh config-file fences and quarantine reconciliation remain",
-    "P08": "partial: permanent local/known-peer retirement, reversible canonical withdrawal and fresh covered regrant; ambiguous retention quarantined; canonical cleanup only; full-store, operator reconciliation and managed restore remain",
+    "P07": "partial: scoped content, durable receipts, exact contributions, ordered withdrawal/regrant and explicit local quarantine discard; authenticated SSH/session-sync coordinator and fresh config-file fences for network phases remain",
+    "P08": "partial: permanent local/known-peer retirement, reversible canonical withdrawal, deliberate complete-local-copy discard and fresh covered regrant; preservation remains default; full-store and managed restore remain",
     "P09": "partial: native capture receipts, scoped health and separate withdrawn count; hook runtime/registration, archive census and doctor integration remain",
-    "P10": "partial: fresh standalone memory-only wheel passes18withdrawal/regrant/forget checks with StudyLoop absent; shared setup and full package acceptance remain",
+    "P10": "partial: fresh standalone memory-only wheel passes18actualCLI quarantine/recovery checks with StudyLoop absent; shared setup and full package acceptance remain",
     "P11": "not yet proven",
     "P12": "not yet proven",
     "P13": "partial: fresh installed graph HTTP/MCP10checks plus prior response/learner checks; full lifespan, live-session files/stream, installer and agent startup remain",
-    "P14": "stages1-36 independently runnable; Stage36 six-view guide distinguishes receipt, permission, purge eligibility and regrant coverage; council objections and reproduced failures documented; saved exercises unchanged",
-    "P15": "partial:1790combined passed1skip;72finalfocused;18freshinstalledchecks;3823StudyLoop passed4skip704deselected;28fe15d0 full commit hooks passed;full release audit remains"
+    "P14": "stages1-37 independently runnable; Stage37 five-view guide separates operator intent from provenance, historical receipts from present visibility; saved exercises unchanged",
+    "P15": "partial:1809combined passed1skip;94finalfocused passed16.57s;3823StudyLoop passed4skip704deselected;18freshinstalledchecks;commit hooks pending;full release audit remains"
   },
   "completed_checkpoints": {
     "stage16": "6c736c5",
@@ -51,7 +51,7 @@
     "A new pending deletion between compaction and receipt writing was reproduced against the pre-review function. The corrected receipt transaction checks pending work and refuses completion until retry.",
     "All five individual artifact types remain retired after a later permitted content transfer. Retiring one artifact is not claimed to erase every independently retained conversation representation; the public forget CLI operates on a whole session.",
     "Six Meta/Qwen/Mistral responses informed Stage34 design/review. The coordinator retained durable acceptance despite objections, fixed the demonstrated race, and documented rejected claims. No unanimous approval is claimed.",
-    "Actual SSH/coordinator, quarantine reconciliation, complete hot/full propagation/consumers and managed restore remain open. Legacy protected transport stays refused; full sync remains explicitly false.",
+    "Actual SSH/coordinator, complete hot/full propagation/consumers and managed restore remain open; Stage37 adds explicit local discard recovery. Legacy protected transport stays refused; full sync remains explicitly false.",
     "Unknown legacy delivery/scope history is not inferred or broadcast. Envelope bounds do not bound cumulative retained ledger history. No owner DB/config/hooks/archives or live peer was changed.",
     "Schema43 records local native-evidence capture and exact committed peer row contributions in the same transaction as bodies/receipt. Accepted offers create no contribution. Local-origin history is excluded from scoped content packets.",
     "Existing rows without matching history remain explicitly unattributed after their first new peer receipt. Changed body versions and replaced database instances cannot borrow prior facts. Integer learner remapping binds receipts to actual receiver rows.",
@@ -63,25 +63,31 @@
     "Regrant alone leaves known IDs awaiting fresh content. Exact new-offer coverage rejects receiver-only retained extras and rolls back release/content/receipt together. Permanent retirement still wins.",
     "Reproduced whole-transaction abort cleanup defect fixed: do not open a new mode-reset transaction or mask the original error with missing temp-table/savepoint cleanup.",
     "Installed lesson exposed public forgetting incorrectly blocked by quarantine. Scoped metadata-only retirement selection now permits explicit forgetting without authorizing body reads; wrong-scope and deep learner checks pass.",
-    "Three-provider result council raised concurrency objections; concrete second-connection, process-exit, generation, FK and bounds tests plus SQLite documentation were used to arbitrate. No unanimous approval or arbitrary-schema guarantee claimed."
+    "Three-provider result council raised concurrency objections; concrete second-connection, process-exit, generation, FK and bounds tests plus SQLite documentation were used to arbitrate. No unanimous approval or arbitrary-schema guarantee claimed.",
+    "Schema45 records explicit local discard intent separately from capture/delivery provenance. Default keeps quarantine; exact current plan plus acknowledgement permits complete local-copy loss without clearing denial or adding retirement.",
+    "All six roots include project-only learner records/observations. Operator ID selection preserves current scope and retirement; ordinary body routes retain denial checks.",
+    "Plans bind actual affected row versions and matching retention facts, current scope/policy, database instance/file/revision and denial generations. New facts without content revision still invalidate plans. Overflow never issues a partial fingerprint.",
+    "Purge and immutable intent commit atomically. Historical retries never repurge newly restored content; canonical cleanup is separately pending/complete and never asserts current body absence or full sync.",
+    "Both council rounds returned Meta/Qwen/Mistral. Receipt, scope and body-route concerns were checked against code and directed tests; no unanimous approval claimed. Full selector diff was not in the council packet.",
+    "Removed peer config does not prevent local discard. Re-adding config alone cannot restore content; fresh permitted transfer remains necessary. No extraction/adoption or independence claim is introduced."
   ],
   "next_actions": [
-    "Implement explicit quarantine reconciliation/adoption with inspectable body-free reasons and deliberate scoped user intent; then wire authenticated configured SSH/session-sync coordination with fresh config-file fences, offline retry and both directions",
+    "Wire authenticated configured SSH/session-sync coordination with fresh config-file fences, offline retry and both directions, using durable local permission/content/retirement receipts; explicit quarantine discard is available without automatic adoption",
     "Complete full-store forget/restore and hot/full consumer integration; retain current retirement/withdrawal state before restoring older data and prove managed index/file coverage",
     "Implement explicit config/content/plan/session file ownership before enabling modern file-derived graph imports, then protect live SSE/WebSocket/IPC and full installed startup.",
     "Finish shared selectable installer/doctor/skills, four native and desktop capture checks, and fullP01-P15releaseaudit; preserve practice timing/cross-project assessment audit."
   ],
   "verification": {
-    "package_tests": "1790combined memory/experiment passed1optional skip124.56s on final implementation;72finalfocused passed11.44s with3laterdirectedcases",
-    "experiment_tests": "Stage36 six-view actual standalone protocol lesson:18checks; included in final combined/focused suites",
+    "package_tests": "1809 passed, 1 optional skip, 129.76s; before the new lesson and six later directed cases",
+    "experiment_tests": "Stage37 five-view actual standalone CLI lesson:18checks",
     "workspace_pyright": "Full workspace src+tests:0errors0warnings0informations",
     "commit_hooks": "28fe15d0 lint/format/secrets/Bandit/author/fullworkspace src+tests types passed",
-    "browser": "Stage36six sections/allsix disclosures opened;viewportfits;screenshotinspected;ownserver/tabclosed;incidental favicon404",
-    "studyloop_tests": "3823passed4skipped704deselected176.58s against schema44 implementation;11existing dependency/fork warnings",
-    "focused_consumer_tests": "26finalledger cases passed3.77s;93content/ledger/tiering cases passed6.53s earlier;22review-ledger/lesson passed3.45s",
-    "artifact": "studyloop-private/reviews/2026-09-06-stage36-withdrawal-protocol/demo-installed/walkthrough.html",
+    "browser": "Five sections and five disclosures opened; viewport fits; screenshot inspected; own tab and server closed",
+    "studyloop_tests": "3823 passed, 4 skipped, 704 deselected, 179.19s; schema45; 11 existing dependency/fork warnings",
+    "focused_consumer_tests": "94 final ledger and Stage37 lesson cases passed16.57s, including six later directed cases",
+    "artifact": "studyloop-private/reviews/2026-09-06-stage37-quarantine-recovery/demo-installed/walkthrough.html",
     "native_probe": "8 local real sessions imported without errors;1898/1898 body hashes match;source files unchanged",
-    "installed_component": "Fresh standalone memory-only wheel;18native/withdrawal/regrant/quarantine/forget checks;StudyLoopabsent;noSSH/fullsyncclaim",
+    "installed_component": "Fresh memory-only wheel in new Python3.13 environment; StudyLoop absent; actual installed session-context; 18 checks pass",
     "real_retrieval": "6CLI queries,60exact citations and hashes verified,all<=32768bytes,no semantic relevance claim",
     "live_review_pilot": "3calls,3constructedcases/model;strict acceptance1/3providers;post-hoc9/9permissivelabels+exactbindings,not semanticvalidation",
     "ownership_benchmark": "50000project-onlyrecords:countmedian15.46ms,latest20median20.35ms;noengine/schema ranking",
@@ -100,7 +106,8 @@
     "retention_timing": "Stage35single fictional local delivery25.470ms;no network or engine comparison",
     "withdrawal_timing": "One fictional local withdrawal including canonical compaction25.363ms; no network/scale/engine comparison",
     "withdrawal_crash": "Actual process exits during preview, purge and before receipt roll back body/permission;wholeTXabort originalerror preserved;FKrefusal no applied control",
-    "withdrawal_concurrency": "Second reader sees committed copy during simulated purge;competingwriterlocked;duplicatepreparationonegeneration;readerblocksphysicalack;regrantbeforefinalreceiptpreventsoldcleanupack"
+    "withdrawal_concurrency": "Second reader sees committed copy during simulated purge;competingwriterlocked;duplicatepreparationonegeneration;readerblocksphysicalack;regrantbeforefinalreceiptpreventsoldcleanupack",
+    "quarantine_recovery": "All6root kinds, explicit loss acknowledgement, stale plans/cursors, new facts, scope-file mutation, removed/readded peer, process exit37, pinned reader, historical retry and audit immutability tested;94finalfocused passed16.57s"
   },
   "operational_notice": "A secrets test printed an ambient API key in private failure output; tests now isolate fallback variables. Owner should rotate that key; no value saved in this status or learning artifacts."
 }

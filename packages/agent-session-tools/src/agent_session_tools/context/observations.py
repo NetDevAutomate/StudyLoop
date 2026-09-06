@@ -44,17 +44,24 @@ class ObservationStore:
         ).fetchone()
         return row[0] if row else None
 
-    def _visible(self, policy: ScopePolicy, scope: Scope) -> tuple[str, list[Any]]:
+    def _visible(
+        self, policy: ScopePolicy, scope: Scope, *, _include_withdrawn=False
+    ) -> tuple[str, list[Any]]:
         from .withdrawal_gate import predicate
+        from .scope import _visibility_sql
 
-        source_clause, source_values = visibility_sql(
-            self.conn, "e.session_id", policy=policy, scope=scope
+        source_clause, source_values = _visibility_sql(
+            self.conn,
+            "e.session_id",
+            policy=policy,
+            scope=scope,
+            withdrawals=not _include_withdrawn,
         )
         source_clause = (
             "("
             + source_clause
             + " AND "
-            + predicate(self.conn, "evidence", "e.id")
+            + ("1" if _include_withdrawn else predicate(self.conn, "evidence", "e.id"))
             + ")"
         )
         project_ids = [p.id for p in policy.projects if p.scope == scope]
@@ -68,8 +75,12 @@ class ObservationStore:
         session_clause = "0"
         session_values: list[Any] = []
         if self._session_owners_available():
-            native, session_values = visibility_sql(
-                self.conn, "native_owner.session_id", policy=policy, scope=scope
+            native, session_values = _visibility_sql(
+                self.conn,
+                "native_owner.session_id",
+                policy=policy,
+                scope=scope,
+                withdrawals=not _include_withdrawn,
             )
             session_clause = (
                 "EXISTS (SELECT 1 FROM context_observation_session_owners native_owner "
@@ -91,10 +102,13 @@ class ObservationStore:
         from .records import observation_clause
 
         records_clause, records_values = observation_clause(
-            self.conn, policy, scope=scope
+            self.conn,
+            policy,
+            scope=scope,
+            _include_withdrawn=_include_withdrawn,
         )
-        return "(" + clause + ") AND " + records_clause + " AND " + predicate(
-            self.conn, "observation", "o.id"
+        return "(" + clause + ") AND " + records_clause + " AND " + (
+            "1" if _include_withdrawn else predicate(self.conn, "observation", "o.id")
         ), [
             *source_values,
             scope.value,

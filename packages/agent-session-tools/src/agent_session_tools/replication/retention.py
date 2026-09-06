@@ -40,13 +40,16 @@ def _binding(conn, table, row):
     )
 
 
-def _facts(conn, binding):
+def _facts(conn, binding, *, limit=None):
+    if limit is not None and (type(limit) is not int or limit < 0):
+        raise ValueError("Invalid retention fact limit")
     return list(
         conn.execute(
             "SELECT origin,contributor,receipt_id FROM context_retention_origins "
             "WHERE table_name=? AND key_sha256=? AND row_sha256=? "
-            "ORDER BY origin,contributor,receipt_id",
-            binding,
+            "ORDER BY origin,contributor,receipt_id"
+            + (" LIMIT ?" if limit is not None else ""),
+            (*binding, limit) if limit is not None else binding,
         )
     )
 
@@ -107,7 +110,7 @@ class PeerContribution:
 
     def record(self, conn, table, row, *, existed):
         binding = _binding(conn, table, row)
-        if existed and not _facts(conn, binding):
+        if existed and not _facts(conn, binding, limit=1):
             # Do not let a first new receipt erase uncertainty about a body that
             # was already present before prospective origin tracking began.
             _record(conn, binding, "unattributed", "", "")

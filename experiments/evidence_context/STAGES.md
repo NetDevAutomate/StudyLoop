@@ -43,6 +43,7 @@ no remote publication or backup is implied.
 | 34 — Durable replica lifecycle | Can known recipients reconcile permanent forgetting despite lost acknowledgements and stale content? | `1f5a5c56` | `replica_lifecycle/runner.py`; five-view standalone-wheel lesson, atomic receipts, typed retirement matrix and council arbitration. SSH, withdrawal and managed restore remain open. |
 | 35 — Grounded retention history | Which exact versions were captured locally or committed from a peer, without inventing permission or independence? | `50de2d7f` | `retention_history/runner.py`; five-view standalone-wheel lesson, exact version and instance binding, unknown legacy history and council arbitration. Withdrawal/regrant and real sync remain open. |
 | 36 — Permission withdrawal and regrant | Can current source-bound receipt coverage distinguish erasure, quarantine and safe re-exposure? | `28fe15d0` | `permission_withdrawal/runner.py`; six-view standalone-wheel lesson, generation/crash/cascade tests and council arbitration. Operator reconciliation, real sync and managed restore remain open. |
+| 37 — Deliberate quarantine recovery | Can explicit local intent resolve a retained copy without inventing provenance or deleting a fresh transfer on retry? | pending commit | `quarantine_recovery/runner.py`; five-view installed CLI lesson, all six root kinds, exact previews and council arbitration. Real sync and managed restore remain open. |
 
 Stage 3 uses its own lifecycle adapter and database schema. It does not modify the
 stage 1 evidence store, and does not require stage 1 demo output. Stage 2 uses
@@ -842,3 +843,13 @@ uv run pytest packages/agent-session-tools/tests/test_replica_ledger.py experime
 
 The [Stage36 guide](permission_withdrawal/GUIDE.md) explains exact purge footprints,
 ordered permission, fresh regrant coverage, quarantine and the remaining recovery path.
+
+## Stage37 commands
+
+```sh
+uv run python -m experiments.evidence_context.quarantine_recovery.runner --output /tmp/evidence-stage37
+uv run pytest packages/agent-session-tools/tests/test_replica_ledger.py experiments/evidence_context/tests/test_quarantine_recovery_lesson.py -q
+```
+
+The [Stage37 guide](quarantine_recovery/GUIDE.md) explains deliberate local-copy loss,
+exact current previews, immutable operator intent and safe historical retry.

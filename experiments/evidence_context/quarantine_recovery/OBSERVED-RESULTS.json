@@ -1,0 +1,59 @@
+{
+  "stage": 37,
+  "scope": "explicit canonical local quarantine discard; full production goal active",
+  "implementation_checkpoint": "pending commit",
+  "installed_checks": {
+    "actual_native_capture": true,
+    "initial_content_committed": true,
+    "ambiguous_copy_retained": true,
+    "actual_cli_lists_withheld_ids": true,
+    "preview_does_not_change_database": true,
+    "preview_contains_no_source_text": true,
+    "loss_acknowledgement_required": true,
+    "new_permission_invalidates_old_plan": true,
+    "new_preview_binds_current_state": true,
+    "explicit_discard_commits": true,
+    "local_addition_loss_is_real": true,
+    "discard_is_not_global_forget": true,
+    "discard_does_not_regrant": true,
+    "fresh_content_restores_sender_copy": true,
+    "old_discard_retry_preserves_new_copy": true,
+    "one_durable_operator_decision": true,
+    "canonical_cleanup_reported": true,
+    "full_sync_not_claimed": true
+  },
+  "verification": {
+    "combined_memory_experiments": "1809 passed, 1 optional skip, 129.76s; before the new lesson and six later directed cases",
+    "final_focused": "94 ledger and lesson cases passed in 16.57s, including six post-broad-suite directed cases",
+    "studyloop": "3823 passed, 4 skipped, 704 deselected, 179.19s; schema45; 11 existing dependency/fork warnings",
+    "browser": "Five sections and five disclosures opened; viewport fits; screenshot inspected; own tab and server closed",
+    "standalone": "Fresh memory-only wheel in new Python3.13 environment; StudyLoop absent; actual installed session-context; 18 checks pass",
+    "types": "Full workspace source and tests passed before six later directed tests; commit hooks will recheck",
+    "commit_hooks": "pending"
+  },
+  "failures_observed": [
+    "Initial source demo environment lacked a console entrypoint; source mode now permits module invocation while installed mode still requires the real script",
+    "New body-route test initially treated snapshot.collect tuple as a dictionary; corrected test unpacking, no production change"
+  ],
+  "council": {
+    "design": [
+      "meta",
+      "qwen",
+      "mistral"
+    ],
+    "results": [
+      "meta",
+      "qwen",
+      "mistral"
+    ],
+    "unanimous_approval": false,
+    "arbitration": "COUNCIL-DECISION.md",
+    "review_packet_limit": "Full selector diff was described but not included; coordinator inspected it and added direct route regression"
+  },
+  "limits": [
+    "Deliberate canonical local discard only. Local additions are lost by explicit choice. Keeping quarantine remains the default. No adoption, extraction, independent-origin claim, full-store restore or authenticated network sync is implemented by this command.",
+    "Fixed canonical table set and explicit refusal budgets, not arbitrary schema or constant-time guarantees",
+    "No owner database, config, hooks, archive or real peer changed",
+    "No semantic answer-quality or database-engine comparison"
+  ]
+}

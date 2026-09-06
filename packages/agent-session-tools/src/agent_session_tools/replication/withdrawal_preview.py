@@ -10,6 +10,7 @@ import sqlite3
 from uuid import uuid4
 
 from ..context.lifecycle import eviction, purge_session
+from ..context.store import _hash, _json
 from .policy import ReplicaError
 from .retention import _binding, _facts
 from .snapshot import MAX_BYTES, MAX_ROWS, TABLES
@@ -130,9 +131,24 @@ def preview(
             "changed_rows": len(before),
         }
     unknown = []
+    bindings = []
+    table_counts = {}
+    fact_count = 0
+    fact_bytes = 0
     for (table, _), row in before.items():
         binding = _binding(conn, table, row)
-        facts = _facts(conn, binding)
+        facts = _facts(conn, binding, limit=max_rows - fact_count + 1)
+        fact_count += len(facts)
+        encoded_facts = [list(fact) for fact in facts]
+        fact_bytes += len(_json(encoded_facts).encode())
+        if fact_count > max_rows or used_bytes + fact_bytes > max_bytes:
+            return {
+                "eligible": False,
+                "reason": "footprint_limit",
+                "changed_rows": len(before),
+            }
+        bindings.append([*binding, encoded_facts])
+        table_counts[table] = table_counts.get(table, 0) + 1
         matched = (
             any(
                 r[0] == "peer_commit" and r[1] == peer and r[2] == receipt_id
@@ -152,6 +168,11 @@ def preview(
         if not unknown
         else "ambiguous_retention_history",
         "changed_rows": len(before),
+        "footprint_sha256": _hash(_json(sorted(bindings))),
+        "changed_by_table": dict(sorted(table_counts.items())),
+        "traced_json_bytes": used_bytes,
+        "history_fact_count": fact_count,
+        "history_json_bytes": fact_bytes,
         "unresolved_rows": len(unknown),
         "unresolved_bindings": unknown[:100],
         "diagnostics_truncated": len(unknown) > 100,

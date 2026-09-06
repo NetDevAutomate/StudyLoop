@@ -86,15 +86,20 @@ def visible_sql(
     return _visible_sql(conn, table, column, active_policy())
 
 
-def _visible_sql(conn, table, column, policy, *, scope=None):
+def _visible_sql(conn, table, column, policy, *, scope=None, _include_withdrawn=False):
     from .withdrawal_gate import predicate
+    from .scope import _visibility_sql
 
     _table(table)
     if not re.fullmatch(r"[A-Za-z_]\w*\.[A-Za-z_]\w*", column):
         raise ValueError("Invalid internal record SQL identifier")
     scope = policy.request_scope() if scope is None else scope
-    source, source_values = visibility_sql(
-        conn, "own.session_id", policy=policy, scope=scope
+    source, source_values = _visibility_sql(
+        conn,
+        "own.session_id",
+        policy=policy,
+        scope=scope,
+        withdrawals=not _include_withdrawn,
     )
     has_assignments = conn.execute(
         "SELECT 1 FROM sqlite_master WHERE name='context_session_projects'"
@@ -123,13 +128,18 @@ def _visible_sql(conn, table, column, policy, *, scope=None):
         + ") OR "
         + owned_project
         + " OR own.scope=?) AND "
-        + predicate(conn, "record", "own.id")
+        + ("1" if _include_withdrawn else predicate(conn, "record", "own.id"))
         + ")"
     )
     values = [table, *source_values, *project_values, scope.value]
     if table in ("parked_topics", "study_notes"):
         parent, parent_values = _visible_sql(
-            conn, "study_sessions", "parent.id", policy, scope=scope
+            conn,
+            "study_sessions",
+            "parent.id",
+            policy,
+            scope=scope,
+            _include_withdrawn=_include_withdrawn,
         )
         owned = (
             "("
@@ -288,7 +298,7 @@ def ensure_study_reference(conn, *, session_id=None, study_session_id=None):
             raise ScopeError("Study session is unavailable in the configured scope")
 
 
-def observation_clause(conn, policy, *, scope=None):
+def observation_clause(conn, policy, *, scope=None, _include_withdrawn=False):
     """All application dependencies must be visible before observation text is read."""
     if not conn.execute(
         "SELECT 1 FROM sqlite_master WHERE name='context_record_observations'"
@@ -296,7 +306,14 @@ def observation_clause(conn, policy, *, scope=None):
         return "1", []
     options, values = [], []
     for table in TABLES:
-        clause, params = _visible_sql(conn, table, "dep.row_id", policy, scope=scope)
+        clause, params = _visible_sql(
+            conn,
+            table,
+            "dep.row_id",
+            policy,
+            scope=scope,
+            _include_withdrawn=_include_withdrawn,
+        )
         options.append("(dep.table_name=? AND " + clause + ")")
         values.extend([table, *params])
     return (

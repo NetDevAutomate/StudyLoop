@@ -14,7 +14,6 @@ import sqlite3
 from ..context import records
 from ..context.observations import ObservationStore
 from ..context.provenance import Scope
-from ..context.scope import visibility_sql
 from ..context.store import Access, ContextStore, _hash, _json
 from .policy import PeerPolicy, ReplicaError, check_plan, hello, open_read
 
@@ -100,11 +99,19 @@ class Projection:
         ]
 
 
-def _select(conn, policy, scope):
+def _select(conn, policy, scope, *, _include_withdrawn=False):
+    """Select authorized IDs; the withdrawal exception is only for local discard.
+
+    No content-export or ordinary-reader entry point forwards that exception.
+    Quarantine inspection uses these temporary IDs without calling collect/read.
+    """
     from ..context.withdrawal_gate import predicate
+    from ..context.scope import _visibility_sql
 
     selection = Projection(conn)
-    visible, values = visibility_sql(conn, "s.id", policy=policy, scope=scope)
+    visible, values = _visibility_sql(
+        conn, "s.id", policy=policy, scope=scope, withdrawals=not _include_withdrawn
+    )
     selection.selected(
         "sessions", "SELECT s.id FROM sessions s WHERE " + visible, values
     )
@@ -115,7 +122,7 @@ def _select(conn, policy, scope):
     selection.selected(
         "evidence",
         "SELECT e.id FROM context_evidence e WHERE session_id IN (SELECT id FROM replica_sessions) AND "
-        + predicate(conn, "evidence", "e.id"),
+        + ("1" if _include_withdrawn else predicate(conn, "evidence", "e.id")),
     )
     selection.selected(
         "assertions",
@@ -123,18 +130,25 @@ def _select(conn, policy, scope):
         WHERE EXISTS (SELECT 1 FROM context_citations c WHERE c.assertion_id=a.id)
         AND NOT EXISTS (SELECT 1 FROM context_citations c WHERE c.assertion_id=a.id
           AND c.evidence_id NOT IN (SELECT id FROM replica_evidence)) AND """
-        + predicate(conn, "assertion", "a.id"),
+        + ("1" if _include_withdrawn else predicate(conn, "assertion", "a.id")),
     )
     selection.selected(
         "relations",
         """SELECT r.id FROM context_relations r
         WHERE from_assertion IN (SELECT id FROM replica_assertions)
           AND to_assertion IN (SELECT id FROM replica_assertions) AND """
-        + predicate(conn, "relation", "r.id"),
+        + ("1" if _include_withdrawn else predicate(conn, "relation", "r.id")),
     )
     owner_queries, owner_values = [], []
     for table in records.TABLES:
-        clause, params = records._visible_sql(conn, table, "r.id", policy, scope=scope)
+        clause, params = records._visible_sql(
+            conn,
+            table,
+            "r.id",
+            policy,
+            scope=scope,
+            _include_withdrawn=_include_withdrawn,
+        )
         if table in (
             "study_sessions",
             "teach_back_scores",
@@ -144,7 +158,12 @@ def _select(conn, policy, scope):
             clause += " AND (r.session_id IS NULL OR r.session_id IN (SELECT id FROM replica_sessions))"
         if table in ("parked_topics", "study_notes"):
             parent, parent_values = records._visible_sql(
-                conn, "study_sessions", "parent.id", policy, scope=scope
+                conn,
+                "study_sessions",
+                "parent.id",
+                policy,
+                scope=scope,
+                _include_withdrawn=_include_withdrawn,
             )
             clause += (
                 " AND (r.study_session_id IS NULL OR EXISTS (SELECT 1 FROM study_sessions parent "
@@ -160,7 +179,9 @@ def _select(conn, policy, scope):
         )
         owner_values.extend([table, *params])
     selection.selected("owners", " UNION ".join(owner_queries), owner_values)
-    clause, values = ObservationStore(conn)._visible(policy, scope)
+    clause, values = ObservationStore(conn)._visible(
+        policy, scope, _include_withdrawn=_include_withdrawn
+    )
     selection.selected(
         "observations",
         "SELECT o.id FROM context_observations o WHERE "
@@ -173,6 +194,10 @@ def _select(conn, policy, scope):
             OR (target.relation_id IS NOT NULL AND target.relation_id NOT IN (SELECT id FROM replica_relations))))""",
         values,
     )
+    if _include_withdrawn:
+        # Local discard needs ownership IDs, not valid interpretation payloads.
+        # A corrupt report must not prevent its scoped owner from removing it.
+        return selection
     invalid_review = conn.execute("""SELECT o.id FROM context_observations o
         JOIN context_review_targets target ON target.observation_id=o.id
         LEFT JOIN context_relations rel ON rel.id=target.relation_id

@@ -20,6 +20,10 @@ from .store import _json
 app = typer.Typer(help="Configure and inspect source-grounded session memory.")
 policy_app = typer.Typer(help="Preview or apply explicitly configured project scopes.")
 app.add_typer(policy_app, name="policy")
+quarantine_app = typer.Typer(
+    help="Inspect withheld local copies and deliberately discard them."
+)
+app.add_typer(quarantine_app, name="quarantine")
 
 
 DatabaseOption = Annotated[
@@ -28,6 +32,62 @@ DatabaseOption = Annotated[
 ActorOption = Annotated[
     str | None, typer.Option(help="Audit identity; defaults to current OS user")
 ]
+
+
+@quarantine_app.command("list")
+def quarantine_list(
+    db: DatabaseOption = None, limit: int = 32, cursor: str | None = None
+) -> None:
+    """List retained withheld object IDs in the configured scope without bodies."""
+    from ..replication.quarantine import list_objects
+
+    path = (db or get_db_path(load_config())).expanduser().resolve()
+    typer.echo(_json(list_objects(path, limit=limit, cursor=cursor)))
+
+
+@quarantine_app.command("inspect")
+def quarantine_inspect(
+    object_id: str, kind: str = "session", db: DatabaseOption = None
+) -> None:
+    """Preview the exact local discard footprint without exposing source text."""
+    from ..replication.quarantine import inspect
+
+    path = (db or get_db_path(load_config())).expanduser().resolve()
+    typer.echo(_json(inspect(path, kind, object_id)))
+
+
+@quarantine_app.command("discard")
+def quarantine_discard(
+    object_id: str,
+    expect: Annotated[
+        str, typer.Option("--expect", help="Exact ID returned by quarantine inspect")
+    ],
+    kind: str = "session",
+    db: DatabaseOption = None,
+    discard_local_additions: Annotated[
+        bool,
+        typer.Option(
+            "--discard-local-additions",
+            help="Acknowledge loss of this retained copy, including local additions",
+        ),
+    ] = False,
+    actor: ActorOption = None,
+) -> None:
+    """Discard a reviewed local copy; keep denials and permanent history intact."""
+    from ..replication.quarantine import discard
+
+    path = (db or get_db_path(load_config())).expanduser().resolve()
+    result = discard(
+        path,
+        kind,
+        object_id,
+        expect,
+        discard_local_additions=discard_local_additions,
+        actor=actor,
+    )
+    typer.echo(_json(result))
+    if not result["canonical_file_cleanup"]["complete"]:
+        raise typer.Exit(2)
 
 
 @app.command("forget")

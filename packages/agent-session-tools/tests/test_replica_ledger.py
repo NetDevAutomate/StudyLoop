@@ -9,7 +9,7 @@ import pytest
 
 from agent_session_tools.context import annotations, records
 from agent_session_tools.context.lifecycle import purge_session
-from agent_session_tools.context.scope import ScopePolicy, apply_policy
+from agent_session_tools.context.scope import ScopeError, ScopePolicy, apply_policy
 from agent_session_tools.context.store import ContextStore, _hash, _json
 from agent_session_tools.exporters.codex import CodexExporter
 from agent_session_tools import migrations
@@ -1257,6 +1257,610 @@ def test_concurrent_withdrawal_preparation_uses_one_generation(pair):
     assert (
         a["conn"]
         .execute("SELECT count(*) FROM context_replica_permission_batches")
+        .fetchone()[0]
+        == 1
+    )
+
+
+@pytest.fixture
+def quarantined_pair(pair, monkeypatch):
+    from pathlib import Path
+    from agent_session_tools.context.observations import ObservationStore
+    from agent_session_tools.context.provenance import ExecutionState, Scope
+    from agent_session_tools.context.store import Access, Citation
+
+    a, b = pair["a"], pair["b"]
+    conn = a["conn"]
+    store = ContextStore(conn)
+    access = Access(scope=Scope.PERSONAL)
+    eid = source(conn)["id"]
+    claims = [
+        store.propose(
+            statement=text,
+            state=ExecutionState.UNKNOWN,
+            target=None,
+            generator="fixture",
+            citations=[Citation(evidence_id=eid, start=0, end=7, quote="STAGE34")],
+            access=access,
+        )
+        for text in ("One claim", "Conflicting claim")
+    ]
+    relation = store.relate(claims[0], claims[1], "contradicts", "fixture", access)
+    root = Path(a["config"]["memory"]["projects"]["p"]["roots"][0])
+    with store._atomic(), records.policy_guard(conn):
+        conn.execute(
+            "INSERT INTO knowledge_bridges(source_concept,source_domain,target_concept,target_domain) VALUES ('LOCAL_PROJECT_RECORD','fixture','query','fixture')"
+        )
+        owner = records.bind(conn, "knowledge_bridges", 1, owner_path=root)
+        observation = ObservationStore(conn).append(
+            kind="fixture.project",
+            subject="fixture",
+            payload={"text": "PROJECT_ONLY_REPORT"},
+            producer="fixture",
+            authority="reported",
+            owner_path=root,
+        )
+        records.link_observation(conn, owner, observation)
+    value, _, _ = delivered(pair)
+    b["conn"].execute(
+        "INSERT INTO messages(id,session_id,role,content) VALUES ('local-extra','codex_rollout-personal','user','PRIVATE_LOCAL_ADDITION')"
+    )
+    b["conn"].commit()
+    _, receipt = permission_change(pair, "withdraw")
+    assert not receipt["canonical_cleanup"]["complete"]
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(b["cfg"]))
+    pair["quarantine_ids"] = {
+        "session": "codex_rollout-personal",
+        "evidence": eid,
+        "assertion": claims[0],
+        "relation": relation,
+        "observation": observation,
+        "record": owner,
+    }
+    pair["initial_offer"] = value
+    return pair
+
+
+@pytest.mark.parametrize("kind", list(ledger.OBJECTS))
+def test_quarantine_discard_supports_each_kind_and_preserves_denial(
+    quarantined_pair, kind
+):
+    from agent_session_tools.replication import quarantine
+
+    pair = quarantined_pair
+    b = pair["b"]
+    identity = pair["quarantine_ids"][kind]
+    before = list(b["conn"].iterdump())
+    plan = quarantine.inspect(b["path"], kind, identity)
+    assert plan["changed_rows"] > 0 and plan["changed_by_table"]
+    assert "PRIVATE_LOCAL_ADDITION" not in _json(
+        plan
+    ) and "PROJECT_ONLY_REPORT" not in _json(plan)
+    assert list(b["conn"].iterdump()) == before
+    with pytest.raises(ReplicaError, match="acknowledgement"):
+        quarantine.discard(b["path"], kind, identity, plan["id"])
+    assert list(b["conn"].iterdump()) == before
+    result = quarantine.discard(
+        b["path"],
+        kind,
+        identity,
+        plan["id"],
+        discard_local_additions=True,
+        actor="fixture operator",
+    )
+    assert (
+        result["logical_discard_committed"]
+        and result["canonical_file_cleanup"]["complete"]
+    )
+    assert (
+        not result["permanent_forget"]
+        and not result["regrant"]
+        and not result["sync_complete"]
+    )
+    table = ledger.OBJECTS[kind][0]
+    assert (
+        not b["conn"]
+        .execute("SELECT 1 FROM " + table + " WHERE id=?", (identity,))
+        .fetchone()
+    )
+    assert (
+        b["conn"]
+        .execute(
+            "SELECT 1 FROM context_replica_denials WHERE kind=? AND object_id=? AND status!='released'",
+            (kind, identity),
+        )
+        .fetchone()
+    )
+    assert not b["conn"].execute("SELECT 1 FROM context_retirements").fetchone()
+    assert "context_quarantine_discards" not in TABLES
+    assert not b["conn"].execute("PRAGMA foreign_key_check").fetchall()
+
+
+def test_quarantine_listing_is_bounded_scoped_and_body_free(
+    quarantined_pair, monkeypatch
+):
+    from agent_session_tools.replication import quarantine
+
+    b = quarantined_pair["b"]
+    before = list(b["conn"].iterdump())
+    seen = []
+    cursor = None
+    while True:
+        page = quarantine.list_objects(b["path"], limit=2, cursor=cursor)
+        assert not page["bodies_included"] and len(page["items"]) <= 2
+        assert "PRIVATE_" not in _json(page)
+        seen.extend((r["kind"], r["object_id"]) for r in page["items"])
+        cursor = page["next_cursor"]
+        if cursor is None:
+            break
+    assert seen == sorted(set(seen))
+    assert {kind for kind, _ in seen} == set(ledger.OBJECTS)
+    assert list(b["conn"].iterdump()) == before
+    with monkeypatch.context() as wrong_scope:
+        wrong_scope.setenv("SESSION_CONTEXT_SCOPE", "work")
+        assert quarantine.list_objects(b["path"])["items"] == []
+        with pytest.raises(ScopeError, match="unavailable"):
+            quarantine.inspect(b["path"], "session", "codex_rollout-personal")
+
+
+def test_quarantine_discard_recovers_fresh_transfer_and_retry_does_not_delete_it(
+    quarantined_pair,
+):
+    from agent_session_tools.replication import quarantine
+
+    pair = quarantined_pair
+    b = pair["b"]
+    identity = pair["quarantine_ids"]["session"]
+    plan = quarantine.inspect(b["path"], "session", identity)
+    receipt = quarantine.discard(
+        b["path"], "session", identity, plan["id"], discard_local_additions=True
+    )
+    assert (
+        not b["conn"]
+        .execute("SELECT 1 FROM messages WHERE id='local-extra'")
+        .fetchone()
+    )
+    permission_change(pair, "regrant")
+    delivered(pair)
+    assert (
+        b["conn"].execute("SELECT 1 FROM sessions WHERE id=?", (identity,)).fetchone()
+    )
+    before = list(b["conn"].iterdump())
+    assert (
+        quarantine.discard(
+            b["path"], "session", identity, plan["id"], discard_local_additions=True
+        )
+        == receipt
+    )
+    assert list(b["conn"].iterdump()) == before
+
+
+def test_quarantine_plan_and_cursor_reject_new_permission_generation(quarantined_pair):
+    from agent_session_tools.replication import quarantine
+
+    pair = quarantined_pair
+    b = pair["b"]
+    plan = quarantine.inspect(b["path"], "session", "codex_rollout-personal")
+    page = quarantine.list_objects(b["path"], limit=1)
+    permission_change(pair, "regrant")
+    before = list(b["conn"].iterdump())
+    with pytest.raises(ReplicaError, match="stale"):
+        quarantine.discard(
+            b["path"],
+            "session",
+            "codex_rollout-personal",
+            plan["id"],
+            discard_local_additions=True,
+        )
+    with pytest.raises(ReplicaError, match="stale"):
+        quarantine.list_objects(b["path"], cursor=page["next_cursor"])
+    assert list(b["conn"].iterdump()) == before
+
+
+def test_quarantine_discard_does_not_need_removed_peer_configuration(quarantined_pair):
+    from agent_session_tools.replication import quarantine
+
+    b = quarantined_pair["b"]
+    plan = quarantine.inspect(b["path"], "session", "codex_rollout-personal")
+    original_peers = b["config"]["memory"]["sync"]["peers"]
+    b["config"]["memory"]["sync"]["peers"] = {}
+    b["cfg"].write_text(json.dumps(b["config"]))
+    assert quarantine.discard(
+        b["path"],
+        "session",
+        "codex_rollout-personal",
+        plan["id"],
+        discard_local_additions=True,
+    )["logical_discard_committed"]
+    assert (
+        b["conn"]
+        .execute("SELECT 1 FROM context_replica_denials WHERE status!='released'")
+        .fetchone()
+    )
+    b["config"]["memory"]["sync"]["peers"] = original_peers
+    b["cfg"].write_text(json.dumps(b["config"]))
+    assert not b["conn"].execute("SELECT 1 FROM sessions").fetchone()
+    permission_change(quarantined_pair, "regrant")
+    delivered(quarantined_pair)
+    assert b["conn"].execute("SELECT 1 FROM sessions").fetchone()
+
+
+def test_quarantine_cli_requires_explicit_loss_acknowledgement(quarantined_pair):
+    from agent_session_tools.replication import quarantine
+
+    b = quarantined_pair["b"]
+    common = [
+        sys.executable,
+        "-I",
+        "-m",
+        "agent_session_tools.context.cli",
+        "quarantine",
+    ]
+
+    def cli(*args):
+        return subprocess.run(
+            [*common, *args, "--db", str(b["path"])],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+
+    listing = cli("list")
+    assert listing.returncode == 0, listing.stderr
+    assert json.loads(listing.stdout)["items"]
+    read = cli("inspect", "codex_rollout-personal")
+    assert read.returncode == 0, read.stderr
+    plan = json.loads(read.stdout)
+    assert "PRIVATE_LOCAL_ADDITION" not in read.stdout
+    before = list(b["conn"].iterdump())
+    refusal = cli("discard", "codex_rollout-personal", "--expect", plan["id"])
+    assert refusal.returncode == 2 and "acknowledgement" in refusal.stderr
+    assert "Traceback" not in refusal.stderr
+    assert list(b["conn"].iterdump()) == before
+    applied = cli(
+        "discard",
+        "codex_rollout-personal",
+        "--expect",
+        plan["id"],
+        "--discard-local-additions",
+    )
+    assert applied.returncode == 0, applied.stderr
+    assert json.loads(applied.stdout)["logical_discard_committed"]
+    assert quarantine.list_objects(b["path"])["items"]  # project-owned roots remain
+
+
+def test_quarantine_plan_binds_new_retention_facts_without_revision_change(
+    quarantined_pair,
+):
+    from agent_session_tools.replication import quarantine
+
+    b = quarantined_pair["b"]
+    plan = quarantine.inspect(b["path"], "session", "codex_rollout-personal")
+    revision = (
+        b["conn"].execute("SELECT revision FROM context_access_state").fetchone()[0]
+    )
+    row = source(b["conn"])
+    with ContextStore(b["conn"])._atomic():
+        retention._record(
+            b["conn"],
+            retention._binding(b["conn"], "context_evidence", row),
+            "unattributed",
+            "",
+            "",
+        )
+    assert (
+        b["conn"].execute("SELECT revision FROM context_access_state").fetchone()[0]
+        == revision
+    )
+    updated = quarantine.inspect(b["path"], "session", "codex_rollout-personal")
+    assert updated["footprint_sha256"] != plan["footprint_sha256"]
+    with pytest.raises(ReplicaError, match="stale"):
+        quarantine.discard(
+            b["path"],
+            "session",
+            "codex_rollout-personal",
+            plan["id"],
+            discard_local_additions=True,
+        )
+
+
+def test_quarantine_plan_cannot_override_later_permanent_forgetting(quarantined_pair):
+    from agent_session_tools.context.lifecycle import forget_session
+    from agent_session_tools.replication import quarantine
+
+    b = quarantined_pair["b"]
+    plan = quarantine.inspect(b["path"], "session", "codex_rollout-personal")
+    forget_session(b["conn"], "codex_rollout-personal", apply=True)
+    before = list(b["conn"].iterdump())
+    with pytest.raises(ScopeError, match="unavailable"):
+        quarantine.discard(
+            b["path"],
+            "session",
+            "codex_rollout-personal",
+            plan["id"],
+            discard_local_additions=True,
+        )
+    assert list(b["conn"].iterdump()) == before
+    assert not b["conn"].execute("SELECT 1 FROM context_quarantine_discards").fetchone()
+
+
+def test_quarantine_discard_process_exit_before_audit_rolls_back(quarantined_pair):
+    from agent_session_tools.replication import quarantine
+
+    b = quarantined_pair["b"]
+    plan = quarantine.inspect(b["path"], "session", "codex_rollout-personal")
+    code = """
+import os,sys
+from contextlib import contextmanager
+from pathlib import Path
+from agent_session_tools.replication import ledger,quarantine
+original=ledger._write
+@contextmanager
+def writer(path):
+    with original(path) as conn:
+        conn.create_function('die_now',0,lambda:os._exit(37))
+        conn.execute("CREATE TEMP TRIGGER crash_discard BEFORE INSERT ON main.context_quarantine_discards BEGIN SELECT die_now(); END")
+        yield conn
+ledger._write=writer
+quarantine.discard(Path(sys.argv[1]),'session','codex_rollout-personal',sys.argv[2],discard_local_additions=True)
+"""
+    before = list(b["conn"].iterdump())
+    process = subprocess.run(
+        [sys.executable, "-I", "-c", code, str(b["path"]), plan["id"]],
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    assert process.returncode == 37, process.stderr
+    assert list(b["conn"].iterdump()) == before
+    assert quarantine.discard(
+        b["path"],
+        "session",
+        "codex_rollout-personal",
+        plan["id"],
+        discard_local_additions=True,
+    )["logical_discard_committed"]
+
+
+def test_quarantine_discard_pending_cleanup_retries_without_new_decision(
+    quarantined_pair,
+):
+    from agent_session_tools.replication import quarantine
+
+    b = quarantined_pair["b"]
+    plan = quarantine.inspect(b["path"], "session", "codex_rollout-personal")
+    reader = sqlite3.connect(b["path"])
+    try:
+        reader.execute("BEGIN")
+        reader.execute("SELECT 1 FROM sessions").fetchone()
+        pending = quarantine.discard(
+            b["path"],
+            "session",
+            "codex_rollout-personal",
+            plan["id"],
+            discard_local_additions=True,
+        )
+        assert (
+            pending["logical_discard_committed"]
+            and not pending["canonical_file_cleanup"]["complete"]
+        )
+    finally:
+        reader.close()
+    done = quarantine.discard(
+        b["path"],
+        "session",
+        "codex_rollout-personal",
+        plan["id"],
+        discard_local_additions=True,
+    )
+    assert done["canonical_file_cleanup"]["complete"]
+    assert (
+        b["conn"]
+        .execute("SELECT count(*) FROM context_quarantine_discards")
+        .fetchone()[0]
+        == 1
+    )
+
+
+def test_quarantine_migration_rolls_back_and_preserves_existing_intent(
+    tmp_path, monkeypatch
+):
+    from agent_session_tools.replication import quarantine_schema
+
+    with monkeypatch.context() as old:
+        old.setattr(migrations, "CURRENT_VERSION", 44)
+        conn = records.connect(tmp_path / "old-quarantine.db")
+    conn.execute("INSERT INTO sessions(id,source) VALUES ('legacy','fixture')")
+    conn.commit()
+    before = list(conn.iterdump())
+    original = quarantine_schema.install
+
+    def fail(database):
+        original(database)
+        raise RuntimeError("quarantine migration failure")
+
+    try:
+        with monkeypatch.context() as fault:
+            fault.setattr(quarantine_schema, "install", fail)
+            with pytest.raises(RuntimeError, match="quarantine migration failure"):
+                migrations.migrate(conn)
+        assert list(conn.iterdump()) == before
+        assert len(migrations.migrate(conn)) == migrations.CURRENT_VERSION - 44
+        assert not conn.execute("SELECT 1 FROM context_quarantine_discards").fetchone()
+        assert conn.execute("SELECT id FROM sessions").fetchone()[0] == "legacy"
+    finally:
+        conn.close()
+
+
+def test_quarantine_scope_file_change_during_discard_rolls_back(
+    quarantined_pair, monkeypatch
+):
+    from agent_session_tools.replication import quarantine
+
+    b = quarantined_pair["b"]
+    plan = quarantine.inspect(b["path"], "session", "codex_rollout-personal")
+    before = list(b["conn"].iterdump())
+    original = quarantine.purge_objects
+
+    def change(conn, objects):
+        original(conn, objects)
+        b["config"]["memory"]["projects"]["p"]["scope"] = "work"
+        b["cfg"].write_text(json.dumps(b["config"]))
+
+    monkeypatch.setattr(quarantine, "purge_objects", change)
+    with pytest.raises(ScopeError, match="Scope changed"):
+        quarantine.discard(
+            b["path"],
+            "session",
+            "codex_rollout-personal",
+            plan["id"],
+            discard_local_additions=True,
+        )
+    assert list(b["conn"].iterdump()) == before
+
+
+def test_quarantine_retention_fact_budget_never_issues_partial_fingerprint(
+    quarantined_pair,
+):
+    from agent_session_tools.replication.withdrawal_preview import preview
+
+    b = quarantined_pair["b"]
+    binding = retention._binding(b["conn"], "context_evidence", source(b["conn"]))
+    with ContextStore(b["conn"])._atomic():
+        for number in range(101):
+            retention._record(
+                b["conn"], binding, "peer_commit", "a", f"historical-receipt-{number}"
+            )
+    before = list(b["conn"].iterdump())
+    with ContextStore(b["conn"])._atomic():
+        result = preview(
+            b["conn"],
+            "a",
+            [{"kind": "session", "object_id": "codex_rollout-personal"}],
+            max_rows=100,
+        )
+    assert result["reason"] == "footprint_limit" and "footprint_sha256" not in result
+    assert list(b["conn"].iterdump()) == before
+
+
+def test_quarantine_discard_audit_cannot_be_rewritten_or_deleted(quarantined_pair):
+    from agent_session_tools.replication import quarantine
+
+    b = quarantined_pair["b"]
+    plan = quarantine.inspect(b["path"], "session", "codex_rollout-personal")
+    quarantine.discard(
+        b["path"],
+        "session",
+        "codex_rollout-personal",
+        plan["id"],
+        discard_local_additions=True,
+    )
+    for sql in (
+        "DELETE FROM context_quarantine_discards",
+        "UPDATE context_quarantine_discards SET actor='different actor'",
+        "UPDATE context_quarantine_discards SET plan_json='{}'",
+    ):
+        with pytest.raises(sqlite3.IntegrityError):
+            b["conn"].execute(sql)
+        b["conn"].rollback()
+
+
+def test_quarantine_inspection_does_not_enable_ordinary_body_routes(quarantined_pair):
+    from agent_session_tools.context.observations import ObservationStore
+    from agent_session_tools.context.provenance import Scope
+    from agent_session_tools.context.scope import active_policy, visibility_sql
+    from agent_session_tools.context.store import Access
+    from agent_session_tools.replication import quarantine, snapshot
+
+    b = quarantined_pair["b"]
+    ids = quarantined_pair["quarantine_ids"]
+    for kind, identity in ids.items():
+        assert quarantine.inspect(b["path"], kind, identity)["changed_rows"]
+    conn = b["conn"]
+    clause, values = visibility_sql(conn, "s.id")
+    assert not conn.execute(
+        "SELECT 1 FROM sessions s WHERE " + clause, values
+    ).fetchone()
+    assert (
+        ContextStore(conn).source(ids["evidence"], Access(scope=Scope.PERSONAL)) is None
+    )
+    assert ObservationStore(conn).get(ids["observation"]) is None
+    assert not records.is_visible(conn, "knowledge_bridges", 1)
+    conn.rollback()
+    with ledger._write(b["path"]) as selected:
+        rows, _ = snapshot.collect(selected, active_policy(), Scope.PERSONAL)
+        assert not any(rows.values())
+
+
+def test_quarantine_receipt_scope_is_separate_from_policy_digest(
+    quarantined_pair, monkeypatch
+):
+    from agent_session_tools.context.scope import active_policy
+    from agent_session_tools.replication import quarantine
+
+    b = quarantined_pair["b"]
+    plan = quarantine.inspect(b["path"], "session", "codex_rollout-personal")
+    quarantine.discard(
+        b["path"],
+        "session",
+        "codex_rollout-personal",
+        plan["id"],
+        discard_local_additions=True,
+    )
+    monkeypatch.setenv("SESSION_CONTEXT_SCOPE", "work")
+    # Request scope intentionally does not change stored project classification.
+    assert active_policy().digest == plan["policy_digest"]
+    with pytest.raises(ScopeError, match="configured boundary"):
+        quarantine.discard(
+            b["path"],
+            "session",
+            "codex_rollout-personal",
+            plan["id"],
+            discard_local_additions=True,
+        )
+
+
+def test_quarantine_cleanup_receipt_detects_new_pending_work(
+    quarantined_pair, monkeypatch
+):
+    from agent_session_tools.replication import quarantine
+
+    b = quarantined_pair["b"]
+    plan = quarantine.inspect(b["path"], "session", "codex_rollout-personal")
+    original = quarantine.compact
+
+    def interleave(path):
+        result = original(path)
+        assert result["complete"]
+        with ledger._write(path) as writer:
+            writer.execute("INSERT INTO context_erasure_pending VALUES (1,'new-work')")
+        return result
+
+    monkeypatch.setattr(quarantine, "compact", interleave)
+    receipt = quarantine.discard(
+        b["path"],
+        "session",
+        "codex_rollout-personal",
+        plan["id"],
+        discard_local_additions=True,
+    )
+    assert receipt["logical_discard_committed"]
+    assert receipt["canonical_file_cleanup"] == {
+        "complete": False,
+        "reason": "cleanup_pending_before_receipt",
+    }
+    monkeypatch.setattr(quarantine, "compact", original)
+    done = quarantine.discard(
+        b["path"],
+        "session",
+        "codex_rollout-personal",
+        plan["id"],
+        discard_local_additions=True,
+    )
+    assert done["canonical_file_cleanup"]["complete"]
+    assert (
+        b["conn"]
+        .execute("SELECT count(*) FROM context_quarantine_discards")
         .fetchone()[0]
         == 1
     )
