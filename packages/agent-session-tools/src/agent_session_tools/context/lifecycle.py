@@ -11,7 +11,7 @@ from uuid import uuid4
 
 from ..migrations import CURRENT_VERSION
 from . import records
-from .scope import ScopeError, active_policy, visibility_sql
+from .scope import ScopeError, active_policy, retirement_selection_sql
 from .store import ContextStore, _now
 
 
@@ -35,7 +35,11 @@ def eviction(conn):
     try:
         yield
     finally:
-        conn.execute("UPDATE context_lifecycle_mode SET mode='ordinary' WHERE id=1")
+        # SQLite may abort the entire transaction (for example RAISE(ROLLBACK)).
+        # That already restored ordinary mode. Do not start a new transaction
+        # while unwinding the original error.
+        if conn.in_transaction:
+            conn.execute("UPDATE context_lifecycle_mode SET mode='ordinary' WHERE id=1")
 
 
 @contextmanager
@@ -76,8 +80,8 @@ def selected_records(conn, session_id):
             )
         yield selected
     finally:
-        conn.execute(f"DROP TABLE {selected}")
-        conn.execute(f"DROP TABLE {study}")
+        conn.execute(f"DROP TABLE IF EXISTS {selected}")
+        conn.execute(f"DROP TABLE IF EXISTS {study}")
 
 
 def purge_session(conn, session_id, *, permanent=True):
@@ -155,7 +159,7 @@ def forget_session(conn, session_id: str, *, apply: bool = False):
     policy = active_policy()
     scope = policy.request_scope()
     with ContextStore(conn)._atomic():
-        clause, values = visibility_sql(conn, "s.id", policy=policy, scope=scope)
+        clause, values = retirement_selection_sql(conn, policy=policy, scope=scope)
         if not conn.execute(
             "SELECT 1 FROM sessions s WHERE s.id=? AND " + clause, [session_id, *values]
         ).fetchone():

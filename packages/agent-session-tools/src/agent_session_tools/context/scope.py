@@ -164,13 +164,14 @@ def _table(conn: sqlite3.Connection, name: str, schema: str) -> bool:
     )
 
 
-def visibility_sql(
+def _visibility_sql(
     conn: sqlite3.Connection,
     session_column: str = "s.id",
     *,
     schema: str = "main",
     policy: ScopePolicy | None = None,
     scope: Scope | None = None,
+    withdrawals: bool = True,
 ) -> tuple[str, list[Any]]:
     """Predicate for a session ID expression; filter before selecting any body.
 
@@ -231,10 +232,41 @@ def visibility_sql(
         predicate += f""" AND NOT EXISTS (SELECT 1 FROM {schema}.context_tombstones tomb
             WHERE tomb.session_id={session_column})"""
     from .response import observe_database, observe_scope
+    from .withdrawal_gate import predicate as withdrawal_predicate
+
+    if withdrawals:
+        predicate += " AND " + withdrawal_predicate(
+            conn, "session", session_column, schema=schema
+        )
 
     observe_scope(policy, scope)
     observe_database(conn, schema)
     return "(" + predicate + ")", params
+
+
+def visibility_sql(
+    conn: sqlite3.Connection,
+    session_column: str = "s.id",
+    *,
+    schema: str = "main",
+    policy: ScopePolicy | None = None,
+    scope: Scope | None = None,
+) -> tuple[str, list[Any]]:
+    """Filter current scope, permanent retirement and withdrawal before body reads."""
+    return _visibility_sql(
+        conn, session_column, schema=schema, policy=policy, scope=scope
+    )
+
+
+def retirement_selection_sql(
+    conn: sqlite3.Connection, *, policy: ScopePolicy, scope: Scope
+) -> tuple[str, list[Any]]:
+    """Internal ID/count-only selection for explicit forget, including quarantine.
+
+    A withheld source must remain forgettable within the configured scope. This
+    predicate never authorizes returning its body or restoring its permission.
+    """
+    return _visibility_sql(conn, "s.id", policy=policy, scope=scope, withdrawals=False)
 
 
 def _audit(

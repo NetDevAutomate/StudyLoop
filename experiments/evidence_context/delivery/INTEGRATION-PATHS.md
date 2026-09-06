@@ -238,3 +238,20 @@ Next: distinct reversible withdrawal/denial and fresh regrant, actual authentica
 configured SSH coordinator, mutable conflict handling, complete full-store/restore and
 hot/full consumers. Keep full-sync false and legacy protected-transfer refusal until
 those paths satisfy the full goal. No owner machine data/config or peer was changed.
+
+## Stage36 canonical permission protocol
+
+Schema44 now implements ordered incoming/outgoing scope generations, known-object
+denials, attributable eviction, ambiguous-retention quarantine and fresh-offer regrant
+coverage. See [the Stage36 guide](../permission_withdrawal/GUIDE.md). Older sections
+describe the boundary as it stood at their named checkpoint.
+
+The actual purge is traced inside a rollback-only savepoint while the caller retains
+its writer lock. A retained local extra prevents erasure and later exposure by an
+incomplete fresh packet. Whole-transaction abort cleanup and scoped public forgetting
+of quarantined sources were reproduced and corrected. Permanent retirement is separate.
+
+This is still a library protocol. Quarantine has no general operator reconciliation or
+adoption command; actual configured SSH/session-sync coordination, fresh config-file
+fences, full-store/restore and complete consumer/install acceptance remain open.
+All receipts continue to report full sync as incomplete.

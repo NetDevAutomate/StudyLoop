@@ -374,7 +374,7 @@ def _learner(conn, tables, contribution=None):
             _row(conn, "context_record_owners", owner, contribution=contribution)
 
 
-def apply_in_transaction(conn, config, snapshot, contribution=None):
+def apply_in_transaction(conn, config, snapshot, contribution=None, before_apply=None):
     """Apply content inside the coordinator's transaction, alongside its durable receipt."""
     if (
         not conn.in_transaction
@@ -406,6 +406,13 @@ def apply_in_transaction(conn, config, snapshot, contribution=None):
     plan, scope, tables = snapshot["plan"], snapshot["scope"], snapshot["tables"]
     check_plan(plan, scope=scope)
     peer = PeerPolicy.from_config(config, plan["sender"]["node"])
+    if conn.execute(
+        "SELECT 1 FROM context_replica_permissions WHERE peer=? AND scope=? AND direction='in'",
+        (peer.peer, scope),
+    ).fetchone() and (contribution is None or before_apply is None):
+        raise ReplicaError(
+            "Permission history requires the durable content coordinator"
+        )
     if not isinstance(tables, dict) or set(tables) != set(TABLES):
         raise ReplicaError("Snapshot table coverage is invalid")
     if (
@@ -432,6 +439,8 @@ def apply_in_transaction(conn, config, snapshot, contribution=None):
             raise ReplicaConflict(
                 "Existing session ownership differs; remote labels cannot reclassify it"
             )
+    if before_apply is not None:
+        before_apply()
     for table in (
         "sessions",
         "messages",

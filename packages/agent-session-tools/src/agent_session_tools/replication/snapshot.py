@@ -101,6 +101,8 @@ class Projection:
 
 
 def _select(conn, policy, scope):
+    from ..context.withdrawal_gate import predicate
+
     selection = Projection(conn)
     visible, values = visibility_sql(conn, "s.id", policy=policy, scope=scope)
     selection.selected(
@@ -112,20 +114,23 @@ def _select(conn, policy, scope):
     )
     selection.selected(
         "evidence",
-        "SELECT id FROM context_evidence WHERE session_id IN (SELECT id FROM replica_sessions)",
+        "SELECT e.id FROM context_evidence e WHERE session_id IN (SELECT id FROM replica_sessions) AND "
+        + predicate(conn, "evidence", "e.id"),
     )
     selection.selected(
         "assertions",
         """SELECT a.id FROM context_assertions a
         WHERE EXISTS (SELECT 1 FROM context_citations c WHERE c.assertion_id=a.id)
         AND NOT EXISTS (SELECT 1 FROM context_citations c WHERE c.assertion_id=a.id
-          AND c.evidence_id NOT IN (SELECT id FROM replica_evidence))""",
+          AND c.evidence_id NOT IN (SELECT id FROM replica_evidence)) AND """
+        + predicate(conn, "assertion", "a.id"),
     )
     selection.selected(
         "relations",
-        """SELECT id FROM context_relations
+        """SELECT r.id FROM context_relations r
         WHERE from_assertion IN (SELECT id FROM replica_assertions)
-          AND to_assertion IN (SELECT id FROM replica_assertions)""",
+          AND to_assertion IN (SELECT id FROM replica_assertions) AND """
+        + predicate(conn, "relation", "r.id"),
     )
     owner_queries, owner_values = [], []
     for table in records.TABLES:
@@ -296,6 +301,10 @@ def export_snapshot(path, config, plan, scope):
     peer = PeerPolicy.from_config(config, plan["receiver"]["node"])
     conn = open_read(path)
     try:
+        from .permissions import current
+
+        if current(conn, peer.peer, scope, "out")[1] != "granted":
+            raise ReplicaError("Outgoing scope permission is withdrawn")
         if hello(conn, peer) != plan["sender"]:
             raise ReplicaError("Sender state changed after negotiation")
         rows, legacy = collect(conn, peer.policy, scope)

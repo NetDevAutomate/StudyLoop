@@ -99,8 +99,8 @@ def _objects(value, *, controls=False):
 def _offer(offer):
     _checked(
         offer,
-        "session-replica-offer/v1",
-        {"plan", "scope", "snapshot_sha256", "objects"},
+        "session-replica-offer/v2",
+        {"plan", "scope", "snapshot_sha256", "objects", "generation"},
     )
     check_plan(offer["plan"], scope=offer["scope"])
     if not isinstance(offer["snapshot_sha256"], str) or not re.fullmatch(
@@ -108,6 +108,8 @@ def _offer(offer):
     ):
         raise ReplicaError("Invalid offered snapshot hash")
     _objects(offer["objects"])
+    if type(offer["generation"]) is not int or not 0 <= offer["generation"] < 2**63:
+        raise ReplicaError("Invalid offer permission generation")
 
 
 def _bind(conn, policy, instance):
@@ -189,20 +191,26 @@ def _existing_scope(conn, policy, scope, objects):
 def prepare_offer(path, config, plan, scope):
     """Persist an offer before returning metadata; no transcript is persisted in the ledger."""
     snapshot = export_snapshot(path, config, plan, scope)
-    offer = _seal(
-        {
-            "contract": "session-replica-offer/v1",
-            "plan": plan,
-            "scope": scope,
-            "snapshot_sha256": snapshot["sha256"],
-            "objects": _manifest(snapshot),
-        }
-    )
-    _offer(offer)
     policy = PeerPolicy.from_config(config, plan["receiver"]["node"])
     with _write(path) as conn:
         if hello(conn, policy) != plan["sender"]:
             raise ReplicaError("Sender state changed while preparing offer")
+        from .permissions import current
+
+        generation, status, _ = current(conn, policy.peer, scope, "out")
+        if status != "granted":
+            raise ReplicaError("Outgoing scope permission is withdrawn")
+        offer = _seal(
+            {
+                "contract": "session-replica-offer/v2",
+                "plan": plan,
+                "scope": scope,
+                "snapshot_sha256": snapshot["sha256"],
+                "objects": _manifest(snapshot),
+                "generation": generation,
+            }
+        )
+        _offer(offer)
         _bind(conn, policy, plan["receiver"]["state"]["instance"])
         conn.execute(
             "INSERT OR IGNORE INTO context_replica_offers VALUES (?,'out',?,?,?,'prepared',NULL,NULL,?)",
@@ -230,7 +238,18 @@ def accept_offer(path, config, peer_name, offer):
             return json.loads(previous[0])
         if hello(conn, policy) != plan["receiver"]:
             raise ReplicaError("Receiver state changed before accepting offer")
-        _existing_scope(conn, policy.policy, offer["scope"], offer["objects"])
+        from .permissions import check_offer, release_awaiting
+
+        check_offer(conn, peer_name, offer, "in")
+        # Metadata selection may inspect an eligible regrant without exposing
+        # retained bodies. Restore every denial before persisting acceptance.
+        conn.execute("SAVEPOINT regrant_acceptance")
+        try:
+            release_awaiting(conn, peer_name, offer)
+            _existing_scope(conn, policy.policy, offer["scope"], offer["objects"])
+        finally:
+            conn.execute("ROLLBACK TO regrant_acceptance")
+            conn.execute("RELEASE regrant_acceptance")
         retired = _retired(conn, offer["objects"])
         # Old unscoped tombstones do not authorize a new peer to probe retirement
         # membership or inherit a deletion capability for an unrelated identity.
@@ -322,6 +341,9 @@ def release_content(path, config, peer_name, offer):
             raise ReplicaError("Content has no accepted offer")
         if _retired(conn, offer["objects"]):
             raise ReplicaError("Offered content was retired before release")
+        from .permissions import check_offer
+
+        check_offer(conn, peer_name, offer, "out")
     result = export_snapshot(path, config, offer["plan"], offer["scope"])
     if (
         result["sha256"] != offer["snapshot_sha256"]
@@ -361,9 +383,22 @@ def receive_content(path, config, peer_name, offer_id, snapshot):
             raise ReplicaError("Content offer is retired or unavailable")
         if _manifest(snapshot) != offer["objects"]:
             raise ReplicaError("Content manifest differs from accepted identities")
+        from .permissions import check_offer, release_awaiting, check_regrant_coverage
+
+        check_offer(conn, peer_name, offer, "in")
+        released = []
+
+        def before_apply():
+            released.extend(release_awaiting(conn, peer_name, offer))
+
         apply_in_transaction(
-            conn, config, snapshot, PeerContribution(conn, peer_name, offer_id)
+            conn,
+            config,
+            snapshot,
+            PeerContribution(conn, peer_name, offer_id),
+            before_apply,
         )
+        check_regrant_coverage(conn, peer_name, offer, released)
         receipt = _seal(
             {
                 "contract": "session-replica-content-receipt/v1",

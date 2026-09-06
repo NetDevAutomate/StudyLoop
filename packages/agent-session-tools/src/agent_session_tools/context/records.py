@@ -87,6 +87,8 @@ def visible_sql(
 
 
 def _visible_sql(conn, table, column, policy, *, scope=None):
+    from .withdrawal_gate import predicate
+
     _table(table)
     if not re.fullmatch(r"[A-Za-z_]\w*\.[A-Za-z_]\w*", column):
         raise ValueError("Invalid internal record SQL identifier")
@@ -120,7 +122,9 @@ def _visible_sql(conn, table, column, policy, *, scope=None):
         + source
         + ") OR "
         + owned_project
-        + " OR own.scope=?))"
+        + " OR own.scope=?) AND "
+        + predicate(conn, "record", "own.id")
+        + ")"
     )
     values = [table, *source_values, *project_values, scope.value]
     if table in ("parked_topics", "study_notes"):

@@ -191,6 +191,13 @@ def capture_run(parser_version: str):
                     identity,
                 ),
             )
+            if "withdrawn" in {
+                r[1] for r in conn.execute("PRAGMA table_info(context_capture_runs)")
+            }:
+                conn.execute(
+                    "UPDATE context_capture_runs SET withdrawn=? WHERE id=?",
+                    (stats.withdrawn, identity),
+                )
             conn.commit()
             return stats
 
@@ -221,10 +228,18 @@ def capture_health(conn) -> dict:
         conn.execute("BEGIN")
     try:
         harnesses = []
+        withdrawal_column = (
+            "withdrawn"
+            if "withdrawn"
+            in {r[1] for r in conn.execute("PRAGMA table_info(context_capture_runs)")}
+            else "0"
+        )
         for harness, parser in NATIVE_PARSERS.items():
             attempt = conn.execute(
                 "SELECT outcome,started_at,finished_at,parser_version,added,updated,"
-                "skipped,empty,errors,forgotten,error_class FROM context_capture_runs "
+                "skipped,empty,errors,forgotten,error_class,"
+                + withdrawal_column
+                + " FROM context_capture_runs "
                 "WHERE harness=? ORDER BY started_at DESC,rowid DESC LIMIT 1",
                 (harness,),
             ).fetchone()
@@ -240,6 +255,7 @@ def capture_health(conn) -> dict:
                 "errors",
                 "forgotten",
                 "error_class",
+                "withdrawn",
             )
             legacy = conn.execute(
                 "SELECT count(*) FROM sessions s WHERE source=? "

@@ -804,7 +804,7 @@ def test_origin_migration_preserves_unknown_legacy_and_rolls_back_on_failure(
         with pytest.raises(RuntimeError, match="origin migration failure"):
             migrations.migrate(conn)
     assert list(conn.iterdump()) == before
-    assert len(migrations.migrate(conn)) == 1
+    assert len(migrations.migrate(conn)) == migrations.CURRENT_VERSION - 42
     assert not conn.execute("SELECT 1 FROM context_retention_origins").fetchone()
     assert conn.execute("PRAGMA foreign_key_check").fetchall() == []
     conn.close()
@@ -930,3 +930,628 @@ def test_contribution_requires_matching_peer_and_current_database_binding(pair):
         with pytest.raises(ValueError, match="peer binding"):
             retention.PeerContribution(conn, "a", value["id"])
     assert not conn.execute("SELECT 1 FROM context_retention_origins").fetchone()
+
+
+def test_withdrawal_preview_uses_actual_cascades_without_changing_data(pair):
+    from agent_session_tools.replication.withdrawal_preview import preview
+
+    value, _, _ = delivered(pair)
+    conn = pair["b"]["conn"]
+    before = list(conn.iterdump())
+    with ContextStore(conn)._atomic():
+        result = preview(conn, "a", value["objects"])
+    assert result["eligible"] and result["changed_rows"] > len(value["objects"])
+    assert list(conn.iterdump()) == before
+    assert not conn.execute(
+        "SELECT 1 FROM sqlite_temp_master WHERE type='trigger'"
+    ).fetchone()
+
+
+@pytest.mark.parametrize(
+    "change", ["new_message", "native_capture", "local_derivative"]
+)
+def test_withdrawal_preview_preserves_ambiguous_local_contributions(
+    pair, change, monkeypatch
+):
+    from agent_session_tools.replication.withdrawal_preview import preview
+
+    value, _, _ = delivered(pair)
+    conn = pair["b"]["conn"]
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(pair["b"]["cfg"]))
+    if change == "new_message":
+        conn.execute(
+            "INSERT INTO messages(id,session_id,role,content) VALUES ('new','codex_rollout-personal','user','LOCAL_ADDITION')"
+        )
+        conn.commit()
+    elif change == "native_capture":
+        pair["exporter"].export_all(conn, incremental=False)
+    else:
+        with ContextStore(conn)._atomic(), records.policy_guard(conn):
+            annotations.write(
+                conn, "codex_rollout-personal", "note", {"notes": "LOCAL_DERIVATIVE"}
+            )
+    before = list(conn.iterdump())
+    with ContextStore(conn)._atomic():
+        result = preview(conn, "a", value["objects"])
+    assert not result["eligible"] and result["unresolved_rows"]
+    assert "LOCAL_" not in _json(result)
+    assert list(conn.iterdump()) == before
+
+
+def permission_change(pair, action):
+    from agent_session_tools.replication import permissions
+
+    a, b = pair["a"], pair["b"]
+    packet = permissions.prepare_change(a["path"], a["config"], "b", "personal", action)
+    receipt = permissions.apply_change(b["path"], b["config"], "a", packet)
+    return packet, receipt
+
+
+def test_withdrawal_purges_without_permanent_retirement_and_fresh_regrant_restores(
+    pair, monkeypatch
+):
+    from agent_session_tools.replication import permissions
+
+    value, old_body, old_receipt = delivered(pair)
+    a, b = pair["a"], pair["b"]
+    before_ids = [
+        r[0]
+        for r in b["conn"].execute("SELECT id FROM context_observations ORDER BY id")
+    ]
+    packet, receipt = permission_change(pair, "withdraw")
+    assert packet["generation"] == 1 and receipt["canonical_cleanup"]["complete"]
+    assert permissions.acknowledge_change(a["path"], a["config"], "b", receipt)[
+        "acknowledged"
+    ]
+    assert not b["conn"].execute("SELECT 1 FROM sessions").fetchone()
+    assert not b["conn"].execute("SELECT 1 FROM context_retirements").fetchone()
+    with pytest.raises(ReplicaError):
+        ledger.release_content(a["path"], a["config"], "b", value)
+    assert (
+        ledger.receive_content(b["path"], b["config"], "a", value["id"], old_body)
+        == old_receipt
+    )
+    assert not b["conn"].execute("SELECT 1 FROM sessions").fetchone()
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(b["cfg"]))
+    assert pair["exporter"].export_all(b["conn"], incremental=False).withdrawn == 1
+    grant, grant_receipt = permission_change(pair, "regrant")
+    assert (
+        grant["generation"] == 2
+        and grant_receipt["assessment"]["awaiting_fresh_content"]
+    )
+    assert (
+        not b["conn"]
+        .execute("SELECT 1 FROM sessions WHERE id='codex_rollout-personal'")
+        .fetchone()
+    )
+    fresh, _, _ = delivered(pair)
+    assert fresh["generation"] == 2
+    assert [
+        r[0]
+        for r in b["conn"].execute("SELECT id FROM context_observations ORDER BY id")
+    ] == before_ids
+    assert (
+        not b["conn"]
+        .execute("SELECT 1 FROM context_replica_denials WHERE status!='released'")
+        .fetchone()
+    )
+    assert not b["conn"].execute("SELECT 1 FROM context_retirements").fetchone()
+
+
+def test_withdrawal_quarantines_local_extra_and_regrant_cannot_expose_unoffered_body(
+    pair, monkeypatch
+):
+    from agent_session_tools.context.scope import visibility_sql
+    from agent_session_tools.context.store import Access
+    from agent_session_tools.context.provenance import Scope
+    from agent_session_tools.context.observations import ObservationStore
+    from agent_session_tools.replication import permissions
+
+    delivered(pair)
+    a, b = pair["a"], pair["b"]
+    c = b["conn"]
+    eid = c.execute("SELECT id FROM context_evidence LIMIT 1").fetchone()[0]
+    oid = c.execute("SELECT id FROM context_observations LIMIT 1").fetchone()[0]
+    c.execute(
+        "INSERT INTO messages(id,session_id,role,content) VALUES ('local-extra','codex_rollout-personal','user','UNSHARED_LOCAL_BODY')"
+    )
+    c.commit()
+    packet, receipt = permission_change(pair, "withdraw")
+    assert (
+        not receipt["canonical_cleanup"]["complete"]
+        and receipt["assessment"]["unresolved_rows"]
+    )
+    assert not permissions.acknowledge_change(a["path"], a["config"], "b", receipt)[
+        "acknowledged"
+    ]
+    assert c.execute("SELECT 1 FROM messages WHERE id='local-extra'").fetchone()
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(b["cfg"]))
+    clause, values = visibility_sql(c, "s.id")
+    assert not c.execute("SELECT 1 FROM sessions s WHERE " + clause, values).fetchone()
+    assert ContextStore(c).source(eid, Access(scope=Scope.PERSONAL)) is None
+    assert ObservationStore(c).get(oid) is None
+    c.rollback()
+    permission_change(pair, "regrant")
+    value = accepted(pair)
+    body = ledger.release_content(a["path"], a["config"], "b", value)
+    with pytest.raises(ReplicaError, match="does not cover"):
+        ledger.receive_content(b["path"], b["config"], "a", value["id"], body)
+    assert c.execute("SELECT 1 FROM messages WHERE id='local-extra'").fetchone()
+    assert ContextStore(c).source(eid, Access(scope=Scope.PERSONAL)) is None
+    c.rollback()
+
+
+def test_empty_scope_can_withdraw_but_cannot_regrant_and_replays_do_not_regress(pair):
+    from agent_session_tools.replication import permissions
+
+    delivered(pair)
+    a, b = pair["a"], pair["b"]
+    for node, peer in ((a, "b"), (b, "a")):
+        node["config"]["memory"]["sync"]["peers"][peer]["allowed_scopes"] = []
+    packet, receipt = permission_change(pair, "withdraw")
+    assert receipt["canonical_cleanup"]["complete"]
+    with pytest.raises(ReplicaError):
+        permissions.prepare_change(a["path"], a["config"], "b", "personal", "regrant")
+    for node, peer in ((a, "b"), (b, "a")):
+        node["config"]["memory"]["sync"]["peers"][peer]["allowed_scopes"] = ["personal"]
+    grant, _ = permission_change(pair, "regrant")
+    assert permissions.apply_change(b["path"], b["config"], "a", packet) == receipt
+    assert (
+        permissions.current(b["conn"], "a", "personal", "in")[0] == grant["generation"]
+    )
+
+
+def test_withdrawal_covers_receiver_acceptance_when_response_was_lost(pair):
+    from agent_session_tools.replication import permissions
+
+    a, b = pair["a"], pair["b"]
+    value = offer(pair)
+    acceptance = ledger.accept_offer(b["path"], b["config"], "a", value)
+    packet, receipt = permission_change(pair, "withdraw")
+    assert packet["objects"] == [] and receipt["canonical_cleanup"]["complete"]
+    assert (
+        b["conn"]
+        .execute(
+            "SELECT 1 FROM context_replica_denials WHERE object_id='codex_rollout-personal'"
+        )
+        .fetchone()
+    )
+    ledger.record_acceptance(a["path"], a["config"], "b", value, acceptance)
+    with pytest.raises(ReplicaError):
+        ledger.release_content(a["path"], a["config"], "b", value)
+    assert permissions.current(b["conn"], "a", "personal", "in")[1] == "withdrawn"
+
+
+def test_withdrawal_preview_overflow_rolls_back_and_leaves_no_mode_or_triggers(pair):
+    from agent_session_tools.replication.withdrawal_preview import preview
+
+    value, _, _ = delivered(pair)
+    conn = pair["b"]["conn"]
+    before = list(conn.iterdump())
+    with ContextStore(conn)._atomic():
+        result = preview(conn, "a", value["objects"], max_rows=1)
+    assert result["reason"] == "footprint_limit" and not result["eligible"]
+    assert list(conn.iterdump()) == before
+    assert not conn.execute(
+        "SELECT 1 FROM sqlite_temp_master WHERE type='trigger'"
+    ).fetchone()
+
+
+def test_withdrawal_preview_preserves_error_when_sqlite_aborts_whole_transaction(pair):
+    from agent_session_tools.replication.withdrawal_preview import preview
+
+    value, _, _ = delivered(pair)
+    conn = pair["b"]["conn"]
+    before = list(conn.iterdump())
+    conn.execute(
+        "CREATE TEMP TRIGGER abort_withdrawal BEFORE DELETE ON main.messages BEGIN SELECT RAISE(ROLLBACK,'injected whole transaction abort'); END"
+    )
+    with pytest.raises(
+        sqlite3.IntegrityError, match="injected whole transaction abort"
+    ):
+        with ContextStore(conn)._atomic(), ContextStore(conn)._atomic():
+            preview(conn, "a", value["objects"])
+    assert not conn.in_transaction
+    assert list(conn.iterdump()) == before
+    assert not conn.execute(
+        "SELECT 1 FROM sqlite_temp_master WHERE name LIKE 'withdraw_preview_%'"
+    ).fetchone()
+
+
+def test_scoped_public_forget_can_erase_quarantine_without_revealing_body(
+    pair, monkeypatch
+):
+    from agent_session_tools.context.lifecycle import forget_session
+    from agent_session_tools.context.scope import ScopeError
+
+    delivered(pair)
+    b = pair["b"]
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(b["cfg"]))
+    with ContextStore(b["conn"])._atomic(), records.policy_guard(b["conn"]):
+        b["conn"].execute(
+            "INSERT INTO study_sessions(id,session_id,started_at,notes) VALUES ('local-study','codex_rollout-personal','fixture','LOCAL_PRIVATE_STUDY')"
+        )
+        records.bind(
+            b["conn"],
+            "study_sessions",
+            "local-study",
+            session_id="codex_rollout-personal",
+        )
+        b["conn"].execute(
+            "INSERT INTO study_notes(study_session_id,title,body) VALUES ('local-study','fixture','LOCAL_PRIVATE_NOTE')"
+        )
+        records.bind(b["conn"], "study_notes", 1, session_id="codex_rollout-personal")
+    _, receipt = permission_change(pair, "withdraw")
+    assert not receipt["canonical_cleanup"]["complete"]
+    before = list(b["conn"].iterdump())
+    with monkeypatch.context() as wrong_scope:
+        wrong_scope.setenv("SESSION_CONTEXT_SCOPE", "work")
+        with pytest.raises(ScopeError):
+            forget_session(b["conn"], "codex_rollout-personal", apply=True)
+    assert list(b["conn"].iterdump()) == before
+    preview = forget_session(b["conn"], "codex_rollout-personal")
+    assert not preview["applied"] and preview["selected_counts"]["learner_records"] == 2
+    assert "LOCAL_PRIVATE" not in _json(preview)
+    assert list(b["conn"].iterdump()) == before
+    assert forget_session(b["conn"], "codex_rollout-personal", apply=True)["applied"]
+    for table in ("sessions", "study_sessions", "study_notes", "context_record_owners"):
+        assert not b["conn"].execute("SELECT 1 FROM " + table).fetchone()
+
+
+def test_foreign_key_refusal_rolls_back_withdrawal_and_denials(pair):
+    from agent_session_tools.replication import permissions
+
+    delivered(pair)
+    a, b = pair["a"], pair["b"]
+    b["conn"].execute(
+        "CREATE TABLE test_restrict_purge(session_id TEXT REFERENCES sessions(id) ON DELETE RESTRICT)"
+    )
+    b["conn"].execute(
+        "INSERT INTO test_restrict_purge VALUES ('codex_rollout-personal')"
+    )
+    b["conn"].commit()
+    packet = permissions.prepare_change(
+        a["path"], a["config"], "b", "personal", "withdraw"
+    )
+    before = list(b["conn"].iterdump())
+    with pytest.raises(sqlite3.IntegrityError, match="FOREIGN KEY"):
+        permissions.apply_change(b["path"], b["config"], "a", packet)
+    assert list(b["conn"].iterdump()) == before
+    assert permissions.current(b["conn"], "a", "personal", "in")[:2] == (0, "granted")
+
+
+def test_preview_byte_limit_preserves_complete_database(pair):
+    from agent_session_tools.replication.withdrawal_preview import preview
+
+    value, _, _ = delivered(pair)
+    conn = pair["b"]["conn"]
+    before = list(conn.iterdump())
+    with ContextStore(conn)._atomic():
+        result = preview(conn, "a", value["objects"], max_bytes=1)
+    assert result["reason"] == "footprint_limit" and not result["eligible"]
+    assert list(conn.iterdump()) == before
+
+
+def test_concurrent_withdrawal_preparation_uses_one_generation(pair):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+    from agent_session_tools.replication import permissions
+
+    delivered(pair)
+    a = pair["a"]
+    gate = Barrier(2)
+
+    def prepare(_):
+        gate.wait(timeout=5)
+        return permissions.prepare_change(
+            a["path"], a["config"], "b", "personal", "withdraw"
+        )
+
+    with ThreadPoolExecutor(max_workers=2) as workers:
+        results = list(workers.map(prepare, range(2)))
+    assert results[0] == results[1]
+    assert permissions.current(a["conn"], "b", "personal", "out")[:2] == (
+        1,
+        "withdrawn",
+    )
+    assert (
+        a["conn"]
+        .execute("SELECT count(*) FROM context_replica_permission_batches")
+        .fetchone()[0]
+        == 1
+    )
+
+
+@pytest.mark.parametrize("recursive", [0, 1])
+def test_withdrawal_trace_covers_native_owned_learner_cascades(pair, recursive):
+    from agent_session_tools.replication.withdrawal_preview import preview
+
+    a, b = pair["a"]["conn"], pair["b"]["conn"]
+    with ContextStore(a)._atomic(), records.policy_guard(a):
+        a.execute(
+            "INSERT INTO study_sessions(id,session_id,started_at,notes) VALUES ('study','codex_rollout-personal','fixture','SOURCE_OWNED_STUDY')"
+        )
+        records.bind(a, "study_sessions", "study", session_id="codex_rollout-personal")
+        a.execute(
+            "INSERT INTO study_notes(study_session_id,title,body) VALUES ('study','fixture','SOURCE_OWNED_NOTE')"
+        )
+        records.bind(a, "study_notes", 1, session_id="codex_rollout-personal")
+        a.execute(
+            "INSERT INTO parked_topics(study_session_id,question) VALUES ('study','SOURCE_OWNED_QUESTION')"
+        )
+        records.bind(a, "parked_topics", 1, session_id="codex_rollout-personal")
+    value, _, _ = delivered(pair)
+    b.execute(f"PRAGMA recursive_triggers={recursive}")
+    before = list(b.iterdump())
+    with ContextStore(b)._atomic():
+        result = preview(b, "a", value["objects"])
+    assert result["eligible"]
+    assert list(b.iterdump()) == before
+    _, receipt = permission_change(pair, "withdraw")
+    assert receipt["canonical_cleanup"]["complete"]
+    for table in (
+        "study_sessions",
+        "study_notes",
+        "parked_topics",
+        "context_record_owners",
+    ):
+        assert not b.execute("SELECT 1 FROM " + table).fetchone()
+    assert not b.execute("PRAGMA foreign_key_check").fetchall()
+
+
+def test_withdrawal_preview_holds_writer_lock_and_hides_simulated_purge(
+    pair, monkeypatch
+):
+    from agent_session_tools.replication import withdrawal_preview
+
+    value, _, _ = delivered(pair)
+    b = pair["b"]
+    other = sqlite3.connect(b["path"], timeout=0)
+    original = withdrawal_preview.purge_objects
+    observations = []
+
+    def inspect(conn, objects):
+        original(conn, objects)
+        assert not conn.execute("SELECT 1 FROM sessions").fetchone()
+        observations.append(
+            other.execute("SELECT count(*) FROM sessions").fetchone()[0]
+        )
+        with pytest.raises(sqlite3.OperationalError, match="locked"):
+            other.execute("BEGIN IMMEDIATE")
+
+    try:
+        monkeypatch.setattr(withdrawal_preview, "purge_objects", inspect)
+        with ContextStore(b["conn"])._atomic():
+            assert withdrawal_preview.preview(b["conn"], "a", value["objects"])[
+                "eligible"
+            ]
+        assert observations == [1]
+        other.execute("BEGIN IMMEDIATE")
+        other.rollback()
+    finally:
+        other.close()
+
+
+@pytest.mark.parametrize("point", ["preview", "purge", "receipt"])
+def test_process_death_during_withdrawal_leaves_no_partial_permission(
+    pair, tmp_path, point
+):
+    from agent_session_tools.replication import permissions
+
+    delivered(pair)
+    a, b = pair["a"], pair["b"]
+    packet = permissions.prepare_change(
+        a["path"], a["config"], "b", "personal", "withdraw"
+    )
+    payload = tmp_path / "withdrawal.json"
+    payload.write_text(json.dumps(packet))
+    code = """
+import json,os,sys
+from contextlib import contextmanager
+from pathlib import Path
+from agent_session_tools.replication import ledger,permissions,withdrawal_preview
+point=sys.argv[4]
+if point in ('preview','purge'):
+    target=withdrawal_preview if point=='preview' else permissions
+    original=target.purge_objects
+    def dying(conn,objects):
+        original(conn,objects)
+        os._exit(36)
+    target.purge_objects=dying
+else:
+    original=ledger._write
+    @contextmanager
+    def writer(path):
+        with original(path) as conn:
+            conn.create_function('die_now',0,lambda:os._exit(36))
+            conn.execute("CREATE TEMP TRIGGER crash_withdrawal BEFORE INSERT ON main.context_replica_permission_batches BEGIN SELECT die_now(); END")
+            yield conn
+    ledger._write=writer
+permissions.apply_change(Path(sys.argv[1]),json.loads(Path(sys.argv[2]).read_text()),'a',json.loads(Path(sys.argv[3]).read_text()))
+"""
+    before = list(b["conn"].iterdump())
+    run = subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            "-c",
+            code,
+            str(b["path"]),
+            str(b["cfg"]),
+            str(payload),
+            point,
+        ],
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    assert run.returncode == 36, run.stderr
+    assert list(b["conn"].iterdump()) == before
+    assert permissions.apply_change(b["path"], b["config"], "a", packet)[
+        "canonical_cleanup"
+    ]["complete"]
+
+
+def test_permission_migration_is_additive_and_rolls_back_on_failure(
+    tmp_path, monkeypatch
+):
+    from agent_session_tools.replication import withdrawal_schema
+
+    with monkeypatch.context() as old:
+        old.setattr(migrations, "CURRENT_VERSION", 43)
+        conn = records.connect(tmp_path / "old-permissions.db")
+    conn.execute("INSERT INTO sessions(id,source) VALUES ('legacy','fixture')")
+    conn.commit()
+    before = list(conn.iterdump())
+    original = withdrawal_schema.install
+
+    def fail(database):
+        original(database)
+        raise RuntimeError("permission migration failure")
+
+    try:
+        with monkeypatch.context() as fault:
+            fault.setattr(withdrawal_schema, "install", fail)
+            with pytest.raises(RuntimeError, match="permission migration failure"):
+                migrations.migrate(conn)
+        assert list(conn.iterdump()) == before
+        assert len(migrations.migrate(conn)) == migrations.CURRENT_VERSION - 43
+        assert conn.execute("SELECT id FROM sessions").fetchone()[0] == "legacy"
+        assert not conn.execute("SELECT 1 FROM context_replica_denials").fetchone()
+        assert not conn.execute("PRAGMA foreign_key_check").fetchall()
+    finally:
+        conn.close()
+
+
+def test_direct_content_api_cannot_bypass_permission_history(pair):
+    from agent_session_tools.replication.snapshot import export_snapshot
+
+    delivered(pair)
+    a, b = pair["a"], pair["b"]
+    permission_change(pair, "withdraw")
+    plan = negotiate(
+        hello(a["conn"], PeerPolicy.from_config(a["config"], "b")),
+        hello(b["conn"], PeerPolicy.from_config(b["config"], "a")),
+    )
+    with pytest.raises(ReplicaError, match="withdrawn"):
+        export_snapshot(a["path"], a["config"], plan, "personal")
+    permission_change(pair, "regrant")
+    value = accepted(pair)
+    body = ledger.release_content(a["path"], a["config"], "b", value)
+    before = list(b["conn"].iterdump())
+    with pytest.raises(ReplicaError, match="durable content coordinator"):
+        apply_content(b["path"], b["config"], body)
+    assert list(b["conn"].iterdump()) == before
+    assert ledger.receive_content(b["path"], b["config"], "a", value["id"], body)[
+        "committed"
+    ]
+
+
+@pytest.mark.parametrize(
+    "change",
+    ["gap", "boolean_generation", "unknown_object", "wrong_instance", "first_regrant"],
+)
+def test_invalid_permission_control_cannot_change_receiver(pair, change):
+    from agent_session_tools.replication import permissions
+
+    delivered(pair)
+    a, b = pair["a"], pair["b"]
+    packet = permissions.prepare_change(
+        a["path"], a["config"], "b", "personal", "withdraw"
+    )
+    if change == "gap":
+        packet["generation"] = 2
+    elif change == "boolean_generation":
+        packet["generation"] = True
+    elif change == "unknown_object":
+        packet["objects"] = [{"kind": "session", "object_id": "never-received"}]
+    elif change == "wrong_instance":
+        packet["sender_instance"] = "different-machine"
+    else:
+        packet["action"] = "regrant"
+    reseal(packet)
+    before = list(b["conn"].iterdump())
+    with pytest.raises(ReplicaError):
+        permissions.apply_change(b["path"], b["config"], "a", packet)
+    assert list(b["conn"].iterdump()) == before
+
+
+def test_withdrawal_cleanup_retries_after_reader_releases_snapshot(pair):
+    from agent_session_tools.replication import permissions
+
+    delivered(pair)
+    a, b = pair["a"], pair["b"]
+    reader = sqlite3.connect(b["path"])
+    try:
+        reader.execute("BEGIN")
+        assert reader.execute("SELECT count(*) FROM sessions").fetchone()[0] == 1
+        packet, pending = permission_change(pair, "withdraw")
+        assert not pending["canonical_cleanup"]["complete"]
+        assert not permissions.acknowledge_change(a["path"], a["config"], "b", pending)[
+            "acknowledged"
+        ]
+        assert not b["conn"].execute("SELECT 1 FROM sessions").fetchone()
+        assert reader.execute("SELECT count(*) FROM sessions").fetchone()[0] == 1
+    finally:
+        reader.close()
+    done = permissions.apply_change(b["path"], b["config"], "a", packet)
+    assert done["canonical_cleanup"]["complete"]
+    assert permissions.acknowledge_change(a["path"], a["config"], "b", done)[
+        "acknowledged"
+    ]
+
+
+def test_regrant_between_compaction_and_receipt_prevents_cleanup_ack(pair, monkeypatch):
+    from agent_session_tools.replication import permissions
+
+    delivered(pair)
+    a, b = pair["a"], pair["b"]
+    original = permissions.compact
+
+    def race(path):
+        result = original(path)
+        assert result["complete"]
+        permission_change(pair, "regrant")
+        return result
+
+    with monkeypatch.context() as patch:
+        patch.setattr(permissions, "compact", race)
+        packet, receipt = permission_change(pair, "withdraw")
+    assert receipt["canonical_cleanup"] == {
+        "complete": False,
+        "reason": "permission_changed_before_receipt",
+    }
+    assert not permissions.acknowledge_change(a["path"], a["config"], "b", receipt)[
+        "acknowledged"
+    ]
+    assert permissions.current(b["conn"], "a", "personal", "in")[:2] == (2, "granted")
+    assert permissions.apply_change(b["path"], b["config"], "a", packet) == receipt
+
+
+def test_permanent_forget_wins_over_withdrawal_regrant_and_native_reimport(
+    pair, monkeypatch
+):
+    from agent_session_tools.replication import permissions
+
+    delivered(pair)
+    a, b = pair["a"], pair["b"]
+    forget(pair, "b")
+    retired = list(b["conn"].execute("SELECT * FROM context_retirements"))
+    permission_change(pair, "withdraw")
+    permission_change(pair, "regrant")
+    value = offer(pair)
+    acceptance = ledger.accept_offer(b["path"], b["config"], "a", value)
+    assert acceptance["status"] == "retired"
+    ledger.record_acceptance(a["path"], a["config"], "b", value, acceptance)
+    with pytest.raises(ReplicaError):
+        ledger.release_content(a["path"], a["config"], "b", value)
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(b["cfg"]))
+    stats = pair["exporter"].export_all(b["conn"], incremental=False)
+    assert stats.forgotten == 1 and stats.withdrawn == 0
+    assert list(b["conn"].execute("SELECT * FROM context_retirements")) == retired
+    assert (
+        not b["conn"]
+        .execute("SELECT 1 FROM sessions WHERE id='codex_rollout-personal'")
+        .fetchone()
+    )
+    assert permissions.current(b["conn"], "a", "personal", "in")[0] == 2

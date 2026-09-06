@@ -45,8 +45,17 @@ class ObservationStore:
         return row[0] if row else None
 
     def _visible(self, policy: ScopePolicy, scope: Scope) -> tuple[str, list[Any]]:
+        from .withdrawal_gate import predicate
+
         source_clause, source_values = visibility_sql(
             self.conn, "e.session_id", policy=policy, scope=scope
+        )
+        source_clause = (
+            "("
+            + source_clause
+            + " AND "
+            + predicate(self.conn, "evidence", "e.id")
+            + ")"
         )
         project_ids = [p.id for p in policy.projects if p.scope == scope]
         project_clause = "0"
@@ -84,7 +93,9 @@ class ObservationStore:
         records_clause, records_values = observation_clause(
             self.conn, policy, scope=scope
         )
-        return "(" + clause + ") AND " + records_clause, [
+        return "(" + clause + ") AND " + records_clause + " AND " + predicate(
+            self.conn, "observation", "o.id"
+        ), [
             *source_values,
             scope.value,
             *project_values,
@@ -324,6 +335,9 @@ class ObservationStore:
             visible, values = visibility_sql(
                 self.conn, "e.session_id", policy=policy, scope=scope
             )
+            from .withdrawal_gate import predicate
+
+            visible += " AND " + predicate(self.conn, "evidence", "e.id")
             if owner_session_id is not None:
                 owner_visible, owner_values = visibility_sql(
                     self.conn, "s.id", policy=policy, scope=scope

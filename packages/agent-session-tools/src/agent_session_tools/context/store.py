@@ -190,7 +190,7 @@ class ContextStore:
         except Exception:
             if owned:
                 self.conn.rollback()
-            else:
+            elif self.conn.in_transaction:
                 self.conn.execute(f"ROLLBACK TO {savepoint}")
                 self.conn.execute(f"RELEASE {savepoint}")
             raise
@@ -236,6 +236,17 @@ class ContextStore:
         payload = source.payload()
         identity = _hash(_json(payload))
         with self._atomic():
+            from .withdrawal_gate import available
+
+            if (
+                available(self.conn)
+                and self.conn.execute(
+                    "SELECT 1 FROM context_replica_denials WHERE status!='released' "
+                    "AND ((kind='session' AND object_id=?) OR (kind='evidence' AND object_id=?))",
+                    (source.session_id, identity),
+                ).fetchone()
+            ):
+                raise ValueError("Source has unresolved permission withdrawal")
             if self.conn.execute(
                 "SELECT 1 FROM context_tombstones WHERE session_id=?",
                 (source.session_id,),
@@ -254,12 +265,15 @@ class ContextStore:
             )
         return identity
 
-    @staticmethod
-    def _where(access: Access) -> tuple[str, list[Any]]:
+    def _where(self, access: Access) -> tuple[str, list[Any]]:
         # Unassigned sessions are unclassified; an explicit unclassified request
         # can inspect them, but a personal/work request cannot.
         clause = """COALESCE(p.scope,'unclassified')=? AND NOT EXISTS
             (SELECT 1 FROM context_tombstones t WHERE t.session_id=e.session_id)"""
+        from .withdrawal_gate import predicate
+
+        clause += " AND " + predicate(self.conn, "session", "e.session_id")
+        clause += " AND " + predicate(self.conn, "evidence", "e.id")
         values: list[Any] = [access.scope.value]
         if access.projects is not None:
             projects = "0"
@@ -397,6 +411,8 @@ class ContextStore:
     def assertion(self, assertion_id: str, access: Access) -> dict[str, Any] | None:
         # Authorize all supporting sources in SQL before fetching the statement or
         # quotes. This also invalidates access after any project is reclassified.
+        from .withdrawal_gate import predicate
+
         scope, values = self._where(access)
         rows = self._rows(
             """SELECT a.* FROM context_assertions a WHERE a.id=?
@@ -408,7 +424,8 @@ class ContextStore:
               LEFT JOIN context_projects p ON p.id=sp.project_id
               WHERE c.assertion_id=a.id AND (e.id IS NULL OR COALESCE(("""
             + scope
-            + "),0)=0))",
+            + "),0)=0)) AND "
+            + predicate(self.conn, "assertion", "a.id"),
             (assertion_id, *values),
         )
         if not rows:
@@ -461,11 +478,14 @@ class ContextStore:
         return identity
 
     def relations(self, assertion_id: str, access: Access) -> list[dict[str, Any]]:
+        from .withdrawal_gate import predicate
+
         if self.assertion(assertion_id, access) is None:
             return []
         rows = self._rows(
-            """SELECT * FROM context_relations
-            WHERE from_assertion=? OR to_assertion=? ORDER BY created_at,id""",
+            "SELECT r.* FROM context_relations r WHERE (from_assertion=? OR to_assertion=?) AND "
+            + predicate(self.conn, "relation", "r.id")
+            + " ORDER BY created_at,id",
             (assertion_id, assertion_id),
         )
         return [

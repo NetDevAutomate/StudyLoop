@@ -25,6 +25,7 @@ class ReviewStore:
 
     def target(self, kind: str, identity: str, *, as_of: str | None = None):
         from .public import text
+        from .withdrawal_gate import predicate
 
         text(identity, "target_id", 128)
         if kind == "assertion":
@@ -46,7 +47,9 @@ class ReviewStore:
         if kind != "relation":
             raise ValueError("Review target_kind must be assertion or relation")
         row = self.conn.execute(
-            "SELECT * FROM context_relations WHERE id=?", (identity,)
+            "SELECT r.* FROM context_relations r WHERE id=? AND "
+            + predicate(self.conn, "relation", "r.id"),
+            (identity,),
         ).fetchone()
         if row is None:
             return None

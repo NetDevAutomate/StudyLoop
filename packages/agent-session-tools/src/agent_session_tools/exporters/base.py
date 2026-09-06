@@ -15,6 +15,7 @@ class ExportStats:
     empty: int = 0  # no supported conversation or native records
     errors: int = 0
     forgotten: int = 0  # explicitly retired sessions, never reimported
+    withdrawn: int = 0  # permission withheld; only a fresh eligible regrant releases it
 
     def __iadd__(self, other: "ExportStats") -> "ExportStats":
         self.added += other.added
@@ -23,6 +24,7 @@ class ExportStats:
         self.empty += other.empty
         self.errors += other.errors
         self.forgotten += other.forgotten
+        self.withdrawn += other.withdrawn
         return self
 
 
@@ -73,9 +75,22 @@ def commit_batch(
             }
             sessions = [s for s in sessions if s["id"] not in forgotten]
             messages = [m for m in messages if m["session_id"] not in forgotten]
+        withdrawn = set()
+        if available(conn, "context_replica_denials"):
+            withdrawn = {
+                s["id"]
+                for s in sessions
+                if conn.execute(
+                    "SELECT 1 FROM context_replica_denials WHERE kind='session' AND object_id=? AND status!='released'",
+                    (s["id"],),
+                ).fetchone()
+            }
+            sessions = [s for s in sessions if s["id"] not in withdrawn]
+            messages = [m for m in messages if m["session_id"] not in withdrawn]
         if not sessions:
             conn.commit()
             stats.forgotten += len(forgotten)
+            stats.withdrawn += len(withdrawn)
             return
         session_columns = {
             row[1] for row in conn.execute("PRAGMA table_info(sessions)").fetchall()
@@ -184,6 +199,7 @@ def commit_batch(
         capture_batch(conn, sessions, messages)
         conn.commit()
         stats.forgotten += len(forgotten)
+        stats.withdrawn += len(withdrawn)
         # Publish counts only after persistence succeeds.
         # Update stats from session status flags
         for s in sessions:

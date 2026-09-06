@@ -1,0 +1,63 @@
+{
+  "stage": 36,
+  "scope": "bounded canonical withdrawal/regrant; full production goal active",
+  "implementation_checkpoint": "pending",
+  "sqlite_runtime": "3.53.1",
+  "installed_checks": {
+    "actual_native_import": true,
+    "initial_delivery_commits": true,
+    "first_withdrawal_generation": true,
+    "exclusive_peer_copy_erased": true,
+    "withdrawal_is_not_permanent_forget": true,
+    "native_archive_does_not_regrant": true,
+    "historical_receipt_does_not_reinsert": true,
+    "regrant_control_does_not_expose": true,
+    "fresh_offer_binds_generation": true,
+    "fresh_delivery_restores": true,
+    "ambiguous_local_body_retained": true,
+    "ambiguous_cleanup_explicitly_incomplete": true,
+    "quarantine_hidden_from_context": true,
+    "fresh_offer_cannot_expose_unoffered_body": true,
+    "failed_regrant_preserves_local_extra": true,
+    "permanent_forget_still_works": true,
+    "forgotten_archive_stays_forgotten": true,
+    "full_sync_never_claimed": true
+  },
+  "timing": {
+    "one_local_withdrawal_ms": 25.363,
+    "limit": "One fictional canonical database run; includes compaction, excludes SSH, full store, scale and engine comparison."
+  },
+  "verification": {
+    "combined_memory_experiments": "1790 passed, 1 optional skip, 124.56s on final implementation; three later directed tests included in the 72-case focused run",
+    "final_focused": "72 ledger and lesson cases passed in 11.44s, including three post-council directed cases",
+    "studyloop": "3823 passed, 4 skipped, 704 deselected, 176.58s; 11 existing dependency/fork warnings",
+    "browser": "Six sections and six disclosures opened; viewport fit; screenshot inspected; own tab/server closed; incidental favicon404",
+    "standalone": "Fresh memory-only wheel installed in new environment; StudyLoop absent; 18 checks pass",
+    "types": "Full workspace source and tests: zero errors, warnings or informations",
+    "commit_hooks": "pending"
+  },
+  "failures_reproduced_and_fixed": [
+    "Whole-transaction SQLite abort masked by cleanup of missing tables/savepoints and a new mode-reset transaction",
+    "Public forgetting incorrectly treated quarantined sources as inaccessible even within the configured scope"
+  ],
+  "council": {
+    "design": [
+      "meta",
+      "qwen",
+      "mistral"
+    ],
+    "results": [
+      "meta",
+      "qwen",
+      "mistral"
+    ],
+    "unanimous_approval": false,
+    "arbitration": "COUNCIL-DECISION.md"
+  },
+  "limits": [
+    "Ordered local protocol only. Ambiguous retention remains quarantined without an operator reconciliation/adoption path. No full-store, managed restore, authenticated SSH coordinator or complete production sync claim.",
+    "No owner database, native archive, config, hooks or real peer modified.",
+    "Fixed canonical table coverage; no arbitrary future schema or universal workload guarantee.",
+    "No new semantic answer-quality or database-engine ranking."
+  ]
+}

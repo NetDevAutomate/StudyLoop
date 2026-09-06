@@ -22,6 +22,8 @@ def collect(
     extra_ids=None,
     extra_reason="requested_check_metadata",
 ) -> EvidencePool:
+    from .withdrawal_gate import predicate
+
     terms = list(
         dict.fromkeys(term[:80] for term in re.findall(r"\w+", query, re.UNICODE))
     )[:16]
@@ -92,6 +94,8 @@ def collect(
         return (
             "EXISTS (SELECT 1 FROM context_assertions a WHERE a.id="
             + identity_column
+            + " AND "
+            + predicate(context.conn, "assertion", "a.id")
             + " AND a.created_at<=? AND EXISTS "
             "(SELECT 1 FROM context_citations c WHERE c.assertion_id=a.id) AND NOT EXISTS ("
             "SELECT 1 FROM context_citations c LEFT JOIN context_evidence e ON e.id=c.evidence_id "
@@ -137,9 +141,13 @@ def collect(
             + left
             + " AND "
             + right
+            + " AND "
+            + predicate(context.conn, "relation", "r.id")
             + " AND r.id=(SELECT min(r2.id) FROM context_relations r2 "
             "WHERE r2.from_assertion=r.from_assertion AND r2.to_assertion=r.to_assertion "
-            "AND r2.relation=r.relation AND r2.created_at<=?)"
+            "AND r2.relation=r.relation AND r2.created_at<=? AND "
+            + predicate(context.conn, "relation", "r2.id")
+            + ")"
             + " ORDER BY CASE r.relation WHEN 'supports' THEN 1 ELSE 0 END, min("
             + rank.format("r.from_assertion")
             + ","
