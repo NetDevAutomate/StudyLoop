@@ -144,6 +144,24 @@ access boundary, not one historical snapshot of all facts or recall after valid
 delivery. Managed restore must preserve/advance local generation semantics; the
 counter is not shared conversation content. Compaction retains its new local identity.
 
+Stage29 uses existing immutable observations for explicit concept/dependency reports.
+A correction supersedes only the same adapter, subject and owner; independent
+contributions are retained. Bridge edges are projected directly from visible owned
+application rows, retaining mapping, reported quality and snapshot binding. No second
+materialized graph or new schema is introduced. Old global data stays under strict
+unclassified compatibility and cannot revive a modern retired subject.
+
+Only `prerequisite` has a scheduling direction contract: source is the reported
+prerequisite of target. Analogies and ambiguous labels remain descriptive context.
+The graph legend describes reported categories and does not prove learning. The new
+MCP context view caps the result object at 32 KiB and reports partial coverage while
+retaining complete contributions. This is not semantic arbitration or a query-work
+bound. The installed scale diagnostic grows to 110.561 ms at 5,000 visible short
+bridges plus 5,000 excluded; selective retrieval remains the next performance issue.
+Modern file/global-edge imports do not silently assign the active scope: classified
+config imports fail before source reads, and modern markdown seeding awaits file
+ownership. The remaining source-file, annotation, sync and lifecycle audit still applies.
+
 Durable content-free deletion metadata takes precedence over capture, corrections,
 sync, FTS/vector rebuild and managed restore. Reimport of original archives must be
 suppressed. Managed derived copies are purged. Original external transcripts and

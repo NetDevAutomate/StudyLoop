@@ -35,6 +35,7 @@ no remote publication or backup is implied.
 | 26 — Learning record ownership | Can StudyLoop retain useful permitted assessments without leaking excluded or reclassified history? | `2d7118b` | `learning_ownership/runner.py`; GUIDE.md, installed lesson, migration rehearsal, benchmark and council audit |
 | 27 — Derived learner paths | Do notes, parked questions and practice reports retain every required owner through reclassification and deletion? | `777c8b4` | `learner_paths/runner.py`; GUIDE.md, installed HTTP/MCP lesson, migration rehearsal and council arbitration |
 | 28 — Consistent response access | Can a composed response detect scope changes and revocation before releasing context? | `fcecf6c8` | `response_boundary/runner.py`; GUIDE.md, installed HTTP/MCP lesson, migration rehearsal, overhead measurement and council arbitration |
+| 29 — Grounded learner relationships | Can a graph retain source ownership and honest decision roles through corrections, forgetting and response budgets? | `8bfce3d3` | `concept_context/runner.py`; GUIDE.md, installed HTTP/MCP lesson, scale diagnostic and council arbitration |
 
 Stage 3 uses its own lifecycle adapter and database schema. It does not modify the
 stage 1 evidence store, and does not require stage 1 demo output. Stage 2 uses
@@ -717,3 +718,32 @@ HTTP withholding, cancellation, sixteen threaded requests and the runnable lesso
 Workspace hooks passed. Both councils returned three providers. Live-stream/session
 files, remaining learner storage, full sync/lifecycle and installed setup remain
 required; see [response_boundary/GUIDE.md](response_boundary/GUIDE.md).
+
+## Stage 29 commands
+
+```sh
+uv run python -m experiments.evidence_context.concept_context.runner --output /tmp/evidence-stage-29
+open /tmp/evidence-stage-29/walkthrough.html
+uv run pytest packages/studyloop/tests/test_graph_context_scope.py experiments/evidence_context/tests/test_concept_context_lesson.py --import-mode=importlib -q
+```
+
+Checkpoint `8bfce3d3` preserves owned concept/dependency reports and live bridge
+projections without a schema change. The new bounded MCP `get_concept_context`
+returns provenance and explicit coverage/validation limits. Same-label contributions
+remain distinct; corrections and deletion follow current source records. Only the
+explicit directional `prerequisite` report enters prerequisite recommendations.
+The graph legend describes reported learning categories rather than claiming proof.
+
+Fresh installed wheels pass ten actual HTTP/MCP checks. Full StudyLoop passed
+3,816 tests, four skips and 704 deselections before final direction/legend refinements;
+168 final focused tests and workspace hooks passed. Memory/experiment tests passed
+1,584 with one optional skip. Five installed sequential runs at 100, 1,000 and 5,000
+visible plus equally many excluded bridges measured median 17.647, 34.158 and
+110.561 ms. Responses remain below 32 KiB, but query work grows with visible data.
+This does not establish semantic answer quality or an engine advantage.
+
+The council result review was split; [concept_context/COUNCIL-DECISION.md](concept_context/COUNCIL-DECISION.md)
+records accepted criticisms and rejected overclaims. File/config source ownership,
+native annotations, live streams, scoped sync/restore and shared installed setup
+remain production requirements. [concept_context/GUIDE.md](concept_context/GUIDE.md)
+explains why the old unowned imports cannot silently become personal/work context.

@@ -115,3 +115,26 @@ relations, dependencies, plans and session files still require storage/call-path
 integration. Static inspection at this checkpoint reconfirms global concept reads
 in `history/concepts.py` and concept joins in `learning/mastery.py`; these are the
 next concrete learner-state entry points, not evidence of completed scope coverage.
+
+## Stage29 refresh
+
+`history/graph.py` is the current owned contribution adapter. `record_concept` and
+modern dependency upserts persist immutable reports through the memory package;
+`list_concepts` and dependency queries apply scope before payloads. Bridge conversion
+in modern schemas exposes live owned contributions instead of copying to global
+concept/relation tables. Contribution IDs, mappings, domains and hashes remain visible.
+Legacy concept/dependency rows are withheld outside the existing unclassified boundary.
+
+`learning/mastery.py` preserves report provenance in graph/weak-link results;
+`learning/decision.py` carries IDs/bindings/validation status into recommendation
+metadata. Only explicitly directional prerequisite reports enter that path. The MCP
+`get_concept_context` registration calls the bounded shared helper under the response
+guard; installed HTTP and MCP stdio checks pass. Graph display labels are grouping,
+not entity-resolution identities or independently validated learning categories.
+
+Config/markdown source ownership remains incomplete and cannot be bypassed by modern
+seeding. Old aliases/message links are preserved, not declared publicly shared or
+fully audited across external consumers. Read output is bounded but projection work
+is not; the 100/1,000/5,000-row diagnostic quantifies that remaining requirement.
+Native annotations/tags/learning metadata, plans, session/IPC/stream files, all managed
+sync/restore/reimport paths and installer/skills/startup still require completion.
