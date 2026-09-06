@@ -1,7 +1,7 @@
 {
   "stage": 39,
   "scope": "complete scoped staged SSH transfer; full production goal active",
-  "implementation_checkpoint": "pending commit pin",
+  "implementation_checkpoint": "b57175b5",
   "installed_checks": {
     "actual_cli_ssh_transfer": true,
     "excluded_work_never_transferred": true,
@@ -61,9 +61,9 @@
     "studyloop": "3823 passed, 4 skipped, 704 deselected, 181.69s; earlier in this stage before protocol/preview/final pre-write changes; 11 existing dependency/fork warnings. Final shared-runtime coverage is the combined run above.",
     "standalone": "Final rebuilt memory-only wheel installed into isolated Python3.13 environment with StudyLoop absent; 15 actual installed CLI/loopback SSH lifecycle checks pass, including large history, withdrawal, fresh regrant and reverse forgetting.",
     "browser": "Final installed lesson: five sections and five disclosures opened; viewport fits; screenshot inspected; own tab and server closed.",
-    "pyright": "Final workspace source and tests: 0 errors, 0 warnings before lesson-only formatting.",
+    "pyright": "Final source and tests passed in b57175b5 commit hooks",
     "lint": "Final replication, changed tests and Stage39 lesson lint and formatting pass.",
-    "commit_hooks": "pending commit"
+    "commit_hooks": "b57175b5: lint/format/secrets/Bandit/author/full workspace source and test types passed"
   },
   "failures_observed": [
     "Original 32MiB snapshot refuses 3072 fictional messages; private staging completes the same fixture.",

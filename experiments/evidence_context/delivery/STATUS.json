@@ -1,7 +1,7 @@
 {
   "goal": "active",
-  "previous_goal_turn": "progress: Stage39 final runtime1866passed1skip125.38s;15finalwheelactualSSHchecks;Stage38commit0f913ede; full goal active",
-  "current_stage": "39 verified; complete scoped staging and protocol v2; implementation commit pending",
+  "previous_goal_turn": "progress: Stage39 committed b57175b5;1866combinedpassed1skip125.38s;15finalinstalledSSHchecks;full commit hooks passed;full goal active",
+  "current_stage": "39 complete as bounded scalable transfer checkpoint b57175b5; next full-store/restore and remaining production gates",
   "requirements": {
     "P01": "partial: transactional migrations through v46; v45-to46 failure rollback/retry and final wheel compaction preserve data/new instance; managed restore remains",
     "P02": "partial: actual four-harness exporters integrated and eight local real archives imported; Codex Desktop 0.153.0 observed; all native formats, other desktop coverage and installed end-to-end capture remain",
@@ -17,7 +17,7 @@
     "P12": "not yet proven",
     "P13": "partial: fresh installed graph HTTP/MCP10checks plus prior response/learner checks; full lifespan, live-session files/stream, installer and agent startup remain",
     "P14": "stages1-39 independently runnable; Stage39 five-view guide explains scale, source-binding preservation, withdrawal bottleneck and final commit race; exercises unchanged",
-    "P15": "partial:1866finalcombinedpassed1skip125.38s;15finalinstalledSSHchecks;workspacepyright/lint pass; full release audit remains"
+    "P15": "partial:1866combinedpassed1skip125.38s;15finalinstalledSSHchecks;b57175b5fullhooks pass;full release audit remains"
   },
   "completed_checkpoints": {
     "stage16": "6c736c5",
@@ -42,7 +42,8 @@
     "stage35": "50de2d7f",
     "stage36": "28fe15d0",
     "stage37": "801a33e0",
-    "stage38": "e48318ac"
+    "stage38": "e48318ac",
+    "stage39": "b57175b5"
   },
   "current_findings": [
     "SQLite remains canonical; earlier equal-information storage comparison did not establish answer-quality superiority for another engine.",
@@ -95,8 +96,8 @@
   "verification": {
     "package_tests": "1866 passed, 1 optional skip, 125.38s; final protocol v2, withdrawal binding and both final pre-write guards. Later lesson-only literal wrapping/import sorting does not change runtime.",
     "experiment_tests": "Stage39 five-view actual final installed CLI/SSH lesson:15checks",
-    "workspace_pyright": "Final workspace source and tests: 0 errors, 0 warnings before lesson-only formatting.",
-    "commit_hooks": "Stage39 pending; Stage38 hooks passed",
+    "workspace_pyright": "Final source and tests passed in b57175b5 commit hooks",
+    "commit_hooks": "b57175b5: lint/format/secrets/Bandit/author/full workspace source and test types passed",
     "browser": "Final installed lesson: five sections and five disclosures opened; viewport fits; screenshot inspected; own tab and server closed.",
     "studyloop_tests": "3823 passed, 4 skipped, 704 deselected, 181.69s; earlier in this stage before protocol/preview/final pre-write changes; 11 existing dependency/fork warnings. Final shared-runtime coverage is the combined run above.",
     "focused_consumer_tests": "93 coordinator, tiering and context-store tests passed in 19.87s after counter and archival fixes",
