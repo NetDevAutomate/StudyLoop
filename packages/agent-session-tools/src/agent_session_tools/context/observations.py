@@ -28,6 +28,22 @@ class ObservationStore:
                 "Observation schema missing; migrate this database first"
             )
 
+    def _session_owners_available(self) -> bool:
+        return bool(
+            self.conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE name='context_observation_session_owners'"
+            ).fetchone()
+        )
+
+    def _session_owner(self, identity: str) -> str | None:
+        if not self._session_owners_available():
+            return None
+        row = self.conn.execute(
+            "SELECT session_id FROM context_observation_session_owners WHERE observation_id=?",
+            (identity,),
+        ).fetchone()
+        return row[0] if row else None
+
     def _visible(self, policy: ScopePolicy, scope: Scope) -> tuple[str, list[Any]]:
         source_clause, source_values = visibility_sql(
             self.conn, "e.session_id", policy=policy, scope=scope
@@ -40,6 +56,17 @@ class ObservationStore:
                 "p.scope=? AND p.id IN (" + ",".join("?" for _ in project_ids) + ")"
             )
             project_values = [scope.value, *project_ids]
+        session_clause = "0"
+        session_values: list[Any] = []
+        if self._session_owners_available():
+            native, session_values = visibility_sql(
+                self.conn, "native_owner.session_id", policy=policy, scope=scope
+            )
+            session_clause = (
+                "EXISTS (SELECT 1 FROM context_observation_session_owners native_owner "
+                "JOIN sessions native ON native.id=native_owner.session_id "
+                "WHERE native_owner.observation_id=o.id AND " + native + ")"
+            )
         clause = f"""NOT EXISTS (SELECT 1 FROM context_observation_tombstones t
           WHERE t.observation_id=o.id) AND (
           (EXISTS (SELECT 1 FROM context_observation_sources r WHERE r.observation_id=o.id)
@@ -50,6 +77,7 @@ class ObservationStore:
             AND EXISTS (SELECT 1 FROM context_observation_owners ow
               LEFT JOIN context_projects p ON p.id=ow.project_id
               WHERE ow.observation_id=o.id AND (ow.fixed_scope=? OR ({project_clause}))))
+          OR {session_clause}
         )"""
         from .records import observation_clause
 
@@ -58,6 +86,7 @@ class ObservationStore:
             *source_values,
             scope.value,
             *project_values,
+            *session_values,
             *records_values,
         ]
 
@@ -141,21 +170,30 @@ class ObservationStore:
                     (row["id"],),
                 )
             ]
+        session_owner = self._session_owner(row["id"])
         return {
             **row,
             "payload": json.loads(row["payload"]),
             "sources": sources,
-            "source_relationship": "captured_input" if refs else "none",
+            "source_relationship": "about_session"
+            if session_owner
+            else "captured_input"
+            if refs
+            else "none",
             "supersedes": visible_previous,
             "history_incomplete": len(visible_previous) != len(previous),
-            "owner": {"project_id": owner[0], "fixed_scope": owner[1]}
+            "owner": {"session_id": session_owner}
+            if session_owner
+            else {"project_id": owner[0], "fixed_scope": owner[1]}
             if owner
             else None,
             "scope": scope.value,
             "semantic_status": "unverified_interpretation"
             if row["authority"] == "model_interpretation"
             else "reported_assessment",
-            "why_available": "all contributing sources are visible"
+            "why_available": "owning session is visible"
+            if session_owner
+            else "all contributing sources are visible"
             if refs
             else "explicit owner scope",
             **(
@@ -211,6 +249,7 @@ class ObservationStore:
         supersedes: Sequence[str] = (),
         request_key: str | None = None,
         owner_path: Path | None = None,
+        owner_session_id: str | None = None,
     ) -> str:
         """Trusted adapter operation; scope is never supplied by model payload.
 
@@ -237,7 +276,37 @@ class ObservationStore:
         )
         if len(encoded.encode()) > 256_000:
             raise ValueError("Observation payload exceeds 256000 bytes")
+        if kind in (
+            "session.annotation.note",
+            "session.annotation.tags",
+            "session.annotation.learning",
+        ):
+            if owner_session_id != subject or authority != "reported":
+                raise ValueError(
+                    "Session annotations require their named session owner and reported authority"
+                )
+            if kind.endswith(".note") and (
+                not isinstance(payload.get("notes"), str)
+                or set(payload) - {"notes", "legacy_updated_at"}
+            ):
+                raise ValueError("Session note requires notes text")
+            if kind.endswith(".tags") and (
+                set(payload) != {"tags"}
+                or not isinstance(payload["tags"], list)
+                or any(not isinstance(t, str) or not t for t in payload["tags"])
+            ):
+                raise ValueError("Session tags require a list of nonempty text tags")
         refs, previous = sorted(set(evidence_ids)), sorted(set(supersedes))
+        if owner_session_id is not None:
+            _text(owner_session_id, "owner_session_id")
+            if refs or owner_path:
+                raise ValueError(
+                    "Session ownership cannot also claim captured inputs or a path owner"
+                )
+            if not self._session_owners_available():
+                raise RuntimeError(
+                    "Session observation ownership needs database migration"
+                )
         if authority == "model_interpretation" and not refs:
             raise ValueError(
                 "Model interpretations require captured source dependencies"
@@ -248,6 +317,15 @@ class ObservationStore:
             visible, values = visibility_sql(
                 self.conn, "e.session_id", policy=policy, scope=scope
             )
+            if owner_session_id is not None:
+                owner_visible, owner_values = visibility_sql(
+                    self.conn, "s.id", policy=policy, scope=scope
+                )
+                if not self.conn.execute(
+                    "SELECT 1 FROM sessions s WHERE s.id=? AND " + owner_visible,
+                    [owner_session_id, *owner_values],
+                ).fetchone():
+                    raise ScopeError("Annotation session unavailable in current scope")
             for identity in refs:
                 if not self.conn.execute(
                     "SELECT 1 FROM context_evidence e WHERE e.id=? AND " + visible,
@@ -263,6 +341,13 @@ class ObservationStore:
                     prior is None
                     or prior["kind"] != kind
                     or prior["subject"] != subject
+                    or (
+                        (
+                            owner_session_id is not None
+                            or (prior["owner"] or {}).get("session_id") is not None
+                        )
+                        and (prior["owner"] or {}).get("session_id") != owner_session_id
+                    )
                 ):
                     raise ScopeError(
                         "Revision target unavailable or belongs to another subject"
@@ -279,6 +364,8 @@ class ObservationStore:
                 if refs
                 else [project.id if project else None, None if project else scope.value]
             )
+            if owner_session_id is not None:
+                owner = ["session", owner_session_id]
             stable = {
                 "kind": kind,
                 "subject": subject,
@@ -340,7 +427,12 @@ class ObservationStore:
                 "INSERT INTO context_observation_supersedes VALUES (?,?)",
                 [(identity, prior) for prior in previous],
             )
-            if owner is not None:
+            if owner_session_id is not None:
+                self.conn.execute(
+                    "INSERT INTO context_observation_session_owners VALUES (?,?)",
+                    (identity, owner_session_id),
+                )
+            elif owner is not None:
                 self.conn.execute(
                     "INSERT INTO context_observation_owners VALUES (?,?,?)",
                     [identity, *owner],
@@ -374,6 +466,10 @@ class ObservationStore:
             if self._refs(identity)[0]:
                 raise ValueError(
                     "Source-linked ownership must follow the source assignment"
+                )
+            if self._session_owner(identity):
+                raise ValueError(
+                    "Session-owned observations follow their session assignment"
                 )
             policy = active_policy()
             if project_id is not None and project_id not in {

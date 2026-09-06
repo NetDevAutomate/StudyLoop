@@ -138,6 +138,20 @@ def _create_server() -> FastMCP:
             )
 
     @mcp.tool(annotations={"readOnlyHint": True, "idempotentHint": True})
+    def session_annotations(
+        session_id: str, kind: str = "note", max_bytes: int = 32768
+    ) -> dict[str, Any]:
+        """Read bounded annotation reports and correction history about a session.
+
+        About-session ownership is not captured transcript input or validation.
+        Concurrent current versions stay explicit; partial coverage is disclosed.
+        """
+        from agent_session_tools.context.annotations import view
+
+        with open_context(_get_db_path()) as context:
+            return view(context.conn, session_id, kind=kind, max_bytes=max_bytes)
+
+    @mcp.tool(annotations={"readOnlyHint": True, "idempotentHint": True})
     def memory_decide(
         query: str,
         requirements: list[dict[str, Any]],

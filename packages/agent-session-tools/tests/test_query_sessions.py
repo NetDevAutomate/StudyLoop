@@ -205,10 +205,11 @@ class TestSessionWriteResolution:
         )
 
         assert result.exit_code == 0
-        tags = conn.execute("SELECT session_id, tag FROM session_tags").fetchall()
-        assert [(row[0], row[1]) for row in tags] == [
-            ("study-python-aaaa1111", "focus")
-        ]
+        from agent_session_tools.context.annotations import snapshot, values
+
+        state = snapshot(conn, "study-python-aaaa1111", "tags")
+        assert values(state) == [{"tags": ["focus"]}]
+        assert state.current[0]["owner"] == {"session_id": "study-python-aaaa1111"}
 
     def test_tag_rejects_ambiguous_prefix(self, migrated_db):
         conn, db_path = migrated_db
@@ -264,11 +265,11 @@ class TestSessionWriteResolution:
         )
 
         assert result.exit_code == 0
-        note = conn.execute("SELECT session_id, notes FROM session_notes").fetchone()
-        assert (note["session_id"], note["notes"]) == (
-            "study-rust-cccc3333",
-            "remember this",
-        )
+        from agent_session_tools.context.annotations import snapshot, values
+
+        state = snapshot(conn, "study-rust-cccc3333")
+        assert values(state) == [{"notes": "remember this"}]
+        assert state.current[0]["owner"] == {"session_id": "study-rust-cccc3333"}
 
     def test_note_rejects_missing_session(self, migrated_db):
         _, db_path = migrated_db

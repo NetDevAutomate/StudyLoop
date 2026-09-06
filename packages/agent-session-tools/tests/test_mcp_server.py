@@ -275,6 +275,7 @@ class TestServerCreation:
             "session_stats",
             "session_clean",
             "session_hotspots",
+            "session_annotations",
         }
         assert tool_names == expected
 

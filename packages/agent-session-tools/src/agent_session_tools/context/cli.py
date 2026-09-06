@@ -30,6 +30,21 @@ ActorOption = Annotated[
 ]
 
 
+@app.command("annotations")
+def annotation_history(
+    session_id: str,
+    db: DatabaseOption = None,
+    kind: str = "note",
+    max_bytes: int = 32768,
+) -> None:
+    """Inspect reported annotations, corrections and conflicting current versions."""
+    from .annotations import view
+
+    with open_context(db) as context:
+        result = view(context.conn, session_id, kind=kind, max_bytes=max_bytes)
+    typer.echo(_json(result))
+
+
 @app.command("health")
 def health(db: DatabaseOption = None) -> None:
     """Read body-free operator capture diagnostics without migrating the database."""

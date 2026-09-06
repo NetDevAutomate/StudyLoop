@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Current schema version - increment when adding new migrations
-CURRENT_VERSION = 38
+CURRENT_VERSION = 39
 
 # Migration functions: version -> (description, migration_func)
 MIGRATIONS: dict[int, tuple[str, Callable[[sqlite3.Connection], None]]] = {}
@@ -1436,6 +1436,13 @@ def migrate_v37(conn: sqlite3.Connection) -> None:
 @migration(38, "Track access generations for consistent read responses")
 def migrate_v38(conn: sqlite3.Connection) -> None:
     from .context.response_schema import install
+
+    install(conn)
+
+
+@migration(39, "Own session annotations without invented source inputs")
+def migrate_v39(conn: sqlite3.Connection) -> None:
+    from .context.session_owner_schema import install
 
     install(conn)
 

@@ -1,0 +1,106 @@
+{
+  "stage": 30,
+  "schema": 39,
+  "installed_checks": {
+    "legacy_remains_unattributed": true,
+    "actual_cli_retains_correction_history": true,
+    "ownership_is_not_evidence": true,
+    "actual_mcp_keeps_conflicting_reports": true,
+    "actual_mcp_excludes_work": true,
+    "explicit_correction_names_both_predecessors": true,
+    "forget_does_not_revive_prior_advice": true,
+    "forgotten_legacy_shadow_replay_refused": true,
+    "physical_merge_refuses_classified_sources": true,
+    "foreign_keys_intact": true
+  },
+  "installed_benchmark": {
+    "measurements": [
+      {
+        "versions": 10,
+        "append_batch_ms": 21.618,
+        "median_read_ms": 9.342,
+        "max_read_ms": 9.609,
+        "returned_versions": 10,
+        "current_count": 1,
+        "coverage": "complete",
+        "response_bytes": 4545
+      },
+      {
+        "versions": 100,
+        "append_batch_ms": 209.536,
+        "median_read_ms": 66.119,
+        "max_read_ms": 67.707,
+        "returned_versions": 75,
+        "current_count": 1,
+        "coverage": "partial",
+        "response_bytes": 32690
+      },
+      {
+        "versions": 1000,
+        "append_batch_ms": 2154.911,
+        "median_read_ms": 656.72,
+        "max_read_ms": 663.799,
+        "returned_versions": 75,
+        "current_count": 1,
+        "coverage": "partial",
+        "response_bytes": 32692
+      }
+    ],
+    "limits": "Five warm direct helper reads; short reports, one batch commit, no transport/startup or cold-disk timing. Work scans history even when output is bounded."
+  },
+  "installed_upgrade": {
+    "from_version": 38,
+    "to_version": 39,
+    "old_tables_unchanged": 57,
+    "old_table_rows": 53,
+    "foreign_key_check": [],
+    "integrity_check": "ok",
+    "source_opened_read_only": true,
+    "limits": "Additive upgrade on a consistent disposable copy. Not full managed backup restoration with deletion reconciliation."
+  },
+  "tests": {
+    "memory_and_experiments": {
+      "passed": 1617,
+      "skipped": 1,
+      "seconds": 79.77,
+      "scope": "before four final dedup/history-disclosure tests and the history_incomplete result field"
+    },
+    "studyloop": {
+      "passed": 3823,
+      "skipped": 4,
+      "deselected": 704,
+      "seconds": 202.03,
+      "scope": "before friendly SQLite exception handling and history_incomplete annotation result field; no StudyLoop source edits in this increment"
+    },
+    "workspace_pyright": "0 errors, 0 warnings",
+    "final_focused": {
+      "passed": 173,
+      "seconds": 11.75
+    }
+  },
+  "browser": {
+    "sections": 5,
+    "opened_disclosures": 5,
+    "viewport_fits": true,
+    "console_errors": 0,
+    "own_tab_and_server_closed": true,
+    "scope": "same five-view renderer verified before final history_incomplete field; final installed data regenerated"
+  },
+  "council": {
+    "rounds": 2,
+    "providers": [
+      "meta",
+      "qwen",
+      "mistral"
+    ],
+    "review": "all favour retaining increment plus bounded retrieval; production approval and unsupported failure claims rejected by coordinator"
+  },
+  "limits": [
+    "No semantic answer-quality trial or engine comparison",
+    "Byte budget bounds output, not history scan work",
+    "Scoped sync/managed forgetting/restore/index lifecycle and file/config/live ownership remain open",
+    "Shared installer/doctor/skills and full installed startup/release acceptance remain open"
+  ],
+  "private_artifacts": "studyloop-private/reviews/2026-09-06-stage30-session-annotations",
+  "wheel_checksums": "Preserved in the private artifact directory as wheel-checksums.json; generated binary digests are not credentials."
+}

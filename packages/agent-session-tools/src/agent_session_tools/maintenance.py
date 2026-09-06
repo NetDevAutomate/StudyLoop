@@ -588,8 +588,11 @@ def _handle_duplicates(
         print(f"❌ Database not found: {db_path}")
         return 1
 
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
+    from .context.records import connect
+    from .context.scope import ScopeError
+    from .deduplication import ProtectedMergeError
+
+    conn = connect(db_path)
 
     try:
         if merge_ids:
@@ -615,7 +618,11 @@ def _handle_duplicates(
                     f"   {stats['messages_moved']} messages moved, "
                     f"{stats['sessions_removed']} sessions removed"
                 )
-            else:
+            if stats.get("groups_protected", 0):
+                print(
+                    f"Retained {stats['groups_protected']} protected groups; source identities cannot be merged"
+                )
+            elif not stats["groups_merged"]:
                 print("✅ No high-similarity duplicates found")
 
         else:
@@ -623,6 +630,9 @@ def _handle_duplicates(
             print(f"🔍 Scanning for duplicates (threshold: {threshold:.1%})...")
             list_all_duplicates(conn, threshold)
 
+    except (ScopeError, ProtectedMergeError, ValueError) as exc:
+        print(f"Duplicate operation refused: {exc}")
+        return 1
     finally:
         conn.close()
 

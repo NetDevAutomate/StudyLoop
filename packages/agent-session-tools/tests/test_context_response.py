@@ -237,7 +237,9 @@ def test_access_generation_migration_rolls_back_and_retries(tmp_path, monkeypatc
         "OR name='context_access_state'"
     ).fetchall()
     migrations.migrate(conn)
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 38
+    assert (
+        conn.execute("PRAGMA user_version").fetchone()[0] == migrations.CURRENT_VERSION
+    )
     assert conn.execute("SELECT revision FROM context_access_state").fetchone()[0] == 0
     assert conn.execute("PRAGMA foreign_key_check").fetchall() == []
     conn.close()

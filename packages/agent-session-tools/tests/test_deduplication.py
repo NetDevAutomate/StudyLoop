@@ -637,8 +637,8 @@ class TestMergeDuplicates:
 
 
 class TestListAllDuplicates:
-    def test_no_duplicates_prints_none_found(self, capsys):
-        conn = _make_db()
+    def test_no_duplicates_prints_none_found(self, capsys, migrated_db):
+        conn, _ = migrated_db
         _insert_session(conn, "s1", content_hash="unique_hash")
 
         list_all_duplicates(conn)
@@ -646,8 +646,8 @@ class TestListAllDuplicates:
         out = capsys.readouterr().out
         assert "No duplicates found" in out
 
-    def test_with_duplicates_prints_group_count(self, capsys):
-        conn = _make_db()
+    def test_with_duplicates_prints_group_count(self, capsys, migrated_db):
+        conn, _ = migrated_db
         _insert_session(conn, "s1", content_hash="same")
         _insert_session(conn, "s2", content_hash="same")
 
@@ -656,8 +656,8 @@ class TestListAllDuplicates:
         out = capsys.readouterr().out
         assert "1 duplicate group" in out
 
-    def test_with_duplicates_prints_primary_id(self, capsys):
-        conn = _make_db()
+    def test_with_duplicates_prints_primary_id(self, capsys, migrated_db):
+        conn, _ = migrated_db
         _insert_session(conn, "s1", content_hash="same")
         _insert_session(conn, "s2", content_hash="same")
 
@@ -725,6 +725,7 @@ class TestAutoMergeSafeDuplicates:
         stats = auto_merge_safe_duplicates(conn)
         assert set(stats.keys()) == {
             "groups_merged",
+            "groups_protected",
             "messages_moved",
             "sessions_removed",
         }
@@ -741,3 +742,140 @@ class TestAutoMergeSafeDuplicates:
 
         assert stats["groups_merged"] == 2
         assert stats["sessions_removed"] == 2
+
+
+@pytest.mark.parametrize("bound", ["annotation", "project"])
+def test_unclassified_owned_sessions_cannot_be_physically_merged(migrated_db, bound):
+    from agent_session_tools.context.observations import ObservationStore
+    from agent_session_tools.deduplication import ProtectedMergeError
+
+    conn, _ = migrated_db
+    _insert_session(conn, "a")
+    _insert_session(conn, "b")
+    _insert_message(conn, "m", "b", content="must stay at source")
+    if bound == "annotation":
+        ObservationStore(conn).append(
+            kind="session.annotation.note",
+            subject="b",
+            payload={"notes": "report"},
+            producer="fixture",
+            authority="reported",
+            owner_session_id="b",
+        )
+    else:
+        conn.execute(
+            "INSERT INTO context_projects VALUES ('p','unclassified','fixture','2026-09-06')"
+        )
+        conn.execute(
+            "INSERT INTO context_session_projects(session_id,project_id) VALUES ('b','p')"
+        )
+        conn.commit()
+    with pytest.raises((ProtectedMergeError, ValueError), match="owned|unavailable"):
+        merge_duplicates(conn, "a", ["b"])
+    assert (
+        conn.execute("SELECT session_id FROM messages WHERE id='m'").fetchone()[0]
+        == "b"
+    )
+    assert conn.execute("SELECT count(*) FROM sessions").fetchone()[0] == 2
+
+
+def test_merge_checks_every_id_before_moving_anything(migrated_db):
+    conn, _ = migrated_db
+    _insert_session(conn, "a")
+    _insert_session(conn, "b")
+    _insert_message(conn, "m", "b")
+    with pytest.raises(ValueError, match="unavailable"):
+        merge_duplicates(conn, "a", ["b", "missing"])
+    assert (
+        conn.execute("SELECT session_id FROM messages WHERE id='m'").fetchone()[0]
+        == "b"
+    )
+
+
+def test_merge_failure_rolls_back_messages_tags_and_notes(migrated_db):
+    conn, _ = migrated_db
+    _insert_session(conn, "a")
+    _insert_session(conn, "b")
+    _insert_message(conn, "m", "b")
+    _insert_tag(conn, "b", "tag")
+    _insert_note(conn, "b", "note")
+    conn.execute(
+        "CREATE TRIGGER injected_failure BEFORE DELETE ON sessions BEGIN SELECT RAISE(ABORT,'injected'); END"
+    )
+    with pytest.raises(sqlite3.IntegrityError, match="injected"):
+        merge_duplicates(conn, "a", ["b"])
+    for table in ("messages", "session_tags", "session_notes"):
+        assert conn.execute(f"SELECT session_id FROM {table}").fetchone()[0] == "b"
+    assert conn.execute("SELECT count(*) FROM sessions").fetchone()[0] == 2
+
+
+def test_merge_policy_change_rolls_back_before_commit(migrated_db, monkeypatch):
+    from agent_session_tools import deduplication as dedup
+
+    conn, _ = migrated_db
+    _insert_session(conn, "a")
+    _insert_session(conn, "b")
+    _insert_message(conn, "m", "b")
+    original = dedup._merge_legacy_rows
+
+    def change(*args, **kwargs):
+        result = original(*args, **kwargs)
+        monkeypatch.setenv("SESSION_CONTEXT_SCOPE", "work")
+        return result
+
+    monkeypatch.setattr(dedup, "_merge_legacy_rows", change)
+    with pytest.raises(ValueError, match="scope changed"):
+        merge_duplicates(conn, "a", ["b"])
+    assert conn.execute("SELECT session_id FROM messages").fetchone()[0] == "b"
+    assert conn.execute("SELECT count(*) FROM sessions").fetchone()[0] == 2
+
+
+def test_duplicate_group_preserves_session_ids_containing_commas(migrated_db):
+    conn, _ = migrated_db
+    _insert_session(conn, "a,b", content_hash="same")
+    _insert_session(conn, "c", content_hash="same")
+    group = find_duplicates(conn)[0]
+    assert {group.primary_id, *group.duplicate_ids} == {"a,b", "c"}
+
+
+@pytest.mark.parametrize("duplicates", [["a"], ["b", "b"]])
+def test_merge_rejects_self_or_repeated_ids(migrated_db, duplicates):
+    conn, _ = migrated_db
+    _insert_session(conn, "a")
+    _insert_session(conn, "b")
+    with pytest.raises(ValueError, match="distinct"):
+        merge_duplicates(conn, "a", duplicates)
+    assert conn.execute("SELECT count(*) FROM sessions").fetchone()[0] == 2
+
+
+def test_unclassified_native_capture_keeps_its_session_identity(migrated_db):
+    from agent_session_tools.context.provenance import Origin
+    from agent_session_tools.context.store import ContextStore, NativeSource
+    from agent_session_tools.deduplication import ProtectedMergeError
+
+    conn, _ = migrated_db
+    _insert_session(conn, "a")
+    _insert_session(conn, "b")
+    store = ContextStore(conn)
+    identity = store.capture(
+        NativeSource(
+            session_id="b",
+            native_key="message",
+            harness="fixture",
+            native_kind="message",
+            native_locator="fixture:b",
+            parser_version="fixture1",
+            machine_id="fixture",
+            body="Captured result",
+            origin=Origin.UNKNOWN,
+        )
+    )
+    with pytest.raises(ProtectedMergeError, match="owned or provenance-bound"):
+        merge_duplicates(conn, "a", ["b"])
+    assert (
+        conn.execute(
+            "SELECT session_id FROM context_evidence WHERE id=?", (identity,)
+        ).fetchone()[0]
+        == "b"
+    )
+    assert conn.execute("PRAGMA foreign_key_check").fetchall() == []
