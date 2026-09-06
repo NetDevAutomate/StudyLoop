@@ -130,6 +130,9 @@ scope checks and audit intent. They supply no new answer-quality measurement and
 evidence that another database engine gives better semantic results. Source grounding,
 current applicability and explicit intent still need separate contracts with any engine.
 
+The preserved implementation checkpoint is `801a33e0`; full commit lint, formatting,
+secrets, Bandit and workspace source/test type checks passed.
+
 The combined memory/experiment run passed 1,809 tests with one optional skip in
 129.76 seconds. The later focused ledger/lesson run passed 94 tests in 16.57 seconds,
 including six additional directed cases. StudyLoop passed 3,823 tests with four skips

@@ -1,7 +1,7 @@
 {
   "stage": 37,
   "scope": "explicit canonical local quarantine discard; full production goal active",
-  "implementation_checkpoint": "pending commit",
+  "implementation_checkpoint": "801a33e0",
   "installed_checks": {
     "actual_native_capture": true,
     "initial_content_committed": true,
@@ -28,8 +28,8 @@
     "studyloop": "3823 passed, 4 skipped, 704 deselected, 179.19s; schema45; 11 existing dependency/fork warnings",
     "browser": "Five sections and five disclosures opened; viewport fits; screenshot inspected; own tab and server closed",
     "standalone": "Fresh memory-only wheel in new Python3.13 environment; StudyLoop absent; actual installed session-context; 18 checks pass",
-    "types": "Full workspace source and tests passed before six later directed tests; commit hooks will recheck",
-    "commit_hooks": "pending"
+    "types": "Full workspace source and tests passed in commit hooks after all directed cases",
+    "commit_hooks": "801a33e0 lint/format/secrets/Bandit/author/full workspace source and test types passed"
   },
   "failures_observed": [
     "Initial source demo environment lacked a console entrypoint; source mode now permits module invocation while installed mode still requires the real script",

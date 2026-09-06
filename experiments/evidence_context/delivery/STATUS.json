@@ -1,7 +1,7 @@
 {
   "goal": "active",
-  "previous_goal_turn": "progress: Stage36 committed28fe15d0; full goal remains active",
-  "current_stage": "37 implemented and under final verification: explicit local quarantine discard; next authenticated configured sync coordinator",
+  "previous_goal_turn": "progress: Stage37 committed801a33e0;1809combined passed1skip;94finalfocused passed;18freshinstalledCLI checks;3823StudyLoop passed4skip704deselected;full goal remains active",
+  "current_stage": "37 complete as bounded local recovery checkpoint801a33e0; next authenticated configured sync coordinator and full-store/restore",
   "requirements": {
     "P01": "partial: transactional v31-v45 migrations; v44-to45 additive migration and failure rollback/retry tested; managed restore remains",
     "P02": "partial: actual four-harness exporters integrated and eight local real archives imported; Codex Desktop 0.153.0 observed; all native formats, other desktop coverage and installed end-to-end capture remain",
@@ -17,7 +17,7 @@
     "P12": "not yet proven",
     "P13": "partial: fresh installed graph HTTP/MCP10checks plus prior response/learner checks; full lifespan, live-session files/stream, installer and agent startup remain",
     "P14": "stages1-37 independently runnable; Stage37 five-view guide separates operator intent from provenance, historical receipts from present visibility; saved exercises unchanged",
-    "P15": "partial:1809combined passed1skip;94finalfocused passed16.57s;3823StudyLoop passed4skip704deselected;18freshinstalledchecks;commit hooks pending;full release audit remains"
+    "P15": "partial:1809combined passed1skip;94finalfocused passed16.57s;3823StudyLoop passed4skip704deselected;18freshinstalledchecks;801a33e0fullcommit hooks passed;full release audit remains"
   },
   "completed_checkpoints": {
     "stage16": "6c736c5",
@@ -40,7 +40,8 @@
     "stage33": "389146b8",
     "stage34": "1f5a5c56",
     "stage35": "50de2d7f",
-    "stage36": "28fe15d0"
+    "stage36": "28fe15d0",
+    "stage37": "801a33e0"
   },
   "current_findings": [
     "SQLite remains canonical; earlier equal-information storage comparison did not establish answer-quality superiority for another engine.",
@@ -80,8 +81,8 @@
   "verification": {
     "package_tests": "1809 passed, 1 optional skip, 129.76s; before the new lesson and six later directed cases",
     "experiment_tests": "Stage37 five-view actual standalone CLI lesson:18checks",
-    "workspace_pyright": "Full workspace src+tests:0errors0warnings0informations",
-    "commit_hooks": "28fe15d0 lint/format/secrets/Bandit/author/fullworkspace src+tests types passed",
+    "workspace_pyright": "Full workspace source+tests passed in801a33e0commit hooks, including finaldirectedcases",
+    "commit_hooks": "801a33e0 lint/format/secrets/Bandit/author/full workspace source+test types passed",
     "browser": "Five sections and five disclosures opened; viewport fits; screenshot inspected; own tab and server closed",
     "studyloop_tests": "3823 passed, 4 skipped, 704 deselected, 179.19s; schema45; 11 existing dependency/fork warnings",
     "focused_consumer_tests": "94 final ledger and Stage37 lesson cases passed16.57s, including six later directed cases",

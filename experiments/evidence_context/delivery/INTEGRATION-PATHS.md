@@ -255,3 +255,23 @@ This is still a library protocol. Quarantine has no general operator reconciliat
 adoption command; actual configured SSH/session-sync coordination, fresh config-file
 fences, full-store/restore and complete consumer/install acceptance remain open.
 All receipts continue to report full sync as incomplete.
+
+
+## Stage37 explicit local recovery
+
+`801a33e0` adds schema45 immutable local discard intent and actual `session-context
+quarantine list/inspect/discard` commands. A bounded metadata-only plan covers all six
+root kinds, actual affected versions and retention facts. Applying requires an exact
+current plan and explicit loss acknowledgement. Default preservation, current scope,
+denials and permanent retirements remain intact. Historical retry never repurges a
+fresh permitted copy. Canonical cleanup is a separate, explicitly limited result.
+
+Acceptance:1809combined passes1skip;94finalfocused passes;18fresh installed standalone
+CLI checks;3823StudyLoop passes4skip704deselected;full commit hooks pass. Both councils
+returned Meta/Qwen/Mistral; objections and review-packet limits are documented in
+[the Stage37 arbitration](../quarantine_recovery/COUNCIL-DECISION.md).
+
+This supplies deliberate complete-local-copy discard, not adoption/extraction or a new
+origin claim. The next integration is the actual authenticated configured coordinator.
+Keep legacy protected SQL transport refused; preserve full-store/restore, ownership,
+installer/doctor and full installed consumer requirements in the active goal.
