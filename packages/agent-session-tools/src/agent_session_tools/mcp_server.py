@@ -139,17 +139,35 @@ def _create_server() -> FastMCP:
 
     @mcp.tool(annotations={"readOnlyHint": True, "idempotentHint": True})
     def session_annotations(
-        session_id: str, kind: str = "note", max_bytes: int = 32768
+        session_id: str,
+        kind: str = "note",
+        max_bytes: int = 32768,
+        cursor: str | None = None,
+        limit: int = 32,
     ) -> dict[str, Any]:
         """Read bounded annotation reports and correction history about a session.
 
         About-session ownership is not captured transcript input or validation.
-        Concurrent current versions stay explicit; partial coverage is disclosed.
+        The overview includes all current versions or withholds their bodies with
+        an explicit reason; never infer a winner from an incomplete current group.
+        Pass next_cursor for history-only pages; retain the overview separately.
+        Invalid or stale cursors require a fresh overview. More history is not a
+        completeness guarantee: inspect coverage and history_omissions. A report
+        may need a larger max_bytes (up to 131072); some groups remain unavailable.
+        SQL work exhaustion returns an error, never partial context. The VM budget
+        does not limit wall time, IO wait or Python processing.
         """
         from agent_session_tools.context.annotations import view
 
         with open_context(_get_db_path()) as context:
-            return view(context.conn, session_id, kind=kind, max_bytes=max_bytes)
+            return view(
+                context.conn,
+                session_id,
+                kind=kind,
+                max_bytes=max_bytes,
+                cursor=cursor,
+                limit=limit,
+            )
 
     @mcp.tool(annotations={"readOnlyHint": True, "idempotentHint": True})
     def memory_decide(

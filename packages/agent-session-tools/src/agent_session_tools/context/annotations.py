@@ -66,7 +66,9 @@ def _legacy(conn, sid: str, kind: str) -> dict | None:
     return dict(row) if row else None
 
 
-def snapshot(conn, session_id: str, kind: str = "note") -> Snapshot:
+def snapshot(
+    conn, session_id: str, kind: str = "note", *, include_history: bool = True
+) -> Snapshot:
     if kind not in KINDS:
         raise ValueError("Annotation kind must be note, tags or learning")
     visible, values = visibility_sql(conn, "s.id")
@@ -81,11 +83,22 @@ def snapshot(conn, session_id: str, kind: str = "note") -> Snapshot:
         "SELECT 1 FROM sqlite_master WHERE name='context_observations'"
     ).fetchone():
         store = ObservationStore(conn)
-        history = [
-            r
-            for r in store.list(KINDS[kind], subject=session_id, current=False)
-            if r["owner"] == {"session_id": session_id}
-        ]
+        if include_history:
+            history = [
+                r
+                for r in store.list(KINDS[kind], subject=session_id, current=False)
+                if r["owner"] == {"session_id": session_id}
+            ]
+        has_history = (
+            bool(history)
+            or conn.execute(
+                "SELECT 1 FROM context_observations o JOIN context_observation_session_owners own "
+                "ON own.observation_id=o.id WHERE o.kind=? AND o.subject=? AND own.session_id=? LIMIT 1",
+                (KINDS[kind], session_id, session_id),
+            ).fetchone()
+            if store._session_owners_available()
+            else False
+        )
         current = [
             r
             for r in store.list(KINDS[kind], subject=session_id)
@@ -103,7 +116,7 @@ def snapshot(conn, session_id: str, kind: str = "note") -> Snapshot:
             ).fetchone()
         ):
             retired = True
-        if history or retired:
+        if has_history or retired:
             legacy = None
     token = _hash(
         _json({"current": sorted(r["id"] for r in current), "legacy": legacy})
@@ -131,7 +144,7 @@ def write(
         ):
             raise ValueError("Tags payload must contain nonempty text tags")
         payload = {"tags": sorted(set(tags))}
-    now = snapshot(conn, session_id, kind)
+    now = snapshot(conn, session_id, kind, include_history=False)
     if expected is not None and (
         expected.session_id != session_id
         or expected.kind != kind
@@ -184,51 +197,17 @@ def values(state: Snapshot) -> list[dict]:
 
 
 def view(
-    conn, session_id: str, *, kind: str = "note", max_bytes: int = 32768
+    conn,
+    session_id: str,
+    *,
+    kind: str = "note",
+    max_bytes: int = 32768,
+    cursor: str | None = None,
+    limit: int = 32,
 ) -> dict[str, Any]:
-    if type(max_bytes) is not int or not 4096 <= max_bytes <= 131072:
-        raise ValueError("Byte budget must be between 4096 and 131072")
-    state = snapshot(conn, session_id, kind)
-    current_ids = {r["id"] for r in state.current}
-    rows = sorted(
-        state.history,
-        key=lambda r: (r["id"] not in current_ids, r["recorded_at"], r["id"]),
+    """Bounded current group and history page; scope checked again at delivery."""
+    from .annotation_pages import page
+
+    return page(
+        conn, session_id, kind=kind, max_bytes=max_bytes, cursor=cursor, limit=limit
     )
-    result: dict[str, Any] = {
-        "contract": "session-annotations/v1",
-        "session_id": session_id,
-        "kind": kind,
-        "relationship": "about_session",
-        "semantic_validation": "not_established",
-        "current_count": len(state.current) + bool(state.legacy),
-        "conflicting_current_versions": len(state.current) > 1,
-        "versions": [],
-        "legacy": state.legacy,
-        "legacy_authority": "unattributed_report" if state.legacy else None,
-        "coverage": "complete",
-        "version_count": len(rows),
-    }
-    if len(_json(result).encode()) > max_bytes:
-        result.update(legacy=None, coverage="partial")
-    for row in rows:
-        item = {
-            k: row[k]
-            for k in (
-                "id",
-                "payload",
-                "producer",
-                "authority",
-                "recorded_at",
-                "binding_sha256",
-                "supersedes",
-                "history_incomplete",
-            )
-        }
-        item["current"] = row["id"] in current_ids
-        result["versions"].append(item)
-        if len(_json(result).encode()) > max_bytes:
-            result["versions"].pop()
-            result["coverage"] = "partial"
-    if len(_json(result).encode()) > max_bytes:
-        raise ValueError("Annotation header exceeds response budget")
-    return result

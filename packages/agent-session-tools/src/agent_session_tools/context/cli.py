@@ -36,12 +36,21 @@ def annotation_history(
     db: DatabaseOption = None,
     kind: str = "note",
     max_bytes: int = 32768,
+    cursor: str | None = None,
+    limit: int = 32,
 ) -> None:
     """Inspect reported annotations, corrections and conflicting current versions."""
     from .annotations import view
 
     with open_context(db) as context:
-        result = view(context.conn, session_id, kind=kind, max_bytes=max_bytes)
+        result = view(
+            context.conn,
+            session_id,
+            kind=kind,
+            max_bytes=max_bytes,
+            cursor=cursor,
+            limit=limit,
+        )
     typer.echo(_json(result))
 
 

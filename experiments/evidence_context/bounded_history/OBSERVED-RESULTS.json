@@ -1,0 +1,171 @@
+{
+  "stage": 31,
+  "status": "increment verified; full delivery goal active",
+  "schema": 40,
+  "verification": {
+    "focused_pages": "24 passed in 4.86s; included in final regression",
+    "memory_and_experiments": "1646 passed, 1 optional skip in 84.30s after final metadata/dependency/legacy guards",
+    "studyloop": "3823 passed, 4 skipped, 704 deselected in 203.11s before final additive page guards and MCP documentation refinement",
+    "installed_checks": {
+      "actual_cli_includes_complete_current_conflict": true,
+      "actual_mcp_continuation_recovers_all_versions": true,
+      "no_duplicate_or_repeated_cursor": true,
+      "actual_mcp_rejects_cursor_after_correction": true,
+      "oversized_current_group_is_atomic": true,
+      "all_page_outputs_fit_budget": true,
+      "work_bounds_are_disclosed": true,
+      "foreign_keys_intact": true
+    },
+    "installed_upgrade": {
+      "from_version": 39,
+      "to_version": 40,
+      "old_tables_unchanged": 57,
+      "old_table_rows": 34,
+      "foreign_key_check": [],
+      "integrity_check": "ok",
+      "source_opened_read_only": true,
+      "limits": "Additive upgrade on a consistent disposable copy. Not full managed backup restoration with deletion reconciliation."
+    },
+    "browser": "4 sections, all 4 disclosures opened, viewport fits, no captured console errors; own tab/server closed. Final data regenerated after additive page guards; rendering unchanged.",
+    "lint": "changed Python paths passed Ruff; full hooks recorded at checkpoint",
+    "types": "workspace Pyright passed before final page guards; full hook runs at checkpoint"
+  },
+  "benchmark": {
+    "measurements": [
+      {
+        "versions": 10,
+        "full_cached_control": {
+          "median_ms": 1.609,
+          "max_ms": 2.212,
+          "selects": 212,
+          "result": {
+            "verified_bodies": 10,
+            "returned_versions": 10,
+            "coverage": "complete",
+            "mode": "control_full_history_no_output_packing"
+          }
+        },
+        "bounded_page": {
+          "median_ms": 2.514,
+          "max_ms": 3.591,
+          "selects": 257,
+          "result": {
+            "returned_versions": 10,
+            "coverage": "complete",
+            "response_bytes": 4818,
+            "vm_steps": 112000,
+            "has_more": false
+          }
+        }
+      },
+      {
+        "versions": 100,
+        "full_cached_control": {
+          "median_ms": 5.114,
+          "max_ms": 5.643,
+          "selects": 932,
+          "result": {
+            "verified_bodies": 100,
+            "returned_versions": 100,
+            "coverage": "complete",
+            "mode": "control_full_history_no_output_packing"
+          }
+        },
+        "bounded_page": {
+          "median_ms": 4.68,
+          "max_ms": 5.777,
+          "selects": 534,
+          "result": {
+            "returned_versions": 33,
+            "coverage": "partial",
+            "response_bytes": 15112,
+            "vm_steps": 166000,
+            "has_more": true
+          }
+        }
+      },
+      {
+        "versions": 1000,
+        "full_cached_control": {
+          "median_ms": 37.778,
+          "max_ms": 38.133,
+          "selects": 8132,
+          "result": {
+            "verified_bodies": 1000,
+            "returned_versions": 1000,
+            "coverage": "complete",
+            "mode": "control_full_history_no_output_packing"
+          }
+        },
+        "bounded_page": {
+          "median_ms": 5.373,
+          "max_ms": 6.289,
+          "selects": 534,
+          "result": {
+            "returned_versions": 33,
+            "coverage": "partial",
+            "response_bytes": 15146,
+            "vm_steps": 201000,
+            "has_more": true
+          }
+        }
+      },
+      {
+        "versions": 10000,
+        "full_cached_control": {
+          "median_ms": 400.02,
+          "max_ms": 402.397,
+          "selects": 80132,
+          "result": {
+            "verified_bodies": 10000,
+            "returned_versions": 10000,
+            "coverage": "complete",
+            "mode": "control_full_history_no_output_packing"
+          }
+        },
+        "bounded_page": {
+          "median_ms": 12.738,
+          "max_ms": 14.252,
+          "selects": 534,
+          "result": {
+            "returned_versions": 33,
+            "coverage": "partial",
+            "response_bytes": 15180,
+            "vm_steps": 552000,
+            "has_more": true
+          }
+        }
+      }
+    ],
+    "limits": "Warm synthetic short-note reads. Timings exclude SQL tracing; SELECTs counted separately. Full control verifies all bodies without output packing, page returns selected bodies. No semantic equivalence or engine comparison claim."
+  },
+  "decisions": [
+    "SQLite retained; schema40 ordered history index",
+    "scope predicate cached only within guarded read",
+    "whole current group or explicit body omission",
+    "history-only keyset continuation bound to access snapshot",
+    "VM exhaustion yields no result; no wall-clock guarantee",
+    "metadata and legacy preflight plus full dependency fanout cap"
+  ],
+  "council": {
+    "design_providers": [
+      "meta",
+      "qwen",
+      "mistral"
+    ],
+    "result_providers": [
+      "meta",
+      "qwen",
+      "mistral"
+    ],
+    "successful_calls": 6,
+    "arbitration": "COUNCIL-DECISION.md"
+  },
+  "limits": [
+    "Synthetic short reports; no human relevance or answer-quality claim",
+    "Selected-body verification is not a whole-database integrity audit",
+    "Counts still grow with history; VM cap excludes IO/Python/final-monitor/transport work",
+    "Automatic current context can remain unavailable above fixed caps",
+    "Scoped transport, managed lifecycle, files/live state, shared setup/startup and full acceptance remain"
+  ]
+}

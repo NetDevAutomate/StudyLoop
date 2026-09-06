@@ -42,7 +42,7 @@ def test_schema39_upgrade_failure_retry_and_existing_retirement(tmp_path, monkey
         "SELECT 1 FROM sqlite_master WHERE name='context_observation_session_owners'"
     ).fetchone()
     assert conn.execute("SELECT count(*) FROM session_notes").fetchone()[0] == 2
-    assert len(migrations.migrate(conn)) == 1
+    assert len(migrations.migrate(conn)) == migrations.CURRENT_VERSION - 38
     assert conn.execute("SELECT session_id,notes FROM session_notes").fetchall() == [
         ("retained", "keep")
     ]

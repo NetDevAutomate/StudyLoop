@@ -108,7 +108,12 @@ class ObservationStore:
         return sources, previous
 
     def _checked(
-        self, row: dict[str, Any], policy: ScopePolicy, scope: Scope
+        self,
+        row: dict[str, Any],
+        policy: ScopePolicy,
+        scope: Scope,
+        *,
+        visible_snapshot: tuple[str, list[Any]] | None = None,
     ) -> dict[str, Any]:
         refs, previous = self._refs(row["id"])
         binding = {
@@ -148,7 +153,7 @@ class ObservationStore:
             "SELECT project_id,fixed_scope FROM context_observation_owners WHERE observation_id=?",
             (row["id"],),
         ).fetchone()
-        visible, values = self._visible(policy, scope)
+        visible, values = visible_snapshot or self._visible(policy, scope)
         visible_previous = [
             identity
             for identity in previous

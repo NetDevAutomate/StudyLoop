@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Current schema version - increment when adding new migrations
-CURRENT_VERSION = 39
+CURRENT_VERSION = 40
 
 # Migration functions: version -> (description, migration_func)
 MIGRATIONS: dict[int, tuple[str, Callable[[sqlite3.Connection], None]]] = {}
@@ -1445,6 +1445,14 @@ def migrate_v39(conn: sqlite3.Connection) -> None:
     from .context.session_owner_schema import install
 
     install(conn)
+
+
+@migration(40, "Ordered immutable observation history index")
+def migrate_v40(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        "CREATE INDEX context_observations_ordered "
+        "ON context_observations(kind,subject,recorded_at,id)"
+    )
 
 
 def check_migration_status(db_path: Path) -> dict:

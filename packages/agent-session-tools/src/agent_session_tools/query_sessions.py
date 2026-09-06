@@ -287,7 +287,9 @@ def tag(
         if add or remove:
             with ContextStore(conn)._atomic(), policy_guard(conn):
                 resolved = _resolve_write_session_id(conn, session_id)
-                state = annotations.snapshot(conn, resolved, "tags")
+                state = annotations.snapshot(
+                    conn, resolved, "tags", include_history=False
+                )
                 tags = {t for value in annotations.values(state) for t in value["tags"]}
                 tags.update(add or [])
                 tags.difference_update(remove or [])
@@ -299,7 +301,9 @@ def tag(
         else:
             with read_boundary():
                 resolved = _resolve_write_session_id(conn, session_id)
-                state = annotations.snapshot(conn, resolved, "tags")
+                state = annotations.snapshot(
+                    conn, resolved, "tags", include_history=False
+                )
                 variants = annotations.values(state)
                 lines = [", ".join(value["tags"]) or "(none)" for value in variants]
                 output = "\n".join(lines) or "No tags set"
@@ -344,7 +348,7 @@ def note(
         if edit:
             with read_boundary():
                 resolved = _resolve_write_session_id(conn, session_id)
-                expected = annotations.snapshot(conn, resolved)
+                expected = annotations.snapshot(conn, resolved, include_history=False)
                 variants = annotations.values(expected)
                 if len(variants) > 1:
                     raise ScopeError(
@@ -380,7 +384,9 @@ def note(
                 if history:
                     output = _json(annotations.view(conn, resolved))
                 else:
-                    variants = annotations.values(annotations.snapshot(conn, resolved))
+                    variants = annotations.values(
+                        annotations.snapshot(conn, resolved, include_history=False)
+                    )
                     output = (
                         "\n\n---\n\n".join(value["notes"] for value in variants)
                         or "No note found"
