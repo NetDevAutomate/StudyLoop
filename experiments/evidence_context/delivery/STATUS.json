@@ -1,12 +1,12 @@
 {
   "goal": "active",
-  "previous_goal_turn": "progress: Stage30 session-owned immutable annotations, editor/transaction guards and protected dedup implemented; installed CLI/MCP, schema39 upgrade and final173focused checks pass; full production goal remains active",
-  "current_stage": "30 source-owned session annotations complete as increment; selective query work, scoped transport/lifecycle, file/live ownership and shared setup/startup remain",
+  "previous_goal_turn": "progress: Stage31 bounded annotation pages and schema40 ordered index implemented and committed; 1646 memory/experiment tests, installed eight-check journey and upgrade pass; full production goal remains active",
+  "current_stage": "31 bounded history increment complete; scoped transport/lifecycle is next",
   "requirements": {
-    "P01": "partial: transactional v31-v39 migrations; schema39 failure/retry and existing retirement purge; installed schema38-to39 copy preserves53rows across57old tables with FK/integrity; managed restore remains",
+    "P01": "partial: transactional v31-v40 migrations; installed schema39-to40 copy preserves34rows across57old tables; failure/retry tested; managed restore remains",
     "P02": "partial: actual four-harness exporters integrated and eight local real archives imported; Codex Desktop 0.153.0 observed; all native formats, other desktop coverage and installed end-to-end capture remain",
     "P03": "partial: native/provenance boundaries preserved; review documents cannot supply origin/authority/independence; fixed adapter producer and interpretation authority; full release audit remains",
-    "P04": "partial: bounded sources/reviews/StudyLoop graph context plus session_annotations CLI/MCP with about-session authority, explicit conflict and incomplete-history disclosure; selective query work and semantic usefulness remain unproven",
+    "P04": "partial: bounded native sources/reviews/StudyLoop graph and session annotations; Stage31 selects scoped headers and preserves atomic current groups with history-only continuation, metadata/dependency preflight and VM budget; real semantic usefulness and consumer acceptance remain",
     "P05": "partial: source-bound reviews and native annotation history retain explicit supersession, competing reports, retirement and missing-predecessor disclosure; no automatic timestamp/vote truth rule; generic semantic arbitration and real usefulness remain unproven",
     "P06": "partial: learner graph/record boundaries plus native session notes/tags/learning metadata reads now scoped; native annotation writes guarded through editor concurrency; file/config/plan/IPC and streaming ownership remain",
     "P07": "not yet proven: legacy SQL sync does not transport new observation ownership/history and remains unsuitable for this increment",
@@ -16,8 +16,8 @@
     "P11": "not yet proven",
     "P12": "not yet proven",
     "P13": "partial: fresh installed graph HTTP/MCP10checks plus prior response/learner checks; full lifespan, live-session files/stream, installer and agent startup remain",
-    "P14": "stages1-30 independently runnable with pinned commits and detailed rationale; Stage30five-viewguide, installed upgrade, history scale diagnostic and council arbitration recorded; Stage8exercise unchanged",
-    "P15": "partial:1617memory/experiment passes1skip before final history disclosure;3823StudyLoop passes4skip704deselected before final minor annotation changes;173finalfocused checks;61ee4db5workspace lint/types/security hooks pass; fullreleaseaudit remains"
+    "P14": "stages1-31 independently runnable with pinned commits and detailed rationale; Stage31four-viewguide, installed upgrade, scale measurements and council arbitration; Stage8/DSPy exercises unchanged",
+    "P15": "partial: final1646memory/experiment passes1skip;3823StudyLoop passes4skip704deselected before final additive page guards;f1883d7bworkspace lint/types/security hooks pass;fullreleaseaudit remains"
   },
   "completed_checkpoints": {
     "stage16": "6c736c5",
@@ -34,40 +34,40 @@
     "stage27": "777c8b4",
     "stage28": "fcecf6c8",
     "stage29": "8bfce3d3",
-    "stage30": "61ee4db5"
+    "stage30": "61ee4db5",
+    "stage31": "f1883d7b"
   },
   "current_findings": [
-    "Native session ownership is now a separate about_session dependency on immutable observations. Empty sessions need no invented evidence; annotation authority remains reported and semantic validation not established.",
-    "Notes/tags retain prior values and explicit corrections. External editors hold no DB lock and reject stale version/policy/scope/generation/file identity. Injected commit and scope failures preserve original values and leave no partial versions.",
-    "Annotation or parent forgetting retires observation versions and blocks old mutable-shadow replay. Missing predecessors are disclosed. New explicit reports remain possible after forgetting one report; full source forgetting and transport lifecycle still require coordination.",
-    "Duplicate detection filters scope before grouping/body comparison; classified or dependent sources cannot be physically merged. Legacy unclassified merges validate all IDs and commit atomically; similarity does not establish source identity.",
-    "Fresh installed CLI/MCP10checks and schema38-to39copy53rows57tables pass. Final173focused checks pass11.75s. Installed histories10/100/1000versions:9.342/66.119/656.720ms medians,5warmdirectreads;32KiBresult but full visible history scan.",
-    "Both council rounds returned3providers and supported bounded retrieval next. Unsupported transaction-loss/unsafe-merge claims and production approval were rejected against tests and open delivery requirements."
+    "Scoped header selection and a cached predicate remove repeated scope/schema queries. Parent-specific optimization preserves additional learner-record visibility and the final response guard.",
+    "Current bodies are atomic all-or-none; history-only keyset continuation is query/access bound. Correction, forgetting, policy changes and scope-away-and-back invalidate the cursor.",
+    "Full report rows and legacy bodies are sized before materialization; predecessors/sources/learner-record fanout capped at256. VM limit1million fails with no context, excludes IO/Python and final monitor work. Counts still grow with history.",
+    "Installed10/100/1000/10000version first-page medians2.514/4.680/5.373/12.738ms versus full cached control1.609/5.114/37.778/400.020ms. The first page returns33versions atscale, so workloads differ; no semantic or engine ranking.",
+    "Six council calls acrossMeta/Qwen/Mistral informed design/review. Unsupported missing-policy/fanout claims and production approval were rejected; metadata/legacy preflight and exact policy-staleness regression added.",
+    "Legacy SQL sync still exports global learner tables and cannot carry modern owned observations/retirement state. Versioned scoped transport must replace that path before production approval."
   ],
   "next_actions": [
-    "Preserve Stage30 baseline, then implement selective current/history retrieval with explicit continuation and a query-work budget; compare bindings, complete current conflict sets, omissions, query counts and latency at10/100/1000andlarger histories.",
     "Implement per-peer scoped transport plus managed forget/reimport/restore/index lifecycle; legacy SQL sync does not carry new observation/ownership tables. Maintain access generations and permanent retirement semantics.",
     "Implement explicit config/content/plan/session file ownership before enabling modern file-derived graph imports, then protect live SSE/WebSocket/IPC and full installed startup.",
     "Finish shared selectable installer/doctor/skills, four native and desktop capture checks, and fullP01-P15releaseaudit; preserve practice timing/cross-project assessment audit."
   ],
   "verification": {
-    "package_tests": "1617combined memory/experiment passes1optional skip79.77s before final4tests/history_incomplete field",
-    "experiment_tests": "included in1617combined and173finalfocused; actual CLI/MCP standalone lesson",
-    "workspace_pyright": "0errors0warnings;61ee4db5workspace src+tests hook passed",
-    "commit_hooks": "61ee4db5formatting/lint/secrets/Bandit/author/workspace types passed",
-    "browser": "Stage30five sections,five disclosures opened,viewportfits,no consoleerrors;own tab/server closed;finaldata regenerated after history_incomplete field",
-    "studyloop_tests": "3823passed4skipped704deselected202.03s before final SQLite exception handling/history_incomplete field",
-    "focused_consumer_tests": "173final annotation/owner/retirement/response/dedup/MCP/installedlesson tests pass11.75s",
-    "artifact": "studyloop-private/reviews/2026-09-06-stage30-session-annotations/demo-final/walkthrough.html",
+    "package_tests": "1646 combined memory/experiment passed,1optional skip84.30s after final page guards",
+    "experiment_tests": "included in1646; actual CLI/MCP eight-check lesson",
+    "workspace_pyright": "f1883d7b full workspace src+tests hook passed",
+    "commit_hooks": "f1883d7b formatting/lint/secrets/Bandit/author/workspace types passed",
+    "browser": "Stage31four sections/all disclosures opened,viewportfits,no captured consoleerrors;ownserver/tabclosed;finaldata regenerated after additive page guards,rendering unchanged",
+    "studyloop_tests": "3823passed4skipped704deselected203.11s before final additive page guards and MCP doc refinement",
+    "focused_consumer_tests": "24 bounded page cases passed4.86s; included in1646finalregression",
+    "artifact": "studyloop-private/reviews/2026-09-06-stage31-bounded-history/demo-final/walkthrough.html",
     "native_probe": "8 local real sessions imported without errors;1898/1898 body hashes match;source files unchanged",
-    "installed_component": "fresh standalone memory+StudyLoop[web] wheels;10actual CLI/MCPchecks;schema38-to39copy preserves53rows57tables",
+    "installed_component": "fresh standalone memory+StudyLoop[web] wheels;8actual CLI/MCPchecks;schema39-to40copy preserves34rows57tables",
     "real_retrieval": "6CLI queries,60exact citations and hashes verified,all<=32768bytes,no semantic relevance claim",
     "live_review_pilot": "3calls,3constructedcases/model;strict acceptance1/3providers;post-hoc9/9permissivelabels+exactbindings,not semanticvalidation",
     "ownership_benchmark": "50000project-onlyrecords:countmedian15.46ms,latest20median20.35ms;noengine/schema ranking",
     "response_overhead": "20paired iterations each,2fictional sessions:14.932ms baseline directhistory vs16.892ms guarded;no transport/startup/scale comparison",
     "graph_scale": "100/1000/5000visible plus equalexcluded shortbridges:17.647/34.158/110.561msmedians,5runs;32KiBresult but all-visible query",
     "graph_http_timing": "20finalinstalledASGI requests,1visibleedge:9.849msmedian10.502msmax;transport/startup excluded",
-    "annotation_scale": "10/100/1000versions:9.342/66.119/656.720ms median,5warmdirecthelper reads;32KiB cap retains75shortversions atscale;workstillunbounded"
+    "annotation_scale": "10/100/1000/10000versions:first page2.514/4.680/5.373/12.738msmedian5warmreads;33returned atscale and534SELECTs;fullcachedcontrol returnsall400.020msat10k; different workloads"
   },
   "operational_notice": "A secrets test printed an ambient API key in private failure output; tests now isolate fallback variables. Owner should rotate that key; no value saved in this status or learning artifacts."
 }

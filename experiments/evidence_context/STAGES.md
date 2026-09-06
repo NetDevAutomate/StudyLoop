@@ -37,6 +37,7 @@ no remote publication or backup is implied.
 | 28 — Consistent response access | Can a composed response detect scope changes and revocation before releasing context? | `fcecf6c8` | `response_boundary/runner.py`; GUIDE.md, installed HTTP/MCP lesson, migration rehearsal, overhead measurement and council arbitration |
 | 29 — Grounded learner relationships | Can a graph retain source ownership and honest decision roles through corrections, forgetting and response budgets? | `8bfce3d3` | `concept_context/runner.py`; GUIDE.md, installed HTTP/MCP lesson, scale diagnostic and council arbitration |
 | 30 — Session annotation grounding | Can reports about sessions retain honest authority, correction history and safe source identities? | `61ee4db5` | `session_annotations/runner.py`; GUIDE.md, installed CLI/MCP lesson, schema39 upgrade, history scale diagnostic and council arbitration |
+| 31 — Bounded annotation history | Can first-page reads stay cheap without hiding current disagreement or omitted evidence? | `f1883d7b` | `bounded_history/runner.py`; four-view CLI/MCP lesson, ordered-index upgrade, paged scale benchmark and council arbitration |
 
 Stage 3 uses its own lifecycle adapter and database schema. It does not modify the
 stage 1 evidence store, and does not require stage 1 demo output. Stage 2 uses
@@ -773,3 +774,26 @@ quality nor a storage-engine advantage. Legacy SQL sync does not transport these
 new observation tables yet; scoped sync/lifecycle, files/live access and shared
 installation remain open. See [session_annotations/GUIDE.md](session_annotations/GUIDE.md)
 and [session_annotations/COUNCIL-DECISION.md](session_annotations/COUNCIL-DECISION.md).
+
+## Stage 31 commands
+
+```sh
+uv run python -m experiments.evidence_context.bounded_history.runner --output /tmp/evidence-stage-31
+open /tmp/evidence-stage-31/walkthrough.html
+uv run python -m experiments.evidence_context.bounded_history.benchmark --output /tmp/evidence-stage-31-benchmark --sizes 10 100 1000 10000
+uv run pytest packages/agent-session-tools/tests/test_annotation_pages.py experiments/evidence_context/tests/test_bounded_history_lesson.py -q
+```
+
+Use checkpoint `f1883d7b` for the preserved implementation. The installed lesson passed
+eight CLI/MCP checks; schema39→40 preserved 34 rows across 57 existing tables. Final
+combined memory/experiment regression passed 1,646 tests with one optional skip.
+At 10,000 short versions, the first page returned 33 checked versions in 12.738 ms
+median versus 400.020 ms for the full cached-history control. These return different
+amounts of information: no answer-quality or engine-superiority claim follows.
+
+Current conflict bodies are all-or-none. History-only continuation discloses omissions
+and rejects stale access snapshots. SQL VM work, candidate counts, row bytes and
+dependency fanout have explicit bounds; this is not a wall-clock guarantee. Scoped
+transport/lifecycle and other full delivery requirements remain open. See
+[bounded_history/GUIDE.md](bounded_history/GUIDE.md) and
+[bounded_history/COUNCIL-DECISION.md](bounded_history/COUNCIL-DECISION.md).

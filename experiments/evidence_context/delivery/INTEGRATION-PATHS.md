@@ -162,3 +162,18 @@ session owners or retirement metadata. It must be replaced for the classified pr
 path. Tiering, managed restore, exporter reimport, config/files/live IPC and shared
 installation/startup remain open. The new measured history scan cost also requires
 selective retrieval with explicit completeness and work bounds.
+
+## Stage31 refresh
+
+`context/annotation_pages.py` now selects scope-filtered headers, checks selected
+immutable report bodies, and returns an atomic current group plus history-only keyset
+continuation. Policy/scope/generation/file changes invalidate continuation, and the
+existing final response guard still applies. Schema40 adds the ordered history index.
+Row/legacy-byte, dependency-count, candidate and SQLite VM-work bounds are explicit;
+counts still scan historical headers and the VM limit is not a wall-clock deadline.
+
+The installed benchmark, final1,646memory/experiment passes and council arbitration
+are preserved in `bounded_history/`. This closes the identified annotation read-work
+increment, not graph-query work or semantic acceptance. Next priority is the real
+`sync.py` transfer path: unfiltered global SQL, whole-DB seeding and missing observation/
+owner/retirement transport are incompatible with the protected product contract.
