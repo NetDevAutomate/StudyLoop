@@ -6,6 +6,8 @@ import logging
 import sqlite3
 import uuid
 
+from agent_session_tools.context import records
+
 from . import _connection
 
 logger = logging.getLogger(__name__)
@@ -25,24 +27,26 @@ def record_bridge(
     if not conn:
         return False
     try:
-        conn.execute(
-            """
-            INSERT INTO knowledge_bridges
-                (source_concept, source_domain, target_concept, target_domain,
-                 structural_mapping, quality, created_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                source_concept,
-                source_domain,
-                target_concept,
-                target_domain,
-                structural_mapping,
-                quality,
-                created_by,
-            ),
-        )
-        conn.commit()
+        with _connection.owned_write(conn):
+            inserted = conn.execute(
+                """
+                INSERT INTO knowledge_bridges
+                    (source_concept, source_domain, target_concept, target_domain,
+                     structural_mapping, quality, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    source_concept,
+                    source_domain,
+                    target_concept,
+                    target_domain,
+                    structural_mapping,
+                    quality,
+                    created_by,
+                ),
+            )
+            assert inserted.lastrowid is not None
+            records.bind(conn, "knowledge_bridges", inserted.lastrowid)
         return True
     except sqlite3.OperationalError as exc:
         if not _connection.is_missing_table_error(exc):
@@ -63,8 +67,8 @@ def get_bridges(
     if not conn:
         return []
     try:
-        conditions = []
-        params: list[str] = []
+        clause, params = records.visible_sql(conn, "knowledge_bridges")
+        conditions = [clause]
         if target_domain:
             conditions.append("target_domain = ?")
             params.append(target_domain)
@@ -81,7 +85,7 @@ def get_bridges(
             SELECT id, source_concept, source_domain, target_concept, target_domain,
                    structural_mapping, quality, times_used, times_helpful,
                    created_by, created_at
-            FROM knowledge_bridges
+            FROM knowledge_bridges r
             {where}
             ORDER BY times_helpful DESC, created_at DESC
             """,
@@ -103,18 +107,20 @@ def update_bridge_usage(bridge_id: int, helpful: bool) -> bool:
     if not conn:
         return False
     try:
-        helpful_increment = 1 if helpful else 0
-        conn.execute(
-            """
-            UPDATE knowledge_bridges
-            SET times_used = times_used + 1,
-                times_helpful = times_helpful + ?,
-                updated_at = datetime('now')
-            WHERE id = ?
-            """,
-            (helpful_increment, bridge_id),
-        )
-        conn.commit()
+        with _connection.owned_write(conn):
+            if not records.is_visible(conn, "knowledge_bridges", bridge_id):
+                return False
+            helpful_increment = 1 if helpful else 0
+            conn.execute(
+                """
+                UPDATE knowledge_bridges
+                SET times_used = times_used + 1,
+                    times_helpful = times_helpful + ?,
+                    updated_at = datetime('now')
+                WHERE id = ?
+                """,
+                (helpful_increment, bridge_id),
+            )
         return True
     except sqlite3.OperationalError as exc:
         if not _connection.is_missing_table_error(exc):
@@ -144,6 +150,13 @@ def migrate_bridges_to_graph() -> int:
         if "knowledge_bridges" not in tables or "concepts" not in tables:
             return 0
 
+        from agent_session_tools.context.legacy import legacy_global_visible
+        from agent_session_tools.context.scope import ScopeError
+
+        if not legacy_global_visible(conn):
+            raise ScopeError(
+                "Concept graph ownership must be integrated before migrating classified bridges"
+            )
         bridges = conn.execute(
             """
             SELECT source_concept, source_domain, target_concept, target_domain,

@@ -7,8 +7,9 @@ import logging
 import sqlite3
 from datetime import UTC, datetime
 
-from ..db import immediate
-from . import _connection
+from agent_session_tools.context import records
+
+from . import _connection, observations
 
 logger = logging.getLogger(__name__)
 
@@ -57,9 +58,9 @@ def record_teachback(
         # and a refactor that moved the SELECT earlier would silently reopen
         # the race. `db.immediate()` takes the write lock up front instead, so
         # the serialisation holds regardless of statement order.
-        with immediate(conn):
+        with _connection.owned_write(conn):
             accuracy, own_words, structure, depth, transfer = scores
-            conn.execute(
+            inserted = conn.execute(
                 """
                 INSERT INTO teach_back_scores
                     (concept, topic, session_id, score_accuracy, score_own_words,
@@ -81,6 +82,22 @@ def record_teachback(
                     notes,
                 ),
             )
+
+            assert inserted.lastrowid is not None
+            records.bind(conn, "teach_back_scores", inserted.lastrowid, session_id=session_id)
+            if observations.available(conn):
+                observations.record(
+                    conn,
+                    topic,
+                    concept,
+                    _confidence_from_teachback(sum(scores), review_type),
+                    notes,
+                    source_session_id=session_id,
+                    created_by="teachback",
+                    last_teachback_score=sum(scores),
+                    angle=angle,
+                )
+                return True
 
             # Upsert study_progress so teach-back evidence feeds review
             # scheduling even when the concept was not explicitly recorded
@@ -156,38 +173,36 @@ def record_teachback(
         conn.close()
 
 
-def get_teachback_history(concept: str, topic: str | None = None) -> list[dict]:
-    """Get teach-back score history for a concept."""
+def get_teachback_history(
+    concept: str | None = None, topic: str | None = None, *, days: int | None = None
+) -> list[dict]:
+    """Return permitted teach-back assessments, optionally narrowed by concept/topic."""
+    if days is not None and (type(days) is not int or days < 1):
+        raise ValueError("Teachback history days must be a positive integer")
     conn = _connection._connect()
     if not conn:
         return []
     try:
-        if topic:
-            rows = conn.execute(
-                """
-                SELECT concept, topic, score_accuracy, score_own_words,
-                       score_structure, score_depth, score_transfer,
-                       total_score, review_type, question_angle, notes, created_at
-                FROM teach_back_scores
-                WHERE concept = ? AND topic = ?
-                ORDER BY created_at DESC
-                LIMIT 20
-                """,
-                (concept, topic),
-            ).fetchall()
-        else:
-            rows = conn.execute(
-                """
-                SELECT concept, topic, score_accuracy, score_own_words,
-                       score_structure, score_depth, score_transfer,
-                       total_score, review_type, question_angle, notes, created_at
-                FROM teach_back_scores
-                WHERE concept = ?
-                ORDER BY created_at DESC
-                LIMIT 20
-                """,
-                (concept,),
-            ).fetchall()
+        clause, params = records.visible_sql(conn, "teach_back_scores")
+        conditions = [clause]
+        if concept is not None:
+            conditions.append("lower(concept)=lower(?)")
+            params.append(concept)
+        if topic is not None:
+            conditions.append("lower(topic)=lower(?)")
+            params.append(topic)
+        if days is not None:
+            conditions.append("julianday(created_at)>julianday('now',?)")
+            params.append(f"-{days} days")
+        rows = conn.execute(
+            "SELECT concept, topic, score_accuracy, score_own_words, score_structure, "
+            "score_depth, score_transfer, total_score, review_type, question_angle, "
+            "notes, created_at "
+            "FROM teach_back_scores r WHERE "
+            + " AND ".join(conditions)
+            + " ORDER BY created_at DESC,id DESC LIMIT 20",
+            params,
+        ).fetchall()
         return [dict(r) for r in rows]
     except sqlite3.OperationalError as exc:
         if not _connection.is_missing_table_error(exc):

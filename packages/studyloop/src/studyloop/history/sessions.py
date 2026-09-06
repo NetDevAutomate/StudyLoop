@@ -7,6 +7,7 @@ import sqlite3
 import uuid
 from datetime import UTC, datetime
 
+from agent_session_tools.context import records
 from agent_session_tools.context.legacy import legacy_global_visible
 from agent_session_tools.context.scope import active_policy, visibility_sql
 
@@ -29,15 +30,16 @@ def start_study_session(
     try:
         study_id = str(uuid.uuid4())
         now = datetime.now(UTC).isoformat()
-        conn.execute(
-            """
-            INSERT INTO study_sessions
-                (id, session_id, topic, energy_level, started_at, topic_slug)
-            VALUES (?, ?, ?, ?, ?, ?)
-            """,
-            (study_id, session_id, topic.lower().strip(), energy_level, now, topic_slug),
-        )
-        conn.commit()
+        with _connection.owned_write(conn):
+            conn.execute(
+                """
+                INSERT INTO study_sessions
+                    (id, session_id, topic, energy_level, started_at, topic_slug)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (study_id, session_id, topic.lower().strip(), energy_level, now, topic_slug),
+            )
+            records.bind(conn, "study_sessions", study_id, session_id=session_id)
         return study_id
     except sqlite3.OperationalError as exc:
         if not _connection.is_missing_table_error(exc):
@@ -56,9 +58,15 @@ def get_session_notes(study_id: str) -> str | None:
     if not conn:
         return None
     try:
-        row = conn.execute("SELECT notes FROM study_sessions WHERE id = ?", (study_id,)).fetchone()
+        clause, params = records.visible_sql(conn, "study_sessions")
+        row = conn.execute(
+            "SELECT notes FROM study_sessions r WHERE id=? AND " + clause,
+            [study_id, *params],
+        ).fetchone()
         return row["notes"] if row and row["notes"] else None
-    except Exception:
+    except sqlite3.OperationalError as exc:
+        if not _connection.is_missing_table_error(exc):
+            raise
         return None
     finally:
         conn.close()
@@ -70,11 +78,13 @@ def update_persona_hash(study_id: str, persona_hash: str) -> bool:
     if not conn:
         return False
     try:
-        conn.execute(
-            "UPDATE study_sessions SET persona_hash = ? WHERE id = ?",
-            (persona_hash, study_id),
-        )
-        conn.commit()
+        with _connection.owned_write(conn):
+            if not records.is_visible(conn, "study_sessions", study_id):
+                return False
+            conn.execute(
+                "UPDATE study_sessions SET persona_hash = ? WHERE id = ?",
+                (persona_hash, study_id),
+            )
         return True
     except sqlite3.OperationalError as exc:
         if not _connection.is_missing_table_error(exc):
@@ -98,21 +108,23 @@ def end_study_session(
         return False
     try:
         now = datetime.now(UTC).isoformat()
-        conn.execute(
-            """
-            UPDATE study_sessions
-            SET ended_at = ?,
-                duration_minutes = CAST(
-                    (julianday(?) - julianday(started_at)) * 1440 AS INTEGER
-                ),
-                notes = COALESCE(?, notes),
-                win_count = ?,
-                struggle_count = ?
-            WHERE id = ?
-            """,
-            (now, now, notes, win_count, struggle_count, study_id),
-        )
-        conn.commit()
+        with _connection.owned_write(conn):
+            if not records.is_visible(conn, "study_sessions", study_id):
+                return False
+            conn.execute(
+                """
+                UPDATE study_sessions
+                SET ended_at = ?,
+                    duration_minutes = CAST(
+                        (julianday(?) - julianday(started_at)) * 1440 AS INTEGER
+                    ),
+                    notes = COALESCE(?, notes),
+                    win_count = ?,
+                    struggle_count = ?
+                WHERE id = ?
+                """,
+                (now, now, notes, win_count, struggle_count, study_id),
+            )
         return True
     except sqlite3.OperationalError as exc:
         if not _connection.is_missing_table_error(exc):
@@ -130,20 +142,22 @@ def abort_study_session(study_id: str, reason: str) -> bool:
         return False
     try:
         now = datetime.now(UTC).isoformat()
-        conn.execute(
-            """
-            UPDATE study_sessions
-            SET ended_at = COALESCE(ended_at, ?),
-                duration_minutes = COALESCE(duration_minutes, 0),
-                notes = CASE
-                    WHEN notes IS NULL OR notes = '' THEN ?
-                    ELSE notes || char(10) || ?
-                END
-            WHERE id = ?
-            """,
-            (now, reason, reason, study_id),
-        )
-        conn.commit()
+        with _connection.owned_write(conn):
+            if not records.is_visible(conn, "study_sessions", study_id):
+                return False
+            conn.execute(
+                """
+                UPDATE study_sessions
+                SET ended_at = COALESCE(ended_at, ?),
+                    duration_minutes = COALESCE(duration_minutes, 0),
+                    notes = CASE
+                        WHEN notes IS NULL OR notes = '' THEN ?
+                        ELSE notes || char(10) || ?
+                    END
+                WHERE id = ?
+                """,
+                (now, reason, reason, study_id),
+            )
         return True
     except sqlite3.OperationalError as exc:
         if not _connection.is_missing_table_error(exc):
@@ -160,10 +174,9 @@ def get_study_session_stats(days: int = 30) -> list[dict]:
     if not conn:
         return []
     try:
-        if not legacy_global_visible(conn):
-            return []
+        clause, params = records.visible_sql(conn, "study_sessions")
         rows = conn.execute(
-            """
+            f"""
             SELECT COALESCE(topic_slug, topic) AS course,
                    COUNT(*) as sessions,
                    SUM(duration_minutes) as total_minutes,
@@ -171,13 +184,13 @@ def get_study_session_stats(days: int = 30) -> list[dict]:
                    SUM(win_count) as total_wins,
                    SUM(struggle_count) as total_struggles,
                    energy_level as most_common_energy
-            FROM study_sessions
-            WHERE started_at > datetime('now', ?)
+            FROM study_sessions r
+            WHERE ({clause}) AND started_at > datetime('now', ?)
               AND duration_minutes IS NOT NULL
             GROUP BY course
             ORDER BY total_minutes DESC
             """,
-            (f"-{days} days",),
+            [*params, f"-{days} days"],
         ).fetchall()
         return [dict(r) for r in rows]
     except sqlite3.OperationalError as exc:
@@ -199,18 +212,19 @@ def get_energy_session_data(days: int = 30) -> list[dict]:
     if not conn:
         return []
     try:
+        clause, params = records.visible_sql(conn, "study_sessions")
         rows = conn.execute(
-            """
+            f"""
             SELECT energy_level,
                    duration_minutes,
                    CAST(julianday('now') - julianday(started_at) AS INTEGER) as days_ago
-            FROM study_sessions
-            WHERE started_at > datetime('now', ?)
+            FROM study_sessions r
+            WHERE ({clause}) AND started_at > datetime('now', ?)
               AND duration_minutes IS NOT NULL
               AND energy_level IS NOT NULL
             ORDER BY started_at ASC
             """,
-            (f"-{days} days",),
+            [*params, f"-{days} days"],
         ).fetchall()
         return [dict(r) for r in rows]
     except sqlite3.OperationalError as exc:
@@ -233,13 +247,16 @@ def get_last_study_session() -> dict | None:
     if not conn:
         return None
     try:
+        clause, params = records.visible_sql(conn, "study_sessions")
         row = conn.execute(
-            """
+            f"""
             SELECT topic, topic_slug, energy_level, started_at, ended_at
-            FROM study_sessions
+            FROM study_sessions r
+            WHERE {clause}
             ORDER BY started_at DESC
             LIMIT 1
-            """
+            """,
+            params,
         ).fetchone()
         return dict(row) if row else None
     except sqlite3.OperationalError as exc:
@@ -365,7 +382,8 @@ def get_persona_effectiveness(persona_hash: str | None = None) -> list[dict]:
     if not conn:
         return []
     try:
-        sql = """
+        clause, values = records.visible_sql(conn, "study_sessions")
+        sql = f"""
             SELECT persona_hash,
                    COUNT(*)                    AS sessions,
                    AVG(win_count)              AS avg_wins,
@@ -377,14 +395,14 @@ def get_persona_effectiveness(persona_hash: str | None = None) -> list[dict]:
                             / SUM(win_count + struggle_count), 3)
                         ELSE NULL
                    END                         AS win_rate
-            FROM study_sessions
-            WHERE persona_hash IS NOT NULL
+            FROM study_sessions r
+            WHERE ({clause}) AND persona_hash IS NOT NULL
               AND win_count IS NOT NULL
         """
-        params: tuple = ()
+        params: list = values
         if persona_hash:
             sql += " AND persona_hash = ?"
-            params = (persona_hash,)
+            params.append(persona_hash)
         sql += " GROUP BY persona_hash ORDER BY sessions DESC"
 
         rows = conn.execute(sql, params).fetchall()

@@ -1,0 +1,108 @@
+{
+  "stage": 26,
+  "date": "2026-09-06",
+  "production_goal": "active",
+  "release_approved": false,
+  "covered_tables": [
+    "study_sessions",
+    "teach_back_scores",
+    "knowledge_bridges"
+  ],
+  "schema_version": 36,
+  "source_lesson_checks": {
+    "permitted_history_remains_useful": true,
+    "excluded_learning_bodies_withheld": true,
+    "same_concept_assessments_separated": true,
+    "cross_scope_updates_refused": true,
+    "mcp_includes_scoped_scores_and_sessions": true,
+    "unapplied_policy_change_refused": true,
+    "running_mcp_observes_reclassification": true,
+    "logical_forget_purges_linked_application_rows": true
+  },
+  "installed_lesson_checks": {
+    "permitted_history_remains_useful": true,
+    "excluded_learning_bodies_withheld": true,
+    "same_concept_assessments_separated": true,
+    "cross_scope_updates_refused": true,
+    "mcp_includes_scoped_scores_and_sessions": true,
+    "unapplied_policy_change_refused": true,
+    "running_mcp_observes_reclassification": true,
+    "logical_forget_purges_linked_application_rows": true
+  },
+  "installed_runtime": "fresh two-wheel environment; production modules resolve in site-packages; actual StudyLoop MCP stdio",
+  "package_and_experiment_regression": {
+    "passed": 1564,
+    "skipped": 1,
+    "seconds": 59.5
+  },
+  "studyloop_regression": {
+    "passed": 3782,
+    "skipped": 4,
+    "deselected": 704,
+    "seconds": 195.7,
+    "timing_limit": "Before final time-window/status refinements and indexed delete-expression change; later focused and installed checks cover those changes."
+  },
+  "final_focused_regression": {
+    "passed": 70,
+    "seconds": 2.75,
+    "coverage": "ownership migration/lifecycle; StudyLoop scope consumers; MCP tools; actual subprocess lesson"
+  },
+  "upgrade": {
+    "from_version": 35,
+    "to_version": 36,
+    "old_tables_unchanged": 49,
+    "old_table_rows": 62,
+    "foreign_key_check": [],
+    "integrity_check": "ok",
+    "source_opened_read_only": true,
+    "limits": "Additive upgrade on a consistent disposable copy. Not full managed backup restoration with deletion reconciliation."
+  },
+  "benchmark": {
+    "rows": 50000,
+    "permitted_rows": 25000,
+    "iterations": 10,
+    "includes_policy_resolution": true,
+    "includes_process_startup": false,
+    "timings": {
+      "permitted_count": {
+        "median_ms": 15.460020396858454,
+        "max_ms": 15.962874982506037
+      },
+      "latest_twenty": {
+        "median_ms": 20.346396137028933,
+        "max_ms": 20.650875056162477
+      }
+    },
+    "database_bytes": 18083840,
+    "limits": "One local synthetic project-only workload, no concurrent writers. No comparison to per-table columns or another database engine."
+  },
+  "browser": {
+    "sections": 4,
+    "expanded": 1,
+    "viewport_fits": true,
+    "console_errors": 0
+  },
+  "council": {
+    "design_providers": [
+      "meta",
+      "qwen",
+      "mistral"
+    ],
+    "result_providers": [
+      "meta",
+      "qwen",
+      "mistral"
+    ],
+    "decision": "Preserve tested increment; continue full production goal; no registry superiority or release approval."
+  },
+  "interpretation_limits": "Ownership and attribution do not establish assessment correctness, semantic validation or answer-quality improvement.",
+  "remaining": [
+    "remaining learner ownership/readers/writers",
+    "mixed-owner concurrency and policy lifecycle",
+    "per-peer scoped sync",
+    "full managed forgetting/reimport/restore/derived indexes",
+    "shared install/doctor/skills",
+    "installed agent startup and native capture gaps",
+    "full release audit"
+  ]
+}

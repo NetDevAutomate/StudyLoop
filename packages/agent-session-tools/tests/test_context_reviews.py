@@ -341,6 +341,8 @@ def test_cli_mcp_review_and_assessment_share_the_contract(history, tmp_path):
 def test_v35_upgrade_rolls_back_and_retries_without_losing_conversation(monkeypatch):
     import agent_session_tools.migrations as migrations
 
+    monkeypatch.setattr(migrations, "CURRENT_VERSION", 35)
+
     conn = sqlite3.connect(":memory:")
     conn.execute("PRAGMA foreign_keys=ON")
     conn.executescript(files("agent_session_tools").joinpath("schema.sql").read_text())

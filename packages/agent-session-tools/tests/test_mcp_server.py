@@ -117,7 +117,12 @@ def _get_tools():
     """Import tool functions from the MCP server."""
     from agent_session_tools.mcp_server import mcp
 
-    from _helpers import run_async
+    from importlib import import_module
+
+    # pytest importlib mode gives this test a package; isolated prepend mode does not.
+    run_async = import_module(
+        f"{__package__}._helpers" if __package__ else "_helpers"
+    ).run_async
 
     tools = run_async(mcp._list_tools())
     return {tool.name: tool.fn for tool in tools}  # type: ignore[attr-defined]
@@ -245,7 +250,12 @@ class TestServerCreation:
     def test_server_has_all_tools(self):
         from agent_session_tools.mcp_server import mcp
 
-        from _helpers import run_async
+        from importlib import import_module
+
+        # pytest importlib mode supplies a package; isolated prepend mode does not.
+        run_async = import_module(
+            f"{__package__}._helpers" if __package__ else "_helpers"
+        ).run_async
 
         tools = run_async(mcp._list_tools())
         tool_names = {t.name for t in tools}

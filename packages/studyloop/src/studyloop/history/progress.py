@@ -428,31 +428,34 @@ def get_struggling_topics(days: int = 14) -> list[dict]:
 
         from agent_session_tools.context.legacy import legacy_global_visible
 
-        if not legacy_global_visible(conn):
-            for item in merged.values():
-                item.pop("_concepts", None)
-            return sorted(merged.values(), key=lambda row: row["last_seen"] or "", reverse=True)
-
-        # Source 2: study_sessions flagged as a struggle.
+        # Source 2: owned study sessions, scoped before aggregation.
         try:
+            from agent_session_tools.context import records
+
+            clause, scope_params = records.visible_sql(conn, "study_sessions")
             for r in conn.execute(
-                """
+                f"""
                 SELECT topic,
                        COUNT(*)         AS session_count,
                        MAX(started_at)  AS last_seen
-                FROM study_sessions
-                WHERE struggle_count > 0
+                FROM study_sessions r
+                WHERE ({clause}) AND struggle_count > 0
                   AND topic IS NOT NULL
                   AND started_at > datetime('now', ?)
                 GROUP BY topic
                 """,
-                cutoff,
+                [*scope_params, *cutoff],
             ).fetchall():
                 _merge(r["topic"], 0, r["session_count"] or 0, r["last_seen"])
         except sqlite3.OperationalError as exc:
             if not _connection.is_missing_table_error(exc):
                 logger.warning("get_struggling_topics: study_sessions source failed: %s", exc)
                 raise
+
+        if not legacy_global_visible(conn):
+            for item in merged.values():
+                item.pop("_concepts", None)
+            return sorted(merged.values(), key=lambda row: row["last_seen"] or "", reverse=True)
 
         # Source 3: parked topics whose source is a struggle.
         try:

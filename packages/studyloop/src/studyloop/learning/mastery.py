@@ -299,11 +299,17 @@ def _seed_from_markdown(topic: str, *, max_files: int = 75) -> int:
 
 def seed_inferred_dependencies(topic: str) -> int:
     """Infer initial edges from existing graph/bridges and local markdown notes."""
-    count = _seed_from_markdown(topic)
+    count = 0
     conn = _connect()
     if not conn:
         return count
     try:
+        from agent_session_tools.context.legacy import legacy_global_visible
+
+        if not legacy_global_visible(conn):
+            return 0
+        conn.rollback()
+        count = _seed_from_markdown(topic)
         try:
             rows = conn.execute(
                 """

@@ -227,6 +227,30 @@ Recency does not resolve contradictory outcomes. Every result explicitly retains
 adequacy, semantic correctness or permission to ship. This operation evaluates
 execution requirements; it is not a general architecture-advice arbitrator.
 
+## StudyLoop learning history
+
+New study sessions, teach-back scores and knowledge bridges carry explicit
+ownership. A record linked to a native session follows that session's current
+classification; otherwise it belongs to the configured working-directory project
+or explicitly selected scope. Old records are not guessed personal or work.
+
+StudyLoop filters these records before reading notes, counting sessions or choosing
+recent scores. `get_study_history` includes permitted session statistics and
+`teachback_scores` within the requested time window. Its scope status distinguishes
+scoped records, explicit unclassified legacy inspection and withheld legacy state.
+Teach-back progress retains its reported-assessment status and available source
+lineage. A score is not native validation of the learner's understanding.
+
+The score, owner and progress update commit together. An explicitly source-linked
+assessment requires captured input; missing input causes an error and rollback.
+Cross-scope updates are refused, and applied source reclassification affects the
+next request to a running server.
+
+Ownership integration for other learner state, including parking, notes, practice,
+concept graphs and plans, remains in progress. Conversion of classified bridges
+into the still-unowned graph is temporarily unavailable. These limitations must
+be resolved before full production acceptance.
+
 ## Agent usage and health
 
 The MCP equivalents are `memory_search`, `memory_source`, `memory_propose`,

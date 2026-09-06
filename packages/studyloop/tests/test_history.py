@@ -362,18 +362,17 @@ class TestRecordTeachbackSerialisationAndErrors:
 
         import studyloop.history as hist
         import studyloop.history._connection as _conn
-        import studyloop.history.teachback as teachback_mod
 
         monkeypatch.setattr(_conn, "_connect", mock_connect)
 
         calls: list[sqlite3.Connection] = []
-        real_immediate = teachback_mod.immediate
+        real_immediate = _conn.immediate
 
         def spying_immediate(conn):
             calls.append(conn)
             return real_immediate(conn)
 
-        monkeypatch.setattr(teachback_mod, "immediate", spying_immediate)
+        monkeypatch.setattr(_conn, "immediate", spying_immediate)
 
         ok = hist.record_teachback(
             concept="Decorators",

@@ -844,9 +844,13 @@ class TestMigrationV26:
         Creates a parked_topics table at the v17 schema level (before v26)
         with the old broken index that allows cross-session duplicates.
         """
-        # migrate() runs every later migration too; retain the actual base schema
-        # rather than a session-only mock that cannot support later message hooks.
+        # migrate() runs every later migration too. Build the actual v25 schema;
+        # a fake version marker over two tables cannot prove an upgrade contract.
         conn.executescript(SCHEMA_PATH.read_text())
+        for version, (_, migration_fn) in sorted(MIGRATIONS.items()):
+            if version <= 25:
+                migration_fn(conn)
+        conn.commit()
         conn.executescript("""
             CREATE TABLE IF NOT EXISTS study_sessions (
                 id TEXT PRIMARY KEY,
@@ -880,7 +884,7 @@ class TestMigrationV26:
                 tech_area TEXT,
                 priority INTEGER
             );
-            CREATE UNIQUE INDEX uix_parked_topics_session_question
+            CREATE UNIQUE INDEX IF NOT EXISTS uix_parked_topics_session_question
             ON parked_topics (study_session_id, question, source);
 
             -- 4 duplicate pending rows for the same question (different sessions)

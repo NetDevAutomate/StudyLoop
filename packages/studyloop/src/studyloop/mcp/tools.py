@@ -379,6 +379,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
         from studyloop.history import (
             _connection,
             get_study_session_stats,
+            get_teachback_history,
             get_wins,
             last_studied,
             struggle_topics,
@@ -392,24 +393,26 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
                 conn.close()
 
         # Session stats — filter for matching topic
-        all_stats = get_study_session_stats(days=days) if learning_visible else []
-        topic_stats = [s for s in all_stats if topic.lower() in s.get("topic", "").lower()]
+        all_stats = get_study_session_stats(days=days)
+        topic_stats = [s for s in all_stats if topic.lower() in s.get("course", "").lower()]
 
         # Last studied date
         last = last_studied([topic.lower()])
 
         # Struggles
         struggles = struggle_topics(days=days)
-        topic_struggles = [s for s in struggles if topic.lower() in s.get("topic", "").lower()]
+        topic_struggles = [s for s in struggles if topic.lower() in s.get("course", "").lower()]
 
         # Wins (confident/mastered concepts)
         wins = get_wins(days=days)
         topic_wins = [w for w in wins if topic.lower() in w.get("topic", "").lower()]
+        scores = get_teachback_history(topic=topic, days=days)
 
         return {
             "topic": topic,
             "days": days,
             "session_stats": topic_stats,
+            "teachback_scores": scores,
             "last_studied": last,
             "struggles": topic_struggles,
             "wins": topic_wins,
@@ -423,6 +426,8 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
             "learning_scope_status": (
                 "explicit_unclassified_legacy_inspection"
                 if learning_visible
+                else "scoped_learning_records"
+                if topic_stats or scores
                 else "withheld_missing_scope_lineage"
             ),
         }

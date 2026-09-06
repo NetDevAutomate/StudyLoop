@@ -442,6 +442,155 @@ def test_memory_config_is_recognised_by_studyloop(consumer_db):
     assert "memory" not in unknown_top_level_keys()
 
 
+def test_owned_sessions_scores_and_bridges_keep_useful_history_in_each_scope(
+    consumer_db, monkeypatch
+):
+    from studyloop.history import bridges, observations, teachback
+
+    db, _, _ = consumer_db
+    personal = sessions.start_study_session("python", "high", session_id="personal")
+    assert personal is not None
+    assert sessions.end_study_session(personal, "PERSONAL_SESSION", win_count=1, struggle_count=0)
+    assert sessions.update_persona_hash(personal, "personal-persona")
+    assert teachback.record_teachback(
+        "generators",
+        "python",
+        (2, 2, 2, 2, 2),
+        "micro",
+        notes="PERSONAL_SCORE",
+        session_id="personal",
+    )
+    assert bridges.record_bridge("packets", "network", "generators", "python", "PERSONAL_BRIDGE")
+    monkeypatch.setenv("SESSION_CONTEXT_SCOPE", "work")
+    work = sessions.start_study_session("python", "low", session_id="work")
+    assert work is not None
+    assert sessions.end_study_session(work, "WORK_SESSION", win_count=0, struggle_count=1)
+    assert sessions.update_persona_hash(work, "work-persona")
+    for _ in range(25):
+        assert teachback.record_teachback(
+            "generators",
+            "python",
+            (4, 4, 4, 4, 4),
+            "full",
+            notes="WORK_SCORE",
+            session_id="work",
+        )
+    assert bridges.record_bridge("packets", "network", "generators", "python", "WORK_BRIDGE")
+    work_bridge = bridges.get_bridges()[0]["id"]
+    assert sessions.get_session_notes(personal) is None
+    assert sessions.end_study_session(personal, "WRONG_SCOPE") is False
+    monkeypatch.setenv("SESSION_CONTEXT_SCOPE", "personal")
+    assert sessions.get_session_notes(work) is None
+    assert sessions.update_persona_hash(work, "WRONG_SCOPE") is False
+    assert bridges.update_bridge_usage(work_bridge, True) is False
+    assert sessions.get_session_notes(personal) == "PERSONAL_SESSION"
+    stats = sessions.get_study_session_stats()
+    assert sum(r["sessions"] for r in stats) == 1
+    assert len(sessions.get_energy_session_data()) == 1
+    latest = sessions.get_last_study_session()
+    assert latest is not None and latest["energy_level"] == "high"
+    assert sessions.get_persona_effectiveness()[0]["persona_hash"] == "personal-persona"
+    scores = teachback.get_teachback_history("generators")
+    assert len(scores) == 1 and scores[0]["notes"] == "PERSONAL_SCORE"
+    assert [r["structural_mapping"] for r in bridges.get_bridges()] == ["PERSONAL_BRIDGE"]
+    with sqlite3.connect(db) as conn:
+        conn.execute("PRAGMA foreign_keys=ON")
+        projected = observations.rows(conn)
+        assert projected[0]["last_teachback_score"] == 10
+        assert "WORK_SCORE" not in json.dumps(projected)
+        # The legacy aggregate remains untouched by the new teachback writer.
+        assert not conn.execute(
+            "SELECT 1 FROM study_progress WHERE concept='generators'"
+        ).fetchone()
+    from studyloop.mcp.server import mcp
+
+    answer = mcp._tool_manager._tools["get_study_history"].fn(topic="python")
+    assert answer["learning_scope_status"] == "scoped_learning_records"
+    assert answer["session_stats"][0]["sessions"] == 1
+    assert answer["teachback_scores"][0]["notes"] == "PERSONAL_SCORE"
+    assert "WORK_" not in json.dumps(answer)
+
+
+def test_score_only_history_has_accurate_scope_status_and_time_window(consumer_db):
+    from studyloop.history import teachback
+    from studyloop.mcp.server import mcp
+
+    db, _, _ = consumer_db
+    assert teachback.record_teachback(
+        "generators", "python", (2, 2, 2, 2, 2), "micro", notes="RECENT_SCORE"
+    )
+    tool = mcp._tool_manager._tools["get_study_history"].fn
+    result = tool(topic="python", days=30)
+    assert result["session_stats"] == []
+    assert result["teachback_scores"][0]["notes"] == "RECENT_SCORE"
+    assert result["learning_scope_status"] == "scoped_learning_records"
+    with sqlite3.connect(db) as conn:
+        conn.execute("UPDATE teach_back_scores SET created_at=datetime('now','-40 days')")
+    assert tool(topic="python", days=30)["teachback_scores"] == []
+    assert len(tool(topic="python", days=60)["teachback_scores"]) == 1
+
+
+def test_linked_learning_records_follow_source_reclassification_and_tombstone(consumer_db):
+    from studyloop.history import teachback
+
+    db, _, _ = consumer_db
+    identity = sessions.start_study_session("python", "high", session_id="personal")
+    assert identity
+    sessions.end_study_session(identity, "SOURCE_LINKED_NOTE")
+    assert teachback.record_teachback(
+        "generators", "python", (3, 3, 3, 3, 3), "micro", session_id="personal"
+    )
+    with sqlite3.connect(db) as conn:
+        conn.execute("PRAGMA foreign_keys=ON")
+        conn.execute(
+            "UPDATE context_session_projects SET project_id='work' WHERE session_id='personal'"
+        )
+    assert sessions.get_session_notes(identity) is None
+    assert teachback.get_teachback_history("generators") == []
+    with sqlite3.connect(db) as conn:
+        conn.execute("PRAGMA foreign_keys=ON")
+        conn.execute(
+            "INSERT INTO context_tombstones(session_id,deletion_id,deleted_at) "
+            "VALUES ('personal','forget-fixture','2026-09-06')"
+        )
+        assert not conn.execute("SELECT 1 FROM study_sessions WHERE id=?", (identity,)).fetchone()
+        assert conn.execute("SELECT count(*) FROM teach_back_scores").fetchone()[0] == 0
+        assert conn.execute("PRAGMA foreign_key_check").fetchall() == []
+
+
+def test_teachback_failure_rolls_back_score_ownership_and_progress(consumer_db, monkeypatch):
+    from studyloop.history import observations, teachback
+
+    db, _, _ = consumer_db
+
+    def fail(*args, **kwargs):
+        raise RuntimeError("injected progress failure")
+
+    monkeypatch.setattr(observations, "record", fail)
+    with pytest.raises(RuntimeError, match="injected"):
+        teachback.record_teachback("generators", "python", (3, 3, 3, 3, 3), "micro")
+    with sqlite3.connect(db) as conn:
+        assert conn.execute("SELECT count(*) FROM teach_back_scores").fetchone()[0] == 0
+        assert conn.execute("SELECT count(*) FROM context_record_owners").fetchone()[0] == 0
+        assert conn.execute("SELECT count(*) FROM context_observations").fetchone()[0] == 0
+
+
+def test_source_linked_teachback_without_capture_refuses_without_partial_state(consumer_db):
+    from studyloop.history import teachback
+
+    db, _, _ = consumer_db
+    with sqlite3.connect(db) as conn:
+        conn.execute("DELETE FROM messages WHERE session_id='personal'")
+    with pytest.raises(ScopeError, match="nonempty captured input"):
+        teachback.record_teachback(
+            "generators", "python", (3, 3, 3, 3, 3), "micro", session_id="personal"
+        )
+    with sqlite3.connect(db) as conn:
+        assert conn.execute("SELECT count(*) FROM teach_back_scores").fetchone()[0] == 0
+        assert conn.execute("SELECT count(*) FROM context_record_owners").fetchone()[0] == 0
+        assert conn.execute("SELECT count(*) FROM context_observations").fetchone()[0] == 0
+
+
 def test_studyloop_stdio_history_keeps_scope_across_requests(consumer_db):
     import asyncio
     import os

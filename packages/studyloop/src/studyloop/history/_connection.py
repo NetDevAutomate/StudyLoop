@@ -9,11 +9,21 @@ from __future__ import annotations
 
 import logging
 import uuid
+from contextlib import contextmanager
 
-from ..db import connect_db
+from ..db import connect_db, immediate
 from ..settings import load_settings
 
 logger = logging.getLogger(__name__)
+
+
+@contextmanager
+def owned_write(conn):
+    """Keep business writes, ownership and scope revocation checks atomic."""
+    from agent_session_tools.context.records import policy_guard
+
+    with immediate(conn), policy_guard(conn):
+        yield
 
 
 def progress_id_for(topic: str, concept: str) -> str:

@@ -131,26 +131,25 @@ def suggest_focus(days: int = 30, limit: int = 6) -> list[tuple[str, str]]:
         try:
             from collections import Counter
 
-            from agent_session_tools.context.legacy import legacy_global_visible
+            from agent_session_tools.context import records
             from studyloop.history import observations
 
-            if legacy_global_visible(conn):
-                try:
-                    rows = conn.execute(
-                        """
-                        SELECT topic, COUNT(*) AS n FROM study_sessions
-                        WHERE started_at >= ? AND topic IS NOT NULL AND topic != ''
-                        GROUP BY LOWER(topic) ORDER BY n DESC LIMIT ?
-                        """,
-                        (cutoff, limit),
-                    ).fetchall()
-                    for row in rows:
-                        suggestions.setdefault(
-                            str(row[0]),
-                            f"{row[1]} study session(s) in the last {days} days",
-                        )
-                except sqlite3.OperationalError:
-                    pass
+            try:
+                clause, params = records.visible_sql(conn, "study_sessions")
+                rows = conn.execute(
+                    f"""
+                    SELECT topic, COUNT(*) AS n FROM study_sessions r
+                    WHERE ({clause}) AND started_at >= ? AND topic IS NOT NULL AND topic != ''
+                    GROUP BY LOWER(topic) ORDER BY n DESC LIMIT ?
+                    """,
+                    [*params, cutoff, limit],
+                ).fetchall()
+                for row in rows:
+                    suggestions.setdefault(
+                        str(row[0]), f"{row[1]} study session(s) in the last {days} days"
+                    )
+            except sqlite3.OperationalError:
+                pass
             try:
                 counts = Counter(
                     row["topic"]
