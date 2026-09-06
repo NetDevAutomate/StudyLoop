@@ -132,16 +132,24 @@ def update_bridge_usage(bridge_id: int, helpful: bool) -> bool:
 
 
 def migrate_bridges_to_graph() -> int:
-    """One-time migration of knowledge_bridges -> concept graph.
+    """Return visible bridge contributions available to the graph.
 
-    Creates concept rows and analogy_to relations from existing bridges.
-    Returns the number of bridges migrated.
+    Current schemas project live owned bridges. Pre-observation databases keep
+    the historical unclassified-only conversion for compatibility.
     """
     conn = _connection._connect()
     if not conn:
         return 0
 
     try:
+        from . import graph
+
+        if graph.available(conn):
+            # Current owned bridges already supply a live graph projection.
+            # There is no materialized second copy to migrate or forget.
+            return len(graph.bridges(conn))
+
+        # Pre-observation compatibility only.
         # Check if both tables exist
         tables = {
             r[0]

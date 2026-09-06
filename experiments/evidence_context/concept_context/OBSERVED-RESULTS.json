@@ -1,0 +1,97 @@
+{
+  "stage": 29,
+  "schema": 38,
+  "schema_change": false,
+  "installed_checks": {
+    "scope_before_http_limit": true,
+    "independent_same_label_contributions": true,
+    "reported_validated_is_not_semantic_validation": true,
+    "mapping_and_snapshot_binding_returned": true,
+    "correction_changes_binding": true,
+    "actual_mcp_returns_provenance": true,
+    "deletion_preserves_independent_contribution": true,
+    "no_copied_graph_rows": true,
+    "project_scope_change_removes_labels_and_edges": true,
+    "foreign_keys_intact": true
+  },
+  "installed_http_timing": {
+    "iterations": 20,
+    "median_http_ms": 9.849,
+    "max_http_ms": 10.502,
+    "visible_edges": 1
+  },
+  "scale": {
+    "measurements": [
+      {
+        "visible": 100,
+        "excluded": 100,
+        "repeats": 5,
+        "median_ms": 17.647,
+        "max_ms": 38.668,
+        "returned_edges": 38,
+        "coverage": "partial"
+      },
+      {
+        "visible": 1000,
+        "excluded": 1000,
+        "repeats": 5,
+        "median_ms": 34.158,
+        "max_ms": 35.944,
+        "returned_edges": 37,
+        "coverage": "partial"
+      },
+      {
+        "visible": 5000,
+        "excluded": 5000,
+        "repeats": 5,
+        "median_ms": 110.561,
+        "max_ms": 111.54,
+        "returned_edges": 37,
+        "coverage": "partial"
+      }
+    ],
+    "limits": "Direct installed helper, synthetic short bridges, sequential warm runs; includes all-visible projection and packing, excludes transport and startup. Output is bounded; query work is not."
+  },
+  "tests": {
+    "studyloop": {
+      "passed": 3816,
+      "skipped": 4,
+      "deselected": 704,
+      "seconds": 171.17,
+      "scope": "before final prerequisite-direction tightening, reported legend clarification and test-only type assertions"
+    },
+    "memory_and_experiments": {
+      "passed": 1584,
+      "skipped": 1,
+      "seconds": 71.35
+    },
+    "final_focused": {
+      "passed": 168,
+      "seconds": 3.99
+    },
+    "pyright": "0 errors, 0 warnings"
+  },
+  "browser": {
+    "sections": 4,
+    "opened_disclosures": 4,
+    "viewport_fits": true,
+    "console_errors": 0,
+    "scope": "same four-view renderer in installed walkthrough; final data regenerated after direction/legend refinements"
+  },
+  "council": {
+    "rounds": 2,
+    "providers": [
+      "meta",
+      "qwen",
+      "mistral"
+    ],
+    "result_review": "two conditional acceptances, one rejection; coordinator arbitrated by evidence, not votes"
+  },
+  "limits": [
+    "No semantic answer-quality trial or storage-engine comparison in this increment",
+    "Projection work is not bounded by response bytes",
+    "Bridge snapshot binding is not historical archiving",
+    "Full file ownership, native annotations, scoped sync/restore, installation and release acceptance remain open"
+  ],
+  "private_artifacts": "studyloop-private/reviews/2026-09-06-stage29-concept-ownership"
+}

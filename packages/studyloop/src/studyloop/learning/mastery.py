@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 import sqlite3
 import uuid
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from itertools import pairwise
 from typing import TYPE_CHECKING
 
+from agent_session_tools.context.store import _json
 from studyloop.history import _connection
 from studyloop.learning.concept_quality import is_usable_concept
 
@@ -70,7 +72,7 @@ _NODE_CATEGORIES: tuple[dict[str, str], ...] = (
         "colour": "#ac5362",
         "border_colour": "#d897a2",
         "text_colour": "#ffffff",
-        "meaning": "Teach-back evidence is weak — start here",
+        "meaning": "Reported as struggling in the available learning assessments",
     },
     {
         "key": "learning",
@@ -79,7 +81,7 @@ _NODE_CATEGORIES: tuple[dict[str, str], ...] = (
         "colour": "#8b6a43",
         "border_colour": "#caa274",
         "text_colour": "#ffffff",
-        "meaning": "Partly understood and still consolidating",
+        "meaning": "Reported as learning in the available assessments",
     },
     {
         "key": "confident",
@@ -88,7 +90,7 @@ _NODE_CATEGORIES: tuple[dict[str, str], ...] = (
         "colour": "#3f7692",
         "border_colour": "#71b0d0",
         "text_colour": "#ffffff",
-        "meaning": "Recalled reliably — keep it warm",
+        "meaning": "Reported as confident; independent validation is not established",
     },
     {
         "key": "mastered",
@@ -97,7 +99,7 @@ _NODE_CATEGORIES: tuple[dict[str, str], ...] = (
         "colour": "#367d4d",
         "border_colour": "#5bc87f",
         "text_colour": "#ffffff",
-        "meaning": "Held up under a full review",
+        "meaning": "Reported as mastered; this label alone does not prove mastery",
     },
     {
         "key": _UNTRACKED_KEY,
@@ -107,7 +109,7 @@ _NODE_CATEGORIES: tuple[dict[str, str], ...] = (
         "border_colour": "#aaa4cc",
         "text_colour": "#ffffff",
         "dash": "4 3",
-        "meaning": "Seeded from your notes, never teach-backed",
+        "meaning": "No matching learning assessment in the available context",
     },
 )
 
@@ -139,6 +141,11 @@ _STYLED_RELATIONS = frozenset({"heading_path", "backlink"})
 
 @dataclass(frozen=True)
 class ConceptDependency:
+    """For `prerequisite`, source is a reported prerequisite of target.
+
+    Other relation labels are descriptive context without a scheduling direction.
+    """
+
     topic: str
     source_concept: str
     target_concept: str
@@ -146,6 +153,13 @@ class ConceptDependency:
     evidence: str
     source_type: str
     confidence: float
+
+    provenance: dict = field(
+        default_factory=lambda: {
+            "kind": "unclassified_legacy",
+            "semantic_validation": "not_established",
+        }
+    )
 
     def to_json_dict(self) -> dict:
         return asdict(self)
@@ -167,6 +181,52 @@ def upsert_dependency(edge: ConceptDependency) -> bool:
     if not conn:
         return False
     try:
+        from agent_session_tools.context.legacy import legacy_global_visible
+        from agent_session_tools.context.scope import ScopeError
+        from studyloop.history import graph
+
+        if graph.available(conn):
+            import math
+
+            if (
+                not all(
+                    isinstance(v, str) and v.strip()
+                    for v in (
+                        edge.topic,
+                        edge.source_concept,
+                        edge.target_concept,
+                        edge.relation_type,
+                    )
+                )
+                or not math.isfinite(edge.confidence)
+                or not 0 <= edge.confidence <= 1
+            ):
+                raise ValueError(
+                    "Dependency needs named endpoints and a finite weight from zero to one"
+                )
+            # File-derived legacy import is kept unclassified; paths are not
+            # native captured evidence and cannot assign a classified owner.
+            if edge.source_type in {
+                "heading",
+                "backlink",
+                "tag",
+                "concept_graph",
+                "knowledge_bridge",
+            }:
+                raise ScopeError("Derived dependencies must use their owned source projection")
+            with _connection.owned_write(conn):
+                graph.report(
+                    conn,
+                    graph.DEPENDENCY,
+                    _json(
+                        [edge.topic, edge.source_concept, edge.target_concept, edge.relation_type]
+                    ),
+                    {k: v for k, v in edge.to_json_dict().items() if k != "provenance"},
+                )
+            return True
+        if not legacy_global_visible(conn):
+            raise ScopeError("Dependency ownership requires database migration")
+        conn.rollback()
         conn.execute(
             """
             INSERT INTO concept_dependencies
@@ -227,6 +287,17 @@ def _markdown_roots() -> list[Path]:
 
 
 def _seed_from_markdown(topic: str, *, max_files: int = 75) -> int:
+    conn = _connect()
+    if not conn:
+        return 0
+    try:
+        from agent_session_tools.context.legacy import legacy_global_visible
+        from studyloop.history import graph
+
+        if graph.available(conn) or not legacy_global_visible(conn):
+            return 0
+    finally:
+        conn.close()
     topic_key = topic.lower()
     count = 0
     for root in _markdown_roots():
@@ -305,7 +376,12 @@ def seed_inferred_dependencies(topic: str) -> int:
         return count
     try:
         from agent_session_tools.context.legacy import legacy_global_visible
+        from studyloop.history import graph
 
+        if graph.available(conn):
+            # No unowned file/legacy relation is silently reclassified here.
+            # Bridge edges are computed live by _fetch_dependencies.
+            return 0
         if not legacy_global_visible(conn):
             return 0
         conn.rollback()
@@ -383,6 +459,20 @@ def _fetch_dependencies(topic: str) -> list[ConceptDependency]:
     if not conn:
         return []
     try:
+        from agent_session_tools.context.legacy import legacy_global_visible
+        from studyloop.history import graph
+
+        owned = [
+            ConceptDependency(**{k: v for k, v in r.items() if k != "id"})
+            for r in graph.dependency_rows(conn, topic)
+        ]
+        owned = [
+            e
+            for e in owned
+            if is_usable_concept(e.source_concept) and is_usable_concept(e.target_concept)
+        ]
+        if not legacy_global_visible(conn):
+            return sorted(owned, key=lambda e: (-e.confidence, e.source_concept, e.target_concept))
         rows = conn.execute(
             """
             SELECT topic, source_concept, target_concept, relation_type,
@@ -393,7 +483,7 @@ def _fetch_dependencies(topic: str) -> list[ConceptDependency]:
             """,
             (topic,),
         ).fetchall()
-        return [
+        return owned + [
             ConceptDependency(
                 topic=row["topic"],
                 source_concept=row["source_concept"],
@@ -413,7 +503,20 @@ def _fetch_dependencies(topic: str) -> list[ConceptDependency]:
             # migration and nothing destroyed: the rows stay on disk, they just
             # stop being rendered as concepts. An edge needs BOTH ends usable,
             # since a dependency pointing at debris teaches nothing.
-            if is_usable_concept(row["source_concept"]) and is_usable_concept(row["target_concept"])
+            if is_usable_concept(row["source_concept"])
+            and is_usable_concept(row["target_concept"])
+            and graph.legacy_subject_visible(
+                conn,
+                graph.DEPENDENCY,
+                _json(
+                    [
+                        row["topic"],
+                        row["source_concept"],
+                        row["target_concept"],
+                        row["relation_type"],
+                    ]
+                ),
+            )
         ]
     except sqlite3.OperationalError as exc:
         if not _connection.is_missing_table_error(exc):
@@ -462,7 +565,7 @@ def _progress_by_concept(topic: str) -> dict[str, dict]:
 def _category_for_progress(state: dict) -> str:
     """Map one `study_progress` row onto a node category key.
 
-    `confidence` is authoritative when present. When it is missing but a
+    The reported `confidence` selects the display category when present. When it is missing but a
     teach-back score is not, the score is mapped through the SAME thresholds
     `history.teachback._confidence_from_teachback` uses to produce `confidence`
     in the first place, so the two can never disagree. That mapping's top band
@@ -550,6 +653,8 @@ def mastery_graph_json(topic: str, *, max_edges: int | None = None) -> dict:
         "edges": [edge.to_json_dict() for edge in selected_edges],
         "edge_count_total": len(edges),
         "limited": len(selected_edges) < len(edges),
+        "node_identity": "display_labels_group_contributions; use edge provenance for identity",
+        "learning_assessment_status": "reported_categories_not_independent_validation",
         # ADDITIVE. `nodes` stays a list of plain strings and no existing key
         # changes meaning, because the panel and its tests already read them.
         # `node_categories` is what lets a CLIENT-BUILT graph carry the same
@@ -560,6 +665,39 @@ def mastery_graph_json(topic: str, *, max_edges: int | None = None) -> dict:
         "node_categories": mastery_node_categories(topic, nodes),
         "legend": mastery_legend(),
     }
+
+
+def agent_concept_context(topic: str, *, limit: int = 80, max_bytes: int = 32768) -> dict:
+    """Bound an agent response without splitting a contribution's source metadata.
+
+    Retrieval completeness is explicit. This is a context view, not semantic
+    arbitration; omitted edges cannot support a claim that no alternatives exist.
+    """
+    if not isinstance(topic, str) or not 1 <= len(topic.strip()) <= 120:
+        raise ValueError("Topic must contain 1 to 120 characters")
+    if type(limit) is not int or not 1 <= limit <= 250:
+        raise ValueError("Limit must be between 1 and 250")
+    if type(max_bytes) is not int or not 4096 <= max_bytes <= 131072:
+        raise ValueError("Byte budget must be between 4096 and 131072")
+    result = mastery_graph_json(topic.strip(), max_edges=limit)
+    result["contract"] = "studyloop.concept-context/v1"
+    result["semantic_arbitration"] = "not_performed"
+    result["coverage"] = "partial" if result["limited"] else "all_visible_contributions"
+    while len(json.dumps(result, ensure_ascii=False).encode()) > max_bytes:
+        if not result["edges"]:
+            raise ValueError("Graph metadata exceeds response budget")
+        result["edges"].pop()
+        result["nodes"] = sorted(
+            {e[k] for e in result["edges"] for k in ("source_concept", "target_concept")}
+        )
+        result["node_categories"] = {
+            name: category
+            for name, category in result["node_categories"].items()
+            if name in result["nodes"]
+        }
+        result["limited"] = True
+        result["coverage"] = "partial"
+    return result
 
 
 def _mermaid_id(name: str) -> str:
@@ -641,6 +779,8 @@ def weak_links_for_topic(topic: str) -> list[dict]:
 
     items: list[dict] = []
     for edge in edges:
+        if edge.relation_type != "prerequisite":
+            continue
         source_key = edge.source_concept.lower()
         state = progress.get(source_key, {})
         confidence = state.get("confidence")
@@ -659,9 +799,11 @@ def weak_links_for_topic(topic: str) -> list[dict]:
                 "concept": edge.source_concept,
                 "dependency": edge.target_concept,
                 "source": edge.evidence,
+                "provenance": edge.provenance,
+                "relationship_status": "reported_dependency_not_validated_prerequisite",
                 "reason": (
                     f"{edge.source_concept} is {confidence or 'low-score'} "
-                    f"and feeds {edge.target_concept}"
+                    f"with a reported prerequisite link to {edge.target_concept}"
                 ),
                 "confidence": confidence,
                 "last_teachback_score": score,

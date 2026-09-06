@@ -634,6 +634,22 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
 
     @mcp.tool()
     @consistent_read
+    def get_concept_context(topic: str, limit: int = 80) -> dict[str, Any]:
+        """Inspect scoped relationships and why they are available (up to 32KiB).
+
+        Contributions retain their source IDs, hashes and reported authority.
+        Analogy/quality labels do not establish prerequisites or validation.
+        Partial coverage cannot establish that no contrary relationship exists.
+        """
+        from studyloop.learning.mastery import agent_concept_context
+
+        try:
+            return agent_concept_context(topic, limit=limit)
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+
+    @mcp.tool()
+    @consistent_read
     def get_next_action(
         energy: str = "medium",
         time_minutes: int = 25,

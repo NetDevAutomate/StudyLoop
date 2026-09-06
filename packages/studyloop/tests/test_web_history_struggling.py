@@ -17,6 +17,7 @@ pytest.importorskip("fastapi")
 
 from fastapi.testclient import TestClient  # pyright: ignore[reportMissingImports]
 
+from agent_session_tools.context import records
 from studyloop.web.app import create_app
 
 if TYPE_CHECKING:
@@ -34,24 +35,8 @@ if TYPE_CHECKING:
 def seeded_db(tmp_path: Path) -> Path:
     """Populate a tmp sessions.db with struggling / non-struggling rows."""
     db = tmp_path / "sessions.db"
-    conn = sqlite3.connect(db)
-    conn.row_factory = sqlite3.Row
-    conn.execute(
-        """
-        CREATE TABLE study_progress (
-            id TEXT PRIMARY KEY,
-            topic TEXT,
-            concept TEXT,
-            confidence TEXT,
-            first_seen TEXT,
-            last_seen TEXT,
-            session_count INTEGER,
-            notes TEXT,
-            created_at TEXT,
-            updated_at TEXT
-        )
-        """
-    )
+    # Protected responses require the canonical access-generation schema.
+    conn = records.connect(db)
     now = datetime.now(UTC)
     rows = [
         # struggling, in window — counts
@@ -120,7 +105,11 @@ def seeded_db(tmp_path: Path) -> Path:
             now.isoformat(),
         ),
     ]
-    conn.executemany("INSERT INTO study_progress VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", rows)
+    conn.executemany(
+        "INSERT INTO study_progress (id,topic,concept,confidence,first_seen,last_seen,"
+        "session_count,notes,created_at,updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        rows,
+    )
     conn.commit()
     conn.close()
     return db
@@ -131,9 +120,7 @@ def client(seeded_db: Path, monkeypatch: MonkeyPatch) -> TestClient:
     """Patch the progress helper's connect factory to use our tmp DB."""
 
     def _connect_seeded():
-        conn = sqlite3.connect(seeded_db)
-        conn.row_factory = sqlite3.Row
-        return conn
+        return records.connect(seeded_db)
 
     monkeypatch.setattr("studyloop.history._connection._connect", _connect_seeded)
     return TestClient(create_app(study_dirs=[]))
@@ -177,19 +164,12 @@ def test_post_struggling_topic_records_lesson_slug_as_generation_topic(
 ) -> None:
     setup = sqlite3.connect(seeded_db)
     try:
-        setup.execute("ALTER TABLE study_progress ADD COLUMN source_course TEXT")
-        setup.execute("ALTER TABLE study_progress ADD COLUMN source_section TEXT")
-        setup.execute("ALTER TABLE study_progress ADD COLUMN source_publisher TEXT")
-        setup.execute("ALTER TABLE study_progress ADD COLUMN source_session_id TEXT")
-        setup.execute("ALTER TABLE study_progress ADD COLUMN created_by TEXT DEFAULT 'agent'")
         setup.commit()
     finally:
         setup.close()
 
     def _connect_seeded():
-        conn = sqlite3.connect(seeded_db)
-        conn.row_factory = sqlite3.Row
-        return conn
+        return records.connect(seeded_db)
 
     monkeypatch.setattr("studyloop.history._connection._connect", _connect_seeded)
     client = TestClient(create_app(study_dirs=[]))
@@ -207,17 +187,16 @@ def test_post_struggling_topic_records_lesson_slug_as_generation_topic(
     assert resp.status_code == 200
     assert resp.json() == {"ok": True}
 
-    conn = sqlite3.connect(seeded_db)
-    conn.row_factory = sqlite3.Row
+    from agent_session_tools.context.observations import ObservationStore
+    from studyloop.history.observations import KIND
+
+    conn = records.connect(seeded_db)
     try:
-        row = conn.execute(
-            """
-            SELECT topic, concept, confidence, source_course, source_section,
-                   source_publisher, created_by, notes
-            FROM study_progress
-            WHERE source_section = 'study-notes/joins'
-            """
-        ).fetchone()
+        row = next(
+            r["payload"]
+            for r in ObservationStore(conn).list(KIND)
+            if r["payload"]["source_section"] == "study-notes/joins"
+        )
     finally:
         conn.close()
 
@@ -258,10 +237,6 @@ def test_get_struggling_topics_uses_section_provenance_for_web_rows(
     now = datetime.now(UTC).isoformat()
     setup = sqlite3.connect(seeded_db)
     try:
-        setup.execute("ALTER TABLE study_progress ADD COLUMN source_course TEXT")
-        setup.execute("ALTER TABLE study_progress ADD COLUMN source_section TEXT")
-        setup.execute("ALTER TABLE study_progress ADD COLUMN source_publisher TEXT")
-        setup.execute("ALTER TABLE study_progress ADD COLUMN created_by TEXT DEFAULT 'agent'")
         setup.execute(
             """
             INSERT INTO study_progress (
@@ -293,9 +268,7 @@ def test_get_struggling_topics_uses_section_provenance_for_web_rows(
         setup.close()
 
     def _connect_seeded():
-        conn = sqlite3.connect(seeded_db)
-        conn.row_factory = sqlite3.Row
-        return conn
+        return records.connect(seeded_db)
 
     monkeypatch.setattr("studyloop.history._connection._connect", _connect_seeded)
     client = TestClient(create_app(study_dirs=[]))

@@ -389,7 +389,14 @@ def _transfer_candidates(time_minutes: int) -> list[_Candidate]:
                 source=source,
                 evidence_command=_evidence_command("visual", concept, topic, source),
                 score=52,
-                metadata={"dependency": link.get("dependency")},
+                metadata={
+                    "dependency": link.get("dependency"),
+                    "relationship_status": link.get("relationship_status"),
+                    "relationship_observation_id": link.get("provenance", {}).get("observation_id"),
+                    "relationship_binding_sha256": link.get("provenance", {}).get("binding_sha256"),
+                    "relationship_source_kind": link.get("provenance", {}).get("kind"),
+                    "semantic_validation": link.get("provenance", {}).get("semantic_validation"),
+                },
             )
         )
     return candidates

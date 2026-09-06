@@ -624,6 +624,7 @@ def _mock_connect_for(db_path, monkeypatch):
     def mock_connect():
         conn = sqlite3.connect(db_path, timeout=5)
         conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys=ON")
         return conn
 
     monkeypatch.setattr(_conn, "_connect", mock_connect)
@@ -664,23 +665,22 @@ class TestMigrateBridgesToGraph:
         count = hist.migrate_bridges_to_graph()
         assert count == 2
 
-        conn = sqlite3.connect(db_path)
-        concepts = conn.execute("SELECT name, domain FROM concepts").fetchall()
-        concept_set = {(r[0], r[1]) for r in concepts}
-        assert ("ecmp routing", "networking") in concept_set
-        assert ("spark partitioning", "spark") in concept_set
-        assert ("vlan", "networking") in concept_set
-        assert ("data lake zones", "aws") in concept_set
+        concepts = hist.list_concepts()
+        concept_set = {(r.name, r.domain) for r in concepts}
+        assert concept_set == {
+            ("ecmp routing", "networking"),
+            ("spark partitioning", "spark"),
+            ("vlan", "networking"),
+            ("data lake zones", "aws"),
+        }
+        from studyloop.learning.mastery import list_dependencies
 
-        relations = conn.execute(
-            "SELECT relation_type, confidence FROM concept_relations"
-        ).fetchall()
-        assert len(relations) == 2
-        assert all(r[0] == "analogy_to" for r in relations)
-        # effective → 1.0, validated → 0.7
-        confidences = sorted(r[1] for r in relations)
-        assert confidences == [0.7, 1.0]
-        conn.close()
+        edges = list_dependencies("networking")
+        assert len(edges) == 2
+        assert {e.provenance["quality_report"] for e in edges} == {"effective", "validated"}
+        assert all(e.provenance["semantic_validation"] == "not_established" for e in edges)
+        with sqlite3.connect(db_path) as conn:
+            assert conn.execute("SELECT COUNT(*) FROM concept_relations").fetchone()[0] == 0
 
     def test_returns_zero_when_no_bridges(self, tmp_path, monkeypatch):
         db_path = _make_migrated_db(tmp_path)
@@ -714,11 +714,12 @@ class TestMigrateBridgesToGraph:
         hist.migrate_bridges_to_graph()  # second run — should not duplicate
 
         conn = sqlite3.connect(db_path)
-        assert conn.execute("SELECT COUNT(*) FROM concepts").fetchone()[0] == 2
-        assert conn.execute("SELECT COUNT(*) FROM concept_relations").fetchone()[0] == 1
+        assert len(hist.list_concepts()) == 2
+        assert conn.execute("SELECT COUNT(*) FROM concepts").fetchone()[0] == 0
+        assert conn.execute("SELECT COUNT(*) FROM concept_relations").fetchone()[0] == 0
         conn.close()
 
-    def test_proposed_quality_maps_to_low_confidence(self, tmp_path, monkeypatch):
+    def test_proposed_quality_remains_reported_not_probability(self, tmp_path, monkeypatch):
         db_path = _make_migrated_db(tmp_path)
 
         conn = sqlite3.connect(db_path)
@@ -739,10 +740,12 @@ class TestMigrateBridgesToGraph:
         _mock_connect_for(db_path, monkeypatch)
         hist.migrate_bridges_to_graph()
 
-        conn = sqlite3.connect(db_path)
-        confidence = conn.execute("SELECT confidence FROM concept_relations").fetchone()[0]
-        assert confidence == 0.3  # proposed → 0.3
-        conn.close()
+        from studyloop.learning.mastery import list_dependencies
+
+        edge = list_dependencies("networking")[0]
+        assert edge.confidence == 0.0
+        assert edge.provenance["quality_report"] == "proposed"
+        assert edge.provenance["confidence_meaning"] == "display_weight_not_probability"
 
     def test_concept_names_are_lowercased(self, tmp_path, monkeypatch):
         db_path = _make_migrated_db(tmp_path)
@@ -766,7 +769,7 @@ class TestMigrateBridgesToGraph:
         hist.migrate_bridges_to_graph()
 
         conn = sqlite3.connect(db_path)
-        names = [r[0] for r in conn.execute("SELECT name FROM concepts").fetchall()]
+        names = [r.name for r in hist.list_concepts()]
         assert "bgp route propagation" in names
         assert "event streaming" in names
         conn.close()
