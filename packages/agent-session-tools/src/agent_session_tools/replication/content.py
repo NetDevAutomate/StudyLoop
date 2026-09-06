@@ -368,8 +368,15 @@ def _learner(conn, tables):
             _row(conn, "context_record_owners", owner)
 
 
-def apply_content(path, config, snapshot):
-    """Apply only the content phase; return an explicit incomplete-sync outcome."""
+def apply_in_transaction(conn, config, snapshot):
+    """Apply content inside the coordinator's transaction, alongside its durable receipt."""
+    if (
+        not conn.in_transaction
+        or conn.execute("PRAGMA foreign_keys").fetchone()[0] != 1
+    ):
+        raise ReplicaError(
+            "Content application requires a transaction with foreign keys"
+        )
     if not isinstance(snapshot, dict) or set(snapshot) != {
         "contract",
         "plan",
@@ -400,124 +407,126 @@ def apply_content(path, config, snapshot):
         or sum(map(len, tables.values())) > MAX_ROWS
     ):
         raise ReplicaError("Snapshot row limit exceeded")
+    if hello(conn, peer) != plan["receiver"]:
+        raise ReplicaError("Receiver state changed after negotiation")
+    for table, rows in tables.items():
+        columns = {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
+        if any(not isinstance(row, dict) or set(row) != columns for row in rows):
+            raise ReplicaError("Snapshot columns do not match the installed schema")
+    _closure(tables, peer.policy, scope)
+    incoming_assignments = {
+        r["session_id"]: r["project_id"] for r in tables["context_session_projects"]
+    }
+    for row in tables["sessions"]:
+        existing = conn.execute(
+            "SELECT sp.project_id FROM sessions s LEFT JOIN context_session_projects sp ON sp.session_id=s.id WHERE s.id=?",
+            (row["id"],),
+        ).fetchone()
+        if existing is not None and existing[0] != incoming_assignments.get(row["id"]):
+            raise ReplicaConflict(
+                "Existing session ownership differs; remote labels cannot reclassify it"
+            )
+    for table in (
+        "sessions",
+        "messages",
+        "context_session_projects",
+        "context_evidence",
+        "context_native_message_sources",
+        "context_assertions",
+        "context_citations",
+        "context_relations",
+    ):
+        for incoming in tables[table]:
+            row = dict(incoming)
+            if table == "context_session_projects":
+                # Machine-local roots can differ. Keep an explicit received
+                # assignment so a later local root-policy apply cannot erase it.
+                row["assignment_kind"] = "explicit"
+            _row(
+                conn,
+                table,
+                row,
+                ignore=("first_captured_at",)
+                if table == "context_evidence"
+                else ("assignment_kind",)
+                if table == "context_session_projects"
+                else (),
+            )
+    _learner(conn, tables)
+    for table in (
+        "context_record_study_links",
+        "context_observations",
+        "context_observation_sources",
+        "context_observation_owners",
+        "context_observation_session_owners",
+        "context_observation_supersedes",
+        "context_record_observations",
+        "context_review_targets",
+        "context_annotation_retirements",
+        "context_observation_retired_subjects",
+        "session_notes",
+        "session_tags",
+        "session_learning_metadata",
+    ):
+        for row in tables[table]:
+            _row(conn, table, row)
+    for incoming in tables["file_references"]:
+        row = {k: v for k, v in incoming.items() if k != "id"}
+        columns = list(row)
+        existing = conn.execute(
+            "SELECT 1 FROM file_references WHERE "
+            + " AND ".join(f'"{c}" IS ?' for c in columns),
+            list(row.values()),
+        ).fetchone()
+        if existing is None:
+            conn.execute(
+                "INSERT INTO file_references ("
+                + ",".join(columns)
+                + ") VALUES ("
+                + ",".join("?" for _ in columns)
+                + ")",
+                list(row.values()),
+            )
+    access = Access(
+        scope=Scope(scope),
+        projects=frozenset(plan["projects"]),
+        include_unassigned=scope == "unclassified",
+    )
+    store = ContextStore(conn)
+    for row in tables["context_evidence"]:
+        if store.source(row["id"], access) is None:
+            raise ReplicaError("Imported source is unavailable")
+    for row in tables["context_assertions"]:
+        if store.assertion(row["id"], access) is None:
+            raise ReplicaError("Imported assertion is unavailable")
+    observations = ObservationStore(conn)
+    visible = observations._visible(peer.policy, Scope(scope))
+    for row in tables["context_observations"]:
+        observations._checked(row, peer.policy, Scope(scope), visible_snapshot=visible)
+    _review_bindings(conn, tables, access)
+    if conn.execute("PRAGMA foreign_key_check").fetchone():
+        raise ReplicaError("Imported dependency graph violates foreign keys")
+    if PeerPolicy.from_config(config, peer.peer) != peer:
+        raise ReplicaError("Receiver configuration changed during content import")
+    return {
+        "content_phase_committed": True,
+        "sync_complete": False,
+        "lifecycle_reconciled": False,
+        "legacy_owned_table_gaps": snapshot["legacy_owned_table_gaps"],
+        "rows_considered": sum(map(len, tables.values())),
+    }
+
+
+def apply_content(path, config, snapshot):
+    """Apply only the content phase; return an explicit incomplete-sync outcome."""
     conn = sqlite3.connect(Path(path).resolve().as_uri() + "?mode=rw", uri=True)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys=ON")
     try:
         conn.execute("BEGIN IMMEDIATE")
-        if hello(conn, peer) != plan["receiver"]:
-            raise ReplicaError("Receiver state changed after negotiation")
-        for table, rows in tables.items():
-            columns = {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
-            if any(not isinstance(row, dict) or set(row) != columns for row in rows):
-                raise ReplicaError("Snapshot columns do not match the installed schema")
-        _closure(tables, peer.policy, scope)
-        incoming_assignments = {
-            r["session_id"]: r["project_id"] for r in tables["context_session_projects"]
-        }
-        for row in tables["sessions"]:
-            existing = conn.execute(
-                "SELECT sp.project_id FROM sessions s LEFT JOIN context_session_projects sp ON sp.session_id=s.id WHERE s.id=?",
-                (row["id"],),
-            ).fetchone()
-            if existing is not None and existing[0] != incoming_assignments.get(
-                row["id"]
-            ):
-                raise ReplicaConflict(
-                    "Existing session ownership differs; remote labels cannot reclassify it"
-                )
-        for table in (
-            "sessions",
-            "messages",
-            "context_session_projects",
-            "context_evidence",
-            "context_native_message_sources",
-            "context_assertions",
-            "context_citations",
-            "context_relations",
-        ):
-            for incoming in tables[table]:
-                row = dict(incoming)
-                if table == "context_session_projects":
-                    # Machine-local roots can differ. Keep an explicit received
-                    # assignment so a later local root-policy apply cannot erase it.
-                    row["assignment_kind"] = "explicit"
-                _row(
-                    conn,
-                    table,
-                    row,
-                    ignore=("first_captured_at",)
-                    if table == "context_evidence"
-                    else ("assignment_kind",)
-                    if table == "context_session_projects"
-                    else (),
-                )
-        _learner(conn, tables)
-        for table in (
-            "context_record_study_links",
-            "context_observations",
-            "context_observation_sources",
-            "context_observation_owners",
-            "context_observation_session_owners",
-            "context_observation_supersedes",
-            "context_record_observations",
-            "context_review_targets",
-            "context_annotation_retirements",
-            "context_observation_retired_subjects",
-            "session_notes",
-            "session_tags",
-            "session_learning_metadata",
-        ):
-            for row in tables[table]:
-                _row(conn, table, row)
-        for incoming in tables["file_references"]:
-            row = {k: v for k, v in incoming.items() if k != "id"}
-            columns = list(row)
-            existing = conn.execute(
-                "SELECT 1 FROM file_references WHERE "
-                + " AND ".join(f'"{c}" IS ?' for c in columns),
-                list(row.values()),
-            ).fetchone()
-            if existing is None:
-                conn.execute(
-                    "INSERT INTO file_references ("
-                    + ",".join(columns)
-                    + ") VALUES ("
-                    + ",".join("?" for _ in columns)
-                    + ")",
-                    list(row.values()),
-                )
-        access = Access(
-            scope=Scope(scope),
-            projects=frozenset(plan["projects"]),
-            include_unassigned=scope == "unclassified",
-        )
-        store = ContextStore(conn)
-        for row in tables["context_evidence"]:
-            if store.source(row["id"], access) is None:
-                raise ReplicaError("Imported source is unavailable")
-        for row in tables["context_assertions"]:
-            if store.assertion(row["id"], access) is None:
-                raise ReplicaError("Imported assertion is unavailable")
-        observations = ObservationStore(conn)
-        visible = observations._visible(peer.policy, Scope(scope))
-        for row in tables["context_observations"]:
-            observations._checked(
-                row, peer.policy, Scope(scope), visible_snapshot=visible
-            )
-        _review_bindings(conn, tables, access)
-        if conn.execute("PRAGMA foreign_key_check").fetchone():
-            raise ReplicaError("Imported dependency graph violates foreign keys")
-        if PeerPolicy.from_config(config, peer.peer) != peer:
-            raise ReplicaError("Receiver configuration changed during content import")
+        result = apply_in_transaction(conn, config, snapshot)
         conn.commit()
-        return {
-            "content_phase_committed": True,
-            "sync_complete": False,
-            "lifecycle_reconciled": False,
-            "legacy_owned_table_gaps": snapshot["legacy_owned_table_gaps"],
-            "rows_considered": sum(map(len, tables.values())),
-        }
+        return result
     except BaseException:
         conn.rollback()
         raise

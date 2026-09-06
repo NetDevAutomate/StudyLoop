@@ -1,0 +1,67 @@
+{
+  "stage": 34,
+  "date": "2026-09-06",
+  "schema": 42,
+  "scope": "Durable known-recipient offers, content receipts and permanent retirement controls; full production goal active",
+  "verification": {
+    "combined_memory_experiment": "1740 passed,1 optional skip,92.42s after review implementation fixes; five additional artifact cases added and passed afterward, production source unchanged",
+    "ledger_final": "26 passed,3.77s; includes all five individual artifact kinds and a fresh transfer after retirement",
+    "focused_content_tiering": "93 passed,6.53s before two review-specific ledger tests and five artifact cases were added",
+    "review_ledger_and_lesson": "22 passed,3.45s after cleanup receipt guard and monotonic state guards, before the five additional artifact cases",
+    "studyloop": "3823 passed,4 skipped,704 deselected,171.19s",
+    "static": "Ruff and targeted Pyright pass; full commit hooks recorded separately in delivery status",
+    "installed": "Fresh memory-only wheel with StudyLoop absent;20checks;actual Codex parser and local forget CLI plus production replica APIs",
+    "browser": "Five sections and all five disclosures opened;viewport fits;screenshot inspected;own server/tab closed;incidental favicon404",
+    "red_green": "Old apply_controls replay fails a second-writer pending-cleanup test; corrected receipt transaction leaves completion pending and retry succeeds",
+    "crash": "Real process exit29 after body insertion before receipt update rolls back both; subsequent import succeeds"
+  },
+  "demo_checks": {
+    "actual_native_capture": true,
+    "offer_is_not_data_receipt": true,
+    "offer_contains_no_body_markers": true,
+    "offer_excludes_work_identity": true,
+    "receiver_registration_durable": true,
+    "sender_recipient_recorded_before_release": true,
+    "native_source_rendering_binding_preserved": true,
+    "lost_receipt_recovered": true,
+    "sender_acknowledgement_persisted": true,
+    "actual_local_forget_cli": true,
+    "controls_only_known_scope": true,
+    "replica_source_and_annotations_purged": true,
+    "remote_cleanup_acknowledged": true,
+    "historical_receipt_does_not_restore": true,
+    "actual_native_replay_suppressed": true,
+    "canonical_forgotten_marker_absent": true,
+    "excluded_work_marker_absent": true,
+    "original_native_archives_unchanged": true,
+    "content_free_correction_link_retained": true,
+    "full_sync_remains_explicitly_incomplete": true
+  },
+  "timing": {
+    "single_local_offer_delivery_receipt_ms": 30.298,
+    "limit": "One fictional local run; excludes SSH and is not a throughput or engine benchmark."
+  },
+  "council": {
+    "design_successful_providers": [
+      "meta",
+      "qwen",
+      "mistral"
+    ],
+    "review_successful_providers": [
+      "meta",
+      "qwen",
+      "mistral"
+    ],
+    "decision": "Coordinator retained durable acceptance, added identity/state guards and fixed a reproduced receipt race; no consensus or post-fix approval claim"
+  },
+  "limits": [
+    "No actual SSH/session-sync coordinator",
+    "No reversible scope withdrawal/regrant protocol",
+    "No complete hot/full propagation or managed restore",
+    "Unknown legacy delivery/scope coverage remains unavailable",
+    "Mutable content conflicts remain explicit refusals",
+    "Per-envelope bounds do not bound cumulative retained ledger history",
+    "No owner DB/config/hooks/native archive or live peer changed",
+    "No storage-engine or semantic-usefulness superiority inferred"
+  ]
+}

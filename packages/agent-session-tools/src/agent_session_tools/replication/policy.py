@@ -33,10 +33,10 @@ def identity(value):
     return value
 
 
-def scopes(value):
+def scopes(value, *, allow_empty=False):
     if (
         not isinstance(value, list)
-        or not value
+        or (not value and not allow_empty)
         or any(type(v) is not str for v in value)
         or len(set(value)) != len(value)
     ):
@@ -58,7 +58,7 @@ class PeerPolicy:
     config_digest: str
 
     @classmethod
-    def from_config(cls, config: dict[str, Any], peer: str):
+    def from_config(cls, config: dict[str, Any], peer: str, *, controls_only=False):
         identity(peer)
         memory = config.get("memory", {})
         raw = memory.get("sync", {}) if isinstance(memory, dict) else {}
@@ -70,7 +70,7 @@ class PeerPolicy:
             raise ReplicaError("Peer is not configured in memory.sync.peers")
         if peer == node:
             raise ReplicaError("A replica cannot sync to itself")
-        allowed = scopes(peers[peer].get("allowed_scopes"))
+        allowed = scopes(peers[peer].get("allowed_scopes"), allow_empty=controls_only)
         policy = ScopePolicy.from_config(config)
         # Transport settings as well as source policy are revoked by an edit.
         digest = _hash(_json({"sync": raw, "policy": policy.digest}))

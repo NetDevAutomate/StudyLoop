@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Current schema version - increment when adding new migrations
-CURRENT_VERSION = 41
+CURRENT_VERSION = 42
 
 # Migration functions: version -> (description, migration_func)
 MIGRATIONS: dict[int, tuple[str, Callable[[sqlite3.Connection], None]]] = {}
@@ -1458,6 +1458,13 @@ def migrate_v40(conn: sqlite3.Connection) -> None:
 @migration(41, "Durable retirement identities and explicit lifecycle modes")
 def migrate_v41(conn: sqlite3.Connection) -> None:
     from .context.lifecycle_schema import install
+
+    install(conn)
+
+
+@migration(42, "Durable replica offers, known recipients and control receipts")
+def migrate_v42(conn: sqlite3.Connection) -> None:
+    from .replication.ledger_schema import install
 
     install(conn)
 
