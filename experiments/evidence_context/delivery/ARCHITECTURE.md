@@ -56,6 +56,15 @@ project/scope applicability and capture gaps. A bounded evidence bundle must ret
 contrary evidence and expose truncation; a short answer is not proof of sufficiency.
 Raw native text and model proposals remain untrusted prompt content.
 
+Stage24 separates bounded discovery from response packing. It preserves the
+strongest lexical source, then considers complete proposed contrary/correction
+groups before filling with other matches. All group dependencies fit together or
+the group is explicitly omitted. Exact endpoint/label duplicates are represented
+once; producer count is not authority. This is inspection priority, not semantic
+approval. Review lineage and treatment of disputed/rejected interpretations remain
+required before deriving product advice. The measured fixture trade-off was more
+complete groups with fewer lexical matches, not verified answer-quality improvement.
+
 ## Scope, forgetting and compatibility
 
 All current registered reads, including legacy CLI/MCP, direct ID lookup, semantic

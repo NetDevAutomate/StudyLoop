@@ -1,14 +1,14 @@
 {
   "goal": "active",
-  "previous_goal_turn": "progress: Stage23 bounded CLI/MCP context, installed standalone journey and real citation probe implemented and validated; full P01-P15 production goal remains active",
-  "current_stage": "23 agent context interface complete as increment; contrary-evidence selection experiment, complete learner ownership, scoped sync/lifecycle and installed StudyLoop release acceptance remain",
+  "previous_goal_turn": "progress: Stage24 measured and integrated whole-group contrary evidence selection, scope-before-discovery limits, duplicate projection and installed pressure acceptance; full production goal active",
+  "current_stage": "24 complete-group evidence inspection complete as increment; interpretation review, remaining learner ownership, scoped sync/lifecycle and installed StudyLoop release acceptance remain",
   "requirements": {
     "P01": "partial: additive v31-v34 schema; immutable sources/observations/native links/capture receipts and atomic import tested; installed upgrade/restore audit remains",
     "P02": "partial: actual four-harness exporters integrated and eight local real archives imported; Codex Desktop 0.153.0 observed; all native formats, other desktop coverage and installed end-to-end capture remain",
     "P03": "partial: public CLI/MCP accepts exact citations and unverified proposals only; native origin/scope/generator cannot be overwritten; native/provenance adversarial checks pass; complete release audit remains",
-    "P04": "partial: installed standalone CLI and real MCP stdio retrieve scoped cross-project/harness/machine fixtures; 60 real-source citations verified within byte bounds; contrary-evidence selection under pressure and semantic usefulness evaluation remain",
-    "P05": "partial: proposed relationships surface contrary claims; explicit execution-contract decisions distinguish conflicts, unknown/inapplicable metadata and missing coverage; general advice arbitration and accepted corrections remain",
-    "P06": "partial: new CLI/MCP direct sources, proposals, all relation endpoints and health are scoped; long-running MCP reclassification and mid-write config drift tested; teachback, study_sessions, bridges and other learner ownership remain",
+    "P04": "partial: bounded scoped CLI/MCP now preserves whole proposed contrary groups;12 policy cases and9 installed pressure checks pass;60 real citations verified;semantic usefulness and large relationship graph performance remain",
+    "P05": "partial: conflicts/corrections surfaced as unverified groups with explicit known omissions;duplicate producers do not amplify same endpoints/label;review lineage, disputed/rejected interpretation handling and general advice arbitration remain",
+    "P06": "partial: collection filters all relation citations/endpoints before LIMIT;hidden proposals do not leak counts or consume visible discovery capacity;remaining StudyLoop learner tables still need ownership",
     "P07": "not yet proven",
     "P08": "partial: tombstones block native reimport without blocking other batch sessions; interrupted capture rolls back; full source purge, scoped sync, restore and all derived indexes remain",
     "P09": "partial: operator native capture receipts plus scope-filtered health accompany context; hook runtime/registration, archive census and doctor integration remain",
@@ -16,8 +16,8 @@
     "P11": "not yet proven",
     "P12": "not yet proven",
     "P13": "partial: real StudyLoop progress writes/read projections, CLI/MCP consumer tests and subprocess lessons pass; installed agent startup with rich canonical context remains",
-    "P14": "stages1-23 independently runnable with pinned commits; Stage23 guide, interface reference, installed lesson, local aggregate results and two council rounds recorded; Stage8 exercise unchanged",
-    "P15": "partial:1264 session-tools tests pass;300 experiment/StudyLoop compatibility passes with1 optional skip plus passing lesson retest; commit hooks including workspace types/security passed; full installed StudyLoop release acceptance remains"
+    "P14": "stages1-24 independently runnable with pinned commits;Stage24 three-policy comparison,actual installed pressure lesson, measured trade-offs and council arbitration recorded;Stage8 exercise unchanged",
+    "P15": "partial:1270 session-tools passes before final duplicate guard;35 focused passes after guard;302 experiment/StudyLoop compatibility passes,1 optional skip;final wheel9 installed pressure checks and commit hooks pass;full release audit remains"
   },
   "completed_checkpoints": {
     "stage16": "6c736c5",
@@ -27,35 +27,37 @@
     "stage20": "36189ff",
     "stage21": "918d18f",
     "stage22": "3acbc6f",
-    "stage23": "1932c71"
+    "stage23": "1932c71",
+    "stage24": "23e5f29"
   },
   "current_findings": [
-    "Five memory CLI/MCP operations share one scoped versioned contract; full compact UTF8 JSON budget includes metadata, citations, proposed relationships, explanations and health; MCP transport wrapping excluded.",
-    "Standalone wheel and actual stdio journey passed8 acceptance checks without StudyLoop installed. Cross-project/harness/machine fixture sources retain exact citations and scope; live reclassification revokes dependencies.",
-    "Local six-query probe over8 real native archives:60 returned sources,60 unique,60 verified citations;1898 native body hashes valid;all source files unchanged. Queries took0.077-0.099s including Python startup.",
-    "Every query reached a retrieval bound;none of60 selected records supplied revision. Mechanical integrity does not measure semantic usefulness or recall.",
-    "Lexical-first source packing can crowd out a contrary relation. Both3-provider council rounds returned Meta/Qwen/Mistral; compare evidence allocations next, do not adopt unmeasured20percent reserve as fact.",
-    "Explicit recorded-check decisions retain validation_of_change:not_established. Unknown/mutable revision, contrary outcomes and truncated coverage cannot establish complete requested checks.",
-    "No owner DB/config/hooks changed; complete P01-P15 delivery objective remains active."
+    "Twelve constructed cases: lexical-first1complete group/40lexical sources;20percent reserve7/34;anchor-then-relations11/26. Strongest lexical retained12/12. Mechanical selection, not representative semantic quality.",
+    "Collector discovers bounded scoped evidence before allocation. Both endpoints and every supporting citation are scope/time-filtered before relation LIMIT;36 hidden proposals do not consume visible capacity or appear in counts.",
+    "Packer inserts whole dependency groups atomically;top-level context_status/conflict_review report bounded known/returned/omitted proposed groups. No semantic absence or validation claim.",
+    "Repeated same-endpoint/label proposals are represented once before discovery cap;all records retained. Different wording is not automatically equated. Misleading unverified labels remain a review-governance risk.",
+    "Final standalone wheel actual CLI/MCP stdio passed9 checks with20distractors and2source/8KiB request;StudyLoop absent from runtime. Reclassification still revokes next request.",
+    "Local native probe again verified60 citations over8archives;all responses<=32KiB;0.092-0.109s CLI startup-inclusive on this small sample;no returned native revisions, no semantic-quality evidence.",
+    "Meta/Qwen/Mistral council all responded;accepted unverified-priority and producer-amplification concerns, rejected missing-scope and no-reserve-improvement claims against tests/data. Not release approval.",
+    "No owner DB/config/hooks changed;full P01-P15 delivery objective remains active."
   ],
   "next_actions": [
-    "Measure lexical-first versus contrary-evidence allocation under fixed byte/source budgets; surface incomplete conflict coverage clearly without pretending semantic completeness.",
-    "Complete ownership/projection for remaining StudyLoop learner tables and general advice/correction decision support.",
-    "Implement versioned per-peer scoped sync and full managed forgetting/reimport/restore/index lifecycle; existing local tombstone tests are insufficient.",
-    "Finish selectable shared install/doctor/skills, native/desktop capability checks, installed StudyLoop startup and full P01-P15 release acceptance."
+    "Implement review lineage and treatment of disputed/rejected interpretations for general advice decisions;unverified priority is an inspection capability,not release-ready semantic arbitration.",
+    "Complete ownership/projection for remaining StudyLoop learner tables so downstream sync cannot export unowned state across work/personal boundaries.",
+    "Implement versioned per-peer scoped sync and complete managed forgetting/reimport/restore/index lifecycle,including real transport and replay tests.",
+    "Finish selectable shared install/doctor/skills,desktop/native capability checks,installed StudyLoop startup,large graph/backfill checks and full P01-P15 release audit."
   ],
   "verification": {
-    "package_tests": "1264 passed",
-    "experiment_tests": "300 combined experiment/StudyLoop compatibility passes plus1 optional skip; lesson retest1 passed after editable-script fix (256 experiment passes and45 focused StudyLoop passes in total)",
-    "workspace_pyright": "0 errors;1932c71 workspace src+tests hook passed",
-    "commit_hooks": "1932c71 passed formatting,lint,secrets scanning,Bandit and workspace pyright",
-    "browser": "Stage23 six sections, expansion, viewport fits and no console errors",
+    "package_tests": "1270 passed before final duplicate guard;35 focused interface/lesson checks pass after guard",
+    "experiment_tests": "302 combined experiment/StudyLoop compatibility passes,1 optional skip (257 experiment and45 focused StudyLoop);final focused lesson rerun included in35checks",
+    "workspace_pyright": "23e5f29 workspace src+tests hook passed",
+    "commit_hooks": "23e5f29 all formatting,lint,secrets,Bandit and workspace type hooks passed",
+    "browser": "Stage24 twelve comparison cases,working expansion,viewport fits,no errors",
     "studyloop_tests": "3778 passed,4 skipped,704 deselected; final additional transaction test and metadata changes covered by30 focused checks",
     "focused_consumer_tests": "45 StudyLoop consumer/extractor/CLI-contract passes;44 final native/export-CLI passes",
-    "artifact": "studyloop-private/reviews/2026-09-06-stage23-agent-context/demo-installed/walkthrough.html",
+    "artifact": "studyloop-private/reviews/2026-09-06-stage24-contrary-selection/demo-final/walkthrough.html",
     "native_probe": "8 local real sessions imported without errors;1898/1898 body hashes match;source files unchanged",
-    "installed_component": "Separate wheel-only environment:8 real CLI/MCP stdio journey checks pass;site-packages verified;StudyLoop absent",
-    "real_retrieval": "6 CLI queries;60 exact citations and source hashes verified;all<=32768bytes;no semantic relevance claim"
+    "installed_component": "Final rebuilt standalone wheel9actual CLI/MCP stdio checks;20distractors,2sources,8KiB;StudyLoop absent",
+    "real_retrieval": "6CLI queries,60exact citations and hashes verified,all<=32768bytes,no semantic relevance claim"
   },
   "operational_notice": "A secrets test printed an ambient API key in private failure output; tests now isolate fallback variables. Owner should rotate that key; no value saved in this status or learning artifacts."
 }

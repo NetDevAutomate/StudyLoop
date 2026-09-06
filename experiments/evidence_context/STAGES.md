@@ -30,6 +30,7 @@ no remote publication or backup is implied.
 | 21 — Attributable assessments | Can each progress report retain its input, scope and correction history? | `918d18f` | `learning_observations/runner.py`; GUIDE.md and council audit |
 | 22 — Native capture | Which authority can the actual session envelopes establish? | `3acbc6f` | `native_capture/runner.py`; GUIDE.md, observed aggregates and council audit |
 | 23 — Agent context interface | Can installed CLI/MCP expose bounded sources and honest execution checks? | `1932c71` | `agent_context/runner.py`; GUIDE.md, installed lesson and council audit |
+| 24 — Complete disagreement groups | Which packing policy keeps contrary evidence inspectable under fixed budgets? | `23e5f29` | `contrary_selection/runner.py`; GUIDE.md, measurements and council audit |
 
 Stage 3 uses its own lifecycle adapter and database schema. It does not modify the
 stage 1 evidence store, and does not require stage 1 demo output. Stage 2 uses
@@ -556,6 +557,37 @@ concern is contrary evidence being crowded out by lexical matches. The proposed
 full delivery contract. See [agent_context/GUIDE.md](agent_context/GUIDE.md) and
 [agent_context/COUNCIL-DECISION.md](agent_context/COUNCIL-DECISION.md).
 
+## Stage 24 commands
+
+```sh
+uv run python -m experiments.evidence_context.contrary_selection.runner --output /tmp/evidence-stage-24
+open /tmp/evidence-stage-24/walkthrough.html
+uv run pytest packages/agent-session-tools/tests/test_context_agent_api.py experiments/evidence_context/tests/test_contrary_selection_lesson.py -q
+```
+
+Checkpoint `23e5f29` compares three policies on identical permitted synthetic
+evidence. Across twelve cases, lexical-first retained one complete proposed group,
+a 20% reserve retained seven, and anchor-then-relations retained eleven. The latter
+kept fewer lexical sources (26 versus 40) while retaining the strongest match in
+each case. This measures mechanical group inclusion, not semantic answer quality.
+
+The actual CLI/MCP now discovers scoped groups before packing, inserts all their
+dependencies together, exposes omitted-group counts and collapses duplicate
+endpoint/label proposals before the discovery limit. Proposed labels remain
+unverified. The installed wheel passed nine real CLI/MCP stdio checks with twenty
+keyword distractors and a two-source/8KiB limit. The full package suite passed
+1,270 tests, followed by 35 focused checks after the final duplicate guard;
+302 experiment/StudyLoop compatibility checks passed with one optional skip.
+Commit hooks passed workspace types, lint and security checks. The browser showed
+the twelve-row comparison, working expansion, viewport fit and no errors.
+
+All three council providers responded. Their valid concern about misleading
+unverified labels remains part of the full decision-review requirement; unsupported
+claims of missing citation scope checks were rejected against implementation and
+tests. See [contrary_selection/GUIDE.md](contrary_selection/GUIDE.md),
+[contrary_selection/COUNCIL-DECISION.md](contrary_selection/COUNCIL-DECISION.md) and
+[contrary_selection/OBSERVED-RESULTS.json](contrary_selection/OBSERVED-RESULTS.json).
+
 ## Production delivery direction
 
 The user has now authorized the full implementation and StudyLoop integration while
@@ -563,9 +595,10 @@ preserving these stages. [delivery/GOAL.md](delivery/GOAL.md) records the comple
 requirements; [delivery/ARCHITECTURE.md](delivery/ARCHITECTURE.md) explains the decisions.
 These checkpoints do not satisfy that goal. SQLite remains canonical. The internal
 source/citation boundary, native capture and bounded public interface now exist.
-Next measure contrary-evidence selection under pressure, then complete remaining
-learner ownership, scoped sync/lifecycle, shared setup and installed StudyLoop
-startup/capture/doctor acceptance. A source-grounded execution check does not
+Complete-group selection is now measured and integrated. Next finish treatment of
+reviewed/disputed interpretations and remaining learner ownership, followed by
+scoped sync/lifecycle, shared setup and installed StudyLoop startup/capture/doctor
+acceptance. A source-grounded execution check or proposed relationship does not
 finish general advice arbitration.
 
 The earlier experiment-only checkpoints retain their original scope and limitations.
