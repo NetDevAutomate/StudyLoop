@@ -1,0 +1,64 @@
+{
+  "stage": 32,
+  "status": "content-phase increment verified; full delivery goal active",
+  "schema": 40,
+  "verification": {
+    "focused": "30 passed in 2.07s; included in final combined regression",
+    "memory_and_experiments": "1676 passed, 1 optional skip in 86.16s after final source guards, generated-column and unowned-record fixes",
+    "studyloop": "3823 passed, 4 skipped, 704 deselected in 204.17s; shared explicit-scope helpers included; later refinements affect only the new replication package",
+    "installed_checks": {
+      "reciprocal_scope_agreement_with_different_local_roots": true,
+      "excluded_marker_absent_from_staged_payload": true,
+      "excluded_marker_absent_from_destination_files": true,
+      "native_hash_matches_original_body": true,
+      "immutable_report_binding_preserved": true,
+      "correction_link_preserved": true,
+      "integer_identity_remapped_without_overwrite": true,
+      "identical_retry_is_idempotent": true,
+      "divergence_rolls_back_whole_content_phase": true,
+      "stale_negotiation_refused": true,
+      "foreign_keys_intact": true,
+      "incomplete_sync_is_explicit": true
+    },
+    "installed_runtime": "Fresh memory-only wheel, Python3.13; StudyLoop absence checked explicitly; package APIs in isolated child process, not CLI/SSH",
+    "lint": "Changed Python paths pass Ruff",
+    "types": "Replication package and tests pass Pyright with zero errors",
+    "browser": "Initial installed five-section walkthrough inspected, all disclosures opened, viewport fits, no captured console errors. Own server/tab closed. Final data regenerated; rendering unchanged."
+  },
+  "measurement": {
+    "single_export_ms": 8.192,
+    "single_import_ms": 3.47,
+    "limits": "One fictional transfer; not a benchmark, network test or engine comparison"
+  },
+  "council": {
+    "design_providers": [
+      "meta",
+      "qwen",
+      "mistral"
+    ],
+    "review_providers": [
+      "meta",
+      "qwen",
+      "mistral"
+    ],
+    "successful_calls": 6,
+    "arbitration": "COUNCIL-DECISION.md",
+    "limits": "Final refinements followed the brief; no repeated council approval claimed"
+  },
+  "decisions": [
+    "Keep canonical SQLite and versioned structured rows",
+    "Select declared dependency closure before bodies",
+    "Preserve immutable bindings and map local integer IDs by stable owner",
+    "Reject undeclared typed review inputs at source and receiver",
+    "Recompute generated scores from original fields",
+    "Refuse divergent edits and unsolicited local ownership assignments atomically"
+  ],
+  "limits": [
+    "No production session-sync/SSH coordinator integration yet",
+    "No lifecycle reconciliation, scope withdrawal, stale deletion replay or managed restore acceptance",
+    "Legacy gap counts are partial, not complete coverage",
+    "Fresh external config-file checks remain a coordinator obligation",
+    "Conflict refusal is not convergence",
+    "Fixture integrity checks do not measure semantic truth or answer usefulness"
+  ]
+}

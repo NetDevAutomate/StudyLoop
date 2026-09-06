@@ -81,7 +81,9 @@ class ObservationStore:
         )"""
         from .records import observation_clause
 
-        records_clause, records_values = observation_clause(self.conn, policy)
+        records_clause, records_values = observation_clause(
+            self.conn, policy, scope=scope
+        )
         return "(" + clause + ") AND " + records_clause, [
             *source_values,
             scope.value,
