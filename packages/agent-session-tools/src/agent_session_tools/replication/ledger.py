@@ -38,6 +38,9 @@ def _write(path):
         state(conn)
         with ContextStore(conn)._atomic():
             yield conn
+            from .fence import check
+
+            check()
     finally:
         conn.close()
 
@@ -96,19 +99,27 @@ def _objects(value, *, controls=False):
             raise ReplicaError("Invalid retirement metadata")
 
 
-def _offer(offer):
+def _offer(offer, *, historical=False):
+    legacy = (
+        historical
+        and isinstance(offer, dict)
+        and offer.get("contract") == "session-replica-offer/v1"
+    )
     _checked(
         offer,
-        "session-replica-offer/v2",
-        {"plan", "scope", "snapshot_sha256", "objects", "generation"},
+        "session-replica-offer/v1" if legacy else "session-replica-offer/v2",
+        {"plan", "scope", "snapshot_sha256", "objects"}
+        | (set() if legacy else {"generation"}),
     )
-    check_plan(offer["plan"], scope=offer["scope"])
+    check_plan(offer["plan"], scope=offer["scope"], historical=historical)
     if not isinstance(offer["snapshot_sha256"], str) or not re.fullmatch(
         r"[0-9a-f]{64}", offer["snapshot_sha256"]
     ):
         raise ReplicaError("Invalid offered snapshot hash")
     _objects(offer["objects"])
-    if type(offer["generation"]) is not int or not 0 <= offer["generation"] < 2**63:
+    if not legacy and (
+        type(offer["generation"]) is not int or not 0 <= offer["generation"] < 2**63
+    ):
         raise ReplicaError("Invalid offer permission generation")
 
 
@@ -291,7 +302,7 @@ def accept_offer(path, config, peer_name, offer):
 
 def record_acceptance(path, config, peer_name, offer, acceptance):
     """Remember the recipient before any body release, including a lost-body attempt."""
-    _offer(offer)
+    _offer(offer, historical=True)
     _checked(
         acceptance,
         "session-replica-acceptance/v1",
@@ -401,12 +412,13 @@ def receive_content(path, config, peer_name, offer_id, snapshot):
         check_regrant_coverage(conn, peer_name, offer, released)
         receipt = _seal(
             {
-                "contract": "session-replica-content-receipt/v1",
+                "contract": "session-replica-content-receipt/v2",
                 "offer_id": offer_id,
                 "receiver": policy.node,
                 "instance": state(conn)["instance"],
                 "snapshot_sha256": snapshot["sha256"],
                 "committed": True,
+                "committed_state": state(conn),
             }
         )
         conn.execute(
@@ -417,10 +429,17 @@ def receive_content(path, config, peer_name, offer_id, snapshot):
 
 
 def acknowledge_content(path, config, peer_name, receipt):
+    modern = (
+        isinstance(receipt, dict)
+        and receipt.get("contract") == "session-replica-content-receipt/v2"
+    )
     _checked(
         receipt,
-        "session-replica-content-receipt/v1",
-        {"offer_id", "receiver", "instance", "snapshot_sha256", "committed"},
+        "session-replica-content-receipt/v2"
+        if modern
+        else "session-replica-content-receipt/v1",
+        {"offer_id", "receiver", "instance", "snapshot_sha256", "committed"}
+        | ({"committed_state"} if modern else set()),
     )
     if receipt["receiver"] != peer_name or receipt["committed"] is not True:
         raise ReplicaError("Invalid content acknowledgement")
@@ -432,6 +451,15 @@ def acknowledge_content(path, config, peer_name, receipt):
         ).fetchone()
         if row is None or row["status"] not in ("accepted", "acknowledged"):
             raise ReplicaError("Receipt has no accepted outbound offer")
+        if modern:
+            from .policy import _validate_hello
+
+            receiver = json.loads(row["offer_json"])["plan"]["receiver"]
+            _validate_hello(
+                {**receiver, "state": receipt["committed_state"]}, historical=True
+            )
+            if receipt["committed_state"]["instance"] != receipt["instance"]:
+                raise ReplicaError("Receipt committed state has a different instance")
         if (
             json.loads(row["offer_json"])["snapshot_sha256"]
             != receipt["snapshot_sha256"]
@@ -514,14 +542,24 @@ def apply_controls(path, config, peer_name, batch):
                 "INSERT OR IGNORE INTO context_retirements VALUES (?,?,?)",
                 (row["kind"], row["object_id"], row["retired_at"]),
             )
-        reconcile_local_retirements(conn)
+        needs_cleanup = (
+            bool(batch["retirements"])
+            or conn.execute("SELECT 1 FROM context_erasure_pending").fetchone()
+            is not None
+        )
+        if needs_cleanup:
+            reconcile_local_retirements(conn)
         conn.execute(
             "INSERT OR IGNORE INTO context_replica_control_batches VALUES (?,'in',?,?,'applied',NULL,?)",
             (batch["id"], peer_name, _json(batch), _now()),
         )
         if PeerPolicy.from_config(config, peer_name, controls_only=True) != policy:
             raise ReplicaError("Peer configuration changed during control application")
-    cleanup = compact(Path(path))
+    cleanup = (
+        compact(Path(path))
+        if needs_cleanup
+        else {"complete": True, "coverage": "canonical_database_and_wal_only"}
+    )
     with _write(path) as conn:
         policy, _ = _peer(
             conn, config, peer_name, remote_instance=batch["sender_instance"]

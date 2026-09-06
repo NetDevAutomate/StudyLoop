@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Current schema version - increment when adding new migrations
-CURRENT_VERSION = 45
+CURRENT_VERSION = 46
 
 # Migration functions: version -> (description, migration_func)
 MIGRATIONS: dict[int, tuple[str, Callable[[sqlite3.Connection], None]]] = {}
@@ -1488,6 +1488,65 @@ def migrate_v45(conn: sqlite3.Connection) -> None:
     from .replication.quarantine_schema import install
 
     install(conn)
+
+
+@migration(46, "Replica content generations and durable superseded attempts")
+def migrate_v46(conn: sqlite3.Connection) -> None:
+    # Freeze this migration's schema. Future projections must add their own
+    # migration, rather than making old upgrades depend on new application code.
+    tables = (
+        "sessions",
+        "messages",
+        "session_notes",
+        "session_tags",
+        "session_learning_metadata",
+        "file_references",
+        "study_sessions",
+        "teach_back_scores",
+        "knowledge_bridges",
+        "parked_topics",
+        "study_notes",
+        "practice_attempts",
+        "context_session_projects",
+        "context_evidence",
+        "context_native_message_sources",
+        "context_assertions",
+        "context_citations",
+        "context_relations",
+        "context_observations",
+        "context_observation_sources",
+        "context_observation_owners",
+        "context_observation_session_owners",
+        "context_observation_supersedes",
+        "context_review_targets",
+        "context_record_owners",
+        "context_record_study_links",
+        "context_record_observations",
+        "context_annotation_retirements",
+        "context_observation_retired_subjects",
+    )
+
+    conn.execute("""CREATE TABLE context_replica_content_state (
+        id INTEGER PRIMARY KEY CHECK(id=1),
+        revision INTEGER NOT NULL CHECK(typeof(revision)='integer' AND revision>=0)
+    )""")
+    conn.execute("INSERT INTO context_replica_content_state VALUES (1,0)")
+    for table in tables:
+        for event in ("INSERT", "UPDATE", "DELETE"):
+            conn.execute(f"""CREATE TRIGGER replica_content_{table}_{event.lower()}
+                AFTER {event} ON {table} BEGIN
+                UPDATE context_replica_content_state SET revision=revision+1 WHERE id=1;
+                END""")
+    conn.execute("""CREATE TABLE context_replica_superseded (
+        offer_id TEXT PRIMARY KEY NOT NULL,
+        peer TEXT NOT NULL REFERENCES context_replica_peers(peer),
+        observed_status TEXT NOT NULL CHECK(observed_status IN ('unknown','accepted')),
+        checked_at TEXT NOT NULL
+    )""")
+    for event in ("UPDATE", "DELETE"):
+        conn.execute(f"""CREATE TRIGGER replica_superseded_{event.lower()}
+            BEFORE {event} ON context_replica_superseded
+            BEGIN SELECT RAISE(ABORT,'Replica attempt resolution is immutable'); END""")
 
 
 def check_migration_status(db_path: Path) -> dict:

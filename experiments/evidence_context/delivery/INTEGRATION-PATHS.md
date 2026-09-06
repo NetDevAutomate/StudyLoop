@@ -275,3 +275,22 @@ This supplies deliberate complete-local-copy discard, not adoption/extraction or
 origin claim. The next integration is the actual authenticated configured coordinator.
 Keep legacy protected SQL transport refused; preserve full-store/restore, ownership,
 installer/doctor and full installed consumer requirements in the active goal.
+
+
+## Stage38 actual configured transport
+
+The standalone CLI now routes structured `push`, `pull`, `sync` and `all` through
+receiver-owned forced-command SSH. Dedicated keys/known hosts, fixed framed operations
+and fresh config-file fences surround durable acceptance, permission, retirement and
+content phases. Even a push reconciles reverse retirement before releasing new bodies.
+
+The [Stage38 guide](../configured_sync/GUIDE.md) records the access-versus-content
+revision defect, the archival regression found by broad tests, and the independent
+installed SSH rehearsal. `all` pushes every configured target before pulling and
+continues attempts after an offline peer. Permission commands queue local intent and
+report prior acknowledgement without claiming a new network attempt.
+
+This remains one configured canonical database per endpoint, with complete scopes
+bounded to 32 MiB. Full sync stays false; `--tier full` is refused. Scalable transfer,
+full-store/managed restore, mutable divergence, shared setup/doctor and remaining
+consumer/ownership requirements must be completed before the full goal can ship.

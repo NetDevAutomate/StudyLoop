@@ -92,7 +92,17 @@ def state(conn):
     if not path.is_file():
         raise ReplicaError("Replication requires a file-backed database")
     stat = path.stat()
-    return {"instance": row[0], "revision": row[1], "file": [stat.st_dev, stat.st_ino]}
+    content_revision = conn.execute(
+        "SELECT revision FROM context_replica_content_state WHERE id=1"
+    ).fetchone()
+    if content_revision is None:
+        raise ReplicaError("Replica content generation is missing")
+    return {
+        "instance": row[0],
+        "revision": row[1],
+        "content_revision": content_revision[0],
+        "file": [stat.st_dev, stat.st_ino],
+    }
 
 
 def hello(conn, policy: PeerPolicy):
@@ -116,7 +126,7 @@ def hello(conn, policy: PeerPolicy):
     }
 
 
-def _validate_hello(value):
+def _validate_hello(value, *, controls_only=False, historical=False):
     if not isinstance(value, dict) or set(value) != {
         "protocol",
         "schema",
@@ -133,14 +143,18 @@ def _validate_hello(value):
     if (
         value["protocol"] != PROTOCOL
         or type(value["schema"]) is not int
-        or value["schema"] != CURRENT_VERSION
+        or (
+            not 42 <= value["schema"] <= CURRENT_VERSION
+            if historical
+            else value["schema"] != CURRENT_VERSION
+        )
     ):
         raise ReplicaError(
             "Incompatible replica protocol/schema; no legacy fallback permitted"
         )
     identity(value["node"])
     identity(value["peer"])
-    allowed = scopes(value["allowed_scopes"])
+    allowed = scopes(value["allowed_scopes"], allow_empty=controls_only)
     projects = value["projects"]
     if not isinstance(projects, dict):
         raise ReplicaError("Malformed peer project map")
@@ -151,11 +165,22 @@ def _validate_hello(value):
     stamp = value["state"]
     if (
         not isinstance(stamp, dict)
-        or set(stamp) != {"instance", "revision", "file"}
+        or set(stamp)
+        != (
+            {"instance", "revision", "file"}
+            | ({"content_revision"} if value["schema"] >= 46 else set())
+        )
         or not isinstance(stamp["instance"], str)
         or not stamp["instance"]
         or type(stamp["revision"]) is not int
         or stamp["revision"] < 0
+        or (
+            value["schema"] >= 46
+            and (
+                type(stamp["content_revision"]) is not int
+                or not 0 <= stamp["content_revision"] < 2**63
+            )
+        )
         or not isinstance(stamp["file"], list)
         or len(stamp["file"]) != 2
         or any(type(n) is not int or n < 0 for n in stamp["file"])
@@ -165,10 +190,12 @@ def _validate_hello(value):
         raise ReplicaError("Malformed peer access state")
 
 
-def negotiate(sender, receiver):
+def negotiate(sender, receiver, *, historical=False):
     """Intersect two local grants; missing project agreement is an error, not omission."""
     for value in (sender, receiver):
-        _validate_hello(value)
+        _validate_hello(value, historical=historical)
+    if sender["schema"] != receiver["schema"]:
+        raise ReplicaError("Replica schemas disagree")
     if sender["node"] != receiver["peer"] or sender["peer"] != receiver["node"]:
         raise ReplicaError("Peer identities are not reciprocal")
     if (
@@ -203,7 +230,7 @@ def negotiate(sender, receiver):
     )
 
 
-def check_plan(plan, *, scope):
+def check_plan(plan, *, scope, historical=False):
     if not isinstance(plan, dict) or set(plan) != {
         "protocol",
         "sender",
@@ -212,7 +239,7 @@ def check_plan(plan, *, scope):
         "projects",
     }:
         raise ReplicaError("Malformed transfer plan")
-    if plan != negotiate(plan["sender"], plan["receiver"]):
+    if plan != negotiate(plan["sender"], plan["receiver"], historical=historical):
         raise ReplicaError("Transfer plan does not match its reciprocal grants")
     if scope not in plan["scopes"]:
         raise ReplicaError("Requested transfer scope was not negotiated")

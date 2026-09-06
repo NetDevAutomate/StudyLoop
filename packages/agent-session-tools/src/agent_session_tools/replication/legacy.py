@@ -36,7 +36,7 @@ def protected_queries(tables):
     for table in sorted(tables):
         if (
             not table.startswith("context_")
-            or table == "context_access_state"
+            or table in ("context_access_state", "context_replica_content_state")
             or table.startswith("context_evidence_fts_")
         ):
             continue

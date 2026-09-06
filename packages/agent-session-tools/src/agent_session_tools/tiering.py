@@ -327,6 +327,9 @@ def compact_database(source: Path, dest: Path) -> CompactStats:
         # access generation; copying the source singleton would both collide
         # with that row and erase the replacement identity observed by readers.
         common.discard("context_access_state")
+        # Body generations belong to the new instance as well. Destination
+        # inserts advance its seeded counter; the source value is not portable.
+        common.discard("context_replica_content_state")
         common.discard("context_lifecycle_mode")
         # Dependency order: parents before children; messages last of the
         # core pair so session FKs resolve. Everything else after.
@@ -738,6 +741,7 @@ def _archive_context_complete(conn):
     }
     bookkeeping = {
         "context_access_state",
+        "context_replica_content_state",
         "context_policy_state",
         "context_lifecycle_mode",
         "context_erasure_pending",

@@ -74,7 +74,8 @@ def _make_entry(
 
 
 class TestClaudeCodeConstructor:
-    def test_default_projects_dir(self):
+    def test_default_projects_dir(self, monkeypatch):
+        monkeypatch.delenv("CLAUDE_CONFIG_DIR", raising=False)
         exporter = ClaudeCodeExporter()
         assert exporter.projects_dir == Path.home() / ".claude" / "projects"
 

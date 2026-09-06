@@ -1219,6 +1219,8 @@ def pull(
     ] = False,
 ) -> None:
     """Pull new sessions from remote via SQL streaming."""
+    if _structured(remote, db, tier, "pull"):
+        return
     local_db = _local_db_for_tier(tier, db)
     legacy_guard.check_path(local_db)
     host, remote_db = _resolve_remote(remote, tier)
@@ -1353,6 +1355,8 @@ def push(
     ] = False,
 ) -> None:
     """Push new and updated sessions to remote via SQL streaming."""
+    if _structured(remote, db, tier, "push"):
+        return
     local_db = _local_db_for_tier(tier, db)
     legacy_guard.check_path(local_db)
     host, remote_db = _resolve_remote(remote, tier)
@@ -1450,6 +1454,8 @@ def sync(
     pruned locally (present in the local full DB) are not pulled back.
     Use --tier full to consolidate the complete-history records.
     """
+    if _structured(remote, db, tier, "sync"):
+        return
     local_db = _local_db_for_tier(tier, db)
     legacy_guard.check_path(local_db)
     host, remote_db = _resolve_remote(remote, tier)
@@ -1619,7 +1625,10 @@ def sync_all(
     Uses hosts (excluding this machine by hostname), or legacy endpoints.
     Failures are reported per operation; other peers are still attempted.
     """
-    peers = list(get_endpoints(_get_config()))
+    from .replication.coordinator import configured_peers
+
+    structured = configured_peers()
+    peers = structured if structured is not None else list(get_endpoints(_get_config()))
     if not peers:
         console.print(
             "[yellow]No remote sync targets configured. Add hosts to config.yaml.[/yellow]"
@@ -1680,6 +1689,25 @@ def status(
 @app.command()
 def endpoints() -> None:
     """List configured sync endpoints."""
+    from .replication.coordinator import configured_peers
+
+    peers = configured_peers()
+    if peers is not None:
+        cfg = load_config()
+        table = Table(title="Configured memory peers")
+        for label in ("Peer", "Host", "User", "Allowed scopes"):
+            table.add_column(label)
+        for peer in peers:
+            item = cfg["memory"]["sync"]["peers"][peer]
+            transport = item.get("ssh", {})
+            table.add_row(
+                peer,
+                transport.get("host", "not configured"),
+                transport.get("user", "not configured"),
+                ", ".join(item.get("allowed_scopes", [])),
+            )
+        console.print(table)
+        return
     eps = get_endpoints(_get_config())
     if not eps:
         console.print("[dim]No endpoints configured in config.yaml[/dim]")
@@ -1705,11 +1733,60 @@ def endpoints() -> None:
     console.print(table)
 
 
+def _structured(peer, db, tier, direction):
+    from .replication.coordinator import configured_peers, run
+    from .replication.policy import ReplicaError
+
+    peers = configured_peers()
+    if peers is None:
+        return False
+    if peer not in peers:
+        raise ReplicaError(
+            "Select a peer from memory.sync.peers; remote paths are not accepted"
+        )
+    if tier != "hot":
+        raise ReplicaError(
+            "Structured full-tier lifecycle is not integrated yet; no legacy fallback is permitted"
+        )
+    result = run(peer, direction=direction, db=db)
+    console.print_json(data=result)
+    if result["cleanup_pending"]:
+        raise typer.Exit(2)
+    return True
+
+
+@app.command("serve", hidden=True)
+def serve_replica(peer: Annotated[str, typer.Option("--peer")]) -> None:
+    """Locally pinned SSH forced-command endpoint."""
+    from .replication.server import run
+
+    run(peer)
+
+
+@app.command("permission")
+def replica_permission(
+    peer: Annotated[str, typer.Argument(help="Configured memory peer")],
+    scope: Annotated[
+        str,
+        typer.Option("--scope", help="Explicit personal, work or unclassified scope"),
+    ],
+    action: Annotated[str, typer.Option("--action", help="withdraw or regrant")],
+    db: Annotated[Path | None, typer.Option("--db")] = None,
+) -> None:
+    """Queue an explicit permission change; session-sync delivers it to the peer."""
+    from .replication.coordinator import queue_permission
+
+    console.print_json(data=queue_permission(peer, scope, action, db=db))
+
+
 def main() -> None:
     """Entry point for session-sync CLI."""
+    from .replication.policy import ReplicaError
+    from .context.scope import ScopeError
+
     try:
         app()
-    except legacy_guard.LegacySyncRefused as exc:
+    except (legacy_guard.LegacySyncRefused, ReplicaError, ScopeError) as exc:
         console.print(str(exc), style="red", markup=False)
         raise SystemExit(1) from None
 
