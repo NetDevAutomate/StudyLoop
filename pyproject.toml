@@ -3,7 +3,7 @@ name = "studyloop-workspace"
 # Must equal packages/studyloop/pyproject.toml's version -- enforced by
 # scripts/check-release-consistency.py (R-39; this drifted to 1.0.0 while the
 # package sat at 0.1.0, unnoticed because the script never read this file).
-version = "0.2.1"
+version = "0.3.0"
 description = "StudyLoop: AuDHD-aware Socratic mentoring with AI session management"
 requires-python = ">=3.12"
 readme = "README.md"
@@ -32,6 +32,10 @@ dev = [
     "pyright>=1.1",
     "pre-commit>=4.0",
     "httpx>=0.28.1",
+    # Starlette 1.3's TestClient prefers the successor package and emits a
+    # deprecation warning when only legacy httpx is installed. Pinned exactly
+    # because this is a new dependency with an independent major-version line.
+    "httpx2==2.12.0",
     "pexpect>=4.9.0",
     "textual>=8.0.2",
     "pytest-asyncio>=1.3.0",

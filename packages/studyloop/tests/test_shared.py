@@ -41,7 +41,7 @@ def _make_hosts_config(
     }
     config_path = tmp_path / "config.yaml"
     config_path.write_text(yaml.dump(config))
-    monkeypatch.setattr("studyloop.shared.CONFIG_PATH", config_path)
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
     return config_path
 
 
@@ -49,7 +49,7 @@ class TestLoadConfig:
     def test_returns_empty_when_no_file(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from studyloop.shared import _load_config
 
-        monkeypatch.setattr("studyloop.shared.CONFIG_PATH", Path("/nonexistent/config.yaml"))
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(Path("/nonexistent/config.yaml")))
         assert _load_config() == {}
 
     def test_loads_yaml(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -57,7 +57,7 @@ class TestLoadConfig:
 
         config_path = tmp_path / "config.yaml"
         config_path.write_text(yaml.dump({"hosts": {"laptop": {"hostname": "test"}}}))
-        monkeypatch.setattr("studyloop.shared.CONFIG_PATH", config_path)
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
 
         result = _load_config()
         assert result["hosts"]["laptop"]["hostname"] == "test"
@@ -69,7 +69,7 @@ class TestLoadConfig:
 
         config_path = tmp_path / "config.yaml"
         config_path.write_text("")
-        monkeypatch.setattr("studyloop.shared.CONFIG_PATH", config_path)
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
 
         assert _load_config() == {}
 
@@ -139,7 +139,7 @@ class TestSyncStatus:
     def test_unconfigured(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from studyloop.shared import sync_status
 
-        monkeypatch.setattr("studyloop.shared.CONFIG_PATH", Path("/nonexistent/config.yaml"))
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(Path("/nonexistent/config.yaml")))
         result = sync_status()
         assert result["configured"] is False
 
@@ -180,7 +180,7 @@ class TestPushState:
     def test_raises_when_no_config(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from studyloop.shared import push_state
 
-        monkeypatch.setattr("studyloop.shared.CONFIG_PATH", Path("/nonexistent/config.yaml"))
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(Path("/nonexistent/config.yaml")))
         with pytest.raises(FileNotFoundError):
             push_state()
 
@@ -230,7 +230,7 @@ class TestPushState:
         }
         config_path = tmp_path / "config.yaml"
         config_path.write_text(yaml.dump(config))
-        monkeypatch.setattr("studyloop.shared.CONFIG_PATH", config_path)
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
 
         mock_result = MagicMock()
         mock_result.returncode = 0
@@ -246,7 +246,7 @@ class TestPullState:
     def test_raises_when_no_config(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from studyloop.shared import pull_state
 
-        monkeypatch.setattr("studyloop.shared.CONFIG_PATH", Path("/nonexistent/config.yaml"))
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(Path("/nonexistent/config.yaml")))
         with pytest.raises(FileNotFoundError):
             pull_state()
 
@@ -269,7 +269,7 @@ class TestInitConfig:
         from studyloop.shared import init_config
 
         config_path = tmp_path / "config.yaml"
-        monkeypatch.setattr("studyloop.shared.CONFIG_PATH", config_path)
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
 
         result = init_config()
         assert result == config_path
@@ -284,7 +284,7 @@ class TestInitConfig:
 
         config_path = tmp_path / "config.yaml"
         config_path.write_text("existing: true")
-        monkeypatch.setattr("studyloop.shared.CONFIG_PATH", config_path)
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
 
         result = init_config()
         assert result == config_path

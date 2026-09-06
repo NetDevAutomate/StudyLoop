@@ -1,5 +1,10 @@
 set shell := ["bash", "-cu"]
 
+# PyMuPDF 1.27.2's SWIG extension emits one final Python 3.13 warning after
+# pytest has torn down its own warning filters. Exact message only; all other
+# deprecations remain visible. Remove when upstream swig/swig#2881 lands here.
+export PYTHONWARNINGS := "ignore:builtin type swigvarlink has no __module__ attribute:DeprecationWarning"
+
 default:
     @just --list
 
@@ -145,6 +150,15 @@ smoke-installed:
 smoke-extras:
     uv run --group dev pytest packages/studyloop/tests/test_wheel_extras_smoke.py -m integration -q
 
+# The installed-wheel WEB smoke (second-brain launcher release evidence): build
+# the wheel, install studyloop[web] into an isolated venv outside the checkout,
+# start the installed app, request /api/second-brain/launch-target, and load
+# every launcher asset main.js's import graph reaches. Release-only, not
+# preflight: it pays for a wheel build plus a server start every run, and
+# package regressions are otherwise invisible to source-checkout tests.
+smoke-web:
+    uv run --group dev pytest packages/studyloop/tests/test_wheel_web_smoke.py -m integration -q
+
 build-release:
     ./scripts/build-release.sh
 
@@ -215,7 +229,7 @@ xtiles-auth:
 
 preflight: lint typecheck test test-js docs release-consistency spec-check
 
-release-check: test test-js lint typecheck shellcheck docs audit audit-full release-consistency-shipped smoke-installed smoke-extras
+release-check: test test-js lint typecheck shellcheck docs audit audit-full release-consistency-shipped smoke-installed smoke-extras smoke-web
 
 # "Would GitHub Actions pass?" locally, before pushing. `check` runs the
 # host-answerable gates (lint, typecheck, test, sast, audit, docs, ...); `lint`

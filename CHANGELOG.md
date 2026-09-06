@@ -7,8 +7,49 @@ experience may change before `1.0.0`.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-05
+
 ### Added
 
+- The web app's Today panel can now launch your configured second brain with
+  one explicit click. A read-only `GET /api/second-brain/launch-target` route
+  reports the selected provider's honest launch state (never cached, never a
+  configuration error's detail); the Today panel renders at most one launcher
+  action from that prefetched state and navigates only inside the click
+  handler — xTiles opens once in a new `noopener,noreferrer` tab, Obsidian
+  hands the current tab to the `obsidian://` link. Nothing navigates during
+  page load, refresh, publication, or wind-down, and no server module launches
+  anything, redirects, or contacts a provider for it.
+- `studyloop brain destination set --provider xtiles --url URL` (and
+  `... destination clear`) retains a reviewed, assistant-supplied xTiles page
+  URL without changing provider consent. The URL is validated at the
+  configuration boundary — HTTPS, exactly `xtiles.app` or `app.xtiles.app`, a
+  real page path, no userinfo, port, query, or fragment, Unicode/IDNA
+  lookalikes rejected — and a rejected value is reported by reason category
+  only, never echoed. Confirmation and Settings show at most the host, never
+  the full retained URL.
+- Obsidian launch targets resolve to `<vault>/<folder>/Today.md` when that
+  note exists inside the vault, falling back to the vault root, and are
+  enabled only when the browser is on the device running StudyLoop (decided
+  from the direct request peer; behind a reverse proxy the action stays
+  safely disabled).
+- Settings renders one card per second-brain provider — active for the
+  selected provider, muted otherwise — with the launch API's own reason as
+  guidance and the CLI command that would select a muted provider. No web
+  form writes configuration.
+- `studyloop.settings.mutate_raw_config()` is now the single atomic
+  read-modify-write owner for configuration mutation: an exclusive sibling
+  lock, a reread after locking, whole-config validation, a synced `0600`
+  temporary sibling, and an atomic replace that preserves the destination's
+  mode. `brain enable` and both destination commands go through it, so two
+  concurrent StudyLoop writers can no longer silently lose each other's
+  update.
+- An installed-wheel web smoke (`just smoke-web`, part of `just
+  release-check`) builds the wheel, installs `studyloop[web]` into an
+  isolated environment outside the checkout, starts the installed
+  application, requests the launch-target route, and loads every launcher
+  asset reachable from `main.js`'s import graph — so a packaging regression
+  in the launcher cannot ship invisibly again.
 - Session memory is now an installer/doctor invariant across all five release
   harnesses. `studyloop install agents` installs one
   `studyloop-session-memory` skill (MCP-first query with `session-query`
@@ -34,6 +75,18 @@ experience may change before `1.0.0`.
   registered command that fails at runtime. The implementation and documents
   remain available for evaluation and can return to the supported surface if
   learner demand demonstrates value.
+
+### Fixed
+
+- Release validation now runs without the three warning classes found during
+  the 0.3.0 readiness pass: hook JSON merges no longer use an
+  `exists()`-then-`read_text()` TOCTOU shape; Starlette TestClient uses the
+  exact-pinned `httpx2==2.12.0` successor package; and the real PTY transport
+  tests scope Python 3.13's multithreaded `forkpty()` warning to that one
+  intentional test module. PyMuPDF's known SWIG `__module__` deprecation is
+  handled at its import boundary and its surviving SWIG types are labelled,
+  preventing both import-time and interpreter-shutdown warnings without a
+  global pytest filter.
 
 ## [0.2.1] - 2026-09-05
 

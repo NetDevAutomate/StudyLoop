@@ -1,5 +1,6 @@
 """Tests for load_settings() — covers scalar fields, sub-configs, and edge cases."""
 
+import os
 from pathlib import Path
 from unittest.mock import patch
 
@@ -19,7 +20,11 @@ def _write_config(tmp_path, data: dict) -> Path:
 def _load(config_path):
     from studyloop.settings import load_settings
 
-    with patch("studyloop.settings._CONFIG_PATH", config_path):
+    # STUDYLOOP_CONFIG is the public override contract (get_config_path reads
+    # it lazily, and conftest exports an isolated default at import time, so
+    # the env var ALWAYS wins over the module's _CONFIG_PATH fallback --
+    # patching the private constant stopped having any effect).
+    with patch.dict(os.environ, {"STUDYLOOP_CONFIG": str(config_path)}):
         return load_settings()
 
 
@@ -30,10 +35,7 @@ def _load(config_path):
 
 def test_defaults_when_no_config_file(tmp_path):
     missing = tmp_path / "does-not-exist.yaml"
-    with patch("studyloop.settings._CONFIG_PATH", missing):
-        from studyloop.settings import load_settings
-
-        s = load_settings()
+    s = _load(missing)
 
     assert s.web_port == 8567
     assert s.browser == ""
@@ -168,7 +170,7 @@ def test_write_raw_config_file_is_never_wider_than_0600_before_chmod(monkeypatch
 
     monkeypatch.setattr(Path, "chmod", spy_chmod)
 
-    write_raw_config({"lan_password": "correct-horse-battery-staple"})
+    write_raw_config({"lan_password": "correct-horse-battery-staple"})  # pragma: allowlist secret
 
     assert modes_observed_just_before_chmod, "chmod was never called on the config file"
     assert modes_observed_just_before_chmod[-1] == 0o600, (
@@ -308,7 +310,7 @@ def test_scalar_str_fields(tmp_path):
             "sync_user": "alice",
             "browser": "firefox",
             "lan_username": "learner",
-            "lan_password": "s3cr3t",
+            "lan_password": "s3cr3t",  # pragma: allowlist secret
         },
     )
     s = _load(config_path)
@@ -317,7 +319,7 @@ def test_scalar_str_fields(tmp_path):
     assert s.sync_user == "alice"
     assert s.browser == "firefox"
     assert s.lan_username == "learner"
-    assert s.lan_password == "s3cr3t"
+    assert s.lan_password == "s3cr3t"  # pragma: allowlist secret
 
 
 def test_absent_scalar_fields_keep_defaults(tmp_path):
@@ -703,7 +705,8 @@ def test_obsidian_section_partial_override_uses_defaults(tmp_path):
 def _load_raw(config_path):
     from studyloop.settings import load_raw_config
 
-    with patch("studyloop.settings._CONFIG_PATH", config_path):
+    # Same env-contract note as _load() above.
+    with patch.dict(os.environ, {"STUDYLOOP_CONFIG": str(config_path)}):
         return load_raw_config()
 
 

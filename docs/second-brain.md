@@ -430,12 +430,91 @@ opt-in wind-down skill into every harness it finds, and it stays silent unless
 `studyloop brain status --json` reports `provider: xtiles` **and** an `xtiles`
 server is connected in that session.
 
+## Launching your second brain from the web app
+
+The Today panel in `studyloop web` can take you **to** your second brain with one
+click. It is a launcher, not a publisher: the button opens your configured
+provider, and nothing on the page ever writes to it.
+
+```mermaid
+flowchart LR
+    CFG["second_brain: config"] --> API["GET /api/second-brain/launch-target<br/><i>read-only, never cached</i>"]
+    API --> T["Today panel<br/>one action, prefetched state"]
+    T -->|"one explicit click"| DEST["Obsidian vault<br/>or your retained xTiles page"]
+    API --> S["Settings<br/>explains state, never launches"]
+
+    classDef local fill:#eceaff,stroke:#4c3fbb,color:#231d63
+    classDef remote fill:#fff1dc,stroke:#a9741a,color:#673e05
+    class CFG,API,T,S local
+    class DEST remote
+```
+
+Three rules hold everywhere on that diagram:
+
+- **Navigation happens only on your click.** Loading the page, refreshing it,
+  publishing, or ending a session never opens anything. One click is one
+  navigation: xTiles opens once in a new protected tab, Obsidian hands the
+  current tab to the desktop app's `obsidian://` link without leaving an empty
+  tab behind.
+- **Disabled means disabled, with the reason.** When the action cannot work,
+  the button says why — no provider selected, no retained xTiles destination,
+  a vault that does not exist, or a browser on another device — instead of
+  offering a click that goes nowhere.
+- **The server only reports.** The launch-state API is read-only: it cannot
+  change your configuration, it never runs a program on the server, and an
+  invalid configuration comes back as a generic disabled state rather than
+  echoing the bad value.
+
+### Obsidian opens on the same device only
+
+An `obsidian://` link is an instruction to the operating system the *browser*
+runs on. If you open the web app from your phone while StudyLoop runs on your
+desktop, that link would ask your phone for an Obsidian vault it does not have —
+so the action is enabled only when the browser and StudyLoop are on the same
+device. From another device the button stays visible but disabled, saying that
+Obsidian opens only on the device running StudyLoop.
+
+Two honest edges of that rule. StudyLoop decides locality from the direct
+network peer, so behind a reverse proxy every browser looks remote and the
+action stays disabled — a safe false negative, not a bug. And when the vault is
+available, the click opens `Study/Today.md` inside your vault when that note
+exists, falling back to the vault itself when it does not.
+
+### xTiles opens the page your assistant handed you
+
+StudyLoop never talks to xTiles, so it cannot discover a page to open. The
+handoff is explicit: your assistant creates or finds a page through the xTiles
+connector and reports its URL, you review it, and you retain it:
+
+```bash
+studyloop brain destination set --provider xtiles --url '<connector-returned-url>'
+studyloop brain destination clear --provider xtiles
+```
+
+Retaining a destination does **not** select xTiles as your provider — consent
+stays with `provider:` — and the URL is validated before anything is written:
+HTTPS only, exactly `xtiles.app` or `app.xtiles.app`, a real page path, and no
+credentials, port, query, or fragment. A rejected URL is described by reason
+only; the value itself is never echoed back or logged. The confirmation shows
+just the host, and the web app's Settings page never displays the full retained
+URL either.
+
+### What Settings shows
+
+Settings renders one card per provider: the selected provider is active, every
+other card is muted. An active card's guidance is the same honest reason the
+launch API reports (empty when the action is ready); a muted card names the CLI
+command that would select it. There is no save button — changing providers or
+destinations is a deliberate CLI action, not a web form.
+
 ## Commands
 
 ```bash
 studyloop brain status --json              # provider, whether it can publish, where notes land
 studyloop brain wind-down --json --connector xtiles  # the one offer to make at wind-down, if any
 studyloop brain enable obsidian --vault ~/Obsidian/Personal
+studyloop brain destination set --provider xtiles --url '<connector-returned-url>'
+studyloop brain destination clear --provider xtiles
 studyloop brain publish                    # today's note plus every active plan
 studyloop brain publish --all              # every plan, whatever its status
 studyloop brain publish --today --dry-run  # show what would be written, write nothing
@@ -469,9 +548,10 @@ second_brain:
   vault_path: ~/Obsidian/Personal
   folder: Study               # the folder inside the vault StudyLoop owns
   backlinks: true             # [[wikilinks]] to your notes, when the matcher is available
+  xtiles_destination_url: null  # optional; set with `brain destination set`
 ```
 
-Four keys, and that is the whole surface. `STUDYLOOP_SECOND_BRAIN_VAULT` also exists
+Five keys, and that is the whole surface. `STUDYLOOP_SECOND_BRAIN_VAULT` also exists
 and overrides the DEFAULT vault location — it is there so the test suite can never
 reach a real vault, it never selects a provider, and an explicit `vault_path` always
 wins over it. If you have it set in a shell profile, unset it.

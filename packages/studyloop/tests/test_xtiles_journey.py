@@ -108,11 +108,13 @@ def test_the_xtiles_setup_journey_in_order(home) -> None:
     assert pull.exit_code == 0, pull.output
     assert json.loads(pull.output)["found"] is False
 
-    # 6. Across all of that, exactly one file changed: the config.
+    # 6. Across all of that, exactly two files changed: the config and its
+    #    stable sibling lock. The lock contains no learner data and coordinates
+    #    every StudyLoop config writer across processes.
     after = _tree(home)
     changed = {path for path in set(before) | set(after) if before.get(path) != after.get(path)}
-    assert changed == {"config.yaml"}, (
-        f"a stage-one provider wrote something other than the config file: {sorted(changed)}"
+    assert changed == {".config.yaml.lock", "config.yaml"}, (
+        f"a stage-one provider wrote unexpected state: {sorted(changed)}"
     )
     assert yaml.safe_load(after["config.yaml"])["second_brain"]["provider"] == "xtiles"
 

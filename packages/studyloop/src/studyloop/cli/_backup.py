@@ -7,7 +7,6 @@ process with a safety backup of the current state first.
 
 from __future__ import annotations
 
-import os
 import shutil
 import sqlite3
 from contextlib import closing
@@ -22,15 +21,6 @@ if TYPE_CHECKING:
 from studyloop.cli._shared import console
 from studyloop.settings import CONFIG_DIR, DEFAULT_DB, get_config_path
 
-_CONFIG_PATH = get_config_path()
-
-
-def _active_config_path() -> Path:
-    """Return active config path while preserving old test monkeypatch hooks."""
-    if os.environ.get("STUDYLOOP_CONFIG"):
-        return get_config_path()
-    return _CONFIG_PATH
-
 
 def _get_backup_dir() -> Path:
     return CONFIG_DIR / "backups"
@@ -42,7 +32,7 @@ def _get_assets() -> list[tuple[str, Path]]:
     return [
         ("sessions.db", DEFAULT_DB),
         ("review.db", review_db),
-        ("config.yaml", _active_config_path()),
+        ("config.yaml", get_config_path()),
     ]
 
 

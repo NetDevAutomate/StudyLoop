@@ -1108,6 +1108,17 @@
               </template>
             </div>
           </div>
+
+          <!-- Second Brain launcher: AT MOST one action, only for a selected
+               provider, and only an explicit click navigates. -->
+          <div x-show="!loading && hasBrainAction" class="today-brain">
+            <button class="toggle-btn today-brain-btn" @click="openBrain()"
+                    :disabled="!launchTarget?.enabled">
+              Open <span x-text="launchTarget?.label"></span> →
+            </button>
+            <p class="today-brain-reason" x-show="launchTarget && !launchTarget.enabled"
+               x-text="launchTarget?.disabled_reason"></p>
+          </div>
         </section>
       </div>
 
@@ -2941,6 +2952,34 @@
               </div>
             </template>
           </section>
+
+          <!-- Second Brain — read-only provider state. Selection and the
+               xTiles destination are CLI-managed; the page explains state and
+               deliberately offers no entry or save control, and it never
+               renders the retained destination URL. -->
+          <section class="settings-section second-brain-settings">
+            <h3>Second Brain</h3>
+            <p class="settings-blurb">
+              Where StudyLoop can take you back to your notes. Provider selection
+              and the xTiles destination are managed from the CLI — nothing is
+              saved from this page.
+            </p>
+
+            <template x-for="bp in brainProviders" :key="bp.slug">
+              <div class="provider-row brain-card"
+                   :class="brainCardState(bp.slug) === 'active' ? 'brain-active' : 'brain-muted'">
+                <div class="provider-row-header">
+                  <span class="provider-label" x-text="bp.label"></span>
+                  <span class="provider-status"
+                        :class="brainCardState(bp.slug) === 'active' ? 'status-ok' : 'status-missing'"
+                        x-text="brainCardState(bp.slug) === 'active' ? 'selected' : 'not selected'"></span>
+                </div>
+                <small class="settings-hint brain-guidance"
+                       x-show="brainGuidance(bp.slug)"
+                       x-text="brainGuidance(bp.slug)"></small>
+              </div>
+            </template>
+          </section>
         </div>
       </div>
 
@@ -2961,6 +3000,7 @@
          isTextEntryTarget()      -> js/lib/text-entry.js (unit-tested)
          generatePanel()          -> js/components/generate-panel.js (unit-tested)
          settingsPanel()          -> js/components/settings-panel.js
+         todayPanel()             -> js/components/today-panel.js (unit-tested)
          sessionTimer()           -> js/components/session-timer.js (unit-tested)
          _extractChunkText()      -> js/lib/chunk-text.js (unit-tested)
          liveAgentConsole()       -> js/components/live-agent-console.js

@@ -2865,6 +2865,10 @@ body[data-palette="everforest"] {
 .provider-label { font-weight: 600; }
 .provider-status { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; }
 .provider-status.status-ok { color: var(--success, #3fb950); }
+/* Second Brain cards: the selected provider reads as present, the inactive
+   one visibly recedes — the "mute" the launcher spec requires. */
+.brain-card.brain-active { border-color: var(--accent); }
+.brain-card.brain-muted { opacity: 0.55; }
 .provider-status.status-missing { color: var(--text-muted); }
 
 .provider-controls {

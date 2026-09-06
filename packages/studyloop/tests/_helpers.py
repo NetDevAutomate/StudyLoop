@@ -109,8 +109,10 @@ def make_review_db(tmp_path: Path) -> Path:
 def make_isolated_config(tmp_path: Path, monkeypatch) -> Path:
     """Redirect studyloop's central config paths to a temp directory.
 
-    Patches ``studyloop.settings.CONFIG_DIR`` and
-    ``studyloop.settings._CONFIG_PATH`` so all config-reading code
+    Sets ``STUDYLOOP_CONFIG`` (the public override that ``get_config_path()``
+    reads lazily -- conftest exports an isolated default at import time, so
+    the env var always wins over the module-level ``_CONFIG_PATH`` fallback)
+    and patches ``studyloop.settings.CONFIG_DIR`` so all config-reading code
     hits *tmp_path* instead of ``~/.config/studyloop``.
 
     Returns the temp config directory (already created).
@@ -118,5 +120,5 @@ def make_isolated_config(tmp_path: Path, monkeypatch) -> Path:
     config_dir = tmp_path / ".config" / "studyloop"
     config_dir.mkdir(parents=True)
     monkeypatch.setattr("studyloop.settings.CONFIG_DIR", config_dir)
-    monkeypatch.setattr("studyloop.settings._CONFIG_PATH", config_dir / "config.yaml")
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_dir / "config.yaml"))
     return config_dir

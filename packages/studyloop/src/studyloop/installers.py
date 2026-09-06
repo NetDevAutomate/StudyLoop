@@ -227,14 +227,18 @@ def install_claude_stop_hook() -> int:
     settings_path = _HOME / ".claude/settings.json"
     data: dict = {}
     try:
-        loaded = json.loads(settings_path.read_text(encoding="utf-8"))
+        raw = settings_path.read_text(encoding="utf-8")
     except FileNotFoundError:
         settings_path.parent.mkdir(parents=True, exist_ok=True)
-    except (OSError, json.JSONDecodeError) as exc:
-        raise InstallError(
-            f"Cannot merge Claude hook into malformed {settings_path}: {exc}"
-        ) from exc
+    except OSError as exc:
+        raise InstallError(f"Cannot read Claude settings {settings_path}: {exc}") from exc
     else:
+        try:
+            loaded = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise InstallError(
+                f"Cannot merge Claude hook into malformed {settings_path}: {exc}"
+            ) from exc
         if not isinstance(loaded, dict):
             raise InstallError(f"Cannot merge Claude hook: {settings_path} is not a JSON object")
         data = loaded
@@ -282,12 +286,16 @@ def install_codex_session_end_hook() -> int:
     path = _codex_hooks_path()
     data: dict = {}
     try:
-        loaded = json.loads(path.read_text(encoding="utf-8"))
+        raw = path.read_text(encoding="utf-8")
     except FileNotFoundError:
         path.parent.mkdir(parents=True, exist_ok=True)
-    except (OSError, json.JSONDecodeError) as exc:
-        raise InstallError(f"Cannot merge Codex hook into malformed {path}: {exc}") from exc
+    except OSError as exc:
+        raise InstallError(f"Cannot read Codex hooks {path}: {exc}") from exc
     else:
+        try:
+            loaded = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise InstallError(f"Cannot merge Codex hook into malformed {path}: {exc}") from exc
         if not isinstance(loaded, dict):
             raise InstallError(f"Cannot merge Codex hook: {path} is not a JSON object")
         data = loaded

@@ -16,7 +16,9 @@ These env vars affect only the test process, never user runtime.
 
 from __future__ import annotations
 
+import contextlib
 import os
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -24,6 +26,30 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+
+
+@pytest.fixture(autouse=True)
+def _close_sqlite_connections_created_by_tests(monkeypatch):
+    """Close direct sqlite handles after every test, including failures.
+
+    Coverage's forced GC made Python 3.13 expose dozens of handles created by
+    test helpers that return raw in-memory connections. Track the real boundary
+    once; explicit closes remain valid and production ownership is untouched.
+    """
+    real_connect = sqlite3.connect
+    opened: list[sqlite3.Connection] = []
+
+    def tracked_connect(*args, **kwargs):
+        connection = real_connect(*args, **kwargs)
+        opened.append(connection)
+        return connection
+
+    monkeypatch.setattr(sqlite3, "connect", tracked_connect)
+    yield
+    for connection in reversed(opened):
+        with contextlib.suppress(sqlite3.ProgrammingError):
+            connection.close()
+
 
 # conftest.py is loaded BEFORE its own directory is on sys.path -- pytest adds the
 # rootdir while collecting test modules, not while importing the conftest itself --
@@ -62,6 +88,18 @@ os.environ["TERM"] = "dumb"
 _TEST_STATE_ROOT = Path(tempfile.mkdtemp(prefix="studyloop-test-state-"))
 os.environ.setdefault("STUDYLOOP_STATE_DIR", str(_TEST_STATE_ROOT / "state"))
 os.environ.setdefault("STUDYLOOP_DB", str(_TEST_STATE_ROOT / "sessions.db"))
+# STUDYLOOP_CONFIG must ALSO be set here, at import time, for the same reason
+# as the two above -- plus one this suite learned the hard way on 2026-09-05:
+# ``studyloop.settings`` binds ``_CONFIG_PATH`` from the environment AT MODULE
+# IMPORT. A per-test ``monkeypatch.setenv`` runs after that import, so any
+# code path still reading the module-level constant (rather than the lazy
+# ``get_config_path()``) resolves to the real ``~/.config/studyloop/config.yaml``
+# -- which is exactly how a RED-phase test overwrote the learner's real config
+# with ``browser: safari``. Setting it before any ``studyloop`` import makes
+# the import-time constant itself point at the throwaway tree, so even a test
+# that delenvs the variable or a legacy call site that skips the lazy resolver
+# cannot reach the real file.
+os.environ.setdefault("STUDYLOOP_CONFIG", str(_TEST_STATE_ROOT / "config.yaml"))
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Sequence
@@ -260,15 +298,19 @@ _real_vault_snapshot: dict[str, float] = {}
 
 
 # The session-runtime surface the fixture above targets and the guard below
-# watches -- deliberately NOT the whole ~/.config/studyloop tree. That
-# directory also holds sessions.db (the real learner's history database,
-# governed by STUDYLOOP_DB/agent_session_tools and already isolated by the
-# env vars set at the top of this file), config.yaml, secrets, and backups,
-# none of which any code path this incident touched can reach. Watching
-# those too would make the guard fail on unrelated traffic from other
-# processes sharing this machine (a live studyloop web server, another
-# agent session, session-export) -- a false positive that would teach
-# developers to ignore the guard, exactly what it must never do.
+# watches, PLUS the real config.yaml. The rest of ~/.config/studyloop stays
+# unwatched: sessions.db (the real learner's history database, governed by
+# STUDYLOOP_DB/agent_session_tools and already isolated by the env vars set at
+# the top of this file), secrets, and backups see routine traffic from other
+# processes sharing this machine (a live studyloop web server, another agent
+# session, session-export), and watching them would teach developers to ignore
+# the guard. config.yaml is different on both counts: nothing writes it except
+# an explicit ``studyloop config``/``brain`` command, and on 2026-09-05 a test
+# DID reach it -- a RED-phase test overwrote the real file with
+# ``browser: safari`` because ``_CONFIG_PATH`` was bound at import time before
+# the test's monkeypatch ran. The STUDYLOOP_CONFIG default set at the top of
+# this file is the primary fix; this entry is the loud backstop for the next
+# gap.
 _SESSION_RUNTIME_NAMES = (
     "session-state.json",
     "session-topics.md",
@@ -277,6 +319,7 @@ _SESSION_RUNTIME_NAMES = (
     "studyloop-tmux.lock",
     "session-oneline.txt",
     "sessions",
+    "config.yaml",
 )
 
 
@@ -393,8 +436,10 @@ def test_no_test_writes_to_real_user_state() -> None:
     from agent_session_tools.config_loader import DEFAULT_CONFIG
     from agent_session_tools.config_loader import get_db_path as ast_get_db_path
     from studyloop.settings import (
+        CONFIG_DIR,
         DEFAULT_DB,
         DEFAULT_STATE_DIR,
+        get_config_path,
         get_db_path,
         get_state_dir,
         load_settings,
@@ -407,6 +452,19 @@ def test_no_test_writes_to_real_user_state() -> None:
     )
     assert str(ast_get_db_path()) != DEFAULT_CONFIG["database"]["path"], (
         "agent_session_tools session DB escaped test isolation"
+    )
+    from studyloop import settings as _settings_mod
+
+    real_config = CONFIG_DIR / "config.yaml"
+    assert get_config_path() != real_config, (
+        "config.yaml escaped test isolation -- STUDYLOOP_CONFIG was not set "
+        "before studyloop imports (this is how a test overwrote the real "
+        "learner config on 2026-09-05)"
+    )
+    assert real_config != _settings_mod._CONFIG_PATH, (
+        "the import-time _CONFIG_PATH constant still points at the real "
+        "config.yaml -- STUDYLOOP_CONFIG must be exported at conftest import "
+        "time, not per-test, or legacy call sites write to the real file"
     )
 
 
