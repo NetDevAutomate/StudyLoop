@@ -230,7 +230,7 @@ def _closure(tables, policy, scope):
             raise ReplicaError("Review target sources are not declared captured inputs")
 
 
-def _row(conn, table, row, *, ignore=()):
+def _row(conn, table, row, *, ignore=(), contribution=None):
     """Insert identical-or-new rows only; divergence is an explicit transaction failure."""
     info = list(conn.execute(f"PRAGMA table_info({table})"))
     keys = [r[1] for r in sorted(info, key=lambda r: r[5]) if r[5]]
@@ -245,6 +245,8 @@ def _row(conn, table, row, *, ignore=()):
             raise ReplicaConflict(
                 f"Divergent {table} identity; no content phase committed"
             )
+        if contribution is not None:
+            contribution.record(conn, table, dict(existing), existed=True)
         return False
     columns = list(row)
     conn.execute(
@@ -255,6 +257,8 @@ def _row(conn, table, row, *, ignore=()):
         + ")",
         [row[c] for c in columns],
     )
+    if contribution is not None:
+        contribution.record(conn, table, row, existed=False)
     return True
 
 
@@ -317,7 +321,7 @@ def _review_bindings(conn, tables, access):
                 raise ReplicaError("Review citation binding failed")
 
 
-def _learner(conn, tables):
+def _learner(conn, tables, contribution=None):
     owners = {
         (r["table_name"], r["row_id"]): r for r in tables["context_record_owners"]
     }
@@ -333,7 +337,7 @@ def _learner(conn, tables):
                 if old_owner["table_name"] != table:
                     raise ReplicaConflict("Learner owner identity changed table")
                 row["id"] = int(old_owner["row_id"]) if integer else old_owner["row_id"]
-                _row(conn, table, row)
+                _row(conn, table, row, contribution=contribution)
             else:
                 if (
                     row.get("sync_key")
@@ -356,6 +360,8 @@ def _learner(conn, tables):
                         [row[c] for c in columns],
                     )
                     row["id"] = cur.lastrowid
+                    if contribution is not None:
+                        contribution.record(conn, table, row, existed=False)
                 else:
                     if conn.execute(
                         f"SELECT 1 FROM {table} WHERE id=?", (row["id"],)
@@ -363,12 +369,12 @@ def _learner(conn, tables):
                         raise ReplicaConflict(
                             "Existing learner row lacks the incoming owner; reconcile identities before import"
                         )
-                    _row(conn, table, row)
+                    _row(conn, table, row, contribution=contribution)
             owner["row_id"] = str(row["id"])
-            _row(conn, "context_record_owners", owner)
+            _row(conn, "context_record_owners", owner, contribution=contribution)
 
 
-def apply_in_transaction(conn, config, snapshot):
+def apply_in_transaction(conn, config, snapshot, contribution=None):
     """Apply content inside the coordinator's transaction, alongside its durable receipt."""
     if (
         not conn.in_transaction
@@ -451,8 +457,9 @@ def apply_in_transaction(conn, config, snapshot):
                 else ("assignment_kind",)
                 if table == "context_session_projects"
                 else (),
+                contribution=contribution,
             )
-    _learner(conn, tables)
+    _learner(conn, tables, contribution)
     for table in (
         "context_record_study_links",
         "context_observations",
@@ -469,17 +476,17 @@ def apply_in_transaction(conn, config, snapshot):
         "session_learning_metadata",
     ):
         for row in tables[table]:
-            _row(conn, table, row)
+            _row(conn, table, row, contribution=contribution)
     for incoming in tables["file_references"]:
         row = {k: v for k, v in incoming.items() if k != "id"}
         columns = list(row)
         existing = conn.execute(
-            "SELECT 1 FROM file_references WHERE "
+            "SELECT * FROM file_references WHERE "
             + " AND ".join(f'"{c}" IS ?' for c in columns),
             list(row.values()),
         ).fetchone()
         if existing is None:
-            conn.execute(
+            cur = conn.execute(
                 "INSERT INTO file_references ("
                 + ",".join(columns)
                 + ") VALUES ("
@@ -487,6 +494,12 @@ def apply_in_transaction(conn, config, snapshot):
                 + ")",
                 list(row.values()),
             )
+            if contribution is not None:
+                contribution.record(
+                    conn, "file_references", {"id": cur.lastrowid, **row}, existed=False
+                )
+        elif contribution is not None:
+            contribution.record(conn, "file_references", dict(existing), existed=True)
     access = Access(
         scope=Scope(scope),
         projects=frozenset(plan["projects"]),

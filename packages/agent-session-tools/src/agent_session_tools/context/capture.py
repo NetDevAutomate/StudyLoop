@@ -50,6 +50,8 @@ def capture_batch(conn, sessions: list[dict], messages: list[dict]) -> None:
     if not any("native_sources" in session for session in sessions):
         _assign_applied_roots(conn, sessions)
         return
+    from ..replication.retention import record_native_evidence
+
     store = ContextStore(conn)
     owners = {session["id"]: session["source"] for session in sessions}
     for session in sessions:
@@ -59,7 +61,8 @@ def capture_batch(conn, sessions: list[dict], messages: list[dict]) -> None:
                 or source.harness != session["source"]
             ):
                 raise ValueError("Native capture owner does not match its session")
-            store.capture(source)
+            identity = store.capture(source)
+            record_native_evidence(conn, identity)
     if available(conn, "context_native_message_sources"):
         for message in messages:
             for source in message.get("native_sources", []):
@@ -70,6 +73,7 @@ def capture_batch(conn, sessions: list[dict], messages: list[dict]) -> None:
                         "Native rendering source belongs to another session"
                     )
                 identity = store.capture(source)
+                record_native_evidence(conn, identity)
                 conn.execute(
                     "INSERT OR IGNORE INTO context_native_message_sources VALUES (?,?,?)",
                     (message["id"], identity, _hash(message["content"] or "")),

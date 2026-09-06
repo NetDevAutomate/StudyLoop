@@ -12,7 +12,10 @@ from agent_session_tools.context.lifecycle import purge_session
 from agent_session_tools.context.scope import ScopePolicy, apply_policy
 from agent_session_tools.context.store import ContextStore, _hash, _json
 from agent_session_tools.exporters.codex import CodexExporter
-from agent_session_tools.replication import ledger
+from agent_session_tools import migrations
+from agent_session_tools.replication import ledger, retention, retention_schema
+from agent_session_tools.replication.content import apply_content
+from agent_session_tools.replication.snapshot import TABLES
 from agent_session_tools.replication.policy import (
     PeerPolicy,
     ReplicaError,
@@ -380,7 +383,10 @@ def test_process_death_after_bodies_before_receipt_rolls_back(pair, tmp_path):
 import json,os,sys
 from contextlib import contextmanager
 from pathlib import Path
-from agent_session_tools.replication import ledger
+from agent_session_tools import migrations
+from agent_session_tools.replication import ledger, retention, retention_schema
+from agent_session_tools.replication.content import apply_content
+from agent_session_tools.replication.snapshot import TABLES
 original=ledger._write
 @contextmanager
 def writer(path):
@@ -495,7 +501,7 @@ def test_schema41_ledger_upgrade_is_additive_and_failure_atomic(tmp_path, monkey
             migrations.migrate(conn)
     assert conn.execute("PRAGMA user_version").fetchone()[0] == 41
     assert list(conn.iterdump()) == before
-    assert len(migrations.migrate(conn)) == 1
+    assert len(migrations.migrate(conn)) == migrations.CURRENT_VERSION - 41
     assert (
         conn.execute("SELECT source FROM sessions WHERE id='original'").fetchone()[0]
         == "fixture"
@@ -648,3 +654,279 @@ def test_individual_artifact_controls_preserve_retirement_on_next_transfer(pair,
         .execute("SELECT 1 FROM " + table + " WHERE id=?", (ids[kind],))
         .fetchone()
     )
+
+
+def source(conn):
+    return dict(
+        conn.execute(
+            "SELECT * FROM context_evidence WHERE session_id='codex_rollout-personal'"
+        ).fetchone()
+    )
+
+
+def test_native_capture_is_local_evidence_history_not_a_whole_session_grant(pair):
+    a = pair["a"]
+    facts = retention.describe(a["conn"], "context_evidence", source(a["conn"]))
+    assert facts["native_capture_observed"]
+    assert facts["committed_peers"] == []
+    assert not facts["unattributed_history"]
+    assert facts["retention_authorized"] == "not_evaluated"
+    # The source receipt does not claim native authorship of an agent's report.
+    report = dict(
+        a["conn"].execute("SELECT * FROM context_observations LIMIT 1").fetchone()
+    )
+    assert retention.describe(a["conn"], "context_observations", report)[
+        "unattributed_history"
+    ]
+
+
+def test_accepted_offer_is_not_a_contribution_and_received_origins_are_not_local(pair):
+    a, b = pair["a"], pair["b"]
+    value = accepted(pair)
+    assert not b["conn"].execute("SELECT 1 FROM context_retention_origins").fetchone()
+    snapshot = ledger.release_content(a["path"], a["config"], "b", value)
+    assert "context_retention_origins" not in snapshot["tables"]
+    ledger.receive_content(b["path"], b["config"], "a", value["id"], snapshot)
+    facts = retention.describe(b["conn"], "context_evidence", source(b["conn"]))
+    assert facts["committed_peers"] == ["a"]
+    assert not facts["native_capture_observed"]
+    assert not facts["unattributed_history"]
+    assert facts["independent_upstream_origins"] == "not_established"
+    for table, rows in snapshot["tables"].items():
+        if rows:
+            assert (
+                b["conn"]
+                .execute(
+                    "SELECT 1 FROM context_retention_origins WHERE table_name=? AND origin='peer_commit'",
+                    (table,),
+                )
+                .fetchone()
+            ), table
+
+
+def test_preexisting_untracked_body_stays_explicitly_unattributed_after_delivery(pair):
+    a, b = pair["a"], pair["b"]
+    value = offer(pair)
+    # The lower content-phase API intentionally has no authenticated ledger receipt.
+    from agent_session_tools.replication.snapshot import export_snapshot
+
+    snapshot = export_snapshot(a["path"], a["config"], value["plan"], "personal")
+    apply_content(b["path"], b["config"], snapshot)
+    assert retention.describe(b["conn"], "context_evidence", source(b["conn"]))[
+        "unattributed_history"
+    ]
+    delivered(pair)
+    facts = retention.describe(b["conn"], "context_evidence", source(b["conn"]))
+    assert facts["committed_peers"] == ["a"] and facts["unattributed_history"]
+    assert not facts["native_capture_observed"]
+
+
+def test_changed_body_cannot_borrow_an_old_contribution(pair):
+    delivered(pair)
+    b = pair["b"]["conn"]
+    row = dict(b.execute("SELECT * FROM messages LIMIT 1").fetchone())
+    original = retention.describe(b, "messages", row)
+    assert original["committed_peers"] == ["a"]
+    b.execute("UPDATE messages SET content='CHANGED_BODY' WHERE id=?", (row["id"],))
+    b.commit()
+    row["content"] = "CHANGED_BODY"
+    changed = retention.describe(b, "messages", row)
+    assert changed["unattributed_history"] and changed["committed_peers"] == []
+    assert changed["binding"]["row_sha256"] != original["binding"]["row_sha256"]
+
+
+def test_receipt_retry_does_not_duplicate_origin_history(pair):
+    value, snapshot, receipt = delivered(pair)
+    b = pair["b"]
+    before = list(b["conn"].iterdump())
+    assert (
+        ledger.receive_content(b["path"], b["config"], "a", value["id"], snapshot)
+        == receipt
+    )
+    assert list(b["conn"].iterdump()) == before
+
+
+def test_native_recapture_adds_capture_fact_without_relabeling_received_history(pair):
+    delivered(pair)
+    b = pair["b"]["conn"]
+    pair["exporter"].export_all(b, incremental=False)
+    facts = retention.describe(b, "context_evidence", source(b))
+    assert facts["native_capture_observed"] and facts["committed_peers"] == ["a"]
+    assert facts["retention_authorized"] == "not_evaluated"
+    # This fact cannot implement regrant: withdrawal epochs are a separate gate.
+
+
+def test_origin_history_does_not_save_body_paths_or_raw_composite_keys(pair):
+    _, snapshot, _ = delivered(pair)
+    b = pair["b"]["conn"]
+    history = _json(
+        [dict(r) for r in b.execute("SELECT * FROM context_retention_origins")]
+    )
+    assert "STAGE34_" not in history
+    assert pair["a"]["config"]["memory"]["projects"]["p"]["roots"][0] not in history
+    assert all(
+        r["table_name"] in TABLES
+        for r in b.execute("SELECT * FROM context_retention_origins")
+    )
+    assert snapshot["sha256"] not in history  # offers bind the snapshot separately
+
+
+def test_origin_history_cannot_be_rewritten_or_constructed_without_offer(pair):
+    conn = pair["a"]["conn"]
+    for sql in (
+        "DELETE FROM context_retention_origins",
+        "UPDATE context_retention_origins SET origin='peer_commit'",
+    ):
+        with pytest.raises(sqlite3.IntegrityError, match="managed reconciliation"):
+            conn.execute(sql)
+        conn.rollback()
+    with pytest.raises(ValueError, match="accepted offer transaction"):
+        retention.PeerContribution(conn, "b", "not-offered")
+
+
+def test_origin_migration_preserves_unknown_legacy_and_rolls_back_on_failure(
+    tmp_path, monkeypatch
+):
+    with monkeypatch.context() as old:
+        old.setattr(migrations, "CURRENT_VERSION", 42)
+        conn = records.connect(tmp_path / "old.db")
+    conn.execute("INSERT INTO sessions(id,source) VALUES ('legacy','fixture')")
+    conn.commit()
+    before = list(conn.iterdump())
+    original = retention_schema.install
+
+    def fail(database):
+        original(database)
+        raise RuntimeError("origin migration failure")
+
+    with monkeypatch.context() as fault:
+        fault.setattr(retention_schema, "install", fail)
+        with pytest.raises(RuntimeError, match="origin migration failure"):
+            migrations.migrate(conn)
+    assert list(conn.iterdump()) == before
+    assert len(migrations.migrate(conn)) == 1
+    assert not conn.execute("SELECT 1 FROM context_retention_origins").fetchone()
+    assert conn.execute("PRAGMA foreign_key_check").fetchall() == []
+    conn.close()
+
+
+def test_two_delivering_peers_are_not_asserted_independent_origins(pair, tmp_path):
+    delivered(pair)
+    a, b = pair["a"], pair["b"]
+    config = json.loads(json.dumps(a["config"]))
+    config["memory"]["sync"] = {
+        "node_id": "c",
+        "peers": {
+            "a": {"allowed_scopes": ["personal"]},
+            "b": {"allowed_scopes": ["personal"]},
+        },
+    }
+    cpath = tmp_path / "c.db"
+    conn = records.connect(cpath)
+    apply_policy(conn, ScopePolicy.from_config(config), actor="fixture", dry_run=False)
+    a["config"]["memory"]["sync"]["peers"]["c"] = {"allowed_scopes": ["personal"]}
+    b["config"]["memory"]["sync"]["peers"]["c"] = {"allowed_scopes": ["personal"]}
+    c = {"path": cpath, "conn": conn, "config": config}
+    try:
+        for sender, receiver, sid, rid in ((a, c, "a", "c"), (c, b, "c", "b")):
+            plan = negotiate(
+                hello(sender["conn"], PeerPolicy.from_config(sender["config"], rid)),
+                hello(
+                    receiver["conn"], PeerPolicy.from_config(receiver["config"], sid)
+                ),
+            )
+            value = ledger.prepare_offer(
+                sender["path"], sender["config"], plan, "personal"
+            )
+            receipt = ledger.accept_offer(
+                receiver["path"], receiver["config"], sid, value
+            )
+            ledger.record_acceptance(
+                sender["path"], sender["config"], rid, value, receipt
+            )
+            packet = ledger.release_content(
+                sender["path"], sender["config"], rid, value
+            )
+            ledger.receive_content(
+                receiver["path"], receiver["config"], sid, value["id"], packet
+            )
+        facts = retention.describe(b["conn"], "context_evidence", source(b["conn"]))
+        assert facts["committed_peers"] == ["a", "c"]
+        assert facts["independent_upstream_origins"] == "not_established"
+    finally:
+        conn.close()
+
+
+@pytest.mark.parametrize("node", ["a", "b"])
+def test_replaced_database_instance_cannot_borrow_old_local_history(pair, node):
+    delivered(pair)
+    conn = pair[node]["conn"]
+    conn.execute("UPDATE context_access_state SET instance='replacement' WHERE id=1")
+    conn.commit()
+    facts = retention.describe(conn, "context_evidence", source(conn))
+    assert not facts["native_capture_observed"] and facts["committed_peers"] == []
+    assert facts["unattributed_history"]
+
+
+def test_integer_remapping_binds_contribution_to_received_learner_row(pair):
+    a, b = pair["a"]["conn"], pair["b"]["conn"]
+    for conn, label in ((a, "SENT"), (b, "UNRELATED_LOCAL")):
+        conn.execute(
+            "INSERT INTO knowledge_bridges(source_concept,source_domain,target_concept,target_domain) "
+            "VALUES (?,'fixture','query','fixture')",
+            (label,),
+        )
+        conn.commit()
+    with ContextStore(a)._atomic(), records.policy_guard(a):
+        owner = records.bind(
+            a, "knowledge_bridges", 1, session_id="codex_rollout-personal"
+        )
+    delivered(pair)
+    local_id = b.execute(
+        "SELECT row_id FROM context_record_owners WHERE id=?", (owner,)
+    ).fetchone()[0]
+    assert local_id != "1"
+    received = dict(
+        b.execute("SELECT * FROM knowledge_bridges WHERE id=?", (local_id,)).fetchone()
+    )
+    unrelated = dict(b.execute("SELECT * FROM knowledge_bridges WHERE id=1").fetchone())
+    assert retention.describe(b, "knowledge_bridges", received)["committed_peers"] == [
+        "a"
+    ]
+    assert retention.describe(b, "knowledge_bridges", unrelated)["unattributed_history"]
+
+
+def test_failed_native_history_write_rolls_back_the_native_body(pair, monkeypatch):
+    conn = pair["b"]["conn"]
+    original = retention.record_native_evidence
+
+    def fail(*args):
+        original(*args)
+        raise RuntimeError("failure after native history")
+
+    with monkeypatch.context() as fault:
+        fault.setattr(retention, "record_native_evidence", fail)
+        with pytest.raises(RuntimeError, match="after native history"):
+            pair["exporter"].export_all(conn, incremental=False)
+    for table in (
+        "sessions",
+        "messages",
+        "context_evidence",
+        "context_retention_origins",
+    ):
+        assert not conn.execute("SELECT 1 FROM " + table).fetchone()
+    assert pair["exporter"].export_all(conn, incremental=False).added == 2
+
+
+def test_contribution_requires_matching_peer_and_current_database_binding(pair):
+    value = accepted(pair)
+    conn = pair["b"]["conn"]
+    with ContextStore(conn)._atomic():
+        with pytest.raises(ValueError, match="peer binding"):
+            retention.PeerContribution(conn, "never-registered", value["id"])
+    conn.execute("UPDATE context_access_state SET instance='new-instance' WHERE id=1")
+    conn.commit()
+    with ContextStore(conn)._atomic():
+        with pytest.raises(ValueError, match="peer binding"):
+            retention.PeerContribution(conn, "a", value["id"])
+    assert not conn.execute("SELECT 1 FROM context_retention_origins").fetchone()

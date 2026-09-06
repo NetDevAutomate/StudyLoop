@@ -602,3 +602,35 @@ def test_other_writer_cannot_observe_eviction_mode_as_its_own(memory):
         )
     finally:
         other.close()
+
+
+def test_source_forget_preserves_independent_project_record_linked_to_report(memory):
+    refs = enrich(memory)
+    c = memory["conn"]
+    with ContextStore(c)._atomic(), records.policy_guard(c):
+        row = c.execute(
+            "INSERT INTO knowledge_bridges(source_concept,source_domain,target_concept,target_domain) VALUES ('INDEPENDENT_PROJECT_BODY','fixture','query','fixture')"
+        )
+        owner = records.bind(
+            c,
+            "knowledge_bridges",
+            row.lastrowid,
+            owner_path=memory["path"].parent / "personal",
+        )
+        # This edge means the report depends on the record; it does not claim
+        # that this independently owned record derives from the report.
+        records.link_observation(c, owner, refs["observation"])
+    identity = row.lastrowid
+    assert records.is_visible(c, "knowledge_bridges", identity)
+    c.rollback()
+    forget_session(c, memory["ids"]["personal"], apply=True)
+    assert c.execute(
+        "SELECT 1 FROM knowledge_bridges WHERE id=?", (identity,)
+    ).fetchone()
+    assert c.execute(
+        "SELECT 1 FROM context_record_owners WHERE id=?", (owner,)
+    ).fetchone()
+    assert not c.execute(
+        "SELECT 1 FROM context_observations WHERE id=?", (refs["observation"],)
+    ).fetchone()
+    assert records.is_visible(c, "knowledge_bridges", identity)

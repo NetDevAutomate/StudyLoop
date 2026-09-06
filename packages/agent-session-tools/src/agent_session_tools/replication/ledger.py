@@ -16,6 +16,7 @@ from ..context.provenance import Scope
 from ..context.store import ContextStore, _hash, _json, _now
 from .content import apply_in_transaction
 from .policy import PeerPolicy, ReplicaError, check_plan, hello, state
+from .retention import PeerContribution
 from .snapshot import MAX_BYTES, MAX_ROWS, _select, export_snapshot
 
 OBJECTS = {
@@ -360,7 +361,9 @@ def receive_content(path, config, peer_name, offer_id, snapshot):
             raise ReplicaError("Content offer is retired or unavailable")
         if _manifest(snapshot) != offer["objects"]:
             raise ReplicaError("Content manifest differs from accepted identities")
-        apply_in_transaction(conn, config, snapshot)
+        apply_in_transaction(
+            conn, config, snapshot, PeerContribution(conn, peer_name, offer_id)
+        )
         receipt = _seal(
             {
                 "contract": "session-replica-content-receipt/v1",

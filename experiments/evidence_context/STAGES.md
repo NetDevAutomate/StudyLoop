@@ -44,6 +44,8 @@ no remote publication or backup is implied.
 
 | 34 — Durable replica lifecycle | Can known recipients reconcile permanent forgetting despite lost acknowledgements and stale content? | `1f5a5c56` | `replica_lifecycle/runner.py`; five-view standalone-wheel lesson, atomic receipts, typed retirement matrix and council arbitration. SSH, withdrawal and managed restore remain open. |
 
+| 35 — Grounded retention history | Which exact versions were captured locally or committed from a peer, without inventing permission or independence? | pending checkpoint | `retention_history/runner.py`; five-view standalone-wheel lesson, exact version and instance binding, unknown legacy history and council arbitration. Withdrawal/regrant and real sync remain open. |
+
 Stage 3 uses its own lifecycle adapter and database schema. It does not modify the
 stage 1 evidence store, and does not require stage 1 demo output. Stage 2 uses
 stage 1 fixtures/code; its pinned checkpoint contains everything needed to run it.
@@ -822,3 +824,13 @@ uv run pytest packages/agent-session-tools/tests/test_replica_ledger.py experime
 
 The [Stage34 guide](replica_lifecycle/GUIDE.md) explains prospective delivery, historical
 receipts, known-recipient permanent controls and the remaining real transport boundary.
+
+## Stage35 commands
+
+```sh
+uv run python -m experiments.evidence_context.retention_history.runner --output /tmp/evidence-stage35
+uv run pytest packages/agent-session-tools/tests/test_replica_ledger.py experiments/evidence_context/tests/test_retention_history_lesson.py -q
+```
+
+The [Stage35 guide](retention_history/GUIDE.md) distinguishes historical capture/delivery
+from current permission and upstream independence. No withdrawal feature is claimed.

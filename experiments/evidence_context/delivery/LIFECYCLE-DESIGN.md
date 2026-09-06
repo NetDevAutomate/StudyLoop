@@ -124,3 +124,14 @@ permanent controls through that retained history. Empty current peer scopes can 
 process previously known controls; new bodies remain disallowed. The result remains
 `sync_complete:false`. This does not implement the withdrawal/regrant or real SSH
 sequence described above, nor infer missing historical delivery knowledge.
+
+
+## Stage35 evidence prerequisite
+
+Schema43 records exact local native-evidence capture and committed peer row contributions
+in local-only history. See `retention_history/GUIDE.md`. This is not withdrawal state.
+Two delivering peers may share an upstream origin; counts cannot establish independent
+retention authority. Existing untracked versions remain unattributed, new database
+instances cannot borrow old local facts, and native recapture is not regrant.
+The next withdrawal implementation must make its policy explicit and enforce denial
+before transfer/native recapture; it cannot obtain permission from these fact labels.
