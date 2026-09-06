@@ -29,6 +29,7 @@ from agent_session_tools.config_loader import (
     get_log_path,
     load_config,
 )
+from agent_session_tools.replication import legacy as legacy_guard
 
 # Tables to sync (order matters — sessions before messages for FK)
 # Session-scoped tables: filtered by session_id during delta sync
@@ -454,6 +455,7 @@ def _remote_db_exists(host: str, db_path: str) -> bool:
 
 def _seed_remote_db(host: str, remote_db: str, local_db: Path) -> bool:
     """Copy local DB to remote for first-time sync. Creates remote directory."""
+    legacy_guard.check_path(local_db, whole_file=True)
     _ensure_mux_dir()
     remote_dir = _quote_remote_path(str(Path(remote_db).parent))
     # Ensure remote directory exists
@@ -466,6 +468,8 @@ def _seed_remote_db(host: str, remote_db: str, local_db: Path) -> bool:
         snapshot = Path(tmp) / "sessions.db"
         with sqlite3.connect(local_db) as source, sqlite3.connect(snapshot) as dest:
             source.backup(dest)
+            legacy_guard.check_database(dest)
+        legacy_guard.check_path(local_db, whole_file=True)
         result = subprocess.run(
             [
                 "scp",
@@ -551,6 +555,26 @@ def _require_current_schema(target: Path | tuple[str, str]) -> None:
             f"Database schema v{version} on {location} is newer than this tool's v{CURRENT_VERSION}; "
             "upgrade agent-session-tools on both machines before syncing."
         )
+    if not isinstance(target, Path):
+        _check_legacy_remote(*target)
+
+
+def _check_legacy_remote(host: str, db_path: str) -> set[str]:
+    tables = set(
+        _remote_sql(
+            host, db_path, "SELECT name FROM sqlite_master WHERE type='table'"
+        ).splitlines()
+    )
+    queries = list(legacy_guard.protected_queries(tables))
+    if queries:
+        query = (
+            "SELECT CASE WHEN "
+            + " OR ".join("EXISTS(" + q + ")" for q in queries)
+            + " THEN 1 ELSE 0 END"
+        )
+        if _remote_sql(host, db_path, query) != "0":
+            raise legacy_guard.LegacySyncRefused(legacy_guard.MESSAGE)
+    return tables
 
 
 def _build_insert_select_sql(
@@ -738,11 +762,7 @@ def _build_parked_archive_select_sql(columns: list[str]) -> str:
 
 
 def _remote_dump_queries(host: str, db_path: str, session_ids: set[str]) -> list[str]:
-    tables = set(
-        _remote_sql(
-            host, db_path, "SELECT name FROM sqlite_master WHERE type='table'"
-        ).splitlines()
-    )
+    tables = _check_legacy_remote(host, db_path)
     message_columns = set(
         _remote_sql(
             host, db_path, "SELECT name FROM pragma_table_info('messages')"
@@ -755,12 +775,15 @@ def _remote_dump_queries(host: str, db_path: str, session_ids: set[str]) -> list
         if "parked_topics" in tables
         else []
     )
-    return _build_dump_queries(
-        session_ids,
-        tables,
-        include_seq="seq" in message_columns,
-        parked_columns=parked_columns,
-    )
+    return [
+        legacy_guard.transaction_guard(tables),
+        *_build_dump_queries(
+            session_ids,
+            tables,
+            include_seq="seq" in message_columns,
+            parked_columns=parked_columns,
+        ),
+    ]
 
 
 def _build_dump_queries(
@@ -889,10 +912,12 @@ def _dump_delta_sql(db_path: Path, session_ids: set[str]) -> str:
     if not session_ids:
         return ""
 
+    legacy_guard.check_config(load_config())
     _validate_session_ids(session_ids)
     conn = sqlite3.connect(db_path)
     try:
         conn.execute("BEGIN")
+        legacy_guard.check_database(conn)
         available_tables = {
             row[0]
             for row in conn.execute(
@@ -913,6 +938,7 @@ def _dump_delta_sql(db_path: Path, session_ids: set[str]) -> str:
             parked_columns=parked_columns,
         ):
             lines.extend(row[0] for row in conn.execute(query).fetchall())
+        legacy_guard.check_path(db_path)
         return "\n".join(lines) + ("\n" if lines else "")
     finally:
         conn.close()
@@ -967,12 +993,21 @@ def _stream_sql_to_target(sql: str, target: Path | tuple[str, str]) -> bool:
     if not sql.strip():
         return True
 
+    legacy_guard.check_config(load_config())
     if isinstance(target, Path):
         with sqlite3.connect(f"file:{target}?mode=ro", uri=True) as conn:
+            legacy_guard.check_database(conn)
+            target_tables = {
+                r[0]
+                for r in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table'"
+                )
+            }
             parked_columns = [
                 row[1] for row in conn.execute("PRAGMA table_info(parked_topics)")
             ]
     else:
+        target_tables = _check_legacy_remote(*target)
         parked_columns = _remote_sql(
             target[0], target[1], "SELECT name FROM pragma_table_info('parked_topics')"
         ).splitlines()
@@ -987,6 +1022,7 @@ def _stream_sql_to_target(sql: str, target: Path | tuple[str, str]) -> bool:
     )
     sql = (
         _SYNC_TRANSACTION_PREFIX
+        + legacy_guard.transaction_guard(target_tables)
         + archive_target
         + sql
         + "\n"
@@ -1184,6 +1220,7 @@ def pull(
 ) -> None:
     """Pull new sessions from remote via SQL streaming."""
     local_db = _local_db_for_tier(tier, db)
+    legacy_guard.check_path(local_db)
     host, remote_db = _resolve_remote(remote, tier)
 
     console.print(f"[bold]Pulling from:[/bold] {remote}")
@@ -1317,6 +1354,7 @@ def push(
 ) -> None:
     """Push new and updated sessions to remote via SQL streaming."""
     local_db = _local_db_for_tier(tier, db)
+    legacy_guard.check_path(local_db)
     host, remote_db = _resolve_remote(remote, tier)
 
     console.print(f"[bold]Pushing to:[/bold] {remote}")
@@ -1413,6 +1451,7 @@ def sync(
     Use --tier full to consolidate the complete-history records.
     """
     local_db = _local_db_for_tier(tier, db)
+    legacy_guard.check_path(local_db)
     host, remote_db = _resolve_remote(remote, tier)
 
     console.print(f"[bold]Syncing with:[/bold] {remote}")
@@ -1668,7 +1707,11 @@ def endpoints() -> None:
 
 def main() -> None:
     """Entry point for session-sync CLI."""
-    app()
+    try:
+        app()
+    except legacy_guard.LegacySyncRefused as exc:
+        console.print(str(exc), style="red", markup=False)
+        raise SystemExit(1) from None
 
 
 if __name__ == "__main__":
