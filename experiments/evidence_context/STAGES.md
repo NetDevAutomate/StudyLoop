@@ -38,6 +38,7 @@ no remote publication or backup is implied.
 | 29 — Grounded learner relationships | Can a graph retain source ownership and honest decision roles through corrections, forgetting and response budgets? | `8bfce3d3` | `concept_context/runner.py`; GUIDE.md, installed HTTP/MCP lesson, scale diagnostic and council arbitration |
 | 30 — Session annotation grounding | Can reports about sessions retain honest authority, correction history and safe source identities? | `61ee4db5` | `session_annotations/runner.py`; GUIDE.md, installed CLI/MCP lesson, schema39 upgrade, history scale diagnostic and council arbitration |
 | 31 — Bounded annotation history | Can first-page reads stay cheap without hiding current disagreement or omitted evidence? | `f1883d7b` | `bounded_history/runner.py`; four-view CLI/MCP lesson, ordered-index upgrade, paged scale benchmark and council arbitration |
+| 32 — Scoped replica content | Can sources, reviews and learner identities retain their meaning through a permitted transfer? | `b05e6b4c` | `replica_content/runner.py`; five-view standalone-wheel lesson, dependency and identity tests, observed results and council arbitration. Content phase only; full sync remains open. |
 
 Stage 3 uses its own lifecycle adapter and database schema. It does not modify the
 stage 1 evidence store, and does not require stage 1 demo output. Stage 2 uses
