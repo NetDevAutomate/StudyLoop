@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Current schema version - increment when adding new migrations
-CURRENT_VERSION = 46
+CURRENT_VERSION = 47
 
 # Migration functions: version -> (description, migration_func)
 MIGRATIONS: dict[int, tuple[str, Callable[[sqlite3.Connection], None]]] = {}
@@ -1547,6 +1547,30 @@ def migrate_v46(conn: sqlite3.Connection) -> None:
         conn.execute(f"""CREATE TRIGGER replica_superseded_{event.lower()}
             BEFORE {event} ON context_replica_superseded
             BEGIN SELECT RAISE(ABORT,'Replica attempt resolution is immutable'); END""")
+
+
+@migration(47, "Exact shared bases for native projection reconciliation")
+def migrate_v47(conn: sqlite3.Connection) -> None:
+    conn.execute("""CREATE TABLE context_replica_basis_sets (
+        sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+        offer_id TEXT NOT NULL,direction TEXT NOT NULL,
+        row_count INTEGER NOT NULL CHECK(row_count>=0),
+        UNIQUE(offer_id,direction),
+        FOREIGN KEY(offer_id,direction) REFERENCES context_replica_offers(id,direction)
+    )""")
+    conn.execute("""CREATE TABLE context_replica_row_bases (
+        offer_id TEXT NOT NULL,direction TEXT NOT NULL,
+        table_name TEXT NOT NULL CHECK(table_name IN ('sessions','messages')),
+        key_sha256 TEXT NOT NULL CHECK(length(key_sha256)=64),
+        row_sha256 TEXT NOT NULL CHECK(length(row_sha256)=64),
+        PRIMARY KEY(offer_id,direction,table_name,key_sha256),
+        FOREIGN KEY(offer_id,direction) REFERENCES context_replica_offers(id,direction)
+    )""")
+    for table in ("context_replica_basis_sets", "context_replica_row_bases"):
+        for event in ("UPDATE", "DELETE"):
+            conn.execute(f"""CREATE TRIGGER replica_basis_{table}_{event.lower()}
+              BEFORE {event} ON {table} BEGIN
+              SELECT RAISE(ABORT,'Shared reconciliation bases are immutable'); END""")
 
 
 def check_migration_status(db_path: Path) -> dict:

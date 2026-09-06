@@ -49,6 +49,7 @@ class Incoming:
     def __init__(self, header, columns):
         if not isinstance(header, dict) or set(header) != {
             "contract",
+            "basis",
             "plan",
             "scope",
             "legacy_owned_table_gaps",

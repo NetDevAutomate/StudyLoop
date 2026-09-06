@@ -250,6 +250,9 @@ def _prepare_offer(path, config, plan, scope, factory):
             "INSERT OR IGNORE INTO context_replica_offers VALUES (?,'out',?,?,?,'prepared',NULL,NULL,?)",
             (offer["id"], policy.peer, scope, _json(offer), _now()),
         )
+        from .reconcile import record_basis
+
+        record_basis(conn, offer["id"], "out", snapshot["tables"])
         if PeerPolicy.from_config(config, policy.peer) != policy:
             raise ReplicaError("Sender configuration changed while preparing offer")
     return offer
@@ -450,7 +453,7 @@ def receive_content(path, config, peer_name, offer_id, snapshot):
         def before_apply():
             released.extend(release_awaiting(conn, peer_name, offer))
 
-        apply_in_transaction(
+        applied = apply_in_transaction(
             conn,
             config,
             snapshot,
@@ -458,15 +461,19 @@ def receive_content(path, config, peer_name, offer_id, snapshot):
             before_apply,
         )
         check_regrant_coverage(conn, peer_name, offer, released)
+        from .reconcile import record_basis
+
+        record_basis(conn, offer_id, "in", snapshot["tables"])
         receipt = _seal(
             {
-                "contract": "session-replica-content-receipt/v2",
+                "contract": "session-replica-content-receipt/v3",
                 "offer_id": offer_id,
                 "receiver": policy.node,
                 "instance": state(conn)["instance"],
                 "snapshot_sha256": snapshot["sha256"],
                 "committed": True,
                 "committed_state": state(conn),
+                "retained_local_rows": applied["retained_local_rows"],
             }
         )
         conn.execute(
@@ -477,18 +484,30 @@ def receive_content(path, config, peer_name, offer_id, snapshot):
 
 
 def acknowledge_content(path, config, peer_name, receipt):
-    modern = (
+    merged = (
+        isinstance(receipt, dict)
+        and receipt.get("contract") == "session-replica-content-receipt/v3"
+    )
+    modern = merged or (
         isinstance(receipt, dict)
         and receipt.get("contract") == "session-replica-content-receipt/v2"
     )
     _checked(
         receipt,
-        "session-replica-content-receipt/v2"
+        "session-replica-content-receipt/v3"
+        if merged
+        else "session-replica-content-receipt/v2"
         if modern
         else "session-replica-content-receipt/v1",
         {"offer_id", "receiver", "instance", "snapshot_sha256", "committed"}
-        | ({"committed_state"} if modern else set()),
+        | ({"committed_state"} if modern else set())
+        | ({"retained_local_rows"} if merged else set()),
     )
+    if merged and (
+        type(receipt["retained_local_rows"]) is not int
+        or receipt["retained_local_rows"] < 0
+    ):
+        raise ReplicaError("Invalid retained-local merge result")
     if receipt["receiver"] != peer_name or receipt["committed"] is not True:
         raise ReplicaError("Invalid content acknowledgement")
     with _write(path) as conn:

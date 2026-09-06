@@ -414,7 +414,7 @@ class Endpoint:
                     "sha256": offer["snapshot_sha256"],
                     "plan": offer["plan"],
                     "scope": offer["scope"],
-                    "contract": "session-replica-content/v1",
+                    "contract": "session-replica-content/v2",
                     "lifecycle_reconciled": False,
                 }.items()
             ):

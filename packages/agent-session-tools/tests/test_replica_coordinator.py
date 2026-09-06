@@ -136,6 +136,33 @@ def test_two_process_scoped_transfer_and_unchanged_retry(replicas):
     assert count(replicas["a"], "b_STAGE38_WORK") == 0
 
 
+def test_actual_native_continuation_reaches_existing_replica(replicas):
+    """A continuing capture must merge safely, not look like an arbitrary edit."""
+    exchange(replicas, "push")
+    a, b = replicas["a"], replicas["b"]
+    native = a["db"].parent / "native"
+    archive = native / "rollout-a-personal.jsonl"
+    continued = {
+        "type": "response_item",
+        "payload": {
+            "type": "message",
+            "role": "user",
+            "content": [
+                {"type": "input_text", "text": "STAGE41_CONTINUED_NATIVE_MESSAGE"}
+            ],
+        },
+    }
+    with archive.open("a") as output:
+        output.write(json.dumps(continued) + "\n")
+    with closing(records.connect(a["db"])) as conn:
+        assert CodexExporter(native).export_all(conn).updated == 1
+    result = exchange(replicas, "push")
+    assert result["canonical_phase_completed"]
+    assert count(b, "STAGE41_CONTINUED_NATIVE_MESSAGE") == 1
+    assert count(b, "a_STAGE38_PERSONAL") == 1
+    assert count(b, "a_STAGE38_WORK") == 0
+
+
 def test_new_content_without_access_change_is_transferred(replicas):
     from agent_session_tools.replication.policy import state
 
@@ -241,10 +268,11 @@ def test_config_change_inside_receiver_transaction_rolls_back(replicas, monkeypa
     original = ledger.apply_in_transaction
 
     def revoke(*args, **kwargs):
-        original(*args, **kwargs)
+        result = original(*args, **kwargs)
         config = replicas["b"]["config"]
         config["memory"]["sync"]["peers"]["a"]["allowed_scopes"] = []
         replicas["b"]["cfg"].write_text(json.dumps(config))
+        return result
 
     monkeypatch.setattr(ledger, "apply_in_transaction", revoke)
     with pytest.raises(ReplicaError, match="configuration changed"):
@@ -488,6 +516,8 @@ def test_schema46_migration_failure_preserves_schema45_content(replicas, monkeyp
 
     db = replicas["a"]["db"]
     with closing(sqlite3.connect(db)) as conn:
+        conn.execute("DROP TABLE context_replica_row_bases")
+        conn.execute("DROP TABLE context_replica_basis_sets")
         for (trigger,) in conn.execute(
             "SELECT name FROM sqlite_master WHERE type='trigger' AND name LIKE 'replica_content_%'"
         ).fetchall():
@@ -509,7 +539,10 @@ def test_schema46_migration_failure_preserves_schema45_content(replicas, monkeyp
                 migrations.migrate(conn)
         assert list(conn.iterdump()) == before
         migrations.migrate(conn)
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 46
+        assert (
+            conn.execute("PRAGMA user_version").fetchone()[0]
+            == migrations.CURRENT_VERSION
+        )
         assert not conn.execute("SELECT 1 FROM context_replica_superseded").fetchone()
     assert count(replicas["a"], "a_STAGE38_PERSONAL") == 1
 
@@ -789,3 +822,118 @@ def test_corrupted_stream_never_promotes_a_partial_copy(replicas, monkeypatch, c
         coordinator.synchronize(a, b, direction="push")
     assert a.outgoing is None and b.incoming is None
     assert count(replicas["b"], "a_STAGE38_PERSONAL") == 0
+
+
+def _header(node, session_id, value=None):
+    with closing(records.connect(node["db"])) as conn:
+        if value is not None:
+            conn.execute(
+                "UPDATE sessions SET metadata=? WHERE id=?",
+                (json.dumps(value), session_id),
+            )
+            conn.commit()
+        return conn.execute(
+            "SELECT metadata FROM sessions WHERE id=?", (session_id,)
+        ).fetchone()[0]
+
+
+def test_shared_basis_keeps_receiver_update_then_reverse_transfer_advances(replicas):
+    exchange(replicas, "sync")
+    a, b = replicas["a"], replicas["b"]
+    sid = "codex_rollout-a-personal"
+    new = _header(b, sid, {"fixture": "receiver-local-update"})
+    before = _header(a, sid)
+    result = exchange(replicas, "push")
+    assert _header(b, sid) == new and _header(a, sid) == before
+    assert sum(t["retained_local_rows"] for t in result["transfers"]) == 1
+    exchange(replicas, "pull")
+    assert _header(a, sid) == new
+    with closing(sqlite3.connect(b["db"])) as conn:
+        # Keeping B's local update must not mislabel it as a new A contribution.
+        from agent_session_tools.replication.retention import _binding
+
+        conn.row_factory = sqlite3.Row
+        row = dict(conn.execute("SELECT * FROM sessions WHERE id=?", (sid,)).fetchone())
+        binding = _binding(conn, "sessions", row)
+        assert not conn.execute(
+            "SELECT 1 FROM context_retention_origins WHERE table_name=? AND key_sha256=? AND row_sha256=? AND origin='peer_commit' AND contributor='a'",
+            binding,
+        ).fetchone()
+
+
+def test_disjoint_native_header_changes_converge_in_one_bidirectional_run(replicas):
+    exchange(replicas, "sync")
+    a, b = replicas["a"], replicas["b"]
+    sa, sb = "codex_rollout-a-personal", "codex_rollout-b-personal"
+    va = _header(a, sa, {"fixture": "a changed"})
+    vb = _header(b, sb, {"fixture": "b changed"})
+    result = exchange(replicas, "sync")
+    assert result["canonical_phase_completed"]
+    assert _header(b, sa) == va and _header(a, sb) == vb
+    assert count(a, "b_STAGE38_WORK") == 0 and count(b, "a_STAGE38_WORK") == 0
+
+
+def test_competing_native_header_updates_roll_back_whole_incoming_projection(replicas):
+    exchange(replicas, "sync")
+    a, b = replicas["a"], replicas["b"]
+    sid = "codex_rollout-a-personal"
+    left = _header(a, sid, {"fixture": "left"})
+    right = _header(b, sid, {"fixture": "right"})
+    with closing(records.connect(a["db"])) as conn:
+        conn.execute(
+            "INSERT INTO messages(id,session_id,role,content) VALUES ('later-row',?,'user','DO_NOT_PARTIALLY_COMMIT')",
+            (sid,),
+        )
+        conn.commit()
+    with closing(sqlite3.connect(b["db"])) as conn:
+        bases = conn.execute(
+            "SELECT count(*) FROM context_replica_basis_sets"
+        ).fetchone()[0]
+    with pytest.raises(ReplicaError):
+        exchange(replicas, "push")
+    assert _header(a, sid) == left and _header(b, sid) == right
+    assert count(b, "DO_NOT_PARTIALLY_COMMIT") == 0
+    with closing(sqlite3.connect(b["db"])) as conn:
+        assert (
+            conn.execute("SELECT count(*) FROM context_replica_basis_sets").fetchone()[
+                0
+            ]
+            == bases
+        )
+
+
+def test_schema47_migration_rollback_and_retry_preserve_captured_rows(
+    replicas, monkeypatch
+):
+    from agent_session_tools import migrations
+
+    with closing(sqlite3.connect(replicas["a"]["db"])) as conn:
+        conn.execute("DROP TABLE context_replica_row_bases")
+        conn.execute("DROP TABLE context_replica_basis_sets")
+        conn.execute("PRAGMA user_version=46")
+        conn.commit()
+        before = list(conn.iterdump())
+        description, implementation = migrations.MIGRATIONS[47]
+
+        def fail(connection):
+            implementation(connection)
+            raise RuntimeError("stage41 migration interruption")
+
+        with monkeypatch.context() as fault:
+            fault.setitem(migrations.MIGRATIONS, 47, (description, fail))
+            with pytest.raises(RuntimeError, match="stage41 migration interruption"):
+                migrations.migrate(conn)
+        assert list(conn.iterdump()) == before
+        migrations.migrate(conn)
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 47
+        assert (
+            conn.execute("SELECT count(*) FROM context_replica_basis_sets").fetchone()[
+                0
+            ]
+            == 0
+        )
+        assert (
+            conn.execute("SELECT count(*) FROM context_replica_row_bases").fetchone()[0]
+            == 0
+        )
+    assert count(replicas["a"], "a_STAGE38_PERSONAL") == 1

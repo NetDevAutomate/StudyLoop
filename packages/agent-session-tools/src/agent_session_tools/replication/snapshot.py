@@ -379,8 +379,11 @@ def _export(path, config, plan, scope, *, staging=None):
             if staging is None
             else collect(conn, peer.policy, scope, _staging=staging)
         )
+        from .reconcile import choose_basis
+
         result = {
-            "contract": "session-replica-content/v1",
+            "contract": "session-replica-content/v2",
+            "basis": choose_basis(conn, peer.peer, scope),
             "plan": plan,
             "scope": scope,
             "tables": rows,

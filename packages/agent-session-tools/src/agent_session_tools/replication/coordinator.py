@@ -168,6 +168,7 @@ def synchronize(local, remote, *, direction):
                     "offer_id": offer["id"],
                     "committed": True,
                     "mode": prepared["mode"],
+                    "retained_local_rows": receipt.get("retained_local_rows", 0),
                 }
             )
     local.call("finish", {})

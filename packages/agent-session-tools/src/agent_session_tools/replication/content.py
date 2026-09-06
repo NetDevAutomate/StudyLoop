@@ -235,8 +235,8 @@ def _closure(tables, policy, scope):
             raise ReplicaError("Review target sources are not declared captured inputs")
 
 
-def _row(conn, table, row, *, ignore=(), contribution=None):
-    """Insert identical-or-new rows only; divergence is an explicit transaction failure."""
+def _row(conn, table, row, *, ignore=(), contribution=None, reconcile=None):
+    """Merge opted-in native projections; other divergent rows remain conflicts."""
     info = list(conn.execute(f"PRAGMA table_info({table})"))
     keys = [r[1] for r in sorted(info, key=lambda r: r[5]) if r[5]]
     if not keys:
@@ -247,6 +247,25 @@ def _row(conn, table, row, *, ignore=(), contribution=None):
     ).fetchone()
     if existing is not None:
         if any(existing[k] != value for k, value in row.items() if k not in ignore):
+            action = (
+                reconcile.action(table, dict(existing), row)
+                if reconcile is not None
+                else "conflict"
+            )
+            if action == "keep_local":
+                return False
+            if action == "advance":
+                columns = [key for key in row if key not in keys]
+                conn.execute(
+                    f"UPDATE {table} SET "
+                    + ",".join(f'"{key}"=?' for key in columns)
+                    + " WHERE "
+                    + " AND ".join(f'"{key}"=?' for key in keys),
+                    [row[key] for key in (*columns, *keys)],
+                )
+                if contribution is not None:
+                    contribution.record(conn, table, row, existed=False)
+                return True
             raise ReplicaConflict(
                 f"Divergent {table} identity; no content phase committed"
             )
@@ -390,6 +409,7 @@ def apply_in_transaction(conn, config, snapshot, contribution=None, before_apply
         )
     if not isinstance(snapshot, dict) or set(snapshot) != {
         "contract",
+        "basis",
         "plan",
         "scope",
         "tables",
@@ -399,7 +419,7 @@ def apply_in_transaction(conn, config, snapshot, contribution=None, before_apply
     }:
         raise ReplicaError("Malformed content snapshot")
     if (
-        snapshot["contract"] != "session-replica-content/v1"
+        snapshot["contract"] != "session-replica-content/v2"
         or snapshot["lifecycle_reconciled"] is not False
     ):
         raise ReplicaError("Unsupported content phase contract")
@@ -416,6 +436,11 @@ def apply_in_transaction(conn, config, snapshot, contribution=None, before_apply
     plan, scope, tables = snapshot["plan"], snapshot["scope"], snapshot["tables"]
     check_plan(plan, scope=scope)
     peer = PeerPolicy.from_config(config, plan["sender"]["node"])
+    from .reconcile import Reconciler
+
+    if snapshot["basis"] is not None and contribution is None:
+        raise ReplicaError("Shared bases require the durable content coordinator")
+    reconciler = Reconciler(conn, peer.peer, peer.node, scope, snapshot["basis"])
     if conn.execute(
         "SELECT 1 FROM context_replica_permissions WHERE peer=? AND scope=? AND direction='in'",
         (peer.peer, scope),
@@ -483,6 +508,7 @@ def apply_in_transaction(conn, config, snapshot, contribution=None, before_apply
                 if table == "context_session_projects"
                 else (),
                 contribution=contribution,
+                reconcile=reconciler,
             )
     _learner(conn, tables, contribution)
     for table in (
@@ -552,6 +578,7 @@ def apply_in_transaction(conn, config, snapshot, contribution=None, before_apply
         "lifecycle_reconciled": False,
         "legacy_owned_table_gaps": snapshot["legacy_owned_table_gaps"],
         "rows_considered": sum(map(len, tables.values())),
+        "retained_local_rows": reconciler.kept_local,
     }
 
 

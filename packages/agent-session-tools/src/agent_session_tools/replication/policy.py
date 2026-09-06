@@ -18,7 +18,7 @@ from ..context.scope import ScopeError, ScopePolicy
 from ..context.store import _hash, _json
 from ..migrations import CURRENT_VERSION
 
-PROTOCOL = "session-replica/v2"
+PROTOCOL = "session-replica/v3"
 
 
 class ReplicaError(ValueError):
@@ -142,7 +142,11 @@ def _validate_hello(value, *, controls_only=False, historical=False):
         )
     if (
         value["protocol"]
-        not in (("session-replica/v1", PROTOCOL) if historical else (PROTOCOL,))
+        not in (
+            ("session-replica/v1", "session-replica/v2", PROTOCOL)
+            if historical
+            else (PROTOCOL,)
+        )
         or type(value["schema"]) is not int
         or (
             not 42 <= value["schema"] <= CURRENT_VERSION
