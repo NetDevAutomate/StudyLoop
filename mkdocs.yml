@@ -69,6 +69,7 @@ exclude_docs: |
   !/second-brain.md
   !/tui-guide.md
   !/agent-install.md
+  !/session-memory.md
   !/cli-reference.md
   !/troubleshooting.md
   !/audhd-learning-philosophy.md
@@ -94,6 +95,7 @@ nav:
   - Interfaces:
     - TUI Guide: tui-guide.md
     - Agent Installation: agent-install.md
+    - Conversation Memory: session-memory.md
   - Reference:
     - CLI Reference: cli-reference.md
     - Troubleshooting: troubleshooting.md

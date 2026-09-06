@@ -12,7 +12,10 @@ The core release harnesses are:
 
 StudyLoop also includes complete integrations for **OpenCode** and **pi**. They are shown as preview harnesses until their live release checks pass on the target environment.
 
-Gemini CLI, Antigravity, and Grok are not part of this pre-release. Their presence on your computer will not make StudyLoop advertise or select them.
+Gemini CLI, Antigravity, and Grok are not mentor harnesses in this pre-release.
+Their presence on your computer will not make StudyLoop advertise or select them.
+The session-memory reliability candidate can import Grok's local transcripts with
+`session-export --grok-only`; that does not install a Grok agent or hook.
 
 ## Install automatically
 
@@ -135,6 +138,10 @@ studyloop doctor --category harness --fix
 ```
 
 ### Desktop applications
+
+A passing doctor check establishes installed wiring, not successful capture of
+the most recent conversation. Check a known recent session with `session-query`.
+See [conversation memory](session-memory.md) for repair and sharing limits.
 
 Codex's official hook configuration is global (`~/.codex/hooks.json`) and is
 used by Codex sessions that load that config, including the Codex app. Claude

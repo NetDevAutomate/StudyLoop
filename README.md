@@ -87,6 +87,11 @@ studyloop study "Python decorators" --energy 6
 Follow [Your First Week](docs/first-week.md) for a gentle path through study,
 review, and session history.
 
+For the session-memory reliability candidate, see
+[conversation memory, repair and sync](docs/session-memory.md). The guide covers
+recovering missing local transcripts and the limits of sharing a database;
+release acceptance is still pending.
+
 ## What is ready—and what is not
 
 StudyLoop is an early open-source release, so the boundaries are worth making

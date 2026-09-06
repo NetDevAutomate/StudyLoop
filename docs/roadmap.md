@@ -21,6 +21,15 @@ route or design document exists; the user-facing path and its evidence must work
 
 ## Next: reduce setup and planning friction
 
+The session-memory reliability candidate focuses on recovering local coding
+conversations, repeatable repair and configured sync. Release acceptance remains
+pending. Its [guide](session-memory.md) states the current boundaries.
+
+Richer shared memory remains separate research: enforced work/personal scope,
+forgetting across sync and restore, source-grounded decision explanations and
+review of conflicting advice. Those capabilities are not promises of the
+reliability release, and no database replacement is required for that release.
+
 The next product improvements are:
 
 - a simpler installation and upgrade path than a source checkout;

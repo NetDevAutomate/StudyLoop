@@ -1,5 +1,13 @@
 # Repair and synchronise conversations
 
+These instructions describe the reliability candidate, awaiting release
+acceptance. Every destination must be permitted to receive the entire selected
+database: this transport does not enforce work/personal scope or per-peer content
+permissions. Project search filters do not limit transfer. Local deletion is not
+propagated forgetting; peers, backups and native transcripts can restore it.
+Do not use this schema-30 candidate with databases upgraded by the separate
+context-memory research branch.
+
 Install the repaired exporter on each machine. Run `session-repair` to inspect
 native transcripts, then `session-repair --apply` to back up and repair that
 machine's database, including pending schema migrations. Sync checks both schema

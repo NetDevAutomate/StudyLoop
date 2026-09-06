@@ -129,3 +129,7 @@ release neither discards them nor claims to deliver them.
 
 See [repair instructions](packages/agent-session-tools/docs/session-repair.md)
 and [sync instructions](packages/agent-session-tools/docs/sync-after-repair.md).
+The [user-facing conversation memory guide](docs/session-memory.md), setup,
+CLI reference, agent installation guide, shared session-memory skill and
+Unreleased changelog now describe this same candidate boundary. These source
+documentation updates do not publish a release or update installed user skills.

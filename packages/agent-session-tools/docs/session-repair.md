@@ -1,5 +1,10 @@
 # Inspect and repair conversation imports
 
+These instructions describe the reliability candidate, awaiting release
+acceptance. It retains schema 30 and is not a downgrade path for the separate
+context-memory research database. See the
+[conversation memory guide](../../../docs/session-memory.md) for the product boundary.
+
 Use `session-repair` after upgrading the exporter to recover native conversation
 history on the machine where it was recorded. The command defaults to inspection.
 It does not call models, change hooks, export Obsidian notes, or modify native

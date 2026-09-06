@@ -658,6 +658,7 @@ session-export --sources opencode --sources pi
 session-export --claude-only
 session-export --kiro-only
 session-export --codex-only
+session-export --grok-only       # Import only; no Grok mentor/hook installation
 session-export --opencode-only
 session-export --pi-only
 
@@ -666,8 +667,12 @@ session-export --obsidian
 session-export --obsidian --obsidian-backfill   # one-time: all history
 ```
 
-Supported `--sources` values: `kiro`, `codex`, `claude`, `opencode`, and `pi`.
+Supported `--sources` values: `kiro`, `codex`, `claude`, `grok`, `opencode`, and `pi`.
 Repeat `--sources` when selecting more than one.
+
+The reliability candidate also adds `session-repair`: inspect an existing database
+first, then explicitly apply recovery with a backup. Follow the
+[conversation memory guide](session-memory.md) for repair, verification and limits.
 
 ### Verify it's working
 
@@ -730,9 +735,16 @@ session-sync push macmini        # Push sessions to a named host
 session-sync pull macbookpro     # Pull sessions from a named host
 session-sync sync work-macbook   # Two-way sync with a host
 session-sync endpoints           # List all configured remote hosts
+session-sync all                 # Push every peer, then pull every peer
 ```
 
-Both commands read host definitions from `~/.config/studyloop/config.yaml` (the `hosts` section). See [Host Configuration](#host-configuration) below for the schema. Delta sync transfers only new sessions, not the entire database.
+These commands read host definitions from `~/.config/studyloop/config.yaml`
+(the `hosts` section). See [Host Configuration](#host-configuration) for the schema.
+`all` reconciles shared sessions as well as new ones, so repaired messages can
+transfer without a changed session timestamp. Initial seeding can copy the whole
+selected database. Only configure destinations allowed to receive all of it;
+this transport has no enforced work/personal filter or propagated forgetting.
+See [conversation memory and sync](session-memory.md#sync-permitted-databases).
 
 ## Scheduling Status
 
