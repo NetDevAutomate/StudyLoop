@@ -31,6 +31,7 @@ no remote publication or backup is implied.
 | 22 — Native capture | Which authority can the actual session envelopes establish? | `3acbc6f` | `native_capture/runner.py`; GUIDE.md, observed aggregates and council audit |
 | 23 — Agent context interface | Can installed CLI/MCP expose bounded sources and honest execution checks? | `1932c71` | `agent_context/runner.py`; GUIDE.md, installed lesson and council audit |
 | 24 — Complete disagreement groups | Which packing policy keeps contrary evidence inspectable under fixed budgets? | `23e5f29` | `contrary_selection/runner.py`; GUIDE.md, measurements and council audit |
+| 25 — Source-bound interpretation reviews | Can review evidence, disagreement and retirement remain inspectable without becoming native validation? | `0923305` | `interpretation_reviews/runner.py`; GUIDE.md, frozen pilot, installed lesson and council audit |
 
 Stage 3 uses its own lifecycle adapter and database schema. It does not modify the
 stage 1 evidence store, and does not require stage 1 demo output. Stage 2 uses
@@ -588,6 +589,41 @@ tests. See [contrary_selection/GUIDE.md](contrary_selection/GUIDE.md),
 [contrary_selection/COUNCIL-DECISION.md](contrary_selection/COUNCIL-DECISION.md) and
 [contrary_selection/OBSERVED-RESULTS.json](contrary_selection/OBSERVED-RESULTS.json).
 
+## Stage 25 commands
+
+```sh
+uv run python -m experiments.evidence_context.interpretation_reviews.runner --output /tmp/evidence-stage-25
+open /tmp/evidence-stage-25/walkthrough.html
+uv run pytest packages/agent-session-tools/tests/test_context_reviews.py experiments/evidence_context/tests/test_interpretation_reviews_lesson.py -q
+```
+
+Checkpoint `0923305` adds typed review targets and immutable source-bound review
+history. The actual CLI/MCP can record supported/unsupported/uncertain assessments,
+inspect history and return claims with permitted review evidence. Every review
+remains an attributed interpretation; it cannot upgrade native origin, establish
+independence or validate a change. Disagreement, missing coverage, source scope and
+retirement remain explicit. The standalone wheel and source lessons each passed
+eight actual CLI/MCP checks. The browser verified six sections and working expansion.
+
+The full package regression run passed 1,287 tests before four additional targeted
+cases; the final focused run passed all 22 review/lesson tests. The earlier combined
+experiment/StudyLoop run passed 303 tests with one optional skip. Final workspace
+commit hooks passed lint, formatting, type checks, secret checks and Bandit.
+
+The frozen three-provider/three-case pilot accepted only Qwen's plain-JSON batch.
+Meta and Mistral returned Markdown fences and were rejected. A separate post-hoc
+offline diagnostic removed those wrappers: nine labels matched permissive
+predeclared ranges and nine citation sets bound correctly. Original acceptance
+remains one of three providers. No prompt was changed or extra model call made.
+This separates operational reliability from source interpretation; it does not
+establish general accuracy or human usefulness.
+
+Both council rounds returned three provider buckets. The arbitration retained
+independence, format and scale limitations while checking alleged defects against
+code and additional integrity tests. See [interpretation_reviews/GUIDE.md](interpretation_reviews/GUIDE.md),
+[COUNCIL-DECISION.md](interpretation_reviews/COUNCIL-DECISION.md) and
+[OBSERVED-RESULTS.json](interpretation_reviews/OBSERVED-RESULTS.json).
+
 ## Production delivery direction
 
 The user has now authorized the full implementation and StudyLoop integration while
@@ -595,11 +631,11 @@ preserving these stages. [delivery/GOAL.md](delivery/GOAL.md) records the comple
 requirements; [delivery/ARCHITECTURE.md](delivery/ARCHITECTURE.md) explains the decisions.
 These checkpoints do not satisfy that goal. SQLite remains canonical. The internal
 source/citation boundary, native capture and bounded public interface now exist.
-Complete-group selection is now measured and integrated. Next finish treatment of
-reviewed/disputed interpretations and remaining learner ownership, followed by
+Complete-group selection and attributed review history are now integrated. Next
+finish remaining learner ownership, followed by
 scoped sync/lifecycle, shared setup and installed StudyLoop startup/capture/doctor
 acceptance. A source-grounded execution check or proposed relationship does not
-finish general advice arbitration.
+finish general advice arbitration; review records do not certify semantic truth.
 
 The earlier experiment-only checkpoints retain their original scope and limitations.
 The Stage8 exercise is unchanged.

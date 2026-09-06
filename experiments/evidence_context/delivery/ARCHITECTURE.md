@@ -61,9 +61,24 @@ strongest lexical source, then considers complete proposed contrary/correction
 groups before filling with other matches. All group dependencies fit together or
 the group is explicitly omitted. Exact endpoint/label duplicates are represented
 once; producer count is not authority. This is inspection priority, not semantic
-approval. Review lineage and treatment of disputed/rejected interpretations remain
-required before deriving product advice. The measured fixture trade-off was more
+approval. The measured fixture trade-off was more
 complete groups with fewer lexical matches, not verified answer-quality improvement.
+
+Stage25 adds typed review targets and attributed source-bound assessment history,
+reusing immutable observation storage and retirement machinery. Reviews cannot
+upgrade native facts or claim human authority. Current disagreements remain
+inspectable; one adapter cannot supersede another adapter's review, while clients
+sharing an adapter label are not separate authenticated reviewers. Every source
+underlying the target or review remains a scope/forgetting dependency. All review
+dependencies travel together or coverage is explicitly incomplete.
+
+An assessment describes the available support, dispute and proposed conflicts;
+it retains semantic validation, reviewer independence and validation of change as
+not established. The tiny frozen pilot accepted only one of three plain-JSON
+batches; post-hoc wrapper removal exposed reasonable labels in all three, without
+changing acceptance. This separates transport reliability from interpretation and
+does not prove general semantic arbitration. Harder usefulness evaluation and the
+full production lifecycle/integration remain required.
 
 ## Scope, forgetting and compatibility
 
