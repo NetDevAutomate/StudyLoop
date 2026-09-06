@@ -1,0 +1,887 @@
+[
+  {
+    "id": "G01",
+    "context": {
+      "constraints": "Use only the result for synthetic revision demo-r2 and the two-second deadline.",
+      "evidence": [
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source09",
+          "kind": "agent_report",
+          "provenance": "synthetic_fixture",
+          "text": "Retrypolicy: A, unlimited retry, should recover reliably. I recommend it. No measurements attached."
+        },
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source05",
+          "kind": "test_artifact",
+          "provenance": "synthetic_fixture",
+          "text": "Observed fixture check bounded-retry, revision demo-r2, environment synthetic single-worker: A exceeded the two-second deadline; B (bounded retries) completed within it. This corrects the earlier unlimited-retry recommendation. Only this scenario was tested."
+        }
+      ],
+      "question": "Which retry policy is supported by the available check?"
+    },
+    "answer": {
+      "alternative": "The agent report recommended A based on reliability without timing measurements, but the artifact demonstrates B meets the deadline constraint that A violates.",
+      "citations": [
+        {
+          "id": "Source05",
+          "supports": "B completed within two seconds while A exceeded it for demo-r2"
+        }
+      ],
+      "conflict_kind": "correction",
+      "evidence_basis": "artifact_supported",
+      "next_check": "Test A and B in additional environments or revisions to confirm consistent behavior.",
+      "rationale": "The test artifact directly compares both policies under the specified constraints (revision demo-r2, two-second deadline). It shows A exceeded the deadline while B completed within it, contradicting the earlier agent report.",
+      "recommendation": "B",
+      "uncertainty": "Only one scenario was tested; broader performance across environments or revisions isn't established."
+    }
+  },
+  {
+    "id": "G02",
+    "context": {
+      "constraints": "Use only the result for synthetic revision demo-r2 and the two-second deadline.",
+      "evidence": [
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source09",
+          "kind": "agent_report",
+          "provenance": "synthetic_fixture",
+          "text": "Retrypolicy: A, unlimited retry, should recover reliably. I recommend it. No measurements attached."
+        },
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source05",
+          "kind": "test_artifact",
+          "provenance": "synthetic_fixture",
+          "text": "Observed fixture check bounded-retry, revision demo-r2, environment synthetic single-worker: A exceeded the two-second deadline; B (bounded retries) completed within it. This corrects the earlier unlimited-retry recommendation. Only this scenario was tested."
+        }
+      ],
+      "question": "Which retry policy is supported by the available check?"
+    },
+    "answer": {
+      "alternative": "Policy A was recommended in the agent report, but this was based on theoretical reliability without performance measurements. The test artifact explicitly contradicts this by showing A's failure under the required constraints.",
+      "citations": [
+        {
+          "id": "Source05",
+          "supports": "Policy B completed within the two-second deadline for revision demo-r2 while policy A did not"
+        }
+      ],
+      "conflict_kind": "correction",
+      "evidence_basis": "artifact_supported",
+      "next_check": "Test policy performance across multiple revisions and environments to confirm consistent behavior",
+      "rationale": "The test artifact directly measured the performance of both policies under the specified constraints (revision demo-r2, two-second deadline). It found that policy A exceeded the deadline while policy B completed within it, correcting the prior agent report which lacked measurements.",
+      "recommendation": "B",
+      "uncertainty": "The test only covered one specific scenario (demo-r2, single-worker environment). Generalization beyond this exact configuration is not established."
+    }
+  },
+  {
+    "id": "G03",
+    "context": {
+      "constraints": "Eight concurrent writers; reliability matters more than minimum code.",
+      "evidence": [
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source04",
+          "kind": "agent_report",
+          "provenance": "synthetic_fixture",
+          "text": "Cachepolicy: I recommend A, an in-process cache. This advice assumes a single-process toy workload."
+        },
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source01",
+          "kind": "agent_report",
+          "provenance": "synthetic_fixture",
+          "text": "The workload now has eight concurrent writers. I recommend B, a coordinated shared cache, for that requirement. Neither option has been benchmarked in the current environment."
+        }
+      ],
+      "question": "Which cache approach is justified for the current workload?"
+    },
+    "answer": {
+      "alternative": "Recommendation A is based on outdated assumptions that do not match the current concurrency requirements. While neither option has been benchmarked, B at least aligns with the stated workload characteristics.",
+      "citations": [
+        {
+          "id": "Source04",
+          "supports": "Initial recommendation A based on single-process assumption"
+        },
+        {
+          "id": "Source01",
+          "supports": "Recommendation B for eight concurrent writers"
+        }
+      ],
+      "conflict_kind": "changed_constraints",
+      "evidence_basis": "reported_only",
+      "next_check": "Benchmark both caching strategies under the actual eight-writer workload to validate reliability and performance characteristics.",
+      "rationale": "The initial recommendation A was based on a 'single-process toy workload' assumption per Source04. However, the current constraint specifies 'eight concurrent writers', which directly invalidates that assumption. Recommendation B explicitly addresses this new condition by proposing a 'coordinated shared cache' suitable for concurrent workloads, making it the justified choice under the updated constraints.",
+      "recommendation": "B",
+      "uncertainty": "No performance benchmarks exist for either caching strategy under the actual deployment conditions; the recommendation is based solely on matching workload descriptions to cache coordination needs."
+    }
+  },
+  {
+    "id": "G04",
+    "context": {
+      "constraints": "Reopen correctness on synthetic revision demo-r3; no claim about throughput.",
+      "evidence": [
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source08",
+          "kind": "agent_report",
+          "provenance": "synthetic_fixture",
+          "text": "Storagepolicy: use A. I am very confident A is best. No test output is attached."
+        },
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source06",
+          "kind": "agent_report",
+          "provenance": "synthetic_fixture",
+          "text": "I recommend B for reopen correctness, but my recommendation alone is not a test result."
+        },
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source02",
+          "kind": "test_artifact",
+          "provenance": "synthetic_fixture",
+          "text": "Observed fixture check reopen, revision demo-r3, environment synthetic local process: A lost the last committed entry after reopening; B retained it. This check measured reopen correctness only, not speed or scale."
+        }
+      ],
+      "question": "Which storage option is better supported for the reopen requirement?"
+    },
+    "answer": {
+      "alternative": "Agent reports favoring A lack test support and are contradicted by the test artifact's direct measurement of the required behavior.",
+      "citations": [
+        {
+          "id": "Source02",
+          "supports": "B's correctness on reopen for demo-r3"
+        }
+      ],
+      "conflict_kind": "unequal_evidence",
+      "evidence_basis": "artifact_supported",
+      "next_check": "none needed for this limited conclusion",
+      "rationale": "The test artifact directly measures reopen correctness on the specified revision and environment, showing B retained the last committed entry while A did not. This directly addresses the constraint.",
+      "recommendation": "B",
+      "uncertainty": "No throughput comparison was requested or measured; B's performance outside synthetic local process is unknown."
+    }
+  },
+  {
+    "id": "G05",
+    "context": {
+      "constraints": "Eight concurrent writers; reliability matters more than minimum code.",
+      "evidence": [
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source04",
+          "kind": "agent_report",
+          "provenance": "synthetic_fixture",
+          "text": "Cachepolicy: I recommend A, an in-process cache. This advice assumes a single-process toy workload."
+        }
+      ],
+      "question": "Which cache approach is justified for the current workload?"
+    },
+    "answer": {
+      "alternative": "No alternative advice was provided to compare against; the existing recommendation is explicitly scoped to different conditions.",
+      "citations": [
+        {
+          "id": "Source04",
+          "supports": "Recommendation of A under single-process assumption"
+        }
+      ],
+      "conflict_kind": "changed_constraints",
+      "evidence_basis": "reported_only",
+      "next_check": "Evaluate behavior and correctness of in-process caching under multi-writer concurrency stress.",
+      "rationale": "The agent report recommends approach A but explicitly assumes a 'single-process toy workload', which differs significantly from the current constraint of 'eight concurrent writers'. The advice does not directly apply to the stated conditions.",
+      "recommendation": "conditional",
+      "uncertainty": "Whether approach A would function correctly or efficiently under eight concurrent writers is not established. The impact of concurrency on cache coherence, contention, and reliability is unknown."
+    }
+  },
+  {
+    "id": "G06",
+    "context": {
+      "constraints": "Same workload and environment; do not guess performance.",
+      "evidence": [
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source03",
+          "kind": "agent_report",
+          "provenance": "synthetic_fixture",
+          "text": "Queuepolicy: A is faster for our workload. I did not run a benchmark."
+        },
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source07",
+          "kind": "agent_report",
+          "provenance": "synthetic_fixture",
+          "text": "Later advice: B is faster for the same workload and environment. I also did not run a benchmark."
+        }
+      ],
+      "question": "Which queue should we choose based on the available performance evidence?"
+    },
+    "answer": {
+      "alternative": "A was initially recommended but the later correction without contradictory evidence makes B the current recommendation.",
+      "citations": [
+        {
+          "id": "Source07",
+          "supports": "B is faster for the same workload and environment"
+        }
+      ],
+      "conflict_kind": "correction",
+      "evidence_basis": "reported_only",
+      "next_check": "Run a benchmark comparing A and B under the specified workload and environment.",
+      "rationale": "Both reports address the same workload and environment, but the later report explicitly corrects prior advice by stating B is faster. While neither provides benchmark evidence, the second report directly supersedes the first.",
+      "recommendation": "B",
+      "uncertainty": "No actual performance benchmarks were run, so the true performance difference remains unproven."
+    }
+  },
+  {
+    "id": "G07",
+    "context": {
+      "constraints": "Eight concurrent writers; reliability matters more than minimum code.",
+      "evidence": [
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source04",
+          "kind": "agent_report",
+          "provenance": "synthetic_fixture",
+          "text": "Cachepolicy: I recommend A, an in-process cache. This advice assumes a single-process toy workload."
+        }
+      ],
+      "question": "Which cache approach is justified for the current workload?"
+    },
+    "answer": {
+      "alternative": "No alternative advice is provided in the evidence; only one recommendation is present, and it does not match the current constraints.",
+      "citations": [
+        {
+          "id": "Source04",
+          "supports": "Recommendation of A under single-process assumption"
+        }
+      ],
+      "conflict_kind": "changed_constraints",
+      "evidence_basis": "reported_only",
+      "next_check": "Test approach A under eight concurrent writers and measure reliability and correctness outcomes.",
+      "rationale": "The agent report recommends approach A but explicitly assumes a 'single-process toy workload', which differs significantly from the current constraint of 'eight concurrent writers'. The recommendation for A is not supported under the actual workload conditions.",
+      "recommendation": "conditional",
+      "uncertainty": "Whether approach A performs acceptably under eight concurrent writers is unknown, as no evidence addresses multi-writer performance or reliability in that context."
+    }
+  },
+  {
+    "id": "G08",
+    "context": {
+      "constraints": "Eight concurrent writers; reliability matters more than minimum code.",
+      "evidence": [
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source04",
+          "kind": "agent_report",
+          "provenance": "synthetic_fixture",
+          "text": "Cachepolicy: I recommend A, an in-process cache. This advice assumes a single-process toy workload."
+        },
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source01",
+          "kind": "agent_report",
+          "provenance": "synthetic_fixture",
+          "text": "The workload now has eight concurrent writers. I recommend B, a coordinated shared cache, for that requirement. Neither option has been benchmarked in the current environment."
+        }
+      ],
+      "question": "Which cache approach is justified for the current workload?"
+    },
+    "answer": {
+      "alternative": "Option A is unsupported under the current multi-writer constraint because its supporting rationale assumed a single-process environment that no longer applies.",
+      "citations": [
+        {
+          "id": "Source04",
+          "supports": "A was recommended only for single-process workloads"
+        },
+        {
+          "id": "Source01",
+          "supports": "B is recommended specifically for eight concurrent writers"
+        }
+      ],
+      "conflict_kind": "changed_constraints",
+      "evidence_basis": "reported_only",
+      "next_check": "Benchmark both caching strategies under the full production load to validate reliability and concurrency behavior.",
+      "rationale": "The initial recommendation A was based on a 'single-process toy workload' assumption, while the current constraint specifies 'eight concurrent writers.' The second agent explicitly addresses this new condition and recommends B, a coordinated shared cache, as appropriate for that scenario.",
+      "recommendation": "B",
+      "uncertainty": "No performance benchmarks exist for either option in the actual deployment environment, so reliability and correctness remain unverified."
+    }
+  },
+  {
+    "id": "G09",
+    "context": {
+      "constraints": "Same workload and environment; do not guess performance.",
+      "evidence": [
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source03",
+          "kind": "agent_report",
+          "provenance": "synthetic_fixture",
+          "text": "Queuepolicy: A is faster for our workload. I did not run a benchmark."
+        }
+      ],
+      "question": "Which queue should we choose based on the available performance evidence?"
+    },
+    "answer": {
+      "alternative": "No alternative advice was provided; only one agent report exists, which lacks supporting measurements.",
+      "citations": [
+        {
+          "id": "Source03",
+          "supports": "assertion of Queuepolicy A being faster without evidence"
+        }
+      ],
+      "conflict_kind": "not_established",
+      "evidence_basis": "reported_only",
+      "next_check": "Run a benchmark comparing Queuepolicy A and B under the exact workload and environment specified.",
+      "rationale": "The available evidence is an agent report claiming Queuepolicy A is faster, but explicitly states no benchmark was run. Since the constraint prohibits guessing performance and requires evidence-based decisions, this unmeasured assertion cannot be used to justify a choice.",
+      "recommendation": "insufficient",
+      "uncertainty": "Performance characteristics of both queue policies remain unknown due to lack of measured data under the specified workload."
+    }
+  },
+  {
+    "id": "G10",
+    "context": {
+      "constraints": "Reopen correctness on synthetic revision demo-r3; no claim about throughput.",
+      "evidence": [
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source08",
+          "kind": "agent_report",
+          "provenance": "synthetic_fixture",
+          "text": "Storagepolicy: use A. I am very confident A is best. No test output is attached."
+        }
+      ],
+      "question": "Which storage option is better supported for the reopen requirement?"
+    },
+    "answer": {
+      "alternative": "No alternative advice is presented; however, the lack of evidence means no recommendation can be validated.",
+      "citations": [
+        {
+          "id": "Source08",
+          "supports": "assertion_of_A_without_evidence"
+        }
+      ],
+      "conflict_kind": "not_established",
+      "evidence_basis": "reported_only",
+      "next_check": "Conduct a test verifying correctness of storage options under the reopen scenario and report results with clear pass/fail criteria.",
+      "rationale": "The evidence consists of a single agent report expressing confidence in option A without attaching any test outputs or measurable results. Since there is no actual test evidence provided to evaluate the correctness of the storage options under the reopen requirement, the claim cannot be substantiated.",
+      "recommendation": "insufficient",
+      "uncertainty": "There is no measurable or test-supported evidence confirming that option A satisfies the reopen correctness requirement."
+    }
+  },
+  {
+    "id": "G11",
+    "context": {
+      "constraints": "Eight concurrent writers; reliability matters more than minimum code.",
+      "evidence": [
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source04",
+          "kind": "agent_report",
+          "provenance": "synthetic_fixture",
+          "text": "Cachepolicy: I recommend A, an in-process cache. This advice assumes a single-process toy workload."
+        },
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source01",
+          "kind": "agent_report",
+          "provenance": "synthetic_fixture",
+          "text": "The workload now has eight concurrent writers. I recommend B, a coordinated shared cache, for that requirement. Neither option has been benchmarked in the current environment."
+        }
+      ],
+      "question": "Which cache approach is justified for the current workload?"
+    },
+    "answer": {
+      "alternative": "Option A is designed for single-process workloads and lacks justification under the current multi-writer constraint. While neither option has been benchmarked, B is explicitly recommended for the stated concurrency requirement.",
+      "citations": [
+        {
+          "id": "Source04",
+          "supports": "Initial recommendation for A under different (single-process) assumptions"
+        },
+        {
+          "id": "Source01",
+          "supports": "Recommendation for B under current eight-concurrent-writer constraint"
+        }
+      ],
+      "conflict_kind": "changed_constraints",
+      "evidence_basis": "reported_only",
+      "next_check": "Benchmark both caching approaches under the actual eight-concurrent-writer workload to measure reliability and performance trade-offs.",
+      "rationale": "The initial recommendation for A was based on a single-process toy workload assumption, which has changed. The current constraint of eight concurrent writers directly conflicts with that assumption. Agent report Source01 explicitly states that B is recommended for the current workload requirement of eight concurrent writers.",
+      "recommendation": "B",
+      "uncertainty": "Neither cache option has been benchmarked in the current environment, so performance characteristics remain unknown. The recommendation is based solely on stated concurrency requirements."
+    }
+  },
+  {
+    "id": "G12",
+    "context": {
+      "constraints": "Reopen correctness on synthetic revision demo-r3; no claim about throughput.",
+      "evidence": [
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source08",
+          "kind": "agent_report",
+          "provenance": "synthetic_fixture",
+          "text": "Storagepolicy: use A. I am very confident A is best. No test output is attached."
+        },
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source06",
+          "kind": "agent_report",
+          "provenance": "synthetic_fixture",
+          "text": "I recommend B for reopen correctness, but my recommendation alone is not a test result."
+        },
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source02",
+          "kind": "test_artifact",
+          "provenance": "synthetic_fixture",
+          "text": "Observed fixture check reopen, revision demo-r3, environment synthetic local process: A lost the last committed entry after reopening; B retained it. This check measured reopen correctness only, not speed or scale."
+        }
+      ],
+      "question": "Which storage option is better supported for the reopen requirement?"
+    },
+    "answer": {
+      "alternative": "Agent reports disagree but offer no test evidence; one claims high confidence without supporting data, the other admits its limitation. Neither displaces the direct test result.",
+      "citations": [
+        {
+          "id": "Source02",
+          "supports": "B retains the last committed entry after reopening, whereas A does not"
+        }
+      ],
+      "conflict_kind": "correction",
+      "evidence_basis": "artifact_supported",
+      "next_check": "none needed for this limited conclusion",
+      "rationale": "The test artifact directly measures reopen correctness on the specified revision and environment, showing that B retains the last committed entry while A loses it. This directly addresses the constraint.",
+      "recommendation": "B",
+      "uncertainty": "No evidence addresses throughput or other requirements; the scope is strictly limited to reopen correctness in this environment."
+    }
+  },
+  {
+    "id": "G13",
+    "context": {
+      "constraints": "Reopen correctness on synthetic revision demo-r3; no claim about throughput.",
+      "evidence": [
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source08",
+          "kind": "agent_report",
+          "provenance": "synthetic_fixture",
+          "text": "Storagepolicy: use A. I am very confident A is best. No test output is attached."
+        },
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source06",
+          "kind": "agent_report",
+          "provenance": "synthetic_fixture",
+          "text": "I recommend B for reopen correctness, but my recommendation alone is not a test result."
+        },
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source02",
+          "kind": "test_artifact",
+          "provenance": "synthetic_fixture",
+          "text": "Observed fixture check reopen, revision demo-r3, environment synthetic local process: A lost the last committed entry after reopening; B retained it. This check measured reopen correctness only, not speed or scale."
+        }
+      ],
+      "question": "Which storage option is better supported for the reopen requirement?"
+    },
+    "answer": {
+      "alternative": "Agent reports disagree but offer no test evidence; one claims high confidence without proof, the other admits its limitation. Neither substantiates their preference under the given constraints like the test does.",
+      "citations": [
+        {
+          "id": "Source02",
+          "supports": "B retains the last committed entry after reopening, whereas A does not"
+        }
+      ],
+      "conflict_kind": "correction",
+      "evidence_basis": "artifact_supported",
+      "next_check": "none needed for this limited conclusion",
+      "rationale": "The test artifact directly measures reopen correctness on the specified revision and environment, showing B retains the last committed entry while A loses it. This directly addresses the constraint.",
+      "recommendation": "B",
+      "uncertainty": "No information about performance or behavior outside the specific check conditions."
+    }
+  },
+  {
+    "id": "G14",
+    "context": {
+      "constraints": "Use only the result for synthetic revision demo-r2 and the two-second deadline.",
+      "evidence": [
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source09",
+          "kind": "agent_report",
+          "provenance": "synthetic_fixture",
+          "text": "Retrypolicy: A, unlimited retry, should recover reliably. I recommend it. No measurements attached."
+        },
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source05",
+          "kind": "test_artifact",
+          "provenance": "synthetic_fixture",
+          "text": "Observed fixture check bounded-retry, revision demo-r2, environment synthetic single-worker: A exceeded the two-second deadline; B (bounded retries) completed within it. This corrects the earlier unlimited-retry recommendation. Only this scenario was tested."
+        }
+      ],
+      "question": "Which retry policy is supported by the available check?"
+    },
+    "answer": {
+      "alternative": "Policy A's recommendation was based on reliability without considering the deadline constraint, which the test artifact shows is violated.",
+      "citations": [
+        {
+          "id": "Source05",
+          "supports": "Policy B completed within the two-second deadline for revision demo-r2"
+        }
+      ],
+      "conflict_kind": "correction",
+      "evidence_basis": "artifact_supported",
+      "next_check": "Test policy performance across multiple revisions and environments to confirm generalizability.",
+      "rationale": "The test artifact directly measured the performance of both policies under the specified constraints (revision demo-r2, two-second deadline). It found that policy A exceeded the deadline while policy B completed within it, contradicting the earlier agent report.",
+      "recommendation": "B",
+      "uncertainty": "The test only covered one scenario (demo-r2, single-worker environment); other conditions may yield different results."
+    }
+  },
+  {
+    "id": "G15",
+    "context": {
+      "constraints": "Use only the result for synthetic revision demo-r2 and the two-second deadline.",
+      "evidence": [
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source09",
+          "kind": "agent_report",
+          "provenance": "synthetic_fixture",
+          "text": "Retrypolicy: A, unlimited retry, should recover reliably. I recommend it. No measurements attached."
+        },
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source05",
+          "kind": "test_artifact",
+          "provenance": "synthetic_fixture",
+          "text": "Observed fixture check bounded-retry, revision demo-r2, environment synthetic single-worker: A exceeded the two-second deadline; B (bounded retries) completed within it. This corrects the earlier unlimited-retry recommendation. Only this scenario was tested."
+        }
+      ],
+      "question": "Which retry policy is supported by the available check?"
+    },
+    "answer": {
+      "alternative": "The agent report recommends A based on reliability but provides no measurements. However, the test artifact directly measures performance under the exact constraints and shows B outperforms A.",
+      "citations": [
+        {
+          "id": "Source05",
+          "supports": "B completed within the two-second deadline for demo-r2 while A did not"
+        }
+      ],
+      "conflict_kind": "correction",
+      "evidence_basis": "artifact_supported",
+      "next_check": "Test both policies across multiple revisions and environments to confirm consistent performance differences.",
+      "rationale": "The test artifact directly compares both policies under the specified constraints (revision demo-r2, two-second deadline). It shows A exceeded the deadline while B completed within it, contradicting the earlier agent report.",
+      "recommendation": "B",
+      "uncertainty": "The test covers only one scenario (demo-r2, single-worker environment). Broader applicability is not established."
+    }
+  },
+  {
+    "id": "G16",
+    "context": {
+      "constraints": "Same workload and environment; do not guess performance.",
+      "evidence": [
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source03",
+          "kind": "agent_report",
+          "provenance": "synthetic_fixture",
+          "text": "Queuepolicy: A is faster for our workload. I did not run a benchmark."
+        },
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source07",
+          "kind": "agent_report",
+          "provenance": "synthetic_fixture",
+          "text": "Later advice: B is faster for the same workload and environment. I also did not run a benchmark."
+        }
+      ],
+      "question": "Which queue should we choose based on the available performance evidence?"
+    },
+    "answer": {
+      "alternative": "The first agent report recommended A as faster, but it has been explicitly superseded by the second agent who claims B is faster under identical conditions.",
+      "citations": [
+        {
+          "id": "Source07",
+          "supports": "B is faster for the same workload and environment"
+        }
+      ],
+      "conflict_kind": "correction",
+      "evidence_basis": "reported_only",
+      "next_check": "Run a benchmark comparing A and B under the specified workload and environment to validate the claimed performance difference.",
+      "rationale": "The second agent report explicitly states that B is faster for the same workload and environment, which directly corrects the first agent's assertion about A's performance. While neither report includes benchmark data, the second report positions itself as updated advice superseding the first.",
+      "recommendation": "B",
+      "uncertainty": "No actual performance benchmarks were provided in either report, so while there is a correction in advice, it remains unvalidated by measured evidence."
+    }
+  },
+  {
+    "id": "G17",
+    "context": {
+      "constraints": "Reopen correctness on synthetic revision demo-r3; no claim about throughput.",
+      "evidence": [
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source08",
+          "kind": "agent_report",
+          "provenance": "synthetic_fixture",
+          "text": "Storagepolicy: use A. I am very confident A is best. No test output is attached."
+        },
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source06",
+          "kind": "agent_report",
+          "provenance": "synthetic_fixture",
+          "text": "I recommend B for reopen correctness, but my recommendation alone is not a test result."
+        },
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source02",
+          "kind": "test_artifact",
+          "provenance": "synthetic_fixture",
+          "text": "Observed fixture check reopen, revision demo-r3, environment synthetic local process: A lost the last committed entry after reopening; B retained it. This check measured reopen correctness only, not speed or scale."
+        }
+      ],
+      "question": "Which storage option is better supported for the reopen requirement?"
+    },
+    "answer": {
+      "alternative": "Source08 recommends A based on confidence without test evidence, while Source06 recommends B but also lacks test support - however Source02 provides direct measurement favoring B",
+      "citations": [
+        {
+          "id": "Source02",
+          "supports": "B retains committed entries after reopen while A does not"
+        }
+      ],
+      "conflict_kind": "correction",
+      "evidence_basis": "artifact_supported",
+      "next_check": "None needed for this limited correctness conclusion",
+      "rationale": "The test artifact Source02 directly measured reopen correctness under the specified constraints (synthetic revision demo-r3) and found that A lost committed data while B retained it. This directly contradicts the preference for A expressed in Source08, making it a correction rather than mere disagreement.",
+      "recommendation": "B",
+      "uncertainty": "No throughput or scalability measurements were performed; recommendation is limited to reopen correctness only"
+    }
+  },
+  {
+    "id": "G18",
+    "context": {
+      "constraints": "Same workload and environment; do not guess performance.",
+      "evidence": [
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source03",
+          "kind": "agent_report",
+          "provenance": "synthetic_fixture",
+          "text": "Queuepolicy: A is faster for our workload. I did not run a benchmark."
+        },
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source07",
+          "kind": "agent_report",
+          "provenance": "synthetic_fixture",
+          "text": "Later advice: B is faster for the same workload and environment. I also did not run a benchmark."
+        }
+      ],
+      "question": "Which queue should we choose based on the available performance evidence?"
+    },
+    "answer": {
+      "alternative": "The first report recommended A as faster, but the second report explicitly corrects this advice by stating B is faster for the same conditions.",
+      "citations": [
+        {
+          "id": "Source07",
+          "supports": "B is faster for the same workload and environment"
+        }
+      ],
+      "conflict_kind": "correction",
+      "evidence_basis": "reported_only",
+      "next_check": "Run a benchmark comparing A and B under the specified workload and environment to obtain definitive performance evidence.",
+      "rationale": "The second agent report explicitly states that B is faster for the same workload and environment, which directly contradicts the first report's claim for A. While neither report includes benchmark data, the second report is presented as a correction to the first.",
+      "recommendation": "B",
+      "uncertainty": "No actual performance benchmarks were provided to validate either claim, so the true performance remains unproven."
+    }
+  },
+  {
+    "id": "G19",
+    "context": {
+      "constraints": "Use only the result for synthetic revision demo-r2 and the two-second deadline.",
+      "evidence": [
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source09",
+          "kind": "agent_report",
+          "provenance": "synthetic_fixture",
+          "text": "Retrypolicy: A, unlimited retry, should recover reliably. I recommend it. No measurements attached."
+        }
+      ],
+      "question": "Which retry policy is supported by the available check?"
+    },
+    "answer": {
+      "alternative": "No alternative policies are presented or evaluated in the evidence.",
+      "citations": [],
+      "conflict_kind": "not_established",
+      "evidence_basis": "reported_only",
+      "next_check": "Obtain test results specifically for retry policy A under synthetic revision demo-r2 within the two-second deadline.",
+      "rationale": "The available evidence is an agent report recommending retry policy A based on expected reliability, but it provides no actual measurements or test results. The constraint specifies using results only from synthetic revision demo-r2, which are not present in the evidence.",
+      "recommendation": "insufficient",
+      "uncertainty": "Whether retry policy A actually meets the requirements under the specified revision and deadline constraints remains unproven due to lack of supporting test artifacts."
+    }
+  },
+  {
+    "id": "G20",
+    "context": {
+      "constraints": "Reopen correctness on synthetic revision demo-r3; no claim about throughput.",
+      "evidence": [
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source08",
+          "kind": "agent_report",
+          "provenance": "synthetic_fixture",
+          "text": "Storagepolicy: use A. I am very confident A is best. No test output is attached."
+        }
+      ],
+      "question": "Which storage option is better supported for the reopen requirement?"
+    },
+    "answer": {
+      "alternative": "No alternative advice or evidence was provided to compare against the agent's report. Therefore, there is no basis for preferring another option or concluding that the agent's recommendation is incorrect.",
+      "citations": [],
+      "conflict_kind": "not_established",
+      "evidence_basis": "reported_only",
+      "next_check": "Conduct a test verifying reopen correctness under synthetic revision demo-r3 using storage option A and produce an artifact showing pass/fail status.",
+      "rationale": "The evidence consists of a single agent report (Source08) that expresses confidence in option A but provides no test artifacts or supporting data. The report does not demonstrate correctness under the specified reopen requirement, nor does it include any measurable outcomes or checks tied to the constraint.",
+      "recommendation": "insufficient",
+      "uncertainty": "It remains unclear whether option A actually satisfies the reopen correctness requirement. The agent\u2019s confidence is unsubstantiated by test results or revision-specific evidence."
+    }
+  },
+  {
+    "id": "G21",
+    "context": {
+      "constraints": "Use only the result for synthetic revision demo-r2 and the two-second deadline.",
+      "evidence": [
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source09",
+          "kind": "agent_report",
+          "provenance": "synthetic_fixture",
+          "text": "Retrypolicy: A, unlimited retry, should recover reliably. I recommend it. No measurements attached."
+        }
+      ],
+      "question": "Which retry policy is supported by the available check?"
+    },
+    "answer": {
+      "alternative": "No alternative policies are presented or evaluated under the specified constraints, leaving no basis for comparison.",
+      "citations": [
+        {
+          "id": "Source09",
+          "supports": "assertion_of_reliability_for_policy_A_without_evidence"
+        }
+      ],
+      "conflict_kind": "not_established",
+      "evidence_basis": "reported_only",
+      "next_check": "Conduct a test measuring retry policy A's performance specifically under synthetic revision demo-r2 within the two-second deadline.",
+      "rationale": "The available evidence is an agent report recommending retry policy A based on expected reliability, but it provides no measurements or test artifacts. The constraint specifies reliance only on results for synthetic revision demo-r2 and a two-second deadline, which are not addressed in the report.",
+      "recommendation": "insufficient",
+      "uncertainty": "Whether retry policy A meets the requirements of synthetic revision demo-r2 under a two-second deadline remains untested and unsubstantiated."
+    }
+  },
+  {
+    "id": "G22",
+    "context": {
+      "constraints": "Same workload and environment; do not guess performance.",
+      "evidence": [
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source03",
+          "kind": "agent_report",
+          "provenance": "synthetic_fixture",
+          "text": "Queuepolicy: A is faster for our workload. I did not run a benchmark."
+        },
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source07",
+          "kind": "agent_report",
+          "provenance": "synthetic_fixture",
+          "text": "Later advice: B is faster for the same workload and environment. I also did not run a benchmark."
+        }
+      ],
+      "question": "Which queue should we choose based on the available performance evidence?"
+    },
+    "answer": {
+      "alternative": "A was recommended earlier but is contradicted by the later correction. Without benchmarks, we must rely on the most recent explicit comparison.",
+      "citations": [
+        {
+          "id": "Source07",
+          "supports": "B is faster for the same workload and environment"
+        }
+      ],
+      "conflict_kind": "correction",
+      "evidence_basis": "reported_only",
+      "next_check": "Run a benchmark comparing A and B under the specified workload and environment to establish definitive performance evidence.",
+      "rationale": "Both reports address the same workload and environment, but the later report explicitly corrects prior advice by stating B is faster. While neither provides benchmark evidence, the second report directly supersedes the first.",
+      "recommendation": "B",
+      "uncertainty": "No actual performance benchmarks exist, so the true performance difference remains unproven. The recommendation relies solely on reported assertions."
+    }
+  },
+  {
+    "id": "G23",
+    "context": {
+      "constraints": "Eight concurrent writers; reliability matters more than minimum code.",
+      "evidence": [
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source04",
+          "kind": "agent_report",
+          "provenance": "synthetic_fixture",
+          "text": "Cachepolicy: I recommend A, an in-process cache. This advice assumes a single-process toy workload."
+        },
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source01",
+          "kind": "agent_report",
+          "provenance": "synthetic_fixture",
+          "text": "The workload now has eight concurrent writers. I recommend B, a coordinated shared cache, for that requirement. Neither option has been benchmarked in the current environment."
+        }
+      ],
+      "question": "Which cache approach is justified for the current workload?"
+    },
+    "answer": {
+      "alternative": "A is designed for single-process workloads and lacks justification for the current multi-writer environment. While neither option has been benchmarked, B is explicitly recommended for the current constraints whereas A's applicability has been superseded by the workload change.",
+      "citations": [
+        {
+          "id": "Source04",
+          "supports": "Initial recommendation for A under different (single-process) assumptions"
+        },
+        {
+          "id": "Source01",
+          "supports": "Recommendation for B under current eight-concurrent-writer constraint"
+        }
+      ],
+      "conflict_kind": "changed_constraints",
+      "evidence_basis": "reported_only",
+      "next_check": "Benchmark both caching approaches under the actual eight-concurrent-writer workload to measure reliability and performance trade-offs.",
+      "rationale": "The initial recommendation for A was based on a single-process toy workload assumption, which has changed. The current constraint of eight concurrent writers directly invalidates that assumption. Agent report Source01 explicitly recommends B for the current workload requirement of handling concurrent writers, making it the justified choice under the new conditions.",
+      "recommendation": "B",
+      "uncertainty": "Neither cache approach has been benchmarked in the current environment, so performance characteristics remain unknown. The recommendation is based solely on stated requirements, not empirical validation."
+    }
+  },
+  {
+    "id": "G24",
+    "context": {
+      "constraints": "Same workload and environment; do not guess performance.",
+      "evidence": [
+        {
+          "at": "2026-01-01T12:00:00Z",
+          "id": "Source03",
+          "kind": "agent_report",
+          "provenance": "synthetic_fixture",
+          "text": "Queuepolicy: A is faster for our workload. I did not run a benchmark."
+        }
+      ],
+      "question": "Which queue should we choose based on the available performance evidence?"
+    },
+    "answer": {
+      "alternative": "No alternative advice is present to conflict with; only one piece of evidence exists, which is insufficient to establish a performance difference.",
+      "citations": [],
+      "conflict_kind": "not_established",
+      "evidence_basis": "reported_only",
+      "next_check": "Run a controlled benchmark comparing Queuepolicy A and B under the specified workload and environment to generate performance evidence.",
+      "rationale": "The available evidence consists solely of an agent report claiming Queuepolicy A is faster, but explicitly states no benchmark was run. Since the constraint requires performance evidence and prohibits guessing, this report alone cannot support a performance-based recommendation.",
+      "recommendation": "insufficient",
+      "uncertainty": "Whether Queuepolicy A or B performs better under the specified workload and environment remains unknown due to lack of supporting evidence."
+    }
+  }
+]

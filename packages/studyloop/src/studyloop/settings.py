@@ -587,6 +587,7 @@ _RAW_ONLY_SECTIONS: frozenset[str] = frozenset(
         "review",  # resolve_study_dirs() — review.directories
         "tts",  # learning/voice.py, doctor/voice.py
         "focus",  # focus.py — the body-double focus-contract section
+        "memory",  # agent-session-tools owns explicit context scope policy
     }
 )
 

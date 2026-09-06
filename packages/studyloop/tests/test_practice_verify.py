@@ -41,32 +41,10 @@ def _practice_file(tmp_path: Path, verification: dict) -> Path:
 
 
 def _attempt_db(tmp_path: Path) -> Path:
+    from agent_session_tools.context import records
+
     db = tmp_path / "sessions.db"
-    conn = sqlite3.connect(db)
-    conn.execute(
-        """
-        CREATE TABLE practice_attempts (
-            id TEXT PRIMARY KEY,
-            practice_path TEXT NOT NULL,
-            task_index INTEGER NOT NULL,
-            task_prompt TEXT NOT NULL,
-            verification_kind TEXT NOT NULL,
-            passed INTEGER NOT NULL,
-            notes TEXT,
-            command TEXT,
-            exit_code INTEGER,
-            stdout TEXT,
-            stderr TEXT,
-            duration_seconds REAL,
-            expected_artifacts TEXT,
-            missing_artifacts TEXT,
-            workdir TEXT,
-            created_at TEXT
-        )
-        """
-    )
-    conn.commit()
-    conn.close()
+    records.connect(db).close()
     return db
 
 
@@ -74,6 +52,7 @@ def _patch_db(monkeypatch, db: Path) -> None:
     def connect():
         conn = sqlite3.connect(db)
         conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys=ON")
         return conn
 
     monkeypatch.setattr(practice._connection, "_connect", connect)
@@ -82,7 +61,6 @@ def _patch_db(monkeypatch, db: Path) -> None:
 def test_checklist_verification_records_attempt(monkeypatch, tmp_path: Path) -> None:
     db = _attempt_db(tmp_path)
     _patch_db(monkeypatch, db)
-    monkeypatch.setattr(practice, "record_progress", lambda **kwargs: True)
     deck = _practice_file(
         tmp_path,
         {"kind": "checklist", "successCriteria": ["The wrapper runs."]},
@@ -100,7 +78,6 @@ def test_checklist_verification_records_attempt(monkeypatch, tmp_path: Path) -> 
 def test_verification_metadata_surfaces_in_result(monkeypatch, tmp_path: Path) -> None:
     db = _attempt_db(tmp_path)
     _patch_db(monkeypatch, db)
-    monkeypatch.setattr(practice, "record_progress", lambda **kwargs: True)
     deck = _practice_file(
         tmp_path,
         {
@@ -217,7 +194,6 @@ def test_confirmed_command_that_still_matches_the_deck_runs(monkeypatch, tmp_pat
     equals the freshly-loaded one and execution proceeds normally."""
     db = _attempt_db(tmp_path)
     _patch_db(monkeypatch, db)
-    monkeypatch.setattr(practice, "record_progress", lambda **kwargs: True)
     marker = tmp_path / "marker.txt"
     approved_command = f"touch {marker}"
     deck = _practice_file(
@@ -271,7 +247,6 @@ def test_peek_verification_command_does_not_run_or_record_anything(
 def test_failing_command_records_failure_without_crashing(monkeypatch, tmp_path: Path) -> None:
     db = _attempt_db(tmp_path)
     _patch_db(monkeypatch, db)
-    monkeypatch.setattr(practice, "record_progress", lambda **kwargs: True)
     deck = _practice_file(
         tmp_path,
         {
@@ -295,7 +270,6 @@ def test_failing_command_records_failure_without_crashing(monkeypatch, tmp_path:
 def test_timing_out_command_records_failure_without_crashing(monkeypatch, tmp_path: Path) -> None:
     db = _attempt_db(tmp_path)
     _patch_db(monkeypatch, db)
-    monkeypatch.setattr(practice, "record_progress", lambda **kwargs: True)
     deck = _practice_file(
         tmp_path,
         {
@@ -320,8 +294,6 @@ def test_timing_out_command_records_failure_without_crashing(monkeypatch, tmp_pa
 def test_passing_verification_updates_study_progress(monkeypatch, tmp_path: Path) -> None:
     db = _attempt_db(tmp_path)
     _patch_db(monkeypatch, db)
-    calls: list[dict] = []
-    monkeypatch.setattr(practice, "record_progress", lambda **kwargs: calls.append(kwargs) or True)
     deck = _practice_file(
         tmp_path,
         {"kind": "checklist", "successCriteria": ["It works."]},
@@ -330,8 +302,11 @@ def test_passing_verification_updates_study_progress(monkeypatch, tmp_path: Path
     result = practice.verify_practice_task(deck, task_index=1, notes="done")
 
     assert result.progress_recorded is True
-    assert calls[0]["confidence"] == "confident"
-    assert calls[0]["created_by"] == "practice-verify"
+    with sqlite3.connect(db) as conn:
+        report = json.loads(conn.execute("SELECT payload FROM context_observations").fetchone()[0])
+        assert report["confidence"] == "confident"
+        assert report["created_by"] == "practice-verify"
+        assert conn.execute("SELECT count(*) FROM context_record_observations").fetchone()[0] == 1
 
 
 class TestPracticeVerifyCli:
@@ -367,7 +342,6 @@ class TestPracticeVerifyCli:
     def test_run_command_with_yes_runs_it(self, monkeypatch, tmp_path: Path) -> None:
         db = _attempt_db(tmp_path)
         _patch_db(monkeypatch, db)
-        monkeypatch.setattr(practice, "record_progress", lambda **kwargs: True)
         marker = tmp_path / "marker.txt"
         deck = _practice_file(
             tmp_path,
@@ -411,7 +385,6 @@ class TestPracticeVerifyCli:
         """--run-command on a non-command task is a no-op, not a crash."""
         db = _attempt_db(tmp_path)
         _patch_db(monkeypatch, db)
-        monkeypatch.setattr(practice, "record_progress", lambda **kwargs: True)
         deck = _practice_file(
             tmp_path,
             {"kind": "checklist", "successCriteria": ["The wrapper runs."]},

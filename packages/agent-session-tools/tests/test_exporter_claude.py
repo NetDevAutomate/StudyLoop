@@ -9,13 +9,10 @@ Validates:
 - Malformed JSONL lines are silently skipped without crashing.
 - Content arrays are flattened to text.
 
-NOTE — Known bug: commit_batch() does not persist import_fingerprint to the
-sessions table (it only writes the 7 base columns).  As a result, incremental
-fingerprint comparison in _process_session_file always sees NULL and never
-short-circuits.  The tests in TestClaudeIncremental document actual behaviour.
 """
 
 import json
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -36,7 +33,7 @@ def projects_dir(tmp_path) -> Path:
     return d
 
 
-def _write_jsonl(path: Path, entries: list[dict]) -> None:
+def _write_jsonl(path: Path, entries: Sequence[object]) -> None:
     """Write a list of dicts as JSONL lines to the given file."""
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w") as f:
@@ -77,7 +74,8 @@ def _make_entry(
 
 
 class TestClaudeCodeConstructor:
-    def test_default_projects_dir(self):
+    def test_default_projects_dir(self, monkeypatch):
+        monkeypatch.delenv("CLAUDE_CONFIG_DIR", raising=False)
         exporter = ClaudeCodeExporter()
         assert exporter.projects_dir == Path.home() / ".claude" / "projects"
 
@@ -376,12 +374,9 @@ class TestClaudeMalformedJsonl:
         exporter = ClaudeCodeExporter(projects_dir=projects_dir)
         stats = exporter.export_all(conn)
 
-        assert stats.added == 1
-        msgs = conn.execute(
-            "SELECT COUNT(*) FROM messages WHERE session_id = 'agent-mixed'"
-        ).fetchone()[0]
-        # Both good lines should be imported (bad line skipped during parsing)
-        assert msgs == 2
+        assert stats.errors == 1
+        assert stats.added == 0
+        assert conn.execute("SELECT COUNT(*) FROM messages").fetchone()[0] == 0
 
     def test_empty_file_produces_no_session(self, projects_dir, migrated_db):
         conn, _ = migrated_db
@@ -510,3 +505,82 @@ class TestClaudeMetadata:
             "SELECT seq FROM messages WHERE session_id = 'agent-seq' ORDER BY seq"
         ).fetchall()
         assert [r["seq"] for r in rows] == [1, 2, 3]
+
+
+def test_main_conversation_cwd_and_non_message_events(projects_dir, migrated_db):
+    conn, _ = migrated_db
+    entry = _make_entry(uuid="main-message")
+    entry.update(cwd="/Users/person/project-with-hyphens", sessionId="main-session")
+    path = projects_dir / "-Users-person-project-with-hyphens" / "main-session.jsonl"
+    _write_jsonl(
+        path, [{"type": "attachment", "uuid": "noise"}, entry, {"message": None}, []]
+    )
+    stats = ClaudeCodeExporter(projects_dir).export_all(conn)
+    assert stats.added == 1 and stats.errors == 0
+    row = conn.execute("SELECT * FROM sessions").fetchone()
+    assert row["project_path"] == entry["cwd"]
+    assert json.loads(row["metadata"])["source_session_id"] == "main-session"
+    assert conn.execute("SELECT count(*) FROM messages").fetchone()[0] == 1
+
+
+def test_uuidless_message_repair_is_idempotent(projects_dir, migrated_db):
+    conn, _ = migrated_db
+    entry = _make_entry()
+    del entry["uuid"]
+    _write_jsonl(projects_dir / "proj" / "agent-no-uuid.jsonl", [entry])
+    exporter = ClaudeCodeExporter(projects_dir)
+    exporter.export_all(conn, incremental=False)
+    first_id = conn.execute("SELECT id FROM messages").fetchone()[0]
+    exporter.export_all(conn, incremental=False)
+    assert [r[0] for r in conn.execute("SELECT id FROM messages")] == [first_id]
+
+
+def test_claude_config_dir_respected(tmp_path, monkeypatch):
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
+    assert ClaudeCodeExporter().projects_dir == tmp_path / "projects"
+
+
+def test_shared_uuid_cannot_steal_another_conversation(projects_dir, migrated_db):
+    conn, _ = migrated_db
+    for name in ("agent-a", "agent-b"):
+        _write_jsonl(
+            projects_dir / "proj" / f"{name}.jsonl", [_make_entry(uuid="shared")]
+        )
+    exporter = ClaudeCodeExporter(projects_dir)
+    stats = exporter.export_all(conn, batch_size=50)
+    assert stats.added == 2
+    rows = list(conn.execute("SELECT id, session_id FROM messages ORDER BY session_id"))
+    assert len(rows) == 2
+    assert rows[0][0] == "shared"
+    assert rows[1][0] == "claude:agent-b:shared"
+    exporter.export_all(conn, incremental=False)
+    assert [
+        tuple(r)
+        for r in conn.execute("SELECT id, session_id FROM messages ORDER BY session_id")
+    ] == [tuple(r) for r in rows]
+
+
+@pytest.mark.parametrize("failure", ["corrupt", "growing"])
+def test_bad_update_retains_prior_messages_and_fingerprint(
+    projects_dir, migrated_db, monkeypatch, failure
+):
+    from agent_session_tools.exporters import claude
+
+    conn, _ = migrated_db
+    path = projects_dir / "proj" / "agent-safe.jsonl"
+    _write_jsonl(path, [_make_entry(content="original")])
+    exporter = ClaudeCodeExporter(projects_dir)
+    exporter.export_all(conn)
+    original = conn.execute("SELECT import_fingerprint FROM sessions").fetchone()[0]
+    if failure == "corrupt":
+        with path.open("a") as out:
+            out.write('{"incomplete":')
+    else:
+        fingerprints = iter(["before", "after"])
+        monkeypatch.setattr(claude, "file_fingerprint", lambda _: next(fingerprints))
+    assert exporter.export_all(conn).errors == 1
+    assert conn.execute("SELECT content FROM messages").fetchone()[0] == "original"
+    assert (
+        conn.execute("SELECT import_fingerprint FROM sessions").fetchone()[0]
+        == original
+    )

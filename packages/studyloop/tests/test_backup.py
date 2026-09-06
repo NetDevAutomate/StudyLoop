@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import sqlite3
+from contextlib import closing
+
 import pytest
 from click.testing import CliRunner
 
@@ -136,3 +139,55 @@ class TestRestore:
         result = runner.invoke(cli, ["restore"])
         assert result.exit_code == 0
         assert "No backups found" in result.output
+
+
+def test_backup_captures_committed_wal_without_closing_writer(runner, mock_env):
+    path = mock_env / "sessions.db"
+    path.unlink()
+    with closing(sqlite3.connect(path)) as writer:
+        writer.execute("PRAGMA journal_mode=WAL")
+        writer.execute("PRAGMA wal_autocheckpoint=0")
+        writer.execute("CREATE TABLE example(body TEXT)")
+        writer.commit()
+        writer.execute("INSERT INTO example VALUES ('committed in WAL')")
+        writer.commit()
+        result = runner.invoke(cli, ["backup"])
+        assert result.exit_code == 0, result.output
+        backup = next((mock_env / "backups").iterdir()) / "sessions.db"
+        with closing(sqlite3.connect(backup)) as saved:
+            assert saved.execute("SELECT body FROM example").fetchone()[0] == "committed in WAL"
+
+
+def test_modern_restore_refuses_before_any_asset_or_safety_backup_write(runner, mock_env):
+    from agent_session_tools.context.records import connect
+
+    path = mock_env / "sessions.db"
+    path.unlink()
+    with closing(connect(path)) as conn:
+        conn.execute("INSERT INTO sessions(id,source) VALUES ('before','codex')")
+        conn.commit()
+    assert runner.invoke(cli, ["backup"]).exit_code == 0
+    saved = next((mock_env / "backups").iterdir())
+    with closing(connect(path)) as conn:
+        conn.execute("INSERT INTO context_tombstones VALUES ('before','deletion','now')")
+        conn.commit()
+    config = mock_env / "config.yaml"
+    config.write_text("current_setting: keep\n")
+    result = runner.invoke(cli, ["restore", saved.name, "--confirm"])
+    assert result.exit_code != 0
+    assert "Managed restore is required" in result.output
+    assert config.read_text() == "current_setting: keep\n"
+    assert len(list((mock_env / "backups").iterdir())) == 1
+    with closing(connect(path)) as conn:
+        assert conn.execute("SELECT 1 FROM context_tombstones WHERE session_id='before'").fetchone()
+
+
+def test_restore_rejects_outside_directory_before_writes(runner, mock_env, tmp_path):
+    assert runner.invoke(cli, ["backup"]).exit_code == 0
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "sessions.db").write_bytes(b"unrelated")
+    result = runner.invoke(cli, ["restore", str(outside), "--confirm"])
+    assert result.exit_code != 0
+    assert "listed backup directory" in result.output
+    assert (mock_env / "sessions.db").read_bytes() == b"fake-sessions-db-content"

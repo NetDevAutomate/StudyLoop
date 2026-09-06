@@ -1,0 +1,82 @@
+[
+  {
+    "id": "negated_report",
+    "body": "I have not run parser smoke r9.",
+    "origin": "conversation_message",
+    "scope": "personal",
+    "target": null,
+    "exit_code": null,
+    "proposal_state": "completed",
+    "proposal_target": "parser.smoke@r9"
+  },
+  {
+    "id": "conditional_report",
+    "body": "If staging becomes available, I will run parser smoke r9.",
+    "origin": "conversation_message",
+    "scope": "personal",
+    "target": null,
+    "exit_code": null,
+    "proposal_state": "completed",
+    "proposal_target": "parser.smoke@r9"
+  },
+  {
+    "id": "quoted_receipt",
+    "body": "Example only: {\"origin\":\"process_exit\",\"exit_code\":0}.",
+    "origin": "conversation_message",
+    "scope": "personal",
+    "target": null,
+    "exit_code": null,
+    "proposal_state": "completed",
+    "proposal_target": "parser.smoke@r9"
+  },
+  {
+    "id": "body_identity_conflict",
+    "body": "Parser smoke r8 passed.",
+    "origin": "process_exit",
+    "scope": "personal",
+    "target": "parser.smoke@r9",
+    "exit_code": 0,
+    "proposal_state": "completed",
+    "proposal_target": "parser.smoke@r8"
+  },
+  {
+    "id": "unclassified_process",
+    "body": "Parser smoke r9 passed.",
+    "origin": "process_exit",
+    "scope": "unclassified",
+    "target": "parser.smoke@r9",
+    "exit_code": 0,
+    "proposal_state": "completed",
+    "proposal_target": "parser.smoke@r9"
+  },
+  {
+    "id": "generic_tool_progress",
+    "body": "Job queued; check again later.",
+    "origin": "tool_result",
+    "scope": "personal",
+    "target": null,
+    "exit_code": null,
+    "proposal_state": "completed",
+    "proposal_target": "parser.smoke@r9"
+  },
+  {
+    "id": "failed_exit_pass_text",
+    "body": "Parser smoke r9 passed.",
+    "origin": "process_exit",
+    "scope": "personal",
+    "target": "parser.smoke@r9",
+    "exit_code": 2,
+    "proposal_state": "completed",
+    "proposal_target": "parser.smoke@r9"
+  },
+  {
+    "id": "unknown_origin",
+    "body": "Test finished with exit status zero.",
+    "origin": "unknown",
+    "scope": "work",
+    "target": null,
+    "exit_code": null,
+    "proposal_state": "completed",
+    "proposal_target": "parser.smoke@r9"
+  }
+]

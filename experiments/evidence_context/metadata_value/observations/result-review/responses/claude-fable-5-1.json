@@ -1,0 +1,7 @@
+{
+  "model": "claude-fable-5-1",
+  "provider": "anthropic",
+  "mode": "chat",
+  "response": null,
+  "error": "ValueError: model did not return a JSON object"
+}

@@ -17,7 +17,7 @@ class TestReleaseSourceChoices:
         assert "pi" in SOURCE_CHOICES
 
     def test_exact_release_sources(self) -> None:
-        assert SOURCE_CHOICES == ["claude", "codex", "kiro", "opencode", "pi"]
+        assert SOURCE_CHOICES == ["claude", "codex", "grok", "kiro", "opencode", "pi"]
 
     def test_source_choices_sorted(self) -> None:
         assert SOURCE_CHOICES == sorted(SOURCE_CHOICES), (
@@ -78,7 +78,7 @@ class TestOpenCodeOnlyFlag:
         assert "--opencode-only" in result.output
         assert "--omp-only" not in result.output
         assert "--gemini-only" not in result.output
-        assert "--grok-only" not in result.output
+        assert "--grok-only" in result.output
 
     def test_opencode_only_exports_only_opencode_source(self, tmp_path: Path) -> None:
         db = tmp_path / "sessions.db"

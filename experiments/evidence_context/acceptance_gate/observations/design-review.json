@@ -1,0 +1,116 @@
+{
+  "grok-4.6": {
+    "executive_summary": "The gate is a conservative structural consistency check against an application-owned snapshot and a frozen Stage8 policy, not semantic acceptance. That release boundary is mostly honest and appropriately fail-closed, but naming, the 7/8 replay target, hash/binding underspecification, and a confounded 12-call live probe can create false confidence or implementation drift. Implement the code gate and offline probes after a few bounded clarifications; do not treat replay or live calls as quality proof.",
+    "recommended_decision": "Implement the snapshot-bound code gate and the listed offline probes only after specifying canonical JSON hashing, who binds snapshot_id, extra-citation rejection, and distinct accepted-vs-rejected payloads; treat the eight-answer replay as diagnostic (not a 7-accept bar); run the 12 Qwen calls only as a labelled smoke check, without putting the precomputed contract in context if the object is to test the gate.",
+    "confidence": 0.78,
+    "assumptions": [
+      "Stage8 policy code is frozen and is the sole decision oracle; the gate will reproduce policy bugs.",
+      "Synthetic cases and snapshots are human-validated fixtures, not live provenance.",
+      "No database, auth framework, or production path is in scope.",
+      "released_answer construction is identical in method for accept and reject: policy facts/reasons only.",
+      "Same Qwen model and Stage8 schema as prior work."
+    ],
+    "reasons": [
+      "Binding drafts to an immutable application snapshot and recomputing applicability/decision in code is the right way to stop model-supplied metadata and the Stage8 implicit-r2 invention class.",
+      "Never checking case-name gold labels, failing malformed drafts closed, and documenting the trusted-ingestion forgery blind spot are correctly scoped.",
+      "Always rendering released_answer from policy, keeping model prose private, and refusing a semantic-validation claim is an honest conservative boundary.",
+      "Offline negatives (missing scope fields, revision mismatch, provenance promotion, suppressed conflict, invented citation, stale snapshot, extra metadata, malformed schema, forged-prose control) cover the intended contract if extras and decision/applicability splits are included.",
+      "The brief already correctly forbids calling the live plan a robust injection eval or holdout."
+    ],
+    "risks": [
+      "Unspecified JSON canonicalization (key order, whitespace, Unicode) makes content-hash checks non-deterministic or spoofable across serializers.",
+      "Ambiguous snapshot_id attribution: if the model must echo it, that is another invention surface; if the server attaches it, 'mismatched ID' needs a concrete attacker/client path.",
+      "accepted_structured oversells a structural match. Operators may later leak private prose into release because the model path otherwise becomes vestigial.",
+      "A 7/8 accept target pressures implementers to loosen the gate if historical Stage8 answers are only prompt-compliant, not contract-correct.",
+      "Putting a code-precomputed contract in context tests copy-the-hint, not whether the gate catches invention; n=1 on one model adds noise, not evidence.",
+      "Minimum-set citation inclusion can pass extra invented IDs unless extras not in the snapshot are rejected.",
+      "Rejected and accepted user-facing text are both policy-rendered; without stark labels, fallback and 'accepted' look alike.",
+      "Audit logs containing unverified prose will be misread as validated if not explicitly quarantined."
+    ],
+    "disagreements": [
+      "If code already recomputes applicability, decision, reasons, and released prose, 'accepting' a model draft is only an audit consistency flag. Calling this an acceptance gate invites scope creep toward using model text.",
+      "Replaying eight prior answers with an expected 7/1 split is not a gate spec; a stricter gate that rejects more than one of those drafts would be a success, not a failure.",
+      "The two-condition live plan mixes prompt-engineering with gate testing and should not ship as part of the acceptance design.",
+      "Preserving explanation richness is already forfeited; do not keep unused free-text fields in the public schema if they cannot enter release."
+    ],
+    "missing_information": [
+      "Canonicalization rule and hash algorithm for snapshot bytes.",
+      "Exact request/response schemas: who supplies snapshot_id, and the labelled payloads for structurally_consistent vs rejected fallback.",
+      "Whether citations beyond the minimum set are rejected when absent from the snapshot.",
+      "Which of the eight Stage8 answers is the scope-invention case, and the per-field contract diffs for the other seven.",
+      "Behavior matrix for applicability-correct/decision-wrong, unknown-vs-inapplicable swap, hash mismatch with matching id, empty sources, and duplicate basis_ids.",
+      "How policy-rendered reasons preserve source text/derivation without copying model prose.",
+      "Frozen Stage8 policy identifier/version bound into the snapshot."
+    ]
+  },
+  "claude-fable-5-1": {
+    "executive_summary": "The design is directionally sound and unusually honest about limits, but it has a structural tension: because released_answer is always rendered from the deterministic policy, the model contributes nothing to what is released, so the gate is a measurement of model/policy agreement, not a safety mechanism for model output. The deterministic Stage8 policy becomes the single oracle for both the gate and the release, with no independent check on its own correctness. The live probe's second condition (contract in context) is a copy test, not a reasoning test, and n=1 per cell means results are anecdotes. The release boundary is mostly described honestly, but the label 'accepted_structured' and the phrase 'acceptance enforced by code' invite over-reading.",
+    "recommended_decision": "Proceed to implementation and the 12-call probe only after (a) renaming the accept/reject outcome to something like 'draft_agrees_with_contract' vs 'draft_diverges_from_contract', (b) adding hand-verified expected contracts for the six live inputs and eight replay cases that are independent of any model output, (c) adding a prose-isolation test asserting released_answer shares no free-text with model prose fields, and (d) documenting condition 2 as a compliance/copy control rather than a second reasoning condition.",
+    "confidence": 0.7,
+    "assumptions": [
+      "The existing Stage8 deterministic policy is itself correct on the eight replay cases; if its computed contract differs from the gold labels used to score 7/8, the replay comparison is not like-for-like.",
+      "Canonical JSON serialization is stable (key ordering, numeric formatting, unicode normalization) so the content hash is reproducible across runs.",
+      "The audit log is not consumed by any downstream process that treats stored prose as verified.",
+      "Model sampling parameters (temperature/seed) are fixed and disclosed for the 12 calls."
+    ],
+    "reasons": [
+      "Snapshot ownership by the application, server-side snapshot_id binding, and rejection of stale IDs correctly remove the model from the metadata supply path, which directly addresses the r2 invention failure.",
+      "Rendering released_answer from policy facts closes the false-prose gap without pretending to semantic validation; that is the correct conservative choice at this stage.",
+      "Checking against a recomputed contract rather than case-name gold labels prevents trivial overfitting to fixture names, provided a rename test confirms it.",
+      "Fail-closed on malformed drafts and no retry loop avoid a common escalation path where repeated sampling searches for a passing draft.",
+      "The negative probe list covers the main structured-field attack surface (scope omission, revision mismatch, provenance promotion, suppressed conflict, invented citation, stale snapshot, metadata override)."
+    ],
+    "risks": [
+      "Oracle monoculture: a bug in the Stage8 policy propagates identically into the gate verdict and the released answer, so agreement between them proves nothing; there is no independent expectation anywhere in the design.",
+      "Condition 2 places the precomputed contract in the prompt; near-100% agreement is expected from copying and will be misread as improved model reliability if not labelled as a control.",
+      "Accepted and rejected paths both emit policy-rendered text; if their content differs only by label, stakeholders may not understand what the model added, and if content differs materially the difference is unspecified.",
+      "Fallback rendering can itself fail: if snapshot validation or policy computation throws, there must be an explicit error state rather than an implicit permissive path.",
+      "Citation rule ambiguity: 'minimum-set inclusion' does not state whether extra basis_ids that exist in the snapshot but are irrelevant are accepted, ignored, or rejected; the invented-citation probe only covers ids absent from the snapshot.",
+      "Unknown-vs-inapplicable semantics: the brief maps absent field to 'unknown' but does not state how 'unknown' applicability feeds the sufficiency decision; a model choosing 'inapplicable' for a missing revision may be wrongly rejected or wrongly accepted depending on an unstated rule.",
+      "The instruction-injection probe targets prose, which never reaches released_answer by construction; the meaningful risk is injection altering structured fields, and one sample cannot show presence or absence of that.",
+      "Audit-log prose labelled 'unverified' can still leak into human review or later training as if reliable."
+    ],
+    "disagreements": [
+      "The brief frames this as an acceptance gate on model answers; given the release path, it is more accurately a conformance monitor. Calling it 'acceptance enforced by code' overstates what acceptance controls.",
+      "Replaying eight Stage8 answers with a pre-declared 7/1 expectation is regression fitting, not evidence; if the gate produces a different split, the correct response may be to trust the gate over the expectation, and the plan should say so.",
+      "Preserving 'explanation richness' is listed as a cost, but if the model's prose never ships, richness was never available; the real cost is that the model is currently redundant in the release path, and that should be stated plainly rather than softened."
+    ],
+    "missing_information": [
+      "Independent, hand-derived expected contracts for the six live inputs and eight replay cases, written before running the policy, to detect policy errors.",
+      "Precise specification of how 'unknown' applicability maps to decision sufficiency and option, and of the treatment of superfluous but valid basis_ids.",
+      "Whether accepted and rejected released_answer content differ, and if so how, beyond the label.",
+      "Canonicalization spec and a test that two independent serializations of the same case yield identical hashes.",
+      "A rename-invariance test showing gate output is unchanged when case names are altered.",
+      "Sampling configuration for the Qwen calls and whether determinism is achievable; if not, n=1 per cell should be reported as illustrative only.",
+      "How the audit log marks model prose and who can read it, to bound the leakage risk."
+    ]
+  },
+  "qwen3-coder": {
+    "executive_summary": "The proposed Stage 9 metadata acceptance gate introduces a conservative, code-enforced mechanism to validate structured decision metadata against immutable snapshots. While the design appropriately isolates policy computation from model outputs and enforces strict schema compliance, it lacks clarity on handling partial or ambiguous metadata states and relies on unverified upstream ingestion integrity.",
+    "recommended_decision": "Approve with clarification that upstream metadata authenticity is out-of-scope and that downstream ambiguity must be explicitly represented in rejection feedback.",
+    "confidence": 0.75,
+    "assumptions": [
+      "Immutable snapshot generation from Stage 8 is reliable and tamper-evident",
+      "Model-generated prose will never influence released_answer rendering",
+      "All relevant edge cases can be captured through synthetic probes without live data"
+    ],
+    "reasons": [
+      "Code-based enforcement reduces human error and ensures consistent application of Stage 8 policies",
+      "Snapshot immutability supports auditability and reproducibility of decisions",
+      "Clear separation between model input draft and final rendered output prevents hallucination leakage into official records"
+    ],
+    "risks": [
+      "Overly rigid rejection logic may obscure actionable insights when metadata conflicts are resolvable",
+      "Blind spot around forged metadata at ingestion could allow invalid decisions to pass undetected",
+      "Loss of explanatory richness due to exclusion of model-generated prose may reduce usability for downstream consumers"
+    ],
+    "disagreements": [
+      "Whether silent loss of explanation detail (via prose filtering) aligns with transparency goals",
+      "If rejecting drafts solely based on structural/schema mismatches without semantic context is sufficient for operational trust"
+    ],
+    "missing_information": [
+      "Empirical evidence showing how often legitimate cases are rejected due to metadata inconsistencies",
+      "Documentation of fallback behavior when conflicting observations exist but resolution paths are available"
+    ]
+  }
+}

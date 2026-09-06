@@ -117,7 +117,12 @@ def _get_tools():
     """Import tool functions from the MCP server."""
     from agent_session_tools.mcp_server import mcp
 
-    from _helpers import run_async
+    from importlib import import_module
+
+    # pytest importlib mode gives this test a package; isolated prepend mode does not.
+    run_async = import_module(
+        f"{__package__}._helpers" if __package__ else "_helpers"
+    ).run_async
 
     tools = run_async(mcp._list_tools())
     return {tool.name: tool.fn for tool in tools}  # type: ignore[attr-defined]
@@ -245,11 +250,24 @@ class TestServerCreation:
     def test_server_has_all_tools(self):
         from agent_session_tools.mcp_server import mcp
 
-        from _helpers import run_async
+        from importlib import import_module
+
+        # pytest importlib mode supplies a package; isolated prepend mode does not.
+        run_async = import_module(
+            f"{__package__}._helpers" if __package__ else "_helpers"
+        ).run_async
 
         tools = run_async(mcp._list_tools())
         tool_names = {t.name for t in tools}
         expected = {
+            "memory_search",
+            "memory_source",
+            "memory_propose",
+            "memory_relate",
+            "memory_decide",
+            "memory_review",
+            "memory_reviews",
+            "memory_assess",
             "session_search",
             "session_list",
             "session_show",
@@ -257,6 +275,7 @@ class TestServerCreation:
             "session_stats",
             "session_clean",
             "session_hotspots",
+            "session_annotations",
         }
         assert tool_names == expected
 
@@ -430,3 +449,26 @@ class TestSessionHotspotsExtended:
         # auth.py appears in both sess-auth-001 and sess-debug-002
         auth_row = next(r for r in result if r["file_path"] == "/src/auth.py")
         assert auth_row["session_count"] == 2
+
+
+def test_mcp_search_and_list_expand_only_configured_project_aliases(
+    mock_db_path, tmp_path, monkeypatch
+):
+    import json
+
+    config = tmp_path / "aliases.yaml"
+    config.write_text(
+        json.dumps(
+            {
+                "memory": {"default_scope": "unclassified"},
+                "project_aliases": {"/current/webapp": ["/projects/webapp"]},
+            }
+        )
+    )
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(config))
+    tools = _get_tools()
+    found = tools["session_search"](query="middleware", project="/current/webapp")
+    assert found and all(row["session_id"] == "sess-auth-001" for row in found)
+    listed = tools["session_list"](project="/current/webapp")
+    assert len(listed) == 1
+    assert tools["session_search"](query="middleware", project="/work/webapp") == []

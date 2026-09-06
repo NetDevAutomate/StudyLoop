@@ -69,7 +69,7 @@ def init_db(db_path: str) -> sqlite3.Connection:
 
     path = Path(db_path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(path)
+    conn = sqlite3.connect(path.resolve().as_uri(), uri=True)
     conn.row_factory = sqlite3.Row
 
     # Restrict permissions — session data may contain sensitive conversations
@@ -111,6 +111,7 @@ def create_progress_bar() -> Progress | None:
 SOURCE_CHOICES = [
     "claude",
     "codex",
+    "grok",
     "kiro",
     "opencode",
     "pi",
@@ -182,7 +183,11 @@ def _run_export(
     print(f"  added:   {batch_stats.added}")
     print(f"  updated: {batch_stats.updated}")
     print(f"  skipped: {batch_stats.skipped} (unchanged since last export)")
-    print(f"  empty:   {batch_stats.empty} (no extractable messages)")
+    print(
+        f"  empty:   {batch_stats.empty} (no supported conversation or native records)"
+    )
+    if batch_stats.forgotten:
+        print(f"  retired: {batch_stats.forgotten} (excluded by forgetting policy)")
     if batch_stats.errors:
         print(f"  errors:  {batch_stats.errors}")
     if incremental and batch_stats.skipped:
@@ -297,6 +302,9 @@ def export(
     codex_only: Annotated[
         bool, typer.Option("--codex-only", help="Only export OpenAI Codex CLI")
     ] = False,
+    grok_only: Annotated[
+        bool, typer.Option("--grok-only", help="Only export Grok CLI")
+    ] = False,
     kiro_only: Annotated[
         bool, typer.Option("--kiro-only", help="Only export Kiro CLI")
     ] = False,
@@ -397,6 +405,7 @@ def export(
     only_flags = {
         "claude": claude_only,
         "codex": codex_only,
+        "grok": grok_only,
         "kiro": kiro_only,
         "opencode": opencode_only,
         "pi": pi_only,

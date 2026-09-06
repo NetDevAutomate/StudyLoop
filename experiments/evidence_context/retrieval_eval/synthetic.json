@@ -1,0 +1,126 @@
+{
+  "kind": "synthetic",
+  "records": [
+    {
+      "key": "proposal",
+      "record": {
+        "message_id": "proposal",
+        "session_id": "synthetic-proposal",
+        "harness": "codex",
+        "project": "demo",
+        "scope": "personal",
+        "content": "Deploypolicy proposal: the release is ready.",
+        "timestamp": "2026-01-01T12:00:00Z",
+        "available_at": "2026-01-01T12:00:00Z",
+        "source_locator": "synthetic:proposal"
+      }
+    },
+    {
+      "key": "counter",
+      "record": {
+        "message_id": "counter",
+        "session_id": "synthetic-counter",
+        "harness": "codex",
+        "project": "demo",
+        "scope": "personal",
+        "content": "Validation found stale derived records; do not release yet.",
+        "timestamp": "2026-01-01T12:00:00Z",
+        "available_at": "2026-01-01T12:00:00Z",
+        "source_locator": "synthetic:counter"
+      }
+    },
+    {
+      "key": "distractor",
+      "record": {
+        "message_id": "distractor",
+        "session_id": "synthetic-distractor",
+        "harness": "codex",
+        "project": "demo",
+        "scope": "personal",
+        "content": "The holiday rota has been updated.",
+        "timestamp": "2026-01-01T12:00:00Z",
+        "available_at": "2026-01-01T12:00:00Z",
+        "source_locator": "synthetic:distractor"
+      }
+    },
+    {
+      "key": "work",
+      "record": {
+        "message_id": "work",
+        "session_id": "synthetic-work",
+        "harness": "codex",
+        "project": "demo",
+        "scope": "work",
+        "content": "Deploypolicy work confidential report.",
+        "timestamp": "2026-01-01T12:00:00Z",
+        "available_at": "2026-01-01T12:00:00Z",
+        "source_locator": "synthetic:work"
+      }
+    }
+  ],
+  "cases": [
+    {
+      "id": "needs-counterevidence",
+      "query": "deploypolicy",
+      "required": [
+        {
+          "key": "proposal",
+          "text": "the release is ready."
+        },
+        {
+          "key": "counter",
+          "text": "do not release yet."
+        }
+      ],
+      "relevant": [
+        "proposal",
+        "counter"
+      ],
+      "answerable": true,
+      "project": "demo",
+      "scope": "personal",
+      "as_of": "2026-01-01T12:00:00Z",
+      "labels_complete": true,
+      "lineage": "synthetic-demo"
+    },
+    {
+      "id": "exact-match",
+      "query": "validation stale",
+      "required": [
+        {
+          "key": "counter",
+          "text": "stale derived records"
+        }
+      ],
+      "relevant": [
+        "counter"
+      ],
+      "answerable": true,
+      "project": "demo",
+      "scope": "personal",
+      "as_of": "2026-01-01T12:00:00Z",
+      "labels_complete": true,
+      "lineage": "synthetic-demo"
+    },
+    {
+      "id": "no-evidence",
+      "query": "quasarbudget",
+      "required": [],
+      "relevant": [],
+      "answerable": false,
+      "project": "demo",
+      "scope": "personal",
+      "as_of": "2026-01-01T12:00:00Z",
+      "labels_complete": true,
+      "lineage": "synthetic-demo"
+    }
+  ],
+  "edges": [
+    {
+      "source": "proposal",
+      "target": "counter",
+      "kind": "contradicts",
+      "at": "2026-01-01T12:00:00Z"
+    }
+  ]
+}

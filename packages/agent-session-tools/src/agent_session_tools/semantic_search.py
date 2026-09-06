@@ -12,6 +12,8 @@ The hybrid approach captures both:
 
 import logging
 import sqlite3
+from .context.scope import visibility_sql, ScopeError
+from .context.legacy import session_record
 from dataclasses import dataclass, field
 from typing import Literal
 
@@ -70,7 +72,7 @@ class SearchContext:
     exclude_session_ids: list[str] = field(default_factory=list)
 
 
-from agent_session_tools.query_utils import escape_fts_query  # noqa: E402, F401
+from agent_session_tools.query_utils import build_project_filter, escape_fts_query  # noqa: E402, F401
 
 
 def hybrid_search(
@@ -108,6 +110,8 @@ def hybrid_search(
         try:
             vector_results = _vector_search(conn, query, limit * 3, context)
             logger.debug(f"Vector search returned {len(vector_results)} results")
+        except ScopeError:
+            raise
         except Exception as e:
             logger.warning(f"Vector search failed, using FTS only: {e}")
 
@@ -160,12 +164,15 @@ def _fts_search(
         JOIN messages_fts ON messages_fts.rowid = m.rowid
         WHERE messages_fts MATCH ?
     """
-    params: list = [fts_query]
+    visible, scope_params = visibility_sql(conn, "s.id")
+    base_query += " AND " + visible
+    params: list = [fts_query, *scope_params]
 
     # Apply filters
     if context.project_path:
-        base_query += " AND s.project_path LIKE ?"
-        params.append(f"%{context.project_path}%")
+        project_clause, project_params = build_project_filter(context.project_path)
+        base_query += " AND " + project_clause
+        params.extend(project_params)
 
     if context.source:
         base_query += " AND s.source = ?"
@@ -214,7 +221,8 @@ def _vector_search(
     if not EMBEDDINGS_AVAILABLE:
         return []
 
-    # Generate query embedding
+    visible, scope_params = visibility_sql(conn, "s.id")
+    # Generate query embedding after resolving permitted context.
     query_embedding = generate_embedding(query)
 
     # Build query for embeddings with joins
@@ -233,12 +241,14 @@ def _vector_search(
         JOIN sessions s ON m.session_id = s.id
         WHERE 1=1
     """
-    params: list = []
+    base_query += " AND " + visible
+    params: list = list(scope_params)
 
     # Apply filters
     if context.project_path:
-        base_query += " AND s.project_path LIKE ?"
-        params.append(f"%{context.project_path}%")
+        project_clause, project_params = build_project_filter(context.project_path)
+        base_query += " AND " + project_clause
+        params.extend(project_params)
 
     if context.source:
         base_query += " AND s.source = ?"
@@ -386,9 +396,12 @@ def find_similar_sessions(
         logger.warning("Embeddings not available for similarity search")
         return []
 
-    # Get reference session embedding
+    visible, scope_params = visibility_sql(conn, "s.id")
+    # Scope the reference vector as well as every candidate vector.
     ref_embedding = conn.execute(
-        "SELECT embedding FROM session_embeddings WHERE session_id = ?", (session_id,)
+        "SELECT e.embedding FROM session_embeddings e JOIN sessions s ON e.session_id=s.id "
+        "WHERE s.id = ? AND " + visible,
+        (session_id, *scope_params),
     ).fetchone()
 
     if not ref_embedding:
@@ -398,10 +411,8 @@ def find_similar_sessions(
     ref_embedding = ref_embedding[0]
 
     # Get reference session's project
-    ref_session = conn.execute(
-        "SELECT project_path FROM sessions WHERE id = ?", (session_id,)
-    ).fetchone()
-    ref_project = ref_session[0] if ref_session else None
+    ref_session = session_record(conn, session_id)
+    ref_project = ref_session["project_path"] if ref_session else None
 
     # Find similar sessions
     query = """
@@ -410,7 +421,8 @@ def find_similar_sessions(
         JOIN sessions s ON e.session_id = s.id
         WHERE s.id != ?
     """
-    params: list = [session_id]
+    query += " AND " + visible
+    params: list = [session_id, *scope_params]
 
     if exclude_same_project and ref_project:
         query += " AND s.project_path != ?"

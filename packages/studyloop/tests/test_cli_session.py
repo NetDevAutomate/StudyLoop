@@ -17,44 +17,10 @@ from click.testing import CliRunner
 def session_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Set up temp DB + temp session dir for CLI tests."""
     db_path = tmp_path / "test.db"
-    conn = sqlite3.connect(str(db_path))
-    conn.execute("PRAGMA journal_mode=WAL")
-    # Minimal schema for study_sessions + parked_topics
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS sessions (
-            id TEXT PRIMARY KEY, source TEXT, created_at TEXT, updated_at TEXT
-        )
-    """)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS study_sessions (
-            id TEXT PRIMARY KEY, session_id TEXT, topic TEXT,
-            energy_level TEXT, started_at TEXT, ended_at TEXT,
-            duration_minutes INTEGER, pomodoro_cycles INTEGER DEFAULT 0, notes TEXT,
-            persona_hash TEXT, win_count INTEGER, struggle_count INTEGER,
-            topic_slug TEXT
-        )
-    """)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS parked_topics (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            study_session_id TEXT, session_id TEXT, topic_tag TEXT,
-            question TEXT NOT NULL, context TEXT,
-            status TEXT NOT NULL DEFAULT 'pending',
-            scheduled_for TEXT, resolved_at TEXT,
-            parked_at TEXT NOT NULL DEFAULT (datetime('now')),
-            created_by TEXT DEFAULT 'agent',
-            source TEXT NOT NULL DEFAULT 'parked',
-            tech_area TEXT,
-            priority INTEGER
-        )
-    """)
-    # Mark schema as fully migrated so _connect() doesn't try to run
-    # agent-session-tools migrations against this minimal test schema.
-    from agent_session_tools.migrations import CURRENT_VERSION
+    from agent_session_tools.context import records
 
-    conn.execute(f"PRAGMA user_version = {CURRENT_VERSION}")
-    conn.commit()
-    conn.close()
+    records.connect(db_path).close()
+    monkeypatch.setenv("STUDYLOOP_DB", str(db_path))
 
     # Patch DB path for history, parking, and settings modules.
     monkeypatch.setattr("studyloop.settings.get_db_path", lambda: db_path)

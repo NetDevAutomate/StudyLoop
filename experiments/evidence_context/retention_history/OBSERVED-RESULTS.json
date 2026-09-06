@@ -1,0 +1,35 @@
+{
+  "checks": {
+    "actual_native_import": true,
+    "local_capture_fact": true,
+    "offer_creates_no_contribution": true,
+    "received_contribution_names_peer": true,
+    "received_row_is_not_local_capture": true,
+    "local_history_not_in_transfer": true,
+    "retry_is_idempotent": true,
+    "changed_version_has_unknown_history": true,
+    "version_binding_changes": true,
+    "recapture_is_additional_fact": true,
+    "facts_never_authorize_retention": true,
+    "upstream_independence_not_inferred": true,
+    "history_contains_no_body_or_path": true,
+    "permanent_forget_overrides_historical_capture": true,
+    "source_gone_history_retained": true
+  },
+  "timing": {
+    "single_local_delivery_ms": 25.47,
+    "limit": "One fictional local run; no network, throughput or engine comparison."
+  },
+  "limits": "Historical capture/delivery facts only. Withdrawal, regrant, transitive independence, local derivative authorship, managed restore and real network coordinator remain open. No authorization is derived from these labels.",
+  "verification": {
+    "regression": "1760 passed,1 skipped104.30s before final helper guard",
+    "final_focused": "42 passed5.20s including final helper guard and new lesson",
+    "types": "changed production modules:0errors",
+    "installed": "standalone wheel,StudyLoop absent,15checks",
+    "browser": "5sections,all5disclosures opened,viewportfits,screenshot inspected",
+    "schema": 43,
+    "studyloop": "3823passed4skipped704deselected168.88s",
+    "commit_hooks": "50de2d7f full lint/format/secrets/Bandit/workspace src+tests types passed"
+  },
+  "checkpoint": "50de2d7f"
+}

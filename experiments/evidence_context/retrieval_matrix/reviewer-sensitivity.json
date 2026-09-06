@@ -1,0 +1,254 @@
+[
+  {
+    "reviewer": "grok-4.6",
+    "question": "Q1",
+    "arm": "keyword",
+    "covered": 2,
+    "required": 3
+  },
+  {
+    "reviewer": "grok-4.6",
+    "question": "Q1",
+    "arm": "semantic",
+    "covered": 2,
+    "required": 3
+  },
+  {
+    "reviewer": "grok-4.6",
+    "question": "Q1",
+    "arm": "relationships",
+    "covered": 2,
+    "required": 3
+  },
+  {
+    "reviewer": "grok-4.6",
+    "question": "Q1",
+    "arm": "combined",
+    "covered": 2,
+    "required": 3
+  },
+  {
+    "reviewer": "grok-4.6",
+    "question": "Q2",
+    "arm": "keyword",
+    "covered": 3,
+    "required": 3
+  },
+  {
+    "reviewer": "grok-4.6",
+    "question": "Q2",
+    "arm": "semantic",
+    "covered": 3,
+    "required": 3
+  },
+  {
+    "reviewer": "grok-4.6",
+    "question": "Q2",
+    "arm": "relationships",
+    "covered": 2,
+    "required": 3
+  },
+  {
+    "reviewer": "grok-4.6",
+    "question": "Q2",
+    "arm": "combined",
+    "covered": 2,
+    "required": 3
+  },
+  {
+    "reviewer": "grok-4.6",
+    "question": "Q3",
+    "arm": "keyword",
+    "covered": 1,
+    "required": 3
+  },
+  {
+    "reviewer": "grok-4.6",
+    "question": "Q3",
+    "arm": "semantic",
+    "covered": 0,
+    "required": 3
+  },
+  {
+    "reviewer": "grok-4.6",
+    "question": "Q3",
+    "arm": "relationships",
+    "covered": 1,
+    "required": 3
+  },
+  {
+    "reviewer": "grok-4.6",
+    "question": "Q3",
+    "arm": "combined",
+    "covered": 1,
+    "required": 3
+  },
+  {
+    "reviewer": "claude-fable-5-1",
+    "question": "Q1",
+    "arm": "keyword",
+    "covered": 2,
+    "required": 3
+  },
+  {
+    "reviewer": "claude-fable-5-1",
+    "question": "Q1",
+    "arm": "semantic",
+    "covered": 2,
+    "required": 3
+  },
+  {
+    "reviewer": "claude-fable-5-1",
+    "question": "Q1",
+    "arm": "relationships",
+    "covered": 2,
+    "required": 3
+  },
+  {
+    "reviewer": "claude-fable-5-1",
+    "question": "Q1",
+    "arm": "combined",
+    "covered": 2,
+    "required": 3
+  },
+  {
+    "reviewer": "claude-fable-5-1",
+    "question": "Q2",
+    "arm": "keyword",
+    "covered": 3,
+    "required": 3
+  },
+  {
+    "reviewer": "claude-fable-5-1",
+    "question": "Q2",
+    "arm": "semantic",
+    "covered": 3,
+    "required": 3
+  },
+  {
+    "reviewer": "claude-fable-5-1",
+    "question": "Q2",
+    "arm": "relationships",
+    "covered": 2,
+    "required": 3
+  },
+  {
+    "reviewer": "claude-fable-5-1",
+    "question": "Q2",
+    "arm": "combined",
+    "covered": 2,
+    "required": 3
+  },
+  {
+    "reviewer": "claude-fable-5-1",
+    "question": "Q3",
+    "arm": "keyword",
+    "covered": 1,
+    "required": 3
+  },
+  {
+    "reviewer": "claude-fable-5-1",
+    "question": "Q3",
+    "arm": "semantic",
+    "covered": 0,
+    "required": 3
+  },
+  {
+    "reviewer": "claude-fable-5-1",
+    "question": "Q3",
+    "arm": "relationships",
+    "covered": 1,
+    "required": 3
+  },
+  {
+    "reviewer": "claude-fable-5-1",
+    "question": "Q3",
+    "arm": "combined",
+    "covered": 1,
+    "required": 3
+  },
+  {
+    "reviewer": "qwen3-coder",
+    "question": "Q1",
+    "arm": "keyword",
+    "covered": 1,
+    "required": 2
+  },
+  {
+    "reviewer": "qwen3-coder",
+    "question": "Q1",
+    "arm": "semantic",
+    "covered": 2,
+    "required": 2
+  },
+  {
+    "reviewer": "qwen3-coder",
+    "question": "Q1",
+    "arm": "relationships",
+    "covered": 1,
+    "required": 2
+  },
+  {
+    "reviewer": "qwen3-coder",
+    "question": "Q1",
+    "arm": "combined",
+    "covered": 1,
+    "required": 2
+  },
+  {
+    "reviewer": "qwen3-coder",
+    "question": "Q2",
+    "arm": "keyword",
+    "covered": 1,
+    "required": 2
+  },
+  {
+    "reviewer": "qwen3-coder",
+    "question": "Q2",
+    "arm": "semantic",
+    "covered": 1,
+    "required": 2
+  },
+  {
+    "reviewer": "qwen3-coder",
+    "question": "Q2",
+    "arm": "relationships",
+    "covered": 1,
+    "required": 2
+  },
+  {
+    "reviewer": "qwen3-coder",
+    "question": "Q2",
+    "arm": "combined",
+    "covered": 1,
+    "required": 2
+  },
+  {
+    "reviewer": "qwen3-coder",
+    "question": "Q3",
+    "arm": "keyword",
+    "covered": 1,
+    "required": 3
+  },
+  {
+    "reviewer": "qwen3-coder",
+    "question": "Q3",
+    "arm": "semantic",
+    "covered": 0,
+    "required": 3
+  },
+  {
+    "reviewer": "qwen3-coder",
+    "question": "Q3",
+    "arm": "relationships",
+    "covered": 1,
+    "required": 3
+  },
+  {
+    "reviewer": "qwen3-coder",
+    "question": "Q3",
+    "arm": "combined",
+    "covered": 1,
+    "required": 3
+  }
+]

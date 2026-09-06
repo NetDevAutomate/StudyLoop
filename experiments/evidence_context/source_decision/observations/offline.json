@@ -1,0 +1,4659 @@
+[
+  {
+    "case": "C01",
+    "source": {
+      "id": "S1",
+      "kind": "artifact",
+      "text": "[observed]\nrevision: r7\nworkload: six writers\nenvironment: fixture-east\nmetric: restart correctness\nwinner: B\n[/observed]"
+    },
+    "target": {
+      "revision": "r7",
+      "workload": "six writers",
+      "environment": "fixture-east",
+      "metric": "restart correctness"
+    },
+    "proposal": {
+      "revision": {
+        "value": null,
+        "quote": null
+      },
+      "workload": {
+        "value": "six writers",
+        "quote": "workload: six writers"
+      },
+      "environment": {
+        "value": "fixture-east",
+        "quote": "environment: fixture-east"
+      },
+      "metric": {
+        "value": "restart correctness",
+        "quote": "metric: restart correctness"
+      },
+      "winner": {
+        "value": "B",
+        "quote": "winner: B"
+      }
+    },
+    "expected": "B",
+    "outputs": {
+      "checked_only": {
+        "snapshot_id": "adb93b618fe4aa9579c4bb9c81e09102e419317b538ec1392e1c471b594b55b9",
+        "policy_snapshot_id": "c94dd040ed95deda2d4dc07087349eaeceb3e097075a8b10148f9b58fbd5100e",
+        "mode": "checked_only",
+        "release_kind": "policy_rendered",
+        "decision": {
+          "sufficiency": "insufficient",
+          "recommendation": "none",
+          "reason_code": "no_applicable_observation",
+          "basis_ids": [
+            "S1"
+          ],
+          "explanation": "No applicable check establishes a choice under this decision's requirements.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r7, workload=six writers, environment=fixture-east, metric=restart correctness",
+          "next_check": "Re-extract revision from the original source and verify its exact span."
+        },
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "artifact",
+            "applicability": "unknown",
+            "reason": "Missing scope: revision; do not assume a match."
+          }
+        ],
+        "facts": [
+          {
+            "field": "source_kind",
+            "value": "artifact",
+            "basis": [
+              {
+                "origin": "source_metadata",
+                "version": "0829321e980d465f87c1f15c666b85364df5b3daaa10533baa692c0227d58eed",
+                "field": "kind",
+                "value": "artifact"
+              }
+            ]
+          },
+          {
+            "field": "revision",
+            "value": null,
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "0829321e980d465f87c1f15c666b85364df5b3daaa10533baa692c0227d58eed",
+                "source_id": "S1",
+                "start": 11,
+                "end": 23,
+                "quote": "revision: r7"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "revision",
+                "value": "r7"
+              }
+            ]
+          },
+          {
+            "field": "workload",
+            "value": "six writers",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "0829321e980d465f87c1f15c666b85364df5b3daaa10533baa692c0227d58eed",
+                "source_id": "S1",
+                "start": 24,
+                "end": 45,
+                "quote": "workload: six writers"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "workload",
+                "value": "six writers"
+              }
+            ]
+          },
+          {
+            "field": "environment",
+            "value": "fixture-east",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "0829321e980d465f87c1f15c666b85364df5b3daaa10533baa692c0227d58eed",
+                "source_id": "S1",
+                "start": 46,
+                "end": 71,
+                "quote": "environment: fixture-east"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "environment",
+                "value": "fixture-east"
+              }
+            ]
+          },
+          {
+            "field": "metric",
+            "value": "restart correctness",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "0829321e980d465f87c1f15c666b85364df5b3daaa10533baa692c0227d58eed",
+                "source_id": "S1",
+                "start": 72,
+                "end": 99,
+                "quote": "metric: restart correctness"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "metric",
+                "value": "restart correctness"
+              }
+            ]
+          },
+          {
+            "field": "winner",
+            "value": "B",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "0829321e980d465f87c1f15c666b85364df5b3daaa10533baa692c0227d58eed",
+                "source_id": "S1",
+                "start": 100,
+                "end": 109,
+                "quote": "winner: B"
+              }
+            ]
+          }
+        ],
+        "issues": [
+          {
+            "code": "unaccepted_candidate_revision",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "0829321e980d465f87c1f15c666b85364df5b3daaa10533baa692c0227d58eed",
+                "source_id": "S1",
+                "start": 11,
+                "end": 23,
+                "quote": "revision: r7"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "revision",
+                "value": "r7"
+              }
+            ],
+            "next_check": "Re-extract revision from the original source and verify its exact span."
+          }
+        ],
+        "candidate_checks": {
+          "revision": {
+            "value": null,
+            "quote": null,
+            "status": "unknown",
+            "reason": "extractor_omitted_present_field"
+          },
+          "workload": {
+            "value": "six writers",
+            "quote": "workload: six writers",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "environment": {
+            "value": "fixture-east",
+            "quote": "environment: fixture-east",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "metric": {
+            "value": "restart correctness",
+            "quote": "metric: restart correctness",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "winner": {
+            "value": "B",
+            "quote": "winner: B",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          }
+        },
+        "derivation": "matched_candidate_fields_only",
+        "source_authenticity": "not_verified",
+        "model_prose": "never_released"
+      },
+      "source_adapter": {
+        "snapshot_id": "adb93b618fe4aa9579c4bb9c81e09102e419317b538ec1392e1c471b594b55b9",
+        "policy_snapshot_id": "f8a9ae73535b750d752351accf2b859fb2bcd0a4fa384118f300c0fd69b8efa6",
+        "mode": "source_adapter",
+        "release_kind": "policy_rendered",
+        "decision": {
+          "sufficiency": "supported",
+          "recommendation": "B",
+          "reason_code": "applicable_observation",
+          "basis_ids": [
+            "S1"
+          ],
+          "explanation": "Applicable fixture checks support B for the stated target.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r7, workload=six writers, environment=fixture-east, metric=restart correctness",
+          "next_check": "Reproduce independently before applying this synthetic finding to a real system."
+        },
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "artifact",
+            "applicability": "applicable",
+            "reason": "Revision, workload, environment and metric match the target."
+          }
+        ],
+        "facts": [
+          {
+            "field": "source_kind",
+            "value": "artifact",
+            "basis": [
+              {
+                "origin": "source_metadata",
+                "version": "0829321e980d465f87c1f15c666b85364df5b3daaa10533baa692c0227d58eed",
+                "field": "kind",
+                "value": "artifact"
+              }
+            ]
+          },
+          {
+            "field": "revision",
+            "value": "r7",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "0829321e980d465f87c1f15c666b85364df5b3daaa10533baa692c0227d58eed",
+                "source_id": "S1",
+                "start": 11,
+                "end": 23,
+                "quote": "revision: r7"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "revision",
+                "value": "r7"
+              }
+            ]
+          },
+          {
+            "field": "workload",
+            "value": "six writers",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "0829321e980d465f87c1f15c666b85364df5b3daaa10533baa692c0227d58eed",
+                "source_id": "S1",
+                "start": 24,
+                "end": 45,
+                "quote": "workload: six writers"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "workload",
+                "value": "six writers"
+              }
+            ]
+          },
+          {
+            "field": "environment",
+            "value": "fixture-east",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "0829321e980d465f87c1f15c666b85364df5b3daaa10533baa692c0227d58eed",
+                "source_id": "S1",
+                "start": 46,
+                "end": 71,
+                "quote": "environment: fixture-east"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "environment",
+                "value": "fixture-east"
+              }
+            ]
+          },
+          {
+            "field": "metric",
+            "value": "restart correctness",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "0829321e980d465f87c1f15c666b85364df5b3daaa10533baa692c0227d58eed",
+                "source_id": "S1",
+                "start": 72,
+                "end": 99,
+                "quote": "metric: restart correctness"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "metric",
+                "value": "restart correctness"
+              }
+            ]
+          },
+          {
+            "field": "winner",
+            "value": "B",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "0829321e980d465f87c1f15c666b85364df5b3daaa10533baa692c0227d58eed",
+                "source_id": "S1",
+                "start": 100,
+                "end": 109,
+                "quote": "winner: B"
+              }
+            ]
+          }
+        ],
+        "issues": [],
+        "candidate_checks": {
+          "revision": {
+            "value": null,
+            "quote": null,
+            "status": "unknown",
+            "reason": "extractor_omitted_present_field"
+          },
+          "workload": {
+            "value": "six writers",
+            "quote": "workload: six writers",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "environment": {
+            "value": "fixture-east",
+            "quote": "environment: fixture-east",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "metric": {
+            "value": "restart correctness",
+            "quote": "metric: restart correctness",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "winner": {
+            "value": "B",
+            "quote": "winner: B",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          }
+        },
+        "derivation": "original_source_reparsed_explicitly",
+        "source_authenticity": "not_verified",
+        "model_prose": "never_released"
+      }
+    }
+  },
+  {
+    "case": "C02",
+    "source": {
+      "id": "S1",
+      "kind": "artifact",
+      "text": "[observed]\nrevision: r7\nworkload: six writers\nenvironment: fixture-west\nmetric: restart correctness\nwinner: A\n[/observed]"
+    },
+    "target": {
+      "revision": "r7",
+      "workload": "six writers",
+      "environment": "fixture-east",
+      "metric": "restart correctness"
+    },
+    "proposal": {
+      "revision": {
+        "value": "r7",
+        "quote": "revision: r7"
+      },
+      "workload": {
+        "value": "six writers",
+        "quote": "workload: six writers"
+      },
+      "environment": {
+        "value": "fixture-west",
+        "quote": "environment: fixture-west"
+      },
+      "metric": {
+        "value": "restart correctness",
+        "quote": "metric: restart correctness"
+      },
+      "winner": {
+        "value": "A",
+        "quote": "winner: A"
+      }
+    },
+    "expected": "none",
+    "outputs": {
+      "checked_only": {
+        "snapshot_id": "de880b163c3d7a8a8ad943ebb1db2b3ffc89cf9792615f0c9e85203d5c9a7557",
+        "policy_snapshot_id": "73ed1c6af7fb70641d606d491e8a61d34e60d0c6ce1a10854556ed9de8c12fdc",
+        "mode": "checked_only",
+        "release_kind": "policy_rendered",
+        "decision": {
+          "sufficiency": "insufficient",
+          "recommendation": "none",
+          "reason_code": "no_applicable_observation",
+          "basis_ids": [
+            "S1"
+          ],
+          "explanation": "No applicable check establishes a choice under this decision's requirements.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r7, workload=six writers, environment=fixture-east, metric=restart correctness",
+          "next_check": "Run the check with environment=fixture-east; retain the old result separately."
+        },
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "artifact",
+            "applicability": "inapplicable",
+            "reason": "environment: tested fixture-west, needed fixture-east"
+          }
+        ],
+        "facts": [
+          {
+            "field": "source_kind",
+            "value": "artifact",
+            "basis": [
+              {
+                "origin": "source_metadata",
+                "version": "5524daf34692355c0b109d77055de0f4f1fd361fc3190b4843c79cb3cec0833e",
+                "field": "kind",
+                "value": "artifact"
+              }
+            ]
+          },
+          {
+            "field": "revision",
+            "value": "r7",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "5524daf34692355c0b109d77055de0f4f1fd361fc3190b4843c79cb3cec0833e",
+                "source_id": "S1",
+                "start": 11,
+                "end": 23,
+                "quote": "revision: r7"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "revision",
+                "value": "r7"
+              }
+            ]
+          },
+          {
+            "field": "workload",
+            "value": "six writers",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "5524daf34692355c0b109d77055de0f4f1fd361fc3190b4843c79cb3cec0833e",
+                "source_id": "S1",
+                "start": 24,
+                "end": 45,
+                "quote": "workload: six writers"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "workload",
+                "value": "six writers"
+              }
+            ]
+          },
+          {
+            "field": "environment",
+            "value": "fixture-west",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "5524daf34692355c0b109d77055de0f4f1fd361fc3190b4843c79cb3cec0833e",
+                "source_id": "S1",
+                "start": 46,
+                "end": 71,
+                "quote": "environment: fixture-west"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "environment",
+                "value": "fixture-east"
+              }
+            ]
+          },
+          {
+            "field": "metric",
+            "value": "restart correctness",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "5524daf34692355c0b109d77055de0f4f1fd361fc3190b4843c79cb3cec0833e",
+                "source_id": "S1",
+                "start": 72,
+                "end": 99,
+                "quote": "metric: restart correctness"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "metric",
+                "value": "restart correctness"
+              }
+            ]
+          },
+          {
+            "field": "winner",
+            "value": "A",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "5524daf34692355c0b109d77055de0f4f1fd361fc3190b4843c79cb3cec0833e",
+                "source_id": "S1",
+                "start": 100,
+                "end": 109,
+                "quote": "winner: A"
+              }
+            ]
+          }
+        ],
+        "issues": [
+          {
+            "code": "mismatching_environment",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "5524daf34692355c0b109d77055de0f4f1fd361fc3190b4843c79cb3cec0833e",
+                "source_id": "S1",
+                "start": 46,
+                "end": 71,
+                "quote": "environment: fixture-west"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "environment",
+                "value": "fixture-east"
+              }
+            ],
+            "next_check": "Run the check with environment=fixture-east; retain the old result separately."
+          }
+        ],
+        "candidate_checks": {
+          "revision": {
+            "value": "r7",
+            "quote": "revision: r7",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "workload": {
+            "value": "six writers",
+            "quote": "workload: six writers",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "environment": {
+            "value": "fixture-west",
+            "quote": "environment: fixture-west",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "metric": {
+            "value": "restart correctness",
+            "quote": "metric: restart correctness",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "winner": {
+            "value": "A",
+            "quote": "winner: A",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          }
+        },
+        "derivation": "matched_candidate_fields_only",
+        "source_authenticity": "not_verified",
+        "model_prose": "never_released"
+      },
+      "source_adapter": {
+        "snapshot_id": "de880b163c3d7a8a8ad943ebb1db2b3ffc89cf9792615f0c9e85203d5c9a7557",
+        "policy_snapshot_id": "73ed1c6af7fb70641d606d491e8a61d34e60d0c6ce1a10854556ed9de8c12fdc",
+        "mode": "source_adapter",
+        "release_kind": "policy_rendered",
+        "decision": {
+          "sufficiency": "insufficient",
+          "recommendation": "none",
+          "reason_code": "no_applicable_observation",
+          "basis_ids": [
+            "S1"
+          ],
+          "explanation": "No applicable check establishes a choice under this decision's requirements.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r7, workload=six writers, environment=fixture-east, metric=restart correctness",
+          "next_check": "Run the check with environment=fixture-east; retain the old result separately."
+        },
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "artifact",
+            "applicability": "inapplicable",
+            "reason": "environment: tested fixture-west, needed fixture-east"
+          }
+        ],
+        "facts": [
+          {
+            "field": "source_kind",
+            "value": "artifact",
+            "basis": [
+              {
+                "origin": "source_metadata",
+                "version": "5524daf34692355c0b109d77055de0f4f1fd361fc3190b4843c79cb3cec0833e",
+                "field": "kind",
+                "value": "artifact"
+              }
+            ]
+          },
+          {
+            "field": "revision",
+            "value": "r7",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "5524daf34692355c0b109d77055de0f4f1fd361fc3190b4843c79cb3cec0833e",
+                "source_id": "S1",
+                "start": 11,
+                "end": 23,
+                "quote": "revision: r7"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "revision",
+                "value": "r7"
+              }
+            ]
+          },
+          {
+            "field": "workload",
+            "value": "six writers",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "5524daf34692355c0b109d77055de0f4f1fd361fc3190b4843c79cb3cec0833e",
+                "source_id": "S1",
+                "start": 24,
+                "end": 45,
+                "quote": "workload: six writers"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "workload",
+                "value": "six writers"
+              }
+            ]
+          },
+          {
+            "field": "environment",
+            "value": "fixture-west",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "5524daf34692355c0b109d77055de0f4f1fd361fc3190b4843c79cb3cec0833e",
+                "source_id": "S1",
+                "start": 46,
+                "end": 71,
+                "quote": "environment: fixture-west"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "environment",
+                "value": "fixture-east"
+              }
+            ]
+          },
+          {
+            "field": "metric",
+            "value": "restart correctness",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "5524daf34692355c0b109d77055de0f4f1fd361fc3190b4843c79cb3cec0833e",
+                "source_id": "S1",
+                "start": 72,
+                "end": 99,
+                "quote": "metric: restart correctness"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "metric",
+                "value": "restart correctness"
+              }
+            ]
+          },
+          {
+            "field": "winner",
+            "value": "A",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "5524daf34692355c0b109d77055de0f4f1fd361fc3190b4843c79cb3cec0833e",
+                "source_id": "S1",
+                "start": 100,
+                "end": 109,
+                "quote": "winner: A"
+              }
+            ]
+          }
+        ],
+        "issues": [
+          {
+            "code": "mismatching_environment",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "5524daf34692355c0b109d77055de0f4f1fd361fc3190b4843c79cb3cec0833e",
+                "source_id": "S1",
+                "start": 46,
+                "end": 71,
+                "quote": "environment: fixture-west"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "environment",
+                "value": "fixture-east"
+              }
+            ],
+            "next_check": "Run the check with environment=fixture-east; retain the old result separately."
+          }
+        ],
+        "candidate_checks": {
+          "revision": {
+            "value": "r7",
+            "quote": "revision: r7",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "workload": {
+            "value": "six writers",
+            "quote": "workload: six writers",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "environment": {
+            "value": "fixture-west",
+            "quote": "environment: fixture-west",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "metric": {
+            "value": "restart correctness",
+            "quote": "metric: restart correctness",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "winner": {
+            "value": "A",
+            "quote": "winner: A",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          }
+        },
+        "derivation": "original_source_reparsed_explicitly",
+        "source_authenticity": "not_verified",
+        "model_prose": "never_released"
+      }
+    }
+  },
+  {
+    "case": "C03",
+    "source": {
+      "id": "S1",
+      "kind": "report",
+      "text": "[observed]\nrevision: r2\nworkload: eight writers\nenvironment: fixture-local\nmetric: reopen correctness\nwinner: B\n[/observed]\nThis is an agent report, not captured test output."
+    },
+    "target": {
+      "revision": "r2",
+      "workload": "eight writers",
+      "environment": "fixture-local",
+      "metric": "reopen correctness"
+    },
+    "proposal": {
+      "revision": {
+        "value": "r2",
+        "quote": "revision: r2"
+      },
+      "workload": {
+        "value": "eight writers",
+        "quote": "workload: eight writers"
+      },
+      "environment": {
+        "value": "fixture-local",
+        "quote": "environment: fixture-local"
+      },
+      "metric": {
+        "value": "reopen correctness",
+        "quote": "metric: reopen correctness"
+      },
+      "winner": {
+        "value": "B",
+        "quote": "winner: B"
+      }
+    },
+    "expected": "none",
+    "outputs": {
+      "checked_only": {
+        "snapshot_id": "9a1dd37fc25c25103edf900b682255ae7ca4846c6917c443e523c1baff2e1a83",
+        "policy_snapshot_id": "455bc37d0f1fe3731c524ab36a33b732babf95b2442d8f22876f136f6795ee4e",
+        "mode": "checked_only",
+        "release_kind": "policy_rendered",
+        "decision": {
+          "sufficiency": "insufficient",
+          "recommendation": "none",
+          "reason_code": "no_applicable_observation",
+          "basis_ids": [
+            "S1"
+          ],
+          "explanation": "No applicable check establishes a choice under this decision's requirements.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r2, workload=eight writers, environment=fixture-local, metric=reopen correctness",
+          "next_check": "Obtain an observed artifact; a report is not a test result."
+        },
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "An agent report is a claim, not an observed check."
+          }
+        ],
+        "facts": [
+          {
+            "field": "source_kind",
+            "value": "report",
+            "basis": [
+              {
+                "origin": "source_metadata",
+                "version": "69360ff375b12116d67927258b393f63cf71d3049bf94e3fff53d7e26629f885",
+                "field": "kind",
+                "value": "report"
+              }
+            ]
+          },
+          {
+            "field": "revision",
+            "value": "r2",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "69360ff375b12116d67927258b393f63cf71d3049bf94e3fff53d7e26629f885",
+                "source_id": "S1",
+                "start": 11,
+                "end": 23,
+                "quote": "revision: r2"
+              },
+              {
+                "origin": "target",
+                "version": "8269a7a9ec51ac746229e5e0f08191568acb9afda49c166fc485e149e7d1002e",
+                "field": "revision",
+                "value": "r2"
+              }
+            ]
+          },
+          {
+            "field": "workload",
+            "value": "eight writers",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "69360ff375b12116d67927258b393f63cf71d3049bf94e3fff53d7e26629f885",
+                "source_id": "S1",
+                "start": 24,
+                "end": 47,
+                "quote": "workload: eight writers"
+              },
+              {
+                "origin": "target",
+                "version": "8269a7a9ec51ac746229e5e0f08191568acb9afda49c166fc485e149e7d1002e",
+                "field": "workload",
+                "value": "eight writers"
+              }
+            ]
+          },
+          {
+            "field": "environment",
+            "value": "fixture-local",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "69360ff375b12116d67927258b393f63cf71d3049bf94e3fff53d7e26629f885",
+                "source_id": "S1",
+                "start": 48,
+                "end": 74,
+                "quote": "environment: fixture-local"
+              },
+              {
+                "origin": "target",
+                "version": "8269a7a9ec51ac746229e5e0f08191568acb9afda49c166fc485e149e7d1002e",
+                "field": "environment",
+                "value": "fixture-local"
+              }
+            ]
+          },
+          {
+            "field": "metric",
+            "value": "reopen correctness",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "69360ff375b12116d67927258b393f63cf71d3049bf94e3fff53d7e26629f885",
+                "source_id": "S1",
+                "start": 75,
+                "end": 101,
+                "quote": "metric: reopen correctness"
+              },
+              {
+                "origin": "target",
+                "version": "8269a7a9ec51ac746229e5e0f08191568acb9afda49c166fc485e149e7d1002e",
+                "field": "metric",
+                "value": "reopen correctness"
+              }
+            ]
+          },
+          {
+            "field": "winner",
+            "value": "B",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "69360ff375b12116d67927258b393f63cf71d3049bf94e3fff53d7e26629f885",
+                "source_id": "S1",
+                "start": 102,
+                "end": 111,
+                "quote": "winner: B"
+              }
+            ]
+          }
+        ],
+        "issues": [
+          {
+            "code": "not_observed_artifact",
+            "basis": [
+              {
+                "origin": "source_metadata",
+                "version": "69360ff375b12116d67927258b393f63cf71d3049bf94e3fff53d7e26629f885",
+                "field": "kind",
+                "value": "report"
+              }
+            ],
+            "next_check": "Obtain an observed artifact; a report is not a test result."
+          }
+        ],
+        "candidate_checks": {
+          "revision": {
+            "value": "r2",
+            "quote": "revision: r2",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "workload": {
+            "value": "eight writers",
+            "quote": "workload: eight writers",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "environment": {
+            "value": "fixture-local",
+            "quote": "environment: fixture-local",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "metric": {
+            "value": "reopen correctness",
+            "quote": "metric: reopen correctness",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "winner": {
+            "value": "B",
+            "quote": "winner: B",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          }
+        },
+        "derivation": "matched_candidate_fields_only",
+        "source_authenticity": "not_verified",
+        "model_prose": "never_released"
+      },
+      "source_adapter": {
+        "snapshot_id": "9a1dd37fc25c25103edf900b682255ae7ca4846c6917c443e523c1baff2e1a83",
+        "policy_snapshot_id": "455bc37d0f1fe3731c524ab36a33b732babf95b2442d8f22876f136f6795ee4e",
+        "mode": "source_adapter",
+        "release_kind": "policy_rendered",
+        "decision": {
+          "sufficiency": "insufficient",
+          "recommendation": "none",
+          "reason_code": "no_applicable_observation",
+          "basis_ids": [
+            "S1"
+          ],
+          "explanation": "No applicable check establishes a choice under this decision's requirements.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r2, workload=eight writers, environment=fixture-local, metric=reopen correctness",
+          "next_check": "Obtain an observed artifact; a report is not a test result."
+        },
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "An agent report is a claim, not an observed check."
+          }
+        ],
+        "facts": [
+          {
+            "field": "source_kind",
+            "value": "report",
+            "basis": [
+              {
+                "origin": "source_metadata",
+                "version": "69360ff375b12116d67927258b393f63cf71d3049bf94e3fff53d7e26629f885",
+                "field": "kind",
+                "value": "report"
+              }
+            ]
+          },
+          {
+            "field": "revision",
+            "value": "r2",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "69360ff375b12116d67927258b393f63cf71d3049bf94e3fff53d7e26629f885",
+                "source_id": "S1",
+                "start": 11,
+                "end": 23,
+                "quote": "revision: r2"
+              },
+              {
+                "origin": "target",
+                "version": "8269a7a9ec51ac746229e5e0f08191568acb9afda49c166fc485e149e7d1002e",
+                "field": "revision",
+                "value": "r2"
+              }
+            ]
+          },
+          {
+            "field": "workload",
+            "value": "eight writers",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "69360ff375b12116d67927258b393f63cf71d3049bf94e3fff53d7e26629f885",
+                "source_id": "S1",
+                "start": 24,
+                "end": 47,
+                "quote": "workload: eight writers"
+              },
+              {
+                "origin": "target",
+                "version": "8269a7a9ec51ac746229e5e0f08191568acb9afda49c166fc485e149e7d1002e",
+                "field": "workload",
+                "value": "eight writers"
+              }
+            ]
+          },
+          {
+            "field": "environment",
+            "value": "fixture-local",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "69360ff375b12116d67927258b393f63cf71d3049bf94e3fff53d7e26629f885",
+                "source_id": "S1",
+                "start": 48,
+                "end": 74,
+                "quote": "environment: fixture-local"
+              },
+              {
+                "origin": "target",
+                "version": "8269a7a9ec51ac746229e5e0f08191568acb9afda49c166fc485e149e7d1002e",
+                "field": "environment",
+                "value": "fixture-local"
+              }
+            ]
+          },
+          {
+            "field": "metric",
+            "value": "reopen correctness",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "69360ff375b12116d67927258b393f63cf71d3049bf94e3fff53d7e26629f885",
+                "source_id": "S1",
+                "start": 75,
+                "end": 101,
+                "quote": "metric: reopen correctness"
+              },
+              {
+                "origin": "target",
+                "version": "8269a7a9ec51ac746229e5e0f08191568acb9afda49c166fc485e149e7d1002e",
+                "field": "metric",
+                "value": "reopen correctness"
+              }
+            ]
+          },
+          {
+            "field": "winner",
+            "value": "B",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "69360ff375b12116d67927258b393f63cf71d3049bf94e3fff53d7e26629f885",
+                "source_id": "S1",
+                "start": 102,
+                "end": 111,
+                "quote": "winner: B"
+              }
+            ]
+          }
+        ],
+        "issues": [
+          {
+            "code": "not_observed_artifact",
+            "basis": [
+              {
+                "origin": "source_metadata",
+                "version": "69360ff375b12116d67927258b393f63cf71d3049bf94e3fff53d7e26629f885",
+                "field": "kind",
+                "value": "report"
+              }
+            ],
+            "next_check": "Obtain an observed artifact; a report is not a test result."
+          }
+        ],
+        "candidate_checks": {
+          "revision": {
+            "value": "r2",
+            "quote": "revision: r2",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "workload": {
+            "value": "eight writers",
+            "quote": "workload: eight writers",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "environment": {
+            "value": "fixture-local",
+            "quote": "environment: fixture-local",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "metric": {
+            "value": "reopen correctness",
+            "quote": "metric: reopen correctness",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "winner": {
+            "value": "B",
+            "quote": "winner: B",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          }
+        },
+        "derivation": "original_source_reparsed_explicitly",
+        "source_authenticity": "not_verified",
+        "model_prose": "never_released"
+      }
+    }
+  },
+  {
+    "case": "C04",
+    "source": {
+      "id": "S1",
+      "kind": "artifact",
+      "text": "[observed]\nrevision: r7\nworkload: six writers\nenvironment: fixture-east\nmetric: restart correctness\nwinner: A\n[/observed]"
+    },
+    "target": {
+      "revision": "r7",
+      "workload": "six writers",
+      "environment": "fixture-east",
+      "metric": "restart correctness"
+    },
+    "proposal": {
+      "revision": {
+        "value": "r7",
+        "quote": "revision: r7"
+      },
+      "workload": {
+        "value": "six writers",
+        "quote": "workload: six writers"
+      },
+      "environment": {
+        "value": "fixture-east",
+        "quote": "environment: fixture-east"
+      },
+      "metric": {
+        "value": "restart correctness",
+        "quote": "metric: restart correctness"
+      },
+      "winner": {
+        "value": "A",
+        "quote": "winner: A"
+      }
+    },
+    "expected": "A",
+    "outputs": {
+      "checked_only": {
+        "snapshot_id": "99ec2a14d6d4e9d68fc39c1813a3302f3fc4fafb390e85e843f53de980c37f51",
+        "policy_snapshot_id": "7238a6ed8789a07a7e1079e2f012230315160b9bb70eabf5b5f6b6f395369b1d",
+        "mode": "checked_only",
+        "release_kind": "policy_rendered",
+        "decision": {
+          "sufficiency": "supported",
+          "recommendation": "A",
+          "reason_code": "applicable_observation",
+          "basis_ids": [
+            "S1"
+          ],
+          "explanation": "Applicable fixture checks support A for the stated target.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r7, workload=six writers, environment=fixture-east, metric=restart correctness",
+          "next_check": "Reproduce independently before applying this synthetic finding to a real system."
+        },
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "artifact",
+            "applicability": "applicable",
+            "reason": "Revision, workload, environment and metric match the target."
+          }
+        ],
+        "facts": [
+          {
+            "field": "source_kind",
+            "value": "artifact",
+            "basis": [
+              {
+                "origin": "source_metadata",
+                "version": "60522d092a9733dd021248b2ca1cef494b916576af86a13a9598b93d8a290de8",
+                "field": "kind",
+                "value": "artifact"
+              }
+            ]
+          },
+          {
+            "field": "revision",
+            "value": "r7",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "60522d092a9733dd021248b2ca1cef494b916576af86a13a9598b93d8a290de8",
+                "source_id": "S1",
+                "start": 11,
+                "end": 23,
+                "quote": "revision: r7"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "revision",
+                "value": "r7"
+              }
+            ]
+          },
+          {
+            "field": "workload",
+            "value": "six writers",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "60522d092a9733dd021248b2ca1cef494b916576af86a13a9598b93d8a290de8",
+                "source_id": "S1",
+                "start": 24,
+                "end": 45,
+                "quote": "workload: six writers"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "workload",
+                "value": "six writers"
+              }
+            ]
+          },
+          {
+            "field": "environment",
+            "value": "fixture-east",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "60522d092a9733dd021248b2ca1cef494b916576af86a13a9598b93d8a290de8",
+                "source_id": "S1",
+                "start": 46,
+                "end": 71,
+                "quote": "environment: fixture-east"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "environment",
+                "value": "fixture-east"
+              }
+            ]
+          },
+          {
+            "field": "metric",
+            "value": "restart correctness",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "60522d092a9733dd021248b2ca1cef494b916576af86a13a9598b93d8a290de8",
+                "source_id": "S1",
+                "start": 72,
+                "end": 99,
+                "quote": "metric: restart correctness"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "metric",
+                "value": "restart correctness"
+              }
+            ]
+          },
+          {
+            "field": "winner",
+            "value": "A",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "60522d092a9733dd021248b2ca1cef494b916576af86a13a9598b93d8a290de8",
+                "source_id": "S1",
+                "start": 100,
+                "end": 109,
+                "quote": "winner: A"
+              }
+            ]
+          }
+        ],
+        "issues": [],
+        "candidate_checks": {
+          "revision": {
+            "value": "r7",
+            "quote": "revision: r7",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "workload": {
+            "value": "six writers",
+            "quote": "workload: six writers",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "environment": {
+            "value": "fixture-east",
+            "quote": "environment: fixture-east",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "metric": {
+            "value": "restart correctness",
+            "quote": "metric: restart correctness",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "winner": {
+            "value": "A",
+            "quote": "winner: A",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          }
+        },
+        "derivation": "matched_candidate_fields_only",
+        "source_authenticity": "not_verified",
+        "model_prose": "never_released"
+      },
+      "source_adapter": {
+        "snapshot_id": "99ec2a14d6d4e9d68fc39c1813a3302f3fc4fafb390e85e843f53de980c37f51",
+        "policy_snapshot_id": "7238a6ed8789a07a7e1079e2f012230315160b9bb70eabf5b5f6b6f395369b1d",
+        "mode": "source_adapter",
+        "release_kind": "policy_rendered",
+        "decision": {
+          "sufficiency": "supported",
+          "recommendation": "A",
+          "reason_code": "applicable_observation",
+          "basis_ids": [
+            "S1"
+          ],
+          "explanation": "Applicable fixture checks support A for the stated target.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r7, workload=six writers, environment=fixture-east, metric=restart correctness",
+          "next_check": "Reproduce independently before applying this synthetic finding to a real system."
+        },
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "artifact",
+            "applicability": "applicable",
+            "reason": "Revision, workload, environment and metric match the target."
+          }
+        ],
+        "facts": [
+          {
+            "field": "source_kind",
+            "value": "artifact",
+            "basis": [
+              {
+                "origin": "source_metadata",
+                "version": "60522d092a9733dd021248b2ca1cef494b916576af86a13a9598b93d8a290de8",
+                "field": "kind",
+                "value": "artifact"
+              }
+            ]
+          },
+          {
+            "field": "revision",
+            "value": "r7",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "60522d092a9733dd021248b2ca1cef494b916576af86a13a9598b93d8a290de8",
+                "source_id": "S1",
+                "start": 11,
+                "end": 23,
+                "quote": "revision: r7"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "revision",
+                "value": "r7"
+              }
+            ]
+          },
+          {
+            "field": "workload",
+            "value": "six writers",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "60522d092a9733dd021248b2ca1cef494b916576af86a13a9598b93d8a290de8",
+                "source_id": "S1",
+                "start": 24,
+                "end": 45,
+                "quote": "workload: six writers"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "workload",
+                "value": "six writers"
+              }
+            ]
+          },
+          {
+            "field": "environment",
+            "value": "fixture-east",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "60522d092a9733dd021248b2ca1cef494b916576af86a13a9598b93d8a290de8",
+                "source_id": "S1",
+                "start": 46,
+                "end": 71,
+                "quote": "environment: fixture-east"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "environment",
+                "value": "fixture-east"
+              }
+            ]
+          },
+          {
+            "field": "metric",
+            "value": "restart correctness",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "60522d092a9733dd021248b2ca1cef494b916576af86a13a9598b93d8a290de8",
+                "source_id": "S1",
+                "start": 72,
+                "end": 99,
+                "quote": "metric: restart correctness"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "metric",
+                "value": "restart correctness"
+              }
+            ]
+          },
+          {
+            "field": "winner",
+            "value": "A",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "60522d092a9733dd021248b2ca1cef494b916576af86a13a9598b93d8a290de8",
+                "source_id": "S1",
+                "start": 100,
+                "end": 109,
+                "quote": "winner: A"
+              }
+            ]
+          }
+        ],
+        "issues": [],
+        "candidate_checks": {
+          "revision": {
+            "value": "r7",
+            "quote": "revision: r7",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "workload": {
+            "value": "six writers",
+            "quote": "workload: six writers",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "environment": {
+            "value": "fixture-east",
+            "quote": "environment: fixture-east",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "metric": {
+            "value": "restart correctness",
+            "quote": "metric: restart correctness",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "winner": {
+            "value": "A",
+            "quote": "winner: A",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          }
+        },
+        "derivation": "original_source_reparsed_explicitly",
+        "source_authenticity": "not_verified",
+        "model_prose": "never_released"
+      }
+    }
+  },
+  {
+    "case": "C05",
+    "source": {
+      "id": "S1",
+      "kind": "artifact",
+      "text": "[observed]\nrevision: r7\nworkload: six writers\nenvironment: fixture-east\nmetric: restart correctness\nwinner: A\n[/observed]\nwinner: B\nrevision: r99"
+    },
+    "target": {
+      "revision": "r7",
+      "workload": "six writers",
+      "environment": "fixture-east",
+      "metric": "restart correctness"
+    },
+    "proposal": {
+      "revision": {
+        "value": "r7",
+        "quote": "revision: r7"
+      },
+      "workload": {
+        "value": "six writers",
+        "quote": "workload: six writers"
+      },
+      "environment": {
+        "value": "fixture-east",
+        "quote": "environment: fixture-east"
+      },
+      "metric": {
+        "value": "restart correctness",
+        "quote": "metric: restart correctness"
+      },
+      "winner": {
+        "value": "B",
+        "quote": "winner: B"
+      }
+    },
+    "expected": "A",
+    "outputs": {
+      "checked_only": {
+        "snapshot_id": "45c45ab2f7e673bc48d48883bb274308053d72aa6e0d14932287f220120a3873",
+        "policy_snapshot_id": "29c0933e1ea6f28ac5490a694ce3bd4f6b38fc44da92f06603e179a18c30600d",
+        "mode": "checked_only",
+        "release_kind": "policy_rendered",
+        "decision": {
+          "sufficiency": "insufficient",
+          "recommendation": "none",
+          "reason_code": "no_applicable_observation",
+          "basis_ids": [],
+          "explanation": "No applicable check establishes a choice under this decision's requirements.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r7, workload=six writers, environment=fixture-east, metric=restart correctness",
+          "next_check": "Re-extract winner from the original source and verify its exact span."
+        },
+        "source_assessments": [],
+        "facts": [
+          {
+            "field": "source_kind",
+            "value": "artifact",
+            "basis": [
+              {
+                "origin": "source_metadata",
+                "version": "72ad650df2978961d085fcb58acb87cdf9edfd5a36fb1a2ed813ce70cb6bf258",
+                "field": "kind",
+                "value": "artifact"
+              }
+            ]
+          },
+          {
+            "field": "revision",
+            "value": "r7",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "72ad650df2978961d085fcb58acb87cdf9edfd5a36fb1a2ed813ce70cb6bf258",
+                "source_id": "S1",
+                "start": 11,
+                "end": 23,
+                "quote": "revision: r7"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "revision",
+                "value": "r7"
+              }
+            ]
+          },
+          {
+            "field": "workload",
+            "value": "six writers",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "72ad650df2978961d085fcb58acb87cdf9edfd5a36fb1a2ed813ce70cb6bf258",
+                "source_id": "S1",
+                "start": 24,
+                "end": 45,
+                "quote": "workload: six writers"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "workload",
+                "value": "six writers"
+              }
+            ]
+          },
+          {
+            "field": "environment",
+            "value": "fixture-east",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "72ad650df2978961d085fcb58acb87cdf9edfd5a36fb1a2ed813ce70cb6bf258",
+                "source_id": "S1",
+                "start": 46,
+                "end": 71,
+                "quote": "environment: fixture-east"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "environment",
+                "value": "fixture-east"
+              }
+            ]
+          },
+          {
+            "field": "metric",
+            "value": "restart correctness",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "72ad650df2978961d085fcb58acb87cdf9edfd5a36fb1a2ed813ce70cb6bf258",
+                "source_id": "S1",
+                "start": 72,
+                "end": 99,
+                "quote": "metric: restart correctness"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "metric",
+                "value": "restart correctness"
+              }
+            ]
+          },
+          {
+            "field": "winner",
+            "value": null,
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "72ad650df2978961d085fcb58acb87cdf9edfd5a36fb1a2ed813ce70cb6bf258",
+                "source_id": "S1",
+                "start": 100,
+                "end": 109,
+                "quote": "winner: A"
+              }
+            ]
+          }
+        ],
+        "issues": [
+          {
+            "code": "unaccepted_candidate_winner",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "72ad650df2978961d085fcb58acb87cdf9edfd5a36fb1a2ed813ce70cb6bf258",
+                "source_id": "S1",
+                "start": 100,
+                "end": 109,
+                "quote": "winner: A"
+              }
+            ],
+            "next_check": "Re-extract winner from the original source and verify its exact span."
+          }
+        ],
+        "candidate_checks": {
+          "revision": {
+            "value": "r7",
+            "quote": "revision: r7",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "workload": {
+            "value": "six writers",
+            "quote": "workload: six writers",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "environment": {
+            "value": "fixture-east",
+            "quote": "environment: fixture-east",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "metric": {
+            "value": "restart correctness",
+            "quote": "metric: restart correctness",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "winner": {
+            "value": null,
+            "quote": null,
+            "status": "rejected",
+            "reason": "quote_or_value_not_supported_by_field"
+          }
+        },
+        "derivation": "matched_candidate_fields_only",
+        "source_authenticity": "not_verified",
+        "model_prose": "never_released"
+      },
+      "source_adapter": {
+        "snapshot_id": "45c45ab2f7e673bc48d48883bb274308053d72aa6e0d14932287f220120a3873",
+        "policy_snapshot_id": "7238a6ed8789a07a7e1079e2f012230315160b9bb70eabf5b5f6b6f395369b1d",
+        "mode": "source_adapter",
+        "release_kind": "policy_rendered",
+        "decision": {
+          "sufficiency": "supported",
+          "recommendation": "A",
+          "reason_code": "applicable_observation",
+          "basis_ids": [
+            "S1"
+          ],
+          "explanation": "Applicable fixture checks support A for the stated target.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r7, workload=six writers, environment=fixture-east, metric=restart correctness",
+          "next_check": "Reproduce independently before applying this synthetic finding to a real system."
+        },
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "artifact",
+            "applicability": "applicable",
+            "reason": "Revision, workload, environment and metric match the target."
+          }
+        ],
+        "facts": [
+          {
+            "field": "source_kind",
+            "value": "artifact",
+            "basis": [
+              {
+                "origin": "source_metadata",
+                "version": "72ad650df2978961d085fcb58acb87cdf9edfd5a36fb1a2ed813ce70cb6bf258",
+                "field": "kind",
+                "value": "artifact"
+              }
+            ]
+          },
+          {
+            "field": "revision",
+            "value": "r7",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "72ad650df2978961d085fcb58acb87cdf9edfd5a36fb1a2ed813ce70cb6bf258",
+                "source_id": "S1",
+                "start": 11,
+                "end": 23,
+                "quote": "revision: r7"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "revision",
+                "value": "r7"
+              }
+            ]
+          },
+          {
+            "field": "workload",
+            "value": "six writers",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "72ad650df2978961d085fcb58acb87cdf9edfd5a36fb1a2ed813ce70cb6bf258",
+                "source_id": "S1",
+                "start": 24,
+                "end": 45,
+                "quote": "workload: six writers"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "workload",
+                "value": "six writers"
+              }
+            ]
+          },
+          {
+            "field": "environment",
+            "value": "fixture-east",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "72ad650df2978961d085fcb58acb87cdf9edfd5a36fb1a2ed813ce70cb6bf258",
+                "source_id": "S1",
+                "start": 46,
+                "end": 71,
+                "quote": "environment: fixture-east"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "environment",
+                "value": "fixture-east"
+              }
+            ]
+          },
+          {
+            "field": "metric",
+            "value": "restart correctness",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "72ad650df2978961d085fcb58acb87cdf9edfd5a36fb1a2ed813ce70cb6bf258",
+                "source_id": "S1",
+                "start": 72,
+                "end": 99,
+                "quote": "metric: restart correctness"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "metric",
+                "value": "restart correctness"
+              }
+            ]
+          },
+          {
+            "field": "winner",
+            "value": "A",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "72ad650df2978961d085fcb58acb87cdf9edfd5a36fb1a2ed813ce70cb6bf258",
+                "source_id": "S1",
+                "start": 100,
+                "end": 109,
+                "quote": "winner: A"
+              }
+            ]
+          }
+        ],
+        "issues": [],
+        "candidate_checks": {
+          "revision": {
+            "value": "r7",
+            "quote": "revision: r7",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "workload": {
+            "value": "six writers",
+            "quote": "workload: six writers",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "environment": {
+            "value": "fixture-east",
+            "quote": "environment: fixture-east",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "metric": {
+            "value": "restart correctness",
+            "quote": "metric: restart correctness",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "winner": {
+            "value": null,
+            "quote": null,
+            "status": "rejected",
+            "reason": "quote_or_value_not_supported_by_field"
+          }
+        },
+        "derivation": "original_source_reparsed_explicitly",
+        "source_authenticity": "not_verified",
+        "model_prose": "never_released"
+      }
+    }
+  },
+  {
+    "case": "C06",
+    "source": {
+      "id": "S1",
+      "kind": "artifact",
+      "text": "[observed]\nrevision: r7\nworkload: six writers\nenvironment: fixture-east\nmetric: restart correctness\n[/observed]"
+    },
+    "target": {
+      "revision": "r7",
+      "workload": "six writers",
+      "environment": "fixture-east",
+      "metric": "restart correctness"
+    },
+    "proposal": {
+      "revision": {
+        "value": "r7",
+        "quote": "revision: r7"
+      },
+      "workload": {
+        "value": "six writers",
+        "quote": "workload: six writers"
+      },
+      "environment": {
+        "value": "fixture-east",
+        "quote": "environment: fixture-east"
+      },
+      "metric": {
+        "value": "restart correctness",
+        "quote": "metric: restart correctness"
+      },
+      "winner": {
+        "value": null,
+        "quote": null
+      }
+    },
+    "expected": "none",
+    "outputs": {
+      "checked_only": {
+        "snapshot_id": "c27afd279a7640ad862a17906e28e032077c28fed76696ae2ffeb7973e0f9329",
+        "policy_snapshot_id": "29c0933e1ea6f28ac5490a694ce3bd4f6b38fc44da92f06603e179a18c30600d",
+        "mode": "checked_only",
+        "release_kind": "policy_rendered",
+        "decision": {
+          "sufficiency": "insufficient",
+          "recommendation": "none",
+          "reason_code": "no_applicable_observation",
+          "basis_ids": [],
+          "explanation": "No applicable check establishes a choice under this decision's requirements.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r7, workload=six writers, environment=fixture-east, metric=restart correctness",
+          "next_check": "Record winner in a new observed artifact; do not infer it."
+        },
+        "source_assessments": [],
+        "facts": [
+          {
+            "field": "source_kind",
+            "value": "artifact",
+            "basis": [
+              {
+                "origin": "source_metadata",
+                "version": "e0cf7fc43f70e574ae4c990b7b211fcb114c0743e1fefd852542c517fbdc2b01",
+                "field": "kind",
+                "value": "artifact"
+              }
+            ]
+          },
+          {
+            "field": "revision",
+            "value": "r7",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "e0cf7fc43f70e574ae4c990b7b211fcb114c0743e1fefd852542c517fbdc2b01",
+                "source_id": "S1",
+                "start": 11,
+                "end": 23,
+                "quote": "revision: r7"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "revision",
+                "value": "r7"
+              }
+            ]
+          },
+          {
+            "field": "workload",
+            "value": "six writers",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "e0cf7fc43f70e574ae4c990b7b211fcb114c0743e1fefd852542c517fbdc2b01",
+                "source_id": "S1",
+                "start": 24,
+                "end": 45,
+                "quote": "workload: six writers"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "workload",
+                "value": "six writers"
+              }
+            ]
+          },
+          {
+            "field": "environment",
+            "value": "fixture-east",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "e0cf7fc43f70e574ae4c990b7b211fcb114c0743e1fefd852542c517fbdc2b01",
+                "source_id": "S1",
+                "start": 46,
+                "end": 71,
+                "quote": "environment: fixture-east"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "environment",
+                "value": "fixture-east"
+              }
+            ]
+          },
+          {
+            "field": "metric",
+            "value": "restart correctness",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "e0cf7fc43f70e574ae4c990b7b211fcb114c0743e1fefd852542c517fbdc2b01",
+                "source_id": "S1",
+                "start": 72,
+                "end": 99,
+                "quote": "metric: restart correctness"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "metric",
+                "value": "restart correctness"
+              }
+            ]
+          },
+          {
+            "field": "winner",
+            "value": null,
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "e0cf7fc43f70e574ae4c990b7b211fcb114c0743e1fefd852542c517fbdc2b01",
+                "source_id": "S1",
+                "start": 0,
+                "end": 111,
+                "quote": "[observed]\nrevision: r7\nworkload: six writers\nenvironment: fixture-east\nmetric: restart correctness\n[/observed]"
+              }
+            ]
+          }
+        ],
+        "issues": [
+          {
+            "code": "missing_winner",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "e0cf7fc43f70e574ae4c990b7b211fcb114c0743e1fefd852542c517fbdc2b01",
+                "source_id": "S1",
+                "start": 0,
+                "end": 111,
+                "quote": "[observed]\nrevision: r7\nworkload: six writers\nenvironment: fixture-east\nmetric: restart correctness\n[/observed]"
+              }
+            ],
+            "next_check": "Record winner in a new observed artifact; do not infer it."
+          }
+        ],
+        "candidate_checks": {
+          "revision": {
+            "value": "r7",
+            "quote": "revision: r7",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "workload": {
+            "value": "six writers",
+            "quote": "workload: six writers",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "environment": {
+            "value": "fixture-east",
+            "quote": "environment: fixture-east",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "metric": {
+            "value": "restart correctness",
+            "quote": "metric: restart correctness",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "winner": {
+            "value": null,
+            "quote": null,
+            "status": "unknown",
+            "reason": "field_absent_from_observed_block"
+          }
+        },
+        "derivation": "matched_candidate_fields_only",
+        "source_authenticity": "not_verified",
+        "model_prose": "never_released"
+      },
+      "source_adapter": {
+        "snapshot_id": "c27afd279a7640ad862a17906e28e032077c28fed76696ae2ffeb7973e0f9329",
+        "policy_snapshot_id": "29c0933e1ea6f28ac5490a694ce3bd4f6b38fc44da92f06603e179a18c30600d",
+        "mode": "source_adapter",
+        "release_kind": "policy_rendered",
+        "decision": {
+          "sufficiency": "insufficient",
+          "recommendation": "none",
+          "reason_code": "no_applicable_observation",
+          "basis_ids": [],
+          "explanation": "No applicable check establishes a choice under this decision's requirements.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r7, workload=six writers, environment=fixture-east, metric=restart correctness",
+          "next_check": "Record winner in a new observed artifact; do not infer it."
+        },
+        "source_assessments": [],
+        "facts": [
+          {
+            "field": "source_kind",
+            "value": "artifact",
+            "basis": [
+              {
+                "origin": "source_metadata",
+                "version": "e0cf7fc43f70e574ae4c990b7b211fcb114c0743e1fefd852542c517fbdc2b01",
+                "field": "kind",
+                "value": "artifact"
+              }
+            ]
+          },
+          {
+            "field": "revision",
+            "value": "r7",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "e0cf7fc43f70e574ae4c990b7b211fcb114c0743e1fefd852542c517fbdc2b01",
+                "source_id": "S1",
+                "start": 11,
+                "end": 23,
+                "quote": "revision: r7"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "revision",
+                "value": "r7"
+              }
+            ]
+          },
+          {
+            "field": "workload",
+            "value": "six writers",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "e0cf7fc43f70e574ae4c990b7b211fcb114c0743e1fefd852542c517fbdc2b01",
+                "source_id": "S1",
+                "start": 24,
+                "end": 45,
+                "quote": "workload: six writers"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "workload",
+                "value": "six writers"
+              }
+            ]
+          },
+          {
+            "field": "environment",
+            "value": "fixture-east",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "e0cf7fc43f70e574ae4c990b7b211fcb114c0743e1fefd852542c517fbdc2b01",
+                "source_id": "S1",
+                "start": 46,
+                "end": 71,
+                "quote": "environment: fixture-east"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "environment",
+                "value": "fixture-east"
+              }
+            ]
+          },
+          {
+            "field": "metric",
+            "value": "restart correctness",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "e0cf7fc43f70e574ae4c990b7b211fcb114c0743e1fefd852542c517fbdc2b01",
+                "source_id": "S1",
+                "start": 72,
+                "end": 99,
+                "quote": "metric: restart correctness"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "metric",
+                "value": "restart correctness"
+              }
+            ]
+          },
+          {
+            "field": "winner",
+            "value": null,
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "e0cf7fc43f70e574ae4c990b7b211fcb114c0743e1fefd852542c517fbdc2b01",
+                "source_id": "S1",
+                "start": 0,
+                "end": 111,
+                "quote": "[observed]\nrevision: r7\nworkload: six writers\nenvironment: fixture-east\nmetric: restart correctness\n[/observed]"
+              }
+            ]
+          }
+        ],
+        "issues": [
+          {
+            "code": "missing_winner",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "e0cf7fc43f70e574ae4c990b7b211fcb114c0743e1fefd852542c517fbdc2b01",
+                "source_id": "S1",
+                "start": 0,
+                "end": 111,
+                "quote": "[observed]\nrevision: r7\nworkload: six writers\nenvironment: fixture-east\nmetric: restart correctness\n[/observed]"
+              }
+            ],
+            "next_check": "Record winner in a new observed artifact; do not infer it."
+          }
+        ],
+        "candidate_checks": {
+          "revision": {
+            "value": "r7",
+            "quote": "revision: r7",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "workload": {
+            "value": "six writers",
+            "quote": "workload: six writers",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "environment": {
+            "value": "fixture-east",
+            "quote": "environment: fixture-east",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "metric": {
+            "value": "restart correctness",
+            "quote": "metric: restart correctness",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "winner": {
+            "value": null,
+            "quote": null,
+            "status": "unknown",
+            "reason": "field_absent_from_observed_block"
+          }
+        },
+        "derivation": "original_source_reparsed_explicitly",
+        "source_authenticity": "not_verified",
+        "model_prose": "never_released"
+      }
+    }
+  },
+  {
+    "case": "C07",
+    "source": {
+      "id": "S1",
+      "kind": "artifact",
+      "text": "[observed]\nrevision: r7\nworkload: six writers\nenvironment: fixture-east\nmetric: restart correctness\nwinner: A\n[/observed]\n[observed]\nrevision: r7\nworkload: six writers\nenvironment: fixture-east\nmetric: restart correctness\nwinner: B\n[/observed]"
+    },
+    "target": {
+      "revision": "r7",
+      "workload": "six writers",
+      "environment": "fixture-east",
+      "metric": "restart correctness"
+    },
+    "proposal": {
+      "revision": {
+        "value": null,
+        "quote": null
+      },
+      "workload": {
+        "value": null,
+        "quote": null
+      },
+      "environment": {
+        "value": null,
+        "quote": null
+      },
+      "metric": {
+        "value": null,
+        "quote": null
+      },
+      "winner": {
+        "value": null,
+        "quote": null
+      }
+    },
+    "expected": "none",
+    "outputs": {
+      "checked_only": {
+        "snapshot_id": "30acdec9e897fb5a9336e06fcc09e9d8aa6d584eaeab95c9e2d197316941d951",
+        "policy_snapshot_id": "29c0933e1ea6f28ac5490a694ce3bd4f6b38fc44da92f06603e179a18c30600d",
+        "mode": "checked_only",
+        "release_kind": "policy_rendered",
+        "decision": {
+          "sufficiency": "insufficient",
+          "recommendation": "none",
+          "reason_code": "no_applicable_observation",
+          "basis_ids": [],
+          "explanation": "No applicable check establishes a choice under this decision's requirements.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r7, workload=six writers, environment=fixture-east, metric=restart correctness",
+          "next_check": "Obtain one unambiguous observed block for this test."
+        },
+        "source_assessments": [],
+        "facts": [
+          {
+            "field": "source_kind",
+            "value": "artifact",
+            "basis": [
+              {
+                "origin": "source_metadata",
+                "version": "728dd2ff8e054c9b7e74fcb8cb94759c3a1b7dcd4e0dd3ec42ec255cfc782e48",
+                "field": "kind",
+                "value": "artifact"
+              }
+            ]
+          }
+        ],
+        "issues": [
+          {
+            "code": "invalid_observed_block",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "728dd2ff8e054c9b7e74fcb8cb94759c3a1b7dcd4e0dd3ec42ec255cfc782e48",
+                "source_id": "S1",
+                "start": 0,
+                "end": 243,
+                "quote": "[observed]\nrevision: r7\nworkload: six writers\nenvironment: fixture-east\nmetric: restart correctness\nwinner: A\n[/observed]\n[observed]\nrevision: r7\nworkload: six writers\nenvironment: fixture-east\nmetric: restart correctness\nwinner: B\n[/observed]"
+              }
+            ],
+            "next_check": "Obtain one unambiguous observed block for this test."
+          }
+        ],
+        "candidate_checks": {
+          "revision": {
+            "value": null,
+            "quote": null,
+            "status": "rejected",
+            "reason": "invalid_source_block"
+          },
+          "workload": {
+            "value": null,
+            "quote": null,
+            "status": "rejected",
+            "reason": "invalid_source_block"
+          },
+          "environment": {
+            "value": null,
+            "quote": null,
+            "status": "rejected",
+            "reason": "invalid_source_block"
+          },
+          "metric": {
+            "value": null,
+            "quote": null,
+            "status": "rejected",
+            "reason": "invalid_source_block"
+          },
+          "winner": {
+            "value": null,
+            "quote": null,
+            "status": "rejected",
+            "reason": "invalid_source_block"
+          }
+        },
+        "derivation": "matched_candidate_fields_only",
+        "source_authenticity": "not_verified",
+        "model_prose": "never_released"
+      },
+      "source_adapter": {
+        "snapshot_id": "30acdec9e897fb5a9336e06fcc09e9d8aa6d584eaeab95c9e2d197316941d951",
+        "policy_snapshot_id": "29c0933e1ea6f28ac5490a694ce3bd4f6b38fc44da92f06603e179a18c30600d",
+        "mode": "source_adapter",
+        "release_kind": "policy_rendered",
+        "decision": {
+          "sufficiency": "insufficient",
+          "recommendation": "none",
+          "reason_code": "no_applicable_observation",
+          "basis_ids": [],
+          "explanation": "No applicable check establishes a choice under this decision's requirements.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r7, workload=six writers, environment=fixture-east, metric=restart correctness",
+          "next_check": "Obtain one unambiguous observed block for this test."
+        },
+        "source_assessments": [],
+        "facts": [
+          {
+            "field": "source_kind",
+            "value": "artifact",
+            "basis": [
+              {
+                "origin": "source_metadata",
+                "version": "728dd2ff8e054c9b7e74fcb8cb94759c3a1b7dcd4e0dd3ec42ec255cfc782e48",
+                "field": "kind",
+                "value": "artifact"
+              }
+            ]
+          }
+        ],
+        "issues": [
+          {
+            "code": "invalid_observed_block",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "728dd2ff8e054c9b7e74fcb8cb94759c3a1b7dcd4e0dd3ec42ec255cfc782e48",
+                "source_id": "S1",
+                "start": 0,
+                "end": 243,
+                "quote": "[observed]\nrevision: r7\nworkload: six writers\nenvironment: fixture-east\nmetric: restart correctness\nwinner: A\n[/observed]\n[observed]\nrevision: r7\nworkload: six writers\nenvironment: fixture-east\nmetric: restart correctness\nwinner: B\n[/observed]"
+              }
+            ],
+            "next_check": "Obtain one unambiguous observed block for this test."
+          }
+        ],
+        "candidate_checks": {
+          "revision": {
+            "value": null,
+            "quote": null,
+            "status": "rejected",
+            "reason": "invalid_source_block"
+          },
+          "workload": {
+            "value": null,
+            "quote": null,
+            "status": "rejected",
+            "reason": "invalid_source_block"
+          },
+          "environment": {
+            "value": null,
+            "quote": null,
+            "status": "rejected",
+            "reason": "invalid_source_block"
+          },
+          "metric": {
+            "value": null,
+            "quote": null,
+            "status": "rejected",
+            "reason": "invalid_source_block"
+          },
+          "winner": {
+            "value": null,
+            "quote": null,
+            "status": "rejected",
+            "reason": "invalid_source_block"
+          }
+        },
+        "derivation": "original_source_reparsed_explicitly",
+        "source_authenticity": "not_verified",
+        "model_prose": "never_released"
+      }
+    }
+  },
+  {
+    "case": "C08",
+    "source": {
+      "id": "S1",
+      "kind": "artifact",
+      "text": "[observed]\nrevision: r7\nworkload: two writers\nenvironment: fixture-east\nmetric: restart correctness\nwinner: A\n[/observed]"
+    },
+    "target": {
+      "revision": "r7",
+      "workload": "six writers",
+      "environment": "fixture-east",
+      "metric": "restart correctness"
+    },
+    "proposal": {
+      "revision": {
+        "value": "r7",
+        "quote": "revision: r7"
+      },
+      "workload": {
+        "value": "two writers",
+        "quote": "workload: two writers"
+      },
+      "environment": {
+        "value": "fixture-east",
+        "quote": "environment: fixture-east"
+      },
+      "metric": {
+        "value": "restart correctness",
+        "quote": "metric: restart correctness"
+      },
+      "winner": {
+        "value": "A",
+        "quote": "winner: A"
+      }
+    },
+    "expected": "none",
+    "outputs": {
+      "checked_only": {
+        "snapshot_id": "b2415d569369419ae56719c11ec8ef2917b8b50157ac2ddcd15762f307a8ec3d",
+        "policy_snapshot_id": "463fe3f761381737a542e8b9165f5882c28308c617191b71c6276d6b36377a2c",
+        "mode": "checked_only",
+        "release_kind": "policy_rendered",
+        "decision": {
+          "sufficiency": "insufficient",
+          "recommendation": "none",
+          "reason_code": "no_applicable_observation",
+          "basis_ids": [
+            "S1"
+          ],
+          "explanation": "No applicable check establishes a choice under this decision's requirements.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r7, workload=six writers, environment=fixture-east, metric=restart correctness",
+          "next_check": "Run the check with workload=six writers; retain the old result separately."
+        },
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "artifact",
+            "applicability": "inapplicable",
+            "reason": "workload: tested two writers, needed six writers"
+          }
+        ],
+        "facts": [
+          {
+            "field": "source_kind",
+            "value": "artifact",
+            "basis": [
+              {
+                "origin": "source_metadata",
+                "version": "95b7253824546e5186592aaaf278a282b986667f2cce17105de33930ebe8a0c5",
+                "field": "kind",
+                "value": "artifact"
+              }
+            ]
+          },
+          {
+            "field": "revision",
+            "value": "r7",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "95b7253824546e5186592aaaf278a282b986667f2cce17105de33930ebe8a0c5",
+                "source_id": "S1",
+                "start": 11,
+                "end": 23,
+                "quote": "revision: r7"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "revision",
+                "value": "r7"
+              }
+            ]
+          },
+          {
+            "field": "workload",
+            "value": "two writers",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "95b7253824546e5186592aaaf278a282b986667f2cce17105de33930ebe8a0c5",
+                "source_id": "S1",
+                "start": 24,
+                "end": 45,
+                "quote": "workload: two writers"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "workload",
+                "value": "six writers"
+              }
+            ]
+          },
+          {
+            "field": "environment",
+            "value": "fixture-east",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "95b7253824546e5186592aaaf278a282b986667f2cce17105de33930ebe8a0c5",
+                "source_id": "S1",
+                "start": 46,
+                "end": 71,
+                "quote": "environment: fixture-east"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "environment",
+                "value": "fixture-east"
+              }
+            ]
+          },
+          {
+            "field": "metric",
+            "value": "restart correctness",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "95b7253824546e5186592aaaf278a282b986667f2cce17105de33930ebe8a0c5",
+                "source_id": "S1",
+                "start": 72,
+                "end": 99,
+                "quote": "metric: restart correctness"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "metric",
+                "value": "restart correctness"
+              }
+            ]
+          },
+          {
+            "field": "winner",
+            "value": "A",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "95b7253824546e5186592aaaf278a282b986667f2cce17105de33930ebe8a0c5",
+                "source_id": "S1",
+                "start": 100,
+                "end": 109,
+                "quote": "winner: A"
+              }
+            ]
+          }
+        ],
+        "issues": [
+          {
+            "code": "mismatching_workload",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "95b7253824546e5186592aaaf278a282b986667f2cce17105de33930ebe8a0c5",
+                "source_id": "S1",
+                "start": 24,
+                "end": 45,
+                "quote": "workload: two writers"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "workload",
+                "value": "six writers"
+              }
+            ],
+            "next_check": "Run the check with workload=six writers; retain the old result separately."
+          }
+        ],
+        "candidate_checks": {
+          "revision": {
+            "value": "r7",
+            "quote": "revision: r7",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "workload": {
+            "value": "two writers",
+            "quote": "workload: two writers",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "environment": {
+            "value": "fixture-east",
+            "quote": "environment: fixture-east",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "metric": {
+            "value": "restart correctness",
+            "quote": "metric: restart correctness",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "winner": {
+            "value": "A",
+            "quote": "winner: A",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          }
+        },
+        "derivation": "matched_candidate_fields_only",
+        "source_authenticity": "not_verified",
+        "model_prose": "never_released"
+      },
+      "source_adapter": {
+        "snapshot_id": "b2415d569369419ae56719c11ec8ef2917b8b50157ac2ddcd15762f307a8ec3d",
+        "policy_snapshot_id": "463fe3f761381737a542e8b9165f5882c28308c617191b71c6276d6b36377a2c",
+        "mode": "source_adapter",
+        "release_kind": "policy_rendered",
+        "decision": {
+          "sufficiency": "insufficient",
+          "recommendation": "none",
+          "reason_code": "no_applicable_observation",
+          "basis_ids": [
+            "S1"
+          ],
+          "explanation": "No applicable check establishes a choice under this decision's requirements.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r7, workload=six writers, environment=fixture-east, metric=restart correctness",
+          "next_check": "Run the check with workload=six writers; retain the old result separately."
+        },
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "artifact",
+            "applicability": "inapplicable",
+            "reason": "workload: tested two writers, needed six writers"
+          }
+        ],
+        "facts": [
+          {
+            "field": "source_kind",
+            "value": "artifact",
+            "basis": [
+              {
+                "origin": "source_metadata",
+                "version": "95b7253824546e5186592aaaf278a282b986667f2cce17105de33930ebe8a0c5",
+                "field": "kind",
+                "value": "artifact"
+              }
+            ]
+          },
+          {
+            "field": "revision",
+            "value": "r7",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "95b7253824546e5186592aaaf278a282b986667f2cce17105de33930ebe8a0c5",
+                "source_id": "S1",
+                "start": 11,
+                "end": 23,
+                "quote": "revision: r7"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "revision",
+                "value": "r7"
+              }
+            ]
+          },
+          {
+            "field": "workload",
+            "value": "two writers",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "95b7253824546e5186592aaaf278a282b986667f2cce17105de33930ebe8a0c5",
+                "source_id": "S1",
+                "start": 24,
+                "end": 45,
+                "quote": "workload: two writers"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "workload",
+                "value": "six writers"
+              }
+            ]
+          },
+          {
+            "field": "environment",
+            "value": "fixture-east",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "95b7253824546e5186592aaaf278a282b986667f2cce17105de33930ebe8a0c5",
+                "source_id": "S1",
+                "start": 46,
+                "end": 71,
+                "quote": "environment: fixture-east"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "environment",
+                "value": "fixture-east"
+              }
+            ]
+          },
+          {
+            "field": "metric",
+            "value": "restart correctness",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "95b7253824546e5186592aaaf278a282b986667f2cce17105de33930ebe8a0c5",
+                "source_id": "S1",
+                "start": 72,
+                "end": 99,
+                "quote": "metric: restart correctness"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "metric",
+                "value": "restart correctness"
+              }
+            ]
+          },
+          {
+            "field": "winner",
+            "value": "A",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "95b7253824546e5186592aaaf278a282b986667f2cce17105de33930ebe8a0c5",
+                "source_id": "S1",
+                "start": 100,
+                "end": 109,
+                "quote": "winner: A"
+              }
+            ]
+          }
+        ],
+        "issues": [
+          {
+            "code": "mismatching_workload",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "95b7253824546e5186592aaaf278a282b986667f2cce17105de33930ebe8a0c5",
+                "source_id": "S1",
+                "start": 24,
+                "end": 45,
+                "quote": "workload: two writers"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "workload",
+                "value": "six writers"
+              }
+            ],
+            "next_check": "Run the check with workload=six writers; retain the old result separately."
+          }
+        ],
+        "candidate_checks": {
+          "revision": {
+            "value": "r7",
+            "quote": "revision: r7",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "workload": {
+            "value": "two writers",
+            "quote": "workload: two writers",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "environment": {
+            "value": "fixture-east",
+            "quote": "environment: fixture-east",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "metric": {
+            "value": "restart correctness",
+            "quote": "metric: restart correctness",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "winner": {
+            "value": "A",
+            "quote": "winner: A",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          }
+        },
+        "derivation": "original_source_reparsed_explicitly",
+        "source_authenticity": "not_verified",
+        "model_prose": "never_released"
+      }
+    }
+  },
+  {
+    "case": "C09",
+    "source": {
+      "id": "S1",
+      "kind": "artifact",
+      "text": "[observed]\nrevision: r7\nworkload: six writers\nenvironment: fixture-east\nmetric: restart correctness\nwinner: A\nwinner: B\n[/observed]"
+    },
+    "target": {
+      "revision": "r7",
+      "workload": "six writers",
+      "environment": "fixture-east",
+      "metric": "restart correctness"
+    },
+    "proposal": {
+      "revision": {
+        "value": "r7",
+        "quote": "revision: r7"
+      },
+      "workload": {
+        "value": "six writers",
+        "quote": "workload: six writers"
+      },
+      "environment": {
+        "value": "fixture-east",
+        "quote": "environment: fixture-east"
+      },
+      "metric": {
+        "value": "restart correctness",
+        "quote": "metric: restart correctness"
+      },
+      "winner": {
+        "value": null,
+        "quote": null
+      }
+    },
+    "expected": "none",
+    "outputs": {
+      "checked_only": {
+        "snapshot_id": "4a6845edd3b645c3c9db4d565e016466081c8159b55e8eb37df607ca495cb741",
+        "policy_snapshot_id": "29c0933e1ea6f28ac5490a694ce3bd4f6b38fc44da92f06603e179a18c30600d",
+        "mode": "checked_only",
+        "release_kind": "policy_rendered",
+        "decision": {
+          "sufficiency": "insufficient",
+          "recommendation": "none",
+          "reason_code": "no_applicable_observation",
+          "basis_ids": [],
+          "explanation": "No applicable check establishes a choice under this decision's requirements.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r7, workload=six writers, environment=fixture-east, metric=restart correctness",
+          "next_check": "Resolve duplicate winner declarations with a new check."
+        },
+        "source_assessments": [],
+        "facts": [
+          {
+            "field": "source_kind",
+            "value": "artifact",
+            "basis": [
+              {
+                "origin": "source_metadata",
+                "version": "2afc1818eb040505560ecda788a186223b97036cf033679e46c4cd41f77f7029",
+                "field": "kind",
+                "value": "artifact"
+              }
+            ]
+          },
+          {
+            "field": "revision",
+            "value": "r7",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "2afc1818eb040505560ecda788a186223b97036cf033679e46c4cd41f77f7029",
+                "source_id": "S1",
+                "start": 11,
+                "end": 23,
+                "quote": "revision: r7"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "revision",
+                "value": "r7"
+              }
+            ]
+          },
+          {
+            "field": "workload",
+            "value": "six writers",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "2afc1818eb040505560ecda788a186223b97036cf033679e46c4cd41f77f7029",
+                "source_id": "S1",
+                "start": 24,
+                "end": 45,
+                "quote": "workload: six writers"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "workload",
+                "value": "six writers"
+              }
+            ]
+          },
+          {
+            "field": "environment",
+            "value": "fixture-east",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "2afc1818eb040505560ecda788a186223b97036cf033679e46c4cd41f77f7029",
+                "source_id": "S1",
+                "start": 46,
+                "end": 71,
+                "quote": "environment: fixture-east"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "environment",
+                "value": "fixture-east"
+              }
+            ]
+          },
+          {
+            "field": "metric",
+            "value": "restart correctness",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "2afc1818eb040505560ecda788a186223b97036cf033679e46c4cd41f77f7029",
+                "source_id": "S1",
+                "start": 72,
+                "end": 99,
+                "quote": "metric: restart correctness"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "metric",
+                "value": "restart correctness"
+              }
+            ]
+          },
+          {
+            "field": "winner",
+            "value": null,
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "2afc1818eb040505560ecda788a186223b97036cf033679e46c4cd41f77f7029",
+                "source_id": "S1",
+                "start": 100,
+                "end": 109,
+                "quote": "winner: A"
+              },
+              {
+                "origin": "source_text",
+                "version": "2afc1818eb040505560ecda788a186223b97036cf033679e46c4cd41f77f7029",
+                "source_id": "S1",
+                "start": 110,
+                "end": 119,
+                "quote": "winner: B"
+              }
+            ]
+          }
+        ],
+        "issues": [
+          {
+            "code": "ambiguous_winner",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "2afc1818eb040505560ecda788a186223b97036cf033679e46c4cd41f77f7029",
+                "source_id": "S1",
+                "start": 100,
+                "end": 109,
+                "quote": "winner: A"
+              },
+              {
+                "origin": "source_text",
+                "version": "2afc1818eb040505560ecda788a186223b97036cf033679e46c4cd41f77f7029",
+                "source_id": "S1",
+                "start": 110,
+                "end": 119,
+                "quote": "winner: B"
+              }
+            ],
+            "next_check": "Resolve duplicate winner declarations with a new check."
+          }
+        ],
+        "candidate_checks": {
+          "revision": {
+            "value": "r7",
+            "quote": "revision: r7",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "workload": {
+            "value": "six writers",
+            "quote": "workload: six writers",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "environment": {
+            "value": "fixture-east",
+            "quote": "environment: fixture-east",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "metric": {
+            "value": "restart correctness",
+            "quote": "metric: restart correctness",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "winner": {
+            "value": null,
+            "quote": null,
+            "status": "unknown",
+            "reason": "ambiguous_source_field"
+          }
+        },
+        "derivation": "matched_candidate_fields_only",
+        "source_authenticity": "not_verified",
+        "model_prose": "never_released"
+      },
+      "source_adapter": {
+        "snapshot_id": "4a6845edd3b645c3c9db4d565e016466081c8159b55e8eb37df607ca495cb741",
+        "policy_snapshot_id": "29c0933e1ea6f28ac5490a694ce3bd4f6b38fc44da92f06603e179a18c30600d",
+        "mode": "source_adapter",
+        "release_kind": "policy_rendered",
+        "decision": {
+          "sufficiency": "insufficient",
+          "recommendation": "none",
+          "reason_code": "no_applicable_observation",
+          "basis_ids": [],
+          "explanation": "No applicable check establishes a choice under this decision's requirements.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r7, workload=six writers, environment=fixture-east, metric=restart correctness",
+          "next_check": "Resolve duplicate winner declarations with a new check."
+        },
+        "source_assessments": [],
+        "facts": [
+          {
+            "field": "source_kind",
+            "value": "artifact",
+            "basis": [
+              {
+                "origin": "source_metadata",
+                "version": "2afc1818eb040505560ecda788a186223b97036cf033679e46c4cd41f77f7029",
+                "field": "kind",
+                "value": "artifact"
+              }
+            ]
+          },
+          {
+            "field": "revision",
+            "value": "r7",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "2afc1818eb040505560ecda788a186223b97036cf033679e46c4cd41f77f7029",
+                "source_id": "S1",
+                "start": 11,
+                "end": 23,
+                "quote": "revision: r7"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "revision",
+                "value": "r7"
+              }
+            ]
+          },
+          {
+            "field": "workload",
+            "value": "six writers",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "2afc1818eb040505560ecda788a186223b97036cf033679e46c4cd41f77f7029",
+                "source_id": "S1",
+                "start": 24,
+                "end": 45,
+                "quote": "workload: six writers"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "workload",
+                "value": "six writers"
+              }
+            ]
+          },
+          {
+            "field": "environment",
+            "value": "fixture-east",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "2afc1818eb040505560ecda788a186223b97036cf033679e46c4cd41f77f7029",
+                "source_id": "S1",
+                "start": 46,
+                "end": 71,
+                "quote": "environment: fixture-east"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "environment",
+                "value": "fixture-east"
+              }
+            ]
+          },
+          {
+            "field": "metric",
+            "value": "restart correctness",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "2afc1818eb040505560ecda788a186223b97036cf033679e46c4cd41f77f7029",
+                "source_id": "S1",
+                "start": 72,
+                "end": 99,
+                "quote": "metric: restart correctness"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "metric",
+                "value": "restart correctness"
+              }
+            ]
+          },
+          {
+            "field": "winner",
+            "value": null,
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "2afc1818eb040505560ecda788a186223b97036cf033679e46c4cd41f77f7029",
+                "source_id": "S1",
+                "start": 100,
+                "end": 109,
+                "quote": "winner: A"
+              },
+              {
+                "origin": "source_text",
+                "version": "2afc1818eb040505560ecda788a186223b97036cf033679e46c4cd41f77f7029",
+                "source_id": "S1",
+                "start": 110,
+                "end": 119,
+                "quote": "winner: B"
+              }
+            ]
+          }
+        ],
+        "issues": [
+          {
+            "code": "ambiguous_winner",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "2afc1818eb040505560ecda788a186223b97036cf033679e46c4cd41f77f7029",
+                "source_id": "S1",
+                "start": 100,
+                "end": 109,
+                "quote": "winner: A"
+              },
+              {
+                "origin": "source_text",
+                "version": "2afc1818eb040505560ecda788a186223b97036cf033679e46c4cd41f77f7029",
+                "source_id": "S1",
+                "start": 110,
+                "end": 119,
+                "quote": "winner: B"
+              }
+            ],
+            "next_check": "Resolve duplicate winner declarations with a new check."
+          }
+        ],
+        "candidate_checks": {
+          "revision": {
+            "value": "r7",
+            "quote": "revision: r7",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "workload": {
+            "value": "six writers",
+            "quote": "workload: six writers",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "environment": {
+            "value": "fixture-east",
+            "quote": "environment: fixture-east",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "metric": {
+            "value": "restart correctness",
+            "quote": "metric: restart correctness",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "winner": {
+            "value": null,
+            "quote": null,
+            "status": "unknown",
+            "reason": "ambiguous_source_field"
+          }
+        },
+        "derivation": "original_source_reparsed_explicitly",
+        "source_authenticity": "not_verified",
+        "model_prose": "never_released"
+      }
+    }
+  },
+  {
+    "case": "C10",
+    "source": {
+      "id": "S1",
+      "kind": "artifact",
+      "text": "[observed]\nrevision: r7\nworkload: six writers\nenvironment: fixture-east\nmetric: restart correctness\nwinner: B\n[/observed]"
+    },
+    "target": {
+      "revision": "r7",
+      "workload": "six writers",
+      "environment": "fixture-east",
+      "metric": "restart correctness"
+    },
+    "proposal": {
+      "revision": {
+        "value": "r7",
+        "quote": "revision: r7"
+      },
+      "workload": {
+        "value": "six writers",
+        "quote": "workload: six writers"
+      },
+      "environment": {
+        "value": "fixture-east",
+        "quote": "environment: fixture-east"
+      },
+      "metric": {
+        "value": "restart correctness",
+        "quote": "metric: restart correctness"
+      },
+      "winner": {
+        "value": "B",
+        "quote": "winner: B"
+      }
+    },
+    "expected": "B",
+    "outputs": {
+      "checked_only": {
+        "snapshot_id": "4e35b33971038ee675c8479b383c7dd058ad9ad28bbb44754950d6ed445ad313",
+        "policy_snapshot_id": "f8a9ae73535b750d752351accf2b859fb2bcd0a4fa384118f300c0fd69b8efa6",
+        "mode": "checked_only",
+        "release_kind": "policy_rendered",
+        "decision": {
+          "sufficiency": "supported",
+          "recommendation": "B",
+          "reason_code": "applicable_observation",
+          "basis_ids": [
+            "S1"
+          ],
+          "explanation": "Applicable fixture checks support B for the stated target.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r7, workload=six writers, environment=fixture-east, metric=restart correctness",
+          "next_check": "Reproduce independently before applying this synthetic finding to a real system."
+        },
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "artifact",
+            "applicability": "applicable",
+            "reason": "Revision, workload, environment and metric match the target."
+          }
+        ],
+        "facts": [
+          {
+            "field": "source_kind",
+            "value": "artifact",
+            "basis": [
+              {
+                "origin": "source_metadata",
+                "version": "0829321e980d465f87c1f15c666b85364df5b3daaa10533baa692c0227d58eed",
+                "field": "kind",
+                "value": "artifact"
+              }
+            ]
+          },
+          {
+            "field": "revision",
+            "value": "r7",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "0829321e980d465f87c1f15c666b85364df5b3daaa10533baa692c0227d58eed",
+                "source_id": "S1",
+                "start": 11,
+                "end": 23,
+                "quote": "revision: r7"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "revision",
+                "value": "r7"
+              }
+            ]
+          },
+          {
+            "field": "workload",
+            "value": "six writers",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "0829321e980d465f87c1f15c666b85364df5b3daaa10533baa692c0227d58eed",
+                "source_id": "S1",
+                "start": 24,
+                "end": 45,
+                "quote": "workload: six writers"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "workload",
+                "value": "six writers"
+              }
+            ]
+          },
+          {
+            "field": "environment",
+            "value": "fixture-east",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "0829321e980d465f87c1f15c666b85364df5b3daaa10533baa692c0227d58eed",
+                "source_id": "S1",
+                "start": 46,
+                "end": 71,
+                "quote": "environment: fixture-east"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "environment",
+                "value": "fixture-east"
+              }
+            ]
+          },
+          {
+            "field": "metric",
+            "value": "restart correctness",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "0829321e980d465f87c1f15c666b85364df5b3daaa10533baa692c0227d58eed",
+                "source_id": "S1",
+                "start": 72,
+                "end": 99,
+                "quote": "metric: restart correctness"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "metric",
+                "value": "restart correctness"
+              }
+            ]
+          },
+          {
+            "field": "winner",
+            "value": "B",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "0829321e980d465f87c1f15c666b85364df5b3daaa10533baa692c0227d58eed",
+                "source_id": "S1",
+                "start": 100,
+                "end": 109,
+                "quote": "winner: B"
+              }
+            ]
+          }
+        ],
+        "issues": [],
+        "candidate_checks": {
+          "revision": {
+            "value": "r7",
+            "quote": "revision: r7",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "workload": {
+            "value": "six writers",
+            "quote": "workload: six writers",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "environment": {
+            "value": "fixture-east",
+            "quote": "environment: fixture-east",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "metric": {
+            "value": "restart correctness",
+            "quote": "metric: restart correctness",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "winner": {
+            "value": "B",
+            "quote": "winner: B",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          }
+        },
+        "derivation": "matched_candidate_fields_only",
+        "source_authenticity": "not_verified",
+        "model_prose": "never_released"
+      },
+      "source_adapter": {
+        "snapshot_id": "4e35b33971038ee675c8479b383c7dd058ad9ad28bbb44754950d6ed445ad313",
+        "policy_snapshot_id": "f8a9ae73535b750d752351accf2b859fb2bcd0a4fa384118f300c0fd69b8efa6",
+        "mode": "source_adapter",
+        "release_kind": "policy_rendered",
+        "decision": {
+          "sufficiency": "supported",
+          "recommendation": "B",
+          "reason_code": "applicable_observation",
+          "basis_ids": [
+            "S1"
+          ],
+          "explanation": "Applicable fixture checks support B for the stated target.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r7, workload=six writers, environment=fixture-east, metric=restart correctness",
+          "next_check": "Reproduce independently before applying this synthetic finding to a real system."
+        },
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "artifact",
+            "applicability": "applicable",
+            "reason": "Revision, workload, environment and metric match the target."
+          }
+        ],
+        "facts": [
+          {
+            "field": "source_kind",
+            "value": "artifact",
+            "basis": [
+              {
+                "origin": "source_metadata",
+                "version": "0829321e980d465f87c1f15c666b85364df5b3daaa10533baa692c0227d58eed",
+                "field": "kind",
+                "value": "artifact"
+              }
+            ]
+          },
+          {
+            "field": "revision",
+            "value": "r7",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "0829321e980d465f87c1f15c666b85364df5b3daaa10533baa692c0227d58eed",
+                "source_id": "S1",
+                "start": 11,
+                "end": 23,
+                "quote": "revision: r7"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "revision",
+                "value": "r7"
+              }
+            ]
+          },
+          {
+            "field": "workload",
+            "value": "six writers",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "0829321e980d465f87c1f15c666b85364df5b3daaa10533baa692c0227d58eed",
+                "source_id": "S1",
+                "start": 24,
+                "end": 45,
+                "quote": "workload: six writers"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "workload",
+                "value": "six writers"
+              }
+            ]
+          },
+          {
+            "field": "environment",
+            "value": "fixture-east",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "0829321e980d465f87c1f15c666b85364df5b3daaa10533baa692c0227d58eed",
+                "source_id": "S1",
+                "start": 46,
+                "end": 71,
+                "quote": "environment: fixture-east"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "environment",
+                "value": "fixture-east"
+              }
+            ]
+          },
+          {
+            "field": "metric",
+            "value": "restart correctness",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "0829321e980d465f87c1f15c666b85364df5b3daaa10533baa692c0227d58eed",
+                "source_id": "S1",
+                "start": 72,
+                "end": 99,
+                "quote": "metric: restart correctness"
+              },
+              {
+                "origin": "target",
+                "version": "f76841ef8f5aa9a55ced5b21643c255f5b0d350fd7aec6b0ac4682a1f0356466",
+                "field": "metric",
+                "value": "restart correctness"
+              }
+            ]
+          },
+          {
+            "field": "winner",
+            "value": "B",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "0829321e980d465f87c1f15c666b85364df5b3daaa10533baa692c0227d58eed",
+                "source_id": "S1",
+                "start": 100,
+                "end": 109,
+                "quote": "winner: B"
+              }
+            ]
+          }
+        ],
+        "issues": [],
+        "candidate_checks": {
+          "revision": {
+            "value": "r7",
+            "quote": "revision: r7",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "workload": {
+            "value": "six writers",
+            "quote": "workload: six writers",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "environment": {
+            "value": "fixture-east",
+            "quote": "environment: fixture-east",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "metric": {
+            "value": "restart correctness",
+            "quote": "metric: restart correctness",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "winner": {
+            "value": "B",
+            "quote": "winner: B",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          }
+        },
+        "derivation": "original_source_reparsed_explicitly",
+        "source_authenticity": "not_verified",
+        "model_prose": "never_released"
+      }
+    }
+  },
+  {
+    "case": "C11",
+    "source": {
+      "id": "S1",
+      "kind": "artifact",
+      "text": "[observed]\nrevision: r1\nrevision: r2\nworkload: eight writers\nenvironment: fixture-local\nmetric: reopen correctness\nwinner: B\n[/observed]"
+    },
+    "target": {
+      "revision": "r2",
+      "workload": "eight writers",
+      "environment": "fixture-local",
+      "metric": "reopen correctness"
+    },
+    "proposal": {
+      "revision": {
+        "value": "r2",
+        "quote": "revision: r2"
+      },
+      "workload": {
+        "value": "eight writers",
+        "quote": "workload: eight writers"
+      },
+      "environment": {
+        "value": "fixture-local",
+        "quote": "environment: fixture-local"
+      },
+      "metric": {
+        "value": "reopen correctness",
+        "quote": "metric: reopen correctness"
+      },
+      "winner": {
+        "value": "B",
+        "quote": "winner: B"
+      }
+    },
+    "expected": "none",
+    "outputs": {
+      "checked_only": {
+        "snapshot_id": "aba83fcf2a46aa750be9ba1cc7e2a8fed51d9433dedcdea4cc4807d52c6fec91",
+        "policy_snapshot_id": "bc5c6783ea9a4b91118c0eba72abc0ba6e78a07b1a8c7529d250aec1a6605d5b",
+        "mode": "checked_only",
+        "release_kind": "policy_rendered",
+        "decision": {
+          "sufficiency": "insufficient",
+          "recommendation": "none",
+          "reason_code": "no_applicable_observation",
+          "basis_ids": [
+            "S1"
+          ],
+          "explanation": "No applicable check establishes a choice under this decision's requirements.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r2, workload=eight writers, environment=fixture-local, metric=reopen correctness",
+          "next_check": "Resolve duplicate revision declarations with a new check."
+        },
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "artifact",
+            "applicability": "unknown",
+            "reason": "Missing scope: revision; do not assume a match."
+          }
+        ],
+        "facts": [
+          {
+            "field": "source_kind",
+            "value": "artifact",
+            "basis": [
+              {
+                "origin": "source_metadata",
+                "version": "261ed6cc918b984e6a5702b205e5bcf17743ccd467cfb93bbf1156e654764e3b",
+                "field": "kind",
+                "value": "artifact"
+              }
+            ]
+          },
+          {
+            "field": "revision",
+            "value": null,
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "261ed6cc918b984e6a5702b205e5bcf17743ccd467cfb93bbf1156e654764e3b",
+                "source_id": "S1",
+                "start": 11,
+                "end": 23,
+                "quote": "revision: r1"
+              },
+              {
+                "origin": "source_text",
+                "version": "261ed6cc918b984e6a5702b205e5bcf17743ccd467cfb93bbf1156e654764e3b",
+                "source_id": "S1",
+                "start": 24,
+                "end": 36,
+                "quote": "revision: r2"
+              },
+              {
+                "origin": "target",
+                "version": "8269a7a9ec51ac746229e5e0f08191568acb9afda49c166fc485e149e7d1002e",
+                "field": "revision",
+                "value": "r2"
+              }
+            ]
+          },
+          {
+            "field": "workload",
+            "value": "eight writers",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "261ed6cc918b984e6a5702b205e5bcf17743ccd467cfb93bbf1156e654764e3b",
+                "source_id": "S1",
+                "start": 37,
+                "end": 60,
+                "quote": "workload: eight writers"
+              },
+              {
+                "origin": "target",
+                "version": "8269a7a9ec51ac746229e5e0f08191568acb9afda49c166fc485e149e7d1002e",
+                "field": "workload",
+                "value": "eight writers"
+              }
+            ]
+          },
+          {
+            "field": "environment",
+            "value": "fixture-local",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "261ed6cc918b984e6a5702b205e5bcf17743ccd467cfb93bbf1156e654764e3b",
+                "source_id": "S1",
+                "start": 61,
+                "end": 87,
+                "quote": "environment: fixture-local"
+              },
+              {
+                "origin": "target",
+                "version": "8269a7a9ec51ac746229e5e0f08191568acb9afda49c166fc485e149e7d1002e",
+                "field": "environment",
+                "value": "fixture-local"
+              }
+            ]
+          },
+          {
+            "field": "metric",
+            "value": "reopen correctness",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "261ed6cc918b984e6a5702b205e5bcf17743ccd467cfb93bbf1156e654764e3b",
+                "source_id": "S1",
+                "start": 88,
+                "end": 114,
+                "quote": "metric: reopen correctness"
+              },
+              {
+                "origin": "target",
+                "version": "8269a7a9ec51ac746229e5e0f08191568acb9afda49c166fc485e149e7d1002e",
+                "field": "metric",
+                "value": "reopen correctness"
+              }
+            ]
+          },
+          {
+            "field": "winner",
+            "value": "B",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "261ed6cc918b984e6a5702b205e5bcf17743ccd467cfb93bbf1156e654764e3b",
+                "source_id": "S1",
+                "start": 115,
+                "end": 124,
+                "quote": "winner: B"
+              }
+            ]
+          }
+        ],
+        "issues": [
+          {
+            "code": "ambiguous_revision",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "261ed6cc918b984e6a5702b205e5bcf17743ccd467cfb93bbf1156e654764e3b",
+                "source_id": "S1",
+                "start": 11,
+                "end": 23,
+                "quote": "revision: r1"
+              },
+              {
+                "origin": "source_text",
+                "version": "261ed6cc918b984e6a5702b205e5bcf17743ccd467cfb93bbf1156e654764e3b",
+                "source_id": "S1",
+                "start": 24,
+                "end": 36,
+                "quote": "revision: r2"
+              },
+              {
+                "origin": "target",
+                "version": "8269a7a9ec51ac746229e5e0f08191568acb9afda49c166fc485e149e7d1002e",
+                "field": "revision",
+                "value": "r2"
+              }
+            ],
+            "next_check": "Resolve duplicate revision declarations with a new check."
+          }
+        ],
+        "candidate_checks": {
+          "revision": {
+            "value": null,
+            "quote": null,
+            "status": "rejected",
+            "reason": "ambiguous_source_field"
+          },
+          "workload": {
+            "value": "eight writers",
+            "quote": "workload: eight writers",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "environment": {
+            "value": "fixture-local",
+            "quote": "environment: fixture-local",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "metric": {
+            "value": "reopen correctness",
+            "quote": "metric: reopen correctness",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "winner": {
+            "value": "B",
+            "quote": "winner: B",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          }
+        },
+        "derivation": "matched_candidate_fields_only",
+        "source_authenticity": "not_verified",
+        "model_prose": "never_released"
+      },
+      "source_adapter": {
+        "snapshot_id": "aba83fcf2a46aa750be9ba1cc7e2a8fed51d9433dedcdea4cc4807d52c6fec91",
+        "policy_snapshot_id": "bc5c6783ea9a4b91118c0eba72abc0ba6e78a07b1a8c7529d250aec1a6605d5b",
+        "mode": "source_adapter",
+        "release_kind": "policy_rendered",
+        "decision": {
+          "sufficiency": "insufficient",
+          "recommendation": "none",
+          "reason_code": "no_applicable_observation",
+          "basis_ids": [
+            "S1"
+          ],
+          "explanation": "No applicable check establishes a choice under this decision's requirements.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r2, workload=eight writers, environment=fixture-local, metric=reopen correctness",
+          "next_check": "Resolve duplicate revision declarations with a new check."
+        },
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "artifact",
+            "applicability": "unknown",
+            "reason": "Missing scope: revision; do not assume a match."
+          }
+        ],
+        "facts": [
+          {
+            "field": "source_kind",
+            "value": "artifact",
+            "basis": [
+              {
+                "origin": "source_metadata",
+                "version": "261ed6cc918b984e6a5702b205e5bcf17743ccd467cfb93bbf1156e654764e3b",
+                "field": "kind",
+                "value": "artifact"
+              }
+            ]
+          },
+          {
+            "field": "revision",
+            "value": null,
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "261ed6cc918b984e6a5702b205e5bcf17743ccd467cfb93bbf1156e654764e3b",
+                "source_id": "S1",
+                "start": 11,
+                "end": 23,
+                "quote": "revision: r1"
+              },
+              {
+                "origin": "source_text",
+                "version": "261ed6cc918b984e6a5702b205e5bcf17743ccd467cfb93bbf1156e654764e3b",
+                "source_id": "S1",
+                "start": 24,
+                "end": 36,
+                "quote": "revision: r2"
+              },
+              {
+                "origin": "target",
+                "version": "8269a7a9ec51ac746229e5e0f08191568acb9afda49c166fc485e149e7d1002e",
+                "field": "revision",
+                "value": "r2"
+              }
+            ]
+          },
+          {
+            "field": "workload",
+            "value": "eight writers",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "261ed6cc918b984e6a5702b205e5bcf17743ccd467cfb93bbf1156e654764e3b",
+                "source_id": "S1",
+                "start": 37,
+                "end": 60,
+                "quote": "workload: eight writers"
+              },
+              {
+                "origin": "target",
+                "version": "8269a7a9ec51ac746229e5e0f08191568acb9afda49c166fc485e149e7d1002e",
+                "field": "workload",
+                "value": "eight writers"
+              }
+            ]
+          },
+          {
+            "field": "environment",
+            "value": "fixture-local",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "261ed6cc918b984e6a5702b205e5bcf17743ccd467cfb93bbf1156e654764e3b",
+                "source_id": "S1",
+                "start": 61,
+                "end": 87,
+                "quote": "environment: fixture-local"
+              },
+              {
+                "origin": "target",
+                "version": "8269a7a9ec51ac746229e5e0f08191568acb9afda49c166fc485e149e7d1002e",
+                "field": "environment",
+                "value": "fixture-local"
+              }
+            ]
+          },
+          {
+            "field": "metric",
+            "value": "reopen correctness",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "261ed6cc918b984e6a5702b205e5bcf17743ccd467cfb93bbf1156e654764e3b",
+                "source_id": "S1",
+                "start": 88,
+                "end": 114,
+                "quote": "metric: reopen correctness"
+              },
+              {
+                "origin": "target",
+                "version": "8269a7a9ec51ac746229e5e0f08191568acb9afda49c166fc485e149e7d1002e",
+                "field": "metric",
+                "value": "reopen correctness"
+              }
+            ]
+          },
+          {
+            "field": "winner",
+            "value": "B",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "261ed6cc918b984e6a5702b205e5bcf17743ccd467cfb93bbf1156e654764e3b",
+                "source_id": "S1",
+                "start": 115,
+                "end": 124,
+                "quote": "winner: B"
+              }
+            ]
+          }
+        ],
+        "issues": [
+          {
+            "code": "ambiguous_revision",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "261ed6cc918b984e6a5702b205e5bcf17743ccd467cfb93bbf1156e654764e3b",
+                "source_id": "S1",
+                "start": 11,
+                "end": 23,
+                "quote": "revision: r1"
+              },
+              {
+                "origin": "source_text",
+                "version": "261ed6cc918b984e6a5702b205e5bcf17743ccd467cfb93bbf1156e654764e3b",
+                "source_id": "S1",
+                "start": 24,
+                "end": 36,
+                "quote": "revision: r2"
+              },
+              {
+                "origin": "target",
+                "version": "8269a7a9ec51ac746229e5e0f08191568acb9afda49c166fc485e149e7d1002e",
+                "field": "revision",
+                "value": "r2"
+              }
+            ],
+            "next_check": "Resolve duplicate revision declarations with a new check."
+          }
+        ],
+        "candidate_checks": {
+          "revision": {
+            "value": null,
+            "quote": null,
+            "status": "rejected",
+            "reason": "ambiguous_source_field"
+          },
+          "workload": {
+            "value": "eight writers",
+            "quote": "workload: eight writers",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "environment": {
+            "value": "fixture-local",
+            "quote": "environment: fixture-local",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "metric": {
+            "value": "reopen correctness",
+            "quote": "metric: reopen correctness",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "winner": {
+            "value": "B",
+            "quote": "winner: B",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          }
+        },
+        "derivation": "original_source_reparsed_explicitly",
+        "source_authenticity": "not_verified",
+        "model_prose": "never_released"
+      }
+    }
+  },
+  {
+    "case": "C12",
+    "source": {
+      "id": "S1",
+      "kind": "artifact",
+      "text": "[observed]\nworkload: eight writers\nenvironment: fixture-local\nmetric: reopen correctness\nwinner: B\n[/observed]"
+    },
+    "target": {
+      "revision": "r2",
+      "workload": "eight writers",
+      "environment": "fixture-local",
+      "metric": "reopen correctness"
+    },
+    "proposal": {
+      "revision": {
+        "value": "r2",
+        "quote": "revision: r2"
+      },
+      "workload": {
+        "value": "eight writers",
+        "quote": "workload: eight writers"
+      },
+      "environment": {
+        "value": "fixture-local",
+        "quote": "environment: fixture-local"
+      },
+      "metric": {
+        "value": "reopen correctness",
+        "quote": "metric: reopen correctness"
+      },
+      "winner": {
+        "value": "B",
+        "quote": "winner: B"
+      }
+    },
+    "expected": "none",
+    "outputs": {
+      "checked_only": {
+        "snapshot_id": "f7c00286b513a11d8d081d98b9fd51c2f940835a4c6c41aa7689691711dfd824",
+        "policy_snapshot_id": "bc5c6783ea9a4b91118c0eba72abc0ba6e78a07b1a8c7529d250aec1a6605d5b",
+        "mode": "checked_only",
+        "release_kind": "policy_rendered",
+        "decision": {
+          "sufficiency": "insufficient",
+          "recommendation": "none",
+          "reason_code": "no_applicable_observation",
+          "basis_ids": [
+            "S1"
+          ],
+          "explanation": "No applicable check establishes a choice under this decision's requirements.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r2, workload=eight writers, environment=fixture-local, metric=reopen correctness",
+          "next_check": "Record revision in a new observed artifact; do not infer it."
+        },
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "artifact",
+            "applicability": "unknown",
+            "reason": "Missing scope: revision; do not assume a match."
+          }
+        ],
+        "facts": [
+          {
+            "field": "source_kind",
+            "value": "artifact",
+            "basis": [
+              {
+                "origin": "source_metadata",
+                "version": "1bd5e7f34f24ba7fd67f58281d7b251fea4cb9f3b5ba84d466bf47282794e41c",
+                "field": "kind",
+                "value": "artifact"
+              }
+            ]
+          },
+          {
+            "field": "revision",
+            "value": null,
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "1bd5e7f34f24ba7fd67f58281d7b251fea4cb9f3b5ba84d466bf47282794e41c",
+                "source_id": "S1",
+                "start": 0,
+                "end": 110,
+                "quote": "[observed]\nworkload: eight writers\nenvironment: fixture-local\nmetric: reopen correctness\nwinner: B\n[/observed]"
+              },
+              {
+                "origin": "target",
+                "version": "8269a7a9ec51ac746229e5e0f08191568acb9afda49c166fc485e149e7d1002e",
+                "field": "revision",
+                "value": "r2"
+              }
+            ]
+          },
+          {
+            "field": "workload",
+            "value": "eight writers",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "1bd5e7f34f24ba7fd67f58281d7b251fea4cb9f3b5ba84d466bf47282794e41c",
+                "source_id": "S1",
+                "start": 11,
+                "end": 34,
+                "quote": "workload: eight writers"
+              },
+              {
+                "origin": "target",
+                "version": "8269a7a9ec51ac746229e5e0f08191568acb9afda49c166fc485e149e7d1002e",
+                "field": "workload",
+                "value": "eight writers"
+              }
+            ]
+          },
+          {
+            "field": "environment",
+            "value": "fixture-local",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "1bd5e7f34f24ba7fd67f58281d7b251fea4cb9f3b5ba84d466bf47282794e41c",
+                "source_id": "S1",
+                "start": 35,
+                "end": 61,
+                "quote": "environment: fixture-local"
+              },
+              {
+                "origin": "target",
+                "version": "8269a7a9ec51ac746229e5e0f08191568acb9afda49c166fc485e149e7d1002e",
+                "field": "environment",
+                "value": "fixture-local"
+              }
+            ]
+          },
+          {
+            "field": "metric",
+            "value": "reopen correctness",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "1bd5e7f34f24ba7fd67f58281d7b251fea4cb9f3b5ba84d466bf47282794e41c",
+                "source_id": "S1",
+                "start": 62,
+                "end": 88,
+                "quote": "metric: reopen correctness"
+              },
+              {
+                "origin": "target",
+                "version": "8269a7a9ec51ac746229e5e0f08191568acb9afda49c166fc485e149e7d1002e",
+                "field": "metric",
+                "value": "reopen correctness"
+              }
+            ]
+          },
+          {
+            "field": "winner",
+            "value": "B",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "1bd5e7f34f24ba7fd67f58281d7b251fea4cb9f3b5ba84d466bf47282794e41c",
+                "source_id": "S1",
+                "start": 89,
+                "end": 98,
+                "quote": "winner: B"
+              }
+            ]
+          }
+        ],
+        "issues": [
+          {
+            "code": "missing_revision",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "1bd5e7f34f24ba7fd67f58281d7b251fea4cb9f3b5ba84d466bf47282794e41c",
+                "source_id": "S1",
+                "start": 0,
+                "end": 110,
+                "quote": "[observed]\nworkload: eight writers\nenvironment: fixture-local\nmetric: reopen correctness\nwinner: B\n[/observed]"
+              },
+              {
+                "origin": "target",
+                "version": "8269a7a9ec51ac746229e5e0f08191568acb9afda49c166fc485e149e7d1002e",
+                "field": "revision",
+                "value": "r2"
+              }
+            ],
+            "next_check": "Record revision in a new observed artifact; do not infer it."
+          }
+        ],
+        "candidate_checks": {
+          "revision": {
+            "value": null,
+            "quote": null,
+            "status": "rejected",
+            "reason": "field_absent_from_observed_block"
+          },
+          "workload": {
+            "value": "eight writers",
+            "quote": "workload: eight writers",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "environment": {
+            "value": "fixture-local",
+            "quote": "environment: fixture-local",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "metric": {
+            "value": "reopen correctness",
+            "quote": "metric: reopen correctness",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "winner": {
+            "value": "B",
+            "quote": "winner: B",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          }
+        },
+        "derivation": "matched_candidate_fields_only",
+        "source_authenticity": "not_verified",
+        "model_prose": "never_released"
+      },
+      "source_adapter": {
+        "snapshot_id": "f7c00286b513a11d8d081d98b9fd51c2f940835a4c6c41aa7689691711dfd824",
+        "policy_snapshot_id": "bc5c6783ea9a4b91118c0eba72abc0ba6e78a07b1a8c7529d250aec1a6605d5b",
+        "mode": "source_adapter",
+        "release_kind": "policy_rendered",
+        "decision": {
+          "sufficiency": "insufficient",
+          "recommendation": "none",
+          "reason_code": "no_applicable_observation",
+          "basis_ids": [
+            "S1"
+          ],
+          "explanation": "No applicable check establishes a choice under this decision's requirements.",
+          "limitation": "Synthetic scenario only; source authenticity is not verified. Target: revision=r2, workload=eight writers, environment=fixture-local, metric=reopen correctness",
+          "next_check": "Record revision in a new observed artifact; do not infer it."
+        },
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "artifact",
+            "applicability": "unknown",
+            "reason": "Missing scope: revision; do not assume a match."
+          }
+        ],
+        "facts": [
+          {
+            "field": "source_kind",
+            "value": "artifact",
+            "basis": [
+              {
+                "origin": "source_metadata",
+                "version": "1bd5e7f34f24ba7fd67f58281d7b251fea4cb9f3b5ba84d466bf47282794e41c",
+                "field": "kind",
+                "value": "artifact"
+              }
+            ]
+          },
+          {
+            "field": "revision",
+            "value": null,
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "1bd5e7f34f24ba7fd67f58281d7b251fea4cb9f3b5ba84d466bf47282794e41c",
+                "source_id": "S1",
+                "start": 0,
+                "end": 110,
+                "quote": "[observed]\nworkload: eight writers\nenvironment: fixture-local\nmetric: reopen correctness\nwinner: B\n[/observed]"
+              },
+              {
+                "origin": "target",
+                "version": "8269a7a9ec51ac746229e5e0f08191568acb9afda49c166fc485e149e7d1002e",
+                "field": "revision",
+                "value": "r2"
+              }
+            ]
+          },
+          {
+            "field": "workload",
+            "value": "eight writers",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "1bd5e7f34f24ba7fd67f58281d7b251fea4cb9f3b5ba84d466bf47282794e41c",
+                "source_id": "S1",
+                "start": 11,
+                "end": 34,
+                "quote": "workload: eight writers"
+              },
+              {
+                "origin": "target",
+                "version": "8269a7a9ec51ac746229e5e0f08191568acb9afda49c166fc485e149e7d1002e",
+                "field": "workload",
+                "value": "eight writers"
+              }
+            ]
+          },
+          {
+            "field": "environment",
+            "value": "fixture-local",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "1bd5e7f34f24ba7fd67f58281d7b251fea4cb9f3b5ba84d466bf47282794e41c",
+                "source_id": "S1",
+                "start": 35,
+                "end": 61,
+                "quote": "environment: fixture-local"
+              },
+              {
+                "origin": "target",
+                "version": "8269a7a9ec51ac746229e5e0f08191568acb9afda49c166fc485e149e7d1002e",
+                "field": "environment",
+                "value": "fixture-local"
+              }
+            ]
+          },
+          {
+            "field": "metric",
+            "value": "reopen correctness",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "1bd5e7f34f24ba7fd67f58281d7b251fea4cb9f3b5ba84d466bf47282794e41c",
+                "source_id": "S1",
+                "start": 62,
+                "end": 88,
+                "quote": "metric: reopen correctness"
+              },
+              {
+                "origin": "target",
+                "version": "8269a7a9ec51ac746229e5e0f08191568acb9afda49c166fc485e149e7d1002e",
+                "field": "metric",
+                "value": "reopen correctness"
+              }
+            ]
+          },
+          {
+            "field": "winner",
+            "value": "B",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "1bd5e7f34f24ba7fd67f58281d7b251fea4cb9f3b5ba84d466bf47282794e41c",
+                "source_id": "S1",
+                "start": 89,
+                "end": 98,
+                "quote": "winner: B"
+              }
+            ]
+          }
+        ],
+        "issues": [
+          {
+            "code": "missing_revision",
+            "basis": [
+              {
+                "origin": "source_text",
+                "version": "1bd5e7f34f24ba7fd67f58281d7b251fea4cb9f3b5ba84d466bf47282794e41c",
+                "source_id": "S1",
+                "start": 0,
+                "end": 110,
+                "quote": "[observed]\nworkload: eight writers\nenvironment: fixture-local\nmetric: reopen correctness\nwinner: B\n[/observed]"
+              },
+              {
+                "origin": "target",
+                "version": "8269a7a9ec51ac746229e5e0f08191568acb9afda49c166fc485e149e7d1002e",
+                "field": "revision",
+                "value": "r2"
+              }
+            ],
+            "next_check": "Record revision in a new observed artifact; do not infer it."
+          }
+        ],
+        "candidate_checks": {
+          "revision": {
+            "value": null,
+            "quote": null,
+            "status": "rejected",
+            "reason": "field_absent_from_observed_block"
+          },
+          "workload": {
+            "value": "eight writers",
+            "quote": "workload: eight writers",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "environment": {
+            "value": "fixture-local",
+            "quote": "environment: fixture-local",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "metric": {
+            "value": "reopen correctness",
+            "quote": "metric: reopen correctness",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          },
+          "winner": {
+            "value": "B",
+            "quote": "winner: B",
+            "status": "matched",
+            "reason": "unique_exact_declaration"
+          }
+        },
+        "derivation": "original_source_reparsed_explicitly",
+        "source_authenticity": "not_verified",
+        "model_prose": "never_released"
+      }
+    }
+  }
+]

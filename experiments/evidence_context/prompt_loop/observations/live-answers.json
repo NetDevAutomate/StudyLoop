@@ -1,0 +1,740 @@
+[
+  {
+    "phase": "development",
+    "candidate": "baseline",
+    "case": "queue",
+    "text": "{\n  \"conflict_kind\": \"correction\",\n  \"recommendation\": \"B\",\n  \"evidence_basis\": \"reported_only\",\n  \"rationale\": \"The second agent report explicitly states that B is faster for the same workload and environment, correcting the earlier advice about A. While neither report includes benchmark data, the later report directly addresses and supersedes the previous recommendation under identical conditions.\",\n  \"alternative\": \"The first agent report recommended A as faster, but this was explicitly corrected by the second report which stated B is faster for the same conditions.\",\n  \"citations\": [\n    {\n      \"id\": \"Source07\",\n      \"supports\": \"B is faster for the same workload and environment\"\n    }\n  ],\n  \"uncertainty\": \"No actual performance benchmarks were provided, so the true performance difference remains unmeasured. The recommendation relies solely on the reported correction.\",\n  \"next_check\": \"Run a benchmark comparing A and B under the specified workload and environment to validate the performance claims.\"\n}",
+    "finish_reason": "stop",
+    "usage": {
+      "completion_tokens": 218,
+      "prompt_tokens": 864,
+      "total_tokens": 1082,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "text_tokens": 218
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "text_tokens": 864,
+        "cache_write_tokens": 0,
+        "cache_creation_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0
+    },
+    "cost_usd": 0.00058248,
+    "elapsed_seconds": 3.887061499990523,
+    "parsed": {
+      "conflict_kind": "correction",
+      "recommendation": "B",
+      "evidence_basis": "reported_only",
+      "rationale": "The second agent report explicitly states that B is faster for the same workload and environment, correcting the earlier advice about A. While neither report includes benchmark data, the later report directly addresses and supersedes the previous recommendation under identical conditions.",
+      "alternative": "The first agent report recommended A as faster, but this was explicitly corrected by the second report which stated B is faster for the same conditions.",
+      "citations": [
+        {
+          "id": "Source07",
+          "supports": "B is faster for the same workload and environment"
+        }
+      ],
+      "uncertainty": "No actual performance benchmarks were provided, so the true performance difference remains unmeasured. The recommendation relies solely on the reported correction.",
+      "next_check": "Run a benchmark comparing A and B under the specified workload and environment to validate the performance claims."
+    },
+    "status": "parsed",
+    "score": {
+      "integrity": true,
+      "development_proxy": false,
+      "semantic_support": "not_automatically_measured"
+    }
+  },
+  {
+    "phase": "development",
+    "candidate": "baseline",
+    "case": "queue",
+    "text": "{\n  \"conflict_kind\": \"correction\",\n  \"recommendation\": \"B\",\n  \"evidence_basis\": \"reported_only\",\n  \"rationale\": \"The second agent report explicitly states that B is faster for the same workload and environment, which directly corrects the first agent's assertion about A being faster. While neither report includes benchmark data, the second report positions itself as updated advice superseding the first.\",\n  \"alternative\": \"The first agent report recommended A as faster, but it was explicitly overridden by the second agent who advised B is faster under identical conditions.\",\n  \"citations\": [\n    {\n      \"id\": \"Source07\",\n      \"supports\": \"B is faster for the same workload and environment\"\n    }\n  ],\n  \"uncertainty\": \"No actual performance benchmarks were provided to validate either claim, so while there is a correction in advice, it remains unverified.\",\n  \"next_check\": \"Run a benchmark comparing A and B under the specified workload and environment to confirm the performance difference.\"\n}",
+    "finish_reason": "stop",
+    "usage": {
+      "completion_tokens": 220,
+      "prompt_tokens": 864,
+      "total_tokens": 1084,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "text_tokens": 220
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "text_tokens": 864,
+        "cache_write_tokens": 0,
+        "cache_creation_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0
+    },
+    "cost_usd": 0.00058608,
+    "elapsed_seconds": 2.9305731661152095,
+    "parsed": {
+      "conflict_kind": "correction",
+      "recommendation": "B",
+      "evidence_basis": "reported_only",
+      "rationale": "The second agent report explicitly states that B is faster for the same workload and environment, which directly corrects the first agent's assertion about A being faster. While neither report includes benchmark data, the second report positions itself as updated advice superseding the first.",
+      "alternative": "The first agent report recommended A as faster, but it was explicitly overridden by the second agent who advised B is faster under identical conditions.",
+      "citations": [
+        {
+          "id": "Source07",
+          "supports": "B is faster for the same workload and environment"
+        }
+      ],
+      "uncertainty": "No actual performance benchmarks were provided to validate either claim, so while there is a correction in advice, it remains unverified.",
+      "next_check": "Run a benchmark comparing A and B under the specified workload and environment to confirm the performance difference."
+    },
+    "status": "parsed",
+    "score": {
+      "integrity": true,
+      "development_proxy": false,
+      "semantic_support": "not_automatically_measured"
+    }
+  },
+  {
+    "phase": "development",
+    "candidate": "baseline",
+    "case": "retry",
+    "text": "{\n  \"conflict_kind\": \"correction\",\n  \"recommendation\": \"B\",\n  \"evidence_basis\": \"artifact_supported\",\n  \"rationale\": \"The test artifact directly measured retry policy performance under the specified constraints (revision demo-r2, two-second deadline). It found that policy A exceeded the deadline while policy B completed within it. This directly contradicts and corrects the earlier agent report favoring policy A.\",\n  \"alternative\": \"Policy A was explicitly tested and found to violate the deadline constraint, making it inferior under these specific conditions\",\n  \"citations\": [\n    {\n      \"id\": \"Source05\",\n      \"supports\": \"Policy B meets the two-second deadline for demo-r2 while policy A does not\"\n    }\n  ],\n  \"uncertainty\": \"Results apply only to the specific synthetic environment and revision tested; broader applicability is not established\",\n  \"next_check\": \"none needed for this limited conclusion\"\n}",
+    "finish_reason": "stop",
+    "usage": {
+      "completion_tokens": 207,
+      "prompt_tokens": 903,
+      "total_tokens": 1110,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "text_tokens": 207
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "text_tokens": 903,
+        "cache_write_tokens": 0,
+        "cache_creation_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0
+    },
+    "cost_usd": 0.00057126,
+    "elapsed_seconds": 1.8441894168499857,
+    "parsed": {
+      "conflict_kind": "correction",
+      "recommendation": "B",
+      "evidence_basis": "artifact_supported",
+      "rationale": "The test artifact directly measured retry policy performance under the specified constraints (revision demo-r2, two-second deadline). It found that policy A exceeded the deadline while policy B completed within it. This directly contradicts and corrects the earlier agent report favoring policy A.",
+      "alternative": "Policy A was explicitly tested and found to violate the deadline constraint, making it inferior under these specific conditions",
+      "citations": [
+        {
+          "id": "Source05",
+          "supports": "Policy B meets the two-second deadline for demo-r2 while policy A does not"
+        }
+      ],
+      "uncertainty": "Results apply only to the specific synthetic environment and revision tested; broader applicability is not established",
+      "next_check": "none needed for this limited conclusion"
+    },
+    "status": "parsed",
+    "score": {
+      "integrity": true,
+      "development_proxy": true,
+      "semantic_support": "not_automatically_measured"
+    }
+  },
+  {
+    "phase": "development",
+    "candidate": "baseline",
+    "case": "retry",
+    "text": "{\n  \"conflict_kind\": \"correction\",\n  \"recommendation\": \"B\",\n  \"evidence_basis\": \"artifact_supported\",\n  \"rationale\": \"The test artifact directly measured retry policy performance under the specified constraints (revision demo-r2, two-second deadline). It found that policy A exceeded the deadline while policy B completed within it. This directly contradicts and corrects the earlier agent report favoring policy A.\",\n  \"alternative\": \"Policy A was explicitly tested and found non-compliant with the deadline constraint, making it inferior under these specific conditions.\",\n  \"citations\": [\n    {\n      \"id\": \"Source05\",\n      \"supports\": \"Policy B's compliance with the two-second deadline for demo-r2\"\n    }\n  ],\n  \"uncertainty\": \"Results are limited to the single tested scenario (demo-r2, two-second deadline) and may not generalize to other revisions or timing constraints.\",\n  \"next_check\": \"Test policy A under varied timing constraints to determine if bounded retry universally outperforms unlimited retry across scenarios.\"\n}",
+    "finish_reason": "stop",
+    "usage": {
+      "completion_tokens": 229,
+      "prompt_tokens": 903,
+      "total_tokens": 1132,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "text_tokens": 229
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "text_tokens": 903,
+        "cache_write_tokens": 0,
+        "cache_creation_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0
+    },
+    "cost_usd": 0.00061086,
+    "elapsed_seconds": 2.058395749889314,
+    "parsed": {
+      "conflict_kind": "correction",
+      "recommendation": "B",
+      "evidence_basis": "artifact_supported",
+      "rationale": "The test artifact directly measured retry policy performance under the specified constraints (revision demo-r2, two-second deadline). It found that policy A exceeded the deadline while policy B completed within it. This directly contradicts and corrects the earlier agent report favoring policy A.",
+      "alternative": "Policy A was explicitly tested and found non-compliant with the deadline constraint, making it inferior under these specific conditions.",
+      "citations": [
+        {
+          "id": "Source05",
+          "supports": "Policy B's compliance with the two-second deadline for demo-r2"
+        }
+      ],
+      "uncertainty": "Results are limited to the single tested scenario (demo-r2, two-second deadline) and may not generalize to other revisions or timing constraints.",
+      "next_check": "Test policy A under varied timing constraints to determine if bounded retry universally outperforms unlimited retry across scenarios."
+    },
+    "status": "parsed",
+    "score": {
+      "integrity": true,
+      "development_proxy": true,
+      "semantic_support": "not_automatically_measured"
+    }
+  },
+  {
+    "phase": "propose",
+    "candidate": "candidate-1",
+    "case": null,
+    "text": "{\n  \"amendment\": \"When evaluating evidence, strictly distinguish between agent reports and test artifacts. Agent reports stating performance or correctness without attached measurements must not be treated as corrections unless they explicitly reference and supersede prior advice. Test artifacts are authoritative only for their stated scope, environment, and limits. If a test artifact contradicts an agent report, classify the conflict as 'correction' only if the artifact explicitly invalidates the report's claim scope; otherwise, use 'unequal_evidence'.\"\n}",
+    "finish_reason": "stop",
+    "usage": {
+      "completion_tokens": 103,
+      "prompt_tokens": 2238,
+      "total_tokens": 2341,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "text_tokens": 103
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "text_tokens": 2238,
+        "cache_write_tokens": 0,
+        "cache_creation_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0
+    },
+    "cost_usd": 0.00067776,
+    "elapsed_seconds": 1.4548297920264304,
+    "parsed": {
+      "amendment": "When evaluating evidence, strictly distinguish between agent reports and test artifacts. Agent reports stating performance or correctness without attached measurements must not be treated as corrections unless they explicitly reference and supersede prior advice. Test artifacts are authoritative only for their stated scope, environment, and limits. If a test artifact contradicts an agent report, classify the conflict as 'correction' only if the artifact explicitly invalidates the report's claim scope; otherwise, use 'unequal_evidence'."
+    },
+    "status": "parsed"
+  },
+  {
+    "phase": "development",
+    "candidate": "candidate-1",
+    "case": "queue",
+    "text": "{\n  \"conflict_kind\": \"unresolved\",\n  \"recommendation\": \"insufficient\",\n  \"evidence_basis\": \"reported_only\",\n  \"rationale\": \"Both agent reports claim performance superiority for different queue policies (A and B respectively) under the same workload and environment, but neither provides benchmark data or test artifacts to substantiate their claims. Since both rely solely on reported opinions without empirical validation, there is no evidentiary basis to resolve the contradiction.\",\n  \"alternative\": \"Neither report can be preferred because both lack supporting evidence; they present conflicting assertions without measurements.\",\n  \"citations\": [\n    {\"id\": \"Source03\", \"supports\": \"Claim that Queuepolicy A is faster\"},\n    {\"id\": \"Source07\", \"supports\": \"Claim that Queuepolicy B is faster\"}\n  ],\n  \"uncertainty\": \"Performance characteristics of both queue policies remain unknown due to absence of benchmark data.\",\n  \"next_check\": \"Run a controlled benchmark comparing Queuepolicy A and B under the specified workload and environment.\"\n}",
+    "finish_reason": "stop",
+    "usage": {
+      "completion_tokens": 233,
+      "prompt_tokens": 957,
+      "total_tokens": 1190,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "text_tokens": 233
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "text_tokens": 957,
+        "cache_write_tokens": 0,
+        "cache_creation_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0
+    },
+    "cost_usd": 0.0006299400000000001,
+    "elapsed_seconds": 1.9625660830643028,
+    "parsed": {
+      "conflict_kind": "unresolved",
+      "recommendation": "insufficient",
+      "evidence_basis": "reported_only",
+      "rationale": "Both agent reports claim performance superiority for different queue policies (A and B respectively) under the same workload and environment, but neither provides benchmark data or test artifacts to substantiate their claims. Since both rely solely on reported opinions without empirical validation, there is no evidentiary basis to resolve the contradiction.",
+      "alternative": "Neither report can be preferred because both lack supporting evidence; they present conflicting assertions without measurements.",
+      "citations": [
+        {
+          "id": "Source03",
+          "supports": "Claim that Queuepolicy A is faster"
+        },
+        {
+          "id": "Source07",
+          "supports": "Claim that Queuepolicy B is faster"
+        }
+      ],
+      "uncertainty": "Performance characteristics of both queue policies remain unknown due to absence of benchmark data.",
+      "next_check": "Run a controlled benchmark comparing Queuepolicy A and B under the specified workload and environment."
+    },
+    "status": "parsed",
+    "score": {
+      "integrity": true,
+      "development_proxy": false,
+      "semantic_support": "not_automatically_measured"
+    }
+  },
+  {
+    "phase": "development",
+    "candidate": "candidate-1",
+    "case": "queue",
+    "text": "{\n  \"conflict_kind\": \"unresolved\",\n  \"recommendation\": \"insufficient\",\n  \"evidence_basis\": \"reported_only\",\n  \"rationale\": \"Both agent reports claim performance superiority for different queue policies (A and B respectively) under the same workload and environment, but neither provides benchmark evidence. Since performance cannot be guessed and no test artifacts exist to validate either claim, the contradictory advice cannot be resolved.\",\n  \"alternative\": \"Neither report can be preferred because both lack supporting evidence; recency does not resolve the absence of measurements.\",\n  \"citations\": [\n    {\"id\": \"Source03\", \"supports\": \"Claim that A is faster\"},\n    {\"id\": \"Source07\", \"supports\": \"Claim that B is faster\"}\n  ],\n  \"uncertainty\": \"Performance characteristics of both queue policies remain unknown due to lack of benchmark data.\",\n  \"next_check\": \"Run a benchmark comparing A and B under the specified workload and environment.\"\n}",
+    "finish_reason": "stop",
+    "usage": {
+      "completion_tokens": 220,
+      "prompt_tokens": 957,
+      "total_tokens": 1177,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "text_tokens": 220
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "text_tokens": 957,
+        "cache_write_tokens": 0,
+        "cache_creation_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0
+    },
+    "cost_usd": 0.00060654,
+    "elapsed_seconds": 1.8606798751279712,
+    "parsed": {
+      "conflict_kind": "unresolved",
+      "recommendation": "insufficient",
+      "evidence_basis": "reported_only",
+      "rationale": "Both agent reports claim performance superiority for different queue policies (A and B respectively) under the same workload and environment, but neither provides benchmark evidence. Since performance cannot be guessed and no test artifacts exist to validate either claim, the contradictory advice cannot be resolved.",
+      "alternative": "Neither report can be preferred because both lack supporting evidence; recency does not resolve the absence of measurements.",
+      "citations": [
+        {
+          "id": "Source03",
+          "supports": "Claim that A is faster"
+        },
+        {
+          "id": "Source07",
+          "supports": "Claim that B is faster"
+        }
+      ],
+      "uncertainty": "Performance characteristics of both queue policies remain unknown due to lack of benchmark data.",
+      "next_check": "Run a benchmark comparing A and B under the specified workload and environment."
+    },
+    "status": "parsed",
+    "score": {
+      "integrity": true,
+      "development_proxy": false,
+      "semantic_support": "not_automatically_measured"
+    }
+  },
+  {
+    "phase": "development",
+    "candidate": "candidate-1",
+    "case": "retry",
+    "text": "{\n  \"conflict_kind\": \"correction\",\n  \"recommendation\": \"B\",\n  \"evidence_basis\": \"artifact_supported\",\n  \"rationale\": \"The test artifact directly measured the performance of both policies under the specified constraints (revision demo-r2, two-second deadline). It found that policy A exceeded the deadline while policy B completed within it. This directly contradicts and corrects the earlier agent report which recommended policy A based on reliability without considering the time constraint.\",\n  \"alternative\": \"Policy A is ruled out by the test measurement showing it exceeds the required two-second deadline for the specified revision.\",\n  \"citations\": [\n    {\n      \"id\": \"Source05\",\n      \"supports\": \"Policy B completes within the two-second deadline for demo-r2 while policy A does not\"\n    }\n  ],\n  \"uncertainty\": \"The test only covers the specific scenario (demo-r2, single-worker environment). Other environments or revisions may yield different results.\",\n  \"next_check\": \"Test policy performance across multiple revisions and environments to generalize the findings.\"\n}",
+    "finish_reason": "stop",
+    "usage": {
+      "completion_tokens": 231,
+      "prompt_tokens": 996,
+      "total_tokens": 1227,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "text_tokens": 231
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "text_tokens": 996,
+        "cache_write_tokens": 0,
+        "cache_creation_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0
+    },
+    "cost_usd": 0.00063492,
+    "elapsed_seconds": 2.067667500115931,
+    "parsed": {
+      "conflict_kind": "correction",
+      "recommendation": "B",
+      "evidence_basis": "artifact_supported",
+      "rationale": "The test artifact directly measured the performance of both policies under the specified constraints (revision demo-r2, two-second deadline). It found that policy A exceeded the deadline while policy B completed within it. This directly contradicts and corrects the earlier agent report which recommended policy A based on reliability without considering the time constraint.",
+      "alternative": "Policy A is ruled out by the test measurement showing it exceeds the required two-second deadline for the specified revision.",
+      "citations": [
+        {
+          "id": "Source05",
+          "supports": "Policy B completes within the two-second deadline for demo-r2 while policy A does not"
+        }
+      ],
+      "uncertainty": "The test only covers the specific scenario (demo-r2, single-worker environment). Other environments or revisions may yield different results.",
+      "next_check": "Test policy performance across multiple revisions and environments to generalize the findings."
+    },
+    "status": "parsed",
+    "score": {
+      "integrity": true,
+      "development_proxy": true,
+      "semantic_support": "not_automatically_measured"
+    }
+  },
+  {
+    "phase": "development",
+    "candidate": "candidate-1",
+    "case": "retry",
+    "text": "{\n  \"conflict_kind\": \"correction\",\n  \"recommendation\": \"B\",\n  \"evidence_basis\": \"artifact_supported\",\n  \"rationale\": \"The test artifact directly measured the performance of both policies under the specified constraints (revision demo-r2, two-second deadline). It found that policy A exceeded the deadline while policy B completed within it. This directly contradicts and corrects the earlier agent report's recommendation of policy A.\",\n  \"alternative\": \"Policy A was shown to exceed the required deadline in the measured scenario, making it unsuitable under the current constraints.\",\n  \"citations\": [\n    {\n      \"id\": \"Source05\",\n      \"supports\": \"Policy B completed within the two-second deadline for revision demo-r2\"\n    }\n  ],\n  \"uncertainty\": \"The measurement applies only to the specific scenario (demo-r2, single-worker environment). Other environments or revisions may yield different results.\",\n  \"next_check\": \"Test policy A under different load conditions or worker configurations to determine if its failure was scenario-specific.\"\n}",
+    "finish_reason": "stop",
+    "usage": {
+      "completion_tokens": 228,
+      "prompt_tokens": 996,
+      "total_tokens": 1224,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "text_tokens": 228
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "text_tokens": 996,
+        "cache_write_tokens": 0,
+        "cache_creation_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0
+    },
+    "cost_usd": 0.00062952,
+    "elapsed_seconds": 2.0044446249958128,
+    "parsed": {
+      "conflict_kind": "correction",
+      "recommendation": "B",
+      "evidence_basis": "artifact_supported",
+      "rationale": "The test artifact directly measured the performance of both policies under the specified constraints (revision demo-r2, two-second deadline). It found that policy A exceeded the deadline while policy B completed within it. This directly contradicts and corrects the earlier agent report's recommendation of policy A.",
+      "alternative": "Policy A was shown to exceed the required deadline in the measured scenario, making it unsuitable under the current constraints.",
+      "citations": [
+        {
+          "id": "Source05",
+          "supports": "Policy B completed within the two-second deadline for revision demo-r2"
+        }
+      ],
+      "uncertainty": "The measurement applies only to the specific scenario (demo-r2, single-worker environment). Other environments or revisions may yield different results.",
+      "next_check": "Test policy A under different load conditions or worker configurations to determine if its failure was scenario-specific."
+    },
+    "status": "parsed",
+    "score": {
+      "integrity": true,
+      "development_proxy": true,
+      "semantic_support": "not_automatically_measured"
+    }
+  },
+  {
+    "phase": "propose",
+    "candidate": "candidate-2",
+    "case": null,
+    "text": "{\n  \"amendment\": \"When evaluating conflicting advice, prioritize evidence that directly addresses the current constraints and question. If evidence contradicts prior advice under identical conditions and is supported by measurable outcomes, classify the conflict as a correction. Ensure that recommendations are grounded in artifact-supported evidence rather than reported opinions, and always cite the specific evidence used to justify the decision. If evidence is insufficient to resolve the conflict, clearly articulate what additional measurements are needed.\"\n}",
+    "finish_reason": "stop",
+    "usage": {
+      "completion_tokens": 91,
+      "prompt_tokens": 3234,
+      "total_tokens": 3325,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "text_tokens": 91
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "text_tokens": 3234,
+        "cache_write_tokens": 0,
+        "cache_creation_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0
+    },
+    "cost_usd": 0.00087528,
+    "elapsed_seconds": 1.448587958002463,
+    "parsed": {
+      "amendment": "When evaluating conflicting advice, prioritize evidence that directly addresses the current constraints and question. If evidence contradicts prior advice under identical conditions and is supported by measurable outcomes, classify the conflict as a correction. Ensure that recommendations are grounded in artifact-supported evidence rather than reported opinions, and always cite the specific evidence used to justify the decision. If evidence is insufficient to resolve the conflict, clearly articulate what additional measurements are needed."
+    },
+    "status": "parsed"
+  },
+  {
+    "phase": "development",
+    "candidate": "candidate-2",
+    "case": "queue",
+    "text": "{\n  \"conflict_kind\": \"unresolved\",\n  \"recommendation\": \"insufficient\",\n  \"evidence_basis\": \"reported_only\",\n  \"rationale\": \"Both pieces of evidence are agent reports claiming performance advantages for different queue policies, but neither includes benchmark results or measurable outcomes. Since the constraints require not guessing performance and both reports lack supporting data, neither can be trusted to resolve the conflict.\",\n  \"alternative\": \"Neither option is supported by measurable evidence; both rely on unsubstantiated claims.\",\n  \"citations\": [\n    {\"id\": \"Source03\", \"supports\": \"Claim that Queuepolicy A is faster\"},\n    {\"id\": \"Source07\", \"supports\": \"Claim that Queuepolicy B is faster\"}\n  ],\n  \"uncertainty\": \"No measurable performance data exists to determine which queue policy is actually faster under the specified workload and environment.\",\n  \"next_check\": \"Run a benchmark comparing the performance of Queuepolicy A and B under the exact same workload and environment conditions.\"\n}",
+    "finish_reason": "stop",
+    "usage": {
+      "completion_tokens": 227,
+      "prompt_tokens": 946,
+      "total_tokens": 1173,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "text_tokens": 227
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "text_tokens": 946,
+        "cache_write_tokens": 0,
+        "cache_creation_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0
+    },
+    "cost_usd": 0.00061672,
+    "elapsed_seconds": 1.88082812493667,
+    "parsed": {
+      "conflict_kind": "unresolved",
+      "recommendation": "insufficient",
+      "evidence_basis": "reported_only",
+      "rationale": "Both pieces of evidence are agent reports claiming performance advantages for different queue policies, but neither includes benchmark results or measurable outcomes. Since the constraints require not guessing performance and both reports lack supporting data, neither can be trusted to resolve the conflict.",
+      "alternative": "Neither option is supported by measurable evidence; both rely on unsubstantiated claims.",
+      "citations": [
+        {
+          "id": "Source03",
+          "supports": "Claim that Queuepolicy A is faster"
+        },
+        {
+          "id": "Source07",
+          "supports": "Claim that Queuepolicy B is faster"
+        }
+      ],
+      "uncertainty": "No measurable performance data exists to determine which queue policy is actually faster under the specified workload and environment.",
+      "next_check": "Run a benchmark comparing the performance of Queuepolicy A and B under the exact same workload and environment conditions."
+    },
+    "status": "parsed",
+    "score": {
+      "integrity": true,
+      "development_proxy": false,
+      "semantic_support": "not_automatically_measured"
+    }
+  },
+  {
+    "phase": "development",
+    "candidate": "candidate-2",
+    "case": "queue",
+    "text": "{\n  \"conflict_kind\": \"unresolved\",\n  \"recommendation\": \"insufficient\",\n  \"evidence_basis\": \"reported_only\",\n  \"rationale\": \"Both pieces of evidence are agent reports claiming performance advantages for different queue policies (A and B respectively) under the same workload and environment. However, neither report includes benchmark data or measurable outcomes to substantiate their claims. Since the evidence is purely anecdotal and directly contradictory, it cannot be resolved without actual performance measurements.\",\n  \"alternative\": \"Neither option can be preferred because both rely solely on unsupported assertions rather than measured performance data.\",\n  \"citations\": [\n    {\"id\": \"Source03\", \"supports\": \"Claim that Queuepolicy A is faster\"},\n    {\"id\": \"Source07\", \"supports\": \"Claim that Queuepolicy B is faster\"}\n  ],\n  \"uncertainty\": \"The relative performance of queue policies A and B remains unknown due to lack of empirical evidence.\",\n  \"next_check\": \"Run a controlled benchmark comparing the performance of queue policies A and B under the specified workload and environment.\"\n}",
+    "finish_reason": "stop",
+    "usage": {
+      "completion_tokens": 242,
+      "prompt_tokens": 946,
+      "total_tokens": 1188,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "text_tokens": 242
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "text_tokens": 946,
+        "cache_write_tokens": 0,
+        "cache_creation_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0
+    },
+    "cost_usd": 0.00064372,
+    "elapsed_seconds": 1.94332066597417,
+    "parsed": {
+      "conflict_kind": "unresolved",
+      "recommendation": "insufficient",
+      "evidence_basis": "reported_only",
+      "rationale": "Both pieces of evidence are agent reports claiming performance advantages for different queue policies (A and B respectively) under the same workload and environment. However, neither report includes benchmark data or measurable outcomes to substantiate their claims. Since the evidence is purely anecdotal and directly contradictory, it cannot be resolved without actual performance measurements.",
+      "alternative": "Neither option can be preferred because both rely solely on unsupported assertions rather than measured performance data.",
+      "citations": [
+        {
+          "id": "Source03",
+          "supports": "Claim that Queuepolicy A is faster"
+        },
+        {
+          "id": "Source07",
+          "supports": "Claim that Queuepolicy B is faster"
+        }
+      ],
+      "uncertainty": "The relative performance of queue policies A and B remains unknown due to lack of empirical evidence.",
+      "next_check": "Run a controlled benchmark comparing the performance of queue policies A and B under the specified workload and environment."
+    },
+    "status": "parsed",
+    "score": {
+      "integrity": true,
+      "development_proxy": false,
+      "semantic_support": "not_automatically_measured"
+    }
+  },
+  {
+    "phase": "development",
+    "candidate": "candidate-2",
+    "case": "retry",
+    "text": "{\n  \"conflict_kind\": \"correction\",\n  \"recommendation\": \"B\",\n  \"evidence_basis\": \"artifact_supported\",\n  \"rationale\": \"The test artifact directly measured retry policy performance under the specified constraints (revision demo-r2, two-second deadline). It found that policy A exceeded the deadline while policy B completed within it, correcting the prior agent report which recommended A based on reliability without timing measurements.\",\n  \"alternative\": \"Policy A's recommendation was based on reliability claims without timing evidence, and was explicitly contradicted by direct measurement showing B met the deadline while A did not.\",\n  \"citations\": [{\"id\": \"Source05\", \"supports\": \"Policy B completed within the two-second deadline for demo-r2 while A exceeded it\"}],\n  \"uncertainty\": \"No other revisions or environments were tested; results apply only to the specific synthetic single-worker environment with demo-r2.\",\n  \"next_check\": \"none needed for this limited conclusion\"\n}",
+    "finish_reason": "stop",
+    "usage": {
+      "completion_tokens": 212,
+      "prompt_tokens": 985,
+      "total_tokens": 1197,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "text_tokens": 212
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "text_tokens": 985,
+        "cache_write_tokens": 0,
+        "cache_creation_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0
+    },
+    "cost_usd": 0.0005983,
+    "elapsed_seconds": 4.045945874880999,
+    "parsed": {
+      "conflict_kind": "correction",
+      "recommendation": "B",
+      "evidence_basis": "artifact_supported",
+      "rationale": "The test artifact directly measured retry policy performance under the specified constraints (revision demo-r2, two-second deadline). It found that policy A exceeded the deadline while policy B completed within it, correcting the prior agent report which recommended A based on reliability without timing measurements.",
+      "alternative": "Policy A's recommendation was based on reliability claims without timing evidence, and was explicitly contradicted by direct measurement showing B met the deadline while A did not.",
+      "citations": [
+        {
+          "id": "Source05",
+          "supports": "Policy B completed within the two-second deadline for demo-r2 while A exceeded it"
+        }
+      ],
+      "uncertainty": "No other revisions or environments were tested; results apply only to the specific synthetic single-worker environment with demo-r2.",
+      "next_check": "none needed for this limited conclusion"
+    },
+    "status": "parsed",
+    "score": {
+      "integrity": true,
+      "development_proxy": true,
+      "semantic_support": "not_automatically_measured"
+    }
+  },
+  {
+    "phase": "development",
+    "candidate": "candidate-2",
+    "case": "retry",
+    "text": "{\n  \"conflict_kind\": \"correction\",\n  \"recommendation\": \"B\",\n  \"evidence_basis\": \"artifact_supported\",\n  \"rationale\": \"The test artifact directly measures the performance of both policies under the specified constraints (revision demo-r2, two-second deadline). It shows that policy A exceeds the deadline while policy B completes within it, correcting the prior agent report.\",\n  \"alternative\": \"Policy A is explicitly shown to exceed the two-second deadline in the test artifact, making it unsuitable under the current constraints.\",\n  \"citations\": [{\"id\": \"Source05\", \"supports\": \"Policy B completed within the two-second deadline for demo-r2, while A did not\"}],\n  \"uncertainty\": \"The test covers only one scenario (demo-r2, single-worker environment); broader applicability is not established.\",\n  \"next_check\": \"Test policy performance across multiple revisions and environments to confirm consistent behavior.\"\n}",
+    "finish_reason": "stop",
+    "usage": {
+      "completion_tokens": 205,
+      "prompt_tokens": 985,
+      "total_tokens": 1190,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "text_tokens": 205
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "text_tokens": 985,
+        "cache_write_tokens": 0,
+        "cache_creation_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0
+    },
+    "cost_usd": 0.0005857,
+    "elapsed_seconds": 2.9172796660568565,
+    "parsed": {
+      "conflict_kind": "correction",
+      "recommendation": "B",
+      "evidence_basis": "artifact_supported",
+      "rationale": "The test artifact directly measures the performance of both policies under the specified constraints (revision demo-r2, two-second deadline). It shows that policy A exceeds the deadline while policy B completes within it, correcting the prior agent report.",
+      "alternative": "Policy A is explicitly shown to exceed the two-second deadline in the test artifact, making it unsuitable under the current constraints.",
+      "citations": [
+        {
+          "id": "Source05",
+          "supports": "Policy B completed within the two-second deadline for demo-r2, while A did not"
+        }
+      ],
+      "uncertainty": "The test covers only one scenario (demo-r2, single-worker environment); broader applicability is not established.",
+      "next_check": "Test policy performance across multiple revisions and environments to confirm consistent behavior."
+    },
+    "status": "parsed",
+    "score": {
+      "integrity": true,
+      "development_proxy": true,
+      "semantic_support": "not_automatically_measured"
+    }
+  },
+  {
+    "phase": "audit",
+    "candidate": "baseline",
+    "case": "cache",
+    "text": "{\n  \"conflict_kind\": \"changed_constraints\",\n  \"recommendation\": \"B\",\n  \"evidence_basis\": \"reported_only\",\n  \"rationale\": \"The initial recommendation for A was based on a single-process toy workload assumption, which has changed. The current constraint of eight concurrent writers directly invalidates that assumption. Agent report Source01 explicitly recommends B for the current workload requirement of handling concurrent writes, making it the justified choice under the new conditions.\",\n  \"alternative\": \"A is designed for single-process workloads and lacks coordination mechanisms needed for reliable operation with eight concurrent writers, making it unsuitable for the current constraints despite potentially simpler implementation.\",\n  \"citations\": [\n    {\"id\": \"Source04\", \"supports\": \"A was recommended for single-process toy workload\"},\n    {\"id\": \"Source01\", \"supports\": \"B is recommended for eight concurrent writers\"}\n  ],\n  \"uncertainty\": \"Neither option has been benchmarked in the current environment, so performance characteristics remain unknown; the recommendation is based solely on workload compatibility.\",\n  \"next_check\": \"Benchmark both caching approaches under the actual eight-writer workload to measure reliability and performance trade-offs.\"\n}",
+    "finish_reason": "stop",
+    "usage": {
+      "completion_tokens": 272,
+      "prompt_tokens": 881,
+      "total_tokens": 1153,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "text_tokens": 272
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "text_tokens": 881,
+        "cache_write_tokens": 0,
+        "cache_creation_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0
+    },
+    "cost_usd": 0.00068342,
+    "elapsed_seconds": 2.292533125029877,
+    "parsed": {
+      "conflict_kind": "changed_constraints",
+      "recommendation": "B",
+      "evidence_basis": "reported_only",
+      "rationale": "The initial recommendation for A was based on a single-process toy workload assumption, which has changed. The current constraint of eight concurrent writers directly invalidates that assumption. Agent report Source01 explicitly recommends B for the current workload requirement of handling concurrent writes, making it the justified choice under the new conditions.",
+      "alternative": "A is designed for single-process workloads and lacks coordination mechanisms needed for reliable operation with eight concurrent writers, making it unsuitable for the current constraints despite potentially simpler implementation.",
+      "citations": [
+        {
+          "id": "Source04",
+          "supports": "A was recommended for single-process toy workload"
+        },
+        {
+          "id": "Source01",
+          "supports": "B is recommended for eight concurrent writers"
+        }
+      ],
+      "uncertainty": "Neither option has been benchmarked in the current environment, so performance characteristics remain unknown; the recommendation is based solely on workload compatibility.",
+      "next_check": "Benchmark both caching approaches under the actual eight-writer workload to measure reliability and performance trade-offs."
+    },
+    "status": "parsed",
+    "score": {
+      "integrity": true,
+      "development_proxy": true,
+      "semantic_support": "not_automatically_measured"
+    }
+  },
+  {
+    "phase": "audit",
+    "candidate": "baseline",
+    "case": "storage",
+    "text": "{\n  \"conflict_kind\": \"unequal_evidence\",\n  \"recommendation\": \"B\",\n  \"evidence_basis\": \"artifact_supported\",\n  \"rationale\": \"The test artifact directly measures reopen correctness on the specified revision and environment, showing B retained the last committed entry while A lost it. This directly addresses the constraint.\",\n  \"alternative\": \"Agent reports favoring A lack test support and are contradicted by the test artifact's direct measurement of correctness.\",\n  \"citations\": [\n    {\"id\": \"Source02\", \"supports\": \"B's correctness on reopen\"}\n  ],\n  \"uncertainty\": \"No throughput comparison was requested or measured.\",\n  \"next_check\": \"none needed for this limited conclusion\"\n}",
+    "finish_reason": "stop",
+    "usage": {
+      "completion_tokens": 161,
+      "prompt_tokens": 964,
+      "total_tokens": 1125,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "text_tokens": 161
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "text_tokens": 964,
+        "cache_write_tokens": 0,
+        "cache_creation_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0
+    },
+    "cost_usd": 0.00050188,
+    "elapsed_seconds": 1.5604914580471814,
+    "parsed": {
+      "conflict_kind": "unequal_evidence",
+      "recommendation": "B",
+      "evidence_basis": "artifact_supported",
+      "rationale": "The test artifact directly measures reopen correctness on the specified revision and environment, showing B retained the last committed entry while A lost it. This directly addresses the constraint.",
+      "alternative": "Agent reports favoring A lack test support and are contradicted by the test artifact's direct measurement of correctness.",
+      "citations": [
+        {
+          "id": "Source02",
+          "supports": "B's correctness on reopen"
+        }
+      ],
+      "uncertainty": "No throughput comparison was requested or measured.",
+      "next_check": "none needed for this limited conclusion"
+    },
+    "status": "parsed",
+    "score": {
+      "integrity": true,
+      "development_proxy": true,
+      "semantic_support": "not_automatically_measured"
+    }
+  }
+]

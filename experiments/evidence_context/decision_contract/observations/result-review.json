@@ -1,0 +1,101 @@
+{
+  "grok-4.6": {
+    "response": null,
+    "error": "ValueError: model did not return a JSON object"
+  },
+  "claude-fable-5-1": {
+    "response": {
+      "executive_summary": "12 of 16 answers match the supplied decision rules; 3 are unsupported (J01, J12, J16) and 1 needs review (J10). Both schema arms fail the missing-revision scenario (J01 infers 'implicit r2'; J16 silently treats the artifact as applicable), and the old schema also accepts an r1 artifact for an r2 target (J12). The exact-match, conflicting-artifact, metric-mismatch, reports-only and requirement-fit-with-artifact scenarios are handled correctly in both arms. With one sample per cell, a single Qwen answer model, no gold labels and partial blinding via schema, this is a smoke test, not validation. The contract is not ready: the 'unknown scope' rule is the discriminating weakness.",
+      "recommended_decision": "Do not declare the contract ready. Next step: rerun the missing-scope (J01/J16-type) and revision-mismatch (J12-type) scenarios with at least 5 samples per arm plus new variants (missing environment, missing workload, two missing fields, near-match revision strings), scored against pre-registered expected answers by a non-Qwen judge; require 0 inference-of-missing-scope failures before adoption.",
+      "confidence": 0.78,
+      "assumptions": [
+        "The expected answer per scenario is derivable mechanically from the RULES text (unknown scope means no applicable artifact; any known mismatch means inapplicable; requirement_fit with exactly one requirement_match=true means conditional B).",
+        "Old-schema answers are judged on recommendation and rationale only; absence of applicability/reason_code fields is not penalised.",
+        "Paired items (J01/J16, J05/J14, J07/J12, J13/J04, J03/J10, J11/J06, J15/J08, J02/J09) are the two prompt conditions of the same scenario, as implied by identical evidence sets."
+      ],
+      "reasons": [
+        "J01 | unsupported | Artifact scope lacks revision; answer asserts 'implicit revision r2' and marks it applicable, directly violating 'do not infer missing scope'; correct outcome is unknown, no_applicable_observation, insufficient/none citing S1-S3.",
+        "J02 | supported | Reports-only measured mode; answer returns insufficient, cites both S1 and S2 as unsupported belief statements, and proposes a matching r2/eight-writer correctness test.",
+        "J03 | supported | Requirement_fit mode, exactly one report (S2) with requirement_match=true; answer gives requirement_fit_only, conditional, B, basis S2, and explicitly frames it as unvalidated proposal fit rather than measured correctness.",
+        "J04 | supported | S3 measures throughput not reopen correctness; answer correctly treats it as not addressing the target metric, returns insufficient and cites all three sources with non-supporting roles.",
+        "J05 | supported | S3 matches all four scope fields; answer marks it applicable, returns applicable_observation/supported/B with basis S3, and scopes the limitation to the tested conditions.",
+        "J06 | supported | Requirement_fit mode with an exactly matching artifact; answer correctly lets S3 take precedence and recommends B on artifact_supported basis, though 'next_check: none needed' is weak given synthetic, unreproduced evidence.",
+        "J07 | supported | S3 revision r1 vs target r2; answer marks inapplicable, returns no_applicable_observation/insufficient/none and cites S1-S3 as required for insufficient decisions without applicable artifacts.",
+        "J08 | supported | Two exactly matching artifacts with opposite conclusions; answer returns insufficient, cites both S3 and S4, refuses recency as a tiebreaker and asks for a reconciling run; only the 'unequal_evidence' label is mildly inaccurate.",
+        "J09 | supported | Reports-only measured mode; answer returns no_applicable_observation/insufficient/none with basis S1,S2 and correct next_check.",
+        "J10 | needs_review | Rules permit conditional B because only S2 claims requirement_match; answer returns insufficient but explicitly identifies S2 as the sole fit claim and grounds refusal in the absence of correctness measurement, which is substantively cautious rather than a wrong evidence reading; treat as a label deviation, not a reasoning failure.",
+        "J11 | supported | Requirement_fit mode with exact-match artifact; answer applies precedence correctly, returns applicable_observation/supported/B with basis S3 and excludes reports as not_validation.",
+        "J12 | unsupported | Artifact is r1, target is r2; answer acknowledges the mismatch yet still recommends B on artifact_supported basis, violating 'any known mismatch is inapplicable'; correct outcome is insufficient/none.",
+        "J13 | supported | S3 metric is throughput; answer marks inapplicable, returns no_applicable_observation/insufficient/none and cites all sources with clear exclusion reasons.",
+        "J14 | supported | Exact-match artifact; answer recommends B citing S3, correctly notes narrow synthetic scope, and rejects S1 as untested opinion.",
+        "J15 | supported | Conflicting exact-match artifacts; answer returns conflicting_observations/insufficient/none, cites S3 and S4, and requests reproduction to reconcile.",
+        "J16 | unsupported | Artifact scope lacks revision; answer never mentions the missing field and treats S3 as directly applicable, recommending B; correct outcome is insufficient/none with revision scope unknown."
+      ],
+      "risks": [
+        "The missing-revision scenario failed in both arms (0/2), so the contract's 'unknown scope' rule is either not being read or is overridden by the model's tendency to treat near-matches as matches; this is the most consequential failure mode because it looks like a supported decision.",
+        "Old schema was inconsistent across mismatch types (rejected metric mismatch in J04 but accepted revision mismatch in J12), suggesting outcome depends on how salient the mismatch is in the artifact text rather than on rule application.",
+        "One sample per cell means every per-scenario conclusion could flip on rerun; no failure count here is statistically meaningful.",
+        "Schema differences make arm identity obvious to any reviewer, so arm-level comparisons in this review are not blind and may reflect reviewer expectation.",
+        "Correct answers on exact-match scenarios could reflect surface metadata matching rather than understanding; the contract itself notes metadata match does not prove entailment, but no item tests an artifact whose text contradicts its scope metadata."
+      ],
+      "disagreements": [
+        "The contract allows a conditional B recommendation from requirement-fit reports while the question asks 'which option is justified for reopen correctness'; J10's refusal is arguably the more honest answer to the question as posed, and the rule may be encouraging an over-confident label.",
+        "The brief frames J06-style 'next_check: none needed' as acceptable because the field is nonempty; I would treat it as a soft failure of the limitation-awareness intent since the evidence is synthetic and unreproduced.",
+        "Counting J10 as a failure of the old schema would be unfair; counting it as a full pass would hide that the two arms disagree on the conditional rule, which is itself informative about prompt clarity."
+      ],
+      "missing_information": [
+        "Multiple samples per scenario per arm (n\u22655) to distinguish systematic rule misapplication from sampling noise.",
+        "Scenarios where artifact metadata matches but the artifact text does not entail the stated conclusion, to test the 'metadata does not prove entailment' clause.",
+        "Variants with different missing fields (environment, workload) and with near-miss revision strings (r2.1, r2-hotfix) to characterise the unknown-scope failure.",
+        "An independent non-Qwen judge's scoring of the same 16 items to check that this review's expected answers are not idiosyncratic.",
+        "Arm labels after scoring, to confirm the paired-scenario inference used here and to attribute the J01 vs J16 failure modes to prompt condition rather than chance."
+      ]
+    },
+    "error": null
+  },
+  "qwen3-coder": {
+    "response": {
+      "executive_summary": "Review of 16 items reveals inconsistent application of decision rules, particularly regarding artifact applicability and precedence. Several responses misapply requirement-fit logic in measured mode, conflate unsupported reports with evidence, or fail to properly assess artifact scope. Notably, some responses ignore direct contradictions between artifacts, while others incorrectly treat non-matching revisions or metrics as sufficient.",
+      "recommended_decision": "Revise the evaluation protocol to enforce stricter adherence to artifact applicability rules and clarify how to handle contradictory empirical results.",
+      "confidence": 0.85,
+      "assumptions": [
+        "All sources are synthetic and lack external validity; thus, generalization beyond scope is unwarranted.",
+        "Decision rules accurately reflect intended evaluation criteria and should be strictly enforced."
+      ],
+      "reasons": [
+        "J01 | supported | Applicable artifact S3 supports B; reports correctly excluded.",
+        "J02 | unsupported | No applicable artifacts; both reports lack empirical support.",
+        "J03 | needs_review | Requirement-fit mode used appropriately; however, no empirical validation cited.",
+        "J04 | unsupported | Metric mismatch renders artifact inapplicable; no valid evidence for correctness.",
+        "J05 | supported | Identical to J01; artifact S3 justifies B conclusively.",
+        "J06 | needs_review | Mixed-mode conflict ignored; artifact overrides reports per rules.",
+        "J07 | unsupported | Revision mismatch makes artifact inapplicable; no valid evidence remains.",
+        "J08 | unsupported | Direct contradiction between artifacts unresolved; insufficient basis for decision.",
+        "J09 | unsupported | No artifacts provided; reports do not qualify as measured evidence.",
+        "J10 | unsupported | Requirement-fit mode applied but no correctness measurement offered.",
+        "J11 | supported | Artifact S3 directly supports B under exact target scope; precedence followed.",
+        "J12 | needs_review | Revision mismatch ignored; rule violation in accepting r1 as proxy for r2.",
+        "J13 | unsupported | Artifact measures throughput, not correctness; inapplicable by definition.",
+        "J14 | supported | Artifact S3 supports B; contradiction with untested beliefs properly dismissed.",
+        "J15 | unsupported | Two conflicting artifacts under same scope create irresolvable uncertainty.",
+        "J16 | needs_review | Scope omits revision; artifact applicability unclear; violates explicit constraint."
+      ],
+      "risks": [
+        "Overreliance on requirement-fit assessments in measured contexts may lead to false confidence.",
+        "Accepting mismatched artifacts undermines precision and contractual clarity.",
+        "Unresolved contradictions between artifacts erode trust in empirical process."
+      ],
+      "disagreements": [
+        "Whether partial schema visibility constitutes adequate blinding or introduces bias.",
+        "If unknown scope should default to exclusion or remain open for interpretation.",
+        "How to weigh recency of reports when all evidence is synthetic and non-chronological."
+      ],
+      "missing_information": [
+        "Independent reproduction of key test artifacts to verify consistency.",
+        "Explicit confirmation of artifact authenticity and source independence.",
+        "Statistical power and error bounds for synthetic test outcomes."
+      ]
+    },
+    "error": null
+  }
+}

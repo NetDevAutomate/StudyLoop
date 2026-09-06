@@ -3,12 +3,15 @@
 
 import json
 import os
+import sqlite3
 import subprocess
 import tempfile
 from pathlib import Path
 from typing import Annotated
 
 import typer
+
+from agent_session_tools.context.scope import visibility_sql, ScopeError
 
 from agent_session_tools.profiles import (
     BUILTIN_PROFILES,
@@ -48,15 +51,18 @@ db_option = typer.Option("-d", "--db", help="Database path (default: from config
 
 def _resolve_write_session_id(conn, session_id: str) -> str:
     """Resolve a session ID for write commands without allowing ambiguous matches."""
+    visible, params = visibility_sql(conn, "s.id")
     exact = conn.execute(
-        "SELECT id FROM sessions WHERE id = ?", (session_id,)
+        "SELECT id FROM sessions s WHERE id = ? AND " + visible, (session_id, *params)
     ).fetchone()
     if exact:
         return exact[0]
 
     matches = conn.execute(
-        "SELECT id FROM sessions WHERE id LIKE ? ORDER BY id LIMIT 11",
-        (f"{session_id}%",),
+        "SELECT id FROM sessions s WHERE id LIKE ? AND "
+        + visible
+        + " ORDER BY id LIMIT 11",
+        (f"{session_id}%", *params),
     ).fetchall()
 
     if not matches:
@@ -79,7 +85,8 @@ def _resolve_write_session_id(conn, session_id: str) -> str:
 # ==================== Main Commands ====================
 
 
-@app.command()
+@app.command("search")
+@app.command("search-cmd", hidden=True)
 def search_cmd(
     query: Annotated[str, typer.Argument(help="Search query")],
     db: Annotated[Path | None, db_option] = None,
@@ -94,6 +101,12 @@ def search_cmd(
     output_format: Annotated[
         str, typer.Option("--output-format", help="Output format")
     ] = "table",
+    project: Annotated[
+        str | None,
+        typer.Option(
+            "--project", help="Project name or full path with configured aliases"
+        ),
+    ] = None,
     local_only: Annotated[
         bool,
         typer.Option(
@@ -110,7 +123,14 @@ def search_cmd(
     """
     conn = get_connection(db)
     search(
-        conn, query, limit, since, before, output_format, include_full=not local_only
+        conn,
+        query,
+        limit,
+        since,
+        before,
+        output_format,
+        include_full=not local_only,
+        project=project,
     )
     conn.close()
 
@@ -233,6 +253,19 @@ def continue_cmd(
     conn.close()
 
 
+def _annotation_connection(db, *, write=False):
+    if write:
+        from agent_session_tools.context.records import connect
+
+        return connect(db or get_default_db_path())
+    return get_connection(db)
+
+
+def _annotation_error(exc):
+    print(f"❌ {exc}")
+    raise typer.Exit(1) from exc
+
+
 @app.command()
 def tag(
     session_id: Annotated[str, typer.Argument(help="Session ID")],
@@ -242,107 +275,145 @@ def tag(
         list[str] | None, typer.Option("--remove", help="Tags to remove")
     ] = None,
 ) -> None:
-    """Manage session tags."""
-    conn = get_connection(db)
-    resolved_id = _resolve_write_session_id(conn, session_id)
+    """Manage versioned tag reports owned by the native session."""
+    from agent_session_tools.context import annotations
+    from agent_session_tools.context.records import policy_guard
+    from agent_session_tools.context.response import read_boundary
+    from agent_session_tools.context.scope import ScopeError
+    from agent_session_tools.context.store import ContextStore
 
-    if add:
-        for t in add:
-            conn.execute(
-                "INSERT OR IGNORE INTO session_tags (session_id, tag) VALUES (?, ?)",
-                (resolved_id, t),
-            )
-        print(f"✅ Added tags to {resolved_id[:20]}...: {', '.join(add)}")
-
-    if remove:
-        for t in remove:
-            conn.execute(
-                "DELETE FROM session_tags WHERE session_id = ? AND tag = ?",
-                (resolved_id, t),
-            )
-        print(f"✅ Removed tags from {resolved_id[:20]}...: {', '.join(remove)}")
-
-    # Always show current tags
-    current_tags = conn.execute(
-        "SELECT tag FROM session_tags WHERE session_id = ? ORDER BY tag", (resolved_id,)
-    ).fetchall()
-
-    if current_tags:
-        print(f"\n🏷️  Current tags: {', '.join(t[0] for t in current_tags)}")
-    else:
-        print(f"\n🏷️  No tags set for {resolved_id[:20]}...")
-
-    conn.commit()
-    conn.close()
+    conn = _annotation_connection(db, write=bool(add or remove))
+    try:
+        if add or remove:
+            with ContextStore(conn)._atomic(), policy_guard(conn):
+                resolved = _resolve_write_session_id(conn, session_id)
+                state = annotations.snapshot(
+                    conn, resolved, "tags", include_history=False
+                )
+                tags = {t for value in annotations.values(state) for t in value["tags"]}
+                tags.update(add or [])
+                tags.difference_update(remove or [])
+                annotations.write(
+                    conn, resolved, "tags", {"tags": sorted(tags)}, expected=state
+                )
+            print(f"✅ Tags saved for {resolved[:20]}...")
+            print(f"🏷️  Current tags: {', '.join(sorted(tags)) or '(none)'}")
+        else:
+            with read_boundary():
+                resolved = _resolve_write_session_id(conn, session_id)
+                state = annotations.snapshot(
+                    conn, resolved, "tags", include_history=False
+                )
+                variants = annotations.values(state)
+                lines = [", ".join(value["tags"]) or "(none)" for value in variants]
+                output = "\n".join(lines) or "No tags set"
+                if len(variants) > 1:
+                    output = (
+                        "Conflicting current tag reports (no automatic winner):\n"
+                        + output
+                    )
+            print(output)
+    except (ScopeError, ValueError, sqlite3.Error) as exc:
+        _annotation_error(exc)
+    finally:
+        conn.rollback()
+        conn.close()
 
 
 @app.command()
 def note(
     session_id: Annotated[str, typer.Argument(help="Session ID")],
     db: Annotated[Path | None, db_option] = None,
-    text: Annotated[str | None, typer.Option("--text", help="Note text")] = None,
+    text: Annotated[
+        str | None, typer.Option("--text", help="New reported note text")
+    ] = None,
     edit: Annotated[bool, typer.Option("--edit", help="Edit note in $EDITOR")] = False,
+    history: Annotated[
+        bool, typer.Option("--history", help="Inspect bounded version history")
+    ] = False,
 ) -> None:
-    """Manage session notes."""
-    conn = get_connection(db)
-    resolved_id = _resolve_write_session_id(conn, session_id)
+    """Read or correct session notes; source ownership is not native evidence."""
+    from agent_session_tools.context import annotations
+    from agent_session_tools.context.records import policy_guard
+    from agent_session_tools.context.response import read_boundary
+    from agent_session_tools.context.scope import ScopeError
+    from agent_session_tools.context.store import ContextStore, _json
 
-    if text:
-        conn.execute(
-            """
-            INSERT OR REPLACE INTO session_notes (session_id, notes, updated_at)
-            VALUES (?, ?, CURRENT_TIMESTAMP)
-        """,
-            (resolved_id, text),
-        )
-        print(f"✅ Note saved for {resolved_id[:20]}...")
-
-    elif edit:
-        current_note = conn.execute(
-            "SELECT notes FROM session_notes WHERE session_id = ?", (resolved_id,)
-        ).fetchone()
-
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as tmp:
-            if current_note:
-                tmp.write(current_note[0])
-            tmp.flush()
-
-            editor = os.environ.get("EDITOR", "nano")
-            try:
-                subprocess.run([editor, tmp.name], check=True)
-
-                with open(tmp.name) as f:
-                    new_content = f.read().strip()
-
-                if new_content:
-                    conn.execute(
-                        """
-                        INSERT OR REPLACE INTO session_notes (session_id, notes, updated_at)
-                        VALUES (?, ?, CURRENT_TIMESTAMP)
-                    """,
-                        (resolved_id, new_content),
+    if sum((text is not None, edit, history)) > 1:
+        raise typer.BadParameter("Choose one of --text, --edit or --history")
+    conn = _annotation_connection(db, write=text is not None or edit)
+    temporary = None
+    try:
+        expected = None
+        if edit:
+            with read_boundary():
+                resolved = _resolve_write_session_id(conn, session_id)
+                expected = annotations.snapshot(conn, resolved, include_history=False)
+                variants = annotations.values(expected)
+                if len(variants) > 1:
+                    raise ScopeError(
+                        "Conflicting notes: inspect --history and use --text to record a correction"
                     )
-                    print(f"✅ Note updated for {resolved_id[:20]}...")
+                original = variants[0]["notes"] if variants else ""
+            # No database lock is held while the external editor is open.
+            conn.rollback()
+            conn.close()
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".md", delete=False
+            ) as tmp:
+                temporary = tmp.name
+                tmp.write(original)
+            import shlex
 
-            except subprocess.CalledProcessError:
-                print("❌ Editor cancelled or failed")
-            finally:
-                os.unlink(tmp.name)
-
-    else:
-        note_row = conn.execute(
-            "SELECT notes, updated_at FROM session_notes WHERE session_id = ?",
-            (resolved_id,),
-        ).fetchone()
-
-        if note_row:
-            print(f"\n📝 Note for {resolved_id[:20]}... (updated {note_row[1]}):")
-            print(f"{note_row[0]}")
+            subprocess.run(
+                [*shlex.split(os.environ.get("EDITOR") or "nano"), temporary],
+                check=True,
+            )
+            text = Path(temporary).read_text().strip()
+            conn = _annotation_connection(db, write=True)
+        if text is not None:
+            with ContextStore(conn)._atomic(), policy_guard(conn):
+                resolved = _resolve_write_session_id(conn, session_id)
+                annotations.write(
+                    conn, resolved, "note", {"notes": text}, expected=expected
+                )
+            print(f"✅ Note saved for {resolved[:20]}...")
         else:
-            print(f"\n📝 No note found for {resolved_id[:20]}...")
-
-    conn.commit()
-    conn.close()
+            with read_boundary():
+                resolved = _resolve_write_session_id(conn, session_id)
+                if history:
+                    output = _json(annotations.view(conn, resolved))
+                else:
+                    variants = annotations.values(
+                        annotations.snapshot(conn, resolved, include_history=False)
+                    )
+                    output = (
+                        "\n\n---\n\n".join(value["notes"] for value in variants)
+                        or "No note found"
+                    )
+                    if len(variants) > 1:
+                        output = (
+                            "Conflicting current note reports (no automatic winner):\n"
+                            + output
+                        )
+            print(output)
+    except (
+        ScopeError,
+        ValueError,
+        sqlite3.Error,
+        subprocess.CalledProcessError,
+        OSError,
+    ) as exc:
+        _annotation_error(exc)
+    finally:
+        if temporary is not None:
+            Path(temporary).unlink(missing_ok=True)
+        # An editor exception may occur after the original connection closed.
+        try:
+            conn.rollback()
+        except sqlite3.ProgrammingError:
+            pass
+        conn.close()
 
 
 @app.command("check-size")
@@ -476,9 +547,13 @@ def path() -> None:
 
 def main() -> int:
     """CLI entry point for session query."""
-    app()
+    try:
+        app()
+    except ScopeError as exc:
+        typer.secho(str(exc), fg=typer.colors.YELLOW, err=True)
+        return 2
     return 0
 
 
 if __name__ == "__main__":
-    app()
+    raise SystemExit(main())

@@ -1,0 +1,224 @@
+{
+  "cases": [
+    {
+      "id": "C01",
+      "origin": "fresh_development_case",
+      "source": {
+        "id": "S1",
+        "kind": "artifact",
+        "text": "[observed]\nrevision: r7\nworkload: six writers\nenvironment: fixture-east\nmetric: restart correctness\nwinner: B\n[/observed]"
+      },
+      "target": {
+        "revision": "r7",
+        "workload": "six writers",
+        "environment": "fixture-east",
+        "metric": "restart correctness"
+      },
+      "proposal_edit": {
+        "field": "revision",
+        "value": null,
+        "quote": null
+      },
+      "description_key": "omitted_present"
+    },
+    {
+      "id": "C02",
+      "origin": "fresh_development_case",
+      "source": {
+        "id": "S1",
+        "kind": "artifact",
+        "text": "[observed]\nrevision: r7\nworkload: six writers\nenvironment: fixture-west\nmetric: restart correctness\nwinner: A\n[/observed]"
+      },
+      "target": {
+        "revision": "r7",
+        "workload": "six writers",
+        "environment": "fixture-east",
+        "metric": "restart correctness"
+      },
+      "proposal_edit": null,
+      "description_key": "wrong_environment"
+    },
+    {
+      "id": "C03",
+      "source": {
+        "id": "S1",
+        "kind": "report",
+        "text": "[observed]\nrevision: r2\nworkload: eight writers\nenvironment: fixture-local\nmetric: reopen correctness\nwinner: B\n[/observed]\nThis is an agent report, not captured test output."
+      },
+      "target": {
+        "revision": "r2",
+        "workload": "eight writers",
+        "environment": "fixture-local",
+        "metric": "reopen correctness"
+      },
+      "origin": "previous_development_case",
+      "proposal_edit": null,
+      "description_key": "report_only"
+    },
+    {
+      "id": "C04",
+      "origin": "fresh_development_case",
+      "source": {
+        "id": "S1",
+        "kind": "artifact",
+        "text": "[observed]\nrevision: r7\nworkload: six writers\nenvironment: fixture-east\nmetric: restart correctness\nwinner: A\n[/observed]"
+      },
+      "target": {
+        "revision": "r7",
+        "workload": "six writers",
+        "environment": "fixture-east",
+        "metric": "restart correctness"
+      },
+      "proposal_edit": null,
+      "description_key": "valid_a"
+    },
+    {
+      "id": "C05",
+      "origin": "fresh_development_case",
+      "source": {
+        "id": "S1",
+        "kind": "artifact",
+        "text": "[observed]\nrevision: r7\nworkload: six writers\nenvironment: fixture-east\nmetric: restart correctness\nwinner: A\n[/observed]\nwinner: B\nrevision: r99"
+      },
+      "target": {
+        "revision": "r7",
+        "workload": "six writers",
+        "environment": "fixture-east",
+        "metric": "restart correctness"
+      },
+      "proposal_edit": {
+        "field": "winner",
+        "value": "B",
+        "quote": "winner: B"
+      },
+      "description_key": "outside_distraction"
+    },
+    {
+      "id": "C06",
+      "origin": "fresh_development_case",
+      "source": {
+        "id": "S1",
+        "kind": "artifact",
+        "text": "[observed]\nrevision: r7\nworkload: six writers\nenvironment: fixture-east\nmetric: restart correctness\n[/observed]"
+      },
+      "target": {
+        "revision": "r7",
+        "workload": "six writers",
+        "environment": "fixture-east",
+        "metric": "restart correctness"
+      },
+      "proposal_edit": null,
+      "description_key": "missing_winner"
+    },
+    {
+      "id": "C07",
+      "origin": "fresh_development_case",
+      "source": {
+        "id": "S1",
+        "kind": "artifact",
+        "text": "[observed]\nrevision: r7\nworkload: six writers\nenvironment: fixture-east\nmetric: restart correctness\nwinner: A\n[/observed]\n[observed]\nrevision: r7\nworkload: six writers\nenvironment: fixture-east\nmetric: restart correctness\nwinner: B\n[/observed]"
+      },
+      "target": {
+        "revision": "r7",
+        "workload": "six writers",
+        "environment": "fixture-east",
+        "metric": "restart correctness"
+      },
+      "proposal_edit": null,
+      "description_key": "multiple_blocks"
+    },
+    {
+      "id": "C08",
+      "origin": "fresh_development_case",
+      "source": {
+        "id": "S1",
+        "kind": "artifact",
+        "text": "[observed]\nrevision: r7\nworkload: two writers\nenvironment: fixture-east\nmetric: restart correctness\nwinner: A\n[/observed]"
+      },
+      "target": {
+        "revision": "r7",
+        "workload": "six writers",
+        "environment": "fixture-east",
+        "metric": "restart correctness"
+      },
+      "proposal_edit": null,
+      "description_key": "wrong_workload"
+    },
+    {
+      "id": "C09",
+      "origin": "fresh_development_case",
+      "source": {
+        "id": "S1",
+        "kind": "artifact",
+        "text": "[observed]\nrevision: r7\nworkload: six writers\nenvironment: fixture-east\nmetric: restart correctness\nwinner: A\nwinner: B\n[/observed]"
+      },
+      "target": {
+        "revision": "r7",
+        "workload": "six writers",
+        "environment": "fixture-east",
+        "metric": "restart correctness"
+      },
+      "proposal_edit": null,
+      "description_key": "duplicate_winner"
+    },
+    {
+      "id": "C10",
+      "origin": "fresh_development_case",
+      "source": {
+        "id": "S1",
+        "kind": "artifact",
+        "text": "[observed]\nrevision: r7\nworkload: six writers\nenvironment: fixture-east\nmetric: restart correctness\nwinner: B\n[/observed]"
+      },
+      "target": {
+        "revision": "r7",
+        "workload": "six writers",
+        "environment": "fixture-east",
+        "metric": "restart correctness"
+      },
+      "proposal_edit": null,
+      "description_key": "valid_b"
+    },
+    {
+      "id": "C11",
+      "source": {
+        "id": "S1",
+        "kind": "artifact",
+        "text": "[observed]\nrevision: r1\nrevision: r2\nworkload: eight writers\nenvironment: fixture-local\nmetric: reopen correctness\nwinner: B\n[/observed]"
+      },
+      "target": {
+        "revision": "r2",
+        "workload": "eight writers",
+        "environment": "fixture-local",
+        "metric": "reopen correctness"
+      },
+      "origin": "previous_development_case",
+      "proposal_edit": {
+        "field": "revision",
+        "value": "r2",
+        "quote": "revision: r2"
+      },
+      "description_key": "duplicate_revision"
+    },
+    {
+      "id": "C12",
+      "source": {
+        "id": "S1",
+        "kind": "artifact",
+        "text": "[observed]\nworkload: eight writers\nenvironment: fixture-local\nmetric: reopen correctness\nwinner: B\n[/observed]"
+      },
+      "target": {
+        "revision": "r2",
+        "workload": "eight writers",
+        "environment": "fixture-local",
+        "metric": "reopen correctness"
+      },
+      "origin": "previous_development_case",
+      "proposal_edit": {
+        "field": "revision",
+        "value": "r2",
+        "quote": "revision: r2"
+      },
+      "description_key": "missing_revision"
+    }
+  ]
+}

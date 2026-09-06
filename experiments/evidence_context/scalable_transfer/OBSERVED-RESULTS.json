@@ -1,0 +1,100 @@
+{
+  "stage": 39,
+  "scope": "complete scoped staged SSH transfer; full production goal active",
+  "implementation_checkpoint": "b57175b5",
+  "installed_checks": {
+    "actual_cli_ssh_transfer": true,
+    "excluded_work_never_transferred": true,
+    "unchanged_retry_sends_no_body": true,
+    "large_native_scope_used_stream": true,
+    "all_large_native_messages_received": true,
+    "explicit_permission_queued": true,
+    "withdrawal_applied_before_bodies": true,
+    "receiver_other_native_source_preserved": true,
+    "all_pushes_before_pull": true,
+    "all_imports_only_permitted_remote_history": true,
+    "fresh_regrant_restores": true,
+    "push_reconciles_reverse_retirement": true,
+    "wrong_host_key_refused": true,
+    "caller_cannot_choose_forced_peer": true,
+    "canonical_coverage_explicit": true
+  },
+  "projection_diagnostic": {
+    "rows": [
+      {
+        "mode": "snapshot",
+        "messages": 512,
+        "raw_message_bytes": 8908800,
+        "exported_bytes": 8999913,
+        "projection_seconds": 0.08843916701152921,
+        "process_peak_rss_bytes": 98467840
+      },
+      {
+        "mode": "staged",
+        "messages": 512,
+        "raw_message_bytes": 8908800,
+        "exported_bytes": 8999913,
+        "projection_seconds": 0.1189243330154568,
+        "process_peak_rss_bytes": 41910272
+      },
+      {
+        "mode": "snapshot",
+        "messages": 3072,
+        "raw_message_bytes": 53452800,
+        "refused": "Snapshot exceeds transfer limits; no truncated snapshot returned",
+        "projection_seconds": 0.01800370798446238,
+        "process_peak_rss_bytes": 38207488
+      },
+      {
+        "mode": "staged",
+        "messages": 3072,
+        "raw_message_bytes": 53452800,
+        "exported_bytes": 53989354,
+        "projection_seconds": 0.6746679579373449,
+        "process_peak_rss_bytes": 44449792
+      }
+    ],
+    "limits": "One fresh process per cell. Fictional legacy message rows, no native evidence copies; actual native/SSH lifecycle is a separate lesson. Peak RSS includes fixture creation. Times cover projection and encoded-size measurement, excluding transport/receiver. No engine or semantic quality comparison."
+  },
+  "verification": {
+    "combined_memory_experiments": "1866 passed, 1 optional skip, 125.38s; final protocol v2, withdrawal binding and both final pre-write guards. Later lesson-only literal wrapping/import sorting does not change runtime.",
+    "studyloop": "3823 passed, 4 skipped, 704 deselected, 181.69s; earlier in this stage before protocol/preview/final pre-write changes; 11 existing dependency/fork warnings. Final shared-runtime coverage is the combined run above.",
+    "standalone": "Final rebuilt memory-only wheel installed into isolated Python3.13 environment with StudyLoop absent; 15 actual installed CLI/loopback SSH lifecycle checks pass, including large history, withdrawal, fresh regrant and reverse forgetting.",
+    "browser": "Final installed lesson: five sections and five disclosures opened; viewport fits; screenshot inspected; own tab and server closed.",
+    "pyright": "Final source and tests passed in b57175b5 commit hooks",
+    "lint": "Final replication, changed tests and Stage39 lesson lint and formatting pass.",
+    "commit_hooks": "b57175b5: lint/format/secrets/Bandit/author/full workspace source and test types passed"
+  },
+  "failures_observed": [
+    "Original 32MiB snapshot refuses 3072 fictional messages; private staging completes the same fixture.",
+    "First installed large transfer succeeds, then withdrawal returns cleanup_pending/footprint_limit. Preview formerly retained full before-image bodies; exact first-image binding retention fixes the observed scale limit.",
+    "Final commit-request source-change test initially fails: command later refuses completion but one receiver body exists. Checking source before final commit pipe write leaves no receiver body at both injected boundaries.",
+    "One broad run had 14 failures while runtime protocol was edited during subprocess tests; invalidated as a mixed-code run. Subsequent clean run passed1865; final clean run after commit-request fix passed1866.",
+    "Two initial test-fixture defects (temporary directory isolation and uncommitted cross-session review) corrected without changing product semantics.",
+    "Initial fault-injection collector wrappers rejected a new unnecessary keyword. The unchanged small path preserves the original call signature."
+  ],
+  "council": {
+    "design": [
+      "meta",
+      "qwen",
+      "mistral"
+    ],
+    "results": [
+      "meta",
+      "qwen",
+      "mistral"
+    ],
+    "arbitration": "COUNCIL-DECISION.md",
+    "unanimous_full_approval": false
+  },
+  "limits": [
+    "1GiB encoded/1million rows per staged scope; some identifier and retention metadata remain proportional to cardinality.",
+    "Changed scopes retransmit completely; incomplete streams restart. Incremental transfer and cumulative ledger work remain.",
+    "Live protocol v2 required on both endpoints; historical v1 recovery is metadata only. Schema46 unchanged.",
+    "Canonical phase completion is distinct from full sync. Full-store/managed restore and remaining product integration remain open.",
+    "No globally atomic instant across machines or external config edits; explicit checked boundaries and durable retry.",
+    "Temporary-file process-death behavior observed on this macOS/SQLite build; no universal OS or forensic erasure guarantee.",
+    "No owner DB/config/hooks/native archives/SSH config or actual peer modified.",
+    "Projection diagnostic is single-sample per cell, includes fixture RSS, excludes network/receiver; no engine or semantic-quality comparison."
+  ]
+}

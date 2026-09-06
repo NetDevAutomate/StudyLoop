@@ -45,6 +45,10 @@ class _RaisingConn:
     def execute(self, *args, **kwargs):
         raise sqlite3.OperationalError(self._message)
 
+    @property
+    def in_transaction(self):
+        return self._real.in_transaction
+
     def close(self) -> None:
         self._real.close()
 

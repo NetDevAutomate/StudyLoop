@@ -20,6 +20,8 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
+from agent_session_tools.context.legacy import session_record, session_messages
+from agent_session_tools.context.scope import visibility_sql, active_policy, ScopePolicy
 from agent_session_tools.formatters import (
     format_context_only,
     format_markdown,
@@ -39,6 +41,7 @@ from agent_session_tools.query_db import (  # noqa: F401
 )
 from agent_session_tools.query_utils import (
     build_date_filter,
+    build_project_filter,
     check_thresholds,
     escape_fts_query,
     get_db_size,
@@ -70,6 +73,8 @@ def _search_schema(
     before: str | None,
     limit: int,
     exclude_main_sessions: bool = False,
+    project: str | None = None,
+    scope_policy: ScopePolicy | None = None,
 ) -> list[sqlite3.Row]:
     """Run the FTS search against one schema (``main`` or the attached full DB)."""
     # FTS5 auxiliary functions (bm25) and MATCH need unqualified table
@@ -88,7 +93,15 @@ def _search_schema(
         JOIN {schema}.sessions s ON m.session_id = s.id
         WHERE 1=1
     """
-    params: list = [fts_query]
+    visible, scope_params = visibility_sql(
+        conn, "s.id", schema=schema, policy=scope_policy
+    )
+    base_query += " AND " + visible
+    params: list = [fts_query, *scope_params]
+    if project:
+        project_clause, project_params = build_project_filter(project)
+        base_query += " AND " + project_clause
+        params.extend(project_params)
 
     if exclude_main_sessions:
         # Hot sessions also exist in the full DB (sync) — the full-DB pass
@@ -113,6 +126,7 @@ def search(
     before: str | None = None,
     output_format: str = "table",
     include_full: bool = True,
+    project: str | None = None,
 ) -> None:
     """Full-text search across message content with porter stemming.
 
@@ -122,14 +136,47 @@ def search(
     falls back to local-only — reads are mount-opportunistic, never
     mount-dependent.
     """
+    from agent_session_tools.config_loader import load_config
+    from agent_session_tools.context.managed_history import (
+        _configured,
+        require_query_target,
+    )
+    from agent_session_tools.context.response import ScopeConflict, read_boundary
+
+    primary = next(
+        row[2] for row in conn.execute("PRAGMA database_list") if row[1] == "main"
+    )
+    require_query_target(primary)
+    configured = _configured(load_config())
+    with read_boundary():
+        rows = _search_rows(conn, query, limit, since, before, include_full, project)
+        output = _render_search(rows, query, output_format)
+        if _configured(load_config()) != configured:
+            raise ScopeConflict(
+                "Managed history configuration changed; no search output returned"
+            )
+    print(output, end="")
+
+
+def _search_rows(conn, query, limit, since, before, include_full, project):
     from agent_session_tools.query_db import FULL_SCHEMA, attach_full_db
 
+    policy = active_policy()
     # Escape the query for FTS5
     fts_query = escape_fts_query(query)
 
     rows: list[tuple[sqlite3.Row, str]] = [
         (r, "local")
-        for r in _search_schema(conn, "main", fts_query, since, before, limit)
+        for r in _search_schema(
+            conn,
+            "main",
+            fts_query,
+            since,
+            before,
+            limit,
+            project=project,
+            scope_policy=policy,
+        )
     ]
 
     full_attached = include_full and attach_full_db(conn)
@@ -144,13 +191,22 @@ def search(
                 before,
                 limit,
                 exclude_main_sessions=True,
+                project=project,
+                scope_policy=policy,
             )
         )
         # Merge across tiers: BM25 is more negative = more relevant.
         rows.sort(key=lambda item: (item[0]["rank"], item[0]["timestamp"] or ""))
         rows = rows[:limit]
 
-    results = rows
+    return rows
+
+
+def _render_search(results, query, output_format):
+    lines = []
+
+    def emit(value):
+        lines.append(str(value))
 
     if output_format == "json":
         # JSON output
@@ -168,35 +224,37 @@ def search(
                     "tier": tier,
                 }
             )
-        print(json.dumps(output, indent=2))
+        emit(json.dumps(output, indent=2))
 
     elif output_format == "markdown":
         # Markdown output
-        print("# Search Results\n")
-        print(f"**Query:** `{query}`")
-        print(f"**Results:** {len(results)}\n")
-        print("---\n")
+        emit("# Search Results\n")
+        emit(f"**Query:** `{query}`")
+        emit(f"**Results:** {len(results)}\n")
+        emit("---\n")
 
         for i, (r, tier) in enumerate(results, 1):
-            print(f"## Result {i}")
-            print(f"- **Source:** {r['source']}")
-            print(f"- **Project:** {r['project_path']}")
-            print(f"- **Session:** {r['session_id'][:20]}...")
-            print(f"- **Role:** {r['role']}")
-            print(f"- **Timestamp:** {r['timestamp'] or 'unknown'}")
+            emit(f"## Result {i}")
+            emit(f"- **Source:** {r['source']}")
+            emit(f"- **Project:** {r['project_path']}")
+            emit(f"- **Session:** {r['session_id'][:20]}...")
+            emit(f"- **Role:** {r['role']}")
+            emit(f"- **Timestamp:** {r['timestamp'] or 'unknown'}")
             if tier == "full":
-                print("- **Tier:** full history (pruned locally)")
-            print("**Preview:**")
-            print(f"```\n{r['preview']}\n```\n")
-            print("---\n")
+                emit("- **Tier:** full history (pruned locally)")
+            emit("**Preview:**")
+            emit(f"```\n{r['preview']}\n```\n")
+            emit("---\n")
 
     else:
         # Table output (default)
         for r, tier in results:
             tier_tag = " [full]" if tier == "full" else ""
-            print(f"\n[{r['source']}]{tier_tag} {r['project_path']}")
-            print(f"  {r['role']} @ {r['timestamp'] or 'unknown'}")
-            print(f"  {r['preview']}...")
+            emit(f"\n[{r['source']}]{tier_tag} {r['project_path']}")
+            emit(f"  {r['role']} @ {r['timestamp'] or 'unknown'}")
+            emit(f"  {r['preview']}...")
+
+    return "\n".join(lines) + "\n" if lines else ""
 
 
 def list_sessions(
@@ -209,8 +267,8 @@ def list_sessions(
     full_ids: bool = False,
 ) -> None:
     """List recent sessions."""
-    query = "SELECT * FROM sessions WHERE 1=1"
-    params: list = []
+    visible, params = visibility_sql(conn, "s.id")
+    query = "SELECT * FROM sessions s WHERE " + visible
 
     if source:
         query += " AND source = ?"
@@ -276,14 +334,7 @@ def show_session(conn: sqlite3.Connection, session_id: str) -> None:
         print(f"❌ {e}")
         return
 
-    messages = conn.execute(
-        """
-        SELECT role, content, timestamp FROM messages
-        WHERE session_id = ?
-        ORDER BY seq, timestamp
-    """,
-        (resolved_id,),
-    ).fetchall()
+    messages = session_messages(conn, resolved_id)
 
     if not messages:
         print(f"❌ No messages found in session: {resolved_id}")
@@ -297,6 +348,11 @@ def show_session(conn: sqlite3.Connection, session_id: str) -> None:
 
 def stats(conn: sqlite3.Connection, use_rich: bool = False) -> None:
     """Show database statistics."""
+    policy = active_policy()
+    visible_sessions, session_params = visibility_sql(conn, "s.id", policy=policy)
+    visible_messages, message_params = visibility_sql(
+        conn, "m.session_id", policy=policy
+    )
     # Database size information
     db_path = Path(conn.execute("PRAGMA database_list").fetchone()[2])
     size_info = get_db_size(db_path)
@@ -339,7 +395,10 @@ def stats(conn: sqlite3.Connection, use_rich: bool = False) -> None:
         sessions_table.add_column("Source", style="cyan")
         sessions_table.add_column("Count", justify="right", style="green")
         for r in conn.execute(
-            "SELECT source, COUNT(*) as cnt FROM sessions GROUP BY source"
+            "SELECT source, COUNT(*) as cnt FROM sessions s WHERE "
+            + visible_sessions
+            + " GROUP BY source",
+            session_params,
         ):
             sessions_table.add_row(r["source"], str(r["cnt"]))
         console.print(sessions_table)
@@ -349,7 +408,10 @@ def stats(conn: sqlite3.Connection, use_rich: bool = False) -> None:
         messages_table.add_column("Role", style="cyan")
         messages_table.add_column("Count", justify="right", style="green")
         for r in conn.execute(
-            "SELECT role, COUNT(*) as cnt FROM messages GROUP BY role ORDER BY cnt DESC"
+            "SELECT role, COUNT(*) as cnt FROM messages m WHERE "
+            + visible_messages
+            + " GROUP BY role ORDER BY cnt DESC",
+            message_params,
         ):
             messages_table.add_row(r["role"], str(r["cnt"]))
         console.print(messages_table)
@@ -362,8 +424,10 @@ def stats(conn: sqlite3.Connection, use_rich: bool = False) -> None:
             """
             SELECT s.project_path, COUNT(*) as cnt
             FROM messages m JOIN sessions s ON m.session_id = s.id
-            GROUP BY s.project_path ORDER BY cnt DESC LIMIT 10
-        """
+            WHERE """
+            + visible_sessions
+            + " GROUP BY s.project_path ORDER BY cnt DESC LIMIT 10",
+            session_params,
         ):
             projects_table.add_row(r["project_path"], str(r["cnt"]))
         console.print(projects_table)
@@ -386,7 +450,10 @@ def stats(conn: sqlite3.Connection, use_rich: bool = False) -> None:
         print("SESSIONS BY SOURCE")
         print(f"{'=' * 50}")
         for r in conn.execute(
-            "SELECT source, COUNT(*) as cnt FROM sessions GROUP BY source"
+            "SELECT source, COUNT(*) as cnt FROM sessions s WHERE "
+            + visible_sessions
+            + " GROUP BY source",
+            session_params,
         ):
             print(f"  {r['source']}: {r['cnt']}")
 
@@ -394,7 +461,10 @@ def stats(conn: sqlite3.Connection, use_rich: bool = False) -> None:
         print("MESSAGES BY ROLE")
         print(f"{'=' * 50}")
         for r in conn.execute(
-            "SELECT role, COUNT(*) as cnt FROM messages GROUP BY role ORDER BY cnt DESC"
+            "SELECT role, COUNT(*) as cnt FROM messages m WHERE "
+            + visible_messages
+            + " GROUP BY role ORDER BY cnt DESC",
+            message_params,
         ):
             print(f"  {r['role']}: {r['cnt']}")
 
@@ -405,8 +475,10 @@ def stats(conn: sqlite3.Connection, use_rich: bool = False) -> None:
             """
             SELECT s.project_path, COUNT(*) as cnt
             FROM messages m JOIN sessions s ON m.session_id = s.id
-            GROUP BY s.project_path ORDER BY cnt DESC LIMIT 10
-        """
+            WHERE """
+            + visible_sessions
+            + " GROUP BY s.project_path ORDER BY cnt DESC LIMIT 10",
+            session_params,
         ):
             print(f"  {r['project_path']}: {r['cnt']}")
         print()
@@ -485,34 +557,13 @@ def export_context(
         format_type = "compressed"
 
     # Get session info
-    session = conn.execute(
-        "SELECT * FROM sessions WHERE id = ?", (resolved_id,)
-    ).fetchone()
+    session = session_record(conn, resolved_id)
 
     if not session:
         print(f"❌ Session not found: {resolved_id}")
         return
 
-    # Get messages
-    if last_n:
-        # Use subquery to get last N messages, then re-order chronologically
-        query = """
-            SELECT role, content, model, timestamp, metadata FROM (
-                SELECT role, content, model, timestamp, metadata, seq FROM messages
-                WHERE session_id = ?
-                ORDER BY timestamp DESC, seq DESC
-                LIMIT ?
-            )
-            ORDER BY timestamp ASC, seq ASC
-        """
-        messages = conn.execute(query, (session["id"], last_n)).fetchall()
-    else:
-        query = """
-            SELECT role, content, model, timestamp, metadata FROM messages
-            WHERE session_id = ?
-            ORDER BY timestamp, seq
-        """
-        messages = conn.execute(query, (session["id"],)).fetchall()
+    messages = session_messages(conn, session["id"], last_n=last_n)
 
     if not messages:
         print(f"❌ No messages found in session: {session_id}")
@@ -588,23 +639,13 @@ def continue_session(
         return
 
     # Get session info
-    session = conn.execute(
-        "SELECT * FROM sessions WHERE id = ?", (resolved_id,)
-    ).fetchone()
+    session = session_record(conn, resolved_id)
 
     if not session:
         print(f"❌ Session not found: {resolved_id}")
         return
 
-    # Get messages (use seq for ordering when timestamps missing)
-    messages = conn.execute(
-        """
-        SELECT * FROM messages
-        WHERE session_id = ?
-        ORDER BY COALESCE(timestamp, ''), seq
-    """,
-        (session["id"],),
-    ).fetchall()
+    messages = session_messages(conn, session["id"])
 
     if not messages:
         print(f"❌ No messages found in session: {session['id']}")

@@ -174,17 +174,22 @@ def resolve_session_id(conn: sqlite3.Connection, user_input: str) -> str:
     Raises:
         ValueError: If session not found or ambiguous
     """
-    # Try exact match first (fastest)
+    from .context.scope import visibility_sql
+
+    visible, params = visibility_sql(conn, "s.id")
+    # Resolve only visible IDs; disambiguation must not name hidden projects.
     exact = conn.execute(
-        "SELECT id FROM sessions WHERE id = ?", (user_input,)
+        "SELECT id FROM sessions s WHERE id = ? AND " + visible, (user_input, *params)
     ).fetchone()
     if exact:
         return exact[0]
 
     # Try prefix match
     matches = conn.execute(
-        "SELECT id, source, project_path FROM sessions WHERE id LIKE ? LIMIT 10",
-        (f"{user_input}%",),
+        "SELECT id, source, project_path FROM sessions s WHERE id LIKE ? AND "
+        + visible
+        + " LIMIT 10",
+        (f"{user_input}%", *params),
     ).fetchall()
 
     if len(matches) == 0:
@@ -203,3 +208,46 @@ def resolve_session_id(conn: sqlite3.Connection, user_input: str) -> str:
 
         error_msg.append("\nUse more characters or the full session ID.")
         raise ValueError("\n".join(error_msg))
+
+
+def build_project_filter(
+    project: str, column: str = "s.project_path"
+) -> tuple[str, list[str]]:
+    """Match an explicit project identity group without guessing repository names.
+
+    Full/encoded paths use exact or slash-delimited descendant matching. Only
+    simple names retain the historical substring search. Aliases are explicit
+    entries in the shared config and never rewrite stored source provenance.
+    """
+    from .config_loader import load_config
+
+    if column not in {"s.project_path", "project_path"}:
+        raise ValueError("Unsupported project filter column")
+    requested = project.rstrip("/") or "/"
+    aliases = load_config().get("project_aliases", {})
+    paths = [requested]
+    configured = False
+    if isinstance(aliases, dict):
+        for canonical, historical in aliases.items():
+            if not isinstance(canonical, str) or not isinstance(historical, list):
+                continue
+            group = [
+                value.rstrip("/") or "/"
+                for value in [canonical, *historical]
+                if isinstance(value, str) and value
+            ]
+            if requested in group:
+                configured = True
+                paths.extend(group)
+    if not configured and "/" not in requested and not requested.startswith("-"):
+        escaped = (
+            requested.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        )
+        return f"{column} LIKE ? ESCAPE '\\'", [f"%{escaped}%"]
+    clauses = []
+    params = []
+    for path in dict.fromkeys(paths):
+        prefix = path.rstrip("/") + "/"
+        clauses.append(f"({column} = ? OR substr({column}, 1, length(?)) = ?)")
+        params.extend([path, prefix, prefix])
+    return "(" + " OR ".join(clauses) + ")", params

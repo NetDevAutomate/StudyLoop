@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Current schema version - increment when adding new migrations
-CURRENT_VERSION = 30
+CURRENT_VERSION = 47
 
 # Migration functions: version -> (description, migration_func)
 MIGRATIONS: dict[int, tuple[str, Callable[[sqlite3.Connection], None]]] = {}
@@ -112,7 +112,13 @@ def migrate(conn: sqlite3.Connection) -> list[str]:
     # Safe because the version only ever increases, and a migration in flight is
     # not yet committed -- so this read either sees the old version (and we go on
     # to take the lock and block) or the final one (and we correctly skip).
-    if get_user_version(conn) >= CURRENT_VERSION:
+    observed_version = get_user_version(conn)
+    if observed_version > CURRENT_VERSION:
+        raise RuntimeError(
+            f"Database schema v{observed_version} is newer than supported v{CURRENT_VERSION}; "
+            "upgrade agent-session-tools before accessing it"
+        )
+    if observed_version == CURRENT_VERSION:
         logger.debug(
             "Database already at version %d, no migrations needed", CURRENT_VERSION
         )
@@ -123,6 +129,8 @@ def migrate(conn: sqlite3.Connection) -> list[str]:
     owns_transaction = not conn.in_transaction
     if owns_transaction:
         conn.execute("BEGIN IMMEDIATE")
+    else:
+        conn.execute("SAVEPOINT context_schema_migration")
 
     try:
         # Re-read under the lock: another migrator may have finished the whole
@@ -130,13 +138,17 @@ def migrate(conn: sqlite3.Connection) -> list[str]:
         current = get_user_version(conn)
         applied: list[str] = []
 
-        if current >= CURRENT_VERSION:
+        if current > CURRENT_VERSION:
+            raise RuntimeError(f"Unsupported newer database schema: v{current}")
+        if current == CURRENT_VERSION:
             logger.debug(
                 "Another migrator brought the database to version %d while we waited",
                 current,
             )
             if owns_transaction:
                 conn.commit()
+            else:
+                conn.execute("RELEASE context_schema_migration")
             return applied
 
         logger.info(f"Migrating database from version {current} to {CURRENT_VERSION}")
@@ -144,8 +156,7 @@ def migrate(conn: sqlite3.Connection) -> list[str]:
 
         for version in range(current + 1, CURRENT_VERSION + 1):
             if version not in MIGRATIONS:
-                logger.warning(f"Missing migration for version {version}")
-                continue
+                raise RuntimeError(f"Missing migration for version {version}")
 
             description, migration_func = MIGRATIONS[version]
             logger.info(f"Applying migration v{version}: {description}")
@@ -166,12 +177,17 @@ def migrate(conn: sqlite3.Connection) -> list[str]:
             # migrations actually take effect. See PRAGMA_ONLY_VERSIONS.
             for version in pragma_only_applied:
                 MIGRATIONS[version][1](conn)
+        else:
+            conn.execute("RELEASE context_schema_migration")
 
         return applied
     except Exception as e:
         logger.error(f"Migration failed, rolling back the whole sequence: {e}")
         if owns_transaction:
             conn.rollback()
+        else:
+            conn.execute("ROLLBACK TO context_schema_migration")
+            conn.execute("RELEASE context_schema_migration")
         raise
 
 
@@ -1350,6 +1366,211 @@ def migrate_v30(conn: sqlite3.Connection) -> None:
                 WHERE id = NEW.id;
             END
         """)
+
+
+@migration(
+    31, "Add immutable evidence, scoped projects, citations and deletion suppression"
+)
+def migrate_v31(conn: sqlite3.Connection) -> None:
+    from .context.schema import install
+
+    install(conn)
+
+
+@migration(32, "Add explicit scope policy state and classification audit")
+def migrate_v32(conn: sqlite3.Connection) -> None:
+    import hashlib
+
+    conn.execute(
+        "ALTER TABLE context_session_projects ADD COLUMN assignment_kind TEXT NOT NULL DEFAULT 'explicit' CHECK(assignment_kind IN ('explicit','root_policy','sync'))"
+    )
+    conn.execute(
+        "CREATE TABLE context_policy_state(id INTEGER PRIMARY KEY CHECK(id=1),digest TEXT NOT NULL,applied_at TEXT)"
+    )
+    conn.execute(
+        "INSERT INTO context_policy_state VALUES (1,?,NULL)",
+        (hashlib.sha256(b"{}").hexdigest(),),
+    )
+    conn.execute("""CREATE TABLE context_scope_audit (
+        id TEXT PRIMARY KEY, action TEXT NOT NULL, subject_id TEXT NOT NULL,
+        before_json TEXT NOT NULL, after_json TEXT NOT NULL, actor TEXT NOT NULL,
+        policy_digest TEXT NOT NULL, recorded_at TEXT NOT NULL
+    )""")
+
+
+@migration(33, "Add source-linked observations, explicit owners and durable retirement")
+def migrate_v33(conn: sqlite3.Connection) -> None:
+    from .context.observation_schema import install
+
+    install(conn)
+
+
+@migration(34, "Link native archive evidence and persist capture-run health")
+def migrate_v34(conn: sqlite3.Connection) -> None:
+    from .context.capture import install
+
+    install(conn)
+
+
+@migration(35, "Bind interpretation reviews to immutable targets and source lifecycle")
+def migrate_v35(conn: sqlite3.Connection) -> None:
+    from .context.review_schema import install
+
+    install(conn)
+
+
+@migration(36, "Own legacy learning sessions, teachbacks and bridges explicitly")
+def migrate_v36(conn: sqlite3.Connection) -> None:
+    from .context.record_schema import install
+
+    install(conn)
+
+
+@migration(37, "Own learner notes, parking, practice and scoped board metadata")
+def migrate_v37(conn: sqlite3.Connection) -> None:
+    from .context.learner_schema import install
+
+    install(conn)
+
+
+@migration(38, "Track access generations for consistent read responses")
+def migrate_v38(conn: sqlite3.Connection) -> None:
+    from .context.response_schema import install
+
+    install(conn)
+
+
+@migration(39, "Own session annotations without invented source inputs")
+def migrate_v39(conn: sqlite3.Connection) -> None:
+    from .context.session_owner_schema import install
+
+    install(conn)
+
+
+@migration(40, "Ordered immutable observation history index")
+def migrate_v40(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        "CREATE INDEX context_observations_ordered "
+        "ON context_observations(kind,subject,recorded_at,id)"
+    )
+
+
+@migration(41, "Durable retirement identities and explicit lifecycle modes")
+def migrate_v41(conn: sqlite3.Connection) -> None:
+    from .context.lifecycle_schema import install
+
+    install(conn)
+
+
+@migration(42, "Durable replica offers, known recipients and control receipts")
+def migrate_v42(conn: sqlite3.Connection) -> None:
+    from .replication.ledger_schema import install
+
+    install(conn)
+
+
+@migration(43, "Content-bound local capture and committed peer contribution history")
+def migrate_v43(conn: sqlite3.Connection) -> None:
+    from .replication.retention_schema import install
+
+    install(conn)
+
+
+@migration(44, "Ordered replica permissions and durable withdrawal denials")
+def migrate_v44(conn: sqlite3.Connection) -> None:
+    from .replication.withdrawal_schema import install
+
+    install(conn)
+
+
+@migration(45, "Audited local quarantine discard with exact preview binding")
+def migrate_v45(conn: sqlite3.Connection) -> None:
+    from .replication.quarantine_schema import install
+
+    install(conn)
+
+
+@migration(46, "Replica content generations and durable superseded attempts")
+def migrate_v46(conn: sqlite3.Connection) -> None:
+    # Freeze this migration's schema. Future projections must add their own
+    # migration, rather than making old upgrades depend on new application code.
+    tables = (
+        "sessions",
+        "messages",
+        "session_notes",
+        "session_tags",
+        "session_learning_metadata",
+        "file_references",
+        "study_sessions",
+        "teach_back_scores",
+        "knowledge_bridges",
+        "parked_topics",
+        "study_notes",
+        "practice_attempts",
+        "context_session_projects",
+        "context_evidence",
+        "context_native_message_sources",
+        "context_assertions",
+        "context_citations",
+        "context_relations",
+        "context_observations",
+        "context_observation_sources",
+        "context_observation_owners",
+        "context_observation_session_owners",
+        "context_observation_supersedes",
+        "context_review_targets",
+        "context_record_owners",
+        "context_record_study_links",
+        "context_record_observations",
+        "context_annotation_retirements",
+        "context_observation_retired_subjects",
+    )
+
+    conn.execute("""CREATE TABLE context_replica_content_state (
+        id INTEGER PRIMARY KEY CHECK(id=1),
+        revision INTEGER NOT NULL CHECK(typeof(revision)='integer' AND revision>=0)
+    )""")
+    conn.execute("INSERT INTO context_replica_content_state VALUES (1,0)")
+    for table in tables:
+        for event in ("INSERT", "UPDATE", "DELETE"):
+            conn.execute(f"""CREATE TRIGGER replica_content_{table}_{event.lower()}
+                AFTER {event} ON {table} BEGIN
+                UPDATE context_replica_content_state SET revision=revision+1 WHERE id=1;
+                END""")
+    conn.execute("""CREATE TABLE context_replica_superseded (
+        offer_id TEXT PRIMARY KEY NOT NULL,
+        peer TEXT NOT NULL REFERENCES context_replica_peers(peer),
+        observed_status TEXT NOT NULL CHECK(observed_status IN ('unknown','accepted')),
+        checked_at TEXT NOT NULL
+    )""")
+    for event in ("UPDATE", "DELETE"):
+        conn.execute(f"""CREATE TRIGGER replica_superseded_{event.lower()}
+            BEFORE {event} ON context_replica_superseded
+            BEGIN SELECT RAISE(ABORT,'Replica attempt resolution is immutable'); END""")
+
+
+@migration(47, "Exact shared bases for native projection reconciliation")
+def migrate_v47(conn: sqlite3.Connection) -> None:
+    conn.execute("""CREATE TABLE context_replica_basis_sets (
+        sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+        offer_id TEXT NOT NULL,direction TEXT NOT NULL,
+        row_count INTEGER NOT NULL CHECK(row_count>=0),
+        UNIQUE(offer_id,direction),
+        FOREIGN KEY(offer_id,direction) REFERENCES context_replica_offers(id,direction)
+    )""")
+    conn.execute("""CREATE TABLE context_replica_row_bases (
+        offer_id TEXT NOT NULL,direction TEXT NOT NULL,
+        table_name TEXT NOT NULL CHECK(table_name IN ('sessions','messages')),
+        key_sha256 TEXT NOT NULL CHECK(length(key_sha256)=64),
+        row_sha256 TEXT NOT NULL CHECK(length(row_sha256)=64),
+        PRIMARY KEY(offer_id,direction,table_name,key_sha256),
+        FOREIGN KEY(offer_id,direction) REFERENCES context_replica_offers(id,direction)
+    )""")
+    for table in ("context_replica_basis_sets", "context_replica_row_bases"):
+        for event in ("UPDATE", "DELETE"):
+            conn.execute(f"""CREATE TRIGGER replica_basis_{table}_{event.lower()}
+              BEFORE {event} ON {table} BEGIN
+              SELECT RAISE(ABORT,'Shared reconciliation bases are immutable'); END""")
 
 
 def check_migration_status(db_path: Path) -> dict:

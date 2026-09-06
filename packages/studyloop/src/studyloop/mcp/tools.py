@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any
 from mcp.server.fastmcp import FastMCP  # noqa: TC002 — used at runtime as param type
 from mcp.server.fastmcp.exceptions import ToolError
 
+from agent_session_tools.context.response import consistent_read
 from studyloop.services.review import get_due, get_stats, record_review
 from studyloop.settings import load_settings
 
@@ -271,6 +272,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
     # ── Study Backlog / Session-DB Tools ─────────────────────────
 
     @mcp.tool()
+    @consistent_read
     def get_study_backlog(
         tech_area: str | None = None,
         source: str | None = None,
@@ -302,6 +304,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
         }
 
     @mcp.tool()
+    @consistent_read
     def get_topic_suggestions(
         limit: int = 10,
         current_topic: str | None = None,
@@ -361,6 +364,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
         }
 
     @mcp.tool()
+    @consistent_read
     def get_study_history(
         topic: str,
         days: int = 30,
@@ -375,35 +379,64 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
             topic: Topic name to search for.
             days: Number of days to look back (default 30).
         """
+        from agent_session_tools.context.legacy import legacy_global_visible
         from studyloop.history import (
+            _connection,
             get_study_session_stats,
+            get_teachback_history,
             get_wins,
             last_studied,
             struggle_topics,
         )
+        from studyloop.learning.practice import list_practice_attempts
+
+        conn = _connection._connect()
+        try:
+            learning_visible = bool(conn) and legacy_global_visible(conn)
+        finally:
+            if conn:
+                conn.close()
 
         # Session stats — filter for matching topic
         all_stats = get_study_session_stats(days=days)
-        topic_stats = [s for s in all_stats if topic.lower() in s.get("topic", "").lower()]
+        topic_stats = [s for s in all_stats if topic.lower() in s.get("course", "").lower()]
 
         # Last studied date
         last = last_studied([topic.lower()])
 
         # Struggles
         struggles = struggle_topics(days=days)
-        topic_struggles = [s for s in struggles if topic.lower() in s.get("topic", "").lower()]
+        topic_struggles = [s for s in struggles if topic.lower() in s.get("course", "").lower()]
 
         # Wins (confident/mastered concepts)
         wins = get_wins(days=days)
         topic_wins = [w for w in wins if topic.lower() in w.get("topic", "").lower()]
+        scores = get_teachback_history(topic=topic, days=days)
+        practice = list_practice_attempts(topic=topic, days=days)
 
         return {
             "topic": topic,
             "days": days,
             "session_stats": topic_stats,
+            "teachback_scores": scores,
+            "practice_attempts": practice,
             "last_studied": last,
             "struggles": topic_struggles,
             "wins": topic_wins,
+            "wins_scope_status": (
+                "scoped_observations"
+                if any(w.get("observation_ids") for w in topic_wins)
+                else "explicit_unclassified_legacy_inspection"
+                if learning_visible
+                else "no_visible_observations"
+            ),
+            "learning_scope_status": (
+                "explicit_unclassified_legacy_inspection"
+                if learning_visible
+                else "scoped_learning_records"
+                if topic_stats or scores or practice
+                else "withheld_missing_scope_lineage"
+            ),
         }
 
     # ── §1.10 agent-native parity (web-picker equivalents) ───────
@@ -600,6 +633,23 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
         }
 
     @mcp.tool()
+    @consistent_read
+    def get_concept_context(topic: str, limit: int = 80) -> dict[str, Any]:
+        """Inspect scoped relationships and why they are available (up to 32KiB).
+
+        Contributions retain their source IDs, hashes and reported authority.
+        Analogy/quality labels do not establish prerequisites or validation.
+        Partial coverage cannot establish that no contrary relationship exists.
+        """
+        from studyloop.learning.mastery import agent_concept_context
+
+        try:
+            return agent_concept_context(topic, limit=limit)
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+
+    @mcp.tool()
+    @consistent_read
     def get_next_action(
         energy: str = "medium",
         time_minutes: int = 25,
@@ -637,6 +687,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
         return plan.to_json_dict()
 
     @mcp.tool()
+    @consistent_read
     def get_active_topics() -> dict[str, Any]:
         """Get the active study backlog topics, capped at the AuDHD 3-topic limit.
 

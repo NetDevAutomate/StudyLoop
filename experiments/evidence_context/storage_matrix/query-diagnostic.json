@@ -1,0 +1,186 @@
+{
+  "post_hoc": true,
+  "results": [
+    {
+      "scale": 1,
+      "equality": true,
+      "indexed_plan": [
+        [
+          4,
+          0,
+          92,
+          "SEARCH m USING INDEX sqlite_autoindex_message_1 (id=?)"
+        ],
+        [
+          8,
+          0,
+          0,
+          "LIST SUBQUERY 3"
+        ],
+        [
+          11,
+          8,
+          0,
+          "MATERIALIZE reach"
+        ],
+        [
+          16,
+          11,
+          0,
+          "SETUP"
+        ],
+        [
+          17,
+          16,
+          0,
+          "SCAN CONSTANT ROW"
+        ],
+        [
+          34,
+          11,
+          0,
+          "RECURSIVE STEP"
+        ],
+        [
+          36,
+          34,
+          216,
+          "SCAN reach"
+        ],
+        [
+          39,
+          34,
+          56,
+          "SEARCH edge USING COVERING INDEX sqlite_autoindex_edge_1 (src=?)"
+        ],
+        [
+          57,
+          8,
+          218,
+          "SCAN reach"
+        ]
+      ],
+      "latency": {
+        "original": {
+          "0": {
+            "p50_ms": 0.005541,
+            "p95_ms": 0.008416
+          },
+          "1": {
+            "p50_ms": 0.053917,
+            "p95_ms": 0.073916
+          },
+          "2": {
+            "p50_ms": 0.065375,
+            "p95_ms": 0.132667
+          }
+        },
+        "indexed": {
+          "0": {
+            "p50_ms": 0.005666,
+            "p95_ms": 0.007875
+          },
+          "1": {
+            "p50_ms": 0.011167,
+            "p95_ms": 0.019875
+          },
+          "2": {
+            "p50_ms": 0.015834,
+            "p95_ms": 0.060167
+          }
+        }
+      }
+    },
+    {
+      "scale": 10,
+      "equality": true,
+      "indexed_plan": [
+        [
+          4,
+          0,
+          92,
+          "SEARCH m USING INDEX sqlite_autoindex_message_1 (id=?)"
+        ],
+        [
+          8,
+          0,
+          0,
+          "LIST SUBQUERY 3"
+        ],
+        [
+          11,
+          8,
+          0,
+          "MATERIALIZE reach"
+        ],
+        [
+          16,
+          11,
+          0,
+          "SETUP"
+        ],
+        [
+          17,
+          16,
+          0,
+          "SCAN CONSTANT ROW"
+        ],
+        [
+          34,
+          11,
+          0,
+          "RECURSIVE STEP"
+        ],
+        [
+          36,
+          34,
+          216,
+          "SCAN reach"
+        ],
+        [
+          39,
+          34,
+          56,
+          "SEARCH edge USING COVERING INDEX sqlite_autoindex_edge_1 (src=?)"
+        ],
+        [
+          57,
+          8,
+          218,
+          "SCAN reach"
+        ]
+      ],
+      "latency": {
+        "original": {
+          "0": {
+            "p50_ms": 0.006333,
+            "p95_ms": 0.013708
+          },
+          "1": {
+            "p50_ms": 0.422292,
+            "p95_ms": 0.54
+          },
+          "2": {
+            "p50_ms": 0.493875,
+            "p95_ms": 0.709875
+          }
+        },
+        "indexed": {
+          "0": {
+            "p50_ms": 0.006625,
+            "p95_ms": 0.011042
+          },
+          "1": {
+            "p50_ms": 0.012917,
+            "p95_ms": 0.024833
+          },
+          "2": {
+            "p50_ms": 0.019292,
+            "p95_ms": 0.054375
+          }
+        }
+      }
+    }
+  ],
+  "limit": "Paired SQL diagnostic, not rerun graph comparison or holdout."
+}

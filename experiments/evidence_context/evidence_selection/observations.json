@@ -1,0 +1,144 @@
+{
+  "calls": 24,
+  "valid": 24,
+  "scope": "same four development questions; oracle reference selection",
+  "arms": {
+    "original": {
+      "calls": 8,
+      "valid": 8,
+      "citations": 23,
+      "bad_quotes": 3,
+      "validated_status": 0,
+      "answer_cost_usd": 0.00782804,
+      "cost_observed_calls": 8
+    },
+    "reviewed_only": {
+      "calls": 8,
+      "valid": 8,
+      "citations": 22,
+      "bad_quotes": 2,
+      "validated_status": 0,
+      "answer_cost_usd": 0.0065737999999999994,
+      "cost_observed_calls": 8
+    },
+    "reviewed_plus_original": {
+      "calls": 8,
+      "valid": 8,
+      "citations": 24,
+      "bad_quotes": 6,
+      "validated_status": 0,
+      "answer_cost_usd": 0.00863096,
+      "cost_observed_calls": 8
+    }
+  },
+  "contexts": [
+    {
+      "question": "Q1",
+      "arm": "reviewed_only",
+      "pack_tokens": 523,
+      "coverage": {
+        "covered": 3,
+        "required": 3
+      }
+    },
+    {
+      "question": "Q3",
+      "arm": "reviewed_only",
+      "pack_tokens": 540,
+      "coverage": {
+        "covered": 4,
+        "required": 4
+      }
+    },
+    {
+      "question": "Q3",
+      "arm": "original",
+      "pack_tokens": 1001,
+      "coverage": {
+        "covered": 0,
+        "required": 4
+      }
+    },
+    {
+      "question": "Q4",
+      "arm": "original",
+      "pack_tokens": 953,
+      "coverage": {
+        "covered": 0,
+        "required": 0
+      }
+    },
+    {
+      "question": "Q1",
+      "arm": "original",
+      "pack_tokens": 1366,
+      "coverage": {
+        "covered": 2,
+        "required": 3
+      }
+    },
+    {
+      "question": "Q2",
+      "arm": "reviewed_only",
+      "pack_tokens": 610,
+      "coverage": {
+        "covered": 3,
+        "required": 3
+      }
+    },
+    {
+      "question": "Q2",
+      "arm": "reviewed_plus_original",
+      "pack_tokens": 1316,
+      "coverage": {
+        "covered": 3,
+        "required": 3
+      }
+    },
+    {
+      "question": "Q4",
+      "arm": "reviewed_only",
+      "pack_tokens": 1,
+      "coverage": {
+        "covered": 0,
+        "required": 0
+      }
+    },
+    {
+      "question": "Q2",
+      "arm": "original",
+      "pack_tokens": 1316,
+      "coverage": {
+        "covered": 3,
+        "required": 3
+      }
+    },
+    {
+      "question": "Q1",
+      "arm": "reviewed_plus_original",
+      "pack_tokens": 1323,
+      "coverage": {
+        "covered": 3,
+        "required": 3
+      }
+    },
+    {
+      "question": "Q4",
+      "arm": "reviewed_plus_original",
+      "pack_tokens": 953,
+      "coverage": {
+        "covered": 0,
+        "required": 0
+      }
+    },
+    {
+      "question": "Q3",
+      "arm": "reviewed_plus_original",
+      "pack_tokens": 852,
+      "coverage": {
+        "covered": 4,
+        "required": 4
+      }
+    }
+  ]
+}

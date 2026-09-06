@@ -1,0 +1,22 @@
+{
+  "executive_summary": "The design isolates metadata effects but lacks sufficient variation and real-world fidelity to support strong conclusions about decision usefulness or source-checking efficacy.",
+  "recommended_decision": "Proceed with caution and request additional heterogeneous test cases before drawing utility conclusions.",
+  "confidence": 0.75,
+  "assumptions": [
+    "Model behavior is consistent across conditions given identical prompts except for metadata visibility"
+  ],
+  "reasons": [
+    "The controlled fault injection enables clear causality between metadata state and decision outcome",
+    "Source checker logic is well-defined and limits unwarranted metadata influence"
+  ],
+  "risks": [
+    "Overfitting to synthetic artifacts may obscure real-world metadata ambiguity patterns",
+    "Token count increases in checked condition could confound latency/utility tradeoffs"
+  ],
+  "disagreements": [
+    "Whether six line-based synthetic notes adequately represent production decision contexts"
+  ],
+  "missing_information": [
+    "Empirical evidence showing human or system performance differences under each metadata condition"
+  ]
+}

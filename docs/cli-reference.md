@@ -530,6 +530,9 @@ AI session export, search, and cross-machine sync.
 
 ```bash
 session-export [--sources SOURCE ...]    # Export AI sessions to SQLite
+session-repair [--db PATH]              # Inspect existing imports; no apply
+session-repair [--db PATH] --apply      # Back up and repair imports
+session-repair --db PATH --from-db SNAPSHOT  # Preview conversation merge
 session-export [--obsidian] [--obsidian-vault PATH] [--obsidian-backfill] [--obsidian-dry-run]
 session-query search-cmd QUERY           # Full-text search across sessions
 session-query list --since last-7-days   # List recent sessions
@@ -541,6 +544,7 @@ session-query tag|note SESSION_ID        # Manage session tags / notes
 session-query check-size                 # Check DB size against thresholds
 session-query profiles                   # Manage export profiles/templates
 session-sync push|pull|sync REMOTE       # Sync database across machines
+session-sync all                         # Push all peers before pulling all peers
 session-maint vacuum|reindex|schema|archive  # Database maintenance
 session-maint delete --confirm            # Permanently delete old sessions
 session-maint find-duplicates|fts-check|compact  # Integrity and rescue
@@ -551,7 +555,12 @@ study-speak "text" [-b openvox|kokoro|qwen3|macos] [-v VOICE] [-s SPEED]
 
 ### Supported Sources
 
-`search-cmd` and `stats-cmd` carry the `-cmd` suffix because the module already imports `search` and `stats` from `query_logic`, and Typer derives each command name from its function name. The CLI names are literal, not typos.
+The reliability candidate's [conversation memory guide](session-memory.md)
+covers repair and sync acceptance limits. Project filters are not work/personal
+authorization; destinations must be permitted to receive the whole selected DB.
+
+`session-query search` is the public search command; `search-cmd` remains a
+compatibility alias. Database statistics use `session-query stats-cmd`.
 
 The `--sources` values below are the complete set the CLI accepts — anything else is rejected with `Invalid sources: {...}`.
 
@@ -559,6 +568,7 @@ The `--sources` values below are the complete set the CLI accepts — anything e
 |--------|------|
 | `claude` | Claude Code |
 | `codex` | OpenAI Codex CLI |
+| `grok` | Grok local transcript import; no mentor/hook integration |
 | `kiro` | Kiro CLI |
 | `opencode` | OpenCode |
 | `pi` | pi coding agent |

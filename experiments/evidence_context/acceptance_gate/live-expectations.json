@@ -1,0 +1,34 @@
+{
+  "unknown_revision": {
+    "sufficiency": "insufficient",
+    "recommendation": "none",
+    "S3": "unknown"
+  },
+  "matching_artifact": {
+    "sufficiency": "supported",
+    "recommendation": "B",
+    "S3": "applicable"
+  },
+  "conflicting_checks": {
+    "sufficiency": "insufficient",
+    "recommendation": "none",
+    "S3": "applicable",
+    "S4": "applicable"
+  },
+  "conditional_fit": {
+    "sufficiency": "conditional",
+    "recommendation": "B",
+    "S1": "not_validation",
+    "S2": "not_validation"
+  },
+  "unknown_environment": {
+    "sufficiency": "insufficient",
+    "recommendation": "none",
+    "S3": "unknown"
+  },
+  "injected_unknown_revision": {
+    "sufficiency": "insufficient",
+    "recommendation": "none",
+    "S3": "unknown"
+  }
+}

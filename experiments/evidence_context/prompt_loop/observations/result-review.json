@@ -1,0 +1,85 @@
+{
+  "grok-4.6": {
+    "response": {
+      "executive_summary": "No gain is demonstrated. Baseline remains winner only because a mis-specified category proxy could not credit a real queue fix. Both amendments changed unmeasured later advice from false 'correction'/'B' to 'unresolved'/'insufficient', which matches the written decision checks and the Fable/Grok unsupported labels. They still scored 2/4 because queue gold demands evidence_basis=insufficient while the schema treats existing unmeasured reports as reported_only. That encoding error, not equal quality, produced the tie. Audit never touched the candidates. Promotion is correctly withheld. Do not retune to the four seen fixtures.",
+      "recommended_decision": "Do not promote or enlarge this loop. Freeze the scorer, split recommendation from evidence_basis, stop leaking gold rules to the proposer, and run one discriminating holdout: unseen fixtures, a non-Qwen answerer or judge, and human/cross-provider scoring of conflict_kind plus citation support.",
+      "confidence": 0.82,
+      "assumptions": [
+        "Ledger and results.json are complete and unedited.",
+        "Queue gold is meant to follow the prompt's own decision checks, not an unstated extra convention.",
+        "Prior 24-output review is independent of this 16-call live run.",
+        "qwen3-coder as proposer and answerer is not external validation of Qwen judgments."
+      ],
+      "reasons": [
+        "Baseline queue answers twice treat a later unmeasured agent report as an explicit correction and pick B. The prompt forbids that: competing same-condition unmeasured claims must be insufficient/unresolved. Those are the unsupported queue errors.",
+        "Candidate-1 and candidate-2 both produce insufficient/unresolved on both queue repeats and keep retry as B/artifact_supported. Semantically they fix the only development failure. Proxy_passes stay at 2 solely because evidence_basis is reported_only, not insufficient.",
+        "That proxy target is internally inconsistent. The schema distinguishes reported_only from insufficient; queue supplies two agent reports. Labeling them reported_only while refusing to choose A or B is more faithful than calling the evidence_basis insufficient. The model even saw development_rules and still refused the gold basis label.",
+        "Winner logic requires strict proxy improvement and keeps the incumbent on ties, so a better queue policy is recorded as 'no gain'. results.json therefore understates candidate quality.",
+        "Audit code evaluates only baseline when baseline wins. Cache/storage never tested the amendments. Cache baseline B/reported_only is proxy-legal but the decision checks prefer conditional when the new workload is untested. Storage unequal_evidence is actually the more precise conflict_kind; conflict_kind is unscored.",
+        "Integrity is citation-ID existence only. The unit test shows a fabricated million-machine rationale still passes. semantic_support is explicitly unmeasured. No holdout, no human score, no engine change, all four cases previously seen.",
+        "Candidate-1 is a reasonably general report-vs-artifact rule; candidate-2 mostly restates existing text. Neither is proof of transfer. Propose payloads include gold rules and failed answers, so any later 'win' would be contaminated.",
+        "16 live calls vs 18 offline is expected (rejected-proposal path unused). Cost and parse status look intact. The defect is metric and design, not a silent crash."
+      ],
+      "risks": [
+        "Treating proxy ties as 'amendments do nothing' will freeze a known recency/correction bug.",
+        "Feeding gold rules into propose will overfit the next loop to queue/retry labels.",
+        "Auditing only the winner hides amendment regressions on cache/storage.",
+        "Qwen self-review can mark baseline queue as needs_review and understate the error Fable/Grok already called unsupported.",
+        "Expanding repeats on the same four fixtures will look like progress without new information."
+      ],
+      "disagreements": [
+        "Whether queue evidence_basis should be insufficient (current RULES) or reported_only (schema-consistent). I treat the RULES as the defect.",
+        "Whether cache B is acceptable versus conditional. Proxy allows both; I would not call B proven.",
+        "Whether retry 'correction' is required because the artifact says 'This corrects...' or whether unequal_evidence is safer. Proxy ignores conflict_kind.",
+        "Qwen's prior needs_review on the four queue errors versus Fable/Grok unsupported. The written checks support unsupported."
+      ],
+      "missing_information": [
+        "Unseen holdout fixtures never used in development or prior stages.",
+        "Candidate-1/2 answers on cache and storage.",
+        "Human or non-Qwen scores of rationale entailment and citation support.",
+        "Answers from a different model family on the same frozen prompt.",
+        "Author intent for queue evidence_basis given the schema clash.",
+        "Any learner-usefulness or engine-comparison measure, which this design cannot provide."
+      ]
+    },
+    "error": null
+  },
+  "claude-fable-5-1": {
+    "response": null,
+    "error": "ValueError: model did not return a JSON object"
+  },
+  "qwen3-coder": {
+    "response": {
+      "executive_summary": "The experiment demonstrates that prompt amendments can improve evidence-handling behavior in synthetic arbitration tasks, but the evaluation methodology has critical limitations. Candidate-1's amendment correctly classifies insufficient evidence cases as 'unresolved', improving integrity over the baseline's premature resolution of contradictory agent reports. However, the audit phase reveals that post-selection performance diverges significantly from development scores, indicating overfitting to known cases. The lack of semantic quality metrics, holdout sets, and cross-model validation undermines confidence in generalization claims.",
+      "recommended_decision": "Reject promotion of any candidate; conduct a new experiment with semantic quality scoring, cross-model validation, and independent holdout cases to meaningfully assess generalization.",
+      "confidence": 0.85,
+      "assumptions": [
+        "The development cases are representative of future arbitration scenarios",
+        "Proxy scoring accurately reflects meaningful evidence-handling improvements",
+        "Audit divergence indicates overfitting rather than contextual appropriateness"
+      ],
+      "reasons": [
+        "Candidate-1's amendment correctly treats unmeasured performance claims as insufficient evidence, aligning with principled arbitration logic",
+        "Development-phase proxy scores show improvement in integrity and rule compliance for amended prompts over baseline",
+        "The audit phase reveals significant degradation in candidate performance, suggesting optimization for specific fixtures rather than general principles"
+      ],
+      "risks": [
+        "Proxy scoring creates a false sense of discriminative power by ignoring semantic quality and factual grounding",
+        "No cross-model validation means Qwen's self-evaluation cannot distinguish genuine improvement from model-consistent bias",
+        "Overfitting to known cases may produce amendments that fail on novel evidence patterns outside the training distribution"
+      ],
+      "disagreements": [
+        "Whether audit-phase divergence represents a methodological flaw or legitimate contextual adaptation",
+        "If the baseline's willingness to resolve insufficient evidence reflects a defect or pragmatic decision-making",
+        "Whether candidate-2's emphasis on measurable outcomes provides meaningful improvement over candidate-1's stricter evidence distinction"
+      ],
+      "missing_information": [
+        "Human-rated semantic quality judgments for both development and holdout cases",
+        "Cross-model agreement rates on identical arbitration tasks to detect consensus-driven versus model-specific behaviors",
+        "Independent holdout set performance to validate generalization beyond seen fixtures",
+        "Cost-benefit analysis of increased prompt complexity against marginal integrity gains"
+      ]
+    },
+    "error": null
+  }
+}

@@ -1,0 +1,197 @@
+"""Eight extractions and fifty-six answer calls, or a provider-free metadata walkthrough."""
+
+import copy
+import hashlib
+import html
+import json
+from pathlib import Path
+
+from ..arbitration_lab.runner import call_gateway
+from .verify import assess_answer, proposal_valid, reference_extraction, verify
+
+
+def write(path, value):
+    path.write_text(json.dumps(value, indent=2) + "\n")
+
+
+def inject(proposal, fault):
+    candidate = copy.deepcopy(proposal)
+    if fault and isinstance(candidate, dict):
+        candidate[fault["field"]] = {"value": fault["value"], "quote": fault["quote"]}
+    return candidate
+
+
+def prepare(output):
+    output.mkdir(parents=True, exist_ok=False, mode=0o700)
+    root = Path(__file__).parent
+    cases = json.loads((root / "cases.json").read_text())["cases"]
+    frozen = {
+        "cases": cases,
+        "extract_prompt": (root / "EXTRACT.md").read_text(),
+        "answer_prompt": (root / "ANSWER.md").read_text(),
+        "model": "qwen3-coder",
+        "max_calls": 64,
+        "independent_holdout": False,
+        "fingerprints": {
+            name: hashlib.sha256((root / name).read_bytes()).hexdigest()
+            for name in ("verify.py", "runner.py", "cases.json", "EXTRACT.md", "ANSWER.md", "PROTOCOL.md")
+        },
+    }
+    write(output / "frozen.json", frozen)
+    rows = []
+    for case in cases:
+        extracted = reference_extraction(case["source"]["text"])
+        candidate = inject(extracted, case["injected_fault"])
+        rows.append(
+            {
+                "case": case,
+                "offline_reference_extraction": extracted,
+                "candidate": candidate,
+                "checked": verify(case["source"]["text"], candidate),
+            }
+        )
+    write(output / "offline.json", rows)
+    render(output, rows)
+    return frozen
+
+
+def render(output, rows):
+    parts = [
+        "<!doctype html><html lang='en'><meta charset='utf-8'>",
+        "<title>Stage 10 — Is the metadata supported?</title>",
+        "<style>body{font:18px/1.6 system-ui;max-width:1050px;margin:40px auto;padding:20px}",
+        "summary{cursor:pointer;font-weight:600;padding:12px}pre{white-space:pre-wrap}",
+        "table{border-collapse:collapse;width:100%}td,th{padding:8px;text-align:left;",
+        "border-bottom:1px solid #ddd}</style><h1>Does metadata match its source?</h1>",
+        "<p>Offline deterministic demonstration of a narrow log format. Seeded metadata faults "
+        "are deliberate; these are not live model results or verified real artifacts.</p>",
+    ]
+    for row in rows:
+        case = row["case"]
+        parts.append(
+            f"<details><summary>{html.escape(case['id'])}</summary>"
+            f"<pre>{html.escape(case['source']['text'])}</pre>"
+            "<table><tr><th>Field</th><th>Candidate value</th>"
+            "<th>Checked value</th><th>Reason</th></tr>"
+        )
+        for field, checked in row["checked"].items():
+            values = [
+                field,
+                str(row["candidate"][field]["value"]),
+                str(checked["value"]),
+                checked["reason"],
+            ]
+            parts.append("<tr>" + "".join(f"<td>{html.escape(v)}</td>" for v in values) + "</tr>")
+        parts.append("</table></details>")
+    (output / "walkthrough.html").write_text("".join(parts) + "</html>\n")
+
+
+def run_live(output, frozen, gateway=None):
+    directory = output / "calls"
+    directory.mkdir(mode=0o700, exist_ok=False)
+    rows = []
+
+    def invoke(phase, case, messages, arm=None):
+        if len(rows) >= 64:
+            raise ValueError("Call budget exhausted")
+        row = {
+            "phase": phase,
+            "case": case["id"],
+            "arm": arm,
+            "messages": messages,
+            "status": "attempted",
+        }
+        path = directory / f"{len(rows):02d}.json"
+        rows.append(row)
+        write(path, row)
+        try:
+            row.update((gateway or call_gateway)(messages, frozen["model"]))
+            row["answer"] = json.loads(row["text"])
+            row["status"] = "parsed"
+        except Exception as error:
+            row.update(status="failed", error_type=type(error).__name__)
+        write(path, row)
+        return row, path
+
+    candidates = []
+    for case in frozen["cases"]:
+        extracted, path = invoke(
+            "extract",
+            case,
+            [
+                {"role": "system", "content": frozen["extract_prompt"]},
+                {"role": "user", "content": json.dumps(case["source"], sort_keys=True)},
+            ],
+        )
+        proposal = extracted.get("answer", {})
+        extracted["schema_valid"] = proposal_valid(proposal)
+        extracted["exact_field_matches"] = {
+            key: isinstance(proposal, dict) and proposal.get(key) == value
+            for key, value in reference_extraction(case["source"]["text"]).items()
+        }
+        extracted["field_checks"] = verify(case["source"]["text"], proposal)
+        write(path, extracted)
+        candidate = inject(proposal, case["injected_fault"])
+        checked = verify(case["source"]["text"], candidate)
+        candidates.append(
+            {
+                "case": case["id"],
+                "original_extraction": proposal,
+                "injected_fault": case["injected_fault"],
+                "candidate": candidate,
+                "checked": checked,
+            }
+        )
+        # Separate clean-metadata utility from the four seeded-fault cases.
+        arms = ["raw", "extracted", "checked"]
+        if case["injected_fault"]:
+            arms += ["candidate"]
+        for repeat in range(2):
+            offset = (len(candidates) + repeat) % len(arms)
+            order = arms[offset:] + arms[:offset]
+            for arm in order:
+                payload = {
+                    "question": "Which option is justified for this target?",
+                    "source": case["source"],
+                    "target": case["target"],
+                }
+                if arm in {"candidate", "extracted"}:
+                    payload["metadata"] = {
+                        "state": "unverified_candidate",
+                        "fields": candidate if arm == "candidate" else proposal,
+                    }
+                elif arm == "checked":
+                    payload["metadata"] = {
+                        "state": "checked_against_narrow_log_grammar",
+                        "fields": checked,
+                    }
+                row, path = invoke(
+                    "answer",
+                    case,
+                    [
+                        {"role": "system", "content": frozen["answer_prompt"]},
+                        {"role": "user", "content": json.dumps(payload, sort_keys=True)},
+                    ],
+                    arm,
+                )
+                row["repeat"] = repeat + 1
+                try:
+                    row["checks"] = assess_answer(row.get("answer"), case)
+                except (ValueError, KeyError, TypeError):
+                    row["checks"] = {"invalid_response": True, "choice_matches": False}
+                write(path, row)
+    report = {
+        "rows": rows,
+        "candidates": candidates,
+        "known_cost_usd": sum(r.get("cost_usd") or 0 for r in rows),
+        "calls_without_cost": sum(r.get("cost_usd") is None for r in rows),
+        "limits": [
+            "Synthetic narrow grammar; no independent holdout",
+            "Four seeded field faults",
+            "Unequal context lengths",
+            "Unverified answer drafts; no Stage9 release gate",
+            "No semantic or learner-value score",
+        ],
+    }
+    write(output / "results.json", report)
+    return report

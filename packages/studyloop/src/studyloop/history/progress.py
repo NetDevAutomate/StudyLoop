@@ -4,10 +4,14 @@ from __future__ import annotations
 
 import logging
 import sqlite3
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from . import _connection, search
+from . import _connection, observations, search
+
+if TYPE_CHECKING:
+    from agent_session_tools.context.legacy_sources import SessionInput
 
 logger = logging.getLogger(__name__)
 
@@ -50,10 +54,6 @@ def _review_type_for(confidence: str | None, days_ago: int) -> str | None:
     return review_type
 
 
-def _study_progress_columns(conn: sqlite3.Connection) -> set[str]:
-    return {row["name"] for row in conn.execute("PRAGMA table_info(study_progress)").fetchall()}
-
-
 def _progress_review_due(now: datetime) -> tuple[list[dict], set[str]]:
     conn = _connection._connect()
     if not conn:
@@ -66,21 +66,7 @@ def _progress_review_due(now: datetime) -> tuple[list[dict], set[str]]:
         if "study_progress" not in tables:
             return [], set()
 
-        columns = _study_progress_columns(conn)
-        teachback_expr = (
-            "last_teachback_score"
-            if "last_teachback_score" in columns
-            else "NULL AS last_teachback_score"
-        )
-        rows = conn.execute(
-            f"""
-            SELECT topic, concept, confidence, last_seen, session_count, {teachback_expr}
-            FROM study_progress
-            WHERE topic IS NOT NULL
-              AND concept IS NOT NULL
-            ORDER BY last_seen DESC
-            """
-        ).fetchall()
+        rows = observations.rows(conn)
     except sqlite3.OperationalError as exc:
         # The "study_progress missing" case is already handled above (the
         # sqlite_master check at :63-64) -- anything reaching here is a real
@@ -116,7 +102,9 @@ def _progress_review_due(now: datetime) -> tuple[list[dict], set[str]]:
                 "review_type": review_type,
                 "evidence": "study_progress",
                 "session_count": row["session_count"],
-                "last_teachback_score": row["last_teachback_score"],
+                "last_teachback_score": row.get("last_teachback_score"),
+                "confidence_status": row.get("confidence_status"),
+                "observation_ids": row.get("observation_ids", []),
             }
         )
 
@@ -184,8 +172,33 @@ def _record_progress_on_connection(
     source_publisher: str | None = None,
     source_session_id: str | None = None,
     created_by: str = "agent",
+    evidence_ids: tuple[str, ...] | None = None,
+    input_snapshot: SessionInput | None = None,
 ) -> None:
     """Write one progress row on the caller's transaction without committing."""
+    if observations.available(conn):
+        if not conn.in_transaction:
+            conn.execute("BEGIN IMMEDIATE")
+        observations.record(
+            conn,
+            topic,
+            concept,
+            confidence,
+            notes,
+            source_course=source_course,
+            source_section=source_section,
+            source_publisher=source_publisher,
+            source_session_id=source_session_id,
+            created_by=created_by,
+            evidence_ids=evidence_ids,
+            input_snapshot=input_snapshot,
+        )
+        return
+    from agent_session_tools.context.legacy import legacy_global_visible
+    from agent_session_tools.context.scope import ScopeError
+
+    if not legacy_global_visible(conn):
+        raise ScopeError("Migrate before writing classified progress")
     topic = topic.lower().strip()
     concept = concept.lower().strip()
     now = datetime.now(UTC).isoformat()
@@ -252,8 +265,9 @@ def record_progress(
     callers that omit them continue to work: new columns default to None /
     'agent'.
 
-    The ON CONFLICT COALESCE pattern means a later call without provenance
-    will not overwrite provenance written by an earlier web-flagged row.
+    On the current schema each report has its own ownership and provenance.
+    Omitted notes are not inherited from an older report. Legacy databases keep
+    their historical aggregate behavior until migration.
     """
     conn = _connection._connect()
     if not conn:
@@ -284,22 +298,19 @@ def record_progress(
 
 
 def get_wins(days: int = 30) -> list[dict]:
-    """Find concepts that improved in confidence over the given period."""
+    """Find recent confident reports; these do not establish measured improvement."""
     conn = _connection._connect()
     if not conn:
         return []
     try:
-        rows = conn.execute(
-            """
-            SELECT topic, concept, confidence, first_seen, last_seen, session_count
-            FROM study_progress
-            WHERE confidence IN ('confident', 'mastered')
-              AND last_seen > datetime('now', ?)
-            ORDER BY last_seen DESC
-            """,
-            (f"-{days} days",),
-        ).fetchall()
-        return [dict(r) for r in rows]
+        cutoff = datetime.now(UTC) - timedelta(days=days)
+        rows = [
+            r
+            for r in observations.rows(conn)
+            if r["confidence"] in ("confident", "mastered")
+            and (_parse_timestamp(r["last_seen"]) or datetime.min.replace(tzinfo=UTC)) > cutoff
+        ]
+        return sorted(rows, key=lambda row: row["last_seen"], reverse=True)
     except sqlite3.OperationalError as exc:
         if not _connection.is_missing_table_error(exc):
             logger.warning("get_wins failed: %s", exc)
@@ -389,15 +400,6 @@ def get_struggling_topics(days: int = 14) -> list[dict]:
                 # keep the row useful, but avoid claiming a single exact source.
                 cur[field] = None
 
-    def _progress_columns() -> set[str]:
-        try:
-            return {r["name"] for r in conn.execute("PRAGMA table_info(study_progress)")}
-        except sqlite3.OperationalError as exc:
-            if not _connection.is_missing_table_error(exc):
-                logger.warning("get_struggling_topics: _progress_columns failed: %s", exc)
-                raise
-            return set()
-
     def _display_topic(topic: str, source_section: str | None) -> str:
         if source_section and source_section.strip():
             section_stem = Path(source_section).stem
@@ -406,62 +408,41 @@ def get_struggling_topics(days: int = 14) -> list[dict]:
         return topic
 
     try:
-        # Source 1: study_progress (authoritative).
+        # Source 1: the projection includes only permitted observation bodies.
+        cutoff_dt = datetime.now(UTC) - timedelta(days=days)
+        for r in observations.rows(conn):
+            seen = _parse_timestamp(r["last_seen"])
+            if r["confidence"] != "struggling" or seen is None or seen <= cutoff_dt:
+                continue
+            source_section = r.get("source_section")
+            _merge(
+                _display_topic(r["topic"], source_section),
+                1,
+                r["session_count"] or 0,
+                r["last_seen"],
+                concept=r["concept"],
+                source_course=r.get("source_course"),
+                source_section=source_section,
+                source_publisher=r.get("source_publisher"),
+            )
+
+        # Source 2: owned study sessions, scoped before aggregation.
         try:
-            columns = _progress_columns()
-            optional_source_cols = [
-                col
-                for col in ("source_course", "source_section", "source_publisher")
-                if col in columns
-            ]
-            select_cols = ["topic", "concept", "session_count", "last_seen", *optional_source_cols]
+            from agent_session_tools.context import records
+
+            clause, scope_params = records.visible_sql(conn, "study_sessions")
             for r in conn.execute(
                 f"""
-                SELECT {", ".join(select_cols)}
-                FROM study_progress
-                WHERE confidence = 'struggling' AND last_seen > datetime('now', ?)
-                ORDER BY last_seen DESC
-                """,
-                cutoff,
-            ).fetchall():
-                source_section = (
-                    r["source_section"] if "source_section" in optional_source_cols else None
-                )
-                source_course = (
-                    r["source_course"] if "source_course" in optional_source_cols else None
-                )
-                source_publisher = (
-                    r["source_publisher"] if "source_publisher" in optional_source_cols else None
-                )
-                _merge(
-                    _display_topic(r["topic"], source_section),
-                    1,
-                    r["session_count"] or 0,
-                    r["last_seen"],
-                    concept=r["concept"],
-                    source_course=source_course,
-                    source_section=source_section,
-                    source_publisher=source_publisher,
-                )
-        except sqlite3.OperationalError as exc:
-            if not _connection.is_missing_table_error(exc):
-                logger.warning("get_struggling_topics: study_progress source failed: %s", exc)
-                raise
-
-        # Source 2: study_sessions flagged as a struggle.
-        try:
-            for r in conn.execute(
-                """
                 SELECT topic,
                        COUNT(*)         AS session_count,
                        MAX(started_at)  AS last_seen
-                FROM study_sessions
-                WHERE struggle_count > 0
+                FROM study_sessions r
+                WHERE ({clause}) AND struggle_count > 0
                   AND topic IS NOT NULL
                   AND started_at > datetime('now', ?)
                 GROUP BY topic
                 """,
-                cutoff,
+                [*scope_params, *cutoff],
             ).fetchall():
                 _merge(r["topic"], 0, r["session_count"] or 0, r["last_seen"])
         except sqlite3.OperationalError as exc:
@@ -471,18 +452,19 @@ def get_struggling_topics(days: int = 14) -> list[dict]:
 
         # Source 3: parked topics whose source is a struggle.
         try:
+            clause, scope_params = records.visible_sql(conn, "parked_topics")
             for r in conn.execute(
-                """
+                f"""
                 SELECT topic_tag      AS topic,
                        COUNT(*)       AS session_count,
                        MAX(parked_at) AS last_seen
-                FROM parked_topics
-                WHERE source = 'struggled'
+                FROM parked_topics r
+                WHERE ({clause}) AND source = 'struggled'
                   AND topic_tag IS NOT NULL
                   AND parked_at > datetime('now', ?)
                 GROUP BY topic_tag
                 """,
-                cutoff,
+                [*scope_params, *cutoff],
             ).fetchall():
                 _merge(r["topic"], 0, r["session_count"] or 0, r["last_seen"])
         except sqlite3.OperationalError as exc:
@@ -508,14 +490,7 @@ def get_progress_for_map() -> list[dict]:
     if not conn:
         return []
     try:
-        rows = conn.execute(
-            """
-            SELECT topic, concept, confidence, session_count, first_seen, last_seen
-            FROM study_progress
-            ORDER BY topic, confidence DESC, concept
-            """
-        ).fetchall()
-        return [dict(r) for r in rows]
+        return observations.rows(conn)
     except sqlite3.OperationalError as exc:
         if not _connection.is_missing_table_error(exc):
             logger.warning("get_progress_for_map failed: %s", exc)
@@ -531,11 +506,14 @@ def get_progress_summary() -> dict:
     if not conn:
         return {}
     try:
-        rows = conn.execute(
-            "SELECT confidence, COUNT(*) as count FROM study_progress GROUP BY confidence"
-        ).fetchall()
-        summary = {r["confidence"]: r["count"] for r in rows}
-        summary["total"] = sum(summary.values())
+        from collections import Counter
+
+        rows = observations.rows(conn)
+        summary = dict(Counter(r["confidence"] for r in rows))
+        summary["total"] = len(rows)
+        conflicts = sum(r.get("confidence_status") == "conflicting_reports" for r in rows)
+        if conflicts:
+            summary["conflicting_reports"] = conflicts
         return summary
     except sqlite3.OperationalError as exc:
         if not _connection.is_missing_table_error(exc):

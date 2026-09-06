@@ -3,6 +3,7 @@
 from .base import ExportStats, SessionExporter, commit_batch
 from .claude import ClaudeCodeExporter
 from .codex import CodexExporter
+from .grok import GrokExporter
 from .kiro import KiroCliExporter
 from .opencode import OpenCodeExporter
 from .pi import PiExporter, PiFamilyExporter
@@ -13,6 +14,7 @@ __all__ = [
     "commit_batch",
     "ClaudeCodeExporter",
     "CodexExporter",
+    "GrokExporter",
     "KiroCliExporter",
     "OpenCodeExporter",
     "PiFamilyExporter",
@@ -23,6 +25,7 @@ __all__ = [
 EXPORTERS = {
     "claude": ClaudeCodeExporter(),
     "codex": CodexExporter(),
+    "grok": GrokExporter(),
     "kiro": KiroCliExporter(),
     "opencode": OpenCodeExporter(),
     "pi": PiExporter,

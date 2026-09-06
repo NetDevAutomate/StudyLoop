@@ -1,0 +1,101 @@
+{
+  "grok-4.6": {
+    "executive_summary": "Source-only reading of four synthetic fixtures: C2 and C3 have a single named test artifact that supports B inside that fixture only; C1 has no measurement, so B is at most requirement-fit (8 writers, reliability over minimal code) and A is mismatched to the stated workload; C4 has zero performance evidence, so no queue is choosable. Agent prose is not a result. Later unmeasured advice does not supersede. Observable process rules (artifact over claim, no invented supersession, stay inside named fixture/deadline/reopen scope) can be a LIMITED development metric for a bounded prompt-loop demo. That is not semantic quality, learner quality, or efficacy; there is no holdout.",
+    "recommended_decision": "Treat B as fixture-supported only for C2 (demo-r2, 2s deadline, synthetic single-worker) and C3 (demo-r3 reopen correctness, synthetic local process). Conditionally prefer B in C1 solely because A\u2019s single-process assumption contradicts eight concurrent writers and reliability priority; refuse any speed claim. Choose neither queue in C4. Score only observable rule-following as a limited demo process metric; do not call it efficacy.",
+    "confidence": 0.78,
+    "assumptions": [
+      "Constraints describe the decision context; fixture kind is hypothetical and scoped only to the named revision/environment.",
+      "Agent reports without attached measurements have no empirical weight.",
+      "A later unmeasured recommendation does not replace an earlier one.",
+      "Observable rules mean checkable citations and refusals, not judged explanation quality."
+    ],
+    "reasons": [
+      "C1: Acceptable is that A is not justified for the current workload (its own text assumes a single-process toy). B is the only option that addresses eight concurrent writers and reliability-over-minimal-code, so a conditional prefer-B is allowed if the boundary is explicit: requirement fit, not a benchmark. Unacceptable: declaring A current, claiming B is faster/safer from unrun tests, or treating either report as measurement. Ambiguity: neither cache was exercised under eight writers, so justification is incomplete.",
+      "C2: Acceptable is B only for synthetic revision demo-r2 against the two-second deadline in the stated single-worker fixture (A missed the deadline; B completed). Unacceptable: unlimited-retry A, any reliability claim beyond that deadline, treating the agent recommendation as a check, or exporting the result off this fixture. The artifact is a hypothetical test fixture, not field evidence. Ambiguity: only that scenario was tested.",
+      "C3: Acceptable is B as better supported for reopen correctness on synthetic demo-r3 (A dropped the last committed entry; B retained it). Unacceptable: A, any throughput/speed/scale claim (forbidden and unmeasured), or treating either agent\u2019s confidence/recommendation as a result. Fixture-only; local process. Ambiguity: reopen was the sole measured property.",
+      "C4: Acceptable conclusion is that available performance evidence supports neither A nor B; both agents state they ran no benchmark. Unacceptable: picking either queue, guessing which is faster, or inferring that the later sentence supersedes the earlier one. Ambiguity is total on performance. Constraint \u2018do not guess\u2019 bars a default winner."
+    ],
+    "risks": [
+      "Readers may promote C2/C3 fixtures into production or multi-worker claims.",
+      "Conditional C1-B may be misread as an empirical win.",
+      "A limited process metric may be sold as model quality or efficacy despite no holdout.",
+      "C4 pressure to \u2018pick something\u2019 recreates the guessing the brief forbids."
+    ],
+    "disagreements": [
+      "Whether C1-B is \u2018justified\u2019 or only \u2018not disqualified\u2019 given zero runtime evidence.",
+      "Whether a named fixture that narrates a \u2018correction\u2019 should be weighted above a silent artifact; the text is still not an independent lab.",
+      "Whether C4 should stay undecided or retain an unstated status-quo queue; the brief supplies no baseline."
+    ],
+    "missing_information": [
+      "Any actual benchmark of A vs B under eight writers (C1) or the shared workload/environment (C4).",
+      "Checks outside the named synthetic revisions, single-worker, or local-process fixtures.",
+      "A pre-registered holdout if anyone intended an efficacy claim (none exists; do not invent one).",
+      "Operational definitions of \u2018coordinated shared cache\u2019 failure modes and queue SLOs."
+    ]
+  },
+  "claude-fable-5-1": {
+    "executive_summary": "Four synthetic cases split cleanly: C2 and C3 contain fixture test artifacts that support option B within a narrowly stated scope; C1 and C4 contain only unmeasured agent reports. In C1 a conditional B is acceptable because option A's own stated assumption (single-process) contradicts the eight-writer constraint, not because B was later. In C4 no choice is supportable and picking B by recency would be an error. Observable rules can serve as a limited development metric for a bounded prompt-loop demo, but only for rule adherence on synthetic fixtures, not semantic quality, learning, or efficacy.",
+    "recommended_decision": "Adopt per-case conclusions: C1 conditional B pending benchmark; C2 B for the demo-r2 single-worker scope only; C3 B for reopen correctness on demo-r3 only; C4 no recommendation, benchmark required. Use observable rule checks as a limited development metric labeled 'fixture rule adherence', never 'efficacy' or 'quality'.",
+    "confidence": 0.82,
+    "assumptions": [
+      "All four cases are synthetic; test_artifact entries are hypothetical fixtures and carry no real-world evidentiary weight outside the scenario.",
+      "The 'kind' field is trustworthy within the scenario, so agent_report and test_artifact are correctly typed.",
+      "The user wants explanations of why a conclusion is bounded, not just the option letter.",
+      "No prior model answers or expected labels exist, so nothing is being graded."
+    ],
+    "reasons": [
+      "C1: Acceptable conclusion is a conditional recommendation for B: A's author explicitly scopes A to a single-process toy workload, which the eight-writer constraint violates, so A is self-disqualified for this workload; B is the only option whose stated assumptions match the requirement. Unacceptable claims: that B is measured, proven more reliable, or faster; that A is justified; that B wins simply because it came later. Ambiguity: 'justified' is unmeasured either way, so the honest boundary is 'B fits the requirement on stated assumptions; neither is benchmarked here'.",
+      "C2: Acceptable conclusion is B (bounded retries), because the fixture check on revision demo-r2 in a synthetic single-worker environment shows A exceeded the two-second deadline and B met it. Unacceptable claims: that A 'recovers reliably' (contradicted, unmeasured); that B generalizes to multi-worker or other revisions; that this is efficacy evidence. Ambiguity: the artifact self-describes as the only tested scenario, so the conclusion must stay inside demo-r2 and the two-second deadline as the constraint requires.",
+      "C3: Acceptable conclusion is B for reopen correctness on demo-r3, based on the artifact showing A lost the last committed entry and B retained it. Key 1's report agrees but is not evidence and should not be counted as corroboration; key 0's high confidence without test output carries no weight. Unacceptable claims: anything about throughput, speed, or scale; that A is 'best'. Ambiguity: none material beyond the synthetic local-process scope.",
+      "C4: Acceptable conclusion is that no option is supported; both reports are explicitly unbenchmarked and contradictory, so the correct answer is to decline and recommend a benchmark under the stated same-workload environment. Unacceptable claims: choosing B because it is 'later advice' (this is exactly the supersession-from-unmeasured-advice error the brief warns against); choosing A on the first speaker's word; guessing performance. Ambiguity: the question phrasing 'based on the available performance evidence' presupposes evidence exists; the right response is to note there is none.",
+      "Metric question: observable rules such as 'cites a test_artifact when one exists', 'names the revision and environment scope', 'refuses a pick when only unmeasured reports exist', 'does not treat later unmeasured advice as superseding', and 'does not extend claims beyond the measured property' are checkable and can form a LIMITED development metric for a bounded prompt-loop demonstration. It measures rule adherence and output shape, not semantic correctness, learner quality, or real-world efficacy.",
+      "Fixture vs reality: every test_artifact here is a hypothetical fixture; conclusions drawn from them are valid only inside the scenario and should be phrased as 'the fixture shows' rather than 'testing shows'."
+    ],
+    "risks": [
+      "A rule-adherence metric on four fixtures will saturate quickly and can be gamed by templated phrasing that hits keywords without reasoning correctly.",
+      "Misreading C1 as a recency-supersession case would teach the wrong lesson; the justification must rest on A's stated assumption mismatch.",
+      "Treating C3 key 1 as corroborating evidence inflates confidence without measurement.",
+      "Reporting the metric as 'efficacy' or 'quality' when there is no holdout would be a false claim of validation.",
+      "Fixture-typed evidence could be mistaken for real results if the synthetic framing is dropped downstream."
+    ],
+    "disagreements": [
+      "Some reviewers may argue C1 should be 'undetermined' like C4 since neither option is benchmarked; I think a conditional B is defensible because A explicitly excludes the workload, which is stronger than mere recency.",
+      "Some may accept C3 key 1 as weak corroboration; I would give it zero evidentiary weight since it self-describes as not a test result.",
+      "Some may hold that any rule-based metric is meaningless without a holdout; I think it is useful for catching regressions in a demo loop as long as it is not called efficacy."
+    ],
+    "missing_information": [
+      "Any benchmark of A versus B under eight concurrent writers for C1 would convert the conditional recommendation into a supported one or overturn it.",
+      "Multi-worker or additional-revision fixture results for C2 would define how far B's support extends.",
+      "Any performance measurement at all for C4 would change 'no recommendation' to a supported choice.",
+      "A larger and more varied fixture set, plus at least a held-out split, would be needed before the rule metric could claim anything beyond development-time rule adherence."
+    ]
+  },
+  "qwen3-coder": {
+    "executive_summary": "Four synthetic decision cases reveal inconsistent agent advice and limited empirical validation. Observable rules can form a limited development metric only if grounded in test artifacts rather than speculative recommendations.",
+    "recommended_decision": "Accept options B for C1, B for C2, B for C3, and reject both A and B for C4 due to lack of evidence.",
+    "confidence": 0.85,
+    "assumptions": [
+      "Test artifacts reflect accurate observations within their synthetic environments."
+    ],
+    "reasons": [
+      "C1: Agent report 0 recommends A assuming a single-process workload, which contradicts the stated constraint of eight concurrent writers. Report 1 correctly identifies B as necessary under concurrency, despite lacking benchmarks.",
+      "C2: Agent report 0 recommends A without considering time constraints. Test artifact 1 shows A exceeds the two-second deadline while B complies, making B the only supportable choice given the fixed deadline.",
+      "C3: Both agent reports offer conflicting recommendations without evidence. Test artifact 2 directly measures reopen correctness, showing A fails and B succeeds, justifying selection of B solely on that criterion.",
+      "C4: Both agent reports assert performance superiority without benchmarking. Since neither provides measurable evidence, no conclusion about queue performance can be drawn from these sources alone."
+    ],
+    "risks": [
+      "Overreliance on agent reports without verification may lead to incorrect decisions in production-like settings.",
+      "Ignoring environmental assumptions in agent reasoning could result in system failures under real-world conditions.",
+      "Using unvalidated claims as decision inputs risks misleading future development loops or demos."
+    ],
+    "disagreements": [
+      "Whether agent confidence levels should influence decisions when not backed by tests\u2014reports express certainty but remain unsubstantiated.",
+      "If synthetic fixtures qualify as sufficient evidence for limited metrics\u2014the council must decide what constitutes actionable proof."
+    ],
+    "missing_information": [
+      "Benchmark results comparing A vs. B in C1's actual multi-writer environment.",
+      "Performance data validating either queue policy in C4 under identical workloads.",
+      "Throughput or scalability checks for storage options in C3 beyond correctness testing."
+    ]
+  }
+}

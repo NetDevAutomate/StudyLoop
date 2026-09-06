@@ -1,0 +1,41 @@
+{
+  "model": "claude-fable-5-1",
+  "provider": "anthropic",
+  "mode": "chat",
+  "response": {
+    "executive_summary": "The 24/24 source_adapter result is a conformance check of a deterministic parser against 11 developer-authored fixture pairs (12 conditions, C01/C10 duplicated) with developer-authored labels; the model plays no role in gate output, so the 24 calls add nothing to adapter evidence. checked_only's 4 false blocks are 2 conditions x 2 repeats, both created by scripted proposal errors that source_adapter is immune to by construction, so the mode comparison is close to tautological. Real signal: advisory model choice was correct on all 17 valid fresh calls and failed only on provenance (C03) and ambiguity (C11), where quotes were locatable but insufficiency was invisible to it. No adapter decision bug is visible in five cases, but several latent parser-desync and semantic risks exist.",
+    "recommended_decision": "Accept the pilot as conformance-only evidence for source_adapter; before any design commitment, run one bounded differential test of the parser boundary: ~20 hand-authored malformed sources (CRLF, trailing whitespace on markers, two or nested observed blocks, indented keys, key-case variants, identical winner lines inside and outside block, 'winner: C', a quote spanning lines) asserting that declarations() and declarations_with_spans() agree on block membership, no exception escapes release(), and every emitted span locator resolves; labels for these must be authored blind by a non-developer.",
+    "confidence": 0.7,
+    "assumptions": [
+      "declarations() in metadata_value.verify implements the same [observed]/[/observed] exact-line grammar as declarations_with_spans; the packet only summarizes it.",
+      "Stage 8 derive() rejects provenance='report' and any None scope value; C03/C01 outputs are consistent with this but the policy code is not shown.",
+      "The C06 repeat-2 'ValueError' originates from model output parsing, not from EvidenceSnapshot.freeze or the harness."
+    ],
+    "reasons": [
+      "source_adapter ignores the proposal for decisions (candidate_checks is telemetry), so it is deterministic per source/target: effective n is 11 unique pairs, only 3 unique positive pairs, not 24.",
+      "Fixtures and labels were authored by the same team that wrote the parser; 0 false blocks means the parser matches its authors' grammar, not that the grammar matches real artifacts.",
+      "checked_only false blocks (C01 null revision, C05 outside-block winner) are exactly the scripted proposal faults, so the comparison measures proposal fidelity, not gate quality.",
+      "All model failures are the two OLD adversarial patterns; fresh-case perfection on 17 calls is encouraging telemetry but irrelevant to release content."
+    ],
+    "risks": [
+      "Correlated parser bug: declarations() and declarations_with_spans() implement block boundaries independently; a divergence (e.g. '\\r' handling, marker with trailing space) silently degrades basis to whole-source spans or, worse, disagrees on which lines count as declarations.",
+      "normalized_sources hard-codes requirement_match=False; if Stage 8 policy semantics for that field change, every adapter output flips without any test here catching it.",
+      "next_check 'Re-extract <field> from the original source and verify its exact span' in checked_only invites iterating the extractor until the gate passes, a soft form of gaming; concatenating multiple next_checks into one string also loses structure.",
+      "Report sources are still emitted as normalized_sources with provenance='report'; correctness of C03 depends entirely on downstream policy, a two-layer dependency the adapter test does not isolate.",
+      "Only 3 unique positive pairs: the adapter could over-block on real artifacts (whitespace, key aliases, multi-line values) and this pilot would not detect it."
+    ],
+    "disagreements": [
+      "The brief frames 0/24 as a headline; I would report 11/11 fixture conformance and treat the 24 figure as a model-telemetry count only.",
+      "The brief lists C05 as a checked_only 'false block'; given checked_only's stated contract (accept only verifier-matched candidate fields), abstaining on a proposal that cited an outside-block winner is correct-by-spec behavior, and labelling it false block conflates modes' contracts.",
+      "'All 23 valid draft quotes locatable' is presented as a positive; C03/C11 show locatability is orthogonal to sufficiency and should not be a headline metric."
+    ],
+    "missing_information": [
+      "Source of declarations() and derive() to confirm grammar parity and provenance/None handling.",
+      "Provenance of the C06 repeat-2 ValueError (model vs harness).",
+      "Any real or non-developer-authored artifact samples to estimate over-blocking rate.",
+      "Meaning and downstream use of requirement_match in Stage 8 policy.",
+      "Whether C10's adapter output was byte-identical to C01's (expected, and if not, indicates proposal leakage into the decision path)."
+    ]
+  },
+  "error": null
+}

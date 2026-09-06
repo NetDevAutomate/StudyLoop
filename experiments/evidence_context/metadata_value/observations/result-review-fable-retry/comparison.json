@@ -1,0 +1,17 @@
+{
+  "selected_models": [
+    "claude-fable-5-1"
+  ],
+  "responding_models": [],
+  "provider_buckets": [],
+  "failed_models": {
+    "claude-fable-5-1": "ValueError: model did not return a JSON object"
+  },
+  "recommendations": {},
+  "confidence": {},
+  "repeated_reasons": [],
+  "repeated_risks": [],
+  "assumption_themes": [],
+  "disagreement_themes": [],
+  "missing_information_themes": []
+}

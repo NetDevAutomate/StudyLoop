@@ -10,8 +10,8 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from fastapi import FastAPI
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi import FastAPI, Request
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.datastructures import MutableHeaders
 from starlette.responses import RedirectResponse, Response
@@ -210,6 +210,18 @@ def create_app(
         openapi_url=None,
         lifespan=_lifespan,
     )
+    from agent_session_tools.context.scope import ScopeError
+
+    @app.exception_handler(ScopeError)
+    async def context_scope_error(_request: Request, exc: ScopeError) -> JSONResponse:
+        return JSONResponse(
+            status_code=409,
+            content={"code": "context_scope_unavailable", "detail": str(exc)},
+        )
+
+    from studyloop.web.context_response import ContextResponseMiddleware
+
+    app.add_middleware(ContextResponseMiddleware)
 
     # Store config on app state for route access
     app.state.study_dirs = study_dirs or []

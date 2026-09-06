@@ -1,0 +1,430 @@
+{
+  "selected_models": [
+    "claude-fable-5-1",
+    "grok-4.6",
+    "qwen3-coder"
+  ],
+  "responding_models": [
+    "claude-fable-5-1",
+    "grok-4.6",
+    "qwen3-coder"
+  ],
+  "provider_buckets": [
+    "anthropic",
+    "qwen",
+    "xai"
+  ],
+  "failed_models": {},
+  "recommendations": {
+    "claude-fable-5-1": "Freeze a written block-scoped grammar (tags on their own lines, exact byte equality for values, no normalization, unknown keys inside the block disallowed or explicitly ignored) before execution, replace the duplicate C10 with a formatting-edge case, and pre-register that C05 is the discriminating case between the conservative and source-adapter paths.",
+    "grok-4.6": "Do not execute the 24-call experiment; lock a formal observed-block grammar, drop or replace the C01/C10 duplicate, add malformed-fence and in-block extra-key cases, and score both deterministic paths against a written oracle rather than this council.",
+    "qwen3-coder": "Reject the current labeling policy and experimental setup; revise to allow for robust handling of ambiguous or malformed source data and ensure true independence of evaluation."
+  },
+  "confidence": {
+    "claude-fable-5-1": 0.82,
+    "grok-4.6": 0.86,
+    "qwen3-coder": 0.85
+  },
+  "repeated_reasons": [
+    {
+      "theme": "C03|none|source.kind is report, not artifact, regardless of block content",
+      "models": [
+        "claude-fable-5-1",
+        "grok-4.6",
+        "qwen3-coder"
+      ],
+      "variants": [
+        "C03|none|source.kind is report, not artifact, regardless of block content",
+        "C03|none|source.kind is report, not artifact",
+        "C03|none|Source kind is 'report', which disqualifies it regardless of content accuracy."
+      ]
+    },
+    {
+      "theme": "C09|none|duplicate winner declarations A and B inside the block",
+      "models": [
+        "claude-fable-5-1",
+        "grok-4.6",
+        "qwen3-coder"
+      ],
+      "variants": [
+        "C09|none|duplicate winner declarations A and B inside the block",
+        "C11|none|duplicate revision declarations r1 and r2 inside the block",
+        "C09|none|duplicate winner declarations A and B",
+        "C09|none|Duplicate winner declarations within the same block make parsing ambiguous."
+      ]
+    },
+    {
+      "theme": "C01|B|artifact, single well-formed block, all four fields byte-equal to target, exactly one winner B",
+      "models": [
+        "claude-fable-5-1",
+        "grok-4.6"
+      ],
+      "variants": [
+        "C01|B|artifact, single well-formed block, all four fields byte-equal to target, exactly one winner B",
+        "C04|A|artifact, single block, all four fields match, exactly one winner A",
+        "C01|B|artifact, one block, four fields equal target, single winner B",
+        "C04|A|artifact, one block, four fields equal target, single winner A",
+        "C10|B|artifact, one block, four fields equal target, single winner B"
+      ]
+    },
+    {
+      "theme": "C02|none|environment fixture-west mismatches target fixture-east",
+      "models": [
+        "claude-fable-5-1",
+        "grok-4.6"
+      ],
+      "variants": [
+        "C02|none|environment fixture-west mismatches target fixture-east"
+      ]
+    },
+    {
+      "theme": "C06|none|no winner declaration inside the block",
+      "models": [
+        "claude-fable-5-1",
+        "grok-4.6"
+      ],
+      "variants": [
+        "C06|none|no winner declaration inside the block",
+        "C06|none|missing winner declaration"
+      ]
+    },
+    {
+      "theme": "C07|none|two [observed] blocks present, policy requires exactly one",
+      "models": [
+        "claude-fable-5-1",
+        "grok-4.6"
+      ],
+      "variants": [
+        "C07|none|two [observed] blocks present, policy requires exactly one",
+        "C07|none|two observed blocks"
+      ]
+    },
+    {
+      "theme": "C08|none|workload two writers mismatches target six writers",
+      "models": [
+        "claude-fable-5-1",
+        "grok-4.6"
+      ],
+      "variants": [
+        "C08|none|workload two writers mismatches target six writers"
+      ]
+    },
+    {
+      "theme": "C11|none|duplicate revision declarations r1 and r2",
+      "models": [
+        "grok-4.6",
+        "qwen3-coder"
+      ],
+      "variants": [
+        "C11|none|duplicate revision declarations r1 and r2",
+        "C11|none|Duplicate revision declarations create ambiguity about intended value."
+      ]
+    },
+    {
+      "theme": "C12|none|revision declaration missing from block while target requires r2",
+      "models": [
+        "claude-fable-5-1",
+        "grok-4.6"
+      ],
+      "variants": [
+        "C12|none|revision declaration missing from block while target requires r2",
+        "C12|none|missing revision declaration"
+      ]
+    }
+  ],
+  "repeated_risks": [],
+  "assumption_themes": [
+    {
+      "theme": "A declaration is a single in-block `key: value` line; only revision, workload, environment, metric, and winner are relevant.",
+      "models": [
+        "grok-4.6"
+      ],
+      "variants": [
+        "A declaration is a single in-block `key: value` line; only revision, workload, environment, metric, and winner are relevant."
+      ]
+    },
+    {
+      "theme": "Any duplicate required key is fatal even if one value equals the target.",
+      "models": [
+        "grok-4.6"
+      ],
+      "variants": [
+        "Any duplicate required key is fatal even if one value equals the target."
+      ]
+    },
+    {
+      "theme": "Block tags [observed] and [/observed] must appear on their own lines and the block interior is the only parsed region.",
+      "models": [
+        "claude-fable-5-1"
+      ],
+      "variants": [
+        "Block tags [observed] and [/observed] must appear on their own lines and the block interior is the only parsed region."
+      ]
+    },
+    {
+      "theme": "Lines after [/observed] are ignored rather than making the block malformed.",
+      "models": [
+        "grok-4.6"
+      ],
+      "variants": [
+        "Lines after [/observed] are ignored rather than making the block malformed."
+      ]
+    },
+    {
+      "theme": "Only revision/workload/environment/metric/winner are required; presence of other keys inside the block is not addressed by the policy and is assumed absent in these fixtures.",
+      "models": [
+        "claude-fable-5-1"
+      ],
+      "variants": [
+        "Only revision/workload/environment/metric/winner are required; presence of other keys inside the block is not addressed by the policy and is assumed absent in these fixtures."
+      ]
+    },
+    {
+      "theme": "source.id is not a policy input and differences in it would not affect labels.",
+      "models": [
+        "claude-fable-5-1"
+      ],
+      "variants": [
+        "source.id is not a policy input and differences in it would not affect labels."
+      ]
+    },
+    {
+      "theme": "Target fields are always complete, so equality is a four-field exact string match with no normalization specified.",
+      "models": [
+        "grok-4.6"
+      ],
+      "variants": [
+        "Target fields are always complete, so equality is a four-field exact string match with no normalization specified."
+      ]
+    },
+    {
+      "theme": "The purpose of the experiment is to evaluate decision-making reliability under realistic conditions, not merely to validate a brittle parsing rule.",
+      "models": [
+        "qwen3-coder"
+      ],
+      "variants": [
+        "The purpose of the experiment is to evaluate decision-making reliability under realistic conditions, not merely to validate a brittle parsing rule."
+      ]
+    },
+    {
+      "theme": "Value comparison is exact string equality with no case-folding or whitespace trimming beyond the newline delimiter.",
+      "models": [
+        "claude-fable-5-1"
+      ],
+      "variants": [
+        "Value comparison is exact string equality with no case-folding or whitespace trimming beyond the newline delimiter."
+      ]
+    },
+    {
+      "theme": "Winner must be exactly the token A or B; kind must be exactly artifact.",
+      "models": [
+        "grok-4.6"
+      ],
+      "variants": [
+        "Winner must be exactly the token A or B; kind must be exactly artifact."
+      ]
+    }
+  ],
+  "disagreement_themes": [
+    {
+      "theme": "A stricter reading could mark C05 none on the theory that any trailing key: value is malformed, not merely unobserved.",
+      "models": [
+        "grok-4.6"
+      ],
+      "variants": [
+        "A stricter reading could mark C05 none on the theory that any trailing key: value is malformed, not merely unobserved."
+      ]
+    },
+    {
+      "theme": "Conservative-vs-adapter field selection is not specified tightly enough for two implementers to match without further rules.",
+      "models": [
+        "grok-4.6"
+      ],
+      "variants": [
+        "Conservative-vs-adapter field selection is not specified tightly enough for two implementers to match without further rules."
+      ]
+    },
+    {
+      "theme": "Counting C10 as a distinct case inflates apparent coverage; it should be replaced, not retained.",
+      "models": [
+        "claude-fable-5-1"
+      ],
+      "variants": [
+        "Counting C10 as a distinct case inflates apparent coverage; it should be replaced, not retained."
+      ]
+    },
+    {
+      "theme": "Duplicate same-value keys are untested; C11 only shows conflicting duplicates.",
+      "models": [
+        "grok-4.6"
+      ],
+      "variants": [
+        "Duplicate same-value keys are untested; C11 only shows conflicting duplicates."
+      ]
+    },
+    {
+      "theme": "If enforcing exact equality across all four dimensions is more important than semantic alignment when minor variations occur.",
+      "models": [
+        "qwen3-coder"
+      ],
+      "variants": [
+        "If enforcing exact equality across all four dimensions is more important than semantic alignment when minor variations occur."
+      ]
+    },
+    {
+      "theme": "The brief frames C05 as unambiguous under 'lines outside the block are not observed declarations'; I would argue it is the single most valuable case and should be pre-registered as a deliberate path-divergence probe rather than folded into the positive set.",
+      "models": [
+        "claude-fable-5-1"
+      ],
+      "variants": [
+        "The brief frames C05 as unambiguous under 'lines outside the block are not observed declarations'; I would argue it is the single most valuable case and should be pre-registered as a deliberate path-divergence probe rather than folded into the positive set."
+      ]
+    },
+    {
+      "theme": "The brief treats the source-adapter path as 'never a silent repair', but if it re-derives the full answer from source without reference to the candidate, it is not a release path for the model output at all; it is an independent oracle, and the experiment then measures whether the model is redundant rather than whether it is correct.",
+      "models": [
+        "claude-fable-5-1"
+      ],
+      "variants": [
+        "The brief treats the source-adapter path as 'never a silent repair', but if it re-derives the full answer from source without reference to the candidate, it is not a release path for the model output at all; it is an independent oracle, and the experiment then measures whether the model is redundant rather than whether it is correct."
+      ]
+    },
+    {
+      "theme": "Unknown in-block keys are unspecified; some will treat them as fatal, others as ignorable.",
+      "models": [
+        "grok-4.6"
+      ],
+      "variants": [
+        "Unknown in-block keys are unspecified; some will treat them as fatal, others as ignorable."
+      ]
+    },
+    {
+      "theme": "Whether 'artifact' vs 'report' distinction meaningfully contributes to labeling fidelity when both can contain equivalent structured data.",
+      "models": [
+        "qwen3-coder"
+      ],
+      "variants": [
+        "Whether 'artifact' vs 'report' distinction meaningfully contributes to labeling fidelity when both can contain equivalent structured data."
+      ]
+    },
+    {
+      "theme": "Whether excluding cases based on duplicate or missing declarations improves or degrades overall experimental validity.",
+      "models": [
+        "qwen3-coder"
+      ],
+      "variants": [
+        "Whether excluding cases based on duplicate or missing declarations improves or degrades overall experimental validity."
+      ]
+    }
+  ],
+  "missing_information_themes": [
+    {
+      "theme": "A non-duplicate positive matrix that separately varies winner A/B and outside-noise vs true omission.",
+      "models": [
+        "grok-4.6"
+      ],
+      "variants": [
+        "A non-duplicate positive matrix that separately varies winner A/B and outside-noise vs true omission."
+      ]
+    },
+    {
+      "theme": "BNF or equivalent for observed blocks: spacing, case, unknown keys, duplicate same values, unclosed fences.",
+      "models": [
+        "grok-4.6"
+      ],
+      "variants": [
+        "BNF or equivalent for observed blocks: spacing, case, unknown keys, duplicate same values, unclosed fences."
+      ]
+    },
+    {
+      "theme": "Data comparing outcomes from conservative vs source-adapter paths using truly independent ground truth rather than recycled script-based proposals.",
+      "models": [
+        "qwen3-coder"
+      ],
+      "variants": [
+        "Data comparing outcomes from conservative vs source-adapter paths using truly independent ground truth rather than recycled script-based proposals."
+      ]
+    },
+    {
+      "theme": "Empirical evidence showing how often real-world sources deviate from perfect formatting versus how often such deviations correlate with incorrect decisions.",
+      "models": [
+        "qwen3-coder"
+      ],
+      "variants": [
+        "Empirical evidence showing how often real-world sources deviate from perfect formatting versus how often such deviations correlate with incorrect decisions."
+      ]
+    },
+    {
+      "theme": "Exact conservative-path rule when a candidate has extra or conflicting winner/revision fields.",
+      "models": [
+        "grok-4.6"
+      ],
+      "variants": [
+        "Exact conservative-path rule when a candidate has extra or conflicting winner/revision fields."
+      ]
+    },
+    {
+      "theme": "The definition of the pre-registered false-blocking metric and the sample size deemed sufficient to detect a meaningful rate with only four positives.",
+      "models": [
+        "claude-fable-5-1"
+      ],
+      "variants": [
+        "The definition of the pre-registered false-blocking metric and the sample size deemed sufficient to detect a meaningful rate with only four positives."
+      ]
+    },
+    {
+      "theme": "The exact reference grammar used by the source-adapter path, in particular whether it is block-scoped and how it handles duplicate keys, ordering, casing, and whitespace.",
+      "models": [
+        "claude-fable-5-1"
+      ],
+      "variants": [
+        "The exact reference grammar used by the source-adapter path, in particular whether it is block-scoped and how it handles duplicate keys, ordering, casing, and whitespace."
+      ]
+    },
+    {
+      "theme": "What the 'frozen prior answer prompt' contains and whether it embeds any of the target field values, which would let the model reconstruct answers without reading the source.",
+      "models": [
+        "claude-fable-5-1"
+      ],
+      "variants": [
+        "What the 'frozen prior answer prompt' contains and whether it embeds any of the target field values, which would let the model reconstruct answers without reading the source."
+      ]
+    },
+    {
+      "theme": "Whether a reference parser has already been run on these 12 fixtures and what it outputs for C05.",
+      "models": [
+        "claude-fable-5-1"
+      ],
+      "variants": [
+        "Whether a reference parser has already been run on these 12 fixtures and what it outputs for C05."
+      ]
+    },
+    {
+      "theme": "Whether the 'strict JSON' and 'complete-fence-only' measurements share a single model call or are separate calls, which affects whether the 24-call budget is actually 48.",
+      "models": [
+        "claude-fable-5-1"
+      ],
+      "variants": [
+        "Whether the 'strict JSON' and 'complete-fence-only' measurements share a single model call or are separate calls, which affects whether the 24-call budget is actually 48."
+      ]
+    },
+    {
+      "theme": "Whether these council strings will be used as gold despite the brief stating they are not independent human labels.",
+      "models": [
+        "grok-4.6"
+      ],
+      "variants": [
+        "Whether these council strings will be used as gold despite the brief stating they are not independent human labels."
+      ]
+    },
+    {
+      "theme": "Whether trailing text is defined as ignore or malformed.",
+      "models": [
+        "grok-4.6"
+      ],
+      "variants": [
+        "Whether trailing text is defined as ignore or malformed."
+      ]
+    }
+  ]
+}

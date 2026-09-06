@@ -1,0 +1,64 @@
+{
+  "stage": 38,
+  "scope": "authenticated configured canonical SSH coordination; full production goal active",
+  "implementation_checkpoint": "e48318ac",
+  "installed_checks": {
+    "actual_cli_ssh_transfer": true,
+    "excluded_work_never_transferred": true,
+    "unchanged_retry_sends_no_body": true,
+    "explicit_permission_queued": true,
+    "withdrawal_applied_before_bodies": true,
+    "receiver_other_native_source_preserved": true,
+    "all_pushes_before_pull": true,
+    "all_imports_only_permitted_remote_history": true,
+    "fresh_regrant_restores": true,
+    "push_reconciles_reverse_retirement": true,
+    "wrong_host_key_refused": true,
+    "caller_cannot_choose_forced_peer": true,
+    "canonical_coverage_explicit": true
+  },
+  "verification": {
+    "combined_memory_experiments": "1845 passed, 1 optional skip, 108.86s; final schema46 counter, frozen migration, 29 coordinator cases and tiering corrections",
+    "focused": "93 coordinator, tiering and context-store tests passed in 19.87s after counter and archival fixes",
+    "studyloop": "3823 passed, 4 skipped, 704 deselected, 183.48s; after content counter, before final tiering bookkeeping correction; 11 existing dependency/fork warnings",
+    "standalone": "Fresh memory-only wheel, actual installed session-sync and loopback sshd; 13 checks pass; StudyLoop absent. Final rebuilt wheel separately passes six compaction/identity/FTS/FK checks.",
+    "browser": "Five sections and five disclosures opened; viewport fits; screenshot inspected; own tab and server closed",
+    "pyright": "Full workspace source and tests passed in e48318ac commit hooks after all final corrections",
+    "commit_hooks": "e48318ac lint/format/secrets/Bandit/author/full workspace source+test types passed"
+  },
+  "failures_observed": [
+    "Directed receiver mutation test exposed false unchanged: access revision does not track new bodies. Separate content revision and confirmation added.",
+    "Broad suite then found six compaction/pruning failures: seeded singleton collision and invalid cross-instance counter comparison. Local bookkeeping exclusions fixed them.",
+    "Initial Claude constructor default test assumed no isolated config override; test now clears the override only for that default-path assertion.",
+    "Actual SSH preflight rejected a group-writable ancestor; disposable authorization moved under private home temporary directory, retaining StrictModes.",
+    "Final wheel compaction probe initially used instance_id instead of the actual instance column; corrected probe passed; no product change."
+  ],
+  "council": {
+    "design": [
+      "meta",
+      "qwen",
+      "mistral"
+    ],
+    "results": [
+      "meta",
+      "qwen",
+      "mistral"
+    ],
+    "correction": [
+      "meta",
+      "qwen",
+      "mistral"
+    ],
+    "arbitration": "COUNCIL-DECISION.md",
+    "unanimous_full_approval": false
+  },
+  "limits": [
+    "Complete canonical scopes bounded to 32 MiB; not yet scalable or incremental.",
+    "One configured canonical database per endpoint. Full-store/managed restore and full product completion remain absent.",
+    "No global atomic instant across machines/config files; checked boundaries and durable retry only.",
+    "Mutable divergence is refused rather than automatically merged. Unknown legacy recipient history is not inferred.",
+    "Dedicated SSH setup remains manual; generic remote errors limit diagnostics.",
+    "No owner database, config, hooks, archive, SSH file or real peer changed.",
+    "No semantic answer-quality or database-engine comparison."
+  ]
+}

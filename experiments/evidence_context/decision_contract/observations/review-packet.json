@@ -1,0 +1,1128 @@
+[
+  {
+    "id": "J01",
+    "input": {
+      "constraints": {
+        "decision_mode": "measured",
+        "target": {
+          "environment": "fixture-local",
+          "metric": "reopen correctness",
+          "revision": "r2",
+          "workload": "eight writers"
+        }
+      },
+      "evidence": [
+        {
+          "conclusion": "A",
+          "id": "S1",
+          "kind": "agent_report",
+          "provenance": "report",
+          "requirement_match": false,
+          "scope": {},
+          "text": "I believe A retains entries correctly. No test was run."
+        },
+        {
+          "conclusion": "B",
+          "id": "S2",
+          "kind": "agent_report",
+          "provenance": "report",
+          "requirement_match": false,
+          "scope": {},
+          "text": "Later advice: I believe B retains entries correctly. No test was run."
+        },
+        {
+          "conclusion": "B",
+          "id": "S3",
+          "kind": "test_artifact",
+          "provenance": "artifact",
+          "requirement_match": false,
+          "scope": {
+            "environment": "fixture-local",
+            "metric": "reopen correctness",
+            "workload": "eight writers"
+          },
+          "text": "Synthetic reopen check: A lost the last committed entry, B retained it. Only the attached scope was tested."
+        }
+      ],
+      "question": "Which option is justified for reopen correctness?",
+      "scenario": "synthetic_fixture_not_real_validation"
+    },
+    "answer": {
+      "source_assessments": [
+        {
+          "id": "S1",
+          "provenance": "report",
+          "applicability": "not_validation",
+          "reason": "Reports are not validation evidence under measured mode."
+        },
+        {
+          "id": "S2",
+          "provenance": "report",
+          "applicability": "not_validation",
+          "reason": "Reports are not validation evidence under measured mode."
+        },
+        {
+          "id": "S3",
+          "provenance": "artifact",
+          "applicability": "applicable",
+          "reason": "Artifact matches target environment, metric, workload, and implicit revision r2."
+        }
+      ],
+      "decision": {
+        "reason_code": "applicable_observation",
+        "sufficiency": "supported",
+        "recommendation": "B",
+        "basis_ids": [
+          "S3"
+        ],
+        "explanation": "An applicable artifact (S3) directly measures the target and supports conclusion B.",
+        "limitation": "Decision is limited to the specific environment, metric, workload, and revision tested.",
+        "next_check": "Verify consistency across additional test scenarios and environments."
+      }
+    }
+  },
+  {
+    "id": "J02",
+    "input": {
+      "constraints": {
+        "decision_mode": "measured",
+        "target": {
+          "environment": "fixture-local",
+          "metric": "reopen correctness",
+          "revision": "r2",
+          "workload": "eight writers"
+        }
+      },
+      "evidence": [
+        {
+          "conclusion": "A",
+          "id": "S1",
+          "kind": "agent_report",
+          "provenance": "report",
+          "requirement_match": false,
+          "scope": {},
+          "text": "I believe A retains entries correctly. No test was run."
+        },
+        {
+          "conclusion": "B",
+          "id": "S2",
+          "kind": "agent_report",
+          "provenance": "report",
+          "requirement_match": false,
+          "scope": {},
+          "text": "Later advice: I believe B retains entries correctly. No test was run."
+        }
+      ],
+      "question": "Which option is justified for reopen correctness?",
+      "scenario": "synthetic_fixture_not_real_validation"
+    },
+    "answer": {
+      "conflict_kind": "unresolved",
+      "recommendation": "insufficient",
+      "evidence_basis": "reported_only",
+      "rationale": "Both S1 and S2 are agent reports without test execution or measured evidence supporting their conclusions. Neither establishes correctness for the target environment r2 with eight writers workload.",
+      "alternative": "Neither A nor B is supported by measured evidence; both rely on unsubstantiated belief statements.",
+      "citations": [
+        {
+          "id": "S1",
+          "supports": "assertion of A's correctness without evidence"
+        },
+        {
+          "id": "S2",
+          "supports": "assertion of B's correctness without evidence"
+        }
+      ],
+      "uncertainty": "No measured evidence exists for either option under the specified constraints of environment r2, revision, and eight writers workload.",
+      "next_check": "Conduct a test measuring reopen correctness for both A and B under r2 with eight writers."
+    }
+  },
+  {
+    "id": "J03",
+    "input": {
+      "constraints": {
+        "decision_mode": "requirement_fit",
+        "target": {
+          "environment": "fixture-local",
+          "metric": "reopen correctness",
+          "revision": "r2",
+          "workload": "eight writers"
+        }
+      },
+      "evidence": [
+        {
+          "conclusion": "A",
+          "id": "S1",
+          "kind": "agent_report",
+          "provenance": "report",
+          "requirement_match": false,
+          "scope": {},
+          "text": "I recommend A for its simple design. It assumes a single writer and does not meet the current multi-writer requirement."
+        },
+        {
+          "conclusion": "B",
+          "id": "S2",
+          "kind": "agent_report",
+          "provenance": "report",
+          "requirement_match": true,
+          "scope": {},
+          "text": "B is described as coordinating eight writers. This is a requirement-fit proposal, not measured reopen correctness."
+        }
+      ],
+      "question": "Which option is justified for reopen correctness?",
+      "scenario": "synthetic_fixture_not_real_validation"
+    },
+    "answer": {
+      "source_assessments": [
+        {
+          "id": "S1",
+          "provenance": "report",
+          "applicability": "not_validation",
+          "reason": "This is an agent report and not an empirical validation artifact; it provides a requirement-fit assessment rather than measured evidence."
+        },
+        {
+          "id": "S2",
+          "provenance": "report",
+          "applicability": "not_validation",
+          "reason": "This is an agent report and not an empirical validation artifact; it provides a requirement-fit assessment rather than measured evidence."
+        }
+      ],
+      "decision": {
+        "reason_code": "requirement_fit_only",
+        "sufficiency": "conditional",
+        "recommendation": "B",
+        "basis_ids": [
+          "S2"
+        ],
+        "explanation": "No applicable empirical observations are provided. Decision is based solely on requirement-fit reports. S2 claims B fits the requirement for eight writers, while S1 states A does not fit due to assuming a single writer.",
+        "limitation": "The decision relies on unvalidated requirement-fit assessments rather than empirical measurements of reopen correctness under the specified conditions.",
+        "next_check": "Obtain empirical validation artifacts demonstrating actual reopen correctness performance for each option under the target environment, revision, and workload."
+      }
+    }
+  },
+  {
+    "id": "J04",
+    "input": {
+      "constraints": {
+        "decision_mode": "measured",
+        "target": {
+          "environment": "fixture-local",
+          "metric": "reopen correctness",
+          "revision": "r2",
+          "workload": "eight writers"
+        }
+      },
+      "evidence": [
+        {
+          "conclusion": "A",
+          "id": "S1",
+          "kind": "agent_report",
+          "provenance": "report",
+          "requirement_match": false,
+          "scope": {},
+          "text": "I believe A retains entries correctly. No test was run."
+        },
+        {
+          "conclusion": "B",
+          "id": "S2",
+          "kind": "agent_report",
+          "provenance": "report",
+          "requirement_match": false,
+          "scope": {},
+          "text": "Later advice: I believe B retains entries correctly. No test was run."
+        },
+        {
+          "conclusion": "B",
+          "id": "S3",
+          "kind": "test_artifact",
+          "provenance": "artifact",
+          "requirement_match": false,
+          "scope": {
+            "environment": "fixture-local",
+            "metric": "throughput",
+            "revision": "r2",
+            "workload": "eight writers"
+          },
+          "text": "Synthetic throughput check: B processed more records per second than A. Reopen correctness was not measured."
+        }
+      ],
+      "question": "Which option is justified for reopen correctness?",
+      "scenario": "synthetic_fixture_not_real_validation"
+    },
+    "answer": {
+      "conflict_kind": "unresolved",
+      "recommendation": "insufficient",
+      "evidence_basis": "reported_only",
+      "rationale": "The question concerns reopen correctness under specific constraints, but no evidence directly measures this metric. S1 and S2 are agent reports without tests, and S3 measures throughput, not correctness. No test artifact supports either option for the target metric.",
+      "alternative": "Neither A nor B has supporting evidence for reopen correctness. S3 shows B outperforms A in throughput but does not address correctness, leaving the options equally unjustified.",
+      "citations": [
+        {
+          "id": "S1",
+          "supports": "A's correctness belief (unsupported)"
+        },
+        {
+          "id": "S2",
+          "supports": "B's correctness belief (unsupported)"
+        },
+        {
+          "id": "S3",
+          "supports": "B's throughput advantage (irrelevant)"
+        }
+      ],
+      "uncertainty": "Reopen correctness remains unmeasured for both options under the specified workload and environment. Throughput results do not imply correctness behavior.",
+      "next_check": "A correctness test under r2 with eight writers in fixture-local environment measuring reopen behavior."
+    }
+  },
+  {
+    "id": "J05",
+    "input": {
+      "constraints": {
+        "decision_mode": "measured",
+        "target": {
+          "environment": "fixture-local",
+          "metric": "reopen correctness",
+          "revision": "r2",
+          "workload": "eight writers"
+        }
+      },
+      "evidence": [
+        {
+          "conclusion": "A",
+          "id": "S1",
+          "kind": "agent_report",
+          "provenance": "report",
+          "requirement_match": false,
+          "scope": {},
+          "text": "I believe A retains entries correctly. No test was run."
+        },
+        {
+          "conclusion": "B",
+          "id": "S2",
+          "kind": "agent_report",
+          "provenance": "report",
+          "requirement_match": false,
+          "scope": {},
+          "text": "Later advice: I believe B retains entries correctly. No test was run."
+        },
+        {
+          "conclusion": "B",
+          "id": "S3",
+          "kind": "test_artifact",
+          "provenance": "artifact",
+          "requirement_match": false,
+          "scope": {
+            "environment": "fixture-local",
+            "metric": "reopen correctness",
+            "revision": "r2",
+            "workload": "eight writers"
+          },
+          "text": "Synthetic reopen check: A lost the last committed entry, B retained it. Only the attached scope was tested."
+        }
+      ],
+      "question": "Which option is justified for reopen correctness?",
+      "scenario": "synthetic_fixture_not_real_validation"
+    },
+    "answer": {
+      "source_assessments": [
+        {
+          "id": "S1",
+          "provenance": "report",
+          "applicability": "not_validation",
+          "reason": "Reports are not subject to validation against the target scope."
+        },
+        {
+          "id": "S2",
+          "provenance": "report",
+          "applicability": "not_validation",
+          "reason": "Reports are not subject to validation against the target scope."
+        },
+        {
+          "id": "S3",
+          "provenance": "artifact",
+          "applicability": "applicable",
+          "reason": "The artifact matches the target scope exactly: environment 'fixture-local', metric 'reopen correctness', revision 'r2', and workload 'eight writers'."
+        }
+      ],
+      "decision": {
+        "reason_code": "applicable_observation",
+        "sufficiency": "supported",
+        "recommendation": "B",
+        "basis_ids": [
+          "S3"
+        ],
+        "explanation": "An applicable test artifact (S3) directly measured the target scenario and concluded that B retains entries correctly, while A does not.",
+        "limitation": "This conclusion is limited to the specific environment, metric, revision, and workload defined in the target scope.",
+        "next_check": "To generalize beyond this scope, additional observations under different conditions would be needed."
+      }
+    }
+  },
+  {
+    "id": "J06",
+    "input": {
+      "constraints": {
+        "decision_mode": "requirement_fit",
+        "target": {
+          "environment": "fixture-local",
+          "metric": "reopen correctness",
+          "revision": "r2",
+          "workload": "eight writers"
+        }
+      },
+      "evidence": [
+        {
+          "conclusion": "A",
+          "id": "S1",
+          "kind": "agent_report",
+          "provenance": "report",
+          "requirement_match": false,
+          "scope": {},
+          "text": "I recommend A for its simple design. It assumes a single writer and does not meet the current multi-writer requirement."
+        },
+        {
+          "conclusion": "B",
+          "id": "S2",
+          "kind": "agent_report",
+          "provenance": "report",
+          "requirement_match": true,
+          "scope": {},
+          "text": "B is described as coordinating eight writers. This is a requirement-fit proposal, not measured reopen correctness."
+        },
+        {
+          "conclusion": "B",
+          "id": "S3",
+          "kind": "test_artifact",
+          "provenance": "artifact",
+          "requirement_match": false,
+          "scope": {
+            "environment": "fixture-local",
+            "metric": "reopen correctness",
+            "revision": "r2",
+            "workload": "eight writers"
+          },
+          "text": "Synthetic reopen check: A lost the last committed entry, B retained it. Only the attached scope was tested."
+        }
+      ],
+      "question": "Which option is justified for reopen correctness?",
+      "scenario": "synthetic_fixture_not_real_validation"
+    },
+    "answer": {
+      "conflict_kind": "unequal_evidence",
+      "recommendation": "B",
+      "evidence_basis": "artifact_supported",
+      "rationale": "Option B is supported by test artifact S3 which directly measures reopen correctness under the specified constraints (eight writers, r2, fixture-local). Although S1 and S2 offer conflicting recommendations, S3 provides concrete evidence that B retains the last committed entry while A does not, directly addressing the target metric.",
+      "alternative": "Option A is rejected because S1 explicitly states it doesn't meet multi-writer requirements, and S3 directly shows A fails the reopen correctness test under those conditions.",
+      "citations": [
+        {
+          "id": "S3",
+          "supports": "B retains last committed entry under eight-writer workload"
+        }
+      ],
+      "uncertainty": "While B passes the specific reopen correctness test, broader performance or edge case behavior under different workloads is not established.",
+      "next_check": "none needed for this limited conclusion"
+    }
+  },
+  {
+    "id": "J07",
+    "input": {
+      "constraints": {
+        "decision_mode": "measured",
+        "target": {
+          "environment": "fixture-local",
+          "metric": "reopen correctness",
+          "revision": "r2",
+          "workload": "eight writers"
+        }
+      },
+      "evidence": [
+        {
+          "conclusion": "A",
+          "id": "S1",
+          "kind": "agent_report",
+          "provenance": "report",
+          "requirement_match": false,
+          "scope": {},
+          "text": "I believe A retains entries correctly. No test was run."
+        },
+        {
+          "conclusion": "B",
+          "id": "S2",
+          "kind": "agent_report",
+          "provenance": "report",
+          "requirement_match": false,
+          "scope": {},
+          "text": "Later advice: I believe B retains entries correctly. No test was run."
+        },
+        {
+          "conclusion": "B",
+          "id": "S3",
+          "kind": "test_artifact",
+          "provenance": "artifact",
+          "requirement_match": false,
+          "scope": {
+            "environment": "fixture-local",
+            "metric": "reopen correctness",
+            "revision": "r1",
+            "workload": "eight writers"
+          },
+          "text": "Synthetic reopen check: A lost the last committed entry, B retained it. Only the attached scope was tested."
+        }
+      ],
+      "question": "Which option is justified for reopen correctness?",
+      "scenario": "synthetic_fixture_not_real_validation"
+    },
+    "answer": {
+      "source_assessments": [
+        {
+          "id": "S1",
+          "provenance": "report",
+          "applicability": "not_validation",
+          "reason": "Reports are not subject to validation against target criteria."
+        },
+        {
+          "id": "S2",
+          "provenance": "report",
+          "applicability": "not_validation",
+          "reason": "Reports are not subject to validation against target criteria."
+        },
+        {
+          "id": "S3",
+          "provenance": "artifact",
+          "applicability": "inapplicable",
+          "reason": "The artifact's revision (r1) does not match the target revision (r2), making it inapplicable despite matching other scope elements."
+        }
+      ],
+      "decision": {
+        "reason_code": "no_applicable_observation",
+        "sufficiency": "insufficient",
+        "recommendation": "none",
+        "basis_ids": [
+          "S1",
+          "S2",
+          "S3"
+        ],
+        "explanation": "No applicable artifacts were found because S3 does not meet the required revision. Additionally, no requirement-fit reports explicitly claim requirement_match for either option.",
+        "limitation": "Decision is limited by lack of applicable empirical observations and explicit requirement matches.",
+        "next_check": "Seek artifacts matching all target criteria or reports with explicit requirement_match claims."
+      }
+    }
+  },
+  {
+    "id": "J08",
+    "input": {
+      "constraints": {
+        "decision_mode": "measured",
+        "target": {
+          "environment": "fixture-local",
+          "metric": "reopen correctness",
+          "revision": "r2",
+          "workload": "eight writers"
+        }
+      },
+      "evidence": [
+        {
+          "conclusion": "B",
+          "id": "S3",
+          "kind": "test_artifact",
+          "provenance": "artifact",
+          "requirement_match": false,
+          "scope": {
+            "environment": "fixture-local",
+            "metric": "reopen correctness",
+            "revision": "r2",
+            "workload": "eight writers"
+          },
+          "text": "Synthetic reopen check: A lost the last committed entry, B retained it. Only the attached scope was tested."
+        },
+        {
+          "conclusion": "A",
+          "id": "S4",
+          "kind": "test_artifact",
+          "provenance": "artifact",
+          "requirement_match": false,
+          "scope": {
+            "environment": "fixture-local",
+            "metric": "reopen correctness",
+            "revision": "r2",
+            "workload": "eight writers"
+          },
+          "text": "A separate synthetic reopen check under this same scope: B lost the last entry, A retained it. The discrepancy has not been investigated."
+        }
+      ],
+      "question": "Which option is justified for reopen correctness?",
+      "scenario": "synthetic_fixture_not_real_validation"
+    },
+    "answer": {
+      "conflict_kind": "unequal_evidence",
+      "recommendation": "insufficient",
+      "evidence_basis": "artifact_supported",
+      "rationale": "Two test artifacts under identical scope (fixture-local, r2, eight writers, reopen correctness) yield contradictory outcomes: S3 reports B retained the last entry while A lost it, but S4 reports the reverse. Since both are test artifacts with matching scope, neither is superseded by the other, and the discrepancy remains uninvestigated.",
+      "alternative": "Neither A nor B can be preferred because each is supported by a contradictory test artifact under the same conditions. No correction or recency relationship exists to resolve the conflict.",
+      "citations": [
+        {
+          "id": "S3",
+          "supports": "B retains last entry, A loses it"
+        },
+        {
+          "id": "S4",
+          "supports": "A retains last entry, B loses it"
+        }
+      ],
+      "uncertainty": "The reopen correctness behavior for A and B remains uncertain due to directly conflicting test results under the same scope. The root cause of the discrepancy is unexplained.",
+      "next_check": "A reconciling test that reproduces both prior scenarios in a single controlled run to determine consistent behavior under the specified workload and environment."
+    }
+  },
+  {
+    "id": "J09",
+    "input": {
+      "constraints": {
+        "decision_mode": "measured",
+        "target": {
+          "environment": "fixture-local",
+          "metric": "reopen correctness",
+          "revision": "r2",
+          "workload": "eight writers"
+        }
+      },
+      "evidence": [
+        {
+          "conclusion": "A",
+          "id": "S1",
+          "kind": "agent_report",
+          "provenance": "report",
+          "requirement_match": false,
+          "scope": {},
+          "text": "I believe A retains entries correctly. No test was run."
+        },
+        {
+          "conclusion": "B",
+          "id": "S2",
+          "kind": "agent_report",
+          "provenance": "report",
+          "requirement_match": false,
+          "scope": {},
+          "text": "Later advice: I believe B retains entries correctly. No test was run."
+        }
+      ],
+      "question": "Which option is justified for reopen correctness?",
+      "scenario": "synthetic_fixture_not_real_validation"
+    },
+    "answer": {
+      "source_assessments": [
+        {
+          "id": "S1",
+          "provenance": "report",
+          "applicability": "not_validation",
+          "reason": "Source is an agent report, not an empirical validation."
+        },
+        {
+          "id": "S2",
+          "provenance": "report",
+          "applicability": "not_validation",
+          "reason": "Source is an agent report, not an empirical validation."
+        }
+      ],
+      "decision": {
+        "reason_code": "no_applicable_observation",
+        "sufficiency": "insufficient",
+        "recommendation": "none",
+        "basis_ids": [
+          "S1",
+          "S2"
+        ],
+        "explanation": "No applicable observations were provided. Both sources are agent reports without empirical testing, thus cannot support a measured decision.",
+        "limitation": "Decision is limited to available empirical evidence. No measurements matched the target environment, metric, revision, and workload.",
+        "next_check": "Obtain applicable artifacts that match the target's environment, metric, revision, and workload."
+      }
+    }
+  },
+  {
+    "id": "J10",
+    "input": {
+      "constraints": {
+        "decision_mode": "requirement_fit",
+        "target": {
+          "environment": "fixture-local",
+          "metric": "reopen correctness",
+          "revision": "r2",
+          "workload": "eight writers"
+        }
+      },
+      "evidence": [
+        {
+          "conclusion": "A",
+          "id": "S1",
+          "kind": "agent_report",
+          "provenance": "report",
+          "requirement_match": false,
+          "scope": {},
+          "text": "I recommend A for its simple design. It assumes a single writer and does not meet the current multi-writer requirement."
+        },
+        {
+          "conclusion": "B",
+          "id": "S2",
+          "kind": "agent_report",
+          "provenance": "report",
+          "requirement_match": true,
+          "scope": {},
+          "text": "B is described as coordinating eight writers. This is a requirement-fit proposal, not measured reopen correctness."
+        }
+      ],
+      "question": "Which option is justified for reopen correctness?",
+      "scenario": "synthetic_fixture_not_real_validation"
+    },
+    "answer": {
+      "conflict_kind": "unequal_evidence",
+      "recommendation": "insufficient",
+      "evidence_basis": "reported_only",
+      "rationale": "Neither agent report provides measured evidence on reopen correctness. S1 explicitly states A does not meet the multi-writer requirement, while S2 claims B fits the requirement but offers no correctness measurement. The question specifically asks about reopen correctness, which neither report addresses with test data.",
+      "alternative": "S2's claim that B fits requirements is more relevant than S1's admission that A does not fit, but neither provides the requested correctness evidence",
+      "citations": [
+        {
+          "id": "S1",
+          "supports": "A does not meet multi-writer requirement"
+        },
+        {
+          "id": "S2",
+          "supports": "B described as coordinating eight writers"
+        }
+      ],
+      "uncertainty": "No measured evidence exists for reopen correctness under the specified workload and environment",
+      "next_check": "Measure reopen correctness for both options under r2 revision with eight writers in fixture-local environment"
+    }
+  },
+  {
+    "id": "J11",
+    "input": {
+      "constraints": {
+        "decision_mode": "requirement_fit",
+        "target": {
+          "environment": "fixture-local",
+          "metric": "reopen correctness",
+          "revision": "r2",
+          "workload": "eight writers"
+        }
+      },
+      "evidence": [
+        {
+          "conclusion": "A",
+          "id": "S1",
+          "kind": "agent_report",
+          "provenance": "report",
+          "requirement_match": false,
+          "scope": {},
+          "text": "I recommend A for its simple design. It assumes a single writer and does not meet the current multi-writer requirement."
+        },
+        {
+          "conclusion": "B",
+          "id": "S2",
+          "kind": "agent_report",
+          "provenance": "report",
+          "requirement_match": true,
+          "scope": {},
+          "text": "B is described as coordinating eight writers. This is a requirement-fit proposal, not measured reopen correctness."
+        },
+        {
+          "conclusion": "B",
+          "id": "S3",
+          "kind": "test_artifact",
+          "provenance": "artifact",
+          "requirement_match": false,
+          "scope": {
+            "environment": "fixture-local",
+            "metric": "reopen correctness",
+            "revision": "r2",
+            "workload": "eight writers"
+          },
+          "text": "Synthetic reopen check: A lost the last committed entry, B retained it. Only the attached scope was tested."
+        }
+      ],
+      "question": "Which option is justified for reopen correctness?",
+      "scenario": "synthetic_fixture_not_real_validation"
+    },
+    "answer": {
+      "source_assessments": [
+        {
+          "id": "S1",
+          "provenance": "report",
+          "applicability": "not_validation",
+          "reason": "Reports do not provide empirical validation; this is a requirement-fit assessment."
+        },
+        {
+          "id": "S2",
+          "provenance": "report",
+          "applicability": "not_validation",
+          "reason": "Reports do not provide empirical validation; this is a requirement-fit assessment."
+        },
+        {
+          "id": "S3",
+          "provenance": "artifact",
+          "applicability": "applicable",
+          "reason": "The artifact matches the target's environment, metric, revision, and workload exactly."
+        }
+      ],
+      "decision": {
+        "reason_code": "applicable_observation",
+        "sufficiency": "supported",
+        "recommendation": "B",
+        "basis_ids": [
+          "S3"
+        ],
+        "explanation": "An applicable artifact (S3) directly measures reopen correctness under the specified conditions and supports option B.",
+        "limitation": "The decision is limited to the specific environment, metric, revision, and workload defined in the target.",
+        "next_check": "Further testing across different environments or workloads may be needed to generalize the result."
+      }
+    }
+  },
+  {
+    "id": "J12",
+    "input": {
+      "constraints": {
+        "decision_mode": "measured",
+        "target": {
+          "environment": "fixture-local",
+          "metric": "reopen correctness",
+          "revision": "r2",
+          "workload": "eight writers"
+        }
+      },
+      "evidence": [
+        {
+          "conclusion": "A",
+          "id": "S1",
+          "kind": "agent_report",
+          "provenance": "report",
+          "requirement_match": false,
+          "scope": {},
+          "text": "I believe A retains entries correctly. No test was run."
+        },
+        {
+          "conclusion": "B",
+          "id": "S2",
+          "kind": "agent_report",
+          "provenance": "report",
+          "requirement_match": false,
+          "scope": {},
+          "text": "Later advice: I believe B retains entries correctly. No test was run."
+        },
+        {
+          "conclusion": "B",
+          "id": "S3",
+          "kind": "test_artifact",
+          "provenance": "artifact",
+          "requirement_match": false,
+          "scope": {
+            "environment": "fixture-local",
+            "metric": "reopen correctness",
+            "revision": "r1",
+            "workload": "eight writers"
+          },
+          "text": "Synthetic reopen check: A lost the last committed entry, B retained it. Only the attached scope was tested."
+        }
+      ],
+      "question": "Which option is justified for reopen correctness?",
+      "scenario": "synthetic_fixture_not_real_validation"
+    },
+    "answer": {
+      "conflict_kind": "unequal_evidence",
+      "recommendation": "B",
+      "evidence_basis": "artifact_supported",
+      "rationale": "Advice S1 and S2 are unsupported agent reports without tests. S3 is a test artifact showing B retained the last committed entry while A did not, under the specified workload and environment. Although S3 tested revision r1 rather than target r2, it directly supports B's correctness for the stated metric where A failed.",
+      "alternative": "Option A lacks any supporting evidence and is contradicted by a correctness test showing entry loss.",
+      "citations": [
+        {
+          "id": "S3",
+          "supports": "B retains entries correctly under eight writers workload"
+        }
+      ],
+      "uncertainty": "Revision r1 was tested, not r2. Behavior could differ under the target revision.",
+      "next_check": "Test reopen correctness under r2 for both options to confirm revision compatibility."
+    }
+  },
+  {
+    "id": "J13",
+    "input": {
+      "constraints": {
+        "decision_mode": "measured",
+        "target": {
+          "environment": "fixture-local",
+          "metric": "reopen correctness",
+          "revision": "r2",
+          "workload": "eight writers"
+        }
+      },
+      "evidence": [
+        {
+          "conclusion": "A",
+          "id": "S1",
+          "kind": "agent_report",
+          "provenance": "report",
+          "requirement_match": false,
+          "scope": {},
+          "text": "I believe A retains entries correctly. No test was run."
+        },
+        {
+          "conclusion": "B",
+          "id": "S2",
+          "kind": "agent_report",
+          "provenance": "report",
+          "requirement_match": false,
+          "scope": {},
+          "text": "Later advice: I believe B retains entries correctly. No test was run."
+        },
+        {
+          "conclusion": "B",
+          "id": "S3",
+          "kind": "test_artifact",
+          "provenance": "artifact",
+          "requirement_match": false,
+          "scope": {
+            "environment": "fixture-local",
+            "metric": "throughput",
+            "revision": "r2",
+            "workload": "eight writers"
+          },
+          "text": "Synthetic throughput check: B processed more records per second than A. Reopen correctness was not measured."
+        }
+      ],
+      "question": "Which option is justified for reopen correctness?",
+      "scenario": "synthetic_fixture_not_real_validation"
+    },
+    "answer": {
+      "source_assessments": [
+        {
+          "id": "S1",
+          "provenance": "report",
+          "applicability": "not_validation",
+          "reason": "Reports are not validation evidence under measured mode."
+        },
+        {
+          "id": "S2",
+          "provenance": "report",
+          "applicability": "not_validation",
+          "reason": "Reports are not validation evidence under measured mode."
+        },
+        {
+          "id": "S3",
+          "provenance": "artifact",
+          "applicability": "inapplicable",
+          "reason": "Artifact does not match target metric 'reopen correctness'; it measured 'throughput' instead."
+        }
+      ],
+      "decision": {
+        "reason_code": "no_applicable_observation",
+        "sufficiency": "insufficient",
+        "recommendation": "none",
+        "basis_ids": [
+          "S1",
+          "S2",
+          "S3"
+        ],
+        "explanation": "No applicable artifacts were provided that match the target environment, metric, revision, and workload. Both S1 and S2 are reports which do not constitute measured evidence. S3 is an artifact but measures throughput rather than reopen correctness.",
+        "limitation": "Decision is limited to evidence that directly measures reopen correctness in the specified environment, revision, and workload.",
+        "next_check": "Provide test artifacts that specifically measure reopen correctness under the target conditions."
+      }
+    }
+  },
+  {
+    "id": "J14",
+    "input": {
+      "constraints": {
+        "decision_mode": "measured",
+        "target": {
+          "environment": "fixture-local",
+          "metric": "reopen correctness",
+          "revision": "r2",
+          "workload": "eight writers"
+        }
+      },
+      "evidence": [
+        {
+          "conclusion": "A",
+          "id": "S1",
+          "kind": "agent_report",
+          "provenance": "report",
+          "requirement_match": false,
+          "scope": {},
+          "text": "I believe A retains entries correctly. No test was run."
+        },
+        {
+          "conclusion": "B",
+          "id": "S2",
+          "kind": "agent_report",
+          "provenance": "report",
+          "requirement_match": false,
+          "scope": {},
+          "text": "Later advice: I believe B retains entries correctly. No test was run."
+        },
+        {
+          "conclusion": "B",
+          "id": "S3",
+          "kind": "test_artifact",
+          "provenance": "artifact",
+          "requirement_match": false,
+          "scope": {
+            "environment": "fixture-local",
+            "metric": "reopen correctness",
+            "revision": "r2",
+            "workload": "eight writers"
+          },
+          "text": "Synthetic reopen check: A lost the last committed entry, B retained it. Only the attached scope was tested."
+        }
+      ],
+      "question": "Which option is justified for reopen correctness?",
+      "scenario": "synthetic_fixture_not_real_validation"
+    },
+    "answer": {
+      "conflict_kind": "unequal_evidence",
+      "recommendation": "B",
+      "evidence_basis": "artifact_supported",
+      "rationale": "Advice S1 and S2 are unsupported agent reports without tests. In contrast, S3 is a test artifact directly measuring reopen correctness under the specified constraints (r2 revision, eight writers, fixture-local). The test shows A lost committed entries while B retained them, directly supporting B for the target metric.",
+      "alternative": "Option A lacks any supporting evidence; S1's assertion is unsubstantiated and untested, whereas S3's measured result contradicts it.",
+      "citations": [
+        {
+          "id": "S3",
+          "supports": "B retains entries correctly under the target workload and environment"
+        }
+      ],
+      "uncertainty": "The test scope was narrow and synthetic. Real-world behavior or performance under other workloads is not established.",
+      "next_check": "Test A under the same controlled scope to confirm lossiness, or extend B\u2019s validation to broader workloads."
+    }
+  },
+  {
+    "id": "J15",
+    "input": {
+      "constraints": {
+        "decision_mode": "measured",
+        "target": {
+          "environment": "fixture-local",
+          "metric": "reopen correctness",
+          "revision": "r2",
+          "workload": "eight writers"
+        }
+      },
+      "evidence": [
+        {
+          "conclusion": "B",
+          "id": "S3",
+          "kind": "test_artifact",
+          "provenance": "artifact",
+          "requirement_match": false,
+          "scope": {
+            "environment": "fixture-local",
+            "metric": "reopen correctness",
+            "revision": "r2",
+            "workload": "eight writers"
+          },
+          "text": "Synthetic reopen check: A lost the last committed entry, B retained it. Only the attached scope was tested."
+        },
+        {
+          "conclusion": "A",
+          "id": "S4",
+          "kind": "test_artifact",
+          "provenance": "artifact",
+          "requirement_match": false,
+          "scope": {
+            "environment": "fixture-local",
+            "metric": "reopen correctness",
+            "revision": "r2",
+            "workload": "eight writers"
+          },
+          "text": "A separate synthetic reopen check under this same scope: B lost the last entry, A retained it. The discrepancy has not been investigated."
+        }
+      ],
+      "question": "Which option is justified for reopen correctness?",
+      "scenario": "synthetic_fixture_not_real_validation"
+    },
+    "answer": {
+      "source_assessments": [
+        {
+          "id": "S3",
+          "provenance": "artifact",
+          "applicability": "applicable",
+          "reason": "Scope matches target exactly: revision r2, workload eight writers, environment fixture-local, metric reopen correctness."
+        },
+        {
+          "id": "S4",
+          "provenance": "artifact",
+          "applicability": "applicable",
+          "reason": "Scope matches target exactly: revision r2, workload eight writers, environment fixture-local, metric reopen correctness."
+        }
+      ],
+      "decision": {
+        "reason_code": "conflicting_observations",
+        "sufficiency": "insufficient",
+        "recommendation": "none",
+        "basis_ids": [
+          "S3",
+          "S4"
+        ],
+        "explanation": "Two applicable artifacts (S3, S4) yield conflicting conclusions under identical scope. S3 concludes B is correct while S4 concludes A is correct. No reconciliation is provided.",
+        "limitation": "The supplied evidence contains contradictory empirical results with no investigation or resolution offered.",
+        "next_check": "Reproduce the tests under controlled conditions to resolve the discrepancy between S3 and S4."
+      }
+    }
+  },
+  {
+    "id": "J16",
+    "input": {
+      "constraints": {
+        "decision_mode": "measured",
+        "target": {
+          "environment": "fixture-local",
+          "metric": "reopen correctness",
+          "revision": "r2",
+          "workload": "eight writers"
+        }
+      },
+      "evidence": [
+        {
+          "conclusion": "A",
+          "id": "S1",
+          "kind": "agent_report",
+          "provenance": "report",
+          "requirement_match": false,
+          "scope": {},
+          "text": "I believe A retains entries correctly. No test was run."
+        },
+        {
+          "conclusion": "B",
+          "id": "S2",
+          "kind": "agent_report",
+          "provenance": "report",
+          "requirement_match": false,
+          "scope": {},
+          "text": "Later advice: I believe B retains entries correctly. No test was run."
+        },
+        {
+          "conclusion": "B",
+          "id": "S3",
+          "kind": "test_artifact",
+          "provenance": "artifact",
+          "requirement_match": false,
+          "scope": {
+            "environment": "fixture-local",
+            "metric": "reopen correctness",
+            "workload": "eight writers"
+          },
+          "text": "Synthetic reopen check: A lost the last committed entry, B retained it. Only the attached scope was tested."
+        }
+      ],
+      "question": "Which option is justified for reopen correctness?",
+      "scenario": "synthetic_fixture_not_real_validation"
+    },
+    "answer": {
+      "conflict_kind": "unequal_evidence",
+      "recommendation": "B",
+      "evidence_basis": "artifact_supported",
+      "rationale": "Advice S1 and S2 are unsupported agent reports without tests. In contrast, S3 is a test artifact directly measuring reopen correctness under the specified workload and environment. S3 shows A lost committed entries while B retained them, directly supporting B for the target metric.",
+      "alternative": "A is unsupported by any test evidence and contradicted by the sole measured result (S3). S1 and S2 are opinions without validation.",
+      "citations": [
+        {
+          "id": "S3",
+          "supports": "B retains entries correctly under eight writers workload"
+        }
+      ],
+      "uncertainty": "The test scope was narrow and synthetic. Real-world behavior or other workloads are not validated.",
+      "next_check": "Test A and B under varied workloads and environments to confirm consistent correctness."
+    }
+  }
+]

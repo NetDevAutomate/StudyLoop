@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import sqlite3
 
+from .context.scope import visibility_sql
+
 
 def get_hotspots(
     conn: sqlite3.Connection,
@@ -19,8 +21,8 @@ def get_hotspots(
         since_days: Only count references from the last N days
         limit: Maximum files to return
     """
-    conditions = []
-    params: list = []
+    visible, params = visibility_sql(conn, "s.id")
+    conditions = [visible]
 
     if project:
         conditions.append("s.project_path = ?")

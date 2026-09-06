@@ -1,0 +1,148 @@
+[
+  {
+    "scale": 1,
+    "nodes": 1019,
+    "edges": 3138,
+    "query_roots": 40,
+    "equality": true,
+    "build_seconds": {
+      "sqlite": 0.00613274984061718,
+      "ladybug": 0.28349866601638496,
+      "mixed": 0.2598994169384241
+    },
+    "bytes": {
+      "sqlite": 1073152,
+      "ladybug": 2883584,
+      "mixed": 3342336
+    },
+    "warm_latency": {
+      "sqlite": {
+        "0": {
+          "p50_ms": 0.008458,
+          "p95_ms": 0.018416
+        },
+        "1": {
+          "p50_ms": 0.061541,
+          "p95_ms": 0.091208
+        },
+        "2": {
+          "p50_ms": 0.075667,
+          "p95_ms": 0.167625
+        }
+      },
+      "ladybug": {
+        "0": {
+          "p50_ms": 0.066166,
+          "p95_ms": 0.09625
+        },
+        "1": {
+          "p50_ms": 0.323084,
+          "p95_ms": 0.381125
+        },
+        "2": {
+          "p50_ms": 0.338708,
+          "p95_ms": 0.444375
+        }
+      },
+      "mixed": {
+        "0": {
+          "p50_ms": 0.066166,
+          "p95_ms": 0.096834
+        },
+        "1": {
+          "p50_ms": 0.2645,
+          "p95_ms": 0.351041
+        },
+        "2": {
+          "p50_ms": 0.287833,
+          "p95_ms": 0.392459
+        }
+      }
+    },
+    "reopen_plus_count": {
+      "sqlite_ms": 0.2591661177575588,
+      "ladybug_ms": 30.320541001856327,
+      "projection_ms": 27.6681671384722
+    },
+    "max_result_rows": 45,
+    "limits": [
+      "Replication preserves topology/degree; not new realistic workloads",
+      "No OS page-cache eviction, concurrency, vector index or sync tests",
+      "Single process and Python client overhead included",
+      "Mixed build cost sums shared SQLite build and edge projection build"
+    ]
+  },
+  {
+    "scale": 10,
+    "nodes": 10190,
+    "edges": 31380,
+    "query_roots": 40,
+    "equality": true,
+    "build_seconds": {
+      "sqlite": 0.04845358291640878,
+      "ladybug": 2.199014750076458,
+      "mixed": 2.1454059157986194
+    },
+    "bytes": {
+      "sqlite": 10506240,
+      "ladybug": 3616768,
+      "mixed": 13496320
+    },
+    "warm_latency": {
+      "sqlite": {
+        "0": {
+          "p50_ms": 0.010333,
+          "p95_ms": 0.026416
+        },
+        "1": {
+          "p50_ms": 0.451042,
+          "p95_ms": 0.570041
+        },
+        "2": {
+          "p50_ms": 0.528625,
+          "p95_ms": 0.758167
+        }
+      },
+      "ladybug": {
+        "0": {
+          "p50_ms": 0.069458,
+          "p95_ms": 0.1195
+        },
+        "1": {
+          "p50_ms": 0.49125,
+          "p95_ms": 0.594333
+        },
+        "2": {
+          "p50_ms": 0.500333,
+          "p95_ms": 0.616916
+        }
+      },
+      "mixed": {
+        "0": {
+          "p50_ms": 0.074833,
+          "p95_ms": 0.128334
+        },
+        "1": {
+          "p50_ms": 0.333667,
+          "p95_ms": 0.445333
+        },
+        "2": {
+          "p50_ms": 0.351834,
+          "p95_ms": 0.493541
+        }
+      }
+    },
+    "reopen_plus_count": {
+      "sqlite_ms": 0.28658309020102024,
+      "ladybug_ms": 27.622708119452,
+      "projection_ms": 27.33458299189806
+    },
+    "max_result_rows": 47,
+    "limits": [
+      "Replication preserves topology/degree; not new realistic workloads",
+      "No OS page-cache eviction, concurrency, vector index or sync tests",
+      "Single process and Python client overhead included",
+      "Mixed build cost sums shared SQLite build and edge projection build"
+    ]
+  }
+]

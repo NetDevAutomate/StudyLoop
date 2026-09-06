@@ -1,0 +1,226 @@
+{
+  "label_kind": "coordinator_rule_labels_with_blinded_model_review_not_human_gold",
+  "cases": {
+    "C01": {
+      "expected_choice": "B",
+      "reviewers": {
+        "grok-4.6": {
+          "choice": "B",
+          "reason": "artifact, one block, four fields equal target, single winner B"
+        },
+        "claude-fable-5-1": {
+          "choice": "B",
+          "reason": "artifact, single well-formed block, all four fields byte-equal to target, exactly one winner B"
+        },
+        "qwen3-coder": {
+          "choice": "B",
+          "reason": "Exact match on all required fields with one valid [observed] block and correct winner declaration."
+        }
+      },
+      "arbitration": "Reviewers agree with the explicit fixture policy."
+    },
+    "C02": {
+      "expected_choice": "none",
+      "reviewers": {
+        "grok-4.6": {
+          "choice": "none",
+          "reason": "environment fixture-west mismatches target fixture-east"
+        },
+        "claude-fable-5-1": {
+          "choice": "none",
+          "reason": "environment fixture-west mismatches target fixture-east"
+        },
+        "qwen3-coder": {
+          "choice": "none",
+          "reason": "Environment mismatch between source and target despite valid structure."
+        }
+      },
+      "arbitration": "Reviewers agree with the explicit fixture policy."
+    },
+    "C03": {
+      "expected_choice": "none",
+      "reviewers": {
+        "grok-4.6": {
+          "choice": "none",
+          "reason": "source.kind is report, not artifact"
+        },
+        "claude-fable-5-1": {
+          "choice": "none",
+          "reason": "source.kind is report, not artifact, regardless of block content"
+        },
+        "qwen3-coder": {
+          "choice": "none",
+          "reason": "Source kind is 'report', which disqualifies it regardless of content accuracy."
+        }
+      },
+      "arbitration": "Reviewers agree with the explicit fixture policy."
+    },
+    "C04": {
+      "expected_choice": "A",
+      "reviewers": {
+        "grok-4.6": {
+          "choice": "A",
+          "reason": "artifact, one block, four fields equal target, single winner A"
+        },
+        "claude-fable-5-1": {
+          "choice": "A",
+          "reason": "artifact, single block, all four fields match, exactly one winner A"
+        },
+        "qwen3-coder": {
+          "choice": "A",
+          "reason": "Exact match on all required fields with one valid [observed] block and correct winner declaration."
+        }
+      },
+      "arbitration": "Reviewers agree with the explicit fixture policy."
+    },
+    "C05": {
+      "expected_choice": "A",
+      "reviewers": {
+        "grok-4.6": {
+          "choice": "A",
+          "reason": "outside winner/revision are not observed; in-block content is valid A"
+        },
+        "claude-fable-5-1": {
+          "choice": "A",
+          "reason": "block is well-formed with one winner A and matching fields; trailing 'winner: B' and 'revision: r99' are outside the block and by policy are not observed declarations"
+        },
+        "qwen3-coder": {
+          "choice": "none",
+          "reason": "Duplicate field declarations (winner, revision) outside the block invalidate the entry."
+        }
+      },
+      "arbitration": "Outside-block declarations are excluded by the written rule; retain Qwen dissent."
+    },
+    "C06": {
+      "expected_choice": "none",
+      "reviewers": {
+        "grok-4.6": {
+          "choice": "none",
+          "reason": "missing winner declaration"
+        },
+        "claude-fable-5-1": {
+          "choice": "none",
+          "reason": "no winner declaration inside the block"
+        },
+        "qwen3-coder": {
+          "choice": "none",
+          "reason": "Missing winner declaration makes it impossible to determine support."
+        }
+      },
+      "arbitration": "Reviewers agree with the explicit fixture policy."
+    },
+    "C07": {
+      "expected_choice": "none",
+      "reviewers": {
+        "grok-4.6": {
+          "choice": "none",
+          "reason": "two observed blocks"
+        },
+        "claude-fable-5-1": {
+          "choice": "none",
+          "reason": "two [observed] blocks present, policy requires exactly one"
+        },
+        "qwen3-coder": {
+          "choice": "none",
+          "reason": "Multiple [observed] blocks violate the single-block requirement."
+        }
+      },
+      "arbitration": "Reviewers agree with the explicit fixture policy."
+    },
+    "C08": {
+      "expected_choice": "none",
+      "reviewers": {
+        "grok-4.6": {
+          "choice": "none",
+          "reason": "workload two writers mismatches target six writers"
+        },
+        "claude-fable-5-1": {
+          "choice": "none",
+          "reason": "workload two writers mismatches target six writers"
+        },
+        "qwen3-coder": {
+          "choice": "none",
+          "reason": "Workload mismatch invalidates otherwise well-formed block."
+        }
+      },
+      "arbitration": "Reviewers agree with the explicit fixture policy."
+    },
+    "C09": {
+      "expected_choice": "none",
+      "reviewers": {
+        "grok-4.6": {
+          "choice": "none",
+          "reason": "duplicate winner declarations A and B"
+        },
+        "claude-fable-5-1": {
+          "choice": "none",
+          "reason": "duplicate winner declarations A and B inside the block"
+        },
+        "qwen3-coder": {
+          "choice": "none",
+          "reason": "Duplicate winner declarations within the same block make parsing ambiguous."
+        }
+      },
+      "arbitration": "Reviewers agree with the explicit fixture policy."
+    },
+    "C10": {
+      "expected_choice": "B",
+      "reviewers": {
+        "grok-4.6": {
+          "choice": "B",
+          "reason": "artifact, one block, four fields equal target, single winner B"
+        },
+        "claude-fable-5-1": {
+          "choice": "B",
+          "reason": "artifact, single block, all fields match, one winner B; identical to C01"
+        },
+        "qwen3-coder": {
+          "choice": "B",
+          "reason": "Exact match on all required fields with one valid [observed] block and correct winner declaration."
+        }
+      },
+      "arbitration": "Reviewers agree with the explicit fixture policy."
+    },
+    "C11": {
+      "expected_choice": "none",
+      "reviewers": {
+        "grok-4.6": {
+          "choice": "none",
+          "reason": "duplicate revision declarations r1 and r2"
+        },
+        "claude-fable-5-1": {
+          "choice": "none",
+          "reason": "duplicate revision declarations r1 and r2 inside the block"
+        },
+        "qwen3-coder": {
+          "choice": "none",
+          "reason": "Duplicate revision declarations create ambiguity about intended value."
+        }
+      },
+      "arbitration": "Reviewers agree with the explicit fixture policy."
+    },
+    "C12": {
+      "expected_choice": "none",
+      "reviewers": {
+        "grok-4.6": {
+          "choice": "none",
+          "reason": "missing revision declaration"
+        },
+        "claude-fable-5-1": {
+          "choice": "none",
+          "reason": "revision declaration missing from block while target requires r2"
+        },
+        "qwen3-coder": {
+          "choice": "none",
+          "reason": "Missing revision declaration in observed block prevents full matching."
+        }
+      },
+      "arbitration": "Reviewers agree with the explicit fixture policy."
+    }
+  },
+  "limits": [
+    "C01 and C10 have the same source/target but different proposal intervention; paired control not independent sources.",
+    "12 case conditions,11 distinct source/target pairs; three prior cases, nine fresh conditions using eight distinct new sources.",
+    "Model reviewers are not independent human gold."
+  ]
+}

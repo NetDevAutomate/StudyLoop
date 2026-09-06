@@ -8,6 +8,8 @@ process with a safety backup of the current state first.
 from __future__ import annotations
 
 import shutil
+import sqlite3
+from contextlib import closing
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -42,13 +44,30 @@ def _create_backup(tag: str | None = None) -> Path | None:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     name = f"backup_{timestamp}" if not tag else f"backup_{tag}_{timestamp}"
     backup_dir = _get_backup_dir() / name
-    backup_dir.mkdir(parents=True, exist_ok=True)
+    suffix = 0
+    while backup_dir.exists():
+        suffix += 1
+        backup_dir = _get_backup_dir() / f"{name}_{suffix}"
+    backup_dir.mkdir(parents=True)
 
     copied = 0
     for label, path in _get_assets():
-        if path.exists():
+        try:
+            with path.open("rb") as source:
+                sqlite_database = source.read(16) == b"SQLite format 3\x00"
+        except FileNotFoundError:
+            continue
+        # Copy committed WAL content through SQLite's online backup API.
+        # A plain main-file copy is not a complete live database snapshot.
+        if sqlite_database:
+            with (
+                closing(sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)) as src,
+                closing(sqlite3.connect(backup_dir / label)) as dst,
+            ):
+                src.backup(dst)
+        else:
             shutil.copy2(path, backup_dir / label)
-            copied += 1
+        copied += 1
 
     if copied == 0:
         backup_dir.rmdir()
@@ -114,6 +133,8 @@ def restore(backup_name: str | None, confirm: bool) -> None:
 
     # Find the backup
     target = backup_dir / backup_name
+    if target.resolve().parent != backup_dir.resolve():
+        raise click.ClickException("Choose a backup name from the listed backup directory")
     if not target.exists() or not target.is_dir():
         console.print(f"[red]Backup not found:[/red] {backup_name}")
         console.print("  Run [bold]studyloop restore[/bold] to list available backups.")
@@ -128,6 +149,15 @@ def restore(backup_name: str | None, confirm: bool) -> None:
     if not confirm:
         console.print("\n[yellow]Dry run.[/yellow] Add [bold]--confirm[/bold] to actually restore.")
         return
+
+    from agent_session_tools.context.managed_history import protected_database
+
+    if any(protected_database(path) for path in (DEFAULT_DB, target / "sessions.db")):
+        raise click.ClickException(
+            "Direct file restore would replace current source-grounded memory controls. "
+            "Managed restore is required and is not yet available in this build. "
+            "No files were restored."
+        )
 
     # Safety backup of current state before overwriting
     console.print("\n[dim]Creating safety backup of current state...[/dim]")

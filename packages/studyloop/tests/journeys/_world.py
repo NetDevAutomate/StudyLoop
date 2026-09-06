@@ -234,6 +234,9 @@ def _write_config(config: Path, session_db: Path) -> None:
             {
                 "topics": [{"name": "Python Decorators", "slug": "python-decorators"}],
                 "session_db": str(session_db),
+                # This synthetic learner fixture explicitly opts into legacy
+                # inspection. Product installs must configure their own scope.
+                "memory": {"default_scope": "unclassified", "projects": {}},
             },
             default_flow_style=False,
             sort_keys=False,

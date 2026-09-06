@@ -98,7 +98,7 @@ class TestDumpDeltaSql:
     def test_dumps_specified_sessions(self, populated_db):
         _, db_path = populated_db
         sql = _dump_delta_sql(db_path, {"test-session-001"})
-        assert "INSERT OR REPLACE INTO" in sql
+        assert "INSERT INTO" in sql and "ON CONFLICT" in sql
         assert "test-session-001" in sql
         assert "test-msg-001" in sql
 
@@ -132,7 +132,7 @@ class TestDumpDeltaSql:
         sql = _dump_delta_sql(db_path, {"test-session-001"})
         for line in sql.splitlines():
             if line.startswith("INSERT"):
-                assert line.startswith("INSERT OR REPLACE INTO"), (
+                assert line.startswith("INSERT INTO") and "ON CONFLICT" in line, (
                     f"Unprotected insert: {line}"
                 )
 
@@ -244,7 +244,7 @@ class TestDumpDeltaSql:
         # Session-scoped tables: the caller has already restricted the row
         # set to this session, so a blind INSERT OR REPLACE is correct.
         for table in ("session_learning_metadata", "file_references"):
-            assert f"INSERT OR REPLACE INTO {table}" in sql
+            assert f"INSERT INTO {table}" in sql and "ON CONFLICT DO NOTHING" in sql
 
         # GLOBAL_SYNC_TABLES: R-19's recency gate replaces the blind
         # INSERT OR REPLACE with a conditional upsert (see test_sync_r19.py).

@@ -42,7 +42,9 @@ Repository = "https://github.com/NetDevAutomate/StudyLoop"
 Issues = "https://github.com/NetDevAutomate/StudyLoop/issues"
 
 [project.scripts]
+session-context = "agent_session_tools.context.cli:main"
 session-export = "agent_session_tools.export_sessions:main"
+session-repair = "agent_session_tools.repair:main"
 session-query = "agent_session_tools.query_sessions:main"
 session-maint = "agent_session_tools.maintenance:main"
 session-sync = "agent_session_tools.sync:main"

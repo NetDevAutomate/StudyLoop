@@ -1,0 +1,66 @@
+{
+  "J01": {
+    "case": "unknown_revision",
+    "arm": "contract"
+  },
+  "J02": {
+    "case": "reports_only",
+    "arm": "legacy"
+  },
+  "J03": {
+    "case": "conditional_fit",
+    "arm": "contract"
+  },
+  "J04": {
+    "case": "wrong_metric",
+    "arm": "legacy"
+  },
+  "J05": {
+    "case": "matching_artifact",
+    "arm": "contract"
+  },
+  "J06": {
+    "case": "validated_fit",
+    "arm": "legacy"
+  },
+  "J07": {
+    "case": "wrong_revision",
+    "arm": "contract"
+  },
+  "J08": {
+    "case": "conflicting_checks",
+    "arm": "legacy"
+  },
+  "J09": {
+    "case": "reports_only",
+    "arm": "contract"
+  },
+  "J10": {
+    "case": "conditional_fit",
+    "arm": "legacy"
+  },
+  "J11": {
+    "case": "validated_fit",
+    "arm": "contract"
+  },
+  "J12": {
+    "case": "wrong_revision",
+    "arm": "legacy"
+  },
+  "J13": {
+    "case": "wrong_metric",
+    "arm": "contract"
+  },
+  "J14": {
+    "case": "matching_artifact",
+    "arm": "legacy"
+  },
+  "J15": {
+    "case": "conflicting_checks",
+    "arm": "contract"
+  },
+  "J16": {
+    "case": "unknown_revision",
+    "arm": "legacy"
+  }
+}

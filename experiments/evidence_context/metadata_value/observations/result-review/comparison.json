@@ -1,0 +1,232 @@
+{
+  "selected_models": [
+    "claude-fable-5-1",
+    "grok-4.6",
+    "qwen3-coder"
+  ],
+  "responding_models": [
+    "grok-4.6",
+    "qwen3-coder"
+  ],
+  "provider_buckets": [
+    "qwen",
+    "xai"
+  ],
+  "failed_models": {
+    "claude-fable-5-1": "ValueError: model did not return a JSON object"
+  },
+  "recommendations": {
+    "grok-4.6": "Do not promote extracted or checked metadata from these scores. Independently re-label the 56 frozen answers for quote origin and checker-as-authority, then run one 8-call source-hidden probe on duplicate_revision and report_only only; no prompt edits, no other cases, no engine choice.",
+    "qwen3-coder": "Run a follow-up experiment comparing raw vs. extracted performance with clearer fault isolation and independent labeling."
+  },
+  "confidence": {
+    "grok-4.6": 0.76,
+    "qwen3-coder": 0.75
+  },
+  "repeated_reasons": [],
+  "repeated_risks": [],
+  "assumption_themes": [
+    {
+      "theme": "Cache independence is unknown, so near-duplicate answers may not be independent draws.",
+      "models": [
+        "grok-4.6"
+      ],
+      "variants": [
+        "Cache independence is unknown, so near-duplicate answers may not be independent draws."
+      ]
+    },
+    {
+      "theme": "Coordinator expected_choice values implement the written A/B/none rule.",
+      "models": [
+        "grok-4.6"
+      ],
+      "variants": [
+        "Coordinator expected_choice values implement the written A/B/none rule."
+      ]
+    },
+    {
+      "theme": "Model behavior is stable across repeats and conditions",
+      "models": [
+        "qwen3-coder"
+      ],
+      "variants": [
+        "Model behavior is stable across repeats and conditions"
+      ]
+    },
+    {
+      "theme": "Post-hoc removal of one complete fence left recommendation text unchanged.",
+      "models": [
+        "grok-4.6"
+      ],
+      "variants": [
+        "Post-hoc removal of one complete fence left recommendation text unchanged."
+      ]
+    },
+    {
+      "theme": "Source and target text were fully visible in every answer arm.",
+      "models": [
+        "grok-4.6"
+      ],
+      "variants": [
+        "Source and target text were fully visible in every answer arm."
+      ]
+    },
+    {
+      "theme": "Two temperature-0 repeats are paired observations, not a reliability estimate.",
+      "models": [
+        "grok-4.6"
+      ],
+      "variants": [
+        "Two temperature-0 repeats are paired observations, not a reliability estimate."
+      ]
+    }
+  ],
+  "disagreement_themes": [
+    {
+      "theme": "Calling checked a 'repair' of missing_revision overstates it: extracted already repaired that case without status codes, and checked simultaneously created a new endorsement class.",
+      "models": [
+        "grok-4.6"
+      ],
+      "variants": [
+        "Calling checked a 'repair' of missing_revision overstates it: extracted already repaired that case without status codes, and checked simultaneously created a new endorsement class."
+      ]
+    },
+    {
+      "theme": "Choice_matches is the wrong headline once citation origin and kind-handling fail on otherwise 'correct' rows.",
+      "models": [
+        "grok-4.6"
+      ],
+      "variants": [
+        "Choice_matches is the wrong headline once citation origin and kind-handling fail on otherwise 'correct' rows."
+      ]
+    },
+    {
+      "theme": "False authority from checked wording is a hypothesis suggested by report_only echoing 'unique exact declaration'; it is not identified without an ablation, so it should not be written as a wording cause.",
+      "models": [
+        "grok-4.6"
+      ],
+      "variants": [
+        "False authority from checked wording is a hypothesis suggested by report_only echoing 'unique exact declaration'; it is not identified without an ablation, so it should not be written as a wording cause."
+      ]
+    },
+    {
+      "theme": "I would not treat recovered fences as evidence the model 'really' produced 56 valid answers; the frozen contract was strict JSON and most arms failed it.",
+      "models": [
+        "grok-4.6"
+      ],
+      "variants": [
+        "I would not treat recovered fences as evidence the model 'really' produced 56 valid answers; the frozen contract was strict JSON and most arms failed it."
+      ]
+    },
+    {
+      "theme": "If normalization should be considered part of the core process or a post-hoc correction that undermines experimental validity",
+      "models": [
+        "qwen3-coder"
+      ],
+      "variants": [
+        "If normalization should be considered part of the core process or a post-hoc correction that undermines experimental validity"
+      ]
+    },
+    {
+      "theme": "The extent to which markdown fence failures reflect model limitations versus interface brittleness",
+      "models": [
+        "qwen3-coder"
+      ],
+      "variants": [
+        "The extent to which markdown fence failures reflect model limitations versus interface brittleness"
+      ]
+    },
+    {
+      "theme": "The protocol claim that raw versus extracted estimates a clean-metadata context effect is not supported by the headline delta; that delta is a seeded-absence case, not clean context.",
+      "models": [
+        "grok-4.6"
+      ],
+      "variants": [
+        "The protocol claim that raw versus extracted estimates a clean-metadata context effect is not supported by the headline delta; that delta is a seeded-absence case, not clean context."
+      ]
+    },
+    {
+      "theme": "Whether the checked wrapper provides net benefit or falsely implies authority through apparent validation",
+      "models": [
+        "qwen3-coder"
+      ],
+      "variants": [
+        "Whether the checked wrapper provides net benefit or falsely implies authority through apparent validation"
+      ]
+    }
+  ],
+  "missing_information_themes": [
+    {
+      "theme": "A second model or seed condition; one coder model cannot separate fixture regularity from method.",
+      "models": [
+        "grok-4.6"
+      ],
+      "variants": [
+        "A second model or seed condition; one coder model cannot separate fixture regularity from method."
+      ]
+    },
+    {
+      "theme": "Ablation study removing individual metadata fields to isolate their contributions",
+      "models": [
+        "qwen3-coder"
+      ],
+      "variants": [
+        "Ablation study removing individual metadata fields to isolate their contributions"
+      ]
+    },
+    {
+      "theme": "An ablation that holds fields fixed and varies only checker status text, or hides source while holding metadata fixed.",
+      "models": [
+        "grok-4.6"
+      ],
+      "variants": [
+        "An ablation that holds fields fixed and varies only checker status text, or hides source while holding metadata fixed."
+      ]
+    },
+    {
+      "theme": "Any natural extractor miss on this grammar; ceiling extraction means fault recovery was never tested on live mistakes.",
+      "models": [
+        "grok-4.6"
+      ],
+      "variants": [
+        "Any natural extractor miss on this grammar; ceiling extraction means fault recovery was never tested on live mistakes."
+      ]
+    },
+    {
+      "theme": "Cache independence confirmation to rule out cross-condition contamination",
+      "models": [
+        "qwen3-coder"
+      ],
+      "variants": [
+        "Cache independence confirmation to rule out cross-condition contamination"
+      ]
+    },
+    {
+      "theme": "Independent human labels for all answer outputs to validate automated checks",
+      "models": [
+        "qwen3-coder"
+      ],
+      "variants": [
+        "Independent human labels for all answer outputs to validate automated checks"
+      ]
+    },
+    {
+      "theme": "Independent pre-result labels for choice, quote origin (observed-block vs target vs metadata vs outside-block), and whether explanations treat matched status as authenticity.",
+      "models": [
+        "grok-4.6"
+      ],
+      "variants": [
+        "Independent pre-result labels for choice, quote origin (observed-block vs target vs metadata vs outside-block), and whether explanations treat matched status as authenticity."
+      ]
+    },
+    {
+      "theme": "Per-call token counts, request IDs, and cache-hit flags.",
+      "models": [
+        "grok-4.6"
+      ],
+      "variants": [
+        "Per-call token counts, request IDs, and cache-hit flags."
+      ]
+    }
+  ]
+}

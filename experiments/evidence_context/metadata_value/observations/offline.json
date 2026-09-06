@@ -1,0 +1,770 @@
+[
+  {
+    "case": {
+      "id": "clean_matching",
+      "source": {
+        "id": "S1",
+        "kind": "artifact",
+        "text": "[observed]\nrevision: r2\nworkload: eight writers\nenvironment: fixture-local\nmetric: reopen correctness\nwinner: B\n[/observed]"
+      },
+      "target": {
+        "revision": "r2",
+        "workload": "eight writers",
+        "environment": "fixture-local",
+        "metric": "reopen correctness"
+      },
+      "expected_choice": "B",
+      "injected_fault": null
+    },
+    "offline_reference_extraction": {
+      "revision": {
+        "value": "r2",
+        "quote": "revision: r2"
+      },
+      "workload": {
+        "value": "eight writers",
+        "quote": "workload: eight writers"
+      },
+      "environment": {
+        "value": "fixture-local",
+        "quote": "environment: fixture-local"
+      },
+      "metric": {
+        "value": "reopen correctness",
+        "quote": "metric: reopen correctness"
+      },
+      "winner": {
+        "value": "B",
+        "quote": "winner: B"
+      }
+    },
+    "candidate": {
+      "revision": {
+        "value": "r2",
+        "quote": "revision: r2"
+      },
+      "workload": {
+        "value": "eight writers",
+        "quote": "workload: eight writers"
+      },
+      "environment": {
+        "value": "fixture-local",
+        "quote": "environment: fixture-local"
+      },
+      "metric": {
+        "value": "reopen correctness",
+        "quote": "metric: reopen correctness"
+      },
+      "winner": {
+        "value": "B",
+        "quote": "winner: B"
+      }
+    },
+    "checked": {
+      "revision": {
+        "value": "r2",
+        "quote": "revision: r2",
+        "status": "matched",
+        "reason": "unique_exact_declaration"
+      },
+      "workload": {
+        "value": "eight writers",
+        "quote": "workload: eight writers",
+        "status": "matched",
+        "reason": "unique_exact_declaration"
+      },
+      "environment": {
+        "value": "fixture-local",
+        "quote": "environment: fixture-local",
+        "status": "matched",
+        "reason": "unique_exact_declaration"
+      },
+      "metric": {
+        "value": "reopen correctness",
+        "quote": "metric: reopen correctness",
+        "status": "matched",
+        "reason": "unique_exact_declaration"
+      },
+      "winner": {
+        "value": "B",
+        "quote": "winner: B",
+        "status": "matched",
+        "reason": "unique_exact_declaration"
+      }
+    }
+  },
+  {
+    "case": {
+      "id": "missing_revision",
+      "source": {
+        "id": "S1",
+        "kind": "artifact",
+        "text": "[observed]\nworkload: eight writers\nenvironment: fixture-local\nmetric: reopen correctness\nwinner: B\n[/observed]"
+      },
+      "target": {
+        "revision": "r2",
+        "workload": "eight writers",
+        "environment": "fixture-local",
+        "metric": "reopen correctness"
+      },
+      "expected_choice": "none",
+      "injected_fault": {
+        "field": "revision",
+        "value": "r2",
+        "quote": "revision: r2"
+      }
+    },
+    "offline_reference_extraction": {
+      "revision": {
+        "value": null,
+        "quote": null
+      },
+      "workload": {
+        "value": "eight writers",
+        "quote": "workload: eight writers"
+      },
+      "environment": {
+        "value": "fixture-local",
+        "quote": "environment: fixture-local"
+      },
+      "metric": {
+        "value": "reopen correctness",
+        "quote": "metric: reopen correctness"
+      },
+      "winner": {
+        "value": "B",
+        "quote": "winner: B"
+      }
+    },
+    "candidate": {
+      "revision": {
+        "value": "r2",
+        "quote": "revision: r2"
+      },
+      "workload": {
+        "value": "eight writers",
+        "quote": "workload: eight writers"
+      },
+      "environment": {
+        "value": "fixture-local",
+        "quote": "environment: fixture-local"
+      },
+      "metric": {
+        "value": "reopen correctness",
+        "quote": "metric: reopen correctness"
+      },
+      "winner": {
+        "value": "B",
+        "quote": "winner: B"
+      }
+    },
+    "checked": {
+      "revision": {
+        "value": null,
+        "quote": null,
+        "status": "rejected",
+        "reason": "field_absent_from_observed_block"
+      },
+      "workload": {
+        "value": "eight writers",
+        "quote": "workload: eight writers",
+        "status": "matched",
+        "reason": "unique_exact_declaration"
+      },
+      "environment": {
+        "value": "fixture-local",
+        "quote": "environment: fixture-local",
+        "status": "matched",
+        "reason": "unique_exact_declaration"
+      },
+      "metric": {
+        "value": "reopen correctness",
+        "quote": "metric: reopen correctness",
+        "status": "matched",
+        "reason": "unique_exact_declaration"
+      },
+      "winner": {
+        "value": "B",
+        "quote": "winner: B",
+        "status": "matched",
+        "reason": "unique_exact_declaration"
+      }
+    }
+  },
+  {
+    "case": {
+      "id": "wrong_revision",
+      "source": {
+        "id": "S1",
+        "kind": "artifact",
+        "text": "[observed]\nrevision: r1\nworkload: eight writers\nenvironment: fixture-local\nmetric: reopen correctness\nwinner: B\n[/observed]"
+      },
+      "target": {
+        "revision": "r2",
+        "workload": "eight writers",
+        "environment": "fixture-local",
+        "metric": "reopen correctness"
+      },
+      "expected_choice": "none",
+      "injected_fault": {
+        "field": "revision",
+        "value": "r2",
+        "quote": "revision: r2"
+      }
+    },
+    "offline_reference_extraction": {
+      "revision": {
+        "value": "r1",
+        "quote": "revision: r1"
+      },
+      "workload": {
+        "value": "eight writers",
+        "quote": "workload: eight writers"
+      },
+      "environment": {
+        "value": "fixture-local",
+        "quote": "environment: fixture-local"
+      },
+      "metric": {
+        "value": "reopen correctness",
+        "quote": "metric: reopen correctness"
+      },
+      "winner": {
+        "value": "B",
+        "quote": "winner: B"
+      }
+    },
+    "candidate": {
+      "revision": {
+        "value": "r2",
+        "quote": "revision: r2"
+      },
+      "workload": {
+        "value": "eight writers",
+        "quote": "workload: eight writers"
+      },
+      "environment": {
+        "value": "fixture-local",
+        "quote": "environment: fixture-local"
+      },
+      "metric": {
+        "value": "reopen correctness",
+        "quote": "metric: reopen correctness"
+      },
+      "winner": {
+        "value": "B",
+        "quote": "winner: B"
+      }
+    },
+    "checked": {
+      "revision": {
+        "value": null,
+        "quote": null,
+        "status": "rejected",
+        "reason": "quote_or_value_not_supported_by_field"
+      },
+      "workload": {
+        "value": "eight writers",
+        "quote": "workload: eight writers",
+        "status": "matched",
+        "reason": "unique_exact_declaration"
+      },
+      "environment": {
+        "value": "fixture-local",
+        "quote": "environment: fixture-local",
+        "status": "matched",
+        "reason": "unique_exact_declaration"
+      },
+      "metric": {
+        "value": "reopen correctness",
+        "quote": "metric: reopen correctness",
+        "status": "matched",
+        "reason": "unique_exact_declaration"
+      },
+      "winner": {
+        "value": "B",
+        "quote": "winner: B",
+        "status": "matched",
+        "reason": "unique_exact_declaration"
+      }
+    }
+  },
+  {
+    "case": {
+      "id": "wrong_winner",
+      "source": {
+        "id": "S1",
+        "kind": "artifact",
+        "text": "[observed]\nrevision: r2\nworkload: eight writers\nenvironment: fixture-local\nmetric: reopen correctness\nwinner: A\n[/observed]\nUnverified summary: B was the winner.\nwinner: B"
+      },
+      "target": {
+        "revision": "r2",
+        "workload": "eight writers",
+        "environment": "fixture-local",
+        "metric": "reopen correctness"
+      },
+      "expected_choice": "A",
+      "injected_fault": {
+        "field": "winner",
+        "value": "B",
+        "quote": "winner: B"
+      }
+    },
+    "offline_reference_extraction": {
+      "revision": {
+        "value": "r2",
+        "quote": "revision: r2"
+      },
+      "workload": {
+        "value": "eight writers",
+        "quote": "workload: eight writers"
+      },
+      "environment": {
+        "value": "fixture-local",
+        "quote": "environment: fixture-local"
+      },
+      "metric": {
+        "value": "reopen correctness",
+        "quote": "metric: reopen correctness"
+      },
+      "winner": {
+        "value": "A",
+        "quote": "winner: A"
+      }
+    },
+    "candidate": {
+      "revision": {
+        "value": "r2",
+        "quote": "revision: r2"
+      },
+      "workload": {
+        "value": "eight writers",
+        "quote": "workload: eight writers"
+      },
+      "environment": {
+        "value": "fixture-local",
+        "quote": "environment: fixture-local"
+      },
+      "metric": {
+        "value": "reopen correctness",
+        "quote": "metric: reopen correctness"
+      },
+      "winner": {
+        "value": "B",
+        "quote": "winner: B"
+      }
+    },
+    "checked": {
+      "revision": {
+        "value": "r2",
+        "quote": "revision: r2",
+        "status": "matched",
+        "reason": "unique_exact_declaration"
+      },
+      "workload": {
+        "value": "eight writers",
+        "quote": "workload: eight writers",
+        "status": "matched",
+        "reason": "unique_exact_declaration"
+      },
+      "environment": {
+        "value": "fixture-local",
+        "quote": "environment: fixture-local",
+        "status": "matched",
+        "reason": "unique_exact_declaration"
+      },
+      "metric": {
+        "value": "reopen correctness",
+        "quote": "metric: reopen correctness",
+        "status": "matched",
+        "reason": "unique_exact_declaration"
+      },
+      "winner": {
+        "value": null,
+        "quote": null,
+        "status": "rejected",
+        "reason": "quote_or_value_not_supported_by_field"
+      }
+    }
+  },
+  {
+    "case": {
+      "id": "duplicate_revision",
+      "source": {
+        "id": "S1",
+        "kind": "artifact",
+        "text": "[observed]\nrevision: r1\nrevision: r2\nworkload: eight writers\nenvironment: fixture-local\nmetric: reopen correctness\nwinner: B\n[/observed]"
+      },
+      "target": {
+        "revision": "r2",
+        "workload": "eight writers",
+        "environment": "fixture-local",
+        "metric": "reopen correctness"
+      },
+      "expected_choice": "none",
+      "injected_fault": {
+        "field": "revision",
+        "value": "r2",
+        "quote": "revision: r2"
+      }
+    },
+    "offline_reference_extraction": {
+      "revision": {
+        "value": null,
+        "quote": null
+      },
+      "workload": {
+        "value": "eight writers",
+        "quote": "workload: eight writers"
+      },
+      "environment": {
+        "value": "fixture-local",
+        "quote": "environment: fixture-local"
+      },
+      "metric": {
+        "value": "reopen correctness",
+        "quote": "metric: reopen correctness"
+      },
+      "winner": {
+        "value": "B",
+        "quote": "winner: B"
+      }
+    },
+    "candidate": {
+      "revision": {
+        "value": "r2",
+        "quote": "revision: r2"
+      },
+      "workload": {
+        "value": "eight writers",
+        "quote": "workload: eight writers"
+      },
+      "environment": {
+        "value": "fixture-local",
+        "quote": "environment: fixture-local"
+      },
+      "metric": {
+        "value": "reopen correctness",
+        "quote": "metric: reopen correctness"
+      },
+      "winner": {
+        "value": "B",
+        "quote": "winner: B"
+      }
+    },
+    "checked": {
+      "revision": {
+        "value": null,
+        "quote": null,
+        "status": "rejected",
+        "reason": "ambiguous_source_field"
+      },
+      "workload": {
+        "value": "eight writers",
+        "quote": "workload: eight writers",
+        "status": "matched",
+        "reason": "unique_exact_declaration"
+      },
+      "environment": {
+        "value": "fixture-local",
+        "quote": "environment: fixture-local",
+        "status": "matched",
+        "reason": "unique_exact_declaration"
+      },
+      "metric": {
+        "value": "reopen correctness",
+        "quote": "metric: reopen correctness",
+        "status": "matched",
+        "reason": "unique_exact_declaration"
+      },
+      "winner": {
+        "value": "B",
+        "quote": "winner: B",
+        "status": "matched",
+        "reason": "unique_exact_declaration"
+      }
+    }
+  },
+  {
+    "case": {
+      "id": "report_only",
+      "source": {
+        "id": "S1",
+        "kind": "report",
+        "text": "[observed]\nrevision: r2\nworkload: eight writers\nenvironment: fixture-local\nmetric: reopen correctness\nwinner: B\n[/observed]\nThis is an agent report, not captured test output."
+      },
+      "target": {
+        "revision": "r2",
+        "workload": "eight writers",
+        "environment": "fixture-local",
+        "metric": "reopen correctness"
+      },
+      "expected_choice": "none",
+      "injected_fault": null
+    },
+    "offline_reference_extraction": {
+      "revision": {
+        "value": "r2",
+        "quote": "revision: r2"
+      },
+      "workload": {
+        "value": "eight writers",
+        "quote": "workload: eight writers"
+      },
+      "environment": {
+        "value": "fixture-local",
+        "quote": "environment: fixture-local"
+      },
+      "metric": {
+        "value": "reopen correctness",
+        "quote": "metric: reopen correctness"
+      },
+      "winner": {
+        "value": "B",
+        "quote": "winner: B"
+      }
+    },
+    "candidate": {
+      "revision": {
+        "value": "r2",
+        "quote": "revision: r2"
+      },
+      "workload": {
+        "value": "eight writers",
+        "quote": "workload: eight writers"
+      },
+      "environment": {
+        "value": "fixture-local",
+        "quote": "environment: fixture-local"
+      },
+      "metric": {
+        "value": "reopen correctness",
+        "quote": "metric: reopen correctness"
+      },
+      "winner": {
+        "value": "B",
+        "quote": "winner: B"
+      }
+    },
+    "checked": {
+      "revision": {
+        "value": "r2",
+        "quote": "revision: r2",
+        "status": "matched",
+        "reason": "unique_exact_declaration"
+      },
+      "workload": {
+        "value": "eight writers",
+        "quote": "workload: eight writers",
+        "status": "matched",
+        "reason": "unique_exact_declaration"
+      },
+      "environment": {
+        "value": "fixture-local",
+        "quote": "environment: fixture-local",
+        "status": "matched",
+        "reason": "unique_exact_declaration"
+      },
+      "metric": {
+        "value": "reopen correctness",
+        "quote": "metric: reopen correctness",
+        "status": "matched",
+        "reason": "unique_exact_declaration"
+      },
+      "winner": {
+        "value": "B",
+        "quote": "winner: B",
+        "status": "matched",
+        "reason": "unique_exact_declaration"
+      }
+    }
+  },
+  {
+    "case": {
+      "id": "noisy_matching_A",
+      "source": {
+        "id": "S1",
+        "kind": "artifact",
+        "text": "Archived note 1: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 2: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 3: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 4: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 5: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 6: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 7: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 8: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 9: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 10: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 11: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 12: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 13: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 14: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 15: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 16: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 17: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 18: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 19: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 20: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 21: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 22: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 23: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 24: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 25: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 26: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 27: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 28: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 29: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 30: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nSelected captured test log follows:\n[observed]\nrevision: r2\nworkload: eight writers\nenvironment: fixture-local\nmetric: reopen correctness\nwinner: A\n[/observed]\nEnd selected log.\nArchived note 31: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 32: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 33: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 34: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 35: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 36: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 37: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 38: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 39: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 40: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 41: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 42: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 43: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 44: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 45: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 46: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 47: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 48: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 49: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 50: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 51: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 52: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 53: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 54: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 55: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 56: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 57: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 58: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 59: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation.\nArchived note 60: previous r1 run, two writers, archived-host, throughput only; winner: B. This is not the selected observation."
+      },
+      "target": {
+        "revision": "r2",
+        "workload": "eight writers",
+        "environment": "fixture-local",
+        "metric": "reopen correctness"
+      },
+      "expected_choice": "A",
+      "injected_fault": null
+    },
+    "offline_reference_extraction": {
+      "revision": {
+        "value": "r2",
+        "quote": "revision: r2"
+      },
+      "workload": {
+        "value": "eight writers",
+        "quote": "workload: eight writers"
+      },
+      "environment": {
+        "value": "fixture-local",
+        "quote": "environment: fixture-local"
+      },
+      "metric": {
+        "value": "reopen correctness",
+        "quote": "metric: reopen correctness"
+      },
+      "winner": {
+        "value": "A",
+        "quote": "winner: A"
+      }
+    },
+    "candidate": {
+      "revision": {
+        "value": "r2",
+        "quote": "revision: r2"
+      },
+      "workload": {
+        "value": "eight writers",
+        "quote": "workload: eight writers"
+      },
+      "environment": {
+        "value": "fixture-local",
+        "quote": "environment: fixture-local"
+      },
+      "metric": {
+        "value": "reopen correctness",
+        "quote": "metric: reopen correctness"
+      },
+      "winner": {
+        "value": "A",
+        "quote": "winner: A"
+      }
+    },
+    "checked": {
+      "revision": {
+        "value": "r2",
+        "quote": "revision: r2",
+        "status": "matched",
+        "reason": "unique_exact_declaration"
+      },
+      "workload": {
+        "value": "eight writers",
+        "quote": "workload: eight writers",
+        "status": "matched",
+        "reason": "unique_exact_declaration"
+      },
+      "environment": {
+        "value": "fixture-local",
+        "quote": "environment: fixture-local",
+        "status": "matched",
+        "reason": "unique_exact_declaration"
+      },
+      "metric": {
+        "value": "reopen correctness",
+        "quote": "metric: reopen correctness",
+        "status": "matched",
+        "reason": "unique_exact_declaration"
+      },
+      "winner": {
+        "value": "A",
+        "quote": "winner: A",
+        "status": "matched",
+        "reason": "unique_exact_declaration"
+      }
+    }
+  },
+  {
+    "case": {
+      "id": "noisy_matching_B",
+      "source": {
+        "id": "S1",
+        "kind": "artifact",
+        "text": "Archived note 1: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 2: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 3: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 4: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 5: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 6: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 7: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 8: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 9: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 10: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 11: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 12: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 13: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 14: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 15: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 16: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 17: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 18: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 19: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 20: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 21: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 22: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 23: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 24: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 25: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 26: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 27: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 28: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 29: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 30: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nSelected captured test log follows:\n[observed]\nrevision: r2\nworkload: eight writers\nenvironment: fixture-local\nmetric: reopen correctness\nwinner: B\n[/observed]\nEnd selected log.\nArchived note 31: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 32: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 33: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 34: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 35: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 36: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 37: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 38: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 39: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 40: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 41: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 42: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 43: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 44: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 45: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 46: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 47: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 48: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 49: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 50: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 51: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 52: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 53: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 54: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 55: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 56: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 57: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 58: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 59: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation.\nArchived note 60: previous r1 run, two writers, archived-host, throughput only; winner: A. This is not the selected observation."
+      },
+      "target": {
+        "revision": "r2",
+        "workload": "eight writers",
+        "environment": "fixture-local",
+        "metric": "reopen correctness"
+      },
+      "expected_choice": "B",
+      "injected_fault": null
+    },
+    "offline_reference_extraction": {
+      "revision": {
+        "value": "r2",
+        "quote": "revision: r2"
+      },
+      "workload": {
+        "value": "eight writers",
+        "quote": "workload: eight writers"
+      },
+      "environment": {
+        "value": "fixture-local",
+        "quote": "environment: fixture-local"
+      },
+      "metric": {
+        "value": "reopen correctness",
+        "quote": "metric: reopen correctness"
+      },
+      "winner": {
+        "value": "B",
+        "quote": "winner: B"
+      }
+    },
+    "candidate": {
+      "revision": {
+        "value": "r2",
+        "quote": "revision: r2"
+      },
+      "workload": {
+        "value": "eight writers",
+        "quote": "workload: eight writers"
+      },
+      "environment": {
+        "value": "fixture-local",
+        "quote": "environment: fixture-local"
+      },
+      "metric": {
+        "value": "reopen correctness",
+        "quote": "metric: reopen correctness"
+      },
+      "winner": {
+        "value": "B",
+        "quote": "winner: B"
+      }
+    },
+    "checked": {
+      "revision": {
+        "value": "r2",
+        "quote": "revision: r2",
+        "status": "matched",
+        "reason": "unique_exact_declaration"
+      },
+      "workload": {
+        "value": "eight writers",
+        "quote": "workload: eight writers",
+        "status": "matched",
+        "reason": "unique_exact_declaration"
+      },
+      "environment": {
+        "value": "fixture-local",
+        "quote": "environment: fixture-local",
+        "status": "matched",
+        "reason": "unique_exact_declaration"
+      },
+      "metric": {
+        "value": "reopen correctness",
+        "quote": "metric: reopen correctness",
+        "status": "matched",
+        "reason": "unique_exact_declaration"
+      },
+      "winner": {
+        "value": "B",
+        "quote": "winner: B",
+        "status": "matched",
+        "reason": "unique_exact_declaration"
+      }
+    }
+  }
+]

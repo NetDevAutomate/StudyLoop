@@ -1,0 +1,7 @@
+{
+  "model": "grok-4.6",
+  "provider": "xai",
+  "mode": "chat",
+  "response": null,
+  "error": "ValueError: model did not return a JSON object"
+}

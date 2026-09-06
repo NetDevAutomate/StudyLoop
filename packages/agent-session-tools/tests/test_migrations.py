@@ -844,6 +844,13 @@ class TestMigrationV26:
         Creates a parked_topics table at the v17 schema level (before v26)
         with the old broken index that allows cross-session duplicates.
         """
+        # migrate() runs every later migration too. Build the actual v25 schema;
+        # a fake version marker over two tables cannot prove an upgrade contract.
+        conn.executescript(SCHEMA_PATH.read_text())
+        for version, (_, migration_fn) in sorted(MIGRATIONS.items()):
+            if version <= 25:
+                migration_fn(conn)
+        conn.commit()
         conn.executescript("""
             CREATE TABLE IF NOT EXISTS study_sessions (
                 id TEXT PRIMARY KEY,
@@ -877,7 +884,7 @@ class TestMigrationV26:
                 tech_area TEXT,
                 priority INTEGER
             );
-            CREATE UNIQUE INDEX uix_parked_topics_session_question
+            CREATE UNIQUE INDEX IF NOT EXISTS uix_parked_topics_session_question
             ON parked_topics (study_session_id, question, source);
 
             -- 4 duplicate pending rows for the same question (different sessions)
@@ -909,7 +916,7 @@ class TestMigrationV26:
         conn.row_factory = sqlite3.Row
         self._seed_pre_migration_duplicates(conn)
 
-        # Set user_version to 25 so only v26 runs
+        # Set user_version to 25 so v26 and all later migrations run
         set_user_version(conn, 25)
 
         migrate(conn)
@@ -1025,8 +1032,13 @@ class TestMigrationV26:
 
         conn.close()
 
-    def test_migration_creates_partial_unique_index(self, tmp_path) -> None:
-        """The new partial index prevents two pending rows for same (question, source)."""
+    def test_migration_creates_partial_unique_index(
+        self, tmp_path, monkeypatch
+    ) -> None:
+        """The v26 index prevents two pending rows for the same question/source."""
+        from agent_session_tools import migrations
+
+        monkeypatch.setattr(migrations, "CURRENT_VERSION", 26)
         db_path = tmp_path / "dedup.db"
         conn = sqlite3.connect(str(db_path))
         self._seed_pre_migration_duplicates(conn)

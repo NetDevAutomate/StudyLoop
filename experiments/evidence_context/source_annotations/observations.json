@@ -1,0 +1,1222 @@
+{
+  "calls": 40,
+  "annotation": {
+    "text": {
+      "responses": 20,
+      "valid": 20,
+      "all_fields_match": 0,
+      "field_matches": {
+        "state": 18,
+        "basis": 2,
+        "target": 20,
+        "scope": 18
+      },
+      "quote_bound": 20,
+      "unsupported_basis": 18,
+      "state_promotion": 0,
+      "target_invention": 0,
+      "cost_usd": 0.005435,
+      "constant_unknown_baseline_per_10_cases": {
+        "state": 0,
+        "basis": 10,
+        "target": 1,
+        "scope": 10
+      }
+    },
+    "capture": {
+      "responses": 20,
+      "valid": 20,
+      "all_fields_match": 14,
+      "field_matches": {
+        "state": 20,
+        "basis": 14,
+        "target": 20,
+        "scope": 20
+      },
+      "quote_bound": 20,
+      "unsupported_basis": 6,
+      "state_promotion": 0,
+      "target_invention": 0,
+      "cost_usd": 0.006262,
+      "constant_unknown_baseline_per_10_cases": {
+        "state": 0,
+        "basis": 2,
+        "target": 1,
+        "scope": 2
+      }
+    }
+  },
+  "release": {
+    "text": {
+      "full_capture_justified_instances": 10,
+      "justified_released": 2,
+      "unexpected_released": 0,
+      "released": 2
+    },
+    "capture": {
+      "full_capture_justified_instances": 10,
+      "justified_released": 8,
+      "unexpected_released": 0,
+      "released": 8
+    }
+  },
+  "controls": {
+    "count": 14,
+    "ordinary_matches": 12,
+    "known_semantic_failures": 2,
+    "integrity_only_accepts": 10,
+    "source_gate_accepts": 6
+  },
+  "conditions": [
+    {
+      "id": "A01",
+      "case": "altered_body",
+      "arm": "capture",
+      "repeat": 0,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": false,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": false,
+        "quote_bound": true,
+        "unsupported_basis": true,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": false,
+        "reason": "body_changed",
+        "text": "No source-backed claim released."
+      }
+    },
+    {
+      "id": "A02",
+      "case": "wrong_revision",
+      "arm": "text",
+      "repeat": 1,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": false,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": false,
+        "quote_bound": true,
+        "unsupported_basis": true,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": false,
+        "reason": "scope_mismatch",
+        "text": "No source-backed claim released."
+      }
+    },
+    {
+      "id": "A03",
+      "case": "real_exit",
+      "arm": "capture",
+      "repeat": 0,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": true,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": true,
+        "quote_bound": true,
+        "unsupported_basis": false,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": true,
+        "reason": null,
+        "text": "A tool observation records parser.smoke@r7 as completed.",
+        "gate": {
+          "accepted": [
+            {
+              "assertion_id": "E1",
+              "text": "A tool observation records parser.smoke@r7 as completed.",
+              "quote": "Parser smoke r7: PASS; exit status 0.",
+              "state": "completed",
+              "basis": "observed",
+              "target": "parser.smoke@r7"
+            }
+          ],
+          "blocked": [],
+          "text": "A tool observation records parser.smoke@r7 as completed.",
+          "qualification": "State and evidence labels come from the reviewed ledger. This gate checks conformance to those labels; it does not verify their meaning or authenticity."
+        }
+      }
+    },
+    {
+      "id": "A04",
+      "case": "spoof_in_prose",
+      "arm": "text",
+      "repeat": 1,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": false,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": false,
+        "quote_bound": true,
+        "unsupported_basis": true,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": false,
+        "reason": "origin_mismatch",
+        "text": "No source-backed claim released."
+      }
+    },
+    {
+      "id": "A05",
+      "case": "quoted_report",
+      "arm": "text",
+      "repeat": 0,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": false,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": false,
+        "quote_bound": true,
+        "unsupported_basis": true,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": false,
+        "reason": "origin_mismatch",
+        "text": "No source-backed claim released."
+      }
+    },
+    {
+      "id": "A06",
+      "case": "missing_origin",
+      "arm": "capture",
+      "repeat": 0,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": false,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": false,
+        "quote_bound": true,
+        "unsupported_basis": true,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": false,
+        "reason": "missing_receipt",
+        "text": "No source-backed claim released."
+      }
+    },
+    {
+      "id": "A07",
+      "case": "progress_report",
+      "arm": "text",
+      "repeat": 0,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": false,
+          "target": true,
+          "scope": false
+        },
+        "all_fields_match": false,
+        "quote_bound": true,
+        "unsupported_basis": true,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": true,
+        "reason": null,
+        "text": "A conversation report records parser.smoke@r7 as in progress.",
+        "gate": {
+          "accepted": [
+            {
+              "assertion_id": "E1",
+              "text": "A conversation report records parser.smoke@r7 as in progress.",
+              "quote": "I am running the parser smoke r7 check now.",
+              "state": "in_progress",
+              "basis": "reported",
+              "target": "parser.smoke@r7"
+            }
+          ],
+          "blocked": [],
+          "text": "A conversation report records parser.smoke@r7 as in progress.",
+          "qualification": "State and evidence labels come from the reviewed ledger. This gate checks conformance to those labels; it does not verify their meaning or authenticity."
+        }
+      }
+    },
+    {
+      "id": "A08",
+      "case": "wrong_revision",
+      "arm": "capture",
+      "repeat": 0,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": true,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": true,
+        "quote_bound": true,
+        "unsupported_basis": false,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": false,
+        "reason": "target_unresolved_or_inapplicable",
+        "text": "No source-backed claim released."
+      }
+    },
+    {
+      "id": "A09",
+      "case": "missing_target",
+      "arm": "capture",
+      "repeat": 0,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": true,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": true,
+        "quote_bound": true,
+        "unsupported_basis": false,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": false,
+        "reason": "target_unresolved_or_inapplicable",
+        "text": "No source-backed claim released."
+      }
+    },
+    {
+      "id": "A10",
+      "case": "real_exit",
+      "arm": "text",
+      "repeat": 1,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": false,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": false,
+        "quote_bound": true,
+        "unsupported_basis": true,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": false,
+        "reason": "scope_mismatch",
+        "text": "No source-backed claim released."
+      }
+    },
+    {
+      "id": "A11",
+      "case": "real_exit",
+      "arm": "capture",
+      "repeat": 1,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": true,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": true,
+        "quote_bound": true,
+        "unsupported_basis": false,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": true,
+        "reason": null,
+        "text": "A tool observation records parser.smoke@r7 as completed.",
+        "gate": {
+          "accepted": [
+            {
+              "assertion_id": "E1",
+              "text": "A tool observation records parser.smoke@r7 as completed.",
+              "quote": "Parser smoke r7: PASS; exit status 0.",
+              "state": "completed",
+              "basis": "observed",
+              "target": "parser.smoke@r7"
+            }
+          ],
+          "blocked": [],
+          "text": "A tool observation records parser.smoke@r7 as completed.",
+          "qualification": "State and evidence labels come from the reviewed ledger. This gate checks conformance to those labels; it does not verify their meaning or authenticity."
+        }
+      }
+    },
+    {
+      "id": "A12",
+      "case": "wrong_revision",
+      "arm": "capture",
+      "repeat": 1,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": true,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": true,
+        "quote_bound": true,
+        "unsupported_basis": false,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": false,
+        "reason": "target_unresolved_or_inapplicable",
+        "text": "No source-backed claim released."
+      }
+    },
+    {
+      "id": "A13",
+      "case": "altered_body",
+      "arm": "capture",
+      "repeat": 1,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": false,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": false,
+        "quote_bound": true,
+        "unsupported_basis": true,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": false,
+        "reason": "body_changed",
+        "text": "No source-backed claim released."
+      }
+    },
+    {
+      "id": "A14",
+      "case": "missing_target",
+      "arm": "capture",
+      "repeat": 1,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": true,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": true,
+        "quote_bound": true,
+        "unsupported_basis": false,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": false,
+        "reason": "target_unresolved_or_inapplicable",
+        "text": "No source-backed claim released."
+      }
+    },
+    {
+      "id": "A15",
+      "case": "spoof_in_prose",
+      "arm": "capture",
+      "repeat": 0,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": false,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": false,
+        "quote_bound": true,
+        "unsupported_basis": true,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": false,
+        "reason": "origin_mismatch",
+        "text": "No source-backed claim released."
+      }
+    },
+    {
+      "id": "A16",
+      "case": "missing_origin",
+      "arm": "text",
+      "repeat": 1,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": false,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": false,
+        "quote_bound": true,
+        "unsupported_basis": true,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": false,
+        "reason": "missing_receipt",
+        "text": "No source-backed claim released."
+      }
+    },
+    {
+      "id": "A17",
+      "case": "quoted_report",
+      "arm": "capture",
+      "repeat": 0,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": true,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": true,
+        "quote_bound": true,
+        "unsupported_basis": false,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": true,
+        "reason": null,
+        "text": "A conversation report records parser.smoke@r7 as completed.",
+        "gate": {
+          "accepted": [
+            {
+              "assertion_id": "E1",
+              "text": "A conversation report records parser.smoke@r7 as completed.",
+              "quote": "Parser smoke r7: PASS; exit status 0.",
+              "state": "completed",
+              "basis": "reported",
+              "target": "parser.smoke@r7"
+            }
+          ],
+          "blocked": [],
+          "text": "A conversation report records parser.smoke@r7 as completed.",
+          "qualification": "State and evidence labels come from the reviewed ledger. This gate checks conformance to those labels; it does not verify their meaning or authenticity."
+        }
+      }
+    },
+    {
+      "id": "A18",
+      "case": "missing_origin",
+      "arm": "text",
+      "repeat": 0,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": false,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": false,
+        "quote_bound": true,
+        "unsupported_basis": true,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": false,
+        "reason": "missing_receipt",
+        "text": "No source-backed claim released."
+      }
+    },
+    {
+      "id": "A19",
+      "case": "real_exit",
+      "arm": "text",
+      "repeat": 0,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": false,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": false,
+        "quote_bound": true,
+        "unsupported_basis": true,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": false,
+        "reason": "scope_mismatch",
+        "text": "No source-backed claim released."
+      }
+    },
+    {
+      "id": "A20",
+      "case": "spoof_in_prose",
+      "arm": "capture",
+      "repeat": 1,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": false,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": false,
+        "quote_bound": true,
+        "unsupported_basis": true,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": false,
+        "reason": "origin_mismatch",
+        "text": "No source-backed claim released."
+      }
+    },
+    {
+      "id": "A21",
+      "case": "failed_exit",
+      "arm": "capture",
+      "repeat": 1,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": true,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": true,
+        "quote_bound": true,
+        "unsupported_basis": false,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": true,
+        "reason": null,
+        "text": "A tool observation records parser.smoke@r7 as completed.",
+        "gate": {
+          "accepted": [
+            {
+              "assertion_id": "E1",
+              "text": "A tool observation records parser.smoke@r7 as completed.",
+              "quote": "Parser smoke r7: FAIL; exit status 3.",
+              "state": "completed",
+              "basis": "observed",
+              "target": "parser.smoke@r7"
+            }
+          ],
+          "blocked": [],
+          "text": "A tool observation records parser.smoke@r7 as completed.",
+          "qualification": "State and evidence labels come from the reviewed ledger. This gate checks conformance to those labels; it does not verify their meaning or authenticity."
+        }
+      }
+    },
+    {
+      "id": "A22",
+      "case": "wrong_revision",
+      "arm": "text",
+      "repeat": 0,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": false,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": false,
+        "quote_bound": true,
+        "unsupported_basis": true,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": false,
+        "reason": "scope_mismatch",
+        "text": "No source-backed claim released."
+      }
+    },
+    {
+      "id": "A23",
+      "case": "wrong_scope",
+      "arm": "text",
+      "repeat": 0,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": false,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": false,
+        "quote_bound": true,
+        "unsupported_basis": true,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": false,
+        "reason": "scope_mismatch",
+        "text": "No source-backed claim released."
+      }
+    },
+    {
+      "id": "A24",
+      "case": "progress_report",
+      "arm": "text",
+      "repeat": 1,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": false,
+          "target": true,
+          "scope": false
+        },
+        "all_fields_match": false,
+        "quote_bound": true,
+        "unsupported_basis": true,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": true,
+        "reason": null,
+        "text": "A conversation report records parser.smoke@r7 as in progress.",
+        "gate": {
+          "accepted": [
+            {
+              "assertion_id": "E1",
+              "text": "A conversation report records parser.smoke@r7 as in progress.",
+              "quote": "I am running the parser smoke r7 check now.",
+              "state": "in_progress",
+              "basis": "reported",
+              "target": "parser.smoke@r7"
+            }
+          ],
+          "blocked": [],
+          "text": "A conversation report records parser.smoke@r7 as in progress.",
+          "qualification": "State and evidence labels come from the reviewed ledger. This gate checks conformance to those labels; it does not verify their meaning or authenticity."
+        }
+      }
+    },
+    {
+      "id": "A25",
+      "case": "altered_body",
+      "arm": "text",
+      "repeat": 0,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": false,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": false,
+        "quote_bound": true,
+        "unsupported_basis": true,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": false,
+        "reason": "body_changed",
+        "text": "No source-backed claim released."
+      }
+    },
+    {
+      "id": "A26",
+      "case": "wrong_scope",
+      "arm": "capture",
+      "repeat": 1,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": true,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": true,
+        "quote_bound": true,
+        "unsupported_basis": false,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": false,
+        "reason": "scope_inapplicable",
+        "text": "No source-backed claim released."
+      }
+    },
+    {
+      "id": "A27",
+      "case": "progress_report",
+      "arm": "capture",
+      "repeat": 1,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": true,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": true,
+        "quote_bound": true,
+        "unsupported_basis": false,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": true,
+        "reason": null,
+        "text": "A conversation report records parser.smoke@r7 as in progress.",
+        "gate": {
+          "accepted": [
+            {
+              "assertion_id": "E1",
+              "text": "A conversation report records parser.smoke@r7 as in progress.",
+              "quote": "I am running the parser smoke r7 check now.",
+              "state": "in_progress",
+              "basis": "reported",
+              "target": "parser.smoke@r7"
+            }
+          ],
+          "blocked": [],
+          "text": "A conversation report records parser.smoke@r7 as in progress.",
+          "qualification": "State and evidence labels come from the reviewed ledger. This gate checks conformance to those labels; it does not verify their meaning or authenticity."
+        }
+      }
+    },
+    {
+      "id": "A28",
+      "case": "failed_exit",
+      "arm": "capture",
+      "repeat": 0,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": true,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": true,
+        "quote_bound": true,
+        "unsupported_basis": false,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": true,
+        "reason": null,
+        "text": "A tool observation records parser.smoke@r7 as completed.",
+        "gate": {
+          "accepted": [
+            {
+              "assertion_id": "E1",
+              "text": "A tool observation records parser.smoke@r7 as completed.",
+              "quote": "Parser smoke r7: FAIL; exit status 3.",
+              "state": "completed",
+              "basis": "observed",
+              "target": "parser.smoke@r7"
+            }
+          ],
+          "blocked": [],
+          "text": "A tool observation records parser.smoke@r7 as completed.",
+          "qualification": "State and evidence labels come from the reviewed ledger. This gate checks conformance to those labels; it does not verify their meaning or authenticity."
+        }
+      }
+    },
+    {
+      "id": "A29",
+      "case": "missing_target",
+      "arm": "text",
+      "repeat": 1,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": false,
+          "basis": true,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": false,
+        "quote_bound": true,
+        "unsupported_basis": false,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": false,
+        "reason": "origin_mismatch",
+        "text": "No source-backed claim released."
+      }
+    },
+    {
+      "id": "A30",
+      "case": "failed_exit",
+      "arm": "text",
+      "repeat": 1,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": false,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": false,
+        "quote_bound": true,
+        "unsupported_basis": true,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": false,
+        "reason": "scope_mismatch",
+        "text": "No source-backed claim released."
+      }
+    },
+    {
+      "id": "A31",
+      "case": "wrong_scope",
+      "arm": "text",
+      "repeat": 1,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": false,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": false,
+        "quote_bound": true,
+        "unsupported_basis": true,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": false,
+        "reason": "scope_mismatch",
+        "text": "No source-backed claim released."
+      }
+    },
+    {
+      "id": "A32",
+      "case": "missing_origin",
+      "arm": "capture",
+      "repeat": 1,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": false,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": false,
+        "quote_bound": true,
+        "unsupported_basis": true,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": false,
+        "reason": "missing_receipt",
+        "text": "No source-backed claim released."
+      }
+    },
+    {
+      "id": "A33",
+      "case": "altered_body",
+      "arm": "text",
+      "repeat": 1,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": false,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": false,
+        "quote_bound": true,
+        "unsupported_basis": true,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": false,
+        "reason": "body_changed",
+        "text": "No source-backed claim released."
+      }
+    },
+    {
+      "id": "A34",
+      "case": "spoof_in_prose",
+      "arm": "text",
+      "repeat": 0,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": false,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": false,
+        "quote_bound": true,
+        "unsupported_basis": true,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": false,
+        "reason": "origin_mismatch",
+        "text": "No source-backed claim released."
+      }
+    },
+    {
+      "id": "A35",
+      "case": "missing_target",
+      "arm": "text",
+      "repeat": 0,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": false,
+          "basis": true,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": false,
+        "quote_bound": true,
+        "unsupported_basis": false,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": false,
+        "reason": "origin_mismatch",
+        "text": "No source-backed claim released."
+      }
+    },
+    {
+      "id": "A36",
+      "case": "quoted_report",
+      "arm": "capture",
+      "repeat": 1,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": true,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": true,
+        "quote_bound": true,
+        "unsupported_basis": false,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": true,
+        "reason": null,
+        "text": "A conversation report records parser.smoke@r7 as completed.",
+        "gate": {
+          "accepted": [
+            {
+              "assertion_id": "E1",
+              "text": "A conversation report records parser.smoke@r7 as completed.",
+              "quote": "Parser smoke r7: PASS; exit status 0.",
+              "state": "completed",
+              "basis": "reported",
+              "target": "parser.smoke@r7"
+            }
+          ],
+          "blocked": [],
+          "text": "A conversation report records parser.smoke@r7 as completed.",
+          "qualification": "State and evidence labels come from the reviewed ledger. This gate checks conformance to those labels; it does not verify their meaning or authenticity."
+        }
+      }
+    },
+    {
+      "id": "A37",
+      "case": "progress_report",
+      "arm": "capture",
+      "repeat": 0,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": true,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": true,
+        "quote_bound": true,
+        "unsupported_basis": false,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": true,
+        "reason": null,
+        "text": "A conversation report records parser.smoke@r7 as in progress.",
+        "gate": {
+          "accepted": [
+            {
+              "assertion_id": "E1",
+              "text": "A conversation report records parser.smoke@r7 as in progress.",
+              "quote": "I am running the parser smoke r7 check now.",
+              "state": "in_progress",
+              "basis": "reported",
+              "target": "parser.smoke@r7"
+            }
+          ],
+          "blocked": [],
+          "text": "A conversation report records parser.smoke@r7 as in progress.",
+          "qualification": "State and evidence labels come from the reviewed ledger. This gate checks conformance to those labels; it does not verify their meaning or authenticity."
+        }
+      }
+    },
+    {
+      "id": "A38",
+      "case": "wrong_scope",
+      "arm": "capture",
+      "repeat": 0,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": true,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": true,
+        "quote_bound": true,
+        "unsupported_basis": false,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": false,
+        "reason": "scope_inapplicable",
+        "text": "No source-backed claim released."
+      }
+    },
+    {
+      "id": "A39",
+      "case": "quoted_report",
+      "arm": "text",
+      "repeat": 1,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": false,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": false,
+        "quote_bound": true,
+        "unsupported_basis": true,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": false,
+        "reason": "origin_mismatch",
+        "text": "No source-backed claim released."
+      }
+    },
+    {
+      "id": "A40",
+      "case": "failed_exit",
+      "arm": "text",
+      "repeat": 0,
+      "status": "valid",
+      "score": {
+        "field_matches": {
+          "state": true,
+          "basis": false,
+          "target": true,
+          "scope": true
+        },
+        "all_fields_match": false,
+        "quote_bound": true,
+        "unsupported_basis": true,
+        "state_promotion": false,
+        "target_invention": false
+      },
+      "release": {
+        "released": false,
+        "reason": "scope_mismatch",
+        "text": "No source-backed claim released."
+      }
+    }
+  ]
+}

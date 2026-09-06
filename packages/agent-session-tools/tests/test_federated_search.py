@@ -28,6 +28,8 @@ def tiered_config(tmp_path, monkeypatch):
     config_file = config_dir / "config.yaml"
     config_file.write_text(
         f"""
+memory:
+  default_scope: unclassified
 database:
   path: {hot}
   full_db_path: {full}

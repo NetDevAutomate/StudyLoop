@@ -1,0 +1,983 @@
+{
+  "kind": "synthetic_single_sample_per_condition",
+  "model": "qwen3-coder",
+  "rows": [
+    {
+      "case": "reports_only",
+      "arm": "legacy",
+      "status": "parsed",
+      "text": "{\n  \"conflict_kind\": \"unresolved\",\n  \"recommendation\": \"insufficient\",\n  \"evidence_basis\": \"reported_only\",\n  \"rationale\": \"Both S1 and S2 are agent reports without test execution or measured evidence supporting their conclusions. Neither establishes correctness for the target environment r2 with eight writers workload.\",\n  \"alternative\": \"Neither A nor B is supported by measured evidence; both rely on unsubstantiated belief statements.\",\n  \"citations\": [\n    {\"id\": \"S1\", \"supports\": \"assertion of A's correctness without evidence\"},\n    {\"id\": \"S2\", \"supports\": \"assertion of B's correctness without evidence\"}\n  ],\n  \"uncertainty\": \"No measured evidence exists for either option under the specified constraints of environment r2, revision, and eight writers workload.\",\n  \"next_check\": \"Conduct a test measuring reopen correctness for both A and B under r2 with eight writers.\"\n}",
+      "finish_reason": "stop",
+      "usage": {
+        "completion_tokens": 199,
+        "prompt_tokens": 874,
+        "total_tokens": 1073,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "text_tokens": 199
+        },
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "text_tokens": 874,
+          "cache_write_tokens": 0,
+          "cache_creation_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      "cost_usd": 0.00055048,
+      "elapsed_seconds": 4.181209459202364,
+      "answer": {
+        "conflict_kind": "unresolved",
+        "recommendation": "insufficient",
+        "evidence_basis": "reported_only",
+        "rationale": "Both S1 and S2 are agent reports without test execution or measured evidence supporting their conclusions. Neither establishes correctness for the target environment r2 with eight writers workload.",
+        "alternative": "Neither A nor B is supported by measured evidence; both rely on unsubstantiated belief statements.",
+        "citations": [
+          {
+            "id": "S1",
+            "supports": "assertion of A's correctness without evidence"
+          },
+          {
+            "id": "S2",
+            "supports": "assertion of B's correctness without evidence"
+          }
+        ],
+        "uncertainty": "No measured evidence exists for either option under the specified constraints of environment r2, revision, and eight writers workload.",
+        "next_check": "Conduct a test measuring reopen correctness for both A and B under r2 with eight writers."
+      },
+      "checks": {
+        "unknown_citations": [],
+        "artifact_basis_without_artifact_citation": false,
+        "no_citations": false,
+        "expected_category_matches": {},
+        "semantic_support": "human_review_required",
+        "learner_value": "not_measured"
+      },
+      "choice_matches": true
+    },
+    {
+      "case": "reports_only",
+      "arm": "contract",
+      "status": "parsed",
+      "text": "{\n  \"source_assessments\": [\n    {\n      \"id\": \"S1\",\n      \"provenance\": \"report\",\n      \"applicability\": \"not_validation\",\n      \"reason\": \"Source is an agent report, not an empirical validation.\"\n    },\n    {\n      \"id\": \"S2\",\n      \"provenance\": \"report\",\n      \"applicability\": \"not_validation\",\n      \"reason\": \"Source is an agent report, not an empirical validation.\"\n    }\n  ],\n  \"decision\": {\n    \"reason_code\": \"no_applicable_observation\",\n    \"sufficiency\": \"insufficient\",\n    \"recommendation\": \"none\",\n    \"basis_ids\": [\"S1\", \"S2\"],\n    \"explanation\": \"No applicable observations were provided. Both sources are agent reports without empirical testing, thus cannot support a measured decision.\",\n    \"limitation\": \"Decision is limited to available empirical evidence. No measurements matched the target environment, metric, revision, and workload.\",\n    \"next_check\": \"Obtain applicable artifacts that match the target's environment, metric, revision, and workload.\"\n  }\n}",
+      "finish_reason": "stop",
+      "usage": {
+        "completion_tokens": 237,
+        "prompt_tokens": 661,
+        "total_tokens": 898,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "text_tokens": 237
+        },
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "text_tokens": 661,
+          "cache_write_tokens": 0,
+          "cache_creation_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      "cost_usd": 0.0005720199999999999,
+      "elapsed_seconds": 5.438907125033438,
+      "answer": {
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "Source is an agent report, not an empirical validation."
+          },
+          {
+            "id": "S2",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "Source is an agent report, not an empirical validation."
+          }
+        ],
+        "decision": {
+          "reason_code": "no_applicable_observation",
+          "sufficiency": "insufficient",
+          "recommendation": "none",
+          "basis_ids": [
+            "S1",
+            "S2"
+          ],
+          "explanation": "No applicable observations were provided. Both sources are agent reports without empirical testing, thus cannot support a measured decision.",
+          "limitation": "Decision is limited to available empirical evidence. No measurements matched the target environment, metric, revision, and workload.",
+          "next_check": "Obtain applicable artifacts that match the target's environment, metric, revision, and workload."
+        }
+      },
+      "checks": {
+        "integrity": true,
+        "provenance": true,
+        "applicability": true,
+        "decision": true,
+        "basis_coverage": true,
+        "all_mechanical_checks": true,
+        "explanation_entailment": "separate_review_required",
+        "learner_value": "not_measured"
+      },
+      "choice_matches": true
+    },
+    {
+      "case": "matching_artifact",
+      "arm": "legacy",
+      "status": "parsed",
+      "text": "{\n  \"conflict_kind\": \"unequal_evidence\",\n  \"recommendation\": \"B\",\n  \"evidence_basis\": \"artifact_supported\",\n  \"rationale\": \"Advice S1 and S2 are unsupported agent reports without tests. In contrast, S3 is a test artifact directly measuring reopen correctness under the specified constraints (r2 revision, eight writers, fixture-local). The test shows A lost committed entries while B retained them, directly supporting B for the target metric.\",\n  \"alternative\": \"Option A lacks any supporting evidence; S1's assertion is unsubstantiated and untested, whereas S3's measured result contradicts it.\",\n  \"citations\": [{\"id\": \"S3\", \"supports\": \"B retains entries correctly under the target workload and environment\"}],\n  \"uncertainty\": \"The test scope was narrow and synthetic. Real-world behavior or performance under other workloads is not established.\",\n  \"next_check\": \"Test A under the same controlled scope to confirm lossiness, or extend B\u2019s validation to broader workloads.\"\n}",
+      "finish_reason": "stop",
+      "usage": {
+        "completion_tokens": 217,
+        "prompt_tokens": 971,
+        "total_tokens": 1188,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "text_tokens": 217
+        },
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "text_tokens": 971,
+          "cache_write_tokens": 0,
+          "cache_creation_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      "cost_usd": 0.00060422,
+      "elapsed_seconds": 2.201044750167057,
+      "answer": {
+        "conflict_kind": "unequal_evidence",
+        "recommendation": "B",
+        "evidence_basis": "artifact_supported",
+        "rationale": "Advice S1 and S2 are unsupported agent reports without tests. In contrast, S3 is a test artifact directly measuring reopen correctness under the specified constraints (r2 revision, eight writers, fixture-local). The test shows A lost committed entries while B retained them, directly supporting B for the target metric.",
+        "alternative": "Option A lacks any supporting evidence; S1's assertion is unsubstantiated and untested, whereas S3's measured result contradicts it.",
+        "citations": [
+          {
+            "id": "S3",
+            "supports": "B retains entries correctly under the target workload and environment"
+          }
+        ],
+        "uncertainty": "The test scope was narrow and synthetic. Real-world behavior or performance under other workloads is not established.",
+        "next_check": "Test A under the same controlled scope to confirm lossiness, or extend B\u2019s validation to broader workloads."
+      },
+      "checks": {
+        "unknown_citations": [],
+        "artifact_basis_without_artifact_citation": false,
+        "no_citations": false,
+        "expected_category_matches": {},
+        "semantic_support": "human_review_required",
+        "learner_value": "not_measured"
+      },
+      "choice_matches": true
+    },
+    {
+      "case": "matching_artifact",
+      "arm": "contract",
+      "status": "parsed",
+      "text": "{\n  \"source_assessments\": [\n    {\n      \"id\": \"S1\",\n      \"provenance\": \"report\",\n      \"applicability\": \"not_validation\",\n      \"reason\": \"Reports are not subject to validation against the target scope.\"\n    },\n    {\n      \"id\": \"S2\",\n      \"provenance\": \"report\",\n      \"applicability\": \"not_validation\",\n      \"reason\": \"Reports are not subject to validation against the target scope.\"\n    },\n    {\n      \"id\": \"S3\",\n      \"provenance\": \"artifact\",\n      \"applicability\": \"applicable\",\n      \"reason\": \"The artifact matches the target scope exactly: environment 'fixture-local', metric 'reopen correctness', revision 'r2', and workload 'eight writers'.\"\n    }\n  ],\n  \"decision\": {\n    \"reason_code\": \"applicable_observation\",\n    \"sufficiency\": \"supported\",\n    \"recommendation\": \"B\",\n    \"basis_ids\": [\"S3\"],\n    \"explanation\": \"An applicable test artifact (S3) directly measured the target scenario and concluded that B retains entries correctly, while A does not.\",\n    \"limitation\": \"This conclusion is limited to the specific environment, metric, revision, and workload defined in the target scope.\",\n    \"next_check\": \"To generalize beyond this scope, additional observations under different conditions would be needed.\"\n  }\n}",
+      "finish_reason": "stop",
+      "usage": {
+        "completion_tokens": 297,
+        "prompt_tokens": 758,
+        "total_tokens": 1055,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "text_tokens": 297
+        },
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "text_tokens": 758,
+          "cache_write_tokens": 0,
+          "cache_creation_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      "cost_usd": 0.00070136,
+      "elapsed_seconds": 4.74003129103221,
+      "answer": {
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "Reports are not subject to validation against the target scope."
+          },
+          {
+            "id": "S2",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "Reports are not subject to validation against the target scope."
+          },
+          {
+            "id": "S3",
+            "provenance": "artifact",
+            "applicability": "applicable",
+            "reason": "The artifact matches the target scope exactly: environment 'fixture-local', metric 'reopen correctness', revision 'r2', and workload 'eight writers'."
+          }
+        ],
+        "decision": {
+          "reason_code": "applicable_observation",
+          "sufficiency": "supported",
+          "recommendation": "B",
+          "basis_ids": [
+            "S3"
+          ],
+          "explanation": "An applicable test artifact (S3) directly measured the target scenario and concluded that B retains entries correctly, while A does not.",
+          "limitation": "This conclusion is limited to the specific environment, metric, revision, and workload defined in the target scope.",
+          "next_check": "To generalize beyond this scope, additional observations under different conditions would be needed."
+        }
+      },
+      "checks": {
+        "integrity": true,
+        "provenance": true,
+        "applicability": true,
+        "decision": true,
+        "basis_coverage": true,
+        "all_mechanical_checks": true,
+        "explanation_entailment": "separate_review_required",
+        "learner_value": "not_measured"
+      },
+      "choice_matches": true
+    },
+    {
+      "case": "wrong_revision",
+      "arm": "legacy",
+      "status": "parsed",
+      "text": "{\n  \"conflict_kind\": \"unequal_evidence\",\n  \"recommendation\": \"B\",\n  \"evidence_basis\": \"artifact_supported\",\n  \"rationale\": \"Advice S1 and S2 are unsupported agent reports without tests. S3 is a test artifact showing B retained the last committed entry while A did not, under the specified workload and environment. Although S3 tested revision r1 rather than target r2, it directly supports B's correctness for the stated metric where A failed.\",\n  \"alternative\": \"Option A lacks any supporting evidence and is contradicted by a correctness test showing entry loss.\",\n  \"citations\": [{\"id\": \"S3\", \"supports\": \"B retains entries correctly under eight writers workload\"}],\n  \"uncertainty\": \"Revision r1 was tested, not r2. Behavior could differ under the target revision.\",\n  \"next_check\": \"Test reopen correctness under r2 for both options to confirm revision compatibility.\"\n}",
+      "finish_reason": "stop",
+      "usage": {
+        "completion_tokens": 197,
+        "prompt_tokens": 971,
+        "total_tokens": 1168,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "text_tokens": 197
+        },
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "text_tokens": 971,
+          "cache_write_tokens": 0,
+          "cache_creation_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      "cost_usd": 0.00056822,
+      "elapsed_seconds": 1.919353290926665,
+      "answer": {
+        "conflict_kind": "unequal_evidence",
+        "recommendation": "B",
+        "evidence_basis": "artifact_supported",
+        "rationale": "Advice S1 and S2 are unsupported agent reports without tests. S3 is a test artifact showing B retained the last committed entry while A did not, under the specified workload and environment. Although S3 tested revision r1 rather than target r2, it directly supports B's correctness for the stated metric where A failed.",
+        "alternative": "Option A lacks any supporting evidence and is contradicted by a correctness test showing entry loss.",
+        "citations": [
+          {
+            "id": "S3",
+            "supports": "B retains entries correctly under eight writers workload"
+          }
+        ],
+        "uncertainty": "Revision r1 was tested, not r2. Behavior could differ under the target revision.",
+        "next_check": "Test reopen correctness under r2 for both options to confirm revision compatibility."
+      },
+      "checks": {
+        "unknown_citations": [],
+        "artifact_basis_without_artifact_citation": false,
+        "no_citations": false,
+        "expected_category_matches": {},
+        "semantic_support": "human_review_required",
+        "learner_value": "not_measured"
+      },
+      "choice_matches": false
+    },
+    {
+      "case": "wrong_revision",
+      "arm": "contract",
+      "status": "parsed",
+      "text": "{\n  \"source_assessments\": [\n    {\n      \"id\": \"S1\",\n      \"provenance\": \"report\",\n      \"applicability\": \"not_validation\",\n      \"reason\": \"Reports are not subject to validation against target criteria.\"\n    },\n    {\n      \"id\": \"S2\",\n      \"provenance\": \"report\",\n      \"applicability\": \"not_validation\",\n      \"reason\": \"Reports are not subject to validation against target criteria.\"\n    },\n    {\n      \"id\": \"S3\",\n      \"provenance\": \"artifact\",\n      \"applicability\": \"inapplicable\",\n      \"reason\": \"The artifact's revision (r1) does not match the target revision (r2), making it inapplicable despite matching other scope elements.\"\n    }\n  ],\n  \"decision\": {\n    \"reason_code\": \"no_applicable_observation\",\n    \"sufficiency\": \"insufficient\",\n    \"recommendation\": \"none\",\n    \"basis_ids\": [\"S1\", \"S2\", \"S3\"],\n    \"explanation\": \"No applicable artifacts were found because S3 does not meet the required revision. Additionally, no requirement-fit reports explicitly claim requirement_match for either option.\",\n    \"limitation\": \"Decision is limited by lack of applicable empirical observations and explicit requirement matches.\",\n    \"next_check\": \"Seek artifacts matching all target criteria or reports with explicit requirement_match claims.\"\n  }\n}",
+      "finish_reason": "stop",
+      "usage": {
+        "completion_tokens": 300,
+        "prompt_tokens": 758,
+        "total_tokens": 1058,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "text_tokens": 300
+        },
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "text_tokens": 758,
+          "cache_write_tokens": 0,
+          "cache_creation_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      "cost_usd": 0.0007067600000000001,
+      "elapsed_seconds": 2.4417460409458727,
+      "answer": {
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "Reports are not subject to validation against target criteria."
+          },
+          {
+            "id": "S2",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "Reports are not subject to validation against target criteria."
+          },
+          {
+            "id": "S3",
+            "provenance": "artifact",
+            "applicability": "inapplicable",
+            "reason": "The artifact's revision (r1) does not match the target revision (r2), making it inapplicable despite matching other scope elements."
+          }
+        ],
+        "decision": {
+          "reason_code": "no_applicable_observation",
+          "sufficiency": "insufficient",
+          "recommendation": "none",
+          "basis_ids": [
+            "S1",
+            "S2",
+            "S3"
+          ],
+          "explanation": "No applicable artifacts were found because S3 does not meet the required revision. Additionally, no requirement-fit reports explicitly claim requirement_match for either option.",
+          "limitation": "Decision is limited by lack of applicable empirical observations and explicit requirement matches.",
+          "next_check": "Seek artifacts matching all target criteria or reports with explicit requirement_match claims."
+        }
+      },
+      "checks": {
+        "integrity": true,
+        "provenance": true,
+        "applicability": true,
+        "decision": true,
+        "basis_coverage": true,
+        "all_mechanical_checks": true,
+        "explanation_entailment": "separate_review_required",
+        "learner_value": "not_measured"
+      },
+      "choice_matches": true
+    },
+    {
+      "case": "unknown_revision",
+      "arm": "legacy",
+      "status": "parsed",
+      "text": "{\n  \"conflict_kind\": \"unequal_evidence\",\n  \"recommendation\": \"B\",\n  \"evidence_basis\": \"artifact_supported\",\n  \"rationale\": \"Advice S1 and S2 are unsupported agent reports without tests. In contrast, S3 is a test artifact directly measuring reopen correctness under the specified workload and environment. S3 shows A lost committed entries while B retained them, directly supporting B for the target metric.\",\n  \"alternative\": \"A is unsupported by any test evidence and contradicted by the sole measured result (S3). S1 and S2 are opinions without validation.\",\n  \"citations\": [{\"id\": \"S3\", \"supports\": \"B retains entries correctly under eight writers workload\"}],\n  \"uncertainty\": \"The test scope was narrow and synthetic. Real-world behavior or other workloads are not validated.\",\n  \"next_check\": \"Test A and B under varied workloads and environments to confirm consistent correctness.\"\n}",
+      "finish_reason": "stop",
+      "usage": {
+        "completion_tokens": 198,
+        "prompt_tokens": 964,
+        "total_tokens": 1162,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "text_tokens": 198
+        },
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "text_tokens": 964,
+          "cache_write_tokens": 0,
+          "cache_creation_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      "cost_usd": 0.00056848,
+      "elapsed_seconds": 2.0401479171123356,
+      "answer": {
+        "conflict_kind": "unequal_evidence",
+        "recommendation": "B",
+        "evidence_basis": "artifact_supported",
+        "rationale": "Advice S1 and S2 are unsupported agent reports without tests. In contrast, S3 is a test artifact directly measuring reopen correctness under the specified workload and environment. S3 shows A lost committed entries while B retained them, directly supporting B for the target metric.",
+        "alternative": "A is unsupported by any test evidence and contradicted by the sole measured result (S3). S1 and S2 are opinions without validation.",
+        "citations": [
+          {
+            "id": "S3",
+            "supports": "B retains entries correctly under eight writers workload"
+          }
+        ],
+        "uncertainty": "The test scope was narrow and synthetic. Real-world behavior or other workloads are not validated.",
+        "next_check": "Test A and B under varied workloads and environments to confirm consistent correctness."
+      },
+      "checks": {
+        "unknown_citations": [],
+        "artifact_basis_without_artifact_citation": false,
+        "no_citations": false,
+        "expected_category_matches": {},
+        "semantic_support": "human_review_required",
+        "learner_value": "not_measured"
+      },
+      "choice_matches": false
+    },
+    {
+      "case": "unknown_revision",
+      "arm": "contract",
+      "status": "parsed",
+      "text": "{\n  \"source_assessments\": [\n    {\n      \"id\": \"S1\",\n      \"provenance\": \"report\",\n      \"applicability\": \"not_validation\",\n      \"reason\": \"Reports are not validation evidence under measured mode.\"\n    },\n    {\n      \"id\": \"S2\",\n      \"provenance\": \"report\",\n      \"applicability\": \"not_validation\",\n      \"reason\": \"Reports are not validation evidence under measured mode.\"\n    },\n    {\n      \"id\": \"S3\",\n      \"provenance\": \"artifact\",\n      \"applicability\": \"applicable\",\n      \"reason\": \"Artifact matches target environment, metric, workload, and implicit revision r2.\"\n    }\n  ],\n  \"decision\": {\n    \"reason_code\": \"applicable_observation\",\n    \"sufficiency\": \"supported\",\n    \"recommendation\": \"B\",\n    \"basis_ids\": [\"S3\"],\n    \"explanation\": \"An applicable artifact (S3) directly measures the target and supports conclusion B.\",\n    \"limitation\": \"Decision is limited to the specific environment, metric, workload, and revision tested.\",\n    \"next_check\": \"Verify consistency across additional test scenarios and environments.\"\n  }\n}",
+      "finish_reason": "stop",
+      "usage": {
+        "completion_tokens": 257,
+        "prompt_tokens": 751,
+        "total_tokens": 1008,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "text_tokens": 257
+        },
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "text_tokens": 751,
+          "cache_write_tokens": 0,
+          "cache_creation_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      "cost_usd": 0.00062782,
+      "elapsed_seconds": 1.867776291910559,
+      "answer": {
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "Reports are not validation evidence under measured mode."
+          },
+          {
+            "id": "S2",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "Reports are not validation evidence under measured mode."
+          },
+          {
+            "id": "S3",
+            "provenance": "artifact",
+            "applicability": "applicable",
+            "reason": "Artifact matches target environment, metric, workload, and implicit revision r2."
+          }
+        ],
+        "decision": {
+          "reason_code": "applicable_observation",
+          "sufficiency": "supported",
+          "recommendation": "B",
+          "basis_ids": [
+            "S3"
+          ],
+          "explanation": "An applicable artifact (S3) directly measures the target and supports conclusion B.",
+          "limitation": "Decision is limited to the specific environment, metric, workload, and revision tested.",
+          "next_check": "Verify consistency across additional test scenarios and environments."
+        }
+      },
+      "checks": {
+        "integrity": true,
+        "provenance": true,
+        "applicability": false,
+        "decision": false,
+        "basis_coverage": false,
+        "all_mechanical_checks": false,
+        "explanation_entailment": "separate_review_required",
+        "learner_value": "not_measured"
+      },
+      "choice_matches": false
+    },
+    {
+      "case": "conflicting_checks",
+      "arm": "legacy",
+      "status": "parsed",
+      "text": "{\n  \"conflict_kind\": \"unequal_evidence\",\n  \"recommendation\": \"insufficient\",\n  \"evidence_basis\": \"artifact_supported\",\n  \"rationale\": \"Two test artifacts under identical scope (fixture-local, r2, eight writers, reopen correctness) yield contradictory outcomes: S3 reports B retained the last entry while A lost it, but S4 reports the reverse. Since both are test artifacts with matching scope, neither is superseded by the other, and the discrepancy remains uninvestigated.\",\n  \"alternative\": \"Neither A nor B can be preferred because each is supported by a contradictory test artifact under the same conditions. No correction or recency relationship exists to resolve the conflict.\",\n  \"citations\": [\n    {\"id\": \"S3\", \"supports\": \"B retains last entry, A loses it\"},\n    {\"id\": \"S4\", \"supports\": \"A retains last entry, B loses it\"}\n  ],\n  \"uncertainty\": \"The reopen correctness behavior for A and B remains uncertain due to directly conflicting test results under the same scope. The root cause of the discrepancy is unexplained.\",\n  \"next_check\": \"A reconciling test that reproduces both prior scenarios in a single controlled run to determine consistent behavior under the specified workload and environment.\"\n}",
+      "finish_reason": "stop",
+      "usage": {
+        "completion_tokens": 265,
+        "prompt_tokens": 955,
+        "total_tokens": 1220,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "text_tokens": 265
+        },
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "text_tokens": 955,
+          "cache_write_tokens": 0,
+          "cache_creation_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      "cost_usd": 0.0006871,
+      "elapsed_seconds": 2.819194291951135,
+      "answer": {
+        "conflict_kind": "unequal_evidence",
+        "recommendation": "insufficient",
+        "evidence_basis": "artifact_supported",
+        "rationale": "Two test artifacts under identical scope (fixture-local, r2, eight writers, reopen correctness) yield contradictory outcomes: S3 reports B retained the last entry while A lost it, but S4 reports the reverse. Since both are test artifacts with matching scope, neither is superseded by the other, and the discrepancy remains uninvestigated.",
+        "alternative": "Neither A nor B can be preferred because each is supported by a contradictory test artifact under the same conditions. No correction or recency relationship exists to resolve the conflict.",
+        "citations": [
+          {
+            "id": "S3",
+            "supports": "B retains last entry, A loses it"
+          },
+          {
+            "id": "S4",
+            "supports": "A retains last entry, B loses it"
+          }
+        ],
+        "uncertainty": "The reopen correctness behavior for A and B remains uncertain due to directly conflicting test results under the same scope. The root cause of the discrepancy is unexplained.",
+        "next_check": "A reconciling test that reproduces both prior scenarios in a single controlled run to determine consistent behavior under the specified workload and environment."
+      },
+      "checks": {
+        "unknown_citations": [],
+        "artifact_basis_without_artifact_citation": false,
+        "no_citations": false,
+        "expected_category_matches": {},
+        "semantic_support": "human_review_required",
+        "learner_value": "not_measured"
+      },
+      "choice_matches": true
+    },
+    {
+      "case": "conflicting_checks",
+      "arm": "contract",
+      "status": "parsed",
+      "text": "{\n  \"source_assessments\": [\n    {\n      \"id\": \"S3\",\n      \"provenance\": \"artifact\",\n      \"applicability\": \"applicable\",\n      \"reason\": \"Scope matches target exactly: revision r2, workload eight writers, environment fixture-local, metric reopen correctness.\"\n    },\n    {\n      \"id\": \"S4\",\n      \"provenance\": \"artifact\",\n      \"applicability\": \"applicable\",\n      \"reason\": \"Scope matches target exactly: revision r2, workload eight writers, environment fixture-local, metric reopen correctness.\"\n    }\n  ],\n  \"decision\": {\n    \"reason_code\": \"conflicting_observations\",\n    \"sufficiency\": \"insufficient\",\n    \"recommendation\": \"none\",\n    \"basis_ids\": [\"S3\", \"S4\"],\n    \"explanation\": \"Two applicable artifacts (S3, S4) yield conflicting conclusions under identical scope. S3 concludes B is correct while S4 concludes A is correct. No reconciliation is provided.\",\n    \"limitation\": \"The supplied evidence contains contradictory empirical results with no investigation or resolution offered.\",\n    \"next_check\": \"Reproduce the tests under controlled conditions to resolve the discrepancy between S3 and S4.\"\n  }\n}",
+      "finish_reason": "stop",
+      "usage": {
+        "completion_tokens": 262,
+        "prompt_tokens": 742,
+        "total_tokens": 1004,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "text_tokens": 262
+        },
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "text_tokens": 742,
+          "cache_write_tokens": 0,
+          "cache_creation_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      "cost_usd": 0.00063484,
+      "elapsed_seconds": 2.179532458074391,
+      "answer": {
+        "source_assessments": [
+          {
+            "id": "S3",
+            "provenance": "artifact",
+            "applicability": "applicable",
+            "reason": "Scope matches target exactly: revision r2, workload eight writers, environment fixture-local, metric reopen correctness."
+          },
+          {
+            "id": "S4",
+            "provenance": "artifact",
+            "applicability": "applicable",
+            "reason": "Scope matches target exactly: revision r2, workload eight writers, environment fixture-local, metric reopen correctness."
+          }
+        ],
+        "decision": {
+          "reason_code": "conflicting_observations",
+          "sufficiency": "insufficient",
+          "recommendation": "none",
+          "basis_ids": [
+            "S3",
+            "S4"
+          ],
+          "explanation": "Two applicable artifacts (S3, S4) yield conflicting conclusions under identical scope. S3 concludes B is correct while S4 concludes A is correct. No reconciliation is provided.",
+          "limitation": "The supplied evidence contains contradictory empirical results with no investigation or resolution offered.",
+          "next_check": "Reproduce the tests under controlled conditions to resolve the discrepancy between S3 and S4."
+        }
+      },
+      "checks": {
+        "integrity": true,
+        "provenance": true,
+        "applicability": true,
+        "decision": true,
+        "basis_coverage": true,
+        "all_mechanical_checks": true,
+        "explanation_entailment": "separate_review_required",
+        "learner_value": "not_measured"
+      },
+      "choice_matches": true
+    },
+    {
+      "case": "wrong_metric",
+      "arm": "legacy",
+      "status": "parsed",
+      "text": "{\n  \"conflict_kind\": \"unresolved\",\n  \"recommendation\": \"insufficient\",\n  \"evidence_basis\": \"reported_only\",\n  \"rationale\": \"The question concerns reopen correctness under specific constraints, but no evidence directly measures this metric. S1 and S2 are agent reports without tests, and S3 measures throughput, not correctness. No test artifact supports either option for the target metric.\",\n  \"alternative\": \"Neither A nor B has supporting evidence for reopen correctness. S3 shows B outperforms A in throughput but does not address correctness, leaving the options equally unjustified.\",\n  \"citations\": [\n    {\"id\": \"S1\", \"supports\": \"A's correctness belief (unsupported)\"},\n    {\"id\": \"S2\", \"supports\": \"B's correctness belief (unsupported)\"},\n    {\"id\": \"S3\", \"supports\": \"B's throughput advantage (irrelevant)\"}\n  ],\n  \"uncertainty\": \"Reopen correctness remains unmeasured for both options under the specified workload and environment. Throughput results do not imply correctness behavior.\",\n  \"next_check\": \"A correctness test under r2 with eight writers in fixture-local environment measuring reopen behavior.\"\n}",
+      "finish_reason": "stop",
+      "usage": {
+        "completion_tokens": 247,
+        "prompt_tokens": 969,
+        "total_tokens": 1216,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "text_tokens": 247
+        },
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "text_tokens": 969,
+          "cache_write_tokens": 0,
+          "cache_creation_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      "cost_usd": 0.00065778,
+      "elapsed_seconds": 2.5446053340565413,
+      "answer": {
+        "conflict_kind": "unresolved",
+        "recommendation": "insufficient",
+        "evidence_basis": "reported_only",
+        "rationale": "The question concerns reopen correctness under specific constraints, but no evidence directly measures this metric. S1 and S2 are agent reports without tests, and S3 measures throughput, not correctness. No test artifact supports either option for the target metric.",
+        "alternative": "Neither A nor B has supporting evidence for reopen correctness. S3 shows B outperforms A in throughput but does not address correctness, leaving the options equally unjustified.",
+        "citations": [
+          {
+            "id": "S1",
+            "supports": "A's correctness belief (unsupported)"
+          },
+          {
+            "id": "S2",
+            "supports": "B's correctness belief (unsupported)"
+          },
+          {
+            "id": "S3",
+            "supports": "B's throughput advantage (irrelevant)"
+          }
+        ],
+        "uncertainty": "Reopen correctness remains unmeasured for both options under the specified workload and environment. Throughput results do not imply correctness behavior.",
+        "next_check": "A correctness test under r2 with eight writers in fixture-local environment measuring reopen behavior."
+      },
+      "checks": {
+        "unknown_citations": [],
+        "artifact_basis_without_artifact_citation": false,
+        "no_citations": false,
+        "expected_category_matches": {},
+        "semantic_support": "human_review_required",
+        "learner_value": "not_measured"
+      },
+      "choice_matches": true
+    },
+    {
+      "case": "wrong_metric",
+      "arm": "contract",
+      "status": "parsed",
+      "text": "{\n  \"source_assessments\": [\n    {\n      \"id\": \"S1\",\n      \"provenance\": \"report\",\n      \"applicability\": \"not_validation\",\n      \"reason\": \"Reports are not validation evidence under measured mode.\"\n    },\n    {\n      \"id\": \"S2\",\n      \"provenance\": \"report\",\n      \"applicability\": \"not_validation\",\n      \"reason\": \"Reports are not validation evidence under measured mode.\"\n    },\n    {\n      \"id\": \"S3\",\n      \"provenance\": \"artifact\",\n      \"applicability\": \"inapplicable\",\n      \"reason\": \"Artifact does not match target metric 'reopen correctness'; it measured 'throughput' instead.\"\n    }\n  ],\n  \"decision\": {\n    \"reason_code\": \"no_applicable_observation\",\n    \"sufficiency\": \"insufficient\",\n    \"recommendation\": \"none\",\n    \"basis_ids\": [\"S1\", \"S2\", \"S3\"],\n    \"explanation\": \"No applicable artifacts were provided that match the target environment, metric, revision, and workload. Both S1 and S2 are reports which do not constitute measured evidence. S3 is an artifact but measures throughput rather than reopen correctness.\",\n    \"limitation\": \"Decision is limited to evidence that directly measures reopen correctness in the specified environment, revision, and workload.\",\n    \"next_check\": \"Provide test artifacts that specifically measure reopen correctness under the target conditions.\"\n  }\n}",
+      "finish_reason": "stop",
+      "usage": {
+        "completion_tokens": 309,
+        "prompt_tokens": 756,
+        "total_tokens": 1065,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "text_tokens": 309
+        },
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "text_tokens": 756,
+          "cache_write_tokens": 0,
+          "cache_creation_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      "cost_usd": 0.0007225199999999999,
+      "elapsed_seconds": 2.3330240410286933,
+      "answer": {
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "Reports are not validation evidence under measured mode."
+          },
+          {
+            "id": "S2",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "Reports are not validation evidence under measured mode."
+          },
+          {
+            "id": "S3",
+            "provenance": "artifact",
+            "applicability": "inapplicable",
+            "reason": "Artifact does not match target metric 'reopen correctness'; it measured 'throughput' instead."
+          }
+        ],
+        "decision": {
+          "reason_code": "no_applicable_observation",
+          "sufficiency": "insufficient",
+          "recommendation": "none",
+          "basis_ids": [
+            "S1",
+            "S2",
+            "S3"
+          ],
+          "explanation": "No applicable artifacts were provided that match the target environment, metric, revision, and workload. Both S1 and S2 are reports which do not constitute measured evidence. S3 is an artifact but measures throughput rather than reopen correctness.",
+          "limitation": "Decision is limited to evidence that directly measures reopen correctness in the specified environment, revision, and workload.",
+          "next_check": "Provide test artifacts that specifically measure reopen correctness under the target conditions."
+        }
+      },
+      "checks": {
+        "integrity": true,
+        "provenance": true,
+        "applicability": true,
+        "decision": true,
+        "basis_coverage": true,
+        "all_mechanical_checks": true,
+        "explanation_entailment": "separate_review_required",
+        "learner_value": "not_measured"
+      },
+      "choice_matches": true
+    },
+    {
+      "case": "conditional_fit",
+      "arm": "legacy",
+      "status": "parsed",
+      "text": "{\n  \"conflict_kind\": \"unequal_evidence\",\n  \"recommendation\": \"insufficient\",\n  \"evidence_basis\": \"reported_only\",\n  \"rationale\": \"Neither agent report provides measured evidence on reopen correctness. S1 explicitly states A does not meet the multi-writer requirement, while S2 claims B fits the requirement but offers no correctness measurement. The question specifically asks about reopen correctness, which neither report addresses with test data.\",\n  \"alternative\": \"S2's claim that B fits requirements is more relevant than S1's admission that A does not fit, but neither provides the requested correctness evidence\",\n  \"citations\": [\n    {\"id\": \"S1\", \"supports\": \"A does not meet multi-writer requirement\"},\n    {\"id\": \"S2\", \"supports\": \"B described as coordinating eight writers\"}\n  ],\n  \"uncertainty\": \"No measured evidence exists for reopen correctness under the specified workload and environment\",\n  \"next_check\": \"Measure reopen correctness for both options under r2 revision with eight writers in fixture-local environment\"\n}",
+      "finish_reason": "stop",
+      "usage": {
+        "completion_tokens": 221,
+        "prompt_tokens": 892,
+        "total_tokens": 1113,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "text_tokens": 221
+        },
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "text_tokens": 892,
+          "cache_write_tokens": 0,
+          "cache_creation_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      "cost_usd": 0.00059404,
+      "elapsed_seconds": 1.9746922499034554,
+      "answer": {
+        "conflict_kind": "unequal_evidence",
+        "recommendation": "insufficient",
+        "evidence_basis": "reported_only",
+        "rationale": "Neither agent report provides measured evidence on reopen correctness. S1 explicitly states A does not meet the multi-writer requirement, while S2 claims B fits the requirement but offers no correctness measurement. The question specifically asks about reopen correctness, which neither report addresses with test data.",
+        "alternative": "S2's claim that B fits requirements is more relevant than S1's admission that A does not fit, but neither provides the requested correctness evidence",
+        "citations": [
+          {
+            "id": "S1",
+            "supports": "A does not meet multi-writer requirement"
+          },
+          {
+            "id": "S2",
+            "supports": "B described as coordinating eight writers"
+          }
+        ],
+        "uncertainty": "No measured evidence exists for reopen correctness under the specified workload and environment",
+        "next_check": "Measure reopen correctness for both options under r2 revision with eight writers in fixture-local environment"
+      },
+      "checks": {
+        "unknown_citations": [],
+        "artifact_basis_without_artifact_citation": false,
+        "no_citations": false,
+        "expected_category_matches": {},
+        "semantic_support": "human_review_required",
+        "learner_value": "not_measured"
+      },
+      "choice_matches": false
+    },
+    {
+      "case": "conditional_fit",
+      "arm": "contract",
+      "status": "parsed",
+      "text": "{\n  \"source_assessments\": [\n    {\n      \"id\": \"S1\",\n      \"provenance\": \"report\",\n      \"applicability\": \"not_validation\",\n      \"reason\": \"This is an agent report and not an empirical validation artifact; it provides a requirement-fit assessment rather than measured evidence.\"\n    },\n    {\n      \"id\": \"S2\",\n      \"provenance\": \"report\",\n      \"applicability\": \"not_validation\",\n      \"reason\": \"This is an agent report and not an empirical validation artifact; it provides a requirement-fit assessment rather than measured evidence.\"\n    }\n  ],\n  \"decision\": {\n    \"reason_code\": \"requirement_fit_only\",\n    \"sufficiency\": \"conditional\",\n    \"recommendation\": \"B\",\n    \"basis_ids\": [\"S2\"],\n    \"explanation\": \"No applicable empirical observations are provided. Decision is based solely on requirement-fit reports. S2 claims B fits the requirement for eight writers, while S1 states A does not fit due to assuming a single writer.\",\n    \"limitation\": \"The decision relies on unvalidated requirement-fit assessments rather than empirical measurements of reopen correctness under the specified conditions.\",\n    \"next_check\": \"Obtain empirical validation artifacts demonstrating actual reopen correctness performance for each option under the target environment, revision, and workload.\"\n  }\n}",
+      "finish_reason": "stop",
+      "usage": {
+        "completion_tokens": 279,
+        "prompt_tokens": 679,
+        "total_tokens": 958,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "text_tokens": 279
+        },
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "text_tokens": 679,
+          "cache_write_tokens": 0,
+          "cache_creation_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      "cost_usd": 0.0006515799999999999,
+      "elapsed_seconds": 2.201824000105262,
+      "answer": {
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "This is an agent report and not an empirical validation artifact; it provides a requirement-fit assessment rather than measured evidence."
+          },
+          {
+            "id": "S2",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "This is an agent report and not an empirical validation artifact; it provides a requirement-fit assessment rather than measured evidence."
+          }
+        ],
+        "decision": {
+          "reason_code": "requirement_fit_only",
+          "sufficiency": "conditional",
+          "recommendation": "B",
+          "basis_ids": [
+            "S2"
+          ],
+          "explanation": "No applicable empirical observations are provided. Decision is based solely on requirement-fit reports. S2 claims B fits the requirement for eight writers, while S1 states A does not fit due to assuming a single writer.",
+          "limitation": "The decision relies on unvalidated requirement-fit assessments rather than empirical measurements of reopen correctness under the specified conditions.",
+          "next_check": "Obtain empirical validation artifacts demonstrating actual reopen correctness performance for each option under the target environment, revision, and workload."
+        }
+      },
+      "checks": {
+        "integrity": true,
+        "provenance": true,
+        "applicability": true,
+        "decision": true,
+        "basis_coverage": true,
+        "all_mechanical_checks": true,
+        "explanation_entailment": "separate_review_required",
+        "learner_value": "not_measured"
+      },
+      "choice_matches": true
+    },
+    {
+      "case": "validated_fit",
+      "arm": "legacy",
+      "status": "parsed",
+      "text": "{\n  \"conflict_kind\": \"unequal_evidence\",\n  \"recommendation\": \"B\",\n  \"evidence_basis\": \"artifact_supported\",\n  \"rationale\": \"Option B is supported by test artifact S3 which directly measures reopen correctness under the specified constraints (eight writers, r2, fixture-local). Although S1 and S2 offer conflicting recommendations, S3 provides concrete evidence that B retains the last committed entry while A does not, directly addressing the target metric.\",\n  \"alternative\": \"Option A is rejected because S1 explicitly states it doesn't meet multi-writer requirements, and S3 directly shows A fails the reopen correctness test under those conditions.\",\n  \"citations\": [{\"id\": \"S3\", \"supports\": \"B retains last committed entry under eight-writer workload\"}],\n  \"uncertainty\": \"While B passes the specific reopen correctness test, broader performance or edge case behavior under different workloads is not established.\",\n  \"next_check\": \"none needed for this limited conclusion\"\n}",
+      "finish_reason": "stop",
+      "usage": {
+        "completion_tokens": 208,
+        "prompt_tokens": 989,
+        "total_tokens": 1197,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "text_tokens": 208
+        },
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "text_tokens": 989,
+          "cache_write_tokens": 0,
+          "cache_creation_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      "cost_usd": 0.00059198,
+      "elapsed_seconds": 2.1297082910314202,
+      "answer": {
+        "conflict_kind": "unequal_evidence",
+        "recommendation": "B",
+        "evidence_basis": "artifact_supported",
+        "rationale": "Option B is supported by test artifact S3 which directly measures reopen correctness under the specified constraints (eight writers, r2, fixture-local). Although S1 and S2 offer conflicting recommendations, S3 provides concrete evidence that B retains the last committed entry while A does not, directly addressing the target metric.",
+        "alternative": "Option A is rejected because S1 explicitly states it doesn't meet multi-writer requirements, and S3 directly shows A fails the reopen correctness test under those conditions.",
+        "citations": [
+          {
+            "id": "S3",
+            "supports": "B retains last committed entry under eight-writer workload"
+          }
+        ],
+        "uncertainty": "While B passes the specific reopen correctness test, broader performance or edge case behavior under different workloads is not established.",
+        "next_check": "none needed for this limited conclusion"
+      },
+      "checks": {
+        "unknown_citations": [],
+        "artifact_basis_without_artifact_citation": false,
+        "no_citations": false,
+        "expected_category_matches": {},
+        "semantic_support": "human_review_required",
+        "learner_value": "not_measured"
+      },
+      "choice_matches": true
+    },
+    {
+      "case": "validated_fit",
+      "arm": "contract",
+      "status": "parsed",
+      "text": "{\n  \"source_assessments\": [\n    {\n      \"id\": \"S1\",\n      \"provenance\": \"report\",\n      \"applicability\": \"not_validation\",\n      \"reason\": \"Reports do not provide empirical validation; this is a requirement-fit assessment.\"\n    },\n    {\n      \"id\": \"S2\",\n      \"provenance\": \"report\",\n      \"applicability\": \"not_validation\",\n      \"reason\": \"Reports do not provide empirical validation; this is a requirement-fit assessment.\"\n    },\n    {\n      \"id\": \"S3\",\n      \"provenance\": \"artifact\",\n      \"applicability\": \"applicable\",\n      \"reason\": \"The artifact matches the target's environment, metric, revision, and workload exactly.\"\n    }\n  ],\n  \"decision\": {\n    \"reason_code\": \"applicable_observation\",\n    \"sufficiency\": \"supported\",\n    \"recommendation\": \"B\",\n    \"basis_ids\": [\"S3\"],\n    \"explanation\": \"An applicable artifact (S3) directly measures reopen correctness under the specified conditions and supports option B.\",\n    \"limitation\": \"The decision is limited to the specific environment, metric, revision, and workload defined in the target.\",\n    \"next_check\": \"Further testing across different environments or workloads may be needed to generalize the result.\"\n  }\n}",
+      "finish_reason": "stop",
+      "usage": {
+        "completion_tokens": 283,
+        "prompt_tokens": 776,
+        "total_tokens": 1059,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "text_tokens": 283
+        },
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "text_tokens": 776,
+          "cache_write_tokens": 0,
+          "cache_creation_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      "cost_usd": 0.00068012,
+      "elapsed_seconds": 1.9317704590503126,
+      "answer": {
+        "source_assessments": [
+          {
+            "id": "S1",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "Reports do not provide empirical validation; this is a requirement-fit assessment."
+          },
+          {
+            "id": "S2",
+            "provenance": "report",
+            "applicability": "not_validation",
+            "reason": "Reports do not provide empirical validation; this is a requirement-fit assessment."
+          },
+          {
+            "id": "S3",
+            "provenance": "artifact",
+            "applicability": "applicable",
+            "reason": "The artifact matches the target's environment, metric, revision, and workload exactly."
+          }
+        ],
+        "decision": {
+          "reason_code": "applicable_observation",
+          "sufficiency": "supported",
+          "recommendation": "B",
+          "basis_ids": [
+            "S3"
+          ],
+          "explanation": "An applicable artifact (S3) directly measures reopen correctness under the specified conditions and supports option B.",
+          "limitation": "The decision is limited to the specific environment, metric, revision, and workload defined in the target.",
+          "next_check": "Further testing across different environments or workloads may be needed to generalize the result."
+        }
+      },
+      "checks": {
+        "integrity": true,
+        "provenance": true,
+        "applicability": true,
+        "decision": true,
+        "basis_coverage": true,
+        "all_mechanical_checks": true,
+        "explanation_entailment": "separate_review_required",
+        "learner_value": "not_measured"
+      },
+      "choice_matches": true
+    }
+  ],
+  "known_cost_usd": 0.01011932,
+  "calls_without_cost": 0,
+  "limits": [
+    "No independent holdout",
+    "Choice matching is not answer quality",
+    "Metadata is authored; authenticity not verified",
+    "Prompt and schema both change",
+    "No production promotion or database-engine comparison"
+  ]
+}

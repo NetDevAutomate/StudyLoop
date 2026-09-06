@@ -6,6 +6,8 @@ import logging
 import sqlite3
 from datetime import UTC, datetime, timedelta
 
+from agent_session_tools.context.scope import visibility_sql
+
 from . import _connection
 
 logger = logging.getLogger(__name__)
@@ -86,17 +88,18 @@ def topic_frequency(topic_keywords: list[str], days: int = 30) -> list[dict]:
     # terms carry spaces ("window functions", "lake formation") and unquoted
     # they would parse as separate AND'd terms.
     match_expr = " OR ".join('"' + kw.replace('"', '""') + '"' for kw in topic_keywords)
-    query = """
-        SELECT m.session_id, m.timestamp,
-            snippet(messages_fts, 0, '>>>', '<<<', '...', 30) as snippet
-        FROM messages_fts
-        JOIN messages m ON messages_fts.rowid = m.rowid
-        WHERE messages_fts.content MATCH ? AND m.timestamp > ?
-        ORDER BY m.timestamp DESC
-        LIMIT 50
-    """
     try:
-        rows = conn.execute(query, [match_expr, cutoff]).fetchall()
+        visible, params = visibility_sql(conn, "m.session_id")
+        query = f"""
+            SELECT m.session_id, m.timestamp,
+                snippet(messages_fts, 0, '>>>', '<<<', '...', 30) as snippet
+            FROM messages_fts
+            JOIN messages m ON messages_fts.rowid = m.rowid
+            WHERE messages_fts.content MATCH ? AND m.timestamp > ? AND {visible}
+            ORDER BY m.timestamp DESC
+            LIMIT 50
+        """
+        rows = conn.execute(query, [match_expr, cutoff, *params]).fetchall()
         return [dict(r) for r in rows]
     except sqlite3.OperationalError as exc:
         # R-22b: a bare `except sqlite3.OperationalError: return []` cannot
@@ -124,15 +127,17 @@ def struggle_topics(days: int = 30, min_sessions: int = 3) -> list[dict]:
     cutoff = (datetime.now(UTC) - timedelta(days=days)).isoformat()
     # Look for user questions (role='user') with question marks
     try:
+        visible, params = visibility_sql(conn, "m.session_id")
         rows = conn.execute(
-            """
+            f"""
             SELECT m.content, m.session_id, m.timestamp
             FROM messages m
             WHERE m.role = 'user' AND m.content LIKE '%?%' AND m.timestamp > ?
+              AND {visible}
             ORDER BY m.timestamp DESC
             LIMIT 200
         """,
-            [cutoff],
+            [cutoff, *params],
         ).fetchall()
     except sqlite3.OperationalError as exc:
         # R-22b: see topic_frequency's comment above -- same reasoning.

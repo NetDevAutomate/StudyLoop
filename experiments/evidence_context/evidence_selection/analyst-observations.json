@@ -1,0 +1,375 @@
+[
+  {
+    "id": "B01",
+    "question": "Q1",
+    "arm": "reviewed_only",
+    "repeat": 1,
+    "reviewer": "coordinator pre-council-result inspection",
+    "accepted_for_release": false,
+    "facets": {
+      "browser_choice_rationale": true,
+      "voice_validation_not_established": true
+    },
+    "grade": "PARTIAL",
+    "reason": "Voice rationale is correct; broad wording that evidence is only planning obscures the supplied repository test reports. Exact counts are optional.",
+    "judgment_uncertainty": "Could be read as scoped to voice validation; retain ambiguity rather than score a clear factual error."
+  },
+  {
+    "id": "B02",
+    "question": "Q2",
+    "arm": "reviewed_only",
+    "repeat": 1,
+    "reviewer": "coordinator pre-council-result inspection",
+    "accepted_for_release": false,
+    "grade": "SUPPORTED",
+    "facets": {
+      "shared_marker_reason": true,
+      "screen_detachment": true,
+      "completion_unknown": true
+    },
+    "reason": "Explains full resume and screen; maintains that eventual completion is not established. Citation location/support assessed separately."
+  },
+  {
+    "id": "B03",
+    "question": "Q3",
+    "arm": "reviewed_only",
+    "repeat": 1,
+    "reviewer": "coordinator pre-council-result inspection",
+    "accepted_for_release": false,
+    "facets": {
+      "reported_default_defect": true,
+      "reported_parking_crud": true,
+      "reported_reload": true,
+      "reported_cleanup": true,
+      "fix_not_promoted_to_completed": true,
+      "reports_not_authenticated": false
+    },
+    "grade": "UNSUPPORTED",
+    "reason": "Recovers reported results and leaves fix unconfirmed, but says CRUD/cleanup were actually validated without artifact qualification."
+  },
+  {
+    "id": "B04",
+    "question": "Q1",
+    "arm": "original",
+    "repeat": 1,
+    "reviewer": "coordinator pre-council-result inspection",
+    "accepted_for_release": false,
+    "facets": {
+      "browser_choice_rationale": true,
+      "voice_validation_not_established": true
+    },
+    "grade": "SUPPORTED",
+    "reason": "Rationale and lack of applicable validation are qualified; exact citation failures remain separate."
+  },
+  {
+    "id": "B05",
+    "question": "Q3",
+    "arm": "reviewed_plus_original",
+    "repeat": 1,
+    "reviewer": "coordinator pre-council-result inspection",
+    "accepted_for_release": false,
+    "facets": {
+      "reported_default_defect": true,
+      "reported_parking_crud": true,
+      "reported_reload": true,
+      "reported_cleanup": true,
+      "fix_not_promoted_to_completed": false,
+      "reports_not_authenticated": true
+    },
+    "grade": "UNSUPPORTED",
+    "reason": "Recovers reported results and qualifies report provenance, but promotes the in-progress port correction to completed."
+  },
+  {
+    "id": "B06",
+    "question": "Q4",
+    "arm": "reviewed_only",
+    "repeat": 1,
+    "reviewer": "coordinator pre-council-result inspection",
+    "accepted_for_release": false,
+    "facets": {
+      "no_invented_benchmark": true,
+      "absence_scoped_to_pack": false
+    },
+    "grade": "UNSUPPORTED",
+    "reason": "Empty-pack limitation is disclosed, but the answer asserts no historical benchmark established the result instead of merely no evidence supplied.",
+    "judgment_uncertainty": "Scope of headline versus caveat can be disputed; do not reduce this to a confident global quality rate."
+  },
+  {
+    "id": "B07",
+    "question": "Q1",
+    "arm": "reviewed_only",
+    "repeat": 0,
+    "reviewer": "coordinator pre-council-result inspection",
+    "accepted_for_release": false,
+    "facets": {
+      "browser_choice_rationale": true,
+      "voice_validation_not_established": true
+    },
+    "grade": "PARTIAL",
+    "reason": "Voice rationale is correct; broad wording that evidence is only planning obscures the supplied repository test reports. Exact counts are optional.",
+    "judgment_uncertainty": "Could be read as scoped to voice validation; retain ambiguity rather than score a clear factual error."
+  },
+  {
+    "id": "B08",
+    "question": "Q1",
+    "arm": "reviewed_plus_original",
+    "repeat": 1,
+    "reviewer": "coordinator pre-council-result inspection",
+    "accepted_for_release": false,
+    "facets": {
+      "browser_choice_rationale": true,
+      "voice_validation_not_established": true
+    },
+    "grade": "UNSUPPORTED",
+    "reason": "Invents an iPad version of OpenVox as the subject of the no-local-API observation; the source names only the iPad version.",
+    "judgment_uncertainty": "Entity attribution is an analyst interpretation; ask reviewers whether it is material."
+  },
+  {
+    "id": "B09",
+    "question": "Q3",
+    "arm": "reviewed_only",
+    "repeat": 0,
+    "reviewer": "coordinator pre-council-result inspection",
+    "accepted_for_release": false,
+    "facets": {
+      "reported_default_defect": true,
+      "reported_parking_crud": true,
+      "reported_reload": true,
+      "reported_cleanup": true,
+      "fix_not_promoted_to_completed": true,
+      "reports_not_authenticated": false
+    },
+    "grade": "UNSUPPORTED",
+    "reason": "Recovers reported results and leaves fix unconfirmed, but says CRUD/cleanup were actually validated without artifact qualification."
+  },
+  {
+    "id": "B10",
+    "question": "Q2",
+    "arm": "reviewed_plus_original",
+    "repeat": 1,
+    "reviewer": "coordinator pre-council-result inspection",
+    "accepted_for_release": false,
+    "grade": "SUPPORTED",
+    "facets": {
+      "shared_marker_reason": true,
+      "screen_detachment": true,
+      "completion_unknown": true
+    },
+    "reason": "Explains full resume and screen; maintains that eventual completion is not established. Citation location/support assessed separately.",
+    "citation_support_warning": "One citation describes a hung launch and checks; the switch to screen is supported elsewhere in the pack, not by that quote alone."
+  },
+  {
+    "id": "B11",
+    "question": "Q3",
+    "arm": "original",
+    "repeat": 0,
+    "reviewer": "coordinator pre-council-result inspection",
+    "accepted_for_release": false,
+    "facets": {
+      "reported_default_defect": false,
+      "reported_parking_crud": false,
+      "reported_reload": false,
+      "reported_cleanup": false,
+      "fix_not_promoted_to_completed": true,
+      "reports_not_authenticated": false
+    },
+    "grade": "UNSUPPORTED",
+    "reason": "Uses prior workflow/planned goals as completed Parking checks; required result passages were not retrieved."
+  },
+  {
+    "id": "B12",
+    "question": "Q4",
+    "arm": "original",
+    "repeat": 0,
+    "reviewer": "coordinator pre-council-result inspection",
+    "accepted_for_release": false,
+    "facets": {
+      "no_invented_benchmark": true,
+      "absence_scoped_to_pack": true
+    },
+    "grade": "SUPPORTED",
+    "reason": "Correctly limits absence of benchmark support to provided evidence."
+  },
+  {
+    "id": "B13",
+    "question": "Q1",
+    "arm": "original",
+    "repeat": 0,
+    "reviewer": "coordinator pre-council-result inspection",
+    "accepted_for_release": false,
+    "facets": {
+      "browser_choice_rationale": true,
+      "voice_validation_not_established": true
+    },
+    "grade": "SUPPORTED",
+    "reason": "Rationale and lack of applicable validation are qualified; exact citation failures remain separate."
+  },
+  {
+    "id": "B14",
+    "question": "Q2",
+    "arm": "reviewed_only",
+    "repeat": 0,
+    "reviewer": "coordinator pre-council-result inspection",
+    "accepted_for_release": false,
+    "grade": "SUPPORTED",
+    "facets": {
+      "shared_marker_reason": true,
+      "screen_detachment": true,
+      "completion_unknown": true
+    },
+    "reason": "Explains full resume and screen; maintains that eventual completion is not established. Citation location/support assessed separately."
+  },
+  {
+    "id": "B15",
+    "question": "Q4",
+    "arm": "original",
+    "repeat": 1,
+    "reviewer": "coordinator pre-council-result inspection",
+    "accepted_for_release": false,
+    "facets": {
+      "no_invented_benchmark": true,
+      "absence_scoped_to_pack": true
+    },
+    "grade": "SUPPORTED",
+    "reason": "Correctly limits absence of benchmark support to provided evidence."
+  },
+  {
+    "id": "B16",
+    "question": "Q4",
+    "arm": "reviewed_plus_original",
+    "repeat": 1,
+    "reviewer": "coordinator pre-council-result inspection",
+    "accepted_for_release": false,
+    "facets": {
+      "no_invented_benchmark": true,
+      "absence_scoped_to_pack": true
+    },
+    "grade": "SUPPORTED",
+    "reason": "Correctly limits absence of benchmark support to provided evidence."
+  },
+  {
+    "id": "B17",
+    "question": "Q2",
+    "arm": "reviewed_plus_original",
+    "repeat": 0,
+    "reviewer": "coordinator pre-council-result inspection",
+    "accepted_for_release": false,
+    "grade": "SUPPORTED",
+    "facets": {
+      "shared_marker_reason": true,
+      "screen_detachment": true,
+      "completion_unknown": true
+    },
+    "reason": "Explains full resume and screen; maintains that eventual completion is not established. Citation location/support assessed separately."
+  },
+  {
+    "id": "B18",
+    "question": "Q4",
+    "arm": "reviewed_only",
+    "repeat": 0,
+    "reviewer": "coordinator pre-council-result inspection",
+    "accepted_for_release": false,
+    "facets": {
+      "no_invented_benchmark": true,
+      "absence_scoped_to_pack": false
+    },
+    "grade": "UNSUPPORTED",
+    "reason": "Empty-pack limitation is disclosed, but the answer asserts no historical benchmark established the result instead of merely no evidence supplied.",
+    "judgment_uncertainty": "Scope of headline versus caveat can be disputed; do not reduce this to a confident global quality rate."
+  },
+  {
+    "id": "B19",
+    "question": "Q2",
+    "arm": "original",
+    "repeat": 0,
+    "reviewer": "coordinator pre-council-result inspection",
+    "accepted_for_release": false,
+    "grade": "SUPPORTED",
+    "facets": {
+      "shared_marker_reason": true,
+      "screen_detachment": true,
+      "completion_unknown": true
+    },
+    "reason": "Explains full resume and screen; maintains that eventual completion is not established. Citation location/support assessed separately."
+  },
+  {
+    "id": "B20",
+    "question": "Q1",
+    "arm": "reviewed_plus_original",
+    "repeat": 0,
+    "reviewer": "coordinator pre-council-result inspection",
+    "accepted_for_release": false,
+    "facets": {
+      "browser_choice_rationale": true,
+      "voice_validation_not_established": true
+    },
+    "grade": "UNSUPPORTED",
+    "reason": "Invents an iPad version of OpenVox as the subject of the no-local-API observation; the source names only the iPad version.",
+    "judgment_uncertainty": "Entity attribution is an analyst interpretation; ask reviewers whether it is material."
+  },
+  {
+    "id": "B21",
+    "question": "Q4",
+    "arm": "reviewed_plus_original",
+    "repeat": 0,
+    "reviewer": "coordinator pre-council-result inspection",
+    "accepted_for_release": false,
+    "facets": {
+      "no_invented_benchmark": true,
+      "absence_scoped_to_pack": true
+    },
+    "grade": "SUPPORTED",
+    "reason": "Correctly limits absence of benchmark support to provided evidence."
+  },
+  {
+    "id": "B22",
+    "question": "Q3",
+    "arm": "reviewed_plus_original",
+    "repeat": 0,
+    "reviewer": "coordinator pre-council-result inspection",
+    "accepted_for_release": false,
+    "facets": {
+      "reported_default_defect": true,
+      "reported_parking_crud": true,
+      "reported_reload": true,
+      "reported_cleanup": true,
+      "fix_not_promoted_to_completed": false,
+      "reports_not_authenticated": true
+    },
+    "grade": "UNSUPPORTED",
+    "reason": "Recovers reported results and qualifies report provenance, but promotes the in-progress port correction to completed."
+  },
+  {
+    "id": "B23",
+    "question": "Q2",
+    "arm": "original",
+    "repeat": 1,
+    "reviewer": "coordinator pre-council-result inspection",
+    "accepted_for_release": false,
+    "grade": "SUPPORTED",
+    "facets": {
+      "shared_marker_reason": true,
+      "screen_detachment": true,
+      "completion_unknown": true
+    },
+    "reason": "Explains full resume and screen; maintains that eventual completion is not established. Citation location/support assessed separately."
+  },
+  {
+    "id": "B24",
+    "question": "Q3",
+    "arm": "original",
+    "repeat": 1,
+    "reviewer": "coordinator pre-council-result inspection",
+    "accepted_for_release": false,
+    "facets": {
+      "reported_default_defect": false,
+      "reported_parking_crud": false,
+      "reported_reload": false,
+      "reported_cleanup": false,
+      "fix_not_promoted_to_completed": true,
+      "reports_not_authenticated": true
+    },
+    "grade": "UNSUPPORTED",
+    "reason": "Uses prior workflow/planned goals as completed Parking checks; required result passages were not retrieved."
+  }
+]

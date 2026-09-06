@@ -1,0 +1,92 @@
+{
+  "stage": 28,
+  "schema": 38,
+  "status": "tested_increment_not_release_acceptance",
+  "memory_and_experiment_tests": {
+    "passed": 1581,
+    "skipped": 1,
+    "seconds": 65.9,
+    "scope": "before final added cancellation and concurrent-batch tests"
+  },
+  "studyloop_tests": {
+    "passed": 3791,
+    "skipped": 4,
+    "deselected": 704,
+    "seconds": 167.5,
+    "scope": "before final added HTTP/cancellation tests and core refinements"
+  },
+  "final_focused_tests": {
+    "passed": 54,
+    "seconds": 5.07,
+    "covers": "core response, real consumers, ASGI bound/cancellation, 16 threaded requests and subprocess lesson"
+  },
+  "additional_compaction_tests": {
+    "passed": 77,
+    "seconds": 2.33
+  },
+  "additional_web_tests": {
+    "passed": 63,
+    "seconds": 3.83
+  },
+  "workspace_pyright": {
+    "errors": 0,
+    "warnings": 0
+  },
+  "installed_checks": {
+    "normal_http_returns_personal_only": true,
+    "http_discards_assembled_body": true,
+    "next_http_request_reloads_scope": true,
+    "away_and_back_changes_generation": true,
+    "mcp_rejects_between_helper_switch": true,
+    "mcp_error_excludes_partial_history": true,
+    "mcp_first_scope_has_one_win": true,
+    "next_mcp_request_uses_new_scope": true
+  },
+  "installed_runtime": "fresh memory + StudyLoop wheels with web extra; actual ASGI routes without lifespan; controlled helper injection in actual MCP stdio server",
+  "installed_upgrade": {
+    "from_version": 37,
+    "to_version": 38,
+    "old_tables_unchanged": 56,
+    "old_table_rows": 67,
+    "foreign_key_check": [],
+    "integrity_check": "ok",
+    "source_opened_read_only": true,
+    "limits": "Additive upgrade on a consistent disposable copy. Not full managed backup restoration with deletion reconciliation."
+  },
+  "benchmark": {
+    "without_response_guard_median_ms": 14.932,
+    "with_response_guard_median_ms": 16.892,
+    "iterations_each": 20,
+    "order": "alternating paired order",
+    "limits": "Two fictional sessions, warm local direct MCP function; includes helper queries and policy reads; excludes transport/process startup. No production-scale, engine or concurrent-load comparison."
+  },
+  "browser": {
+    "sections": 4,
+    "disclosures_opened": 4,
+    "viewport_fits": true,
+    "console_errors": 0,
+    "own_tab_and_server_closed": true
+  },
+  "council": {
+    "design_providers": [
+      "meta",
+      "qwen",
+      "mistral"
+    ],
+    "result_providers": [
+      "meta",
+      "qwen",
+      "mistral"
+    ],
+    "decision": "preserve tested increment; full goal active"
+  },
+  "limits": [
+    "Optimistic permission validation at completion, not a historical snapshot of all facts",
+    "Cannot retract already delivered content",
+    "Live stream, WebSockets and remaining session/planning/learner files not covered",
+    "No full managed sync/forget/reimport/restore/index acceptance",
+    "Custom thread pools need explicit context propagation or boundary",
+    "Small warm benchmark excludes transport and production load",
+    "Older protected response databases require generation migration"
+  ]
+}
