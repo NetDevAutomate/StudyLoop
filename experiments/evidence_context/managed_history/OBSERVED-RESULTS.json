@@ -1,7 +1,7 @@
 {
   "stage": 40,
   "date": "2026-09-06",
-  "checkpoint": "pending-stage40-commit",
+  "checkpoint": "a63d4859",
   "schema": 46,
   "goal_complete": false,
   "baseline": "Forgotten canonical source returned from old full archive:1failed1passed.",
@@ -105,7 +105,7 @@
     "screenshot_inspected": true,
     "cleanup": "owned tab and server closed after QA"
   },
-  "commit_hooks": "pending implementation commit",
+  "commit_hooks": "a63d4859: lint,format,secrets,Bandit,author and full workspace src/test pyright passed. Verified wheel-checksum false positive is recorded narrowly in existing baseline.",
   "remaining": [
     "Modern full copying/refocus and exact fresh archive regrant coverage",
     "Managed restore preserving current controls and peer/instance history",

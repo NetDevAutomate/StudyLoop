@@ -1,7 +1,7 @@
 {
   "goal": "active",
-  "previous_goal_turn": "progress: Stage39 committed b57175b5; Stage40 permanent managed-history repair now verified, commit pending; full goal active",
-  "current_stage": "40 verified bounded checkpoint; implementation commit pending; next modern full copy/regrant and managed restore",
+  "previous_goal_turn": "progress: Stage40 committed a63d4859;1900combined+3826StudyLooppassed;47finalfocused;15finalinstalledCLI;all implementation hooks passed;full goal active",
+  "current_stage": "40 complete as bounded managed-history authority/permanent-cleanup checkpoint a63d4859; next modern full copy/regrant and managed restore",
   "requirements": {
     "P01": "partial: migrations throughv46; WAL-consistent StudyLoop backup and refusal of unsafe protected whole-file restore; managed restore remains required",
     "P02": "partial: actual four-harness exporters integrated and eight local real archives imported; Codex Desktop 0.153.0 observed; all native formats, other desktop coverage and installed end-to-end capture remain",
@@ -17,7 +17,7 @@
     "P12": "not yet proven",
     "P13": "partial: fresh installed graph HTTP/MCP10checks plus prior response/learner checks; full lifespan, live-session files/stream, installer and agent startup remain",
     "P14": "stages1-40 independently runnable; Stage40 records archive authority, cleanup cost, failed subject-purge interpretation and council arbitration; saved exercises unchanged",
-    "P15": "partial:1900memory/experiment passed1skip;3826StudyLoop passed4skip704deselected;47finalmanaged/backupchecks;15installedCLIchecks; commit hooks pending and full release audit remains"
+    "P15": "partial:1900memory/experiment passed1skip;3826StudyLoop passed4skip704deselected;47finalmanaged/backupchecks;15installedCLIchecks;a63d4859fullhooks pass;full release audit remains"
   },
   "completed_checkpoints": {
     "stage16": "6c736c5",
@@ -43,7 +43,8 @@
     "stage36": "28fe15d0",
     "stage37": "801a33e0",
     "stage38": "e48318ac",
-    "stage39": "b57175b5"
+    "stage39": "b57175b5",
+    "stage40": "a63d4859"
   },
   "current_findings": [
     "SQLite remains canonical; earlier equal-information storage comparison did not establish answer-quality superiority for another engine.",
@@ -102,8 +103,8 @@
   "verification": {
     "package_tests": "1900passed1optional skip128.94s; final runtime.47managed/backup assertions pass4.10s afterward; no runtime change.",
     "experiment_tests": "Stage40 five-view final installed native/CLI lesson15checks",
-    "workspace_pyright": "earlier Stage40 source0errors0warnings; final commit hook pending",
-    "commit_hooks": "pending Stage40 implementation commit",
+    "workspace_pyright": "Final source and tests passed in a63d4859 commit hooks",
+    "commit_hooks": "a63d4859: lint/format/secrets/Bandit/author/full workspace src and tests pyright passed; exact verified artifact checksum false positive baseline entry",
     "browser": "Stage40 five sections/five disclosures opened;viewport fits;screenshot inspected;ownedtab/serverclosedafterQA",
     "studyloop_tests": "3826passed4skipped704deselected175.45s;11existingdependency/forkwarnings; final runtime.",
     "focused_consumer_tests": "93 coordinator, tiering and context-store tests passed in 19.87s after counter and archival fixes",
