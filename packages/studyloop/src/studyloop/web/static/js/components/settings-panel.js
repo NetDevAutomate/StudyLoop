@@ -26,9 +26,49 @@ export function settingsPanel() {
       inputs: {},          // { slug: string } live input values
       status: {},          // { slug: { ok: string, error: string } }
       busy: '',            // slug whose request is in flight
+      brain: null,         // Second Brain launch state, WITHOUT the href
+      /* One card per selectable provider, in the order the cards render. */
+      brainProviders: [
+        { slug: 'obsidian', label: 'Obsidian' },
+        { slug: 'xtiles', label: 'xTiles' },
+      ],
 
       async init() {
-        await this.refreshProviders();
+        await Promise.all([this.refreshProviders(), this.refreshBrain()]);
+      },
+
+      /* The launch href is discarded on purpose: Settings explains state, it
+         never launches, so keeping the URL out of panel state is what makes
+         "the complete retained URL is never displayed" structurally true. */
+      async refreshBrain() {
+        try {
+          const r = await fetch('/api/second-brain/launch-target');
+          if (!r.ok) return;
+          const target = await r.json();
+          this.brain = {
+            provider: target.provider,
+            label: target.label,
+            enabled: target.enabled,
+            disabled_reason: target.disabled_reason,
+          };
+        } catch { /* leave state as-is */ }
+      },
+
+      /* 'active' | 'muted' — the two visual states the Second Brain cards
+         carry. Only the SELECTED provider is active; everything else
+         (including every card while state is still loading) is muted. */
+      brainCardState(provider) {
+        return this.brain && this.brain.provider === provider ? 'active' : 'muted';
+      },
+
+      /* Configuration guidance per card. An active provider's guidance is the
+         API's own disabled reason (empty when it is launch-ready); a muted
+         provider's guidance names the CLI command that selects it. */
+      brainGuidance(provider) {
+        if (this.brainCardState(provider) === 'active') {
+          return this.brain.disabled_reason || '';
+        }
+        return `Not selected. Run 'studyloop brain enable ${provider}' to use it.`;
       },
 
       async refreshProviders() {

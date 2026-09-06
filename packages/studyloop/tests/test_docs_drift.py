@@ -417,6 +417,15 @@ def _known_top_level_keys() -> set[str]:
 
     keys: set[str] = {name for name, _coerce in settings_mod._SCALAR_FIELDS}
     keys.update(_RAW_GET_RE.findall(_static_function_source(settings_mod, "load_settings")))
+    # The provider-aware-second-brain-launcher change moved load_settings's
+    # body into _load_settings_from_raw so mutate_raw_config can validate a
+    # candidate raw dict before writing it; load_settings is now a one-line
+    # delegate. The raw.get("content"/"topics"/"agents"/...) reads live in the
+    # helper, so the scan must follow them there -- losing this line silently
+    # drops those keys from the derived set (the sentinel below now pins them).
+    keys.update(
+        _RAW_GET_RE.findall(_static_function_source(settings_mod, "_load_settings_from_raw"))
+    )
     # `second_brain` is parsed in its own helper rather than inline in
     # load_settings (the section needs real validation, not a one-line coercion),
     # so the scan has to look there too or the key derivation silently loses it --
@@ -488,7 +497,7 @@ _NON_CONFIG_MARKER_KEYS: frozenset[str] = frozenset(
 #: when a doc happened to mention the lost key (M0 council finding A2,
 #: deepseek-r1). Extend this list when a new section is added to config.yaml.
 _SENTINEL_KNOWN_KEYS: frozenset[str] = frozenset(
-    {"web_port", "browser", "lan_password", "tts", "second_brain"}
+    {"web_port", "browser", "lan_password", "tts", "second_brain", "content", "topics", "agents"}
 )
 
 

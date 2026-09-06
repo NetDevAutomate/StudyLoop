@@ -22,16 +22,16 @@ class TestDoctorIntegration:
     def _isolate(self, tmp_path: Path, monkeypatch):
         """Isolate from real config/DB and block all network access.
 
-        Patches the module-level _CONFIG_PATH in studyloop.settings so that
-        load_settings(), get_db_path(), and check_config_file() all read from
-        the temp YAML rather than the real user config.
+        Sets STUDYLOOP_CONFIG (the public override contract, read lazily by
+        get_config_path()) so that load_settings(), get_db_path(), and
+        check_config_file() all read from the temp YAML rather than the real
+        user config. doctor.core resolves its own copy through
+        _get_config_path, which is patched alongside for the same reason.
         """
-        import studyloop.settings as _settings
-
         config = tmp_path / "config.yaml"
         config.write_text("obsidian_base: ''\ntopics: []\n")
 
-        monkeypatch.setattr(_settings, "_CONFIG_PATH", config)
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(config))
         monkeypatch.setattr("studyloop.doctor.core._get_config_path", lambda: config)
 
         # Block all network access — prevent 10s timeouts from urllib

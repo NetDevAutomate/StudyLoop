@@ -6,14 +6,21 @@ All configuration types, topic mapping, and path resolution live here.
 
 from __future__ import annotations
 
+import fcntl
 import os
 import re
+import stat
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
-from typing import Any
+from typing import TYPE_CHECKING, Any
+from urllib.parse import urlsplit
 
 import click
 import yaml
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 CONFIG_DIR = Path.home() / ".config" / "studyloop"
 LEGACY_CONFIG_DIR = Path.home() / ".config" / "studyctl"
@@ -336,6 +343,8 @@ class SecondBrainConfig:
     #: Add ``[[wikilinks]]`` to the learner's own notes when the export sink's
     #: topic matcher is importable.
     backlinks: bool = True
+    #: Reviewed xTiles destination retained independently of provider consent.
+    xtiles_destination_url: str | None = None
 
 
 @dataclass
@@ -496,41 +505,61 @@ def resolve_study_dirs() -> list[str]:
     return [str(Path(base_path).expanduser())]
 
 
-def write_raw_config(data: dict[str, Any]) -> Path:
-    """Write raw YAML config to the active config path and return the path.
+def _atomic_replace_raw_config(config_path: Path, data: dict[str, Any]) -> Path:
+    content = yaml.dump(data, default_flow_style=False, sort_keys=False)
+    try:
+        current_mode = stat.S_IMODE(config_path.stat().st_mode)
+    except FileNotFoundError:
+        current_mode = 0o600
+    destination_mode = current_mode if current_mode & 0o077 == 0 else 0o600
+    temp_fd, temp_name = tempfile.mkstemp(
+        dir=config_path.parent,
+        prefix=f".{config_path.name}.",
+        suffix=".tmp",
+    )
+    temp_path = Path(temp_name)
+    try:
+        with os.fdopen(temp_fd, "w") as handle:
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+        temp_path.chmod(destination_mode)
+        os.replace(temp_path, config_path)
+    finally:
+        temp_path.unlink(missing_ok=True)
+    return config_path
 
-    ``config.yaml`` can hold ``lan_password`` in plaintext, so the file is
-    locked to owner-only (0600) after every write, and the config dir is
-    locked to 0700 the first time this function creates it -- the same
-    posture ``secrets.py`` uses for the encrypted secrets store. A config
-    directory that already existed (and whose permissions someone may have
-    deliberately loosened, e.g. to share read access with another local
-    tool) is left alone; only the file itself is re-tightened on every save,
-    which also repairs a pre-existing 0644 file on its next write.
 
-    R-14b: ``Path.write_text`` followed by a separate ``chmod`` left a real
-    window -- for a BRAND NEW file, ``write_text`` creates it at the process
-    umask mode (typically 0644) and only ``chmod`` afterward narrows it, so
-    the plaintext ``lan_password`` briefly sat on disk wider than 0600.
-    ``os.open`` with ``O_CREAT`` and an explicit mode creates a new file at
-    that mode atomically -- there is no window where it exists any wider.
-    ``O_CREAT``'s mode argument is a no-op on an ALREADY-existing file (POSIX
-    leaves its current permissions alone), which is exactly why the
-    unconditional ``chmod`` below is kept: it is what repairs a pre-existing
-    0644 file (from before this fix shipped) on its next save.
-    """
+def mutate_raw_config(
+    mutator: Callable[[dict[str, Any]], dict[str, Any]],
+) -> Path:
+    """Apply one serialized raw configuration mutation."""
     config_path = get_config_path()
     parent = config_path.parent
     dir_already_existed = parent.exists()
     parent.mkdir(parents=True, exist_ok=True)
     if not dir_already_existed:
         parent.chmod(0o700)
-    content = yaml.dump(data, default_flow_style=False, sort_keys=False)
-    fd = os.open(config_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w") as handle:
-        handle.write(content)
-    config_path.chmod(0o600)
-    return config_path
+
+    lock_path = config_path.with_name(f".{config_path.name}.lock")
+    lock_fd = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o600)
+    with os.fdopen(lock_fd, "r+") as lock_handle:
+        fcntl.flock(lock_handle.fileno(), fcntl.LOCK_EX)
+        raw = load_raw_config()
+        result = mutator(raw)
+        if not isinstance(result, dict):
+            raise ConfigError("Configuration mutation must return a mapping.")
+        _load_settings_from_raw(result)
+        return _atomic_replace_raw_config(config_path, result)
+
+
+def write_raw_config(data: dict[str, Any]) -> Path:
+    """Atomically replace the active config through the shared mutation owner."""
+
+    def replace_config(_current: dict[str, Any]) -> dict[str, Any]:
+        return data
+
+    return mutate_raw_config(replace_config)
 
 
 # Top-level scalar fields: (settings_attr, coerce_fn).
@@ -717,6 +746,63 @@ def _second_brain_folder(raw: object) -> str:
     return folder
 
 
+def _xtiles_destination(raw: object) -> str | None:
+    """Validate a retained xTiles destination without disclosing it in errors."""
+    if raw is None:
+        return None
+    if not isinstance(raw, str):
+        raise ConfigError(
+            "Invalid value for 'second_brain.xtiles_destination_url': "
+            "the destination must be a URL string."
+        )
+    if len(raw) > 2048:
+        raise ConfigError(
+            "Invalid value for 'second_brain.xtiles_destination_url': "
+            "the destination exceeds 2048 characters."
+        )
+
+    try:
+        parsed = urlsplit(raw)
+        port = parsed.port
+    except ValueError as exc:
+        raise ConfigError(
+            "Invalid value for 'second_brain.xtiles_destination_url': "
+            "the destination is not a valid URL."
+        ) from exc
+
+    if parsed.scheme.lower() != "https":
+        reason = "the destination must use HTTPS"
+    elif parsed.username is not None or parsed.password is not None:
+        reason = "the destination must not contain user information"
+    elif parsed.hostname is None:
+        reason = "the destination must name an allowed xTiles host"
+    elif not parsed.hostname.isascii():
+        reason = "the destination hostname must contain ASCII characters only"
+    elif parsed.hostname.lower() not in {"xtiles.app", "app.xtiles.app"}:
+        reason = "the destination host is not allowed"
+    elif port not in {None, 443}:
+        reason = "the destination must not use a non-default port"
+    elif parsed.query:
+        reason = "the destination must not contain a query"
+    elif parsed.fragment:
+        reason = "the destination must not contain a fragment"
+    elif parsed.path in {"", "/"}:
+        reason = "the destination must identify an xTiles resource"
+    else:
+        return raw
+
+    raise ConfigError(f"Invalid value for 'second_brain.xtiles_destination_url': {reason}.")
+
+
+def normalize_provider(raw: object) -> str:
+    """The one recognition rule for a raw ``second_brain.provider`` value.
+
+    Shared with the launch-target route's invalid-config fallback so the two
+    surfaces cannot drift: what this function recognizes, the fallback labels.
+    """
+    return str(raw).strip().lower()
+
+
 def resolve_second_brain(raw: dict[str, Any]) -> SecondBrainConfig:
     """Build :class:`SecondBrainConfig` from the raw config mapping.
 
@@ -744,7 +830,7 @@ def resolve_second_brain(raw: dict[str, Any]) -> SecondBrainConfig:
             "remove these keys. StudyLoop writes notes directly."
         )
 
-    provider = str(section.get("provider", "none")).strip().lower()
+    provider = normalize_provider(section.get("provider", "none"))
     if provider not in SECOND_BRAIN_PROVIDERS:
         raise ConfigError(
             f"Invalid value for 'second_brain.provider' in {get_config_path()}: "
@@ -776,13 +862,14 @@ def resolve_second_brain(raw: dict[str, Any]) -> SecondBrainConfig:
         vault_path=vault_path,
         folder=_second_brain_folder(section.get("folder", defaults.folder)),
         backlinks=_second_brain_bool(section.get("backlinks", defaults.backlinks), "backlinks"),
+        xtiles_destination_url=_xtiles_destination(section.get("xtiles_destination_url")),
     )
 
 
-def load_settings() -> Settings:
-    """Load settings from config file, falling back to defaults."""
+def _load_settings_from_raw(raw_config: dict[str, Any] | None = None) -> Settings:
+    """Resolve settings from config data or the active file."""
     settings = Settings()
-    raw = load_raw_config()
+    raw = load_raw_config() if raw_config is None else raw_config
     if not raw:
         return settings
 
@@ -924,6 +1011,11 @@ def load_settings() -> Settings:
         )
 
     return settings
+
+
+def load_settings() -> Settings:
+    """Load settings from the active config file, falling back to defaults."""
+    return _load_settings_from_raw()
 
 
 # ---------------------------------------------------------------------------

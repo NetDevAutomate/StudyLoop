@@ -151,17 +151,38 @@ def test_no_automatic_publish_call_sites() -> None:
     ``mcp/tools.py`` is exempt for exactly one line: it delegates due-card
     aggregation to a helper the backend also uses, so that the backend never
     has to import ``fastmcp``.
+
+    ``web/routes/second_brain.py`` and its two registration lines in
+    ``web/app.py`` are exempt because the provider-aware launcher spec
+    REQUIRES a read-only ``GET /api/second-brain/launch-target`` route.
+    The exemption stays safe on this file's own terms: the route imports
+    only the pure ``second_brain.launch`` policy module (whose import
+    allowlist is pinned by ``test_second_brain_launch.py``) plus settings
+    resolution, and the route module's own dependency-boundary test pins
+    that it cannot publish, redirect, launch a desktop app, or reach
+    xTiles. Everything else under ``session``, ``web``, and ``mcp`` still
+    may not mention the feature at all.
     """
     from pathlib import Path
 
     src = Path(__file__).resolve().parents[1] / "src" / "studyloop"
+    launch_route_exemptions = {
+        "web/routes/second_brain.py": None,  # whole file: the spec-required read-only route
+        "web/app.py": ("second_brain,", "app.include_router(second_brain.router"),
+    }
     offenders: list[str] = []
     for package in ("session", "web", "mcp"):
         for path in (src / package).rglob("*.py"):
+            relative = str(path.relative_to(src))
+            allowed_lines = launch_route_exemptions.get(relative, ())
+            if allowed_lines is None:
+                continue
             text = path.read_text(encoding="utf-8")
             for number, line in enumerate(text.splitlines(), start=1):
                 if "second_brain" in line or "cli._brain" in line:
-                    offenders.append(f"{path.relative_to(src)}:{number}: {line.strip()}")
+                    if any(line.strip().startswith(prefix) for prefix in allowed_lines):
+                        continue
+                    offenders.append(f"{relative}:{number}: {line.strip()}")
     assert offenders == [], "automatic second-brain call sites:\n" + "\n".join(offenders)
 
 

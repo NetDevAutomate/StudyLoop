@@ -30,7 +30,7 @@ def mock_env(tmp_path, monkeypatch):
     # Patch the module-level paths
     monkeypatch.setattr("studyloop.cli._backup.CONFIG_DIR", config_dir)
     monkeypatch.setattr("studyloop.cli._backup.DEFAULT_DB", db)
-    monkeypatch.setattr("studyloop.cli._backup._CONFIG_PATH", config)
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(config))
 
     return config_dir
 
@@ -68,7 +68,7 @@ class TestBackup:
         empty_dir.mkdir()
         monkeypatch.setattr("studyloop.cli._backup.CONFIG_DIR", empty_dir)
         monkeypatch.setattr("studyloop.cli._backup.DEFAULT_DB", empty_dir / "nope.db")
-        monkeypatch.setattr("studyloop.cli._backup._CONFIG_PATH", empty_dir / "nope.yaml")
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(empty_dir / "nope.yaml"))
 
         result = runner.invoke(cli, ["backup"])
         assert result.exit_code == 0

@@ -22,26 +22,11 @@ the hostname field in each host entry.
 
 from __future__ import annotations
 
-import os
 import socket
 import subprocess
 from pathlib import Path
 
-import yaml
-
 from .settings import get_config_path, load_raw_config, load_settings, write_raw_config
-
-CONFIG_PATH = get_config_path()
-_DEFAULT_CONFIG_PATH = CONFIG_PATH
-
-
-def _active_config_path() -> Path:
-    """Return active config path while preserving old test monkeypatch hooks."""
-    if os.environ.get("STUDYLOOP_CONFIG"):
-        return get_config_path()
-    if CONFIG_PATH != _DEFAULT_CONFIG_PATH:
-        return CONFIG_PATH
-    return get_config_path()
 
 
 def _get_default_user() -> str:
@@ -50,12 +35,7 @@ def _get_default_user() -> str:
 
 
 def _load_config() -> dict:
-    config_path = _active_config_path()
-    if config_path == get_config_path():
-        return load_raw_config()
-    if not config_path.exists():
-        return {}
-    return yaml.safe_load(config_path.read_text()) or {}
+    return load_raw_config()
 
 
 def _resolve_hosts(config: dict) -> tuple[str | None, dict, dict[str, dict]]:
@@ -127,9 +107,7 @@ def push_state(remote: str | None = None) -> list[str]:
     """
     config = _load_config()
     if not config:
-        raise FileNotFoundError(
-            f"No config at {_active_config_path()}. Run 'studyloop state init'."
-        )
+        raise FileNotFoundError(f"No config at {get_config_path()}. Run 'studyloop state init'.")
 
     _, local_config, remotes = _resolve_hosts(config)
     if remote:
@@ -174,7 +152,7 @@ def pull_state(remote: str | None = None) -> list[str]:
     """Pull state from remote machine(s). Sessions DB uses merge logic."""
     config = _load_config()
     if not config:
-        raise FileNotFoundError(f"No config at {_active_config_path()}")
+        raise FileNotFoundError(f"No config at {get_config_path()}")
 
     _, local_config, remotes = _resolve_hosts(config)
     if remote:
@@ -217,7 +195,7 @@ def sync_status() -> dict:
     """Check config and connectivity."""
     config = _load_config()
     if not config:
-        return {"configured": False, "config_path": str(_active_config_path())}
+        return {"configured": False, "config_path": str(get_config_path())}
 
     local_name, _, remotes = _resolve_hosts(config)
 
@@ -272,7 +250,7 @@ def init_interactive_config(console: object) -> Path:
     if not isinstance(console, Console):
         console = Console()
 
-    config_path = _active_config_path()
+    config_path = get_config_path()
     config_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Load existing config or start fresh
@@ -426,10 +404,7 @@ def init_interactive_config(console: object) -> Path:
     # Ensure topics key exists
     config.setdefault("topics", [])
 
-    if config_path == get_config_path():
-        return write_raw_config(config)
-    config_path.write_text(yaml.dump(config, default_flow_style=False, sort_keys=False))
-    return config_path
+    return write_raw_config(config)
 
 
 def _prompt_yn(question: str, default: bool = False) -> bool:
@@ -450,7 +425,7 @@ def _prompt_text(question: str, default: str = "") -> str:
 
 def init_config() -> Path:
     """Create default config file with unified hosts schema."""
-    config_path = _active_config_path()
+    config_path = get_config_path()
     config_path.parent.mkdir(parents=True, exist_ok=True)
     if config_path.exists():
         return config_path
@@ -469,7 +444,4 @@ def init_config() -> Path:
             },
         },
     }
-    if config_path == get_config_path():
-        return write_raw_config(default)
-    config_path.write_text(yaml.dump(default, default_flow_style=False, sort_keys=False))
-    return config_path
+    return write_raw_config(default)

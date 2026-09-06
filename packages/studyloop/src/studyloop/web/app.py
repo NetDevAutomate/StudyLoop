@@ -244,6 +244,7 @@ def create_app(
         now,
         parking,
         plans,
+        second_brain,
         session,
         tts,
     )
@@ -270,6 +271,7 @@ def create_app(
     app.include_router(notes.router, prefix="/api")
     app.include_router(parking.router, prefix="/api")
     app.include_router(plans.router, prefix="/api")
+    app.include_router(second_brain.router, prefix="/api")
     app.include_router(tts.router, prefix="/api")
 
     try:

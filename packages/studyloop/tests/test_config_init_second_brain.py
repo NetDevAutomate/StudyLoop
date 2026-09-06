@@ -108,10 +108,10 @@ def test_an_existing_second_brain_section_survives_a_rerun(monkeypatch, tmp_path
                 "second_brain": {
                     "provider": "obsidian",
                     "vault_path": str(vault),
-                    "daily_note": True,
+                    "backlinks": False,
                 }
             }
         )
     )
     config = _run(monkeypatch, tmp_path, _answers(*VAULT_ACCEPTED, str(vault), "n"))
-    assert config["second_brain"]["daily_note"] is True
+    assert config["second_brain"]["backlinks"] is False

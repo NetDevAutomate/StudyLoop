@@ -51,7 +51,7 @@ def test_from_obsidian_defaults_to_configured_study_sources(
             }
         )
     )
-    monkeypatch.setattr("studyloop.settings._CONFIG_PATH", config_path)
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
 
     converted: list[tuple[Path, Path]] = []
     uploaded_names: list[str] = []
@@ -106,7 +106,7 @@ def test_from_obsidian_explicit_source_overrides_configured_defaults(
             }
         )
     )
-    monkeypatch.setattr("studyloop.settings._CONFIG_PATH", config_path)
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
 
     converted: list[Path] = []
 
@@ -178,7 +178,7 @@ def test_discover_uses_configured_study_sources_json(
             }
         )
     )
-    monkeypatch.setattr("studyloop.settings._CONFIG_PATH", config_path)
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
 
     result = runner.invoke(cli, ["content", "discover", "--json"])
 
@@ -217,7 +217,7 @@ def test_ingest_dry_run_outputs_plan_json(
             }
         )
     )
-    monkeypatch.setattr("studyloop.settings._CONFIG_PATH", config_path)
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
 
     result = runner.invoke(cli, ["content", "ingest", "--dry-run", "--json"])
 
@@ -254,7 +254,7 @@ def test_import_review_dry_run_outputs_json(
     )
     config_path = tmp_path / "config.yaml"
     config_path.write_text(yaml.dump({"content": {"base_path": str(tmp_path / "materials")}}))
-    monkeypatch.setattr("studyloop.settings._CONFIG_PATH", config_path)
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
 
     result = runner.invoke(
         cli,
@@ -275,7 +275,7 @@ def test_generate_cards_writes_flashcards_and_quiz_without_notebooklm(
     source.write_text("# Lesson\n\nETL means extract, transform, load.\n")
     config_path = tmp_path / "config.yaml"
     config_path.write_text(yaml.dump({"content": {"base_path": str(tmp_path / "materials")}}))
-    monkeypatch.setattr("studyloop.settings._CONFIG_PATH", config_path)
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
 
     class FakeGenerator:
         def generate_flashcards(self, source: str, title: str) -> FlashcardDeck:
@@ -327,7 +327,7 @@ def test_generate_practice_writes_hands_on_tasks_without_notebooklm(
     source.write_text("# Lesson\n\nA LEFT JOIN keeps unmatched left rows.\n")
     config_path = tmp_path / "config.yaml"
     config_path.write_text(yaml.dump({"content": {"base_path": str(tmp_path / "materials")}}))
-    monkeypatch.setattr("studyloop.settings._CONFIG_PATH", config_path)
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
 
     class FakeGenerator:
         def generate_practice(self, source: str, title: str) -> PracticeDeck:

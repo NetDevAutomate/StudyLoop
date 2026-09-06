@@ -165,6 +165,57 @@ def test_defaults_of_every_field(config_file) -> None:
     config = load_settings().second_brain
     assert config.folder == "Study"
     assert config.backlinks is True
+    assert config.xtiles_destination_url is None
+
+
+@pytest.mark.parametrize(
+    "destination",
+    [
+        "https://xtiles.app/projects/study-plan",
+        "https://app.xtiles.app/doc/study-plan",
+        "https://xtiles.app:443/projects/study-plan",
+    ],
+)
+def test_xtiles_destination_is_retained_without_selecting_provider(
+    config_file, destination
+) -> None:
+    config_file({"second_brain": {"xtiles_destination_url": destination}})
+
+    config = load_settings().second_brain
+
+    assert config.xtiles_destination_url == destination
+    assert config.provider == "none"
+
+
+@pytest.mark.parametrize(
+    "unsafe_destination",
+    [
+        "http://xtiles.app/projects/unsafe-http",
+        "https://example.com/projects/unsafe-host",
+        "https://user:secret@xtiles.app/projects/unsafe-userinfo",  # pragma: allowlist secret
+        "https://xtiles.app:444/projects/unsafe-port",
+        "https://xtiles.app/projects/unsafe-query?token=secret",
+        "https://xtiles.app/projects/unsafe-fragment#secret",
+        "https://xt\u0131les.app/projects/unsafe-unicode",
+        "https://xn--xtles-2za.app/projects/unsafe-idna",
+        "https://xtiles.app",
+        "https://xtiles.app/",
+        "//xtiles.app/projects/unsafe-relative",
+        "https://xtiles.app/" + ("x" * 2049),
+    ],
+)
+def test_unsafe_xtiles_destination_is_rejected_without_disclosure(
+    config_file, unsafe_destination
+) -> None:
+    config_file({"second_brain": {"xtiles_destination_url": unsafe_destination}})
+
+    with pytest.raises(ConfigError) as excinfo:
+        load_settings()
+
+    message = str(excinfo.value)
+    assert "second_brain.xtiles_destination_url" in message
+    assert unsafe_destination not in message
+    assert "\n" not in message.strip()
 
 
 @pytest.mark.parametrize("key", ["use_cli", "vault_name", "template", "daily_note"])
@@ -242,6 +293,25 @@ def test_invalid_config_cli_output_is_one_line(config_file) -> None:
     assert result.exit_code == 1
     assert "Traceback" not in result.output
     assert "second_brain.provider" in result.output
+
+
+def test_brain_status_reports_misspelled_provider_as_one_line(config_file) -> None:
+    """Spec scenario "Misspelled provider": the canonical WHEN is
+    ``studyloop brain status`` itself -- its error path runs through
+    ``get_backend()`` inside the command body, a different code path from
+    ``config show`` above, so the one-line/exit-1/allowed-values contract
+    must be proven there too."""
+    from studyloop.cli._brain import brain_group
+
+    config_file({"second_brain": {"provider": "obsidan"}})
+    result = CliRunner().invoke(brain_group, ["status"])
+    assert result.exit_code == 1
+    assert "Traceback" not in result.output
+    # One ConfigError line naming the allowed values.
+    assert "none" in result.output
+    assert "obsidian" in result.output
+    assert "xtiles" in result.output
+    assert len([line for line in result.output.splitlines() if line.strip()]) == 1
 
 
 # ---------------------------------------------------------------------------

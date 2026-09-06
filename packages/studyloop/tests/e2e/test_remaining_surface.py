@@ -378,3 +378,40 @@ def test_artefacts_index_responds_structurally(env) -> None:
     if resp.status_code == 200:
         body = resp.json()
         assert isinstance(body, dict | list), f"unexpected artefact payload: {body!r}"
+
+
+# ---------------------------------------------------------------------------
+# Second Brain launcher — GET /api/second-brain/launch-target
+# ---------------------------------------------------------------------------
+
+
+def test_launch_target_serves_inert_state_full_stack(env) -> None:
+    """The launch-target route answers from a real subprocess server.
+
+    The hermetic world configures no second brain, so the honest answer is a
+    disabled ``none`` target — pinned here with the exact six-field schema and
+    the no-store cache policy, because a cached launch target could hand a
+    later browser session a stale href. The mutation leg exists because the
+    spec forbids any write handler at this route: a POST must be rejected by
+    routing itself, not by a handler that declines politely.
+    """
+    import requests
+
+    resp = requests.get(f"{env.base_url}/api/second-brain/launch-target", timeout=15)
+    assert resp.status_code == 200, resp.text
+    assert resp.headers.get("Cache-Control") == "no-store"
+    body = resp.json()
+    assert set(body) == {
+        "provider",
+        "label",
+        "href",
+        "enabled",
+        "disabled_reason",
+        "device_locality",
+    }
+    assert body["provider"] == "none"
+    assert body["enabled"] is False
+    assert body["href"] is None
+
+    mutation = requests.post(f"{env.base_url}/api/second-brain/launch-target", timeout=15)
+    assert mutation.status_code == 405, mutation.text
