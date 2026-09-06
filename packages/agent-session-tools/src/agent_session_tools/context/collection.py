@@ -15,7 +15,12 @@ MAX_CANDIDATES = 100
 
 
 def collect(
-    context: AgentContext, query: str, cutoff: str, *, extra_ids=None
+    context: AgentContext,
+    query: str,
+    cutoff: str,
+    *,
+    extra_ids=None,
+    extra_reason="requested_check_metadata",
 ) -> EvidencePool:
     terms = list(
         dict.fromkeys(term[:80] for term in re.findall(r"\w+", query, re.UNICODE))
@@ -41,7 +46,7 @@ def collect(
     sources = {}
     failed_sources = set()
 
-    def source_view(identity, *, assertion_id=None):
+    def source_view(identity, *, assertion_id=None, review_id=None):
         if identity in sources:
             return sources[identity]
         if identity in failed_sources:
@@ -65,7 +70,7 @@ def collect(
         ).fetchone()
         position = highlighted[0].find(marker) if highlighted else -1
         reason = (
-            {"method": "requested_check_metadata"}
+            {"method": extra_reason}
             if identity in checks
             else {
                 "method": "lexical_match",
@@ -73,6 +78,8 @@ def collect(
                 "ordering": "BM25 relevance; not a truth ranking",
             }
             if identity in lexical
+            else {"method": "review_dependency", "review_id": review_id}
+            if review_id is not None
             else {"method": "assertion_or_relationship", "assertion_id": assertion_id}
         )
         view = context._view(source, max(0, position - 120), 1200, reason)
@@ -187,6 +194,32 @@ def collect(
         for edge in edges
         if {edge["from_assertion"], edge["to_assertion"]} <= assertions.keys()
     ]
+    reviews = {}
+    if assertions or edges:
+        from .reviews import ReviewStore
+
+        if context.conn.execute("PRAGMA user_version").fetchone()[0] < 35:
+            limits.add("review_schema_missing")
+        else:
+            reviewer = ReviewStore(context)
+            targets = [("assertion", a) for a in assertions.values()]
+            targets += [("relation", edge) for edge in edges]
+            for kind, item in targets:
+                assessment = reviewer.list(kind, item["id"], as_of=cutoff, limit=4)
+                item["review_status"] = assessment["status"]
+                item["review_ids"] = []
+                if assessment["incomplete"]:
+                    limits.add("review_coverage")
+                for review in assessment["reviews"]:
+                    if all(
+                        source_view(eid, review_id=review["id"]) is not None
+                        for eid in review["evidence_ids"]
+                    ):
+                        reviews[review["id"]] = review
+                        item["review_ids"].append(review["id"])
+                    else:
+                        item["review_status"] = "incomplete_reviews"
+                        limits.add("review_sources")
     base = {
         "contract_version": "session-context/v1",
         "query": query,
@@ -211,4 +244,5 @@ def collect(
         assertions,
         edges,
         limits,
+        reviews,
     )

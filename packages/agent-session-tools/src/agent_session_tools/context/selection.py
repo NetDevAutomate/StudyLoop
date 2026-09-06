@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from .store import _hash, _json
 
@@ -27,6 +27,7 @@ class EvidencePool:
     assertions: dict[str, dict]
     relations: list[dict]
     limits: set[str]
+    reviews: dict[str, dict] = field(default_factory=dict)
 
 
 def select(
@@ -35,7 +36,9 @@ def select(
     if policy not in POLICIES:
         raise ValueError("Unknown internal evidence selection policy")
     result = deepcopy(pool.base)
-    result.update(sources=[], assertions=[], relationships=[], selection_policy=policy)
+    result.update(
+        sources=[], assertions=[], relationships=[], reviews=[], selection_policy=policy
+    )
     result["context_status"] = "incomplete_context"
     result["conflict_review"] = {
         "status": "coverage_limited",
@@ -44,20 +47,43 @@ def select(
         "omitted_proposed_relations": 0,
         "semantic_conflict_absence_established": False,
     }
-    selected = {"sources": set(), "assertions": set(), "relationships": set()}
+    selected = {
+        "sources": set(),
+        "assertions": set(),
+        "relationships": set(),
+        "reviews": set(),
+    }
     bounds = {
         "sources": max_sources,
         "assertions": MAX_ASSERTIONS,
         "relationships": MAX_RELATIONS,
+        "reviews": 16,
     }
 
     def bundle(source_ids=(), assertion_ids=(), edges=()):
         # All dependencies are inserted together or none of this group is inserted.
         aids = list(dict.fromkeys(assertion_ids))
+        review_ids = list(
+            dict.fromkeys(
+                [
+                    *(
+                        rid
+                        for aid in aids
+                        for rid in pool.assertions[aid].get("review_ids", [])
+                    ),
+                    *(rid for edge in edges for rid in edge.get("review_ids", [])),
+                ]
+            )
+        )
         ids = list(
             dict.fromkeys(
                 [
                     *source_ids,
+                    *(
+                        eid
+                        for rid in review_ids
+                        for eid in pool.reviews[rid]["evidence_ids"]
+                    ),
                     *(
                         c["evidence_id"]
                         for aid in aids
@@ -70,6 +96,7 @@ def select(
             "sources": [pool.sources[eid] for eid in ids],
             "assertions": [pool.assertions[aid] for aid in aids],
             "relationships": list(edges),
+            "reviews": [pool.reviews[rid] for rid in review_ids],
         }
 
     lexical = [bundle([eid]) for eid in pool.lexical_ids]

@@ -151,6 +151,61 @@ def decide(
         )
 
 
+@app.command("review")
+def review(
+    document: Path, db: DatabaseOption = None, project: str | None = None
+) -> None:
+    """Record a source-bound assessment; this never supplies human or native authority."""
+    value = _input(document)
+    if not isinstance(value, dict) or "producer" in value:
+        raise ValueError("Review must be an object without a producer override")
+    with open_context(db, write=True, project=project) as context:
+        result = context.review(producer="agent:session-context-cli", **value)
+    typer.echo(_json(result))
+
+
+@app.command("reviews")
+def reviews(
+    target_kind: str,
+    target_id: str,
+    db: DatabaseOption = None,
+    project: str | None = None,
+    limit: int = 8,
+    budget_bytes: int = 32768,
+    as_of: str | None = None,
+) -> None:
+    """Inspect bounded review history for an assertion or relationship."""
+    with open_context(db, project=project) as context:
+        typer.echo(
+            _json(
+                context.review_history(
+                    target_kind,
+                    target_id,
+                    limit=limit,
+                    budget_bytes=budget_bytes,
+                    as_of=as_of,
+                )
+            )
+        )
+
+
+@app.command("assess")
+def assess(
+    query: str,
+    assertions: Path,
+    db: DatabaseOption = None,
+    project: str | None = None,
+    budget_bytes: int = 32768,
+    as_of: str | None = None,
+) -> None:
+    """Assess a JSON list of assertion IDs using attributed reviews and contrary proposals."""
+    value = _input(assertions)
+    with open_context(db, project=project) as context:
+        typer.echo(
+            _json(context.assess(query, value, budget_bytes=budget_bytes, as_of=as_of))
+        )
+
+
 @policy_app.command("plan")
 def policy_plan(db: DatabaseOption = None, actor: ActorOption = None) -> None:
     """Preview classifications without changing the source database."""

@@ -208,8 +208,24 @@ class AgentContext:
         text(statement, "statement", 4000)
         if target is not None:
             text(target, "target", 4096)
+        bound = self._bind_citations(citations)
+        identity = self.store.propose(
+            statement=statement,
+            state=ExecutionState(state),
+            target=target,
+            generator=producer,
+            citations=bound,
+            access=self.access,
+        )
+        return {
+            "contract_version": VERSION,
+            "assertion_id": identity,
+            "semantic_status": "unverified_interpretation",
+        }
+
+    def _bind_citations(self, citations: list[dict]) -> list[Citation]:
         if not isinstance(citations, list) or not 1 <= len(citations) <= 8:
-            raise ValueError("A proposal requires between 1 and 8 exact citations")
+            raise ValueError("Between 1 and 8 exact citations are required")
         bound = []
         for value in citations:
             if not isinstance(value, dict) or set(value) != {
@@ -230,19 +246,7 @@ class AgentContext:
                     "Citation unavailable or not bound to the exact stored version"
                 )
             bound.append(citation)
-        identity = self.store.propose(
-            statement=statement,
-            state=ExecutionState(state),
-            target=target,
-            generator=producer,
-            citations=bound,
-            access=self.access,
-        )
-        return {
-            "contract_version": VERSION,
-            "assertion_id": identity,
-            "semantic_status": "unverified_interpretation",
-        }
+        return bound
 
     def relate(self, from_id: str, to_id: str, relation: str, *, producer: str) -> dict:
         for identity in (from_id, to_id):
@@ -256,6 +260,100 @@ class AgentContext:
             "relation_id": identity,
             "semantic_status": "unverified_relationship",
         }
+
+    def review(self, *, producer: str, **document) -> dict:
+        from .reviews import ReviewStore
+
+        allowed = {
+            "target_kind",
+            "target_id",
+            "verdict",
+            "rationale",
+            "citations",
+            "limitations",
+            "supersedes",
+            "request_id",
+        }
+        required = {"target_kind", "target_id", "verdict", "rationale", "citations"}
+        if not required <= document.keys() or not document.keys() <= allowed:
+            raise ValueError(
+                "Review accepts target_kind,target_id,verdict,rationale,citations,"
+                "limitations,supersedes,request_id only"
+            )
+        identity = ReviewStore(self).append(producer=producer, **document)
+        return {
+            "contract_version": VERSION,
+            "review_id": identity,
+            "authority": "attributed_model_assessment",
+            "independence": "not_established",
+            "validation_of_change": "not_established",
+        }
+
+    def review_history(
+        self,
+        target_kind: str,
+        target_id: str,
+        *,
+        limit: int = 8,
+        as_of: str | None = None,
+        budget_bytes: int = 32768,
+    ) -> dict:
+        from .reviews import ReviewStore
+
+        integer(budget_bytes, "budget_bytes", 4096, 131072)
+        cutoff = timestamp(as_of, "as_of", default_now=True)
+        reviewer = ReviewStore(self)
+        target = reviewer.target(target_kind, target_id, as_of=cutoff)
+        if target is None:
+            return {"contract_version": VERSION, "status": "unavailable"}
+        report = reviewer.list(
+            target_kind, target_id, as_of=cutoff, limit=limit, history=True
+        )
+        result = {
+            "contract_version": VERSION,
+            "scope": self.scope.value,
+            "as_of": cutoff,
+            "target_kind": target_kind,
+            "target_id": target_id,
+            "target": target[0],
+            "reviews": [],
+            "sources": [],
+            "status": report["status"],
+            "incomplete": report["incomplete"],
+            "independence": "not_established",
+            "validation_of_change": "not_established",
+        }
+        seen = set()
+
+        def include(ids):
+            for eid in sorted(ids):
+                if eid not in seen:
+                    source = self._source(eid)
+                    if source is None:
+                        return False
+                    result["sources"].append(
+                        self._view(source, 0, 1200, {"method": "review_dependency"})
+                    )
+                    seen.add(eid)
+            return size(result) + 512 <= budget_bytes
+
+        if not include(target[1]):
+            raise ValueError("Review target and sources exceed the requested budget")
+        for review in report["reviews"]:
+            before, old_seen = len(result["sources"]), seen.copy()
+            result["reviews"].append(review)
+            if not include(review["evidence_ids"]):
+                result["reviews"].pop()
+                del result["sources"][before:]
+                seen = old_seen
+                result["incomplete"] = True
+                result["status"] = "incomplete_reviews"
+        result["response_bytes"] = 0
+        for _ in range(4):
+            result["response_bytes"] = size(result)
+        if size(result) > budget_bytes:
+            raise ValueError("Review response exceeds the requested budget")
+        return result
 
     def _assertion(self, identity: str, *, as_of: str | None = None) -> dict | None:
         text(identity, "assertion_id", 128)
@@ -300,6 +398,7 @@ class AgentContext:
         budget_bytes: int = 32768,
         as_of: str | None = None,
         extra_ids: list[str] | None = None,
+        extra_reason: str = "requested_check_metadata",
     ) -> dict:
         from .collection import collect
         from .selection import select
@@ -309,8 +408,102 @@ class AgentContext:
         integer(budget_bytes, "budget_bytes", 4096, 131072)
         cutoff = timestamp(as_of, "as_of", default_now=True)
         assert cutoff is not None
-        pool = collect(self, query, cutoff, extra_ids=extra_ids)
+        if extra_reason not in {"requested_check_metadata", "requested_assertion"}:
+            raise ValueError("Unknown internal source selection reason")
+        pool = collect(
+            self, query, cutoff, extra_ids=extra_ids, extra_reason=extra_reason
+        )
         return select(pool, max_sources, budget_bytes, policy="anchor_then_relations")
+
+    def assess(
+        self,
+        query: str,
+        assertion_ids: list[str],
+        *,
+        budget_bytes: int = 32768,
+        as_of: str | None = None,
+    ) -> dict:
+        """Render attributed interpretation support and unresolved conflicts, not truth."""
+        integer(budget_bytes, "budget_bytes", 16384, 131072)
+        if not isinstance(assertion_ids, list) or not 1 <= len(assertion_ids) <= 8:
+            raise ValueError("Supply between 1 and 8 assertion IDs")
+        for identity in assertion_ids:
+            text(identity, "assertion_id", 128)
+        assertion_ids = list(dict.fromkeys(assertion_ids))
+        cutoff = timestamp(as_of, "as_of", default_now=True)
+        source_ids = []
+        for identity in assertion_ids:
+            assertion = self._assertion(identity, as_of=cutoff)
+            if assertion is not None:
+                source_ids.extend(c["evidence_id"] for c in assertion["citations"])
+        pack = self.search(
+            query,
+            max_sources=40,
+            budget_bytes=budget_bytes - 6000,
+            as_of=cutoff,
+            extra_ids=list(dict.fromkeys(source_ids)),
+            extra_reason="requested_assertion",
+        )
+        candidates = {a["id"]: a for a in pack["assertions"]}
+        claims = []
+        for identity in assertion_ids:
+            assertion = candidates.get(identity)
+            claims.append(
+                {
+                    "assertion_id": identity,
+                    "review_status": assertion.get("review_status", "unreviewed")
+                    if assertion
+                    else "unavailable_or_not_returned",
+                    "review_ids": assertion.get("review_ids", []) if assertion else [],
+                    "related_proposals": [
+                        edge["id"]
+                        for edge in pack["relationships"]
+                        if edge["relation"] != "supports"
+                        and identity in (edge["from_assertion"], edge["to_assertion"])
+                    ],
+                }
+            )
+        states = {claim["review_status"] for claim in claims}
+        state = (
+            "incomplete_evidence"
+            if pack["coverage"]["limits_reached"]
+            or states.intersection(
+                {"incomplete_reviews", "unavailable_or_not_returned"}
+            )
+            else "disputed_reviews"
+            if "disputed" in states
+            else "proposed_conflict_requires_interpretation"
+            if any(c["related_proposals"] for c in claims)
+            else "unsupported_by_available_reviews"
+            if "assessed_unsupported" in states
+            else "attributed_support_available"
+            if states == {"assessed_supported"}
+            else "review_needed"
+        )
+        pack["assessment"] = {
+            "kind": "attributed_interpretation_assessment",
+            "status": state,
+            "claims": claims,
+            "semantic_validation": "not_established",
+            "reviewer_independence": "not_established",
+            "validation_of_change": "not_established",
+            "explanation": {
+                "incomplete_evidence": "Required context or reviews are missing or bounded. Do not infer complete support.",
+                "disputed_reviews": "Available current assessments disagree; vote count and recency do not choose a winner.",
+                "proposed_conflict_requires_interpretation": "A proposed contrary/correction relation remains inspectable alongside its reviews.",
+                "unsupported_by_available_reviews": "At least one requested interpretation is unsupported by its available current assessments.",
+                "attributed_support_available": "Available current assessments support these interpretations. Present this as attributed inference, not verified fact.",
+                "review_needed": "At least one interpretation is unreviewed or uncertain. Inspect its citations and missing evidence.",
+            }[state],
+            "execution_checks": "Use memory_decide with explicit command, project, immutable revision and time requirements.",
+            "evaluated_snapshot_id": pack["snapshot_id"],
+        }
+        pack["assessment_id"] = _hash(_json(pack["assessment"]))
+        for _ in range(4):
+            pack["response_bytes"] = size(pack)
+        if size(pack) > budget_bytes:
+            raise ValueError("Assessment exceeds the requested budget")
+        return pack
 
     def decide(
         self,

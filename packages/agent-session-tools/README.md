@@ -41,8 +41,9 @@ MCP client can use the same configured scope policy as the CLI.
 **Tools:** `session_search`, `session_list`, `session_show`, `session_context`, `session_stats`, `session_clean`, `session_hotspots`
 
 **Rich context tools:** `memory_search`, `memory_source`, `memory_propose`,
-`memory_relate`, `memory_decide`. Prefer these for exact source citations,
-provenance, proposed relationships and explicit execution requirements. A recorded
+`memory_relate`, `memory_review`, `memory_reviews`, `memory_assess`, `memory_decide`.
+Prefer these for exact source citations, provenance, attributed review history,
+proposed relationships and explicit execution requirements. A recorded
 check is not an approval to ship. See the [context interface guide](../../docs/context-memory.md)
 for scope configuration, examples and limits.
 

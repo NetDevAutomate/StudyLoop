@@ -1,0 +1,64 @@
+{
+  "stage": 25,
+  "synthetic_only": true,
+  "production_ready": false,
+  "regression_runs": {
+    "session_tools_before_four_additional_tests": 1287,
+    "experiments_and_selected_studyloop_before_additional_pilot_test": 303,
+    "optional_skips": 1,
+    "final_focused_review_and_lesson_tests": 22
+  },
+  "installed_cli_mcp_checks": 8,
+  "source_cli_mcp_checks": 8,
+  "standalone_wheel_without_studyloop": true,
+  "browser": {
+    "sections": 6,
+    "expansion": true,
+    "viewport_fits": true,
+    "console_errors": 0
+  },
+  "pilot": {
+    "gateway_calls": 3,
+    "cases_per_provider": 3,
+    "prompt_changed_after_run": false,
+    "strict_accepted_provider_batches": 1,
+    "strict_stored_reviews": 3,
+    "providers": [
+      {
+        "model": "llama4-maverick",
+        "status": "failed",
+        "error_type": "JSONDecodeError"
+      },
+      {
+        "model": "qwen3-coder",
+        "status": "accepted"
+      },
+      {
+        "model": "mistral-large-3",
+        "status": "failed",
+        "error_type": "JSONDecodeError"
+      }
+    ]
+  },
+  "post_hoc_diagnostic": {
+    "new_calls": 0,
+    "database_writes": 0,
+    "single_json_fences_removed": 2,
+    "labels_in_predeclared_range": 9,
+    "citation_sets_bound_to_case": 9,
+    "changes_strict_acceptance": false
+  },
+  "interpretation_limits": [
+    "three constructed cases, no representative accuracy estimate",
+    "unsupported and uncertain both allowed for applicability",
+    "no human relevance grade",
+    "reviewer independence not established",
+    "semantic certification not established"
+  ],
+  "council": {
+    "design_successful_provider_buckets": 3,
+    "result_successful_provider_buckets": 3,
+    "release_approval_claimed": false
+  },
+  "checkpoint_verification": "Commit hook results recorded in stage index and delivery status after commit."
+}

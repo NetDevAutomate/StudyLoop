@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Current schema version - increment when adding new migrations
-CURRENT_VERSION = 34
+CURRENT_VERSION = 35
 
 # Migration functions: version -> (description, migration_func)
 MIGRATIONS: dict[int, tuple[str, Callable[[sqlite3.Connection], None]]] = {}
@@ -1408,6 +1408,13 @@ def migrate_v33(conn: sqlite3.Connection) -> None:
 @migration(34, "Link native archive evidence and persist capture-run health")
 def migrate_v34(conn: sqlite3.Connection) -> None:
     from .context.capture import install
+
+    install(conn)
+
+
+@migration(35, "Bind interpretation reviews to immutable targets and source lifecycle")
+def migrate_v35(conn: sqlite3.Connection) -> None:
+    from .context.review_schema import install
 
     install(conn)
 

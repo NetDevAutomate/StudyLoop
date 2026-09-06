@@ -1,6 +1,6 @@
 """Canonical source versions and scoped citations, independent of StudyLoop.
 
-This internal boundary is not yet wired to the legacy CLI/MCP/sync interfaces.
+CLI/MCP use the scoped public adapter; scoped sync integration remains separate work.
 Capture/configuration methods are trusted importer/admin operations. Agent-facing
 adapters may submit interpretations and stored source IDs, never capture receipts
 or an arbitrary access policy. SQLite ownership is a local application boundary.

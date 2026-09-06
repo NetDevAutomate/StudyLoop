@@ -155,6 +155,74 @@ def _create_server() -> FastMCP:
                 query, requirements, budget_bytes=budget_bytes, as_of=as_of
             )
 
+    @mcp.tool(annotations={"readOnlyHint": False, "destructiveHint": False})
+    def memory_review(
+        target_kind: str,
+        target_id: str,
+        verdict: str,
+        rationale: str,
+        citations: list[dict[str, Any]],
+        limitations: list[str] | None = None,
+        supersedes: list[str] | None = None,
+        request_id: str | None = None,
+        project: str | None = None,
+    ) -> dict[str, Any]:
+        """Record supported/unsupported/uncertain review of an exact assertion or relation.
+
+        Cite exact evidence_id,start,end,quote values. Reviews remain attributed model
+        assessments; no human approval, independence or native metadata can be supplied.
+        Supersession retains history and cannot replace another producer's review.
+        """
+        with open_context(_get_db_path(), write=True, project=project) as context:
+            return context.review(
+                target_kind=target_kind,
+                target_id=target_id,
+                verdict=verdict,
+                rationale=rationale,
+                citations=citations,
+                limitations=limitations,
+                supersedes=supersedes,
+                request_id=request_id,
+                producer="agent:session-db-mcp",
+            )
+
+    @mcp.tool(annotations={"readOnlyHint": True, "idempotentHint": True})
+    def memory_reviews(
+        target_kind: str,
+        target_id: str,
+        project: str | None = None,
+        limit: int = 8,
+        budget_bytes: int = 32768,
+        as_of: str | None = None,
+    ) -> dict[str, Any]:
+        """Read bounded, source-bound review history; retired assessments are not current advice."""
+        with open_context(_get_db_path(), project=project) as context:
+            return context.review_history(
+                target_kind,
+                target_id,
+                limit=limit,
+                budget_bytes=budget_bytes,
+                as_of=as_of,
+            )
+
+    @mcp.tool(annotations={"readOnlyHint": True, "idempotentHint": True})
+    def memory_assess(
+        query: str,
+        assertion_ids: list[str],
+        project: str | None = None,
+        budget_bytes: int = 32768,
+        as_of: str | None = None,
+    ) -> dict[str, Any]:
+        """Explain attributed support, disputes and missing reviews for 1–8 interpretations.
+
+        This does not verify truth or authorize actions. Native execution applicability
+        remains a separate memory_decide contract; favourable model reviews cannot replace it.
+        """
+        with open_context(_get_db_path(), project=project) as context:
+            return context.assess(
+                query, assertion_ids, budget_bytes=budget_bytes, as_of=as_of
+            )
+
     @mcp.tool(
         annotations={"readOnlyHint": True, "idempotentHint": True},
     )
