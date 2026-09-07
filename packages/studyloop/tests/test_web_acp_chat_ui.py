@@ -34,6 +34,7 @@ from studyloop.web.services.session_start import ACP_CAPABLE_AGENTS
 pytest.importorskip("playwright")
 pytest.importorskip("fastapi")
 pytest.importorskip("uvicorn")
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 _tests_dir = Path(__file__).parent
 if str(_tests_dir) not in sys.path:
@@ -1982,17 +1983,22 @@ class TestPermissionPrompt:
             assert "Allow" in names and "Deny" in names, (
                 f"Expected Allow+Deny buttons, got: {names}"
             )
-            # Input row must be hidden while prompt is pending.
-            input_row_visible = page.evaluate(
-                """() => {
-                  const r = document.querySelector('.acp-input-row');
-                  if (!r) return false;
-                  return getComputedStyle(r).display !== 'none';
-                }"""
-            )
-            assert not input_row_visible, (
-                "Input row should be hidden while permission prompt is pending"
-            )
+            # Input row must be hidden while prompt is pending. The prompt is
+            # attached first and Alpine applies the x-show style on the next
+            # tick, so wait for the hidden state instead of sampling it once
+            # (a one-shot evaluate raced this on a loaded CI runner).
+            try:
+                page.wait_for_function(
+                    """() => {
+                      const r = document.querySelector('.acp-input-row');
+                      return !r || getComputedStyle(r).display === 'none';
+                    }""",
+                    timeout=3000,
+                )
+            except PlaywrightTimeoutError:
+                raise AssertionError(
+                    "Input row should be hidden while permission prompt is pending"
+                ) from None
 
             filtered_errors = [
                 e for e in app_errors if "Cannot read properties of null (reading 'type')" not in e
