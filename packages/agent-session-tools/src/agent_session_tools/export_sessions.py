@@ -63,6 +63,55 @@ SCHEMA_FILE = Path(__file__).parent / "schema.sql"
 DEFAULT_DB = get_db_path(config)
 
 
+def _reconcile_legacy_base_tables(conn: sqlite3.Connection) -> None:
+    """Add columns the current schema expects to tables that predate them.
+
+    ``schema.sql`` creates tables with IF NOT EXISTS, so a legacy database's
+    tables are kept as-is — but the script's CREATE INDEX statements (and
+    several migrations') then reference columns the legacy shape never had
+    (e.g. ``sessions.project_path``, ``study_sessions.topic``), and one
+    failing statement aborts the whole bootstrap. Historically that failure
+    was tolerated (logged, lazy bootstraps carried on); the context-memory
+    read paths now genuinely need the full schema, so the legacy shape must
+    converge instead.
+
+    Builds the pristine final shape (schema.sql + every migration) in memory,
+    diffs each pre-existing live table against it, and ADDs the missing
+    columns — nullable, with the schema's default when it is a constant
+    (SQLite cannot add a column with a non-constant default, nor
+    retroactively enforce NOT NULL/PRIMARY KEY on a populated table).
+    Migrations themselves are column-guarded, so replaying them over the
+    reconciled shape is safe; tables the bootstrap will create from scratch
+    are skipped. Existing rows are never touched.
+    """
+    pristine = sqlite3.connect(":memory:")
+    try:
+        with open(SCHEMA_FILE) as f:
+            pristine.executescript(f.read())
+        migrate(pristine)
+        tables = [
+            row[0]
+            for row in pristine.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()
+        ]
+        for table in tables:
+            live = {row[1] for row in conn.execute(f'PRAGMA table_info("{table}")')}
+            if not live:
+                continue  # not in the legacy DB; the bootstrap creates it whole
+            for _, name, ctype, _, default, pk in pristine.execute(
+                f'PRAGMA table_info("{table}")'
+            ).fetchall():
+                if name in live or pk:
+                    continue
+                ddl = f'ALTER TABLE "{table}" ADD COLUMN "{name}" {ctype}'
+                if default is not None and "(" not in str(default):
+                    ddl += f" DEFAULT {default}"
+                conn.execute(ddl)
+    finally:
+        pristine.close()
+
+
 def init_db(db_path: str) -> sqlite3.Connection:
     """Initialize database with schema and run migrations."""
     import os
@@ -79,6 +128,9 @@ def init_db(db_path: str) -> sqlite3.Connection:
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA busy_timeout=5000")
     conn.execute("PRAGMA foreign_keys=ON")
+
+    # Bring any legacy-shaped base tables up to what schema.sql references
+    _reconcile_legacy_base_tables(conn)
 
     # Apply base schema
     with open(SCHEMA_FILE) as f:

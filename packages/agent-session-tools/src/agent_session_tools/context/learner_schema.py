@@ -109,9 +109,12 @@ def install(conn: sqlite3.Connection) -> None:
     ]:
         if name not in columns:
             conn.execute(f"ALTER TABLE parked_topics ADD COLUMN {name} {kind}")
-    conn.execute(
-        "ALTER TABLE parked_topics ADD COLUMN owner_key TEXT NOT NULL DEFAULT 'legacy'"
-    )
+    # Guarded like the columns above: init_db's legacy reconciliation may have
+    # already converged parked_topics to the final shape before install runs.
+    if "owner_key" not in columns:
+        conn.execute(
+            "ALTER TABLE parked_topics ADD COLUMN owner_key TEXT NOT NULL DEFAULT 'legacy'"
+        )
     conn.execute("DROP INDEX IF EXISTS uix_parked_topics_question_source_pending")
     conn.execute("""CREATE UNIQUE INDEX uix_parked_topics_owned_pending
         ON parked_topics(question,source,owner_key) WHERE status='pending'""")
