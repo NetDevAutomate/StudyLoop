@@ -119,6 +119,100 @@ fix, stop and report the failed gate with a smaller alternative before spending
 more on implementation. No unbounded goal run, additional research stage, council
 loop or database redesign is authorized by this checklist.
 
+## Gate status as of 2026-09-06 (close-out update ~17:15 UTC)
+
+Tracked against `reviews/sessionweaver-plans/PLAN-phase-0-stabilise.md`;
+evidence lives under `reviews/2026-09-06-sessionweaver-phase0/evidence/`.
+Definitive close-out test results: `evidence/gate1/TEST-RESULTS-closeout.md`.
+"Candidate" wording elsewhere in this file and in `docs/session-memory.md`
+stays until the §7 council validation gate and the human review pass.
+
+0. **Production pin — DONE except two HUMAN steps.** Wheel from
+   `codex/session-memory-mvp @ 5dfe0f9b88f9a0c93069a05a1f707bc6e74caecc`
+   (SHA-256 `6ef71b21…3412`) installed via `uv tool install --force`; the uv
+   receipt names the pinned wheel path; `which` ×6 verified; all 11 symlinks
+   relinked into the pin checkout with before/after evidence
+   (`evidence/pin/symlinks.before.txt`, `symlinks.txt`); one Stop-hook-path
+   write observed end-to-end through the pinned binary
+   (`evidence/pin/claude-hook.*`, caveat in `hook-observation-notes.md`);
+   `provenance.md` completed. **Remaining HUMAN:** open Codex/Kiro/OpenCode/pi
+   once to confirm skill loads; rotate the ambient API key named in this file.
+1. **Gate 1 — regression, lint, typecheck, docs, spec, SAST, pre-commit —
+   PASSED (agent-run).** Workspace `4884 passed / 0 failed`; package
+   `1126 passed, 1 xfailed`; ruff clean; pyright 0/0/0; spec-check 25/25;
+   pip-audit clean; bandit passed; pre-commit 13/14 with the sole failure
+   being detect-secrets' "baseline unstaged" (clears on `git add
+   .secrets.baseline`; decision in `evidence/gate1/secret-hooks-decision.md`).
+   Evidence: `evidence/gate1/`.
+2. **Gate 2a — loopback sync integration — PASSED with one recorded
+   limitation.** `test_sync_integration.py` + `test_sync_all_default.py`:
+   5 passed, 1 xfailed(strict) on Python 3.12 and 3.13
+   (`evidence/gate2/loopback-closeout.txt`). The strict xfail is the
+   incremental-mode non-convergence documented under Known limitations.
+   **Gate 2b (two-Mac) — RUN AND PASSED 2026-09-06** at the user's direction against
+   Andys-Mac-Mini (192.168.125.12): all four runbook scenarios pass on disposable
+   DBs over the real ssh/scp transport with both Macs on the identical pinned
+   wheel; the divergence pre-check found Mac B's production DB populated and
+   non-subset (5521 sessions / 223449 messages), so real-DB merging stays
+   deferred to Phase 2 (BL-1) and Mac B was backed up read-only first. Evidence:
+   `evidence/gate2-two-mac.md`.
+3. **Gate 3 — repair rehearsal — DONE, HUMAN sign-off PENDING.** Full
+   inspect → apply → re-inspect → rollback on an Online-Backup copy of
+   `sessions.db.bak-2026-09-02` (v27→v30; integrity checks clean twice;
+   rollback verified two ways). Re-inspect anomaly for opencode/pi recorded
+   under Known limitations. Report: `evidence/gate3-repair.md`.
+4. **Sentinel + installed-wheel verifier extension — DONE.** Sentinel test
+   passes; verifier extended for Claude + Kiro native repair; close-out run
+   against the pinned wheel in a fresh py3.12 venv: **17 PASS, 0 FAIL**
+   (`evidence/wp8/verify-closeout.txt`).
+5. **main dirty-tree reconciliation (WP-2) — DONE.** main's 26 dirty
+   entries under `packages/agent-session-tools/` were discarded after a
+   preserved, human-approved packet;
+   `git status --porcelain -- packages/agent-session-tools` on main is now
+   empty. Evidence:
+   `~/.local/share/sessionweaver/main-dirty-reconciliation/20260906T155542Z/`.
+6. **Grok decision and spec/doc correction (WP-7) — DONE.** Grok is
+   recorded as a capture-only decision
+   (`docs/adr/0011-grok-is-capture-only.md`, status Proposed); the
+   `session-export` spec now names exactly the six exporter modules that
+   exist. Evidence: `just spec-check` / `just docs` output filed under
+   `reviews/2026-09-06-sessionweaver-phase0/evidence/wp7/`.
+
+### Known limitations (Phase 0 findings, accepted 2026-09-06; fix scheduled for Phase 2)
+
+Both findings were reproduced on disposable copies, are recorded with full repro
+evidence, and were deliberately **not** patched in Phase 0 (zero-source-edit rule).
+Each is a Phase 2 backlog item.
+
+1. **Incremental sync cannot converge a both-sides-divergent session in one pass.**
+   Under `session-sync all --incremental`, a session present on both endpoints with
+   divergent messages will not converge: push requires `local_ts > remote_ts` and
+   pull requires `remote_ts > local_ts` — mutually exclusive for the same pair
+   (`sync.py:872-877`, `1239-1254`, `785-802`). Reconcile mode (the `sync all`
+   default, asserted by `tests/test_sync_all_default.py`) does converge.
+   Workaround: use reconcile mode when endpoints may have diverged. Repro:
+   `reviews/2026-09-06-sessionweaver-phase0/evidence/gate2/REPRO.md`.
+   Phase 2 backlog: per-machine `machine_id` + `seq` LWW tiebreak (decision #3 in
+   `reviews/sessionweaver-plans/HANDOFF-2026-09-06.md` §2) makes incremental
+   convergence decidable.
+
+2. **`session-repair` re-inspect is not idempotent for the `opencode` and `pi` sources.**
+   On the gate-3 rehearsal copy, a second inspect after apply reported
+   `changed_sessions: 4, missing_messages: 11`; opencode (+4) and pi (+3) `added`
+   counts repeat identically on every subsequent inspect — their native matching
+   re-proposes the same rows on this DB shape. Data is not corrupted (quick_check,
+   FK and FTS checks all clean twice); the counts are a dedup defect in inspect
+   matching. Repro and escalation note:
+   `reviews/2026-09-06-sessionweaver-phase0/evidence/gate3-repair.md` §6.
+   **Severity bounded 2026-09-06 by a second-apply idempotence test: the apply write
+   path deduplicates correctly — zero opencode/pi rows written on re-apply, no growth,
+   no duplicates; the defect is reporting-only**
+   (`evidence/gate3-bl2-idempotence.md`). Interim mitigations until the fix: omit
+   opencode/pi from live applies (`--source claude --source codex --source kiro
+   --source grok`) so summaries stay trustworthy, and treat per-source row counts —
+   not the summary's `added` field — as the authoritative change signal.
+   Phase 2 backlog: repair dedup keys for opencode/pi native matchers.
+
 ## Deferred separately
 
 The broader SessionWeave product remains a separate decision: explicit boundaries,

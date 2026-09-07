@@ -97,3 +97,12 @@ The parked-topic UI presents the merged current view; the archive retains its
 original variants for explicit review or restoration. Optional fields excluded
 from the current-view allowlist are preserved in the archive rather than forced
 into incompatible legacy table constraints.
+
+### Acceptance uses disposable endpoints
+
+Do not point acceptance at either machine's `~/.config/studyloop/sessions.db`.
+Before the first sync, check the other machine for an existing populated
+`sessions.db`; if one exists and is not a subset of yours, back it up with
+`.backup` and stop — there is no per-machine identity yet to merge two
+histories safely. Use a rehearsal `config.yaml` via `STUDYLOOP_CONFIG` and
+dedicated database paths.

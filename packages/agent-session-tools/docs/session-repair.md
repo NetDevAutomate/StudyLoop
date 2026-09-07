@@ -101,3 +101,13 @@ Kiro imports record native extracted-message positions alongside evidence IDs.
 Position plus role/content matching keeps repeated identical messages stable
 when older retained history contains the same wording. Upgrading the parser
 performs one metadata normalization; subsequent unchanged imports are stable.
+
+### Rehearse on a consistent copy first
+
+Never test repair against an irreplaceable database. Copy with SQLite's
+Online Backup (`sqlite3 -readonly <db> ".backup '<copy>'"` or
+`sqlite3.Connection.backup()`); a file copy of a WAL-mode `.db` misses
+committed rows still in the `-wal` file. The release rehearsal used
+`sessions.db.bak-2026-09-02`: inspect, apply, re-inspect (must report zero
+changes), `PRAGMA quick_check`, `PRAGMA foreign_key_check`, FTS integrity,
+and a rollback from an independent copy.

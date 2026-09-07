@@ -130,4 +130,3 @@ stating what works via MCP today versus what still requires the browser
 - **THEN** they find the studyloop-mcp tool list, both apps' registration
   snippets, and an explicit list of what desktop chat cannot do (no
   surprise gaps discovered only by trying)
-

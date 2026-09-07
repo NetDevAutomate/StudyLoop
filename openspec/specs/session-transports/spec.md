@@ -120,4 +120,3 @@ cannot be forced via env var).
 - **WHEN** `STUDYLOOP_TRANSPORT=ttyd` is set in the server environment
 - **THEN** session starts use the ttyd transport regardless of the
   request body's `transport` field
-

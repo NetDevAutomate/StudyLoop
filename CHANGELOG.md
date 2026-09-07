@@ -16,7 +16,9 @@ experience may change before `1.0.0`.
   whole-database transport, without enforced work/personal scope, propagated
   forgetting or validated decision arbitration.
 - Grok local transcript import through `session-export --grok-only`, separate
-  from StudyLoop's supported mentor and automatic-hook integrations.
+  from StudyLoop's supported mentor and automatic-hook integrations. Its
+  capture-only status (no hook or harness support) is now recorded as a
+  decision, `ADR-0011` (status: Proposed).
 - A [conversation memory guide](docs/session-memory.md) covering repair,
   verification, project-filter limits and permitted database sharing.
 - Session memory is now an installer/doctor invariant across all five release
@@ -44,6 +46,19 @@ experience may change before `1.0.0`.
   registered command that fails at runtime. The implementation and documents
   remain available for evaluation and can return to the supported surface if
   learner demand demonstrates value.
+- Phase 0 stabilisation of the session-memory reliability candidate is under
+  way: production capture is being pinned to a wheel built from the reviewed
+  commit `codex/session-memory-mvp @ 5dfe0f9b`, with provenance to be
+  recorded at
+  `~/.local/share/sessionweaver/production-pins/5dfe0f9b/provenance.md` once
+  the remaining human-only install steps (tool install, symlink re-point,
+  hook observation, key rotation) complete. See `MVP-RELEASE.md`'s gate
+  status section — none of the three acceptance gates are closed yet, so
+  release acceptance remains pending.
+- main's stale partial copy of this work (26 uncommitted entries under
+  `packages/agent-session-tools/`) was discarded in favour of the reviewed
+  branch after a preserved, human-approved review; no independent main work
+  existed.
 
 ### Fixed
 
@@ -66,6 +81,11 @@ experience may change before `1.0.0`.
   handled at its import boundary and its surviving SWIG types are labelled,
   preventing both import-time and interpreter-shutdown warnings without a
   global pytest filter.
+- The `session-export` OpenSpec capability now names exactly the six
+  exporter modules that exist (`claude`, `codex`, `grok`, `kiro`,
+  `opencode`, `pi`), replacing a stale eleven-module list that named five
+  modules (`gemini`, `aider`, `bedrock`, `litellm`, `repoprompt`) no longer
+  present in the checkout.
 
 ## [0.2.1] - 2026-09-05
 
