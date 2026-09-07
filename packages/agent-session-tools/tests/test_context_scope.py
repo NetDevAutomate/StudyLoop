@@ -10,7 +10,9 @@ from agent_session_tools.context.provenance import Scope
 from agent_session_tools.context.scope import (
     ScopeError,
     ScopePolicy,
+    ScopeUnconfiguredError,
     apply_policy,
+    scope_setup_diagnostic,
     visibility_sql,
 )
 
@@ -289,3 +291,52 @@ def test_read_guard_pins_policy_and_rows_to_one_snapshot(migrated_db):
         assert visible(reader, p, Scope.PERSONAL) == []
     finally:
         reader.close()
+
+
+def test_request_scope_raises_the_unconfigured_subclass_when_nothing_matches():
+    """A missing default and no matching project root is the fresh-install case.
+
+    B1: this specific failure -- not an invalid config, not a stale digest --
+    is the one every CLI/MCP boundary converts into the shared structured
+    diagnostic. It must be a distinguishable subclass so those boundaries
+    don't also swallow unrelated ScopeErrors (invalid config, changed
+    project policy) into the same exit code / payload.
+    """
+    empty = ScopePolicy.from_config({"memory": {"projects": {}}})
+    with pytest.raises(ScopeUnconfiguredError, match="No context scope configured"):
+        empty.request_scope()
+
+
+def test_other_scope_errors_are_not_the_unconfigured_subclass():
+    """An invalid config is a different failure mode than "nothing configured"."""
+    with pytest.raises(ScopeError) as excinfo:
+        ScopePolicy.from_config({"memory": "not-a-mapping"})
+    assert not isinstance(excinfo.value, ScopeUnconfiguredError)
+
+
+def test_scope_setup_diagnostic_is_one_structured_shape():
+    """Every entry point that can hit ScopeUnconfiguredError reports this shape.
+
+    code/message/remediation, not a bare traceback or an ad-hoc string --
+    see design.md "Fresh-install scope".
+    """
+    empty = ScopePolicy.from_config({"memory": {"projects": {}}})
+    try:
+        empty.request_scope()
+    except ScopeUnconfiguredError as exc:
+        diagnostic = scope_setup_diagnostic(exc)
+    else:
+        pytest.fail("expected ScopeUnconfiguredError")
+
+    assert diagnostic["code"] == "scope_unconfigured"
+    assert "No context scope configured" in diagnostic["message"]
+    assert diagnostic["remediation"]
+
+
+def test_scope_setup_diagnostic_has_a_usable_default_with_no_exception():
+    """The helper is callable with no exception -- callers that just detected
+    a missing DB (not a raised ScopeError) still get the same shape."""
+    diagnostic = scope_setup_diagnostic()
+    assert diagnostic["code"] == "scope_unconfigured"
+    assert diagnostic["message"]
+    assert diagnostic["remediation"]

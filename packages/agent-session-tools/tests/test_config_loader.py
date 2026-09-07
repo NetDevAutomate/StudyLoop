@@ -5,6 +5,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import yaml
+
 from agent_session_tools.config_loader import (
     DEFAULT_CONFIG,
     ensure_config_dir,
@@ -124,6 +126,42 @@ class TestEnsureConfigDir:
 
         assert config_path.exists()
         assert env_path.exists()
+
+    def test_fresh_config_file_classifies_memory_scope_explicitly(
+        self, tmp_path, monkeypatch
+    ):
+        """A freshly-written config.yaml must not leave scope undiagnosed.
+
+        R10/B1: the runtime fallback (``DEFAULT_CONFIG``) stays unset so a
+        hand-edited file that omits the key still forces the structured
+        diagnostic (errata #9) -- but a file this function generates for a
+        brand-new install must classify the boundary explicitly so a fresh
+        install does not immediately hit that diagnostic on its first run.
+        """
+        config_path = tmp_path / "config.yaml"
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
+
+        ensure_config_dir()
+
+        written = yaml.safe_load(config_path.read_text())
+        assert written["memory"]["default_scope"] == "unclassified"
+        assert written["memory"]["projects"] == {}
+
+    def test_ensure_config_dir_does_not_rewrite_an_existing_file(
+        self, tmp_path, monkeypatch
+    ):
+        """An existing config.yaml without a memory section is left alone."""
+        config_path = tmp_path / "config.yaml"
+        config_path.write_text(
+            "database:\n  path: /tmp/existing.db\n", encoding="utf-8"
+        )
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
+
+        ensure_config_dir()
+
+        assert "memory" not in yaml.safe_load(config_path.read_text())
+        config = load_config()
+        assert config["memory"]["default_scope"] is None
 
 
 class TestDefaultConfig:

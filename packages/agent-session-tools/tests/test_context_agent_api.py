@@ -10,13 +10,32 @@ from typer.testing import CliRunner
 from agent_session_tools.context.cli import app
 from agent_session_tools.context.provenance import Origin
 from agent_session_tools.context.public import MAX_BODY_CHARS, open_context, size
-from agent_session_tools.context.scope import ScopeError, ScopePolicy, apply_policy
+from agent_session_tools.context.scope import (
+    ScopeError,
+    ScopePolicy,
+    ScopeUnconfiguredError,
+    apply_policy,
+)
 from agent_session_tools.context.store import ContextStore, NativeSource
 
 REVISION = "a" * 40
 TARGET = '["uv","run","pytest"]'
 STAMP = "2026-09-01T12:00:00+00:00"
 CUTOFF = "2026-09-06T12:00:00Z"
+
+
+def test_open_context_on_a_missing_database_reports_the_shared_diagnostic(tmp_path):
+    """A fresh install has no database yet -- not a distinct file-not-found error.
+
+    B1/design.md "Fresh-install scope": ``open_context()`` previously let
+    sqlite3's ``OperationalError`` ("unable to open database file") propagate
+    unmodified. A session-db-mcp tool cannot recognise that as "you need to
+    run setup" -- it must be the same ``scope_unconfigured`` diagnostic a
+    missing ``memory.default_scope`` produces.
+    """
+    missing = tmp_path / "does-not-exist" / "sessions.db"
+    with pytest.raises(ScopeUnconfiguredError), open_context(missing):
+        pass
 
 
 @pytest.fixture

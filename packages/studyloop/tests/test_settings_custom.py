@@ -442,6 +442,44 @@ def test_default_config_keeps_active_topics_to_three():
     assert len(parsed["topics"]) == MAX_ACTIVE_TOPICS
 
 
+def test_default_config_classifies_memory_scope_explicitly(tmp_path, monkeypatch):
+    """A freshly-generated config.yaml must not leave scope undiagnosed.
+
+    R10/B1: generate_default_config() is the template ``studyloop config
+    init``/setup writes for a brand-new install. Its memory.default_scope
+    must be "unclassified", explicitly -- not absent -- so a fresh install's
+    first session/tool call does not immediately hit the scope_unconfigured
+    diagnostic. The *runtime* default read when a config is absent entirely,
+    or omits the key, stays unset (errata #9) and is unaffected by this.
+    """
+    from studyloop.settings import generate_default_config, load_settings
+
+    generated = generate_default_config()
+    parsed = yaml.safe_load(generated)
+
+    assert parsed["memory"]["default_scope"] == "unclassified"
+
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(generated, encoding="utf-8")
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
+    # generate_default_config()'s memory: block is raw-only (studyloop.settings
+    # never reads it -- agent-session-tools owns scope policy); loading it as
+    # Settings must not choke on the extra top-level key.
+    load_settings()
+
+
+def test_runtime_default_scope_stays_unset_without_a_config_file(tmp_path, monkeypatch):
+    """No config file at all -- the documented, deliberately-unset default."""
+    from agent_session_tools.config_loader import load_config
+    from agent_session_tools.context.scope import ScopePolicy
+
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(tmp_path / "absent-config.yaml"))
+
+    policy = ScopePolicy.from_config(load_config())
+
+    assert policy.default_scope is None
+
+
 # ---------------------------------------------------------------------------
 # NotebookLM config
 # ---------------------------------------------------------------------------

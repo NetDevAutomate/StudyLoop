@@ -15,6 +15,7 @@ from mcp.server.fastmcp import FastMCP  # noqa: TC002 — used at runtime as par
 from mcp.server.fastmcp.exceptions import ToolError
 
 from agent_session_tools.context.response import consistent_read
+from agent_session_tools.context.scope import ScopeUnconfiguredError, scope_setup_diagnostic
 from studyloop.services.review import get_due, get_stats, record_review
 from studyloop.settings import load_settings
 
@@ -36,6 +37,28 @@ def _safe_course_dir(base: Path, course: str, subdir: str) -> Path:
     return resolved
 
 
+def _guard_scope(fn):
+    """Convert an unconfigured-scope failure into the shared diagnostic.
+
+    Every tool registered below goes through this -- not only the seven
+    ``request_scope()`` call sites the retrofit plan names by hand -- so a
+    tool that list missed still fails closed with the same
+    ``{code, message, remediation}`` payload (design.md "Fresh-install
+    scope") instead of FastMCP's generic "Error executing tool ..." wrapper
+    text around a bare ``ScopeError`` message.
+    """
+    from functools import wraps
+
+    @wraps(fn)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return fn(*args, **kwargs)
+        except ScopeUnconfiguredError as exc:
+            raise ToolError(json.dumps(scope_setup_diagnostic(exc))) from exc
+
+    return wrapper
+
+
 def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
     """Register StudyLoop's production MCP tool inventory.
 
@@ -45,7 +68,13 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
     ``studyloop-mcp --dev`` through ``include_exercises=True``.
     """
 
-    @mcp.tool()
+    def tool(*args: Any, **kwargs: Any):
+        def decorator(fn):
+            return mcp.tool(*args, **kwargs)(_guard_scope(fn))
+
+        return decorator
+
+    @tool()
     def list_courses() -> dict[str, Any]:
         """List all available study courses with card counts and review stats.
 
@@ -60,7 +89,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
 
         return {"courses": list_course_summaries(study_dirs)}
 
-    @mcp.tool()
+    @tool()
     def get_study_context(course: str) -> dict[str, Any]:
         """Get current study state for a course — due cards, stats, weak areas.
 
@@ -79,7 +108,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
             "due_today": stats.get("due_today", 0),
         }
 
-    @mcp.tool()
+    @tool()
     def record_study_progress(course: str, card_hash: str, correct: bool) -> dict[str, str]:
         """Record a review result for a single card.
 
@@ -96,7 +125,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
         )
         return {"status": "recorded"}
 
-    @mcp.tool()
+    @tool()
     def record_plan_learning(
         plan_id: str, title: str, body: str = "", status: str = "active"
     ) -> dict[str, Any]:
@@ -131,7 +160,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
             "created": created,
         }
 
-    @mcp.tool()
+    @tool()
     def generate_flashcards(course: str, chapter: int, content: str) -> dict[str, Any]:
         """Save agent-generated flashcards to a course directory.
 
@@ -172,7 +201,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
         logger.info("Wrote %d flashcards to %s", len(data["cards"]), path)
         return {"path": str(path), "count": len(data["cards"])}
 
-    @mcp.tool()
+    @tool()
     def generate_quiz(course: str, chapter: int, content: str) -> dict[str, Any]:
         """Save agent-generated quiz questions to a course directory.
 
@@ -215,7 +244,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
         logger.info("Wrote %d questions to %s", len(data["questions"]), path)
         return {"path": str(path), "count": len(data["questions"])}
 
-    @mcp.tool()
+    @tool()
     def get_chapter_text(course: str, chapter: int) -> dict[str, str]:
         """Extract text from a chapter PDF for LLM processing.
 
@@ -271,7 +300,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
 
     # ── Study Backlog / Session-DB Tools ─────────────────────────
 
-    @mcp.tool()
+    @tool()
     @consistent_read
     def get_study_backlog(
         tech_area: str | None = None,
@@ -303,7 +332,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
             "filters": {"tech_area": tech_area, "source": source, "status": status},
         }
 
-    @mcp.tool()
+    @tool()
     @consistent_read
     def get_topic_suggestions(
         limit: int = 10,
@@ -363,7 +392,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
             "total": len(suggestions),
         }
 
-    @mcp.tool()
+    @tool()
     @consistent_read
     def get_study_history(
         topic: str,
@@ -441,7 +470,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
 
     # ── §1.10 agent-native parity (web-picker equivalents) ───────
 
-    @mcp.tool()
+    @tool()
     def list_session_options() -> dict[str, Any]:
         """List selectable study targets for starting a session.
 
@@ -466,7 +495,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
         targets = _get_indexed_target_options()
         return {**targets, "agents": _agent_options()}
 
-    @mcp.tool()
+    @tool()
     def end_session() -> dict[str, Any]:
         """End the currently-active study session, if any.
 
@@ -488,7 +517,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
         topic = end_session_common(state)
         return {"ended": True, "topic": topic}
 
-    @mcp.tool()
+    @tool()
     def record_topic_progress(
         topic_id: int,
         priority: int | None = None,
@@ -533,7 +562,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
         "insight": "confident",
     }
 
-    @mcp.tool()
+    @tool()
     def log_topic(topic: str, status: str, note: str = "") -> dict[str, str]:
         """Record a topic the user is learning/struggling with this session.
 
@@ -578,7 +607,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
 
     # ── Review loop + lifecycle parity ───────────────────────────
 
-    @mcp.tool()
+    @tool()
     def get_due_cards(course: str | None = None, limit: int = 20) -> dict[str, Any]:
         """Get cards due for spaced-repetition review.
 
@@ -598,7 +627,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
         cards = due_cards(course=course, limit=limit)
         return {"due_cards": cards, "count": len(cards)}
 
-    @mcp.tool()
+    @tool()
     def log_review_outcome(
         course: str,
         card_type: str,
@@ -632,7 +661,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
             "correct": correct,
         }
 
-    @mcp.tool()
+    @tool()
     @consistent_read
     def get_concept_context(topic: str, limit: int = 80) -> dict[str, Any]:
         """Inspect scoped relationships and why they are available (up to 32KiB).
@@ -645,10 +674,16 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
 
         try:
             return agent_concept_context(topic, limit=limit)
+        except ScopeUnconfiguredError:
+            # Let _guard_scope convert this to the shared structured
+            # diagnostic instead of the generic ToolError(str(exc)) below --
+            # ScopeUnconfiguredError is itself a ValueError, so it would
+            # otherwise be caught here first and lose its type.
+            raise
         except ValueError as exc:
             raise ToolError(str(exc)) from exc
 
-    @mcp.tool()
+    @tool()
     @consistent_read
     def get_next_action(
         energy: str = "medium",
@@ -686,7 +721,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
         )
         return plan.to_json_dict()
 
-    @mcp.tool()
+    @tool()
     @consistent_read
     def get_active_topics() -> dict[str, Any]:
         """Get the active study backlog topics, capped at the AuDHD 3-topic limit.
@@ -709,7 +744,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
 
     # ── Course Explorer read parity (desktop MCP) ────────────────
 
-    @mcp.tool()
+    @tool()
     def get_lesson_tree(provider: str | None = None, course: str | None = None) -> dict[str, Any]:
         """Browse the course-material tree: providers → courses → lessons.
 
@@ -742,7 +777,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
         ]
         return {"course_id": course_id, "lessons": lessons}
 
-    @mcp.tool()
+    @tool()
     def read_lesson(lesson_id: str) -> dict[str, str]:
         """Read the raw markdown content of one lesson.
 
@@ -759,7 +794,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
         content = resolved.read_text(encoding="utf-8", errors="replace")
         return {"lesson_id": lesson_id, "content": content}
 
-    @mcp.tool()
+    @tool()
     def search_lessons(query: str, limit: int = 20) -> dict[str, Any]:
         """Full-text search over lesson bodies (SQLite FTS5).
 
@@ -781,7 +816,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
             results = _run_fts_search(_fts_db_path(), base, q, limit)
         return {"results": results}
 
-    @mcp.tool()
+    @tool()
     def log_struggle(
         question: str,
         topic_tag: str | None = None,
@@ -854,7 +889,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
             out.append(item)
         return out
 
-    @mcp.tool()
+    @tool()
     def exercise_list(plan_id: str = "", topic: str = "") -> dict[str, Any]:
         """List exercise sets, optionally scoped to a plan and/or topic.
 
@@ -871,7 +906,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
             "kinds": list(EXERCISE_KINDS),
         }
 
-    @mcp.tool()
+    @tool()
     def exercise_get(set_id: str, include_answers: bool = False) -> dict[str, Any]:
         """Fetch one exercise set: all three formats, plus readiness.
 
@@ -908,7 +943,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
             "readiness": compute_readiness(item),
         }
 
-    @mcp.tool()
+    @tool()
     def exercise_create(
         topic: str,
         plan_id: str = "",
@@ -955,7 +990,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
         create_set(item)
         return {"created": True, "set": item.summary(), "readiness": compute_readiness(item)}
 
-    @mcp.tool()
+    @tool()
     def exercise_import(markdown: str) -> dict[str, Any]:
         """Import a hand-authored exercise document (Markdown) as a new set.
 
@@ -986,7 +1021,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
         create_set(item)
         return {"created": True, "set": item.summary(), "readiness": compute_readiness(item)}
 
-    @mcp.tool()
+    @tool()
     def exercise_review(
         set_id: str,
         kind: str,
