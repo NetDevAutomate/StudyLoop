@@ -443,8 +443,17 @@ def ensure_config_dir() -> None:
 
     # Create config.yaml if it doesn't exist
     if not config_file.exists():
+        # DEFAULT_CONFIG's own memory.default_scope stays None -- load_config()
+        # deep-merges DEFAULT_CONFIG as its base, so changing that value here
+        # would also change what a hand-edited file omitting the key resolves
+        # to at runtime (errata #9 requires that fallback stay unset). Only the
+        # freshly-written file's content classifies the boundary explicitly, so
+        # a brand-new standalone install does not immediately hit the
+        # scope_unconfigured diagnostic on its first request.
+        fresh_config = copy.deepcopy(DEFAULT_CONFIG)
+        fresh_config["memory"]["default_scope"] = "unclassified"
         with open(config_file, "w") as f:
-            yaml.dump(DEFAULT_CONFIG, f, default_flow_style=False, sort_keys=False)
+            yaml.dump(fresh_config, f, default_flow_style=False, sort_keys=False)
         print(f"✅ Created default config: {config_file}")
 
     # Create .env if it doesn't exist

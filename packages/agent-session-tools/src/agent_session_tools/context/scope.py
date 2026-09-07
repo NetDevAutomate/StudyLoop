@@ -26,6 +26,48 @@ class ScopeError(ValueError):
     """Missing, invalid or unapplied explicit scope configuration."""
 
 
+class ScopeUnconfiguredError(ScopeError):
+    """No default scope and no matching project root -- the fresh-install case.
+
+    A distinguishable subclass so every CLI/MCP boundary can convert
+    specifically *this* failure into the shared structured diagnostic
+    (:func:`scope_setup_diagnostic`) without also swallowing unrelated
+    ``ScopeError``s (invalid config, a stale applied-policy digest, a
+    project outside the configured scope) into the same exit code or
+    payload shape.
+    """
+
+
+def scope_setup_diagnostic(exc: ScopeError | None = None) -> dict[str, str]:
+    """One structured diagnostic shape for a fresh install's missing scope.
+
+    Every entry point that can hit an unconfigured scope -- the ``studyloop``
+    CLI, both MCP servers' tool-call boundaries, and a ``session-db-mcp``
+    database that does not exist yet -- reports this same shape instead of a
+    bare traceback, a generic sqlite error, or an ad-hoc message, so a fresh
+    install fails closed with one recognisable, actionable diagnostic
+    wherever it is first hit. See design.md "Fresh-install scope".
+    """
+    message = (
+        str(exc)
+        if exc is not None
+        else (
+            "No context scope configured. Set memory.default_scope or a "
+            "project root in config.yaml, then use session-context policy "
+            "apply. Scope is never inferred from a harness."
+        )
+    )
+    return {
+        "code": "scope_unconfigured",
+        "message": message,
+        "remediation": (
+            "Set memory.default_scope to personal, work or unclassified in "
+            "config.yaml (see docs/context-memory.md), or configure a "
+            "project root and run: session-context policy apply"
+        ),
+    }
+
+
 @dataclass(frozen=True)
 class ProjectPolicy:
     id: str
@@ -138,7 +180,7 @@ class ScopePolicy:
             return observe_scope(self, project.scope)
         if self.default_scope is not None:
             return observe_scope(self, self.default_scope)
-        raise ScopeError(
+        raise ScopeUnconfiguredError(
             "No context scope configured. Set memory.default_scope or a project root in "
             "config.yaml, then use session-context policy apply. Scope is never inferred from a harness."
         )

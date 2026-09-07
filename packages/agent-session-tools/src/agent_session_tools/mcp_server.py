@@ -17,6 +17,7 @@ the core layers never import from here (one-way import rule).
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from pathlib import Path
 from typing import Any
@@ -47,6 +48,16 @@ def _get_connection(db_path: Path | None = None) -> sqlite3.Connection:
     from .context.managed_history import require_query_target
 
     require_query_target(path)
+    if not path.exists():
+        # A fresh install has neither a database nor a classified scope --
+        # report the one shared diagnostic instead of sqlite3's distinct
+        # "unable to open database file" (design.md "Fresh-install scope").
+        from .context.scope import ScopeUnconfiguredError
+
+        raise ScopeUnconfiguredError(
+            f"No session database found yet at {path}. Run a session or "
+            "session-export once to create it, then retry."
+        )
     conn = sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)
     conn.row_factory = sqlite3.Row
     conn.execute("BEGIN")
@@ -56,6 +67,33 @@ def _get_connection(db_path: Path | None = None) -> sqlite3.Connection:
 def _row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
     """Convert a sqlite3.Row to a plain dict."""
     return dict(row)
+
+
+def _guard_scope(fn):
+    """Convert an unconfigured-scope failure into the shared diagnostic.
+
+    Every tool registered below goes through this -- not only the ones that
+    call ``open_context()``/``_get_connection()`` directly -- so a tool this
+    file's author forgot to audit still fails closed with the same
+    ``{code, message, remediation}`` payload instead of a generic FastMCP
+    wrapper message or (for the standalone ``fastmcp`` package specifically)
+    an unmasked ``ToolError`` that skips its "Error calling tool" prefix but
+    still needs the diagnostic shape, not a raw exception string.
+    """
+    from functools import wraps
+
+    from .context.scope import ScopeUnconfiguredError, scope_setup_diagnostic
+
+    @wraps(fn)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return fn(*args, **kwargs)
+        except ScopeUnconfiguredError as exc:
+            from fastmcp.exceptions import ToolError
+
+            raise ToolError(json.dumps(scope_setup_diagnostic(exc))) from exc
+
+    return wrapper
 
 
 def _create_server() -> FastMCP:
@@ -72,9 +110,15 @@ def _create_server() -> FastMCP:
         ),
     )
 
+    def tool(*args: Any, **kwargs: Any):
+        def decorator(fn):
+            return mcp.tool(*args, **kwargs)(_guard_scope(fn))
+
+        return decorator
+
     from agent_session_tools.context.public import open_context
 
-    @mcp.tool(annotations={"readOnlyHint": True, "idempotentHint": True})
+    @tool(annotations={"readOnlyHint": True, "idempotentHint": True})
     def memory_search(
         query: str,
         project: str | None = None,
@@ -93,7 +137,7 @@ def _create_server() -> FastMCP:
                 query, max_sources=max_sources, budget_bytes=budget_bytes, as_of=as_of
             )
 
-    @mcp.tool(annotations={"readOnlyHint": True, "idempotentHint": True})
+    @tool(annotations={"readOnlyHint": True, "idempotentHint": True})
     def memory_source(
         evidence_id: str,
         start: int = 0,
@@ -107,7 +151,7 @@ def _create_server() -> FastMCP:
                 evidence_id, start=start, length=length, budget_bytes=budget_bytes
             )
 
-    @mcp.tool(annotations={"readOnlyHint": False, "destructiveHint": False})
+    @tool(annotations={"readOnlyHint": False, "destructiveHint": False})
     def memory_propose(
         statement: str,
         state: str,
@@ -130,7 +174,7 @@ def _create_server() -> FastMCP:
                 producer="agent:session-db-mcp",
             )
 
-    @mcp.tool(annotations={"readOnlyHint": False, "destructiveHint": False})
+    @tool(annotations={"readOnlyHint": False, "destructiveHint": False})
     def memory_relate(
         from_id: str, to_id: str, relation: str, project: str | None = None
     ) -> dict[str, Any]:
@@ -140,7 +184,7 @@ def _create_server() -> FastMCP:
                 from_id, to_id, relation, producer="agent:session-db-mcp"
             )
 
-    @mcp.tool(annotations={"readOnlyHint": True, "idempotentHint": True})
+    @tool(annotations={"readOnlyHint": True, "idempotentHint": True})
     def session_annotations(
         session_id: str,
         kind: str = "note",
@@ -172,7 +216,7 @@ def _create_server() -> FastMCP:
                 limit=limit,
             )
 
-    @mcp.tool(annotations={"readOnlyHint": True, "idempotentHint": True})
+    @tool(annotations={"readOnlyHint": True, "idempotentHint": True})
     def memory_decide(
         query: str,
         requirements: list[dict[str, Any]],
@@ -191,7 +235,7 @@ def _create_server() -> FastMCP:
                 query, requirements, budget_bytes=budget_bytes, as_of=as_of
             )
 
-    @mcp.tool(annotations={"readOnlyHint": False, "destructiveHint": False})
+    @tool(annotations={"readOnlyHint": False, "destructiveHint": False})
     def memory_review(
         target_kind: str,
         target_id: str,
@@ -222,7 +266,7 @@ def _create_server() -> FastMCP:
                 producer="agent:session-db-mcp",
             )
 
-    @mcp.tool(annotations={"readOnlyHint": True, "idempotentHint": True})
+    @tool(annotations={"readOnlyHint": True, "idempotentHint": True})
     def memory_reviews(
         target_kind: str,
         target_id: str,
@@ -241,7 +285,7 @@ def _create_server() -> FastMCP:
                 as_of=as_of,
             )
 
-    @mcp.tool(annotations={"readOnlyHint": True, "idempotentHint": True})
+    @tool(annotations={"readOnlyHint": True, "idempotentHint": True})
     def memory_assess(
         query: str,
         assertion_ids: list[str],
@@ -259,7 +303,7 @@ def _create_server() -> FastMCP:
                 query, assertion_ids, budget_bytes=budget_bytes, as_of=as_of
             )
 
-    @mcp.tool(
+    @tool(
         annotations={"readOnlyHint": True, "idempotentHint": True},
     )
     @consistent_read
@@ -315,7 +359,7 @@ def _create_server() -> FastMCP:
         finally:
             conn.close()
 
-    @mcp.tool(
+    @tool(
         annotations={"readOnlyHint": True, "idempotentHint": True},
     )
     @consistent_read
@@ -364,7 +408,7 @@ def _create_server() -> FastMCP:
         finally:
             conn.close()
 
-    @mcp.tool(
+    @tool(
         annotations={"readOnlyHint": True, "idempotentHint": True},
     )
     @consistent_read
@@ -396,7 +440,7 @@ def _create_server() -> FastMCP:
         finally:
             conn.close()
 
-    @mcp.tool(
+    @tool(
         annotations={"readOnlyHint": True, "idempotentHint": True},
     )
     @consistent_read
@@ -470,7 +514,7 @@ def _create_server() -> FastMCP:
         finally:
             conn.close()
 
-    @mcp.tool(
+    @tool(
         annotations={"readOnlyHint": True, "idempotentHint": True},
     )
     @consistent_read
@@ -526,7 +570,7 @@ def _create_server() -> FastMCP:
         finally:
             conn.close()
 
-    @mcp.tool(
+    @tool(
         annotations={"destructiveHint": True},
     )
     def session_clean(
@@ -607,7 +651,7 @@ def _create_server() -> FastMCP:
         finally:
             conn.close()
 
-    @mcp.tool(
+    @tool(
         annotations={"readOnlyHint": True, "idempotentHint": True},
     )
     @consistent_read
