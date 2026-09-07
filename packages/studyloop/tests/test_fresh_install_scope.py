@@ -61,7 +61,7 @@ STUDYLOOP_TOOLS_TO_CHECK: tuple[tuple[str, dict], ...] = (
 )
 
 
-def _usable_path() -> str:
+def _usable_path(agent_bin: Path | None = None) -> str:
     """This venv's own bin dir first, then the real PATH.
 
     ``studyloop study`` shells out to real system tools (tmux) whose install
@@ -69,13 +69,49 @@ def _usable_path() -> str:
     hermetic PATH some e2e fixtures build -- this inherits the calling
     shell's PATH rather than reconstructing a minimal one. HOME (not PATH) is
     what isolates this test from the learner's real config/database.
+
+    ``agent_bin``, when given, is prepended ahead of everything else. It
+    exists so a caller can make ``detect_agents()`` (which shells out to
+    ``shutil.which`` on the *subprocess's* PATH, not this process's) see a
+    fake agent without depending on whatever agent CLIs happen to be
+    installed on the machine running the test -- see ``_fake_agent_bin``.
     """
     venv_bin = str(Path(sys.executable).parent)
     real_path = os.environ.get("PATH", os.defpath)
-    return os.pathsep.join(dict.fromkeys((venv_bin, *real_path.split(os.pathsep))))
+    parts = (
+        (str(agent_bin), venv_bin, *real_path.split(os.pathsep))
+        if agent_bin
+        else (
+            venv_bin,
+            *real_path.split(os.pathsep),
+        )
+    )
+    return os.pathsep.join(dict.fromkeys(parts))
 
 
-def _virgin_env(home: Path) -> dict[str, str]:
+def _fake_agent_bin(bin_dir: Path) -> Path:
+    """Write a no-op executable named ``claude`` and return its containing dir.
+
+    ``studyloop study`` refuses to start at all ("No AI agent found") unless
+    ``detect_agents()`` resolves at least one known agent binary via
+    ``shutil.which`` -- see ``studyloop.agent_launcher.detect_agents`` and
+    ``studyloop.adapters.claude.ADAPTER.binary == "claude"``. That check runs
+    *before* the fresh-install scope check this suite exists to prove, so a
+    virgin-HOME run must clear it deterministically rather than relying on a
+    real agent CLI being installed on whatever machine runs the test (it
+    wasn't, on the GitHub runner that filed this regression). The script is
+    never actually executed: ``start_study_session()`` raises
+    ``ScopeUnconfiguredError`` immediately after agent selection, well before
+    any launch command is built.
+    """
+    bin_dir.mkdir(parents=True, exist_ok=True)
+    fake_claude = bin_dir / "claude"
+    fake_claude.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    fake_claude.chmod(0o755)
+    return bin_dir
+
+
+def _virgin_env(home: Path, *, agent_bin: Path | None = None) -> dict[str, str]:
     """A from-scratch HOME with no config, no DB, no scope override.
 
     Deliberately omits STUDYLOOP_CONFIG, STUDYLOOP_DB, STUDYLOOP_STATE_DIR
@@ -85,7 +121,7 @@ def _virgin_env(home: Path) -> dict[str, str]:
     home.mkdir(parents=True, exist_ok=True)
     return {
         "HOME": str(home),
-        "PATH": _usable_path(),
+        "PATH": _usable_path(agent_bin),
         "XDG_CONFIG_HOME": str(home / ".config"),
         "XDG_STATE_HOME": str(home / ".local" / "state"),
         "XDG_CACHE_HOME": str(home / ".cache"),
@@ -144,7 +180,8 @@ def _diagnostic_payload(result) -> dict:
 
 
 def test_studyloop_study_exits_2_with_the_diagnostic_on_a_virgin_home(tmp_path):
-    env = _virgin_env(tmp_path / "home")
+    agent_bin = _fake_agent_bin(tmp_path / "fake-agent-bin")
+    env = _virgin_env(tmp_path / "home", agent_bin=agent_bin)
 
     result = _run_cli(env, "study", "Test Topic")
 

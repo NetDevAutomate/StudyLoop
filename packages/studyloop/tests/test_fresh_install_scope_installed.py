@@ -101,16 +101,38 @@ def installed_env(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return venv_dir
 
 
-def _usable_path(venv_bin: Path) -> str:
+def _usable_path(venv_bin: Path, agent_bin: Path | None = None) -> str:
     real_path = os.environ.get("PATH", os.defpath)
-    return os.pathsep.join(dict.fromkeys((str(venv_bin), *real_path.split(os.pathsep))))
+    parts = (
+        (str(agent_bin), str(venv_bin), *real_path.split(os.pathsep))
+        if agent_bin
+        else (str(venv_bin), *real_path.split(os.pathsep))
+    )
+    return os.pathsep.join(dict.fromkeys(parts))
 
 
-def _virgin_env(venv_dir: Path, home: Path) -> dict[str, str]:
+def _fake_agent_bin(bin_dir: Path) -> Path:
+    """Write a no-op executable named ``claude`` and return its containing dir.
+
+    Mirrors ``test_fresh_install_scope.py``'s helper of the same name: the CLI
+    refuses to start at all ("No AI agent found") unless ``detect_agents()``
+    resolves a known agent binary via ``shutil.which`` on the subprocess's
+    PATH, before the fresh-install scope check this suite exists to prove --
+    so this must not depend on a real agent CLI being installed on whatever
+    machine runs the test. The script is never actually executed.
+    """
+    bin_dir.mkdir(parents=True, exist_ok=True)
+    fake_claude = bin_dir / "claude"
+    fake_claude.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    fake_claude.chmod(0o755)
+    return bin_dir
+
+
+def _virgin_env(venv_dir: Path, home: Path, *, agent_bin: Path | None = None) -> dict[str, str]:
     home.mkdir(parents=True, exist_ok=True)
     return {
         "HOME": str(home),
-        "PATH": _usable_path(venv_dir / "bin"),
+        "PATH": _usable_path(venv_dir / "bin", agent_bin),
         "XDG_CONFIG_HOME": str(home / ".config"),
         "XDG_STATE_HOME": str(home / ".local" / "state"),
         "XDG_CACHE_HOME": str(home / ".cache"),
@@ -149,7 +171,8 @@ def _diagnostic_payload(result) -> dict:
 
 
 def test_installed_studyloop_study_exits_2_with_the_diagnostic(installed_env, tmp_path):
-    env = _virgin_env(installed_env, tmp_path / "home")
+    agent_bin = _fake_agent_bin(tmp_path / "fake-agent-bin")
+    env = _virgin_env(installed_env, tmp_path / "home", agent_bin=agent_bin)
 
     result = _run_cli(installed_env, env, "study", "Test Topic")
 
