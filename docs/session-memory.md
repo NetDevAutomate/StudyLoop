@@ -94,6 +94,18 @@ Project filters narrow results. They do **not** enforce a work/personal privacy
 boundary. Do not give an agent access to a database containing material it may
 not read.
 
+### Configure the boundary
+
+A fresh install's generated `config.yaml` sets `memory.default_scope:
+unclassified` explicitly, so a new install can search and record from its
+first session. To classify history as `personal` or `work` instead, edit
+that key (or configure per-project roots) and see
+[context-memory.md](context-memory.md#configure-the-boundary) for the full
+`memory:` shape and `session-context policy apply`. If the boundary is ever
+left genuinely unset (a hand-edited file, or an install predating this
+default), every scope-dependent tool call and `studyloop` command reports one
+structured `scope_unconfigured` diagnostic instead of a crash, naming the fix.
+
 ## Sync permitted databases
 
 Only sync when each destination may receive the entire selected database.

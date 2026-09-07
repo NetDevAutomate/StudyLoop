@@ -1076,6 +1076,16 @@ session_db: ~/.config/studyloop/sessions.db
 # State directory for sync tracking
 state_dir: ~/.local/share/studyloop
 
+# Memory scope: classify this install's conversation history as personal or
+# work by default. Study material naturally mixes with both, and this
+# boundary is never inferred from a harness or project path alone.
+# "unclassified" keeps existing history visible until you choose; change the
+# value below to "personal" or "work", or add per-project overrides under
+# memory.projects (see docs/context-memory.md), then run:
+#   session-context policy apply
+memory:
+  default_scope: unclassified
+
 # Remote sync configuration (optional)
 # sync_remote: your-remote-host
 # sync_user: your-username

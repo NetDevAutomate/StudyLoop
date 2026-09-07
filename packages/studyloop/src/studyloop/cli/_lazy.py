@@ -58,9 +58,33 @@ class LazyGroup(click.Group):
         return getattr(mod, attr_name)
 
     def invoke(self, ctx: click.Context):
-        from agent_session_tools.context.scope import ScopeError
+        from agent_session_tools.context.scope import ScopeError, ScopeUnconfiguredError
 
         try:
             return super().invoke(ctx)
+        except ScopeUnconfiguredError as exc:
+            # The fresh-install case (design.md "Fresh-install scope"): no
+            # default scope, no matching project root. Distinguished from
+            # other ScopeErrors below (invalid config, a stale applied-policy
+            # digest) by its own exit code and the shared structured
+            # diagnostic, so a caller scripting against exit codes can tell
+            # "you have not set this up yet" apart from "your config is
+            # broken" or "re-run policy apply".
+            raise _ScopeUnconfiguredCliError(exc) from exc
         except ScopeError as exc:
             raise click.ClickException(str(exc)) from exc
+
+
+class _ScopeUnconfiguredCliError(click.ClickException):
+    """Exit 2 with the shared scope_unconfigured diagnostic, not a traceback."""
+
+    exit_code = 2
+
+    def __init__(self, exc) -> None:
+        from agent_session_tools.context.scope import scope_setup_diagnostic
+
+        self.diagnostic = scope_setup_diagnostic(exc)
+        super().__init__(self.diagnostic["message"])
+
+    def format_message(self) -> str:
+        return f"{self.diagnostic['message']} {self.diagnostic['remediation']}"

@@ -9,6 +9,17 @@ experience may change before `1.0.0`.
 
 ### Fixed
 
+- A fresh install can start a session and call every memory tool from its
+  first run, instead of hitting an unhandled traceback or a bare sqlite
+  error. Both packages' config writers now write `memory.default_scope:
+  unclassified` explicitly for a brand-new `config.yaml` (the *runtime*
+  default when no config exists at all, or when an existing file omits the
+  key, stays intentionally unset). Every remaining case where scope is
+  genuinely unconfigured — the `studyloop` CLI (now exits `2`), all seven
+  previously-unguarded MCP tool call sites, and `session-db-mcp`'s
+  `open_context()` on a database that does not exist yet — now reports one
+  structured `{code: "scope_unconfigured", message, remediation}` diagnostic
+  instead of a crash or an ad-hoc error shape.
 - Re-exporting a touched OpenCode session can no longer destroy conversation
   history. OpenCode rewrites `time.updated` on any touch and flushes its
   message/part files asynchronously, so a re-export can legitimately read

@@ -113,6 +113,51 @@ def mock_db_path(mcp_db):
         yield mcp_db
 
 
+@pytest.mark.asyncio
+async def test_session_search_reports_the_shared_diagnostic_on_a_missing_database(
+    tmp_path, monkeypatch
+):
+    """Real MCP call-path proof (B1 R10 in-process check): a fresh install's
+    session_search call returns isError carrying the structured
+    scope_unconfigured payload, not FastMCP's generic wrapper text around a
+    bare sqlite OperationalError."""
+    import json as json_module
+
+    from mcp.shared.memory import create_connected_server_and_client_session
+
+    from agent_session_tools.mcp_server import _create_server
+
+    missing_db = tmp_path / "does-not-exist" / "sessions.db"
+    monkeypatch.setattr(
+        "agent_session_tools.mcp_server._get_db_path", lambda: missing_db
+    )
+
+    server = _create_server()
+    async with create_connected_server_and_client_session(
+        server._mcp_server, raise_exceptions=False
+    ) as session:
+        result = await session.call_tool("session_search", {"query": "test"})
+
+    assert result.isError
+    text = "".join(block.text for block in result.content if block.type == "text")
+    payload = json_module.loads(text[text.index("{") :])
+    assert payload["code"] == "scope_unconfigured"
+    assert payload["remediation"]
+
+
+def test_get_connection_on_a_missing_database_reports_the_shared_diagnostic(tmp_path):
+    """A fresh install has no database yet -- session_search must not leak
+    sqlite3's distinct "unable to open database file" (design.md
+    "Fresh-install scope"; B1 requires the same scope_unconfigured shape
+    open_context() reports)."""
+    from agent_session_tools.context.scope import ScopeUnconfiguredError
+    from agent_session_tools.mcp_server import _get_connection
+
+    missing = tmp_path / "does-not-exist" / "sessions.db"
+    with pytest.raises(ScopeUnconfiguredError):
+        _get_connection(missing)
+
+
 def _get_tools():
     """Import tool functions from the MCP server."""
     from agent_session_tools.mcp_server import mcp

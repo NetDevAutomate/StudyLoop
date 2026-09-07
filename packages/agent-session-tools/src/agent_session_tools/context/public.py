@@ -17,7 +17,7 @@ from typing import Any
 
 from ..config_loader import get_db_path, load_config
 from .provenance import ExecutionState, Scope
-from .scope import ScopeError, active_policy, visibility_sql
+from .scope import ScopeError, ScopeUnconfiguredError, active_policy, visibility_sql
 from .response import read_boundary
 from .store import Access, Citation, ContextStore, _hash, _json
 
@@ -66,6 +66,14 @@ def open_context(
     from .managed_history import require_query_target
 
     require_query_target(path)
+    if not path.exists():
+        # A fresh install has neither a database nor a classified scope --
+        # report the one shared diagnostic instead of sqlite3's distinct
+        # "unable to open database file" (design.md "Fresh-install scope").
+        raise ScopeUnconfiguredError(
+            f"No session database found yet at {path}. Run a session or "
+            "session-export once to create it, then retry."
+        )
     conn = sqlite3.connect(
         path.as_uri() + ("?mode=rw" if write else "?mode=ro"), uri=True
     )

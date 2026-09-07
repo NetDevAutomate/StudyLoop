@@ -36,6 +36,22 @@ it cannot switch scopes. With no matching working-directory root or configured
 default, retrieval fails with setup guidance. An owner-controlled process may set
 `SESSION_CONTEXT_SCOPE`; MCP tool arguments cannot set it.
 
+A config file that `ensure_config_dir()` writes for a brand-new standalone
+install sets `memory.default_scope: unclassified` explicitly, so a fresh
+install never starts in the undiagnosed state above. `default_scope: null`
+(shown here) is only how you *hand-edit* the file back to that state on
+purpose -- to force the setup diagnostic below on every request until you
+choose a real scope. The runtime default read when no config file exists at
+all, or when an existing file omits the key, stays unset either way.
+
+With no default and no matching project root, every entry point that can
+raise this failure -- the `studyloop` CLI, both MCP servers' tool calls, and
+`session-db-mcp`'s `open_context()` on a database that does not exist yet --
+reports the same structured diagnostic (`{code: "scope_unconfigured",
+message, remediation}`) instead of a bare traceback or a distinct
+file-not-found error. The `studyloop` CLI exits with status `2` for this
+specific case.
+
 After capture/repair has created the database, preview and apply the configured
 classifications:
 
