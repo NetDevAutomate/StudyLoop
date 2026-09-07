@@ -132,6 +132,26 @@ def _stub_topics_list(page: Page, topics: list[dict] | None = None) -> None:
     page.route("**/api/session/topics", lambda route: _fulfill(route, topics or []))
 
 
+def _stub_backlog(page: Page, payload: dict | None = None) -> None:
+    """Neutralise the park-first gate for start-flow tests.
+
+    startSession() consults GET /api/backlog BEFORE posting: at
+    MAX_ACTIVE_TOPICS active topics it swallows the click into the park-first
+    overlay and never reaches /api/session/start. That gate is real product
+    behaviour with its own tests — but these tests assert on the start POST's
+    outcome, so the backlog must answer "no pressure" regardless of what any
+    earlier test in the process wrote into the shared suite DB (this exact
+    leak — study-integration runs leaving 3+ active topics — made every
+    start-flow test time out when the whole integration sweep ran together).
+    """
+    page.route(
+        "**/api/backlog",
+        lambda route: _fulfill(
+            route, payload or {"active": [], "backlog": [], "active_count": 0, "max_active": 3}
+        ),
+    )
+
+
 def _goto_picker(page: Page) -> None:
     page.goto(f"http://127.0.0.1:{WEB_PORT}/#study-session")
     page.wait_for_load_state("domcontentloaded")
@@ -378,6 +398,10 @@ class TestTargetKindSwitcher:
 
 class TestStartSessionFlow:
     def _stub_start(self, page: Page, *, status: int, body: dict) -> None:
+        # Every start-flow test needs the park-first gate neutralised too —
+        # stubbing it here keeps the pairing impossible to forget.
+        _stub_backlog(page)
+
         def handler(route: Route) -> None:
             if route.request.method == "POST":
                 _fulfill(route, body, status=status)
@@ -498,6 +522,7 @@ class TestStartSessionFlow:
         _stub_session_state(web_page)
         _stub_topics_list(web_page)
         web_page.route("**/api/session/start", lambda route: route.abort("failed"))
+        _stub_backlog(web_page)
         _goto_picker(web_page)
 
         web_page.evaluate(
