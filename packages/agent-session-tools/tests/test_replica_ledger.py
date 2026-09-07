@@ -906,8 +906,13 @@ def test_failed_native_history_write_rolls_back_the_native_body(pair, monkeypatc
 
     with monkeypatch.context() as fault:
         fault.setattr(retention, "record_native_evidence", fail)
-        with pytest.raises(RuntimeError, match="after native history"):
-            pair["exporter"].export_all(conn, incremental=False)
+        failed = pair["exporter"].export_all(conn, incremental=False)
+    # The exporter records the failure and returns rather than propagating, so
+    # one bad batch cannot abandon the remaining sources (base.flush_batch).
+    # Assert it fired: without this, the empty-table checks below would also
+    # pass for a fault that never triggered.
+    assert failed.errors >= 1
+    assert failed.added == 0
     for table in (
         "sessions",
         "messages",

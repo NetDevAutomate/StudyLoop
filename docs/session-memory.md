@@ -26,6 +26,18 @@ The importer accepts `claude`, `codex`, `grok`, `kiro`, `opencode` and `pi` as
 `--sources` values. For example, `session-export --sources codex --sources claude`.
 The `pi` importer also handles supported oh-my-pi archives.
 
+Re-importing a session never destroys conversation text. Harnesses rewrite a
+session's modified time on any touch, compact their own histories, and write
+transcript files asynchronously, so a re-export can legitimately read fewer
+messages than were captured before — or none at all. Every importer therefore
+collects the new payload first and lets the shared commit path reconcile: it
+removes only empty stale rows, refuses to drop a message that an evidence row
+still cites, and records edited text as a further revision (carrying
+`source_record_id`) rather than overwriting the original. A re-export that reads
+nothing is reported as `empty` and changes no stored message. One failing batch
+is recorded in the `errors` count and does not stop the remaining batches or
+sources.
+
 Grok import reads local `chat_history.jsonl` files with sibling `summary.json`
 under `~/.grok/sessions/`, or the configured `GROK_HOME` sessions directory.
 `session-export --grok-only` imports those files; it does not install a Grok

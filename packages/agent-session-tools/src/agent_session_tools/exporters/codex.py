@@ -45,7 +45,7 @@ from pathlib import Path
 
 from ..utils import file_fingerprint
 from ..context.capture import capture_run
-from .base import ExportStats, commit_batch
+from .base import ExportStats, commit_batch, flush_batch
 from .native import NativeCollector, codex_record
 
 # Codex CLI session directory (rollout files live in a YYYY/MM/DD subtree)
@@ -164,8 +164,7 @@ class CodexExporter:
                     "Session export deferred (%s): %s", type(exc).__name__, exc
                 )
 
-        if batch:
-            commit_batch(conn, batch, batch_messages, stats)
+        flush_batch(conn, batch, batch_messages, stats, source=self.source_name)
 
         return stats
 

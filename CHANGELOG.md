@@ -7,6 +7,28 @@ experience may change before `1.0.0`.
 
 ## [Unreleased]
 
+### Fixed
+
+- Re-exporting a touched OpenCode session can no longer destroy conversation
+  history. OpenCode rewrites `time.updated` on any touch and flushes its
+  message/part files asynchronously, so a re-export can legitimately read
+  nothing; the importer deleted the previously captured rows *before* it knew
+  the replacement set was non-empty, turning that ordinary race into permanent
+  loss of the only surviving copy of a session. It now collects first and, like
+  every other importer, hands replacement to the shared commit path, which
+  removes only empty stale rows, refuses to drop a message any evidence row
+  still cites, and files edited text as a revision instead of overwriting the
+  original.
+- One bad batch can no longer abandon the rest of an export run. Each importer's
+  leftover partial batch was committed outside its per-source error guard, and
+  the OpenCode and Kiro importers had no guard around their mid-loop commits
+  either — so a single collision or transient database error propagated out of
+  the importer, and because sources are exported in sequence with no guard of
+  their own, every later source was skipped. Any source with fewer than fifty
+  sessions has only a final batch, so for small harnesses nothing was contained
+  at all. Every batch commit now records the failure and continues; the database
+  is still rolled back exactly as before.
+
 ## [0.3.0] - 2026-09-05
 
 ### Added

@@ -9,7 +9,7 @@ from pathlib import Path
 
 from ..utils import file_fingerprint
 from ..context.capture import capture_run
-from .base import ExportStats, commit_batch
+from .base import ExportStats, commit_batch, flush_batch
 from .native import NativeCollector, claude_record
 
 
@@ -74,8 +74,7 @@ class ClaudeCodeExporter:
                 )
 
         # Commit final batch
-        if batch:
-            commit_batch(conn, batch, batch_messages, stats)
+        flush_batch(conn, batch, batch_messages, stats, source=self.source_name)
 
         return stats
 

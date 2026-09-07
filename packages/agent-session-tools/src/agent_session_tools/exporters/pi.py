@@ -39,7 +39,7 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .base import ExportStats, commit_batch
+from .base import ExportStats, commit_batch, flush_batch
 
 # Module-level constants — monkeypatched in tests
 PI_SESSIONS = Path.home() / ".pi" / "agent" / "sessions"
@@ -164,8 +164,7 @@ class PiFamilyExporter:
             except Exception:
                 stats.errors += 1
 
-        if batch:
-            commit_batch(conn, batch, batch_messages, stats)
+        flush_batch(conn, batch, batch_messages, stats, source=self.source_name)
 
         return stats
 

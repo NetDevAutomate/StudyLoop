@@ -340,3 +340,88 @@ class TestExportAll:
         ).fetchall()
         assert len(messages) == 2
         assert messages[1]["content"] == "Updated answer"
+
+    def test_updated_session_keeps_prior_messages_when_source_reads_empty(
+        self, migrated_db, opencode_tree
+    ):
+        """A touched session whose parts are transiently unreadable keeps its history.
+
+        OpenCode rewrites ``time.updated`` on any touch, and its message/part
+        files are written asynchronously, so a re-export can legitimately race a
+        partially-flushed or compacting store and collect nothing. Deleting the
+        captured rows before the replacement set is known to be non-empty turns
+        that ordinary race into permanent conversation loss — the exporter is the
+        only record of a session once the harness compacts it.
+        """
+        conn, _ = migrated_db
+        exporter = OpenCodeExporter()
+
+        assert exporter.export_all(conn, incremental=True).added == 1
+        before = conn.execute(
+            "SELECT id, content FROM messages WHERE session_id = 'sess-001'"
+        ).fetchall()
+        assert len(before) == 1
+
+        # Touch the session (new updated_at) while its parts read as empty.
+        session_file = opencode_tree / "session" / "proj1" / "sess-001.json"
+        session_data = json.loads(session_file.read_text())
+        session_data["time"]["updated"] = 1717243200000
+        session_file.write_text(json.dumps(session_data))
+        for part_file in (opencode_tree / "part" / "msg-001").glob("*.json"):
+            part_file.unlink()
+
+        stats = exporter.export_all(conn, incremental=True)
+
+        assert stats.empty == 1
+        after = conn.execute(
+            "SELECT id, content FROM messages WHERE session_id = 'sess-001'"
+        ).fetchall()
+        assert [tuple(row) for row in after] == [tuple(row) for row in before], (
+            "previously captured messages were destroyed by a re-export that "
+            "collected nothing"
+        )
+
+    def test_changed_message_becomes_a_revision_not_an_overwrite(
+        self, migrated_db, opencode_tree
+    ):
+        """Replacement goes through commit_batch's evidence-aware reconciliation.
+
+        The other exporters set ``replace_messages`` and let commit_batch decide
+        (base.py:175-196): it removes only empty/stale rows carrying no evidence
+        references, and ``_preserve_message_identity`` (base.py:243-285) keeps
+        historical prose by filing changed text under a derived ``-rev-`` id
+        rather than overwriting it. So an edited message yields BOTH rows. The
+        bare DELETE this replaces silently destroyed the earlier text.
+        """
+        conn, _ = migrated_db
+        exporter = OpenCodeExporter()
+        assert exporter.export_all(conn, incremental=True).added == 1
+
+        session_file = opencode_tree / "session" / "proj1" / "sess-001.json"
+        session_data = json.loads(session_file.read_text())
+        session_data["time"]["updated"] = 1717243200000
+        session_file.write_text(json.dumps(session_data))
+        (opencode_tree / "part" / "msg-001" / "part-001.json").write_text(
+            json.dumps({"type": "text", "text": "Revised question."})
+        )
+
+        stats = exporter.export_all(conn, incremental=True)
+
+        assert stats.updated == 1
+        rows = dict(
+            conn.execute(
+                "SELECT id, content FROM messages WHERE session_id = 'sess-001'"
+            ).fetchall()
+        )
+        assert rows["msg-001"] == "Explain decorators please."
+        revisions = {
+            key: value for key, value in rows.items() if key.startswith("msg-001-rev-")
+        }
+        assert list(revisions.values()) == ["Revised question."]
+        revision_id = next(iter(revisions))
+        meta = json.loads(
+            conn.execute(
+                "SELECT metadata FROM messages WHERE id = ?", (revision_id,)
+            ).fetchone()[0]
+        )
+        assert meta["source_record_id"] == "msg-001"

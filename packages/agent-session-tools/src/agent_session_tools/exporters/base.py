@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import logging
 import sqlite3
 from dataclasses import dataclass
 from typing import Protocol
@@ -217,6 +218,41 @@ def commit_batch(
         conn.rollback()
         stats.errors += len(sessions)
         raise
+
+
+def flush_batch(
+    conn: sqlite3.Connection,
+    sessions: list,
+    messages: list,
+    stats: ExportStats,
+    *,
+    source: str,
+) -> bool:
+    """Commit a batch without letting one bad batch abort the whole export.
+
+    ``commit_batch`` rolls back and records ``stats.errors``, then re-raises so
+    a caller can decide. Every caller's decision is the same — record and move
+    on to the next batch — but two call sites had no guard at all: the leftover
+    partial batch flushed after each exporter's loop, and the mid-loop commits
+    in the exporters whose loop body is not itself wrapped in a ``try``. A
+    source with fewer than ``batch_size`` sessions has *only* a final batch, so
+    for small harnesses nothing was contained; and
+    ``export_sessions._run_export`` iterates sources with no guard of its own,
+    so an escaping error abandons every later source too.
+
+    Returns True when the batch committed. Nothing is counted here:
+    ``commit_batch`` has already recorded ``stats.errors`` before re-raising.
+    """
+    if not sessions:
+        return True
+    try:
+        commit_batch(conn, sessions, messages, stats)
+    except Exception as exc:
+        logging.getLogger(__name__).warning(
+            "%s batch deferred (%s): %s", source, type(exc).__name__, exc
+        )
+        return False
+    return True
 
 
 def _message_is_referenced(conn: sqlite3.Connection, message_id: str) -> bool:

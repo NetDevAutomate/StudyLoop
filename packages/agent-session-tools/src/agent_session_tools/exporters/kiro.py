@@ -23,7 +23,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from ..context.capture import capture_run
-from .base import ExportStats, commit_batch
+from .base import ExportStats, flush_batch
 from .native import NativeCollector, kiro_entry
 
 # Kiro CLI database location
@@ -362,7 +362,9 @@ class KiroCliExporter:
                     batch.append(session_data)
                     batch_messages.extend(messages)
                     if len(batch) >= batch_size:
-                        commit_batch(conn, batch, batch_messages, stats)
+                        flush_batch(
+                            conn, batch, batch_messages, stats, source=self.source_name
+                        )
                         batch = []
                         batch_messages = []
                 else:
@@ -371,7 +373,6 @@ class KiroCliExporter:
                     stats.empty += 1
 
         # Commit final batch
-        if batch:
-            commit_batch(conn, batch, batch_messages, stats)
+        flush_batch(conn, batch, batch_messages, stats, source=self.source_name)
 
         return stats

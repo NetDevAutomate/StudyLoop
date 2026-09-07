@@ -11,7 +11,7 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-from .base import ExportStats, commit_batch
+from .base import ExportStats, flush_batch
 
 OPENCODE_DIR = Path.home() / ".local" / "share" / "opencode" / "storage"
 
@@ -61,13 +61,15 @@ class OpenCodeExporter:
                 if existing["updated_at"] == updated_at:
                     stats.skipped += 1
                     continue
-                # Session was updated — delete old messages and re-import
-                conn.execute("DELETE FROM messages WHERE session_id = ?", (session_id,))
                 status = "updated"
             else:
                 status = "added"
 
-            # Collect messages for this session
+            # Collect messages BEFORE any replacement is scheduled: OpenCode
+            # rewrites time.updated on any touch and flushes message/part files
+            # asynchronously, so a re-export can legitimately read nothing.
+            # Removing captured rows first would make that ordinary race
+            # permanent conversation loss.
             messages = self._collect_messages(session_id)
             if not messages:
                 stats.empty += 1
@@ -88,17 +90,20 @@ class OpenCodeExporter:
                         }
                     ),
                     "status": status,
+                    # Let commit_batch reconcile: it removes only empty/stale
+                    # rows absent from this payload and refuses to drop any
+                    # message an evidence row still cites.
+                    "replace_messages": True,
                 }
             )
             batch_messages.extend(messages)
 
             if len(batch) >= batch_size:
-                commit_batch(conn, batch, batch_messages, stats)
+                flush_batch(conn, batch, batch_messages, stats, source=self.source_name)
                 batch = []
                 batch_messages = []
 
-        if batch:
-            commit_batch(conn, batch, batch_messages, stats)
+        flush_batch(conn, batch, batch_messages, stats, source=self.source_name)
 
         return stats
 
