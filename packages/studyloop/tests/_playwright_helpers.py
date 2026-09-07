@@ -87,6 +87,12 @@ def _isolated_child_env(extra_env: Mapping[str, str] | None = None) -> dict[str,
         "NO_COLOR": "1",
         "TERM": "dumb",
         "PYTHONHASHSEED": "0",
+        # The context system never infers a scope from a harness: without a
+        # configured memory.default_scope a session/start raises ScopeError
+        # (HTTP 409 context_scope_unavailable). The hermetic child gets no
+        # real config, so classify it explicitly as unclassified — mirroring
+        # conftest.py's in-process _isolate_memory_policy autouse fixture.
+        "SESSION_CONTEXT_SCOPE": "unclassified",
     }
     # conftest.py sets these once, process-wide, to a tmp path (never the
     # developer's real sessions.db/state dir) via os.environ.setdefault --

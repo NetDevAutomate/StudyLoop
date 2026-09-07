@@ -141,6 +141,12 @@ def _build_env(
         **os.environ,
         "STUDYLOOP_TEST_AGENT_CMD": agent_cmd,
         "STUDYLOOP_CONFIG": str(config_path),
+        # This class-scoped fixture builds env before the function-scoped
+        # autouse _isolate_memory_policy fixture runs, so os.environ does
+        # not yet carry SESSION_CONTEXT_SCOPE. The child `studyloop study`
+        # would hit ScopeError (scope is never inferred from a harness)
+        # before writing session-state.json. Classify the world explicitly.
+        "SESSION_CONTEXT_SCOPE": "unclassified",
         **_agent_extra_env(agent_name, tmp_path),
     }
     env.pop("TMUX", None)

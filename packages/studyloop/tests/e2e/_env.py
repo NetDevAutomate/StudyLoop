@@ -260,6 +260,11 @@ def build_test_world(
         "STUDYLOOP_CONFIG": str(config),
         "STUDYLOOP_SESSION_DIR": str(session_dir),
         "STUDYLOOP_PLANS_DIR": str(plans),
+        # The context system refuses to infer a scope from a harness
+        # (ScopeError -> HTTP 409 on session/start). Test worlds carry no
+        # memory.default_scope config, so classify them explicitly — the
+        # same choice the in-process conftest autouse fixture makes.
+        "SESSION_CONTEXT_SCOPE": "unclassified",
     }
     if fake_agent:
         child_env["STUDYLOOP_TEST_AGENT_CMD"] = shlex.join(
