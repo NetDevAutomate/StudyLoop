@@ -9,15 +9,18 @@ Supported sources:
 - pi coding agent (~/.pi/agent/sessions/)
 """
 
+import logging
 import shutil
 import sqlite3
+from collections.abc import Collection
 from contextlib import nullcontext
 from datetime import datetime
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 import typer
 
+from agent_session_tools import ontology
 from agent_session_tools.config_loader import (
     get_db_path,
     get_obsidian_config,
@@ -30,6 +33,8 @@ from agent_session_tools.exporters import (
 )
 from agent_session_tools.migrations import migrate
 from agent_session_tools import obsidian_writer
+
+logger = logging.getLogger(__name__)
 
 # Create Typer app with completion support
 app = typer.Typer(
@@ -170,6 +175,31 @@ SOURCE_CHOICES = [
 ]
 
 
+def refresh_ontology_after_export(
+    conn: sqlite3.Connection,
+    session_ids: Collection[str],
+    *,
+    incremental: bool = True,
+) -> ontology.OntologyBuildResult:
+    """Named, monkeypatchable seam: refresh the tier-1 ontology after an export.
+
+    Called from :func:`_run_export` after its per-source export loop commits
+    captured session/message rows — never inside that transaction (design:
+    "Refresh-failure seam for B2"). ``session_ids`` documents the sessions
+    this run touched for observability; the incremental algorithm itself
+    (:func:`agent_session_tools.ontology.rebuild_ontology`) independently
+    scopes its own candidate set from ``sessions.updated_at``, so a caller
+    passing an empty or approximate set still gets a correct refresh.
+
+    A full export (``session-export --full``, ``incremental=False`` here)
+    refreshes the whole corpus rather than only a delta, per the
+    session-export spec's "A full export run refreshes the whole corpus"
+    scenario.
+    """
+    del session_ids  # observability only; see docstring.
+    return ontology.rebuild_ontology(conn, incremental=incremental)
+
+
 def _run_export(
     output_path: Path,
     sources: set[str],
@@ -178,22 +208,25 @@ def _run_export(
     obsidian_vault: Path | None = None,
     obsidian_backfill: bool = False,
     obsidian_dry_run: bool = False,
-) -> None:
-    """Core export logic shared by all entry points."""
+) -> dict[str, Any]:
+    """Core export logic shared by all entry points.
+
+    Returns a summary dict. Currently the only consumer-facing key is
+    ``ontology_refresh`` — the outcome of the post-commit ontology-refresh
+    hook — kept minimal rather than duplicating everything already printed
+    to stdout.
+    """
     print(f"Exporting to: {output_path}")
     conn = init_db(str(output_path))
 
     # Snapshot (id -> updated_at) before export so we can cheaply identify the
-    # sessions actually touched this run for a targeted Obsidian export. Two
-    # lightweight queries beat re-hashing every session on every incremental run.
-    pre_export_state: dict[str, str] = {}
-    if obsidian or (obsidian is None):
-        # Only pay for the snapshot when Obsidian export might run. The config
-        # gate is re-checked after commit; this is a conservative pre-pass.
-        pre_export_state = {
-            row["id"]: row["updated_at"]
-            for row in conn.execute("SELECT id, updated_at FROM sessions").fetchall()
-        }
+    # sessions actually touched this run — for a targeted Obsidian export and
+    # for the ontology-refresh hook below. Two lightweight queries beat
+    # re-hashing every session on every incremental run.
+    pre_export_state: dict[str, str] = {
+        row["id"]: row["updated_at"]
+        for row in conn.execute("SELECT id, updated_at FROM sessions").fetchall()
+    }
 
     # Track aggregate stats
     batch_stats = ExportStats(added=0, updated=0, skipped=0, errors=0)
@@ -231,6 +264,41 @@ def _run_export(
 
     # Final commit
     conn.commit()
+
+    # Ontology refresh: after, never inside, the transaction that just
+    # committed captured sessions -- a refresh failure here must not roll
+    # back or otherwise affect what was just captured (design: "Refresh-
+    # failure seam for B2"; EXECUTION-ERRATA.md #7, "session capture is
+    # authoritative"). Scoped to the sessions this run touched; a full run
+    # refreshes the whole corpus (see refresh_ontology_after_export).
+    touched_session_ids = [
+        row["id"]
+        for row in conn.execute("SELECT id, updated_at FROM sessions").fetchall()
+        if pre_export_state.get(row["id"]) != row["updated_at"]
+    ]
+    ontology_refresh: dict[str, Any]
+    try:
+        result = refresh_ontology_after_export(
+            conn, touched_session_ids, incremental=incremental
+        )
+        ontology_refresh = {
+            "status": "ok",
+            "mode": result.mode,
+            "fallback_reason": result.fallback_reason,
+            "candidate_sessions": result.candidate_sessions,
+        }
+    except Exception as exc:  # noqa: BLE001 - must never fail the capture
+        logger.warning(
+            "ontology refresh failed after export: %s: %s",
+            type(exc).__name__,
+            exc,
+            extra={
+                "event": "ontology_refresh_failed",
+                "error_class": type(exc).__name__,
+            },
+        )
+        ontology_refresh = {"status": "failed", "error_class": type(exc).__name__}
+
     print("\nExport results:")
     print(f"  added:   {batch_stats.added}")
     print(f"  updated: {batch_stats.updated}")
@@ -312,7 +380,7 @@ def _run_export(
                 # Nothing changed this run — skip the writer entirely.
                 print("\nObsidian export: no new or updated sessions this run.")
                 conn.close()
-                return
+                return {"ontology_refresh": ontology_refresh}
 
         counts = obsidian_writer.write_vault_notes(
             conn,
@@ -337,6 +405,8 @@ def _run_export(
 
     if maybe_spawn_sync():
         print("↻ Incremental sync to full DB started in background.")
+
+    return {"ontology_refresh": ontology_refresh}
 
 
 @app.command()

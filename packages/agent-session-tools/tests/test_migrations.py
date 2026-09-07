@@ -1327,3 +1327,194 @@ class TestMigrationV29UpdatedAtAutoStamp:
             f"touch updated_at must still bump it (got before={before!r}, "
             f"after={after!r})"
         )
+
+
+class TestMigrationV48Ontology:
+    """R7 migration-safety requirements for the tier-1 ontology (v48).
+
+    Real-database ("Online Backup of a live v47 database") and acceptance-run
+    coverage lives in ``tests/test_ontology_live.py`` under the opt-in
+    ``live_ontology`` marker -- this class covers the parts R7 requires that
+    do not need the owner's real database: fresh creation, interrupted-
+    migration recovery, and idempotent re-application.
+    """
+
+    ONTOLOGY_TABLES = (
+        "ontology_class",
+        "ontology_property",
+        "ontology_structural",
+        "ontology_individual",
+        "ontology_relation",
+        "ontology_build_state",
+    )
+    ONTOLOGY_INDEXES = (
+        "idx_ontology_structural_session_type",
+        "idx_ontology_individual_class_label",
+        "idx_ontology_relation_subject_predicate_object",
+        "idx_ontology_relation_predicate_subject_object",
+        "idx_ontology_relation_object_predicate_subject",
+    )
+
+    def test_current_version_is_48_and_reserved_for_this_task(self):
+        assert CURRENT_VERSION == 48
+
+    def test_fresh_database_reaches_v48_with_all_six_tables_and_indexes(self, fresh_db):
+        migrate(fresh_db)
+
+        assert get_user_version(fresh_db) == 48
+        tables = {
+            row[0]
+            for row in fresh_db.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()
+        }
+        for table in self.ONTOLOGY_TABLES:
+            assert table in tables, f"migration v48 must create {table}"
+        indexes = {
+            row[0]
+            for row in fresh_db.execute(
+                "SELECT name FROM sqlite_master WHERE type='index'"
+            ).fetchall()
+        }
+        for index in self.ONTOLOGY_INDEXES:
+            assert index in indexes, f"migration v48 must create {index}"
+
+    def test_fresh_v48_ontology_tables_are_empty_until_a_rebuild(self, fresh_db):
+        migrate(fresh_db)
+        for table in self.ONTOLOGY_TABLES:
+            count = fresh_db.execute(f'SELECT COUNT(*) FROM "{table}"').fetchone()[0]
+            assert count == 0, f"{table} should be empty immediately after migration"
+
+    def test_migration_v48_adds_no_column_to_any_existing_table(self, fresh_db):
+        """Additive-only: sessions/messages keep exactly the columns v47 left them."""
+        pristine = sqlite3.connect(":memory:")
+        pristine.executescript(SCHEMA_PATH.read_text())
+        for version in range(1, 48):
+            _description, migration_func = MIGRATIONS[version]
+            migration_func(pristine)
+            set_user_version(pristine, version)
+        pristine.commit()
+        sessions_before = {
+            row[1] for row in pristine.execute("PRAGMA table_info(sessions)")
+        }
+        messages_before = {
+            row[1] for row in pristine.execute("PRAGMA table_info(messages)")
+        }
+        pristine.close()
+
+        migrate(fresh_db)
+        sessions_after = {
+            row[1] for row in fresh_db.execute("PRAGMA table_info(sessions)")
+        }
+        messages_after = {
+            row[1] for row in fresh_db.execute("PRAGMA table_info(messages)")
+        }
+        assert sessions_after == sessions_before
+        assert messages_after == messages_before
+
+    def test_interrupted_migration_recovers_and_converges(self, tmp_path):
+        """A fault mid-``migrate_v48`` leaves the database at v47 and usable.
+
+        Rerunning ``migrate()`` (without the injected fault) then converges
+        to v48 with the full schema present -- no partial ontology schema is
+        ever left live, and the interruption does not corrupt anything else.
+        """
+        db_path = tmp_path / "interrupted-v48.db"
+        conn = sqlite3.connect(db_path)
+        try:
+            conn.executescript(SCHEMA_PATH.read_text())
+            conn.commit()
+            # Advance to v47 directly (outside migrate()'s own locking, which
+            # is fine here -- this mirrors exactly what migrate() itself does
+            # for versions 1..47, just without the transaction wrapper, and
+            # existing tests already exercise that wrapper elsewhere).
+            for version in range(1, 48):
+                _description, migration_func = MIGRATIONS[version]
+                migration_func(conn)
+                set_user_version(conn, version)
+            conn.commit()
+            assert get_user_version(conn) == 47
+
+            conn.execute(
+                "INSERT INTO sessions(id, source) VALUES ('pre-fault-session', 'codex')"
+            )
+            conn.commit()
+
+            def fault_migrate_v48(faulty_conn: sqlite3.Connection) -> None:
+                faulty_conn.execute(
+                    "CREATE TABLE ontology_class(name TEXT PRIMARY KEY)"
+                )
+                raise RuntimeError("injected mid-migrate_v48 failure")
+
+            real_description, real_migrate_v48 = MIGRATIONS[48]
+            MIGRATIONS[48] = (real_description, fault_migrate_v48)
+            try:
+                with pytest.raises(
+                    RuntimeError, match="injected mid-migrate_v48 failure"
+                ):
+                    migrate(conn)
+            finally:
+                MIGRATIONS[48] = (real_description, real_migrate_v48)
+
+            # Still at v47, no partial ontology schema, and fully usable.
+            assert get_user_version(conn) == 47
+            tables = {
+                row[0]
+                for row in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table'"
+                ).fetchall()
+            }
+            assert "ontology_class" not in tables
+            assert conn.execute(
+                "SELECT id FROM sessions WHERE id = 'pre-fault-session'"
+            ).fetchone() == ("pre-fault-session",)
+
+            # Rerun (real migrate_v48 this time) converges to v48.
+            applied = migrate(conn)
+            assert applied == ["v48: " + real_description]
+            assert get_user_version(conn) == 48
+            tables_after = {
+                row[0]
+                for row in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table'"
+                ).fetchall()
+            }
+            for table in self.ONTOLOGY_TABLES:
+                assert table in tables_after
+        finally:
+            conn.close()
+
+    def test_downgrade_to_v47_drops_exactly_the_six_ontology_objects(self, fresh_db):
+        """Rollback contract from migrate_v48's docstring: six tables, nothing else."""
+        migrate(fresh_db)
+        before_non_ontology = {
+            row[0]
+            for row in fresh_db.execute(
+                "SELECT name FROM sqlite_master WHERE type IN ('table','index','trigger')"
+            ).fetchall()
+            if "ontology" not in row[0]
+        }
+
+        for table in self.ONTOLOGY_TABLES:
+            fresh_db.execute(f'DROP TABLE IF EXISTS "{table}"')
+        fresh_db.commit()
+
+        after = {
+            row[0]
+            for row in fresh_db.execute(
+                "SELECT name FROM sqlite_master WHERE type IN ('table','index','trigger')"
+            ).fetchall()
+        }
+        assert not (after & set(self.ONTOLOGY_TABLES))
+        assert not (after & set(self.ONTOLOGY_INDEXES))
+        assert before_non_ontology <= after
+
+    def test_repeated_migration_to_v48_is_idempotent_via_the_version_guard(
+        self, fresh_db
+    ):
+        """Two full ``migrate()`` calls in a row leave the schema unchanged."""
+        first = migrate(fresh_db)
+        assert first
+        second = migrate(fresh_db)
+        assert second == []
+        assert get_user_version(fresh_db) == 48
