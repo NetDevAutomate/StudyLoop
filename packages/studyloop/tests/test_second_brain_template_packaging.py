@@ -35,15 +35,18 @@ def built_wheel(tmp_path_factory) -> Path:
     if shutil.which("uv") is None:
         pytest.skip("uv is not on PATH, so the wheel cannot be built here")
     out = tmp_path_factory.mktemp("template-packaging")
-    proc = subprocess.run(
-        ["uv", "build", "--package", "studyloop", "--wheel", "-o", str(out)],
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
-        timeout=300,
-    )
-    if proc.returncode != 0:
-        pytest.fail(f"wheel build failed:\n{proc.stdout}\n{proc.stderr}")
+    # agent-session-tools is a required dependency of the studyloop wheel but
+    # is not on PyPI, so build the companion too — a release ships both.
+    for package in ("studyloop", "agent-session-tools"):
+        proc = subprocess.run(
+            ["uv", "build", "--package", package, "--wheel", "-o", str(out)],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
+        if proc.returncode != 0:
+            pytest.fail(f"wheel build failed for {package}:\n{proc.stdout}\n{proc.stderr}")
     wheels = list(out.glob("studyloop-*.whl"))
     assert len(wheels) == 1, f"expected one wheel, got {wheels}"
     return wheels[0]
@@ -74,8 +77,17 @@ def test_templates_load_from_the_installed_wheel(built_wheel: Path, tmp_path) ->
     venv = tmp_path / "venv"
     subprocess.run(["uv", "venv", str(venv)], check=True, capture_output=True)
     python = venv / "bin" / "python"
+    companion = next(built_wheel.parent.glob("agent_session_tools-*.whl"))
     subprocess.run(
-        ["uv", "pip", "install", "--python", str(python), str(built_wheel)],
+        [
+            "uv",
+            "pip",
+            "install",
+            "--python",
+            str(python),
+            str(companion),
+            str(built_wheel),
+        ],
         check=True,
         capture_output=True,
         timeout=300,

@@ -1,7 +1,12 @@
 """R-29: every extra `studyloop`'s wheel still advertises must actually
 
-install and import from a **bare** wheel -- no uv workspace, no sibling
-package, no `--with-editable`.
+install and import from the **release wheels** -- no uv workspace, no
+`--with-editable`. `agent-session-tools` became a required dependency of the
+studyloop wheel with the context-memory integration (core modules import it
+at module level), but it is not published on PyPI, so "what a user installs"
+is the release pair: both wheels installed together. Each install below
+therefore provides the companion wheel explicitly, exactly like
+scripts/build-release.sh's output instructs.
 
 This is the other half of the R-29 fix (see test_extras_contract.py for the
 "[sessions]/[all] must not lie" half). Dropping `sessions` proved the
@@ -65,19 +70,26 @@ def built_wheel(tmp_path_factory: pytest.TempPathFactory) -> Path:
     # --no-sources: build exactly what a real distribution would ship, not
     # what the local workspace's [tool.uv.sources] would substitute. This is
     # the same flag scripts/build-release.sh uses, and the one that exposed
-    # R-29 in the first place (a plain `uv build` masks the defect).
-    proc = subprocess.run(
-        ["uv", "build", "--package", "studyloop", "--no-sources", "--wheel", "-o", str(out)],
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
-        timeout=300,
-    )
-    if proc.returncode != 0:
-        pytest.fail(f"wheel build failed:\n{proc.stdout}\n{proc.stderr}")
+    # R-29 in the first place (a plain `uv build` masks the defect). A release
+    # ships BOTH wheels, so both are built here.
+    for package in ("studyloop", "agent-session-tools"):
+        proc = subprocess.run(
+            ["uv", "build", "--package", package, "--no-sources", "--wheel", "-o", str(out)],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
+        if proc.returncode != 0:
+            pytest.fail(f"wheel build failed for {package}:\n{proc.stdout}\n{proc.stderr}")
     wheels = list(out.glob("studyloop-*.whl"))
-    assert len(wheels) == 1, f"expected one wheel, got {wheels}"
+    assert len(wheels) == 1, f"expected one studyloop wheel, got {wheels}"
     return wheels[0]
+
+
+def _companion_wheel(built_wheel: Path) -> Path:
+    """The agent-session-tools wheel built next to the studyloop wheel."""
+    return next(built_wheel.parent.glob("agent_session_tools-*.whl"))
 
 
 def test_sessions_is_not_advertised_on_the_built_wheel(built_wheel: Path) -> None:
@@ -107,13 +119,21 @@ def test_extra_installs_and_imports_from_a_bare_wheel(
     python = venv_dir / "bin" / "python"
 
     install = subprocess.run(
-        ["uv", "pip", "install", "--python", str(python), f"{built_wheel}[{extra}]"],
+        [
+            "uv",
+            "pip",
+            "install",
+            "--python",
+            str(python),
+            str(_companion_wheel(built_wheel)),
+            f"{built_wheel}[{extra}]",
+        ],
         capture_output=True,
         text=True,
         timeout=180,
     )
     assert install.returncode == 0, (
-        f"installing studyloop[{extra}] from the bare wheel failed:\n"
+        f"installing studyloop[{extra}] from the release wheels failed:\n"
         f"{install.stdout}\n{install.stderr}"
     )
 
@@ -127,18 +147,16 @@ def test_extra_installs_and_imports_from_a_bare_wheel(
     )
 
 
-def test_bare_wheel_with_no_extras_and_no_agent_session_tools_still_works(
-    built_wheel: Path, tmp_path: Path
-) -> None:
-    """D2 (council)/D3: a plain `pip install studyloop` (no extras, no
+def test_bare_wheel_with_no_extras_still_works(built_wheel: Path, tmp_path: Path) -> None:
+    """D2 (council)/D3, updated for the context-memory integration: a plain
 
-    sibling `agent-session-tools`) must still give a working CLI. Every
-    other test in this file installs an extra; nothing until now proved the
-    *unextended* base case -- the one a real `pip install studyloop` user
-    with no extras and no workspace actually gets. `studyloop --version` and
-    `studyloop doctor --help` are both eager Click options that must not
-    require `agent_session_tools` to be importable, and `import studyloop.cli`
-    must not eagerly import anything that isn't a hard dependency.
+    no-extras install (the release wheel pair, since agent-session-tools is
+    now a required dependency that PyPI cannot supply) must still give a
+    working CLI. Every other test in this file installs an extra; nothing
+    until now proved the *unextended* base case. `studyloop --version` and
+    `studyloop doctor --help` are both eager Click options, and
+    `import studyloop.cli` must not eagerly import anything that isn't a
+    hard dependency.
     """
     venv_dir = tmp_path / "venv-bare"
     venv_proc = subprocess.run(
@@ -149,18 +167,22 @@ def test_bare_wheel_with_no_extras_and_no_agent_session_tools_still_works(
     studyloop_bin = venv_dir / "bin" / "studyloop"
 
     install = subprocess.run(
-        ["uv", "pip", "install", "--python", str(python), str(built_wheel)],
+        [
+            "uv",
+            "pip",
+            "install",
+            "--python",
+            str(python),
+            str(_companion_wheel(built_wheel)),
+            str(built_wheel),
+        ],
         capture_output=True,
         text=True,
         timeout=180,
     )
     assert install.returncode == 0, (
-        f"installing bare studyloop (no extras) from the wheel failed:\n"
+        f"installing bare studyloop (no extras) from the release wheels failed:\n"
         f"{install.stdout}\n{install.stderr}"
-    )
-    assert "agent-session-tools" not in install.stdout.lower(), (
-        "a bare install must not pull in agent-session-tools -- it is not a "
-        f"dependency of any extra-less install:\n{install.stdout}"
     )
 
     # Isolated away from the real machine's config/session DB, matching

@@ -1,24 +1,20 @@
-"""R-29 guard: `studyloop[sessions]` / `studyloop[all]` must not advertise a
+"""Extras contract: every advertised extra must resolve outside the workspace.
 
-dependency that cannot resolve outside the uv workspace.
+History (R-29 / F-02, DECISIONS.md B1): `agent-session-tools` was once an
+unresolvable `sessions` extra, then a hard dependency of the source-install
+path only (`install_workspace_tools()`'s unconditional `--with-editable`).
+The context-memory integration made it a module-level import of core
+studyloop code, so it is now a REQUIRED dependency, resolved from the
+workspace during development and shipped as a companion wheel in releases
+(scripts/build-release.sh builds both; the wheel smokes install both).
 
-`agent-session-tools` is not published anywhere -- `[tool.uv.sources]
-agent-session-tools = { workspace = true }` only ever worked inside this
-repo's own uv workspace, so a wheel built with `--no-sources` (or any install
-from a hypothetical future PyPI release) advertised an unresolvable
-dependency (REPORT.md F-02 / R-29; DECISIONS.md B1).
-
-`agent-session-tools` reaches the studyloop tool venv today via
-`install_workspace_tools()`'s unconditional `--with-editable` flag
-(`installers.py`), completely independent of any extra -- that is the "hard
-dependency on the source-install path" DECISIONS.md B1 describes. The extra
-was always redundant with that mechanism and never actually needed by it, so
-dropping it changes nothing about the real, tested install flow.
+There is still no `sessions` extra: the dependency is unconditional, not
+optional, and an extra would again advertise something PyPI cannot supply.
 
 `[all]` stays, because `install_workspace_tools()` still requests it
-unconditionally for both workspace packages -- but it is redefined to the six
+unconditionally for both workspace packages -- it expands to the six
 extras that genuinely resolve from a bare wheel (proved per-extra in
-test_wheel_extras_smoke.py), with `sessions` removed from its expansion.
+test_wheel_extras_smoke.py).
 """
 
 from __future__ import annotations
@@ -68,16 +64,24 @@ def test_all_extra_expands_to_exactly_the_resolvable_extras() -> None:
     assert named <= extras.keys(), "studyloop[all] names an extra that does not exist"
 
 
-def test_no_uv_source_maps_the_dropped_agent_session_tools_extra() -> None:
-    """The `[tool.uv.sources]` entry existed only to resolve the now-removed
-
-    `sessions` extra; leaving it behind would be dead configuration pointing
-    at a name this file no longer references anywhere.
+def test_agent_session_tools_is_a_required_dependency_with_workspace_source() -> None:
+    """The context-memory integration made `agent_session_tools` a
+    module-level import of core studyloop code, so the dependency must be
+    declared (the pre-integration shape — no advertised dependency, B1's
+    "source-install only" — would ship a wheel that cannot even import).
+    The `[tool.uv.sources]` workspace mapping is what resolves it during
+    development; releases build with --no-sources and ship both wheels.
     """
     with PACKAGE_PYPROJECT.open("rb") as pyproject_file:
         pyproject = tomllib.load(pyproject_file)
+    deps = pyproject.get("project", {}).get("dependencies", [])
+    assert any(spec.startswith("agent-session-tools") for spec in deps), (
+        f"agent-session-tools must be a required dependency; got {deps}"
+    )
     sources = pyproject.get("tool", {}).get("uv", {}).get("sources", {})
-    assert "agent-session-tools" not in sources
+    assert sources.get("agent-session-tools") == {"workspace": True}, (
+        f"agent-session-tools must resolve from the workspace during development; got {sources!r}"
+    )
 
 
 # ---------------------------------------------------------------------------

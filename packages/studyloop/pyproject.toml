@@ -22,6 +22,16 @@ dependencies = [
     "pyyaml>=6.0",
     "pexpect>=4.9",
     "python-dotenv>=1.2.2",
+    # The context-memory integration made agent-session-tools a module-level
+    # import of core studyloop code (history/*, parking, notes, mcp.tools,
+    # web.context_response), so the wheel is simply broken without it and the
+    # dependency must be declared. This supersedes the R-29/F-02-era shape
+    # (no advertised dependency) and DECISIONS.md B1's "source-install only"
+    # framing: agent-session-tools is still unpublished on PyPI, so releases
+    # ship BOTH wheels (scripts/build-release.sh) and the wheel smokes install
+    # them together. The source-install path is unchanged
+    # (install_workspace_tools() still passes --with-editable).
+    "agent-session-tools>=0.1.0",
 ]
 
 [project.optional-dependencies]
@@ -31,19 +41,15 @@ notebooklm = ["notebooklm-py>=0.3.4"]
 tui = ["textual>=0.80"]
 web = ["fastapi>=0.115", "uvicorn[standard]>=0.34", "httpx>=0.27", "websockets>=12.0", "cryptography>=42.0"]
 mcp = ["mcp[cli]>=1.0.0,<2"]
-# There is deliberately no `sessions` extra. `agent-session-tools` (the
-# session DB / cross-harness knowledge base) is not published anywhere, so
-# `[tool.uv.sources] workspace = true` -- the only thing that ever made
-# `studyloop[sessions]` resolve -- worked inside this repo's own uv workspace
-# and nowhere else: a wheel built with `--no-sources`, or any install of a
-# hypothetical future PyPI release, advertised a dependency that could never
-# install (REPORT.md R-29 / F-02).
-#
-# Instead, `agent-session-tools` is a HARD dependency of the source-install
-# path (DECISIONS.md B1): `install_workspace_tools()` in `installers.py`
-# passes `--with-editable <agent-session-tools path>` unconditionally when
-# installing the `studyloop` tool, independent of any extra. A source
-# checkout always gets it; a bare wheel install never advertises it.
+# `agent-session-tools` is a REQUIRED dependency (see `dependencies` above)
+# but is not published on PyPI: it resolves from this uv workspace during
+# development, and releases ship its wheel next to studyloop's
+# (scripts/build-release.sh builds both; the wheel smokes install both).
+# History: there was deliberately no `sessions` extra (REPORT.md R-29 / F-02
+# — an extra that could never resolve outside the workspace), and B1 made it
+# a hard dependency of the source-install path only. The context-memory
+# integration then made it a hard import of core modules, which is what
+# moved it into `dependencies`.
 all = ["studyloop[content,bedrock,web,notebooklm,tui,mcp]"]
 
 [project.scripts]
@@ -59,6 +65,13 @@ Documentation = "https://github.com/NetDevAutomate/StudyLoop/tree/main/docs"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.uv.sources]
+# Backs the REQUIRED agent-session-tools dependency during development:
+# inside this workspace it resolves to the sibling package. Release builds
+# use --no-sources, so the built wheel carries the bare requirement and a
+# release ships both wheels together (scripts/build-release.sh).
+agent-session-tools = { workspace = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/studyloop"]

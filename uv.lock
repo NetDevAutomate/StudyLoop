@@ -3003,6 +3003,7 @@ name = "studyloop"
 version = "0.3.0"
 source = { editable = "packages/studyloop" }
 dependencies = [
+    { name = "agent-session-tools" },
     { name = "click" },
     { name = "pexpect" },
     { name = "python-dotenv" },
@@ -3061,6 +3062,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "agent-session-tools", editable = "packages/agent-session-tools" },
     { name = "boto3", marker = "extra == 'bedrock'", specifier = ">=1.40" },
     { name = "click", specifier = ">=8.1" },
     { name = "cryptography", marker = "extra == 'web'", specifier = ">=42.0" },

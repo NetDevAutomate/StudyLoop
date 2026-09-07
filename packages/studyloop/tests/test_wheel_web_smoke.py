@@ -55,18 +55,23 @@ def built_wheel(tmp_path_factory: pytest.TempPathFactory) -> Path:
         pytest.skip("uv is not on PATH, so the wheel cannot be built here")
     out = tmp_path_factory.mktemp("web-smoke-wheel")
     # --no-sources: build exactly what a real distribution would ship, same as
-    # scripts/build-release.sh and test_wheel_extras_smoke.py.
-    proc = subprocess.run(
-        ["uv", "build", "--package", "studyloop", "--no-sources", "--wheel", "-o", str(out)],
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
-        timeout=300,
-    )
-    if proc.returncode != 0:
-        pytest.fail(f"wheel build failed:\n{proc.stdout}\n{proc.stderr}")
+    # scripts/build-release.sh and test_wheel_extras_smoke.py. A release ships
+    # BOTH wheels (studyloop requires the unpublished agent-session-tools), so
+    # both are built here and installed together below.
+    for package in ("studyloop", "agent-session-tools"):
+        proc = subprocess.run(
+            ["uv", "build", "--package", package, "--no-sources", "--wheel", "-o", str(out)],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
+        if proc.returncode != 0:
+            pytest.fail(f"wheel build failed for {package}:\n{proc.stdout}\n{proc.stderr}")
     wheels = list(out.glob("studyloop-*.whl"))
-    assert len(wheels) == 1, f"expected one wheel, got {wheels}"
+    assert len(wheels) == 1, f"expected one studyloop wheel, got {wheels}"
+    companions = list(out.glob("agent_session_tools-*.whl"))
+    assert len(companions) == 1, f"expected one agent-session-tools wheel, got {companions}"
     return wheels[0]
 
 
@@ -82,14 +87,24 @@ def web_venv(built_wheel: Path, tmp_path_factory: pytest.TempPathFactory) -> Pat
     )
     assert venv_proc.returncode == 0, f"uv venv failed:\n{venv_proc.stdout}\n{venv_proc.stderr}"
     python = venv_dir / "bin" / "python"
+    companion = next(built_wheel.parent.glob("agent_session_tools-*.whl"))
     install = subprocess.run(
-        ["uv", "pip", "install", "--python", str(python), f"{built_wheel}[web]"],
+        [
+            "uv",
+            "pip",
+            "install",
+            "--python",
+            str(python),
+            str(companion),
+            f"{built_wheel}[web]",
+        ],
         capture_output=True,
         text=True,
         timeout=300,
     )
     assert install.returncode == 0, (
-        f"installing studyloop[web] from the bare wheel failed:\n{install.stdout}\n{install.stderr}"
+        f"installing studyloop[web] from the release wheels failed:\n"
+        f"{install.stdout}\n{install.stderr}"
     )
     return venv_dir
 
