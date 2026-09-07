@@ -161,6 +161,8 @@ cannot orphan an assertion.
 
 ### Cross-machine standing order (frozen)
 
+> **B3 verification note (design review, minor #2):** the reference `_ConceptRepository._allocate()` already takes a table-wide `MAX(logical_time)` over `context_concept_events` with no `origin_instance` filter, so imported rows may already advance the next local allocation. B3 must run two-copy matrix item 4 against the unmodified allocator first and add an explicit advance-on-import step only if that experiment fails.
+
 ```
 standing(concept) = max(events[concept], key=(lamport, machine_id, event_id))
 ```

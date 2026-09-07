@@ -64,8 +64,8 @@ capability set.
   were replicated fact.
 - Freeze the **fresh-install scope contract**: generated configuration
   writes `memory.default_scope: unclassified` while the runtime default
-  stays unset; every one of the seven currently-unguarded
-  `request_scope()` call sites and both MCP servers return one structured
+  stays unset; every one of the eight currently-unguarded
+  `request_scope()` call sites (the source plan mislabels the list "seven") and both MCP servers return one structured
   diagnostic instead of an unhandled `ScopeError`/traceback.
 - Freeze the **`memory_recall` contract** (concept-then-session shape,
   citations, provenance, AND→OR planner semantics) that B4 must implement
