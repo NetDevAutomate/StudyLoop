@@ -138,6 +138,7 @@ timeout_method = "signal"
 markers = [
     "integration: requires external infrastructure (tmux, real DB, network)",
     "live_ontology: opt-in ontology acceptance/migration checks against a SQLite Online Backup of the owner's real sessions.db (never mutated; opt in with -m live_ontology)",
+    "live_concepts: opt-in concept-sidecar migration/replication/import checks against SQLite Online Backups of the owner's real sessions.db (never mutated; opt in with -m live_concepts)",
 ]
 
 [tool.coverage.run]

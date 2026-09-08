@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Current schema version - increment when adding new migrations
-CURRENT_VERSION = 48
+CURRENT_VERSION = 49
 
 # Migration functions: version -> (description, migration_func)
 MIGRATIONS: dict[int, tuple[str, Callable[[sqlite3.Connection], None]]] = {}
@@ -1596,6 +1596,36 @@ def migrate_v48(conn: sqlite3.Connection) -> None:
     key, so the drop is unconditionally safe.
     """
     from .ontology import install_schema
+
+    install_schema(conn)
+
+
+@migration(
+    49, "Concept sidecar: immutable roots, append-only lifecycle events, read model"
+)
+def migrate_v49(conn: sqlite3.Connection) -> None:
+    """Install the concept sidecar exactly as ``concept_schema.py`` defines it.
+
+    Additive only -- five schema objects (``context_concepts``,
+    ``context_concept_events``, ``context_concept_clock``,
+    ``context_concept_fts``, ``context_concept_schema``) plus their indexes
+    and triggers, with the schema fingerprint preserved byte-for-byte from
+    the SessionWeaver reference (``SCHEMA_VERSION = 2``). No existing table,
+    column, check, or trigger is altered: ``context_assertions.proposed_state``
+    keeps its execution-state vocabulary, and concept kind/lifecycle live only
+    in the sidecar (``EXECUTION-ERRATA.md`` decision #3).
+
+    Downgrade (v49 -> v48): drop exactly the five objects named above plus
+    the two guard triggers the sidecar installs on ``context_citations``
+    (``context_citations_bound_insert``, ``context_citations_bound_delete``
+    -- they live on that table, so table drops do not remove them), and
+    nothing else. ``context_concept_events`` and ``context_concept_clock``
+    have no inbound foreign keys from outside the sidecar;
+    ``context_concepts`` carries an FK *to* ``context_assertions``, never the
+    reverse, so dropping it cannot orphan an assertion (design: "Migrations:
+    v48 tier-1 ontology, v49 concept sidecar").
+    """
+    from .context.concept_schema import install_schema
 
     install_schema(conn)
 

@@ -1357,12 +1357,14 @@ class TestMigrationV48Ontology:
     )
 
     def test_current_version_is_48_and_reserved_for_this_task(self):
-        assert CURRENT_VERSION == 48
+        # B3 advanced CURRENT_VERSION to 49; v48 remains B2's reserved number.
+        assert CURRENT_VERSION >= 48
+        assert MIGRATIONS[48][0].startswith("Derived tier-1 ontology")
 
     def test_fresh_database_reaches_v48_with_all_six_tables_and_indexes(self, fresh_db):
         migrate(fresh_db)
 
-        assert get_user_version(fresh_db) == 48
+        assert get_user_version(fresh_db) == CURRENT_VERSION
         tables = {
             row[0]
             for row in fresh_db.execute(
@@ -1480,8 +1482,8 @@ class TestMigrationV48Ontology:
 
             applied = migrate(conn)
 
-            assert applied == ["v48: " + MIGRATIONS[48][0]]
-            assert get_user_version(conn) == 48
+            assert applied[0] == "v48: " + MIGRATIONS[48][0]
+            assert get_user_version(conn) == CURRENT_VERSION
             # Migration converged without touching the ad hoc rows -- the
             # tables are still exactly as the ad hoc code left them, because
             # IF NOT EXISTS skipped creating them. The first rebuild (next)
@@ -1569,10 +1571,10 @@ class TestMigrationV48Ontology:
                 "SELECT id FROM sessions WHERE id = 'pre-fault-session'"
             ).fetchone() == ("pre-fault-session",)
 
-            # Rerun (real migrate_v48 this time) converges to v48.
+            # Rerun (real migrate_v48 this time) converges through v48.
             applied = migrate(conn)
-            assert applied == ["v48: " + real_description]
-            assert get_user_version(conn) == 48
+            assert applied[0] == "v48: " + real_description
+            assert get_user_version(conn) == CURRENT_VERSION
             tables_after = {
                 row[0]
                 for row in conn.execute(
@@ -1617,4 +1619,327 @@ class TestMigrationV48Ontology:
         assert first
         second = migrate(fresh_db)
         assert second == []
-        assert get_user_version(fresh_db) == 48
+        assert get_user_version(fresh_db) == CURRENT_VERSION
+
+
+class TestMigrationV49ConceptSidecar:
+    """R7 migration-safety requirements for the concept sidecar (v49).
+
+    Real-database ("Online Backup of a live database") coverage lives in
+    ``tests/test_concept_sidecar_live.py`` under the opt-in ``live_concepts``
+    marker -- this class covers the parts R7 requires that do not need the
+    owner's real database: fresh creation, real-upgrade shape (fixture),
+    interrupted-migration recovery, idempotent re-application, and the
+    rollback contract.
+    """
+
+    SIDECAR_TABLES = (
+        "context_concepts",
+        "context_concept_events",
+        "context_concept_clock",
+        "context_concept_fts",
+        "context_concept_schema",
+    )
+    SIDECAR_INDEXES = (
+        "context_concepts_source_session",
+        "context_concepts_kind",
+        "context_concepts_one_bound_successor",
+        "context_concept_events_current",
+        "context_concept_events_one_initial",
+    )
+    SIDECAR_TRIGGERS = (
+        "context_concepts_canonical_tags",
+        "context_concepts_bound_proof",
+        "context_citations_bound_insert",
+        "context_citations_bound_delete",
+        "context_concepts_legacy_successor",
+        "context_concepts_immutable",
+        "context_concept_events_immutable",
+        "context_concept_clock_identity",
+        "context_concept_fts_insert",
+        "context_concept_fts_delete",
+        "context_concept_schema_immutable",
+        "context_concept_schema_required",
+    )
+    #: The reference implementation's exact schema identity (SessionWeaver
+    #: ``concept_schema.SCHEMA_VERSION = 2``); the lift must preserve it
+    #: byte-for-byte so upstream A3 evidence stays directly comparable.
+    REFERENCE_FINGERPRINT = (
+        "af95685e6e39e166148006519862bee3be1a15219d76772236a82890fe11011d"
+    )
+
+    def _to_v48(self, conn: sqlite3.Connection) -> None:
+        conn.executescript(SCHEMA_PATH.read_text())
+        conn.commit()
+        for version in range(1, 49):
+            _description, migration_func = MIGRATIONS[version]
+            migration_func(conn)
+            set_user_version(conn, version)
+        conn.commit()
+        assert get_user_version(conn) == 48
+
+    def test_current_version_is_49_and_reserved_for_this_task(self):
+        assert CURRENT_VERSION == 49
+
+    def test_schema_fingerprint_is_preserved_from_the_reference(self):
+        from agent_session_tools.context.concept_schema import (
+            SCHEMA_FINGERPRINT,
+            SCHEMA_VERSION,
+            UPSTREAM_SCHEMA_VERSION,
+        )
+
+        assert SCHEMA_VERSION == 2
+        assert SCHEMA_FINGERPRINT == self.REFERENCE_FINGERPRINT
+        assert UPSTREAM_SCHEMA_VERSION == 49
+
+    def test_fresh_database_reaches_v49_with_the_complete_sidecar(self, fresh_db):
+        migrate(fresh_db)
+
+        assert get_user_version(fresh_db) == 49
+        objects = {
+            row[0]: row[1]
+            for row in fresh_db.execute(
+                "SELECT name, type FROM sqlite_master"
+            ).fetchall()
+        }
+        for table in self.SIDECAR_TABLES:
+            assert objects.get(table) == "table", f"migration v49 must create {table}"
+        for index in self.SIDECAR_INDEXES:
+            assert objects.get(index) == "index", f"migration v49 must create {index}"
+        for trigger in self.SIDECAR_TRIGGERS:
+            assert objects.get(trigger) == "trigger", (
+                f"migration v49 must create {trigger}"
+            )
+
+    def test_fresh_v49_installs_the_schema_marker_and_pinned_clock(self, fresh_db):
+        from agent_session_tools.context.concept_schema import (
+            SCHEMA_FINGERPRINT,
+            SCHEMA_VERSION,
+        )
+
+        migrate(fresh_db)
+
+        marker = fresh_db.execute(
+            "SELECT schema_version, schema_fingerprint FROM context_concept_schema WHERE id=1"
+        ).fetchone()
+        assert marker == (SCHEMA_VERSION, SCHEMA_FINGERPRINT)
+        instance = fresh_db.execute(
+            "SELECT instance FROM context_access_state WHERE id=1"
+        ).fetchone()[0]
+        clock = fresh_db.execute(
+            "SELECT origin_instance, origin_seq, logical_time FROM context_concept_clock WHERE id=1"
+        ).fetchone()
+        assert clock == (instance, 0, 0)
+
+    def test_fresh_v49_concept_tables_are_empty(self, fresh_db):
+        migrate(fresh_db)
+        for table in ("context_concepts", "context_concept_events"):
+            assert fresh_db.execute(f'SELECT COUNT(*) FROM "{table}"').fetchone() == (
+                0,
+            )
+
+    def test_migration_v49_adds_no_column_to_any_existing_table(self, tmp_path):
+        """Additive-only: context_assertions keeps its execution-state shape.
+
+        ``EXECUTION-ERRATA.md`` decision #3: ``proposed_state`` keeps its
+        execution vocabulary; concept kind/lifecycle live only in the sidecar.
+        """
+        db_path = tmp_path / "v48-shape.db"
+        conn = sqlite3.connect(db_path)
+        try:
+            self._to_v48(conn)
+            assertions_before = {
+                row[1] for row in conn.execute("PRAGMA table_info(context_assertions)")
+            }
+            assertions_sql_before = conn.execute(
+                "SELECT sql FROM sqlite_master WHERE name='context_assertions'"
+            ).fetchone()[0]
+
+            applied = migrate(conn)
+
+            assert applied == ["v49: " + MIGRATIONS[49][0]]
+            assertions_after = {
+                row[1] for row in conn.execute("PRAGMA table_info(context_assertions)")
+            }
+            assertions_sql_after = conn.execute(
+                "SELECT sql FROM sqlite_master WHERE name='context_assertions'"
+            ).fetchone()[0]
+            assert assertions_after == assertions_before
+            assert assertions_sql_after == assertions_sql_before
+        finally:
+            conn.close()
+
+    def test_migration_v49_adopts_a_pre_existing_exact_sidecar(self, tmp_path):
+        """A database the SessionWeaver PoC already prepared upgrades cleanly.
+
+        The PoC installed the byte-identical sidecar DDL itself (at its own
+        ``UPSTREAM_SCHEMA_VERSION`` pin). Migration v49 must adopt that exact
+        schema rather than crash on ``CREATE TABLE``.
+        """
+        from agent_session_tools.context.concept_schema import (
+            _METADATA_OBJECTS,
+            _PAYLOAD_OBJECTS,
+            SCHEMA_FINGERPRINT,
+            SCHEMA_VERSION,
+        )
+
+        db_path = tmp_path / "poc-sidecar-v48.db"
+        conn = sqlite3.connect(db_path)
+        try:
+            self._to_v48(conn)
+            for item in _PAYLOAD_OBJECTS + _METADATA_OBJECTS:
+                conn.execute(item.sql)
+            instance = conn.execute(
+                "SELECT instance FROM context_access_state WHERE id=1"
+            ).fetchone()[0]
+            conn.execute(
+                "INSERT INTO context_concept_clock VALUES (1,?,0,0)", (instance,)
+            )
+            conn.execute(
+                "INSERT INTO context_concept_schema VALUES (1,?,?)",
+                (SCHEMA_VERSION, SCHEMA_FINGERPRINT),
+            )
+            conn.commit()
+
+            applied = migrate(conn)
+
+            assert applied == ["v49: " + MIGRATIONS[49][0]]
+            assert get_user_version(conn) == 49
+        finally:
+            conn.close()
+
+    def test_migration_v49_refuses_a_drifted_pre_existing_sidecar(self, tmp_path):
+        """Sidecar content is authored data: drift fails closed, never adopted."""
+        db_path = tmp_path / "drifted-sidecar-v48.db"
+        conn = sqlite3.connect(db_path)
+        try:
+            self._to_v48(conn)
+            conn.execute("CREATE TABLE context_concepts(id TEXT PRIMARY KEY)")
+            conn.commit()
+
+            with pytest.raises(RuntimeError, match="fingerprint drift"):
+                migrate(conn)
+
+            # The refused migration leaves the database at v48 and usable.
+            assert get_user_version(conn) == 48
+        finally:
+            conn.close()
+
+    def test_interrupted_migration_recovers_and_converges(self, tmp_path):
+        """A fault mid-``migrate_v49`` leaves the database at v48 and usable."""
+        db_path = tmp_path / "interrupted-v49.db"
+        conn = sqlite3.connect(db_path)
+        try:
+            self._to_v48(conn)
+            conn.execute(
+                "INSERT INTO sessions(id, source) VALUES ('pre-fault-session', 'codex')"
+            )
+            conn.commit()
+
+            def fault_migrate_v49(faulty_conn: sqlite3.Connection) -> None:
+                faulty_conn.execute(
+                    "CREATE TABLE context_concepts(id TEXT PRIMARY KEY)"
+                )
+                raise RuntimeError("injected mid-migrate_v49 failure")
+
+            real_description, real_migrate_v49 = MIGRATIONS[49]
+            MIGRATIONS[49] = (real_description, fault_migrate_v49)
+            try:
+                with pytest.raises(
+                    RuntimeError, match="injected mid-migrate_v49 failure"
+                ):
+                    migrate(conn)
+            finally:
+                MIGRATIONS[49] = (real_description, real_migrate_v49)
+
+            assert get_user_version(conn) == 48
+            tables = {
+                row[0]
+                for row in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table'"
+                ).fetchall()
+            }
+            assert "context_concepts" not in tables
+            assert conn.execute(
+                "SELECT id FROM sessions WHERE id = 'pre-fault-session'"
+            ).fetchone() == ("pre-fault-session",)
+
+            applied = migrate(conn)
+            assert applied == ["v49: " + real_description]
+            assert get_user_version(conn) == 49
+            tables_after = {
+                row[0]
+                for row in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table'"
+                ).fetchall()
+            }
+            for table in self.SIDECAR_TABLES:
+                assert table in tables_after
+        finally:
+            conn.close()
+
+    def test_repeated_sidecar_open_is_idempotent(self, fresh_db):
+        """Opening the sidecar twice produces no schema drift and no new rows."""
+        from agent_session_tools.context.concept_schema import _ensure_schema
+
+        migrate(fresh_db)
+        fresh_db.execute("PRAGMA foreign_keys=ON")
+        before = fresh_db.execute(
+            "SELECT name, type, sql FROM sqlite_master WHERE name LIKE 'context_concept%' ORDER BY 1"
+        ).fetchall()
+        counts_before = {
+            table: fresh_db.execute(f'SELECT COUNT(*) FROM "{table}"').fetchone()[0]
+            for table in ("context_concepts", "context_concept_events")
+        }
+
+        _ensure_schema(fresh_db)
+        _ensure_schema(fresh_db)
+
+        after = fresh_db.execute(
+            "SELECT name, type, sql FROM sqlite_master WHERE name LIKE 'context_concept%' ORDER BY 1"
+        ).fetchall()
+        counts_after = {
+            table: fresh_db.execute(f'SELECT COUNT(*) FROM "{table}"').fetchone()[0]
+            for table in ("context_concepts", "context_concept_events")
+        }
+        assert after == before
+        assert counts_after == counts_before
+        marker = fresh_db.execute(
+            "SELECT COUNT(*) FROM context_concept_schema"
+        ).fetchone()
+        assert marker == (1,)
+
+    def test_downgrade_to_v48_drops_exactly_the_sidecar_objects(self, fresh_db):
+        """Rollback contract from migrate_v49's docstring: the five tables plus
+        the two ``context_citations`` guard triggers, nothing else."""
+        migrate(fresh_db)
+        citation_triggers = (
+            "context_citations_bound_insert",
+            "context_citations_bound_delete",
+        )
+        before_non_sidecar = {
+            row[0]
+            for row in fresh_db.execute(
+                "SELECT name FROM sqlite_master WHERE type IN ('table','index','trigger')"
+            ).fetchall()
+            if not row[0].startswith(
+                ("context_concept", "sqlite_autoindex_context_concept")
+            )
+            and row[0] not in citation_triggers
+        }
+
+        for trigger in citation_triggers:
+            fresh_db.execute(f'DROP TRIGGER IF EXISTS "{trigger}"')
+        for table in self.SIDECAR_TABLES:
+            fresh_db.execute(f'DROP TABLE IF EXISTS "{table}"')
+        fresh_db.commit()
+
+        after = {
+            row[0]
+            for row in fresh_db.execute(
+                "SELECT name FROM sqlite_master WHERE type IN ('table','index','trigger')"
+            ).fetchall()
+        }
+        assert not {name for name in after if name.startswith("context_concept")}
+        assert not (after & set(citation_triggers))
+        assert before_non_sidecar <= after
