@@ -71,6 +71,29 @@ def _row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
     return dict(row)
 
 
+def _session_search_queries(query: str) -> tuple[str, ...]:
+    """Preserve explicit FTS syntax; widen only implicit plain-text queries."""
+    from agent_session_tools.query_utils import escape_fts_query
+
+    upper = query.upper()
+    explicit = any(operator in upper for operator in (" AND ", " OR ", " NOT "))
+    stripped = query.strip()
+    explicitly_quoted = '"' in query or (
+        len(stripped) >= 2 and stripped.startswith("'") and stripped.endswith("'")
+    )
+    if explicit or explicitly_quoted:
+        return (escape_fts_query(query),)
+
+    from agent_session_tools.query_planner import plan
+
+    query_plan = plan(query)
+    if not query_plan.and_query:
+        return ()
+    if query_plan.and_query == query_plan.or_query:
+        return (query_plan.and_query,)
+    return query_plan.and_query, query_plan.or_query
+
+
 def _guard_scope(fn):
     """Convert an unconfigured-scope failure into the shared diagnostic.
 
@@ -388,18 +411,9 @@ def _create_server() -> FastMCP:
         """
         conn = _get_connection()
         try:
-            from agent_session_tools.query_planner import plan
-
-            query_plan = plan(query)
-            selected: list[dict[str, Any]] = []
-            seen_message_ids: set[str] = set()
-            for fts_query in (query_plan.and_query, query_plan.or_query):
-                if not fts_query or len(selected) >= limit:
-                    continue
-
+            for fts_query in _session_search_queries(query):
                 sql = """
-                    SELECT m.id AS _message_id,
-                           s.id as session_id, s.source, s.project_path,
+                    SELECT s.id as session_id, s.source, s.project_path,
                            s.updated_at, m.role, m.timestamp,
                            substr(m.content, 1, 300) as preview
                     FROM messages m
@@ -418,20 +432,14 @@ def _create_server() -> FastMCP:
                     project_clause, project_params = build_project_filter(project)
                     sql += " AND " + project_clause
                     params.extend(project_params)
-                if seen_message_ids:
-                    excluded = sorted(seen_message_ids)
-                    placeholders = ",".join("?" for _ in excluded)
-                    sql += f" AND m.id NOT IN ({placeholders})"
-                    params.extend(excluded)
 
                 sql += " ORDER BY bm25(messages_fts), m.timestamp DESC LIMIT ?"
-                params.append(limit - len(selected))
+                params.append(limit)
 
-                for row in conn.execute(sql, params).fetchall():
-                    result = _row_to_dict(row)
-                    seen_message_ids.add(result.pop("_message_id"))
-                    selected.append(result)
-            return selected
+                rows = conn.execute(sql, params).fetchall()
+                if rows:
+                    return [_row_to_dict(row) for row in rows]
+            return []
         finally:
             conn.close()
 
