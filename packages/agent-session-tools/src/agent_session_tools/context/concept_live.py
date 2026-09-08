@@ -81,7 +81,8 @@ def sidecar_migration_fingerprint(conn: sqlite3.Connection) -> str:
                 'context_concept_record_erasure',
                 'context_concept_no_resurrection'
              ))
-            OR name LIKE 'replica_content_context_concept%'
+            OR (name LIKE 'replica_content_context_concept%'
+                AND name NOT LIKE 'replica_content_context_concept_tombstones%')
             OR name IN (
                 'context_citations_bound_insert',
                 'context_citations_bound_delete'

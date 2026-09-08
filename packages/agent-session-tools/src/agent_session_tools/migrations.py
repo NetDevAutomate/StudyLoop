@@ -1648,21 +1648,21 @@ def migrate_v49(conn: sqlite3.Connection) -> None:
 )
 def migrate_v50(conn: sqlite3.Connection) -> None:
     """Install B5's durable sync/capture state without rewriting authored rows."""
-    conn.execute("""CREATE TABLE sync_conflicts (
+    conn.execute("""CREATE TABLE IF NOT EXISTS sync_conflicts (
         message_id TEXT PRIMARY KEY NOT NULL,
         first_detected_at TEXT NOT NULL
     )""")
-    conn.execute("""CREATE TABLE sync_machine_clocks (
+    conn.execute("""CREATE TABLE IF NOT EXISTS sync_machine_clocks (
         machine_id TEXT PRIMARY KEY NOT NULL,
         seq INTEGER NOT NULL CHECK(typeof(seq)='integer' AND seq>=0)
     ) WITHOUT ROWID""")
-    conn.execute("""CREATE TABLE sync_session_revisions (
+    conn.execute("""CREATE TABLE IF NOT EXISTS sync_session_revisions (
         session_id TEXT NOT NULL,
         machine_id TEXT NOT NULL,
         seq INTEGER NOT NULL CHECK(typeof(seq)='integer' AND seq>0),
         PRIMARY KEY(session_id,machine_id)
     ) WITHOUT ROWID""")
-    conn.execute("""CREATE TABLE session_export_runs (
+    conn.execute("""CREATE TABLE IF NOT EXISTS session_export_runs (
         source TEXT PRIMARY KEY NOT NULL,
         completed_at TEXT NOT NULL,
         sessions_seen INTEGER NOT NULL CHECK(sessions_seen>=0),
@@ -1670,7 +1670,7 @@ def migrate_v50(conn: sqlite3.Connection) -> None:
         errors INTEGER NOT NULL CHECK(errors>=0),
         verified INTEGER NOT NULL CHECK(verified IN (0,1))
     ) WITHOUT ROWID""")
-    conn.execute("""CREATE TABLE context_concept_tombstones (
+    conn.execute("""CREATE TABLE IF NOT EXISTS context_concept_tombstones (
         concept_id TEXT PRIMARY KEY NOT NULL,
         deleted_at TEXT NOT NULL,
         origin_instance TEXT NOT NULL
@@ -1681,11 +1681,11 @@ def migrate_v50(conn: sqlite3.Connection) -> None:
     ).fetchone()[0]
     count = conn.execute("SELECT count(*) FROM sessions").fetchone()[0]
     conn.execute(
-        "INSERT INTO sync_machine_clocks(machine_id,seq) VALUES(?,?)",
+        "INSERT OR IGNORE INTO sync_machine_clocks(machine_id,seq) VALUES(?,?)",
         (instance, count),
     )
     conn.execute(
-        """INSERT INTO sync_session_revisions(session_id,machine_id,seq)
+        """INSERT OR IGNORE INTO sync_session_revisions(session_id,machine_id,seq)
         SELECT id, ?, row_number() OVER (ORDER BY id) FROM sessions""",
         (instance,),
     )
@@ -1693,7 +1693,7 @@ def migrate_v50(conn: sqlite3.Connection) -> None:
     def revision_trigger(
         name: str, event: str, table: str, session_expr: str, when: str = ""
     ) -> None:
-        conn.execute(f"""CREATE TRIGGER {name} AFTER {event} ON {table} {when} BEGIN
+        conn.execute(f"""CREATE TRIGGER IF NOT EXISTS {name} AFTER {event} ON {table} {when} BEGIN
             INSERT INTO sync_machine_clocks(machine_id,seq)
               SELECT instance,0 FROM context_access_state
               WHERE id=1 AND NOT EXISTS (
@@ -1737,16 +1737,24 @@ def migrate_v50(conn: sqlite3.Connection) -> None:
         "sync_revision_message_delete", "DELETE", "messages", "OLD.session_id"
     )
 
-    conn.execute("""CREATE TRIGGER context_concept_record_erasure
+    conn.execute("""CREATE TRIGGER IF NOT EXISTS context_concept_record_erasure
         BEFORE DELETE ON context_concepts BEGIN
           INSERT OR IGNORE INTO context_concept_tombstones
             (concept_id,deleted_at,origin_instance)
           SELECT OLD.id,datetime('now'),instance FROM context_access_state WHERE id=1;
         END""")
-    conn.execute("""CREATE TRIGGER context_concept_no_resurrection
+    conn.execute("""CREATE TRIGGER IF NOT EXISTS context_concept_no_resurrection
         BEFORE INSERT ON context_concepts
         WHEN EXISTS(SELECT 1 FROM context_concept_tombstones WHERE concept_id=NEW.id)
         BEGIN SELECT RAISE(IGNORE); END""")
+    for event in ("INSERT", "UPDATE", "DELETE"):
+        conn.execute(
+            f"""CREATE TRIGGER IF NOT EXISTS
+            replica_content_context_concept_tombstones_{event.lower()}
+            AFTER {event} ON context_concept_tombstones BEGIN
+              UPDATE context_replica_content_state SET revision=revision+1 WHERE id=1;
+            END"""
+        )
 
 
 def check_migration_status(db_path: Path) -> dict:
