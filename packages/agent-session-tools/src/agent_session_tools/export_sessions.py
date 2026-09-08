@@ -14,7 +14,7 @@ import shutil
 import sqlite3
 from collections.abc import Collection
 from contextlib import nullcontext
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -228,8 +228,9 @@ def _run_export(
         for row in conn.execute("SELECT id, updated_at FROM sessions").fetchall()
     }
 
-    # Track aggregate stats
+    # Track aggregate stats and one verification receipt per requested source.
     batch_stats = ExportStats(added=0, updated=0, skipped=0, errors=0)
+    source_outcomes: dict[str, ExportStats | None] = {}
 
     # Export each source with progress bars
     progress = create_progress_bar() if len(sources) > 1 else None
@@ -255,6 +256,7 @@ def _run_export(
                 source_updated = source_stats.updated
                 batch_stats += source_stats
 
+            source_outcomes[source] = source_stats
             if progress and task is not None:
                 progress.update(
                     task,
@@ -262,7 +264,43 @@ def _run_export(
                 )
                 progress.advance(task)
 
-    # Final commit
+    source_labels = {"claude": "claude_code", "kiro": "kiro_cli"}
+    completed_at = datetime.now(UTC).isoformat()
+    verification: dict[str, bool] = {}
+    for source, outcome in source_outcomes.items():
+        stored_source = source_labels.get(source, source)
+        sessions_seen = conn.execute(
+            "SELECT count(*) FROM sessions WHERE source=?", (stored_source,)
+        ).fetchone()[0]
+        messages_seen = conn.execute(
+            "SELECT count(*) FROM messages m JOIN sessions s ON s.id=m.session_id "
+            "WHERE s.source=?",
+            (stored_source,),
+        ).fetchone()[0]
+        errors = outcome.errors if outcome is not None else 1
+        verified = outcome is not None and errors == 0
+        conn.execute(
+            """INSERT INTO session_export_runs
+            (source,completed_at,sessions_seen,messages_seen,errors,verified)
+            VALUES(?,?,?,?,?,?)
+            ON CONFLICT(source) DO UPDATE SET
+              completed_at=excluded.completed_at,
+              sessions_seen=excluded.sessions_seen,
+              messages_seen=excluded.messages_seen,
+              errors=excluded.errors,
+              verified=excluded.verified""",
+            (
+                source,
+                completed_at,
+                sessions_seen,
+                messages_seen,
+                errors,
+                int(verified),
+            ),
+        )
+        verification[source] = verified
+
+    # Final commit includes both captured rows and their verification receipts.
     conn.commit()
 
     # Ontology refresh: after, never inside, the transaction that just
@@ -380,7 +418,10 @@ def _run_export(
                 # Nothing changed this run — skip the writer entirely.
                 print("\nObsidian export: no new or updated sessions this run.")
                 conn.close()
-                return {"ontology_refresh": ontology_refresh}
+                return {
+                    "ontology_refresh": ontology_refresh,
+                    "export_verification": verification,
+                }
 
         counts = obsidian_writer.write_vault_notes(
             conn,
@@ -406,7 +447,10 @@ def _run_export(
     if maybe_spawn_sync():
         print("↻ Incremental sync to full DB started in background.")
 
-    return {"ontology_refresh": ontology_refresh}
+    return {
+        "ontology_refresh": ontology_refresh,
+        "export_verification": verification,
+    }
 
 
 @app.command()
@@ -485,6 +529,13 @@ def export(
             help="Export all historical sessions to the vault (batched, idempotent).",
         ),
     ] = False,
+    verify: Annotated[
+        bool,
+        typer.Option(
+            "--verify",
+            help="Fail unless every requested source records a successful export receipt.",
+        ),
+    ] = False,
     obsidian_dry_run: Annotated[
         bool,
         typer.Option(
@@ -549,7 +600,7 @@ def export(
         export_sources = set(SOURCE_CHOICES)
 
     incremental = not full
-    _run_export(
+    summary = _run_export(
         output_path,
         export_sources,
         incremental,
@@ -558,6 +609,11 @@ def export(
         obsidian_backfill=obsidian_backfill,
         obsidian_dry_run=obsidian_dry_run,
     )
+    if verify and not all(summary["export_verification"].values()):
+        failed = sorted(
+            source for source, ok in summary["export_verification"].items() if not ok
+        )
+        raise typer.Exit(code=1 if failed else 0)
 
 
 def main() -> int:

@@ -207,6 +207,73 @@ def _executable_result(command: str) -> CheckResult:
     )
 
 
+def check_export_lag(tools: list[str], *, max_lag_hours: float = 24.0) -> list[CheckResult]:
+    """Report the last verified capture receipt for each detected source."""
+    import sqlite3
+    from datetime import UTC, datetime
+
+    from studyloop.doctor.database import _get_sessions_db_path
+
+    db_path = _get_sessions_db_path()
+    source_by_tool = {
+        "claude": "claude",
+        "codex": "codex",
+        "kiro": "kiro",
+        "opencode": "opencode",
+        "pi": "pi",
+    }
+    if not db_path.exists():
+        return []
+    try:
+        with sqlite3.connect(f"file:{db_path}?mode=ro", uri=True) as conn:
+            tables = {
+                row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            }
+            rows = (
+                {
+                    row[0]: (row[1], bool(row[2]))
+                    for row in conn.execute(
+                        "SELECT source,completed_at,verified FROM session_export_runs"
+                    )
+                }
+                if "session_export_runs" in tables
+                else {}
+            )
+    except sqlite3.DatabaseError:
+        rows = {}
+
+    results: list[CheckResult] = []
+    now = datetime.now(UTC)
+    for tool in tools:
+        source = source_by_tool.get(tool)
+        if source is None:
+            continue
+        receipt = rows.get(source)
+        fresh = False
+        lag_hours: float | None = None
+        if receipt is not None:
+            try:
+                completed = datetime.fromisoformat(receipt[0].replace("Z", "+00:00"))
+                if completed.tzinfo is None:
+                    completed = completed.replace(tzinfo=UTC)
+                lag_hours = max(0.0, (now - completed.astimezone(UTC)).total_seconds() / 3600)
+                fresh = receipt[1] and lag_hours <= max_lag_hours
+            except (TypeError, ValueError):
+                pass
+        detail = f"{lag_hours:.1f}h ago" if lag_hours is not None else "not recorded"
+        results.append(
+            CheckResult(
+                category="harness",
+                name=f"session_export_lag_{tool}",
+                status="pass" if fresh else "warn",
+                message=f"{tool}: last verified export {detail}",
+                fix_hint=("" if fresh else f"session-export --{source}-only --verify"),
+                fix_auto=False,
+            )
+        )
+    return results
+
+
 def check_harness_export() -> list[CheckResult]:
     """Verify detected harnesses have query skill + automatic export hook."""
     results: list[CheckResult] = [
@@ -215,6 +282,7 @@ def check_harness_export() -> list[CheckResult]:
         _executable_result("session-db-mcp"),
     ]
     detected = installers.detect_available_agent_tools()
+    results.extend(check_export_lag(detected))
     for tool in detected:
         results.append(_session_memory_skill_result(tool))
         if tool in installers._HARNESS_EXPORT:

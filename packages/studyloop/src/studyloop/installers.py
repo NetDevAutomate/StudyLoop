@@ -723,9 +723,9 @@ def install_claude_stop_hook() -> int:
             "hooks": [
                 {
                     "type": "command",
-                    "command": f"{_HOOK_SENTINEL} >/dev/null 2>&1 || true",
-                    "timeout": 30,
-                    "async": True,
+                    "command": f"{_HOOK_SENTINEL} --verify >/dev/null 2>&1 || true",
+                    "timeout": 60,
+                    "async": False,
                 }
             ],
         }
@@ -778,8 +778,8 @@ def install_codex_session_end_hook() -> int:
             "hooks": [
                 {
                     "type": "command",
-                    "command": f"{_CODEX_HOOK_SENTINEL} >/dev/null 2>&1 || true",
-                    "timeout": 3,
+                    "command": f"{_CODEX_HOOK_SENTINEL} --verify >/dev/null 2>&1 || true",
+                    "timeout": 30,
                 }
             ]
         }

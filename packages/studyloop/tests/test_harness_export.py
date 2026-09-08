@@ -102,6 +102,15 @@ class TestClaudeStopHook:
         cmds = [h["command"] for g in data["hooks"]["Stop"] for h in g["hooks"]]
         assert any("claude-voice" in c for c in cmds)  # preserved
         assert sum("session-export --claude-only" in c for c in cmds) == 1
+        export_hook = next(c for c in cmds if "session-export --claude-only" in c)
+        assert "--verify" in export_hook
+        hook = next(
+            h
+            for group in data["hooks"]["Stop"]
+            for h in group["hooks"]
+            if "session-export --claude-only" in h["command"]
+        )
+        assert hook["async"] is False
 
     def test_idempotent(self, home: Path):
         self._write_settings(home, {"Stop": []})
@@ -240,3 +249,32 @@ class TestHarnessDoctorCheck:
         assert all(r.category == "harness" for r in results)
         warn = [r for r in results if r.status == "warn"]
         assert warn and all(r.fix_auto for r in warn)
+
+
+def test_doctor_reports_last_export_lag_per_source(tmp_path: Path) -> None:
+    import sqlite3
+
+    from studyloop.doctor.harness import check_export_lag
+
+    db_path = tmp_path / "sessions.db"
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            "CREATE TABLE session_export_runs("
+            "source TEXT PRIMARY KEY,completed_at TEXT,sessions_seen INTEGER,"
+            "messages_seen INTEGER,errors INTEGER,verified INTEGER)"
+        )
+        conn.execute(
+            "INSERT INTO session_export_runs VALUES('claude',?,1,1,0,1)",
+            ("2099-01-01T00:00:00+00:00",),
+        )
+        conn.execute(
+            "INSERT INTO session_export_runs VALUES('codex',?,1,1,0,1)",
+            ("2000-01-01T00:00:00+00:00",),
+        )
+
+    with patch("studyloop.doctor.database._get_sessions_db_path", return_value=db_path):
+        results = {result.name: result for result in check_export_lag(["claude", "codex"])}
+
+    assert results["session_export_lag_claude"].status == "pass"
+    assert results["session_export_lag_codex"].status == "warn"
+    assert "last verified export" in results["session_export_lag_codex"].message
