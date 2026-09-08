@@ -78,3 +78,17 @@ def test_pi_context_has_query_fallback_without_unmet_mcp_dependency() -> None:
     assert "session-query search" in text
     assert "when its MCP server is connected" in text
     assert "./session-db.md" not in text
+
+
+def test_session_export_spec_names_the_six_real_sources() -> None:
+    """The normative spec separates capture sources from mentor harnesses."""
+    from pathlib import Path
+
+    spec = (
+        Path(__file__).resolve().parents[3] / "openspec/specs/session-export/spec.md"
+    ).read_text(encoding="utf-8")
+
+    normalized = " ".join(spec.split())
+    assert "Claude Code, Codex, Grok, Kiro CLI, OpenCode and pi" in normalized
+    assert "Gemini, Aider" not in spec
+    assert "Grok is a capture-only source" in spec
