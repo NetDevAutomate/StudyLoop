@@ -7,6 +7,25 @@ experience may change before `1.0.0`.
 
 ## [Unreleased]
 
+### Added
+
+- `session-maint install sidecar`: explicit concept-sidecar provisioning. The schema
+  definitions are lifted byte-for-byte from SessionWeaver's `concept_schema.py`
+  (fingerprint-pinned in tests); the command installs, adopts, or verifies without
+  changing `user_version`. Provisioning is deliberately not part of the capture
+  path: sidecar metadata rows mark a store as scoped memory and the legacy tiering
+  sync then correctly refuses to copy it.
+- `session-maint install mcp`: idempotent `session-db` MCP registration for the
+  JSON-shaped harness configs (Claude, Kiro, OpenCode), preserving unrelated keys
+  and classifying unreadable or invalid JSON instead of crashing. Codex/Grok TOML
+  shapes and pi fail closed with instructions: pi has no verified user-editable MCP
+  registry (the previously surveyed path belongs to the third-party
+  compound-engineering plugin).
+- `session-maint export-lag`: per-source stale-context report over the newest
+  exported session per harness, parsed and compared chronologically (a text-level
+  SQL `MAX` would order mixed `...Z`/`...+HH:MM` timestamp formats
+  lexicographically), with explicit future-timestamp classification.
+
 ### Fixed
 
 - Re-exporting a touched OpenCode session can no longer destroy conversation

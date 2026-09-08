@@ -5,6 +5,7 @@ This tool provides commands for database optimization, archiving,
 schema inspection, and maintenance operations.
 """
 
+import json
 import logging
 import sqlite3
 from datetime import UTC, datetime, timedelta
@@ -24,6 +25,8 @@ from agent_session_tools.deduplication import (
     list_all_duplicates,
     merge_duplicates,
 )
+from agent_session_tools.concept_sidecar import SidecarError, ensure_concept_sidecar
+from agent_session_tools.install.mcp import InstallError, register_mcp
 
 # Module-level logger — does NOT configure the root logger (no basicConfig here).
 # Logging is set up in the app callback below, which only runs when this module
@@ -54,6 +57,79 @@ app = typer.Typer(
     add_completion=True,
     rich_markup_mode="rich",
 )
+
+install_app = typer.Typer(
+    name="install",
+    help="Register session-db integrations into harness configs (WP-2).",
+)
+app.add_typer(install_app, name="install")
+
+
+@install_app.command("mcp")
+def install_mcp(
+    harness: Annotated[
+        list[str],
+        typer.Option(
+            "--harness",
+            help="Harness to register (repeatable). JSON shapes: claude, kiro, opencode, pi.",
+        ),
+    ] = ["kiro"],  # noqa: B006 - typer reads mutable defaults by value
+    home: Annotated[
+        Path | None,
+        typer.Option(
+            "--home", help="Base directory instead of $HOME (for tests/dry runs)."
+        ),
+    ] = None,
+    dry_run: Annotated[
+        bool,
+        typer.Option("--dry-run", help="Report what would change without writing."),
+    ] = False,
+) -> None:
+    """Idempotently add the session-db MCP server to harness config files."""
+    failures = 0
+    for name in harness:
+        try:
+            changed = register_mcp(name, home=home, dry_run=dry_run)
+        except InstallError as exc:
+            typer.echo(f"error      {name}: {exc}")
+            failures += 1
+            continue
+        if changed and dry_run:
+            typer.echo(f"would-add  {name}: session-db")
+        elif changed:
+            typer.echo(f"registered {name}: session-db")
+        else:
+            typer.echo(f"unchanged  {name}: session-db already registered")
+    raise typer.Exit(1 if failures else 0)
+
+
+@install_app.command("sidecar")
+def install_sidecar(
+    db: Annotated[
+        Path | None, typer.Option("--db", help="Database path override.")
+    ] = None,
+) -> None:
+    """Provision the concept sidecar (SessionWeaver schema, lifted unchanged).
+
+    Explicit by design: capture (init_db/export) never installs schema, because
+    sidecar metadata rows mark a store as scoped memory and the legacy tiering
+    sync then correctly refuses to copy it. Run this once per store that should
+    hold concepts; it installs, adopts, or verifies and never changes
+    user_version.
+    """
+    db_path = db if db else _get_db_path()
+    conn = sqlite3.connect(db_path)
+    try:
+        conn.execute("PRAGMA foreign_keys=ON")
+        try:
+            status = ensure_concept_sidecar(conn)
+        except SidecarError as exc:
+            typer.echo(f"error      {db_path}: {exc}")
+            raise typer.Exit(1) from exc
+        typer.echo(f"{status:10} {db_path}: concept sidecar")
+    finally:
+        conn.close()
+    raise typer.Exit(0)
 
 
 @app.callback()
@@ -927,6 +1003,88 @@ def prune(
 
 
 # ==================== Main Entry Point ====================
+
+
+STALE_SOURCE_DAYS = 7
+
+
+def _parse_session_timestamp(value: object) -> datetime | None:
+    """Parse a session timestamp to aware UTC; None when malformed or non-text."""
+    if not isinstance(value, str):
+        return None
+    normalized = value.removesuffix("Z") + ("+00:00" if value.endswith("Z") else "")
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
+
+
+def _source_export_lag(
+    conn: sqlite3.Connection, now: datetime, stale_days: int
+) -> list[dict]:
+    """Chronological newest-session age per source.
+
+    Timestamps are parsed and compared as instants: a text-level SQL MAX would
+    order mixed ``...Z`` / ``...+HH:MM`` formats lexicographically instead.
+    """
+    newest: dict[str, tuple[datetime, str]] = {}
+    for source, raw in conn.execute(
+        "SELECT source, updated_at FROM sessions WHERE updated_at IS NOT NULL"
+    ):
+        parsed = _parse_session_timestamp(raw)
+        if parsed is None:
+            continue
+        current = newest.get(source)
+        if current is None or parsed > current[0]:
+            newest[source] = (parsed, raw)
+    report = []
+    for source in sorted(newest):
+        parsed, raw = newest[source]
+        age = now - parsed
+        report.append(
+            {
+                "source": source,
+                "newest_session": raw,
+                "age_days": max(age.days, 0),
+                "in_future": age < timedelta(0),
+                "stale": timedelta(days=stale_days) < age,
+            }
+        )
+    return report
+
+
+@app.command("export-lag")
+def export_lag(
+    db: Annotated[
+        Path | None, typer.Option("--db", help="Database path override.")
+    ] = None,
+    stale_days: Annotated[
+        int, typer.Option("--stale-days", help="Age beyond which a source is stale.")
+    ] = STALE_SOURCE_DAYS,
+    json_output: Annotated[bool, typer.Option("--json", help="Emit JSON.")] = False,
+) -> None:
+    """Per-source export lag: the stale-context check for capture freshness."""
+    db_path = db if db else _get_db_path()
+    conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    try:
+        report = _source_export_lag(conn, datetime.now(UTC), stale_days)
+    finally:
+        conn.close()
+    if json_output:
+        typer.echo(json.dumps(report, indent=2))
+    else:
+        for row in report:
+            marker = (
+                "future" if row["in_future"] else "STALE" if row["stale"] else "fresh"
+            )
+            typer.echo(
+                f"{marker:6} {row['source']}: newest {row['newest_session']} "
+                f"({row['age_days']}d)"
+            )
+    raise typer.Exit(1 if any(r["stale"] for r in report) else 0)
 
 
 def main() -> int:
