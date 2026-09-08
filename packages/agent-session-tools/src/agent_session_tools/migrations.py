@@ -1660,8 +1660,7 @@ def migrate_v50(conn: sqlite3.Connection) -> None:
         session_id TEXT NOT NULL,
         machine_id TEXT NOT NULL,
         seq INTEGER NOT NULL CHECK(typeof(seq)='integer' AND seq>0),
-        PRIMARY KEY(session_id,machine_id),
-        FOREIGN KEY(machine_id) REFERENCES sync_machine_clocks(machine_id)
+        PRIMARY KEY(session_id,machine_id)
     ) WITHOUT ROWID""")
     conn.execute("""CREATE TABLE session_export_runs (
         source TEXT PRIMARY KEY NOT NULL,
@@ -1695,8 +1694,12 @@ def migrate_v50(conn: sqlite3.Connection) -> None:
         name: str, event: str, table: str, session_expr: str, when: str = ""
     ) -> None:
         conn.execute(f"""CREATE TRIGGER {name} AFTER {event} ON {table} {when} BEGIN
-            INSERT OR IGNORE INTO sync_machine_clocks(machine_id,seq)
-              SELECT instance,0 FROM context_access_state WHERE id=1;
+            INSERT INTO sync_machine_clocks(machine_id,seq)
+              SELECT instance,0 FROM context_access_state
+              WHERE id=1 AND NOT EXISTS (
+                SELECT 1 FROM sync_machine_clocks
+                WHERE machine_id=(SELECT instance FROM context_access_state WHERE id=1)
+              );
             UPDATE sync_machine_clocks SET seq=seq+1
               WHERE machine_id=(SELECT instance FROM context_access_state WHERE id=1);
             INSERT INTO sync_session_revisions(session_id,machine_id,seq)

@@ -7,6 +7,7 @@ Missing conversation fields are merged without deleting evidence-bearing rows.
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import re
@@ -36,6 +37,7 @@ from agent_session_tools.replication import legacy as legacy_guard
 SYNC_TABLES = [
     "sessions",
     "messages",
+    "sync_session_revisions",
     "session_notes",
     "session_tags",
     "session_learning_metadata",
@@ -76,6 +78,7 @@ TABLE_SYNC_COLUMNS = {
         "timestamp",
         "metadata",
     ],
+    "sync_session_revisions": ["session_id", "machine_id", "seq"],
     "session_notes": ["session_id", "notes", "updated_at"],
     "session_tags": ["session_id", "tag"],
     "session_learning_metadata": [
@@ -629,7 +632,12 @@ def _build_insert_select_sql(
     quoted_columns = [_quote_identifier(column) for column in columns]
     literal_expr = " || ',' || ".join(f"quote({col})" for col in quoted_columns)
     where_clause = f" WHERE {id_filter}" if id_filter else ""
-    if table in {"sessions", "messages"}:
+    if table == "sync_session_revisions":
+        suffix = (
+            " ON CONFLICT(session_id,machine_id) DO UPDATE SET seq=excluded.seq "
+            "WHERE excluded.seq > sync_session_revisions.seq;"
+        )
+    elif table in {"sessions", "messages"}:
         # Only fill absent fields. A different nonempty message is a conflict,
         # not a newer version merely because its session timestamp increased.
         assignments = []
@@ -904,41 +912,96 @@ def _timestamp_key(value: str | None) -> tuple[int, object]:
     return (2, dt)
 
 
+_SessionSyncState = tuple[str, dict[str, int], frozenset[str]]
+
+
+def _local_session_states(db_path: Path) -> dict[str, _SessionSyncState]:
+    """Read timestamp, replica vector, and captured message identities."""
+    with sqlite3.connect(db_path) as conn:
+        sessions = {
+            row[0]: [row[1] or "", {}, set()]
+            for row in conn.execute("SELECT id,updated_at FROM sessions")
+        }
+        tables = {
+            row[0]
+            for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        }
+        if "sync_session_revisions" in tables:
+            for session_id, machine_id, seq in conn.execute(
+                "SELECT session_id,machine_id,seq FROM sync_session_revisions"
+            ):
+                if session_id in sessions:
+                    sessions[session_id][1][machine_id] = seq
+        for session_id, message_id in conn.execute(
+            "SELECT session_id,id FROM messages"
+        ):
+            if session_id in sessions:
+                sessions[session_id][2].add(message_id)
+    return {
+        session_id: (state[0], dict(state[1]), frozenset(state[2]))
+        for session_id, state in sessions.items()
+    }
+
+
+def _remote_session_states(host: str, db_path: str) -> dict[str, _SessionSyncState]:
+    """Read the same bounded state from a peer in one remote query."""
+    query = """SELECT json_object(
+      'id',s.id,
+      'updated_at',coalesce(s.updated_at,''),
+      'versions',json(coalesce((SELECT json_group_object(machine_id,seq)
+        FROM sync_session_revisions r WHERE r.session_id=s.id),'{}')),
+      'messages',json(coalesce((SELECT json_group_array(id) FROM
+        (SELECT id FROM messages m WHERE m.session_id=s.id ORDER BY id)),'[]'))
+    ) FROM sessions s ORDER BY s.id"""
+    states: dict[str, _SessionSyncState] = {}
+    for line in _remote_sql(host, db_path, query).splitlines():
+        if not line:
+            continue
+        if not line.startswith("{"):
+            session_id, _, updated_at = line.partition("|")
+            states[session_id] = (updated_at, {}, frozenset())
+            continue
+        row = json.loads(line)
+        states[row["id"]] = (
+            row["updated_at"],
+            {str(key): int(value) for key, value in row["versions"].items()},
+            frozenset(str(value) for value in row["messages"]),
+        )
+    return states
+
+
+def _source_has_changes(
+    source: _SessionSyncState, destination: _SessionSyncState
+) -> bool:
+    """Return whether one replica owns content/version state the other lacks."""
+    source_time, source_versions, source_messages = source
+    destination_time, destination_versions, destination_messages = destination
+    if not destination_versions and not destination_messages:
+        # Compatibility with pre-v50/mocked timestamp-only state responses.
+        return _timestamp_key(source_time) > _timestamp_key(destination_time)
+    if source_messages - destination_messages:
+        return True
+    if any(
+        seq > destination_versions.get(machine_id, -1)
+        for machine_id, seq in source_versions.items()
+    ):
+        return True
+    return _timestamp_key(source_time) > _timestamp_key(destination_time)
+
+
 def _get_sync_state(
     local_db: Path, host: str, remote_db: str, reconcile: bool = False
 ) -> tuple[set[str], set[str]]:
-    """Calculate new + updated session IDs by comparing updated_at timestamps.
-
-    Returns (new_ids, updated_ids).
-    """
-    # Get local sessions with timestamps
-    conn = sqlite3.connect(local_db)
-    local_sessions = {
-        r[0]: r[1]
-        for r in conn.execute("SELECT id, updated_at FROM sessions").fetchall()
-    }
-    conn.close()
-
-    # Get remote sessions with timestamps (pipe-delimited)
-    raw = _remote_sql(
-        host, remote_db, "SELECT id || '|' || COALESCE(updated_at,'') FROM sessions"
-    )
-    remote_sessions = {}
-    for line in raw.splitlines():
-        if "|" in line:
-            sid, ts = line.split("|", 1)
-            remote_sessions[sid] = ts
-        elif line:
-            remote_sessions[line] = ""
-
+    """Select sessions with source-owned replica versions or message IDs."""
+    local_sessions = _local_session_states(local_db)
+    remote_sessions = _remote_session_states(host, remote_db)
     new_ids = set(local_sessions) - set(remote_sessions)
-    updated_ids = set()
-    for sid in set(local_sessions) & set(remote_sessions):
-        local_ts = local_sessions[sid] or ""
-        remote_ts = remote_sessions[sid] or ""
-        if reconcile or _timestamp_key(local_ts) > _timestamp_key(remote_ts):
-            updated_ids.add(sid)
-
+    updated_ids = {
+        session_id
+        for session_id in set(local_sessions) & set(remote_sessions)
+        if reconcile
+        or _source_has_changes(local_sessions[session_id], remote_sessions[session_id])
+    }
     return new_ids, updated_ids
 
 
@@ -1296,23 +1359,8 @@ def pull(
     # Reverse: remote is "local" from the perspective of what to pull
     # We need remote's updated_at vs our updated_at
     # Reuse _get_sync_state but swap: get remote sessions newer than ours
-    raw = _remote_sql(
-        host, remote_db, "SELECT id || '|' || COALESCE(updated_at,'') FROM sessions"
-    )
-    remote_sessions = {}
-    for line in raw.splitlines():
-        if "|" in line:
-            sid, ts = line.split("|", 1)
-            remote_sessions[sid] = ts
-        elif line:
-            remote_sessions[line] = ""
-
-    conn = sqlite3.connect(local_db)
-    local_sessions = {
-        r[0]: r[1] or ""
-        for r in conn.execute("SELECT id, updated_at FROM sessions").fetchall()
-    }
-    conn.close()
+    remote_sessions = _remote_session_states(host, remote_db)
+    local_sessions = _local_session_states(local_db)
 
     new_ids = set(remote_sessions) - set(local_sessions)
     if tier == "hot":
@@ -1328,8 +1376,7 @@ def pull(
     updated_ids = {
         sid
         for sid in set(remote_sessions) & set(local_sessions)
-        if reconcile
-        or _timestamp_key(remote_sessions[sid]) > _timestamp_key(local_sessions[sid])
+        if reconcile or _source_has_changes(remote_sessions[sid], local_sessions[sid])
     }
     all_ids = new_ids | updated_ids
 
@@ -1519,31 +1566,15 @@ def sync(
 
     # Calculate deltas in both directions using one SSH call for remote state
     console.print("[bold]Calculating deltas...[/bold]")
-    raw = _remote_sql(
-        host, remote_db, "SELECT id || '|' || COALESCE(updated_at,'') FROM sessions"
-    )
-    remote_sessions = {}
-    for line in raw.splitlines():
-        if "|" in line:
-            sid, ts = line.split("|", 1)
-            remote_sessions[sid] = ts
-        elif line:
-            remote_sessions[line] = ""
-
-    conn = sqlite3.connect(local_db)
-    local_sessions = {
-        r[0]: r[1] or ""
-        for r in conn.execute("SELECT id, updated_at FROM sessions").fetchall()
-    }
-    conn.close()
+    remote_sessions = _remote_session_states(host, remote_db)
+    local_sessions = _local_session_states(local_db)
 
     # Push: local new + local newer
     push_new = set(local_sessions) - set(remote_sessions)
     push_updated = {
         sid
         for sid in set(local_sessions) & set(remote_sessions)
-        if reconcile
-        or _timestamp_key(local_sessions[sid]) > _timestamp_key(remote_sessions[sid])
+        if reconcile or _source_has_changes(local_sessions[sid], remote_sessions[sid])
     }
     # Pull: remote new + remote newer (hot tier: minus locally-pruned)
     pull_new = set(remote_sessions) - set(local_sessions)
@@ -1558,8 +1589,7 @@ def sync(
     pull_updated = {
         sid
         for sid in set(local_sessions) & set(remote_sessions)
-        if reconcile
-        or _timestamp_key(remote_sessions[sid]) > _timestamp_key(local_sessions[sid])
+        if reconcile or _source_has_changes(remote_sessions[sid], local_sessions[sid])
     }
 
     console.print(

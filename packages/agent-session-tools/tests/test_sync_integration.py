@@ -56,6 +56,17 @@ def peers(
     peer.parent.mkdir()
     with sqlite3.connect(peer) as target:
         conn.backup(target)
+        # A copied database is a clone, not a second replica. Give the empty
+        # peer a distinct stable identity before either side records B5
+        # session revisions; duplicate identities are refused by design.
+        target.execute(
+            "UPDATE context_access_state SET instance='loopback-peer' WHERE id=1"
+        )
+        target.execute("DELETE FROM context_concept_clock")
+        target.execute(
+            "INSERT INTO context_concept_clock VALUES(1,'loopback-peer',0,0)"
+        )
+        target.commit()
     config = tmp_path / "config.yaml"
     config.write_text(
         f"""database:
@@ -191,10 +202,6 @@ def _seed_identity_conflict_plus_unrelated_new_row(
         conn.commit()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="BL-1: incremental push/pull timestamp gates cannot select both divergent copies",
-)
 def test_continued_conversation_reconciles_both_endpoints(
     ssh_shim: Path, peers: dict[str, Path]
 ) -> None:
