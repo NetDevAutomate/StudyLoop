@@ -75,7 +75,10 @@ repos:
     stages: [pre-commit]
   - id: no-aws-tokens
     name: Check for AWS tokens
-    entry: (?i)(AWS_BEARER_TOKEN\w*|aws_access_key_id|aws_secret_access_key)\s*[=:]\s*["']?[A-Za-z0-9/+=]{20,}
+    # Negative lookahead excludes AWS's canonical documentation example key
+    # (public placeholder, used verbatim in normative specs and scrubber
+    # fixtures — not a credential).
+    entry: (?i)(AWS_BEARER_TOKEN\w*|aws_access_key_id|aws_secret_access_key)\s*[=:]\s*["']?(?!wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY)[A-Za-z0-9/+=]{20,}
     language: pygrep
     types:
     - text
