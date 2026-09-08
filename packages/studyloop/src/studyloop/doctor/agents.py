@@ -242,3 +242,26 @@ def check_agent_definitions() -> list[CheckResult]:
             break
 
     return results
+
+
+def check_mcp_registration() -> list[CheckResult]:
+    """Report whether both StudyLoop MCP servers are registered per harness."""
+    from studyloop.installers import mcp_registration_status
+
+    results: list[CheckResult] = []
+    for tool, registered in mcp_registration_status().items():
+        results.append(
+            CheckResult(
+                "agents",
+                f"mcp_{tool}",
+                "pass" if registered else "warn",
+                (
+                    f"{tool} has session-db and studyloop MCP servers registered"
+                    if registered
+                    else f"{tool} MCP registration is missing or incomplete"
+                ),
+                "" if registered else "studyloop install agents",
+                False,
+            )
+        )
+    return results

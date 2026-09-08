@@ -74,6 +74,7 @@ def _get_registry():
     from studyloop.doctor.agents import (
         check_agent_definitions,
         check_agent_smoke_tests,
+        check_mcp_registration,
     )
     from studyloop.doctor.config import (
         check_active_topic_limit,
@@ -139,6 +140,7 @@ def _get_registry():
     # signal regardless of whether the binary happens to be on PATH.
     registry.register("agents")(check_agent_definitions)
     registry.register("agents")(check_agent_smoke_tests)
+    registry.register("agents")(check_mcp_registration)
     registry.register("harness")(check_harness_export)
     # check_pypi_versions is deliberately NOT registered. Nothing is published
     # yet, so it can only ever report "no release found", which is noise on
