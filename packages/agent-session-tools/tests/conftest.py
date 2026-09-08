@@ -314,3 +314,74 @@ def ontology_production_store(tmp_path):
         yield OntologyProductionStore(conn=conn, db_path=db_path)
     finally:
         conn.close()
+
+
+@dataclass(frozen=True)
+class ProductionStore:
+    """Temporary production-schema database and its isolated configuration."""
+
+    conn: sqlite3.Connection
+    db_path: Path
+    config_path: Path
+    stats: Any
+
+
+@pytest.fixture
+def production_store(tmp_path, monkeypatch):
+    """Yield a migrated, populated store that cannot resolve the live database.
+
+    Lifted from the SessionWeaver reference conftest for the concept
+    lifecycle/wind-down/OKF/projection test suites; reuses the same fixture
+    rows as ``ontology_production_store`` but adds the isolated HOME/config
+    the ConceptService default-database path resolution needs.
+    """
+    import yaml
+
+    from agent_session_tools.exporters.base import ExportStats, commit_batch
+
+    home = tmp_path / "home"
+    home.mkdir()
+    db_path = tmp_path / "sessions.db"
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        yaml.safe_dump(
+            {
+                "memory": {"default_scope": "unclassified", "projects": {}},
+                "database": {
+                    "path": str(db_path),
+                    "archive_path": str(tmp_path / "sessions-archive.db"),
+                    "backup_dir": str(tmp_path / "backups"),
+                },
+                "logging": {"path": str(tmp_path / "sessions.log")},
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
+    monkeypatch.delenv("DATABASE_PATH", raising=False)
+    monkeypatch.delenv("STUDYLOOP_DB", raising=False)
+    monkeypatch.delenv("SESSION_CONTEXT_SCOPE", raising=False)
+
+    conn = sqlite3.connect(db_path)
+    try:
+        conn.execute("PRAGMA foreign_keys=ON")
+        conn.executescript(SCHEMA_PATH.read_text())
+        migrate(conn)
+        if conn.execute("PRAGMA user_version").fetchone()[0] != CURRENT_VERSION:
+            raise RuntimeError(
+                "production fixture migration did not reach CURRENT_VERSION"
+            )
+
+        sessions, messages = _ontology_fixture_rows(tmp_path / "fixture-project")
+        stats = ExportStats()
+        commit_batch(conn, sessions, messages, stats)
+        yield ProductionStore(
+            conn=conn,
+            db_path=db_path,
+            config_path=config_path,
+            stats=stats,
+        )
+    finally:
+        conn.close()
