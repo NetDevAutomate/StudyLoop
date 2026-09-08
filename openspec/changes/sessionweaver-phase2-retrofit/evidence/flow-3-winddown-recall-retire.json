@@ -1,0 +1,25 @@
+{
+  "backup_method": "sqlite-online-backup-read-only-source",
+  "evidence_schema": "studyloop.b5.flow-3-winddown-recall-retire",
+  "evidence_version": 1,
+  "exact_citation_validated": true,
+  "memory_winddown_writes": 1,
+  "recall_after_retire": {
+    "concept_rows": 0
+  },
+  "recall_before_retire": {
+    "concept_rows": 1
+  },
+  "result": "pass",
+  "retire_exit_code": 0,
+  "selected_recent_source": true,
+  "selected_source_session_unchanged": true,
+  "source_append_only_drift_during_run": {
+    "evidence": 0,
+    "messages": 0,
+    "sessions": 0,
+    "user_version": 0
+  },
+  "source_sentinels_unchanged": true,
+  "temporary_directory_removed_after_receipt": true
+}

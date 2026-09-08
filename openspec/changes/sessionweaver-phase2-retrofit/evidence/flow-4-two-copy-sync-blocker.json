@@ -1,0 +1,37 @@
+{
+  "evidence_schema": "studyloop.b5.flow-4-two-copy-sync-blocker",
+  "evidence_version": 1,
+  "result": "blocked",
+  "backup_method": "sqlite-online-backup-read-only-source",
+  "session_sync_cli": {
+    "orders_attempted": [
+      "a-local-then-remote",
+      "b-local-then-remote"
+    ],
+    "exit_codes": [1, 1],
+    "refusal_code": "legacy-sync-protected-memory",
+    "refusal_summary": "The legacy SQL transport refuses databases containing scoped or source-grounded context memory; no legacy fallback is allowed."
+  },
+  "context_replication": {
+    "live_matrix_exit_code": 0,
+    "tests_passed": 1,
+    "opposite_orders": true,
+    "replay_idempotent": true,
+    "standing_digest_identical": true,
+    "causal_lamport_advance": true,
+    "concurrent_winner_computed": true,
+    "causal_retire_converged": true
+  },
+  "ontology_contract": {
+    "listed_in_legacy_sync_tables": false,
+    "listed_in_global_sync_tables": false,
+    "derived_never_synced": true
+  },
+  "source_sentinels_unchanged": true,
+  "privacy": {
+    "private_content_retained": false,
+    "identities_retained": false,
+    "paths_retained": false
+  },
+  "required_resolution": "Reconcile OpenSpec task 5.4 with the shipped replication boundary, or implement and review a structured session-sync coordinator before rerunning B5."
+}

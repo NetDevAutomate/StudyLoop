@@ -1,0 +1,38 @@
+{
+  "commands": [
+    {
+      "exit_code": 0,
+      "name": "session-export --kiro-only --verify"
+    },
+    {
+      "exit_code": 0,
+      "name": "studyloop session start"
+    },
+    {
+      "exit_code": 0,
+      "name": "studyloop study real-tmux integration gate"
+    },
+    {
+      "name": "log_struggle",
+      "status": "logged"
+    },
+    {
+      "name": "memory_recall",
+      "rows_returned": 1
+    }
+  ],
+  "evidence_schema": "studyloop.b5.flow-1-virgin-install",
+  "evidence_version": 1,
+  "isolation": "virgin-home-and-temporary-database",
+  "result": "pass",
+  "struggle_rows": 1,
+  "study_rows": 1,
+  "study_start_integration_passed": true,
+  "temporary_directory_removed_after_receipt": true,
+  "verified_export_receipt": {
+    "errors": 0,
+    "messages_seen": 2,
+    "sessions_seen": 1,
+    "verified": true
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "evidence_schema": "studyloop.b5.flow-5-learner-journey",
+  "evidence_version": 1,
+  "result": "pass",
+  "command": "pytest packages/studyloop/tests/journeys/test_memory_recall_journey.py -q",
+  "exit_code": 0,
+  "passed": 1,
+  "failed": 0,
+  "journey": "active study session recalls prior captured evidence",
+  "private_content_retained": false,
+  "identities_retained": false
+}

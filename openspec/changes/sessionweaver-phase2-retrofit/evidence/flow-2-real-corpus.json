@@ -1,0 +1,53 @@
+{
+  "a6_equivalence": {
+    "aggregate_concept_hits": 125,
+    "aggregate_session_hits": 125,
+    "eligibility_counts_identical": true,
+    "exit_code": 1,
+    "mismatches": 0,
+    "ordered_mcp_library_hit_lists_identical": 25,
+    "positive_control_status": "pass",
+    "positive_control_status_matches_a6": true,
+    "questions": 25,
+    "types": {
+      "K": 11,
+      "P": 8,
+      "R": 6
+    },
+    "unrestricted_diagnostic": "not-retained-sqlite-bm25-context-limitation",
+    "verdict": "fail"
+  },
+  "backup_method": "sqlite-online-backup-read-only-source",
+  "evidence_schema": "studyloop.b5.flow-2-real-corpus",
+  "evidence_version": 1,
+  "migrated_copy_version": 50,
+  "okf_import": {
+    "imported": 2033,
+    "legacy_unbound": 2033,
+    "scanned": 2035,
+    "source_sentinel_unchanged": true,
+    "write_failures": 0,
+    "writes": 2033
+  },
+  "ontology": {
+    "command_exit_code": 0,
+    "elapsed_seconds": 3.455562,
+    "within_five_seconds": true
+  },
+  "result": "blocked",
+  "required_resolution": "Investigate the current-corpus concept gate regression: ordered MCP/library hits remain identical, but the released A6 benchmark changed from investigate to fail.",
+  "source": {
+    "evidence": 101678,
+    "messages": 139750,
+    "sessions": 5815,
+    "user_version": 47
+  },
+  "source_append_only_drift_during_run": {
+    "evidence": 0,
+    "messages": 0,
+    "sessions": 0,
+    "user_version": 0
+  },
+  "source_sentinels_unchanged": true,
+  "temporary_directory_removed_after_receipt": true
+}

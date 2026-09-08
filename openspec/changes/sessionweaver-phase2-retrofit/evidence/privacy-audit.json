@@ -1,0 +1,11 @@
+{
+  "canonical_uuid_values_found": 0,
+  "evidence_schema": "studyloop.b5.privacy-audit",
+  "evidence_version": 1,
+  "files_checked": 5,
+  "hex_uuid_values_found": 0,
+  "home_paths_found": 0,
+  "policy": "aggregate-and-status-fields-only",
+  "result": "pass",
+  "retained_private_prose_fields": 0
+}

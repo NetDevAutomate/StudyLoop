@@ -1,0 +1,31 @@
+{
+  "evidence_schema": "studyloop.b5.bl-3-capture-supervision",
+  "evidence_version": 1,
+  "result": "pass",
+  "focused_tests": {
+    "command": "pytest test_export_verification.py test_harness_export.py -q",
+    "exit_code": 0,
+    "passed": 14,
+    "failed": 0
+  },
+  "supervised_capture": {
+    "claude_stop_synchronous": true,
+    "codex_session_end_synchronous": true,
+    "verify_flag_required": true,
+    "durable_per_source_receipt": true
+  },
+  "periodic_sweep": "session-export --verify",
+  "doctor_export_lag": {
+    "per_source": true,
+    "fresh_receipt_pass": true,
+    "stale_receipt_warn": true,
+    "auto_fix": false
+  },
+  "desktop_feasibility": {
+    "claude_desktop": "no-current-evidence",
+    "codex_desktop": "yes-via-shared-session-end-hook",
+    "artifact": "docs/architecture/session-memory/desktop-capture-feasibility.md"
+  },
+  "private_content_retained": false,
+  "identities_retained": false
+}
