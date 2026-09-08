@@ -196,70 +196,68 @@ def _mcp_config_path(tool: str) -> Path:
         raise InstallError(f"Unsupported MCP registration target: {tool}") from exc
 
 
-def _json_object_span(raw: str, key: str) -> tuple[int, int] | None:
-    """Return the top-level object-value span for ``key`` in JSON text."""
+def _json_root_object_span(raw: str) -> tuple[int, int] | None:
+    """Return the root JSON object span without reserializing its bytes."""
     import json
 
-    depth = 0
-    index = 0
-    while index < len(raw):
-        char = raw[index]
-        if char == '"':
-            start = index
-            index += 1
-            escaped = False
-            while index < len(raw):
-                current = raw[index]
-                if current == '"' and not escaped:
-                    break
-                escaped = current == "\\" and not escaped
-                if current != "\\":
-                    escaped = False
-                index += 1
-            if index >= len(raw):
-                break
-            token = json.loads(raw[start : index + 1])
-            if depth == 1 and token == key:
-                cursor = index + 1
-                while cursor < len(raw) and raw[cursor].isspace():
-                    cursor += 1
-                if cursor >= len(raw) or raw[cursor] != ":":
-                    break
-                cursor += 1
-                while cursor < len(raw) and raw[cursor].isspace():
-                    cursor += 1
-                if cursor >= len(raw) or raw[cursor] != "{":
-                    return None
-                object_depth = 1
-                scan = cursor + 1
-                in_string = False
-                escaped = False
-                while scan < len(raw):
-                    current = raw[scan]
-                    if in_string:
-                        if current == '"' and not escaped:
-                            in_string = False
-                        escaped = current == "\\" and not escaped
-                        if current != "\\":
-                            escaped = False
-                    elif current == '"':
-                        in_string = True
-                    elif current == "{":
-                        object_depth += 1
-                    elif current == "}":
-                        object_depth -= 1
-                        if object_depth == 0:
-                            return cursor, scan + 1
-                    scan += 1
-                return None
-            index += 1
-            continue
-        if char == "{":
-            depth += 1
-        elif char == "}":
-            depth -= 1
-        index += 1
+    start = 0
+    while start < len(raw) and raw[start].isspace():
+        start += 1
+    try:
+        value, end = json.JSONDecoder().raw_decode(raw, start)
+    except json.JSONDecodeError:
+        return None
+    return (start, end) if isinstance(value, dict) else None
+
+
+def _json_value_span(
+    raw: str, key: str, object_span: tuple[int, int] | None = None
+) -> tuple[int, int] | None:
+    """Return an arbitrary JSON member value span from one object."""
+    import json
+
+    span = object_span or _json_root_object_span(raw)
+    if span is None:
+        return None
+    start, end = span
+    decoder = json.JSONDecoder()
+    cursor = start + 1
+    while cursor < end - 1:
+        while cursor < end - 1 and (raw[cursor].isspace() or raw[cursor] == ","):
+            cursor += 1
+        if cursor >= end - 1:
+            break
+        try:
+            member_name, key_end = decoder.raw_decode(raw, cursor)
+        except json.JSONDecodeError:
+            return None
+        if not isinstance(member_name, str):
+            return None
+        cursor = key_end
+        while cursor < end - 1 and raw[cursor].isspace():
+            cursor += 1
+        if cursor >= end - 1 or raw[cursor] != ":":
+            return None
+        cursor += 1
+        while cursor < end - 1 and raw[cursor].isspace():
+            cursor += 1
+        value_start = cursor
+        try:
+            _, value_end = decoder.raw_decode(raw, value_start)
+        except json.JSONDecodeError:
+            return None
+        if member_name == key:
+            return value_start, value_end
+        cursor = value_end
     return None
+
+
+def _json_object_span(raw: str, key: str) -> tuple[int, int] | None:
+    """Return an object-valued top-level member span for ``key``."""
+    span = _json_value_span(raw, key)
+    if span is None or raw[span[0]] != "{":
+        return None
+    return span
 
 
 def _append_json_members(
@@ -281,13 +279,14 @@ def _append_json_members(
     if not closing_indent.isspace():
         closing_indent = "  "
     entry_indent = closing_indent + "  "
+    newline = "\r\n" if "\r\n" in raw else "\n"
     rendered: list[str] = []
     for name, value in members.items():
         value_text = json.dumps(value, indent=2)
-        value_text = value_text.replace("\n", "\n" + entry_indent)
+        value_text = value_text.replace("\n", newline + entry_indent)
         rendered.append(f"{entry_indent}{json.dumps(name)}: {value_text}")
     separator = "," if existing else ""
-    insertion = separator + "\n" + ",\n".join(rendered) + "\n" + closing_indent
+    insertion = separator + newline + ("," + newline).join(rendered) + newline + closing_indent
     return raw[:content_end] + insertion + raw[close:]
 
 
@@ -295,7 +294,7 @@ def _merge_json_mcp_config(path: Path) -> int:
     import json
 
     try:
-        raw = path.read_text(encoding="utf-8")
+        raw = path.read_bytes().decode("utf-8")
     except FileNotFoundError:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
@@ -303,7 +302,7 @@ def _merge_json_mcp_config(path: Path) -> int:
             encoding="utf-8",
         )
         return 1
-    except OSError as exc:
+    except (OSError, UnicodeDecodeError) as exc:
         raise InstallError(f"Cannot read MCP config {path}: {exc}") from exc
     try:
         loaded = json.loads(raw)
@@ -311,22 +310,28 @@ def _merge_json_mcp_config(path: Path) -> int:
         raise InstallError(f"Cannot merge MCP servers into malformed {path}: {exc}") from exc
     if not isinstance(loaded, dict):
         raise InstallError(f"Cannot merge MCP servers: {path} is not a JSON object")
+
+    root_span = _json_root_object_span(raw)
+    if root_span is None:
+        raise InstallError(f"Cannot locate root object in MCP config {path}")
     current = loaded.get("mcpServers")
-    if current is not None and not isinstance(current, dict):
-        raise InstallError(f"Cannot merge MCP servers: {path} mcpServers is not an object")
-    current = current or {}
-    if all(current.get(name) == value for name, value in _MCP_SERVERS.items()):
+    if isinstance(current, dict) and all(
+        current.get(name) == value for name, value in _MCP_SERVERS.items()
+    ):
         return 0
 
-    span = _json_object_span(raw, "mcpServers")
-    if span is None:
-        outer = _json_object_span('{"root":' + raw + "}", "root")
-        if outer is None:
-            raise InstallError(f"Cannot locate root object in MCP config {path}")
-        # Adjust the synthetic prefix, then append the mcpServers property.
-        root_span = (outer[0] - len('{"root":'), outer[1] - len('{"root":'))
+    if "mcpServers" not in loaded:
         updated = _append_json_members(raw, root_span, {"mcpServers": _MCP_SERVERS})
+    elif not isinstance(current, dict):
+        container_span = _json_value_span(raw, "mcpServers", root_span)
+        if container_span is None:
+            raise InstallError(f"Cannot locate mcpServers value in {path}")
+        rendered = json.dumps(_MCP_SERVERS, separators=(", ", ": "))
+        updated = raw[: container_span[0]] + rendered + raw[container_span[1] :]
     else:
+        mcp_span = _json_object_span(raw, "mcpServers")
+        if mcp_span is None:
+            raise InstallError(f"Cannot locate mcpServers object in {path}")
         incorrect = {
             name: value for name, value in _MCP_SERVERS.items() if current.get(name) != value
         }
@@ -336,7 +341,7 @@ def _merge_json_mcp_config(path: Path) -> int:
             if mcp_span is None:
                 raise InstallError(f"Cannot locate mcpServers object in {path}")
             nested = updated[mcp_span[0] : mcp_span[1]]
-            value_span = _json_object_span(nested, name)
+            value_span = _json_value_span(nested, name)
             if value_span is None:
                 raise InstallError(f"Cannot locate owned MCP server {name} in {path}")
             value_start = mcp_span[0] + value_span[0]
@@ -349,24 +354,149 @@ def _merge_json_mcp_config(path: Path) -> int:
             if mcp_span is None:
                 raise InstallError(f"Cannot locate mcpServers object in {path}")
             updated = _append_json_members(updated, mcp_span, absent)
-    path.write_text(updated, encoding="utf-8")
+    path.write_bytes(updated.encode("utf-8"))
     return 1
 
 
-def _codex_mcp_block(name: str) -> str:
+def _toml_marker_path(value: object, path: tuple[str, ...] = ()) -> tuple[str, ...] | None:
+    """Return the parsed TOML key path containing the private marker."""
+    if not isinstance(value, dict):
+        return None
+    marker = "__studyloop_owned_marker__"
+    if marker in value:
+        return path
+    for key, nested in value.items():
+        found = _toml_marker_path(nested, (*path, key))
+        if found is not None:
+            return found
+    return None
+
+
+def _toml_table_path(line: str) -> tuple[str, ...] | None:
+    """Parse one TOML table header into semantic key components."""
+    import tomllib
+
+    candidate = line.rstrip("\r\n")
+    if not candidate.lstrip().startswith("[") or candidate.lstrip().startswith("[["):
+        return None
+    try:
+        parsed = tomllib.loads(candidate + "\n__studyloop_owned_marker__ = true\n")
+    except tomllib.TOMLDecodeError:
+        return None
+    return _toml_marker_path(parsed)
+
+
+def _toml_assignment_path(line: str) -> tuple[str, ...] | None:
+    """Parse the dotted key path at the start of one TOML assignment."""
+    import tomllib
+
+    stripped = line.lstrip()
+    if not stripped or stripped.startswith("#"):
+        return None
+    quote: str | None = None
+    escaped = False
+    for index, char in enumerate(stripped):
+        if quote is not None:
+            if quote == '"' and char == "\\" and not escaped:
+                escaped = True
+                continue
+            if char == quote and not escaped:
+                quote = None
+            escaped = False
+            continue
+        if char in {'"', "'"}:
+            quote = char
+        elif char == "=":
+            key = stripped[:index].strip()
+            if not key:
+                return None
+            try:
+                parsed = tomllib.loads(f"{key} = {{ __studyloop_owned_marker__ = true }}")
+            except tomllib.TOMLDecodeError:
+                return None
+            return _toml_marker_path(parsed)
+    return None
+
+
+def _toml_statement_end(lines: list[str], start: int, stop: int) -> int:
+    """Return the first line after a complete TOML assignment."""
+    import tomllib
+
+    statement = ""
+    for index in range(start, stop):
+        statement += lines[index]
+        try:
+            tomllib.loads(statement)
+        except tomllib.TOMLDecodeError:
+            continue
+        return index + 1
+    return start + 1
+
+
+def _remove_owned_toml(raw: str, names: set[str]) -> str:
+    """Remove owned MCP table headers and assignments while retaining other bytes."""
+    lines = raw.splitlines(keepends=True)
+    starts: list[int] = []
+    offset = 0
+    for line in lines:
+        starts.append(offset)
+        offset += len(line)
+
+    headers = [
+        (index, path)
+        for index, line in enumerate(lines)
+        if (path := _toml_table_path(line)) is not None
+    ]
+    removals: list[tuple[int, int]] = []
+
+    def owned(path: tuple[str, ...]) -> bool:
+        return len(path) >= 2 and path[0] == "mcp_servers" and path[1] in names
+
+    def remove_assignments(table_path: tuple[str, ...], start_line: int, stop_line: int) -> None:
+        index = start_line
+        remove_every_assignment = owned(table_path)
+        while index < stop_line:
+            key_path = _toml_assignment_path(lines[index])
+            if key_path is None:
+                index += 1
+                continue
+            end_line = _toml_statement_end(lines, index, stop_line)
+            semantic_path = (*table_path, *key_path)
+            if remove_every_assignment or owned(semantic_path):
+                end_offset = starts[end_line] if end_line < len(lines) else len(raw)
+                removals.append((starts[index], end_offset))
+            index = end_line
+
+    first_header = headers[0][0] if headers else len(lines)
+    remove_assignments((), 0, first_header)
+    for position, (line_index, table_path) in enumerate(headers):
+        next_header = headers[position + 1][0] if position + 1 < len(headers) else len(lines)
+        header_end = starts[line_index + 1] if line_index + 1 < len(lines) else len(raw)
+        if owned(table_path):
+            removals.append((starts[line_index], header_end))
+        remove_assignments(table_path, line_index + 1, next_header)
+
+    updated = raw
+    for start, end in sorted(removals, reverse=True):
+        updated = updated[:start] + updated[end:]
+    return updated
+
+
+def _codex_mcp_block(name: str, newline: str = "\n") -> str:
     config = _MCP_SERVERS[name]
-    return f'[mcp_servers.{name}]\ncommand = "{config["command"]}"\nargs = []\n'
+    return (
+        f'[mcp_servers.{name}]{newline}command = "{config["command"]}"{newline}args = []{newline}'
+    )
 
 
 def _merge_codex_mcp_config(path: Path) -> int:
-    import re
     import tomllib
 
     try:
-        raw = path.read_text(encoding="utf-8")
+        raw = path.read_bytes().decode("utf-8")
     except FileNotFoundError:
         raw = ""
-    except OSError as exc:
+    except (OSError, UnicodeDecodeError) as exc:
         raise InstallError(f"Cannot read Codex MCP config {path}: {exc}") from exc
     try:
         loaded = tomllib.loads(raw)
@@ -378,23 +508,19 @@ def _merge_codex_mcp_config(path: Path) -> int:
     if all(current.get(name) == value for name, value in _MCP_SERVERS.items()):
         return 0
 
-    updated = raw
-    for name, value in _MCP_SERVERS.items():
-        if current.get(name) == value:
+    incorrect = {name for name, value in _MCP_SERVERS.items() if current.get(name) != value}
+    updated = _remove_owned_toml(raw, incorrect)
+    newline = "\r\n" if "\r\n" in raw else "\n"
+    for name in _MCP_SERVERS:
+        if name not in incorrect:
             continue
-        block = _codex_mcp_block(name)
-        pattern = re.compile(rf"(?ms)^\[mcp_servers\.{re.escape(name)}\]\n.*?(?=^\[|\Z)")
-        match = pattern.search(updated)
-        if match:
-            updated = updated[: match.start()] + block + updated[match.end() :]
-        else:
-            if updated and not updated.endswith("\n"):
-                updated += "\n"
-            if updated and not updated.endswith("\n\n"):
-                updated += "\n"
-            updated += block
+        if updated and not updated.endswith(("\n", "\r")):
+            updated += newline
+        if updated and not updated.endswith(newline * 2):
+            updated += newline
+        updated += _codex_mcp_block(name, newline)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(updated, encoding="utf-8")
+    path.write_bytes(updated.encode("utf-8"))
     return 1
 
 
