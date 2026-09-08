@@ -1628,6 +1628,19 @@ def migrate_v49(conn: sqlite3.Connection) -> None:
     from .context.concept_schema import install_schema
 
     install_schema(conn)
+    # The v46 content-generation projection froze its own table list; every
+    # later migration adds the three content-change triggers for the tables
+    # it introduces to the replication data plane (context_concept_clock,
+    # the FTS read model and the schema marker never travel, so only the two
+    # replicated tables participate).
+    for table in ("context_concepts", "context_concept_events"):
+        for event in ("INSERT", "UPDATE", "DELETE"):
+            conn.execute(
+                f"""CREATE TRIGGER IF NOT EXISTS replica_content_{table}_{event.lower()}
+                AFTER {event} ON {table} BEGIN
+                UPDATE context_replica_content_state SET revision=revision+1 WHERE id=1;
+                END"""
+            )
 
 
 def check_migration_status(db_path: Path) -> dict:

@@ -39,8 +39,10 @@ class AuthorizedConcept:
 def _current_standings(context: AgentContext) -> list[tuple[str, str]]:
     """Every concept id's current standing under the deterministic event order.
 
-    Ties break exactly as ``concepts.py``'s ``current_event`` does: retired >
-    accepted > proposed, then logical clock, origin instance/seq, then event id.
+    The frozen cross-machine standing order (design.md): the winner is
+    ``max(events, key=(lamport, machine_id, event_id))`` -- exactly as
+    ``concepts.py``'s ``current_event`` computes it; no wall clock and no
+    standing-kind precedence participates.
     """
     return [
         (cast(str, row[0]), cast(str, row[1]))
@@ -49,9 +51,7 @@ def _current_standings(context: AgentContext) -> list[tuple[str, str]]:
                  SELECT concept_id,standing,
                    row_number() OVER (
                      PARTITION BY concept_id
-                     ORDER BY CASE standing WHEN 'retired' THEN 2
-                                            WHEN 'accepted' THEN 1 ELSE 0 END DESC,
-                              logical_time DESC,origin_instance DESC,origin_seq DESC,id DESC
+                     ORDER BY logical_time DESC,origin_instance DESC,origin_seq DESC,id DESC
                    ) AS position
                  FROM context_concept_events
                )

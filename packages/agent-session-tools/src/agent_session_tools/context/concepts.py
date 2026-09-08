@@ -463,12 +463,15 @@ class _ConceptRepository:
         return identity
 
     def current_event(self, concept_id: str) -> dict[str, Any]:
+        # Frozen cross-machine standing order (design.md): the winner is
+        # max(events, key=(lamport, machine_id, event_id)) -- nothing else.
+        # Locally allocated events already have strictly increasing lamports,
+        # so this matches the reference's single-database behaviour; under
+        # replication only the pure triple decides, never standing kind.
         rows = _rows(
             self.conn,
             """SELECT * FROM context_concept_events WHERE concept_id=?
-               ORDER BY CASE standing WHEN 'retired' THEN 2
-                                      WHEN 'accepted' THEN 1 ELSE 0 END DESC,
-                        logical_time DESC,origin_instance DESC,origin_seq DESC,id DESC
+               ORDER BY logical_time DESC,origin_instance DESC,origin_seq DESC,id DESC
                LIMIT 1""",
             (concept_id,),
         )
@@ -565,9 +568,8 @@ class _ConceptRepository:
                  SELECT e.*,
                    row_number() OVER (
                      PARTITION BY concept_id
-                     ORDER BY CASE standing WHEN 'retired' THEN 2
-                                            WHEN 'accepted' THEN 1 ELSE 0 END DESC,
-                              logical_time DESC,origin_instance DESC,origin_seq DESC,id DESC
+                     ORDER BY logical_time DESC,origin_instance DESC,
+                              origin_seq DESC,id DESC
                    ) AS position
                  FROM context_concept_events e
                )

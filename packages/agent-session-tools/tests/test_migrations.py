@@ -1923,7 +1923,11 @@ class TestMigrationV49ConceptSidecar:
                 "SELECT name FROM sqlite_master WHERE type IN ('table','index','trigger')"
             ).fetchall()
             if not row[0].startswith(
-                ("context_concept", "sqlite_autoindex_context_concept")
+                (
+                    "context_concept",
+                    "sqlite_autoindex_context_concept",
+                    "replica_content_context_concept",
+                )
             )
             and row[0] not in citation_triggers
         }

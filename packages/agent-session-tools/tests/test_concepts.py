@@ -698,9 +698,16 @@ def test_current_state_total_order_is_independent_of_timestamp_and_insert_order(
     conn.commit()
     repo = _ConceptRepository(conn, now=lambda: _NOW)
 
+    # Frozen cross-machine standing order (design.md): the winner is
+    # max(events, key=(lamport, machine_id, event_id)) -- for both concepts
+    # the accepted event carries logical_time 100 against the retired
+    # event's 1, so 'accepted' wins on both regardless of the order the
+    # rows were inserted in and regardless of their identical display
+    # timestamps. (The reference gave standing kind precedence over the
+    # clock; B3 replaces that with the frozen pure-triple order.)
     assert [repo.current_event(cid)["standing"] for cid in created.concept_ids] == [
-        "retired",
-        "retired",
+        "accepted",
+        "accepted",
     ]
 
 
