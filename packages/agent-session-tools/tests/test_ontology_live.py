@@ -238,7 +238,9 @@ def test_real_v47_backup_upgrades_to_v48_and_retains_a_receipt() -> None:
 
     receipt = run_live_copy_migration_receipt(source)
 
-    assert receipt["to_version"] == CURRENT_VERSION == 48
+    # B3 advanced CURRENT_VERSION to 49; the receipt records the full upgrade
+    # and must land on whatever the current head is, passing through v48.
+    assert receipt["to_version"] == CURRENT_VERSION
     assert receipt["from_version"] <= 48
     assert set(receipt["counts"]) >= {"sessions", "messages"} | ontology.ONTOLOGY_TABLES
     assert receipt["counts"]["sessions"] > 0

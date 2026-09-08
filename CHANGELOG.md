@@ -9,6 +9,20 @@ experience may change before `1.0.0`.
 
 ### Added
 
+- Concept memory: distill any session into evidence-cited concepts and manage
+  their lifecycle across machines (migration v49, an additive sidecar of
+  immutable roots and append-only events). New `session-context winddown`
+  and `session-context concept accept|retire|bind|import-okf|project`
+  commands, and a `memory_winddown` MCP tool, all with strict field-level
+  validation and atomic writes. Legacy OKF knowledge imports as explicitly
+  labelled `legacy-unbound` (never blendable with bound, citation-backed
+  concepts until deliberately bound to exact evidence). Concept history now
+  replicates with `session-context` replication: both machines converge to
+  one standing per concept under a deterministic logical-clock order in
+  which no wall-clock timestamp participates, and cloned databases are
+  refused with a diagnostic instead of being merged. See
+  [Source-grounded session context](docs/context-memory.md#concepts-wind-down-lifecycle-legacy-import-projection).
+
 - A derived, per-machine tier-1 ontology (projects, harnesses, artifacts,
   commands, test runs, linked to the sessions that produced them; migration
   v48). It is never synced — `session-sync` never reads or transfers any

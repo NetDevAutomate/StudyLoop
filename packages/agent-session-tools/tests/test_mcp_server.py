@@ -308,6 +308,7 @@ class TestServerCreation:
             "memory_search",
             "memory_source",
             "memory_propose",
+            "memory_winddown",
             "memory_relate",
             "memory_decide",
             "memory_review",

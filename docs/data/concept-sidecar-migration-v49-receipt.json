@@ -1,0 +1,29 @@
+{
+  "applied_migrations": [
+    "v48: Derived tier-1 ontology: structural/individual/relation graph, never synced",
+    "v49: Concept sidecar: immutable roots, append-only lifecycle events, read model"
+  ],
+  "captured_at_utc": "2026-09-08T13:04:15Z",
+  "concept_schema_fingerprint": "af95685e6e39e166148006519862bee3be1a15219d76772236a82890fe11011d",
+  "concept_schema_version": 2,
+  "counts": {
+    "context_assertions": 0,
+    "context_concept_events": 0,
+    "context_concepts": 0,
+    "messages": 139637,
+    "sessions": 5813
+  },
+  "evidence_schema": "agent-session-tools.concept-sidecar-migration-receipt",
+  "evidence_version": 2,
+  "from_version": 47,
+  "schema_sha256": "6dfb40278894acfd1c40a43f80bf28fba5509849ab6ace3f24815cb884ecc545",
+  "sidecar_objects_sha256": "3a98fcbb03d23dead403043690823c99eda552a515f0699a95eb9ddd739efe7b",
+  "sidecar_tables_present": [
+    "context_concepts",
+    "context_concept_events",
+    "context_concept_clock",
+    "context_concept_fts",
+    "context_concept_schema"
+  ],
+  "to_version": 49
+}
