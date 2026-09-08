@@ -9,6 +9,17 @@ experience may change before `1.0.0`.
 
 ### Added
 
+- Concept-first session recall through the new `memory_recall` MCP tool. One
+  shared implicit-AND then OR-fallback planner now powers both recall and
+  `session_search` without changing the latter's row shape, filters, ordering
+  or 300-character previews. Recall applies the B3 scope/tombstone/retired
+  authorization seam, returns concepts before deduplicated raw sessions, and
+  deliberately uses neither embeddings nor ontology. `studyloop install
+  agents` now idempotently registers both `session-db` and `studyloop` MCP
+  servers for Claude Code, Kiro and Codex while preserving unrelated config;
+  doctor reports the registration state. The frozen 25-question live gate is
+  byte-identical to released SessionWeaver v0.2.0 ordered hit lists.
+
 - Concept memory: distill any session into evidence-cited concepts and manage
   their lifecycle across machines (migration v49, an additive sidecar of
   immutable roots and append-only events). New `session-context winddown`

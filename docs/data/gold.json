@@ -1,0 +1,279 @@
+[
+ {
+  "id": "K01",
+  "type": "K",
+  "question": "What is the SHA-256 of the pinned sessionweaver production wheel?",
+  "gold": [
+   "56866d9d-6ce0-44d2-b453-f461d5b933bf"
+  ]
+ },
+ {
+  "id": "K02",
+  "type": "K",
+  "question": "Which commit is the Session Weaver production pin built from?",
+  "gold": [
+   "agent-a7855d0b998e53e57",
+   "56866d9d-6ce0-44d2-b453-f461d5b933bf"
+  ]
+ },
+ {
+  "id": "K03",
+  "type": "K",
+  "question": "What did grok call itself during the council review calls?",
+  "gold": [
+   "agent-a5f58bcdc973a7656",
+   "agent-a4a018b34f12ded55",
+   "agent-a78ab31ee043dcea2",
+   "agent-a8b9107d39b1d5503",
+   "agent-a36b75d3fc517f1a9",
+   "agent-aeaa7dcd85f99a1ac",
+   "agent-ab65c5da31bcc3930",
+   "8b3dcec3-8a47-4710-bca9-a1e3abee9ee8",
+   "a56aa41c-211a-480c-b60c-cbeaf0ea301a",
+   "b818c97b-2a8c-4f52-b5b0-bbe179256425",
+   "56866d9d-6ce0-44d2-b453-f461d5b933bf"
+  ]
+ },
+ {
+  "id": "K04",
+  "type": "K",
+  "question": "What is ADR-0011 grok-is-capture-only about?",
+  "gold": [
+   "agent-a6b7086d6d263ec13",
+   "56866d9d-6ce0-44d2-b453-f461d5b933bf"
+  ]
+ },
+ {
+  "id": "K05",
+  "type": "K",
+  "question": "How many tests passed in the full workspace regression suite?",
+  "gold": [
+   "agent-a89f653503174cac0",
+   "56866d9d-6ce0-44d2-b453-f461d5b933bf"
+  ]
+ },
+ {
+  "id": "K06",
+  "type": "K",
+  "question": "Which NAS is the Time Machine network destination?",
+  "gold": [
+   "codex_rollout-2026-08-30T23-30-09-01a054cb-5f93-7bf3-9908-bcf39138b57b",
+   "codex_rollout-2026-09-04T15-35-17-01a06cd8-69e1-72e2-acd7-eaa1ae304880"
+  ]
+ },
+ {
+  "id": "K08",
+  "type": "K",
+  "question": "Where do the litellm-cost estimate results have to be written before gateway calls?",
+  "gold": [
+   "agent-a78ab31ee043dcea2",
+   "agent-a36b75d3fc517f1a9",
+   "agent-aeaa7dcd85f99a1ac",
+   "agent-ab65c5da31bcc3930",
+   "a56aa41c-211a-480c-b60c-cbeaf0ea301a",
+   "b818c97b-2a8c-4f52-b5b0-bbe179256425",
+   "56866d9d-6ce0-44d2-b453-f461d5b933bf"
+  ]
+ },
+ {
+  "id": "K09",
+  "type": "K",
+  "question": "What does the check-commit-author pre-commit hook enforce?",
+  "gold": [
+   "agent-a176c8150cd16b32d",
+   "agent-acompact-b2c10a0f4cafb867",
+   "codex_rollout-2026-08-03T12-04-28-019fc74b-ea2d-7ee2-a1da-6c7e5eece358",
+   "codex_rollout-2026-08-03T12-04-28-019fc74b-ea42-7180-9dde-1f8b6b5d3749",
+   "3164f739-a2a1-4ece-b606-c75d6bcdcee3",
+   "5ad80224-26cd-49ea-8e8a-36555c241c9b",
+   "5fdc91f3-f06e-4197-b480-24a13f49a4c9",
+   "agent-a6c75b6d03253cbc0",
+   "56866d9d-6ce0-44d2-b453-f461d5b933bf",
+   "agent-a3013f315911d9fc0"
+  ]
+ },
+ {
+  "id": "K10",
+  "type": "K",
+  "question": "Which test asserts that sync_all defaults to reconcile?",
+  "gold": [
+   "56866d9d-6ce0-44d2-b453-f461d5b933bf",
+   "agent-a974b2e673e22e014"
+  ]
+ },
+ {
+  "id": "K11",
+  "type": "K",
+  "question": "What tool converts PDFs into Obsidian notes?",
+  "gold": [
+   "agent-a7f0850",
+   "agent-a958bca",
+   "agent-a9ca632",
+   "agent-aded91b",
+   "agent-ae5b47c",
+   "kilocode_94c3826c-24a1-4460-90a2-76e763f3ac23",
+   "kiro_4f7cd784-fa3e-4ed3-9914-4e423543cd6b"
+  ]
+ },
+ {
+  "id": "K12",
+  "type": "K",
+  "question": "What is the two-Mac gate 2b runbook evidence file called?",
+  "gold": [
+   "56866d9d-6ce0-44d2-b453-f461d5b933bf"
+  ]
+ },
+ {
+  "id": "P01",
+  "type": "P",
+  "question": "Why can a session that changed on both machines never settle when syncing in the mode that only moves newer things?",
+  "gold": [
+   "codex_rollout-2026-07-15T17-43-47-019f66a9-b8eb-71f0-ade9-26a6a0c46a7b",
+   "56866d9d-6ce0-44d2-b453-f461d5b933bf"
+  ]
+ },
+ {
+  "id": "P02",
+  "type": "P",
+  "question": "Which model burned budget by failing every one of its review attempts?",
+  "gold": [
+   "agent-adde355a412e5f09c",
+   "grok_01a05ed7-91b8-72a1-ae18-2f7a32af3dee",
+   "a56aa41c-211a-480c-b60c-cbeaf0ea301a",
+   "56866d9d-6ce0-44d2-b453-f461d5b933bf",
+   "agent-a54cfa05f5a137da6"
+  ]
+ },
+ {
+  "id": "P03",
+  "type": "P",
+  "question": "Why do headless one-shot Claude runs never show up in the session database?",
+  "gold": [
+   "codex_rollout-2026-06-27T01-44-04-019f0688-9bd4-7930-b375-62f82e560dce",
+   "agent-abb2fb00b28521cdc",
+   "agent-aef1fb02cfb8acd94"
+  ]
+ },
+ {
+  "id": "P04",
+  "type": "P",
+  "question": "Which two exporters keep claiming to add the same rows every time the repair inspection runs?",
+  "gold": [
+   "agent-aaca9d9405331b551",
+   "agent-ab543b6e53cb428a0",
+   "agent-acompact-7431695c156ceb5f",
+   "codex_rollout-2026-08-05T15-58-01-019fd26e-70f1-7873-8144-2859f40852c6",
+   "agent-a0adc21a1af78f715",
+   "56866d9d-6ce0-44d2-b453-f461d5b933bf"
+  ]
+ },
+ {
+  "id": "P05",
+  "type": "P",
+  "question": "How do we make sure rows we deleted during the cleanup can't sneak back in from another machine?",
+  "gold": [
+   "agent-a4a4696d918bc6f2a",
+   "agent-aee6b8c8e8ba3b362",
+   "agent-acompact-b2eee21a6b02c377",
+   "agent-a87c2f5f05d83a15d",
+   "agent-af928582e87de4368"
+  ]
+ },
+ {
+  "id": "P06",
+  "type": "P",
+  "question": "What stops an agent from accidentally trashing work when the repo has uncommitted changes during a wheel build?",
+  "gold": [
+   "agent-a7ef5c925d96032ca",
+   "56866d9d-6ce0-44d2-b453-f461d5b933bf"
+  ]
+ },
+ {
+  "id": "P07",
+  "type": "P",
+  "question": "What's the rule about how many study topics can be active at once for focus reasons?",
+  "gold": [
+   "grok_019f55c4-f9a2-7102-9597-7ca17772f4e1",
+   "agent-amcp-parity-cf420326c1f76c27",
+   "codex_rollout-2026-07-11T14-18-34-019f5154-68cc-7731-854c-678d770fa43a",
+   "agent-a3ff1fa834a4bc612",
+   "agent-a0667b712441b3a0e",
+   "agent-a87c2f5f05d83a15d",
+   "agent-acdbe5e5d4714fe2e",
+   "agent-ae743c7e487d2506d"
+  ]
+ },
+ {
+  "id": "P10",
+  "type": "P",
+  "question": "Why was the second museum-quality copy of the database taken before any cross-machine testing?",
+  "gold": [
+   "agent-a6b222bb0e631d27c",
+   "56866d9d-6ce0-44d2-b453-f461d5b933bf"
+  ]
+ },
+ {
+  "id": "R01",
+  "type": "R",
+  "question": "Which sessions discuss both the pinned wheel install and the symlink relinking?",
+  "gold": [
+   "agent-a5fe87a9fb9f62b5a",
+   "111e6d21-a6c5-4900-a085-4945d70e7601",
+   "56866d9d-6ce0-44d2-b453-f461d5b933bf",
+   "agent-a687a108cb65f2dd2",
+   "agent-a7855d0b998e53e57",
+   "agent-a974b2e673e22e014",
+   "agent-af6dee377752cee44"
+  ]
+ },
+ {
+  "id": "R02",
+  "type": "R",
+  "question": "Where was the decision made that connects Grok capture-only status to the release harness exclusion test?",
+  "gold": [
+   "agent-a667f1e13860e6048",
+   "56866d9d-6ce0-44d2-b453-f461d5b933bf"
+  ]
+ },
+ {
+  "id": "R03",
+  "type": "R",
+  "question": "Which discussion links the FTS lag to the unknown-role rows?",
+  "gold": [
+   "agent-ad31a2be53cfde5dd"
+  ]
+ },
+ {
+  "id": "R04",
+  "type": "R",
+  "question": "What connects the machine_id/seq design to fixing incremental sync convergence?",
+  "gold": [
+   "agent-a6b222bb0e631d27c",
+   "56866d9d-6ce0-44d2-b453-f461d5b933bf",
+   "agent-a0adc21a1af78f715",
+   "agent-a58ecf0a071287c03",
+   "agent-a687a108cb65f2dd2",
+   "agent-a6c75b6d03253cbc0",
+   "agent-aacdbeb284e82ad4c"
+  ]
+ },
+ {
+  "id": "R05",
+  "type": "R",
+  "question": "Which conversations tie the council gate verdict to the conditions the human must complete?",
+  "gold": [
+   "agent-a601c9eb16b460fee",
+   "agent-a667f1e13860e6048",
+   "56866d9d-6ce0-44d2-b453-f461d5b933bf"
+  ]
+ },
+ {
+  "id": "R06",
+  "type": "R",
+  "question": "What links the secrets baseline extension to the pre-commit staging requirement?",
+  "gold": [
+   "kiro_9c4b5d74-71f4-4553-befa-fc5dabcf24b0",
+   "agent-acompact-2d102dde48ceeeea"
+  ]
+ }
+]

@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 import pytest
+import yaml
 from jsonschema import Draft202012Validator
 from mcp.shared.memory import create_connected_server_and_client_session
 
@@ -215,6 +216,67 @@ def test_recall_excludes_tombstoned_sessions_and_retired_concepts(
 
     assert report.concepts == ()
     assert report.sessions == ()
+
+
+def test_recall_applies_b3_work_and_personal_scope_authorization(
+    production_store: ProductionStore,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from agent_session_tools.context.scope import ScopePolicy, apply_policy
+    from agent_session_tools.recall import recall
+
+    service = _service(production_store)
+    concept_ids: dict[str, str] = {}
+    for label, session_id in (
+        ("work", "fixture-session-1"),
+        ("personal", "fixture-session-2"),
+    ):
+        quote = f"{label} authorized recall evidence"
+        _capture(
+            production_store,
+            quote,
+            session_id=session_id,
+            key=f"{label}-authorized-recall",
+        )
+        concept_ids[label] = service.winddown(
+            session_id,
+            _document(
+                _concept(
+                    quote,
+                    title=f"{label.title()} authorized concept",
+                    description=f"scopedrecallterm {label} statement",
+                )
+            ),
+            actor="model",
+        ).concept_ids[0]
+
+    config = yaml.safe_load(production_store.config_path.read_text(encoding="utf-8"))
+    config["memory"]["projects"] = {
+        "work-project": {"scope": "work", "roots": []},
+        "personal-project": {"scope": "personal", "roots": []},
+    }
+    production_store.config_path.write_text(
+        yaml.safe_dump(config, sort_keys=False), encoding="utf-8"
+    )
+    apply_policy(
+        production_store.conn,
+        ScopePolicy.from_config(config),
+        actor="b4-recall-scope-test",
+        dry_run=False,
+    )
+    production_store.conn.executemany(
+        "INSERT INTO context_session_projects VALUES (?,?,?)",
+        (
+            ("fixture-session-1", "work-project", "explicit"),
+            ("fixture-session-2", "personal-project", "explicit"),
+        ),
+    )
+    production_store.conn.commit()
+
+    for label in ("work", "personal"):
+        monkeypatch.setenv("SESSION_CONTEXT_SCOPE", label)
+        report = recall(production_store.db_path, "scopedrecallterm")
+        assert [hit.concept_id for hit in report.concepts] == [concept_ids[label]]
 
 
 def test_recall_session_fallback_preserves_and_then_or_order_and_preview(

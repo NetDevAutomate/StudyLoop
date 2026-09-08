@@ -1,0 +1,37 @@
+{
+  "aggregate_concept_hits": 125,
+  "aggregate_session_hits": 125,
+  "evidence_schema": "studyloop.b4-recall-live-identity",
+  "evidence_version": 1,
+  "mismatches": 0,
+  "okf_import": {
+    "sessionweaver": {
+      "imported": 2033,
+      "scanned": 2035,
+      "write_failures": 0,
+      "writes": 2033
+    },
+    "studyloop": {
+      "imported": 2033,
+      "scanned": 2035,
+      "write_failures": 0,
+      "writes": 2033
+    }
+  },
+  "ordered_hit_lists_identical": 25,
+  "questions": 25,
+  "questions_by_type": {
+    "K": 11,
+    "P": 8,
+    "R": 6
+  },
+  "released_upstream_commit": "fe15996c",
+  "scope": "unclassified",
+  "source": {
+    "message_count": 139637,
+    "session_count": 5813,
+    "user_version": 47
+  },
+  "source_sentinels_unchanged": true,
+  "temporary_directory_removed": true
+}
