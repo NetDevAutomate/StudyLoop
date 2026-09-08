@@ -78,6 +78,38 @@ def planner_search(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
                 "2026-01-02T09:01:00",
                 2,
             ),
+            (
+                "msg-separated-phrase",
+                "sess-error-002",
+                "user",
+                "exact unrelated phrase",
+                "2026-01-02T09:02:00",
+                3,
+            ),
+            (
+                "msg-delta",
+                "sess-auth-001",
+                "user",
+                "delta only",
+                "2026-01-01T10:04:00",
+                4,
+            ),
+            (
+                "msg-delta-echo",
+                "sess-error-002",
+                "user",
+                "delta echo",
+                "2026-01-02T09:03:00",
+                4,
+            ),
+            (
+                "msg-diagnostic",
+                "sess-auth-001",
+                "user",
+                "diagnostic standalone",
+                "2026-01-01T10:05:00",
+                5,
+            ),
         ),
     )
     conn.commit()
@@ -139,14 +171,91 @@ def test_session_search_falls_back_to_or_when_implicit_and_is_empty(
 
 
 def test_session_search_stops_after_and_fills_the_limit(planner_search) -> None:
-    assert planner_search(query="exact phrase", limit=1) == [
+    assert planner_search(query="error diagnostic", limit=1) == [
+        {
+            "session_id": "sess-error-002",
+            "source": "kiro_cli",
+            "project_path": None,
+            "updated_at": "2026-01-02T11:00:00",
+            "role": "assistant",
+            "timestamp": "2026-01-02T09:01:00",
+            "preview": "error diagnostic",
+        }
+    ]
+
+
+def test_session_search_preserves_explicit_phrase_adjacency(planner_search) -> None:
+    results = planner_search(query='"exact phrase"')
+
+    assert [row["preview"] for row in results] == ["the exact phrase appears here"]
+    assert "exact unrelated phrase" not in {row["preview"] for row in results}
+
+
+def test_session_search_preserves_explicit_not_exclusion(planner_search) -> None:
+    results = planner_search(query="delta NOT echo")
+
+    assert [row["preview"] for row in results] == ["delta only"]
+    assert "delta echo" not in {row["preview"] for row in results}
+
+
+def test_session_search_preserves_explicit_and_or_controls(planner_search) -> None:
+    assert planner_search(query="error AND diagnostic") == [
+        {
+            "session_id": "sess-error-002",
+            "source": "kiro_cli",
+            "project_path": None,
+            "updated_at": "2026-01-02T11:00:00",
+            "role": "assistant",
+            "timestamp": "2026-01-02T09:01:00",
+            "preview": "error diagnostic",
+        }
+    ]
+    assert planner_search(query="error OR authentication") == [
+        {
+            "session_id": "sess-error-002",
+            "source": "kiro_cli",
+            "project_path": None,
+            "updated_at": "2026-01-02T11:00:00",
+            "role": "assistant",
+            "timestamp": "2026-01-02T09:01:00",
+            "preview": "error diagnostic",
+        },
         {
             "session_id": "sess-auth-001",
             "source": "claude_code",
             "project_path": "/projects/webapp",
             "updated_at": "2026-01-01T12:00:00",
-            "role": "user",
-            "timestamp": "2026-01-01T10:03:00",
-            "preview": "the exact phrase appears here",
+            "role": "assistant",
+            "timestamp": "2026-01-01T10:01:00",
+            "preview": "authentication " + "A" * 285,
+        },
+    ]
+
+
+def test_session_search_safely_plans_adversarial_plain_text_punctuation(
+    planner_search,
+) -> None:
+    expected = [
+        "bravo only",
+        "alpha only",
+    ]
+
+    first = planner_search(query="can't: alpha!!! bravo???")
+    second = planner_search(query="can't: alpha!!! bravo???")
+
+    assert [row["preview"] for row in first] == expected
+    assert first == second
+
+
+def test_session_search_does_not_widen_nonempty_implicit_and(planner_search) -> None:
+    assert planner_search(query="error diagnostic") == [
+        {
+            "session_id": "sess-error-002",
+            "source": "kiro_cli",
+            "project_path": None,
+            "updated_at": "2026-01-02T11:00:00",
+            "role": "assistant",
+            "timestamp": "2026-01-02T09:01:00",
+            "preview": "error diagnostic",
         }
     ]
