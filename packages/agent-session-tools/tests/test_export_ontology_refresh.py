@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import logging
 import sqlite3
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from agent_session_tools import export_sessions, ontology
@@ -101,9 +102,19 @@ class TestOntologyRefreshHookInvocation:
         first = _run_export(output_path=db_path, sources=set(), incremental=True)
         assert first["ontology_refresh"]["candidate_sessions"] == 2
 
+        # Must be strictly after the first build's `completed_at` (recorded
+        # via the real wall clock), not a calendar-date literal -- a fixed
+        # past-looking string breaks the instant the real date catches up to
+        # it. Derived from `datetime.now(UTC)` so this test stays correct on
+        # any day it runs.
+        touched_at = (
+            (datetime.now(UTC) + timedelta(days=1))
+            .isoformat(timespec="microseconds")
+            .replace("+00:00", "Z")
+        )
         conn = sqlite3.connect(db_path)
         conn.execute(
-            "UPDATE sessions SET updated_at = '2026-09-07T23:00:00Z' WHERE id = 'scope-a'"
+            "UPDATE sessions SET updated_at = ? WHERE id = 'scope-a'", (touched_at,)
         )
         conn.commit()
         conn.close()

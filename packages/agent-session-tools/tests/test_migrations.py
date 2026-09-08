@@ -13,6 +13,7 @@ from agent_session_tools.migrations import (
     migrate,
     set_user_version,
 )
+from agent_session_tools.ontology import ontology_status, rebuild_ontology
 
 SCHEMA_PATH = (
     Path(__file__).parent.parent / "src" / "agent_session_tools" / "schema.sql"
@@ -1411,6 +1412,105 @@ class TestMigrationV48Ontology:
         }
         assert sessions_after == sessions_before
         assert messages_after == messages_before
+
+    def test_migration_v48_tolerates_pre_existing_ad_hoc_ontology_schema(
+        self, tmp_path
+    ):
+        """Regression test for a real production near-miss (review round 1, major #1).
+
+        The real ``~/.config/studyloop/sessions.db`` already carried an ad
+        hoc, unversioned ontology schema predating this task -- some of the
+        six ``ontology_*`` tables existed already, in shapes that do not
+        match the canonical schema (different columns, no ``CHECK``
+        constraints, pre-inserted rows that would violate the canonical
+        constraints). A plain ``CREATE TABLE`` in ``install_schema()`` would
+        have crashed migration v48 the first time it ran against that
+        database. This test locks in the fix
+        (``_table_ddl_statements(..., if_not_exists=True)``) in a
+        deterministic, non-live form that ``just preflight`` actually runs,
+        rather than relying solely on the opt-in ``live_ontology`` marker
+        against the one real database that happens to have this shape
+        today: migration to v48 must not raise regardless of what shape a
+        pre-existing ``ontology_*`` table has, and the very next
+        ``rebuild_ontology()`` call must converge to a fully healthy graph
+        (the atomic staging swap unconditionally replaces whatever was
+        there).
+        """
+        db_path = tmp_path / "ad-hoc-ontology-v47.db"
+        conn = sqlite3.connect(db_path)
+        try:
+            conn.executescript(SCHEMA_PATH.read_text())
+            conn.commit()
+            for version in range(1, 48):
+                _description, migration_func = MIGRATIONS[version]
+                migration_func(conn)
+                set_user_version(conn, version)
+            conn.commit()
+            assert get_user_version(conn) == 47
+
+            # Ad hoc `ontology_class`: different columns (no `parent` FK, no
+            # `description`), no CHECK constraints, and a pre-inserted row
+            # that would violate the canonical schema's NOT NULL/CHECK on
+            # `description`.
+            conn.execute(
+                "CREATE TABLE ontology_class(name TEXT PRIMARY KEY, notes TEXT)"
+            )
+            conn.execute(
+                "INSERT INTO ontology_class(name, notes) "
+                "VALUES ('LegacyThing', 'pre-v48 ad hoc row, no description column')"
+            )
+            # Ad hoc `ontology_individual`: missing the `attrs` JSON column
+            # entirely, with a pre-inserted row that references the ad hoc
+            # class above.
+            conn.execute(
+                "CREATE TABLE ontology_individual("
+                "id TEXT PRIMARY KEY, class TEXT, label TEXT)"
+            )
+            conn.execute(
+                "INSERT INTO ontology_individual(id, class, label) "
+                "VALUES ('legacy-1', 'LegacyThing', 'legacy row')"
+            )
+            conn.commit()
+
+            # A real session for the ontology to cover once rebuilt.
+            conn.execute(
+                "INSERT INTO sessions(id, source) VALUES ('ad-hoc-session', 'codex')"
+            )
+            conn.commit()
+
+            applied = migrate(conn)
+
+            assert applied == ["v48: " + MIGRATIONS[48][0]]
+            assert get_user_version(conn) == 48
+            # Migration converged without touching the ad hoc rows -- the
+            # tables are still exactly as the ad hoc code left them, because
+            # IF NOT EXISTS skipped creating them. The first rebuild (next)
+            # is what actually replaces them.
+            assert conn.execute(
+                "SELECT notes FROM ontology_class WHERE name = 'LegacyThing'"
+            ).fetchone() == ("pre-v48 ad hoc row, no description column",)
+
+            result = rebuild_ontology(conn)
+            status = ontology_status(conn)
+
+            assert result.mode == "full"
+            assert status.healthy is True
+            assert status.missing_tables == ()
+            assert status.missing_indexes == ()
+            assert status.schema_errors == ()
+            assert status.coverage_ratio == 1.0
+            assert status.covered_sessions == status.source_sessions
+            assert status.missing_sessions == 0
+            assert status.foreign_key_violations == 0
+            assert status.domain_range_violations == 0
+            # The ad hoc shape is gone; the canonical schema replaced it.
+            with pytest.raises(sqlite3.OperationalError, match="no such column"):
+                conn.execute("SELECT notes FROM ontology_class").fetchone()
+            assert conn.execute(
+                "SELECT COUNT(*) FROM ontology_class WHERE name = 'LegacyThing'"
+            ).fetchone() == (0,)
+        finally:
+            conn.close()
 
     def test_interrupted_migration_recovers_and_converges(self, tmp_path):
         """A fault mid-``migrate_v48`` leaves the database at v47 and usable.

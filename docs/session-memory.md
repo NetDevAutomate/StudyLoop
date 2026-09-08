@@ -117,8 +117,8 @@ a warning and leaves a staleness window, not a permanent gap. Recover or
 force it manually:
 
 ```sh
-session-maint ontology-rebuild              # incremental where safe, full otherwise
-session-maint ontology-rebuild --incremental
+session-maint ontology-rebuild              # full rebuild (the default)
+session-maint ontology-rebuild --incremental  # incremental where safe, full otherwise
 session-maint ontology-status               # read-only health report
 ```
 
