@@ -564,6 +564,23 @@ class TestRemoteBackupWalSafety:
     plays the role of the "remote" database.
     """
 
+    def test_returns_none_when_remote_command_fails(self):
+        failed = subprocess.CompletedProcess(
+            args=["ssh"],
+            returncode=1,
+            stdout="",
+            stderr="simulated ssh failure",
+        )
+
+        with patch(
+            "agent_session_tools.sync.subprocess.run", return_value=failed
+        ) as mock_run:
+            with patch("agent_session_tools.sync._ensure_mux_dir"):
+                result = _remote_backup("host", "/remote/sessions.db")
+
+        mock_run.assert_called_once()
+        assert result is None
+
     def test_backup_captures_uncheckpointed_wal_data(self, tmp_path):
         db_path = tmp_path / "remote-sessions.db"
         reader = sqlite3.connect(db_path)
