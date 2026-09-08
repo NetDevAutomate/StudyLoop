@@ -20,7 +20,9 @@ from __future__ import annotations
 import json
 import sqlite3
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
+
+from pydantic import Field
 
 from agent_session_tools.query_utils import build_project_filter
 from agent_session_tools.context.scope import visibility_sql
@@ -69,6 +71,29 @@ def _row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
     return dict(row)
 
 
+def _session_search_queries(query: str) -> tuple[str, ...]:
+    """Preserve explicit FTS syntax; widen only implicit plain-text queries."""
+    from agent_session_tools.query_utils import escape_fts_query
+
+    upper = query.upper()
+    explicit = any(operator in upper for operator in (" AND ", " OR ", " NOT "))
+    stripped = query.strip()
+    explicitly_quoted = '"' in query or (
+        len(stripped) >= 2 and stripped.startswith("'") and stripped.endswith("'")
+    )
+    if explicit or explicitly_quoted:
+        return (escape_fts_query(query),)
+
+    from agent_session_tools.query_planner import plan
+
+    query_plan = plan(query)
+    if not query_plan.and_query:
+        return ()
+    if query_plan.and_query == query_plan.or_query:
+        return (query_plan.and_query,)
+    return query_plan.and_query, query_plan.or_query
+
+
 def _guard_scope(fn):
     """Convert an unconfigured-scope failure into the shared diagnostic.
 
@@ -102,7 +127,8 @@ def _create_server() -> FastMCP:
         "session-db",
         instructions=(
             "Search and retrieve AI coding sessions across all tools. "
-            "Use session_search to find relevant sessions, session_list to browse, "
+            "Use memory_recall for concept-first AND-to-OR recall, session_search "
+            "to find raw matching messages, session_list to browse, and "
             "session_context to get token-efficient excerpts for reuse. "
             "Prefer memory_search for bounded native evidence with provenance, exact citations, "
             "proposed conflicts and retrieval explanations. memory_decide assesses an explicit "
@@ -212,6 +238,26 @@ def _create_server() -> FastMCP:
 
             raise ToolError(json.dumps(payload))
         return payload
+
+    @tool(annotations={"readOnlyHint": True, "idempotentHint": True})
+    @consistent_read
+    def memory_recall(
+        question: str,
+        k: Annotated[int, Field(strict=True, ge=1, le=50)] = 5,
+        project: str | None = None,
+    ) -> dict[str, object]:
+        """Recall authorized concepts first, then deduplicated raw sessions.
+
+        Uses one shared implicit-AND then OR-fallback plan. Results obey B3
+        scope, tombstone, and retired-concept authorization. k must be 1..50;
+        question is bounded to 4000 characters. No embedding or ontology store
+        participates.
+        """
+        from agent_session_tools.context.public import text
+        from agent_session_tools.recall import recall
+
+        bounded_question = text(question, "question", 4000)
+        return recall(_get_db_path(), bounded_question, k=k, project=project).to_dict()
 
     @tool(annotations={"readOnlyHint": False, "destructiveHint": False})
     def memory_relate(
@@ -365,36 +411,35 @@ def _create_server() -> FastMCP:
         """
         conn = _get_connection()
         try:
-            from agent_session_tools.query_utils import escape_fts_query
+            for fts_query in _session_search_queries(query):
+                sql = """
+                    SELECT s.id as session_id, s.source, s.project_path,
+                           s.updated_at, m.role, m.timestamp,
+                           substr(m.content, 1, 300) as preview
+                    FROM messages m
+                    JOIN sessions s ON m.session_id = s.id
+                    JOIN messages_fts ON messages_fts.rowid = m.rowid
+                    WHERE messages_fts MATCH ?
+                """
+                visible, scope_params = visibility_sql(conn, "s.id")
+                sql += " AND " + visible
+                params: list[Any] = [fts_query, *scope_params]
 
-            fts_query = escape_fts_query(query)
+                if source:
+                    sql += " AND s.source = ?"
+                    params.append(source)
+                if project:
+                    project_clause, project_params = build_project_filter(project)
+                    sql += " AND " + project_clause
+                    params.extend(project_params)
 
-            sql = """
-                SELECT s.id as session_id, s.source, s.project_path,
-                       s.updated_at, m.role, m.timestamp,
-                       substr(m.content, 1, 300) as preview
-                FROM messages m
-                JOIN sessions s ON m.session_id = s.id
-                JOIN messages_fts ON messages_fts.rowid = m.rowid
-                WHERE messages_fts MATCH ?
-            """
-            visible, scope_params = visibility_sql(conn, "s.id")
-            sql += " AND " + visible
-            params: list[Any] = [fts_query, *scope_params]
+                sql += " ORDER BY bm25(messages_fts), m.timestamp DESC LIMIT ?"
+                params.append(limit)
 
-            if source:
-                sql += " AND s.source = ?"
-                params.append(source)
-            if project:
-                project_clause, project_params = build_project_filter(project)
-                sql += " AND " + project_clause
-                params.extend(project_params)
-
-            sql += " ORDER BY bm25(messages_fts), m.timestamp DESC LIMIT ?"
-            params.append(limit)
-
-            rows = conn.execute(sql, params).fetchall()
-            return [_row_to_dict(r) for r in rows]
+                rows = conn.execute(sql, params).fetchall()
+                if rows:
+                    return [_row_to_dict(row) for row in rows]
+            return []
         finally:
             conn.close()
 

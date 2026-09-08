@@ -7,9 +7,13 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from studyloop.harnesses import RELEASE_HARNESSES
 from studyloop.settings import generate_default_config, get_config_path, load_settings
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 
 class InstallError(RuntimeError):
@@ -164,6 +168,463 @@ _MANDATE_SENTINEL = "studyloop:session-export-mandate"
 _HOOK_SENTINEL = "session-export --claude-only"
 _SESSION_HOOK_SENTINEL = "studyloop:session-export-hook"
 _CODEX_HOOK_SENTINEL = "session-export --codex-only"
+
+_MCP_SERVERS: dict[str, dict[str, object]] = {
+    "session-db": {"command": "session-db-mcp", "args": []},
+    "studyloop": {"command": "studyloop-mcp", "args": []},
+}
+_MCP_HARNESSES = ("claude", "kiro", "codex")
+
+
+def _mcp_config_path(tool: str) -> Path:
+    paths = {
+        "claude": _HOME / ".claude.json",
+        "kiro": _HOME / ".kiro/settings/mcp.json",
+        "codex": _HOME / ".codex/config.toml",
+    }
+    try:
+        return paths[tool]
+    except KeyError as exc:
+        raise InstallError(f"Unsupported MCP registration target: {tool}") from exc
+
+
+def _json_root_object_span(raw: str) -> tuple[int, int] | None:
+    """Return the root JSON object span without reserializing its bytes."""
+    import json
+
+    start = 0
+    while start < len(raw) and raw[start].isspace():
+        start += 1
+    try:
+        value, end = json.JSONDecoder().raw_decode(raw, start)
+    except json.JSONDecodeError:
+        return None
+    return (start, end) if isinstance(value, dict) else None
+
+
+def _json_value_span(
+    raw: str, key: str, object_span: tuple[int, int] | None = None
+) -> tuple[int, int] | None:
+    """Return an arbitrary JSON member value span from one object."""
+    import json
+
+    span = object_span or _json_root_object_span(raw)
+    if span is None:
+        return None
+    start, end = span
+    decoder = json.JSONDecoder()
+    cursor = start + 1
+    while cursor < end - 1:
+        while cursor < end - 1 and (raw[cursor].isspace() or raw[cursor] == ","):
+            cursor += 1
+        if cursor >= end - 1:
+            break
+        try:
+            member_name, key_end = decoder.raw_decode(raw, cursor)
+        except json.JSONDecodeError:
+            return None
+        if not isinstance(member_name, str):
+            return None
+        cursor = key_end
+        while cursor < end - 1 and raw[cursor].isspace():
+            cursor += 1
+        if cursor >= end - 1 or raw[cursor] != ":":
+            return None
+        cursor += 1
+        while cursor < end - 1 and raw[cursor].isspace():
+            cursor += 1
+        value_start = cursor
+        try:
+            _, value_end = decoder.raw_decode(raw, value_start)
+        except json.JSONDecodeError:
+            return None
+        if member_name == key:
+            return value_start, value_end
+        cursor = value_end
+    return None
+
+
+def _json_object_span(raw: str, key: str) -> tuple[int, int] | None:
+    """Return an object-valued top-level member span for ``key``."""
+    span = _json_value_span(raw, key)
+    if span is None or raw[span[0]] != "{":
+        return None
+    return span
+
+
+def _append_json_members(
+    raw: str,
+    span: tuple[int, int],
+    members: Mapping[str, object],
+) -> str:
+    """Append object members while retaining every existing member byte."""
+    import json
+
+    start, end = span
+    close = end - 1
+    content_end = close
+    while content_end > start + 1 and raw[content_end - 1].isspace():
+        content_end -= 1
+    existing = raw[start + 1 : content_end].strip()
+    line_start = raw.rfind("\n", 0, close) + 1
+    closing_indent = raw[line_start:close]
+    if not closing_indent.isspace():
+        closing_indent = "  "
+    entry_indent = closing_indent + "  "
+    newline = "\r\n" if "\r\n" in raw else "\n"
+    rendered: list[str] = []
+    for name, value in members.items():
+        value_text = json.dumps(value, indent=2)
+        value_text = value_text.replace("\n", newline + entry_indent)
+        rendered.append(f"{entry_indent}{json.dumps(name)}: {value_text}")
+    separator = "," if existing else ""
+    insertion = separator + newline + ("," + newline).join(rendered) + newline + closing_indent
+    return raw[:content_end] + insertion + raw[close:]
+
+
+def _merge_json_mcp_config(path: Path) -> int:
+    import json
+
+    try:
+        raw = path.read_bytes().decode("utf-8")
+    except FileNotFoundError:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps({"mcpServers": _MCP_SERVERS}, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        return 1
+    except (OSError, UnicodeDecodeError) as exc:
+        raise InstallError(f"Cannot read MCP config {path}: {exc}") from exc
+    try:
+        loaded = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise InstallError(f"Cannot merge MCP servers into malformed {path}: {exc}") from exc
+    if not isinstance(loaded, dict):
+        raise InstallError(f"Cannot merge MCP servers: {path} is not a JSON object")
+
+    root_span = _json_root_object_span(raw)
+    if root_span is None:
+        raise InstallError(f"Cannot locate root object in MCP config {path}")
+    current = loaded.get("mcpServers")
+    if isinstance(current, dict) and all(
+        current.get(name) == value for name, value in _MCP_SERVERS.items()
+    ):
+        return 0
+
+    if "mcpServers" not in loaded:
+        updated = _append_json_members(raw, root_span, {"mcpServers": _MCP_SERVERS})
+    elif not isinstance(current, dict):
+        container_span = _json_value_span(raw, "mcpServers", root_span)
+        if container_span is None:
+            raise InstallError(f"Cannot locate mcpServers value in {path}")
+        rendered = json.dumps(_MCP_SERVERS, separators=(", ", ": "))
+        updated = raw[: container_span[0]] + rendered + raw[container_span[1] :]
+    else:
+        mcp_span = _json_object_span(raw, "mcpServers")
+        if mcp_span is None:
+            raise InstallError(f"Cannot locate mcpServers object in {path}")
+        incorrect = {
+            name: value for name, value in _MCP_SERVERS.items() if current.get(name) != value
+        }
+        updated = raw
+        for name in sorted(set(incorrect) & set(current)):
+            mcp_span = _json_object_span(updated, "mcpServers")
+            if mcp_span is None:
+                raise InstallError(f"Cannot locate mcpServers object in {path}")
+            nested = updated[mcp_span[0] : mcp_span[1]]
+            value_span = _json_value_span(nested, name)
+            if value_span is None:
+                raise InstallError(f"Cannot locate owned MCP server {name} in {path}")
+            value_start = mcp_span[0] + value_span[0]
+            value_end = mcp_span[0] + value_span[1]
+            rendered = json.dumps(_MCP_SERVERS[name], separators=(", ", ": "))
+            updated = updated[:value_start] + rendered + updated[value_end:]
+        absent = {name: value for name, value in incorrect.items() if name not in current}
+        if absent:
+            mcp_span = _json_object_span(updated, "mcpServers")
+            if mcp_span is None:
+                raise InstallError(f"Cannot locate mcpServers object in {path}")
+            updated = _append_json_members(updated, mcp_span, absent)
+    path.write_bytes(updated.encode("utf-8"))
+    return 1
+
+
+def _toml_marker_path(value: object, path: tuple[str, ...] = ()) -> tuple[str, ...] | None:
+    """Return the parsed TOML key path containing the private marker."""
+    if not isinstance(value, dict):
+        return None
+    marker = "__studyloop_owned_marker__"
+    if marker in value:
+        return path
+    for key, nested in value.items():
+        found = _toml_marker_path(nested, (*path, key))
+        if found is not None:
+            return found
+    return None
+
+
+def _toml_table_path(line: str) -> tuple[str, ...] | None:
+    """Parse one TOML table header into semantic key components."""
+    import tomllib
+
+    candidate = line.rstrip("\r\n")
+    if not candidate.lstrip().startswith("[") or candidate.lstrip().startswith("[["):
+        return None
+    try:
+        parsed = tomllib.loads(candidate + "\n__studyloop_owned_marker__ = true\n")
+    except tomllib.TOMLDecodeError:
+        return None
+    return _toml_marker_path(parsed)
+
+
+def _toml_assignment_path(line: str) -> tuple[str, ...] | None:
+    """Parse the dotted key path at the start of one TOML assignment."""
+    import tomllib
+
+    stripped = line.lstrip()
+    if not stripped or stripped.startswith("#"):
+        return None
+    quote: str | None = None
+    escaped = False
+    for index, char in enumerate(stripped):
+        if quote is not None:
+            if quote == '"' and char == "\\" and not escaped:
+                escaped = True
+                continue
+            if char == quote and not escaped:
+                quote = None
+            escaped = False
+            continue
+        if char in {'"', "'"}:
+            quote = char
+        elif char == "=":
+            key = stripped[:index].strip()
+            if not key:
+                return None
+            try:
+                parsed = tomllib.loads(f"{key} = {{ __studyloop_owned_marker__ = true }}")
+            except tomllib.TOMLDecodeError:
+                return None
+            return _toml_marker_path(parsed)
+    return None
+
+
+def _toml_statement_end(lines: list[str], start: int, stop: int) -> int:
+    """Return the first line after a complete TOML assignment."""
+    import tomllib
+
+    statement = ""
+    for index in range(start, stop):
+        statement += lines[index]
+        try:
+            tomllib.loads(statement)
+        except tomllib.TOMLDecodeError:
+            continue
+        return index + 1
+    return start + 1
+
+
+def _toml_normal_line_indexes(lines: list[str]) -> set[int]:
+    """Return physical lines that begin outside TOML strings and comments."""
+    normal_lines: set[int] = set()
+    state = "normal"
+
+    for line_index, line in enumerate(lines):
+        if state == "normal":
+            normal_lines.add(line_index)
+
+        index = 0
+        while index < len(line):
+            char = line[index]
+
+            if state == "comment":
+                if char in "\r\n":
+                    state = "normal"
+                index += 1
+                continue
+
+            if state == "basic":
+                if char == "\\":
+                    index += 2
+                elif char == '"' or char in "\r\n":
+                    state = "normal"
+                    index += 1
+                else:
+                    index += 1
+                continue
+
+            if state == "literal":
+                if char == "'" or char in "\r\n":
+                    state = "normal"
+                index += 1
+                continue
+
+            if state in {"multiline-basic", "multiline-literal"}:
+                delimiter = '"' if state == "multiline-basic" else "'"
+                if state == "multiline-basic" and char == "\\":
+                    index += 2
+                    continue
+                if char == delimiter:
+                    run_end = index
+                    while run_end < len(line) and line[run_end] == delimiter:
+                        run_end += 1
+                    if run_end - index >= 3:
+                        state = "normal"
+                    index = run_end
+                    continue
+                index += 1
+                continue
+
+            if char == "#":
+                state = "comment"
+                index += 1
+            elif line.startswith('"""', index):
+                state = "multiline-basic"
+                index += 3
+            elif char == '"':
+                state = "basic"
+                index += 1
+            elif line.startswith("'''", index):
+                state = "multiline-literal"
+                index += 3
+            elif char == "'":
+                state = "literal"
+                index += 1
+            else:
+                index += 1
+
+    return normal_lines
+
+
+def _remove_owned_toml(raw: str, names: set[str]) -> str:
+    """Remove owned MCP table headers and assignments while retaining other bytes."""
+    lines = raw.splitlines(keepends=True)
+    starts: list[int] = []
+    offset = 0
+    for line in lines:
+        starts.append(offset)
+        offset += len(line)
+
+    normal_lines = _toml_normal_line_indexes(lines)
+    headers = [
+        (index, path)
+        for index, line in enumerate(lines)
+        if index in normal_lines and (path := _toml_table_path(line)) is not None
+    ]
+    removals: list[tuple[int, int]] = []
+
+    def owned(path: tuple[str, ...]) -> bool:
+        return len(path) >= 2 and path[0] == "mcp_servers" and path[1] in names
+
+    def remove_assignments(table_path: tuple[str, ...], start_line: int, stop_line: int) -> None:
+        index = start_line
+        remove_every_assignment = owned(table_path)
+        while index < stop_line:
+            key_path = _toml_assignment_path(lines[index])
+            if key_path is None:
+                index += 1
+                continue
+            end_line = _toml_statement_end(lines, index, stop_line)
+            semantic_path = (*table_path, *key_path)
+            if remove_every_assignment or owned(semantic_path):
+                end_offset = starts[end_line] if end_line < len(lines) else len(raw)
+                removals.append((starts[index], end_offset))
+            index = end_line
+
+    first_header = headers[0][0] if headers else len(lines)
+    remove_assignments((), 0, first_header)
+    for position, (line_index, table_path) in enumerate(headers):
+        next_header = headers[position + 1][0] if position + 1 < len(headers) else len(lines)
+        header_end = starts[line_index + 1] if line_index + 1 < len(lines) else len(raw)
+        if owned(table_path):
+            removals.append((starts[line_index], header_end))
+        remove_assignments(table_path, line_index + 1, next_header)
+
+    updated = raw
+    for start, end in sorted(removals, reverse=True):
+        updated = updated[:start] + updated[end:]
+    return updated
+
+
+def _codex_mcp_block(name: str, newline: str = "\n") -> str:
+    config = _MCP_SERVERS[name]
+    return (
+        f'[mcp_servers.{name}]{newline}command = "{config["command"]}"{newline}args = []{newline}'
+    )
+
+
+def _merge_codex_mcp_config(path: Path) -> int:
+    import tomllib
+
+    try:
+        raw = path.read_bytes().decode("utf-8")
+    except FileNotFoundError:
+        raw = ""
+    except (OSError, UnicodeDecodeError) as exc:
+        raise InstallError(f"Cannot read Codex MCP config {path}: {exc}") from exc
+    try:
+        loaded = tomllib.loads(raw)
+    except tomllib.TOMLDecodeError as exc:
+        raise InstallError(f"Cannot merge MCP servers into malformed {path}: {exc}") from exc
+    current = loaded.get("mcp_servers", {})
+    if not isinstance(current, dict):
+        raise InstallError(f"Cannot merge MCP servers: {path} mcp_servers is not a table")
+    if all(current.get(name) == value for name, value in _MCP_SERVERS.items()):
+        return 0
+
+    incorrect = {name for name, value in _MCP_SERVERS.items() if current.get(name) != value}
+    updated = _remove_owned_toml(raw, incorrect)
+    newline = "\r\n" if "\r\n" in raw else "\n"
+    for name in _MCP_SERVERS:
+        if name not in incorrect:
+            continue
+        if updated and not updated.endswith(("\n", "\r")):
+            updated += newline
+        if updated and not updated.endswith(newline * 2):
+            updated += newline
+        updated += _codex_mcp_block(name, newline)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(updated.encode("utf-8"))
+    return 1
+
+
+def register_mcp_servers(tools: list[str] | None = None) -> dict[str, int]:
+    """Register both StudyLoop MCP servers in supported harness configs."""
+    selected = [
+        tool for tool in (tools or detect_available_agent_tools()) if tool in _MCP_HARNESSES
+    ]
+    changed: dict[str, int] = {}
+    for tool in selected:
+        path = _mcp_config_path(tool)
+        changed[tool] = (
+            _merge_codex_mcp_config(path) if tool == "codex" else _merge_json_mcp_config(path)
+        )
+    return changed
+
+
+def mcp_registration_status(tools: list[str] | None = None) -> dict[str, bool]:
+    """Report registration state without modifying any harness configuration."""
+    import json
+    import tomllib
+
+    selected = list(tools or _MCP_HARNESSES)
+    status: dict[str, bool] = {}
+    for tool in selected:
+        path = _mcp_config_path(tool)
+        try:
+            if tool == "codex":
+                data = tomllib.loads(path.read_text(encoding="utf-8"))
+                current = data.get("mcp_servers", {})
+            else:
+                data = json.loads(path.read_text(encoding="utf-8"))
+                current = data.get("mcpServers", {})
+            status[tool] = isinstance(current, dict) and all(
+                current.get(name) == value for name, value in _MCP_SERVERS.items()
+            )
+        except (OSError, ValueError, TypeError):
+            status[tool] = False
+    return status
 
 
 def _codex_hooks_path() -> Path:
@@ -543,6 +1004,8 @@ def install_agent_definitions(
             summary["claude"] = summary.get("claude", 0) + install_claude_stop_hook()
         if "codex" in selected:
             summary["codex"] = summary.get("codex", 0) + install_codex_session_end_hook()
+        for tool, count in register_mcp_servers(selected).items():
+            summary[tool] = summary.get(tool, 0) + count
 
     return summary
 
@@ -585,5 +1048,7 @@ __all__ = [
     "find_repo_root",
     "install_agent_definitions",
     "install_workspace_tools",
+    "mcp_registration_status",
+    "register_mcp_servers",
     "require_repo_root",
 ]

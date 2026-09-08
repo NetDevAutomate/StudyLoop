@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sessionweaver.dev/schema/recall-contract.json",
+  "title": "SessionWeaver recall report",
+  "description": "The exact shape of RecallReport.to_dict(): concepts first, then deduplicated sessions, echoing the AND->OR plan that produced them.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["concepts", "sessions", "plan", "k", "project"],
+  "properties": {
+    "concepts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/conceptHit" }
+    },
+    "sessions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/sessionHit" }
+    },
+    "plan": { "$ref": "#/$defs/queryPlan" },
+    "k": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 50
+    },
+    "project": {
+      "type": ["string", "null"]
+    }
+  },
+  "$defs": {
+    "conceptHit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "concept_id",
+        "kind",
+        "title",
+        "statement",
+        "standing",
+        "binding_state",
+        "confidence",
+        "source_session_id",
+        "provenance_label",
+        "citations"
+      ],
+      "properties": {
+        "concept_id": { "type": "string", "minLength": 1 },
+        "kind": {
+          "type": "string",
+          "enum": ["Decision", "Finding", "Problem", "Preference", "Procedure"]
+        },
+        "title": { "type": "string", "minLength": 1 },
+        "statement": { "type": "string", "minLength": 1 },
+        "standing": {
+          "type": "string",
+          "enum": ["proposed", "accepted"]
+        },
+        "binding_state": {
+          "type": "string",
+          "enum": ["bound", "legacy-unbound"]
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 1.0
+        },
+        "source_session_id": { "type": ["string", "null"] },
+        "provenance_label": {
+          "type": "string",
+          "enum": [
+            "machine-confirmed citation",
+            "legacy-unbound (session-level provenance)"
+          ]
+        },
+        "citations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/citation" }
+        }
+      }
+    },
+    "citation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidence_id", "start", "end"],
+      "properties": {
+        "evidence_id": { "type": "string", "minLength": 1 },
+        "start": { "type": "integer", "minimum": 0 },
+        "end": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "sessionHit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["session_id", "source", "project_path", "updated_at", "preview"],
+      "properties": {
+        "session_id": { "type": "string", "minLength": 1 },
+        "source": { "type": "string", "minLength": 1 },
+        "project_path": { "type": ["string", "null"] },
+        "updated_at": { "type": ["string", "null"] },
+        "preview": { "type": "string" }
+      }
+    },
+    "queryPlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["terms", "and_query", "or_query", "fallback_used"],
+      "properties": {
+        "terms": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "and_query": { "type": "string" },
+        "or_query": { "type": "string" },
+        "fallback_used": { "type": "boolean" }
+      }
+    }
+  }
+}

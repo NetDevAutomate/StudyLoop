@@ -1,0 +1,82 @@
+{
+  "row_keys": [
+    "session_id",
+    "source",
+    "project_path",
+    "updated_at",
+    "role",
+    "timestamp",
+    "preview"
+  ],
+  "default_limit": 10,
+  "preview_char_limit": 300,
+  "cases": [
+    {
+      "name": "single-term",
+      "arguments": {
+        "query": "authentication"
+      },
+      "results": [
+        {
+          "session_id": "sess-auth-001",
+          "source": "claude_code",
+          "project_path": "/projects/webapp",
+          "updated_at": "2026-01-01T12:00:00",
+          "role": "assistant",
+          "timestamp": "2026-01-01T10:01:00",
+          "preview": "authentication AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        }
+      ]
+    },
+    {
+      "name": "two-term-and-empty",
+      "arguments": {
+        "query": "alpha bravo"
+      },
+      "results": []
+    },
+    {
+      "name": "phrase",
+      "arguments": {
+        "query": "\"exact phrase\""
+      },
+      "results": [
+        {
+          "session_id": "sess-auth-001",
+          "source": "claude_code",
+          "project_path": "/projects/webapp",
+          "updated_at": "2026-01-01T12:00:00",
+          "role": "user",
+          "timestamp": "2026-01-01T10:03:00",
+          "preview": "the exact phrase appears here"
+        }
+      ]
+    },
+    {
+      "name": "operator",
+      "arguments": {
+        "query": "error OR authentication"
+      },
+      "results": [
+        {
+          "session_id": "sess-error-002",
+          "source": "kiro_cli",
+          "project_path": null,
+          "updated_at": "2026-01-02T11:00:00",
+          "role": "assistant",
+          "timestamp": "2026-01-02T09:01:00",
+          "preview": "error diagnostic"
+        },
+        {
+          "session_id": "sess-auth-001",
+          "source": "claude_code",
+          "project_path": "/projects/webapp",
+          "updated_at": "2026-01-01T12:00:00",
+          "role": "assistant",
+          "timestamp": "2026-01-01T10:01:00",
+          "preview": "authentication AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        }
+      ]
+    }
+  ]
+}
