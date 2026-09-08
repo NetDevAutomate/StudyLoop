@@ -319,20 +319,28 @@ def _merge_json_mcp_config(path: Path) -> int:
         root_span = (outer[0] - len('{"root":'), outer[1] - len('{"root":'))
         updated = _append_json_members(raw, root_span, {"mcpServers": _MCP_SERVERS})
     else:
-        missing = {
+        incorrect = {
             name: value for name, value in _MCP_SERVERS.items() if current.get(name) != value
         }
-        conflicting = set(missing) & set(current)
-        if conflicting:
-            replacement = dict(current)
-            replacement.update(_MCP_SERVERS)
-            rendered = json.dumps(replacement, indent=2)
-            line_start = raw.rfind("\n", 0, span[0]) + 1
-            indent = raw[line_start : span[0]]
-            rendered = rendered.replace("\n", "\n" + indent)
-            updated = raw[: span[0]] + rendered + raw[span[1] :]
-        else:
-            updated = _append_json_members(raw, span, missing)
+        updated = raw
+        for name in sorted(set(incorrect) & set(current)):
+            mcp_span = _json_object_span(updated, "mcpServers")
+            if mcp_span is None:
+                raise InstallError(f"Cannot locate mcpServers object in {path}")
+            nested = updated[mcp_span[0] : mcp_span[1]]
+            value_span = _json_object_span(nested, name)
+            if value_span is None:
+                raise InstallError(f"Cannot locate owned MCP server {name} in {path}")
+            value_start = mcp_span[0] + value_span[0]
+            value_end = mcp_span[0] + value_span[1]
+            rendered = json.dumps(_MCP_SERVERS[name], separators=(", ", ": "))
+            updated = updated[:value_start] + rendered + updated[value_end:]
+        absent = {name: value for name, value in incorrect.items() if name not in current}
+        if absent:
+            mcp_span = _json_object_span(updated, "mcpServers")
+            if mcp_span is None:
+                raise InstallError(f"Cannot locate mcpServers object in {path}")
+            updated = _append_json_members(updated, mcp_span, absent)
     path.write_text(updated, encoding="utf-8")
     return 1
 

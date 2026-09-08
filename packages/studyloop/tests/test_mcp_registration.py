@@ -137,3 +137,28 @@ def test_doctor_reports_each_harness_mcp_registration_without_mutating(
         ("mcp_codex", "pass"),
     ]
     assert {path: path.read_bytes() for path in before} == before
+
+
+def test_registration_repairs_owned_json_entry_without_reformatting_unrelated_entry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setattr(installers, "_HOME", home)
+    path = home / ".claude.json"
+    unrelated = '    "unrelated": {"command": "other", "args": ["--x"]}'
+    path.write_text(
+        '{\n  "mcpServers": {\n'
+        + unrelated
+        + ",\n"
+        + '    "session-db": {"command": "wrong", "args": ["--bad"]}\n'
+        + "  }\n}\n",
+        encoding="utf-8",
+    )
+
+    installers.register_mcp_servers(["claude"])
+
+    assert unrelated in path.read_text(encoding="utf-8")
+    payload = json.loads(path.read_text(encoding="utf-8"))["mcpServers"]
+    assert payload["session-db"] == {"command": "session-db-mcp", "args": []}
+    assert payload["studyloop"] == {"command": "studyloop-mcp", "args": []}
