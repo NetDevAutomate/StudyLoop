@@ -926,6 +926,91 @@ def prune(
         )
 
 
+@app.command("ontology-rebuild")
+def ontology_rebuild(
+    db: Annotated[Path | None, db_option] = None,
+    incremental: Annotated[
+        bool,
+        typer.Option(
+            "--incremental",
+            help=(
+                "Reuse rows for sessions unchanged since the last build "
+                "(falls back to a full rebuild if the prior build state is "
+                "missing, stale, or unreadable)."
+            ),
+        ),
+    ] = False,
+) -> None:
+    """Rebuild the derived tier-1 ontology (project/artifact/command/testrun graph).
+
+    Idempotent maintenance sweep: recovers full coverage after a missed or
+    failed export-time ontology refresh (design: "Refresh-failure seam for
+    B2"). The ontology is never synced -- this is the only way its
+    build state advances on a machine that has not run ``session-export``
+    since the last capture.
+    """
+    from agent_session_tools import ontology
+
+    db_path = db if db else _get_db_path()
+    if not db_path.exists():
+        print(f"❌ Database not found: {db_path}")
+        raise typer.Exit(1)
+
+    conn = sqlite3.connect(db_path)
+    try:
+        result = ontology.rebuild_ontology(conn, incremental=incremental)
+    except ontology.OntologyError as exc:
+        print(f"❌ Ontology rebuild failed: {exc}")
+        raise typer.Exit(1) from exc
+    finally:
+        conn.close()
+
+    print(f"✅ Ontology rebuilt ({result.mode}): {db_path}")
+    if result.fallback_reason:
+        print(f"   fell back to a full rebuild: {result.fallback_reason}")
+    print(f"   sessions:    {result.counts.source_sessions:,}")
+    print(f"   individuals: {result.counts.individuals:,}")
+    print(f"   relations:   {result.counts.relations:,}")
+    print(f"   structural:  {result.counts.structural:,}")
+    print(f"   logical hash: {result.logical_hash[:12]}…")
+
+
+@app.command("ontology-status")
+def ontology_status_cmd(
+    db: Annotated[Path | None, db_option] = None,
+) -> None:
+    """Report tier-1 ontology health: read-only, never creates or repairs anything."""
+    from agent_session_tools import ontology
+
+    db_path = db if db else _get_db_path()
+    if not db_path.exists():
+        print(f"❌ Database not found: {db_path}")
+        raise typer.Exit(1)
+
+    conn = sqlite3.connect(db_path)
+    try:
+        status = ontology.ontology_status(conn)
+    finally:
+        conn.close()
+
+    icon = "✅" if status.healthy else "⚠️ "
+    print(f"{icon} Ontology status: {'healthy' if status.healthy else 'unhealthy'}")
+    print(
+        f"   extraction version: {status.extraction_version!r} (matches: {status.extraction_version_matches})"
+    )
+    print(
+        f"   coverage: {status.covered_sessions:,}/{status.covered_sessions + status.missing_sessions:,} sessions ({status.coverage_ratio:.2%})"
+    )
+    print(
+        f"   fresh: {status.fresh}   hash matches: {status.hash_matches}   completed_at: {status.completed_at}"
+    )
+    if status.diagnostics:
+        print("   diagnostics:")
+        for line in status.diagnostics:
+            print(f"     - {line}")
+    raise typer.Exit(0 if status.healthy else 1)
+
+
 # ==================== Main Entry Point ====================
 
 

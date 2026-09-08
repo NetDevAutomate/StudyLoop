@@ -7,6 +7,20 @@ experience may change before `1.0.0`.
 
 ## [Unreleased]
 
+### Added
+
+- A derived, per-machine tier-1 ontology (projects, harnesses, artifacts,
+  commands, test runs, linked to the sessions that produced them; migration
+  v48). It is never synced — `session-sync` never reads or transfers any
+  `ontology_*` table, and a first-time seed of a new machine strips them from
+  the transferred snapshot so the destination always derives its own.
+  `session-export` refreshes it automatically after every run; a refresh
+  failure never blocks or rolls back the capture that just committed. New
+  `session-maint ontology-rebuild [--incremental]` and `ontology-status`
+  commands, and a report-only `studyloop doctor --category harness` check
+  (presence, coverage, freshness, extraction-version drift). See
+  [Conversation memory, repair and sync](docs/session-memory.md#tier-1-ontology-derived-never-synced).
+
 ### Fixed
 
 - A fresh install can start a session and call every memory tool from its

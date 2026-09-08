@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Current schema version - increment when adding new migrations
-CURRENT_VERSION = 47
+CURRENT_VERSION = 48
 
 # Migration functions: version -> (description, migration_func)
 MIGRATIONS: dict[int, tuple[str, Callable[[sqlite3.Connection], None]]] = {}
@@ -1571,6 +1571,33 @@ def migrate_v47(conn: sqlite3.Connection) -> None:
             conn.execute(f"""CREATE TRIGGER replica_basis_{table}_{event.lower()}
               BEFORE {event} ON {table} BEGIN
               SELECT RAISE(ABORT,'Shared reconciliation bases are immutable'); END""")
+
+
+@migration(
+    48, "Derived tier-1 ontology: structural/individual/relation graph, never synced"
+)
+def migrate_v48(conn: sqlite3.Connection) -> None:
+    """Install the six tier-1 ontology schema objects, empty.
+
+    Additive only -- no existing table, column, index, or trigger is
+    altered. Every row later written to these tables is deterministically
+    reproducible from ``sessions``/``messages`` by a full rebuild
+    (``agent_session_tools.ontology.rebuild_ontology``), so the ontology is
+    derived, never synced: ``sync.SYNC_TABLES`` and ``sync.GLOBAL_SYNC_TABLES``
+    intentionally never list any of these six tables, now or in any later
+    migration (design: "Migrations: v48 tier-1 ontology, v49 concept
+    sidecar").
+
+    Downgrade (v48 -> v47): drop exactly these six tables and nothing else --
+    ``ontology_class``, ``ontology_property``, ``ontology_structural``,
+    ``ontology_individual``, ``ontology_relation``, ``ontology_build_state``
+    (and their five indexes, dropped implicitly with the tables). No other
+    migration, table, or index references an ``ontology_*`` table by foreign
+    key, so the drop is unconditionally safe.
+    """
+    from .ontology import install_schema
+
+    install_schema(conn)
 
 
 def check_migration_status(db_path: Path) -> dict:

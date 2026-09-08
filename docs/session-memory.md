@@ -106,6 +106,38 @@ left genuinely unset (a hand-edited file, or an install predating this
 default), every scope-dependent tool call and `studyloop` command reports one
 structured `scope_unconfigured` diagnostic instead of a crash, naming the fix.
 
+## Tier-1 ontology (derived, never synced)
+
+Every capture database also carries a small structural graph — projects,
+harnesses, artifacts, commands, and test runs, linked to the sessions that
+produced them (`ontology_class`, `ontology_property`, `ontology_structural`,
+`ontology_individual`, `ontology_relation`, and the `ontology_build_state`
+build receipt; migration v48). It exists to make "what did I touch, run, or
+test in this project" queryable without re-scanning every message.
+
+This ontology is **derived, not authored**: every row is deterministically
+reproducible from `sessions`/`messages` by a full rebuild, and it is
+**per-machine and never synced** — `session-sync` never reads, writes, or
+transfers any `ontology_*` table, and a first-time seed of a new machine
+strips them from the transferred snapshot rather than copying them. Each
+machine derives its own ontology from its own captured sessions.
+
+`session-export` refreshes it automatically after every run (incrementally
+for the sessions that run touched; fully on `--full`). A refresh failure
+never blocks or rolls back the capture that just committed — it surfaces as
+a warning and leaves a staleness window, not a permanent gap. Recover or
+force it manually:
+
+```sh
+session-maint ontology-rebuild              # full rebuild (the default)
+session-maint ontology-rebuild --incremental  # incremental where safe, full otherwise
+session-maint ontology-status               # read-only health report
+```
+
+`studyloop doctor --category harness` reports ontology presence, session
+coverage, freshness, and extraction-version drift as report-only lines —
+never a fatal check, and never required for a normal workflow to pass.
+
 ## Sync permitted databases
 
 Only sync when each destination may receive the entire selected database.

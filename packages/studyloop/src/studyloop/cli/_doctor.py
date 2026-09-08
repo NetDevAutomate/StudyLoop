@@ -92,7 +92,7 @@ def _get_registry():
     )
     from studyloop.doctor.database import check_review_db, check_sessions_db
     from studyloop.doctor.deps import check_optional_deps
-    from studyloop.doctor.harness import check_harness_export
+    from studyloop.doctor.harness import check_harness_export, check_ontology_freshness
     from studyloop.doctor.voice import check_voice_readiness
 
     registry = CheckerRegistry()
@@ -140,6 +140,7 @@ def _get_registry():
     registry.register("agents")(check_agent_definitions)
     registry.register("agents")(check_agent_smoke_tests)
     registry.register("harness")(check_harness_export)
+    registry.register("harness")(check_ontology_freshness)
     # check_pypi_versions is deliberately NOT registered. Nothing is published
     # yet, so it can only ever report "no release found", which is noise on
     # every run. The module is retained for when a release exists.
