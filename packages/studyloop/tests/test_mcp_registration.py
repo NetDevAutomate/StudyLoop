@@ -5,13 +5,11 @@ from __future__ import annotations
 import json
 import tomllib
 from pathlib import Path
-from typing import TYPE_CHECKING
+
+import pytest
 
 import studyloop.doctor.agents as doctor_agents
 import studyloop.installers as installers
-
-if TYPE_CHECKING:
-    import pytest
 
 
 def _repo_root() -> Path:
@@ -162,3 +160,216 @@ def test_registration_repairs_owned_json_entry_without_reformatting_unrelated_en
     payload = json.loads(path.read_text(encoding="utf-8"))["mcpServers"]
     assert payload["session-db"] == {"command": "session-db-mcp", "args": []}
     assert payload["studyloop"] == {"command": "studyloop-mcp", "args": []}
+
+
+@pytest.mark.parametrize(
+    "owned_header",
+    (
+        '[mcp_servers."session-db"]',
+        '["mcp_servers".session-db]',
+        "['mcp_servers'.'session-db']",
+    ),
+)
+def test_codex_repair_replaces_quoted_owned_table_without_duplication(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    owned_header: str,
+) -> None:
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setattr(installers, "_HOME", home)
+    path = home / ".codex/config.toml"
+    path.parent.mkdir(parents=True)
+    unrelated = '[mcp_servers.unrelated]\ncommand = "other"\n# keep unrelated comment\n'
+    path.write_text(
+        "# keep top comment\n"
+        + owned_header
+        + '\ncommand = "wrong"\nargs = ["--bad"]\n\n'
+        + unrelated,
+        encoding="utf-8",
+    )
+
+    assert installers.register_mcp_servers(["codex"]) == {"codex": 1}
+
+    repaired = path.read_text(encoding="utf-8")
+    parsed = tomllib.loads(repaired)
+    assert parsed["mcp_servers"]["session-db"] == {
+        "command": "session-db-mcp",
+        "args": [],
+    }
+    assert parsed["mcp_servers"]["studyloop"] == {
+        "command": "studyloop-mcp",
+        "args": [],
+    }
+    assert unrelated in repaired
+    assert repaired.count("session-db-mcp") == 1
+    first_bytes = path.read_bytes()
+    assert installers.register_mcp_servers(["codex"]) == {"codex": 0}
+    assert path.read_bytes() == first_bytes
+
+
+def test_codex_repair_removes_complete_owned_subtree_and_preserves_crlf(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setattr(installers, "_HOME", home)
+    path = home / ".codex/config.toml"
+    path.parent.mkdir(parents=True)
+    unrelated = (
+        '[mcp_servers.unrelated]\r\ncommand = "other"\r\n'
+        'args = ["--keep"]\r\n# keep unrelated comment\r\n'
+    )
+    path.write_bytes(
+        (
+            "# keep top comment\r\n[mcp_servers]\r\n\r\n"
+            '[mcp_servers.session-db]\r\ncommand = "wrong"\r\nargs = []\r\n\r\n'
+            '[mcp_servers.session-db.env]\r\nTOKEN = "remove"\r\n\r\n'
+            '[mcp_servers.studyloop]\r\ncommand = "wrong"\r\nargs = []\r\n\r\n'
+            '[mcp_servers.studyloop.env]\r\nMODE = "remove"\r\n\r\n' + unrelated
+        ).encode()
+    )
+
+    assert installers.register_mcp_servers(["codex"]) == {"codex": 1}
+
+    repaired_bytes = path.read_bytes()
+    repaired = repaired_bytes.decode()
+    parsed = tomllib.loads(repaired)
+    assert parsed["mcp_servers"]["session-db"] == {
+        "command": "session-db-mcp",
+        "args": [],
+    }
+    assert parsed["mcp_servers"]["studyloop"] == {
+        "command": "studyloop-mcp",
+        "args": [],
+    }
+    assert "TOKEN" not in repaired
+    assert "MODE" not in repaired
+    assert unrelated.encode() in repaired_bytes
+    assert b"\r\n" in repaired_bytes
+    assert b"\n" not in repaired_bytes.replace(b"\r\n", b"")
+    assert installers.register_mcp_servers(["codex"]) == {"codex": 0}
+    assert path.read_bytes() == repaired_bytes
+
+
+def test_codex_repair_replaces_owned_values_declared_in_parent_table(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setattr(installers, "_HOME", home)
+    path = home / ".codex/config.toml"
+    path.parent.mkdir(parents=True)
+    unrelated = 'unrelated = { command = "other", args = ["--keep"] }\n'
+    path.write_text(
+        "[mcp_servers]\n"
+        + unrelated
+        + '"session-db" = { command = "wrong", args = ["--bad"] }\n'
+        + 'studyloop.command = "wrong"\n'
+        + 'studyloop.args = ["--bad"]\n\n'
+        + '[ui]\n# keep ui comment\ntheme = "dark"\n',
+        encoding="utf-8",
+    )
+
+    assert installers.register_mcp_servers(["codex"]) == {"codex": 1}
+
+    repaired = path.read_text(encoding="utf-8")
+    parsed = tomllib.loads(repaired)
+    assert parsed["mcp_servers"]["session-db"] == {
+        "command": "session-db-mcp",
+        "args": [],
+    }
+    assert parsed["mcp_servers"]["studyloop"] == {
+        "command": "studyloop-mcp",
+        "args": [],
+    }
+    assert unrelated in repaired
+    assert '[ui]\n# keep ui comment\ntheme = "dark"\n' in repaired
+    first_bytes = path.read_bytes()
+    assert installers.register_mcp_servers(["codex"]) == {"codex": 0}
+    assert path.read_bytes() == first_bytes
+
+
+@pytest.mark.parametrize("owned_value", ('"wrong"', '["wrong"]', "null", "42", "false"))
+def test_json_repair_replaces_every_valid_owned_value_shape(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    owned_value: str,
+) -> None:
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setattr(installers, "_HOME", home)
+    path = home / ".claude.json"
+    unrelated = '    "unrelated": {"command": "other", "args": ["--keep"]}'
+    path.write_text(
+        '{\n  "theme": {"keep": true},\n  "mcpServers": {\n'
+        + unrelated
+        + ',\n    "session-db": '
+        + owned_value
+        + "\n  }\n}\n",
+        encoding="utf-8",
+    )
+
+    assert installers.register_mcp_servers(["claude"]) == {"claude": 1}
+
+    repaired = path.read_text(encoding="utf-8")
+    parsed = json.loads(repaired)
+    assert parsed["mcpServers"]["session-db"] == {
+        "command": "session-db-mcp",
+        "args": [],
+    }
+    assert parsed["mcpServers"]["studyloop"] == {
+        "command": "studyloop-mcp",
+        "args": [],
+    }
+    assert unrelated in repaired
+    assert repaired.count('"session-db"') == 1
+    first_bytes = path.read_bytes()
+    assert installers.register_mcp_servers(["claude"]) == {"claude": 0}
+    assert path.read_bytes() == first_bytes
+
+
+@pytest.mark.parametrize("container", ("null", "[]", '"wrong"', "42", "false"))
+def test_json_repair_replaces_non_object_mcp_servers_container_without_duplicate(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    container: str,
+) -> None:
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setattr(installers, "_HOME", home)
+    path = home / ".kiro/settings/mcp.json"
+    path.parent.mkdir(parents=True)
+    unrelated = '  "ui": {"theme": "keep"},\r\n'
+    path.write_bytes(("{\r\n" + unrelated + '  "mcpServers": ' + container + "\r\n}\r\n").encode())
+
+    assert installers.register_mcp_servers(["kiro"]) == {"kiro": 1}
+
+    repaired_bytes = path.read_bytes()
+    repaired = repaired_bytes.decode()
+    parsed = json.loads(repaired)
+    assert parsed["mcpServers"] == {
+        "session-db": {"command": "session-db-mcp", "args": []},
+        "studyloop": {"command": "studyloop-mcp", "args": []},
+    }
+    assert repaired.count('"mcpServers"') == 1
+    assert unrelated.encode() in repaired_bytes
+    assert b"\n" not in repaired_bytes.replace(b"\r\n", b"")
+    assert installers.register_mcp_servers(["kiro"]) == {"kiro": 0}
+    assert path.read_bytes() == repaired_bytes
+
+
+def test_json_repair_rejects_comments_without_mutating_input(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setattr(installers, "_HOME", home)
+    path = home / ".claude.json"
+    original = b'{\n  // JSON comments are not supported\n  "mcpServers": null\n}\n'
+    path.write_bytes(original)
+
+    with pytest.raises(installers.InstallError, match="malformed"):
+        installers.register_mcp_servers(["claude"])
+
+    assert path.read_bytes() == original
