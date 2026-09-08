@@ -433,6 +433,78 @@ def _toml_statement_end(lines: list[str], start: int, stop: int) -> int:
     return start + 1
 
 
+def _toml_normal_line_indexes(lines: list[str]) -> set[int]:
+    """Return physical lines that begin outside TOML strings and comments."""
+    normal_lines: set[int] = set()
+    state = "normal"
+
+    for line_index, line in enumerate(lines):
+        if state == "normal":
+            normal_lines.add(line_index)
+
+        index = 0
+        while index < len(line):
+            char = line[index]
+
+            if state == "comment":
+                if char in "\r\n":
+                    state = "normal"
+                index += 1
+                continue
+
+            if state == "basic":
+                if char == "\\":
+                    index += 2
+                elif char == '"' or char in "\r\n":
+                    state = "normal"
+                    index += 1
+                else:
+                    index += 1
+                continue
+
+            if state == "literal":
+                if char == "'" or char in "\r\n":
+                    state = "normal"
+                index += 1
+                continue
+
+            if state in {"multiline-basic", "multiline-literal"}:
+                delimiter = '"' if state == "multiline-basic" else "'"
+                if state == "multiline-basic" and char == "\\":
+                    index += 2
+                    continue
+                if char == delimiter:
+                    run_end = index
+                    while run_end < len(line) and line[run_end] == delimiter:
+                        run_end += 1
+                    if run_end - index >= 3:
+                        state = "normal"
+                    index = run_end
+                    continue
+                index += 1
+                continue
+
+            if char == "#":
+                state = "comment"
+                index += 1
+            elif line.startswith('"""', index):
+                state = "multiline-basic"
+                index += 3
+            elif char == '"':
+                state = "basic"
+                index += 1
+            elif line.startswith("'''", index):
+                state = "multiline-literal"
+                index += 3
+            elif char == "'":
+                state = "literal"
+                index += 1
+            else:
+                index += 1
+
+    return normal_lines
+
+
 def _remove_owned_toml(raw: str, names: set[str]) -> str:
     """Remove owned MCP table headers and assignments while retaining other bytes."""
     lines = raw.splitlines(keepends=True)
@@ -442,10 +514,11 @@ def _remove_owned_toml(raw: str, names: set[str]) -> str:
         starts.append(offset)
         offset += len(line)
 
+    normal_lines = _toml_normal_line_indexes(lines)
     headers = [
         (index, path)
         for index, line in enumerate(lines)
-        if (path := _toml_table_path(line)) is not None
+        if index in normal_lines and (path := _toml_table_path(line)) is not None
     ]
     removals: list[tuple[int, int]] = []
 

@@ -290,6 +290,133 @@ def test_codex_repair_replaces_owned_values_declared_in_parent_table(
     assert path.read_bytes() == first_bytes
 
 
+def test_codex_repair_preserves_exact_multiline_notes_data_loss_case(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setattr(installers, "_HOME", home)
+    path = home / ".codex/config.toml"
+    path.parent.mkdir(parents=True)
+    unrelated_before = '[ui]\nnotes = """\n[mcp_servers.session-db]\ncommand = "fictional"\n"""\n'
+    owned = '[mcp_servers.session-db]\ncommand = "wrong"\nargs = ["--bad"]\n'
+    unrelated_after = '[mcp_servers.unrelated]\ncommand = "other"\n'
+    original = unrelated_before + owned + unrelated_after
+    original_notes = tomllib.loads(original)["ui"]["notes"]
+    path.write_text(original, encoding="utf-8")
+
+    assert installers.register_mcp_servers(["codex"]) == {"codex": 1}
+
+    repaired_bytes = path.read_bytes()
+    repaired = repaired_bytes.decode()
+    parsed = tomllib.loads(repaired)
+    assert parsed["ui"]["notes"] == original_notes
+    assert repaired_bytes.startswith((unrelated_before + unrelated_after).encode())
+    assert parsed["mcp_servers"]["session-db"] == {
+        "command": "session-db-mcp",
+        "args": [],
+    }
+    assert parsed["mcp_servers"]["studyloop"] == {
+        "command": "studyloop-mcp",
+        "args": [],
+    }
+    assert installers.register_mcp_servers(["codex"]) == {"codex": 0}
+    assert path.read_bytes() == repaired_bytes
+
+
+@pytest.mark.parametrize(
+    ("newline", "unrelated_before"),
+    (
+        (
+            "\n",
+            '[ui]\n# keep outside comment\nnotes = """escaped quote: \\" still open\n'
+            "escaped backslash: \\\\\n# string comment text\n"
+            '[mcp_servers.studyloop]\ncommand = "fictional"\n"""\n',
+        ),
+        (
+            "\r\n",
+            "[ui]\r\n# keep outside comment\r\nnotes = '''literal text\r\n"
+            "# string comment text\r\n[mcp_servers.session-db]\r\n"
+            "command = 'fictional'\r\n'''\r\n",
+        ),
+    ),
+)
+def test_codex_repair_preserves_table_text_in_multiline_string_lexical_states(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    newline: str,
+    unrelated_before: str,
+) -> None:
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setattr(installers, "_HOME", home)
+    path = home / ".codex/config.toml"
+    path.parent.mkdir(parents=True)
+    owned = f'[mcp_servers.studyloop]{newline}command = "wrong"{newline}args = ["--bad"]{newline}'
+    unrelated_after = (
+        f"[mcp_servers.unrelated]{newline}"
+        f'command = "other"{newline}'
+        f"# keep trailing comment{newline}"
+    )
+    original = unrelated_before + owned + unrelated_after
+    original_notes = tomllib.loads(original)["ui"]["notes"]
+    path.write_bytes(original.encode())
+
+    assert installers.register_mcp_servers(["codex"]) == {"codex": 1}
+
+    repaired_bytes = path.read_bytes()
+    repaired = repaired_bytes.decode()
+    parsed = tomllib.loads(repaired)
+    assert parsed["ui"]["notes"] == original_notes
+    assert repaired_bytes.startswith((unrelated_before + unrelated_after).encode())
+    assert b"# keep outside comment" in repaired_bytes
+    assert b"# keep trailing comment" in repaired_bytes
+    if newline == "\r\n":
+        assert b"\n" not in repaired_bytes.replace(b"\r\n", b"")
+    assert installers.register_mcp_servers(["codex"]) == {"codex": 0}
+    assert path.read_bytes() == repaired_bytes
+
+
+def test_codex_repair_removes_owned_multiline_value_without_false_header_boundaries(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setattr(installers, "_HOME", home)
+    path = home / ".codex/config.toml"
+    path.parent.mkdir(parents=True)
+    owned = (
+        '[mcp_servers.session-db]\ncommand = """wrong \\" still open\n'
+        '[mcp_servers.studyloop]\ncommand = "fictional"\n"""\nargs = ["--bad"]\n'
+        '[mcp_servers.session-db.env]\nTOKEN = "remove"\n'
+    )
+    unrelated = (
+        "[ui]\nnotes = '''[mcp_servers.session-db]\n"
+        "command = 'keep as text'\n'''\n# keep final comment\n"
+    )
+    original_notes = tomllib.loads(owned + unrelated)["ui"]["notes"]
+    path.write_text(owned + unrelated, encoding="utf-8")
+
+    assert installers.register_mcp_servers(["codex"]) == {"codex": 1}
+
+    repaired_bytes = path.read_bytes()
+    repaired = repaired_bytes.decode()
+    parsed = tomllib.loads(repaired)
+    assert repaired_bytes.startswith(unrelated.encode())
+    assert parsed["ui"]["notes"] == original_notes
+    assert "TOKEN" not in repaired
+    assert parsed["mcp_servers"]["session-db"] == {
+        "command": "session-db-mcp",
+        "args": [],
+    }
+    assert parsed["mcp_servers"]["studyloop"] == {
+        "command": "studyloop-mcp",
+        "args": [],
+    }
+    assert installers.register_mcp_servers(["codex"]) == {"codex": 0}
+    assert path.read_bytes() == repaired_bytes
+
+
 @pytest.mark.parametrize("owned_value", ('"wrong"', '["wrong"]', "null", "42", "false"))
 def test_json_repair_replaces_every_valid_owned_value_shape(
     tmp_path: Path,
