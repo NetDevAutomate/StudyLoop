@@ -128,11 +128,19 @@ extraPaths = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
-addopts = "-v --tb=short"
+addopts = "-v --tb=short -m 'not integration and not live_ontology and not live_concepts'"
 # Duplicated from the workspace-root pyproject.toml on purpose: pytest picks
 # its configfile from the rootdir it derives from the arguments, so a
 # path-scoped run under this package never reads the root settings. See the
 # matching comment in packages/studyloop/pyproject.toml.
+#
+# The -m exclusion MUST list every opt-in marker declared below (workspace
+# root convention). Without it, a package-scoped run silently executes the
+# live_concepts suites: two 1 GB Online Backups of the owner's real
+# sessions.db, a 140-second OKF import, and two committed evidence files
+# rewritten (B3 review round 1, Important #2). Pinned by
+# tests/test_package_pytest_config.py; opt back in with an explicit
+# -m live_concepts (a command-line -m overrides this addopts default).
 timeout = 60
 timeout_method = "signal"
 markers = [
