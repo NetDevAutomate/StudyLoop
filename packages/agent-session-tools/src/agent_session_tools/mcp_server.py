@@ -328,41 +328,55 @@ def _create_server() -> FastMCP:
         """
         conn = _get_connection()
         try:
-            from agent_session_tools.query_utils import escape_fts_query
+            from agent_session_tools.query_planner import plan
             from agent_session_tools.sources import is_supported
 
-            fts_query = escape_fts_query(query)
+            query_plan = plan(query)
+            selected: list[dict[str, Any]] = []
+            seen_message_ids: set[str] = set()
+            for fts_query in (query_plan.and_query, query_plan.or_query):
+                if not fts_query or len(selected) >= limit:
+                    continue
 
-            sql = """
-                SELECT s.id as session_id, s.source, s.project_path,
-                       s.updated_at, m.role, m.timestamp,
-                       substr(m.content, 1, 300) as preview
-                FROM messages m
-                JOIN sessions s ON m.session_id = s.id
-                JOIN messages_fts ON messages_fts.rowid = m.rowid
-                WHERE messages_fts MATCH ?
-            """
-            visible, scope_params = visibility_sql(
-                conn,
-                "s.id",
-                include_retired_sources=bool(source) and not is_supported(source),
-            )
-            sql += " AND " + visible
-            params: list[Any] = [fts_query, *scope_params]
+                sql = """
+                    SELECT m.id AS _message_id,
+                           s.id as session_id, s.source, s.project_path,
+                           s.updated_at, m.role, m.timestamp,
+                           substr(m.content, 1, 300) as preview
+                    FROM messages m
+                    JOIN sessions s ON m.session_id = s.id
+                    JOIN messages_fts ON messages_fts.rowid = m.rowid
+                    WHERE messages_fts MATCH ?
+                """
+                visible, scope_params = visibility_sql(
+                    conn,
+                    "s.id",
+                    include_retired_sources=bool(source) and not is_supported(source),
+                )
+                sql += " AND " + visible
+                params: list[Any] = [fts_query, *scope_params]
 
-            if source:
-                sql += " AND s.source = ?"
-                params.append(source)
-            if project:
-                project_clause, project_params = build_project_filter(project)
-                sql += " AND " + project_clause
-                params.extend(project_params)
+                if source:
+                    sql += " AND s.source = ?"
+                    params.append(source)
+                if project:
+                    project_clause, project_params = build_project_filter(project)
+                    sql += " AND " + project_clause
+                    params.extend(project_params)
+                if seen_message_ids:
+                    excluded = sorted(seen_message_ids)
+                    placeholders = ",".join("?" for _ in excluded)
+                    sql += f" AND m.id NOT IN ({placeholders})"
+                    params.extend(excluded)
 
-            sql += " ORDER BY bm25(messages_fts), m.timestamp DESC LIMIT ?"
-            params.append(limit)
+                sql += " ORDER BY bm25(messages_fts), m.timestamp DESC LIMIT ?"
+                params.append(limit - len(selected))
 
-            rows = conn.execute(sql, params).fetchall()
-            return [_row_to_dict(r) for r in rows]
+                for row in conn.execute(sql, params).fetchall():
+                    result = _row_to_dict(row)
+                    seen_message_ids.add(result.pop("_message_id"))
+                    selected.append(result)
+            return selected
         finally:
             conn.close()
 
