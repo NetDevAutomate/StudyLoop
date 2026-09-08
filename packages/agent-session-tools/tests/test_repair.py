@@ -491,3 +491,51 @@ def test_native_repair_schema_and_data_rollback_together(tmp_path, monkeypatch):
         }
         assert current.execute("SELECT count(*) FROM messages").fetchone()[0] == 0
     assert len(list(tmp_path.glob("*.bak"))) == 1
+
+
+@pytest.mark.parametrize("source", ["opencode", "pi"])
+def test_native_identity_matchers_make_second_inspect_zero_delta(
+    tmp_path, monkeypatch, source
+):
+    """BL-2: parser-native IDs replace legacy IDs once, then inspection is quiet."""
+    from agent_session_tools.exporters.base import ExportStats
+    from agent_session_tools.repair import run_repair
+
+    path = tmp_path / "sessions.db"
+    target = database(path)
+    session(target, source=source)
+    message(target, "legacy-id", "same native content", "assistant")
+    target.commit()
+
+    calls = 0
+
+    class Exporter:
+        def is_available(self):
+            return True
+
+        def export_all(self, conn, incremental):
+            nonlocal calls
+            calls += 1
+            assert incremental is False
+            conn.execute("DELETE FROM messages WHERE session_id='s'")
+            message(
+                conn,
+                f"{source}-native-id-{calls}",
+                "same native content",
+                "assistant",
+            )
+            conn.commit()
+            return ExportStats(updated=1)
+
+    monkeypatch.setattr("agent_session_tools.repair.get_exporter", lambda _: Exporter())
+
+    first = run_repair(path, [source], apply=True)
+    assert first.applied
+    second = run_repair(path, [source])
+    assert (
+        second.missing_sessions,
+        second.changed_sessions,
+        second.missing_messages,
+        second.changed_messages,
+        second.removed_messages,
+    ) == (0, 0, 0, 0, 0)

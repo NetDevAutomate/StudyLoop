@@ -284,6 +284,50 @@ def apply_staged(
         target.close()
 
 
+def _normalize_native_message_ids(
+    stage: sqlite3.Connection,
+    baseline: tuple[dict, dict],
+    sources: list[str],
+) -> None:
+    """Reuse prior IDs when OpenCode/pi native IDs drift for identical events."""
+    selected = {source for source in sources if source in {"opencode", "pi"}}
+    if not selected:
+        return
+    staged_sessions, staged_messages = _snapshot(stage)
+    baseline_sessions, baseline_messages = baseline
+    old_by_key: dict[tuple[str, str, str], list[str]] = defaultdict(list)
+    new_by_key: dict[tuple[str, str, str], list[str]] = defaultdict(list)
+    for identity, row in baseline_messages.items():
+        session_row = baseline_sessions.get(row["session_id"])
+        if (
+            identity not in staged_messages
+            and session_row is not None
+            and session_row["source"] in selected
+        ):
+            old_by_key[(row["session_id"], row["role"], row["content"])].append(
+                identity
+            )
+    for identity, row in staged_messages.items():
+        session_row = staged_sessions.get(row["session_id"])
+        if (
+            identity not in baseline_messages
+            and session_row is not None
+            and session_row["source"] in selected
+        ):
+            new_by_key[(row["session_id"], row["role"], row["content"])].append(
+                identity
+            )
+    for key in sorted(old_by_key.keys() & new_by_key.keys()):
+        for old_id, new_id in zip(
+            sorted(old_by_key[key]), sorted(new_by_key[key]), strict=False
+        ):
+            row = dict(staged_messages[new_id])
+            stage.execute("DELETE FROM messages WHERE id=?", (new_id,))
+            row["id"] = old_id
+            _upsert(stage, "messages", {old_id: row})
+    stage.commit()
+
+
 def run_repair(
     target_path: Path,
     sources: list[str],
@@ -327,6 +371,7 @@ def run_repair(
                 except Exception as exc:
                     errors.append(f"{source}: {type(exc).__name__}: {exc}")
             stage.commit()
+            _normalize_native_message_ids(stage, baseline, sources)
             # A shorter native transcript may be compacted, not authoritative
             # evidence that historical conversation content should disappear.
             staged_messages = _snapshot(stage)[1]
