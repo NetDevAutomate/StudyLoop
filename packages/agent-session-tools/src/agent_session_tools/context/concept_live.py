@@ -74,7 +74,13 @@ def sidecar_migration_fingerprint(conn: sqlite3.Connection) -> str:
         SELECT type, name, sql FROM sqlite_master
         WHERE sql IS NOT NULL
           AND (
-            (name LIKE 'context_concept%' AND name NOT LIKE 'context_concept_fts_%')
+            (name LIKE 'context_concept%'
+             AND name NOT LIKE 'context_concept_fts_%'
+             AND name NOT IN (
+                'context_concept_tombstones',
+                'context_concept_record_erasure',
+                'context_concept_no_resurrection'
+             ))
             OR name LIKE 'replica_content_context_concept%'
             OR name IN (
                 'context_citations_bound_insert',

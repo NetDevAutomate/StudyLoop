@@ -686,3 +686,58 @@ def test_root_without_exact_initial_proposed_event_cannot_commit(
         ).fetchone()[0]
         == 0
     )
+
+
+def test_evidence_erasure_tombstone_blocks_resync_resurrection(
+    production_store: ProductionStore,
+) -> None:
+    """A stale peer snapshot cannot recreate a concept erased with its evidence."""
+    from agent_session_tools.replication.content import _concepts
+
+    concept_id, evidence_id, _body = _bound(production_store)
+    conn = production_store.conn
+    cursor = conn.execute("SELECT * FROM context_concepts WHERE id=?", (concept_id,))
+    stale_root = dict(zip((item[0] for item in cursor.description), cursor.fetchone()))
+    cursor = conn.execute(
+        "SELECT * FROM context_concept_events WHERE concept_id=?", (concept_id,)
+    )
+    event_columns = tuple(item[0] for item in cursor.description)
+    stale_events = [dict(zip(event_columns, row)) for row in cursor.fetchall()]
+
+    conn.execute("DELETE FROM context_evidence WHERE id=?", (evidence_id,))
+
+    assert (
+        conn.execute(
+            "SELECT 1 FROM context_concepts WHERE id=?", (concept_id,)
+        ).fetchone()
+        is None
+    )
+    assert (
+        conn.execute(
+            "SELECT origin_instance FROM context_concept_tombstones WHERE concept_id=?",
+            (concept_id,),
+        ).fetchone()
+        is not None
+    )
+
+    _concepts(
+        conn,
+        {
+            "context_concepts": [stale_root],
+            "context_concept_events": stale_events,
+            "context_concept_tombstones": [],
+        },
+    )
+
+    assert (
+        conn.execute(
+            "SELECT 1 FROM context_concepts WHERE id=?", (concept_id,)
+        ).fetchone()
+        is None
+    )
+    assert (
+        conn.execute(
+            "SELECT 1 FROM context_concept_events WHERE concept_id=?", (concept_id,)
+        ).fetchone()
+        is None
+    )

@@ -22,7 +22,7 @@ from typing import NamedTuple
 from uuid import uuid4
 
 SCHEMA_VERSION = 2
-UPSTREAM_SCHEMA_VERSION = 49
+UPSTREAM_SCHEMA_VERSION = 50
 _SQLITE_MAX_INTEGER = (1 << 63) - 1
 _MAX_COUNTER = _SQLITE_MAX_INTEGER - 1
 

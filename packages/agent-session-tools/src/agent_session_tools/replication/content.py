@@ -363,8 +363,29 @@ def _concepts(conn, tables, contribution=None):
     or local, which is the Lamport advance the design requires (verified by
     the two-copy matrix, item 4).
     """
-    concepts = list(tables["context_concepts"])
-    events = list(tables["context_concept_events"])
+    tombstones = list(tables["context_concept_tombstones"])
+    for incoming in tombstones:
+        _row(
+            conn,
+            "context_concept_tombstones",
+            dict(incoming),
+            contribution=contribution,
+        )
+    tombstoned = {
+        row[0]
+        for row in conn.execute("SELECT concept_id FROM context_concept_tombstones")
+    }
+    for concept_id in tombstoned:
+        conn.execute("DELETE FROM context_concepts WHERE id=?", (concept_id,))
+
+    concepts = [
+        row for row in tables["context_concepts"] if row["id"] not in tombstoned
+    ]
+    events = [
+        row
+        for row in tables["context_concept_events"]
+        if row["concept_id"] not in tombstoned
+    ]
     if not concepts and not events:
         return
     local_instance = conn.execute(

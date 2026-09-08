@@ -61,7 +61,7 @@ def test_schema_install_is_exact_idempotent_and_does_not_claim_upstream_version(
 
     # UPSTREAM_SCHEMA_VERSION is pinned to 49, the migration that installs
     # the sidecar (the reference pinned its era's v47 the same way).
-    assert before == CURRENT_VERSION == UPSTREAM_SCHEMA_VERSION == 49
+    assert before == CURRENT_VERSION == UPSTREAM_SCHEMA_VERSION == 50
     assert conn.execute("PRAGMA user_version").fetchone()[0] == before
     assert conn.execute(
         "SELECT schema_version,schema_fingerprint FROM context_concept_schema WHERE id=1"

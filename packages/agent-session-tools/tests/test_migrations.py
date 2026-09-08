@@ -1678,8 +1678,9 @@ class TestMigrationV49ConceptSidecar:
         conn.commit()
         assert get_user_version(conn) == 48
 
-    def test_current_version_is_49_and_reserved_for_this_task(self):
-        assert CURRENT_VERSION == 49
+    def test_current_version_is_50_and_v49_remains_the_sidecar_migration(self):
+        assert CURRENT_VERSION == 50
+        assert 49 in MIGRATIONS
 
     def test_schema_fingerprint_is_preserved_from_the_reference(self):
         from agent_session_tools.context.concept_schema import (
@@ -1690,12 +1691,12 @@ class TestMigrationV49ConceptSidecar:
 
         assert SCHEMA_VERSION == 2
         assert SCHEMA_FINGERPRINT == self.REFERENCE_FINGERPRINT
-        assert UPSTREAM_SCHEMA_VERSION == 49
+        assert UPSTREAM_SCHEMA_VERSION == CURRENT_VERSION == 50
 
     def test_fresh_database_reaches_v49_with_the_complete_sidecar(self, fresh_db):
         migrate(fresh_db)
 
-        assert get_user_version(fresh_db) == 49
+        assert get_user_version(fresh_db) == CURRENT_VERSION
         objects = {
             row[0]: row[1]
             for row in fresh_db.execute(
@@ -1757,7 +1758,10 @@ class TestMigrationV49ConceptSidecar:
 
             applied = migrate(conn)
 
-            assert applied == ["v49: " + MIGRATIONS[49][0]]
+            assert applied == [
+                "v49: " + MIGRATIONS[49][0],
+                "v50: " + MIGRATIONS[50][0],
+            ]
             assertions_after = {
                 row[1] for row in conn.execute("PRAGMA table_info(context_assertions)")
             }
@@ -1803,8 +1807,11 @@ class TestMigrationV49ConceptSidecar:
 
             applied = migrate(conn)
 
-            assert applied == ["v49: " + MIGRATIONS[49][0]]
-            assert get_user_version(conn) == 49
+            assert applied == [
+                "v49: " + MIGRATIONS[49][0],
+                "v50: " + MIGRATIONS[50][0],
+            ]
+            assert get_user_version(conn) == CURRENT_VERSION
         finally:
             conn.close()
 
@@ -1865,8 +1872,11 @@ class TestMigrationV49ConceptSidecar:
             ).fetchone() == ("pre-fault-session",)
 
             applied = migrate(conn)
-            assert applied == ["v49: " + real_description]
-            assert get_user_version(conn) == 49
+            assert applied == [
+                "v49: " + real_description,
+                "v50: " + MIGRATIONS[50][0],
+            ]
+            assert get_user_version(conn) == CURRENT_VERSION
             tables_after = {
                 row[0]
                 for row in conn.execute(
@@ -1944,7 +1954,12 @@ class TestMigrationV49ConceptSidecar:
                 "SELECT name FROM sqlite_master WHERE type IN ('table','index','trigger')"
             ).fetchall()
         }
-        assert not {name for name in after if name.startswith("context_concept")}
+        assert not {
+            name
+            for name in after
+            if name.startswith("context_concept")
+            and name != "context_concept_tombstones"
+        }
         assert not (after & set(citation_triggers))
         assert before_non_sidecar <= after
 
@@ -2036,7 +2051,7 @@ class TestMigrationV49ConceptSidecar:
             "with: pytest packages/agent-session-tools/tests/"
             "test_concept_sidecar_live.py -m live_concepts"
         )
-        assert receipt["to_version"] == CURRENT_VERSION
+        assert receipt["to_version"] == 49
         assert receipt["sidecar_objects_sha256"] == sidecar_migration_fingerprint(
             fresh_db
         ), (

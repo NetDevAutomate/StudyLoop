@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Current schema version - increment when adding new migrations
-CURRENT_VERSION = 49
+CURRENT_VERSION = 50
 
 # Migration functions: version -> (description, migration_func)
 MIGRATIONS: dict[int, tuple[str, Callable[[sqlite3.Connection], None]]] = {}
@@ -1641,6 +1641,109 @@ def migrate_v49(conn: sqlite3.Connection) -> None:
                 UPDATE context_replica_content_state SET revision=revision+1 WHERE id=1;
                 END"""
             )
+
+
+@migration(
+    50, "Replica-versioned incremental sync, durable conflicts and erasure tombstones"
+)
+def migrate_v50(conn: sqlite3.Connection) -> None:
+    """Install B5's durable sync/capture state without rewriting authored rows."""
+    conn.execute("""CREATE TABLE sync_conflicts (
+        message_id TEXT PRIMARY KEY NOT NULL,
+        first_detected_at TEXT NOT NULL
+    )""")
+    conn.execute("""CREATE TABLE sync_machine_clocks (
+        machine_id TEXT PRIMARY KEY NOT NULL,
+        seq INTEGER NOT NULL CHECK(typeof(seq)='integer' AND seq>=0)
+    ) WITHOUT ROWID""")
+    conn.execute("""CREATE TABLE sync_session_revisions (
+        session_id TEXT NOT NULL,
+        machine_id TEXT NOT NULL,
+        seq INTEGER NOT NULL CHECK(typeof(seq)='integer' AND seq>0),
+        PRIMARY KEY(session_id,machine_id),
+        FOREIGN KEY(machine_id) REFERENCES sync_machine_clocks(machine_id)
+    ) WITHOUT ROWID""")
+    conn.execute("""CREATE TABLE session_export_runs (
+        source TEXT PRIMARY KEY NOT NULL,
+        completed_at TEXT NOT NULL,
+        sessions_seen INTEGER NOT NULL CHECK(sessions_seen>=0),
+        messages_seen INTEGER NOT NULL CHECK(messages_seen>=0),
+        errors INTEGER NOT NULL CHECK(errors>=0),
+        verified INTEGER NOT NULL CHECK(verified IN (0,1))
+    ) WITHOUT ROWID""")
+    conn.execute("""CREATE TABLE context_concept_tombstones (
+        concept_id TEXT PRIMARY KEY NOT NULL,
+        deleted_at TEXT NOT NULL,
+        origin_instance TEXT NOT NULL
+    ) WITHOUT ROWID""")
+
+    instance = conn.execute(
+        "SELECT instance FROM context_access_state WHERE id=1"
+    ).fetchone()[0]
+    count = conn.execute("SELECT count(*) FROM sessions").fetchone()[0]
+    conn.execute(
+        "INSERT INTO sync_machine_clocks(machine_id,seq) VALUES(?,?)",
+        (instance, count),
+    )
+    conn.execute(
+        """INSERT INTO sync_session_revisions(session_id,machine_id,seq)
+        SELECT id, ?, row_number() OVER (ORDER BY id) FROM sessions""",
+        (instance,),
+    )
+
+    def revision_trigger(
+        name: str, event: str, table: str, session_expr: str, when: str = ""
+    ) -> None:
+        conn.execute(f"""CREATE TRIGGER {name} AFTER {event} ON {table} {when} BEGIN
+            INSERT OR IGNORE INTO sync_machine_clocks(machine_id,seq)
+              SELECT instance,0 FROM context_access_state WHERE id=1;
+            UPDATE sync_machine_clocks SET seq=seq+1
+              WHERE machine_id=(SELECT instance FROM context_access_state WHERE id=1);
+            INSERT INTO sync_session_revisions(session_id,machine_id,seq)
+              SELECT {session_expr},instance,
+                (SELECT seq FROM sync_machine_clocks WHERE machine_id=instance)
+              FROM context_access_state WHERE id=1
+              ON CONFLICT(session_id,machine_id) DO UPDATE SET seq=excluded.seq;
+        END""")
+
+    revision_trigger("sync_revision_session_insert", "INSERT", "sessions", "NEW.id")
+    revision_trigger(
+        "sync_revision_session_update",
+        "UPDATE",
+        "sessions",
+        "NEW.id",
+        "WHEN OLD.source IS NOT NEW.source OR OLD.project_path IS NOT NEW.project_path "
+        "OR OLD.git_branch IS NOT NEW.git_branch OR OLD.created_at IS NOT NEW.created_at "
+        "OR OLD.updated_at IS NOT NEW.updated_at OR OLD.metadata IS NOT NEW.metadata",
+    )
+    revision_trigger("sync_revision_session_delete", "DELETE", "sessions", "OLD.id")
+    revision_trigger(
+        "sync_revision_message_insert", "INSERT", "messages", "NEW.session_id"
+    )
+    revision_trigger(
+        "sync_revision_message_update",
+        "UPDATE",
+        "messages",
+        "NEW.session_id",
+        "WHEN OLD.session_id IS NOT NEW.session_id OR OLD.parent_id IS NOT NEW.parent_id "
+        "OR OLD.role IS NOT NEW.role OR OLD.content IS NOT NEW.content "
+        "OR OLD.model IS NOT NEW.model OR OLD.timestamp IS NOT NEW.timestamp "
+        "OR OLD.metadata IS NOT NEW.metadata OR OLD.seq IS NOT NEW.seq",
+    )
+    revision_trigger(
+        "sync_revision_message_delete", "DELETE", "messages", "OLD.session_id"
+    )
+
+    conn.execute("""CREATE TRIGGER context_concept_record_erasure
+        BEFORE DELETE ON context_concepts BEGIN
+          INSERT OR IGNORE INTO context_concept_tombstones
+            (concept_id,deleted_at,origin_instance)
+          SELECT OLD.id,datetime('now'),instance FROM context_access_state WHERE id=1;
+        END""")
+    conn.execute("""CREATE TRIGGER context_concept_no_resurrection
+        BEFORE INSERT ON context_concepts
+        WHEN EXISTS(SELECT 1 FROM context_concept_tombstones WHERE concept_id=NEW.id)
+        BEGIN SELECT RAISE(IGNORE); END""")
 
 
 def check_migration_status(db_path: Path) -> dict:

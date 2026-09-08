@@ -54,6 +54,7 @@ CONTEXT = (
     "context_observation_retired_subjects",
     "context_concepts",
     "context_concept_events",
+    "context_concept_tombstones",
 )
 TABLES = (*NATIVE, *records.TABLES, *CONTEXT)
 
@@ -308,6 +309,7 @@ def collect(conn, policy, scope, *, _staging=None):
         "context_concept_events",
         "r.concept_id IN (SELECT id FROM replica_concepts)",
     )
+    rows["context_concept_tombstones"] = p.read("context_concept_tombstones")
     for table in (
         "context_observation_sources",
         "context_observation_owners",
