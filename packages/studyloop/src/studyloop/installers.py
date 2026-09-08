@@ -7,9 +7,13 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from studyloop.harnesses import RELEASE_HARNESSES
 from studyloop.settings import generate_default_config, get_config_path, load_settings
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 
 class InstallError(RuntimeError):
@@ -164,6 +168,256 @@ _MANDATE_SENTINEL = "studyloop:session-export-mandate"
 _HOOK_SENTINEL = "session-export --claude-only"
 _SESSION_HOOK_SENTINEL = "studyloop:session-export-hook"
 _CODEX_HOOK_SENTINEL = "session-export --codex-only"
+
+_MCP_SERVERS: dict[str, dict[str, object]] = {
+    "session-db": {"command": "session-db-mcp", "args": []},
+    "studyloop": {"command": "studyloop-mcp", "args": []},
+}
+_MCP_HARNESSES = ("claude", "kiro", "codex")
+
+
+def _mcp_config_path(tool: str) -> Path:
+    paths = {
+        "claude": _HOME / ".claude.json",
+        "kiro": _HOME / ".kiro/settings/mcp.json",
+        "codex": _HOME / ".codex/config.toml",
+    }
+    try:
+        return paths[tool]
+    except KeyError as exc:
+        raise InstallError(f"Unsupported MCP registration target: {tool}") from exc
+
+
+def _json_object_span(raw: str, key: str) -> tuple[int, int] | None:
+    """Return the top-level object-value span for ``key`` in JSON text."""
+    import json
+
+    depth = 0
+    index = 0
+    while index < len(raw):
+        char = raw[index]
+        if char == '"':
+            start = index
+            index += 1
+            escaped = False
+            while index < len(raw):
+                current = raw[index]
+                if current == '"' and not escaped:
+                    break
+                escaped = current == "\\" and not escaped
+                if current != "\\":
+                    escaped = False
+                index += 1
+            if index >= len(raw):
+                break
+            token = json.loads(raw[start : index + 1])
+            if depth == 1 and token == key:
+                cursor = index + 1
+                while cursor < len(raw) and raw[cursor].isspace():
+                    cursor += 1
+                if cursor >= len(raw) or raw[cursor] != ":":
+                    break
+                cursor += 1
+                while cursor < len(raw) and raw[cursor].isspace():
+                    cursor += 1
+                if cursor >= len(raw) or raw[cursor] != "{":
+                    return None
+                object_depth = 1
+                scan = cursor + 1
+                in_string = False
+                escaped = False
+                while scan < len(raw):
+                    current = raw[scan]
+                    if in_string:
+                        if current == '"' and not escaped:
+                            in_string = False
+                        escaped = current == "\\" and not escaped
+                        if current != "\\":
+                            escaped = False
+                    elif current == '"':
+                        in_string = True
+                    elif current == "{":
+                        object_depth += 1
+                    elif current == "}":
+                        object_depth -= 1
+                        if object_depth == 0:
+                            return cursor, scan + 1
+                    scan += 1
+                return None
+            index += 1
+            continue
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+        index += 1
+    return None
+
+
+def _append_json_members(
+    raw: str,
+    span: tuple[int, int],
+    members: Mapping[str, object],
+) -> str:
+    """Append object members while retaining every existing member byte."""
+    import json
+
+    start, end = span
+    close = end - 1
+    content_end = close
+    while content_end > start + 1 and raw[content_end - 1].isspace():
+        content_end -= 1
+    existing = raw[start + 1 : content_end].strip()
+    line_start = raw.rfind("\n", 0, close) + 1
+    closing_indent = raw[line_start:close]
+    if not closing_indent.isspace():
+        closing_indent = "  "
+    entry_indent = closing_indent + "  "
+    rendered: list[str] = []
+    for name, value in members.items():
+        value_text = json.dumps(value, indent=2)
+        value_text = value_text.replace("\n", "\n" + entry_indent)
+        rendered.append(f"{entry_indent}{json.dumps(name)}: {value_text}")
+    separator = "," if existing else ""
+    insertion = separator + "\n" + ",\n".join(rendered) + "\n" + closing_indent
+    return raw[:content_end] + insertion + raw[close:]
+
+
+def _merge_json_mcp_config(path: Path) -> int:
+    import json
+
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps({"mcpServers": _MCP_SERVERS}, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        return 1
+    except OSError as exc:
+        raise InstallError(f"Cannot read MCP config {path}: {exc}") from exc
+    try:
+        loaded = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise InstallError(f"Cannot merge MCP servers into malformed {path}: {exc}") from exc
+    if not isinstance(loaded, dict):
+        raise InstallError(f"Cannot merge MCP servers: {path} is not a JSON object")
+    current = loaded.get("mcpServers")
+    if current is not None and not isinstance(current, dict):
+        raise InstallError(f"Cannot merge MCP servers: {path} mcpServers is not an object")
+    current = current or {}
+    if all(current.get(name) == value for name, value in _MCP_SERVERS.items()):
+        return 0
+
+    span = _json_object_span(raw, "mcpServers")
+    if span is None:
+        outer = _json_object_span('{"root":' + raw + "}", "root")
+        if outer is None:
+            raise InstallError(f"Cannot locate root object in MCP config {path}")
+        # Adjust the synthetic prefix, then append the mcpServers property.
+        root_span = (outer[0] - len('{"root":'), outer[1] - len('{"root":'))
+        updated = _append_json_members(raw, root_span, {"mcpServers": _MCP_SERVERS})
+    else:
+        missing = {
+            name: value for name, value in _MCP_SERVERS.items() if current.get(name) != value
+        }
+        conflicting = set(missing) & set(current)
+        if conflicting:
+            replacement = dict(current)
+            replacement.update(_MCP_SERVERS)
+            rendered = json.dumps(replacement, indent=2)
+            line_start = raw.rfind("\n", 0, span[0]) + 1
+            indent = raw[line_start : span[0]]
+            rendered = rendered.replace("\n", "\n" + indent)
+            updated = raw[: span[0]] + rendered + raw[span[1] :]
+        else:
+            updated = _append_json_members(raw, span, missing)
+    path.write_text(updated, encoding="utf-8")
+    return 1
+
+
+def _codex_mcp_block(name: str) -> str:
+    config = _MCP_SERVERS[name]
+    return f'[mcp_servers.{name}]\ncommand = "{config["command"]}"\nargs = []\n'
+
+
+def _merge_codex_mcp_config(path: Path) -> int:
+    import re
+    import tomllib
+
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        raw = ""
+    except OSError as exc:
+        raise InstallError(f"Cannot read Codex MCP config {path}: {exc}") from exc
+    try:
+        loaded = tomllib.loads(raw)
+    except tomllib.TOMLDecodeError as exc:
+        raise InstallError(f"Cannot merge MCP servers into malformed {path}: {exc}") from exc
+    current = loaded.get("mcp_servers", {})
+    if not isinstance(current, dict):
+        raise InstallError(f"Cannot merge MCP servers: {path} mcp_servers is not a table")
+    if all(current.get(name) == value for name, value in _MCP_SERVERS.items()):
+        return 0
+
+    updated = raw
+    for name, value in _MCP_SERVERS.items():
+        if current.get(name) == value:
+            continue
+        block = _codex_mcp_block(name)
+        pattern = re.compile(rf"(?ms)^\[mcp_servers\.{re.escape(name)}\]\n.*?(?=^\[|\Z)")
+        match = pattern.search(updated)
+        if match:
+            updated = updated[: match.start()] + block + updated[match.end() :]
+        else:
+            if updated and not updated.endswith("\n"):
+                updated += "\n"
+            if updated and not updated.endswith("\n\n"):
+                updated += "\n"
+            updated += block
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(updated, encoding="utf-8")
+    return 1
+
+
+def register_mcp_servers(tools: list[str] | None = None) -> dict[str, int]:
+    """Register both StudyLoop MCP servers in supported harness configs."""
+    selected = [
+        tool for tool in (tools or detect_available_agent_tools()) if tool in _MCP_HARNESSES
+    ]
+    changed: dict[str, int] = {}
+    for tool in selected:
+        path = _mcp_config_path(tool)
+        changed[tool] = (
+            _merge_codex_mcp_config(path) if tool == "codex" else _merge_json_mcp_config(path)
+        )
+    return changed
+
+
+def mcp_registration_status(tools: list[str] | None = None) -> dict[str, bool]:
+    """Report registration state without modifying any harness configuration."""
+    import json
+    import tomllib
+
+    selected = list(tools or _MCP_HARNESSES)
+    status: dict[str, bool] = {}
+    for tool in selected:
+        path = _mcp_config_path(tool)
+        try:
+            if tool == "codex":
+                data = tomllib.loads(path.read_text(encoding="utf-8"))
+                current = data.get("mcp_servers", {})
+            else:
+                data = json.loads(path.read_text(encoding="utf-8"))
+                current = data.get("mcpServers", {})
+            status[tool] = isinstance(current, dict) and all(
+                current.get(name) == value for name, value in _MCP_SERVERS.items()
+            )
+        except (OSError, ValueError, TypeError):
+            status[tool] = False
+    return status
 
 
 def _codex_hooks_path() -> Path:
@@ -543,6 +797,8 @@ def install_agent_definitions(
             summary["claude"] = summary.get("claude", 0) + install_claude_stop_hook()
         if "codex" in selected:
             summary["codex"] = summary.get("codex", 0) + install_codex_session_end_hook()
+        for tool, count in register_mcp_servers(selected).items():
+            summary[tool] = summary.get(tool, 0) + count
 
     return summary
 
@@ -585,5 +841,7 @@ __all__ = [
     "find_repo_root",
     "install_agent_definitions",
     "install_workspace_tools",
+    "mcp_registration_status",
+    "register_mcp_servers",
     "require_repo_root",
 ]
