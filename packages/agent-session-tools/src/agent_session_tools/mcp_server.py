@@ -175,6 +175,45 @@ def _create_server() -> FastMCP:
             )
 
     @tool(annotations={"readOnlyHint": False, "destructiveHint": False})
+    def memory_winddown(
+        session_id: str,
+        document: dict[str, Any] | str,
+        project: str | None = None,
+    ) -> dict[str, Any]:
+        """Distill one session into 0-8 evidence-cited concepts, atomically.
+
+        The document is {"concepts": [{type,title,description,tags,confidence,
+        quotes}]} with type in Decision,Finding,Problem,Preference,Procedure and
+        each quote an exact substring of that session's visible evidence
+        (optionally with an evidence_id/start/end locator). Validation failures
+        raise a structured field-level error list and write nothing; a valid
+        batch is written in one transaction. Concept kind and lifecycle live in
+        the concept sidecar only; the backing assertion keeps execution state.
+        """
+        from agent_session_tools.context.concepts import ConceptService
+
+        service = ConceptService(_get_db_path(), prepare_schema=False)
+        result = service.winddown(
+            session_id,
+            document,
+            actor="agent:session-db-mcp",
+            project=project,
+        )
+        payload = {
+            "writes": result.writes,
+            "concept_ids": list(result.concept_ids),
+            "errors": [
+                {"path": issue.path, "code": issue.code, "message": issue.message}
+                for issue in result.errors
+            ],
+        }
+        if result.errors:
+            from fastmcp.exceptions import ToolError
+
+            raise ToolError(json.dumps(payload))
+        return payload
+
+    @tool(annotations={"readOnlyHint": False, "destructiveHint": False})
     def memory_relate(
         from_id: str, to_id: str, relation: str, project: str | None = None
     ) -> dict[str, Any]:
