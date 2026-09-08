@@ -247,8 +247,17 @@ class TestHarnessDoctorCheck:
             results = check_harness_export()
         assert results, "expected at least one harness result"
         assert all(r.category == "harness" for r in results)
-        warn = [r for r in results if r.status == "warn"]
-        assert warn and all(r.fix_auto for r in warn)
+        wiring_warn = [
+            result
+            for result in results
+            if result.status == "warn" and not result.name.startswith("session_export_lag_")
+        ]
+        assert wiring_warn and all(result.fix_auto for result in wiring_warn)
+        assert all(
+            not result.fix_auto
+            for result in results
+            if result.name.startswith("session_export_lag_")
+        )
 
 
 def test_doctor_reports_last_export_lag_per_source(tmp_path: Path) -> None:
