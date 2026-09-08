@@ -214,6 +214,9 @@ def test_continued_conversation_reconciles_both_endpoints(
         peers["peer"], "continued-session"
     )
     assert len(_rows(peers["local"], "continued-session")) == 2
+    assert list(peers["local"].parent.joinpath("backups").glob("*.db")), (
+        "pull backup must follow the configured database.path"
+    )
 
 
 def test_repeat_sync_is_idempotent(ssh_shim: Path, peers: dict[str, Path]) -> None:
@@ -243,6 +246,11 @@ def test_conflicting_nonempty_message_content_is_never_overwritten(
     )
     assert result.returncode == 0
     assert "retained" in (result.stdout + result.stderr).lower()
+    for db_path in (peers["local"], peers["peer"]):
+        with sqlite3.connect(db_path) as conn:
+            assert conn.execute(
+                "SELECT message_id FROM sync_conflicts WHERE message_id='conflict-msg'"
+            ).fetchone() == ("conflict-msg",)
 
 
 def test_identity_conflict_aborts_whole_batch(

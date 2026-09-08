@@ -98,7 +98,18 @@ def create_backup(db_path: Path) -> Path | None:
         return None
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    backup_dir = get_backup_dir(cfg)
+    configured_backup = get_backup_dir(cfg)
+    from agent_session_tools.config_loader import DEFAULT_CONFIG
+
+    default_backup = Path(DEFAULT_CONFIG["database"]["backup_dir"]).expanduser()
+    # Honour a deliberately configured backup_dir. Otherwise derive it from
+    # the database being protected so a custom database.path cannot spill
+    # backups into the default ~/.config/studyloop tree.
+    backup_dir = (
+        configured_backup
+        if configured_backup and configured_backup != default_backup
+        else db_path.parent / "backups"
+    )
     backup_dir.mkdir(parents=True, exist_ok=True)
 
     backup_path = backup_dir / f"{db_path.stem}_backup_{timestamp}.db"

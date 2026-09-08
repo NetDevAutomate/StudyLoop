@@ -1068,7 +1068,7 @@ BEGIN IMMEDIATE;
 CREATE TABLE IF NOT EXISTS sync_row_archive(table_name TEXT NOT NULL, row_json TEXT NOT NULL, PRIMARY KEY(table_name,row_json)) WITHOUT ROWID;
 CREATE TEMP TABLE sync_archive_before(n INTEGER);
 INSERT INTO sync_archive_before SELECT count(*) FROM sync_row_archive;
-CREATE TEMP TABLE sync_conflicts(message_id TEXT PRIMARY KEY);
+CREATE TEMP TABLE sync_run_conflicts(message_id TEXT PRIMARY KEY);
 CREATE TEMP TABLE sync_concept_ids(source_id TEXT PRIMARY KEY, target_id TEXT NOT NULL, name TEXT, domain TEXT);
 CREATE TEMP TRIGGER sync_concept_identity BEFORE INSERT ON sync_concept_ids
 WHEN EXISTS(SELECT 1 FROM concepts WHERE id=NEW.target_id AND (name IS NOT NEW.name OR domain IS NOT NEW.domain))
@@ -1083,7 +1083,7 @@ BEGIN SELECT RAISE(ABORT, 'Session identity conflict'); END;
 CREATE TEMP TRIGGER sync_content_conflict BEFORE INSERT ON main.messages
 WHEN EXISTS(SELECT 1 FROM messages WHERE id=NEW.id AND COALESCE(content,'') != ''
  AND COALESCE(NEW.content,'') != '' AND content != NEW.content)
-BEGIN INSERT OR IGNORE INTO sync_conflicts VALUES(NEW.id); END;
+BEGIN INSERT OR IGNORE INTO sync_run_conflicts VALUES(NEW.id); END;
 """
 
 
@@ -1122,6 +1122,12 @@ def _stream_sql_to_target(sql: str, target: Path | tuple[str, str]) -> bool:
         if parked_columns
         else ""
     )
+    persist_conflicts = (
+        "INSERT OR IGNORE INTO main.sync_conflicts(message_id,first_detected_at) "
+        "SELECT message_id,datetime('now') FROM sync_run_conflicts;\n"
+        if "sync_conflicts" in target_tables
+        else ""
+    )
     sql = (
         _SYNC_TRANSACTION_PREFIX
         + legacy_guard.transaction_guard(target_tables)
@@ -1130,7 +1136,10 @@ def _stream_sql_to_target(sql: str, target: Path | tuple[str, str]) -> bool:
         + "\n"
         + _FTS_REPAIR_SQL
         + archive_target
-        + "\nSELECT 'sync_conflicts|' || count(*) FROM sync_conflicts;\nSELECT 'sync_archived|' || ((SELECT count(*) FROM sync_row_archive)-(SELECT n FROM sync_archive_before));\nCOMMIT;\n"
+        + persist_conflicts
+        + "SELECT 'sync_conflicts|' || count(*) FROM sync_run_conflicts;\n"
+        "SELECT 'sync_archived|' || ((SELECT count(*) FROM sync_row_archive)-"
+        "(SELECT n FROM sync_archive_before));\nCOMMIT;\n"
     )
 
     if isinstance(target, Path):
