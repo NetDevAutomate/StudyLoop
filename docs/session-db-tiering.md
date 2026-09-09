@@ -78,8 +78,14 @@ session-sync sync HOST --tier full    # consolidate records across machines
 2. **Prune is mechanically unable to lose data.** A session is deleted
    only when the full DB holds the same id with a matching content hash
    and at least as many messages. Full DB unreachable → prune refuses.
-3. **Learning tables are never pruned** (`study_progress`, `concepts`,
-   `card_reviews`, ...). Spaced repetition and mastery never degrade.
+3. **Learning tables are never pruned.** Tables with no link to a
+   conversation (`study_progress`, `concepts`, `card_reviews`, ...) are never
+   touched. Tables that do link to one — `study_sessions`,
+   `teach_back_scores`, `parked_topics`, `study_notes`, `practice_attempts`,
+   `knowledge_bridges` — *anchor* it: a session that owns any learner record
+   is excluded from prune candidates and reported as `skipped_anchored`, so
+   the conversation and its records leave hot together or not at all.
+   Spaced repetition, mastery, the backlog and streaks never degrade.
 4. **FTS is an audited invariant**: `count(messages_fts) ==
    count(messages WHERE content IS NOT NULL)`, checked on every
    `studyloop doctor` run. History: a non-idempotent export path once

@@ -435,11 +435,19 @@ def test_hot_pruning_is_verified_eviction_not_permanent_forgetting(
         hot=memory["path"], full=archive, dry_run=False, vacuum=False, config={}
     )
     if new_annotation:
-        assert result.sessions_deleted == 0 and result.skipped_unverified == 2
+        assert result.sessions_deleted == 0 and result.skipped_unverified == 1
+        assert result.skipped_anchored == 1
         assert c.execute("SELECT count(*) FROM sessions").fetchone()[0] == 2
     else:
-        assert result.sessions_deleted == 2
-        assert not c.execute("SELECT 1 FROM sessions").fetchone()
+        # enrich() binds study_sessions('study') to 'personal', which anchors it:
+        # invariant 3 keeps the conversation so its learner rows survive in hot.
+        assert result.sessions_deleted == 1 and result.skipped_anchored == 1
+        assert result.anchored_ids == [memory["ids"]["personal"]]
+        assert {r[0] for r in c.execute("SELECT id FROM sessions")} == {
+            memory["ids"]["personal"]
+        }
+        assert c.execute("SELECT count(*) FROM study_notes").fetchone()[0] == 1
+        assert c.execute("SELECT count(*) FROM parked_topics").fetchone()[0] == 1
         assert not c.execute("SELECT 1 FROM context_retirements").fetchone()
         assert not c.execute("SELECT 1 FROM context_observation_tombstones").fetchone()
         assert c.execute("PRAGMA foreign_key_check").fetchall() == []
@@ -449,6 +457,83 @@ def test_hot_pruning_is_verified_eviction_not_permanent_forgetting(
                 == 3
             )
             assert full.execute("SELECT count(*) FROM study_notes").fetchone()[0] == 1
+
+
+@pytest.mark.parametrize(
+    "anchor",
+    ["study_session", "teach_back_score", "parked_topic", "study_note", "owner_only"],
+)
+def test_hot_pruning_retains_sessions_that_own_learner_records(memory, anchor):
+    """Invariant 3 (docs/session-db-tiering.md): learning tables are never pruned.
+
+    Eviction sweeps ``study_sessions``, ``teach_back_scores``, ``parked_topics``
+    and ``study_notes`` by ``session_id``, owner binding and ``study_session_id``
+    (``lifecycle.selected_records``), so the only way to keep the promise is to
+    keep the conversation those rows hang off. A session that owns a learner
+    record must stay in hot with every record intact, and prune must say so
+    separately from "not yet archived" so the operator is not sent to sync.
+    """
+    from agent_session_tools.tiering import prune_hot
+
+    c = memory["conn"]
+    anchored, evictable = memory["ids"]["personal"], memory["ids"]["work"]
+    with ContextStore(c)._atomic(), records.policy_guard(c):
+        if anchor == "owner_only":
+            # Bound through context_record_owners with no session_id column set.
+            c.execute(
+                "INSERT INTO study_sessions(id,started_at) VALUES ('study','fixture')"
+            )
+            records.bind(c, "study_sessions", "study", session_id=anchored)
+        elif anchor == "study_session":
+            c.execute(
+                "INSERT INTO study_sessions(id,session_id,started_at) VALUES ('study',?,'fixture')",
+                (anchored,),
+            )
+        elif anchor == "teach_back_score":
+            c.execute(
+                "INSERT INTO teach_back_scores(concept,topic,session_id,review_type,created_at) "
+                "VALUES ('decorators','python',?,'teach_back','fixture')",
+                (anchored,),
+            )
+        elif anchor == "parked_topic":
+            c.execute(
+                "INSERT INTO parked_topics(session_id,question) VALUES (?,'UNIQUE_PARKED')",
+                (anchored,),
+            )
+        else:
+            c.execute(
+                "INSERT INTO study_notes(session_id,title,body) VALUES (?,'t','UNIQUE_NOTE')",
+                (anchored,),
+            )
+    c.execute("UPDATE sessions SET updated_at='2000-01-01T00:00:00Z'")
+    c.commit()
+    archive = memory["path"].with_name("full.db")
+    with sqlite3.connect(archive) as full:
+        c.backup(full)
+    learner_rows = {
+        table: c.execute(f"SELECT count(*) FROM {table}").fetchone()[0]
+        for table in (
+            "study_sessions",
+            "teach_back_scores",
+            "parked_topics",
+            "study_notes",
+        )
+    }
+
+    result = prune_hot(
+        hot=memory["path"], full=archive, dry_run=False, vacuum=False, config={}
+    )
+
+    assert result.sessions_deleted == 1
+    assert result.skipped_anchored == 1 and result.anchored_ids == [anchored]
+    assert result.skipped_unverified == 0 and result.skipped_ids == []
+    remaining = {r[0] for r in c.execute("SELECT id FROM sessions")}
+    assert remaining == {anchored}, (
+        f"{evictable} should be evicted, {anchored} retained"
+    )
+    for table, count in learner_rows.items():
+        assert c.execute(f"SELECT count(*) FROM {table}").fetchone()[0] == count, table
+    assert c.execute("PRAGMA foreign_key_check").fetchall() == []
 
 
 def test_schema40_upgrade_preserves_rows_and_rolls_back_failure(tmp_path, monkeypatch):

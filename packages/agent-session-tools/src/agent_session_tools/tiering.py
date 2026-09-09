@@ -109,11 +109,13 @@ class PruneStats:
     candidates: int = 0
     verified: int = 0
     skipped_unverified: int = 0
+    skipped_anchored: int = 0
     sessions_deleted: int = 0
     messages_deleted: int = 0
     reclaimed_mb: float = 0.0
     dry_run: bool = False
     skipped_ids: list[str] = field(default_factory=list)
+    anchored_ids: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -172,6 +174,64 @@ def _table_exists(conn: sqlite3.Connection, table: str, schema: str = "main") ->
         (table,),
     ).fetchone()
     return row is not None
+
+
+# Learner tables that hang off a conversation. Eviction sweeps them by
+# session_id, owner binding and study_session_id (lifecycle.selected_records),
+# so the session they anchor must stay in hot for invariant 3 of
+# docs/session-db-tiering.md ("learning tables are never pruned") to hold.
+_LEARNER_ANCHOR_TABLES = (
+    "study_sessions",
+    "teach_back_scores",
+    "parked_topics",
+    "study_notes",
+    "practice_attempts",
+    "knowledge_bridges",
+)
+
+
+def _anchored_session_ids(conn: sqlite3.Connection, schema: str = "main") -> set[str]:
+    """Sessions whose eviction would delete a learner record.
+
+    Discovery follows the same three routes ``purge_session`` uses to select
+    rows, so a session is anchored exactly when eviction would touch a learner
+    table: a direct ``session_id`` column, a ``study_session_id`` that resolves
+    to a bound study session, or a ``context_record_owners`` binding.
+    """
+    anchored: set[str] = set()
+    has_study = _table_exists(conn, "study_sessions", schema)
+    for table in _LEARNER_ANCHOR_TABLES:
+        if not _table_exists(conn, table, schema):
+            continue
+        columns = {r[1] for r in conn.execute(f"PRAGMA {schema}.table_info({table})")}
+        if "session_id" in columns:
+            anchored.update(
+                r[0]
+                for r in conn.execute(
+                    f"SELECT DISTINCT session_id FROM {schema}.{table} "
+                    "WHERE session_id IS NOT NULL"
+                )
+            )
+        if "study_session_id" in columns and has_study:
+            anchored.update(
+                r[0]
+                for r in conn.execute(
+                    f"SELECT DISTINCT s.session_id FROM {schema}.{table} r "
+                    f"JOIN {schema}.study_sessions s ON s.id = r.study_session_id "
+                    "WHERE s.session_id IS NOT NULL"
+                )
+            )
+    if _table_exists(conn, "context_record_owners", schema):
+        placeholders = ",".join("?" * len(_LEARNER_ANCHOR_TABLES))
+        anchored.update(
+            r[0]
+            for r in conn.execute(
+                f"SELECT DISTINCT session_id FROM {schema}.context_record_owners "
+                f"WHERE session_id IS NOT NULL AND table_name IN ({placeholders})",
+                _LEARNER_ANCHOR_TABLES,
+            )
+        )
+    return anchored
 
 
 def _table_columns(
@@ -654,6 +714,14 @@ def prune_hot(
         ]
         if keep_session_ids:
             candidate_ids = [c for c in candidate_ids if c not in keep_session_ids]
+        # Invariant 3: a session that owns learner records is never a candidate.
+        # Excluded here, ahead of verification, so it is reported as anchored
+        # rather than "not in full DB" on both the modern and legacy paths.
+        anchored = _anchored_session_ids(conn) & set(candidate_ids)
+        if anchored:
+            candidate_ids = [c for c in candidate_ids if c not in anchored]
+            stats.skipped_anchored = len(anchored)
+            stats.anchored_ids = sorted(anchored)
         stats.candidates = len(candidate_ids)
         if not candidate_ids:
             return stats

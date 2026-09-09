@@ -905,6 +905,8 @@ def prune(
 
     print(f"Candidates older than {days} days: {stats.candidates}")
     print(f"Verified present in full DB:       {stats.verified}")
+    if stats.skipped_anchored:
+        print(f"Retained (own learner records):    {stats.skipped_anchored}")
     if stats.skipped_unverified:
         print(f"⚠️  Skipped (NOT in full DB):       {stats.skipped_unverified}")
         for sid in stats.skipped_ids[:5]:

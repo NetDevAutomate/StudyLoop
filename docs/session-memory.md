@@ -73,9 +73,11 @@ backup until you have checked the recovered history. Each machine can recover
 only transcripts available there; no parser can recover deleted original files
 or certify that every cloud conversation is present.
 
-This candidate uses schema 30. Do not use it to downgrade a database upgraded by
-the separate context-memory research branch. Rehearse upgrades and recovery on
-a disposable copy of a supported database first.
+This release uses schema 47 (`migrations.CURRENT_VERSION`); sync refuses any
+database whose `user_version` differs, in either direction. Do not use it to
+downgrade a database upgraded by a research branch — the unmerged Phase 2 work
+adds tables at v48 and later. Rehearse upgrades and recovery on a disposable
+copy of a supported database first.
 
 ## Find useful history
 

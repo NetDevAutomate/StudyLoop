@@ -226,6 +226,8 @@ def prune(days: int, apply_: bool, no_vacuum: bool) -> None:
 
     console.print(f"  Candidates:               {stats.candidates}")
     console.print(f"  Verified in full DB:      {stats.verified}")
+    if stats.skipped_anchored:
+        console.print(f"  Retained (own learner records): {stats.skipped_anchored}")
     if stats.skipped_unverified:
         console.print(f"  [yellow]Skipped (not in full DB): {stats.skipped_unverified}[/yellow]")
         console.print("  [dim]Run 'session-maint sync-full' to back them up first.[/dim]")
