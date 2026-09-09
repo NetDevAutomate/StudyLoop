@@ -134,3 +134,9 @@ Deleting a row locally is not a distributed forget operation: another database,
 backup or original transcript can bring it back. Exported Obsidian notes are also
 separate copies. See the [CLI reference](cli-reference.md#agent-session-tools)
 for commands and the [roadmap](roadmap.md) for the broader product boundary.
+
+For the architecture behind this guide — one SQLite file holding three table
+families, what each MCP tool reads, and which retrieval and ontology claims the
+measurements do and do not support — see the decision record at
+`docs/architecture/session-memory/README.md` in the repository (internal; not
+published on this site).
