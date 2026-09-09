@@ -32,6 +32,10 @@
     "session-db": {
       "command": "session-db-mcp",
       "args": []
+    },
+    "studyloop": {
+      "command": "studyloop-mcp",
+      "args": []
     }
   },
   "hooks": {
@@ -51,7 +55,16 @@
     "web_search",
     "mcp_study-speak_speak",
     "mcp_session-db_session_search",
-    "mcp_session-db_session_context"
+    "mcp_session-db_session_context",
+    "mcp_session-db_session_hotspots",
+    "mcp_session-db_memory_search",
+    "mcp_session-db_memory_source",
+    "mcp_studyloop_get_concept_context",
+    "mcp_studyloop_get_study_history",
+    "mcp_studyloop_get_next_action",
+    "mcp_studyloop_get_topic_suggestions",
+    "mcp_studyloop_get_active_topics",
+    "mcp_studyloop_log_topic"
   ],
   "toolsSettings": {
     "execute_bash": {

@@ -21,9 +21,15 @@ TRACKED_FILES: dict[str, list[str]] = {
     "kiro": [
         "kiro/study-mentor.json",
     ],
-    "opencode": ["opencode/study-mentor.md"],
+    "opencode": [
+        "opencode/study-mentor.md",
+        "opencode/plugins/studyloop-session-export.js",
+    ],
     "codex": ["codex/AGENTS.md"],
-    "pi": ["pi/AGENTS.md"],
+    "pi": [
+        "pi/AGENTS.md",
+        "pi/extensions/studyloop-session-export.ts",
+    ],
 }
 
 SHARED_FILES = [
@@ -31,6 +37,7 @@ SHARED_FILES = [
     "shared/socratic-engine.md",
     "shared/knowledge-bridging.md",
     "shared/session-protocol.md",
+    "shared/session-db-mandate.md",
     "shared/teach-back-protocol.md",
     "shared/network-bridges.md",
     "shared/break-science.md",
@@ -39,6 +46,9 @@ SHARED_FILES = [
     # ~/.agents/skills and symlinked into each harness from there.
     "skills/studyloop-xtiles-wind-down/SKILL.md",
     "skills/studyloop-xtiles-wind-down/references/harnesses.md",
+    # The session-memory skill is the single recipe every harness's session-start
+    # instruction points at; drift there is drift everywhere.
+    "skills/studyloop-session-memory/SKILL.md",
 ]
 
 

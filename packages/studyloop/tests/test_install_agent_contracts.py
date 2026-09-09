@@ -7,6 +7,8 @@ import json
 import re
 from pathlib import Path
 
+import pytest
+
 import studyloop.doctor.agents as doctor_agents
 import studyloop.installers as installers
 
@@ -459,3 +461,86 @@ def test_every_release_harness_has_a_real_session_export_hook_contract() -> None
     from studyloop.harnesses import RELEASE_HARNESSES
 
     assert strategies == set(RELEASE_HARNESSES)
+
+
+# ---------------------------------------------------------------------------
+# Session-start memory retrieval is the same on every harness
+# ---------------------------------------------------------------------------
+#
+# Two tools give a mentor context that session_search cannot: memory_search
+# (what was previously *decided or disputed* about a topic, quote-bound) and
+# get_concept_context (the topic's prerequisite edges). Both were reachable and
+# named by no agent file, so no mentor ever called them. The recipe lives once
+# in the studyloop-session-memory skill; every harness definition must carry the
+# same one-sentence instruction so a reviewer can grep for parity rather than
+# audit prose. Kiro is the one harness whose definition also allow-lists tools,
+# so there the instruction is only real if the allowlist and server config agree.
+
+_MENTOR_DEFINITIONS = (
+    "agents/kiro/study-mentor.json",
+    "agents/codex/AGENTS.md",
+    "agents/claude/socratic-mentor.md",
+    "agents/opencode/study-mentor.md",
+    "agents/pi/AGENTS.md",
+)
+_SHARED_MEMORY_DOCS = (
+    "agents/shared/session-db-mandate.md",
+    "agents/shared/session-protocol.md",
+    "agents/skills/studyloop-session-memory/SKILL.md",
+)
+_SESSION_START_TOOLS = ("session_search", "memory_search", "get_concept_context")
+#: The sentence every prose definition carries verbatim (whitespace-normalised).
+_SESSION_START_SENTENCE = (
+    "call `memory_search` for prior decisions and disputes about the topic, and "
+    "`get_concept_context` for its prerequisite edges, before choosing what to "
+    "teach first"
+)
+
+
+def _normalised(text: str) -> str:
+    return " ".join(text.split())
+
+
+@pytest.mark.parametrize("relative", _MENTOR_DEFINITIONS + _SHARED_MEMORY_DOCS)
+def test_every_harness_names_the_session_start_memory_tools(relative: str) -> None:
+    text = (_repo_root() / relative).read_text(encoding="utf-8")
+    missing = [tool for tool in _SESSION_START_TOOLS if tool not in text]
+    assert not missing, f"{relative} never names {missing}"
+
+
+@pytest.mark.parametrize("relative", [p for p in _MENTOR_DEFINITIONS if not p.endswith(".json")])
+def test_prose_definitions_carry_the_identical_instruction(relative: str) -> None:
+    text = _normalised((_repo_root() / relative).read_text(encoding="utf-8"))
+    assert _SESSION_START_SENTENCE in text, (
+        f"{relative} paraphrases the session-start instruction; keep it identical "
+        "across harnesses so drift is a grep, not an audit"
+    )
+
+
+def test_kiro_allowlist_and_servers_match_the_instruction() -> None:
+    definition = json.loads(
+        (_repo_root() / "agents/kiro/study-mentor.json").read_text(encoding="utf-8")
+    )
+    servers = definition["mcpServers"]
+    assert servers["session-db"]["command"] == "session-db-mcp"
+    assert servers["studyloop"]["command"] == "studyloop-mcp"
+    allowed = set(definition["allowedTools"])
+    for tool in (
+        "mcp_session-db_session_search",
+        "mcp_session-db_session_context",
+        "mcp_session-db_session_hotspots",  # the session-weaver skill instructs it
+        "mcp_session-db_memory_search",
+        "mcp_studyloop_get_concept_context",
+    ):
+        assert tool in allowed, f"Kiro instructs {tool} but its allowlist refuses it"
+
+
+@pytest.mark.parametrize("relative", ["agents/claude/mcp.json", "agents/opencode/mcp.json"])
+def test_repo_owned_mcp_configs_register_both_servers(relative: str) -> None:
+    servers = json.loads((_repo_root() / relative).read_text(encoding="utf-8"))["mcpServers"]
+    assert "studyloop-mcp" in servers and "session-db" in servers, (
+        f"{relative} must register both servers or get_concept_context / "
+        "memory_search are instructed but unreachable"
+    )
+    for name in ("studyloop-mcp", "session-db"):
+        assert servers[name]["args"][-1] in {"studyloop-mcp", "session-db-mcp"}

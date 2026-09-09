@@ -73,6 +73,12 @@ Follow `agents/shared/session-protocol.md`. Summary:
    studyloop struggles       # What topics keep coming up?
    studyloop session start --topic "<topic>" --energy <level>  # Start session tracking + dashboard
    ```
+2. Query memory, following the `studyloop-session-memory` skill. Prefer
+   `session_search` when its MCP server is connected; otherwise run
+   `session-query search "<current topic>" --project "$PWD"`. Then call
+   `memory_search` for prior decisions and disputes about the topic, and
+   `get_concept_context` for its prerequisite edges, before choosing what to
+   teach first.
 3. Combined state check: "How are you arriving today? Energy, mood, setup — one or two words each is fine."
 4. Write energy level to state file
 5. If cmux MCP tools are available, set up the visual dashboard (see `session-protocol.md` cmux Dashboard Protocol)

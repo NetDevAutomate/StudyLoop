@@ -28,6 +28,30 @@ session-query search "<topic or error>" --project "$PWD"
 Run `session-query --help` for filters and output modes. A missing MCP server is
 not a reason to skip retrieval; the CLI is the deterministic fallback.
 
+### Prior decisions: `memory_search`
+
+`session_search` finds where a topic was *discussed*. `memory_search` (same
+`session-db` MCP server) finds what was *concluded* about it: assertions bound
+to exact transcript quotes, the reviews that support or dispute them, and any
+`contradicts`/`corrects` relations between them. Call it after `session_search`
+whenever the learner's topic has a history of decisions, recurring struggles or
+conflicting advice, and read the `coverage` and `conflict_review` fields before
+repeating anything it returns — an assertion is an unverified interpretation,
+never a fact, and absence of a contrary edge is not established absence of
+conflict. CLI fallback: `session-context search "<topic>"`.
+
+### Prerequisite structure: `get_concept_context`
+
+Before sequencing teaching for a topic, call `get_concept_context` (the
+`studyloop` MCP server) to see the concept dependency edges the learner's own
+history has produced, each with its source and reported authority. Use it to
+pick the prerequisite to check first; do not treat an analogy or quality label
+as a prerequisite, and treat `coverage: partial` as "there may be edges you
+cannot see". CLI fallback: `studyloop mastery graph --topic "<topic>" --format json`.
+
+If the `studyloop` MCP server is not connected in this harness, say so once and
+use the CLI; do not describe the concept graph from memory.
+
 Project filters narrow retrieval; they are not enforced work/personal permissions.
 Use only a database the current agent is permitted to read. Identify relevant
 session IDs and distinguish what earlier messages reported from what was actually

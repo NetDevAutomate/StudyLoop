@@ -169,6 +169,52 @@ uv run --project packages/studyloop studyloop-mcp
 | `get_topic_suggestions` | Ranked topic suggestions (algorithmic scoring) |
 | `get_study_history` | Search past sessions for a topic |
 | `record_topic_progress` | Update priority or resolve a backlog topic |
+| `get_concept_context` | Concept dependency edges for a topic, with per-edge provenance and `coverage` — the prerequisite structure a mentor sequences from |
+| `get_next_action` | The same "what now?" recommendation the web `/api/now` endpoint gives |
+| `get_active_topics` | The AuDHD three-topic active set vs the remaining backlog |
+| `log_topic` | Record a learning / struggling / insight signal mid-session |
+
+## session-db (Session Memory Tools)
+
+The `session-db-mcp` server (package `agent-session-tools`) exposes the
+conversation archive and the evidence layer. Every mentor is instructed to call
+two of its tools at session start, alongside `get_concept_context` above:
+
+| Tool | Description |
+|------|-------------|
+| `session_search` | Where a topic was *discussed*: FTS over every harness's transcripts |
+| `session_context` | A token-budgeted excerpt of one prior session |
+| `session_hotspots` | Most-discussed files over the last N days |
+| `memory_search` | What was *concluded* about a topic: quote-bound assertions, their reviews, and `contradicts`/`corrects` relations, with explicit `coverage` limits |
+| `memory_source` | The exact stored bytes behind a citation |
+
+**Start manually (for testing):**
+```bash
+uv run --project packages/agent-session-tools session-db-mcp
+```
+
+**Agent config** — included in `agents/claude/mcp.json`, `agents/opencode/mcp.json`
+and `agents/kiro/study-mentor.json`. Codex and pi have no repo-owned MCP file;
+add both servers to the harness's own config:
+
+- Codex — `~/.codex/config.toml`:
+  ```toml
+  [mcp_servers.session-db]
+  command = "session-db-mcp"
+  args = []
+
+  [mcp_servers.studyloop]
+  command = "studyloop-mcp"
+  args = []
+  ```
+- pi — this release does not verify a pi MCP registration path (pi's
+  `settings.json` carries no `mcpServers` key). pi mentors use the CLI
+  fallbacks the skill names — `session-query`, `session-context search`,
+  `studyloop mastery graph` — until one is documented.
+
+Both commands are installed by `uv tool install studyloop` and
+`uv tool install agent-session-tools`; use the `uv run --project ...` form
+instead when running from a checkout.
 
 ## Suggested Study Workflow
 

@@ -26,6 +26,10 @@ session-query search "<current topic>" --project "$PWD"
 Briefly mention relevant prior context before proceeding. If neither path is
 available, report that once and continue without inventing replacement data.
 
+Then call `memory_search` for prior decisions and disputes about the topic, and
+`get_concept_context` for its prerequisite edges, before choosing what to teach
+first.
+
 ## Session Export
 
 At the **end** of every session — when the user wraps up, says goodbye, or the

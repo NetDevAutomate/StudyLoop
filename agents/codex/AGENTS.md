@@ -47,6 +47,10 @@ its MCP server is connected; otherwise run:
 session-query search "<current topic>" --project "$PWD"
 ```
 
+Then call `memory_search` for prior decisions and disputes about the topic, and
+`get_concept_context` for its prerequisite edges, before choosing what to teach
+first.
+
 Then run the StudyLoop learning-state checks:
 
 ```bash

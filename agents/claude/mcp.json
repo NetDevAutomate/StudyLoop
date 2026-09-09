@@ -9,6 +9,15 @@
         "studyloop-mcp"
       ]
     },
+    "session-db": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--project",
+        "/path/to/studyloop/packages/agent-session-tools",
+        "session-db-mcp"
+      ]
+    },
     "speaker": {
       "command": "uvx",
       "args": [

@@ -68,6 +68,12 @@ studyloop struggles       # Recurring struggle topics
 studyloop session start --topic "<topic>" --energy <level>  # Start session tracking + dashboard
 ```
 
+Then query memory for the topic, following the `studyloop-session-memory`
+skill: `session_search` for where it was discussed, `memory_search` for what
+was previously decided or disputed about it, and `get_concept_context` for its
+prerequisite edges. Choose the first question from what those return, not from
+the topic name alone.
+
 **Auto-resume** (reduces task initiation friction): Surface the `studyloop resume` output naturally: "Last time you were working on [topic] and got to [concept]. [N] concepts in progress. Want to pick up where you left off?"
 
 If `studyloop wins` has recent entries, surface one: "By the way — you mastered [concept] last week. That's real progress."
