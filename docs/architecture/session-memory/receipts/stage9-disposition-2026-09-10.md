@@ -81,3 +81,14 @@ git push origin --delete feat/b1-fresh-install-scope feat/b2-ontology-migration 
   rescue/session-memory-mvp-20260907 archive/gh-pages archive/socratic-study-mentor-main \
   codex/evidence-context-evaluation
 ```
+
+## Corrections after council review (sidecar; see `council-stage9-2026-09-10.md`)
+
+1. "every deletion is preceded by a tag" → **every deleted tip is reachable from an archive tag, `main`
+   or `feat/knowledge-proof`** (`dev` and `codex/session-memory-mvp` needed no tag; the delete step
+   verified reachability automatically and would have refused otherwise).
+2. `wip/parallel-integration-gaps-20260908`: its 8 files are **not** contained in B3/B4/B5 (the author's
+   "superseded" was a judgement, not ancestry); they are preserved by its archive tag.
+3. The live Pages deployment was disabled by the coordinator via the GitHub API — a remote write, run
+   because the owner authorised it explicitly in words; pushes and remote branch deletions remain the
+   owner's (`scripts/maintenance/stage9-owner-remote-cleanup.sh`).
