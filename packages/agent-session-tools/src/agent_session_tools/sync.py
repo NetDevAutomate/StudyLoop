@@ -453,42 +453,6 @@ def _remote_db_exists(host: str, db_path: str) -> bool:
     return result.returncode == 0
 
 
-def _sanitize_ontology_snapshot(snapshot_path: Path) -> None:
-    """Strip every row of the six v48 ontology tables from a seed snapshot.
-
-    The tier-1 ontology is derived, never synced (design: "Seed
-    sanitization", Q1(a)) -- ``SYNC_TABLES`` and ``GLOBAL_SYNC_TABLES``
-    never list any ``ontology_*`` table, and this whole-file seed is the one
-    code path that still moves an entire database snapshot between
-    machines. This leaves the ontology schema intact (so the snapshot opens
-    without error) but with zero rows: the destination is expected to
-    rebuild its own ontology -- the same incremental/full rebuild B2 wires
-    into ``export_sessions._run_export``, or an explicit ``session-maint
-    ontology-rebuild`` -- before it is considered ready.
-
-    Deleting ``ontology_build_state`` in particular *is* the marker that
-    makes that rebuild happen: with no recorded build state,
-    ``ontology.rebuild_ontology(..., incremental=True)`` unconditionally
-    falls back to a full rebuild (see ``ontology._read_build_state``)
-    rather than silently trusting a seeded-then-stripped state as current.
-    """
-    from .ontology import ONTOLOGY_TABLES
-
-    conn = sqlite3.connect(snapshot_path)
-    try:
-        present = {
-            row[0]
-            for row in conn.execute(
-                "SELECT name FROM sqlite_master WHERE type = 'table'"
-            )
-        }
-        for table in sorted(ONTOLOGY_TABLES & present):
-            conn.execute(f'DELETE FROM "{table}"')
-        conn.commit()
-    finally:
-        conn.close()
-
-
 def _seed_remote_db(host: str, remote_db: str, local_db: Path) -> bool:
     """Copy local DB to remote for first-time sync. Creates remote directory."""
     legacy_guard.check_path(local_db, whole_file=True)
@@ -505,9 +469,6 @@ def _seed_remote_db(host: str, remote_db: str, local_db: Path) -> bool:
         with sqlite3.connect(local_db) as source, sqlite3.connect(snapshot) as dest:
             source.backup(dest)
             legacy_guard.check_database(dest)
-        # Never seed a remote with a source's derived ontology -- the
-        # remote's tier-1 ontology must be derived on the remote itself.
-        _sanitize_ontology_snapshot(snapshot)
         legacy_guard.check_path(local_db, whole_file=True)
         result = subprocess.run(
             [

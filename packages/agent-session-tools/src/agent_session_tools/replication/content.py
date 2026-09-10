@@ -22,19 +22,6 @@ class ReplicaConflict(ReplicaError):
     """Both replicas retain their pre-transfer state for explicit reconciliation."""
 
 
-class ConceptReplicaIdentityError(ReplicaError):
-    """Duplicate concept replica identity: a cloned database, never merged.
-
-    Raised when incoming concept events claim this replica's own
-    ``context_access_state.instance`` for history it never wrote, or when one
-    ``(origin_instance, origin_seq)`` slot arrives bound to two different
-    events. Both are identity violations (a database file copied instead of
-    replicated), not ordering cases: the exchange is refused with this
-    diagnostic rather than interleaving two histories under one honest
-    replica's name (design.md "Cross-machine standing order").
-    """
-
-
 def _unique(rows, key="id"):
     from .staging import StagedRows
 
@@ -246,56 +233,6 @@ def _closure(tables, policy, scope):
         }
         if not target_refs <= refs:
             raise ReplicaError("Review target sources are not declared captured inputs")
-    _concept_closure(tables, sessions, assertions)
-
-
-def _concept_closure(tables, sessions, assertions):
-    """Check concept root/event honesty in memory before writing any received row."""
-    from ..context.okf_import import _SESSION_ID, _SESSION_URI_PREFIX
-
-    concepts = _unique(tables["context_concepts"])
-    events = _unique(tables["context_concept_events"])
-    for row in concepts.values():
-        if row["binding_state"] == "bound":
-            if row["assertion_id"] not in assertions:
-                raise ReplicaError("Bound concept lacks its included assertion")
-        else:
-            claimed = row["source_session_id"]
-            if claimed is None:
-                uri = row["source_uri"]
-                if not isinstance(uri, str) or not uri.startswith(_SESSION_URI_PREFIX):
-                    raise ReplicaError("Legacy concept has no usable session claim")
-                claimed = uri.removeprefix(_SESSION_URI_PREFIX)
-                if _SESSION_ID.fullmatch(claimed) is None:
-                    raise ReplicaError("Legacy concept has no usable session claim")
-            if claimed not in sessions:
-                raise ReplicaError("Legacy concept lacks its included claimed session")
-        if (
-            row["supersedes_concept_id"] is not None
-            and row["supersedes_concept_id"] not in concepts
-        ):
-            raise ReplicaError("Bound successor lacks its included legacy root")
-    initial = set()
-    slots = {}
-    for row in events.values():
-        if row["concept_id"] not in concepts:
-            raise ReplicaError("Concept event lacks its included root")
-        parent = row["parent_event_id"]
-        if parent is None:
-            initial.add(row["concept_id"])
-        else:
-            parent_row = events.get(parent)
-            if parent_row is None or parent_row["concept_id"] != row["concept_id"]:
-                raise ReplicaError("Concept event history is incomplete")
-        slot = (row["origin_instance"], row["origin_seq"])
-        if slot in slots:
-            raise ConceptReplicaIdentityError(
-                "Duplicate concept replica identity: one origin sequence slot "
-                "carries two events; a cloned database cannot be merged"
-            )
-        slots[slot] = row["id"]
-    if initial != set(concepts):
-        raise ReplicaError("Concept root lacks its included initial event")
 
 
 def _row(conn, table, row, *, ignore=(), contribution=None, reconcile=None):
@@ -347,69 +284,6 @@ def _row(conn, table, row, *, ignore=(), contribution=None, reconcile=None):
     if contribution is not None:
         contribution.record(conn, table, row, existed=False)
     return True
-
-
-def _concepts(conn, tables, contribution=None):
-    """Apply immutable concept roots and append-only events (frozen order).
-
-    ``machine_id = context_access_state.instance``; ``lamport =
-    logical_time``; ``standing = max(events[concept], key=(lamport,
-    machine_id, event_id))``. Rows are append-only: replication only ever
-    inserts events it does not already have (by ``id``), never rewrites one
-    (the sidecar's immutability trigger enforces the same). No wall-clock
-    timestamp participates; ``display_timestamp`` travels as an opaque label.
-    The local clock row never travels: the allocator's next local insert
-    takes ``1 + max`` over every event this database has ever seen, imported
-    or local, which is the Lamport advance the design requires (verified by
-    the two-copy matrix, item 4).
-    """
-    concepts = list(tables["context_concepts"])
-    events = list(tables["context_concept_events"])
-    if not concepts and not events:
-        return
-    local_instance = conn.execute(
-        "SELECT instance FROM context_access_state WHERE id=1"
-    ).fetchone()[0]
-    for row in events:
-        if (
-            conn.execute(
-                "SELECT 1 FROM context_concept_events WHERE id=?", (row["id"],)
-            ).fetchone()
-            is not None
-        ):
-            continue
-        if row["origin_instance"] == local_instance:
-            raise ConceptReplicaIdentityError(
-                "Duplicate concept replica identity: incoming events claim this "
-                "replica's own instance for history it never wrote; a cloned "
-                "database cannot be merged"
-            )
-        if conn.execute(
-            "SELECT 1 FROM context_concept_events WHERE origin_instance=? AND origin_seq=?",
-            (row["origin_instance"], row["origin_seq"]),
-        ).fetchone():
-            raise ConceptReplicaIdentityError(
-                "Duplicate concept replica identity: one origin sequence slot "
-                "carries two different events; a cloned database cannot be merged"
-            )
-    # Roots first (legacy predecessors before their bound successors, for the
-    # legacy-successor trigger), then events with parents before children --
-    # a child's lamport is strictly greater than its parent's by allocation.
-    for incoming in sorted(
-        (dict(row) for row in concepts),
-        key=lambda row: (row["supersedes_concept_id"] is not None, row["id"]),
-    ):
-        _row(conn, "context_concepts", incoming, contribution=contribution)
-    for incoming in sorted(
-        (dict(row) for row in events),
-        key=lambda row: (
-            row["logical_time"],
-            row["origin_instance"],
-            row["origin_seq"],
-            row["id"],
-        ),
-    ):
-        _row(conn, "context_concept_events", incoming, contribution=contribution)
 
 
 def _review_bindings(conn, tables, access):
@@ -637,7 +511,6 @@ def apply_in_transaction(conn, config, snapshot, contribution=None, before_apply
                 reconcile=reconciler,
             )
     _learner(conn, tables, contribution)
-    _concepts(conn, tables, contribution)
     for table in (
         "context_record_study_links",
         "context_observations",

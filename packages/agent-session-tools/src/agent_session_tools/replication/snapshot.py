@@ -52,8 +52,6 @@ CONTEXT = (
     "context_record_observations",
     "context_annotation_retirements",
     "context_observation_retired_subjects",
-    "context_concepts",
-    "context_concept_events",
 )
 TABLES = (*NATIVE, *records.TABLES, *CONTEXT)
 
@@ -74,7 +72,6 @@ class Projection:
             "relations",
             "owners",
             "observations",
-            "concepts",
         }:
             raise ReplicaError("Unsupported internal selection")
         self.conn.execute(
@@ -166,30 +163,6 @@ def _select(conn, policy, scope, *, _include_withdrawn=False, _staging=None):
         WHERE from_assertion IN (SELECT id FROM replica_assertions)
           AND to_assertion IN (SELECT id FROM replica_assertions) AND """
         + ("1" if _include_withdrawn else predicate(conn, "relation", "r.id")),
-    )
-    # Concept roots and their complete append-only event history replicate as
-    # authored data (design.md "Cross-machine standing order"). Visibility
-    # follows the authorization seam's two shapes: a bound root travels with
-    # its assertion's citation closure; a legacy root travels with its claimed
-    # session. Standing is never filtered here -- retired history replicates
-    # too, so both copies compute one standing from one event set. The local
-    # allocator state (context_concept_clock) and the derived FTS read model
-    # never travel.
-    from ..context.okf_import import _SESSION_URI_PREFIX
-
-    selection.selected(
-        "concepts",
-        """SELECT c.id FROM context_concepts c
-        WHERE (c.binding_state='bound'
-               AND c.assertion_id IN (SELECT id FROM replica_assertions))
-           OR (c.binding_state='legacy-unbound' AND (
-                (c.source_session_id IS NOT NULL
-                 AND c.source_session_id IN (SELECT id FROM replica_sessions))
-                OR (c.source_session_id IS NULL
-                    AND substr(c.source_uri, 1, length(?)) = ?
-                    AND substr(c.source_uri, length(?) + 1)
-                        IN (SELECT id FROM replica_sessions))))""",
-        (_SESSION_URI_PREFIX, _SESSION_URI_PREFIX, _SESSION_URI_PREFIX),
     )
     owner_queries, owner_values = [], []
     for table in records.TABLES:
@@ -300,13 +273,6 @@ def collect(conn, policy, scope, *, _staging=None):
         rows[table] = p.read(table, f"r.id IN (SELECT id FROM replica_{selection})")
     rows["context_citations"] = p.read(
         "context_citations", "r.assertion_id IN (SELECT id FROM replica_assertions)"
-    )
-    rows["context_concepts"] = p.read(
-        "context_concepts", "r.id IN (SELECT id FROM replica_concepts)"
-    )
-    rows["context_concept_events"] = p.read(
-        "context_concept_events",
-        "r.concept_id IN (SELECT id FROM replica_concepts)",
     )
     for table in (
         "context_observation_sources",

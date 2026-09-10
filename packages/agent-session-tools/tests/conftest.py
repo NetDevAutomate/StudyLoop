@@ -179,24 +179,7 @@ SCHEMA_PATH = (
 )
 
 
-@dataclass(frozen=True)
-class OntologyProductionStore:
-    """A migrated, two-session-corpus database shared by ontology test modules.
-
-    Ported from SessionWeaver's reference ``tests/conftest.py``
-    ``production_store`` fixture -- this package's own
-    ``exporters.base.commit_batch`` / ``context.store`` / ``context.provenance``
-    build the identical fixture corpus, since SessionWeaver depends on this
-    exact package. ``test_ontology.py`` and ``test_ontology_live.py`` both use
-    this fixture so the two-session corpus (and its exact structural/message
-    content) is defined in exactly one place.
-    """
-
-    conn: sqlite3.Connection
-    db_path: Path
-
-
-def _ontology_native_source(
+def _fixture_native_source(
     *,
     session_id: str,
     harness: str,
@@ -222,7 +205,7 @@ def _ontology_native_source(
     )
 
 
-def _ontology_fixture_rows(
+def _fixture_corpus_rows(
     project_path: Path,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Return representative sessions and messages with native source records."""
@@ -245,7 +228,7 @@ def _ontology_fixture_rows(
                 "metadata": "{}",
                 "status": "added",
                 "native_sources": [
-                    _ontology_native_source(
+                    _fixture_native_source(
                         session_id=session_id,
                         harness=harness,
                         parser_version=parser_version,
@@ -276,7 +259,7 @@ def _ontology_fixture_rows(
                     "metadata": "{}",
                     "seq": seq,
                     "native_sources": [
-                        _ontology_native_source(
+                        _fixture_native_source(
                             session_id=session_id,
                             harness=harness,
                             parser_version=parser_version,
@@ -290,30 +273,6 @@ def _ontology_fixture_rows(
             )
 
     return sessions, messages
-
-
-@pytest.fixture
-def ontology_production_store(tmp_path):
-    """Yield a migrated, populated store mirroring a real capture batch."""
-    from agent_session_tools.exporters.base import ExportStats, commit_batch
-
-    db_path = tmp_path / "sessions.db"
-    conn = sqlite3.connect(db_path)
-    try:
-        conn.execute("PRAGMA foreign_keys=ON")
-        conn.executescript(SCHEMA_PATH.read_text())
-        migrate(conn)
-        if conn.execute("PRAGMA user_version").fetchone()[0] != CURRENT_VERSION:
-            raise RuntimeError(
-                "ontology fixture migration did not reach CURRENT_VERSION"
-            )
-
-        sessions, messages = _ontology_fixture_rows(tmp_path / "fixture-project")
-        stats = ExportStats()
-        commit_batch(conn, sessions, messages, stats)
-        yield OntologyProductionStore(conn=conn, db_path=db_path)
-    finally:
-        conn.close()
 
 
 @dataclass(frozen=True)
@@ -330,10 +289,9 @@ class ProductionStore:
 def production_store(tmp_path, monkeypatch):
     """Yield a migrated, populated store that cannot resolve the live database.
 
-    Lifted from the SessionWeaver reference conftest for the concept
-    lifecycle/wind-down/OKF/projection test suites; reuses the same fixture
-    rows as ``ontology_production_store`` but adds the isolated HOME/config
-    the ConceptService default-database path resolution needs.
+    Lifted from the SessionWeaver reference conftest; builds the shared
+    two-session fixture corpus and adds the isolated HOME/config that
+    default-database path resolution needs.
     """
     import yaml
 
@@ -374,7 +332,7 @@ def production_store(tmp_path, monkeypatch):
                 "production fixture migration did not reach CURRENT_VERSION"
             )
 
-        sessions, messages = _ontology_fixture_rows(tmp_path / "fixture-project")
+        sessions, messages = _fixture_corpus_rows(tmp_path / "fixture-project")
         stats = ExportStats()
         commit_batch(conn, sessions, messages, stats)
         yield ProductionStore(

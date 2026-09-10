@@ -39,20 +39,8 @@ def protected_queries(tables, schema=None):
     for table in sorted(tables):
         if (
             not table.startswith("context_")
-            or table
-            in (
-                "context_access_state",
-                "context_replica_content_state",
-                # Sidecar identity/allocator singletons and the derived FTS
-                # read model: installed with one row each by migration v49,
-                # they carry no captured memory -- populated concept content
-                # is caught by context_concepts/context_concept_events.
-                "context_concept_schema",
-                "context_concept_clock",
-                "context_concept_fts",
-            )
+            or table in ("context_access_state", "context_replica_content_state")
             or table.startswith("context_evidence_fts_")
-            or table.startswith("context_concept_fts_")
         ):
             continue
         quoted = '"' + table.replace('"', '""') + '"'

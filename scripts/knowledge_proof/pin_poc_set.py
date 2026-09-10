@@ -1,6 +1,6 @@
 """Pin the G2 "PoC wind-down set" as a reproducible artefact (ruler-amendment-003).
 
-The ruler binds G2 to "the 348 PoC sessions" -- the blind subset the earlier OKF authoring run
+The ruler binds G2 to "the 348 PoC sessions" -- the blind subset the earlier authoring run
 was scored on, defined in its RESULTS-final.md as "updated >= 2026-08-01, >= 10 messages ->
 348 sessions". No id list was committed. The run's own frozen corpus snapshot survives at
 ``~/.local/share/sessionweaver/poc-storage-decision/corpus-20260906-clean.db`` (sha in the

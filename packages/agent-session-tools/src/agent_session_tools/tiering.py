@@ -331,22 +331,11 @@ def compact_database(source: Path, dest: Path) -> CompactStats:
         # inserts advance its seeded counter; the source value is not portable.
         common.discard("context_replica_content_state")
         common.discard("context_lifecycle_mode")
-        # The concept clock is the new instance's own allocator (seeded by the
-        # destination migration, pinned to its fresh identity); the schema
-        # marker singleton is seeded too and guarded by immutability triggers.
-        # Neither carries content -- concept roots/events copy normally.
-        common.discard("context_concept_clock")
-        common.discard("context_concept_schema")
         # Dependency order: parents before children; messages last of the
-        # core pair so session FKs resolve. Concept roots re-validate their
-        # assertion/citation/evidence closure via BEFORE INSERT triggers, so
-        # they copy only after every context table they check; their events
-        # follow. Everything else in between.
+        # core pair so session FKs resolve. Everything else after.
         first = ("context_tombstones", "sessions", "messages")
-        last = ("context_concepts", "context_concept_events")
         ordered = [t for t in first if t in common]
-        ordered += sorted(common - set(first) - set(last))
-        ordered += [t for t in last if t in common]
+        ordered += sorted(common - set(first))
 
         with conn:
             if "context_policy_state" in common:
@@ -785,11 +774,6 @@ def _archive_context_complete(conn):
         "context_lifecycle_mode",
         "context_erasure_pending",
         "context_capture_runs",
-        # Per-database allocator state (design.md "Cross-machine standing
-        # order"): the concept clock is pinned to each database's own
-        # instance and never travels, so hot and full legitimately differ.
-        # Concept roots/events themselves stay in the retention proof.
-        "context_concept_clock",
     }
     # Include older payloads with no observation wrapper: a matching native hash
     # alone says nothing about a newly edited note or an unarchived file reference.
@@ -810,7 +794,6 @@ def _archive_context_complete(conn):
             for t in local
             if t.startswith("context_")
             and not t.startswith("context_evidence_fts")
-            and not t.startswith("context_concept_fts")
             and t not in bookkeeping
         }
     )

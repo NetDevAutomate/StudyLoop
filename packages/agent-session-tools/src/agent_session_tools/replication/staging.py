@@ -155,8 +155,6 @@ class Stage:
                 "context_relations",
                 "context_observations",
                 "context_record_owners",
-                "context_concepts",
-                "context_concept_events",
                 *LEARNER_TABLES,
             }
             else None
