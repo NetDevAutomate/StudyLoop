@@ -553,8 +553,8 @@ def test_custom_agents_parsed(tmp_path):
         "agents": {
             "priority": ["claude"],
             "custom": {
-                "aider": {
-                    "binary": "aider",
+                "exampletool": {
+                    "binary": "exampletool",
                     "strategy": "cli-flag",
                     "launch": "{binary} --read {persona}",
                 }
@@ -564,8 +564,8 @@ def test_custom_agents_parsed(tmp_path):
     config_path = _write_config(tmp_path, config)
     s = _load(config_path)
 
-    assert "aider" in s.agents.custom
-    assert s.agents.custom["aider"]["binary"] == "aider"
+    assert "exampletool" in s.agents.custom
+    assert s.agents.custom["exampletool"]["binary"] == "exampletool"
 
 
 def test_custom_defaults_to_empty():

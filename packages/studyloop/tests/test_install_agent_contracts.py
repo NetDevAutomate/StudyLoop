@@ -83,15 +83,12 @@ def _is_installed_source(source: str, installer_sources: set[str]) -> bool:
 
 def _definition_sources_by_tool() -> dict[str, set[str]]:
     definition_names = {"AGENTS.md", "socratic-mentor.md", "study-mentor.json", "study-mentor.md"}
-    ignored_names = {"GEMINI.md"}
     result: dict[str, set[str]] = {}
     for tool, sources in _installer_sources_by_tool().items():
         result[tool] = {
             source
             for source in sources
-            if Path(source).name in definition_names
-            and Path(source).name not in ignored_names
-            and "/skills/" not in source
+            if Path(source).name in definition_names and "/skills/" not in source
         }
     return result
 

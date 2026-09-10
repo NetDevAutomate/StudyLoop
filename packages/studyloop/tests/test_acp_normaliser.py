@@ -36,7 +36,7 @@ class TestOutboundMethodAliases:
 
     def test_rewrite_is_identity_when_no_alias(self) -> None:
         assert rewrite_outbound_method("session/new", "kiro") == "session/new"
-        assert rewrite_outbound_method("session/prompt", "gemini") == "session/prompt"
+        assert rewrite_outbound_method("session/prompt", "grok") == "session/prompt"
 
     def test_rewrite_uses_alias_when_registered(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Smoke-test the extension point for a future CLI that reverts."""

@@ -11,10 +11,14 @@ class TestCustomAgentFromConfig:
     def test_cli_flag_strategy(self, tmp_path):
         from studyloop.adapters._custom import build_custom_adapter
 
-        config = {"binary": "aider", "strategy": "cli-flag", "launch": "{binary} --read {persona}"}
-        adapter = build_custom_adapter("aider", config)
-        assert adapter.name == "aider"
-        assert adapter.binary == "aider"
+        config = {
+            "binary": "exampletool",
+            "strategy": "cli-flag",
+            "launch": "{binary} --read {persona}",
+        }
+        adapter = build_custom_adapter("exampletool", config)
+        assert adapter.name == "exampletool"
+        assert adapter.binary == "exampletool"
         path = adapter.setup("# content", tmp_path)
         assert path.exists()
         assert stat.S_IMODE(path.stat().st_mode) == 0o600
@@ -22,28 +26,32 @@ class TestCustomAgentFromConfig:
     def test_launch_cmd_interpolation(self, tmp_path):
         from studyloop.adapters._custom import build_custom_adapter
 
-        config = {"binary": "aider", "strategy": "cli-flag", "launch": "{binary} --read {persona}"}
-        adapter = build_custom_adapter("aider", config)
+        config = {
+            "binary": "exampletool",
+            "strategy": "cli-flag",
+            "launch": "{binary} --read {persona}",
+        }
+        adapter = build_custom_adapter("exampletool", config)
         persona = tmp_path / "persona.md"
         persona.touch()
-        with patch("shutil.which", return_value="/usr/local/bin/aider"):
+        with patch("shutil.which", return_value="/usr/local/bin/exampletool"):
             cmd = adapter.launch_cmd(persona, False)
-        assert "/usr/local/bin/aider" in cmd
+        assert "/usr/local/bin/exampletool" in cmd
         assert str(persona) in cmd
 
     def test_resume_template(self, tmp_path):
         from studyloop.adapters._custom import build_custom_adapter
 
         config = {
-            "binary": "aider",
+            "binary": "exampletool",
             "strategy": "cli-flag",
             "launch": "{binary} --read {persona}",
             "resume": "{binary} --read {persona} --resume",
         }
-        adapter = build_custom_adapter("aider", config)
+        adapter = build_custom_adapter("exampletool", config)
         persona = tmp_path / "p.md"
         persona.touch()
-        with patch("shutil.which", return_value="/usr/bin/aider"):
+        with patch("shutil.which", return_value="/usr/bin/exampletool"):
             cmd = adapter.launch_cmd(persona, True)
         assert "--resume" in cmd
 

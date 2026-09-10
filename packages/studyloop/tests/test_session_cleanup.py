@@ -261,8 +261,8 @@ class TestTeardownAgent:
         """Adapter without a teardown attr (None/falsy) is silently skipped."""
         mock_adapter = MagicMock()
         mock_adapter.teardown = None
-        state = {"agent": "gemini", "session_dir": "/some/dir"}
-        with patch("studyloop.agent_launcher.AGENTS", {"gemini": mock_adapter}):
+        state = {"agent": "exampletool", "session_dir": "/some/dir"}
+        with patch("studyloop.agent_launcher.AGENTS", {"exampletool": mock_adapter}):
             from studyloop.session.cleanup import _teardown_agent
 
             _teardown_agent(state)  # must not raise

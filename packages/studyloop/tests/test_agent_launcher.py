@@ -122,9 +122,12 @@ class TestDetectAgents:
     def test_detect_env_var_not_installed_returns_empty(self):
         from studyloop.agent_launcher import detect_agents
 
+        # The name must be a REGISTERED harness: detect_agents() only takes the
+        # env-override branch when STUDYLOOP_AGENT is in AGENTS, so an unknown
+        # name would fall through and pass for the wrong reason.
         with (
             patch("studyloop.agent_launcher.shutil.which", return_value=None),
-            patch.dict(os.environ, {"STUDYLOOP_AGENT": "gemini"}),
+            patch.dict(os.environ, {"STUDYLOOP_AGENT": "grok"}),
         ):
             agents = detect_agents()
             assert agents == []

@@ -468,10 +468,12 @@ class TestStartSessionFlow:
             web_page,
             status=503,
             body={
-                "error": "Agent 'gemini' binary not found: gemini",
-                "agent": "gemini",
-                "binary": "gemini",
-                "install_hint": "Install the Gemini CLI: https://example.com",
+                "error": "Agent 'exampletool' binary not found: exampletool",
+                "agent": "exampletool",
+                "binary": "exampletool",
+                "install_hint": (
+                    "Install the 'exampletool' CLI and ensure 'exampletool' is on PATH."
+                ),
             },
         )
         _goto_picker(web_page)
@@ -489,8 +491,8 @@ class TestStartSessionFlow:
         err = web_page.locator(".picker-error")
         err.wait_for(state="visible", timeout=5000)
         text = err.text_content() or ""
-        assert "gemini" in text
-        assert "Install the Gemini CLI" in text
+        assert "exampletool" in text
+        assert "Install the 'exampletool' CLI" in text
 
     def test_409_already_active_surfaces_cleanly(self, web_page: Page) -> None:
         _stub_options(web_page)
