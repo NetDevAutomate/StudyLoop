@@ -1,0 +1,136 @@
+{
+ "artefact": "paraphrase-census",
+ "store_sha256": "e0d507fefa7999165c5bf2bac14e8b47f0da7383c08018baca3435913fe4f293",
+ "method": "Paraphrase census over REAL learner questions (no model, read-only).\n\nDesign question this answers: when a learner asks about something discussed in a past session,\nhow often are the question's words absent from the transcript — i.e. how often would a lexical\nretriever fail for vocabulary reasons rather than ranking?\n\nProxy (stated limits below): every learner turn in a *human-driven* session (session id not\n``agent-*``) is treated as a real question about its own session. For each one we measure\n\n1. **Vocabulary overlap** — the share of the question's stemmed content tokens that occur anywhere\n   in the *rest* of the same session's prose (the question row itself and byte-identical re-asks\n   excluded). 0.0 means the transcript never used any of the question's words.\n2. **Self-retrieval without self** — the committed prose FTS + phrase-token OR planner is queried\n   with the question; rows belonging to the question (and its identical re-asks) are dropped from\n   the ranking; we record whether the question's own session is still in the top 5. A miss is\n   classed ``vocabulary_gap`` if overlap == 0 (no token could have matched) else ``ranking``.",
+ "limits": "own-session comparison; cross-session vocabulary drift is larger, so paraphrase rates are LOWER bounds",
+ "planner": "learning_memory.store.plan_prose_query (phrase-token OR)",
+ "k": 5,
+ "min_content_tokens": 3,
+ "max_words": 200,
+ "summary": {
+  "learner_turns_human_sessions": 4710,
+  "excluded_under_3_content_tokens": 466,
+  "excluded_pasted_over_200_words": 945,
+  "measured": 3299,
+  "sampled": false,
+  "overlap_with_own_session_other_prose": {
+   "mean": 0.647,
+   "median": 0.7,
+   "deciles": [
+    0.214,
+    0.4,
+    0.529,
+    0.625,
+    0.7,
+    0.75,
+    0.833,
+    0.913,
+    1.0
+   ],
+   "share_zero_overlap": 0.057,
+   "share_below_0.25": 0.1064,
+   "share_below_0.5": 0.2592,
+   "share_at_least_0.5": 0.7408
+  },
+  "self_retrieval_without_self_top5": {
+   "hit": 2015,
+   "hit_rate": 0.6108,
+   "miss_vocabulary_gap": 188,
+   "miss_vocabulary_gap_rate": 0.057,
+   "miss_ranking": 1096,
+   "miss_ranking_rate": 0.3322
+  },
+  "by_harness": {
+   "kiro_cli": {
+    "n": 2151,
+    "hit": 1292,
+    "miss_vocab": 175,
+    "miss_rank": 684,
+    "hit_rate": 0.601
+   },
+   "codex": {
+    "n": 787,
+    "hit": 515,
+    "miss_rank": 268,
+    "miss_vocab": 4,
+    "hit_rate": 0.654
+   },
+   "claude_code": {
+    "n": 205,
+    "miss_rank": 123,
+    "hit": 81,
+    "miss_vocab": 1,
+    "hit_rate": 0.395
+   },
+   "grok": {
+    "n": 135,
+    "miss_vocab": 5,
+    "miss_rank": 13,
+    "hit": 117,
+    "hit_rate": 0.867
+   }
+  }
+ },
+ "zero_overlap_examples": [
+  {
+   "session": "ses_6b63bb63cffe0iVh",
+   "harness": "opencode",
+   "question": "is there a better way as this has been 3 hours so far"
+  },
+  {
+   "session": "ses_656d4961fffe4sD9",
+   "harness": "opencode",
+   "question": "Can you help refactor this to simpmly and align this to the aws standards                                                                   "
+  },
+  {
+   "session": "kiro_5476b1c1-a6f6-4",
+   "harness": "kiro_cli",
+   "question": "In a few words, summarize our conversation so far."
+  },
+  {
+   "session": "kiro_5476b1c1-a6f6-4",
+   "harness": "kiro_cli",
+   "question": "In a few words, summarize our conversation so far."
+  },
+  {
+   "session": "kiro_5476b1c1-a6f6-4",
+   "harness": "kiro_cli",
+   "question": "In a few words, summarize our conversation so far."
+  },
+  {
+   "session": "kiro_5476b1c1-a6f6-4",
+   "harness": "kiro_cli",
+   "question": "In a few words, summarize our conversation so far."
+  },
+  {
+   "session": "kiro_5476b1c1-a6f6-4",
+   "harness": "kiro_cli",
+   "question": "In a few words, summarize our conversation so far."
+  },
+  {
+   "session": "kiro_5476b1c1-a6f6-4",
+   "harness": "kiro_cli",
+   "question": "In a few words, summarize our conversation so far."
+  },
+  {
+   "session": "kiro_3797371f-69f6-4",
+   "harness": "kiro_cli",
+   "question": "In a few words, summarize our conversation so far."
+  },
+  {
+   "session": "kiro_0181f44b-8c30-4",
+   "harness": "kiro_cli",
+   "question": "Tool use was cancelled by the user"
+  },
+  {
+   "session": "kiro_0a65881b-ee4c-4",
+   "harness": "kiro_cli",
+   "question": "please can you help with:\n\n❯ curl -fsSL https://bun.sh/install | bash\n######################################################################"
+  },
+  {
+   "session": "kiro_0b99fed5-3184-4",
+   "harness": "kiro_cli",
+   "question": "can you help with:\n\n❯ backup_mac ~/code ataylor@192.168.125.22:/Volumes/DataStore/\n🍎 Mac-to-Mac backup (forcing Homebrew rsync on remote)\nWa"
+  }
+ ]
+}
