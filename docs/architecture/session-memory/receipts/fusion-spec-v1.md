@@ -1,4 +1,4 @@
-# Fusion spec v1 — arms pre-declared before the first DEV look
+# Fusion spec v1.1 — arms pre-declared before each DEV look (v1 declared before look 1; v1.1 adds the B1_planner control before look 2)
 
 **Declared:** 2026-09-10, before any DEV look on `learning-memory.db`. Ruler clause: "the fused
 arm's algorithm, per-source candidate budget, dedup rule and tie-break are versioned in
@@ -33,7 +33,21 @@ derivation, claims, embeddings or ontology exist?
 - **Byte budget:** identical to B1 — the arm returns ids only; payload budgets apply at Stage G.
 - **Latency:** measured cold on a fresh connection per receipt run; p95 ≤ 500 ms and ≤ 2 × B1.
 
-## What is *not* in v1
+## Arm `B1_planner` (control, declared in v1.1 before look 2)
+
+*Question it answers:* how much of `B1_clean`'s lift is the planner not throwing, and how much is
+the index holding prose only? Council finding F6 on look 1 asked this; it is answered by
+measurement, not wording.
+
+- **Index:** the shipped `messages_fts` over **every** archive row (tool echo, duplicates, all
+  roles) — unchanged from B1.
+- **Query planning:** `plan_prose_query` — identical to `B1_clean`; the *only* change from B1.
+- **Ranking / budget / dedup / tie-break:** the shipped `bm25(messages_fts), m.timestamp DESC`,
+  200 message rows, first 5 distinct session ids — identical to B1.
+- **Reading:** `B1_planner ≈ B1_clean` → the lift is the planner. `B1_planner ≈ B1` on the
+  questions B1 answered → the lift is the clean index. Anything between is apportioned.
+
+## What is *not* in v1 / v1.1
 
 No claims arm, no embeddings, no metadata filters, no lineage roll-up, no RRF. Each of those is a
 later spec version, declared before its own first look. The `unicode61` tokenizer variant is a
@@ -41,6 +55,10 @@ separate arm (`B1_clean_u61`) that requires a second store build and is declared
 
 ## Look accounting for Stage D
 
-This look is the first of ≤ 4 DEV looks for the **G1** family. Improvement = the paired lower
-bound vs B1 rose. It is scored on gold **DEV** (`gold-v2-dev.json`, sha `eeca2aaf…`); the SEALED
-set is not touched by any Stage D activity.
+Look 1 (`ca55c653`) was **voided for provenance** by the receipt council (ruler-amendment-002) and
+**still counts** as DEV look 1 of ≤ 4 for the **G1** family — the number was seen. Look 2 re-scores
+B0, B1, `B1_clean` and adds `B1_planner` under the corrected harness (fusion-spec sha, store sha,
+aggregate non-inferiority recorded); B0/B1/`B1_clean` must reproduce look 1's numbers exactly, which
+is the regression check that the harness edits changed no statistic. Improvement = the paired lower
+bound vs B1 rose. Scored on gold **DEV** (`gold-v2-dev.json`, file sha `5632cd2b…`, digest
+`9aa2b495…` per `gold-v2-receipt-r2.json`); the SEALED set is not touched by any Stage D activity.

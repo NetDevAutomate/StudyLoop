@@ -69,3 +69,40 @@ def B1_clean() -> Arm:  # noqa: N802 - arm names are receipt labels, matched to 
         return seen
 
     return arm
+
+
+def B1_planner() -> Arm:  # noqa: N802 - arm names are receipt labels, matched to the spec
+    """fusion-spec-v1.1 ``B1_planner``: the SHIPPED index with only the planner replaced.
+
+    Control arm that separates two effects bundled in ``B1_clean``: (i) a planner that
+    never throws, and (ii) an index that holds prose only. This arm keeps the shipped
+    ``messages_fts`` over every archive row (tool echo, duplicates and all), the shipped
+    ``bm25(messages_fts)`` ranking, the shipped 200-row candidate budget and first-seen
+    session dedup, and swaps *only* the query text for ``plan_prose_query(question)``.
+
+    If ``B1_planner`` ≈ ``B1_clean``, the lift is the planner. If ``B1_planner`` ≈ ``B1``
+    on the questions ``B1`` answered, the lift is the clean index.
+    """
+    from learning_memory.store import plan_prose_query
+
+    def arm(archive: sqlite3.Connection, question: str) -> list[str]:
+        planned = plan_prose_query(question)
+        if not planned:
+            return []
+        rows = archive.execute(
+            "SELECT m.session_id FROM messages m "
+            "JOIN messages_fts ON messages_fts.rowid = m.rowid "
+            "WHERE messages_fts MATCH ? "
+            "ORDER BY bm25(messages_fts), m.timestamp DESC "
+            f"LIMIT {CANDIDATE_ROWS}",
+            (planned,),
+        ).fetchall()
+        seen: list[str] = []
+        for (sid,) in rows:
+            if sid not in seen:
+                seen.append(sid)
+                if len(seen) == K:
+                    break
+        return seen
+
+    return arm

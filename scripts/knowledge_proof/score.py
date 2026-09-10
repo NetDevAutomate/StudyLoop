@@ -181,6 +181,22 @@ def non_inferiority(a: dict, b: dict, items: list[dict], stratum: str, seed: int
     }
 
 
+def non_inferiority_macro(a: dict, b: dict, items: list[dict], seed: int = SEED) -> dict:
+    """One-sided 95% upper bound on the macro (K/P/R) regression (b - a); pass if <= 0.05.
+
+    The ruler's factorial-control clause is on the aggregate: "B1 must be non-inferior to
+    B0 on the aggregate". Same paired cluster bootstrap as ``cluster_bootstrap``.
+    """
+    lift = cluster_bootstrap(a, b, items, seed)  # (a - b); regression is its negation
+    draws_hi = -lift["ci95"][0]
+    return {
+        "stratum": "macro",
+        "regression_point": -lift["point"],
+        "upper95": draws_hi,
+        "non_inferior": draws_hi <= 0.05,
+    }
+
+
 # --------------------------------------------------------------------------- receipts
 def _sha_file(p: pathlib.Path) -> str:
     return hashlib.sha256(p.read_bytes()).hexdigest()
@@ -236,6 +252,14 @@ def main() -> int:
     )
     ap.add_argument("--previous", help="previous receipt path for hash chaining")
     ap.add_argument("--label", default="baseline")
+    ap.add_argument(
+        "--fusion-spec",
+        help="receipts/fusion-spec-v<N>.md in force for this look (recorded on every receipt)",
+    )
+    ap.add_argument(
+        "--store",
+        help="learning-memory store read by feature arms; its sha256 binds the receipt to it",
+    )
     args = ap.parse_args()
 
     root = pathlib.Path(__file__).resolve().parents[2]
@@ -260,34 +284,23 @@ def main() -> int:
         }
         for name, r in results.items()
     }
-    comparisons = {
-        "B1_vs_B0": {
-            "lift": cluster_bootstrap(
-                results["B1"]["per_question"], results["B0"]["per_question"], items
-            ),
-            "non_inferiority": [
-                non_inferiority(
-                    results["B1"]["per_question"], results["B0"]["per_question"], items, s
-                )
-                for s in "KPR"
-            ],
+
+    def compare(cand: str, comp: str) -> dict:
+        a, b = results[cand]["per_question"], results[comp]["per_question"]
+        return {
+            "lift": cluster_bootstrap(a, b, items),
+            "non_inferiority": [non_inferiority_macro(a, b, items)]
+            + [non_inferiority(a, b, items, s) for s in "KPR"],
         }
-    }
+
+    comparisons = {"B1_vs_B0": compare("B1", "B0")}
     for name in arms:
         if name in ("B0", "B1"):
             continue
-        comparisons[f"{name}_vs_B1"] = {
-            "lift": cluster_bootstrap(
-                results[name]["per_question"], results["B1"]["per_question"], items
-            ),
-            "non_inferiority": [
-                non_inferiority(
-                    results[name]["per_question"], results["B1"]["per_question"], items, s
-                )
-                for s in "KPR"
-            ],
-        }
+        comparisons[f"{name}_vs_B1"] = compare(name, "B1")
 
+    fusion_spec = pathlib.Path(args.fusion_spec) if args.fusion_spec else None
+    store = pathlib.Path(args.store).expanduser() if args.store else None
     receipt = {
         "receipt": args.label,
         "created_utc": _dt.datetime.now(_dt.UTC).isoformat(timespec="seconds"),
@@ -301,6 +314,20 @@ def main() -> int:
         ),
         "candidate_commit": _git(root, "rev-parse", "HEAD"),
         "b0_pin": _git(pathlib.Path(args.b0_src).parents[2], "rev-parse", "HEAD"),
+        "fusion_spec": {
+            "path": str(fusion_spec.relative_to(root)) if fusion_spec else None,
+            "sha256": _sha_file(fusion_spec) if fusion_spec else None,
+            "declared_commit": _git(
+                root, "log", "--diff-filter=A", "-1", "--format=%H", "--", str(fusion_spec)
+            )
+            if fusion_spec
+            else None,
+        },
+        "store": {
+            "path": str(store) if store else None,
+            "sha256": _sha_file(store) if store else None,
+            "bytes": store.stat().st_size if store else None,
+        },
         "gold": {
             "set": gold["set"],
             "sha256": hashlib.sha256(pathlib.Path(args.gold).read_bytes()).hexdigest(),
