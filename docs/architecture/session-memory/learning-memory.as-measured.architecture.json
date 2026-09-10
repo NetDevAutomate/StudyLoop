@@ -1,0 +1,392 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Claim-Centric Learning Memory — as measured (ADR-0011, 2026-09-10)",
+    "output": "learning-memory.as-measured.architecture.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "capture",
+        "label": "Capture",
+        "focus": [
+          "adapters",
+          "events",
+          "evidence"
+        ],
+        "note": "Every adapter emits typed events and writes evidence in the same transaction."
+      },
+      {
+        "id": "history",
+        "label": "History path",
+        "focus": [
+          "sessionsdb",
+          "archive",
+          "events"
+        ],
+        "note": "The live sessions.db is read by the archive adapter only, and never written."
+      },
+      {
+        "id": "derive-and-serve",
+        "label": "Derive and serve",
+        "focus": [
+          "deterministic",
+          "modelpass",
+          "learning",
+          "claims",
+          "mentor"
+        ],
+        "note": "Usefulness is derived at capture time, then served claims-first."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "sessionsdb",
+      "type": "database",
+      "label": "sessions.db",
+      "sublabel": "live · 5,879 sessions",
+      "tag": "never written",
+      "pos": [
+        40,
+        100
+      ],
+      "size": [
+        180,
+        84
+      ]
+    },
+    {
+      "id": "archive",
+      "type": "external",
+      "label": "Archive adapter",
+      "sublabel": "only path for history",
+      "tag": "basis=REPORTED",
+      "pos": [
+        360,
+        100
+      ],
+      "size": [
+        180,
+        84
+      ]
+    },
+    {
+      "id": "adapters",
+      "type": "external",
+      "label": "Six harness adapters",
+      "sublabel": "discover() · parse()",
+      "tag": "native bytes",
+      "pos": [
+        40,
+        400
+      ],
+      "size": [
+        180,
+        84
+      ]
+    },
+    {
+      "id": "events",
+      "type": "database",
+      "label": "Canonical events",
+      "sublabel": "kind · turn_id · seq",
+      "tag": "content_hash",
+      "pos": [
+        300,
+        400
+      ],
+      "size": [
+        180,
+        84
+      ]
+    },
+    {
+      "id": "evidence",
+      "type": "database",
+      "label": "Evidence",
+      "sublabel": "body + sha256",
+      "tag": "same transaction",
+      "pos": [
+        300,
+        640
+      ],
+      "size": [
+        180,
+        84
+      ]
+    },
+    {
+      "id": "deterministic",
+      "type": "backend",
+      "label": "Deterministic pass",
+      "sublabel": "export sweep · $0",
+      "pos": [
+        560,
+        400
+      ],
+      "size": [
+        180,
+        84
+      ]
+    },
+    {
+      "id": "modelpass",
+      "type": "backend",
+      "label": "Model pass",
+      "sublabel": "budgeted distillation",
+      "pos": [
+        560,
+        640
+      ],
+      "size": [
+        180,
+        84
+      ]
+    },
+    {
+      "id": "learning",
+      "type": "database",
+      "label": "Learning content",
+      "sublabel": "backlog · review · resume",
+      "tag": "concept graph",
+      "pos": [
+        820,
+        400
+      ],
+      "size": [
+        180,
+        84
+      ]
+    },
+    {
+      "id": "claims",
+      "type": "database",
+      "label": "Claims",
+      "sublabel": "1,227 claims · 0 unbound",
+      "tag": "binding held",
+      "pos": [
+        820,
+        640
+      ],
+      "size": [
+        180,
+        84
+      ]
+    },
+    {
+      "id": "web",
+      "type": "frontend",
+      "label": "StudyLoop web",
+      "sublabel": "backlog · review · resume",
+      "pos": [
+        1080,
+        400
+      ],
+      "size": [
+        180,
+        84
+      ]
+    },
+    {
+      "id": "mentor",
+      "type": "external",
+      "label": "Mentor agent",
+      "sublabel": "MCP tools",
+      "tag": "not established",
+      "pos": [
+        1080,
+        640
+      ],
+      "size": [
+        180,
+        84
+      ]
+    },
+    {
+      "id": "prosefts",
+      "type": "database",
+      "label": "prose_fts",
+      "sublabel": "FTS5 · OR planner",
+      "tag": "established",
+      "pos": [
+        300,
+        880
+      ],
+      "size": [
+        180,
+        84
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "One SQLite file: learning-memory.db",
+      "wraps": [
+        "events",
+        "evidence",
+        "prosefts"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "archive-reads-live",
+      "from": "sessionsdb",
+      "to": "archive",
+      "label": "read-only, REPORTED evidence",
+      "variant": "dashed",
+      "fromSide": "right",
+      "toSide": "left",
+      "labelDy": 72
+    },
+    {
+      "id": "archive-events",
+      "from": "archive",
+      "to": "events",
+      "label": "classified kind",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "adapter-events",
+      "from": "adapters",
+      "to": "events",
+      "label": "typed events",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "adapter-evidence",
+      "from": "adapters",
+      "to": "evidence",
+      "label": "native bytes",
+      "fromSide": "bottom",
+      "toSide": "left"
+    },
+    {
+      "id": "events-deterministic",
+      "from": "events",
+      "to": "deterministic",
+      "label": "turns",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "exchanges-to-writer",
+      "from": "deterministic",
+      "to": "modelpass",
+      "label": "exchanges",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    },
+    {
+      "id": "evidence-quotes",
+      "from": "evidence",
+      "to": "modelpass",
+      "label": "quotes",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "writes-learning-tier",
+      "from": "deterministic",
+      "to": "learning",
+      "label": "learning tier",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "distilled-claims",
+      "from": "modelpass",
+      "to": "claims",
+      "label": "citations",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "findings-seed-review",
+      "from": "claims",
+      "to": "learning",
+      "label": "Findings → review items",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "study-surfaces",
+      "from": "learning",
+      "to": "web",
+      "label": "reads",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "evidence-index",
+      "from": "evidence",
+      "to": "prosefts",
+      "label": "prose rows indexed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    },
+    {
+      "id": "prose-recall",
+      "from": "prosefts",
+      "to": "mentor",
+      "label": "recall@5 0.283 vs 0.115 · +0.168 SEALED",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "bottom",
+      "via": [
+        [
+          1170,
+          922
+        ]
+      ]
+    },
+    {
+      "id": "claims-fusion",
+      "from": "claims",
+      "to": "mentor",
+      "label": "RRF −0.154",
+      "fromSide": "right",
+      "toSide": "left",
+      "labelDy": -12
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Established on SEALED (84 questions)",
+      "items": [
+        "Prose-only FTS with a phrase-token OR planner beats the shipped path: recall@5 0.283 vs 0.115, +0.168 (CI95 lower +0.076)",
+        "Non-inferior on keyword, paraphrase and relational strata; replicates DEV (+0.184)",
+        "The shipped AND-first planner is the defect (F-B0-1)"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Not established",
+      "items": [
+        "G1: fused claims arm 0.129 against a 0.64 bar — worse than prose alone (−0.154, CI95 upper −0.065)",
+        "Mechanism: equal-weight RRF over a ~127-session claims list displaces prose rank-1/2 gold (12 of 17 lost)",
+        "G2 entailment: one auditor scored identical items 82 → 16 → 86; families 14–21 points apart — not measurable"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "What held",
+      "items": [
+        "0 unbound writes over 2,057 citations across two writer versions and 384 runs",
+        "Claims carry relational signal (R 0.207 vs 0.103) and none for paraphrase",
+        "Every result is a hash-chained receipt reviewed by two model families"
+      ]
+    }
+  ]
+}
