@@ -1,6 +1,6 @@
 site_name: StudyLoop
 site_description: A local-first, AuDHD-aware study companion for active learning with AI mentors
-site_url: https://netdevautomate.github.io/StudyLoop/
+site_url: https://www.studyloop.dev/
 
 theme:
   name: material

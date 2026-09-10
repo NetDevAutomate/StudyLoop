@@ -2,7 +2,7 @@
 
 Thank you for helping improve an AuDHD-aware learning tool. The full contributor guide lives in the
 documentation: **[docs/contributing.md](docs/contributing.md)** (published at
-<https://netdevautomate.github.io/StudyLoop/contributing/>). It covers the development environment,
+[docs/contributing.md](docs/contributing.md)). It covers the development environment,
 repository layout, how changes are made and tested, CI, documentation standards, the changelog, pull
 requests, issues, prioritisation, AI usage and models through a LiteLLM gateway, and security.
 
