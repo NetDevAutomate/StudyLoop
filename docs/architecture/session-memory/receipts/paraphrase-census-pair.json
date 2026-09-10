@@ -1,0 +1,727 @@
+{
+ "artefact": "paraphrase-census-pair",
+ "method": "Paired paraphrase census: the same questions, two stores, one outcome per question per store.\n\nAnswers the Stage 2 council's F1/F2 (receipt ``council-stage2-2026-09-10.md``). The aggregate\nreceipts ``paraphrase-census.json`` (v1, 14-source store) and ``paraphrase-census-v2.json`` (six\nsources + ``study_mentor``) show identical per-harness ``n`` and identical vocabulary-gap counts, from\nwhich the v2 sidecar inferred \"same question set, 23 recoveries, zero regressions\". An aggregate\ncannot distinguish 23 net from 24 recoveries and 1 regression, nor show *why* a question moved.\nThis script measures it:\n\n1. **Membership** — every eligible question is keyed ``session_id | sha256(text)[:16] | k`` (k = the\n   k-th identical re-ask in that session, in event order). Are the two key sets identical on the\n   in-scope harnesses?\n2. **Transitions** — per question, class in v1 vs class in v2 (``hit`` / ``vocabulary_gap`` /\n   ``ranking``), counted per harness, including the harnesses under the census's n >= 50 reporting\n   threshold.\n3. **Mechanism** — for every miss->hit, did a retired-label session occupy v1's top-5 (displacement),\n   or did the question rise with no retired session above it (bm25/IDF shift from a smaller index)?\n4. **Content stability** — a sha256 over each session's ordered prose events (kind, text) in both\n   stores; any mismatch means the corpus changed between runs.\n\nEligibility, tokenisation, self-exclusion, planner and K are imported from ``paraphrase_census`` so the\nper-question decision is byte-for-byte the census's own. Read-only on both stores.",
+ "v1_store_sha256": "f5e923e878b059708c163e0ef7b42fc17c7d8efc07a92dca04d86dcffa833cee",
+ "v2_store_sha256": "e0d507fefa7999165c5bf2bac14e8b47f0da7383c08018baca3435913fe4f293",
+ "in_scope_sources": [
+  "claude_code",
+  "codex",
+  "grok",
+  "kiro_cli",
+  "opencode",
+  "pi",
+  "study_mentor"
+ ],
+ "retired_sources_in_v1_store": [
+  "aider",
+  "bedrock_proxy",
+  "gemini_cli",
+  "kilocode_cli",
+  "litellm-proxy",
+  "omp",
+  "repoprompt"
+ ],
+ "summary": {
+  "membership": {
+   "v1_in_scope_questions": 3299,
+   "v2_questions": 3299,
+   "common": 3299,
+   "only_in_v1": 0,
+   "only_in_v2": 0,
+   "identical": true
+  },
+  "hit_rate": {
+   "v1_all_sources": 0.5729,
+   "v1_restricted_to_v2_cohort": 0.6038,
+   "v2": 0.6108,
+   "composition_effect_pt": 3.09,
+   "retrieval_effect_pt": 0.7
+  },
+  "transitions_by_harness": {
+   "claude_code": {
+    "hit->hit": 80,
+    "ranking->hit": 1,
+    "ranking->ranking": 123,
+    "vocabulary_gap->vocabulary_gap": 1
+   },
+   "codex": {
+    "hit->hit": 511,
+    "hit->ranking": 4,
+    "ranking->hit": 4,
+    "ranking->ranking": 264,
+    "vocabulary_gap->vocabulary_gap": 4
+   },
+   "grok": {
+    "hit->hit": 117,
+    "ranking->ranking": 13,
+    "vocabulary_gap->vocabulary_gap": 5
+   },
+   "kiro_cli": {
+    "hit->hit": 1265,
+    "hit->ranking": 5,
+    "ranking->hit": 27,
+    "ranking->ranking": 679,
+    "vocabulary_gap->vocabulary_gap": 175
+   },
+   "opencode": {
+    "hit->hit": 7,
+    "ranking->ranking": 7,
+    "vocabulary_gap->vocabulary_gap": 2
+   },
+   "pi": {
+    "hit->hit": 3,
+    "ranking->ranking": 1,
+    "vocabulary_gap->vocabulary_gap": 1
+   }
+  },
+  "changed_questions": 41,
+  "miss_to_hit": 32,
+  "miss_to_hit_with_retired_session_in_v1_top5": 23,
+  "miss_to_hit_without_retired_session_in_v1_top5": 9,
+  "hit_to_miss": 9,
+  "class_change_among_misses": 0,
+  "questions_per_harness_v2": {
+   "kiro_cli": 2151,
+   "codex": 787,
+   "claude_code": 205,
+   "grok": 135,
+   "opencode": 16,
+   "pi": 5
+  },
+  "content_stability": {
+   "v2_sessions": 4580,
+   "sessions_only_in_v2_store": 0,
+   "prose_digest_mismatches": 1,
+   "identical": false
+  },
+  "rejected_sessions": {
+   "v1": 41,
+   "v2": 20,
+   "v2_subset_of_v1": true
+  }
+ },
+ "changed_questions": [
+  {
+   "key": "b818c97b-2a8c-4f52-b5b0-bbe179256425|6ab26256ca1b0209|0",
+   "harness": "claude_code",
+   "v1": "ranking",
+   "v2": "hit",
+   "overlap": 0.8571,
+   "retired_sessions_in_v1_top5": 0,
+   "v1_top5_harnesses": [
+    "claude_code",
+    "claude_code",
+    "claude_code",
+    "codex",
+    "codex"
+   ]
+  },
+  {
+   "key": "codex_rollout-2026-06-02T07-53-23-019e871b-c103-76d3-a3bf-2c9a4662d480|0e971d2b99fc8b02|0",
+   "harness": "codex",
+   "v1": "hit",
+   "v2": "ranking",
+   "overlap": 0.7143,
+   "retired_sessions_in_v1_top5": 0,
+   "v1_top5_harnesses": [
+    "kiro_cli",
+    "kiro_cli",
+    "kiro_cli",
+    "kiro_cli",
+    "codex"
+   ]
+  },
+  {
+   "key": "codex_rollout-2026-06-11T08-09-07-019eb583-6557-7083-becf-16885ad6b98b|fc18041514fefebc|0",
+   "harness": "codex",
+   "v1": "ranking",
+   "v2": "hit",
+   "overlap": 0.88,
+   "retired_sessions_in_v1_top5": 0,
+   "v1_top5_harnesses": [
+    "kiro_cli",
+    "kiro_cli",
+    "kiro_cli",
+    "codex",
+    "kiro_cli"
+   ]
+  },
+  {
+   "key": "codex_rollout-2026-06-23T22-21-51-019ef65c-664e-7bc3-92f4-2e82d6d9c935|149d71c274a3251e|0",
+   "harness": "codex",
+   "v1": "ranking",
+   "v2": "hit",
+   "overlap": 1.0,
+   "retired_sessions_in_v1_top5": 2,
+   "v1_top5_harnesses": [
+    "kiro_cli",
+    "kiro_cli",
+    "grok",
+    "litellm-proxy",
+    "litellm-proxy"
+   ]
+  },
+  {
+   "key": "codex_rollout-2026-06-23T22-21-51-019ef65c-664e-7bc3-92f4-2e82d6d9c935|ed3a2d30d640fed0|0",
+   "harness": "codex",
+   "v1": "hit",
+   "v2": "ranking",
+   "overlap": 0.8571,
+   "retired_sessions_in_v1_top5": 0,
+   "v1_top5_harnesses": [
+    "claude_code",
+    "claude_code",
+    "claude_code",
+    "claude_code",
+    "codex"
+   ]
+  },
+  {
+   "key": "codex_rollout-2026-06-28T14-57-27-019f0e85-5534-76c0-ab00-e48e99798a84|51bd37212640da85|0",
+   "harness": "codex",
+   "v1": "ranking",
+   "v2": "hit",
+   "overlap": 1.0,
+   "retired_sessions_in_v1_top5": 2,
+   "v1_top5_harnesses": [
+    "litellm-proxy",
+    "kiro_cli",
+    "codex",
+    "litellm-proxy",
+    "kiro_cli"
+   ]
+  },
+  {
+   "key": "codex_rollout-2026-08-05T16-00-27-019fd270-ae66-7fb2-8fee-828c3c2b1bc8|15ae209d29e454c4|0",
+   "harness": "codex",
+   "v1": "ranking",
+   "v2": "hit",
+   "overlap": 0.7143,
+   "retired_sessions_in_v1_top5": 0,
+   "v1_top5_harnesses": [
+    "kiro_cli",
+    "kiro_cli",
+    "kiro_cli",
+    "kiro_cli",
+    "kiro_cli"
+   ]
+  },
+  {
+   "key": "codex_rollout-2026-08-27T20-07-20-01a0449e-9d4c-7d03-b2c1-7cbecd9adb0f|1356d81fc2219167|0",
+   "harness": "codex",
+   "v1": "hit",
+   "v2": "ranking",
+   "overlap": 1.0,
+   "retired_sessions_in_v1_top5": 0,
+   "v1_top5_harnesses": [
+    "codex",
+    "codex",
+    "codex",
+    "codex",
+    "codex"
+   ]
+  },
+  {
+   "key": "codex_rollout-2026-08-27T20-07-20-01a0449e-9d4c-7d03-b2c1-7cbecd9adb0f|cc47852c917c7c89|0",
+   "harness": "codex",
+   "v1": "hit",
+   "v2": "ranking",
+   "overlap": 1.0,
+   "retired_sessions_in_v1_top5": 0,
+   "v1_top5_harnesses": [
+    "kiro_cli",
+    "codex",
+    "codex",
+    "codex",
+    "codex"
+   ]
+  },
+  {
+   "key": "kiro_00fa4e7e-b516-478c-85e0-a03552b39b4f|ef45810816041f1d|0",
+   "harness": "kiro_cli",
+   "v1": "ranking",
+   "v2": "hit",
+   "overlap": 1.0,
+   "retired_sessions_in_v1_top5": 0,
+   "v1_top5_harnesses": [
+    "kiro_cli",
+    "kiro_cli",
+    "kiro_cli",
+    "codex",
+    "kiro_cli"
+   ]
+  },
+  {
+   "key": "kiro_0b1b5582-c8cb-49a2-867e-db0efe241474|25dcabe6db7ec480|0",
+   "harness": "kiro_cli",
+   "v1": "ranking",
+   "v2": "hit",
+   "overlap": 0.1304,
+   "retired_sessions_in_v1_top5": 4,
+   "v1_top5_harnesses": [
+    "gemini_cli",
+    "kilocode_cli",
+    "kilocode_cli",
+    "kilocode_cli",
+    "kiro_cli"
+   ]
+  },
+  {
+   "key": "kiro_0c1bb160-7900-4a13-8f12-6e500ea3e899|fc592d5289a57aae|0",
+   "harness": "kiro_cli",
+   "v1": "hit",
+   "v2": "ranking",
+   "overlap": 0.641,
+   "retired_sessions_in_v1_top5": 0,
+   "v1_top5_harnesses": [
+    "kiro_cli",
+    "kiro_cli",
+    "kiro_cli",
+    "claude_code",
+    "kiro_cli"
+   ]
+  },
+  {
+   "key": "kiro_1498677a-018f-42f4-8c13-39a95d5fb856|12bb8267db8d1d31|0",
+   "harness": "kiro_cli",
+   "v1": "ranking",
+   "v2": "hit",
+   "overlap": 0.25,
+   "retired_sessions_in_v1_top5": 1,
+   "v1_top5_harnesses": [
+    "grok",
+    "kiro_cli",
+    "kiro_cli",
+    "litellm-proxy",
+    "kiro_cli"
+   ]
+  },
+  {
+   "key": "kiro_1f396c36-61df-4e7f-a24a-db6c96627eee|0fa961a351a2f665|0",
+   "harness": "kiro_cli",
+   "v1": "ranking",
+   "v2": "hit",
+   "overlap": 0.625,
+   "retired_sessions_in_v1_top5": 1,
+   "v1_top5_harnesses": [
+    "kiro_cli",
+    "kiro_cli",
+    "codex",
+    "kiro_cli",
+    "gemini_cli"
+   ]
+  },
+  {
+   "key": "kiro_21ee9c36-ca76-4d0b-bf7f-fedf563ae86d|ce955e9d754a6fe1|0",
+   "harness": "kiro_cli",
+   "v1": "ranking",
+   "v2": "hit",
+   "overlap": 0.75,
+   "retired_sessions_in_v1_top5": 1,
+   "v1_top5_harnesses": [
+    "repoprompt",
+    "kiro_cli",
+    "kiro_cli",
+    "claude_code",
+    "claude_code"
+   ]
+  },
+  {
+   "key": "kiro_21ee9c36-ca76-4d0b-bf7f-fedf563ae86d|ce955e9d754a6fe1|1",
+   "harness": "kiro_cli",
+   "v1": "ranking",
+   "v2": "hit",
+   "overlap": 0.75,
+   "retired_sessions_in_v1_top5": 1,
+   "v1_top5_harnesses": [
+    "repoprompt",
+    "kiro_cli",
+    "kiro_cli",
+    "claude_code",
+    "claude_code"
+   ]
+  },
+  {
+   "key": "kiro_21ee9c36-ca76-4d0b-bf7f-fedf563ae86d|ce955e9d754a6fe1|2",
+   "harness": "kiro_cli",
+   "v1": "ranking",
+   "v2": "hit",
+   "overlap": 0.75,
+   "retired_sessions_in_v1_top5": 1,
+   "v1_top5_harnesses": [
+    "repoprompt",
+    "kiro_cli",
+    "kiro_cli",
+    "claude_code",
+    "claude_code"
+   ]
+  },
+  {
+   "key": "kiro_246e6c2c-267b-4389-96bb-c943e6b1eb06|380706b32a18f49a|0",
+   "harness": "kiro_cli",
+   "v1": "ranking",
+   "v2": "hit",
+   "overlap": 1.0,
+   "retired_sessions_in_v1_top5": 0,
+   "v1_top5_harnesses": [
+    "kiro_cli",
+    "codex",
+    "kiro_cli",
+    "kiro_cli",
+    "kiro_cli"
+   ]
+  },
+  {
+   "key": "kiro_2d0cc0d7-9ff1-486d-841b-c97a5fca4748|c25e633e3faab021|0",
+   "harness": "kiro_cli",
+   "v1": "ranking",
+   "v2": "hit",
+   "overlap": 0.4615,
+   "retired_sessions_in_v1_top5": 0,
+   "v1_top5_harnesses": [
+    "kiro_cli",
+    "opencode",
+    "opencode",
+    "kiro_cli",
+    "opencode"
+   ]
+  },
+  {
+   "key": "kiro_40c29ca2-c0bb-4754-ab24-35609db4be99|afd9bb76e4d4990d|0",
+   "harness": "kiro_cli",
+   "v1": "ranking",
+   "v2": "hit",
+   "overlap": 1.0,
+   "retired_sessions_in_v1_top5": 2,
+   "v1_top5_harnesses": [
+    "codex",
+    "codex",
+    "codex",
+    "repoprompt",
+    "repoprompt"
+   ]
+  },
+  {
+   "key": "kiro_40c29ca2-c0bb-4754-ab24-35609db4be99|afd9bb76e4d4990d|1",
+   "harness": "kiro_cli",
+   "v1": "ranking",
+   "v2": "hit",
+   "overlap": 1.0,
+   "retired_sessions_in_v1_top5": 2,
+   "v1_top5_harnesses": [
+    "codex",
+    "codex",
+    "codex",
+    "repoprompt",
+    "repoprompt"
+   ]
+  },
+  {
+   "key": "kiro_40c29ca2-c0bb-4754-ab24-35609db4be99|bb07c817c5511830|0",
+   "harness": "kiro_cli",
+   "v1": "ranking",
+   "v2": "hit",
+   "overlap": 0.8333,
+   "retired_sessions_in_v1_top5": 4,
+   "v1_top5_harnesses": [
+    "kiro_cli",
+    "repoprompt",
+    "repoprompt",
+    "repoprompt",
+    "repoprompt"
+   ]
+  },
+  {
+   "key": "kiro_4354d0ff-aa9e-4e64-8a60-6c19b7cfeee0|738ea68e8bb4eb53|0",
+   "harness": "kiro_cli",
+   "v1": "ranking",
+   "v2": "hit",
+   "overlap": 0.7143,
+   "retired_sessions_in_v1_top5": 5,
+   "v1_top5_harnesses": [
+    "gemini_cli",
+    "kilocode_cli",
+    "kilocode_cli",
+    "kilocode_cli",
+    "repoprompt"
+   ]
+  },
+  {
+   "key": "kiro_49198681-49e2-4049-ab55-0da9c8459dd8|20987a7406c09978|0",
+   "harness": "kiro_cli",
+   "v1": "ranking",
+   "v2": "hit",
+   "overlap": 0.5,
+   "retired_sessions_in_v1_top5": 4,
+   "v1_top5_harnesses": [
+    "kiro_cli",
+    "repoprompt",
+    "repoprompt",
+    "repoprompt",
+    "repoprompt"
+   ]
+  },
+  {
+   "key": "kiro_49f66ab4-05fd-4a48-8717-6b37e63c4925|e43454401cb2b876|0",
+   "harness": "kiro_cli",
+   "v1": "ranking",
+   "v2": "hit",
+   "overlap": 0.3191,
+   "retired_sessions_in_v1_top5": 4,
+   "v1_top5_harnesses": [
+    "repoprompt",
+    "kiro_cli",
+    "repoprompt",
+    "repoprompt",
+    "repoprompt"
+   ]
+  },
+  {
+   "key": "kiro_57a7983c-2cd6-4f96-b995-2b79ba09455e|1e9cc902bd0d22da|0",
+   "harness": "kiro_cli",
+   "v1": "ranking",
+   "v2": "hit",
+   "overlap": 0.75,
+   "retired_sessions_in_v1_top5": 3,
+   "v1_top5_harnesses": [
+    "repoprompt",
+    "gemini_cli",
+    "repoprompt",
+    "kiro_cli",
+    "kiro_cli"
+   ]
+  },
+  {
+   "key": "kiro_6d461315-0cdc-44a3-b701-b09421b50b44|dc1be10a1d271afd|0",
+   "harness": "kiro_cli",
+   "v1": "ranking",
+   "v2": "hit",
+   "overlap": 0.5,
+   "retired_sessions_in_v1_top5": 0,
+   "v1_top5_harnesses": [
+    "kiro_cli",
+    "pi",
+    "kiro_cli",
+    "kiro_cli",
+    "codex"
+   ]
+  },
+  {
+   "key": "kiro_6e292dfc-8385-4d6d-b809-26852a7758f1|1b6c5bf32e4d252c|0",
+   "harness": "kiro_cli",
+   "v1": "ranking",
+   "v2": "hit",
+   "overlap": 0.5294,
+   "retired_sessions_in_v1_top5": 0,
+   "v1_top5_harnesses": [
+    "codex",
+    "kiro_cli",
+    "kiro_cli",
+    "kiro_cli",
+    "kiro_cli"
+   ]
+  },
+  {
+   "key": "kiro_7ea3d909-3d12-4386-af52-d5f6935e7459|a06f27beadd60d09|0",
+   "harness": "kiro_cli",
+   "v1": "hit",
+   "v2": "ranking",
+   "overlap": 0.5714,
+   "retired_sessions_in_v1_top5": 0,
+   "v1_top5_harnesses": [
+    "claude_code",
+    "codex",
+    "kiro_cli",
+    "claude_code",
+    "kiro_cli"
+   ]
+  },
+  {
+   "key": "kiro_875239bf-d72e-4210-935f-d36dac78b00e|2b1e4a7d0cc0d732|0",
+   "harness": "kiro_cli",
+   "v1": "ranking",
+   "v2": "hit",
+   "overlap": 0.625,
+   "retired_sessions_in_v1_top5": 1,
+   "v1_top5_harnesses": [
+    "kiro_cli",
+    "kiro_cli",
+    "kiro_cli",
+    "kiro_cli",
+    "litellm-proxy"
+   ]
+  },
+  {
+   "key": "kiro_a10e6150-96f8-46ce-8bdb-783f60c024b0|0bd23786ed6a6e99|0",
+   "harness": "kiro_cli",
+   "v1": "ranking",
+   "v2": "hit",
+   "overlap": 0.7857,
+   "retired_sessions_in_v1_top5": 1,
+   "v1_top5_harnesses": [
+    "claude_code",
+    "claude_code",
+    "claude_code",
+    "kiro_cli",
+    "aider"
+   ]
+  },
+  {
+   "key": "kiro_a3751672-57ff-4eee-b8fb-dd7b81ec3c1e|76b936c3d01cbfb7|0",
+   "harness": "kiro_cli",
+   "v1": "hit",
+   "v2": "ranking",
+   "overlap": 0.6,
+   "retired_sessions_in_v1_top5": 0,
+   "v1_top5_harnesses": [
+    "kiro_cli",
+    "claude_code",
+    "codex",
+    "grok",
+    "kiro_cli"
+   ]
+  },
+  {
+   "key": "kiro_b8a215f6-5b8c-4d64-9fc5-3534b00112d0|97b62018234d6108|0",
+   "harness": "kiro_cli",
+   "v1": "hit",
+   "v2": "ranking",
+   "overlap": 0.5,
+   "retired_sessions_in_v1_top5": 0,
+   "v1_top5_harnesses": [
+    "kiro_cli",
+    "kiro_cli",
+    "claude_code",
+    "kiro_cli",
+    "kiro_cli"
+   ]
+  },
+  {
+   "key": "kiro_c7937bb3-b2e6-42f0-8001-e7cec573d479|250b4c7a5b88d007|0",
+   "harness": "kiro_cli",
+   "v1": "ranking",
+   "v2": "hit",
+   "overlap": 0.8333,
+   "retired_sessions_in_v1_top5": 1,
+   "v1_top5_harnesses": [
+    "kiro_cli",
+    "kiro_cli",
+    "kiro_cli",
+    "kiro_cli",
+    "litellm-proxy"
+   ]
+  },
+  {
+   "key": "kiro_c88f4eef-81bc-4bf3-b583-c1632f8c9e79|d9e88a97ce8cc642|0",
+   "harness": "kiro_cli",
+   "v1": "hit",
+   "v2": "ranking",
+   "overlap": 0.6364,
+   "retired_sessions_in_v1_top5": 0,
+   "v1_top5_harnesses": [
+    "kiro_cli",
+    "kiro_cli",
+    "kiro_cli",
+    "kiro_cli",
+    "kiro_cli"
+   ]
+  },
+  {
+   "key": "kiro_c9031b91-81fc-4428-8f15-e604daa7ea4f|abd609794e239747|0",
+   "harness": "kiro_cli",
+   "v1": "ranking",
+   "v2": "hit",
+   "overlap": 0.8333,
+   "retired_sessions_in_v1_top5": 1,
+   "v1_top5_harnesses": [
+    "kiro_cli",
+    "kiro_cli",
+    "kiro_cli",
+    "kiro_cli",
+    "litellm-proxy"
+   ]
+  },
+  {
+   "key": "kiro_e4be0256-4ad1-441a-bb8d-d60439daf7d7|335ec880bfb154a4|0",
+   "harness": "kiro_cli",
+   "v1": "ranking",
+   "v2": "hit",
+   "overlap": 0.4286,
+   "retired_sessions_in_v1_top5": 3,
+   "v1_top5_harnesses": [
+    "kiro_cli",
+    "kiro_cli",
+    "gemini_cli",
+    "gemini_cli",
+    "gemini_cli"
+   ]
+  },
+  {
+   "key": "kiro_ea2ed876-6736-4ae1-b020-03fc83568798|ca8760342a83cc82|0",
+   "harness": "kiro_cli",
+   "v1": "ranking",
+   "v2": "hit",
+   "overlap": 0.5882,
+   "retired_sessions_in_v1_top5": 2,
+   "v1_top5_harnesses": [
+    "kiro_cli",
+    "kiro_cli",
+    "repoprompt",
+    "codex",
+    "repoprompt"
+   ]
+  },
+  {
+   "key": "kiro_ecc3d51c-6d7b-4ef7-85bd-7343d730f02e|093688d9d84cef70|0",
+   "harness": "kiro_cli",
+   "v1": "ranking",
+   "v2": "hit",
+   "overlap": 0.4,
+   "retired_sessions_in_v1_top5": 0,
+   "v1_top5_harnesses": [
+    "codex",
+    "kiro_cli",
+    "codex",
+    "codex",
+    "codex"
+   ]
+  },
+  {
+   "key": "kiro_f411d987-3692-4cf3-9f6d-adbb49f987d3|d848c77389c0eb81|0",
+   "harness": "kiro_cli",
+   "v1": "ranking",
+   "v2": "hit",
+   "overlap": 0.2,
+   "retired_sessions_in_v1_top5": 3,
+   "v1_top5_harnesses": [
+    "gemini_cli",
+    "kiro_cli",
+    "repoprompt",
+    "gemini_cli",
+    "kiro_cli"
+   ]
+  },
+  {
+   "key": "kiro_fb6b309b-3981-4a18-bf1d-b5b9f3b94ec3|c97e38a41705aa9a|0",
+   "harness": "kiro_cli",
+   "v1": "ranking",
+   "v2": "hit",
+   "overlap": 0.25,
+   "retired_sessions_in_v1_top5": 4,
+   "v1_top5_harnesses": [
+    "claude_code",
+    "repoprompt",
+    "gemini_cli",
+    "gemini_cli",
+    "gemini_cli"
+   ]
+  }
+ ],
+ "membership_diff": {
+  "only_in_v1": [],
+  "only_in_v2": []
+ },
+ "digest_mismatches": [
+  "codex_rollout-2026-08-20T19-26-40-01a0206c-db0a-7ae3-a7b8-16abcb6aee52"
+ ]
+}
