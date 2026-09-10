@@ -1,6 +1,6 @@
 # ADR-0011: Claim-centric learning memory from agent sessions
 
-**Status:** proposed (PoC under measurement) · **Date:** 2026-09-10 · **Supersedes (if the gates pass):**
+**Status:** proposed (PoC under measurement) · **Version:** 1.1 (council-revised, see Council record) · **Date:** 2026-09-10 · **Supersedes (if the gates pass):**
 the retrieval half of PR #18 (`memory_recall` over legacy concepts, ontology as a recall arm).
 Retains PR #18's capture half (native evidence, hash binding, the bound-proof trigger design).
 
@@ -26,15 +26,27 @@ left to agent discipline at session end. Concretely:
 
 1. **Canonical typed events**, not flat messages. Every adapter emits `kind ∈ {user, assistant_prose,
    tool_call, tool_result, system, thinking, error}` and a `turn_id` from the parser.
-2. **Evidence in the same transaction as events.** Native bytes where the harness still has them;
-   for the archive, the prose we hold, labelled `basis=REPORTED, origin=archive`.
+2. **Evidence in the same transaction as events, one row per prose event.** The citation surface
+   is the event, not the session: every `user`/`assistant_prose` event gets an evidence row whose
+   body is that event's text (`origin=archive, basis=REPORTED` for history), so a claim's offsets
+   survive re-derivation, reclassification and reordering, and quote ambiguity is bounded by one
+   message. Where the harness still has the native transcript, its raw bytes are retained as an
+   `OBSERVED` capture row alongside. Evidence is append-only (triggers refuse UPDATE/DELETE).
+   *(v1.1 — council finding 7; the v1.0 session-sized concatenated body was withdrawn.)*
 3. **Derivation runs in the export sweep.** A deterministic pass ($0) threads turns into exchanges,
    flags questions/errors/retries, tags concepts, detects cross-session recurrence, and writes the
    learning tier. A budgeted model pass distils exchanges into **claims** (Problem · Finding ·
-   Decision · Procedure · Preference), each quote-bound by trigger, with sub-agent outcomes rolled
-   up through lineage; Findings seed review items.
-4. **Claims are the retrieval unit.** Serve claims first (latest non-superseded, with quote and
-   provenance), sessions as drill-down. Index prose only. Embed claims, never messages.
+   Decision · Procedure · Preference), **each with at least one quote-bound citation — enforced by
+   the database, not the caller** (citations are written first under a deferred FK; an AFTER
+   INSERT trigger aborts a citation-less claim), with sub-agent outcomes rolled up through
+   lineage; Findings seed review items.
+4. **Claims are the retrieval unit.** Serve claims first, sessions as drill-down. Index prose only.
+   Embed claims, never messages. Read contract *(v1.1)*: a claim is **active** iff no claim
+   `supersedes` it; **disputed** iff an active claim `contradicts` it; retrieval returns active
+   claims and marks disputed ones, never silently dropping either. Supersession is same-session-
+   or-lineage only; a cross-session replacement is a `corrects` relation. Natural-language input
+   to any search surface goes through a planner that phrase-quotes every token — raw FTS syntax is
+   a separate, explicit API.
 5. **Lineage and harness/project are claim metadata**, usable as filters. The tier-1 ontology is
    not a recall arm.
 6. **Session ids are unchanged** from today's exporters so every existing gold question, receipt and
@@ -43,26 +55,39 @@ left to agent discipline at session end. Concretely:
 ## Canonical model (PoC schema, package `packages/learning-memory`, own SQLite file)
 
 ```sql
-sessions(id PK, harness, project, branch, parent_id NULL REFERENCES sessions, started_at, ended_at, scope, intent, outcome)
+sessions(id PK, harness, project, branch, parent_id NULL REFERENCES sessions, started_at, ended_at, scope, intent, outcome,
+         classifier_version, adapter_version)                       -- v1.1: provenance of the typing
 events(id PK, session_id FK, turn_id INT, seq INT, kind CHECK(kind IN (...)), actor, text, tool_name, ts,
        content_hash, UNIQUE(session_id, content_hash))
-evidence(id PK = sha256(payload), session_id FK, body, body_sha256, origin, basis, captured_at)
+  -- v1.1: content_hash covers (turn_id, seq, kind, actor, tool_name, text): every observed occurrence is a row;
+  --       re-parse of the same source is still a no-op. Adjacent exporter duplicates are the adapter's to collapse.
+evidence(id PK = sha256(payload), session_id FK, event_id NULL FK, body, body_sha256, raw BLOB NULL, origin, basis, captured_at)
+  -- v1.1: one REPORTED row per prose event (event_id set); one OBSERVED row per native capture (raw bytes retained)
+  TRIGGER evidence_immutable BEFORE UPDATE / BEFORE DELETE: RAISE(ABORT)
 lineage(parent_id FK, child_id FK, PRIMARY KEY(parent_id, child_id))
-prose_fts  -- FTS5 external-content over events WHERE kind IN ('user','assistant_prose'); tokenize measured (porter vs unicode61)
-exchanges(id PK, session_id FK, turn_id, question_event_id, answer_event_ids JSON, is_question, had_error, retried, resolved)
-concept_tags(exchange_id FK, concept, source CHECK(source IN ('vocab','alias','model')))
-recurrence(concept, session_ids JSON, first_seen, last_seen, count)
+lineage_pending(child_id FK, parent_id TEXT, PRIMARY KEY(child_id, parent_id))   -- v1.1: reconciled when the parent lands
+prose_events  -- VIEW: SELECT id, text FROM events WHERE kind IN ('user','assistant_prose')
+prose_fts     -- FTS5 external-content over prose_events (v1.1: so 'rebuild' stays prose-only); tokenize measured
+exchanges(id PK, session_id FK, derivation_version, turn_id, question_event_id, answer_event_ids JSON,
+          is_question, had_error, retried, resolved, UNIQUE(session_id, derivation_version, turn_id))
+concepts(id PK, canonical)  concept_aliases(alias PK, concept_id FK)                  -- v1.1
+concept_tags(exchange_id FK, concept_id FK, source CHECK(source IN ('vocab','alias','model')))
+concept_occurrences(concept_id FK, session_id FK, derivation_version, observed_at)   -- v1.1: replaces recurrence.session_ids JSON
 claims(id PK, session_id FK, kind CHECK(kind IN ('Problem','Finding','Decision','Procedure','Preference')),
        title <=120, statement <=500, tags JSON 2..5, confidence 0.5..1.0, writer, created_at, supersedes NULL FK)
-claim_citations(claim_id FK, evidence_id FK, start INT, end INT, quote)   -- code-point offsets
-  TRIGGER claim_citation_bound_proof BEFORE INSERT: RAISE(ABORT) unless substr(evidence.body, start+1, end-start) = quote
+  -- v1.1: id covers the canonical citation-set fingerprint and supersedes (Stage E)
+claim_citations(claim_id FK DEFERRABLE INITIALLY DEFERRED, evidence_id FK, start INT, end INT, quote)   -- code-point offsets
+  TRIGGER claim_citation_bound_proof BEFORE INSERT/UPDATE: RAISE(ABORT) unless substr(evidence.body, start+1, end-start) = quote
+  TRIGGER claims_need_citation AFTER INSERT ON claims: RAISE(ABORT) unless ≥1 claim_citations row exists   -- v1.1
   TRIGGER claims_immutable BEFORE UPDATE ON claims: RAISE(ABORT)
 claim_relations(from_id, to_id, kind CHECK(kind IN ('supports','contradicts','corrects')))
 review_items(id PK, claim_id FK, front, back, kind CHECK(kind IN ('flashcard','quiz','teach_back')), created_at)
 ```
 
-Invariants (property-tested): re-import is a no-op by `content_hash`; no session row without ≥1
-evidence row; a claim cannot be inserted with a non-binding quote; claims never change.
+Invariants (property-tested): re-import of the same source is a no-op; every observed event
+occurrence is a row; no session row without ≥1 evidence row; evidence never changes; a claim
+cannot exist without a binding citation; claims never change; an FTS rebuild indexes no tool text;
+a child ingested before its parent acquires its lineage edge when the parent lands.
 
 ## Adapter contract
 
@@ -73,21 +98,37 @@ class HarnessAdapter(Protocol):
     def parse(self, ref: SourceRef) -> ParsedSession: ...   # Session, list[Event], native_source: bytes, lineage: list[str]
 ```
 
-The shared base owns dedupe, evidence, lineage, derivation. Each adapter ships a scrubbed golden
-fixture and passes the shared contract suite: no tool text in prose events; `turn_id` on every event;
-native source present; lineage where the harness supports sub-agents. The **archive adapter** reads
-`sessions.db` and classifies `kind` deterministically; it is the only path for history.
+The shared base owns dedupe, evidence, lineage, derivation. *(v1.1)* `SourceRef` carries
+`source_sha256`; `ParsedSession` carries `adapter_version`, `classifier_version` and
+`exporter_dupes_collapsed` (adjacent identical rows the adapter folded before emitting — 37,528 in
+the archive). Each adapter ships a scrubbed golden fixture and passes the shared contract suite:
+no tool text in prose events; `turn_id` on every event and `(turn_id, seq)` monotone; a closed
+actor vocabulary; ISO-8601 UTC `ts`; `Session.id` derived from the source; native source present
+where the harness has one; lineage where the harness supports sub-agents. The **archive adapter**
+reads `sessions.db` and classifies `kind` deterministically under a named `classifier_version`; it
+is the only path for history.
 
 ## Derivation rules (deterministic pass)
 
-- Exchange = a `user` event plus all following non-`user` events until the next `user` event.
+*(v1.1)* These rules ship as `derive.py` under a `derivation_version`, with a hand-labelled
+cross-harness fixture set (≥ 20 exchanges per harness, labelled by the orchestrator, not a model)
+and one test per rule. Events that cannot be threaded deterministically are quarantined
+(`exchanges.resolved = NULL`, reason recorded), never guessed.
+
+- Exchange = a `user` event plus all following non-`user` events until the next `user` event,
+  correlated by `turn_id`, tool-call id where the harness has one, and lineage for sub-agent
+  traffic.
 - `is_question`: user text contains `?` or begins with an interrogative; `had_error`: any `error`
-  or `tool_result` matching a failure lexicon in the exchange; `retried`: same tool_call signature
-  twice; `resolved`: the exchange ends with `assistant_prose` and the next user turn is not a repeat.
-- Concept tags: match the learner's topic vocabulary (`studyloop.topics`) and aliases; model tags
-  only in the model pass, marked `source='model'`.
-- Recurrence: a concept tagged in ≥ 2 distinct sessions ≥ 1 day apart → `struggled` backlog item.
-- `intent` = first user event's prose (≤ 200 chars); `outcome` = last resolving `assistant_prose`.
+  or `tool_result` matching a versioned failure lexicon in the exchange; `retried`: same
+  `(tool_name, normalised arguments)` twice in one exchange; `resolved`: the exchange ends with
+  `assistant_prose` and the next user turn is not a repeat.
+- Concept tags: match the learner's topic vocabulary (`studyloop.topics`) through `concepts` +
+  `concept_aliases` (canonical id, casing-insensitive); model tags only in the model pass, marked
+  `source='model'`.
+- Recurrence: a concept with `concept_occurrences` in ≥ 2 distinct sessions ≥ 1 day apart →
+  `struggled` backlog item.
+- `intent` = first user event's prose (≤ 200 chars); `outcome` = last `assistant_prose` of the last
+  `resolved` exchange.
 
 ## Evaluation binding
 
@@ -96,6 +137,11 @@ SEALED outside) with the existing harness: G1 (recall lift ≥ +0.05, macro ≥ 
 entailment audit), G4 (claim embeddings), G6 (decision correctness), operational budgets, G5 pilot.
 **Answer-grain** — whether the top returned claim contains the gold's atomic answer — is reported
 alongside recall@5 on every receipt. Every arm keeps the same session ids as `sessions.db`.
+
+*(v1.1 — council finding 13)* Every arm receipt carries a **run manifest**: adapter versions,
+`classifier_version`, `derivation_version`, writer model id + prompt sha256 + parameters, corpus
+digest, store schema version. The single SEALED look is executed on a **fresh work copy rebuilt
+from the manifest**, never on the store the DEV looks were tuned against.
 
 ## Consequences
 
@@ -106,20 +152,31 @@ alongside recall@5 on every receipt. Every arm keeps the same session ids as `se
 - Retention becomes an explicit contract: harnesses rotate transcripts within weeks, so the sweep
   cadence and a doctor check on "age of last capture" are load-bearing.
 
-## Implementation notes accepted from Stage B (2026-09-10)
+## Implementation notes accepted from Stage B (2026-09-10) — as revised by the council (v1.1)
 
-- `lineage` edges whose parent is not yet ingested are **deferred** (`IngestResult.lineage_deferred`)
-  and land on the child's re-ingest; a stub parent would violate the no-session-without-evidence
-  invariant.
-- `content_hash` covers text and kind, **not** position, so re-import is a no-op and exact
-  duplicates collapse — the two properties the archive's 6,591 duplicates require together.
+- ~~`lineage` edges whose parent is not yet ingested are deferred and land on the child's re-ingest~~
+  **Withdrawn (council 6):** reproduced as data loss — the edge never landed when the parent arrived
+  later. Replaced by `lineage_pending`, reconciled in the parent's ingest transaction.
+- ~~`content_hash` covers text and kind, not position, so exact duplicates collapse~~ **Withdrawn
+  (council 5):** on the archive this collapses 54.7% of user/assistant rows, including every
+  repeated tool call in a session, so `retried` could never fire. Position is in the hash; adjacent
+  exporter duplicates are collapsed by the adapter and counted.
 - `body_sha256` is taken over native bytes for `OBSERVED` evidence and over the UTF-8 prose for
-  `REPORTED`; the row is a capture receipt of what was actually read.
+  `REPORTED`; the row is a capture receipt of what was actually read. *(v1.1: raw bytes retained.)*
 - Hardening beyond the ADR text: `claim_citations` CHECKs `length(quote) > 0` and `end > start`
   (a zero-width extent would bind vacuously), and a BEFORE UPDATE twin of the bound-proof trigger
   so citations cannot be rebound after the fact.
 - `INSERT OR IGNORE` was rejected for events because it swallows CHECK and FK violations; the
   dedupe conflict is handled explicitly and any other violation fails the whole ingest.
+
+## Council record
+
+Two-family adversarial review of v1.0 + the Stage B store (gpt-5.6-terra REJECT/10 blocking;
+deepseek-3.2 APPROVE-WITH-CHANGES/7 blocking). Seven defects reproduced by the orchestrator against
+the committed store; dispositions of all 42 findings in
+`docs/architecture/session-memory/receipts/council-adr-0011.md`. v1.1 is this document. Stage B.1
+(store hardening) precedes any corpus ingest; its acceptance tests are the seven reproductions
+flipping to refused/correct.
 
 ## Open questions (to be settled by measurement, not debate)
 
