@@ -1,0 +1,62 @@
+{
+ "receipt": "gold-v2",
+ "ruler_commit": "a98331afd2bb0c864e416c943b4a51962fe659e2",
+ "created_utc": "2026-09-10T00:17:52+00:00",
+ "corpus_digest": "a0df30bb0255bdf92f6b511bb6de14256dd72ceefb80fb10956ecfe5018ea4b9",
+ "accounting": {
+  "generated": 216,
+  "admitted": 175,
+  "rejected": 41,
+  "rejection_reasons": {
+   "ambiguous": 1,
+   "answer_wrong": 26,
+   "span_unsupportive": 4,
+   "R_single_fact": 5,
+   "metadata": 3,
+   "quote_mismatch": 2
+  },
+  "authors": {
+   "A1": "gpt-5.6-terra b6b7faf3",
+   "A2": "gpt-5.6-terra fe1badd6",
+   "A3": "gpt-5.6-terra 44e210dc"
+  },
+  "judges": {
+   "J1": "deepseek-3.2 e84e8037",
+   "J2": "deepseek-3.2 e56da529",
+   "adjudicator": "claude-sonnet-5 ec5d563c (64 items: all R of J1's half + all P of J2's half, selected by rule after inter-judge inconsistency)",
+   "J3": "claude-sonnet-5 f64c2605 (A3 top-up)"
+  }
+ },
+ "admitted_total": 175,
+ "admitted_by_stratum": {
+  "K": 57,
+  "P": 60,
+  "R": 58
+ },
+ "clusters": 113,
+ "max_per_cluster": 2,
+ "outside_poc_share": 0.584,
+ "dev": {
+  "items": 91,
+  "by_stratum": {
+   "K": 33,
+   "P": 29,
+   "R": 29
+  },
+  "clusters": 57,
+  "sha256": "eeca2aaf3b2329f82d8267fddb9043ee67af97c323d88a99297a107a6bb129ee",
+  "path": "docs/architecture/session-memory/receipts/gold-v2-dev.json"
+ },
+ "sealed": {
+  "items": 84,
+  "by_stratum": {
+   "K": 24,
+   "P": 31,
+   "R": 29
+  },
+  "clusters": 56,
+  "sha256": "459723c093cd75e3fc2d748e8db460396bd9330087962db55e2a150910f5e1c7",
+  "path": "OUTSIDE REPOSITORY — never passed to builder agents; one scoring run per gate by the orchestrator"
+ },
+ "previous_receipt_sha256": "326cb763a49135dfe203d95b5d0c60e2ab793b6bd4b4e3628e4543974c10bc33"
+}

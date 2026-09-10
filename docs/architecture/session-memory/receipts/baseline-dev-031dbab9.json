@@ -1,0 +1,1295 @@
+{
+ "receipt": "baseline-dev",
+ "created_utc": "2026-09-10T00:21:03+00:00",
+ "ruler_commit": "a98331afd2bb0c864e416c943b4a51962fe659e2",
+ "candidate_commit": "a98331afd2bb0c864e416c943b4a51962fe659e2",
+ "b0_pin": "031dbab9f72fcc4077da2963d6e60163f4517438",
+ "gold": {
+  "set": "DEV",
+  "sha256": "5632cd2b02a77dbd95ded3fae3aa32fa1599cd43929f43e44aa132343c3c6098",
+  "items": 91,
+  "clusters": 57
+ },
+ "corpus_digest": "9aa2b4954189a824d9cf87980af6ee366b9748a1f2423356a70d0d92642c5cda",
+ "gold_corpus_digest_at_authoring": "a0df30bb0255bdf92f6b511bb6de14256dd72ceefb80fb10956ecfe5018ea4b9",
+ "arms": {
+  "B0": {
+   "recall@5": {
+    "by_stratum": {
+     "K": 0.18181818181818182,
+     "P": 0.034482758620689655,
+     "R": 0.10344827586206896
+    },
+    "macro": 0.10658307210031348
+   },
+   "mrr@5": {
+    "by_stratum": {
+     "K": 0.13888888888888887,
+     "P": 0.008620689655172414,
+     "R": 0.10344827586206896
+    },
+    "macro": 0.08365261813537674
+   },
+   "latency_ms": {
+    "p50": 3.3659168984740973,
+    "p95": 38.15933386795223
+   },
+   "errors": 42
+  },
+  "B1": {
+   "recall@5": {
+    "by_stratum": {
+     "K": 0.18181818181818182,
+     "P": 0.034482758620689655,
+     "R": 0.10344827586206896
+    },
+    "macro": 0.10658307210031348
+   },
+   "mrr@5": {
+    "by_stratum": {
+     "K": 0.13888888888888887,
+     "P": 0.008620689655172414,
+     "R": 0.10344827586206896
+    },
+    "macro": 0.08365261813537674
+   },
+   "latency_ms": {
+    "p50": 3.2444170210510492,
+    "p95": 34.927207976579666
+   },
+   "errors": 42
+  }
+ },
+ "comparisons": {
+  "B1_vs_B0": {
+   "lift": {
+    "point": 0.0,
+    "ci95": [
+     0.0,
+     0.0
+    ],
+    "resamples": 10000,
+    "clusters": 57,
+    "established_lift": false
+   },
+   "non_inferiority": [
+    {
+     "stratum": "K",
+     "regression_point": 0.0,
+     "upper95": 0.0,
+     "non_inferior": true
+    },
+    {
+     "stratum": "P",
+     "regression_point": 0.0,
+     "upper95": 0.0,
+     "non_inferior": true
+    },
+    {
+     "stratum": "R",
+     "regression_point": 0.0,
+     "upper95": 0.0,
+     "non_inferior": true
+    }
+   ]
+  }
+ },
+ "per_question": {
+  "B0": {
+   "A2-44": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a3ff1fa834a4bc612"
+   },
+   "A2-56": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a72f69a3c2fbb81cf"
+   },
+   "A2-18": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "kiro_9efdd47a-99ba-4e81-9567-3965bbaebc1d"
+   },
+   "A1-43": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a228515def9b8adb7",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-89": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a9e5b08e2c524697c",
+    "error": "OperationalError: fts5: syntax error near \"?\""
+   },
+   "A1-5": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-ab0ac2216e9729093"
+   },
+   "A2-23": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a7855d0b998e53e57"
+   },
+   "A2-25": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a5f13bd6f001d12d3"
+   },
+   "A1-65": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a3bb83d90e48ec56f"
+   },
+   "A1-1": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "codex_rollout-2026-09-05T17-40-01-01a07270-f770-71a0-907c-69f5eb474d5d",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-31": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a0de0cee0c61efd52"
+   },
+   "A2-41": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "R",
+    "cluster": "agent-acompact-dd339248ab5c079a"
+   },
+   "A2-36": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a73dd4c942fd05652"
+   },
+   "A1-81": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a5878da096325b9a9",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-37": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "codex_rollout-2026-08-04T22-41-58-019fceb9-ea66-7831-9426-a6b9ffc3bd24",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-88": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a9e5b08e2c524697c",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-8": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "K",
+    "cluster": "codex_rollout-2026-08-03T12-04-44-019fc74c-287f-7b72-9994-49ac22ee115b"
+   },
+   "A1-102": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-08-05T12-15-47-019fd1a2-fe4b-7302-a5ec-c8b3922d7261",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-98": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a06f3b43bc470c379",
+    "error": "OperationalError: fts5: syntax error near \"?\""
+   },
+   "A2-5": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-ab3f05e36525a3a0e",
+    "error": "OperationalError: no such column: 9"
+   },
+   "A1-106": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-adbdbce3d7234f8a1",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-1": {
+    "hit": 1,
+    "rr": 0.3333333333333333,
+    "stratum": "K",
+    "cluster": "agent-acompact-dd339248ab5c079a"
+   },
+   "A1-82": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a659929",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-79": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-acdc2dc57d3550798",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-104": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "kiro_e869a1be-f71e-4085-93c0-c87aa78c0d83"
+   },
+   "A1-49": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a5878da096325b9a9",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-8": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-09-05T11-32-29-01a07120-7c68-78e2-a887-485db4c848c6",
+    "error": "OperationalError: fts5: syntax error near \"?\""
+   },
+   "A2-16": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "kiro_6a947b3a-b21f-4be7-a62e-f249c3088fbf",
+    "error": "OperationalError: fts5: syntax error near \"?\""
+   },
+   "A1-25": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a73fba58677c6a072",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-70": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "litellm_1764852027",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-4": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-ab0ac2216e9729093",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-48": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a5f13bd6f001d12d3"
+   },
+   "A2-65": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-ab9e811fdd7183d8a"
+   },
+   "A2-53": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-acbbee93e7c1bb8fb",
+    "error": "OperationalError: fts5: syntax error near \"?\""
+   },
+   "A1-85": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a877979363b8b0015",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-76": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-ae2d578a2fb3692e5",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-57": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-ac4761601d11d5248",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-40": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a90e6a05fdde8f6e3"
+   },
+   "A1-64": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a3bb83d90e48ec56f",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-33": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a72f69a3c2fbb81cf"
+   },
+   "A1-103": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "kiro_e869a1be-f71e-4085-93c0-c87aa78c0d83",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-39": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-ad86fdd029abe014e"
+   },
+   "A2-13": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a1508daab229ec20f"
+   },
+   "A2-54": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a0de0cee0c61efd52"
+   },
+   "A2-43": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a64a3310bf5f98653"
+   },
+   "A1-77": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-ae2d578a2fb3692e5"
+   },
+   "A2-30": {
+    "hit": 1,
+    "rr": 0.25,
+    "stratum": "P",
+    "cluster": "agent-acbbee93e7c1bb8fb"
+   },
+   "A1-55": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a0b2a98dadf265bc2",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-64": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-aadaa32"
+   },
+   "A2-14": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "K",
+    "cluster": "codex_rollout-2026-08-03T13-57-44-019fc7b3-99b5-7d21-9a6d-7fcc09f7e3c3"
+   },
+   "A2-6": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a3ff1fa834a4bc612",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-46": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "kiro_f59eec0d-8558-4765-a534-c5c0132e9890",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-42": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-ac0866f51f55f374c"
+   },
+   "A1-93": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a0b2a98dadf265bc2",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-13": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "litellm_1762645035",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-71": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "litellm_1764852027",
+    "error": "OperationalError: fts5: syntax error near \"?\""
+   },
+   "A1-58": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a4a371538cb138f8e",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-3": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "K",
+    "cluster": "agent-a64a3310bf5f98653"
+   },
+   "A2-46": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "R",
+    "cluster": "agent-a4b5218c8ca872f1c"
+   },
+   "A1-75": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_f59eec0d-8558-4765-a534-c5c0132e9890",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-2": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-ac0866f51f55f374c",
+    "error": "OperationalError: no such column: budget"
+   },
+   "A1-99": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a4a371538cb138f8e",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-11": {
+    "hit": 1,
+    "rr": 0.25,
+    "stratum": "K",
+    "cluster": "agent-a4b5218c8ca872f1c"
+   },
+   "A2-38": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a958dad756b3b7270"
+   },
+   "A2-60": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "R",
+    "cluster": "kiro_9efdd47a-99ba-4e81-9567-3965bbaebc1d"
+   },
+   "A2-61": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "K",
+    "cluster": "agent-ab9e811fdd7183d8a"
+   },
+   "A1-97": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a06f3b43bc470c379",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-63": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-08-04T22-41-58-019fceb9-ea66-7831-9426-a6b9ffc3bd24",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-6": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a864c7e00e4d9e89b",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-34": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-ac4761601d11d5248",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-45": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a73fba58677c6a072",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A3-3": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-08-03T12-04-44-019fc74c-2880-7803-bc50-a6d6b121b24a"
+   },
+   "A3-4": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "kiro_8CwPYnqKO"
+   },
+   "A3-5": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-07-05T12-13-20-019f31fb-98e1-7162-b255-82c8abb65025"
+   },
+   "A3-10": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-awt-t13-implementer-9015e6629815c6e0"
+   },
+   "A3-11": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-07-12T20-43-23-019f57db-13f5-7ea0-9307-33fb0f8900ad"
+   },
+   "A3-12": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-08-24T09-07-52-01a032cf-c40c-7932-b3ab-afe33ec48cc9"
+   },
+   "A3-13": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-08-23T20-40-53-01a03023-e530-7323-8b49-13afd306f2e2",
+    "error": "OperationalError: fts5: syntax error near \"?\""
+   },
+   "A3-15": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-09-05T18-17-19-01a07293-1e21-79d1-85f0-41e4c3f91e49",
+    "error": "OperationalError: fts5: syntax error near \"?\""
+   },
+   "A3-19": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-06-13T22-02-15-019ec2ca-dc02-7f92-8743-7b750860db90"
+   },
+   "A3-20": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "grok_019f4b90-b772-7f00-99fd-a3696982bfe9"
+   },
+   "A3-21": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-aimpl-t4t5-glue-eb0fe23883be5989"
+   },
+   "A3-26": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_8CwPYnqKO"
+   },
+   "A3-27": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-07-05T12-13-20-019f31fb-98e1-7162-b255-82c8abb65025"
+   },
+   "A3-31": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-awt-t13-implementer-9015e6629815c6e0"
+   },
+   "A3-32": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-07-12T20-43-23-019f57db-13f5-7ea0-9307-33fb0f8900ad",
+    "error": "OperationalError: fts5: syntax error near \",\""
+   },
+   "A3-33": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-08-24T09-07-52-01a032cf-c40c-7932-b3ab-afe33ec48cc9"
+   },
+   "A3-34": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-08-23T20-40-53-01a03023-e530-7323-8b49-13afd306f2e2"
+   },
+   "A3-36": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-09-05T18-17-19-01a07293-1e21-79d1-85f0-41e4c3f91e49"
+   },
+   "A3-40": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-06-13T22-02-15-019ec2ca-dc02-7f92-8743-7b750860db90"
+   },
+   "A3-41": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "grok_019f4b90-b772-7f00-99fd-a3696982bfe9"
+   }
+  },
+  "B1": {
+   "A2-44": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a3ff1fa834a4bc612"
+   },
+   "A2-56": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a72f69a3c2fbb81cf"
+   },
+   "A2-18": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "kiro_9efdd47a-99ba-4e81-9567-3965bbaebc1d"
+   },
+   "A1-43": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a228515def9b8adb7",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-89": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a9e5b08e2c524697c",
+    "error": "OperationalError: fts5: syntax error near \"?\""
+   },
+   "A1-5": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-ab0ac2216e9729093"
+   },
+   "A2-23": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a7855d0b998e53e57"
+   },
+   "A2-25": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a5f13bd6f001d12d3"
+   },
+   "A1-65": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a3bb83d90e48ec56f"
+   },
+   "A1-1": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "codex_rollout-2026-09-05T17-40-01-01a07270-f770-71a0-907c-69f5eb474d5d",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-31": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a0de0cee0c61efd52"
+   },
+   "A2-41": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "R",
+    "cluster": "agent-acompact-dd339248ab5c079a"
+   },
+   "A2-36": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a73dd4c942fd05652"
+   },
+   "A1-81": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a5878da096325b9a9",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-37": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "codex_rollout-2026-08-04T22-41-58-019fceb9-ea66-7831-9426-a6b9ffc3bd24",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-88": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a9e5b08e2c524697c",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-8": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "K",
+    "cluster": "codex_rollout-2026-08-03T12-04-44-019fc74c-287f-7b72-9994-49ac22ee115b"
+   },
+   "A1-102": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-08-05T12-15-47-019fd1a2-fe4b-7302-a5ec-c8b3922d7261",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-98": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a06f3b43bc470c379",
+    "error": "OperationalError: fts5: syntax error near \"?\""
+   },
+   "A2-5": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-ab3f05e36525a3a0e",
+    "error": "OperationalError: no such column: 9"
+   },
+   "A1-106": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-adbdbce3d7234f8a1",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-1": {
+    "hit": 1,
+    "rr": 0.3333333333333333,
+    "stratum": "K",
+    "cluster": "agent-acompact-dd339248ab5c079a"
+   },
+   "A1-82": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a659929",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-79": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-acdc2dc57d3550798",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-104": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "kiro_e869a1be-f71e-4085-93c0-c87aa78c0d83"
+   },
+   "A1-49": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a5878da096325b9a9",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-8": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-09-05T11-32-29-01a07120-7c68-78e2-a887-485db4c848c6",
+    "error": "OperationalError: fts5: syntax error near \"?\""
+   },
+   "A2-16": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "kiro_6a947b3a-b21f-4be7-a62e-f249c3088fbf",
+    "error": "OperationalError: fts5: syntax error near \"?\""
+   },
+   "A1-25": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a73fba58677c6a072",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-70": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "litellm_1764852027",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-4": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-ab0ac2216e9729093",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-48": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a5f13bd6f001d12d3"
+   },
+   "A2-65": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-ab9e811fdd7183d8a"
+   },
+   "A2-53": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-acbbee93e7c1bb8fb",
+    "error": "OperationalError: fts5: syntax error near \"?\""
+   },
+   "A1-85": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a877979363b8b0015",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-76": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-ae2d578a2fb3692e5",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-57": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-ac4761601d11d5248",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-40": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a90e6a05fdde8f6e3"
+   },
+   "A1-64": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a3bb83d90e48ec56f",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-33": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a72f69a3c2fbb81cf"
+   },
+   "A1-103": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "kiro_e869a1be-f71e-4085-93c0-c87aa78c0d83",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-39": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-ad86fdd029abe014e"
+   },
+   "A2-13": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a1508daab229ec20f"
+   },
+   "A2-54": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a0de0cee0c61efd52"
+   },
+   "A2-43": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a64a3310bf5f98653"
+   },
+   "A1-77": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-ae2d578a2fb3692e5"
+   },
+   "A2-30": {
+    "hit": 1,
+    "rr": 0.25,
+    "stratum": "P",
+    "cluster": "agent-acbbee93e7c1bb8fb"
+   },
+   "A1-55": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a0b2a98dadf265bc2",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-64": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-aadaa32"
+   },
+   "A2-14": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "K",
+    "cluster": "codex_rollout-2026-08-03T13-57-44-019fc7b3-99b5-7d21-9a6d-7fcc09f7e3c3"
+   },
+   "A2-6": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a3ff1fa834a4bc612",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-46": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "kiro_f59eec0d-8558-4765-a534-c5c0132e9890",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-42": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-ac0866f51f55f374c"
+   },
+   "A1-93": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a0b2a98dadf265bc2",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-13": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "litellm_1762645035",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-71": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "litellm_1764852027",
+    "error": "OperationalError: fts5: syntax error near \"?\""
+   },
+   "A1-58": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a4a371538cb138f8e",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-3": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "K",
+    "cluster": "agent-a64a3310bf5f98653"
+   },
+   "A2-46": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "R",
+    "cluster": "agent-a4b5218c8ca872f1c"
+   },
+   "A1-75": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_f59eec0d-8558-4765-a534-c5c0132e9890",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-2": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-ac0866f51f55f374c",
+    "error": "OperationalError: no such column: budget"
+   },
+   "A1-99": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a4a371538cb138f8e",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-11": {
+    "hit": 1,
+    "rr": 0.25,
+    "stratum": "K",
+    "cluster": "agent-a4b5218c8ca872f1c"
+   },
+   "A2-38": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a958dad756b3b7270"
+   },
+   "A2-60": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "R",
+    "cluster": "kiro_9efdd47a-99ba-4e81-9567-3965bbaebc1d"
+   },
+   "A2-61": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "K",
+    "cluster": "agent-ab9e811fdd7183d8a"
+   },
+   "A1-97": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a06f3b43bc470c379",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-63": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-08-04T22-41-58-019fceb9-ea66-7831-9426-a6b9ffc3bd24",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-6": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a864c7e00e4d9e89b",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-34": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-ac4761601d11d5248",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-45": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a73fba58677c6a072",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A3-3": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-08-03T12-04-44-019fc74c-2880-7803-bc50-a6d6b121b24a"
+   },
+   "A3-4": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "kiro_8CwPYnqKO"
+   },
+   "A3-5": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-07-05T12-13-20-019f31fb-98e1-7162-b255-82c8abb65025"
+   },
+   "A3-10": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-awt-t13-implementer-9015e6629815c6e0"
+   },
+   "A3-11": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-07-12T20-43-23-019f57db-13f5-7ea0-9307-33fb0f8900ad"
+   },
+   "A3-12": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-08-24T09-07-52-01a032cf-c40c-7932-b3ab-afe33ec48cc9"
+   },
+   "A3-13": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-08-23T20-40-53-01a03023-e530-7323-8b49-13afd306f2e2",
+    "error": "OperationalError: fts5: syntax error near \"?\""
+   },
+   "A3-15": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-09-05T18-17-19-01a07293-1e21-79d1-85f0-41e4c3f91e49",
+    "error": "OperationalError: fts5: syntax error near \"?\""
+   },
+   "A3-19": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-06-13T22-02-15-019ec2ca-dc02-7f92-8743-7b750860db90"
+   },
+   "A3-20": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "grok_019f4b90-b772-7f00-99fd-a3696982bfe9"
+   },
+   "A3-21": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-aimpl-t4t5-glue-eb0fe23883be5989"
+   },
+   "A3-26": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_8CwPYnqKO"
+   },
+   "A3-27": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-07-05T12-13-20-019f31fb-98e1-7162-b255-82c8abb65025"
+   },
+   "A3-31": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-awt-t13-implementer-9015e6629815c6e0"
+   },
+   "A3-32": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-07-12T20-43-23-019f57db-13f5-7ea0-9307-33fb0f8900ad",
+    "error": "OperationalError: fts5: syntax error near \",\""
+   },
+   "A3-33": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-08-24T09-07-52-01a032cf-c40c-7932-b3ab-afe33ec48cc9"
+   },
+   "A3-34": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-08-23T20-40-53-01a03023-e530-7323-8b49-13afd306f2e2"
+   },
+   "A3-36": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-09-05T18-17-19-01a07293-1e21-79d1-85f0-41e4c3f91e49"
+   },
+   "A3-40": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-06-13T22-02-15-019ec2ca-dc02-7f92-8743-7b750860db90"
+   },
+   "A3-41": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "grok_019f4b90-b772-7f00-99fd-a3696982bfe9"
+   }
+  }
+ },
+ "previous_receipt_sha256": "61e2e86a4e283c8ceae6e7c61cfb1f288b9549090a3281d3b81506a2213eca93",
+ "findings": [
+  {
+   "id": "F-B0-1",
+   "severity": "defect",
+   "component": "agent_session_tools.mcp_server._session_search_queries (feat/sessionweaver-phase2-retrofit)",
+   "statement": "Any query containing the English word 'and', 'or' or 'not' is classified as explicit FTS syntax and passed to MATCH unescaped; tokens such as 'WP-9' or '58' then raise sqlite3.OperationalError. 42/91 DEV questions (46%) error; each counts as a miss. main escapes every query as a phrase and does not have this failure mode.",
+   "evidence": {
+    "example_question": "Which ADR path did the DoD and WP-9 require?",
+    "fts_error": "no such column: 9",
+    "errors_B0": 42,
+    "errors_B1": 42
+   },
+   "disposition": "Fix in Stage 3 (B1 may differ from B0); the factorial comparison B1_vs_B0 will quantify the repair separately from any knowledge-layer lift."
+  }
+ ]
+}
