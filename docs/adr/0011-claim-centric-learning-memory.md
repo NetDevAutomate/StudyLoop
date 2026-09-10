@@ -205,6 +205,47 @@ new guard proven load-bearing by removing it and watching its test fail — 17/1
   scrubbed sources). No such policy exists yet; it is a Stage E prerequisite for any claim that
   cites command output, and a Stage H item for the doctor.
 
+## Implementation notes accepted from Stage C.1 — archive adapter (2026-09-10)
+
+Whole archive ingested read-only (`file:…?mode=ro`; the live DB's mtimes predate the run) into
+`~/.local/share/studyloop/knowledge-proof/learning-memory.db`: **5,838 of 5,879 sessions, 106,362
+events, 52,034 citable per-event evidence rows, 485 lineage edges, 15.9 s, 264 MB.** Accounting
+closes exactly: 143,903 archive messages = 106,362 events + 37,354 adjacent exporter duplicates
+collapsed + 187 rows inside the 41 rejected sessions. FTS holds 59,547 docs = 59,547 prose events,
+zero non-prose. Receipt: `ingest-archive-v1.json` (copied to `receipts/`).
+
+Corpus facts that corrected the brief (all measured by the adapter, recorded in its module docstring):
+
+- **Tool markers carry no arguments — ever.** 75,493 `[tool:NAME]` rows are bare; the 4 "payloads"
+  are a second marker. The archive records *that* a tool ran and its name, never its input or
+  output. Consequence for Stage D: `retried` on history can only mean *same tool name twice in an
+  exchange*; the ADR's `(tool_name, normalised arguments)` form applies to native captures only.
+- **`messages.seq` cannot order a transcript** (678 NULL, 924 duplicate pairs, 5,615 sessions not
+  starting at 0); order is `messages.id`. **`sessions.content_hash` is NULL for every row**, so
+  `source_sha256` is computed over the session's `(id, content)` rows.
+- **`source_session_id` self-references** in 126 non-`agent-*` sessions are skipped and counted;
+  the 485 `agent-*` parent edges are exactly as measured and every parent exists. **2,992 `agent-*`
+  sessions have no recoverable parent** — lineage roll-up is testable on 485 sessions only.
+- **Learner voice hides inside XML for two harnesses.** Kilocode wraps the request in `<task>`,
+  grok in `<user_query>`; a blanket "user XML → system" rule discarded 395 rows and rejected 167
+  sessions (126 kilocode sessions had nothing else). Classifier allowlist
+  `USER_PROSE_XML_TAGS = {task, user_query}` keeps them as `user` **with the wrapper intact** —
+  unwrapping would make the citation surface bytes the archive never held. Rejections fell to 41,
+  all `NoEvidenceError` and all verified machine-only (15 with no user/assistant rows; 19 gemini
+  single-error sessions; 7 LiteLLM envelope pairs; 5 pure harness injections).
+- **Judgement calls, held by the orchestrator:** `<teammate-message>` (149 rows) stays `system` —
+  an orchestrator's brief to a sub-agent is directive prose but not the learner's voice, which is
+  what the ADR measures. Roo/Kilocode XML tool invocations (`<execute_command>`, `<read_file>`, …;
+  163 rows) are `tool_call`, honouring the contract's "no tool text in prose events";
+  `<think>`/`<thinking>`/`<scratchpad>` (19) are `thinking`.
+- **Digest.** `corpus_digest` is the pinned `score.py` function, imported not reimplemented; on the
+  DEV split it yields `9aa2b495…`, identical to `baseline-dev-031dbab9.json`. The `a0df30bb…` value
+  in the gold receipts is the *whole-gold* digest and includes SEALED sessions, which no builder
+  run may read; the orchestrator's brief cited the wrong one. Receipts name which split they digest.
+- Smoke on the real store (orchestrator, scratch copy): the DEV baseline's crashing query returns a
+  relevant top hit in 360 ms cold / 31 ms warm (p95 40 ms over 20 natural queries; budget ≤ 500 ms);
+  a real archive quote binds a claim; a fabricated quote is refused.
+
 ## Open questions (to be settled by measurement, not debate)
 
 Tokenizer for `prose_fts`/claims (porter vs unicode61); whether embeddings on claims clear G4;
