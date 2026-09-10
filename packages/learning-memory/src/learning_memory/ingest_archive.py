@@ -5,6 +5,12 @@
         --store ~/.local/share/studyloop/knowledge-proof/learning-memory.db \\
         --receipt ~/.local/share/studyloop/knowledge-proof/ingest-archive-v1.json [--fresh]
 
+Scoped by default to the seven supported session sources
+(:data:`learning_memory.adapters.archive.SUPPORTED_SOURCES`); the 1,279 sessions under
+retired labels are hidden, not deleted, and the receipt records both the scope and the
+hidden count so census v2's provenance shows what it read. ``--include-retired-sources``
+ingests everything.
+
 One transaction per session, failures recorded and stepped over: a corpus-wide run
 that dies on session 3,000 tells you nothing about the other 2,879.
 
@@ -30,8 +36,13 @@ from learning_memory import SCHEMA_VERSION, NoEvidenceError, Store
 from learning_memory.adapters.archive import (
     ARCHIVE_ADAPTER_VERSION,
     ARCHIVE_CLASSIFIER_VERSION,
+    SUPPORTED_SOURCES,
     ArchiveAdapter,
     open_readonly,
+)
+
+SCOPE_RECEIPT_REF = (
+    "docs/architecture/session-memory/receipts/adapter-scope-2026-09-10.md §4.4, §5 Stage 4"
 )
 
 DEFAULT_DB = pathlib.Path.home() / ".config/studyloop/sessions.db"
@@ -133,6 +144,15 @@ def main(argv: list[str] | None = None) -> int:
         "--score-py", default=None, help="override the path to the ruler's score.py"
     )
     parser.add_argument("--gold", default=None, help="override the DEV gold json")
+    parser.add_argument(
+        "--include-retired-sources",
+        action="store_true",
+        help=(
+            "ingest EVERY source, including the 7 retired labels (repoprompt, aider, "
+            "kilocode_cli, litellm-proxy, gemini_cli, bedrock_proxy, omp). Off by "
+            f"default: {SCOPE_RECEIPT_REF}"
+        ),
+    )
     args = parser.parse_args(argv)
 
     db = pathlib.Path(args.db).expanduser()
@@ -153,7 +173,16 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     started = time.monotonic()
-    adapter = ArchiveAdapter.open(db)
+    sources = None if args.include_retired_sources else SUPPORTED_SOURCES
+    adapter = ArchiveAdapter.open(db, sources=sources)
+    hidden = adapter.hidden_source_counts()
+    scope_label = "all" if sources is None else sorted(sources)
+    print(f"sources scope: {scope_label}")
+    if hidden:
+        print(
+            f"  hiding {sum(hidden.values())} sessions in {len(hidden)} retired sources: {hidden}"
+        )
+        print("  (hidden, never deleted — readable by id; see the adapter-scope receipt)")
     store = Store.connect(store_path)
     store.install()
 
@@ -217,6 +246,7 @@ def main(argv: list[str] | None = None) -> int:
     pending = store.pending_lineage()
     unrecoverable = adapter.unrecoverable_lineage()
     self_referencing = adapter.self_referencing_lineage()
+    out_of_scope_edges = adapter.out_of_scope_lineage()
     rejected_counter = Counter(entry["reason"] for entry in rejected)
 
     receipt = {
@@ -233,6 +263,15 @@ def main(argv: list[str] | None = None) -> int:
             "db_opened": "file:...?mode=ro (read-only)",
             "store": str(store_path),
             "limit": args.limit or None,
+        },
+        "sources_scope": scope_label,
+        "scope": {
+            "sources": scope_label,
+            "include_retired_sources": bool(args.include_retired_sources),
+            "hidden_sessions": sum(hidden.values()),
+            "hidden_by_source": hidden,
+            "policy": "hidden, never deleted; readable by id",
+            "ruling": SCOPE_RECEIPT_REF,
         },
         "corpus_digest": _load_corpus_digest(score_py, gold, db),
         "sessions": {
@@ -254,6 +293,10 @@ def main(argv: list[str] | None = None) -> int:
             "unrecoverable_count": len(unrecoverable),
             "unrecoverable_sample": unrecoverable[:10],
             "self_referencing_skipped": len(self_referencing),
+            # Edges the allow-list drops: an in-scope child whose parent is under a
+            # retired label. Reported, not silently linked to a session never ingested.
+            "out_of_scope_parent_count": len(out_of_scope_edges),
+            "out_of_scope_parent_sample": dict(list(out_of_scope_edges.items())[:10]),
         },
         "per_source_sessions": per_source,
         "archive_per_source_sessions": adapter.source_counts(),

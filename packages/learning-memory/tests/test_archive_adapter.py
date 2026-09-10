@@ -87,7 +87,12 @@ def _archive(path: Path) -> None:
             ),
             (
                 DUPES,
-                "repoprompt",
+                # Was "repoprompt" before the 2026-09-10 adapter-scope ruling: a
+                # retired label, which the adapter's default allow-list now hides,
+                # so these duplicate-collapse and self-lineage assertions would have
+                # been testing an excluded row. Scope behaviour lives in
+                # test_archive_scope.py; this file is about parsing.
+                "codex",
                 None,
                 None,
                 "2026-09-03T09:00:00+00:00",

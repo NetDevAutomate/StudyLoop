@@ -56,6 +56,7 @@ if TYPE_CHECKING:
 __all__ = [
     "ARCHIVE_ADAPTER_VERSION",
     "ARCHIVE_CLASSIFIER_VERSION",
+    "SUPPORTED_SOURCES",
     "TOOL_XML_TAGS",
     "USER_PROSE_XML_TAGS",
     "ArchiveAdapter",
@@ -63,6 +64,35 @@ __all__ = [
     "classify",
     "open_readonly",
 ]
+
+SUPPORTED_SOURCES: Final[frozenset[str]] = frozenset(
+    {
+        "claude_code",
+        "codex",
+        "grok",
+        "kiro_cli",
+        "opencode",
+        "pi",
+        "study_mentor",
+    }
+)
+"""The session sources this adapter reads by default: the six supported harnesses
+plus the first-party ``study_mentor`` checkpoint source.
+
+Andy's ruling of 2026-09-10, recorded in
+``docs/architecture/session-memory/receipts/adapter-scope-2026-09-10.md`` (§4.4 keeps
+``study_mentor`` as a first-party source rather than a harness; §5 "Stage 4" orders
+this allow-list applied to the archive adapter). The live ``sessions.db`` also holds
+1,279 sessions under seven retired labels (repoprompt 440, aider 422, kilocode_cli
+131, litellm-proxy 124, gemini_cli 87, bedrock_proxy 71, omp 4). Those rows are
+**hidden, never deleted** — the archive is the only surviving copy of ~89 % of that
+history — so the filter lives here in the read path.
+
+On ``main`` the same set is ``agent_session_tools.sources.SUPPORTED_SOURCES``. This
+worktree's ``agent-session-tools`` predates that module (it does not exist at
+``9a3eb5e1``), hence the literal. When the branches merge, this becomes an import and
+the Stage 3 parity guard asserts the two agree.
+"""
 
 ARCHIVE_HARNESS: Final = "archive"
 ARCHIVE_ADAPTER_VERSION: Final = "archive-v1"
@@ -208,27 +238,97 @@ def open_readonly(path: str | Path) -> sqlite3.Connection:
     return conn
 
 
+def _source_in(sources: frozenset[str], *, negate: bool = False) -> tuple[str, tuple[str, ...]]:
+    """``source IN (?,?,...)`` (or its negation) plus the parameters, sorted.
+
+    Sorted so the SQL text and the parameter tuple are deterministic — a receipt
+    quoting the predicate names the same thing on every run. An empty allow-list
+    yields the constant ``0``/``1`` rather than ``IN ()``, which is a syntax error.
+    """
+    ordered = tuple(sorted(sources))
+    if not ordered:
+        return ("1" if negate else "0"), ()
+    placeholders = ",".join("?" * len(ordered))
+    keyword = "NOT IN" if negate else "IN"
+    # `source IS NULL` is excluded by IN and must be caught explicitly by NOT IN:
+    # a NULL source is not a supported source.
+    tail = " OR source IS NULL" if negate else ""
+    return f"(source {keyword} ({placeholders}){tail})", ordered
+
+
 class ArchiveAdapter:
-    """Reads `sessions.db` and emits typed sessions under a named classifier version."""
+    """Reads `sessions.db` and emits typed sessions under a named classifier version.
+
+    Every session-enumerating method is scoped to ``sources`` (see
+    :data:`SUPPORTED_SOURCES`): :meth:`discover`, :meth:`session_ids`,
+    :meth:`lineage_map`, :meth:`unrecoverable_lineage`,
+    :meth:`self_referencing_lineage`. ``sources=None`` restores the unscoped v1
+    behaviour byte-for-byte — the SQL those methods issue is then identical to the
+    pre-allow-list text, so the escape hatch is a true escape hatch.
+
+    Addressing a session **by id** is never filtered: :meth:`parse`,
+    :meth:`parse_id` and :meth:`session_metadata` answer for a retired-source
+    session, because explicit access to a row that exists is not a scope question.
+    :meth:`source_counts` likewise stays unfiltered (it is a census of the file);
+    :meth:`hidden_source_counts` names what the scope excludes.
+    """
 
     harness: str = ARCHIVE_HARNESS
     adapter_version: str = ARCHIVE_ADAPTER_VERSION
     classifier_version: str = ARCHIVE_CLASSIFIER_VERSION
 
-    def __init__(self, conn: sqlite3.Connection) -> None:
+    def __init__(
+        self,
+        conn: sqlite3.Connection,
+        sources: frozenset[str] | None = SUPPORTED_SOURCES,
+    ) -> None:
         self._conn = conn
+        self.sources = sources
 
     @classmethod
-    def open(cls, path: str | Path) -> ArchiveAdapter:
-        return cls(open_readonly(path))
+    def open(
+        cls, path: str | Path, sources: frozenset[str] | None = SUPPORTED_SOURCES
+    ) -> ArchiveAdapter:
+        return cls(open_readonly(path), sources)
 
     def close(self) -> None:
         self._conn.close()
 
+    # -------------------------------------------------------------------- scope
+
+    def _scope(self, *, prefix: str) -> tuple[str, tuple[str, ...]]:
+        """The allow-list predicate ready to splice after ``prefix``, or nothing."""
+        if self.sources is None:
+            return "", ()
+        predicate, params = _source_in(self.sources)
+        return f"{prefix}{predicate}", params
+
+    def hidden_source_counts(self) -> dict[str, int]:
+        """``{label: n}`` for the sessions this adapter's scope excludes.
+
+        Empty when ``sources is None``. On the live file with the default
+        allow-list this is the 1,279 rows across seven retired labels: they are
+        hidden from every enumeration, and still readable by id.
+        """
+        if self.sources is None:
+            return {}
+        predicate, params = _source_in(self.sources, negate=True)
+        return {
+            ("<null>" if row["source"] is None else str(row["source"])): int(row["n"])
+            for row in self._conn.execute(
+                f"SELECT source, count(*) AS n FROM sessions WHERE {predicate}"
+                " GROUP BY source ORDER BY n DESC, source",
+                params,
+            )
+        }
+
     # ------------------------------------------------------------------ discover
 
     def discover(self) -> Iterator[SourceRef]:
-        """One ref per ``sessions`` row, ordered by ``(created_at, id)``.
+        """One ref per in-scope ``sessions`` row, ordered by ``(created_at, id)``.
+
+        Scoped by ``sources`` — a retired-source row is not discovered, so no sweep
+        ingests it (receipt §5 "Stage 4"). It is still parseable by id.
 
         ``source_sha256`` is a digest over the session's message rows, NOT
         ``sessions.content_hash``: that column is NULL for all 5,879 rows, so using
@@ -237,8 +337,9 @@ class ArchiveAdapter:
         shape the ruler's ``corpus_digest`` uses.
         """
         digests = self._message_digests()
+        where, params = self._scope(prefix=" WHERE ")
         for row in self._conn.execute(
-            "SELECT id, created_at FROM sessions ORDER BY created_at, id"
+            f"SELECT id, created_at FROM sessions{where} ORDER BY created_at, id", params
         ).fetchall():
             session_id = str(row["id"])
             yield SourceRef(
@@ -248,12 +349,16 @@ class ArchiveAdapter:
             )
 
     def _message_digests(self) -> dict[str, str]:
-        """One pass over 143,903 rows, giving every session a content identity."""
+        """One pass over 143,903 rows, giving every in-scope session a content identity."""
         digests: dict[str, str] = {}
         current: str | None = None
         hasher = hashlib.sha256()
+        scope, params = self._scope(prefix=" WHERE session_id IN (SELECT id FROM sessions WHERE ")
+        if scope:
+            scope += ")"
         for row in self._conn.execute(
-            "SELECT session_id, id, content FROM messages ORDER BY session_id, id"
+            f"SELECT session_id, id, content FROM messages{scope} ORDER BY session_id, id",
+            params,
         ):
             session_id = str(row["session_id"])
             if session_id != current:
@@ -268,7 +373,7 @@ class ArchiveAdapter:
         return digests
 
     def session_ids(self) -> list[str]:
-        """Ingest order: parents before children, then ``(created_at, id)``.
+        """In-scope ingest order: parents before children, then ``(created_at, id)``.
 
         Lineage edges do not need this — a child parks its edge in
         ``lineage_pending`` and the parent reconciles it — but ``sessions.parent_id``
@@ -276,9 +381,12 @@ class ArchiveAdapter:
         and makes that column true. Verified acyclic: no parent is itself a child.
         """
         parents = self.lineage_map()
+        where, params = self._scope(prefix=" WHERE ")
         ordered = [
             str(row["id"])
-            for row in self._conn.execute("SELECT id FROM sessions ORDER BY created_at, id")
+            for row in self._conn.execute(
+                f"SELECT id FROM sessions{where} ORDER BY created_at, id", params
+            )
         ]
         known = set(ordered)
         seen: set[str] = set()
@@ -306,15 +414,32 @@ class ArchiveAdapter:
         exist. The other 126 rows carrying the key point at THEMSELVES (a session
         recording its own id) and are skipped. No time-window inference: a guessed
         edge is indistinguishable from a real one once stored.
+
+        **Both ends must be in scope.** A stored edge has to point at a session the
+        store will actually hold, so an in-scope child whose parent sits under a
+        retired label yields NO edge here: it is *reported* by
+        :meth:`out_of_scope_lineage`, not silently linked into a session that was
+        never ingested. With ``sources=None`` the query is the unscoped original.
         """
+        scope = ""
+        params: tuple[str, ...] = ()
+        if self.sources is not None:
+            child_predicate, child_params = _source_in(self.sources)
+            parent_predicate, parent_params = _source_in(self.sources)
+            scope = (
+                f" AND {child_predicate}"
+                f" AND parent IN (SELECT id FROM sessions WHERE {parent_predicate})"
+            )
+            params = child_params + parent_params
         edges: dict[str, str] = {}
         for row in self._conn.execute(
-            """
+            f"""
             SELECT id, json_extract(metadata, '$.source_session_id') AS parent
             FROM sessions
-            WHERE parent IS NOT NULL AND id LIKE 'agent-%'
+            WHERE parent IS NOT NULL AND id LIKE 'agent-%'{scope}
             ORDER BY id
-            """
+            """,
+            params,
         ):
             child = str(row["id"])
             parent = str(row["parent"])
@@ -322,35 +447,72 @@ class ArchiveAdapter:
                 edges[child] = parent
         return edges
 
+    def out_of_scope_lineage(self) -> dict[str, str]:
+        """``child -> parent`` for in-scope children whose parent is out of scope.
+
+        The visible cost of the allow-list: these edges exist in the archive and are
+        deliberately not stored, because the parent is not ingested. Empty when
+        ``sources is None``. The ingest receipt records the count so census v2 can
+        see how much lineage the scope drops rather than inferring it from a hole.
+        """
+        if self.sources is None:
+            return {}
+        child_predicate, child_params = _source_in(self.sources)
+        parent_predicate, parent_params = _source_in(self.sources, negate=True)
+        return {
+            str(row["id"]): str(row["parent"])
+            for row in self._conn.execute(
+                f"""
+                SELECT id, json_extract(metadata, '$.source_session_id') AS parent
+                FROM sessions
+                WHERE parent IS NOT NULL AND parent <> id AND id LIKE 'agent-%'
+                  AND {child_predicate}
+                  AND parent IN (SELECT id FROM sessions WHERE {parent_predicate})
+                ORDER BY id
+                """,
+                child_params + parent_params,
+            )
+        }
+
     def unrecoverable_lineage(self) -> list[str]:
-        """``agent-*`` sessions whose parent the archive did not record (2,992)."""
+        """In-scope ``agent-*`` sessions whose parent the archive did not record (2,992)."""
+        scope, params = self._scope(prefix=" AND ")
         return [
             str(row["id"])
             for row in self._conn.execute(
-                """
+                f"""
                 SELECT id FROM sessions
                 WHERE id LIKE 'agent-%'
                   AND (json_extract(metadata, '$.source_session_id') IS NULL
-                       OR json_extract(metadata, '$.source_session_id') = id)
+                       OR json_extract(metadata, '$.source_session_id') = id){scope}
                 ORDER BY id
-                """
+                """,
+                params,
             )
         ]
 
     def self_referencing_lineage(self) -> list[str]:
-        """Sessions whose ``source_session_id`` is their own id (126); skipped."""
+        """In-scope sessions whose ``source_session_id`` is their own id (126); skipped."""
+        scope, params = self._scope(prefix=" AND ")
         return [
             str(row["id"])
             for row in self._conn.execute(
-                """
+                f"""
                 SELECT id FROM sessions
-                WHERE json_extract(metadata, '$.source_session_id') = id
+                WHERE json_extract(metadata, '$.source_session_id') = id{scope}
                 ORDER BY id
-                """
+                """,
+                params,
             )
         ]
 
     def source_counts(self) -> dict[str, int]:
+        """A census of the WHOLE file, deliberately unfiltered by ``sources``.
+
+        The receipt has to be able to say what the archive holds, including the rows
+        the scope hides — that is the difference between hiding and deleting. Use
+        :meth:`hidden_source_counts` for the excluded subset.
+        """
         return {
             str(row["source"]): int(row["n"])
             for row in self._conn.execute(
@@ -362,6 +524,12 @@ class ArchiveAdapter:
 
     def parse(self, ref: SourceRef) -> ParsedSession:
         """Turn one archive session into typed events.
+
+        **Not scoped**: a session addressed by id is parsed whatever its ``source``,
+        including a retired label. Explicit access to a row that exists is not a
+        scope question, and the retired rows are hidden, not deleted. Only the
+        session's lineage follows the scope (see :meth:`lineage_map`), so a parsed
+        session never claims a parent the store will not hold.
 
         ``Session.id`` is the archive id unchanged (ADR §6), so every existing gold
         question, receipt and pin scores this store without translation.
