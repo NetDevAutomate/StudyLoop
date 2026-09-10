@@ -1,0 +1,238 @@
+{
+  "receipt": "ingest-archive",
+  "created_utc": "2026-09-10T19:39:55+00:00",
+  "versions": {
+    "schema_version": 2,
+    "adapter_version": "archive-v1",
+    "classifier_version": "archive-classifier-v1"
+  },
+  "inputs": {
+    "db": "/Users/ataylor/.config/studyloop/sessions.db",
+    "db_bytes": 1067790336,
+    "db_opened": "file:...?mode=ro (read-only)",
+    "store": "/Users/ataylor/.local/share/studyloop/knowledge-proof/learning-memory-v2.db",
+    "limit": null
+  },
+  "sources_scope": [
+    "claude_code",
+    "codex",
+    "grok",
+    "kiro_cli",
+    "opencode",
+    "pi",
+    "study_mentor"
+  ],
+  "scope": {
+    "sources": [
+      "claude_code",
+      "codex",
+      "grok",
+      "kiro_cli",
+      "opencode",
+      "pi",
+      "study_mentor"
+    ],
+    "include_retired_sources": false,
+    "hidden_sessions": 1279,
+    "hidden_by_source": {
+      "repoprompt": 440,
+      "aider": 422,
+      "kilocode_cli": 131,
+      "litellm-proxy": 124,
+      "gemini_cli": 87,
+      "bedrock_proxy": 71,
+      "omp": 4
+    },
+    "policy": "hidden, never deleted; readable by id",
+    "ruling": "docs/architecture/session-memory/receipts/adapter-scope-2026-09-10.md \u00a74.4, \u00a75 Stage 4"
+  },
+  "corpus_digest": {
+    "function": "scripts/knowledge_proof/score.py::corpus_digest",
+    "score_py": "/Users/ataylor/code/personal/tools/studyloop/.worktrees/knowledge-proof/scripts/knowledge_proof/score.py",
+    "gold": "/Users/ataylor/code/personal/tools/studyloop/.worktrees/knowledge-proof/docs/architecture/session-memory/receipts/gold-v2-dev.json",
+    "value": "9aa2b4954189a824d9cf87980af6ee366b9748a1f2423356a70d0d92642c5cda",
+    "gold_authoring_value": "a0df30bb0255bdf92f6b511bb6de14256dd72ceefb80fb10956ecfe5018ea4b9",
+    "note": "computed over the DEV gold's sessions; differs from the value recorded when gold v2 was authored, which covered all 175 admitted items (DEV + SEALED). Reproducing that value would require reading the SEALED gold, which this run must not do. The immediately following baseline-dev receipt records the same DEV-only value this run computes.",
+    "gold_items": 91,
+    "gold_set": "DEV"
+  },
+  "sessions": {
+    "in_archive": 4600,
+    "attempted": 4600,
+    "ingested": 4580,
+    "rejected": 20,
+    "rejected_by_reason": {
+      "NoEvidenceError": 20
+    },
+    "rejected_detail": [
+      {
+        "session_id": "codex_rollout-2026-01-01T20-25-53-019b7b3c-ffe9-7900-894f-92e92e7db57c",
+        "reason": "NoEvidenceError",
+        "detail": "session 'codex_rollout-2026-01-01T20-25-53-019b7b3c-ffe9-7900-894f-92e92e7db57c' has nothing citable: prose events=0, native_source=absent"
+      },
+      {
+        "session_id": "kiro_2112c371-b223-467e-8f29-13dc5a25a656",
+        "reason": "NoEvidenceError",
+        "detail": "session 'kiro_2112c371-b223-467e-8f29-13dc5a25a656' has nothing citable: prose events=0, native_source=absent"
+      },
+      {
+        "session_id": "kiro_50e59071-3e83-41cc-be4b-a0b4abdc43d1",
+        "reason": "NoEvidenceError",
+        "detail": "session 'kiro_50e59071-3e83-41cc-be4b-a0b4abdc43d1' has nothing citable: prose events=0, native_source=absent"
+      },
+      {
+        "session_id": "kiro_72b6b399-1088-4726-bde1-8bdbbc6a6094",
+        "reason": "NoEvidenceError",
+        "detail": "session 'kiro_72b6b399-1088-4726-bde1-8bdbbc6a6094' has nothing citable: prose events=0, native_source=absent"
+      },
+      {
+        "session_id": "kiro_92e266f7-be47-4e1d-ba07-2d452c915ccd",
+        "reason": "NoEvidenceError",
+        "detail": "session 'kiro_92e266f7-be47-4e1d-ba07-2d452c915ccd' has nothing citable: prose events=0, native_source=absent"
+      },
+      {
+        "session_id": "kiro_e5e434be-8bb5-4ca9-bed3-9e392959d967",
+        "reason": "NoEvidenceError",
+        "detail": "session 'kiro_e5e434be-8bb5-4ca9-bed3-9e392959d967' has nothing citable: prose events=0, native_source=absent"
+      },
+      {
+        "session_id": "kiro_f81bf73a-570b-4024-a689-1a14e38c2140",
+        "reason": "NoEvidenceError",
+        "detail": "session 'kiro_f81bf73a-570b-4024-a689-1a14e38c2140' has nothing citable: prose events=0, native_source=absent"
+      },
+      {
+        "session_id": "kiro_fa57b006-30f3-4a37-9918-8ebc27c57e7f",
+        "reason": "NoEvidenceError",
+        "detail": "session 'kiro_fa57b006-30f3-4a37-9918-8ebc27c57e7f' has nothing citable: prose events=0, native_source=absent"
+      },
+      {
+        "session_id": "kiro_fda7b455-7b24-4453-b2f2-4536902238ff",
+        "reason": "NoEvidenceError",
+        "detail": "session 'kiro_fda7b455-7b24-4453-b2f2-4536902238ff' has nothing citable: prose events=0, native_source=absent"
+      },
+      {
+        "session_id": "grok_019f1a58-9edb-7801-aff3-c9885470d83f",
+        "reason": "NoEvidenceError",
+        "detail": "session 'grok_019f1a58-9edb-7801-aff3-c9885470d83f' has nothing citable: prose events=0, native_source=absent"
+      },
+      {
+        "session_id": "grok_019f61c7-25b0-7d31-a029-f2dcbcb2b21f",
+        "reason": "NoEvidenceError",
+        "detail": "session 'grok_019f61c7-25b0-7d31-a029-f2dcbcb2b21f' has nothing citable: prose events=0, native_source=absent"
+      },
+      {
+        "session_id": "b39869ab-7bc7-42d4-aaa0-60ba013cccfb",
+        "reason": "NoEvidenceError",
+        "detail": "session 'b39869ab-7bc7-42d4-aaa0-60ba013cccfb' has nothing citable: prose events=0, native_source=absent"
+      },
+      {
+        "session_id": "6278d31f-bdd2-4cb7-9146-131f3985073a",
+        "reason": "NoEvidenceError",
+        "detail": "session '6278d31f-bdd2-4cb7-9146-131f3985073a' has nothing citable: prose events=0, native_source=absent"
+      },
+      {
+        "session_id": "grok_019f73d2-3f19-7df0-bf10-2895b555c12b",
+        "reason": "NoEvidenceError",
+        "detail": "session 'grok_019f73d2-3f19-7df0-bf10-2895b555c12b' has nothing citable: prose events=0, native_source=absent"
+      },
+      {
+        "session_id": "aa634609-0b43-46f4-aa36-ae8c9d1a7c73",
+        "reason": "NoEvidenceError",
+        "detail": "session 'aa634609-0b43-46f4-aa36-ae8c9d1a7c73' has nothing citable: prose events=0, native_source=absent"
+      },
+      {
+        "session_id": "codex_rollout-2026-08-03T12-04-28-019fc74b-ea1d-73b2-bf28-a5ea16f066cf",
+        "reason": "NoEvidenceError",
+        "detail": "session 'codex_rollout-2026-08-03T12-04-28-019fc74b-ea1d-73b2-bf28-a5ea16f066cf' has nothing citable: prose events=0, native_source=absent"
+      },
+      {
+        "session_id": "61749428-4696-42b0-abec-abfdd1bc94fa",
+        "reason": "NoEvidenceError",
+        "detail": "session '61749428-4696-42b0-abec-abfdd1bc94fa' has nothing citable: prose events=0, native_source=absent"
+      },
+      {
+        "session_id": "codex_rollout-2026-08-20T18-45-50-01a02047-7bf2-7a03-b83e-5fc5e390c225",
+        "reason": "NoEvidenceError",
+        "detail": "session 'codex_rollout-2026-08-20T18-45-50-01a02047-7bf2-7a03-b83e-5fc5e390c225' has nothing citable: prose events=0, native_source=absent"
+      },
+      {
+        "session_id": "codex_rollout-2026-08-20T18-45-50-01a02047-7bf2-7a03-b83e-5fa7234bb767",
+        "reason": "NoEvidenceError",
+        "detail": "session 'codex_rollout-2026-08-20T18-45-50-01a02047-7bf2-7a03-b83e-5fa7234bb767' has nothing citable: prose events=0, native_source=absent"
+      },
+      {
+        "session_id": "8a3005f5-bc9b-4f18-ba77-34a8b0ee80a1",
+        "reason": "NoEvidenceError",
+        "detail": "session '8a3005f5-bc9b-4f18-ba77-34a8b0ee80a1' has nothing citable: prose events=0, native_source=absent"
+      }
+    ]
+  },
+  "events_by_kind": {
+    "assistant_prose": 42305,
+    "tool_call": 39624,
+    "user": 8156,
+    "system": 4691,
+    "tool_result": 234
+  },
+  "events_total": 95010,
+  "exporter_dupes_collapsed": 37314,
+  "evidence": {
+    "total": 47449,
+    "citable_per_event": 47449,
+    "native_captures": 0
+  },
+  "lineage": {
+    "edges": 485,
+    "pending": [],
+    "pending_count": 0,
+    "unrecoverable_count": 2992,
+    "unrecoverable_sample": [
+      "agent-01b4506e",
+      "agent-0211f5f0",
+      "agent-027c45e0",
+      "agent-07190b65",
+      "agent-071a2ad2",
+      "agent-07e097f5",
+      "agent-09e58bc0",
+      "agent-0ce24322",
+      "agent-0dc469cd",
+      "agent-0de9a646"
+    ],
+    "self_referencing_skipped": 126,
+    "out_of_scope_parent_count": 0,
+    "out_of_scope_parent_sample": {}
+  },
+  "per_source_sessions": {
+    "claude_code": 3598,
+    "kiro_cli": 606,
+    "codex": 303,
+    "grok": 50,
+    "opencode": 14,
+    "study_mentor": 6,
+    "pi": 3
+  },
+  "archive_per_source_sessions": {
+    "claude_code": 3603,
+    "kiro_cli": 614,
+    "repoprompt": 440,
+    "aider": 422,
+    "codex": 307,
+    "kilocode_cli": 131,
+    "litellm-proxy": 124,
+    "gemini_cli": 87,
+    "bedrock_proxy": 71,
+    "grok": 53,
+    "opencode": 14,
+    "study_mentor": 6,
+    "omp": 4,
+    "pi": 3
+  },
+  "fts_integrity_check": "ok",
+  "wall_seconds": 20.68,
+  "store_bytes": {
+    "learning-memory-v2.db": 230010880,
+    "learning-memory-v2.db-wal": 9513112,
+    "learning-memory-v2.db-shm": 32768,
+    "total": 239556760
+  }
+}
