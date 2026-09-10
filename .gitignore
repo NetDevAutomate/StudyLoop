@@ -525,6 +525,9 @@ docs/architecture/session-memory/*
 !docs/architecture/session-memory/README.md
 !docs/architecture/session-memory/GLOSSARY.md
 !docs/architecture/session-memory/verified-architecture.architecture.json
+# Receipts (adapter-scope decisions, measurement records) are small Markdown/JSON
+# and must be tracked; same negation as feat/knowledge-proof so the branches merge.
+!docs/architecture/session-memory/receipts/
 
 # Demo recordings (large, local-only)
 demos/
