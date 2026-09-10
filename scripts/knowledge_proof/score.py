@@ -299,7 +299,7 @@ def main() -> int:
             continue
         comparisons[f"{name}_vs_B1"] = compare(name, "B1")
 
-    fusion_spec = pathlib.Path(args.fusion_spec) if args.fusion_spec else None
+    fusion_spec = pathlib.Path(args.fusion_spec).resolve() if args.fusion_spec else None
     store = pathlib.Path(args.store).expanduser() if args.store else None
     receipt = {
         "receipt": args.label,
