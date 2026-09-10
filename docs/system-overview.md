@@ -29,7 +29,7 @@ flowchart TB
 
     subgraph "Interactive Study"
         Picker["studyloop study<br/>session picker"]
-        Agent["Selected assistant<br/>Claude/Codex/Kiro (core)<br/>OpenCode/pi (preview)"]
+        Agent["Selected assistant<br/>Claude/Codex/Kiro (core)<br/>OpenCode/pi/Grok Build (preview)"]
         Tmux["Multiplexer<br/>tmux (default) | herdr (opt-in)<br/>+ Textual sidebar"]
         Web["Web/PWA<br/>dashboard + review"]
         Explorer["Course Explorer<br/>(browse + read + search<br/>study material)"]

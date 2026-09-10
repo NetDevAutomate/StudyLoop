@@ -3,7 +3,8 @@
 `session-export` can mirror your AI coding sessions into an Obsidian vault as
 structured Markdown, alongside the usual SQLite export. The feature is **opt-in**
 and shared across the supported harnesses — Kiro CLI, Codex, Claude Code,
-OpenCode, and pi all flow into one folder, so your hand-written notes stay clean.
+OpenCode, pi, and Grok Build all flow into one folder, so your hand-written notes
+stay clean.
 
 > Looking for the implementation spec or the GraphRAG follow-up? See
 > `private-docs/obsidian-export.md` and `private-docs/obsidian-graphrag-roadmap.md`.

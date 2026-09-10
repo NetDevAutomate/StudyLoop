@@ -20,6 +20,7 @@ one place.
 | Claude Code | `~/.claude/skills/` | the Agent Skills convention |
 | OpenCode | `~/.agents/skills/` — the hub itself, listed as a global search path; no extra link installed | <https://opencode.ai/docs/skills/>, 2026-09-03 |
 | pi | not verified — no skills-directory documentation found | — |
+| Grok Build | `~/.agents/skills/` — the hub itself; Grok "also scans `.agents/skills/` at each tier", so no extra link is installed | Grok CLI 1.0.13 user guide, `08-skills.md`, 2026-09-10 |
 
 `~/.agents/skills/` is not a StudyLoop invention: Codex reads it as its USER scope,
 and OpenCode lists it as a global search path. Using it as the hub means Codex and
@@ -38,6 +39,7 @@ directory is documented, that paragraph is replaced by a link like the others.
 | Claude Code | selected from the description when the wind-down phase matches |
 | OpenCode | listed in the `skill` tool; loaded with `skill({ name: "studyloop-xtiles-wind-down" })` |
 | Kiro CLI | loaded from the skills directory when the description matches |
+| Grok Build | `/studyloop-xtiles-wind-down` as a slash command (skills are user-invocable by default), or selected from the description when the wind-down phase matches |
 
 ## Frontmatter
 

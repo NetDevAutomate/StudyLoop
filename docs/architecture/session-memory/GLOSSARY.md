@@ -48,7 +48,7 @@ directory's documents (RESULTS-*.md, finding-*.md, plans, diagrams).
 | **BL-n** | Backlog item n (BL-1 sync tiebreak, BL-2 repair dedup, BL-3 verified hooks, BL-4 sync fixes). |
 | **Gate** | A verification checkpoint that must pass before proceeding (Phase 0 had gates 1–3 plus a council gate). |
 | **Council** | Multi-model review through the LiteLLM gateway: independent reviewer models plus a judge model arbitrating. |
-| **Harness** | A coding-agent tool that produces sessions: Claude Code, Codex, Kiro CLI, OpenCode, pi, Grok. |
+| **Harness** | A coding-agent tool that produces sessions: Claude Code, Codex, Kiro CLI, OpenCode, pi, Grok Build. |
 | **Cutover** | The switch from the old sessions.db to the freshly rebuilt one (old preserved as sessions-orig.db). |
 | **Day-1 DB** | The rebuilt sessions.db: fresh native export + merged history + ontology tables, zero empty rows. |
 

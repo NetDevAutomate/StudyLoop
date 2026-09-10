@@ -335,9 +335,10 @@ planner and wind-down prompts wrote what they describe; the project prompt creat
 the project but not the board or the visible page structure it promises (see that
 prompt's section). StudyLoop installs the wind-down skill into every harness it
 detects: installation paths are verified against each vendor's documentation, but
-whether Kiro, Codex, OpenCode or pi can complete xTiles' browser authorisation is
-not something this page has verified — the skill stays silent unless an `xtiles`
-server is actually connected, so an untested harness costs you nothing.
+whether Kiro, Codex, OpenCode, pi or Grok Build can complete xTiles' browser
+authorisation is not something this page has verified — the skill stays silent
+unless an `xtiles` server is actually connected, so an untested harness costs you
+nothing.
 
 ### Checking it yourself
 

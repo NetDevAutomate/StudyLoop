@@ -30,7 +30,7 @@ flowchart TB
     end
 
     subgraph "Agent CLIs"
-      ACPAgents["ACP-capable agents<br/>(Kiro)"]
+      ACPAgents["ACP-capable agents<br/>(Kiro, Grok Build)"]
       PTYAgents["PTY-only agents<br/>(Claude, Codex,<br/>OpenCode, pi)"]
     end
 

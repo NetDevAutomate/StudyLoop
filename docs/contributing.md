@@ -5,8 +5,9 @@ Socratic questioning, and the tool wraps that session in structure — plans, sp
 for stray thoughts, a wind-down. This guide is the single reference for contributing to it: how the repository
 is organised, how to set up, how changes are made and proven, and how pull requests are reviewed.
 
-The project is a **pre-release (0.1.x)**. Five mentor harnesses are first-party: Kiro CLI, Codex and Claude
-Code are core; OpenCode and pi are preview. Everything else is out of scope until an issue defines it.
+The project is a **pre-release (0.1.x)**. Six mentor harnesses are first-party: Kiro CLI, Codex and Claude
+Code are core; OpenCode, pi and Grok Build are preview. Everything else is out of scope until an issue
+defines it.
 
 Contributions of every kind are welcome: a reproducible bug, a clearer setup sentence, an accessibility
 observation, a focused test, or an honest account of where a study flow became overwhelming. The fastest
@@ -269,9 +270,9 @@ reviewer holds AI-written code to exactly the same bar: tests that fail on rever
 **Where models are chosen in StudyLoop.** There are two independent places, and neither is hard-coded to a
 vendor:
 
-1. *Mentor harnesses* (Kiro CLI, Codex, Claude Code, OpenCode, pi) bring their own model access. StudyLoop
-   launches them and never sees their credentials. To route a harness through a gateway, configure the
-   harness itself according to its own documentation.
+1. *Mentor harnesses* (Kiro CLI, Codex, Claude Code, OpenCode, pi, Grok Build) bring their own model
+   access. StudyLoop launches them and never sees their credentials. To route a harness through a gateway,
+   configure the harness itself according to its own documentation.
 2. *Content generation* (flashcards, quizzes) uses a provider registry in
    `packages/studyloop/src/studyloop/content/generators/provider_profiles.py`. Each entry binds a slug to an
    adapter (`openai_compat`, `anthropic_compat`, `bedrock`, `ollama`), a base URL, the environment variable

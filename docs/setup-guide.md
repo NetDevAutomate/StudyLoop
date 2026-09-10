@@ -323,7 +323,7 @@ To make Codex CLI the default coding assistant for study sessions, set the agent
 
 ```yaml
 agents:
-  priority: [codex, kiro, claude, opencode, pi]
+  priority: [codex, kiro, claude, opencode, pi, grok]
 ```
 
 ### Web PWA (recommended)
@@ -607,7 +607,8 @@ studyloop syncs `.md`, `.pdf`, and `.txt` files. It skips:
 `session-export --obsidian` writes one Markdown note per AI coding session into
 `<vault>/AgentMemory/`, in addition to the SQLite export. This is **opt-in** and
 shared across the supported harnesses — Kiro CLI, Codex, Claude Code, OpenCode,
-and pi all flow into the same folder, keeping curated study notes untouched.
+pi, and Grok Build all flow into the same folder, keeping curated study notes
+untouched.
 
 Each note carries Dataview-ready frontmatter so vault dashboards pick them up:
 
@@ -658,7 +659,7 @@ session-export --sources opencode --sources pi
 session-export --claude-only
 session-export --kiro-only
 session-export --codex-only
-session-export --grok-only       # Import only; no Grok mentor/hook installation
+session-export --grok-only       # Grok Build has no automatic hook yet
 session-export --opencode-only
 session-export --pi-only
 
@@ -842,7 +843,7 @@ studyloop doctor --json
 If you're using an AI coding assistant, the **install-mentor agent** can guide you through the entire setup process conversationally. It automatically detects your environment, installs packages, runs `studyloop doctor`, and fixes issues.
 
 The prompt lives at `agents/shared/install-mentor.md` and is intended for the
-supported harnesses: Kiro CLI, Codex, Claude Code, OpenCode, and pi.
+supported harnesses: Kiro CLI, Codex, Claude Code, OpenCode, pi, and Grok Build.
 
 For example, in Claude Code or Codex:
 ```

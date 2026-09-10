@@ -1,6 +1,6 @@
 # Current Architecture
 
-> Last updated: 2026-09-03. Reflects the ACP chat-UI feature, Settings → LLM Providers panel, scalable review list, opt-in Obsidian session-memory export, server-side Kokoro TTS (replacing the removed in-browser neural engine), Course Explorer side panel, generation-control honesty (`count_per_source` through `GenerationTask.count`), Explorer tree fingerprint caching, DB/FTS integrity coverage, route-stubbed browser smoke coverage, the active-learning loop (`studyloop now`, `chat-note`, `practice verify`, `recap today`, `mastery`, `/api/now`, adaptive interleaving), the five-harness mentor contract (Kiro, Codex, and Claude Code as core; OpenCode and pi as preview -- Gemini is a content-generation API provider only, not a mentor, see R-65), and ttyd's full retirement (ADR-0008).
+> Last updated: 2026-09-03. Reflects the ACP chat-UI feature, Settings → LLM Providers panel, scalable review list, opt-in Obsidian session-memory export, server-side Kokoro TTS (replacing the removed in-browser neural engine), Course Explorer side panel, generation-control honesty (`count_per_source` through `GenerationTask.count`), Explorer tree fingerprint caching, DB/FTS integrity coverage, route-stubbed browser smoke coverage, the active-learning loop (`studyloop now`, `chat-note`, `practice verify`, `recap today`, `mastery`, `/api/now`, adaptive interleaving), the six-harness mentor contract (Kiro, Codex, and Claude Code as core; OpenCode, pi, and Grok Build as preview -- Gemini is a content-generation API provider only, not a mentor, see R-65), and ttyd's full retirement (ADR-0008).
 
 This document describes the system as it works today, using the [C4 model](https://c4model.com/) at three levels of zoom: Context → Container → Component (focused on the ACP chat, Generate, and Review surfaces).
 
@@ -11,9 +11,9 @@ For the planned direction, see [Target Architecture](target.md).
 ## C4 Level 1 — System Context
 
 StudyLoop is single-user and runs primarily on one host. External systems are
-the AI agent CLIs (Kiro, Claude Code, and Codex as core; OpenCode and pi as
-preview), optional generation providers, and an optional local Kokoro TTS
-server.
+the AI agent CLIs (Kiro, Claude Code, and Codex as core; OpenCode, pi, and Grok
+Build as preview), optional generation providers, and an optional local Kokoro
+TTS server.
 
 ```mermaid
 flowchart TB
@@ -29,6 +29,7 @@ flowchart TB
       Codex["Codex CLI<br/>(PTY only)"]
       OpenCode["OpenCode<br/>(PTY only, preview)"]
       Pi["pi<br/>(PTY only, preview)"]
+      Grok["Grok Build<br/>(supports ACP, preview)"]
     end
 
     subgraph "Optional generation providers"
@@ -50,6 +51,7 @@ flowchart TB
     StudyLoop -->|"PTY / raw bytes"| Codex
     StudyLoop -->|"PTY / raw bytes"| OpenCode
     StudyLoop -->|"PTY / raw bytes"| Pi
+    StudyLoop -->|"ACP / JSON-RPC<br/>over stdio"| Grok
     StudyLoop -.->|"flashcard /<br/>quiz generation"| OpenAI
     StudyLoop -.->|"flashcard /<br/>quiz generation"| OpenRouter
     StudyLoop -.->|"flashcard /<br/>quiz generation"| GeminiAPI
@@ -95,7 +97,7 @@ flowchart TB
       Runtime["SessionRuntime<br/>──────────<br/>Active-session singleton.<br/>Owns the transport.<br/>Forwards events to WS."]
       ACP["ACPTransport<br/>──────────<br/>JSON-RPC over stdio.<br/>session/new,<br/>session/prompt,<br/>session/update,<br/>session/request_permission."]
       PTY["PTYTransport<br/>──────────<br/>Raw bytes,<br/>WINSZ ioctl,<br/>SIGCHLD-driven exit."]
-      Agent["Agent subprocess<br/>──────────<br/>kiro-cli acp (ACP) /<br/>claude / codex / opencode / pi (PTY)"]
+      Agent["Agent subprocess<br/>──────────<br/>kiro-cli acp / grok agent stdio (ACP) /<br/>claude / codex / opencode / pi / grok (PTY)"]
     end
 
     subgraph "Local stores"

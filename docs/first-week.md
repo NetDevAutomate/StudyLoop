@@ -6,7 +6,7 @@ A minimal, repeatable path for getting value from StudyLoop without configuring 
 
 - Python 3.12+, [uv](https://docs.astral.sh/uv/), and **tmux 3.1+** (for `studyloop study`)
 - One supported AI coding agent on your PATH: Kiro CLI, Codex, Claude Code,
-  OpenCode, or pi. Kiro is the documented first-session path.
+  OpenCode, pi, or Grok Build. Kiro is the documented first-session path.
 - Optional: Obsidian vault for study notes; optional: Ollama or AWS Bedrock for local/cloud card generation
 
 Install from source (see [Setup Guide](setup-guide.md)):
@@ -157,7 +157,7 @@ The graph is Mermaid by default, so it can be pasted into Obsidian.
 | Every LLM provider in Settings | One working backend is enough for generation |
 | NotebookLM sync commands | Legacy optional path; not required for core study |
 | `session-export --obsidian` | Opt-in vault mirror; enable when you want Dataview notes |
-| All five agent CLIs | Start with the one you already use daily |
+| All six agent CLIs | Start with the one you already use daily |
 
 ## Where to go next
 

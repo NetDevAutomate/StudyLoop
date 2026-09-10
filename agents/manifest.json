@@ -3,79 +3,79 @@
   "agents": {
     "claude/socratic-mentor.md": {
       "hash": "b0be77358df99a1b",
-      "updated": "2026-09-09"
+      "updated": "2026-09-10"
     },
     "codex/AGENTS.md": {
       "hash": "c336d45d2e498756",
-      "updated": "2026-09-09"
+      "updated": "2026-09-10"
     },
     "kiro/study-mentor.json": {
       "hash": "9a00338f2e2265e6",
-      "updated": "2026-09-09"
+      "updated": "2026-09-10"
     },
     "opencode/plugins/studyloop-session-export.js": {
       "hash": "769ed9efdda111a9",
-      "updated": "2026-09-09"
+      "updated": "2026-09-10"
     },
     "opencode/study-mentor.md": {
       "hash": "c5115bc5c71fa26d",
-      "updated": "2026-09-09"
+      "updated": "2026-09-10"
     },
     "pi/AGENTS.md": {
       "hash": "0153166ebe4eff57",
-      "updated": "2026-09-09"
+      "updated": "2026-09-10"
     },
     "pi/extensions/studyloop-session-export.ts": {
       "hash": "5169fade780f0229",
-      "updated": "2026-09-09"
+      "updated": "2026-09-10"
     },
     "shared/audhd-framework.md": {
       "hash": "8b694064b100741f",
-      "updated": "2026-09-09"
+      "updated": "2026-09-10"
     },
     "shared/break-science.md": {
       "hash": "74541a44431f7f6a",
-      "updated": "2026-09-09"
+      "updated": "2026-09-10"
     },
     "shared/knowledge-bridging.md": {
       "hash": "adb4221cda83498f",
-      "updated": "2026-09-09"
+      "updated": "2026-09-10"
     },
     "shared/network-bridges.md": {
       "hash": "8af4732b77cc15ae",
-      "updated": "2026-09-09"
+      "updated": "2026-09-10"
     },
     "shared/session-db-mandate.md": {
       "hash": "2fce1c78e2648ad9",
-      "updated": "2026-09-09"
+      "updated": "2026-09-10"
     },
     "shared/session-protocol.md": {
-      "hash": "81a0dd0401915ff6",
-      "updated": "2026-09-09"
+      "hash": "7f4f0c2cf9e3eb53",
+      "updated": "2026-09-10"
     },
     "shared/socratic-engine.md": {
       "hash": "42738fba9479ec14",
-      "updated": "2026-09-09"
+      "updated": "2026-09-10"
     },
     "shared/teach-back-protocol.md": {
       "hash": "9bbe8831f1c74837",
-      "updated": "2026-09-09"
+      "updated": "2026-09-10"
     },
     "shared/wind-down-protocol.md": {
       "hash": "5b1ec3303b8d1086",
-      "updated": "2026-09-09"
+      "updated": "2026-09-10"
     },
     "skills/studyloop-session-memory/SKILL.md": {
-      "hash": "1cf998c9f6982446",
-      "updated": "2026-09-09"
+      "hash": "19735a72ad58fd05",
+      "updated": "2026-09-10"
     },
     "skills/studyloop-xtiles-wind-down/SKILL.md": {
       "hash": "a2e84febb865f24d",
-      "updated": "2026-09-09"
+      "updated": "2026-09-10"
     },
     "skills/studyloop-xtiles-wind-down/references/harnesses.md": {
-      "hash": "d2beeed44e1c0154",
-      "updated": "2026-09-09"
+      "hash": "87a8ab3c4a133afa",
+      "updated": "2026-09-10"
     }
   }
 }

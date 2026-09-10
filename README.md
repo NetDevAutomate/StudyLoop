@@ -55,7 +55,7 @@ The current release is best suited to:
 
 - self-directed learners who want an active study partner rather than an answer bot;
 - AuDHD learners who benefit from low-friction starts and explicit session endings;
-- technical learners using Kiro CLI, Codex, Claude Code, OpenCode, or pi;
+- technical learners using Kiro CLI, Codex, Claude Code, OpenCode, pi, or Grok Build;
 - contributors interested in learning tools, accessibility, documentation, or Python.
 
 ## Try one study session

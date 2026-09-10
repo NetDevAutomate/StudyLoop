@@ -38,11 +38,12 @@ nothing is reported as `empty` and changes no stored message. One failing batch
 is recorded in the `errors` count and does not stop the remaining batches or
 sources.
 
-Grok import reads local `chat_history.jsonl` files with sibling `summary.json`
-under `~/.grok/sessions/`, or the configured `GROK_HOME` sessions directory.
-`session-export --grok-only` imports those files; it does not install a Grok
-mentor integration or automatic hook. Choosing a Grok model through a gateway
-does not identify a conversation archive.
+Grok Build import reads local `chat_history.jsonl` files with sibling
+`summary.json` under `~/.grok/sessions/`, or the configured `GROK_HOME` sessions
+directory. `session-export --grok-only` imports those files. Grok Build is also a
+preview mentor harness alongside OpenCode and pi, but StudyLoop does not yet
+install a session-end hook for it, so run the export yourself at wind-down. Choosing a Grok
+model through a gateway does not identify a conversation archive.
 
 Doctor checks executable, skill and hook configuration. A passing wiring check
 does not prove the most recent session was exported. Verify a known recent

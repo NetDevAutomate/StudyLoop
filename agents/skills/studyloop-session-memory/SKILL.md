@@ -70,6 +70,7 @@ Use the flag matching the current harness:
 | Claude Code | `session-export --claude-only` |
 | OpenCode | `session-export --opencode-only` |
 | pi | `session-export --pi-only` |
+| Grok Build | `session-export --grok-only` |
 
 The installer also registers a native session-end hook for each supported
 mentor harness. Hooks must fail open (`|| true` or equivalent), never trap the
@@ -77,8 +78,10 @@ user inside the harness. Report an observed export error; doctor checks wiring
 but does not establish success of the latest export. Verify a recent session
 through query when capture is uncertain.
 
-Grok's local transcripts can be imported with `session-export --grok-only`.
-Grok is not an installed mentor/hook integration in this release.
+Grok Build is the exception: it is a preview mentor harness for which StudyLoop
+does not yet install a session-end hook, so run `session-export --grok-only`
+yourself at wind-down.
+Its transcripts live under `~/.grok/sessions/` (or `GROK_HOME`).
 
 ## Repair and sharing limits
 

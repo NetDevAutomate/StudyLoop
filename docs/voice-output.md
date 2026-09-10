@@ -63,7 +63,7 @@ Voice is **off by default**. Toggle it during a session:
 
     Uses shell command `~/.local/bin/study-speak`.
 
-=== "Codex / OpenCode / pi"
+=== "Codex / OpenCode / pi / Grok Build"
 
     ```
     @speak-start    # enable voice
@@ -232,6 +232,23 @@ Each agent has an `mcp.json` in its `agents/` directory. The server command uses
 ```
 
 Replace the path with your actual clone location. The `scripts/install-agents.sh` script sets this up automatically for detected AI tools.
+
+### Grok Build
+
+Grok Build has no repo-owned `mcp.json` — it reads MCP servers from
+`~/.grok/config.toml`. Register the speaker server with the CLI:
+
+```bash
+grok mcp add speaker -- uvx --from "mcp[cli]" mcp run /absolute/path/to/agents/mcp/study-speak-server.py
+```
+
+Or write the entry by hand:
+
+```toml
+[mcp_servers.speaker]
+command = "uvx"
+args = ["--from", "mcp[cli]", "mcp", "run", "/absolute/path/to/agents/mcp/study-speak-server.py"]
+```
 
 ---
 

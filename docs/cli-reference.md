@@ -519,7 +519,7 @@ lan_password: ""     # persistent password for --lan mode (auto-generated if emp
 
 ```yaml
 agents:
-  priority: [kiro, codex, claude, opencode, pi]
+  priority: [kiro, codex, claude, opencode, pi, grok]
 ```
 
 ---
@@ -568,7 +568,7 @@ The `--sources` values below are the complete set the CLI accepts — anything e
 |--------|------|
 | `claude` | Claude Code |
 | `codex` | OpenAI Codex CLI |
-| `grok` | Grok local transcript import; no mentor/hook integration |
+| `grok` | Grok Build |
 | `kiro` | Kiro CLI |
 | `opencode` | OpenCode |
 | `pi` | pi coding agent |
@@ -603,6 +603,7 @@ studyloop install agents --tool codex
 studyloop install agents --tool claude --tool kiro
 studyloop install agents --tool opencode
 studyloop install agents --tool pi
+studyloop install agents --tool grok
 
 session-export
 session-export --sources claude --sources codex
@@ -612,6 +613,7 @@ session-export --codex-only
 session-export --kiro-only
 session-export --opencode-only
 session-export --pi-only
+session-export --grok-only
 session-export --full
 ```
 

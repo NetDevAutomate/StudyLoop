@@ -10,12 +10,10 @@ The core release harnesses are:
 - **Codex**
 - **Claude Code**
 
-StudyLoop also includes complete integrations for **OpenCode** and **pi**. They are shown as preview harnesses until their live release checks pass on the target environment.
+StudyLoop also includes complete integrations for **OpenCode**, **pi**, and **Grok Build**. They are shown as preview harnesses until their live release checks pass on the target environment.
 
-Gemini CLI, Antigravity, and Grok are not mentor harnesses in this pre-release.
+Gemini CLI and Antigravity are not mentor harnesses in this pre-release.
 Their presence on your computer will not make StudyLoop advertise or select them.
-The session-memory reliability candidate can import Grok's local transcripts with
-`session-export --grok-only`; that does not install a Grok agent or hook.
 
 ## Install automatically
 
@@ -33,6 +31,7 @@ studyloop install agents --tool codex
 studyloop install agents --tool claude
 studyloop install agents --tool opencode
 studyloop install agents --tool pi
+studyloop install agents --tool grok
 ```
 
 Then check the result:
@@ -51,7 +50,7 @@ The easiest route is the Web UI: open **Study Session**, choose an available har
 studyloop study "Python generators" --agent kiro
 ```
 
-Replace `kiro` with `codex`, `claude`, `opencode`, or `pi`.
+Replace `kiro` with `codex`, `claude`, `opencode`, `pi`, or `grok`.
 
 ## What each integration installs
 
@@ -107,16 +106,38 @@ Its `AGENTS.md` carries the same self-gated xTiles line. pi discovers the
 shared `~/.agents/skills/` hub natively, so both the xTiles wind-down skill and
 the session-memory skill are available without a duplicate link.
 
+### Grok Build
+
+Grok Build is xAI's terminal coding agent (binary `grok`). It reads the repo-root `AGENTS.md` — the same file Codex reads — so `studyloop install agents --tool grok` links that one shared definition instead of a Grok-specific copy that could drift. There is no `agents/grok/` directory, by design. Launching through `studyloop study` creates the session context and starts Grok Build in that directory; it resumes through its native `--resume` option.
+
+Because it is the same file, it carries the same self-gated xTiles line as Codex's. Grok Build also discovers the shared `~/.agents/skills/` hub natively (its skill discovery scans `.agents/skills/` at every tier), so the `studyloop-session-memory` skill reaches it with no Grok-specific link.
+
+If `grok` is not on your PATH yet:
+
+```bash
+curl -fsSL https://x.ai/cli/install.sh | bash
+```
+
+Then confirm the wiring:
+
+```bash
+studyloop doctor --category agents
+```
+
+Doctor checks that the `grok` binary responds and that the shared repo-root `AGENTS.md` is in place.
+
 ## Session memory and automatic export
 
 `studyloop install agents` installs one canonical
-`studyloop-session-memory` skill into `~/.agents/skills/`. Codex, OpenCode and
-pi discover that hub directly; Kiro and Claude receive links from their native
-skill directories. The skill prefers the `session_search` MCP tool and falls
-back to the installed `session-query` CLI, so a missing MCP registration never
-silently disables retrieval.
+`studyloop-session-memory` skill into `~/.agents/skills/`. Codex, OpenCode,
+pi and Grok Build discover that hub directly; Kiro and Claude receive links
+from their native skill directories. The skill
+prefers the `session_search` MCP tool and falls back to the installed
+`session-query` CLI, so a missing MCP registration never silently disables
+retrieval.
 
-The installer also installs a real lifecycle hook for every release harness:
+The installer also installs a real lifecycle hook for every release harness
+that exposes one:
 
 | Harness | Automatic export hook | Query path |
 |---|---|---|
@@ -125,10 +146,11 @@ The installer also installs a real lifecycle hook for every release harness:
 | Claude Code | global `~/.claude/settings.json` `Stop` hook | native skill link + `session-query` |
 | OpenCode | global plugin, `session.idle` event | shared skill + `session-query` |
 | pi | global extension, `session_shutdown` event | shared skill + `session-query` |
+| Grok Build | none yet — run `session-export --grok-only` | shared skill + `session-query` |
 
-All hooks run `session-export --<harness>-only` best-effort and never block
-session close. Codex reviews and trusts a newly installed command-hook hash on
-first use; StudyLoop does not bypass that security prompt.
+All installed hooks run `session-export --<harness>-only` best-effort and never
+block session close. Codex reviews and trusts a newly installed command-hook
+hash on first use; StudyLoop does not bypass that security prompt.
 
 Check both layers (skill/query and hook/export), or repair them, with:
 

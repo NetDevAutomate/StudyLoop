@@ -34,6 +34,21 @@ uv tool install "./packages/agent-session-tools[tts]" --force
     }
     ```
 
+=== "Grok Build"
+
+    Grok Build reads MCP servers from `~/.grok/config.toml`, not a repo-owned
+    `mcp.json`. Register with the CLI:
+    ```bash
+    grok mcp add speaker -- uvx --from "mcp[cli]" mcp run /path/to/studyloop/agents/mcp/study-speak-server.py
+    ```
+
+    Or write the entry by hand:
+    ```toml
+    [mcp_servers.speaker]
+    command = "uvx"
+    args = ["--from", "mcp[cli]", "mcp", "run", "/path/to/studyloop/agents/mcp/study-speak-server.py"]
+    ```
+
 **Configuration** — `~/.config/studyloop/config.yaml`:
 
 ```yaml
@@ -194,10 +209,22 @@ uv run --project packages/agent-session-tools session-db-mcp
 ```
 
 **Agent config** — included in `agents/claude/mcp.json`, `agents/opencode/mcp.json`
-and `agents/kiro/study-mentor.json`. Codex and pi have no repo-owned MCP file;
-add both servers to the harness's own config:
+and `agents/kiro/study-mentor.json`. Codex, pi and Grok Build have no repo-owned
+MCP file; add both servers to the harness's own config:
 
 - Codex — `~/.codex/config.toml`:
+  ```toml
+  [mcp_servers.session-db]
+  command = "session-db-mcp"
+  args = []
+
+  [mcp_servers.studyloop]
+  command = "studyloop-mcp"
+  args = []
+  ```
+- Grok Build — `~/.grok/config.toml`, same shape as Codex, or register with the
+  CLI (`grok mcp add session-db -- session-db-mcp` and
+  `grok mcp add studyloop -- studyloop-mcp`):
   ```toml
   [mcp_servers.session-db]
   command = "session-db-mcp"

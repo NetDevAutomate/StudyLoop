@@ -15,7 +15,7 @@ When you start a study session with `studyloop study "topic"`, a tmux session is
 |                                          |                  |
 |   Your AI mentor runs here.              |   00:12:34       |
 |   Kiro, Codex, Claude Code,              |   ELAPSED        |
-|   OpenCode, or pi.                       |                  |
+|   OpenCode, pi, or Grok Build.           |                  |
 |                                          |  ── Activity ──  |
 |   The agent has full terminal access     |  * Closures  win |
 |   and uses Socratic questioning to       |  * Decorators    |

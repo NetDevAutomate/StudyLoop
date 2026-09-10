@@ -3,10 +3,10 @@
 Every study session — across all agents and platforms — follows this protocol. It's designed to support AuDHD brains through context-switching, energy management, and structured closure.
 
 !!! tip "This is the shared protocol"
-    All agents (Kiro, Claude Code, Gemini, OpenCode) use the same session flow. The source of truth lives in `agents/shared/session-protocol.md`.
+    All agents (Kiro CLI, Codex, Claude Code, OpenCode, pi, and Grok Build) use the same session flow. The source of truth lives in `agents/shared/session-protocol.md`.
 
 !!! note "Transport-agnostic"
-    The protocol is identical whether the session runs over PTY (terminal-style, all agents) or ACP (structured JSON-RPC, Kiro + Gemini today). Only the *delivery mechanism* for the persona text differs:
+    The protocol is identical whether the session runs over PTY (terminal-style, all agents) or ACP (structured JSON-RPC, Kiro and Grok Build today). Only the *delivery mechanism* for the persona text differs:
 
     - **PTY**: persona is written to a temp file and embedded in the agent's launch command. The agent reads it at startup.
     - **ACP**: persona is shipped inline in the `/api/session/start` response and the browser sends it as the first invisible `session/prompt` after the WebSocket opens. The user never sees it scroll past — a "Setting up your mentor…" banner appears briefly while the agent ingests it.

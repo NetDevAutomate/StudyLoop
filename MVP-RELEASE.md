@@ -42,7 +42,7 @@ independently runnable lessons remain preserved on their separate branch.
 
 | Area | Included in this candidate | Explicit limit |
 |---|---|---|
-| Capture | Existing parser fixes for Codex, Claude Code and Kiro; Grok exporter; stable conversation updates | Supported local transcript formats, not every desktop/cloud conversation or all native tool events |
+| Capture | Existing parser fixes for Codex, Claude Code and Kiro; Grok Build exporter; stable conversation updates | Supported local transcript formats, not every desktop/cloud conversation or all native tool events |
 | Repair | Inspect by default, explicit apply, consistent backup, transactional merge, retained history, repeatable reconciliation | Cannot recover missing original transcripts; no universal completeness guarantee |
 | Retrieval | Existing session search/inspection and configured project aliases | Conversation retrieval, not proof that an agent's advice or validation claim is correct |
 | Sync | Configured `session-sync all`, pushes before pulls, per-peer failure reporting, preserved message content and archived learner variants | Existing trusted whole-database transport; conflicting databases are not promised to become identical |
@@ -50,6 +50,11 @@ independently runnable lessons remain preserved on their separate branch.
 | Scope | Existing project filters | Filters are not enforced work/personal authorization; no per-peer scope protection |
 | Forgetting | No new distributed forgetting claim | Deleted data may return through legacy sync/restore; no tombstone guarantee |
 | Decisions | Original conversations can inform the agent | No automatic arbitration, source-bound decision acceptance or semantic truth certification |
+
+The mentor-harness contract is six harnesses: Kiro CLI, Codex and Claude Code as
+core; OpenCode, pi and Grok Build as preview. Grok Build was restored to that
+contract after this candidate was cut, so the Capture row above describes its
+exporter only — the launch, install and doctor paths land separately.
 
 Only use the legacy sync path where every participant is permitted to receive the
 entire selected database. This candidate is unsuitable for syncing a mixed

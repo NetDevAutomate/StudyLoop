@@ -32,7 +32,8 @@ one model provider as its intelligence layer.
 
 ### The selected agent owns the model conversation
 
-Kiro CLI, Codex, Claude Code, OpenCode, and pi launch as separate processes.
+Kiro CLI, Codex, Claude Code, OpenCode, pi, and Grok Build launch as separate
+processes.
 StudyLoop connects the chosen agent to the session through
 a terminal or structured chat transport. Provider authentication, billing, and
 data handling therefore depend on that agent.
