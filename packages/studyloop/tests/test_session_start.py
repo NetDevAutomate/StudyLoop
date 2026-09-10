@@ -317,13 +317,21 @@ class TestWebPasswordViaEnvNotArgv:
         bin_dir = tmp_path / "fakebin"
         bin_dir.mkdir()
         fake_studyloop = bin_dir / "studyloop"
-        # The child records its OWN argv from $0/"$@" -- exactly the vector the
-        # kernel exposes through `ps`/`/proc/<pid>/cmdline`. An earlier version
-        # shelled out to `ps -p $$ -o command=` for the same bytes; in sandboxes
-        # where /bin/ps is denied (exit 126) that line was empty, the env line
-        # became lines[0], and the assertion failed with the password "in argv"
-        # -- a false positive indistinguishable from the leak this test exists
-        # to catch. Reading the shell's own parameters has no such dependency.
+        # Two independent captures of what the launcher submitted:
+        #
+        # 1. The child records its own shell parameters ($0 and "$@"). That is
+        #    what the launched program sees, but it is not a lossless copy of
+        #    the kernel argv: an outer wrapper's `-c` string or interpreter
+        #    flags would not appear in it.
+        # 2. A delegating spy on subprocess.Popen records the exact argv list
+        #    the launcher passed, so a secret in ANY element -- including a
+        #    wrapper string the child never sees -- is caught.
+        #
+        # An earlier version shelled out to `ps -p $$ -o command=` for (1); in
+        # sandboxes where /bin/ps is denied (exit 126) that line was empty, the
+        # env line became lines[0], and the assertion failed with the password
+        # "in argv" -- a false positive indistinguishable from the leak this
+        # test exists to catch. Neither capture below depends on `ps`.
         fake_studyloop.write_text(
             "#!/bin/sh\n"
             f'printf \'argv:%s\\n\' "$0 $*" > "{marker}"\n'
@@ -334,21 +342,37 @@ class TestWebPasswordViaEnvNotArgv:
         fake_studyloop.chmod(0o755)
         monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}")
 
+        import subprocess
+
         from studyloop.session.orchestrator import start_web_background
+
+        submitted: list[list[str]] = []
+        real_popen = subprocess.Popen
+
+        def spy_popen(args, *a, **kw):
+            submitted.append([str(x) for x in args])
+            return real_popen(args, *a, **kw)
 
         with (
             patch("studyloop.session.orchestrator._kill_port_occupant"),
             patch("studyloop.session.orchestrator._open_browser"),
             patch("studyloop.session_state.write_session_state"),
+            patch("studyloop.session.orchestrator.subprocess.Popen", side_effect=spy_popen),
         ):
             start_web_background("study-test", lan=True, password="s3cr3t-pw")
 
-        # Poll for the child's OWN completion sentinel, not for a non-empty file.
-        # The script writes argv first and the environment line second, so "the
-        # file has bytes in it" was true between the two writes: on a loaded
-        # machine this test read a one-line file and reported that the password
-        # never reached the child, which is indistinguishable in a log from the
-        # security regression it exists to catch.
+        # Capture 2: every argv element the launcher handed to Popen.
+        assert len(submitted) == 1, f"expected one web launch, saw {submitted!r}"
+        for element in submitted[0]:
+            assert "s3cr3t-pw" not in element, f"password leaked into argv: {submitted[0]!r}"
+
+        # Capture 1: poll for the child's OWN completion sentinel, not for a
+        # non-empty file. The script writes argv first and the environment
+        # line second, so "the file has bytes in it" was true between the two
+        # writes: on a loaded machine this test read a one-line file and
+        # reported that the password never reached the child, which is
+        # indistinguishable in a log from the security regression it exists
+        # to catch.
         lines: list[str] = []
         for _ in range(200):
             try:
@@ -360,11 +384,12 @@ class TestWebPasswordViaEnvNotArgv:
             time.sleep(0.05)
         assert lines, "fake studyloop process never ran"
         argv_line = lines[0]
-        # Prove the line under test IS the argv before trusting a negative
-        # assertion on it: an empty or misplaced capture would pass "password
-        # not in argv" vacuously.
-        assert argv_line.startswith("argv:") and " web " in argv_line and "--lan" in argv_line, (
-            f"argv capture did not record the web launch: {argv_line!r}"
+        # Prove the line under test IS the tagged capture with a payload before
+        # trusting a negative assertion on it: an empty or misplaced capture
+        # would pass "password not in argv" vacuously. Deliberately not coupled
+        # to the launcher's option shape (`--lan`, subcommand name).
+        assert argv_line.startswith("argv:") and argv_line[len("argv:") :].strip(), (
+            f"argv capture did not record the launch: {argv_line!r}"
         )
         assert "s3cr3t-pw" not in argv_line, f"password leaked into argv: {argv_line!r}"
         assert "env:s3cr3t-pw" in lines, (
