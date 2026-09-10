@@ -43,3 +43,22 @@ Almost every finding was a verification request; each was run against git before
 
 Push `main` (now 39 ahead) and `feat/knowledge-proof`; push the 14 tags; delete the 9 remote branches
 whose tips are tagged or fully merged. The script's preflight re-verifies every tag→OID first.
+
+## Addendum — owner ran the remote script (2026-09-10 23:47)
+
+- **Steps 1–2 succeeded and are verified on the remote:** `origin/main` `0adeb6c8 → 4497efed`,
+  `origin/feat/knowledge-proof` `9a3eb5e1 → 464a8cdc`, all **14** `archive/*-2026-09-10` tags present.
+- **Step 3 rejected for all nine branches** (`GH013 … Cannot delete this branch`). Cause, read from the
+  API: repository ruleset **"Default" (id 22585978)** — `enforcement=active`, `target=branch`,
+  `include=["~ALL"]`, rules `deletion` + `non_fast_forward`, **no bypass actors**. It applies to every
+  identity, so the web UI and the API would refuse the same way. The classification did not account for
+  it; the plan council's Q-list did not ask about server-side protection. Recorded as a census gap.
+- **Not recommended:** adding the owner as a bypass actor — agents push under the owner's identity, so
+  that would make the protection permanently moot for exactly the actor it most usefully constrains.
+- **Recommended and scripted:** switch the ruleset off for the deletion step only, with the script
+  asking first, sending the full ruleset body on both PUTs, re-enabling through an `EXIT` trap even if a
+  deletion fails, and diffing the ruleset against a pre-change snapshot afterwards. The script is
+  idempotent, so re-running it repeats steps 1–2 as no-ops. Untested on the live ruleset by design (an
+  access-control change is the owner's); the disabled body was dry-run against the live GET and equals the
+  current ruleset with only `enforcement` changed.
+- Nothing is at risk while the branches remain: every tip is tagged on the remote.
