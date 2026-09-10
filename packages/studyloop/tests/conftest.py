@@ -17,6 +17,7 @@ These env vars affect only the test process, never user runtime.
 from __future__ import annotations
 
 import contextlib
+import importlib
 import os
 import sqlite3
 import subprocess
@@ -748,6 +749,33 @@ def _fail_on_server_side_errors(request: pytest.FixtureRequest):
         f"test, so it passed only because nothing asserted on them:\n{detail}",
         pytrace=False,
     )
+
+
+# ---------------------------------------------------------------------------
+# Session-start writes into the developer's harness config
+#
+# Two session-start side effects write into the real home unless redirected:
+# ``session.orchestrator._ensure_claude_trust`` adds the session directory to
+# Claude Code's trusted projects in its user settings file, and the Kiro
+# adapter rewrites the real ``study-mentor.json`` (``KIRO_AGENTS_DIR`` is
+# bound at import time in two modules, as the session-dir note above explains).
+# The real-home write guard below found both: 33 tests were adding temp
+# session paths to the developer's Claude trust list on every suite run.
+@pytest.fixture(autouse=True)
+def _isolate_session_start_harness_writes(
+    tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home = tmp_path_factory.mktemp("studyloop-isolated-harness-home")
+    from studyloop.session import orchestrator as _orchestrator
+
+    monkeypatch.setattr(
+        _orchestrator, "_claude_settings_path", lambda: home / ".claude" / "settings.json"
+    )
+    kiro_agents = home / ".kiro" / "agents"
+    for module_name in ("studyloop.adapters.kiro", "studyloop.agent_launcher"):
+        module = importlib.import_module(module_name)
+        if hasattr(module, "KIRO_AGENTS_DIR"):
+            monkeypatch.setattr(module, "KIRO_AGENTS_DIR", kiro_agents)
 
 
 # ---------------------------------------------------------------------------

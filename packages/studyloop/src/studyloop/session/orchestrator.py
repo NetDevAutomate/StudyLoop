@@ -22,16 +22,22 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
+def _claude_settings_path() -> Path:
+    """Claude Code's user settings file -- resolved here so tests can retarget it."""
+    from pathlib import Path as _Path
+
+    return _Path.home() / ".claude" / "settings.json"
+
+
 def _ensure_claude_trust(directory: Path) -> None:
-    """Add a directory to Claude Code's trusted projects in ~/.claude/settings.json.
+    """Add a directory to Claude Code's trusted projects in its user settings.
 
     Trust is checked by walking up the directory tree, so trusting the
     sessions parent dir covers all future session directories.
     """
     import json
-    from pathlib import Path as _Path
 
-    claude_settings = _Path.home() / ".claude" / "settings.json"
+    claude_settings = _claude_settings_path()
     if not claude_settings.exists():
         return  # No Claude Code installed
 
