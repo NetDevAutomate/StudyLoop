@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "One Session Through Learning Memory (ADR-0011)",
+    "output": "learning-memory.dataflow.html",
+    "quality_profile": "showcase",
+    "viewBox": [1068, 760],
+    "views": [
+      { "id": "capture-hops", "label": "Capture hops", "focus": ["transcript", "parse", "store", "prose_fts"], "note": "One transcript is parsed into typed turns and committed with its evidence." },
+      { "id": "deterministic-pass", "label": "Deterministic pass", "focus": ["store", "exchanges", "concepts", "backlog"], "note": "Exchanges, concept tags and recurrence run for $0 in the export sweep." },
+      { "id": "claims-path", "label": "Claims path", "focus": ["exchanges", "writer", "claims", "review", "recall", "agent"], "note": "The budgeted writer distils claims; recall serves claims before sessions." }
+    ]
+  },
+  "stages": [
+    { "label": "Session" },
+    { "label": "Parse" },
+    { "label": "Capture" },
+    { "label": "Derive" },
+    { "label": "Learning content + recall" }
+  ],
+  "nodes": [
+    { "id": "transcript", "type": "external", "label": "Session transcript", "sublabel": "one harness session", "stage": 0, "row": 1, "tag": "native bytes" },
+    { "id": "parse", "type": "backend", "label": "Adapter parse()", "sublabel": "classifies each turn", "stage": 1, "row": 1, "tag": "kind · turn_id" },
+    { "id": "store", "type": "database", "label": "events + evidence", "sublabel": "one transaction", "stage": 2, "row": 1, "tag": "content_hash" },
+    { "id": "prose_fts", "type": "database", "label": "prose_fts", "sublabel": "FTS5, prose only", "stage": 2, "row": 3 },
+    { "id": "concepts", "type": "backend", "label": "concept tags", "sublabel": "vocab · aliases", "stage": 3, "row": 0, "tag": "recurrence" },
+    { "id": "exchanges", "type": "backend", "label": "exchanges", "sublabel": "question + answers", "stage": 3, "row": 1, "tag": "error · retried" },
+    { "id": "writer", "type": "backend", "label": "Model writer", "sublabel": "budgeted pass", "stage": 3, "row": 2 },
+    { "id": "backlog", "type": "database", "label": "struggle backlog", "sublabel": "2 sessions, a day apart", "stage": 4, "row": 0 },
+    { "id": "review", "type": "database", "label": "review items", "sublabel": "from Findings", "stage": 4, "row": 1 },
+    { "id": "claims", "type": "database", "label": "claims", "sublabel": "5 kinds · immutable", "stage": 4, "row": 2, "tag": "quote-bound by trigger" },
+    { "id": "recall", "type": "backend", "label": "claims-first recall", "sublabel": "sessions as drill-down", "stage": 4, "row": 3 },
+    { "id": "agent", "type": "external", "label": "Mentor agent", "sublabel": "MCP tools", "stage": 4, "row": 4 }
+  ],
+  "flows": [
+    { "id": "raw-transcript", "from": "transcript", "to": "parse", "label": "raw transcript", "classification": "harness bytes", "variant": "emphasis" },
+    { "id": "typed-turns", "from": "parse", "to": "store", "label": "typed events + body", "classification": "one transaction", "variant": "emphasis" },
+    { "id": "index-prose", "from": "store", "to": "prose_fts", "label": "prose rows", "classification": "external content", "variant": "dashed", "fromSide": "bottom", "toSide": "top" , "labelDy": 92 },
+    { "id": "threaded-turns", "from": "store", "to": "exchanges", "label": "turns by turn_id", "classification": "deterministic, $0", "variant": "emphasis" },
+    { "id": "question-text", "from": "exchanges", "to": "concepts", "label": "question text", "classification": "learner voice", "fromSide": "top", "toSide": "bottom" , "labelDy": -21 },
+    { "id": "exchange-batch", "from": "exchanges", "to": "writer", "label": "exchange batch", "classification": "budgeted", "fromSide": "bottom", "toSide": "top" , "labelDy": 35 },
+    { "id": "recurring-concepts", "from": "concepts", "to": "backlog", "label": "recurring concepts", "classification": "struggled" },
+    { "id": "claims-and-citations", "from": "writer", "to": "claims", "label": "claims + citations", "classification": "offsets + quote", "variant": "emphasis" },
+    { "id": "findings-to-review", "from": "claims", "to": "review", "label": "Findings", "classification": "seeded", "fromSide": "top", "toSide": "bottom" , "labelDy": -21 },
+    { "id": "latest-claims", "from": "claims", "to": "recall", "label": "latest, non-superseded", "classification": "with provenance", "variant": "emphasis", "fromSide": "bottom", "toSide": "top" , "labelDy": 35 },
+    { "id": "prose-drilldown", "from": "prose_fts", "to": "recall", "label": "session prose", "classification": "drill-down" },
+    { "id": "served-claims", "from": "recall", "to": "agent", "label": "claim + quote", "classification": "answer grain", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "labelDy": 35 }
+  ],
+  "cards": [
+    { "dot": "emerald", "title": "One sweep over one session", "items": ["parse() stamps a kind and a turn_id on every turn before anything is stored", "Events and their evidence commit together, so no session lands without evidence", "Re-importing the same transcript is a no-op by content_hash"] },
+    { "dot": "violet", "title": "Derived, not remembered", "items": ["Exchanges thread a user turn with the answers that follow it, flagging errors and retries", "A concept seen in two sessions a day apart becomes a struggle backlog item", "The writer distils claims; a trigger aborts any citation whose quote does not match the evidence", "Findings become review items as flashcard, quiz or teach-back"] },
+    { "dot": "cyan", "title": "Claims first, sessions second", "items": ["Recall serves the latest non-superseded claim with its quote and provenance", "prose_fts indexes prose only; embeddings go on claims, never on messages", "Answer-grain is reported beside recall@5 on every receipt"] }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Claim-Centric Learning Memory (ADR-0011)",
+    "output": "learning-memory.architecture.html",
+    "quality_profile": "showcase",
+    "views": [
+      { "id": "capture", "label": "Capture", "focus": ["adapters", "events", "evidence"], "note": "Every adapter emits typed events and writes evidence in the same transaction." },
+      { "id": "history", "label": "History path", "focus": ["sessionsdb", "archive", "events"], "note": "The live sessions.db is read by the archive adapter only, and never written." },
+      { "id": "derive-and-serve", "label": "Derive and serve", "focus": ["deterministic", "modelpass", "learning", "claims", "mentor"], "note": "Usefulness is derived at capture time, then served claims-first." }
+    ]
+  },
+  "components": [
+    { "id": "sessionsdb", "type": "database", "label": "sessions.db", "sublabel": "live · 5,879 sessions", "tag": "never written", "pos": [40, 100], "size": [180, 84] },
+    { "id": "archive", "type": "external", "label": "Archive adapter", "sublabel": "only path for history", "tag": "basis=REPORTED", "pos": [360, 100], "size": [180, 84] },
+    { "id": "adapters", "type": "external", "label": "Six harness adapters", "sublabel": "discover() · parse()", "tag": "native bytes", "pos": [40, 400], "size": [180, 84] },
+    { "id": "events", "type": "database", "label": "Canonical events", "sublabel": "kind · turn_id · seq", "tag": "content_hash", "pos": [300, 400], "size": [180, 84] },
+    { "id": "evidence", "type": "database", "label": "Evidence", "sublabel": "body + sha256", "tag": "same transaction", "pos": [300, 640], "size": [180, 84] },
+    { "id": "deterministic", "type": "backend", "label": "Deterministic pass", "sublabel": "export sweep · $0", "pos": [560, 400], "size": [180, 84] },
+    { "id": "modelpass", "type": "backend", "label": "Model pass", "sublabel": "budgeted distillation", "pos": [560, 640], "size": [180, 84] },
+    { "id": "learning", "type": "database", "label": "Learning content", "sublabel": "backlog · review · resume", "tag": "concept graph", "pos": [820, 400], "size": [180, 84] },
+    { "id": "claims", "type": "database", "label": "Claims", "sublabel": "5 kinds · immutable", "tag": "quote-bound", "pos": [820, 640], "size": [180, 84] },
+    { "id": "web", "type": "frontend", "label": "StudyLoop web", "sublabel": "backlog · review · resume", "pos": [1080, 400], "size": [180, 84] },
+    { "id": "mentor", "type": "external", "label": "Mentor agent", "sublabel": "MCP tools", "tag": "quote + provenance", "pos": [1080, 640], "size": [180, 84] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "One SQLite file: learning-memory.db", "wraps": ["events", "evidence"] }
+  ],
+  "connections": [
+    { "id": "archive-reads-live", "from": "sessionsdb", "to": "archive", "label": "read-only, REPORTED evidence", "variant": "dashed", "fromSide": "right", "toSide": "left", "labelDy": 72 },
+    { "id": "archive-events", "from": "archive", "to": "events", "label": "classified kind", "fromSide": "bottom", "toSide": "top" },
+    { "id": "adapter-events", "from": "adapters", "to": "events", "label": "typed events", "variant": "emphasis", "fromSide": "right", "toSide": "left" },
+    { "id": "adapter-evidence", "from": "adapters", "to": "evidence", "label": "native bytes", "fromSide": "bottom", "toSide": "left" },
+    { "id": "events-deterministic", "from": "events", "to": "deterministic", "label": "turns", "variant": "emphasis", "fromSide": "right", "toSide": "left" },
+    { "id": "exchanges-to-writer", "from": "deterministic", "to": "modelpass", "label": "exchanges", "fromSide": "bottom", "toSide": "top", "labelDy": 24 },
+    { "id": "evidence-quotes", "from": "evidence", "to": "modelpass", "label": "quotes", "fromSide": "right", "toSide": "left" },
+    { "id": "writes-learning-tier", "from": "deterministic", "to": "learning", "label": "learning tier", "variant": "emphasis", "fromSide": "right", "toSide": "left" },
+    { "id": "distilled-claims", "from": "modelpass", "to": "claims", "label": "citations", "variant": "emphasis", "fromSide": "right", "toSide": "left" },
+    { "id": "findings-seed-review", "from": "claims", "to": "learning", "label": "Findings → review items", "fromSide": "top", "toSide": "bottom" },
+    { "id": "claims-first-recall", "from": "claims", "to": "mentor", "label": "claims first", "variant": "emphasis", "fromSide": "right", "toSide": "left" },
+    { "id": "study-surfaces", "from": "learning", "to": "web", "label": "reads", "fromSide": "right", "toSide": "left" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Capture is lossless and dumb", "items": ["Each adapter emits kind and turn_id from its own parser", "Evidence commits in the same transaction as the events", "Re-import is a no-op by content_hash"] },
+    { "dot": "emerald", "title": "Usefulness is derived at capture time", "items": ["The deterministic sweep threads exchanges, tags concepts and detects recurrence for $0", "A budgeted model pass distils claims, each quote-bound to evidence by trigger", "Findings seed review items; claims are superseded, never edited"] },
+    { "dot": "violet", "title": "Store and retrieval", "items": ["Events, evidence, claims and the learning tier all live in learning-memory.db", "Claims are the retrieval unit: latest non-superseded, with quote and provenance", "The live sessions.db is read by the archive adapter only and never written"] }
+  ]
+}

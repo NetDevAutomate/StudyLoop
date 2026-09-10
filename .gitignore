@@ -523,6 +523,7 @@ docs/architecture/session-memory/*
 !docs/architecture/session-memory/GLOSSARY.md
 !docs/architecture/session-memory/validation-ruler.md
 !docs/architecture/session-memory/*.architecture.json
+!docs/architecture/session-memory/*.dataflow.json
 !docs/architecture/session-memory/receipts/
 
 # Demo recordings (large, local-only)
