@@ -317,9 +317,16 @@ class TestWebPasswordViaEnvNotArgv:
         bin_dir = tmp_path / "fakebin"
         bin_dir.mkdir()
         fake_studyloop = bin_dir / "studyloop"
+        # The child records its OWN argv from $0/"$@" -- exactly the vector the
+        # kernel exposes through `ps`/`/proc/<pid>/cmdline`. An earlier version
+        # shelled out to `ps -p $$ -o command=` for the same bytes; in sandboxes
+        # where /bin/ps is denied (exit 126) that line was empty, the env line
+        # became lines[0], and the assertion failed with the password "in argv"
+        # -- a false positive indistinguishable from the leak this test exists
+        # to catch. Reading the shell's own parameters has no such dependency.
         fake_studyloop.write_text(
             "#!/bin/sh\n"
-            f'ps -p $$ -o command= > "{marker}"\n'
+            f'printf \'argv:%s\\n\' "$0 $*" > "{marker}"\n'
             f'echo "env:$STUDYLOOP_WEB_PASSWORD" >> "{marker}"\n'
             f'echo "done" >> "{marker}"\n'
             "sleep 2\n"
@@ -353,6 +360,12 @@ class TestWebPasswordViaEnvNotArgv:
             time.sleep(0.05)
         assert lines, "fake studyloop process never ran"
         argv_line = lines[0]
+        # Prove the line under test IS the argv before trusting a negative
+        # assertion on it: an empty or misplaced capture would pass "password
+        # not in argv" vacuously.
+        assert argv_line.startswith("argv:") and " web " in argv_line and "--lan" in argv_line, (
+            f"argv capture did not record the web launch: {argv_line!r}"
+        )
         assert "s3cr3t-pw" not in argv_line, f"password leaked into argv: {argv_line!r}"
         assert "env:s3cr3t-pw" in lines, (
             f"password did not reach the child via STUDYLOOP_WEB_PASSWORD: {lines!r}"
