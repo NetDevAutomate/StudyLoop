@@ -7,9 +7,21 @@ import sqlite3
 from typing import TYPE_CHECKING
 
 from studyloop.doctor.models import CheckResult
+from studyloop.harnesses import SESSION_SOURCE_BY_HARNESS
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+# Source labels the read paths still surface: one per release harness, plus the
+# first-party label `tutor-checkpoint` writes directly (it is a first-party
+# *source*, not a harness, so it is absent from SESSION_SOURCE_BY_HARNESS but
+# must never be reported as retired).
+#
+# `agent_session_tools.sources.SUPPORTED_SOURCES` is the same set, derived from
+# the exporters' own `source_name` values; a parity test binds the two so they
+# cannot drift. Derived here from `SESSION_SOURCE_BY_HARNESS` so this check does
+# not depend on that module existing yet.
+_SUPPORTED_SOURCES = frozenset(SESSION_SOURCE_BY_HARNESS.values()) | {"study_mentor"}
 
 
 def _get_review_db_path() -> Path:
@@ -133,6 +145,7 @@ def check_sessions_db() -> list[CheckResult]:
             )
         ]
         results.extend(_check_fts_drift(conn, db_path))
+        results.extend(_check_legacy_sources(conn))
         conn.close()
         return results
     except sqlite3.DatabaseError as exc:
@@ -146,6 +159,68 @@ def check_sessions_db() -> list[CheckResult]:
                 fix_auto=False,
             )
         ]
+
+
+def _check_legacy_sources(conn: sqlite3.Connection) -> list[CheckResult]:
+    """Report sessions stored under retired source labels.
+
+    The live DB holds thousands of sessions exported by adapters that no longer
+    exist (aider, kilocode_cli, repoprompt, litellm-proxy, gemini_cli,
+    bedrock_proxy, omp). Those rows are **hidden** at the read paths — search and
+    list filter to the supported sources — but they are never deleted, because
+    the DB is the only surviving copy of most of that history.
+
+    Hidden-and-silent is the dangerous combination: a learner whose session count
+    drops has no way to tell scoping from data loss. This makes the scoping
+    visible, and says explicitly that nothing was deleted.
+
+    Reported as ``info``: it is a statement of fact with no remedy, so it must
+    not affect the exit code or ``doctor --fix`` (see ``_compute_exit_code`` and
+    ``_apply_fixes``, which act on ``warn``/``fail`` only).
+    """
+    placeholders = ", ".join("?" * len(_SUPPORTED_SOURCES))
+    try:
+        # The only interpolation is the `?` placeholder run; every label is bound.
+        # `OR source IS NULL`: the read paths admit rows with `source IN (...)`,
+        # which a NULL source never satisfies -- so a NULL row is hidden too and
+        # must be counted here, or doctor would under-report what is hidden.
+        rows = conn.execute(
+            "SELECT source, count(*) FROM sessions "
+            f"WHERE source NOT IN ({placeholders}) OR source IS NULL "
+            "GROUP BY source ORDER BY 2 DESC",
+            sorted(_SUPPORTED_SOURCES),
+        ).fetchall()
+    except sqlite3.OperationalError:
+        # No sessions table / no source column yet (fresh DB) — nothing to check.
+        return []
+
+    total = sum(count for _, count in rows)
+    if total == 0:
+        return [
+            CheckResult(
+                "database",
+                "legacy-sources",
+                "pass",
+                "no legacy-source sessions",
+                "",
+                fix_auto=False,
+            )
+        ]
+
+    breakdown = ", ".join(f"{source or '(null)'} {count:,}" for source, count in rows)
+    sessions_word = "session" if total == 1 else "sessions"
+    sources_word = "source" if len(rows) == 1 else "sources"
+    return [
+        CheckResult(
+            "database",
+            "legacy-sources",
+            "info",
+            f"{total:,} {sessions_word} in {len(rows)} retired {sources_word} "
+            f"(hidden from search, not deleted): {breakdown}",
+            "Legacy rows stay for history; they are not searchable. Nothing to fix.",
+            fix_auto=False,
+        )
+    ]
 
 
 def _check_fts_drift(conn: sqlite3.Connection, db_path: Path) -> list[CheckResult]:
