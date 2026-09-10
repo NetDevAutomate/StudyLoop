@@ -106,6 +106,21 @@ alongside recall@5 on every receipt. Every arm keeps the same session ids as `se
 - Retention becomes an explicit contract: harnesses rotate transcripts within weeks, so the sweep
   cadence and a doctor check on "age of last capture" are load-bearing.
 
+## Implementation notes accepted from Stage B (2026-09-10)
+
+- `lineage` edges whose parent is not yet ingested are **deferred** (`IngestResult.lineage_deferred`)
+  and land on the child's re-ingest; a stub parent would violate the no-session-without-evidence
+  invariant.
+- `content_hash` covers text and kind, **not** position, so re-import is a no-op and exact
+  duplicates collapse — the two properties the archive's 6,591 duplicates require together.
+- `body_sha256` is taken over native bytes for `OBSERVED` evidence and over the UTF-8 prose for
+  `REPORTED`; the row is a capture receipt of what was actually read.
+- Hardening beyond the ADR text: `claim_citations` CHECKs `length(quote) > 0` and `end > start`
+  (a zero-width extent would bind vacuously), and a BEFORE UPDATE twin of the bound-proof trigger
+  so citations cannot be rebound after the fact.
+- `INSERT OR IGNORE` was rejected for events because it swallows CHECK and FK violations; the
+  dedupe conflict is handled explicitly and any other violation fails the whole ingest.
+
 ## Open questions (to be settled by measurement, not debate)
 
 Tokenizer for `prose_fts`/claims (porter vs unicode61); whether embeddings on claims clear G4;
