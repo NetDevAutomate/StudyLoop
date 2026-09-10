@@ -136,34 +136,35 @@ def test_docs_workflow_builds_on_pull_request_without_write_permission() -> None
     assert "uv run --extra docs mkdocs build --strict" in build_commands
 
 
-def test_docs_deploy_job_is_push_only() -> None:
+def test_docs_workflow_has_no_pages_deploy() -> None:
+    """GitHub Pages was retired on 2026-09-10 in favour of www.studyloop.dev.
+
+    The docs workflow is now a build check only. This pins the retirement:
+    no deploy job, no Pages/OIDC scopes anywhere in the file, no Pages
+    actions, and the strict build still runs so broken docs still fail CI.
+    A future contributor re-adding `mkdocs gh-deploy` or `deploy-pages`
+    would re-create a publishing surface the owner explicitly removed.
+    """
     data = _docs_workflow()
 
-    deploy = data["jobs"]["deploy"]
-    assert deploy["if"] == "github.event_name == 'push'"
+    assert set(data["jobs"]) == {"build"}, f"unexpected docs jobs: {sorted(data['jobs'])}"
+    assert data.get("permissions") == {"contents": "read"}
 
-    # Publishing moved from `mkdocs gh-deploy --force`, which pushed rendered
-    # HTML to a gh-pages branch, to an upload-pages-artifact + deploy-pages
-    # pair. So the permissions inverted: the job no longer writes to the
-    # repository at all, and instead needs the Pages scope plus an OIDC token
-    # for deploy-pages to authenticate with.
-    assert deploy["permissions"] == {"pages": "write", "id-token": "write"}
+    text = DOCS_WORKFLOW.read_text(encoding="utf-8")
+    for forbidden in (
+        "deploy-pages",
+        "upload-pages-artifact",
+        "gh-deploy",
+        "github-pages",
+        "pages: write",
+        "id-token",
+    ):
+        assert forbidden not in text, (
+            f"Pages publishing surface re-appeared in docs.yml: {forbidden!r}"
+        )
 
-    # Asserted as an absence, not just a set equality, because the equality
-    # above could be relaxed later without anyone noticing this mattered:
-    # contents: write is what let the old mechanism rewrite a branch, and a
-    # deploy that publishes an artifact has no business holding it.
-    assert "contents" not in deploy["permissions"], (
-        "the artifact deploy must not be able to write to the repository"
-    )
-
-    # Bound to the Pages environment, which is what makes the deployment show
-    # up as one and gives the job its URL output.
-    assert deploy["environment"]["name"] == "github-pages"
-
-    steps = [step.get("uses", "") for step in deploy["steps"]]
-    assert any("actions/upload-pages-artifact" in s for s in steps)
-    assert any("actions/deploy-pages" in s for s in steps)
+    build_commands = [step.get("run", "") for step in data["jobs"]["build"]["steps"]]
+    assert "uv run --extra docs mkdocs build --strict" in build_commands
 
 
 def _bandit_skip_list_from_run(run_command: str) -> list[str]:
