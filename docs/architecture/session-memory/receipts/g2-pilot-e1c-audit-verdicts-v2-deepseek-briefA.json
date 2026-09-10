@@ -1,0 +1,606 @@
+{
+  "auditor": "deepseek-3.2",
+  "n": 100,
+  "verdicts": [
+    {
+      "audit_id": "A001",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Statement is a direct paraphrase of the quote, preserving all key points."
+    },
+    {
+      "audit_id": "A002",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "reason": "Statement adds 'upstream plugin' detail not in quotes, though core claim is supported."
+    },
+    {
+      "audit_id": "A003",
+      "verdict": "yes",
+      "code": null,
+      "reason": "All numerical values and attribution are present in the quotes."
+    },
+    {
+      "audit_id": "A004",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Statement accurately summarizes the quote's breakdown of 8 verified, 2 unverified, 0 wrong."
+    },
+    {
+      "audit_id": "A005",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Threshold, passed count, and result are all directly stated in quotes."
+    },
+    {
+      "audit_id": "A006",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "reason": "Statement adds 'Export Premium' which is not mentioned in quotes, though core recommendation is supported."
+    },
+    {
+      "audit_id": "A007",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Both findings and agreement to pause are explicitly stated in quotes."
+    },
+    {
+      "audit_id": "A008",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Statement is nearly verbatim from the quote, preserving all key technical details."
+    },
+    {
+      "audit_id": "A009",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Both test results and diff contents are directly stated in quotes."
+    },
+    {
+      "audit_id": "A010",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "reason": "Statement adds 'on the first run' which is not specified in the quote."
+    },
+    {
+      "audit_id": "A011",
+      "verdict": "yes",
+      "code": null,
+      "reason": "All elements (tests catching issues, coverage rise, minimum enforcement) are present in quotes."
+    },
+    {
+      "audit_id": "A012",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Statement accurately explains the launchd behavior and fix described in quotes."
+    },
+    {
+      "audit_id": "A013",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Causal chain and failure explanation are fully supported by quotes."
+    },
+    {
+      "audit_id": "A014",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Statement is a direct paraphrase of the user's request in the quote."
+    },
+    {
+      "audit_id": "A015",
+      "verdict": "yes",
+      "code": null,
+      "reason": "All three elements (optional package, dropped extras, runtime guards) are explicitly stated."
+    },
+    {
+      "audit_id": "A016",
+      "verdict": "yes",
+      "code": null,
+      "reason": "PID, session type, and source identification are all present in quotes."
+    },
+    {
+      "audit_id": "A017",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Root cause (open-file limit) and consequence (Vercel failures) are fully supported."
+    },
+    {
+      "audit_id": "A018",
+      "verdict": "yes",
+      "code": null,
+      "reason": "List of plugins and consequence of removal are both stated in quotes."
+    },
+    {
+      "audit_id": "A019",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Amending decision and reasoning are explicitly stated in the quote."
+    },
+    {
+      "audit_id": "A020",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "reason": "Statement adds 'was told to keep using it' which is not in the quote."
+    },
+    {
+      "audit_id": "A021",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Tariff expiry, timing change, and switching window are all stated in quotes."
+    },
+    {
+      "audit_id": "A022",
+      "verdict": "partial",
+      "code": "over-claim",
+      "reason": "Statement claims 'proposed' comparison, but quotes describe test approach rather than explicit proposal."
+    },
+    {
+      "audit_id": "A023",
+      "verdict": "yes",
+      "code": null,
+      "reason": "MVP assessment and day estimate are directly stated in quotes."
+    },
+    {
+      "audit_id": "A024",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Request for skill addition with specified capabilities is verbatim from quote."
+    },
+    {
+      "audit_id": "A025",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Both dead symlink discovery and later verification of all dangling symlinks are stated."
+    },
+    {
+      "audit_id": "A026",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Targeting results and test outcomes are explicitly stated in quote."
+    },
+    {
+      "audit_id": "A027",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Reasoning model behavior and token budget recommendation are directly from quote."
+    },
+    {
+      "audit_id": "A028",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Upgrade path and Homebrew status are fully supported by quote."
+    },
+    {
+      "audit_id": "A029",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Race cause (hash conflation) and fix (keeping both distinct) are stated in quote."
+    },
+    {
+      "audit_id": "A030",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Mocking issue and lambda fix are explicitly described in quote."
+    },
+    {
+      "audit_id": "A031",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Removal of Graphify from local and repo tooling is explicitly stated."
+    },
+    {
+      "audit_id": "A032",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Bootstrap dependency and activation sequence are directly stated in quote."
+    },
+    {
+      "audit_id": "A033",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Root cause (macOS limit) and consequence (EMFILE) are fully supported."
+    },
+    {
+      "audit_id": "A034",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Actual vs estimated spend and attribution to retries are stated in quote."
+    },
+    {
+      "audit_id": "A035",
+      "verdict": "yes",
+      "code": null,
+      "reason": "All three bugs (TOML corruption, unguarded JSON, sweep abort) are described in quotes."
+    },
+    {
+      "audit_id": "A036",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Rerun success and JS suite results are explicitly stated."
+    },
+    {
+      "audit_id": "A037",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Check mode behavior and defect exposure are directly stated in quote."
+    },
+    {
+      "audit_id": "A038",
+      "verdict": "yes",
+      "code": null,
+      "reason": "No commits made and worktree state are explicitly stated in quotes."
+    },
+    {
+      "audit_id": "A039",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Single construction point and manual-only creation are explicitly stated."
+    },
+    {
+      "audit_id": "A040",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Dependency avoidance reason and alternative are fully supported by quotes."
+    },
+    {
+      "audit_id": "A041",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Architecture finding about distributed writes is directly stated in quote."
+    },
+    {
+      "audit_id": "A042",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Loading failure cause and fix are explicitly stated in quotes."
+    },
+    {
+      "audit_id": "A043",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Import test finding about forged evidence retention is directly stated."
+    },
+    {
+      "audit_id": "A044",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Token consumption behavior and empty output are explicitly described."
+    },
+    {
+      "audit_id": "A045",
+      "verdict": "yes",
+      "code": null,
+      "reason": "E2E sweep results are directly stated in quotes."
+    },
+    {
+      "audit_id": "A046",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "reason": "Statement adds 'must normally enrol' phrasing not in quotes, though time window is stated."
+    },
+    {
+      "audit_id": "A047",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Uninstall failure reason and path discrepancy are explicitly stated."
+    },
+    {
+      "audit_id": "A048",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Both NUC specifications and reachability status are stated in quotes."
+    },
+    {
+      "audit_id": "A049",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Test results, coverage, and CLI check are all stated in quotes."
+    },
+    {
+      "audit_id": "A050",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Cloud vs local name storage and API differences are explicitly stated."
+    },
+    {
+      "audit_id": "A051",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "reason": "Statement adds 'only GET / was ever tested' which is not in the quote about middleware."
+    },
+    {
+      "audit_id": "A052",
+      "verdict": "partial",
+      "code": "over-claim",
+      "reason": "Statement attributes specific commit hash and implementation details not explicitly in quotes."
+    },
+    {
+      "audit_id": "A053",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Installation predictions and three optimistic assumptions are explicitly stated."
+    },
+    {
+      "audit_id": "A054",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Requirement for same request key across boundaries is directly stated."
+    },
+    {
+      "audit_id": "A055",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Token consumption, empty answer, and budget bug judgment are explicitly stated."
+    },
+    {
+      "audit_id": "A056",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Reviewer's assessment and specific shortcomings are directly stated."
+    },
+    {
+      "audit_id": "A057",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Time usage, start/end times, and later wall-clock statement are all in quotes."
+    },
+    {
+      "audit_id": "A058",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Budget failure, cost re-estimation, and retry plan are explicitly stated."
+    },
+    {
+      "audit_id": "A059",
+      "verdict": "yes",
+      "code": null,
+      "reason": "All savings components and comparisons are explicitly stated in quotes."
+    },
+    {
+      "audit_id": "A060",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Gateway flagging and budget recommendation are directly stated in quote."
+    },
+    {
+      "audit_id": "A061",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Card creation, checking, and reload verification are explicitly described."
+    },
+    {
+      "audit_id": "A062",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Cost details, token consumption, and retry outcomes are explicitly stated."
+    },
+    {
+      "audit_id": "A063",
+      "verdict": "yes",
+      "code": null,
+      "reason": "sudo-rs issue and classic sudo presence are both stated in quotes."
+    },
+    {
+      "audit_id": "A064",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct contradiction between docs is explicitly stated."
+    },
+    {
+      "audit_id": "A065",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Foundation status and remaining work items are directly stated."
+    },
+    {
+      "audit_id": "A066",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Assertion changes and earlier failure surfacing are explicitly stated."
+    },
+    {
+      "audit_id": "A067",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Incompatibility cause and failure mode are directly stated."
+    },
+    {
+      "audit_id": "A068",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Worktree creation at specific commit and removal are explicitly stated."
+    },
+    {
+      "audit_id": "A069",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Gate sequence, results, and GREEN verdict are explicitly stated."
+    },
+    {
+      "audit_id": "A070",
+      "verdict": "partial",
+      "code": "over-claim",
+      "reason": "Statement adds specific commit hash and test counts not in the provided quotes."
+    },
+    {
+      "audit_id": "A071",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Production capture source and dirty main tree are explicitly stated."
+    },
+    {
+      "audit_id": "A072",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Sudo check addition, timing, and verification details are explicitly stated."
+    },
+    {
+      "audit_id": "A073",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Finding counts, wrong items, and additional discoveries are explicitly stated."
+    },
+    {
+      "audit_id": "A074",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Search result comparison with different scopes is explicitly stated."
+    },
+    {
+      "audit_id": "A075",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Token exhaustion, retry, and successful outcome are explicitly described."
+    },
+    {
+      "audit_id": "A076",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Two unpatched findings are explicitly stated in quote."
+    },
+    {
+      "audit_id": "A077",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Brief requirement vs actual model behavior discrepancy is explicitly stated."
+    },
+    {
+      "audit_id": "A078",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Test status distinction (new passes, existing fails) is explicitly stated."
+    },
+    {
+      "audit_id": "A079",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Regression success but lint/pre-commit failures are explicitly stated."
+    },
+    {
+      "audit_id": "A080",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Goal specification and exclusions are directly quoted from user request."
+    },
+    {
+      "audit_id": "A081",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Three separated concerns and digest vs credential distinction are explicitly stated."
+    },
+    {
+      "audit_id": "A082",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Harness parity finding about architect assets is directly stated."
+    },
+    {
+      "audit_id": "A083",
+      "verdict": "yes",
+      "code": null,
+      "reason": "uv activation timing issue and yamllint resolution are explicitly stated."
+    },
+    {
+      "audit_id": "A084",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Migration risk about configuration paths is explicitly stated."
+    },
+    {
+      "audit_id": "A085",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Exposure not caught by tools and blind spot are explicitly stated."
+    },
+    {
+      "audit_id": "A086",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Tile deletion failure and error message are explicitly described."
+    },
+    {
+      "audit_id": "A087",
+      "verdict": "yes",
+      "code": null,
+      "reason": "pgrep self-matching issue and false-busy signals are explicitly stated."
+    },
+    {
+      "audit_id": "A088",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Verification results and brief conflict are explicitly stated."
+    },
+    {
+      "audit_id": "A089",
+      "verdict": "yes",
+      "code": null,
+      "reason": "JS suite passing via alternative command is explicitly stated."
+    },
+    {
+      "audit_id": "A090",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Token exposure in process table is explicitly described."
+    },
+    {
+      "audit_id": "A091",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Planner vs collection page distinction and guide addition are explicitly stated."
+    },
+    {
+      "audit_id": "A092",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Length finish reason, truncation confirmation, and continuation need are explicitly stated."
+    },
+    {
+      "audit_id": "A093",
+      "verdict": "yes",
+      "code": null,
+      "reason": "User's preference to disable rather than uninstall is directly quoted."
+    },
+    {
+      "audit_id": "A094",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Single caller verification and new flag are explicitly stated."
+    },
+    {
+      "audit_id": "A095",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Verifier instructions (no fixing, report exact output) are directly stated."
+    },
+    {
+      "audit_id": "A096",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Commit count, email exposure, and cleanup scope are explicitly stated."
+    },
+    {
+      "audit_id": "A097",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Third surface discovery reproducing R-02 is explicitly stated."
+    },
+    {
+      "audit_id": "A098",
+      "verdict": "yes",
+      "code": null,
+      "reason": "DeepSeek-R1's first step and unresolved fact mirroring are explicitly stated."
+    },
+    {
+      "audit_id": "A099",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Test progression counts and repair coverage are explicitly stated."
+    },
+    {
+      "audit_id": "A100",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Live verification of fix (409 response vs 201) is explicitly stated."
+    }
+  ]
+}

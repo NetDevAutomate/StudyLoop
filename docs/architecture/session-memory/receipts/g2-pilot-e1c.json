@@ -1,0 +1,153 @@
+{
+ "receipt": "g2-pilot-e1c",
+ "created_utc": "2026-09-10T05:38:48+00:00",
+ "previous_receipt": {
+  "path": "docs/architecture/session-memory/receipts/g2-pilot-e1.json",
+  "sha256": "4ff61ca37d9adb5d97f021bc700feed21610a23ccf4f159000998b33dbfff735"
+ },
+ "ruler": "validation-ruler.md @ a98331af (unchanged)",
+ "spec": "claims-writer-spec-v2.md (pre-registered 286b3b77)",
+ "instrument_note": "g2-pilot-e1c-audit-instrument.md (0dae50c4, b8b7f548)",
+ "writer_v2": {
+  "label": "sonnet5/writer-v2/cb45b300",
+  "prompt_sha8": "cb45b300",
+  "sessions": 40,
+  "same_packets_as_v1": "verified byte-identical evidence, 40/40",
+  "claims_inserted": 145,
+  "claims_proposed": 165,
+  "unbound_writes": 0,
+  "refusals": {
+   "citation_unbound": 18,
+   "tag_not_lowercase_token": 2
+  },
+  "citations_per_claim": 1.55,
+  "single_citation_share": 0.54,
+  "yield": {
+   "prose_ge10_primary": {
+    "denominator": 200,
+    "attempted": 29,
+    "with_claims": 23,
+    "over_attempted": 0.7931,
+    "over_full_denominator": 0.115
+   },
+   "messages_ge10_literal": {
+    "denominator": 345,
+    "attempted": 40,
+    "with_claims": 26,
+    "over_attempted": 0.65,
+    "over_full_denominator": 0.0754
+   }
+  },
+  "yield_flips_vs_v1": {
+   "to_zero": [
+    "10",
+    "21",
+    "32",
+    "36",
+    "39"
+   ],
+   "gained": [
+    "16",
+    "30"
+   ]
+  },
+  "row_number_defect": "gone (session 30 inserts under v2)"
+ },
+ "audit_protocol": {
+  "brief": "scripts/knowledge_proof/audit_brief_v1.md (pinned; sha8 94dd55a2)",
+  "seats": {
+   "v1": {
+    "deepseek": [
+     82,
+     16,
+     86
+    ],
+    "deepseek_majority3": 79,
+    "gpt": 58,
+    "family_gap": 21
+   },
+   "v2": {
+    "deepseek_valid": [
+     91,
+     96
+    ],
+    "deepseek_briefB_VOID": 17,
+    "deepseek_min": 91,
+    "gpt": 77,
+    "family_gap": 14
+   }
+  },
+  "known_answer_errors": {
+   "v1_ds_original": 0,
+   "v1_ds_rerun": 1,
+   "v1_ds_seat3": 0,
+   "v1_gpt": 0,
+   "v2_ds_briefB_VOID": 3,
+   "v2_ds_briefA": 0,
+   "v2_ds_seat3": 0,
+   "v2_gpt": 0
+  },
+  "within_family_repeat": "deepseek on identical v1 items: 82 → 16 → 86; per-item agreement 34/100 between first two; unanimous across three 27/100",
+  "rule": "gate reading = lower family; families must agree within 10 pts",
+  "outcome": {
+   "v1": {
+    "deepseek": 79,
+    "gpt": 58,
+    "gap": 21,
+    "gate": 58,
+    "measurable": false
+   },
+   "v2": {
+    "deepseek": 91,
+    "gpt": 77,
+    "gap": 14,
+    "gate": 77,
+    "measurable": false
+   }
+  }
+ },
+ "g2_disposition": "NOT ESTABLISHED — INSTRUMENT. Both families disagree by >10 points on both samples; no reading meets 95. Direction is consistent across every clean seat: writer-v2 > writer-v1 (deepseek +12, gpt +19; unpaired, n=100 each). Binding invariant held throughout (0 unbound writes over 355 citations). Yield 79.3% (v2) / 82.8% (v1) on the primary denominator, both below 90%; misses are dominated by sessions with no learner voice inside the pre-registered denominator.",
+ "for_ruler_owner": [
+  "Single-model blinded entailment has a repeat error (66 pts) far larger than the gate margin (5); G2's audit clause needs a reliability floor (e.g. ≥3 seats, inter-seat agreement ≥0.80, or a rubric with graded coverage) before it can be met or failed.",
+  "Primary denominator contains sessions with no learner turn (agent briefs, pasted docs); yield cannot reach 90% on them regardless of writer."
+ ],
+ "artefacts": {
+  "v2_sample": {
+   "path": "docs/architecture/session-memory/receipts/g2-pilot-e1c-audit-sample-v2-blinded.json",
+   "sha256_original": "2eb4dcb40da1e64cd78f94c86c54bdabb5816e66a1f9e9658ada1826759c84bc"
+  },
+  "v2_ds_briefB_VOID": {
+   "path": "docs/architecture/session-memory/receipts/g2-pilot-e1c-audit-verdicts-v2-deepseek.json",
+   "sha256_original": "7edb354629bb9711bf3916b6f3ae56b6efe96ba6d80eb27daabed04f3220bf66"
+  },
+  "v2_ds_briefA": {
+   "path": "docs/architecture/session-memory/receipts/g2-pilot-e1c-audit-verdicts-v2-deepseek-briefA.json",
+   "sha256_original": "328a81ddbe0ddf62da638e7c494bc725dbcc2273b2904fff7afbe9762c612194"
+  },
+  "v2_ds_seat3": {
+   "path": "docs/architecture/session-memory/receipts/g2-pilot-e1c-audit-verdicts-v2-deepseek-seat3.json",
+   "sha256_original": "b1c38f427349017f17ad930f092f5d751d6139a12e99d25eb05fcbfeb82b537e"
+  },
+  "v2_gpt": {
+   "path": "docs/architecture/session-memory/receipts/g2-pilot-e1c-audit-verdicts-v2-gpt.json",
+   "sha256_original": "05c983be857c06e88320b90f7cd17bc2b07304f8ce85b9acfb52cae6258bcf39"
+  },
+  "v1_ds_rerun": {
+   "path": "docs/architecture/session-memory/receipts/g2-pilot-e1c-audit-verdicts-v1-deepseek-rerun.json",
+   "sha256_original": "cc59c975cff5dfe86b96d7bf4b4715c933f1b793cdc3bdfb7f63ec6e1a790261"
+  },
+  "v1_ds_seat3": {
+   "path": "docs/architecture/session-memory/receipts/g2-pilot-e1c-audit-verdicts-v1-deepseek-seat3.json",
+   "sha256_original": "0b798b8f643a8fa82cdade6bd838fe2a279ef41e504b7488bf20f40cc23874c0"
+  },
+  "v1_gpt": {
+   "path": "docs/architecture/session-memory/receipts/g2-pilot-e1c-audit-verdicts-v1-gpt.json",
+   "sha256_original": "b7dc52add68cdf813e83668497a83d0fd8e5772b0acc13ae8cce5e291dd64090"
+  }
+ },
+ "budgets": {
+  "writer_runs": "80/400",
+  "council_runs": "21/60",
+  "external_api_spend_usd": 0
+ }
+}

@@ -564,6 +564,23 @@ class TestRemoteBackupWalSafety:
     plays the role of the "remote" database.
     """
 
+    def test_returns_none_when_remote_command_fails(self):
+        failed = subprocess.CompletedProcess(
+            args=["ssh"],
+            returncode=1,
+            stdout="",
+            stderr="simulated ssh failure",
+        )
+
+        with patch(
+            "agent_session_tools.sync.subprocess.run", return_value=failed
+        ) as mock_run:
+            with patch("agent_session_tools.sync._ensure_mux_dir"):
+                result = _remote_backup("host", "/remote/sessions.db")
+
+        mock_run.assert_called_once()
+        assert result is None
+
     def test_backup_captures_uncheckpointed_wal_data(self, tmp_path):
         db_path = tmp_path / "remote-sessions.db"
         reader = sqlite3.connect(db_path)
@@ -681,12 +698,14 @@ class TestPushBacksUpRemoteBeforeWriting:
     ):
         """R-19d (M3 council, arbitration A3): a failed backup used to be
         silently ignored (the return value was discarded) -- the write
-        proceeded anyway. Reproduced end-to-end, no mocked backup function:
-        a real "remote" directory made unwritable (chmod 0500) so the real
-        `_remote_backup` genuinely fails to write its copy, exercised
-        through `push()` itself with only SSH-as-a-transport substituted
-        for a local shell (`_run_ssh_locally` -- see its docstring).
+        proceeded anyway. Inject the real failure contract deterministically
+        at `_backup_destination`: returning `None` must make `push()` exit
+        before streaming, regardless of the runner's user or capabilities.
+        Dedicated `_remote_backup` tests cover the shell/SQLite boundary.
         """
+        import pytest
+        import typer
+
         import agent_session_tools.sync as sync_mod
 
         local_conn, local_db = TestRecencyGateEndToEnd()._make_migrated_db(
@@ -710,52 +729,38 @@ class TestPushBacksUpRemoteBeforeWriting:
         )
         _seed_session(remote_conn, "sess-1")
         remote_conn.commit()
-        # Back to rollback-journal mode before making the directory
-        # read-only: a WAL-mode database needs to (re)create its -wal/-shm
-        # sidecar files on open, even for a plain read, which a read-only
-        # directory would ALSO break -- that's not the scenario this test
-        # is isolating (the backup's write failing), so it must not be the
-        # reason push() can't proceed here.
-        remote_conn.execute("PRAGMA journal_mode=DELETE")
         remote_conn.close()
         before_bytes = remote_db.read_bytes()
 
-        stream_calls: list = []
-        real_stream = sync_mod._stream_sql_to_target
+        call_order: list[str] = []
 
-        def spying_stream(sql, target):
-            stream_calls.append((sql, target))
-            return real_stream(sql, target)
+        def failing_backup(target):
+            call_order.append("backup")
+            return None
 
-        remote_dir.chmod(0o500)
-        try:
-            monkeypatch.setattr(
-                sync_mod,
-                "_resolve_remote",
-                lambda remote, tier="hot": ("host", str(remote_db)),
+        def forbidden_stream(sql, target):
+            call_order.append("stream")
+            raise AssertionError(
+                "_stream_sql_to_target must not run after destination backup failure"
             )
-            monkeypatch.setattr(sync_mod.subprocess, "run", _run_ssh_locally)
-            monkeypatch.setattr(sync_mod, "_ensure_mux_dir", lambda: None)
-            # A spy, not a stub: if the abort check regresses, this still
-            # calls the real implementation, so the test can tell "aborted
-            # before streaming" apart from "streaming also happened to fail
-            # for the same permission reason" -- either would leave the
-            # destination unchanged, but only the first is R-19d's fix.
-            monkeypatch.setattr(sync_mod, "_stream_sql_to_target", spying_stream)
 
-            try:
-                sync_mod.push(remote="host:" + str(remote_db), db=local_db, tier="hot")
-                raised = False
-            except Exception as exc:  # typer.Exit
-                raised = True
-                assert "Exit" in type(exc).__name__ or getattr(exc, "exit_code", 1) == 1
-        finally:
-            remote_dir.chmod(0o700)
+        monkeypatch.setattr(
+            sync_mod,
+            "_resolve_remote",
+            lambda remote, tier="hot": ("host", str(remote_db)),
+        )
+        monkeypatch.setattr(sync_mod.subprocess, "run", _run_ssh_locally)
+        monkeypatch.setattr(sync_mod, "_ensure_mux_dir", lambda: None)
+        monkeypatch.setattr(sync_mod, "_backup_destination", failing_backup)
+        monkeypatch.setattr(sync_mod, "_stream_sql_to_target", forbidden_stream)
 
-        assert raised, "push must refuse to proceed when the backup fails"
-        assert stream_calls == [], (
-            "the write step must never be attempted once the backup has "
-            f"failed, but _stream_sql_to_target was called: {stream_calls}"
+        with pytest.raises(typer.Exit) as exc_info:
+            sync_mod.push(remote="host:" + str(remote_db), db=local_db, tier="hot")
+
+        assert exc_info.value.exit_code == 1
+        assert call_order == ["backup"], (
+            "backup must be attempted before streaming, and a failed backup must "
+            f"prevent the stream call; observed {call_order}"
         )
         assert remote_db.read_bytes() == before_bytes, (
             "the destination must be byte-for-byte unchanged when the backup failed"

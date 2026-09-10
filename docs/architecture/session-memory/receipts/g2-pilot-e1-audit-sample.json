@@ -1,0 +1,720 @@
+{
+ "seed": 20260910,
+ "n": 100,
+ "items": [
+  {
+   "audit_id": "29cb2bcdc2",
+   "statement": "When grok's seat failed by spending its whole 12k budget on reasoning with no text returned, the assistant chose to substitute a cheaper second lineage (qwen3-235b) instead of re-dispatching grok at 24k, because that would push the budget past the assumed £1.5 for that phase.",
+   "quotes": [
+    "a 24k grok call would push P0 past the £1.5 I assumed for it, so I'm substituting a cheap second lineage (`qwen3-235b`) for the second adversary seat"
+   ]
+  },
+  {
+   "audit_id": "642c874cbf",
+   "statement": "The remaining failures were resolved by first connecting helper tasks to role entry points, then sharing package lists between installers and cleanup, then replacing assertions that expected retired tools or old file layouts.",
+   "quotes": [
+    "1. Existing helper tasks are not connected to role entry points; wiring them in should resolve bootstrap and configuration failures.\n2. Installers and cleanup use different package lists; sharing those lists should resolve scope failures.\n3. Some tests still require retired tools or old file layouts; those need replacement assertions against your current policy."
+   ]
+  },
+  {
+   "audit_id": "bce43caebc",
+   "statement": "In a retrieval test, searches scoped to the current full project path returned zero matches in all 12 cases, while searches using the project name found matches in all 12 cases, covering historical paths and worktrees.",
+   "quotes": [
+    "**12/12 searches returned zero matches** when scoped to the current full project path.\n- **12/12 found matches** using the project name, covering historical paths and worktrees."
+   ]
+  },
+  {
+   "audit_id": "d60a9e92ba",
+   "statement": "The naive pgrep -f 'pytest -m e2e' pattern self-matches other agents' own wait-loop shell scripts, producing a false-busy signal instead of correctly detecting a real running e2e process.",
+   "quotes": [
+    "The naive `pgrep -f 'pytest -m e2e'` pattern self-matches other agents' wait-loop scripts (and my own), creating a false-busy signal."
+   ]
+  },
+  {
+   "audit_id": "e3bc6fab4e",
+   "statement": "The review worktree was intentionally left dirty with uncommitted test-suite work while the feature worktree had eight committed changes beyond the review branch, and this distinction was captured explicitly so a future session wouldn't mistake passing tests for completed integration.",
+   "quotes": [
+    "I’m capturing that distinction explicitly so the next session cannot mistake “tests pass” for “integration is complete.”"
+   ]
+  },
+  {
+   "audit_id": "de786261f6",
+   "statement": "The concepts, concept_relations, and message_concepts tables in sessions.db were all empty, while concept_dependencies had 3,161 entries sourced from markdown headings, backlinks, and tags.",
+   "quotes": [
+    "`concepts`, `concept_relations`, and `message_concepts`: **all empty**."
+   ]
+  },
+  {
+   "audit_id": "11d12e3979",
+   "statement": "The assistant chose the graphify skill for this broad repository change (not a single package fix) because the repo has an existing knowledge graph that should expose target/role relationships faster and reduce the risk of installing software in the wrong layer.",
+   "quotes": [
+    "I’m using the `graphify` skill because this repo has an existing knowledge graph; it should expose target/role relationships faster and reduce the risk of installing the right software in the wrong layer"
+   ]
+  },
+  {
+   "audit_id": "040cfe127a",
+   "statement": "With a 3000-token budget, grok-4.6 spent nearly all of it on internal reasoning and hit the length cap before producing any visible critique text.",
+   "quotes": [
+    "The grok-4.6 call failed — it's a reasoning model that burned its entire 3000-token budget on hidden reasoning and hit the length cap before writing any visible answer"
+   ]
+  },
+  {
+   "audit_id": "c40d804ddc",
+   "statement": "The MVP council run was estimated at $4.18 but actually cost $4.87 (about £3.80).",
+   "quotes": [
+    "Actual spend reconciled at $4.87 (about £3.80) against a $4.18 estimate"
+   ]
+  },
+  {
+   "audit_id": "03f1df428b",
+   "statement": "Evidence and concept identities remain model-forgeable, and the reusable transport is still structurally coupled to study-session rows, requiring trusted identity issuance and a generic AgentWorkspace seam.",
+   "quotes": [
+    "Evidence/concept identities remain model-forgeable, while the reusable transport is still structurally coupled to study-session rows."
+   ]
+  },
+  {
+   "audit_id": "4d1ba477e8",
+   "statement": "A per-project install of Matt Pocock's skills was recommended over a global install because the global installer had reported installation/removal problems involving ~/.agents/skills, the same location that caused the earlier uninstall error.",
+   "quotes": [
+    "I would avoid `--global` for now. The current installer has reported Codex-global installation/removal problems involving `~/.agents/skills`—the same location that caused your earlier uninstall error."
+   ]
+  },
+  {
+   "audit_id": "138e7aede3",
+   "statement": "StudyLoop's existing SQLite schema already defines concepts with stable identities via aliases, typed concept relationships with confidence and evidence links, and message-to-concept links connecting conversations to learning topics.",
+   "quotes": [
+    "**Concepts and aliases**, giving concepts stable identities.\n- **Typed concept relationships**, with confidence and links to supporting sessions/messages.\n- **Message-to-concept links**, connecting conversations to learning topics."
+   ]
+  },
+  {
+   "audit_id": "e05863f12f",
+   "statement": "After confirming a single attempt with HTTP 200 but a hollow-draft failure signal matching the gateway's own warning, the assistant stopped without retrying or using a fallback alias, per instructions, and proceeded to document the failure in a review file.",
+   "quotes": [
+    "Per instructions, I stop here — no retry, no fallback alias, no second call."
+   ]
+  },
+  {
+   "audit_id": "ff4f90fad8",
+   "statement": "The parking card and note card selection checkboxes have no explicit sizing, padding, or label wrapper in CSS, resulting in hit targets of roughly 13x13 pixels, well below the WCAG 2.2 24x24 minimum and far short of a 44px touch target on a PWA meant for phone/tablet use.",
+   "quotes": [
+    "All three are far below the WCAG 2.2 24×24 minimum and nowhere near a 44 px touch target"
+   ]
+  },
+  {
+   "audit_id": "c7b82487b3",
+   "statement": "The entire bulk action bar (All/None/Clear or Delete selected buttons) is wrapped in an Alpine x-if on selectMode and is absent from the DOM until the user presses a select-mode toggle button, and the card checkboxes are similarly hidden via x-show, so there is no visible entry point suggesting bulk delete exists.",
+   "quotes": [
+    "the *entire* bulk bar, including \"All\", \"None\" and \"Clear selected\", is **absent from the DOM** until the user presses"
+   ]
+  },
+  {
+   "audit_id": "7f8782b6c8",
+   "statement": "OpenCode's storage/ (JSON files, last written Feb 14) is stale, while a real opencode.db exists (last modified Sep 4, actively used).",
+   "quotes": [
+    "Confirmed: OpenCode's storage/ (JSON files, last written Feb 14) is stale, while a real opencode.db exists (last modified Sep 4, actively used)."
+   ]
+  },
+  {
+   "audit_id": "60408f9172",
+   "statement": "The learner asked that for planning and review, diverse premier models be used to get strong diverse input, with the assistant acting as arbitrator and orchestrator.",
+   "quotes": [
+    "For planning and review can you use diverse premier models to get a strong diverse input for your input with you as the arbitrator and orchestrator?"
+   ]
+  },
+  {
+   "audit_id": "6aed3b3425",
+   "statement": "The cleanup removed 218 standalone/local skill entries (211 from the shared standalone-skills directory and 7 from Codex's local-skills directory) while preserving AuDHD Socratic Mentor and Brutal Mentor.",
+   "quotes": [
+    "Done. I removed 218 standalone/local skill entries while preserving:",
+    "The cleanup set is verified: 211 entries from the shared standalone-skills directory and 7 extra entries from Codex’s local-skills directory."
+   ]
+  },
+  {
+   "audit_id": "75494c351b",
+   "statement": "Although the brief asked the model to state on line 1 which model it is, the model's own generated text never self-identifies; only an injected HTML comment from the gateway harness does that.",
+   "quotes": [
+    "the model's own generated text never self-identifies; only the gateway harness's injected HTML comment does that."
+   ]
+  },
+  {
+   "audit_id": "6b6eb94e1a",
+   "statement": "Despite a well-tested foundation, the user-facing agentic planner was not working end to end yet, with onboarding, harness integration, web conversations, approval UI, and browser rendering still remaining.",
+   "quotes": [
+    "the user-facing agentic planner is **not working end to end yet**"
+   ]
+  },
+  {
+   "audit_id": "d6594c8847",
+   "statement": "A formatting fix was amended into the earlier R-01 commit rather than committed separately, on the reasoning that it was purely mechanical formatting of code from that same commit and had not been referenced by any later commits' diffs.",
+   "quotes": [
+    "Let's amend into that commit rather than creating noise, since it's purely mechanical formatting of code from that same commit and hasn't been referenced by later commits' diffs."
+   ]
+  },
+  {
+   "audit_id": "4e054fcd31",
+   "statement": "The team established that a proposal digest proves the identity of an artifact via compare-and-swap but must not be treated as proof of learner approval.",
+   "quotes": [
+    "a digest is a compare-and-swap token, not a credential"
+   ]
+  },
+  {
+   "audit_id": "5d8de2010d",
+   "statement": "On the NUC dry-run, check mode simulates certificate creation, then the next task tries to chmod files that do not exist, exposing a real first-install defect.",
+   "quotes": [
+    "check mode simulates certificate creation, then the next task tries to chmod files that do not exist"
+   ]
+  },
+  {
+   "audit_id": "2966dd1959",
+   "statement": "The bulk delete capability (selection state, DOM bulk action bar, Alpine handler, and batch backend route) already exists for both the Parking Lot and Notes panels and is proven working by e2e tests; the actual defect is that the UI gates make this existing chain unreachable via pointer clicks, not that the feature was never built.",
+   "quotes": [
+    "**Bulk delete is NOT absent.** The full chain exists end-to-end (markup → Alpine method → batch backend route) and is proven working by e2e tests."
+   ]
+  },
+  {
+   "audit_id": "44a2894e4c",
+   "statement": "The installer's proposal used a 15p/kWh export rate, only 5,246kWh annual consumption, and 6.75% annual energy-price inflation, which were considered too optimistic to trust for tariff planning and were replaced with the learner's actual figures.",
+   "quotes": [
+    "It also contains three optimistic assumptions I would not trust for tariff planning: 15p/kWh export, only 5,246kWh annual consumption, and 6.75% annual energy-price inflation."
+   ]
+  },
+  {
+   "audit_id": "3f24ee98f1",
+   "statement": "In the parking board's pointer handling, any pointer movement exceeding a 6px threshold between mousedown and mouseup sets a drag flag that causes the subsequent click to be swallowed with no feedback, even when the drag itself was a no-op, explaining why selecting an item took several tries.",
+   "quotes": [
+    "any pointer movement over 6 px between mousedown and mouseup makes the click do absolutely nothing"
+   ]
+  },
+  {
+   "audit_id": "d71dd412be",
+   "statement": "The verifier explicitly decided not to touch ~/.config/studyloop or attempt to fix the C8/R-49d guard failure, choosing instead to record it as a finding.",
+   "quotes": [
+    "I will not touch `~/.config/studyloop` or attempt to fix this — recording it as a finding."
+   ]
+  },
+  {
+   "audit_id": "65891ce540",
+   "statement": "docs/contributing.md line 278 states lan_password should never be in config.yaml, which directly contradicts SECURITY.md lines 22-23 stating lan_password may be set there.",
+   "quotes": [
+    "`docs/contributing.md:278` (\"never in config.yaml\") directly contradicts `SECURITY.md:22-23` (`lan_password` may be set there)."
+   ]
+  },
+  {
+   "audit_id": "2d00deaf17",
+   "statement": "A separate, unresolved gap exists in session/start.py's CLI-only control flow: if a session claim is stale/dead, a subsequent CLI start blocks indefinitely rather than detecting and clearing the dead claim, and this was left as a follow-up rather than fixed in this session.",
+   "quotes": [
+    "cli-then-cli's own staleness gap (CLI start blocks on a dead claim forever) — a real but separate gap in `session/start.py`'s CLI-only control flow, left as a follow-up."
+   ]
+  },
+  {
+   "audit_id": "992452fca3",
+   "statement": "The single gateway call to the kimi-k2-thinking model completed successfully with cost_usd 0.0362901, finish_reason stop, and attempts equal to 1.",
+   "quotes": [
+    "**verified_model:** kimi-k2-thinking\n**cost_usd:** 0.0362901\n**finish_reason:** stop\n**attempts:** 1"
+   ]
+  },
+  {
+   "audit_id": "8e724d856a",
+   "statement": "On the dependency question, deepseek-r1 did not simply pick a side but proposed keeping agent-session-tools optional while dropping the sessions/all extras from wheel metadata until published to PyPI, plus runtime import guards for graceful degradation.",
+   "quotes": [
+    "DeepSeek-R1 lands on a genuine third option rather than picking a side outright: keep `agent-session-tools` optional, but drop the `sessions`/`all` extras from wheel metadata until it's published to PyPI, and add runtime guards (try/except on import) so `studyloop` degrades gracefully when the package is absent."
+   ]
+  },
+  {
+   "audit_id": "ec3c58abd2",
+   "statement": "After the fix pass, the full independent verification run showed 222 tests passing, 99% coverage, a clean ruff check, and zero errors from pyright.",
+   "quotes": [
+    "Pytest: 222 passed",
+    "TOTAL                                          1098      2    99%"
+   ]
+  },
+  {
+   "audit_id": "85547821a8",
+   "statement": "The Task 6 integration-boundary preflight concluded that no supported harness currently auto-installs the Architect responsibility, and that Amp and Grok should be removed from planning claims.",
+   "quotes": [
+    "no supported harness currently auto-installs the Architect responsibility",
+    "Amp and Grok should be removed from planning claims"
+   ]
+  },
+  {
+   "audit_id": "9f605219cd",
+   "statement": "The file-first design lacks a recoverable multi-file commit protocol, needing a root-wide process lock, fail-closed scans, write-ahead journal, versioned digests, idempotency, and crash recovery.",
+   "quotes": [
+    "The file-first design lacks a recoverable multi-file commit protocol. It needs a root-wide process lock, fail-closed scans, write-ahead journal, versioned digests, idempotency, and crash recovery."
+   ]
+  },
+  {
+   "audit_id": "de0a98aeda",
+   "statement": "The full regression suite for Phase 0 passed with 4884 passed and 0 failed, but `just lint` still failed on six ruff errors in the new rehearsal script, and pre-commit's secret hooks flagged pre-existing fixtures.",
+   "quotes": [
+    "full regression is green (4884 passed, 0 failed) but `just lint` fails on six ruff errors in the new rehearsal script, and pre-commit's secret hooks flag pre-existing fixtures"
+   ]
+  },
+  {
+   "audit_id": "85eef90917",
+   "statement": "The stale LITELLM_API_KEY was found set machine-wide via launchctl (not in any shell profile, harness config, or LaunchAgent), meaning every GUI-launched process, including all three coding harnesses, inherited it.",
+   "quotes": [
+    "It is not in any shell profile, not in any harness config, not in a LaunchAgent. It is in `launchctl`, so every GUI-launched process inherits it"
+   ]
+  },
+  {
+   "audit_id": "7f3061830a",
+   "statement": "The reviewer's own scan found that release-check silently drops the spec-check step and adds an undocumented shellcheck step, a doc inaccuracy the reviewed model missed.",
+   "quotes": [
+    "release-check silently drops `spec-check` and adds undocumented `shellcheck`"
+   ]
+  },
+  {
+   "audit_id": "ba846e40af",
+   "statement": "The `_vector_search` function fetches all rows from `message_embeddings` matching filters and computes cosine similarity in Python for each row, which is a linear scan, and a code comment suggests considering the sqlite-vec extension for native vector search instead.",
+   "quotes": [
+    "`_vector_search` fetches ALL rows from `message_embeddings` matching filters, then computes cosine similarity in Python for each — a linear scan",
+    "we fetch all and compute similarity in Python... consider sqlite-vec extension for native vector search."
+   ]
+  },
+  {
+   "audit_id": "def00da785",
+   "statement": "Gate 2 (e2e) was reported green with 502 tests passed and 0 failed, meeting the readiness threshold of at least 450 passed tests.",
+   "quotes": [
+    "Gate 2 (e2e) green: 502 passed, 0 failed, ≥450 threshold met, readiness header confirmed."
+   ]
+  },
+  {
+   "audit_id": "5c98492d35",
+   "statement": "The assistant made the cleanup recoverable by moving every standalone skill except the two protected mentor skills into a dated backup, and also removed extra Codex skill links/copies, without permanently deleting anything.",
+   "quotes": [
+    "I’ll make this recoverable by moving every standalone skill except `audhd-socratic-mentor` and `brutal-mentor` into a dated backup"
+   ]
+  },
+  {
+   "audit_id": "84dd9b85f1",
+   "statement": "The sudo check was moved to run before the first privileged bootstrap task, repairing missing passwordless sudo access using validated sudoers entries and reporting real authentication failures.",
+   "quotes": [
+    "The sudo check now runs **before the privileged zsh bootstrap**, repairs missing passwordless access using validated sudoers entries, and verifies effective access afterwards."
+   ]
+  },
+  {
+   "audit_id": "97291606d6",
+   "statement": "The team decided to enforce a hard cap of three current/active plans in the planning lifecycle.",
+   "quotes": [
+    "adapt or add a new plan (maximum of 3)"
+   ]
+  },
+  {
+   "audit_id": "44515b8188",
+   "statement": "No existing test anywhere references the select-all or select-none buttons on either the parking or notes panels, even though the checkbox-to-clear path is covered by e2e tests, leaving a documented coverage gap around the All/None selection path.",
+   "quotes": [
+    "no test anywhere references `#parking-select-all`, `#parking-select-none`, `#notes-select-all` or `#notes-select-none`."
+   ]
+  },
+  {
+   "audit_id": "b0d3fb16ea",
+   "statement": "The browser 'brain dump' remains a manual structured form; text becomes notes without agentic decomposition, provenance, proposal review, or adaptation.",
+   "quotes": [
+    "The browser “brain dump” remains a manual structured form; text becomes notes without agentic decomposition, provenance, proposal review, or adaptation."
+   ]
+  },
+  {
+   "audit_id": "4ce4528862",
+   "statement": "When the learner tried to uninstall skills other than the two mentor skills, the uninstall action in the UI produced an error saying they could not be uninstalled.",
+   "quotes": [
+    "When I try to uninstall them I get an error stating I can't uninstall them"
+   ]
+  },
+  {
+   "audit_id": "5e8dd65312",
+   "statement": "The assistant decided to write only the requested review under /tmp and not edit, commit, or delegate, keeping the worktree unchanged.",
+   "quotes": [
+    "Read-only report written to [architecture.md](/tmp/studyloop-agentic-planning-review/architecture.md); the worktree remains unchanged.",
+    "I’ll compare the new design against the existing file-first domain and authoritative protocol, then write only the requested review under `/tmp`."
+   ]
+  },
+  {
+   "audit_id": "c18b31f891",
+   "statement": "The verifier ran preflight, e2e, guards, ci-standards check, ci-standards run-job lint, a diff-scope check, and pre-commit pyright parity as seven sequential gates, all passing, to reach a GREEN verdict for milestone M0.",
+   "quotes": [
+    "**Verdict: GREEN.** All 7 gates green, expected shape met or exceeded, diff-scope clean, both docs verified."
+   ]
+  },
+  {
+   "audit_id": "9e87cddf4b",
+   "statement": "During the phased parallel build, the Meross adapter sub-agent stalled and did not implement anything, leaving the Meross adapter directory empty until a later fix pass.",
+   "quotes": [
+    "The Meross adapter is entirely unimplemented",
+    "the **Meross adapter agent stalled**"
+   ]
+  },
+  {
+   "audit_id": "6d429ea659",
+   "statement": "The real database schema uses tables named `session` and `session_message`, rather than the `message`+`part` layout that the current exporter reads from the storage JSON layer.",
+   "quotes": [
+    "this reveals the real schema uses `session`, `session_message` (not `message`+`part` from the storage JSON layout that the current exporter reads)"
+   ]
+  },
+  {
+   "audit_id": "2700c2a048",
+   "statement": "The pre-call cost estimate for querying all three models came to a total of $0.472, which was well under the specified £3 spending gate.",
+   "quotes": [
+    "total $0.472 / £0.368** — well under the £3 gate"
+   ]
+  },
+  {
+   "audit_id": "fb1d3384cc",
+   "statement": "MailGraph's 16 Kiro sessions contained no assistant replies, which meant they could not yet support a fair cross-harness reasoning test.",
+   "quotes": [
+    "MailGraph’s 16 Kiro sessions contain no assistant replies**, so they cannot yet support a fair cross-harness reasoning test."
+   ]
+  },
+  {
+   "audit_id": "eae370c2d4",
+   "statement": "When the first call to deepseek-r1 with --max-tokens 3000 produced finish_reason=length and an empty answer, retrying once with --max-tokens 5000 fixed it, yielding finish_reason=stop with a real answer.",
+   "quotes": [
+    "Retrying with `--max-tokens 5000` as instructed.",
+    "Good — `finish_reason=stop` now, with a real answer."
+   ]
+  },
+  {
+   "audit_id": "4312c14396",
+   "statement": "The exact directory-form Node command for running the JS suite fails on Node 26 because it treats the directory as a module and fails before test discovery; the glob-form equivalent works instead.",
+   "quotes": [
+    "The exact directory-form Node command is incompatible with this installed Node 26 (it treats the directory as a module and fails before discovery)."
+   ]
+  },
+  {
+   "audit_id": "c9b0cfe344",
+   "statement": "The learner asked for the agentic planning agent to work for adding/adapting plans (max 3) which must properly render in markdown, including mermaid diagrams, calling this the big-ticket unresolved item.",
+   "quotes": [
+    "properly render in markdown, including mermaid diagrams"
+   ]
+  },
+  {
+   "audit_id": "9905bbabd4",
+   "statement": "Existing tooling (detect-secrets and bandit) did not catch the employer email, internal tool name, or personal file paths because none of these are shaped like a credential.",
+   "quotes": [
+    "None of this was caught by existing tooling (`detect-secrets` + bandit) because none of it is credential-shaped — it's an email address, a plain word, and file paths, which is exactly the blind spot a documentation-only review can't see."
+   ]
+  },
+  {
+   "audit_id": "a647ad3abf",
+   "statement": "After receiving British Gas's Solar Saver and export tariff offer, the learner planned to call British Gas as soon as possible rather than waiting for the formal invitation, given the short registration window.",
+   "quotes": [
+    "As soon as the invite comes through? (I may call them now anyway)"
+   ]
+  },
+  {
+   "audit_id": "fb33ba7ec4",
+   "statement": "A changed_when expression assumed stdout existed on the module result, which masked the real underlying problem of sudo requiring interactive authentication.",
+   "quotes": [
+    "The underlying failure is `sudo: interactive authentication is required`. The `changed_when` expression then masks it by assuming stdout exists."
+   ]
+  },
+  {
+   "audit_id": "e7ef09b609",
+   "statement": "The documentation's claim of a fresh macOS runner is false for nightly-install.yml, which also runs on ubuntu-latest.",
+   "quotes": [
+    "the \"fresh macOS runner\" claim is false for `nightly-install.yml`, which also runs on `ubuntu-latest`"
+   ]
+  },
+  {
+   "audit_id": "872da9553a",
+   "statement": "The workflow confirmed the red phase was failing for the intended reason (a module-not-found error for a specific missing file) before adding the two minimal production modules needed to make it pass.",
+   "quotes": [
+    "The red phase is confirmed for the intended reason (`ERR_MODULE_NOT_FOUND` for `chunk-text.js`) after the test-only changes."
+   ]
+  },
+  {
+   "audit_id": "d55ace1c6d",
+   "statement": "A browser test failure at /api/notes?limit=200 confirmed the underlying issue was shared SQLite schema initialization across Parking, Notes, and history connections, not a flaky assertion.",
+   "quotes": [
+    "That confirms the underlying issue is shared SQLite schema initialization across Parking, Notes, and history connections—not a flaky assertion."
+   ]
+  },
+  {
+   "audit_id": "19dccb77f6",
+   "statement": "Task 4 (centralising the plan lifecycle) was committed as 0cca641a93dd5047bdedae99ac364d410a7105e4 with message 'feat(planning): centralise the plan lifecycle'.",
+   "quotes": [
+    "0cca641a93dd5047bdedae99ac364d410a7105e4",
+    "feat(planning): centralise the plan lifecycle"
+   ]
+  },
+  {
+   "audit_id": "3b0f461d83",
+   "statement": "The reviewed model over-calls \"DEFECT\" in three of ten verdicts where the correct answer is SOUND, making a naive reader more alarmed about the lane's concurrency safety than the evidence supports.",
+   "quotes": [
+    "Net effect: the model over-calls \"DEFECT\" in three of ten verdicts where the correct answer is SOUND, meaning a naive reader would come away more alarmed about this lane's concurrency safety than the evidence supports."
+   ]
+  },
+  {
+   "audit_id": "0271dee13f",
+   "statement": "The enabled Codex Superwhisper plugin relaunches the app whenever a Codex lifecycle hook fires, such as UserPromptSubmit, session start, tool use, permission requests, or completed turns.",
+   "quotes": [
+    "I found the culprit: the enabled Codex Superwhisper plugin relaunches the app whenever a Codex lifecycle hook fires"
+   ]
+  },
+  {
+   "audit_id": "579fe42305",
+   "statement": "Ulauncher, FreeRDP nightly, Winboat, and xonsh were changed to require explicit opt-in flags instead of being installed by default.",
+   "quotes": [
+    "Ulauncher, FreeRDP nightly, Winboat, and xonsh now require opt-in flags."
+   ]
+  },
+  {
+   "audit_id": "3bf852617a",
+   "statement": "The learner and assistant agreed to pause any database redesign or engine change until session capture (export completeness) and retrieval (project identification) were made dependable first.",
+   "quotes": [
+    "**Yes. We should pause database redesign until capture and retrieval are dependable.**",
+    "there are fundamental issues with the session-export that need to be addressed"
+   ]
+  },
+  {
+   "audit_id": "90f3d5cc1f",
+   "statement": "To avoid the pgrep self-matching problem, the precise check ps aux | grep -E \"bin/pytest -m e2e$|uv run --group dev pytest -m e2e$\" was used to confirm nothing real is running.",
+   "quotes": [
+    "My precise check (`ps aux | grep -E \"bin/pytest -m e2e$|uv run --group dev pytest -m e2e$\"`) already confirmed nothing real is running."
+   ]
+  },
+  {
+   "audit_id": "b25a90b4f0",
+   "statement": "Codex's session export mechanism showed a coverage gap: the newest stored message was from 23 July even though there were 15 September transcript files locally.",
+   "quotes": [
+    "Codex has a clear coverage gap:** there are 15 September transcript files locally, but its newest stored message is from July"
+   ]
+  },
+  {
+   "audit_id": "211d8acc01",
+   "statement": "After clearing a stale environment variable machine-wide, already-running harness processes (Claude Code, Kiro, Codex) still carry the old value because a process environment is fixed at launch; only new sessions started after the unset are clean.",
+   "quotes": [
+    "this Claude Code process, and any Kiro or Codex session you started before the unset, still carry the stale value, because a process environment is fixed at launch"
+   ]
+  },
+  {
+   "audit_id": "d49a6bdd76",
+   "statement": "The learner decided they want the next summary only after onboarding and the web workflow operate end to end, valuing the comprehensive foundational layer and test framework already built.",
+   "quotes": [
+    "Only after onboarding and the web workflow operate end to end, as the base/foundational layer and test framework is comprehensive"
+   ]
+  },
+  {
+   "audit_id": "fb5bb710b2",
+   "statement": "At the learner's current tariff, the total estimated electricity saving from solar self-consumption, export income at 12p, and the Solar Saver 25% credit combined was approximately £988 per year, compared to the installer's original £855 estimate.",
+   "quotes": [
+    "Total electricity saving at current rates: approximately £988/year",
+    "The installer’s original £855 estimate becomes approximately £805 when its incorrect 15p export assumption is changed to 12p."
+   ]
+  },
+  {
+   "audit_id": "5e5f0a0289",
+   "statement": "The root cause of the Codex startup warnings was macOS's very low open-file limit of 256; Codex loads hundreds of skills/plugins, so Vercel files failed with EMFILE.",
+   "quotes": [
+    "The root cause was macOS’s very low open-file limit: `256`. Codex loads hundreds of skills/plugins, so Vercel files failed with `EMFILE`."
+   ]
+  },
+  {
+   "audit_id": "ebf427f712",
+   "statement": "A finding about kill_all_study_sessions having a single caller, unverifiable from the diff alone, was upgraded to VERIFIED by confirming via full-workspace grep that the sole caller is cli/_clean.py:109.",
+   "quotes": [
+    "**VERIFIED** (upgraded) — confirmed via full-workspace grep: sole caller is `cli/_clean.py:109`"
+   ]
+  },
+  {
+   "audit_id": "1495682799",
+   "statement": "After the fix, POST /api/session/start correctly returns a 409 status (instead of 201) when a CLI session claim is live, and the on-disk state file is left byte-for-byte unchanged rather than being overwritten.",
+   "quotes": [
+    "`POST /api/session/start` with a CLI claim live now returns **409** (was 201, clobbered the file) with the state file byte-for-byte unchanged."
+   ]
+  },
+  {
+   "audit_id": "0f560b5089",
+   "statement": "A pre-existing Mermaid rendering test fails on a 16x16 error SVG, unrelated to the new SPA boot test which passes.",
+   "quotes": [
+    "the pre-existing Mermaid rendering test fails on a 16×16 error SVG"
+   ]
+  },
+  {
+   "audit_id": "c196996f78",
+   "statement": "Enabling LazyVim's Sidekick extra without options enables its Copilot Next Edit Suggestion path, even though the requirement was Codex integration and the repo's own guidance says not to add Copilot just for Codex CLI integration.",
+   "quotes": [
+    "enabling LazyVim’s Sidekick extra without options enables its Copilot Next Edit Suggestion path, even though the requirement is Codex and the repo’s own recommendation says not to add Copilot just to obtain Codex CLI integration"
+   ]
+  },
+  {
+   "audit_id": "a9e5d9e3c3",
+   "statement": "After a full browser reload and reopening the Parking panel, exactly Beta and Delta were rendered, Alpha/Gamma were absent, and both browser console and page-error checks were empty.",
+   "quotes": [
+    "Reload passed: after reopening the Parking panel, exactly Beta and Delta were rendered, Alpha/Gamma were absent, and both browser console and page-error checks were empty."
+   ]
+  },
+  {
+   "audit_id": "9a3cc3f2a1",
+   "statement": "Clicking a parking or note card always triggers an edit-open handler that never checks selectMode, and the CSS makes the editing state visually identical to the selected state, so a user can believe they selected an item while the underlying selection array remains empty.",
+   "quotes": [
+    "The user gets accent-bordered cards that *look* selected while `this.selected` is still `[]`."
+   ]
+  },
+  {
+   "audit_id": "59969e2af4",
+   "statement": "The verifier removed the git worktree used for verification as instructed by the brief, once all gate work was complete.",
+   "quotes": [
+    "Worktree `~/code/personal/tools/studyloop-wt/verify-m0` removed as instructed."
+   ]
+  },
+  {
+   "audit_id": "8c8a94c593",
+   "statement": "The already-running Codex process still inherited the old 256-descriptor ceiling even after the system-level limit was fixed, so a restart is required to validate Codex end-to-end, while a fresh process would inherit 65,536.",
+   "quotes": [
+    "The live limit is fixed, but this already-running Codex process still inherited the old 256-descriptor ceiling.",
+    "a fresh Codex/terminal process will inherit 65,536"
+   ]
+  },
+  {
+   "audit_id": "dd62afe259",
+   "statement": "grok-4.6's retry produced a response that consumed nearly its entire token budget on internal reasoning, resulting in finish_reason=length and no actual answer text.",
+   "quotes": [
+    "grok-4.6's retry got a response but hit `finish_reason=length` with 4997/5000 tokens consumed by reasoning — an empty answer, which is a budget bug not a real opinion."
+   ]
+  },
+  {
+   "audit_id": "331292d15a",
+   "statement": "On independent verification, 4 of the reviewed model's 20 findings were wrong or partly wrong.",
+   "quotes": [
+    "**WRONG count:** 4 of the model's 20 findings were wrong or partly wrong on inspection"
+   ]
+  },
+  {
+   "audit_id": "2c124276de",
+   "statement": "The verified model identity was taken only from the gateway's verified_model value, because the model itself only claimed a vague, unverified version string.",
+   "quotes": [
+    "**verified_model:** `openai.gpt-5.6-sol` (gateway-verified; the model itself only claimed \"OpenAI ChatGPT, version not exposed\" — per instructions I trust only the gateway's value)"
+   ]
+  },
+  {
+   "audit_id": "8c51cbadb2",
+   "statement": "The decision was to keep the existing British Gas electricity tariff, register for Hive Solar Saver and apply for the 12p/kWh Export Premium tariff, while keeping the gas tariff as-is because its rate was already below the Ofgem average.",
+   "quotes": [
+    "British Gas is the clear first-year winner on these numbers. Do not switch away from your current tariff.",
+    "Keep your current gas tariff too: 5.58p/kWh is substantially below Ofgem’s present 7.33p average."
+   ]
+  },
+  {
+   "audit_id": "2737a498dc",
+   "statement": "The shell and macOS launchd had an open-file soft limit of 256, and Codex was loading roughly 500 SKILL.md files, causing 'Too many open files' errors when loading Vercel skills.",
+   "quotes": [
+    "this shell has an open-file soft limit of only 256, and macOS launchd is also advertising 256",
+    "Codex is loading roughly 500 `SKILL.md` files across personal and plugin directories, so the Vercel failures are resource exhaustion—not 14 bad Vercel skills"
+   ]
+  },
+  {
+   "audit_id": "e98843041f",
+   "statement": "The project avoided the meross-iot PyPI library as a dependency because it is cloud-first, requires a live cloud session even for LAN transport, and its README documents breakage from Meross API changes, choosing instead to vendor protocol code from meross_lan.",
+   "quotes": [
+    "it's the cloud-first library (`meross-iot` on PyPI) that requires a live cloud session even for LAN transport, and its README currently documents breakage from Meross changing their API without notice. So the proposal deliberately avoids it as a dependency in favor of the vendored `meross_lan` protocol code."
+   ]
+  },
+  {
+   "audit_id": "8bdb1da394",
+   "statement": "A stronger import test revealed that forged \"Evidence\" content placed under an unrecognised heading was retained as generic notes even though typed evidence had been cleared.",
+   "quotes": [
+    "forged “Evidence” content under an unrecognised heading was being retained as generic notes, even though typed evidence was cleared"
+   ]
+  },
+  {
+   "audit_id": "3b9f979ae9",
+   "statement": "The e2e pytest run passed with 502 tests passed and 0 failed, exceeding the required floor of 450, but the `just e2e` recipe still exited with code 1 overall.",
+   "quotes": [
+    "the e2e run itself passed (502/0 failed, exceeding the 450 floor) but the `just e2e` recipe **failed with exit code 1** because the C8/R-49d config-dir guard fired against the real `~/.config/studyloop`"
+   ]
+  },
+  {
+   "audit_id": "0bb8e8ec21",
+   "statement": "The final broader E2E sweep result was 527 passed, 2 skipped, 3562 deselected, 1 warning, with the shared schema lock fixing the cross-module first-request race.",
+   "quotes": [
+    "The final broader E2E sweep is green: `527 passed, 2 skipped, 3562 deselected, 1 warning`—the 529 selected tests are now fully accounted for."
+   ]
+  },
+  {
+   "audit_id": "90bca776fc",
+   "statement": "The old flow installed uv but did not activate it until after later pipx-backed packages ran, so yamllint resolved an inactive mise shim; the fix makes standalone uv a bootstrap dependency and activates each mise package before proceeding.",
+   "quotes": [
+    "the old flow installed `uv` but did not activate it until after later pipx-backed packages ran, so `yamllint` resolved an inactive mise shim"
+   ]
+  },
+  {
+   "audit_id": "f9935a22f7",
+   "statement": "In the reviewed design, a learner decision is not authority-separated from the harness, the lock does not define a recoverable multi-file commit, and stable identity still leaves IDs and tiering forgeable by model output.",
+   "quotes": [
+    "a learner decision is not authority-separated from the harness, the lock does not define a recoverable multi-file commit, and “stable identity” still leaves IDs and tiering forgeable by model output"
+   ]
+  },
+  {
+   "audit_id": "52b0b743ae",
+   "statement": "The verification brief required checking out the lane head in a fresh detached worktree, running just sync-web, unsetting LITELLM_API_KEY, and prefixing every just/uv run command with env -u VIRTUAL_ENV.",
+   "quotes": [
+    "check out the lane head `1f544e7` of `lane/m2-session-authority` in a fresh detached worktree as the brief says, `just sync-web`, `unset LITELLM_API_KEY`, prefix every `just`/`uv run` with `env -u VIRTUAL_ENV`, and rerun every gate yourself, sequentially, saving each full output under `.../SIGNOFF-M2/gates/`"
+   ]
+  },
+  {
+   "audit_id": "2e8eada67d",
+   "statement": "The deepseek-r1 call at --max-tokens 3000 hit finish_reason=length with an empty visible answer because 2864 of 3000 tokens were spent on reasoning before any answer text was produced.",
+   "quotes": [
+    "This confirms the budget bug: `finish_reason=length` with empty content (2864 of 3000 tokens spent on reasoning)."
+   ]
+  },
+  {
+   "audit_id": "b1997f70db",
+   "statement": "The launchd job is intentionally LaunchOnlyOnce and disappears after applying the limit, so verification must check the actual launchctl limit value rather than whether the service remains loaded.",
+   "quotes": [
+    "the launchd job is intentionally `LaunchOnlyOnce`, so it disappears after applying the limit; checking whether the service remains loaded would make every Ansible run report a change"
+   ]
+  },
+  {
+   "audit_id": "1a8fd4d5ba",
+   "statement": "Superwhisper's launchOnLogin setting is off, and it has no LaunchAgent, LaunchDaemon, or macOS background/login item registration, ruling those out as the relaunch cause.",
+   "quotes": [
+    "Superwhisper’s `launchOnLogin` setting is off.",
+    "No Superwhisper LaunchAgent or LaunchDaemon was found."
+   ]
+  },
+  {
+   "audit_id": "ecf0a17d8a",
+   "statement": "Once Launch Services starts a macOS app, its visible parent process is usually launchd (PID 1), so the real provenance of the relaunch had to come from the earlier chain in the unified log rather than the live process tree.",
+   "quotes": [
+    "A normal process tree is misleading here: once Launch Services starts a macOS app, its visible parent is usually PID 1 (`launchd`)."
+   ]
+  },
+  {
+   "audit_id": "34de604806",
+   "statement": "A ledger command used to record a gateway run rejected the model flag that was passed to it, requiring a syntax check before the run could be recorded.",
+   "quotes": [
+    "The ledger command rejected my model flag, so I'll check its syntax and record the run"
+   ]
+  },
+  {
+   "audit_id": "388ec04298",
+   "statement": "The learner reported there was still no publishable xTiles screenshot because a page-level or tile-level capture would have included the user's own items on the shared planner page, so only a tightly cropped, non-publishable shot was possible.",
+   "quotes": [
+    "the planner page also holds your own items, so a page-level or tile-level capture\n  would have put them in an artefact committed to disk"
+   ]
+  },
+  {
+   "audit_id": "f2f30fe5c0",
+   "statement": "The learner confirmed the strongest use case for a knowledge graph is the agent explaining why it recommends something with evidence from earlier sessions, combined with the ability to find those relationships across multiple coding harnesses.",
+   "quotes": [
+    "yes, together with the capability to find those relationships from past discussion over multiple coding harnesses"
+   ]
+  },
+  {
+   "audit_id": "e80813ce6b",
+   "statement": "During the fix, two integration tests were found to be broken in a way that masked or expected the R-02 bug: one expected the clean command to kill unrelated sessions, and the other passed previously only because the old blanket-kill behavior happened to sweep up its own session as an unintended side effect.",
+   "quotes": [
+    "Found and fixed two integration tests whose expectations were the bug itself (`test_q_cleans_stale_sessions` expected Q to kill unrelated sessions) or masked it by accident (`test_end_from_separate_process[tmux]` was missing `STUDYLOOP_SESSION_DIR` in its subprocess env, and only \"passed\" before because the old blanket-kill behavior swept up its session as a side effect)."
+   ]
+  },
+  {
+   "audit_id": "2332431876",
+   "statement": "The assistant ran a cost estimate across all three candidate models before making any actual calls through the gateway, in order to gate spend before proceeding.",
+   "quotes": [
+    "Now let's run the cost estimate for all three models before making any gateway calls."
+   ]
+  }
+ ]
+}

@@ -7,8 +7,58 @@ experience may change before `1.0.0`.
 
 ## [Unreleased]
 
+### Added
+
+- Concept-first session recall through the new `memory_recall` MCP tool. One
+  shared implicit-AND then OR-fallback planner now powers both recall and
+  `session_search` without changing the latter's row shape, filters, ordering
+  or 300-character previews. Recall applies the B3 scope/tombstone/retired
+  authorization seam, returns concepts before deduplicated raw sessions, and
+  deliberately uses neither embeddings nor ontology. `studyloop install
+  agents` now idempotently registers both `session-db` and `studyloop` MCP
+  servers for Claude Code, Kiro and Codex while preserving unrelated config;
+  doctor reports the registration state. The frozen 25-question live gate is
+  byte-identical to released SessionWeaver v0.2.0 ordered hit lists.
+
+- Concept memory: distill any session into evidence-cited concepts and manage
+  their lifecycle across machines (migration v49, an additive sidecar of
+  immutable roots and append-only events). New `session-context winddown`
+  and `session-context concept accept|retire|bind|import-okf|project`
+  commands, and a `memory_winddown` MCP tool, all with strict field-level
+  validation and atomic writes. Legacy OKF knowledge imports as explicitly
+  labelled `legacy-unbound` (never blendable with bound, citation-backed
+  concepts until deliberately bound to exact evidence). Concept history now
+  replicates with `session-context` replication: both machines converge to
+  one standing per concept under a deterministic logical-clock order in
+  which no wall-clock timestamp participates, and cloned databases are
+  refused with a diagnostic instead of being merged. See
+  [Source-grounded session context](docs/context-memory.md#concepts-wind-down-lifecycle-legacy-import-projection).
+
+- A derived, per-machine tier-1 ontology (projects, harnesses, artifacts,
+  commands, test runs, linked to the sessions that produced them; migration
+  v48). It is never synced — `session-sync` never reads or transfers any
+  `ontology_*` table, and a first-time seed of a new machine strips them from
+  the transferred snapshot so the destination always derives its own.
+  `session-export` refreshes it automatically after every run; a refresh
+  failure never blocks or rolls back the capture that just committed. New
+  `session-maint ontology-rebuild [--incremental]` and `ontology-status`
+  commands, and a report-only `studyloop doctor --category harness` check
+  (presence, coverage, freshness, extraction-version drift). See
+  [Conversation memory, repair and sync](docs/session-memory.md#tier-1-ontology-derived-never-synced).
+
 ### Fixed
 
+- A fresh install can start a session and call every memory tool from its
+  first run, instead of hitting an unhandled traceback or a bare sqlite
+  error. Both packages' config writers now write `memory.default_scope:
+  unclassified` explicitly for a brand-new `config.yaml` (the *runtime*
+  default when no config exists at all, or when an existing file omits the
+  key, stays intentionally unset). Every remaining case where scope is
+  genuinely unconfigured — the `studyloop` CLI (now exits `2`), all seven
+  previously-unguarded MCP tool call sites, and `session-db-mcp`'s
+  `open_context()` on a database that does not exist yet — now reports one
+  structured `{code: "scope_unconfigured", message, remediation}` diagnostic
+  instead of a crash or an ad-hoc error shape.
 - Re-exporting a touched OpenCode session can no longer destroy conversation
   history. OpenCode rewrites `time.updated` on any touch and flushes its
   message/part files asynchronously, so a re-export can legitimately read

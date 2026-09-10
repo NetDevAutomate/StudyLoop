@@ -17,9 +17,12 @@ the core layers never import from here (one-way import rule).
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
+
+from pydantic import Field
 
 from agent_session_tools.query_utils import build_project_filter
 from agent_session_tools.context.scope import visibility_sql
@@ -47,6 +50,16 @@ def _get_connection(db_path: Path | None = None) -> sqlite3.Connection:
     from .context.managed_history import require_query_target
 
     require_query_target(path)
+    if not path.exists():
+        # A fresh install has neither a database nor a classified scope --
+        # report the one shared diagnostic instead of sqlite3's distinct
+        # "unable to open database file" (design.md "Fresh-install scope").
+        from .context.scope import ScopeUnconfiguredError
+
+        raise ScopeUnconfiguredError(
+            f"No session database found yet at {path}. Run a session or "
+            "session-export once to create it, then retry."
+        )
     conn = sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)
     conn.row_factory = sqlite3.Row
     conn.execute("BEGIN")
@@ -58,13 +71,64 @@ def _row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
     return dict(row)
 
 
+def _session_search_queries(query: str) -> tuple[str, ...]:
+    """Preserve explicit FTS syntax; widen only implicit plain-text queries."""
+    from agent_session_tools.query_utils import escape_fts_query
+
+    upper = query.upper()
+    explicit = any(operator in upper for operator in (" AND ", " OR ", " NOT "))
+    stripped = query.strip()
+    explicitly_quoted = '"' in query or (
+        len(stripped) >= 2 and stripped.startswith("'") and stripped.endswith("'")
+    )
+    if explicit or explicitly_quoted:
+        return (escape_fts_query(query),)
+
+    from agent_session_tools.query_planner import plan
+
+    query_plan = plan(query)
+    if not query_plan.and_query:
+        return ()
+    if query_plan.and_query == query_plan.or_query:
+        return (query_plan.and_query,)
+    return query_plan.and_query, query_plan.or_query
+
+
+def _guard_scope(fn):
+    """Convert an unconfigured-scope failure into the shared diagnostic.
+
+    Every tool registered below goes through this -- not only the ones that
+    call ``open_context()``/``_get_connection()`` directly -- so a tool this
+    file's author forgot to audit still fails closed with the same
+    ``{code, message, remediation}`` payload instead of a generic FastMCP
+    wrapper message or (for the standalone ``fastmcp`` package specifically)
+    an unmasked ``ToolError`` that skips its "Error calling tool" prefix but
+    still needs the diagnostic shape, not a raw exception string.
+    """
+    from functools import wraps
+
+    from .context.scope import ScopeUnconfiguredError, scope_setup_diagnostic
+
+    @wraps(fn)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return fn(*args, **kwargs)
+        except ScopeUnconfiguredError as exc:
+            from fastmcp.exceptions import ToolError
+
+            raise ToolError(json.dumps(scope_setup_diagnostic(exc))) from exc
+
+    return wrapper
+
+
 def _create_server() -> FastMCP:
     """Create and configure the MCP server with all tools."""
     mcp = FastMCP(
         "session-db",
         instructions=(
             "Search and retrieve AI coding sessions across all tools. "
-            "Use session_search to find relevant sessions, session_list to browse, "
+            "Use memory_recall for concept-first AND-to-OR recall, session_search "
+            "to find raw matching messages, session_list to browse, and "
             "session_context to get token-efficient excerpts for reuse. "
             "Prefer memory_search for bounded native evidence with provenance, exact citations, "
             "proposed conflicts and retrieval explanations. memory_decide assesses an explicit "
@@ -72,9 +136,15 @@ def _create_server() -> FastMCP:
         ),
     )
 
+    def tool(*args: Any, **kwargs: Any):
+        def decorator(fn):
+            return mcp.tool(*args, **kwargs)(_guard_scope(fn))
+
+        return decorator
+
     from agent_session_tools.context.public import open_context
 
-    @mcp.tool(annotations={"readOnlyHint": True, "idempotentHint": True})
+    @tool(annotations={"readOnlyHint": True, "idempotentHint": True})
     def memory_search(
         query: str,
         project: str | None = None,
@@ -93,7 +163,7 @@ def _create_server() -> FastMCP:
                 query, max_sources=max_sources, budget_bytes=budget_bytes, as_of=as_of
             )
 
-    @mcp.tool(annotations={"readOnlyHint": True, "idempotentHint": True})
+    @tool(annotations={"readOnlyHint": True, "idempotentHint": True})
     def memory_source(
         evidence_id: str,
         start: int = 0,
@@ -107,7 +177,7 @@ def _create_server() -> FastMCP:
                 evidence_id, start=start, length=length, budget_bytes=budget_bytes
             )
 
-    @mcp.tool(annotations={"readOnlyHint": False, "destructiveHint": False})
+    @tool(annotations={"readOnlyHint": False, "destructiveHint": False})
     def memory_propose(
         statement: str,
         state: str,
@@ -130,7 +200,66 @@ def _create_server() -> FastMCP:
                 producer="agent:session-db-mcp",
             )
 
-    @mcp.tool(annotations={"readOnlyHint": False, "destructiveHint": False})
+    @tool(annotations={"readOnlyHint": False, "destructiveHint": False})
+    def memory_winddown(
+        session_id: str,
+        document: dict[str, Any] | str,
+        project: str | None = None,
+    ) -> dict[str, Any]:
+        """Distill one session into 0-8 evidence-cited concepts, atomically.
+
+        The document is {"concepts": [{type,title,description,tags,confidence,
+        quotes}]} with type in Decision,Finding,Problem,Preference,Procedure and
+        each quote an exact substring of that session's visible evidence
+        (optionally with an evidence_id/start/end locator). Validation failures
+        raise a structured field-level error list and write nothing; a valid
+        batch is written in one transaction. Concept kind and lifecycle live in
+        the concept sidecar only; the backing assertion keeps execution state.
+        """
+        from agent_session_tools.context.concepts import ConceptService
+
+        service = ConceptService(_get_db_path(), prepare_schema=False)
+        result = service.winddown(
+            session_id,
+            document,
+            actor="agent:session-db-mcp",
+            project=project,
+        )
+        payload = {
+            "writes": result.writes,
+            "concept_ids": list(result.concept_ids),
+            "errors": [
+                {"path": issue.path, "code": issue.code, "message": issue.message}
+                for issue in result.errors
+            ],
+        }
+        if result.errors:
+            from fastmcp.exceptions import ToolError
+
+            raise ToolError(json.dumps(payload))
+        return payload
+
+    @tool(annotations={"readOnlyHint": True, "idempotentHint": True})
+    @consistent_read
+    def memory_recall(
+        question: str,
+        k: Annotated[int, Field(strict=True, ge=1, le=50)] = 5,
+        project: str | None = None,
+    ) -> dict[str, object]:
+        """Recall authorized concepts first, then deduplicated raw sessions.
+
+        Uses one shared implicit-AND then OR-fallback plan. Results obey B3
+        scope, tombstone, and retired-concept authorization. k must be 1..50;
+        question is bounded to 4000 characters. No embedding or ontology store
+        participates.
+        """
+        from agent_session_tools.context.public import text
+        from agent_session_tools.recall import recall
+
+        bounded_question = text(question, "question", 4000)
+        return recall(_get_db_path(), bounded_question, k=k, project=project).to_dict()
+
+    @tool(annotations={"readOnlyHint": False, "destructiveHint": False})
     def memory_relate(
         from_id: str, to_id: str, relation: str, project: str | None = None
     ) -> dict[str, Any]:
@@ -140,7 +269,7 @@ def _create_server() -> FastMCP:
                 from_id, to_id, relation, producer="agent:session-db-mcp"
             )
 
-    @mcp.tool(annotations={"readOnlyHint": True, "idempotentHint": True})
+    @tool(annotations={"readOnlyHint": True, "idempotentHint": True})
     def session_annotations(
         session_id: str,
         kind: str = "note",
@@ -172,7 +301,7 @@ def _create_server() -> FastMCP:
                 limit=limit,
             )
 
-    @mcp.tool(annotations={"readOnlyHint": True, "idempotentHint": True})
+    @tool(annotations={"readOnlyHint": True, "idempotentHint": True})
     def memory_decide(
         query: str,
         requirements: list[dict[str, Any]],
@@ -191,7 +320,7 @@ def _create_server() -> FastMCP:
                 query, requirements, budget_bytes=budget_bytes, as_of=as_of
             )
 
-    @mcp.tool(annotations={"readOnlyHint": False, "destructiveHint": False})
+    @tool(annotations={"readOnlyHint": False, "destructiveHint": False})
     def memory_review(
         target_kind: str,
         target_id: str,
@@ -222,7 +351,7 @@ def _create_server() -> FastMCP:
                 producer="agent:session-db-mcp",
             )
 
-    @mcp.tool(annotations={"readOnlyHint": True, "idempotentHint": True})
+    @tool(annotations={"readOnlyHint": True, "idempotentHint": True})
     def memory_reviews(
         target_kind: str,
         target_id: str,
@@ -241,7 +370,7 @@ def _create_server() -> FastMCP:
                 as_of=as_of,
             )
 
-    @mcp.tool(annotations={"readOnlyHint": True, "idempotentHint": True})
+    @tool(annotations={"readOnlyHint": True, "idempotentHint": True})
     def memory_assess(
         query: str,
         assertion_ids: list[str],
@@ -259,7 +388,7 @@ def _create_server() -> FastMCP:
                 query, assertion_ids, budget_bytes=budget_bytes, as_of=as_of
             )
 
-    @mcp.tool(
+    @tool(
         annotations={"readOnlyHint": True, "idempotentHint": True},
     )
     @consistent_read
@@ -282,40 +411,39 @@ def _create_server() -> FastMCP:
         """
         conn = _get_connection()
         try:
-            from agent_session_tools.query_utils import escape_fts_query
+            for fts_query in _session_search_queries(query):
+                sql = """
+                    SELECT s.id as session_id, s.source, s.project_path,
+                           s.updated_at, m.role, m.timestamp,
+                           substr(m.content, 1, 300) as preview
+                    FROM messages m
+                    JOIN sessions s ON m.session_id = s.id
+                    JOIN messages_fts ON messages_fts.rowid = m.rowid
+                    WHERE messages_fts MATCH ?
+                """
+                visible, scope_params = visibility_sql(conn, "s.id")
+                sql += " AND " + visible
+                params: list[Any] = [fts_query, *scope_params]
 
-            fts_query = escape_fts_query(query)
+                if source:
+                    sql += " AND s.source = ?"
+                    params.append(source)
+                if project:
+                    project_clause, project_params = build_project_filter(project)
+                    sql += " AND " + project_clause
+                    params.extend(project_params)
 
-            sql = """
-                SELECT s.id as session_id, s.source, s.project_path,
-                       s.updated_at, m.role, m.timestamp,
-                       substr(m.content, 1, 300) as preview
-                FROM messages m
-                JOIN sessions s ON m.session_id = s.id
-                JOIN messages_fts ON messages_fts.rowid = m.rowid
-                WHERE messages_fts MATCH ?
-            """
-            visible, scope_params = visibility_sql(conn, "s.id")
-            sql += " AND " + visible
-            params: list[Any] = [fts_query, *scope_params]
+                sql += " ORDER BY bm25(messages_fts), m.timestamp DESC LIMIT ?"
+                params.append(limit)
 
-            if source:
-                sql += " AND s.source = ?"
-                params.append(source)
-            if project:
-                project_clause, project_params = build_project_filter(project)
-                sql += " AND " + project_clause
-                params.extend(project_params)
-
-            sql += " ORDER BY bm25(messages_fts), m.timestamp DESC LIMIT ?"
-            params.append(limit)
-
-            rows = conn.execute(sql, params).fetchall()
-            return [_row_to_dict(r) for r in rows]
+                rows = conn.execute(sql, params).fetchall()
+                if rows:
+                    return [_row_to_dict(row) for row in rows]
+            return []
         finally:
             conn.close()
 
-    @mcp.tool(
+    @tool(
         annotations={"readOnlyHint": True, "idempotentHint": True},
     )
     @consistent_read
@@ -364,7 +492,7 @@ def _create_server() -> FastMCP:
         finally:
             conn.close()
 
-    @mcp.tool(
+    @tool(
         annotations={"readOnlyHint": True, "idempotentHint": True},
     )
     @consistent_read
@@ -396,7 +524,7 @@ def _create_server() -> FastMCP:
         finally:
             conn.close()
 
-    @mcp.tool(
+    @tool(
         annotations={"readOnlyHint": True, "idempotentHint": True},
     )
     @consistent_read
@@ -470,7 +598,7 @@ def _create_server() -> FastMCP:
         finally:
             conn.close()
 
-    @mcp.tool(
+    @tool(
         annotations={"readOnlyHint": True, "idempotentHint": True},
     )
     @consistent_read
@@ -526,7 +654,7 @@ def _create_server() -> FastMCP:
         finally:
             conn.close()
 
-    @mcp.tool(
+    @tool(
         annotations={"destructiveHint": True},
     )
     def session_clean(
@@ -607,7 +735,7 @@ def _create_server() -> FastMCP:
         finally:
             conn.close()
 
-    @mcp.tool(
+    @tool(
         annotations={"readOnlyHint": True, "idempotentHint": True},
     )
     @consistent_read

@@ -12,6 +12,7 @@ import typer
 
 from ..config_loader import get_db_path, load_config
 from ..migrations import migrate
+from . import concept_cli
 from .capture import capture_health
 from .scope import ScopeError, ScopePolicy, apply_policy
 from .public import open_context
@@ -24,6 +25,8 @@ quarantine_app = typer.Typer(
     help="Inspect withheld local copies and deliberately discard them."
 )
 app.add_typer(quarantine_app, name="quarantine")
+concept_app = typer.Typer(help="Manage concept lifecycle and legacy imports.")
+app.add_typer(concept_app, name="concept")
 
 
 DatabaseOption = Annotated[
@@ -394,6 +397,156 @@ def main() -> int:
         typer.secho(str(exc), fg=typer.colors.YELLOW, err=True)
         return 2
     return 0
+
+
+@app.command("winddown")
+def winddown(
+    session: Annotated[str, typer.Option("--session", help="Session ID to wind down")],
+    input_file: Annotated[
+        str | None, typer.Option("--from", help="Wind-down JSON document path")
+    ] = None,
+    stdin: Annotated[
+        bool, typer.Option("--stdin", help="Read the JSON document from stdin")
+    ] = False,
+    actor: Annotated[str, typer.Option(help="Recorded event actor")] = (
+        concept_cli.DEFAULT_WINDDOWN_ACTOR
+    ),
+    project: str | None = None,
+    db: DatabaseOption = None,
+) -> None:
+    """Write one bounded, evidence-backed wind-down batch atomically."""
+    if stdin == (input_file is not None):
+        raise typer.BadParameter("Provide exactly one of --from or --stdin")
+    raise typer.Exit(
+        concept_cli.run_winddown(
+            session=session,
+            input_file=input_file,
+            use_stdin=stdin,
+            actor=actor,
+            project=project,
+            db=db,
+        )
+    )
+
+
+@concept_app.command("accept")
+def concept_accept(
+    concept_id: str,
+    reason: Annotated[str, typer.Option(help="Recorded transition reason")],
+    actor: Annotated[str, typer.Option(help="Recorded event actor")] = (
+        concept_cli.DEFAULT_OPERATOR_ACTOR
+    ),
+    project: str | None = None,
+    db: DatabaseOption = None,
+) -> None:
+    """Accept one proposed concept."""
+    raise typer.Exit(
+        concept_cli.run_transition(
+            verb="accept",
+            concept_id=concept_id,
+            actor=actor,
+            reason=reason,
+            project=project,
+            db=db,
+        )
+    )
+
+
+@concept_app.command("retire")
+def concept_retire(
+    concept_id: str,
+    reason: Annotated[str, typer.Option(help="Recorded transition reason")],
+    actor: Annotated[str, typer.Option(help="Recorded event actor")] = (
+        concept_cli.DEFAULT_OPERATOR_ACTOR
+    ),
+    project: str | None = None,
+    db: DatabaseOption = None,
+) -> None:
+    """Retire one concept (terminal)."""
+    raise typer.Exit(
+        concept_cli.run_transition(
+            verb="retire",
+            concept_id=concept_id,
+            actor=actor,
+            reason=reason,
+            project=project,
+            db=db,
+        )
+    )
+
+
+@concept_app.command("bind")
+def concept_bind(
+    concept_id: str,
+    input_file: Annotated[
+        str, typer.Option("--from", help="Bind JSON document with quote locators")
+    ],
+    reason: Annotated[str, typer.Option(help="Recorded transition reason")],
+    actor: Annotated[str, typer.Option(help="Recorded event actor")] = (
+        concept_cli.DEFAULT_OPERATOR_ACTOR
+    ),
+    project: str | None = None,
+    db: DatabaseOption = None,
+) -> None:
+    """Bind a legacy-unbound root to exact captured evidence."""
+    raise typer.Exit(
+        concept_cli.run_bind(
+            concept_id=concept_id,
+            input_file=input_file,
+            actor=actor,
+            reason=reason,
+            project=project,
+            db=db,
+        )
+    )
+
+
+@concept_app.command("import-okf")
+def concept_import_okf(
+    directory: str,
+    report: Annotated[
+        str | None, typer.Option(help="Write the deterministic report JSON here")
+    ] = None,
+    dry_run: Annotated[
+        bool, typer.Option("--dry-run", help="Classify without writing")
+    ] = False,
+    actor: Annotated[str, typer.Option(help="Recorded event actor")] = (
+        concept_cli.DEFAULT_IMPORT_ACTOR
+    ),
+    project: str | None = None,
+    db: DatabaseOption = None,
+) -> None:
+    """Import a recursive legacy OKF tree atomically."""
+    raise typer.Exit(
+        concept_cli.run_import_okf(
+            directory=directory,
+            report=report,
+            dry_run=dry_run,
+            actor=actor,
+            project=project,
+            db=db,
+        )
+    )
+
+
+@concept_app.command("project")
+def concept_project(
+    out: Annotated[str, typer.Option(help="Projection output directory")],
+    project: str | None = None,
+    json_output: Annotated[
+        bool, typer.Option("--json", help="Emit deterministic JSON")
+    ] = False,
+    db: DatabaseOption = None,
+) -> None:
+    """Rebuild disposable scope-authorized Markdown from concept state."""
+    raise typer.Exit(
+        concept_cli.run_project(
+            out=out,
+            project=project,
+            as_json=json_output,
+            db=db,
+        )
+    )
 
 
 if __name__ == "__main__":

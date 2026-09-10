@@ -1,0 +1,101 @@
+{
+  "backup": {
+    "post_import_sha256": "157d59e60c8b1ee13492cf7e76a8fff00420a466135b4c72eb194aed20c5704b"
+  },
+  "captured_at_utc": "2026-09-08T11:53:12Z",
+  "dry_run": {
+    "already_present": 0,
+    "ambiguous_match": 0,
+    "body_description_mismatch": 764,
+    "bound": 0,
+    "duplicate_content": 0,
+    "imported": 0,
+    "invalid_schema": 2,
+    "invalid_yaml": 0,
+    "legacy_unbound": 2033,
+    "missing_session": 0,
+    "no_exact_match": 1559,
+    "no_visible_evidence": 429,
+    "oversized_evidence": 45,
+    "parsed": 2033,
+    "scanned": 2035,
+    "unsafe_path": 0,
+    "write_failures": 0,
+    "writes": 0
+  },
+  "evidence_schema": "agent-session-tools.legacy-okf-import-report",
+  "evidence_version": 1,
+  "idempotent_reimport": {
+    "already_present": 2033,
+    "ambiguous_match": 0,
+    "body_description_mismatch": 764,
+    "bound": 0,
+    "duplicate_content": 0,
+    "imported": 0,
+    "invalid_schema": 2,
+    "invalid_yaml": 0,
+    "legacy_unbound": 0,
+    "missing_session": 0,
+    "no_exact_match": 0,
+    "no_visible_evidence": 0,
+    "oversized_evidence": 0,
+    "parsed": 2033,
+    "scanned": 2035,
+    "unsafe_path": 0,
+    "write_failures": 0,
+    "writes": 0
+  },
+  "integrity": {
+    "bound_roots": 0,
+    "concept_roots": 2033,
+    "foreign_key_violations": 0,
+    "fts_consistent": true,
+    "fts_rows": 2033,
+    "fts_sha256": "0c036eaeff2bd8d72f1cb142fa573d5481ec900592ca22c4f75e0b2ad999a558",
+    "legacy_roots": 2033,
+    "lifecycle_events": 2033,
+    "null_session_legacy_roots": 0,
+    "schema_fingerprint": "af95685e6e39e166148006519862bee3be1a15219d76772236a82890fe11011d",
+    "schema_version": 2
+  },
+  "okf_source_sentinel_unchanged": true,
+  "source": {
+    "message_count": 139637,
+    "okf_markdown_files": 2035,
+    "okf_tree_sha256": "eecd061f641cbce70db96a76824976381c9d9048f76e5a2944695dc90a22247d",
+    "online_backup_sha256": "02a8cef5ad65aa2120ade50cf3776b34e5c59bb8d74f7a49ab896c52c303c7d0",
+    "session_count": 5813,
+    "user_version": 47
+  },
+  "source_sentinels_unchanged": true,
+  "status": {
+    "all_parseable_records_survived": true,
+    "dry_run_write_classification_matches": true,
+    "idempotent_reimport": true
+  },
+  "timings_seconds": {
+    "dry_run": 68.2886,
+    "idempotent_reimport": 1.64163,
+    "write": 67.656445
+  },
+  "write": {
+    "already_present": 0,
+    "ambiguous_match": 0,
+    "body_description_mismatch": 764,
+    "bound": 0,
+    "duplicate_content": 0,
+    "imported": 2033,
+    "invalid_schema": 2,
+    "invalid_yaml": 0,
+    "legacy_unbound": 2033,
+    "missing_session": 0,
+    "no_exact_match": 1559,
+    "no_visible_evidence": 429,
+    "oversized_evidence": 45,
+    "parsed": 2033,
+    "scanned": 2035,
+    "unsafe_path": 0,
+    "write_failures": 0,
+    "writes": 2033
+  }
+}

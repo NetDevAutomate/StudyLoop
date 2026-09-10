@@ -1,0 +1,606 @@
+{
+  "auditor": "deepseek-3.2",
+  "n": 100,
+  "verdicts": [
+    {
+      "audit_id": "29cb2bcdc2",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote directly supports the statement about budget concerns and model substitution."
+    },
+    {
+      "audit_id": "642c874cbf",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote lists three specific failure resolutions matching the statement."
+    },
+    {
+      "audit_id": "bce43caebc",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote provides exact match statistics for both search methods."
+    },
+    {
+      "audit_id": "d60a9e92ba",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote directly describes the pgrep self-matching problem."
+    },
+    {
+      "audit_id": "e3bc6fab4e",
+      "verdict": "partial",
+      "code": "over-claim",
+      "reason": "The quote mentions capturing the distinction but not the specific details about worktree states."
+    },
+    {
+      "audit_id": "de786261f6",
+      "verdict": "partial",
+      "code": "over-claim",
+      "reason": "The quote confirms three empty tables but doesn't mention concept_dependencies having 3,161 entries."
+    },
+    {
+      "audit_id": "11d12e3979",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote directly explains why graphify was chosen for repository analysis."
+    },
+    {
+      "audit_id": "040cfe127a",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote matches the statement about token budget exhaustion."
+    },
+    {
+      "audit_id": "c40d804ddc",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote provides exact cost figures for estimate vs actual."
+    },
+    {
+      "audit_id": "03f1df428b",
+      "verdict": "partial",
+      "code": "over-claim",
+      "reason": "The quote covers model-forgeable identities and structural coupling but not the specific requirement for trusted identity issuance and generic AgentWorkspace seam."
+    },
+    {
+      "audit_id": "4d1ba477e8",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explains the rationale for per-project over global install."
+    },
+    {
+      "audit_id": "138e7aede3",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote describes the SQLite schema components mentioned in the statement."
+    },
+    {
+      "audit_id": "e05863f12f",
+      "verdict": "partial",
+      "code": "over-claim",
+      "reason": "The quote confirms stopping per instructions but doesn't mention HTTP 200, hollow-draft failure signal, or documentation in a review file."
+    },
+    {
+      "audit_id": "ff4f90fad8",
+      "verdict": "partial",
+      "code": "over-claim",
+      "reason": "The quote mentions WCAG minimum and touch target sizes but not the specific 13x13 pixel measurement or lack of CSS sizing."
+    },
+    {
+      "audit_id": "c7b82487b3",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explains how the bulk action bar is hidden from DOM until toggle."
+    },
+    {
+      "audit_id": "7f8782b6c8",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote confirms the staleness and active usage dates."
+    },
+    {
+      "audit_id": "60408f9172",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote contains the learner's exact request about model diversity."
+    },
+    {
+      "audit_id": "6aed3b3425",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote provides exact cleanup counts and preservation details."
+    },
+    {
+      "audit_id": "75494c351b",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote directly states the model doesn't self-identify."
+    },
+    {
+      "audit_id": "6b6eb94e1a",
+      "verdict": "partial",
+      "code": "over-claim",
+      "reason": "The quote states the planner isn't working end to end but doesn't list the specific remaining components."
+    },
+    {
+      "audit_id": "d6594c8847",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote provides the reasoning for amending rather than separate commit."
+    },
+    {
+      "audit_id": "4e054fcd31",
+      "verdict": "partial",
+      "code": "over-claim",
+      "reason": "The quote mentions digest as compare-and-swap token but not the team establishment or proof of identity vs approval distinction."
+    },
+    {
+      "audit_id": "5d8de2010d",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote describes the NUC dry-run sequence accurately."
+    },
+    {
+      "audit_id": "2966dd1959",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote confirms bulk delete exists and explains the UI gating issue."
+    },
+    {
+      "audit_id": "44a2894e4c",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote lists the three optimistic assumptions replaced with actual figures."
+    },
+    {
+      "audit_id": "3f24ee98f1",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explains the 6px drag threshold issue."
+    },
+    {
+      "audit_id": "d71dd412be",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote states the decision not to touch config and record as finding."
+    },
+    {
+      "audit_id": "65891ce540",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote identifies the specific documentation contradiction."
+    },
+    {
+      "audit_id": "2d00deaf17",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote describes the CLI staleness gap and follow-up status."
+    },
+    {
+      "audit_id": "992452fca3",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote provides the exact model completion details."
+    },
+    {
+      "audit_id": "8e724d856a",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote describes deepseek-r1's third option proposal accurately."
+    },
+    {
+      "audit_id": "ec3c58abd2",
+      "verdict": "partial",
+      "code": "over-claim",
+      "reason": "The quote shows test count and coverage but doesn't mention ruff check or pyright results."
+    },
+    {
+      "audit_id": "85547821a8",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote lists the two preflight conclusions."
+    },
+    {
+      "audit_id": "9f605219cd",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote enumerates the missing protocol components."
+    },
+    {
+      "audit_id": "de0a98aeda",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote provides exact test results and lint failures."
+    },
+    {
+      "audit_id": "85eef90917",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explains the launchctl location and inheritance."
+    },
+    {
+      "audit_id": "7f3061830a",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote identifies the silent step drop and undocumented addition."
+    },
+    {
+      "audit_id": "ba846e40af",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote describes the linear scan and sqlite-vec suggestion."
+    },
+    {
+      "audit_id": "def00da785",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote provides exact test results and threshold comparison."
+    },
+    {
+      "audit_id": "5c98492d35",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explains the recoverable cleanup approach."
+    },
+    {
+      "audit_id": "84dd9b85f1",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote describes the sudo check timing and repair."
+    },
+    {
+      "audit_id": "97291606d6",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote mentions the three-plan maximum."
+    },
+    {
+      "audit_id": "44515b8188",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote identifies the test coverage gap."
+    },
+    {
+      "audit_id": "b0d3fb16ea",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote describes the manual brain dump limitations."
+    },
+    {
+      "audit_id": "4ce4528862",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote contains the user's report of uninstall error."
+    },
+    {
+      "audit_id": "5e8dd65312",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote states the read-only approach and worktree unchanged."
+    },
+    {
+      "audit_id": "c18b31f891",
+      "verdict": "partial",
+      "code": "over-claim",
+      "reason": "The quote gives verdict but doesn't list all seven gate names or milestone reference."
+    },
+    {
+      "audit_id": "9e87cddf4b",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote describes the Meross adapter stall and empty directory."
+    },
+    {
+      "audit_id": "6d429ea659",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explains the schema difference between database and JSON."
+    },
+    {
+      "audit_id": "2700c2a048",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote provides the cost estimate and gate comparison."
+    },
+    {
+      "audit_id": "fb1d3384cc",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explains why MailGraph sessions can't support cross-harness test."
+    },
+    {
+      "audit_id": "eae370c2d4",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote describes the token increase and outcome difference."
+    },
+    {
+      "audit_id": "4312c14396",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explains the Node directory vs glob compatibility issue."
+    },
+    {
+      "audit_id": "c9b0cfe344",
+      "verdict": "partial",
+      "code": "over-claim",
+      "reason": "The quote mentions markdown rendering but not the big-ticket unresolved item framing."
+    },
+    {
+      "audit_id": "9905bbabd4",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explains why existing tooling missed the issues."
+    },
+    {
+      "audit_id": "a647ad3abf",
+      "verdict": "partial",
+      "code": "over-claim",
+      "reason": "The quote shows consideration of calling early but frames it as a question, not a definite plan."
+    },
+    {
+      "audit_id": "fb33ba7ec4",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote identifies the changed_when expression masking the sudo issue."
+    },
+    {
+      "audit_id": "e7ef09b609",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote identifies the false documentation claim."
+    },
+    {
+      "audit_id": "872da9553a",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote confirms the red phase failure reason."
+    },
+    {
+      "audit_id": "d55ace1c6d",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote identifies the shared SQLite schema issue."
+    },
+    {
+      "audit_id": "19dccb77f6",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote provides the commit hash and message."
+    },
+    {
+      "audit_id": "3b0f461d83",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explains the over-calling pattern and its effect."
+    },
+    {
+      "audit_id": "0271dee13f",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote identifies Superwhisper as the relaunch culprit."
+    },
+    {
+      "audit_id": "579fe42305",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote lists the packages changed to opt-in."
+    },
+    {
+      "audit_id": "3bf852617a",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote shows agreement to pause database redesign."
+    },
+    {
+      "audit_id": "90f3d5cc1f",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote provides the precise pgrep check alternative."
+    },
+    {
+      "audit_id": "b25a90b4f0",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explains the coverage gap with dates."
+    },
+    {
+      "audit_id": "211d8acc01",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explains process environment persistence."
+    },
+    {
+      "audit_id": "d49a6bdd76",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote states the summary timing preference."
+    },
+    {
+      "audit_id": "fb5bb710b2",
+      "verdict": "partial",
+      "code": "over-claim",
+      "reason": "The quote provides savings estimate and installer comparison but not the specific component breakdown mentioned."
+    },
+    {
+      "audit_id": "5e5f0a0289",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote identifies the open-file limit root cause."
+    },
+    {
+      "audit_id": "ebf427f712",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explains the verification upgrade via grep."
+    },
+    {
+      "audit_id": "1495682799",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote describes the HTTP 409 fix and file preservation."
+    },
+    {
+      "audit_id": "0f560b5089",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote identifies the unrelated Mermaid test failure."
+    },
+    {
+      "audit_id": "c196996f78",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explains the Sidekick/Copilot integration issue."
+    },
+    {
+      "audit_id": "a9e5d9e3c3",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote confirms the reload test results."
+    },
+    {
+      "audit_id": "9a3cc3f2a1",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explains the selection vs edit visual confusion."
+    },
+    {
+      "audit_id": "59969e2af4",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote states worktree removal as instructed."
+    },
+    {
+      "audit_id": "8c8a94c593",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explains the process inheritance limitation."
+    },
+    {
+      "audit_id": "dd62afe259",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote describes grok's budget exhaustion."
+    },
+    {
+      "audit_id": "331292d15a",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote provides the wrong finding count."
+    },
+    {
+      "audit_id": "2c124276de",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explains the verified model source distinction."
+    },
+    {
+      "audit_id": "8c51cbadb2",
+      "verdict": "partial",
+      "code": "over-claim",
+      "reason": "The quote covers tariff decisions but not the explicit decision framing or export premium application."
+    },
+    {
+      "audit_id": "2737a498dc",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explains the open-file limit and skill loading impact."
+    },
+    {
+      "audit_id": "e98843041f",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explains the dependency avoidance rationale."
+    },
+    {
+      "audit_id": "8bdb1da394",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote describes the forged evidence retention issue."
+    },
+    {
+      "audit_id": "3b9f979ae9",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explains the e2e pass vs recipe failure."
+    },
+    {
+      "audit_id": "0bb8e8ec21",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote provides the final E2E sweep results."
+    },
+    {
+      "audit_id": "90bca776fc",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explains the uv activation timing issue."
+    },
+    {
+      "audit_id": "f9935a22f7",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote lists the three design shortcomings."
+    },
+    {
+      "audit_id": "52b0b743ae",
+      "verdict": "partial",
+      "code": "over-claim",
+      "reason": "The quote lists verification steps but not the specific requirement to save output under SIGNOFF-M2/gates/."
+    },
+    {
+      "audit_id": "2e8eada67d",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote confirms the token budget bug details."
+    },
+    {
+      "audit_id": "b1997f70db",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explains the LaunchOnlyOnce behavior."
+    },
+    {
+      "audit_id": "1a8fd4d5ba",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote rules out launch mechanisms for Superwhisper."
+    },
+    {
+      "audit_id": "ecf0a17d8a",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explains the macOS parent process confusion."
+    },
+    {
+      "audit_id": "34de604806",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote describes the ledger command rejection."
+    },
+    {
+      "audit_id": "388ec04298",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explains the xTiles screenshot privacy issue."
+    },
+    {
+      "audit_id": "f2f30fe5c0",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote confirms the knowledge graph use case."
+    },
+    {
+      "audit_id": "e80813ce6b",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote describes the integration test masking issues."
+    },
+    {
+      "audit_id": "2332431876",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote states the cost estimate was run before calls."
+    }
+  ]
+}

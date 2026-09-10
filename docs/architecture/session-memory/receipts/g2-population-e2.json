@@ -1,0 +1,74 @@
+{
+ "receipt": "g2-population-e2",
+ "created_utc": "2026-09-10T06:24:45+00:00",
+ "previous_receipt": {
+  "path": "docs/architecture/session-memory/receipts/g2-pilot-e1c.json",
+  "sha256": "37300d51ae771f278906795585c445b72c755fbf9df42fb174a9876df494e48c"
+ },
+ "amendment": "ruler-amendment-004.md (7f50fa82)",
+ "writer": "sonnet5/writer-v2/cb45b300",
+ "population": "poc-set-g2.json order[40:342] (302 sessions), gold-blind hash order",
+ "outcome": {
+  "sessions_attempted": 302,
+  "sessions_with_response": 301,
+  "not_attempted": [
+   {
+    "index": "318",
+    "reason": "sub-agent refused to read its prompt on both the first run and the single permitted retry (treated the task as instruction injection); not a DEV gold session"
+   }
+  ],
+  "claims_inserted_population": 1082,
+  "claims_inserted_writer_v2_total": 1227,
+  "recheck_mismatches": 0,
+  "unbound_writes": 0,
+  "refusals_by_reason": {
+   "citation_unbound": 159,
+   "citation_not_in_packet": 4,
+   "tag_not_lowercase_token": 4
+  }
+ },
+ "yield": {
+  "prose_ge10_primary": {
+   "denominator": 200,
+   "attempted": 199,
+   "with_claims": 149,
+   "over_attempted": 0.7487,
+   "over_full_denominator": 0.745
+  },
+  "messages_ge10_literal": {
+   "denominator": 345,
+   "attempted": 341,
+   "with_claims": 222,
+   "over_attempted": 0.651,
+   "over_full_denominator": 0.6435
+  }
+ },
+ "dev_coverage_before_look3": {
+  "gold_sessions_with_v2_claim": 19,
+  "of": 60,
+  "questions_reachable_by_claims_only": 30,
+  "of_questions": 91,
+  "by_stratum": {
+   "R": 13,
+   "P": 6,
+   "K": 11
+  }
+ },
+ "store_sha256": "f5e923e878b059708c163e0ef7b42fc17c7d8efc07a92dca04d86dcffa833cee",
+ "budgets": {
+  "writer_runs": {
+   "breakdown": {
+    "pilot_v1": 40,
+    "pilot_v2": 40,
+    "population_first_attempts": 302,
+    "retry_057_turn_limit": 1,
+    "retry_318_agent_refusal": 1
+   },
+   "total": 384,
+   "cap": 400
+  },
+  "council_runs": "21/60",
+  "external_api_spend_usd": 0
+ },
+ "note": "G2 remains 'not established — instrument' (g2-pilot-e1c.json). This receipt records the population run that gives the G1 claims arms their coverage; no entailment audit was run on it."
+}

@@ -1,0 +1,179 @@
+{
+ "artefact": "stage-f-look3-mechanism",
+ "derived_from_receipt": {
+  "path": "docs/architecture/session-memory/receipts/stage-f-look3-claims.json",
+  "sha256": "ad1630a9877bc5c44c9d9e9a924aca7558290d5bc33e9ca394cd8330e8a38fb1"
+ },
+ "store_sha256": "f5e923e878b059708c163e0ef7b42fc17c7d8efc07a92dca04d86dcffa833cee",
+ "method": "deterministic re-execution of the committed arms (proof_arms.py) on the same store; ranks are 1-based positions of the first gold session in each full deduped ranking",
+ "summary": {
+  "lost_by_fusion": 17,
+  "gained_by_fusion": 4,
+  "lost_with_gold_prose_rank_le_2": 12,
+  "lost_with_gold_absent_from_claims_list": 16,
+  "median_claims_list_len_on_lost": 127,
+  "rrf_k": 60,
+  "candidate_rows": 200
+ },
+ "lost_questions": [
+  {
+   "question_id": "A2-18",
+   "stratum": "K",
+   "gold_rank_prose": 1,
+   "gold_rank_claims": null,
+   "gold_rank_fused": 7,
+   "prose_list_len": 112,
+   "claims_list_len": 131
+  },
+  {
+   "question_id": "A2-23",
+   "stratum": "P",
+   "gold_rank_prose": 1,
+   "gold_rank_claims": null,
+   "gold_rank_fused": 17,
+   "prose_list_len": 142,
+   "claims_list_len": 128
+  },
+  {
+   "question_id": "A2-31",
+   "stratum": "P",
+   "gold_rank_prose": 1,
+   "gold_rank_claims": null,
+   "gold_rank_fused": 16,
+   "prose_list_len": 150,
+   "claims_list_len": 133
+  },
+  {
+   "question_id": "A2-41",
+   "stratum": "R",
+   "gold_rank_prose": 1,
+   "gold_rank_claims": null,
+   "gold_rank_fused": 9,
+   "prose_list_len": 127,
+   "claims_list_len": 130
+  },
+  {
+   "question_id": "A2-8",
+   "stratum": "K",
+   "gold_rank_prose": 1,
+   "gold_rank_claims": null,
+   "gold_rank_fused": 15,
+   "prose_list_len": 144,
+   "claims_list_len": 127
+  },
+  {
+   "question_id": "A2-5",
+   "stratum": "K",
+   "gold_rank_prose": 4,
+   "gold_rank_claims": null,
+   "gold_rank_fused": 23,
+   "prose_list_len": 114,
+   "claims_list_len": 130
+  },
+  {
+   "question_id": "A2-1",
+   "stratum": "K",
+   "gold_rank_prose": 4,
+   "gold_rank_claims": null,
+   "gold_rank_fused": 15,
+   "prose_list_len": 122,
+   "claims_list_len": 126
+  },
+  {
+   "question_id": "A1-103",
+   "stratum": "K",
+   "gold_rank_prose": 2,
+   "gold_rank_claims": null,
+   "gold_rank_fused": 13,
+   "prose_list_len": 109,
+   "claims_list_len": 126
+  },
+  {
+   "question_id": "A1-46",
+   "stratum": "K",
+   "gold_rank_prose": 1,
+   "gold_rank_claims": null,
+   "gold_rank_fused": 8,
+   "prose_list_len": 106,
+   "claims_list_len": 126
+  },
+  {
+   "question_id": "A2-3",
+   "stratum": "K",
+   "gold_rank_prose": 1,
+   "gold_rank_claims": null,
+   "gold_rank_fused": 39,
+   "prose_list_len": 102,
+   "claims_list_len": 116
+  },
+  {
+   "question_id": "A2-60",
+   "stratum": "R",
+   "gold_rank_prose": 1,
+   "gold_rank_claims": null,
+   "gold_rank_fused": 10,
+   "prose_list_len": 143,
+   "claims_list_len": 126
+  },
+  {
+   "question_id": "A2-61",
+   "stratum": "K",
+   "gold_rank_prose": 4,
+   "gold_rank_claims": 55,
+   "gold_rank_fused": 10,
+   "prose_list_len": 132,
+   "claims_list_len": 126
+  },
+  {
+   "question_id": "A3-5",
+   "stratum": "P",
+   "gold_rank_prose": 5,
+   "gold_rank_claims": null,
+   "gold_rank_fused": 15,
+   "prose_list_len": 122,
+   "claims_list_len": 127
+  },
+  {
+   "question_id": "A3-10",
+   "stratum": "P",
+   "gold_rank_prose": 4,
+   "gold_rank_claims": null,
+   "gold_rank_fused": 22,
+   "prose_list_len": 137,
+   "claims_list_len": 136
+  },
+  {
+   "question_id": "A3-31",
+   "stratum": "R",
+   "gold_rank_prose": 2,
+   "gold_rank_claims": null,
+   "gold_rank_fused": 9,
+   "prose_list_len": 131,
+   "claims_list_len": 131
+  },
+  {
+   "question_id": "A3-32",
+   "stratum": "R",
+   "gold_rank_prose": 2,
+   "gold_rank_claims": null,
+   "gold_rank_fused": 10,
+   "prose_list_len": 151,
+   "claims_list_len": 131
+  },
+  {
+   "question_id": "A3-40",
+   "stratum": "R",
+   "gold_rank_prose": 2,
+   "gold_rank_claims": null,
+   "gold_rank_fused": 12,
+   "prose_list_len": 119,
+   "claims_list_len": 126
+  }
+ ],
+ "gained_questions": [
+  "A1-102",
+  "A2-54",
+  "A2-11",
+  "A3-33"
+ ]
+}

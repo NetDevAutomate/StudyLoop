@@ -1,0 +1,40 @@
+{
+ "receipt": "gold-v2-recertification",
+ "supersedes": {
+  "path": "../../docs/architecture/session-memory/receipts/gold-v2-receipt.json",
+  "sha256": "61e2e86a4e283c8ceae6e7c61cfb1f288b9549090a3281d3b81506a2213eca93"
+ },
+ "created_utc": "2026-09-10T03:16:38+00:00",
+ "ruler_commit": "a98331afd2bb0c864e416c943b4a51962fe659e2",
+ "amendment": "receipts/ruler-amendment-002.md",
+ "method": "see module docstring of scripts/knowledge_proof/recertify_gold.py",
+ "dev": {
+  "path": "docs/architecture/session-memory/receipts/gold-v2-dev.json",
+  "sha256": "5632cd2b02a77dbd95ded3fae3aa32fa1599cd43929f43e44aa132343c3c6098",
+  "items": 91,
+  "clusters": 57,
+  "first_commit": "d83b3b413dc66d33f3332c1e753aa00a6a766f57",
+  "unchanged_since_first_commit": true
+ },
+ "sealed": {
+  "path": "OUTSIDE REPOSITORY -- never passed to builder agents",
+  "sha256": "90ef67ad066d46ff86e0dde27cf04a4932896155c932ea5f93391ca097d08ca7",
+  "items": 84,
+  "clusters": 56,
+  "bytes": 54117,
+  "mode": "0o400",
+  "mtime_utc": "2026-09-10T00:17:52+00:00"
+ },
+ "dev_sealed_overlap_items": 0,
+ "corpus_digest": {
+  "dev": "9aa2b4954189a824d9cf87980af6ee366b9748a1f2423356a70d0d92642c5cda",
+  "sealed": "965f5b1eca1245b7acb4c4300ec318fafe5d904430cadb403dfe2cbd22072fbd",
+  "whole": "0c29ba9635fbb65d1a8112320261e7d7606067d95e913a8e30c70c3a8e72b710",
+  "function": "scripts/knowledge_proof/score.py::corpus_digest (pinned; unchanged since d83b3b41)",
+  "user_version": 47
+ },
+ "drift_check": {
+  "gold_sessions": 114,
+  "messages_newer_than_stage2_authoring": 0
+ }
+}

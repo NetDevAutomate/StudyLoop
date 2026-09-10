@@ -1,0 +1,260 @@
+{
+  "receipt": "derive",
+  "created_utc": "2026-09-10T03:49:52+00:00",
+  "derivation_version": "derive-v1",
+  "vocab": {
+    "path": "/Users/ataylor/code/personal/tools/studyloop/.worktrees/knowledge-proof/packages/learning-memory/src/learning_memory/data/topic_vocab.v1.json",
+    "sha256": "203020fa870a5c4e07164e27654b2fea0bec097f416a8d26ffb0679369c82ebb",
+    "areas": 7,
+    "concepts": 109,
+    "surface_forms": 185,
+    "alias_collisions": []
+  },
+  "sessions": {
+    "in_store": 5838,
+    "derived": 5838,
+    "failed": 0,
+    "failures": []
+  },
+  "exchanges": {
+    "total": 15995,
+    "threaded": 11860,
+    "by_flags": {
+      "q=1 e=0 r=0 s=0": 3296,
+      "q=0 e=0 r=0 s=0": 2484,
+      "q=0 e=0 r=0 s=1": 2065,
+      "q=1 e=0 r=0 s=1": 1436,
+      "q=0 e=0 r=1 s=0": 715,
+      "q=0 e=1 r=0 s=1": 395,
+      "q=1 e=1 r=0 s=1": 391,
+      "q=1 e=0 r=1 s=0": 373,
+      "q=0 e=0 r=1 s=1": 144,
+      "q=0 e=1 r=1 s=0": 139,
+      "q=1 e=1 r=1 s=0": 109,
+      "q=1 e=0 r=1 s=1": 90,
+      "q=0 e=1 r=0 s=0": 66,
+      "q=1 e=1 r=0 s=0": 60,
+      "q=0 e=1 r=1 s=1": 58,
+      "q=1 e=1 r=1 s=1": 39
+    },
+    "quarantined": {
+      "pre_first_user": 4135,
+      "empty_user_text": 0
+    },
+    "quarantine_sample_sessions": {
+      "pre_first_user": [
+        "aider_2ad11b9dc7f9",
+        "aider_7b7f4e25bb27",
+        "aider_a695319155e3",
+        "aider_60606432c7cd",
+        "aider_0d867ceacff7"
+      ],
+      "empty_user_text": []
+    }
+  },
+  "concepts": {
+    "distinct_tagged": 108,
+    "total_tags": 25723,
+    "top_15": [
+      {
+        "concept": "python",
+        "sessions": 2512,
+        "tags": 2512
+      },
+      {
+        "concept": "git",
+        "sessions": 1899,
+        "tags": 1899
+      },
+      {
+        "concept": "bash",
+        "sessions": 1440,
+        "tags": 1440
+      },
+      {
+        "concept": "uv",
+        "sessions": 1403,
+        "tags": 1403
+      },
+      {
+        "concept": "aws",
+        "sessions": 1249,
+        "tags": 1249
+      },
+      {
+        "concept": "shell",
+        "sessions": 1216,
+        "tags": 1216
+      },
+      {
+        "concept": "bedrock",
+        "sessions": 797,
+        "tags": 797
+      },
+      {
+        "concept": "pipeline",
+        "sessions": 770,
+        "tags": 770
+      },
+      {
+        "concept": "obsidian",
+        "sessions": 702,
+        "tags": 702
+      },
+      {
+        "concept": "tags",
+        "sessions": 652,
+        "tags": 652
+      },
+      {
+        "concept": "indexes",
+        "sessions": 640,
+        "tags": 640
+      },
+      {
+        "concept": "async",
+        "sessions": 609,
+        "tags": 609
+      },
+      {
+        "concept": "protocol",
+        "sessions": 548,
+        "tags": 548
+      },
+      {
+        "concept": "venv",
+        "sessions": 509,
+        "tags": 509
+      },
+      {
+        "concept": "mermaid",
+        "sessions": 495,
+        "tags": 495
+      }
+    ]
+  },
+  "recurrence": {
+    "candidates": 106,
+    "day_gap_basis": {
+      "event_ts": 24322,
+      "session_started_at": 1249,
+      "unknown": 0
+    },
+    "top_15": [
+      {
+        "concept": "python",
+        "sessions": 2512,
+        "first_day": "2025-03-19",
+        "last_day": "2026-09-09",
+        "distinct_days": 201
+      },
+      {
+        "concept": "git",
+        "sessions": 1899,
+        "first_day": "2025-03-19",
+        "last_day": "2026-09-09",
+        "distinct_days": 163
+      },
+      {
+        "concept": "bash",
+        "sessions": 1440,
+        "first_day": "2025-03-19",
+        "last_day": "2026-09-08",
+        "distinct_days": 168
+      },
+      {
+        "concept": "uv",
+        "sessions": 1403,
+        "first_day": "2025-09-08",
+        "last_day": "2026-09-09",
+        "distinct_days": 148
+      },
+      {
+        "concept": "aws",
+        "sessions": 1249,
+        "first_day": "2025-07-27",
+        "last_day": "2026-09-08",
+        "distinct_days": 186
+      },
+      {
+        "concept": "shell",
+        "sessions": 1216,
+        "first_day": "2025-03-19",
+        "last_day": "2026-09-08",
+        "distinct_days": 161
+      },
+      {
+        "concept": "bedrock",
+        "sessions": 797,
+        "first_day": "2025-07-27",
+        "last_day": "2026-09-09",
+        "distinct_days": 134
+      },
+      {
+        "concept": "pipeline",
+        "sessions": 770,
+        "first_day": "2025-07-27",
+        "last_day": "2026-09-09",
+        "distinct_days": 114
+      },
+      {
+        "concept": "obsidian",
+        "sessions": 702,
+        "first_day": "2025-11-08",
+        "last_day": "2026-09-08",
+        "distinct_days": 132
+      },
+      {
+        "concept": "tags",
+        "sessions": 652,
+        "first_day": "2025-03-19",
+        "last_day": "2026-09-09",
+        "distinct_days": 127
+      },
+      {
+        "concept": "indexes",
+        "sessions": 640,
+        "first_day": "2025-08-19",
+        "last_day": "2026-09-08",
+        "distinct_days": 62
+      },
+      {
+        "concept": "async",
+        "sessions": 609,
+        "first_day": "2025-07-27",
+        "last_day": "2026-09-08",
+        "distinct_days": 109
+      },
+      {
+        "concept": "protocol",
+        "sessions": 548,
+        "first_day": "2025-08-08",
+        "last_day": "2026-09-09",
+        "distinct_days": 110
+      },
+      {
+        "concept": "venv",
+        "sessions": 509,
+        "first_day": "2025-08-09",
+        "last_day": "2026-09-09",
+        "distinct_days": 113
+      },
+      {
+        "concept": "mermaid",
+        "sessions": 495,
+        "first_day": "2025-08-08",
+        "last_day": "2026-09-08",
+        "distinct_days": 113
+      }
+    ]
+  },
+  "intent_outcome": {
+    "intent_filled": 5363,
+    "outcome_filled": 2195,
+    "intent_fill_rate": 0.9186,
+    "outcome_fill_rate": 0.376
+  },
+  "wall_seconds": 19.25,
+  "store": "/Users/ataylor/.local/share/studyloop/knowledge-proof/learning-memory.db",
+  "store_bytes": 264630272
+}

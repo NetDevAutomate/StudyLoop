@@ -1,0 +1,170 @@
+{
+ "artefact": "paraphrase-census",
+ "store_sha256": "f5e923e878b059708c163e0ef7b42fc17c7d8efc07a92dca04d86dcffa833cee",
+ "method": "Paraphrase census over REAL learner questions (no model, read-only).\n\nDesign question this answers: when a learner asks about something discussed in a past session,\nhow often are the question's words absent from the transcript — i.e. how often would a lexical\nretriever fail for vocabulary reasons rather than ranking?\n\nProxy (stated limits below): every learner turn in a *human-driven* session (session id not\n``agent-*``) is treated as a real question about its own session. For each one we measure\n\n1. **Vocabulary overlap** — the share of the question's stemmed content tokens that occur anywhere\n   in the *rest* of the same session's prose (the question row itself and byte-identical re-asks\n   excluded). 0.0 means the transcript never used any of the question's words.\n2. **Self-retrieval without self** — the committed prose FTS + phrase-token OR planner is queried\n   with the question; rows belonging to the question (and its identical re-asks) are dropped from\n   the ranking; we record whether the question's own session is still in the top 5. A miss is\n   classed ``vocabulary_gap`` if overlap == 0 (no token could have matched) else ``ranking``.",
+ "limits": "own-session comparison; cross-session vocabulary drift is larger, so paraphrase rates are LOWER bounds",
+ "planner": "learning_memory.store.plan_prose_query (phrase-token OR)",
+ "k": 5,
+ "min_content_tokens": 3,
+ "max_words": 200,
+ "summary": {
+  "learner_turns_human_sessions": 8414,
+  "excluded_under_3_content_tokens": 2693,
+  "excluded_pasted_over_200_words": 1144,
+  "measured": 4577,
+  "sampled": false,
+  "overlap_with_own_session_other_prose": {
+   "mean": 0.614,
+   "median": 0.667,
+   "deciles": [
+    0.143,
+    0.333,
+    0.474,
+    0.571,
+    0.667,
+    0.75,
+    0.818,
+    0.9,
+    1.0
+   ],
+   "share_zero_overlap": 0.0743,
+   "share_below_0.25": 0.1254,
+   "share_below_0.5": 0.3192,
+   "share_at_least_0.5": 0.6808
+  },
+  "self_retrieval_without_self_top5": {
+   "hit": 2622,
+   "hit_rate": 0.5729,
+   "miss_vocabulary_gap": 340,
+   "miss_vocabulary_gap_rate": 0.0743,
+   "miss_ranking": 1615,
+   "miss_ranking_rate": 0.3529
+  },
+  "by_harness": {
+   "kiro_cli": {
+    "n": 2151,
+    "hit": 1270,
+    "miss_vocab": 175,
+    "miss_rank": 706,
+    "hit_rate": 0.59
+   },
+   "codex": {
+    "n": 787,
+    "hit": 515,
+    "miss_rank": 268,
+    "miss_vocab": 4,
+    "hit_rate": 0.654
+   },
+   "repoprompt": {
+    "n": 430,
+    "hit": 179,
+    "miss_rank": 197,
+    "miss_vocab": 54,
+    "hit_rate": 0.416
+   },
+   "litellm-proxy": {
+    "n": 360,
+    "hit": 322,
+    "miss_rank": 37,
+    "miss_vocab": 1,
+    "hit_rate": 0.894
+   },
+   "claude_code": {
+    "n": 205,
+    "miss_rank": 124,
+    "hit": 80,
+    "miss_vocab": 1,
+    "hit_rate": 0.39
+   },
+   "aider": {
+    "n": 204,
+    "hit": 1,
+    "miss_rank": 203,
+    "hit_rate": 0.005
+   },
+   "kilocode_cli": {
+    "n": 147,
+    "miss_rank": 7,
+    "hit": 69,
+    "miss_vocab": 71,
+    "hit_rate": 0.469
+   },
+   "grok": {
+    "n": 135,
+    "miss_vocab": 5,
+    "miss_rank": 13,
+    "hit": 117,
+    "hit_rate": 0.867
+   },
+   "gemini_cli": {
+    "n": 97,
+    "miss_vocab": 21,
+    "hit": 59,
+    "miss_rank": 17,
+    "hit_rate": 0.608
+   }
+  }
+ },
+ "zero_overlap_examples": [
+  {
+   "session": "ses_6b63bb63cffe0iVh",
+   "harness": "opencode",
+   "question": "is there a better way as this has been 3 hours so far"
+  },
+  {
+   "session": "ses_656d4961fffe4sD9",
+   "harness": "opencode",
+   "question": "Can you help refactor this to simpmly and align this to the aws standards                                                                   "
+  },
+  {
+   "session": "9AC75C49-85A7-4DCF-9",
+   "harness": "repoprompt",
+   "question": "Provide a comprehensive technical and business feasibility assessment for creating a standalone LiteLLM MCP server based on this codebase:\n\n"
+  },
+  {
+   "session": "litellm_1762540494",
+   "harness": "litellm-proxy",
+   "question": "What are the benefits of local LLM deployment?"
+  },
+  {
+   "session": "gemini_615e4da4-6695",
+   "harness": "gemini_cli",
+   "question": "what is the openai compatible minimax url of the minimax coding plan?"
+  },
+  {
+   "session": "gemini_016dfda9-072f",
+   "harness": "gemini_cli",
+   "question": "Is there an OpenAI compatible API url for the MiniMax coding plan?"
+  },
+  {
+   "session": "gemini_cde36e64-c07b",
+   "harness": "gemini_cli",
+   "question": "Is there an OpenAI compatible API url for the MiniMax coding plan?"
+  },
+  {
+   "session": "gemini_f6056e0e-639c",
+   "harness": "gemini_cli",
+   "question": "Is there an OpenAI compatible API url for the MiniMax coding plan?"
+  },
+  {
+   "session": "gemini_642b417d-162e",
+   "harness": "gemini_cli",
+   "question": "Is there an OpenAI compatible API url for the MiniMax coding plan?"
+  },
+  {
+   "session": "gemini_40b73880-2ded",
+   "harness": "gemini_cli",
+   "question": "Is there an OpenAI compatible API url for the MiniMax coding plan?"
+  },
+  {
+   "session": "gemini_823abaa4-0287",
+   "harness": "gemini_cli",
+   "question": "please can you review my ~/.gemini config to see why gemini-cli is starting with minimax m2 as the model?"
+  },
+  {
+   "session": "gemini_823abaa4-0287",
+   "harness": "gemini_cli",
+   "question": "please can you review my ~/.gemini config to see why gemini-cli is starting with minimax m2 as the model?"
+  }
+ ]
+}

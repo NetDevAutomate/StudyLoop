@@ -1,0 +1,3121 @@
+{
+ "receipt": "stage-g1-sealed-look",
+ "created_utc": "2026-09-10T06:32:03+00:00",
+ "ruler_commit": "a98331afd2bb0c864e416c943b4a51962fe659e2",
+ "candidate_commit": "ceda151378a59b50ad7b013afb34b5de9741505e",
+ "b0_pin": "031dbab9f72fcc4077da2963d6e60163f4517438",
+ "fusion_spec": {
+  "path": "docs/architecture/session-memory/receipts/fusion-spec-v2.md",
+  "sha256": "e711cca8013ef7eabdd944cb75c9e90218b8a17a6ce5d842dbbd1572e227e68f",
+  "declared_commit": "94a11c1b9e62c440e9597328cde092314ac999d6"
+ },
+ "store": {
+  "path": "/Users/ataylor/.kiro/crew/scratch/runtime-f286fce0/sealed-look-store/learning-memory.db",
+  "sha256": "f5e923e878b059708c163e0ef7b42fc17c7d8efc07a92dca04d86dcffa833cee",
+  "bytes": 266665984
+ },
+ "gold": {
+  "set": "SEALED",
+  "sha256": "90ef67ad066d46ff86e0dde27cf04a4932896155c932ea5f93391ca097d08ca7",
+  "items": 84,
+  "clusters": 56
+ },
+ "corpus_digest": "965f5b1eca1245b7acb4c4300ec318fafe5d904430cadb403dfe2cbd22072fbd",
+ "gold_corpus_digest_at_authoring": "a0df30bb0255bdf92f6b511bb6de14256dd72ceefb80fb10956ecfe5018ea4b9",
+ "arms": {
+  "B0": {
+   "recall@5": {
+    "by_stratum": {
+     "K": 0.20833333333333334,
+     "P": 0.03225806451612903,
+     "R": 0.10344827586206896
+    },
+    "macro": 0.1146798912371771
+   },
+   "mrr@5": {
+    "by_stratum": {
+     "K": 0.15625,
+     "P": 0.03225806451612903,
+     "R": 0.037356321839080456
+    },
+    "macro": 0.07528812878506984
+   },
+   "latency_ms": {
+    "p50": 3.4369579516351223,
+    "p95": 27.32129185460508
+   },
+   "errors": 32
+  },
+  "B1": {
+   "recall@5": {
+    "by_stratum": {
+     "K": 0.20833333333333334,
+     "P": 0.03225806451612903,
+     "R": 0.10344827586206896
+    },
+    "macro": 0.1146798912371771
+   },
+   "mrr@5": {
+    "by_stratum": {
+     "K": 0.15625,
+     "P": 0.03225806451612903,
+     "R": 0.037356321839080456
+    },
+    "macro": 0.07528812878506984
+   },
+   "latency_ms": {
+    "p50": 3.4273751080036163,
+    "p95": 29.070999938994646
+   },
+   "errors": 32
+  },
+  "B1_clean": {
+   "recall@5": {
+    "by_stratum": {
+     "K": 0.375,
+     "P": 0.12903225806451613,
+     "R": 0.3448275862068966
+    },
+    "macro": 0.2829532814238042
+   },
+   "mrr@5": {
+    "by_stratum": {
+     "K": 0.3263888888888889,
+     "P": 0.11290322580645161,
+     "R": 0.22988505747126436
+    },
+    "macro": 0.2230590573888683
+   },
+   "latency_ms": {
+    "p50": 32.086041988804936,
+    "p95": 37.493790965527296
+   },
+   "errors": 0
+  },
+  "recall_claims": {
+   "recall@5": {
+    "by_stratum": {
+     "K": 0.041666666666666664,
+     "P": 0.12903225806451613,
+     "R": 0.10344827586206896
+    },
+    "macro": 0.09138240019775058
+   },
+   "mrr@5": {
+    "by_stratum": {
+     "K": 0.041666666666666664,
+     "P": 0.06451612903225806,
+     "R": 0.0632183908045977
+    },
+    "macro": 0.05646706216784081
+   },
+   "latency_ms": {
+    "p50": 0.8174169342964888,
+    "p95": 0.9578748140484095
+   },
+   "errors": 0
+  },
+  "B1_clean_plus_claims": {
+   "recall@5": {
+    "by_stratum": {
+     "K": 0.08333333333333333,
+     "P": 0.0967741935483871,
+     "R": 0.20689655172413793
+    },
+    "macro": 0.1290013595352861
+   },
+   "mrr@5": {
+    "by_stratum": {
+     "K": 0.049999999999999996,
+     "P": 0.07096774193548387,
+     "R": 0.13908045977011493
+    },
+    "macro": 0.08668273390186626
+   },
+   "latency_ms": {
+    "p50": 33.11716695316136,
+    "p95": 38.54341711848974
+   },
+   "errors": 0
+  }
+ },
+ "comparisons": {
+  "B1_vs_B0": {
+   "lift": {
+    "point": 0.0,
+    "ci95": [
+     0.0,
+     0.0
+    ],
+    "resamples": 10000,
+    "clusters": 56,
+    "established_lift": false
+   },
+   "non_inferiority": [
+    {
+     "stratum": "macro",
+     "regression_point": -0.0,
+     "upper95": -0.0,
+     "non_inferior": true
+    },
+    {
+     "stratum": "K",
+     "regression_point": 0.0,
+     "upper95": 0.0,
+     "non_inferior": true
+    },
+    {
+     "stratum": "P",
+     "regression_point": 0.0,
+     "upper95": 0.0,
+     "non_inferior": true
+    },
+    {
+     "stratum": "R",
+     "regression_point": 0.0,
+     "upper95": 0.0,
+     "non_inferior": true
+    }
+   ]
+  },
+  "B1_clean_vs_B1": {
+   "lift": {
+    "point": 0.16827339018662713,
+    "ci95": [
+     0.07567567567567568,
+     0.26795977011494254
+    ],
+    "resamples": 10000,
+    "clusters": 56,
+    "established_lift": true
+   },
+   "non_inferiority": [
+    {
+     "stratum": "macro",
+     "regression_point": -0.16827339018662713,
+     "upper95": -0.07567567567567568,
+     "non_inferior": true
+    },
+    {
+     "stratum": "K",
+     "regression_point": -0.16666666666666666,
+     "upper95": 0.0,
+     "non_inferior": true
+    },
+    {
+     "stratum": "P",
+     "regression_point": -0.0967741935483871,
+     "upper95": -0.03225806451612903,
+     "non_inferior": true
+    },
+    {
+     "stratum": "R",
+     "regression_point": -0.2413793103448276,
+     "upper95": -0.10344827586206896,
+     "non_inferior": true
+    }
+   ]
+  },
+  "recall_claims_vs_B1": {
+   "lift": {
+    "point": -0.02329749103942652,
+    "ci95": [
+     -0.12280701754385964,
+     0.07764639639639641
+    ],
+    "resamples": 10000,
+    "clusters": 56,
+    "established_lift": false
+   },
+   "non_inferiority": [
+    {
+     "stratum": "macro",
+     "regression_point": 0.02329749103942652,
+     "upper95": 0.12280701754385964,
+     "non_inferior": false
+    },
+    {
+     "stratum": "K",
+     "regression_point": 0.16666666666666666,
+     "upper95": 0.3333333333333333,
+     "non_inferior": false
+    },
+    {
+     "stratum": "P",
+     "regression_point": -0.0967741935483871,
+     "upper95": 0.0,
+     "non_inferior": true
+    },
+    {
+     "stratum": "R",
+     "regression_point": 0.0,
+     "upper95": 0.13793103448275862,
+     "non_inferior": false
+    }
+   ]
+  },
+  "B1_clean_plus_claims_vs_B1": {
+   "lift": {
+    "point": 0.014321468298109008,
+    "ci95": [
+     -0.08333333333333333,
+     0.11699864353537516
+    ],
+    "resamples": 10000,
+    "clusters": 56,
+    "established_lift": false
+   },
+   "non_inferiority": [
+    {
+     "stratum": "macro",
+     "regression_point": -0.014321468298109008,
+     "upper95": 0.08333333333333333,
+     "non_inferior": false
+    },
+    {
+     "stratum": "K",
+     "regression_point": 0.125,
+     "upper95": 0.2916666666666667,
+     "non_inferior": false
+    },
+    {
+     "stratum": "P",
+     "regression_point": -0.06451612903225806,
+     "upper95": 0.0,
+     "non_inferior": true
+    },
+    {
+     "stratum": "R",
+     "regression_point": -0.10344827586206896,
+     "upper95": 0.0,
+     "non_inferior": true
+    }
+   ]
+  },
+  "B1_clean_vs_recall_claims": {
+   "lift": {
+    "point": 0.19157088122605362,
+    "ci95": [
+     0.07780167264038233,
+     0.31075734301540753
+    ],
+    "resamples": 10000,
+    "clusters": 56,
+    "established_lift": true
+   },
+   "non_inferiority": [
+    {
+     "stratum": "macro",
+     "regression_point": -0.19157088122605362,
+     "upper95": -0.07780167264038233,
+     "non_inferior": true
+    },
+    {
+     "stratum": "K",
+     "regression_point": -0.3333333333333333,
+     "upper95": -0.16666666666666666,
+     "non_inferior": true
+    },
+    {
+     "stratum": "P",
+     "regression_point": 0.0,
+     "upper95": 0.12903225806451613,
+     "non_inferior": false
+    },
+    {
+     "stratum": "R",
+     "regression_point": -0.2413793103448276,
+     "upper95": -0.10344827586206896,
+     "non_inferior": true
+    }
+   ]
+  },
+  "B1_clean_vs_B1_clean_plus_claims": {
+   "lift": {
+    "point": 0.1539519218885181,
+    "ci95": [
+     0.06547619047619048,
+     0.25163273690622917
+    ],
+    "resamples": 10000,
+    "clusters": 56,
+    "established_lift": true
+   },
+   "non_inferiority": [
+    {
+     "stratum": "macro",
+     "regression_point": -0.1539519218885181,
+     "upper95": -0.06547619047619048,
+     "non_inferior": true
+    },
+    {
+     "stratum": "K",
+     "regression_point": -0.2916666666666667,
+     "upper95": -0.125,
+     "non_inferior": true
+    },
+    {
+     "stratum": "P",
+     "regression_point": -0.03225806451612903,
+     "upper95": 0.06451612903225806,
+     "non_inferior": false
+    },
+    {
+     "stratum": "R",
+     "regression_point": -0.13793103448275862,
+     "upper95": -0.034482758620689655,
+     "non_inferior": true
+    }
+   ]
+  },
+  "recall_claims_vs_B1_clean": {
+   "lift": {
+    "point": -0.19157088122605362,
+    "ci95": [
+     -0.31075734301540753,
+     -0.07780167264038233
+    ],
+    "resamples": 10000,
+    "clusters": 56,
+    "established_lift": false
+   },
+   "non_inferiority": [
+    {
+     "stratum": "macro",
+     "regression_point": 0.19157088122605362,
+     "upper95": 0.31075734301540753,
+     "non_inferior": false
+    },
+    {
+     "stratum": "K",
+     "regression_point": 0.3333333333333333,
+     "upper95": 0.5,
+     "non_inferior": false
+    },
+    {
+     "stratum": "P",
+     "regression_point": 0.0,
+     "upper95": 0.12903225806451613,
+     "non_inferior": false
+    },
+    {
+     "stratum": "R",
+     "regression_point": 0.2413793103448276,
+     "upper95": 0.3793103448275862,
+     "non_inferior": false
+    }
+   ]
+  },
+  "recall_claims_vs_B1_clean_plus_claims": {
+   "lift": {
+    "point": -0.037618959337535535,
+    "ci95": [
+     -0.11273554256010394,
+     0.03809523809523809
+    ],
+    "resamples": 10000,
+    "clusters": 56,
+    "established_lift": false
+   },
+   "non_inferiority": [
+    {
+     "stratum": "macro",
+     "regression_point": 0.037618959337535535,
+     "upper95": 0.11273554256010394,
+     "non_inferior": false
+    },
+    {
+     "stratum": "K",
+     "regression_point": 0.041666666666666664,
+     "upper95": 0.125,
+     "non_inferior": false
+    },
+    {
+     "stratum": "P",
+     "regression_point": -0.03225806451612903,
+     "upper95": 0.06451612903225806,
+     "non_inferior": false
+    },
+    {
+     "stratum": "R",
+     "regression_point": 0.10344827586206896,
+     "upper95": 0.2413793103448276,
+     "non_inferior": false
+    }
+   ]
+  },
+  "B1_clean_plus_claims_vs_B1_clean": {
+   "lift": {
+    "point": -0.1539519218885181,
+    "ci95": [
+     -0.25163273690622917,
+     -0.06547619047619048
+    ],
+    "resamples": 10000,
+    "clusters": 56,
+    "established_lift": false
+   },
+   "non_inferiority": [
+    {
+     "stratum": "macro",
+     "regression_point": 0.1539519218885181,
+     "upper95": 0.25163273690622917,
+     "non_inferior": false
+    },
+    {
+     "stratum": "K",
+     "regression_point": 0.2916666666666667,
+     "upper95": 0.4583333333333333,
+     "non_inferior": false
+    },
+    {
+     "stratum": "P",
+     "regression_point": 0.03225806451612903,
+     "upper95": 0.12903225806451613,
+     "non_inferior": false
+    },
+    {
+     "stratum": "R",
+     "regression_point": 0.13793103448275862,
+     "upper95": 0.2413793103448276,
+     "non_inferior": false
+    }
+   ]
+  },
+  "B1_clean_plus_claims_vs_recall_claims": {
+   "lift": {
+    "point": 0.037618959337535535,
+    "ci95": [
+     -0.03809523809523809,
+     0.11273554256010394
+    ],
+    "resamples": 10000,
+    "clusters": 56,
+    "established_lift": false
+   },
+   "non_inferiority": [
+    {
+     "stratum": "macro",
+     "regression_point": -0.037618959337535535,
+     "upper95": 0.03809523809523809,
+     "non_inferior": true
+    },
+    {
+     "stratum": "K",
+     "regression_point": -0.041666666666666664,
+     "upper95": 0.0,
+     "non_inferior": true
+    },
+    {
+     "stratum": "P",
+     "regression_point": 0.03225806451612903,
+     "upper95": 0.12903225806451613,
+     "non_inferior": false
+    },
+    {
+     "stratum": "R",
+     "regression_point": -0.10344827586206896,
+     "upper95": 0.0,
+     "non_inferior": true
+    }
+   ]
+  }
+ },
+ "per_question": {
+  "B0": {
+   "A2-49": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_2bfd5c85-5b85-4e81-8148-79d98be7e0ff"
+   },
+   "A1-100": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "7196f60d-0268-48f2-8610-4dc570db123f",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-95": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-ad31a2be53cfde5dd"
+   },
+   "A1-74": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-06-05T08-48-32-019e96c1-5345-70b0-905c-6e1967834164"
+   },
+   "A1-67": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-aeb95e2b637501fbb",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-22": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a90c53bbb6ae74a9b",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-68": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-aeb95e2b637501fbb"
+   },
+   "A1-32": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a7106cecaac684e50"
+   },
+   "A1-62": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "litellm_1764692743",
+    "error": "OperationalError: fts5: syntax error near \"?\""
+   },
+   "A2-37": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-08-05T16-00-27-019fd270-ae66-7fb2-8fee-828c3c2b1bc8"
+   },
+   "A2-32": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a757a49db064d75f6"
+   },
+   "A1-10": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "codex_rollout-2026-06-04T16-36-54-019e9347-c189-7373-8e41-4ad14384613a",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-62": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "kiro_097240b8-dd0b-45ee-bcf4-c7e02a8a59e2"
+   },
+   "A1-20": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a8b898c"
+   },
+   "A1-39": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a90c53bbb6ae74a9b",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-72": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-aa72ea020bbb52e53",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-61": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a54ae37",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-4": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "kiro_7ea3d909-3d12-4386-af52-d5f6935e7459",
+    "error": "OperationalError: fts5: syntax error near \"*\""
+   },
+   "A1-33": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_b6f101a0-65d4-49a1-b3b7-64254f2acae1",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-31": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a82facbfe1e56ec43",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-44": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-aa72ea020bbb52e53",
+    "error": "OperationalError: fts5: syntax error near \"?\""
+   },
+   "A1-11": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "litellm_1765211190"
+   },
+   "A1-84": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-ab6e7e7bfc1ca3136",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-38": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a9fb215966b1a7657"
+   },
+   "A1-52": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-af0edef7669b31af0",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-9": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a8ee58c6cdb673334"
+   },
+   "A2-10": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "K",
+    "cluster": "agent-a6375a2067884739a"
+   },
+   "A2-57": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a9f78e94eaa198313"
+   },
+   "A1-7": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a3dd2f47d643d1cdf",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-17": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a854dcd",
+    "error": "OperationalError: fts5: syntax error near \"?\""
+   },
+   "A1-87": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-af0edef7669b31af0",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-28": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-af7c87f8d293f108e",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-51": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a6b222bb0e631d27c"
+   },
+   "A2-55": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a757a49db064d75f6",
+    "error": "OperationalError: no such column: cost"
+   },
+   "A2-28": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a6b222bb0e631d27c"
+   },
+   "A2-66": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_097240b8-dd0b-45ee-bcf4-c7e02a8a59e2"
+   },
+   "A2-7": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a2ea122c60a4d8cfc"
+   },
+   "A2-19": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a35e8d5"
+   },
+   "A1-78": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_e590184e-1616-4899-a830-1e917408499a",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-21": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "gemini_ec77c2cd-8c50-4d7b-b5c2-584cc91d85ad"
+   },
+   "A2-59": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a50c3e632417cc733"
+   },
+   "A2-29": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a1d0270bb3097f284"
+   },
+   "A2-47": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_f6fa3915-0c89-4b02-8241-59d475c83460"
+   },
+   "A1-94": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-ad31a2be53cfde5dd",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-58": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a4588ab"
+   },
+   "A2-26": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "kiro_2bfd5c85-5b85-4e81-8148-79d98be7e0ff"
+   },
+   "A1-108": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "litellm_1764692743",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-20": {
+    "hit": 1,
+    "rr": 0.25,
+    "stratum": "K",
+    "cluster": "agent-aa305d36fdf08a30b"
+   },
+   "A2-45": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a8ee58c6cdb673334"
+   },
+   "A1-73": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "codex_rollout-2026-06-05T08-48-32-019e96c1-5345-70b0-905c-6e1967834164",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-54": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a7106cecaac684e50",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-91": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a8a04612b4357b495",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-15": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "K",
+    "cluster": "agent-ae1f0359a33876082"
+   },
+   "A2-24": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a4588ab",
+    "error": "OperationalError: fts5: syntax error near \"?\""
+   },
+   "A2-12": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "K",
+    "cluster": "kiro_f6fa3915-0c89-4b02-8241-59d475c83460"
+   },
+   "A1-42": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "litellm_1763110166",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-29": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a82facbfe1e56ec43"
+   },
+   "A2-52": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a1d0270bb3097f284"
+   },
+   "A2-63": {
+    "hit": 1,
+    "rr": 0.5,
+    "stratum": "K",
+    "cluster": "b818c97b-2a8c-4f52-b5b0-bbe179256425"
+   },
+   "A2-22": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a97ef4911745587fc"
+   },
+   "A1-40": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a9fb215966b1a7657",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-19": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "kiro_b6f101a0-65d4-49a1-b3b7-64254f2acae1",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-50": {
+    "hit": 1,
+    "rr": 0.25,
+    "stratum": "R",
+    "cluster": "agent-aa44902"
+   },
+   "A1-16": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-ac8f50b37a354389c",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A3-1": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-08-01T12-00-26-019fbcfb-7e02-7172-9d77-c3e95254cb2c"
+   },
+   "A3-2": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "P",
+    "cluster": "kiro_c0c08851-9196-41fd-8403-b0c46f74bc0a"
+   },
+   "A3-6": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-08-03T12-04-44-019fc74c-287f-7b72-9994-583484ad2dbf"
+   },
+   "A3-7": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "kiro_e49d8b88-2c03-456b-ae31-4dc39a65eca5"
+   },
+   "A3-8": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "kiro_caf2a0ec-bca4-464e-84b7-ead98ef458e2"
+   },
+   "A3-9": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "kiro_9c4b5d74-71f4-4553-befa-fc5dabcf24b0"
+   },
+   "A3-14": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-08-20T20-42-07-01a020b1-f092-7541-8b91-6c3e37db4189"
+   },
+   "A3-16": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-09-05T18-17-32-01a07293-4f7f-7db1-82bb-70925ed54840"
+   },
+   "A3-17": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-09-03T11-22-28-01a066ca-9880-7ea1-b350-47ed0478e549"
+   },
+   "A3-18": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-08-24T06-18-57-01a03235-1f26-7440-8539-39df638c48b4"
+   },
+   "A3-22": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-08-07T00-42-53-019fd975-55f3-7e92-b1f9-779074141664"
+   },
+   "A3-23": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-08-01T12-00-26-019fbcfb-7e02-7172-9d77-c3e95254cb2c"
+   },
+   "A3-28": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_e49d8b88-2c03-456b-ae31-4dc39a65eca5"
+   },
+   "A3-29": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_caf2a0ec-bca4-464e-84b7-ead98ef458e2",
+    "error": "OperationalError: fts5: syntax error near \"?\""
+   },
+   "A3-30": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_9c4b5d74-71f4-4553-befa-fc5dabcf24b0",
+    "error": "OperationalError: fts5: syntax error near \"?\""
+   },
+   "A3-35": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-08-20T20-42-07-01a020b1-f092-7541-8b91-6c3e37db4189"
+   },
+   "A3-37": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-09-05T18-17-32-01a07293-4f7f-7db1-82bb-70925ed54840"
+   },
+   "A3-38": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-09-03T11-22-28-01a066ca-9880-7ea1-b350-47ed0478e549"
+   },
+   "A3-39": {
+    "hit": 1,
+    "rr": 0.3333333333333333,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-08-24T06-18-57-01a03235-1f26-7440-8539-39df638c48b4"
+   },
+   "A3-42": {
+    "hit": 1,
+    "rr": 0.5,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-08-07T00-42-53-019fd975-55f3-7e92-b1f9-779074141664"
+   }
+  },
+  "B1": {
+   "A2-49": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_2bfd5c85-5b85-4e81-8148-79d98be7e0ff"
+   },
+   "A1-100": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "7196f60d-0268-48f2-8610-4dc570db123f",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-95": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-ad31a2be53cfde5dd"
+   },
+   "A1-74": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-06-05T08-48-32-019e96c1-5345-70b0-905c-6e1967834164"
+   },
+   "A1-67": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-aeb95e2b637501fbb",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-22": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a90c53bbb6ae74a9b",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-68": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-aeb95e2b637501fbb"
+   },
+   "A1-32": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a7106cecaac684e50"
+   },
+   "A1-62": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "litellm_1764692743",
+    "error": "OperationalError: fts5: syntax error near \"?\""
+   },
+   "A2-37": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-08-05T16-00-27-019fd270-ae66-7fb2-8fee-828c3c2b1bc8"
+   },
+   "A2-32": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a757a49db064d75f6"
+   },
+   "A1-10": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "codex_rollout-2026-06-04T16-36-54-019e9347-c189-7373-8e41-4ad14384613a",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-62": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "kiro_097240b8-dd0b-45ee-bcf4-c7e02a8a59e2"
+   },
+   "A1-20": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a8b898c"
+   },
+   "A1-39": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a90c53bbb6ae74a9b",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-72": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-aa72ea020bbb52e53",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-61": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a54ae37",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-4": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "kiro_7ea3d909-3d12-4386-af52-d5f6935e7459",
+    "error": "OperationalError: fts5: syntax error near \"*\""
+   },
+   "A1-33": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_b6f101a0-65d4-49a1-b3b7-64254f2acae1",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-31": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a82facbfe1e56ec43",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-44": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-aa72ea020bbb52e53",
+    "error": "OperationalError: fts5: syntax error near \"?\""
+   },
+   "A1-11": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "litellm_1765211190"
+   },
+   "A1-84": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-ab6e7e7bfc1ca3136",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-38": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a9fb215966b1a7657"
+   },
+   "A1-52": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-af0edef7669b31af0",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-9": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a8ee58c6cdb673334"
+   },
+   "A2-10": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "K",
+    "cluster": "agent-a6375a2067884739a"
+   },
+   "A2-57": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a9f78e94eaa198313"
+   },
+   "A1-7": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a3dd2f47d643d1cdf",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-17": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a854dcd",
+    "error": "OperationalError: fts5: syntax error near \"?\""
+   },
+   "A1-87": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-af0edef7669b31af0",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-28": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-af7c87f8d293f108e",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-51": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a6b222bb0e631d27c"
+   },
+   "A2-55": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a757a49db064d75f6",
+    "error": "OperationalError: no such column: cost"
+   },
+   "A2-28": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a6b222bb0e631d27c"
+   },
+   "A2-66": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_097240b8-dd0b-45ee-bcf4-c7e02a8a59e2"
+   },
+   "A2-7": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a2ea122c60a4d8cfc"
+   },
+   "A2-19": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a35e8d5"
+   },
+   "A1-78": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_e590184e-1616-4899-a830-1e917408499a",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-21": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "gemini_ec77c2cd-8c50-4d7b-b5c2-584cc91d85ad"
+   },
+   "A2-59": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a50c3e632417cc733"
+   },
+   "A2-29": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a1d0270bb3097f284"
+   },
+   "A2-47": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_f6fa3915-0c89-4b02-8241-59d475c83460"
+   },
+   "A1-94": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-ad31a2be53cfde5dd",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-58": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a4588ab"
+   },
+   "A2-26": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "kiro_2bfd5c85-5b85-4e81-8148-79d98be7e0ff"
+   },
+   "A1-108": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "litellm_1764692743",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-20": {
+    "hit": 1,
+    "rr": 0.25,
+    "stratum": "K",
+    "cluster": "agent-aa305d36fdf08a30b"
+   },
+   "A2-45": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a8ee58c6cdb673334"
+   },
+   "A1-73": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "codex_rollout-2026-06-05T08-48-32-019e96c1-5345-70b0-905c-6e1967834164",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-54": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a7106cecaac684e50",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-91": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a8a04612b4357b495",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-15": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "K",
+    "cluster": "agent-ae1f0359a33876082"
+   },
+   "A2-24": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a4588ab",
+    "error": "OperationalError: fts5: syntax error near \"?\""
+   },
+   "A2-12": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "K",
+    "cluster": "kiro_f6fa3915-0c89-4b02-8241-59d475c83460"
+   },
+   "A1-42": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "litellm_1763110166",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-29": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a82facbfe1e56ec43"
+   },
+   "A2-52": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a1d0270bb3097f284"
+   },
+   "A2-63": {
+    "hit": 1,
+    "rr": 0.5,
+    "stratum": "K",
+    "cluster": "b818c97b-2a8c-4f52-b5b0-bbe179256425"
+   },
+   "A2-22": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a97ef4911745587fc"
+   },
+   "A1-40": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a9fb215966b1a7657",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A1-19": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "kiro_b6f101a0-65d4-49a1-b3b7-64254f2acae1",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A2-50": {
+    "hit": 1,
+    "rr": 0.25,
+    "stratum": "R",
+    "cluster": "agent-aa44902"
+   },
+   "A1-16": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-ac8f50b37a354389c",
+    "error": "OperationalError: fts5: syntax error near \"`\""
+   },
+   "A3-1": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-08-01T12-00-26-019fbcfb-7e02-7172-9d77-c3e95254cb2c"
+   },
+   "A3-2": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "P",
+    "cluster": "kiro_c0c08851-9196-41fd-8403-b0c46f74bc0a"
+   },
+   "A3-6": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-08-03T12-04-44-019fc74c-287f-7b72-9994-583484ad2dbf"
+   },
+   "A3-7": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "kiro_e49d8b88-2c03-456b-ae31-4dc39a65eca5"
+   },
+   "A3-8": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "kiro_caf2a0ec-bca4-464e-84b7-ead98ef458e2"
+   },
+   "A3-9": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "kiro_9c4b5d74-71f4-4553-befa-fc5dabcf24b0"
+   },
+   "A3-14": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-08-20T20-42-07-01a020b1-f092-7541-8b91-6c3e37db4189"
+   },
+   "A3-16": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-09-05T18-17-32-01a07293-4f7f-7db1-82bb-70925ed54840"
+   },
+   "A3-17": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-09-03T11-22-28-01a066ca-9880-7ea1-b350-47ed0478e549"
+   },
+   "A3-18": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-08-24T06-18-57-01a03235-1f26-7440-8539-39df638c48b4"
+   },
+   "A3-22": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-08-07T00-42-53-019fd975-55f3-7e92-b1f9-779074141664"
+   },
+   "A3-23": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-08-01T12-00-26-019fbcfb-7e02-7172-9d77-c3e95254cb2c"
+   },
+   "A3-28": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_e49d8b88-2c03-456b-ae31-4dc39a65eca5"
+   },
+   "A3-29": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_caf2a0ec-bca4-464e-84b7-ead98ef458e2",
+    "error": "OperationalError: fts5: syntax error near \"?\""
+   },
+   "A3-30": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_9c4b5d74-71f4-4553-befa-fc5dabcf24b0",
+    "error": "OperationalError: fts5: syntax error near \"?\""
+   },
+   "A3-35": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-08-20T20-42-07-01a020b1-f092-7541-8b91-6c3e37db4189"
+   },
+   "A3-37": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-09-05T18-17-32-01a07293-4f7f-7db1-82bb-70925ed54840"
+   },
+   "A3-38": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-09-03T11-22-28-01a066ca-9880-7ea1-b350-47ed0478e549"
+   },
+   "A3-39": {
+    "hit": 1,
+    "rr": 0.3333333333333333,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-08-24T06-18-57-01a03235-1f26-7440-8539-39df638c48b4"
+   },
+   "A3-42": {
+    "hit": 1,
+    "rr": 0.5,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-08-07T00-42-53-019fd975-55f3-7e92-b1f9-779074141664"
+   }
+  },
+  "B1_clean": {
+   "A2-49": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_2bfd5c85-5b85-4e81-8148-79d98be7e0ff"
+   },
+   "A1-100": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "K",
+    "cluster": "7196f60d-0268-48f2-8610-4dc570db123f"
+   },
+   "A1-95": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-ad31a2be53cfde5dd"
+   },
+   "A1-74": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-06-05T08-48-32-019e96c1-5345-70b0-905c-6e1967834164"
+   },
+   "A1-67": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-aeb95e2b637501fbb"
+   },
+   "A1-22": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a90c53bbb6ae74a9b"
+   },
+   "A1-68": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-aeb95e2b637501fbb"
+   },
+   "A1-32": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a7106cecaac684e50"
+   },
+   "A1-62": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "litellm_1764692743"
+   },
+   "A2-37": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-08-05T16-00-27-019fd270-ae66-7fb2-8fee-828c3c2b1bc8"
+   },
+   "A2-32": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a757a49db064d75f6"
+   },
+   "A1-10": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "codex_rollout-2026-06-04T16-36-54-019e9347-c189-7373-8e41-4ad14384613a"
+   },
+   "A2-62": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "kiro_097240b8-dd0b-45ee-bcf4-c7e02a8a59e2"
+   },
+   "A1-20": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a8b898c"
+   },
+   "A1-39": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a90c53bbb6ae74a9b"
+   },
+   "A1-72": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-aa72ea020bbb52e53"
+   },
+   "A1-61": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a54ae37"
+   },
+   "A2-4": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "K",
+    "cluster": "kiro_7ea3d909-3d12-4386-af52-d5f6935e7459"
+   },
+   "A1-33": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_b6f101a0-65d4-49a1-b3b7-64254f2acae1"
+   },
+   "A1-31": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a82facbfe1e56ec43"
+   },
+   "A1-44": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-aa72ea020bbb52e53"
+   },
+   "A1-11": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "litellm_1765211190"
+   },
+   "A1-84": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-ab6e7e7bfc1ca3136"
+   },
+   "A1-38": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a9fb215966b1a7657"
+   },
+   "A1-52": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-af0edef7669b31af0"
+   },
+   "A2-9": {
+    "hit": 1,
+    "rr": 0.3333333333333333,
+    "stratum": "K",
+    "cluster": "agent-a8ee58c6cdb673334"
+   },
+   "A2-10": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "K",
+    "cluster": "agent-a6375a2067884739a"
+   },
+   "A2-57": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a9f78e94eaa198313"
+   },
+   "A1-7": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a3dd2f47d643d1cdf"
+   },
+   "A1-17": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a854dcd"
+   },
+   "A1-87": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-af0edef7669b31af0"
+   },
+   "A1-28": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-af7c87f8d293f108e"
+   },
+   "A2-51": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "R",
+    "cluster": "agent-a6b222bb0e631d27c"
+   },
+   "A2-55": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a757a49db064d75f6"
+   },
+   "A2-28": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a6b222bb0e631d27c"
+   },
+   "A2-66": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "R",
+    "cluster": "kiro_097240b8-dd0b-45ee-bcf4-c7e02a8a59e2"
+   },
+   "A2-7": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "K",
+    "cluster": "agent-a2ea122c60a4d8cfc"
+   },
+   "A2-19": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a35e8d5"
+   },
+   "A1-78": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_e590184e-1616-4899-a830-1e917408499a"
+   },
+   "A2-21": {
+    "hit": 1,
+    "rr": 0.5,
+    "stratum": "P",
+    "cluster": "gemini_ec77c2cd-8c50-4d7b-b5c2-584cc91d85ad"
+   },
+   "A2-59": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "R",
+    "cluster": "agent-a50c3e632417cc733"
+   },
+   "A2-29": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a1d0270bb3097f284"
+   },
+   "A2-47": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "R",
+    "cluster": "kiro_f6fa3915-0c89-4b02-8241-59d475c83460"
+   },
+   "A1-94": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-ad31a2be53cfde5dd"
+   },
+   "A2-58": {
+    "hit": 1,
+    "rr": 0.25,
+    "stratum": "R",
+    "cluster": "agent-a4588ab"
+   },
+   "A2-26": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "kiro_2bfd5c85-5b85-4e81-8148-79d98be7e0ff"
+   },
+   "A1-108": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "litellm_1764692743"
+   },
+   "A2-20": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-aa305d36fdf08a30b"
+   },
+   "A2-45": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "R",
+    "cluster": "agent-a8ee58c6cdb673334"
+   },
+   "A1-73": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "codex_rollout-2026-06-05T08-48-32-019e96c1-5345-70b0-905c-6e1967834164"
+   },
+   "A1-54": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a7106cecaac684e50"
+   },
+   "A1-91": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a8a04612b4357b495"
+   },
+   "A2-15": {
+    "hit": 1,
+    "rr": 0.5,
+    "stratum": "K",
+    "cluster": "agent-ae1f0359a33876082"
+   },
+   "A2-24": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "P",
+    "cluster": "agent-a4588ab"
+   },
+   "A2-12": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "K",
+    "cluster": "kiro_f6fa3915-0c89-4b02-8241-59d475c83460"
+   },
+   "A1-42": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "litellm_1763110166"
+   },
+   "A1-29": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a82facbfe1e56ec43"
+   },
+   "A2-52": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a1d0270bb3097f284"
+   },
+   "A2-63": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "K",
+    "cluster": "b818c97b-2a8c-4f52-b5b0-bbe179256425"
+   },
+   "A2-22": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a97ef4911745587fc"
+   },
+   "A1-40": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a9fb215966b1a7657"
+   },
+   "A1-19": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "K",
+    "cluster": "kiro_b6f101a0-65d4-49a1-b3b7-64254f2acae1"
+   },
+   "A2-50": {
+    "hit": 1,
+    "rr": 0.3333333333333333,
+    "stratum": "R",
+    "cluster": "agent-aa44902"
+   },
+   "A1-16": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-ac8f50b37a354389c"
+   },
+   "A3-1": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-08-01T12-00-26-019fbcfb-7e02-7172-9d77-c3e95254cb2c"
+   },
+   "A3-2": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "P",
+    "cluster": "kiro_c0c08851-9196-41fd-8403-b0c46f74bc0a"
+   },
+   "A3-6": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-08-03T12-04-44-019fc74c-287f-7b72-9994-583484ad2dbf"
+   },
+   "A3-7": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "kiro_e49d8b88-2c03-456b-ae31-4dc39a65eca5"
+   },
+   "A3-8": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "kiro_caf2a0ec-bca4-464e-84b7-ead98ef458e2"
+   },
+   "A3-9": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "kiro_9c4b5d74-71f4-4553-befa-fc5dabcf24b0"
+   },
+   "A3-14": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-08-20T20-42-07-01a020b1-f092-7541-8b91-6c3e37db4189"
+   },
+   "A3-16": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-09-05T18-17-32-01a07293-4f7f-7db1-82bb-70925ed54840"
+   },
+   "A3-17": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-09-03T11-22-28-01a066ca-9880-7ea1-b350-47ed0478e549"
+   },
+   "A3-18": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-08-24T06-18-57-01a03235-1f26-7440-8539-39df638c48b4"
+   },
+   "A3-22": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-08-07T00-42-53-019fd975-55f3-7e92-b1f9-779074141664"
+   },
+   "A3-23": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-08-01T12-00-26-019fbcfb-7e02-7172-9d77-c3e95254cb2c"
+   },
+   "A3-28": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_e49d8b88-2c03-456b-ae31-4dc39a65eca5"
+   },
+   "A3-29": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_caf2a0ec-bca4-464e-84b7-ead98ef458e2"
+   },
+   "A3-30": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_9c4b5d74-71f4-4553-befa-fc5dabcf24b0"
+   },
+   "A3-35": {
+    "hit": 1,
+    "rr": 0.3333333333333333,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-08-20T20-42-07-01a020b1-f092-7541-8b91-6c3e37db4189"
+   },
+   "A3-37": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-09-05T18-17-32-01a07293-4f7f-7db1-82bb-70925ed54840"
+   },
+   "A3-38": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-09-03T11-22-28-01a066ca-9880-7ea1-b350-47ed0478e549"
+   },
+   "A3-39": {
+    "hit": 1,
+    "rr": 0.25,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-08-24T06-18-57-01a03235-1f26-7440-8539-39df638c48b4"
+   },
+   "A3-42": {
+    "hit": 1,
+    "rr": 0.5,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-08-07T00-42-53-019fd975-55f3-7e92-b1f9-779074141664"
+   }
+  },
+  "recall_claims": {
+   "A2-49": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_2bfd5c85-5b85-4e81-8148-79d98be7e0ff"
+   },
+   "A1-100": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "7196f60d-0268-48f2-8610-4dc570db123f"
+   },
+   "A1-95": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-ad31a2be53cfde5dd"
+   },
+   "A1-74": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-06-05T08-48-32-019e96c1-5345-70b0-905c-6e1967834164"
+   },
+   "A1-67": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-aeb95e2b637501fbb"
+   },
+   "A1-22": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a90c53bbb6ae74a9b"
+   },
+   "A1-68": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-aeb95e2b637501fbb"
+   },
+   "A1-32": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a7106cecaac684e50"
+   },
+   "A1-62": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "litellm_1764692743"
+   },
+   "A2-37": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-08-05T16-00-27-019fd270-ae66-7fb2-8fee-828c3c2b1bc8"
+   },
+   "A2-32": {
+    "hit": 1,
+    "rr": 0.25,
+    "stratum": "P",
+    "cluster": "agent-a757a49db064d75f6"
+   },
+   "A1-10": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "codex_rollout-2026-06-04T16-36-54-019e9347-c189-7373-8e41-4ad14384613a"
+   },
+   "A2-62": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "kiro_097240b8-dd0b-45ee-bcf4-c7e02a8a59e2"
+   },
+   "A1-20": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a8b898c"
+   },
+   "A1-39": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a90c53bbb6ae74a9b"
+   },
+   "A1-72": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-aa72ea020bbb52e53"
+   },
+   "A1-61": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a54ae37"
+   },
+   "A2-4": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "kiro_7ea3d909-3d12-4386-af52-d5f6935e7459"
+   },
+   "A1-33": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_b6f101a0-65d4-49a1-b3b7-64254f2acae1"
+   },
+   "A1-31": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a82facbfe1e56ec43"
+   },
+   "A1-44": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-aa72ea020bbb52e53"
+   },
+   "A1-11": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "litellm_1765211190"
+   },
+   "A1-84": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-ab6e7e7bfc1ca3136"
+   },
+   "A1-38": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a9fb215966b1a7657"
+   },
+   "A1-52": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-af0edef7669b31af0"
+   },
+   "A2-9": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "K",
+    "cluster": "agent-a8ee58c6cdb673334"
+   },
+   "A2-10": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a6375a2067884739a"
+   },
+   "A2-57": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a9f78e94eaa198313"
+   },
+   "A1-7": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a3dd2f47d643d1cdf"
+   },
+   "A1-17": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a854dcd"
+   },
+   "A1-87": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-af0edef7669b31af0"
+   },
+   "A1-28": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-af7c87f8d293f108e"
+   },
+   "A2-51": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "R",
+    "cluster": "agent-a6b222bb0e631d27c"
+   },
+   "A2-55": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a757a49db064d75f6"
+   },
+   "A2-28": {
+    "hit": 1,
+    "rr": 0.5,
+    "stratum": "P",
+    "cluster": "agent-a6b222bb0e631d27c"
+   },
+   "A2-66": {
+    "hit": 1,
+    "rr": 0.5,
+    "stratum": "R",
+    "cluster": "kiro_097240b8-dd0b-45ee-bcf4-c7e02a8a59e2"
+   },
+   "A2-7": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a2ea122c60a4d8cfc"
+   },
+   "A2-19": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a35e8d5"
+   },
+   "A1-78": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_e590184e-1616-4899-a830-1e917408499a"
+   },
+   "A2-21": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "gemini_ec77c2cd-8c50-4d7b-b5c2-584cc91d85ad"
+   },
+   "A2-59": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a50c3e632417cc733"
+   },
+   "A2-29": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a1d0270bb3097f284"
+   },
+   "A2-47": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_f6fa3915-0c89-4b02-8241-59d475c83460"
+   },
+   "A1-94": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-ad31a2be53cfde5dd"
+   },
+   "A2-58": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a4588ab"
+   },
+   "A2-26": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "kiro_2bfd5c85-5b85-4e81-8148-79d98be7e0ff"
+   },
+   "A1-108": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "litellm_1764692743"
+   },
+   "A2-20": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-aa305d36fdf08a30b"
+   },
+   "A2-45": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a8ee58c6cdb673334"
+   },
+   "A1-73": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "codex_rollout-2026-06-05T08-48-32-019e96c1-5345-70b0-905c-6e1967834164"
+   },
+   "A1-54": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a7106cecaac684e50"
+   },
+   "A1-91": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a8a04612b4357b495"
+   },
+   "A2-15": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-ae1f0359a33876082"
+   },
+   "A2-24": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a4588ab"
+   },
+   "A2-12": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "kiro_f6fa3915-0c89-4b02-8241-59d475c83460"
+   },
+   "A1-42": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "litellm_1763110166"
+   },
+   "A1-29": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a82facbfe1e56ec43"
+   },
+   "A2-52": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a1d0270bb3097f284"
+   },
+   "A2-63": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "b818c97b-2a8c-4f52-b5b0-bbe179256425"
+   },
+   "A2-22": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a97ef4911745587fc"
+   },
+   "A1-40": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a9fb215966b1a7657"
+   },
+   "A1-19": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "kiro_b6f101a0-65d4-49a1-b3b7-64254f2acae1"
+   },
+   "A2-50": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-aa44902"
+   },
+   "A1-16": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-ac8f50b37a354389c"
+   },
+   "A3-1": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-08-01T12-00-26-019fbcfb-7e02-7172-9d77-c3e95254cb2c"
+   },
+   "A3-2": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "kiro_c0c08851-9196-41fd-8403-b0c46f74bc0a"
+   },
+   "A3-6": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-08-03T12-04-44-019fc74c-287f-7b72-9994-583484ad2dbf"
+   },
+   "A3-7": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "kiro_e49d8b88-2c03-456b-ae31-4dc39a65eca5"
+   },
+   "A3-8": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "kiro_caf2a0ec-bca4-464e-84b7-ead98ef458e2"
+   },
+   "A3-9": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "kiro_9c4b5d74-71f4-4553-befa-fc5dabcf24b0"
+   },
+   "A3-14": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-08-20T20-42-07-01a020b1-f092-7541-8b91-6c3e37db4189"
+   },
+   "A3-16": {
+    "hit": 1,
+    "rr": 0.25,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-09-05T18-17-32-01a07293-4f7f-7db1-82bb-70925ed54840"
+   },
+   "A3-17": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-09-03T11-22-28-01a066ca-9880-7ea1-b350-47ed0478e549"
+   },
+   "A3-18": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-08-24T06-18-57-01a03235-1f26-7440-8539-39df638c48b4"
+   },
+   "A3-22": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-08-07T00-42-53-019fd975-55f3-7e92-b1f9-779074141664"
+   },
+   "A3-23": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-08-01T12-00-26-019fbcfb-7e02-7172-9d77-c3e95254cb2c"
+   },
+   "A3-28": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_e49d8b88-2c03-456b-ae31-4dc39a65eca5"
+   },
+   "A3-29": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_caf2a0ec-bca4-464e-84b7-ead98ef458e2"
+   },
+   "A3-30": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_9c4b5d74-71f4-4553-befa-fc5dabcf24b0"
+   },
+   "A3-35": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-08-20T20-42-07-01a020b1-f092-7541-8b91-6c3e37db4189"
+   },
+   "A3-37": {
+    "hit": 1,
+    "rr": 0.3333333333333333,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-09-05T18-17-32-01a07293-4f7f-7db1-82bb-70925ed54840"
+   },
+   "A3-38": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-09-03T11-22-28-01a066ca-9880-7ea1-b350-47ed0478e549"
+   },
+   "A3-39": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-08-24T06-18-57-01a03235-1f26-7440-8539-39df638c48b4"
+   },
+   "A3-42": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-08-07T00-42-53-019fd975-55f3-7e92-b1f9-779074141664"
+   }
+  },
+  "B1_clean_plus_claims": {
+   "A2-49": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_2bfd5c85-5b85-4e81-8148-79d98be7e0ff"
+   },
+   "A1-100": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "7196f60d-0268-48f2-8610-4dc570db123f"
+   },
+   "A1-95": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-ad31a2be53cfde5dd"
+   },
+   "A1-74": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-06-05T08-48-32-019e96c1-5345-70b0-905c-6e1967834164"
+   },
+   "A1-67": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-aeb95e2b637501fbb"
+   },
+   "A1-22": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a90c53bbb6ae74a9b"
+   },
+   "A1-68": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-aeb95e2b637501fbb"
+   },
+   "A1-32": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a7106cecaac684e50"
+   },
+   "A1-62": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "litellm_1764692743"
+   },
+   "A2-37": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-08-05T16-00-27-019fd270-ae66-7fb2-8fee-828c3c2b1bc8"
+   },
+   "A2-32": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a757a49db064d75f6"
+   },
+   "A1-10": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "codex_rollout-2026-06-04T16-36-54-019e9347-c189-7373-8e41-4ad14384613a"
+   },
+   "A2-62": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "kiro_097240b8-dd0b-45ee-bcf4-c7e02a8a59e2"
+   },
+   "A1-20": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a8b898c"
+   },
+   "A1-39": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a90c53bbb6ae74a9b"
+   },
+   "A1-72": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-aa72ea020bbb52e53"
+   },
+   "A1-61": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a54ae37"
+   },
+   "A2-4": {
+    "hit": 1,
+    "rr": 0.2,
+    "stratum": "K",
+    "cluster": "kiro_7ea3d909-3d12-4386-af52-d5f6935e7459"
+   },
+   "A1-33": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_b6f101a0-65d4-49a1-b3b7-64254f2acae1"
+   },
+   "A1-31": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a82facbfe1e56ec43"
+   },
+   "A1-44": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-aa72ea020bbb52e53"
+   },
+   "A1-11": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "litellm_1765211190"
+   },
+   "A1-84": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-ab6e7e7bfc1ca3136"
+   },
+   "A1-38": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a9fb215966b1a7657"
+   },
+   "A1-52": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-af0edef7669b31af0"
+   },
+   "A2-9": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "K",
+    "cluster": "agent-a8ee58c6cdb673334"
+   },
+   "A2-10": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a6375a2067884739a"
+   },
+   "A2-57": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a9f78e94eaa198313"
+   },
+   "A1-7": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a3dd2f47d643d1cdf"
+   },
+   "A1-17": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a854dcd"
+   },
+   "A1-87": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-af0edef7669b31af0"
+   },
+   "A1-28": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-af7c87f8d293f108e"
+   },
+   "A2-51": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "R",
+    "cluster": "agent-a6b222bb0e631d27c"
+   },
+   "A2-55": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a757a49db064d75f6"
+   },
+   "A2-28": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "P",
+    "cluster": "agent-a6b222bb0e631d27c"
+   },
+   "A2-66": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "R",
+    "cluster": "kiro_097240b8-dd0b-45ee-bcf4-c7e02a8a59e2"
+   },
+   "A2-7": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a2ea122c60a4d8cfc"
+   },
+   "A2-19": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a35e8d5"
+   },
+   "A1-78": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_e590184e-1616-4899-a830-1e917408499a"
+   },
+   "A2-21": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "gemini_ec77c2cd-8c50-4d7b-b5c2-584cc91d85ad"
+   },
+   "A2-59": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a50c3e632417cc733"
+   },
+   "A2-29": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a1d0270bb3097f284"
+   },
+   "A2-47": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_f6fa3915-0c89-4b02-8241-59d475c83460"
+   },
+   "A1-94": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-ad31a2be53cfde5dd"
+   },
+   "A2-58": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a4588ab"
+   },
+   "A2-26": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "kiro_2bfd5c85-5b85-4e81-8148-79d98be7e0ff"
+   },
+   "A1-108": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "litellm_1764692743"
+   },
+   "A2-20": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-aa305d36fdf08a30b"
+   },
+   "A2-45": {
+    "hit": 1,
+    "rr": 0.3333333333333333,
+    "stratum": "R",
+    "cluster": "agent-a8ee58c6cdb673334"
+   },
+   "A1-73": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "codex_rollout-2026-06-05T08-48-32-019e96c1-5345-70b0-905c-6e1967834164"
+   },
+   "A1-54": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a7106cecaac684e50"
+   },
+   "A1-91": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a8a04612b4357b495"
+   },
+   "A2-15": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-ae1f0359a33876082"
+   },
+   "A2-24": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a4588ab"
+   },
+   "A2-12": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "kiro_f6fa3915-0c89-4b02-8241-59d475c83460"
+   },
+   "A1-42": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "litellm_1763110166"
+   },
+   "A1-29": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a82facbfe1e56ec43"
+   },
+   "A2-52": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-a1d0270bb3097f284"
+   },
+   "A2-63": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "b818c97b-2a8c-4f52-b5b0-bbe179256425"
+   },
+   "A2-22": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "agent-a97ef4911745587fc"
+   },
+   "A1-40": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-a9fb215966b1a7657"
+   },
+   "A1-19": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "kiro_b6f101a0-65d4-49a1-b3b7-64254f2acae1"
+   },
+   "A2-50": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "agent-aa44902"
+   },
+   "A1-16": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "K",
+    "cluster": "agent-ac8f50b37a354389c"
+   },
+   "A3-1": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-08-01T12-00-26-019fbcfb-7e02-7172-9d77-c3e95254cb2c"
+   },
+   "A3-2": {
+    "hit": 1,
+    "rr": 0.2,
+    "stratum": "P",
+    "cluster": "kiro_c0c08851-9196-41fd-8403-b0c46f74bc0a"
+   },
+   "A3-6": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-08-03T12-04-44-019fc74c-287f-7b72-9994-583484ad2dbf"
+   },
+   "A3-7": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "kiro_e49d8b88-2c03-456b-ae31-4dc39a65eca5"
+   },
+   "A3-8": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "kiro_caf2a0ec-bca4-464e-84b7-ead98ef458e2"
+   },
+   "A3-9": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "kiro_9c4b5d74-71f4-4553-befa-fc5dabcf24b0"
+   },
+   "A3-14": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-08-20T20-42-07-01a020b1-f092-7541-8b91-6c3e37db4189"
+   },
+   "A3-16": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-09-05T18-17-32-01a07293-4f7f-7db1-82bb-70925ed54840"
+   },
+   "A3-17": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-09-03T11-22-28-01a066ca-9880-7ea1-b350-47ed0478e549"
+   },
+   "A3-18": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-08-24T06-18-57-01a03235-1f26-7440-8539-39df638c48b4"
+   },
+   "A3-22": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "P",
+    "cluster": "codex_rollout-2026-08-07T00-42-53-019fd975-55f3-7e92-b1f9-779074141664"
+   },
+   "A3-23": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-08-01T12-00-26-019fbcfb-7e02-7172-9d77-c3e95254cb2c"
+   },
+   "A3-28": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_e49d8b88-2c03-456b-ae31-4dc39a65eca5"
+   },
+   "A3-29": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_caf2a0ec-bca4-464e-84b7-ead98ef458e2"
+   },
+   "A3-30": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "kiro_9c4b5d74-71f4-4553-befa-fc5dabcf24b0"
+   },
+   "A3-35": {
+    "hit": 1,
+    "rr": 1.0,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-08-20T20-42-07-01a020b1-f092-7541-8b91-6c3e37db4189"
+   },
+   "A3-37": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-09-05T18-17-32-01a07293-4f7f-7db1-82bb-70925ed54840"
+   },
+   "A3-38": {
+    "hit": 0,
+    "rr": 0.0,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-09-03T11-22-28-01a066ca-9880-7ea1-b350-47ed0478e549"
+   },
+   "A3-39": {
+    "hit": 1,
+    "rr": 0.2,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-08-24T06-18-57-01a03235-1f26-7440-8539-39df638c48b4"
+   },
+   "A3-42": {
+    "hit": 1,
+    "rr": 0.5,
+    "stratum": "R",
+    "cluster": "codex_rollout-2026-08-07T00-42-53-019fd975-55f3-7e92-b1f9-779074141664"
+   }
+  }
+ },
+ "previous_receipt_sha256": "ad1630a9877bc5c44c9d9e9a924aca7558290d5bc33e9ca394cd8330e8a38fb1"
+}

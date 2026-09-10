@@ -1,0 +1,606 @@
+{
+  "auditor": "deepseek-3.2",
+  "n": 100,
+  "verdicts": [
+    {
+      "audit_id": "29cb2bcdc2",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote directly states a 24k grok call would push past the £1.5 budget, so a cheaper second lineage is substituted."
+    },
+    {
+      "audit_id": "642c874cbf",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote lists three specific failure resolution steps that exactly match the statement."
+    },
+    {
+      "audit_id": "bce43caebc",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote provides the exact match counts (12/12 zero vs 12/12 matches) and the scoping details."
+    },
+    {
+      "audit_id": "d60a9e92ba",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote directly describes the self-matching pattern and false-busy signal."
+    },
+    {
+      "audit_id": "e3bc6fab4e",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "reason": "The quote mentions capturing the distinction, but not the specific details about the review worktree being dirty or feature worktree having eight committed changes."
+    },
+    {
+      "audit_id": "de786261f6",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "reason": "The quote confirms the three tables are empty, but doesn't mention concept_dependencies having 3,161 entries or their source."
+    },
+    {
+      "audit_id": "11d12e3979",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explicitly states using graphify because the repo has an existing knowledge graph to expose target/role relationships faster."
+    },
+    {
+      "audit_id": "040cfe127a",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote directly states grok-4.6 burned its 3000-token budget on hidden reasoning and hit the length cap before writing any answer."
+    },
+    {
+      "audit_id": "c40d804ddc",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote provides the exact cost figures ($4.87 vs $4.18 estimate) and pound conversion."
+    },
+    {
+      "audit_id": "03f1df428b",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote states evidence/concept identities remain model-forgeable and the transport is structurally coupled to study-session rows."
+    },
+    {
+      "audit_id": "4d1ba477e8",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote recommends avoiding --global due to installation/removal problems involving ~/.agents/skills."
+    },
+    {
+      "audit_id": "138e7aede3",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote lists the three schema components exactly as described in the statement."
+    },
+    {
+      "audit_id": "e05863f12f",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "reason": "The quote mentions stopping per instructions, but not the HTTP 200 confirmation, hollow-draft failure signal, or documenting failure in a review file."
+    },
+    {
+      "audit_id": "ff4f90fad8",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "reason": "The quote mentions size being below WCAG minimum, but not the specific 13x13 pixel measurement or lack of CSS sizing/padding/label wrapper."
+    },
+    {
+      "audit_id": "c7b82487b3",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote states the entire bulk bar is absent from the DOM until the user presses a button."
+    },
+    {
+      "audit_id": "7f8782b6c8",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote confirms storage/ is stale (Feb 14) while opencode.db exists and was modified Sep 4."
+    },
+    {
+      "audit_id": "60408f9172",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote is the exact learner request for diverse premier models with assistant as arbitrator."
+    },
+    {
+      "audit_id": "6aed3b3425",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote provides the exact count (218) and breakdown of where entries were removed from."
+    },
+    {
+      "audit_id": "75494c351b",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote states the model's text never self-identifies and only the gateway's HTML comment does."
+    },
+    {
+      "audit_id": "6b6eb94e1a",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "reason": "The quote states the planner is not working end to end, but doesn't list the specific remaining components (onboarding, harness integration, etc.)."
+    },
+    {
+      "audit_id": "d6594c8847",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote provides the exact reasoning for amending rather than separate commit."
+    },
+    {
+      "audit_id": "4e054fcd31",
+      "verdict": "partial",
+      "code": "over-claim",
+      "reason": "The quote says a digest is a compare-and-swap token, not a credential, but doesn't state it proves artifact identity or must not be treated as proof of learner approval."
+    },
+    {
+      "audit_id": "5d8de2010d",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote describes check mode simulating certificate creation and next task trying to chmod non-existent files."
+    },
+    {
+      "audit_id": "2966dd1959",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote states bulk delete is not absent and the full chain exists end-to-end with working e2e tests."
+    },
+    {
+      "audit_id": "44a2894e4c",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote lists the three optimistic assumptions considered untrustworthy for tariff planning."
+    },
+    {
+      "audit_id": "3f24ee98f1",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "reason": "The quote mentions pointer movement over 6px makes click do nothing, but not the drag flag mechanism or that drag itself was a no-op."
+    },
+    {
+      "audit_id": "d71dd412be",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote states not touching ~/.config/studyloop and recording as a finding instead."
+    },
+    {
+      "audit_id": "65891ce540",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote identifies the exact contradiction between two documentation files."
+    },
+    {
+      "audit_id": "2d00deaf17",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote describes the CLI staleness gap and that it was left as follow-up."
+    },
+    {
+      "audit_id": "992452fca3",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote provides the exact model, cost, finish reason, and attempts count."
+    },
+    {
+      "audit_id": "8e724d856a",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote describes DeepSeek-R1's third option with specific details about optional packages and runtime guards."
+    },
+    {
+      "audit_id": "ec3c58abd2",
+      "verdict": "partial",
+      "code": "over-claim",
+      "reason": "The quote shows test counts and coverage, but doesn't mention ruff check or pyright being clean/error-free."
+    },
+    {
+      "audit_id": "85547821a8",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote states no harness auto-installs Architect responsibility and Amp/Grok should be removed."
+    },
+    {
+      "audit_id": "9f605219cd",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote lists the missing components for a recoverable multi-file commit protocol."
+    },
+    {
+      "audit_id": "de0a98aeda",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote provides the exact regression suite results and lint failures."
+    },
+    {
+      "audit_id": "85eef90917",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote states the key was in launchctl, not shell profiles, so GUI processes inherit it."
+    },
+    {
+      "audit_id": "7f3061830a",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote states release-check drops spec-check and adds undocumented shellcheck."
+    },
+    {
+      "audit_id": "ba846e40af",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote describes the linear scan approach and suggestion for sqlite-vec extension."
+    },
+    {
+      "audit_id": "def00da785",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote provides the exact test results and readiness threshold."
+    },
+    {
+      "audit_id": "5c98492d35",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote describes making cleanup recoverable by moving skills to backup and removing extra links."
+    },
+    {
+      "audit_id": "84dd9b85f1",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "reason": "The quote mentions moving sudo check before bootstrap and repairing access, but not reporting authentication failures."
+    },
+    {
+      "audit_id": "97291606d6",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote states maximum of 3 plans."
+    },
+    {
+      "audit_id": "44515b8188",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote states no test references the select-all/select-none buttons."
+    },
+    {
+      "audit_id": "b0d3fb16ea",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote describes the manual browser brain dump lacking agentic features."
+    },
+    {
+      "audit_id": "4ce4528862",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "reason": "The quote mentions uninstall error, but not that it was for skills other than the two mentor skills."
+    },
+    {
+      "audit_id": "5e8dd65312",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote states writing only the requested review under /tmp and keeping worktree unchanged."
+    },
+    {
+      "audit_id": "c18b31f891",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "reason": "The quote provides verdict and some gates, but not the specific seven gate names listed."
+    },
+    {
+      "audit_id": "9e87cddf4b",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote states Meross adapter is unimplemented and the agent stalled."
+    },
+    {
+      "audit_id": "6d429ea659",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote reveals the real schema uses session and session_message tables."
+    },
+    {
+      "audit_id": "2700c2a048",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote provides the exact cost estimate and comparison to spending gate."
+    },
+    {
+      "audit_id": "fb1d3384cc",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote states MailGraph's sessions contain no assistant replies, so they can't support a fair test."
+    },
+    {
+      "audit_id": "eae370c2d4",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote describes the retry with higher token limit fixing the empty answer issue."
+    },
+    {
+      "audit_id": "4312c14396",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explains why directory-form Node command fails on Node 26."
+    },
+    {
+      "audit_id": "c9b0cfe344",
+      "verdict": "partial",
+      "code": "over-claim",
+      "reason": "The quote mentions rendering markdown with mermaid diagrams, but not that this is the big-ticket unresolved item or the max 3 plans context."
+    },
+    {
+      "audit_id": "9905bbabd4",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explains why existing tooling didn't catch the non-credential shaped items."
+    },
+    {
+      "audit_id": "a647ad3abf",
+      "verdict": "partial",
+      "code": "preference-inferred",
+      "reason": "The quote suggests calling British Gas now anyway, but doesn't state this was the learner's plan or mention the short registration window."
+    },
+    {
+      "audit_id": "fb33ba7ec4",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote describes the changed_when expression masking the sudo authentication issue."
+    },
+    {
+      "audit_id": "e7ef09b609",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote states the fresh macOS runner claim is false for nightly-install.yml."
+    },
+    {
+      "audit_id": "872da9553a",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote confirms the red phase fails for the intended module-not-found error."
+    },
+    {
+      "audit_id": "d55ace1c6d",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote confirms the issue is shared SQLite schema initialization."
+    },
+    {
+      "audit_id": "19dccb77f6",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote provides the exact commit hash and message."
+    },
+    {
+      "audit_id": "3b0f461d83",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote describes the model over-calling DEFECT in three of ten verdicts."
+    },
+    {
+      "audit_id": "0271dee13f",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "reason": "The quote identifies Superwhisper as culprit but doesn't list all the specific lifecycle hooks mentioned."
+    },
+    {
+      "audit_id": "579fe42305",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote states the four tools now require opt-in flags."
+    },
+    {
+      "audit_id": "3bf852617a",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote shows agreement to pause database redesign until capture and retrieval are dependable."
+    },
+    {
+      "audit_id": "90f3d5cc1f",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote provides the precise pgrep alternative to avoid self-matching."
+    },
+    {
+      "audit_id": "b25a90b4f0",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote describes the coverage gap between September transcript files and July stored messages."
+    },
+    {
+      "audit_id": "211d8acc01",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explains why already-running processes still carry old environment values."
+    },
+    {
+      "audit_id": "d49a6bdd76",
+      "verdict": "partial",
+      "code": "over-claim",
+      "reason": "The quote mentions wanting summary after onboarding works end to end, but not about valuing the comprehensive foundational layer."
+    },
+    {
+      "audit_id": "fb5bb710b2",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "reason": "The quote provides total saving estimate and installer's adjusted estimate, but not the breakdown of solar self-consumption, export income, and Solar Saver credit."
+    },
+    {
+      "audit_id": "5e5f0a0289",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote identifies macOS's low open-file limit as root cause of Codex warnings."
+    },
+    {
+      "audit_id": "ebf427f712",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote describes upgrading to VERIFIED after grep confirmed sole caller."
+    },
+    {
+      "audit_id": "1495682799",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote states POST returns 409 instead of 201 and state file is unchanged."
+    },
+    {
+      "audit_id": "0f560b5089",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote mentions pre-existing Mermaid test fails on error SVG while new SPA test passes."
+    },
+    {
+      "audit_id": "c196996f78",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explains Sidekick enables Copilot path despite requirement being Codex integration."
+    },
+    {
+      "audit_id": "a9e5d9e3c3",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote describes the reload test results with specific items rendered."
+    },
+    {
+      "audit_id": "9a3cc3f2a1",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "reason": "The quote describes the visual selection issue, but not the edit-open handler never checking selectMode or CSS making states identical."
+    },
+    {
+      "audit_id": "59969e2af4",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote states worktree was removed as instructed after gate work."
+    },
+    {
+      "audit_id": "8c8a94c593",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explains why already-running Codex still has old limit while fresh process gets new limit."
+    },
+    {
+      "audit_id": "dd62afe259",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote describes grok-4.6 hitting length limit with reasoning consuming tokens."
+    },
+    {
+      "audit_id": "331292d15a",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote states 4 of 20 findings were wrong or partly wrong."
+    },
+    {
+      "audit_id": "2c124276de",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explains using gateway's verified_model value because model only claimed vague version."
+    },
+    {
+      "audit_id": "8c51cbadb2",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote provides the exact tariff decisions and reasoning."
+    },
+    {
+      "audit_id": "2737a498dc",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote describes the open-file limit issue causing Codex file loading problems."
+    },
+    {
+      "audit_id": "e98843041f",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explains avoiding meross-iot due to cloud-first design and API breakage concerns."
+    },
+    {
+      "audit_id": "8bdb1da394",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote describes forged evidence being retained as generic notes."
+    },
+    {
+      "audit_id": "3b9f979ae9",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explains e2e tests passed but just e2e recipe failed due to config-dir guard."
+    },
+    {
+      "audit_id": "0bb8e8ec21",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote provides final E2E sweep results and mentions schema lock fix."
+    },
+    {
+      "audit_id": "90bca776fc",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explains the uv activation timing issue causing yamllint resolution problem."
+    },
+    {
+      "audit_id": "f9935a22f7",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote lists the three authority and identity issues in the reviewed design."
+    },
+    {
+      "audit_id": "52b0b743ae",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote lists the verification brief requirements exactly."
+    },
+    {
+      "audit_id": "2e8eada67d",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote confirms the budget bug with token spending details."
+    },
+    {
+      "audit_id": "b1997f70db",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explains why launchd job disappears and verification must check limit value."
+    },
+    {
+      "audit_id": "1a8fd4d5ba",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "reason": "The quote states Superwhisper settings and lack of LaunchAgent, but doesn't mention checking for macOS background/login item registration."
+    },
+    {
+      "audit_id": "ecf0a17d8a",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explains why process tree is misleading and provenance comes from unified log."
+    },
+    {
+      "audit_id": "34de604806",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote states ledger command rejected model flag requiring syntax check."
+    },
+    {
+      "audit_id": "388ec04298",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote explains why only cropped non-publishable screenshot was possible."
+    },
+    {
+      "audit_id": "f2f30fe5c0",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote confirms the strongest use case is agent explaining recommendations with evidence across harnesses."
+    },
+    {
+      "audit_id": "e80813ce6b",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote describes the two integration tests that were broken in ways masking the bug."
+    },
+    {
+      "audit_id": "2332431876",
+      "verdict": "yes",
+      "code": null,
+      "reason": "The quote states running cost estimate before making gateway calls to gate spend."
+    }
+  ]
+}

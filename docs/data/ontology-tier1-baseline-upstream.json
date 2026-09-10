@@ -1,0 +1,70 @@
+{
+  "a2_baseline_delta": {
+    "a2_baseline_captured_at_utc": "2026-09-07T15:03:50Z",
+    "a2_baseline_message_count": 133559,
+    "a2_baseline_session_count": 5678,
+    "explanation": "This package's own upstream corpus has continued to capture sessions since A2's baseline snapshot; a nonzero, non-negative delta here is expected corpus growth, not a regression.",
+    "message_count_delta": 3894,
+    "session_count_delta": 124
+  },
+  "backup": {
+    "post_rebuild_sha256": "9b7b340034b058f044c82e0f59f449cca3a3b15f3ccfd7d7fa812f87ee177718"
+  },
+  "captured_at_utc": "2026-09-07T21:44:27Z",
+  "counts": {
+    "classes": 7,
+    "individuals": 13501,
+    "properties": 6,
+    "relations": 29420,
+    "structural": 23208
+  },
+  "coverage": {
+    "coverage_ratio": 1.0,
+    "covered_sessions": 5802,
+    "missing_sessions": 0
+  },
+  "evidence_schema": "agent-session-tools.ontology-tier1-baseline",
+  "evidence_version": 1,
+  "extraction_version": "tier1-v2-canonical-messages",
+  "first_full_rebuild": {
+    "elapsed_seconds": 3.390097,
+    "logical_hash": "05b3b5bd5f2f97d767fabce2ef02b72f8b897d06d9eca40fcf77f417d9c257d3"
+  },
+  "incremental_rebuild": {
+    "elapsed_seconds": 1.196695,
+    "fallback_reason": null,
+    "logical_hash": "05b3b5bd5f2f97d767fabce2ef02b72f8b897d06d9eca40fcf77f417d9c257d3",
+    "mode": "incremental"
+  },
+  "integrity": {
+    "domain_range_violations": 0,
+    "foreign_key_violations": 0,
+    "orphan_session_individuals": 0,
+    "orphan_structural_rows": 0
+  },
+  "migration": {
+    "applied_count": 1,
+    "from_version": 47,
+    "to_version": 48
+  },
+  "second_full_rebuild": {
+    "elapsed_seconds": 3.406368,
+    "logical_hash": "05b3b5bd5f2f97d767fabce2ef02b72f8b897d06d9eca40fcf77f417d9c257d3"
+  },
+  "source": {
+    "message_count": 137453,
+    "online_backup_sha256": "4c4d4a17739e6bc7cfa511e19dd92e82c4ced65ea86f5b75196f45adfe4b34be",
+    "schema_version": 544,
+    "session_count": 5802,
+    "user_version": 47
+  },
+  "source_sentinels_unchanged": true,
+  "status": {
+    "coverage_at_least_99_percent": true,
+    "extraction_version_matches": true,
+    "fresh": true,
+    "hash_matches": true,
+    "healthy": true,
+    "source_counts_match": true
+  }
+}

@@ -1,0 +1,713 @@
+{
+ "receipt": "g2-pilot-e1",
+ "created_utc": "2026-09-10T04:46:21+00:00",
+ "ruler_commit": "a98331afd2bb0c864e416c943b4a51962fe659e2",
+ "candidate_commit": "b90eb47cb5928c1da076886382951e8d94f87731",
+ "spec": {
+  "path": "docs/architecture/session-memory/receipts/claims-writer-spec-v1.md",
+  "sha256": "d88a6ad0fcdbcbdc3929209559bca35ce20d0e6014e0d72318fdd9d292c6e7d9"
+ },
+ "prompt": {
+  "path": "scripts/knowledge_proof/writer_prompt_v1.md",
+  "sha256": "e9cca0e4236f6e20b41c0a550ffa6f8e10c6ceaa76d1c0ab1b05a7ab5aee728c"
+ },
+ "writer": "sonnet5/writer-v1/e9cca0e4",
+ "model": "claude-sonnet-5",
+ "population": {
+  "set_sha256": "f9424e0f7314d4922b0c96fb3482e4000725c9ab363d420e1f7c018858703651",
+  "order": "sha256(session_id) asc",
+  "pilot_n": 40
+ },
+ "store": {
+  "path": "/Users/ataylor/.local/share/studyloop/knowledge-proof/learning-memory.db",
+  "sha256": "4bc8bdd5557a9c5cbeffe3d250bc2b7e4c17ffff35847a833bae6b44550e96b8",
+  "bytes": 264830976
+ },
+ "writer_runs_used": 40,
+ "writer_runs_cap": 400,
+ "claims": {
+  "proposed": 183,
+  "inserted": 162,
+  "by_kind": {
+   "Decision": 25,
+   "Finding": 104,
+   "Preference": 2,
+   "Problem": 12,
+   "Procedure": 19
+  },
+  "citations": 180,
+  "refusals_by_reason": {
+   "citation_unbound": 13,
+   "citation_not_in_packet": 8
+  },
+  "dropped_over_cap": 2
+ },
+ "unbound_writes": 0,
+ "recheck_method": "SELECT … WHERE substr(e.body, c.start+1, c.end-c.start) != c.quote over every inserted citation",
+ "yield": {
+  "prose_ge10_primary": {
+   "denominator": 200,
+   "attempted": 29,
+   "with_claims": 24,
+   "over_attempted": 0.8276,
+   "over_full_denominator": 0.12
+  },
+  "messages_ge10_literal": {
+   "denominator": 345,
+   "attempted": 40,
+   "with_claims": 29,
+   "over_attempted": 0.725,
+   "over_full_denominator": 0.0841
+  }
+ },
+ "yield_decomposition": {
+  "prose_ge10_attempted": 29,
+  "prose_ge10_with_claims": 24,
+  "prose_ge10_zero_claim_sessions": [
+   {
+    "idx": 1,
+    "harness": "codex",
+    "learner_turns": 0,
+    "reason": "no learner turn"
+   },
+   {
+    "idx": 14,
+    "harness": "claude_code",
+    "learner_turns": 1,
+    "reason": "council-seat / pasted-brief session; no learner voice"
+   },
+   {
+    "idx": 16,
+    "harness": "claude_code",
+    "learner_turns": 1,
+    "reason": "council-seat / pasted-brief session; no learner voice"
+   },
+   {
+    "idx": 20,
+    "harness": "codex",
+    "learner_turns": 1,
+    "reason": "council-seat / pasted-brief session; no learner voice"
+   },
+   {
+    "idx": 30,
+    "harness": "claude_code",
+    "learner_turns": 5,
+    "reason": "writer cited row numbers instead of evidence ids; all 8 refused (harness held)"
+   }
+  ],
+  "prose_ge10_with_learner_voice_attempted": 13,
+  "prose_ge10_with_learner_voice_with_claims": 12
+ },
+ "per_session": [
+  {
+   "idx": 0,
+   "session_id": "codex_rollout-2026-09-05T18-17-32-01a07293-4f7f-7db1-82bb-70925ed54840",
+   "harness": "codex",
+   "evidence_rows": 31,
+   "learner_turns": 13,
+   "in_prose_ge10": true,
+   "proposed": 8,
+   "inserted": 8,
+   "refused": [],
+   "dropped_over_cap": 1,
+   "truncated_packet": false
+  },
+  {
+   "idx": 1,
+   "session_id": "codex_rollout-2026-08-03T12-04-44-019fc74c-2880-7803-bc50-9f746d8e2290",
+   "harness": "codex",
+   "evidence_rows": 23,
+   "learner_turns": 0,
+   "in_prose_ge10": true,
+   "proposed": 0,
+   "inserted": 0,
+   "refused": [],
+   "dropped_over_cap": 0,
+   "truncated_packet": false
+  },
+  {
+   "idx": 2,
+   "session_id": "codex_rollout-2026-08-04T22-41-58-019fceb9-ea66-7831-9426-a6b9ffc3bd24",
+   "harness": "codex",
+   "evidence_rows": 13,
+   "learner_turns": 2,
+   "in_prose_ge10": true,
+   "proposed": 6,
+   "inserted": 6,
+   "refused": [],
+   "dropped_over_cap": 0,
+   "truncated_packet": false
+  },
+  {
+   "idx": 3,
+   "session_id": "agent-a25dcac7df283d5e0",
+   "harness": "claude_code",
+   "evidence_rows": 47,
+   "learner_turns": 1,
+   "in_prose_ge10": true,
+   "proposed": 6,
+   "inserted": 4,
+   "refused": [
+    "citation_unbound",
+    "citation_unbound"
+   ],
+   "dropped_over_cap": 0,
+   "truncated_packet": false
+  },
+  {
+   "idx": 4,
+   "session_id": "56866d9d-6ce0-44d2-b453-f461d5b933bf",
+   "harness": "claude_code",
+   "evidence_rows": 38,
+   "learner_turns": 9,
+   "in_prose_ge10": true,
+   "proposed": 8,
+   "inserted": 4,
+   "refused": [
+    "citation_unbound",
+    "citation_unbound",
+    "citation_unbound",
+    "citation_unbound"
+   ],
+   "dropped_over_cap": 1,
+   "truncated_packet": true
+  },
+  {
+   "idx": 5,
+   "session_id": "agent-a1d0270bb3097f284",
+   "harness": "claude_code",
+   "evidence_rows": 5,
+   "learner_turns": 1,
+   "in_prose_ge10": false,
+   "proposed": 4,
+   "inserted": 4,
+   "refused": [],
+   "dropped_over_cap": 0,
+   "truncated_packet": false
+  },
+  {
+   "idx": 6,
+   "session_id": "agent-a00d8f25a0d1b8f1a",
+   "harness": "claude_code",
+   "evidence_rows": 8,
+   "learner_turns": 1,
+   "in_prose_ge10": false,
+   "proposed": 0,
+   "inserted": 0,
+   "refused": [],
+   "dropped_over_cap": 0,
+   "truncated_packet": false
+  },
+  {
+   "idx": 7,
+   "session_id": "codex_rollout-2026-08-20T19-14-02-01a02061-4c94-7fa2-b272-428d9a3d0341",
+   "harness": "codex",
+   "evidence_rows": 10,
+   "learner_turns": 2,
+   "in_prose_ge10": true,
+   "proposed": 6,
+   "inserted": 6,
+   "refused": [],
+   "dropped_over_cap": 0,
+   "truncated_packet": false
+  },
+  {
+   "idx": 8,
+   "session_id": "agent-aa7b024642f5e00af",
+   "harness": "claude_code",
+   "evidence_rows": 17,
+   "learner_turns": 1,
+   "in_prose_ge10": true,
+   "proposed": 4,
+   "inserted": 4,
+   "refused": [],
+   "dropped_over_cap": 0,
+   "truncated_packet": false
+  },
+  {
+   "idx": 9,
+   "session_id": "codex_rollout-2026-08-23T20-40-47-01a03023-cabc-78d1-8c7f-a823cb9b5151",
+   "harness": "codex",
+   "evidence_rows": 9,
+   "learner_turns": 0,
+   "in_prose_ge10": false,
+   "proposed": 8,
+   "inserted": 8,
+   "refused": [],
+   "dropped_over_cap": 0,
+   "truncated_packet": false
+  },
+  {
+   "idx": 10,
+   "session_id": "agent-a3a5002a1132bba08",
+   "harness": "claude_code",
+   "evidence_rows": 4,
+   "learner_turns": 1,
+   "in_prose_ge10": false,
+   "proposed": 8,
+   "inserted": 8,
+   "refused": [],
+   "dropped_over_cap": 0,
+   "truncated_packet": false
+  },
+  {
+   "idx": 11,
+   "session_id": "agent-ab65c5da31bcc3930",
+   "harness": "claude_code",
+   "evidence_rows": 12,
+   "learner_turns": 2,
+   "in_prose_ge10": true,
+   "proposed": 7,
+   "inserted": 7,
+   "refused": [],
+   "dropped_over_cap": 0,
+   "truncated_packet": false
+  },
+  {
+   "idx": 12,
+   "session_id": "agent-adf53faa416b6890b",
+   "harness": "claude_code",
+   "evidence_rows": 2,
+   "learner_turns": 1,
+   "in_prose_ge10": false,
+   "proposed": 0,
+   "inserted": 0,
+   "refused": [],
+   "dropped_over_cap": 0,
+   "truncated_packet": false
+  },
+  {
+   "idx": 13,
+   "session_id": "codex_rollout-2026-08-24T10-15-59-01a0330e-20a6-7b00-a6e3-ba0a730e6511",
+   "harness": "codex",
+   "evidence_rows": 15,
+   "learner_turns": 2,
+   "in_prose_ge10": true,
+   "proposed": 6,
+   "inserted": 6,
+   "refused": [],
+   "dropped_over_cap": 0,
+   "truncated_packet": false
+  },
+  {
+   "idx": 14,
+   "session_id": "agent-ae21d27a8e9b337d2",
+   "harness": "claude_code",
+   "evidence_rows": 17,
+   "learner_turns": 1,
+   "in_prose_ge10": true,
+   "proposed": 0,
+   "inserted": 0,
+   "refused": [],
+   "dropped_over_cap": 0,
+   "truncated_packet": false
+  },
+  {
+   "idx": 15,
+   "session_id": "codex_rollout-2026-08-03T12-04-28-019fc74b-ea2d-7ee2-a1da-6c7e5eece358",
+   "harness": "codex",
+   "evidence_rows": 73,
+   "learner_turns": 0,
+   "in_prose_ge10": true,
+   "proposed": 7,
+   "inserted": 6,
+   "refused": [
+    "citation_unbound"
+   ],
+   "dropped_over_cap": 0,
+   "truncated_packet": true
+  },
+  {
+   "idx": 16,
+   "session_id": "agent-a4b5218c8ca872f1c",
+   "harness": "claude_code",
+   "evidence_rows": 10,
+   "learner_turns": 1,
+   "in_prose_ge10": true,
+   "proposed": 0,
+   "inserted": 0,
+   "refused": [],
+   "dropped_over_cap": 0,
+   "truncated_packet": false
+  },
+  {
+   "idx": 17,
+   "session_id": "a56aa41c-211a-480c-b60c-cbeaf0ea301a",
+   "harness": "claude_code",
+   "evidence_rows": 23,
+   "learner_turns": 12,
+   "in_prose_ge10": true,
+   "proposed": 8,
+   "inserted": 6,
+   "refused": [
+    "citation_unbound",
+    "citation_unbound"
+   ],
+   "dropped_over_cap": 0,
+   "truncated_packet": true
+  },
+  {
+   "idx": 18,
+   "session_id": "agent-a821b2aac5ad03f3c",
+   "harness": "claude_code",
+   "evidence_rows": 1,
+   "learner_turns": 1,
+   "in_prose_ge10": false,
+   "proposed": 0,
+   "inserted": 0,
+   "refused": [],
+   "dropped_over_cap": 0,
+   "truncated_packet": false
+  },
+  {
+   "idx": 19,
+   "session_id": "codex_rollout-2026-08-24T00-32-25-01a030f7-dc9e-73e3-92cc-8ea651ba550a",
+   "harness": "codex",
+   "evidence_rows": 25,
+   "learner_turns": 3,
+   "in_prose_ge10": true,
+   "proposed": 8,
+   "inserted": 7,
+   "refused": [
+    "citation_unbound"
+   ],
+   "dropped_over_cap": 0,
+   "truncated_packet": false
+  },
+  {
+   "idx": 20,
+   "session_id": "codex_rollout-2026-09-04T09-58-03-01a06ba3-acea-7772-b1aa-dedc1c3e9079",
+   "harness": "codex",
+   "evidence_rows": 1,
+   "learner_turns": 1,
+   "in_prose_ge10": true,
+   "proposed": 0,
+   "inserted": 0,
+   "refused": [],
+   "dropped_over_cap": 0,
+   "truncated_packet": true
+  },
+  {
+   "idx": 21,
+   "session_id": "agent-a58ecf0a071287c03",
+   "harness": "claude_code",
+   "evidence_rows": 23,
+   "learner_turns": 1,
+   "in_prose_ge10": true,
+   "proposed": 7,
+   "inserted": 6,
+   "refused": [
+    "citation_unbound"
+   ],
+   "dropped_over_cap": 0,
+   "truncated_packet": false
+  },
+  {
+   "idx": 22,
+   "session_id": "agent-a757a49db064d75f6",
+   "harness": "claude_code",
+   "evidence_rows": 9,
+   "learner_turns": 1,
+   "in_prose_ge10": false,
+   "proposed": 7,
+   "inserted": 7,
+   "refused": [],
+   "dropped_over_cap": 0,
+   "truncated_packet": false
+  },
+  {
+   "idx": 23,
+   "session_id": "agent-ab3f05e36525a3a0e",
+   "harness": "claude_code",
+   "evidence_rows": 2,
+   "learner_turns": 1,
+   "in_prose_ge10": false,
+   "proposed": 0,
+   "inserted": 0,
+   "refused": [],
+   "dropped_over_cap": 0,
+   "truncated_packet": false
+  },
+  {
+   "idx": 24,
+   "session_id": "agent-a4f7f826669097bec",
+   "harness": "claude_code",
+   "evidence_rows": 3,
+   "learner_turns": 2,
+   "in_prose_ge10": false,
+   "proposed": 0,
+   "inserted": 0,
+   "refused": [],
+   "dropped_over_cap": 0,
+   "truncated_packet": false
+  },
+  {
+   "idx": 25,
+   "session_id": "codex_rollout-2026-08-05T15-37-50-019fd25b-f681-7c82-ab6c-3e1f81b491d8",
+   "harness": "codex",
+   "evidence_rows": 20,
+   "learner_turns": 1,
+   "in_prose_ge10": true,
+   "proposed": 6,
+   "inserted": 5,
+   "refused": [
+    "citation_unbound"
+   ],
+   "dropped_over_cap": 0,
+   "truncated_packet": false
+  },
+  {
+   "idx": 26,
+   "session_id": "agent-a06f3b43bc470c379",
+   "harness": "claude_code",
+   "evidence_rows": 4,
+   "learner_turns": 3,
+   "in_prose_ge10": false,
+   "proposed": 0,
+   "inserted": 0,
+   "refused": [],
+   "dropped_over_cap": 0,
+   "truncated_packet": false
+  },
+  {
+   "idx": 27,
+   "session_id": "codex_rollout-2026-08-23T22-44-38-01a03095-3102-7930-b2a3-bf79bd3ffc63",
+   "harness": "codex",
+   "evidence_rows": 32,
+   "learner_turns": 1,
+   "in_prose_ge10": true,
+   "proposed": 7,
+   "inserted": 6,
+   "refused": [
+    "citation_unbound"
+   ],
+   "dropped_over_cap": 0,
+   "truncated_packet": false
+  },
+  {
+   "idx": 28,
+   "session_id": "codex_rollout-2026-08-13T13-36-08-019ffb1f-6ea2-75c3-86ee-a79476327d74",
+   "harness": "codex",
+   "evidence_rows": 27,
+   "learner_turns": 8,
+   "in_prose_ge10": true,
+   "proposed": 8,
+   "inserted": 8,
+   "refused": [],
+   "dropped_over_cap": 0,
+   "truncated_packet": false
+  },
+  {
+   "idx": 29,
+   "session_id": "agent-a7de10bd551af842c",
+   "harness": "claude_code",
+   "evidence_rows": 49,
+   "learner_turns": 1,
+   "in_prose_ge10": true,
+   "proposed": 5,
+   "inserted": 5,
+   "refused": [],
+   "dropped_over_cap": 0,
+   "truncated_packet": true
+  },
+  {
+   "idx": 30,
+   "session_id": "agent-a30a4630609c7bc17",
+   "harness": "claude_code",
+   "evidence_rows": 141,
+   "learner_turns": 5,
+   "in_prose_ge10": true,
+   "proposed": 8,
+   "inserted": 0,
+   "refused": [
+    "citation_not_in_packet",
+    "citation_not_in_packet",
+    "citation_not_in_packet",
+    "citation_not_in_packet",
+    "citation_not_in_packet",
+    "citation_not_in_packet",
+    "citation_not_in_packet",
+    "citation_not_in_packet"
+   ],
+   "dropped_over_cap": 0,
+   "truncated_packet": false
+  },
+  {
+   "idx": 31,
+   "session_id": "codex_rollout-2026-08-04T22-47-02-019fcebe-8e4e-7800-84d4-c7bb607ab511",
+   "harness": "codex",
+   "evidence_rows": 18,
+   "learner_turns": 4,
+   "in_prose_ge10": true,
+   "proposed": 6,
+   "inserted": 6,
+   "refused": [],
+   "dropped_over_cap": 0,
+   "truncated_packet": true
+  },
+  {
+   "idx": 32,
+   "session_id": "agent-af6dee377752cee44",
+   "harness": "claude_code",
+   "evidence_rows": 24,
+   "learner_turns": 1,
+   "in_prose_ge10": true,
+   "proposed": 1,
+   "inserted": 1,
+   "refused": [],
+   "dropped_over_cap": 0,
+   "truncated_packet": false
+  },
+  {
+   "idx": 33,
+   "session_id": "codex_rollout-2026-08-23T21-11-05-01a0303f-8b23-7a80-927d-aee0982d5877",
+   "harness": "codex",
+   "evidence_rows": 11,
+   "learner_turns": 0,
+   "in_prose_ge10": true,
+   "proposed": 5,
+   "inserted": 5,
+   "refused": [],
+   "dropped_over_cap": 0,
+   "truncated_packet": false
+  },
+  {
+   "idx": 34,
+   "session_id": "agent-a472955ddd40a2bd7",
+   "harness": "claude_code",
+   "evidence_rows": 12,
+   "learner_turns": 1,
+   "in_prose_ge10": true,
+   "proposed": 2,
+   "inserted": 2,
+   "refused": [],
+   "dropped_over_cap": 0,
+   "truncated_packet": false
+  },
+  {
+   "idx": 35,
+   "session_id": "agent-a03211819c466a714",
+   "harness": "claude_code",
+   "evidence_rows": 86,
+   "learner_turns": 1,
+   "in_prose_ge10": true,
+   "proposed": 7,
+   "inserted": 7,
+   "refused": [],
+   "dropped_over_cap": 0,
+   "truncated_packet": false
+  },
+  {
+   "idx": 36,
+   "session_id": "agent-aa51663fd39fac2cd",
+   "harness": "claude_code",
+   "evidence_rows": 14,
+   "learner_turns": 2,
+   "in_prose_ge10": true,
+   "proposed": 5,
+   "inserted": 5,
+   "refused": [],
+   "dropped_over_cap": 0,
+   "truncated_packet": false
+  },
+  {
+   "idx": 37,
+   "session_id": "agent-a9e5e097d0a3fc908",
+   "harness": "claude_code",
+   "evidence_rows": 11,
+   "learner_turns": 3,
+   "in_prose_ge10": true,
+   "proposed": 5,
+   "inserted": 5,
+   "refused": [],
+   "dropped_over_cap": 0,
+   "truncated_packet": false
+  },
+  {
+   "idx": 38,
+   "session_id": "codex_rollout-2026-09-05T14-50-11-01a071d5-7b58-7a70-b460-bb622dc86339",
+   "harness": "codex",
+   "evidence_rows": 69,
+   "learner_turns": 14,
+   "in_prose_ge10": true,
+   "proposed": 8,
+   "inserted": 8,
+   "refused": [],
+   "dropped_over_cap": 0,
+   "truncated_packet": false
+  },
+  {
+   "idx": 39,
+   "session_id": "agent-a57d43231fc08d79b",
+   "harness": "claude_code",
+   "evidence_rows": 3,
+   "learner_turns": 1,
+   "in_prose_ge10": false,
+   "proposed": 2,
+   "inserted": 2,
+   "refused": [],
+   "dropped_over_cap": 0,
+   "truncated_packet": false
+  }
+ ],
+ "spec_deviations": [
+  "cap of 8 enforced as keep-first-8 + dropped_over_cap (not refuse-response): batch 1 session 00 lost 9 fully-bound claims to a near-miss",
+  "writer reads its rendered prompt from a file and writes JSON to a sibling file (prompts exceed the 5,000-char task limit); the pilot directory holds only packets, prompts and responses"
+ ],
+ "audit": {
+  "sample_file": "/Users/ataylor/.local/share/studyloop/knowledge-proof/writer-pilot/audit-sample-blinded.json",
+  "n": 100,
+  "seed": 20260910,
+  "fields_shown_to_auditor": [
+   "statement",
+   "quotes"
+  ],
+  "key_file_outside_repo": "/Users/ataylor/.local/share/studyloop/knowledge-proof/writer-pilot/audit-key.json",
+  "status": "complete",
+  "auditor": "deepseek-3.2",
+  "auditor_run": "faa5b262",
+  "verdicts": {
+   "yes": 82,
+   "partial": 18
+  },
+  "yes_rate": 0.82,
+  "gate": ">= 0.95",
+  "passes_gate": false,
+  "failure_taxonomy": {
+   "hallucinated-detail": 13,
+   "over-claim": 4,
+   "preference-inferred": 1
+  },
+  "decomposition": {
+   "partials_whose_extra_details_are_in_session_evidence": 14,
+   "partials_with_details_absent_from_session": 4,
+   "reading": "14/18 partials are UNDER-CITATION (the writer read and reported facts present in the session but cited only one sentence); 4/100 contain material absent from the session. Transcript fidelity ~96%; citation completeness 82%. G2 is defined on citation completeness, correctly."
+  },
+  "citations_per_claim": {
+   "mean": 1.14,
+   "single_citation_share": 0.86,
+   "partials_mean": 1.17
+  },
+  "sample_sha256": "c0e5182b61dacc349e4d26c909396cc7a58783086f31e8667368185151a95b78",
+  "verdicts_sha256": "549607c85168942a7a7491f21620de39be39a43512ee8c7eb3350027d78bb7bf",
+  "repo_copies": {
+   "sample": {
+    "path": "docs/architecture/session-memory/receipts/g2-pilot-e1-audit-sample.json",
+    "sha256": "40d9b3538a2eed7542f7df0021e45353f6066505e6c27e0463f0e08451a1625a",
+    "note": "pre-commit end-of-file-fixer appended a newline; content otherwise identical to the original whose sha is in audit.sample_sha256"
+   },
+   "verdicts": {
+    "path": "docs/architecture/session-memory/receipts/g2-pilot-e1-audit-verdicts.json",
+    "sha256": "c27a0ed57373eef4bd256b02b4612561463bb5883c3118ff93d91a79f09937f6",
+    "note": "same"
+   }
+  }
+ },
+ "previous_receipt_sha256": "591d55d627b8a387e27caa466d04362c646cf9347efe921e154fa108c16a66db",
+ "g2_pilot_result": {
+  "yield_primary": "24/29 = 0.828 (gate >= 0.90) — FAIL on pilot sample; 4/5 misses are sessions with no learner voice inside the pre-registered denominator, 1/5 a writer id-format defect the harness refused",
+  "unbound_writes": "0 — PASS",
+  "entailment": "82/100 = 0.82 (gate >= 0.95) — FAIL; 0 'no', 18 'partial', 14 of which are under-citation",
+  "verdict": "G2 NOT PASSED on the pilot. Per ruler: investigate the writer, never relax the trigger. Disposition: writer-v2 (prompt requires every factual element of a statement to be covered by a quote; prefer 2+ citations; cite by the 64-hex evidence_id only) + re-audit on a fresh blinded sample. The denominator finding (no-learner-voice sessions) is recorded for the ruler owner; not changed here."
+ }
+}
