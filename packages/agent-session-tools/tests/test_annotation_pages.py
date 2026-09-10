@@ -32,7 +32,10 @@ def history_db(tmp_path, monkeypatch):
     conn = records.connect(path)
     conn.executemany(
         "INSERT INTO sessions(id,source,project_path) VALUES (?,?,?)",
-        [("p", "fixture", str(tmp_path / "p")), ("w", "fixture", str(tmp_path / "w"))],
+        [
+            ("p", "kiro_cli", str(tmp_path / "p")),
+            ("w", "kiro_cli", str(tmp_path / "w")),
+        ],
     )
     conn.commit()
     apply_policy(conn, ScopePolicy.from_config(settings), actor="test", dry_run=False)
@@ -276,7 +279,7 @@ def test_history_index_migration_is_additive_and_recoverable(tmp_path, monkeypat
     with monkeypatch.context() as old:
         old.setattr(migrations, "CURRENT_VERSION", 39)
         conn = records.connect(tmp_path / "upgrade.db")
-    conn.execute("INSERT INTO sessions(id,source) VALUES ('original','fixture')")
+    conn.execute("INSERT INTO sessions(id,source) VALUES ('original','kiro_cli')")
     conn.commit()
     description, original = migrations.MIGRATIONS[40]
 

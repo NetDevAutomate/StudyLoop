@@ -34,7 +34,7 @@ def history(migrated_db, tmp_path, monkeypatch):
     ]:
         conn.execute(
             "INSERT INTO sessions(id,source,project_path) VALUES (?,?,?)",
-            (sid, "fixture", path),
+            (sid, "kiro_cli", path),
         )
     conn.commit()
     apply_policy(

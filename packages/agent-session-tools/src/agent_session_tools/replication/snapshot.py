@@ -134,8 +134,18 @@ def _select(conn, policy, scope, *, _include_withdrawn=False, _staging=None):
     from ..context.scope import _visibility_sql
 
     selection = Projection(conn, staging=_staging)
+    # source_scope=False: replication carries history to another copy rather than
+    # returning it to a reader. A retired harness label is withheld from reads by
+    # the same predicate on the receiving side, so scoping it out here would not
+    # hide anything extra — it would drop 1,279 sessions from the only surviving
+    # copy of them. Hiding is not deletion.
     visible, values = _visibility_sql(
-        conn, "s.id", policy=policy, scope=scope, withdrawals=not _include_withdrawn
+        conn,
+        "s.id",
+        policy=policy,
+        scope=scope,
+        withdrawals=not _include_withdrawn,
+        source_scope=False,
     )
     selection.selected(
         "sessions", "SELECT s.id FROM sessions s WHERE " + visible, values

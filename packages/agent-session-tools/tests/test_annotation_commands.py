@@ -36,8 +36,8 @@ def cli_db(migrated_db, tmp_path, monkeypatch):
     conn.executemany(
         "INSERT INTO sessions(id,source,project_path) VALUES (?,?,?)",
         [
-            ("personal", "fixture", "/fixture/p"),
-            ("work", "fixture", "/fixture/w"),
+            ("personal", "kiro_cli", "/fixture/p"),
+            ("work", "kiro_cli", "/fixture/w"),
         ],
     )
     conn.execute(
@@ -363,7 +363,7 @@ def test_classified_duplicates_are_retained_by_auto_merge(cli_db):
 
     conn, _ = cli_db
     conn.execute(
-        "INSERT INTO sessions(id,source,project_path,content_hash) VALUES ('personal2','fixture','/fixture/p','same')"
+        "INSERT INTO sessions(id,source,project_path,content_hash) VALUES ('personal2','kiro_cli','/fixture/p','same')"
     )
     conn.execute("UPDATE sessions SET content_hash='same' WHERE id='personal'")
     conn.commit()

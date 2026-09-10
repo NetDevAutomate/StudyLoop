@@ -19,7 +19,7 @@ def test_preview_keeps_old_schema_and_apply_upgrades_atomically(
         patch.setattr(migrations, "CURRENT_VERSION", 31)
         migrate(conn)
     conn.execute(
-        "INSERT INTO sessions(id,source,project_path) VALUES ('session','fixture','/fixtures/project')"
+        "INSERT INTO sessions(id,source,project_path) VALUES ('session','kiro_cli','/fixtures/project')"
     )
     conn.execute(
         "INSERT INTO messages(id,session_id,role,content) VALUES ('message','session','user','BODY_MUST_NOT_APPEAR')"

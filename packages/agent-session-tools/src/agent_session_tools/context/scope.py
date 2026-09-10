@@ -172,6 +172,7 @@ def _visibility_sql(
     policy: ScopePolicy | None = None,
     scope: Scope | None = None,
     withdrawals: bool = True,
+    source_scope: bool = True,
 ) -> tuple[str, list[Any]]:
     """Predicate for a session ID expression; filter before selecting any body.
 
@@ -181,6 +182,13 @@ def _visibility_sql(
     fingerprint attests applied project definitions, not every session assignment.
     The caller must close or end the transaction after the request; the guard pins
     a read snapshot through the subsequent source query.
+
+    ``source_scope`` withholds sessions stored under a retired harness label
+    (``agent_session_tools.sources.SUPPORTED_SOURCES``). Withholding is not
+    deletion: the rows stay, and ``sources.retired_source_counts`` reports them.
+    Pass ``False`` only for a path that must still reach a withheld row —
+    explicit forget, and replication, which carries history rather than
+    returning it.
     """
     if not re.fullmatch(r"[A-Za-z_]\w*", schema) or not re.fullmatch(
         r"[A-Za-z_]\w*\.[A-Za-z_]\w*", session_column
@@ -271,6 +279,20 @@ def _visibility_sql(
                     WHERE history.kind='session' AND history.object_id={session_column})"""
         observe_database(conn, control_schema)
 
+    if source_scope:
+        # Imported here, not at module level: agent_session_tools.exporters
+        # reaches context.capture -> context.scope while importing, so a
+        # top-level import would close that cycle. See sources.py.
+        from ..sources import SUPPORTED_SOURCES
+
+        admitted = sorted(SUPPORTED_SOURCES)
+        predicate += f""" AND EXISTS (
+            SELECT 1 FROM {schema}.sessions scoped_src
+            WHERE scoped_src.id={session_column}
+            AND scoped_src.source IN ({",".join("?" for _ in admitted)}))"""
+        # Appended last, so these bind after the project-scope placeholders.
+        params.extend(admitted)
+
     observe_scope(policy, scope)
     return "(" + predicate + ")", params
 
@@ -282,10 +304,21 @@ def visibility_sql(
     schema: str = "main",
     policy: ScopePolicy | None = None,
     scope: Scope | None = None,
+    include_retired_sources: bool = False,
 ) -> tuple[str, list[Any]]:
-    """Filter current scope, permanent retirement and withdrawal before body reads."""
+    """Filter current scope, permanent retirement and withdrawal before body reads.
+
+    Sessions stored under a retired harness label are withheld unless
+    ``include_retired_sources`` is set, which a caller earns by naming such a
+    source explicitly. The rows are never deleted, only withheld.
+    """
     return _visibility_sql(
-        conn, session_column, schema=schema, policy=policy, scope=scope
+        conn,
+        session_column,
+        schema=schema,
+        policy=policy,
+        scope=scope,
+        source_scope=not include_retired_sources,
     )
 
 
@@ -296,8 +329,18 @@ def retirement_selection_sql(
 
     A withheld source must remain forgettable within the configured scope. This
     predicate never authorizes returning its body or restoring its permission.
+    A retired *harness label* is withheld from reads, not exempted from forget,
+    so ``source_scope`` is off here: a row nobody can see must still be one the
+    owner can destroy.
     """
-    return _visibility_sql(conn, "s.id", policy=policy, scope=scope, withdrawals=False)
+    return _visibility_sql(
+        conn,
+        "s.id",
+        policy=policy,
+        scope=scope,
+        withdrawals=False,
+        source_scope=False,
+    )
 
 
 def _audit(

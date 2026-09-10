@@ -43,7 +43,7 @@ def database(migrated_db):
     ]:
         conn.execute(
             "INSERT INTO sessions(id,source,project_path) VALUES (?,?,?)",
-            (sid, "same-harness", path),
+            (sid, "kiro_cli", path),
         )
     conn.commit()
     return conn
@@ -215,7 +215,7 @@ def test_explicit_session_assignment_outranks_root_default(database):
 
 def test_legacy_inspection_requires_explicit_scope_and_unconfigured_projects(temp_db):
     conn, _ = temp_db
-    conn.execute("INSERT INTO sessions(id,source) VALUES ('legacy','fixture')")
+    conn.execute("INSERT INTO sessions(id,source) VALUES ('legacy','kiro_cli')")
     empty = ScopePolicy.from_config({"memory": {"default_scope": "unclassified"}})
     assert visible(conn, empty, Scope.UNCLASSIFIED) == ["legacy"]
     with pytest.raises(ScopeError, match="migration and scope classification"):
@@ -268,7 +268,7 @@ def test_read_guard_pins_policy_and_rows_to_one_snapshot(migrated_db):
     writer, path = migrated_db
     writer.execute("PRAGMA journal_mode=WAL")
     writer.execute(
-        "INSERT INTO sessions(id,source,project_path) VALUES ('personal','fixture','/fixtures/personal')"
+        "INSERT INTO sessions(id,source,project_path) VALUES ('personal','kiro_cli','/fixtures/personal')"
     )
     writer.commit()
     p = policy()

@@ -34,7 +34,7 @@ def owned_db(migrated_db, tmp_path, monkeypatch):
     for name, root in roots.items():
         conn.execute(
             "INSERT INTO sessions(id,source,project_path) VALUES (?,?,?)",
-            (name, "fixture", str(root)),
+            (name, "kiro_cli", str(root)),
         )
     conn.commit()
     apply_policy(conn, ScopePolicy.from_config(config), actor="fixture", dry_run=False)

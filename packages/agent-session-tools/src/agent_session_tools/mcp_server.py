@@ -278,12 +278,14 @@ def _create_server() -> FastMCP:
         Args:
             query: Search terms (supports AND, OR, NOT operators)
             limit: Maximum results to return (default 10)
-            source: Filter by tool source (claude, codex, grok, kiro, opencode, pi)
+            source: Filter by tool source (claude_code, codex, grok, kiro_cli,
+                opencode, pi). Legacy sources are hidden unless named explicitly.
             project: Filter by project name or full path with configured project aliases
         """
         conn = _get_connection()
         try:
             from agent_session_tools.query_utils import escape_fts_query
+            from agent_session_tools.sources import is_supported
 
             fts_query = escape_fts_query(query)
 
@@ -296,7 +298,11 @@ def _create_server() -> FastMCP:
                 JOIN messages_fts ON messages_fts.rowid = m.rowid
                 WHERE messages_fts MATCH ?
             """
-            visible, scope_params = visibility_sql(conn, "s.id")
+            visible, scope_params = visibility_sql(
+                conn,
+                "s.id",
+                include_retired_sources=bool(source) and not is_supported(source),
+            )
             sql += " AND " + visible
             params: list[Any] = [fts_query, *scope_params]
 
@@ -334,17 +340,24 @@ def _create_server() -> FastMCP:
         Args:
             limit: Maximum sessions to return (default 20)
             offset: Skip first N sessions for pagination
-            source: Filter by tool source
+            source: Filter by tool source. Legacy sources are hidden unless
+                named explicitly.
             project: Filter by project name or full path with configured project aliases
         """
         conn = _get_connection()
         try:
+            from agent_session_tools.sources import is_supported
+
             sql = """
                 SELECT id, source, project_path, git_branch,
                        created_at, updated_at, session_type
                 FROM sessions s WHERE 1=1
             """
-            visible, params = visibility_sql(conn, "s.id")
+            visible, params = visibility_sql(
+                conn,
+                "s.id",
+                include_retired_sources=bool(source) and not is_supported(source),
+            )
             sql += " AND " + visible
 
             if source:
@@ -479,10 +492,13 @@ def _create_server() -> FastMCP:
         """Return database statistics.
 
         Includes total sessions, messages, sources breakdown, date range,
-        and storage size.
+        storage size, and the retired sources withheld from every read path
+        (counted, never deleted).
         """
         conn = _get_connection()
         try:
+            from agent_session_tools.sources import retired_source_counts
+
             db_path = _get_db_path()
 
             visible, scope_params = visibility_sql(conn, "s.id")
@@ -511,10 +527,25 @@ def _create_server() -> FastMCP:
             size_bytes = db_path.stat().st_size if db_path.exists() else 0
             size_mb = round(size_bytes / (1024 * 1024), 2)
 
+            hidden = retired_source_counts(conn)
+            hidden_total = sum(hidden.values())
+
             return {
                 "total_sessions": total_sessions,
                 "total_messages": total_messages,
                 "sources": [{"source": r[0], "count": r[1]} for r in sources],
+                "hidden_sources": {
+                    "total_sessions": hidden_total,
+                    "source_count": len(hidden),
+                    "sources": [
+                        {"source": name, "count": count}
+                        for name, count in hidden.items()
+                    ],
+                    "note": (
+                        f"{hidden_total:,} sessions in {len(hidden)} retired sources "
+                        "(hidden, not deleted)"
+                    ),
+                },
                 "date_range": {
                     "earliest": date_range[0] if date_range else None,
                     "latest": date_range[1] if date_range else None,

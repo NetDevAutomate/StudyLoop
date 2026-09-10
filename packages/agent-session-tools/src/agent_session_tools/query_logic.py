@@ -266,8 +266,17 @@ def list_sessions(
     output_format: str = "table",
     full_ids: bool = False,
 ) -> None:
-    """List recent sessions."""
-    visible, params = visibility_sql(conn, "s.id")
+    """List recent sessions.
+
+    Sessions stored under a retired harness label are hidden unless ``source``
+    names one explicitly. Nothing is deleted; ``stats`` reports the hidden counts.
+    """
+    from agent_session_tools.sources import is_supported
+
+    # A caller naming a retired label is asking for it deliberately.
+    visible, params = visibility_sql(
+        conn, "s.id", include_retired_sources=bool(source) and not is_supported(source)
+    )
     query = "SELECT * FROM sessions s WHERE " + visible
 
     if source:
@@ -347,11 +356,24 @@ def show_session(conn: sqlite3.Connection, session_id: str) -> None:
 
 
 def stats(conn: sqlite3.Connection, use_rich: bool = False) -> None:
-    """Show database statistics."""
+    """Show database statistics.
+
+    Includes a hidden-sources section whenever the database still holds
+    sessions under a retired harness label: they are withheld from every read
+    path, so the count is the standing evidence that nothing was deleted.
+    """
+    from agent_session_tools.sources import retired_source_counts
+
     policy = active_policy()
     visible_sessions, session_params = visibility_sql(conn, "s.id", policy=policy)
     visible_messages, message_params = visibility_sql(
         conn, "m.session_id", policy=policy
+    )
+    hidden = retired_source_counts(conn)
+    hidden_total = sum(hidden.values())
+    hidden_note = (
+        f"{hidden_total:,} sessions in {len(hidden)} retired sources "
+        "(hidden, not deleted)"
     )
     # Database size information
     db_path = Path(conn.execute("PRAGMA database_list").fetchone()[2])
@@ -402,6 +424,14 @@ def stats(conn: sqlite3.Connection, use_rich: bool = False) -> None:
         ):
             sessions_table.add_row(r["source"], str(r["cnt"]))
         console.print(sessions_table)
+
+        if hidden:
+            hidden_table = Table(title="Hidden Sources " + hidden_note, box=box.SIMPLE)
+            hidden_table.add_column("Retired Source", style="cyan")
+            hidden_table.add_column("Count", justify="right", style="yellow")
+            for name, count in hidden.items():
+                hidden_table.add_row(name, str(count))
+            console.print(hidden_table)
 
         # Messages by role
         messages_table = Table(title="Messages by Role", box=box.SIMPLE)
@@ -456,6 +486,14 @@ def stats(conn: sqlite3.Connection, use_rich: bool = False) -> None:
             session_params,
         ):
             print(f"  {r['source']}: {r['cnt']}")
+
+        if hidden:
+            print(f"\n{'=' * 50}")
+            print("HIDDEN SOURCES")
+            print(f"{'=' * 50}")
+            print(f"  {hidden_note}")
+            for name, count in hidden.items():
+                print(f"  {name}: {count}")
 
         print(f"\n{'=' * 50}")
         print("MESSAGES BY ROLE")

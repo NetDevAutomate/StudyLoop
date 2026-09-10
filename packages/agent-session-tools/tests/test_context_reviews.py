@@ -46,7 +46,7 @@ def history(migrated_db, tmp_path, monkeypatch):
     for sid in ("a", "b", "w"):
         conn.execute(
             "INSERT INTO sessions(id,source,project_path) VALUES (?,?,?)",
-            (sid, "fixture", "/review/" + sid),
+            (sid, "kiro_cli", "/review/" + sid),
         )
     conn.commit()
     apply_policy(conn, ScopePolicy.from_config(config), actor="fixture", dry_run=False)
@@ -349,7 +349,7 @@ def test_v35_upgrade_rolls_back_and_retries_without_losing_conversation(monkeypa
     with monkeypatch.context() as old:
         old.setattr(migrations, "CURRENT_VERSION", 34)
         migrations.migrate(conn)
-    conn.execute("INSERT INTO sessions(id,source) VALUES ('kept','fixture')")
+    conn.execute("INSERT INTO sessions(id,source) VALUES ('kept','kiro_cli')")
     conn.commit()
     real = migrations.MIGRATIONS[35]
 

@@ -32,7 +32,7 @@ def scoped_db(migrated_db, tmp_path, monkeypatch):
     ]:
         conn.execute(
             "INSERT INTO sessions(id,source,project_path,created_at,updated_at) VALUES (?,?,?,?,?)",
-            (sid, "same-harness", root, "2026-09-05", "2026-09-05"),
+            (sid, "kiro_cli", root, "2026-09-05", "2026-09-05"),
         )
         conn.execute(
             "INSERT INTO messages(id,session_id,role,content,seq) VALUES (?,?,?,?,?)",
@@ -216,7 +216,7 @@ def test_federated_read_checks_full_database_policy(
         ]:
             other.execute(
                 "INSERT INTO sessions(id,source,project_path) VALUES (?,?,?)",
-                (sid, "other-machine", root),
+                (sid, "claude_code", root),
             )
             other.execute(
                 "INSERT INTO messages(id,session_id,role,content) VALUES (?,?,?,?)",

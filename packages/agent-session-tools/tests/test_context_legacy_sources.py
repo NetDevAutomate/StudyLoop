@@ -36,7 +36,7 @@ def legacy_db(migrated_db, tmp_path, monkeypatch):
     monkeypatch.setenv("STUDYLOOP_CONFIG", str(config))
     conn.execute(
         "INSERT INTO sessions(id,source,project_path) VALUES (?,?,?)",
-        ("legacy-a", "fixture", "/legacy/personal"),
+        ("legacy-a", "kiro_cli", "/legacy/personal"),
     )
     rows = [
         # (id, role, content, timestamp, seq) — one tz-aware, one naive, one broken

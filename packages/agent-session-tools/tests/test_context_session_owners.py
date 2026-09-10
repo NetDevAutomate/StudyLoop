@@ -29,8 +29,8 @@ def owned_session(migrated_db, tmp_path, monkeypatch):
     conn.executemany(
         "INSERT INTO sessions(id,source,project_path) VALUES (?,?,?)",
         [
-            ("personal", "fixture", "/fixture/p"),
-            ("work", "fixture", "/fixture/w"),
+            ("personal", "kiro_cli", "/fixture/p"),
+            ("work", "kiro_cli", "/fixture/w"),
         ],
     )
     conn.commit()
