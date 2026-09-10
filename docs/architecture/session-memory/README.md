@@ -1,16 +1,19 @@
 # Session-memory & knowledge architecture — decision record
 
 **Decided:** 2026-09-06 (PoC measurement) · **Corrected against source:** 2026-09-09 ·
-**Status:** the storage decision stands; the retrieval and ontology claims are
-restated below at the strength the receipts support.
-**Feeds:** Phase 2 — [PR #18](https://github.com/NetDevAutomate/StudyLoop/pull/18)
-`feat/sessionweaver-phase2-retrofit` (open, not on `main`).
+**Status:** the storage decision stands; the retrieval claims are restated below at
+the strength the receipts support; **every ontology, OKF and concept-sidecar claim is
+RETIRED** (2026-09-10, [ADR-0011](../../adr/0011-retire-okf-ontology-and-concept-sidecar.md)).
+**Fed:** Phase 2 — [PR #18](https://github.com/NetDevAutomate/StudyLoop/pull/18) — **closed
+2026-09-10**: its non-OKF half landed on `main` (`48900c3d`); its ontology/sidecar half was dropped.
 **Companion repo:** `~/code/personal/tools/session_weaver` (PoC code, benchmark
 harness, gold set, raw results).
 
-Every claim here carries one of three labels. **SHIPPED** is on `main`.
-**IN-FLIGHT** is in PR #18. **PoC** was measured once in the companion repo and has
-no production surface. The 2026-09-06 version of this document did not make that
+Every claim here carries one of four labels. **SHIPPED** is on `main`.
+**RETIRED** was built on a branch, measured, and removed by ADR-0011 — kept here as
+history, never as a description of the product. **PoC** was measured once in the
+companion repo and has no production surface. (**IN-FLIGHT** no longer applies:
+PR #18 is closed.) The 2026-09-06 version of this document did not make that
 distinction, and several of its headline numbers turned out to be conflations of
 separate measurements; the corrections are listed at the end so the record shows
 what changed and why.
@@ -20,13 +23,13 @@ what changed and why.
 StudyLoop's session memory stays on **one SQLite file** as system of record —
 `~/.config/studyloop/sessions.db`, schema v47 — holding the conversation archive,
 the StudyLoop learning tier and the evidence tier as table families, not separate
-databases (**SHIPPED**). No measurement justified a storage migration. On top of it
-Phase 2 adds a **concept sidecar** written at wind-down as JSON into SQLite with
-byte-exact quote binding enforced by a trigger (**IN-FLIGHT**), and a
-**deterministic tier-1 ontology** rebuilt from the archive at $0 for diagnostics
-and typed queries — deliberately *not* a recall input (**IN-FLIGHT**). The PoC's
-Open Knowledge Format (OKF) Markdown store is a **frozen legacy corpus** imported
-one-way for historical recall signal; nothing in the codebase writes OKF.
+databases (**SHIPPED**). No measurement justified a storage migration. Phase 2 built
+beside it a **concept sidecar** (JSON at wind-down, quote-bound by trigger), a
+**deterministic tier-1 ontology** (rebuilt from the archive, never a recall input) and a
+one-way **OKF import** of the PoC's frozen Markdown corpus. All three are **RETIRED**:
+no serving path read them, the value gates were never reached, and the ontology moved
+recall by +0.00 — see ADR-0011 and the removal inventory receipt. What remains is the
+one file, the archive's FTS read path, the StudyLoop learning tier and the evidence tier.
 
 ## Interactive diagram (archify)
 
@@ -51,8 +54,8 @@ one-way for historical recall signal; nothing in the codebase writes OKF.
 | Conversation archive | `sessions`, `messages`, `messages_fts` (FTS5) | six per-harness exporters via `session-export`; launchd sweep every 4 h | `session_search`, `session_context`, struggle extraction | SHIPPED |
 | Learning tier | `study_progress`, `study_sessions`, `card_reviews`, `parked_topics` (= the backlog), `teach_back_scores`, `study_plans` (cache of the plan Markdown, ADR-0010) | CLI wind-down, `log_topic`/`log_struggle`, web routes | `now` decision engine, review, mastery, backlog board, plan interview | SHIPPED |
 | Evidence tier | 60 `context_*` tables; `context_evidence` sha256-bound, re-verified on every read | `capture_batch` on every export; `memory_propose`/`relate`/`review` | `memory_search`, `memory_assess`, `memory_decide`, `get_concept_context` | SHIPPED |
-| Concept sidecar (v49) | `context_concepts`, `context_concept_fts`, `context_concept_events` | `memory_winddown` (JSON → SQLite); `concept import-okf` (legacy intake) | `memory_recall` | IN-FLIGHT |
-| Tier-1 ontology (v48) | six `ontology_*` tables, rebuilt into `__ontology_*_next` staging and swapped atomically | post-export rebuild hook; `session-weaver ontology rebuild`; **never synced** | `ontology status` (CLI diagnostics only) | IN-FLIGHT |
+| Concept sidecar (v49) | `context_concepts`, `context_concept_fts`, `context_concept_events` — **never shipped**; derived rows in the live DB pending owner-gated `DROP` | was `memory_winddown` | was `memory_recall` | RETIRED |
+| Tier-1 ontology (v48) | six `ontology_*` tables — **never shipped**; derived rows pending owner-gated `DROP` | was a post-export rebuild hook | was `ontology status` (CLI) | RETIRED |
 
 Two derived caches sit beside the file and are safe to delete: `explorer_fts.db`
 (lesson search) and `<content.base_path>/content_index.db` (course discovery).
@@ -70,10 +73,10 @@ Multi-word queries are wrapped as a *phrase*, so they get stricter, not looser.
 | Extraction *fidelity* is the variable, not architecture | Same corpus, same 25 questions: 0.24 recall@5 under cheap truncated extraction vs 0.64 under full-text frontier extraction (`RESULTS-final.md:174-176`) | PoC |
 | Concept fusion out-scores raw text — **point estimate only** | PoC: T2H 0.68 vs 0.48 via RRF over three arms incl. a vector arm (`bench-t2.py:138`). Current gate A6 on `fb606468`: **0.60 recall@5, Wilson 95 % CI [0.41, 0.77]** vs raw-text control 0.48; target 0.64 not met; verdict **INVESTIGATE**. The control lies *inside* the CI, so at n = 25 the lift is **not statistically established**. The A6 table exists only as Markdown in `~/.agents/skills/session-weaver/SKILL.md:140-158`; no machine receipt for it was found. | IN-FLIGHT |
 | Paraphrase recall | 0.25 at PoC; **0 / 40** on the corpus-verified directional set | PoC / IN-FLIGHT |
-| Quote binding is real, and the legacy corpus fails it | Trigger `context_concepts_bound_proof` re-checks `substr(body, start, end) == quote`. Import receipt `legacy-okf-import-report.json`: **2,035 scanned · 2,033 parsed · 0 bound · 2,033 legacy_unbound** (no_exact_match 1,559 · body_description_mismatch 764 · no_visible_evidence 429 · oversized 45; counters overlap). The PoC writer paraphrased; nothing was ever citation-bound. | IN-FLIGHT |
-| Tier-1 ontology is free and deterministic | `ontology-tier1-baseline.json` (2026-09-08, 5,813 sessions): 7 classes, 6 properties, 13,528 individuals, 29,475 relations; **3.42 s cold, 3.28 s second full, 1.12 s incremental**; one identical `logical_hash` across all three runs; `domain_range_violations 0`, FK violations 0, coverage 1.0. Zero model-provider references in 1,663 lines → $0. | IN-FLIGHT |
-| Tier-1 ontology does not improve recall | PoC arm **O** (graph only) 0.32 overall, 0.00 paraphrase; **OH = RRF(O, A2, B) 0.48 = H 0.48 — adding it moved recall +0.00** (`RESULTS-final.md:85-110`). Excluded from shipped recall by design in three places (`memory_recall` docstring: "No embedding or ontology store participates"; `recall.py:24-25`; `claims-audit.md:28`). On the live DB, single-path lookup via `touched` edges was slower than an FTS phrase query in 3/3 cases and found equal-or-fewer sessions. | PoC / IN-FLIGHT |
-| What the ontology *does* answer that FTS cannot | Typed, relational questions at $0 on the live graph: harness mix over 5,818 sessions (claude_code 60.9 %, kiro_cli 10.6 %, …), 424 `childOf` subagent-lineage edges, per-class inventory, artifacts ranked by *distinct sessions*. A capability difference, not a measured recall gain. | IN-FLIGHT |
+| Quote binding is real, and the legacy corpus fails it | Trigger `context_concepts_bound_proof` re-checks `substr(body, start, end) == quote`. Import receipt `legacy-okf-import-report.json`: **2,035 scanned · 2,033 parsed · 0 bound · 2,033 legacy_unbound** (no_exact_match 1,559 · body_description_mismatch 764 · no_visible_evidence 429 · oversized 45; counters overlap). The PoC writer paraphrased; nothing was ever citation-bound. | RETIRED |
+| Tier-1 ontology is free and deterministic | `ontology-tier1-baseline.json` (2026-09-08, 5,813 sessions): 7 classes, 6 properties, 13,528 individuals, 29,475 relations; **3.42 s cold, 3.28 s second full, 1.12 s incremental**; one identical `logical_hash` across all three runs; `domain_range_violations 0`, FK violations 0, coverage 1.0. Zero model-provider references in 1,663 lines → $0. | RETIRED |
+| Tier-1 ontology does not improve recall | PoC arm **O** (graph only) 0.32 overall, 0.00 paraphrase; **OH = RRF(O, A2, B) 0.48 = H 0.48 — adding it moved recall +0.00** (`RESULTS-final.md:85-110`). Excluded from shipped recall by design in three places (`memory_recall` docstring: "No embedding or ontology store participates"; `recall.py:24-25`; `claims-audit.md:28`). On the live DB, single-path lookup via `touched` edges was slower than an FTS phrase query in 3/3 cases and found equal-or-fewer sessions. | PoC / RETIRED |
+| What the ontology *does* answer that FTS cannot | Typed, relational questions at $0 on the live graph: harness mix over 5,818 sessions (claude_code 60.9 %, kiro_cli 10.6 %, …), 424 `childOf` subagent-lineage edges, per-class inventory, artifacts ranked by *distinct sessions*. A capability difference, not a measured recall gain. | RETIRED |
 | Multi-machine sync is safe | Two-Mac runbook 4/4; deleted rows cannot be resurrected (`sync.py:610-625` anti-resurrection filter); divergent merge fails closed | SHIPPED |
 | Multi-agent lineage survives | Fixed exporter verified at 99.8 % capture; 424 `childOf` edges on the live graph | SHIPPED / IN-FLIGHT |
 
@@ -81,7 +84,7 @@ Full method, scoring legend and threats to validity: `RESULTS-final.md` and
 `GLOSSARY.md` in this directory. The 2026-09-09 quantification with every query
 inline: `reviews/evidence/173-okf-ontology-value.md` (gitignored, local).
 
-## How the ontology is built — and what "from the data" means
+## How the ontology was built — and what "from the data" meant (RETIRED 2026-09-10)
 
 The **schema (T-Box) is hand-written**: seven classes (`Project`, `Harness`,
 `Session`, `SubagentSession ⊂ Session`, `Artifact`, `Command`, `TestRun`) and six
@@ -132,7 +135,7 @@ The plan interview (`GET /plans/interview`) reads only the learning tier: it
 sees what the learner struggled with, not what was decided about it nor what it
 depends on.
 
-## What Phase 2 implements — and what it does not
+## What Phase 2 implemented — and what it did not (PR #18 closed 2026-09-10)
 
 1. **`memory_recall`** (IN-FLIGHT): authorised concepts first, then deduplicated
    raw sessions. Concatenation with dedup — **not** RRF fusion, no embeddings, no
@@ -151,11 +154,25 @@ depends on.
 The point estimates favour the concept store; the receipts do not yet establish
 it. To move any claim above from "point estimate" to "established": a gold set of
 **n ≥ 100** authored without LIKE-pattern selection; re-scoring A6 on *bound*
-concepts after fixing the 1,559 `no_exact_match` / 764 mismatch records; an
-ontology-inclusive arm run against the live DB with `ontology_build_state`
-recorded; an embedded concept store to attack the paraphrase floor; and the
+concepts after fixing the 1,559 `no_exact_match` / 764 mismatch records
+(**moot** — the concept store is RETIRED); an embedded store to attack the
+paraphrase floor (the semantic-layer question); and the
 measurement nobody has taken — token cost and task-completion quality for an
 agent consuming these stores. Recall@5 is a proxy for that, not the thing itself.
+
+## Retirement of the knowledge layers (2026-09-10)
+
+Everything above labelled **RETIRED** was removed on 2026-09-10 by
+[ADR-0011](../../adr/0011-retire-okf-ontology-and-concept-sidecar.md), on the evidence in
+`receipts/okf-removal-inventory-2026-09-10.md`: no serving path on `main` read the ontology,
+the OKF import or the concept sidecar; 0 of 2,033 imported concepts were citation-bound; the
+ontology moved fused recall by +0.00; the value gates (G3a/G3b) were never reached. The text is
+kept, not deleted, so the record shows what was tried and what the measurements said. The
+derived `ontology_*` / `context_concept*` rows in the live database are dropped only on the
+owner's explicit confirmation after a rehearsed backup (`receipts/council-plan-2026-09-10.md`,
+Stage 6). The one retrieval result that survives — the +0.142 recall@5 from the phrase-token
+OR planner — belongs to the learning-memory work, not to any knowledge layer
+(`receipts/council-stage4-2026-09-10.md`).
 
 ## Corrections to the 2026-09-06 record
 

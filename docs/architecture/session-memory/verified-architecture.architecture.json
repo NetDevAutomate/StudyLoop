@@ -2,7 +2,7 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "StudyLoop session memory \u2014 verified architecture, 2026-09-09",
+    "title": "StudyLoop session memory — verified architecture, 2026-09-09",
     "quality_profile": "showcase",
     "viewBox": [
       1280,
@@ -42,7 +42,7 @@
       "id": "learning",
       "type": "database",
       "label": "Learning tier",
-      "sublabel": "study_progress \u00b7 parked_topics",
+      "sublabel": "study_progress · parked_topics",
       "pos": [
         540,
         110
@@ -56,7 +56,7 @@
       "id": "archive",
       "type": "database",
       "label": "Conversation archive",
-      "sublabel": "sessions \u00b7 messages \u00b7 FTS5",
+      "sublabel": "sessions · messages · FTS5",
       "pos": [
         540,
         300
@@ -70,7 +70,7 @@
       "id": "evidence",
       "type": "database",
       "label": "Evidence tier",
-      "sublabel": "context_evidence \u00b7 assertions",
+      "sublabel": "context_evidence · assertions",
       "pos": [
         540,
         500
@@ -98,7 +98,7 @@
       "id": "sessiondb",
       "type": "backend",
       "label": "session-db MCP",
-      "sublabel": "session_search \u00b7 memory_search",
+      "sublabel": "session_search · memory_search",
       "pos": [
         830,
         390
@@ -121,68 +121,16 @@
         160,
         80
       ]
-    },
-    {
-      "id": "ontology",
-      "type": "backend",
-      "label": "Tier-1 ontology",
-      "sublabel": "7 classes \u00b7 6 props \u00b7 $0",
-      "pos": [
-        40,
-        690
-      ],
-      "size": [
-        190,
-        80
-      ]
-    },
-    {
-      "id": "okf",
-      "type": "external",
-      "label": "Legacy OKF store",
-      "sublabel": "2,035 files \u00b7 0 bound",
-      "pos": [
-        290,
-        690
-      ],
-      "size": [
-        170,
-        80
-      ]
-    },
-    {
-      "id": "concepts",
-      "type": "database",
-      "label": "Concept sidecar",
-      "sublabel": "context_concepts \u00b7 quote-bound",
-      "pos": [
-        540,
-        690
-      ],
-      "size": [
-        210,
-        80
-      ]
     }
   ],
   "boundaries": [
     {
       "kind": "region",
-      "label": "ONE FILE \u2014 ~/.config/studyloop/sessions.db (schema v47)",
+      "label": "ONE FILE — ~/.config/studyloop/sessions.db (schema v47)",
       "wraps": [
         "learning",
         "archive",
         "evidence"
-      ],
-      "pad": 22
-    },
-    {
-      "kind": "security-group",
-      "label": "IN-FLIGHT \u2014 PR #18, not on main",
-      "wraps": [
-        "ontology",
-        "okf",
-        "concepts"
       ],
       "pad": 22
     }
@@ -225,7 +173,7 @@
     {
       "from": "sessiondb",
       "to": "mentor",
-      "label": "session_search \u00b7 memory_search",
+      "label": "session_search · memory_search",
       "variant": "emphasis"
     },
     {
@@ -233,38 +181,6 @@
       "to": "mentor",
       "label": "get_concept_context",
       "variant": "emphasis"
-    },
-    {
-      "from": "export",
-      "to": "ontology",
-      "label": "post-export rebuild \u00b7 never synced",
-      "variant": "dashed"
-    },
-    {
-      "from": "okf",
-      "to": "concepts",
-      "label": "one-way import",
-      "variant": "dashed"
-    },
-    {
-      "from": "evidence",
-      "to": "concepts",
-      "label": "memory_winddown (JSON \u2192 SQLite)",
-      "variant": "dashed",
-      "labelAt": [
-        700,
-        630
-      ]
-    },
-    {
-      "from": "concepts",
-      "to": "sessiondb",
-      "label": "memory_recall \u2014 no ontology input",
-      "variant": "dashed",
-      "labelAt": [
-        880,
-        600
-      ]
     }
   ],
   "cards": [
@@ -273,26 +189,8 @@
       "title": "Shipped on main",
       "items": [
         "One SQLite file holds all three tiers",
-        "Search is FTS5 keyword only \u2014 embedding tables hold 0 rows",
+        "Search is FTS5 keyword only — embedding tables hold 0 rows",
         "Every harness calls session_search, memory_search, get_concept_context"
-      ]
-    },
-    {
-      "dot": "amber",
-      "title": "In flight (PR #18)",
-      "items": [
-        "Wind-down writes JSON \u2192 SQLite, never OKF",
-        "0 of 2,033 imported OKF concepts citation-bound",
-        "Ontology is diagnostics: excluded from recall by design"
-      ]
-    },
-    {
-      "dot": "rose",
-      "title": "Measured, not asserted",
-      "items": [
-        "Recall@5 0.60 [0.41, 0.77] vs 0.48 raw \u2014 lift not established at n=25",
-        "Ontology rebuild 3.42 s cold / 1.12 s incremental, one logical hash",
-        "Adding the ontology arm to fusion moved recall +0.00"
       ]
     }
   ]

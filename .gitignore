@@ -509,7 +509,7 @@ docs/architecture/*
 # and docs/second-brain.md; tested against by tests/test_second_brain_*.py.
 !docs/architecture/second-brain.md
 # Un-ignored 2026-09-09 — session-memory decision record, corrected against source
-# (one file / three tiers; OKF import-only; ontology not a recall input), its
+# (one file / three tiers; the ontology/OKF/sidecar claims RETIRED by ADR-0011), its
 # glossary, and the archify spec the diagram regenerates from. The 718 KB
 # delivered HTML stays ignored: it exceeds the 500 KB large-file hook and is
 # reproducible from the spec via `archify deliver`. The subdirectory itself must

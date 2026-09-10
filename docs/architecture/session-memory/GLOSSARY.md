@@ -19,7 +19,11 @@ directory's documents (RESULTS-*.md, finding-*.md, plans, diagrams).
 | **K / P / R questions** | Benchmark categories: Keyword-friendly, Paraphrase (different wording than the source), Relational (multi-hop, connects facts). |
 | **xfail** | pytest marker: a test EXPECTED to fail, documenting a known limitation; "strict" means the suite errors if it unexpectedly passes. |
 
-## Ontology & knowledge
+## Ontology & knowledge (RETIRED 2026-09-10)
+
+The tier-1 ontology, the OKF import and the concept sidecar were removed by
+[ADR-0011](../../adr/0011-retire-okf-ontology-and-concept-sidecar.md). The terms below are kept
+so the receipts and the decision record stay readable; none of them names anything in the product.
 
 | Term | Meaning |
 |---|---|
