@@ -194,9 +194,19 @@ class TestConfigInit:
         monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_file))
 
         # All empty = accept defaults: yes bridging, "networking", no nlm, yes
-        # obsidian, default vault path, NO publishing into it, no agent install
+        # obsidian, default vault path, NO publishing into it -- and YES to the
+        # agent install, because that prompt defaults to Yes. The real installer
+        # would write hooks and steering into the developer's own home (it did,
+        # silently, for as long as every hook it writes was already present),
+        # so it is stubbed here; the CLI path is what this test exercises.
+        installed: list[object] = []
+        monkeypatch.setattr(
+            "studyloop.cli._shared.install_agent_definitions",
+            lambda root, *args, **kwargs: installed.append(root) or {},
+        )
         user_input = "\n\n\n\n\n\n\n"
         result = runner.invoke(cli, ["config", "init"], input=user_input)
+        assert len(installed) == 1, "accepting the default should install agents (stubbed)"
         assert result.exit_code == 0
         assert "Configuration saved" in result.output
 
