@@ -265,8 +265,13 @@ class ResponseError(Exception):
     """The model's response is not the declared shape. The whole run is refused."""
 
 
-def parse_response(raw: str) -> tuple[list[Any], bool]:
-    """Strictly parse ``{"claims": [...]}``. Returns ``(claims, fence_stripped)``.
+def parse_response(raw: str) -> tuple[list[Any], bool, int]:
+    """Strictly parse ``{"claims": [...]}``. Returns ``(claims, fence_stripped, dropped_over_cap)``.
+
+    More than ``MAX_CLAIMS`` claims: keep the first ``MAX_CLAIMS`` in the writer's own order
+    and record how many were dropped. (Pilot batch 1 deviation from spec v1, which read the
+    cap as refuse-the-response: session 00 proposed 9 claims with 10/10 citations bound and
+    lost all of them to a near-miss. Truncation lets the per-claim resolver judge each one.)
 
     One leading ```` ```json ```` fence and its trailing ```` ``` ```` are stripped and
     recorded -- models emit them habitually and the spec says to record, not to
@@ -292,9 +297,8 @@ def parse_response(raw: str) -> tuple[list[Any], bool]:
     claims = payload["claims"]
     if not isinstance(claims, list):
         raise ResponseError(f"'claims' is {type(claims).__name__}, expected a list")
-    if len(claims) > MAX_CLAIMS:
-        raise ResponseError(f"{len(claims)} claims exceeds the cap of {MAX_CLAIMS}")
-    return claims, fence_stripped
+    dropped_over_cap = max(0, len(claims) - MAX_CLAIMS)
+    return claims[:MAX_CLAIMS], fence_stripped, dropped_over_cap
 
 
 def validate_claim(claim: Any, evidence_ids: set[str]) -> tuple[str, str] | None:
@@ -392,12 +396,14 @@ def ingest_response(
         "duplicates": 0,
         "recheck_mismatches": 0,
         "fence_stripped": False,
+        "dropped_over_cap": 0,
         "response_error": None,
         "created_utc": _now(),
     }
 
     try:
-        claims, fence_stripped = parse_response(raw_response)
+        claims, fence_stripped, dropped_over_cap = parse_response(raw_response)
+        receipt["dropped_over_cap"] = dropped_over_cap
     except ResponseError as err:
         receipt["response_error"] = str(err)
         return receipt

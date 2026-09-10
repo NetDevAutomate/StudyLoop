@@ -271,9 +271,17 @@ def test_parse_response_refuses_bad_shapes(raw: str, fragment: str) -> None:
         cw.parse_response(raw)
 
 
-def test_parse_response_refuses_more_than_eight_claims() -> None:
-    with pytest.raises(cw.ResponseError, match="exceeds the cap"):
-        cw.parse_response(json.dumps({"claims": [_claim() for _ in range(9)]}))
+def test_parse_response_truncates_more_than_eight_claims_and_records_it() -> None:
+    """Pilot batch 1 changed the cap from refuse-the-response to keep-the-first-eight:
+    a 9-claim response with every citation bound had been discarded on a near-miss."""
+    claims, fence, dropped = cw.parse_response(
+        json.dumps({"claims": [_claim() for _ in range(11)]})
+    )
+    assert len(claims) == cw.MAX_CLAIMS
+    assert dropped == 3
+    assert fence is False
+    claims, _, dropped = cw.parse_response(json.dumps({"claims": [_claim() for _ in range(8)]}))
+    assert len(claims) == 8 and dropped == 0
 
 
 def test_non_json_response_is_recorded_not_raised(store: Any) -> None:
