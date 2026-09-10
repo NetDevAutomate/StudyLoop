@@ -94,13 +94,6 @@ HARNESSES: dict[str, Harness] = {
         supports_agent_flag=False,
         note="codex reads AGENTS.md from the repo root",
     ),
-    "gemini": Harness(
-        name="gemini",
-        binary="gemini",
-        first=["-p", "{prompt}"],
-        resume=["-p", "-r", "{prompt}"],
-        supports_agent_flag=False,
-    ),
 }
 
 # --------------------------------------------------------------------------

@@ -458,17 +458,11 @@ $RECYCLE.BIN/
 .claude/
 CLAUDE.md
 AGENTS.md
-GEMINI.md
 !/AGENTS.md
-!/GEMINI.md
-# pi/omp harness steering files — shipped with the repo, installed into
-# ~/.pi/agent/ and ~/.omp/agent/ by `studyloop install agents --tool pi|omp`.
+# pi harness steering files — shipped with the repo, installed into
+# ~/.pi/agent/ by `studyloop install agents --tool pi`.
 !agents/codex/AGENTS.md
 !agents/pi/AGENTS.md
-!agents/omp/AGENTS.md
-# Was missing from the list above while the file was tracked, so it sat
-# tracked-but-ignored: committed, but invisible to `git add` and `git status`.
-!agents/gemini/GEMINI.md
 agents/cowork/
 .kiro/
 .crush/
@@ -505,9 +499,9 @@ docs/architecture/*
 # with the repo (C4 diagrams of the live system + target direction).
 !docs/architecture/current.md
 !docs/architecture/target.md
-# Un-ignored 2026-05-31 — pi/omp harness integration doc (C4 diagrams), linked
-# from docs/architecture.md and the agent-install / troubleshooting guides.
-!docs/architecture/pi-omp-harness-integration.md
+# Un-ignored 2026-05-31, renamed to pi-only 2026-09-10 — pi harness integration
+# doc (C4 diagrams + the only written description of the pi JSONL exporter).
+!docs/architecture/pi-harness-integration.md
 # Un-ignored 2026-09-02 — session-authority contract (M2 remediation lane),
 # linked from ADR-0009 and tested against by tests/test_session_authority_matrix.py.
 !docs/architecture/session-authority.md
