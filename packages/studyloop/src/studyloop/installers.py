@@ -831,10 +831,15 @@ def install_codex_session_end_hook() -> int:
 #: command as JSON on stdin and, per its hooks guide, includes ``subagentType``
 #: only for a child session's teardown -- so a payload carrying that key is a
 #: subagent ending, not the session, and the export is skipped (the parent's
-#: own ``SessionEnd`` follows). ``grep`` is POSIX, so the line needs nothing
-#: StudyLoop does not already install. Always exits 0: hooks are fail-open
-#: anyway, and an export failure must never surface as a Grok error.
-_GROK_HOOK_COMMAND = f"grep -q '\"subagentType\"' || {_GROK_HOOK_SENTINEL} >/dev/null 2>&1 || true"
+#: own ``SessionEnd`` follows). The pattern is the quoted KEY followed by a
+#: colon, so a field whose string *value* happens to be ``subagentType``
+#: cannot cause a false skip (a JSON string value can never contain an
+#: unescaped ``"subagentType":``). ``grep`` is POSIX, so the line needs
+#: nothing StudyLoop does not already install. Always exits 0: hooks are
+#: fail-open anyway, and an export failure must never surface as a Grok error.
+_GROK_HOOK_COMMAND = (
+    f"grep -q '\"subagentType\" *:' || {_GROK_HOOK_SENTINEL} >/dev/null 2>&1 || true"
+)
 
 
 def install_grok_session_end_hook() -> int:
@@ -1003,7 +1008,7 @@ def detect_available_agent_tools() -> list[str]:
         available.append("codex")
     if shutil.which("pi") or (_HOME / ".pi").is_dir():
         available.append("pi")
-    if shutil.which("grok") or (_HOME / ".grok").is_dir():
+    if shutil.which("grok") or _grok_home().is_dir():
         available.append("grok")
     return available
 

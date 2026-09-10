@@ -751,6 +751,69 @@ def _fail_on_server_side_errors(request: pytest.FixtureRequest):
 
 
 # ---------------------------------------------------------------------------
+# Real-home write guard
+#
+# Every harness installer writes into the developer's own home (~/.claude,
+# ~/.codex, ~/.kiro, ~/.config/opencode, ~/.pi, ~/.grok). Tests are meant to
+# redirect those writes, but a test that reaches an installer through a CLI
+# default -- `config init` answering Enter to "Install agent definitions now?
+# [Y/n]" did exactly that -- writes into the real home, and the write is
+# invisible for as long as every file it would create already exists (each
+# installer is an idempotent no-op then). It surfaced only when a new harness
+# hook appeared under ~/.grok during a suite run. This guard makes that class
+# of leak a test failure instead of a silent side effect.
+_REAL_HOME = Path.home()
+_REAL_GROK_HOME = (
+    Path(os.environ["GROK_HOME"]) if os.environ.get("GROK_HOME") else _REAL_HOME / ".grok"
+)
+_REAL_HARNESS_FILES: tuple[Path, ...] = (
+    _REAL_HOME / ".claude/settings.json",
+    _REAL_HOME / ".claude/rules/session-db.md",
+    _REAL_HOME / ".codex/hooks.json",
+    _REAL_HOME / ".kiro/steering/session-db.md",
+    _REAL_HOME / ".kiro/agents/study-mentor.json",
+    _REAL_HOME / ".config/opencode/session-db.md",
+    _REAL_HOME / ".config/opencode/plugins/studyloop-session-export.js",
+    _REAL_HOME / ".pi/agent/session-db.md",
+    _REAL_HOME / ".pi/agent/extensions/studyloop-session-export.ts",
+    _REAL_GROK_HOME / "hooks/studyloop.json",
+    _REAL_GROK_HOME / "rules/session-db.md",
+)
+
+
+def _real_harness_file_states() -> dict[Path, tuple[int, int] | None]:
+    states: dict[Path, tuple[int, int] | None] = {}
+    for path in _REAL_HARNESS_FILES:
+        try:
+            stat = path.stat()
+        except OSError:
+            states[path] = None
+        else:
+            states[path] = (stat.st_mtime_ns, stat.st_size)
+    return states
+
+
+@pytest.fixture(autouse=True)
+def _fail_on_real_home_harness_writes(request: pytest.FixtureRequest):
+    """Fail a test that created, changed or removed a real-home harness file."""
+    before = _real_harness_file_states()
+    yield
+    after = _real_harness_file_states()
+    changed = sorted(str(path) for path in before if before[path] != after[path])
+    if not changed:
+        return
+    report = getattr(request.node, "_report_call", None)
+    if report is not None and report.failed:
+        return  # the test already failed; that failure is the more useful signal
+    detail = "\n".join(f"  - {path}" for path in changed)
+    pytest.fail(
+        "this test wrote into the developer's real home (redirect the installer "
+        f"or stub it; see the guard in conftest.py):\n{detail}",
+        pytrace=False,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Hollow-run guard
 # ---------------------------------------------------------------------------
 #

@@ -210,6 +210,18 @@ class TestGrokSessionEndHook:
         assert (home / "elsewhere/hooks/studyloop.json").exists()
         assert not (home / ".grok").exists()
 
+    def test_detection_follows_grok_home(self, home: Path, monkeypatch: pytest.MonkeyPatch):
+        # Detection and installation must agree on where Grok lives, or doctor
+        # would offer to fix a harness it then installs somewhere Grok never reads.
+        elsewhere = home / "elsewhere"
+        elsewhere.mkdir()
+        monkeypatch.setenv("GROK_HOME", str(elsewhere))
+        with patch.object(installers.shutil, "which", return_value=None):
+            assert "grok" in installers.detect_available_agent_tools()
+        monkeypatch.delenv("GROK_HOME")
+        with patch.object(installers.shutil, "which", return_value=None):
+            assert "grok" not in installers.detect_available_agent_tools()
+
     def test_command_skips_subagent_teardown_and_never_fails(self, home: Path):
         """Run the installed line under /bin/sh exactly as Grok would.
 
@@ -248,9 +260,14 @@ class TestGrokSessionEndHook:
         assert run({**session, "subagentType": "explore"}) == 0
         assert log.read_text().splitlines() == ["--grok-only"]
 
+        # Negative control: the word as a string VALUE is not the key, so the
+        # session's own end must still export (the filter matches the key).
+        assert run({**session, "sessionId": "subagentType"}) == 0
+        assert log.read_text().splitlines() == ["--grok-only", "--grok-only"]
+
         # An export failure must not surface as a Grok hook error.
         assert run(session, FAKE_EXIT="1") == 0
-        assert log.read_text().splitlines() == ["--grok-only", "--grok-only"]
+        assert log.read_text().splitlines() == ["--grok-only"] * 3
 
 
 # ---------------------------------------------------------------------------
