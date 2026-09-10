@@ -44,6 +44,7 @@ from learning_memory.store import (
     Store,
     capture_evidence_id,
     claim_id,
+    count_overlapping,
     event_evidence_id,
     plan_prose_query,
 )
@@ -83,6 +84,7 @@ __all__ = [
     "capture_evidence_id",
     "claim_id",
     "collapse_adjacent_duplicates",
+    "count_overlapping",
     "ddl",
     "event_content_hash",
     "event_evidence_id",

@@ -246,6 +246,46 @@ Corpus facts that corrected the brief (all measured by the adapter, recorded in 
   relevant top hit in 360 ms cold / 31 ms warm (p95 40 ms over 20 natural queries; budget ≤ 500 ms);
   a real archive quote binds a claim; a fabricated quote is refused.
 
+## Implementation notes accepted from Stage D — deterministic derivation (2026-09-10)
+
+`derive-v1` over the whole store: **5,838 sessions in 19.3 s; 15,995 exchanges (11,860 threaded =
+exactly the `user` event count; 4,135 quarantined `pre_first_user`); 109 concepts from the shipped
+`extractors/topic_vocab.json` (sha `203020fa…`), 35,136 tags, 25,571 occurrences, 106 recurrence
+candidates; intent 91.9 % (the rest have no `user` event), outcome 37.6 %.** Idempotent on the
+real corpus: a second run reproduces byte-identical content hashes on all four written surfaces.
+
+- The ADR's `studyloop.topics` vocabulary is the learner's **three** configured areas — too coarse
+  to derive a graph from. The shipped `extractors/topic_vocab.json` (7 areas, 103 terms,
+  learner-authored) is the `source='vocab'` list; it is copied into the package and hash-pinned.
+- **32.4 % of consecutive learner turns are byte-identical re-asks** (2,103 / 6,497). The builder
+  suspected the near-repeat rule over-fired on short strings, measured it (a length guard reclaims
+  6 of 2,211 pairs), and shipped the rule verbatim. The re-ask rate is a corpus fact worth its own
+  learning signal.
+- Quarantine reason is recoverable from row shape (`resolved IS NULL`; `question_event_id IS NULL`
+  ⇒ `pre_first_user`) rather than a new column, to avoid a schema bump before Stage C re-ingest.
+- 6,800 concept tags sit on quarantined pre-first-user prose blocks — legitimate (assistant prose
+  is taggable) and recorded here so it is not mistaken for leakage.
+
+**Measured rule accuracy against the orchestrator's hand labels** (60 exchanges, stratified by
+harness, seed 20260910; labelled by the orchestrator, not a model, per this ADR):
+
+| flag | agree / 60 | false + | false − | what the labels show |
+|---|---|---|---|---|
+| `is_question` | 42 | 17 | 1 | the interrogative rule fires on imperative briefs ("Analyse…", "Review…", "can you please commit…") and on `?` inside pasted instructions; most learner turns on this corpus are *requests* |
+| `had_error` | 51 | 7 | **2** | the lexicon scans **answers only**, so a learner pasting a Traceback — the highest-value learning signal — is missed (items 34, 36, 40); false positives are prose *about* errors |
+| `retried` | 48 | 12 | 0 | name-only on the archive means "a tool called ≥ 2× in one exchange", which is ordinary agentic work; the archive holds no arguments, so this cannot be made precise from history |
+| `resolved` | 48 | 7 | 5 | misses are answers-to-something-else and mid-work prose; the near-repeat rule is right |
+| concepts | recall ≥ 0.90 against labelled central concepts | — | — | precision not graded (vocab match is mechanical) |
+
+Disposition: the label set is a **measurement gate**, not a build gate. Tests fail on any
+regression below the measured floors and `xfail` with the number until the 90 % target is met.
+The fixes the labels justify are a **`derive-v2`** with a re-label pass, not a silent patch to v1:
+(1) `had_error` scans the *user* turn too; (2) `is_question` requires learner voice
+(not a pasted brief/system marker) and treats polite imperatives as requests; (3) `retried` on
+archive is renamed `repeated_tool_use` in the learning tier, with `retried` reserved for native
+captures that carry arguments. The learning-tier export (Stage D.2) consumes `resolved`,
+`had_error` and recurrence — so D.2 waits for v2, or exports with the measured accuracy stated.
+
 ## Open questions (to be settled by measurement, not debate)
 
 Tokenizer for `prose_fts`/claims (porter vs unicode61); whether embeddings on claims clear G4;

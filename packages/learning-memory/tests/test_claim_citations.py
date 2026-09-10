@@ -26,6 +26,7 @@ from learning_memory import (
     ParsedSession,
     Session,
     Store,
+    count_overlapping,
 )
 
 try:  # package-scoped run (pytest "prepend" import mode)
@@ -479,7 +480,7 @@ def test_unique_substring_always_binds(data: st.DataObject, body: str) -> None:
     start = data.draw(st.integers(min_value=0, max_value=max(0, len(body) - 1)))
     end = data.draw(st.integers(min_value=start + 1, max_value=len(body)))
     quote = body[start:end]
-    assume(body.count(quote) == 1)
+    assume(count_overlapping(body, quote) == 1)  # str.count misses overlaps ('???' / '??')
 
     with fresh_store() as store:
         evidence = seed(store, body=body)
@@ -502,7 +503,7 @@ def test_shifted_offsets_never_bind(data: st.DataObject, body: str, delta: int) 
     start = data.draw(st.integers(min_value=0, max_value=max(0, len(body) - 1)))
     end = data.draw(st.integers(min_value=start + 1, max_value=len(body)))
     quote = body[start:end]
-    assume(body.count(quote) == 1)
+    assume(count_overlapping(body, quote) == 1)  # str.count misses overlaps ('???' / '??')
     shifted = start + delta
     assume(shifted >= 0)
     assume(shifted + len(quote) <= len(body))
@@ -518,3 +519,23 @@ def test_shifted_offsets_never_bind(data: st.DataObject, body: str, delta: int) 
                 (claim, evidence, shifted, shifted + len(quote), quote),
             )
         assert len(store.claim_citations(claim)) == 1
+
+
+def test_overlapping_occurrences_are_ambiguous() -> None:
+    """Regression for the hypothesis draw body='???' quote='??' (2026-09-10).
+
+    ``str.count`` says the quote occurs once; it occurs at offsets 0 and 1. The store
+    already refused (``find(quote, start + 1)`` sees the overlap); its message said
+    "1 times", and the property test's precondition shared the blind spot.
+    """
+    assert count_overlapping("???", "??") == 2
+    assert count_overlapping("aaaa", "aa") == 3
+    assert count_overlapping("abc", "abc") == 1
+    assert count_overlapping("abc", "") == 0
+    with fresh_store() as store:
+        evidence = seed(store, body="???")
+        with pytest.raises(CitationError) as exc:
+            add(store, "s-1", [{"evidence_id": evidence, "quote": "??"}])
+        (problem,) = exc.value.problems
+        assert problem.reason == "ambiguous_quote"
+        assert "2 times" in problem.detail

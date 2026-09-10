@@ -255,6 +255,21 @@ def plan_prose_query(query: str) -> str:
     return " OR ".join('"' + token.replace('"', '""') + '"' for token in tokens)
 
 
+def count_overlapping(body: str, quote: str) -> int:
+    """Occurrences of ``quote`` in ``body`` including overlapping ones.
+
+    ``str.count`` is non-overlapping: ``"???".count("??") == 1`` while the quote is in
+    fact at offsets 0 and 1 -- and offsets are exactly what a citation binds. Ambiguity
+    is judged on every position the quote could bind to.
+    """
+    if not quote:
+        return 0
+    n, i = 0, body.find(quote)
+    while i >= 0:
+        n, i = n + 1, body.find(quote, i + 1)
+    return n
+
+
 class Store:
     """A single-file SQLite learning-memory store.
 
@@ -852,7 +867,8 @@ class Store:
                         ev_id,
                         quote,
                         "ambiguous_quote",
-                        f"quote occurs {body.count(quote)} times; offsets would be a guess",
+                        f"quote occurs {count_overlapping(body, quote)} times "
+                        "(overlaps counted); offsets would be a guess",
                     )
                 )
                 continue
