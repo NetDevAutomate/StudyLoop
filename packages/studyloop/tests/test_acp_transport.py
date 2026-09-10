@@ -2,7 +2,7 @@
 
 The stub agent (``_stub_acp_agent.py``) is driven by environment
 variables, so each test configures exactly the wire-level behaviour
-it wants to exercise. No real Kiro/Gemini binaries required; real-CLI
+it wants to exercise. No real Kiro/Grok Build binaries required; real-CLI
 coverage lives in the Playwright matrix that Phase 2 PR-C will add.
 
 Plan: private-docs/2026-05-09-refactor-agent-session-transport-plan.md

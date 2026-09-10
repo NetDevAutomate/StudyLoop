@@ -20,7 +20,7 @@ class TestAgentRegistry:
     def test_release_agents_registered(self):
         from studyloop.agent_launcher import AGENTS
 
-        assert tuple(AGENTS) == ("kiro", "codex", "claude", "opencode", "pi")
+        assert tuple(AGENTS) == ("kiro", "codex", "claude", "opencode", "pi", "grok")
 
     def test_adapters_have_required_fields(self):
         from studyloop.agent_launcher import AGENTS
@@ -46,7 +46,7 @@ class TestAgentRegistry:
     def test_all_agents_are_wired(self, tmp_path):
         from studyloop.agent_launcher import AGENTS
 
-        for name in ("codex", "opencode", "pi"):
+        for name in ("codex", "opencode", "pi", "grok"):
             # These write to session_dir — should not raise
             path = AGENTS[name].setup("# test content", tmp_path)
             assert path.exists()
@@ -509,6 +509,34 @@ class TestCodexAdapter:
 
         cmd = _codex_launch(Path("/tmp/AGENTS.md"), resume=True)
         assert cmd.endswith("codex --resume")
+
+
+# ---------------------------------------------------------------------------
+# Grok Build adapter — the compat re-export, not the adapter module itself
+# (adapters/grok.py is covered directly in test_adapter_builtins.py).
+# ---------------------------------------------------------------------------
+
+
+class TestGrokAdapter:
+    def test_setup_writes_agents_md(self, tmp_path):
+        from studyloop.agent_launcher import _grok_setup
+
+        path = _grok_setup("# Grok Persona", tmp_path)
+        assert path == tmp_path / "AGENTS.md"
+        assert path.exists()
+        assert path.read_text(encoding="utf-8") == "# Grok Persona"
+
+    def test_launch_new_session(self):
+        from studyloop.agent_launcher import _grok_launch
+
+        cmd = _grok_launch(Path("/tmp/AGENTS.md"), resume=False)
+        assert cmd.endswith("grok")
+
+    def test_launch_resume(self):
+        from studyloop.agent_launcher import _grok_launch
+
+        cmd = _grok_launch(Path("/tmp/AGENTS.md"), resume=True)
+        assert cmd.endswith("grok --resume")
 
 
 # ---------------------------------------------------------------------------

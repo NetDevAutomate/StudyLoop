@@ -231,16 +231,13 @@ def test_session_options_refreshes_index_when_fingerprint_changes(
 
 
 def test_agent_options_fall_back_when_detection_fails() -> None:
+    from studyloop.harnesses import RELEASE_HARNESSES
     from studyloop.web.routes.session._options import _agent_options
 
     with patch("studyloop.agent_launcher.detect_agents", side_effect=RuntimeError("boom")):
         agents = _agent_options()
 
-    assert {agent["value"] for agent in agents} == {
-        "claude",
-        "codex",
-        "kiro",
-        "opencode",
-        "pi",
-    }
+    # The fallback must still offer every release harness -- derived, so
+    # re-admitting or dropping one cannot leave this expectation stale.
+    assert {agent["value"] for agent in agents} == set(RELEASE_HARNESSES)
     assert all(agent["available"] is False for agent in agents)

@@ -1029,7 +1029,7 @@ class TestMultiAgentSessionLaunch:
 
     def test_all_agents_support_topic_logging(self, tmp_path):
         """All agents can log topics via the studyloop wrapper in the session dir."""
-        for agent_name in ("kiro", "codex", "claude", "opencode", "pi"):
+        for agent_name in ("kiro", "codex", "claude", "opencode", "pi", "grok"):
             _cleanup_all()
             extra_env = {}
             if agent_name == "kiro":

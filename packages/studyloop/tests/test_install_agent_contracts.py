@@ -46,9 +46,12 @@ _XTILES_REFERENCES = f"{_XTILES_SKILL_DIR}/references/harnesses.md"
 #: global search path, so a per-harness link was redundant at best.
 _XTILES_LINKED_HARNESSES = ("kiro", "claude")
 
-#: Codex, OpenCode and pi need no link of their own -- all discover the hub as
-#: a user/global skills directory.
-_XTILES_HUB_SERVED_HARNESSES = ("codex", "opencode", "pi")
+#: Codex, OpenCode, pi and Grok Build need no link of their own -- all discover
+#: the hub as a user/global skills directory. Grok Build's skill discovery
+#: "also scans ``.agents/skills/`` (and ``commands/``) at each tier"
+#: (Grok CLI 1.0.13 user guide, 08-skills.md:29), which includes ``~/.agents/``;
+#: re-admitted 2026-09-10 (receipts/adapter-scope-2026-09-10.md).
+_XTILES_HUB_SERVED_HARNESSES = ("codex", "opencode", "pi", "grok")
 
 #: Harnesses whose definition file carries a self-gated paragraph as well.
 _XTILES_PARAGRAPH_FILES = (
@@ -322,6 +325,25 @@ def test_xtiles_skill_installed_for_each_detected_tool(tmp_path: Path, monkeypat
     repo_root = _repo_root()
     detected = sorted(_XTILES_LINKED_HARNESSES)
 
+    # Sandbox-escape guard. ``_rebase`` only redirects targets under the real
+    # HOME, so a ``{repo_root}`` target (codex and grok both have one: the
+    # repo-root AGENTS.md symlink) is NOT sandboxed -- this test would link it
+    # for real and then, via the ``uninstall=True`` call at the end, DELETE a
+    # tracked file from the working tree. That is not hypothetical: adding grok
+    # to _XTILES_LINKED_HARNESSES removed the repo's own AGENTS.md symlink.
+    # Fail loudly here instead, so whoever adds such a harness sandboxes the
+    # target rather than discovering it from a mysteriously dirty git status.
+    escaping = sorted(
+        f"{tool}:{spec.target}"
+        for tool in detected
+        for spec in installers._TOOL_LINKS[tool]
+        if "{repo_root}" in spec.target
+    )
+    assert escaping == [], (
+        "these links target the real repository, not the sandbox HOME, so this "
+        f"test would create and then delete tracked files: {escaping}"
+    )
+
     monkeypatch.setattr(installers, "_HOME", tmp_path)
     monkeypatch.setattr(
         installers,
@@ -425,10 +447,11 @@ def test_session_memory_skill_is_canonical_and_reaches_every_release_harness() -
     assert "session-query search" in text
     assert "session-export --kiro-only" in text
 
-    # Kiro/Claude need native-directory links. Codex/OpenCode/pi all discover
-    # ~/.agents/skills directly, so the hub serves them without duplicate links.
+    # Kiro/Claude need native-directory links. Codex/OpenCode/pi/Grok Build all
+    # discover ~/.agents/skills directly, so the hub serves them without
+    # duplicate links (see _XTILES_HUB_SERVED_HARNESSES for the Grok citation).
     linked = set(installers.SESSION_MEMORY_SKILL_LINKS)
-    hub_served = {"codex", "opencode", "pi"}
+    hub_served = set(_XTILES_HUB_SERVED_HARNESSES)
     assert linked == {"kiro", "claude"}
     assert linked | hub_served == set(RELEASE_HARNESSES)
     assert any(
@@ -460,7 +483,21 @@ def test_every_release_harness_has_a_real_session_export_hook_contract() -> None
     strategies = {"kiro", "opencode", "pi", "claude", "codex"}
     from studyloop.harnesses import RELEASE_HARNESSES
 
-    assert strategies == set(RELEASE_HARNESSES)
+    # Grok Build is admitted as a LAUNCH harness with no automatic export hook
+    # yet: a ~/.grok/hooks/studyloop.json SessionEnd hook running
+    # `session-export --grok-only` is recorded as a follow-on
+    # (docs/architecture/session-memory/receipts/adapter-scope-2026-09-10.md §6),
+    # not built. Named here so the gap is a declared decision rather than a
+    # silent omission, and so the partition still fails for any OTHER harness
+    # added without one. Its sessions are exportable on demand -- GrokExporter
+    # has ingested real sessions -- just not automatically at session end.
+    no_export_hook_yet = {"grok"}
+
+    assert strategies.isdisjoint(no_export_hook_yet)
+    assert strategies | no_export_hook_yet == set(RELEASE_HARNESSES)
+    # The gap must be REAL, not merely declared: an installer entry appearing for
+    # grok without this set being updated would make the comment above a lie.
+    assert no_export_hook_yet.isdisjoint(installers._HARNESS_EXPORT)
 
 
 # ---------------------------------------------------------------------------

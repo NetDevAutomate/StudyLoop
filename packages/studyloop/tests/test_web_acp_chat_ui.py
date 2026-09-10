@@ -56,11 +56,11 @@ pytestmark = [pytest.mark.e2e]
 WEB_PORT = 18576
 
 # These agents advertise supports_acp: true.
-# Derived from the server's own capability set, never hand-listed. The
-# previous literal was ["kiro", "gemini", "grok"]: gemini and grok were
-# dropped from the release contract, so /api/session/start rejects them with
-# a 400 naming supported_agents, and every parametrisation over them failed
-# while asserting success — 62 failures across these two files.
+# Derived from the server's own capability set, never hand-listed. The literal
+# this replaced was ["kiro", "gemini", "grok"], which broke twice for opposite
+# reasons: gemini and grok were dropped from the release contract (62 failures
+# across these two files, every parametrisation asserting success against a 400),
+# and grok was then re-admitted. Deriving it means neither move needs an edit here.
 ACP_AGENTS = sorted(ACP_CAPABLE_AGENTS)
 
 

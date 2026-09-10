@@ -38,9 +38,10 @@ from harness.agents import matrix_agent
 # Constants
 # ---------------------------------------------------------------------------
 
-# Derived, never hand-listed. The previous literal carried gemini and grok
-# (both dropped from the release contract) plus ollama and lmstudio, which
-# are content-generation providers rather than PTY-launched mentor agents —
+# Derived, never hand-listed. The literal this replaced carried gemini and grok
+# (both dropped from the release contract at the time; grok has since been
+# re-admitted, which is exactly why this is derived) plus ollama and lmstudio,
+# which are content-generation providers rather than PTY-launched mentor agents —
 # they have no launch path, so the matrix could only ever error on them.
 AGENTS = list(RELEASE_HARNESSES)
 

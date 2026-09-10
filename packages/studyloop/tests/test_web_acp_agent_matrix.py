@@ -2,10 +2,10 @@
 
 Mirrors ``test_web_agent_matrix.py`` but for the ACP transport:
 
-- Parametrised over Kiro + Gemini + Grok (the ``supports_acp: true`` agents
+- Parametrised over Kiro + Grok Build (the ``supports_acp: true`` agents
   registered in ``studyloop.agent_launcher.AGENTS``).
 - Drives the route through ``STUDYLOOP_TEST_ACP_CMD`` pointing at the
-  scripted ``_stub_acp_agent.py`` so no real Kiro / Gemini binary is
+  scripted ``_stub_acp_agent.py`` so no real Kiro / Grok Build binary is
   needed.
 - Asserts: (1) ``POST /session/start`` with ``transport=acp`` returns
   201 + ws_url, (2) opening the ws receives ``Started(agent=<name>)``
@@ -60,11 +60,11 @@ pytestmark = [pytest.mark.e2e]
 WEB_PORT = 18575
 
 # These agents advertise ``supports_acp: true`` in ``/session/options``.
-# Derived from the server's own capability set, never hand-listed. The
-# previous literal was ["kiro", "gemini", "grok"]: gemini and grok were
-# dropped from the release contract, so /api/session/start rejects them with
-# a 400 naming supported_agents, and every parametrisation over them failed
-# while asserting success — 62 failures across these two files.
+# Derived from the server's own capability set, never hand-listed. The literal
+# this replaced was ["kiro", "gemini", "grok"], which broke twice for opposite
+# reasons: gemini and grok were dropped from the release contract (62 failures
+# across these two files, every parametrisation asserting success against a 400),
+# and grok was then re-admitted. Deriving it means neither move needs an edit here.
 ACP_AGENTS = sorted(ACP_CAPABLE_AGENTS)
 
 # Scripted prompt response — a single ``agent_message_chunk`` with a
@@ -103,7 +103,7 @@ def _start_web_server_with_stub_acp() -> subprocess.Popen:
     """Spin up a studyloop server where ACP launches route through the stub.
 
     Environment contract:
-    - STUDYLOOP_TEST_ACP_CMD: argv the route spawns instead of kiro-cli/gemini.
+    - STUDYLOOP_TEST_ACP_CMD: argv the route spawns instead of kiro-cli/grok.
     - STUB_ACP_PROMPT_UPDATES: scripted session/update notification flow.
     - STUB_ACP_PROMPT_STOP_REASON: stopReason returned after the notification.
 
@@ -386,7 +386,7 @@ class TestAcpChatChunkRenders:
 
     Replaces the former xterm-buffer poll (PR-D) which broke in U2 when
     ACP sessions no longer mount xterm.  The chat panel (U2+) is now the
-    canonical surface for ACP output.  Parametrised over kiro + gemini —
+    canonical surface for ACP output.  Parametrised over kiro + grok —
     the normaliser is agent-agnostic so both must pass.
     """
 

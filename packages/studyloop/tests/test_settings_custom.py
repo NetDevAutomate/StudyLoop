@@ -534,14 +534,18 @@ def test_agents_priority_filters_out_of_scope_harnesses(tmp_path):
         tmp_path, {"agents": {"priority": ["pi", "gemini", "grok", "claude"]}}
     )
     s = _load(config_path)
-    assert s.agents.priority == ["pi", "claude"]
+    assert s.agents.priority == ["pi", "grok", "claude"]
 
 
 def test_agents_default_priority_matches_release_harnesses():
+    from studyloop.harnesses import RELEASE_HARNESSES
     from studyloop.settings import Settings
 
     s = Settings()
-    assert s.agents.priority == ["kiro", "codex", "claude", "opencode", "pi"]
+    # Derived, not a literal: the default IS the release contract in contract
+    # order, so re-admitting or dropping a harness cannot leave this stale.
+    assert s.agents.priority == list(RELEASE_HARNESSES)
+    assert s.agents.priority == ["kiro", "codex", "claude", "opencode", "pi", "grok"]
 
 
 def test_custom_agents_parsed(tmp_path):

@@ -17,7 +17,7 @@ def test_production_package_contains_no_fake_agent_or_content_backend() -> None:
 
 
 def test_out_of_scope_first_party_harness_modules_are_absent() -> None:
-    for module_name in ("gemini", "grok", "ollama", "lmstudio"):
+    for module_name in ("gemini", "ollama", "lmstudio"):
         assert importlib.util.find_spec(f"studyloop.adapters.{module_name}") is None
 
 

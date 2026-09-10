@@ -57,6 +57,16 @@ class TestAgentToolDetection:
             tools = _detect_ai_tools()
         assert "pi" in tools
 
+    def test_detect_grok(self):
+        from studyloop.doctor.agents import _detect_ai_tools
+
+        def _which(binary: str) -> str | None:
+            return "/usr/local/bin/grok" if binary == "grok" else None
+
+        with patch("shutil.which", side_effect=_which):
+            tools = _detect_ai_tools()
+        assert "grok" in tools
+
 
 class TestAgentSmokeTests:
     def test_smoke_test_success(self):
@@ -207,6 +217,18 @@ class TestAgentDefinitionCheck:
             path = _get_agent_install_path("codex")
 
         assert path == tmp_path / "AGENTS.md"
+
+    def test_grok_definition_uses_repo_agents_md(self, tmp_path: Path):
+        """Grok Build reads the same repo-root AGENTS.md as Codex, by design.
+
+        Asserted separately from the Codex case so that giving Grok Build its
+        own definition file becomes a deliberate, visible change rather than a
+        silent divergence between two harnesses that share one source file.
+        """
+        from studyloop.doctor.agents import _get_agent_install_path
+
+        with patch("studyloop.doctor.agents.find_repo_root", return_value=tmp_path):
+            assert _get_agent_install_path("grok") == tmp_path / "AGENTS.md"
 
     def test_manifest_fetch_fails(self):
         from studyloop.doctor.agents import check_agent_definitions

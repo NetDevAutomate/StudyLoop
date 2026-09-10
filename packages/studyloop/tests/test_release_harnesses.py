@@ -12,16 +12,17 @@ def test_initial_prerelease_harness_scope_is_explicit() -> None:
     )
 
     assert CORE_HARNESSES == ("kiro", "codex", "claude")
-    assert PREVIEW_HARNESSES == ("opencode", "pi")
+    assert PREVIEW_HARNESSES == ("opencode", "pi", "grok")
     assert (*CORE_HARNESSES, *PREVIEW_HARNESSES) == RELEASE_HARNESSES
     assert "gemini" not in RELEASE_HARNESSES
-    assert "grok" not in RELEASE_HARNESSES
+    assert "grok" in RELEASE_HARNESSES
     assert SESSION_SOURCE_BY_HARNESS == {
         "kiro": "kiro_cli",
         "codex": "codex",
         "claude": "claude_code",
         "opencode": "opencode",
         "pi": "pi",
+        "grok": "grok",
     }
 
 

@@ -1,9 +1,9 @@
 """R-65 guard: Gemini CLI must not be described as a mentor harness anywhere.
 
 `harnesses.py`'s RELEASE_HARNESSES is Kiro CLI, Codex, Claude Code (core)
-plus OpenCode and pi (preview) -- Gemini CLI was retired as a mentor
-harness. `docs/architecture/current.md`, `docs/architecture/target.md`, and
-`docs/system-overview.md` still described it as one (a mentor-selector
+plus OpenCode, pi and Grok Build (preview) -- Gemini CLI was retired as a
+mentor harness. `docs/architecture/current.md`, `docs/architecture/target.md`,
+and `docs/system-overview.md` still described it as one (a mentor-selector
 diagram node, an "AI agent CLIs" list, an ACP-capable-agents list).
 
 The distinct, TRUE claim that Gemini is a content-generation API provider
