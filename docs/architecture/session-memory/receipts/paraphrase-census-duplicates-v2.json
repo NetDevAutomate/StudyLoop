@@ -1,0 +1,104 @@
+{
+ "artefact": "paraphrase-census-duplicates",
+ "store": "/Users/ataylor/.local/share/studyloop/knowledge-proof/learning-memory-v2.db",
+ "store_sha256": "e0d507fefa7999165c5bf2bac14e8b47f0da7383c08018baca3435913fe4f293",
+ "method": "Cross-session duplicate learner texts among census-eligible questions (no model, read-only).\n\nWhy this exists: the v1 census's ``aider`` row (1 hit in 204) turned out to be 203 byte-identical\ncopies of one fixture prompt across 203 sessions. Self-retrieval-without-self cannot pick one\nsession out of N sessions holding the identical text — the identical sibling rows are perfect\nmatches and fill the top-K before the question's own session can rank. That is a **structural**\nmiss, not a ranking-quality miss, and the census counts it under ``ranking``. This script measures\nhow much of the six-source corpus is in that state, so the \"ranking misses dominate\" reading in the\nv2 sidecar is bounded rather than taken at face value.\n\nEligibility is imported from ``paraphrase_census`` (>= MIN_TOKENS content tokens, <= MAX_WORDS words,\nhuman-driven sessions) so the population is exactly the census's 3,299 (for the v2 store).",
+ "k": 5,
+ "summary": {
+  "eligible_questions": 3299,
+  "identical_text_in_other_sessions": 475,
+  "identical_text_in_at_least_5_other_sessions": 221,
+  "share_identical_text_in_other_sessions": 0.144,
+  "share_identical_text_in_at_least_5_other_sessions": 0.067
+ },
+ "by_harness": {
+  "kiro_cli": {
+   "identical_text_in_at_least_5_other_sessions": 90,
+   "identical_text_in_other_sessions": 230,
+   "n": 2151
+  },
+  "codex": {
+   "identical_text_in_at_least_5_other_sessions": 53,
+   "identical_text_in_other_sessions": 142,
+   "n": 787
+  },
+  "claude_code": {
+   "identical_text_in_at_least_5_other_sessions": 78,
+   "identical_text_in_other_sessions": 97,
+   "n": 205
+  },
+  "grok": {
+   "identical_text_in_other_sessions": 4,
+   "n": 135
+  },
+  "opencode": {
+   "identical_text_in_other_sessions": 2,
+   "n": 16
+  },
+  "pi": {
+   "n": 5
+  }
+ },
+ "most_repeated_eligible_texts": [
+  {
+   "eligible_questions": 90,
+   "sessions_holding_text": 49,
+   "text": "In a few words, summarize our conversation so far."
+  },
+  {
+   "eligible_questions": 45,
+   "sessions_holding_text": 33,
+   "text": "[Request interrupted by user]"
+  },
+  {
+   "eligible_questions": 19,
+   "sessions_holding_text": 19,
+   "text": "[structured-output-enforce] You MUST call the StructuredOutput tool to complete this request. Call this tool now."
+  },
+  {
+   "eligible_questions": 16,
+   "sessions_holding_text": 16,
+   "text": "fantastic, can you please commit the changes and then the first big task... getting the agentic planning agent working f"
+  },
+  {
+   "eligible_questions": 15,
+   "sessions_holding_text": 15,
+   "text": "Can you provide a summary of what has been a great deal of work? "
+  },
+  {
+   "eligible_questions": 15,
+   "sessions_holding_text": 15,
+   "text": "Wow - a LOT done!  Only after onboarding and the web workflow operate end to end, as the base/foundational layer and tes"
+  },
+  {
+   "eligible_questions": 12,
+   "sessions_holding_text": 6,
+   "text": "[Request interrupted by user for tool use]"
+  },
+  {
+   "eligible_questions": 9,
+   "sessions_holding_text": 6,
+   "text": "Continue from where you left off."
+  },
+  {
+   "eligible_questions": 6,
+   "sessions_holding_text": 2,
+   "text": "No real deadline. Soon-ish would be nice but nothing's riding on it."
+  },
+  {
+   "eligible_questions": 6,
+   "sessions_holding_text": 2,
+   "text": "Just the courses I mentioned — Next-Level Python, the three Software Design Mastery ones, The Software Designer Mindset,"
+  },
+  {
+   "eligible_questions": 6,
+   "sessions_holding_text": 2,
+   "text": "I'd stop feeling like I'm faking it. I want to be able to build data platform things and agent workflows properly instea"
+  },
+  {
+   "eligible_questions": 6,
+   "sessions_holding_text": 2,
+   "text": "No idea. I don't know enough yet to know what counts as a rabbit hole."
+  }
+ ]
+}
