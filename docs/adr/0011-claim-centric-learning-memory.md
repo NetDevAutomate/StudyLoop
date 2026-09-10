@@ -178,6 +178,33 @@ the committed store; dispositions of all 42 findings in
 (store hardening) precedes any corpus ingest; its acceptance tests are the seven reproductions
 flipping to refused/correct.
 
+## Implementation notes accepted from Stage B.1 (2026-09-10)
+
+Schema v2; all seven reproductions flipped under the orchestrator's own probes (132 tests; every
+new guard proven load-bearing by removing it and watching its test fail — 17/17).
+
+- **Evidence ids are content-addressed within a session**, so identical prose text shares one
+  evidence row whose `event_id` names the first occurrence. Forced by "reordering changes no
+  existing evidence id": any position-bearing id would mint fresh rows on a reordered re-parse and
+  strand old citations. Ambiguity is unaffected (the body is still one message); every occurrence
+  remains reachable from a citation by body-join, so drill-down is intact.
+- `ParsedSession.evidence_basis` removed: basis and origin are derived from what the store actually
+  received (`native` when bytes are present, else `archive`), so a caller-set label could not be
+  authoritative. The zero-evidence guard counts *citable* rows (`event_id IS NOT NULL`), so a
+  tool-only session is rejected even when native bytes are held.
+- `sessions.parent_id` is not retro-filled when a parent lands late — `lineage`/`lineage_pending`
+  is the edge record; a declared `parent_id` is also treated as a lineage edge.
+- `adapter_version` defaults to `"unspecified"`; Stage C's contract suite refuses the default.
+- Planner strips `Cc`/`Cs` code points before phrase-quoting: FTS5 parses its expression as a C
+  string, so a NUL truncates the phrase and the closing quote is never seen (found by the property
+  test, not by hand).
+- **Consequence surfaced by B.1:** with append-only evidence and `evidence.event_id` a real FK,
+  prose events are effectively undeletable. Redaction or secret-scrubbing is therefore a
+  *new-row / new-store* operation (re-capture under a new `classifier_version` with the scrubbed
+  text; the old rows stay for the citations that bound to them, or the store is rebuilt from
+  scrubbed sources). No such policy exists yet; it is a Stage E prerequisite for any claim that
+  cites command output, and a Stage H item for the doctor.
+
 ## Open questions (to be settled by measurement, not debate)
 
 Tokenizer for `prose_fts`/claims (porter vs unicode61); whether embeddings on claims clear G4;

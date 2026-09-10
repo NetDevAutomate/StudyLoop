@@ -1,7 +1,7 @@
 [project]
 name = "learning-memory"
 version = "0.1.0"
-description = "ADR-0011 PoC: claim-centric learning memory — typed events, native evidence, quote-bound claims"
+description = "ADR-0011 v1.1 PoC: claim-centric learning memory — typed events, per-event evidence, quote-bound claims"
 authors = [
     {name = "Andy Taylor"}
 ]

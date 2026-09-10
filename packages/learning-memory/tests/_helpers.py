@@ -11,7 +11,6 @@ from hypothesis import strategies as st
 from learning_memory import (
     Event,
     EventKind,
-    EvidenceBasis,
     ParsedSession,
     Session,
     Store,
@@ -32,7 +31,6 @@ NON_PROSE: tuple[EventKind, ...] = (
     "error",
 )
 ALL_KINDS: tuple[EventKind, ...] = PROSE_ONLY + NON_PROSE
-BASES: tuple[EvidenceBasis, ...] = ("OBSERVED", "REPORTED")
 
 text_strategy = st.text(alphabet=ALPHABET, min_size=1, max_size=60).filter(
     lambda value: bool(value.strip())
@@ -60,28 +58,27 @@ def events(draw: st.DrawFn, kinds: tuple[EventKind, ...] = ALL_KINDS) -> list[Ev
 
 @st.composite
 def parsed_sessions(draw: st.DrawFn) -> ParsedSession:
-    """A ParsedSession that is valid for ingest, i.e. one that carries evidence."""
-    basis = draw(st.sampled_from(BASES))
-    event_list = draw(events())
-    native: bytes | None = None
-    if basis == "REPORTED":
-        # REPORTED evidence is synthesised from prose, so guarantee some exists.
-        head = Event(turn_id=0, seq=0, kind="user", text=draw(text_strategy), actor="user")
-        event_list = [
-            head,
-            *[
-                Event(
-                    turn_id=event.turn_id,
-                    seq=index + 1,
-                    kind=event.kind,
-                    text=event.text,
-                    actor=event.actor,
-                )
-                for index, event in enumerate(event_list)
-            ],
-        ]
-    else:
-        native = draw(text_strategy).encode("utf-8")
+    """A ParsedSession that is valid for ingest: it has at least one prose event.
+
+    v1.1: the citation surface is per prose event, so "valid for ingest" means
+    prose exists -- native bytes are an extra capture row, never the only evidence.
+    """
+    drawn = draw(events())
+    head = Event(turn_id=0, seq=0, kind="user", text=draw(text_strategy), actor="user")
+    event_list = [
+        head,
+        *[
+            Event(
+                turn_id=event.turn_id,
+                seq=index + 1,
+                kind=event.kind,
+                text=event.text,
+                actor=event.actor,
+            )
+            for index, event in enumerate(drawn)
+        ],
+    ]
+    native = draw(st.one_of(st.none(), text_strategy.map(lambda value: value.encode("utf-8"))))
     return ParsedSession(
         session=Session(
             id=f"s-{draw(session_ids)}",
@@ -89,23 +86,29 @@ def parsed_sessions(draw: st.DrawFn) -> ParsedSession:
         ),
         events=event_list,
         native_source=native,
-        evidence_basis=basis,
         lineage=[],
+        adapter_version=draw(st.sampled_from(["kiro@1", "archive@3"])),
+        classifier_version=draw(st.one_of(st.none(), st.just("archive-classifier@1"))),
     )
 
 
 @st.composite
-def evidence_free_sessions(draw: st.DrawFn) -> ParsedSession:
-    """A ParsedSession with no native bytes and no prose: it must be refused."""
+def prose_free_sessions(draw: st.DrawFn) -> ParsedSession:
+    """A ParsedSession with no prose events: nothing citable, so it must be refused.
+
+    Native bytes are drawn in on purpose -- a capture row is not a citation surface,
+    so its presence must not rescue the session (ADR v1.1 finding 7 + note 17).
+    """
     bodies = draw(st.lists(text_strategy, min_size=0, max_size=5))
     kinds: list[EventKind] = [draw(st.sampled_from(NON_PROSE)) for _ in bodies]
+    native = draw(st.one_of(st.none(), text_strategy.map(lambda value: value.encode("utf-8"))))
     return ParsedSession(
         session=Session(id=f"s-{draw(session_ids)}", harness="archive"),
         events=[
             Event(turn_id=index, seq=index, kind=kind, text=body, actor=kind)
             for index, (kind, body) in enumerate(zip(kinds, bodies, strict=True))
         ],
-        native_source=None,
-        evidence_basis=draw(st.sampled_from(BASES)),
+        native_source=native,
         lineage=[],
+        adapter_version="archive@3",
     )

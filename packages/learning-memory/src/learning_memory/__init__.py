@@ -1,4 +1,4 @@
-"""Claim-centric learning memory (ADR-0011 PoC).
+"""Claim-centric learning memory (ADR-0011 v1.1 PoC).
 
 Capture is lossless and typed; usefulness is derived at capture time and bound to
 provenance the database itself can prove.
@@ -21,6 +21,7 @@ from learning_memory.model import (
     ReviewItemKind,
     Session,
     SourceRef,
+    collapse_adjacent_duplicates,
     event_content_hash,
 )
 from learning_memory.schema import (
@@ -41,8 +42,10 @@ from learning_memory.store import (
     NoEvidenceError,
     SchemaError,
     Store,
+    capture_evidence_id,
     claim_id,
-    evidence_id,
+    event_evidence_id,
+    plan_prose_query,
 )
 
 __version__ = "0.1.0"
@@ -77,8 +80,11 @@ __all__ = [
     "Store",
     "Tokenizer",
     "__version__",
+    "capture_evidence_id",
     "claim_id",
+    "collapse_adjacent_duplicates",
     "ddl",
     "event_content_hash",
-    "evidence_id",
+    "event_evidence_id",
+    "plan_prose_query",
 ]

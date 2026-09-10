@@ -45,19 +45,24 @@ TAGS = ("retrieval", "provenance")
 
 
 def seed(store: Store, session_id: str = "s-1", body: str = BODY) -> str:
-    """Ingest one session whose single evidence body is exactly ``body``."""
+    """Ingest one session whose single prose event -- and so whose single evidence
+    body -- is exactly ``body``.
+
+    v1.1: the citation surface is the EVENT, so the text under test is an event's
+    text rather than a native transcript. Native bytes now produce a separate
+    capture row that is deliberately not a citation target.
+    """
     store.ingest(
         ParsedSession(
             session=Session(id=session_id, harness="kiro"),
-            events=[Event(turn_id=0, seq=0, kind="user", text="why did the gate fail?")],
-            native_source=body.encode("utf-8"),
-            evidence_basis="OBSERVED",
+            events=[Event(turn_id=0, seq=0, kind="user", text=body, actor="user")],
+            adapter_version="kiro@1",
         )
     )
     visible = store.visible_evidence(session_id)
     assert len(visible) == 1
     assert visible[0]["body"] == body
-    return visible[0]["id"]
+    return str(visible[0]["id"])
 
 
 def add(
@@ -376,9 +381,10 @@ def test_claim_field_contract_boundaries_are_inclusive(store: Store) -> None:
 
 
 def test_claim_on_unknown_session_is_rejected(store: Store) -> None:
-    seed(store)
+    """A real citation, so the session check is what fires (not the citation check)."""
+    evidence = seed(store)
     with pytest.raises(ClaimValidationError, match="unknown session"):
-        add(store, "s-missing", [])
+        add(store, "s-missing", [{"evidence_id": evidence, "quote": "ANCHOR"}])
     assert counts(store) == (0, 0)
 
 
@@ -426,10 +432,24 @@ def test_schema_checks_refuse_out_of_contract_claims(
 
 
 def test_schema_accepts_a_contract_abiding_raw_claim(store: Store) -> None:
-    """The negative cases above are only meaningful if the positive one passes."""
-    seed(store)
+    """The negative cases above are only meaningful if the positive one passes.
+
+    v1.1: the positive case now has to write its citation FIRST -- a raw claim with
+    no citation is refused by ``claims_need_citation`` (council finding 1), so this
+    test doubles as the raw-writer proof that the deferred FK ordering works.
+    """
+    evidence = seed(store)
+    quote = "ANCHOR"
+    start = BODY.find(quote)
+    store.connection.execute("BEGIN IMMEDIATE")
+    store.connection.execute(
+        'INSERT INTO claim_citations(claim_id, evidence_id, "start", "end", quote)'
+        " VALUES ('raw-ok', ?, ?, ?, ?)",
+        (evidence, start, start + len(quote), quote),
+    )
     store.connection.execute(RAW_CLAIM, ("raw-ok", "Finding", "t", "s", '["a","b"]', 0.5))
-    assert counts(store) == (1, 0)
+    store.connection.execute("COMMIT")
+    assert counts(store) == (1, 1)
 
 
 def test_supersedes_must_name_a_real_claim(store: Store) -> None:

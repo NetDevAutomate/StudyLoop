@@ -1,8 +1,17 @@
-"""The ADR-0011 store: ingest typed sessions, add quote-bound claims.
+"""The ADR-0011 v1.1 store: ingest typed sessions, add quote-bound claims.
 
 Everything in this module is either one transaction or a read. There is no
 "partially ingested session" state and no "claim whose citations didn't land"
 state, because both would let unprovable provenance into the store.
+
+Stage B.1 changes (council-reproduced defects, ADR v1.1):
+
+* natural-language input to :meth:`Store.search_prose` goes through a planner;
+  raw FTS syntax is the separate, explicit :meth:`Store.search_prose_raw`;
+* evidence is per prose event, append-only, with native bytes retained alongside;
+* a claim without a citation cannot be written, by the database;
+* a child ingested before its parent parks the edge in ``lineage_pending`` and the
+  parent's ingest reconciles it.
 """
 
 from __future__ import annotations
@@ -10,6 +19,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+import unicodedata
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Final, Literal, Self
@@ -44,10 +54,14 @@ __all__ = [
     "NoEvidenceError",
     "SchemaError",
     "Store",
+    "capture_evidence_id",
+    "claim_id",
+    "event_evidence_id",
+    "plan_prose_query",
 ]
 
-_EVIDENCE_JOINER: Final = "\n\n"
-"""How REPORTED prose is concatenated into one evidence body."""
+_UNSAFE: Final = frozenset({"Cc", "Cs"})
+"""Unicode categories that FTS5 (a C-string parser) or SQLite's TEXT encoder reject."""
 
 CitationReason = Literal[
     "unknown_evidence",
@@ -69,11 +83,11 @@ class SchemaError(LearningMemoryError):
 
 
 class NoEvidenceError(LearningMemoryError):
-    """Ingest would have left a session with zero evidence rows, so it was rolled back."""
+    """Ingest would have left a session with nothing citable, so it was rolled back."""
 
 
 class ClaimValidationError(LearningMemoryError):
-    """A claim's own fields are out of contract (kind, lengths, tags, confidence)."""
+    """A claim's own fields are out of contract (kind, lengths, tags, confidence, citations)."""
 
 
 class DuplicateClaimError(LearningMemoryError):
@@ -114,8 +128,12 @@ class IngestResult:
     evidence_inserted: int
     evidence_skipped: int
     lineage_inserted: int
+    lineage_reconciled: int = 0
+    """Pending edges that landed because THIS session is the parent they waited for."""
     lineage_deferred: tuple[str, ...] = ()
-    """Parent ids not yet present in ``sessions``; re-ingest the child once they are."""
+    """Parents of this session that are still absent: rows parked in ``lineage_pending``."""
+    exporter_dupes_collapsed: int = 0
+    """Echo of what the adapter folded before emitting (recorded on ``sessions``)."""
 
 
 def _canonical_json(payload: object) -> bytes:
@@ -132,18 +150,46 @@ def _now() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
 
 
-def evidence_id(session_id: str, origin: str, basis: str, body_sha256: str) -> str:
-    """``evidence.id`` = sha256 of the canonical payload (ADR-0011 schema).
+def event_evidence_id(session_id: str, origin: str, body_sha256: str) -> str:
+    """Id of a per-event (``REPORTED``) evidence row: ``sha256`` of a canonical payload.
 
-    Content-addressed so re-ingesting the same session re-derives the same id and
-    the insert is a no-op instead of a duplicate row.
+    Deliberately **position-free**, unlike the event hash. The citation surface must
+    survive re-derivation, reclassification and reordering (ADR v1.1, council
+    finding 7): an evidence id is a function of *what the text is*, not of where in
+    the session it sat, so re-ingesting a reordered parse produces no new evidence
+    rows and no existing citation is stranded.
+
+    The consequence, pinned by test: two prose events with byte-identical text in
+    one session share one evidence row, whose ``event_id`` names the first
+    occurrence. The body is still one message, so quote offsets stay unambiguous.
     """
     return _sha256_hex(
         _canonical_json(
             {
+                "class": "event_prose",
                 "session_id": session_id,
                 "origin": origin,
-                "basis": basis,
+                "basis": "REPORTED",
+                "body_sha256": body_sha256,
+            }
+        )
+    )
+
+
+def capture_evidence_id(session_id: str, body_sha256: str) -> str:
+    """Id of a native-capture (``OBSERVED``) evidence row.
+
+    Carries a different ``class`` discriminator from :func:`event_evidence_id` so a
+    single-message session whose native transcript IS that message cannot collide
+    its capture row with its citation row.
+    """
+    return _sha256_hex(
+        _canonical_json(
+            {
+                "class": "native_capture",
+                "session_id": session_id,
+                "origin": "native",
+                "basis": "OBSERVED",
                 "body_sha256": body_sha256,
             }
         )
@@ -159,7 +205,12 @@ def claim_id(
     confidence: float,
     writer: str,
 ) -> str:
-    """Content address of a claim. ``created_at`` is excluded so the id is stable."""
+    """Content address of a claim. ``created_at`` is excluded so the id is stable.
+
+    Stage E widens this to cover the citation-set fingerprint and ``supersedes``
+    (council finding 12); until claims are written by a model there is nothing to
+    fingerprint.
+    """
     return _sha256_hex(
         _canonical_json(
             {
@@ -175,11 +226,44 @@ def claim_id(
     )
 
 
+def plan_prose_query(query: str) -> str:
+    """Turn arbitrary human text into an FTS5 expression that cannot be misread.
+
+    Every whitespace-separated token becomes a **phrase** (embedded ``"`` doubled)
+    and the phrases are OR-joined, so nothing in the user's words can reach FTS5 as
+    syntax: ``AND``, ``NOT``, ``(``, ``*``, a bare column name, or a bare number.
+    ``WP-9`` stays one phrase, so it still matches adjacently rather than being
+    split into two independent terms.
+
+    Control characters and lone surrogates are stripped first. FTS5 parses its
+    expression as a C string, so a NUL inside a phrase ends the string early and the
+    closing quote is never seen (``OperationalError: unterminated string``); a lone
+    surrogate cannot be encoded as TEXT at all.
+
+    Tokens with no alphanumeric character left are dropped -- a phrase containing no
+    tokens is not a legal FTS5 expression -- so ``"?"``, ``"---"`` and ``""`` plan to
+    the empty string, which callers treat as "no query, no rows".
+
+    Stage F measures OR against AND-then-OR-fallback on DEV; OR is the arm that
+    cannot throw.
+    """
+    tokens: list[str] = []
+    for raw_token in query.split():
+        token = "".join(char for char in raw_token if unicodedata.category(char) not in _UNSAFE)
+        if any(char.isalnum() for char in token):
+            tokens.append(token)
+    return " OR ".join('"' + token.replace('"', '""') + '"' for token in tokens)
+
+
 class Store:
     """A single-file SQLite learning-memory store.
 
     The live ``sessions.db`` is never opened by this class; a PoC store is its own
     file (ADR-0011 Consequences).
+
+    :attr:`connection` is available for tests, the derivation pass and the scorer,
+    but it is **not** the write contract: the invariants that matter are enforced by
+    triggers, so a raw writer is refused rather than trusted.
     """
 
     def __init__(self, conn: sqlite3.Connection, tokenizer: Tokenizer = DEFAULT_TOKENIZER) -> None:
@@ -199,7 +283,7 @@ class Store:
 
     @property
     def connection(self) -> sqlite3.Connection:
-        """The underlying connection. Exposed for tests and for the derivation pass."""
+        """The underlying connection. Read/diagnostic surface, not the write contract."""
         return self._conn
 
     @property
@@ -226,9 +310,15 @@ class Store:
         ).fetchone()
         if row is None:
             raise SchemaError("schema_version table exists but is empty")
-        if int(row["version"]) != SCHEMA_VERSION:
+        found = int(row["version"])
+        if found != SCHEMA_VERSION:
+            # No migration on purpose: nothing real has been ingested yet, so a
+            # rebuild from the adapters is cheaper and more honest than an upgrade
+            # path nobody has exercised.
             raise SchemaError(
-                f"store is schema v{row['version']}, this code writes v{SCHEMA_VERSION}"
+                f"store is schema v{found}, this code writes v{SCHEMA_VERSION}; "
+                f"v{found} predates ADR-0011 v1.1 and there is no migration -- "
+                "rebuild the store from the adapters"
             )
         if str(row["tokenizer"]) != self._tokenizer:
             raise SchemaError(
@@ -259,7 +349,14 @@ class Store:
         self._conn.execute("ROLLBACK")
 
     def _commit(self) -> None:
-        self._conn.execute("COMMIT")
+        """Commit, rolling back if a DEFERRED constraint fails at commit time."""
+        try:
+            self._conn.execute("COMMIT")
+        except sqlite3.DatabaseError:
+            # A failed COMMIT leaves the transaction open in SQLite; without this
+            # the connection would be stuck inside a doomed transaction.
+            self._rollback()
+            raise
 
     # -------------------------------------------------------------------- ingest
 
@@ -267,21 +364,23 @@ class Store:
         """Write one parsed session: session, events, evidence and lineage, atomically.
 
         Raises:
-            NoEvidenceError: if the write would leave the session with no evidence.
-                The transaction is rolled back, so no session row survives either.
+            NoEvidenceError: if the write would leave the session with no *citable*
+                evidence, i.e. no per-event row. The transaction is rolled back, so
+                no session row survives either. A native capture row alone is not
+                enough: a session with nothing citable has nothing to retrieve.
         """
         self._begin()
         try:
-            self._upsert_session(parsed.session)
+            self._upsert_session(parsed)
             events_inserted, events_skipped = self._insert_events(parsed)
             evidence_inserted, evidence_skipped = self._insert_evidence(parsed)
-            lineage_inserted, deferred = self._insert_lineage(parsed)
-            if self._evidence_count(parsed.session.id) == 0:
+            lineage_inserted, reconciled, deferred = self._reconcile_lineage(parsed)
+            if self._citable_evidence_count(parsed.session.id) == 0:
+                prose = sum(1 for event in parsed.events if event.kind in PROSE_KINDS)
                 raise NoEvidenceError(
-                    f"session {parsed.session.id!r} would have no evidence: "
-                    f"basis={parsed.evidence_basis}, "
-                    f"native_source={'present' if parsed.native_source else 'absent'}, "
-                    f"prose events={sum(1 for e in parsed.events if e.kind in PROSE_KINDS)}"
+                    f"session {parsed.session.id!r} has nothing citable: "
+                    f"prose events={prose}, "
+                    f"native_source={'present' if parsed.native_source else 'absent'}"
                 )
         except BaseException:
             self._rollback()
@@ -294,40 +393,54 @@ class Store:
             evidence_inserted=evidence_inserted,
             evidence_skipped=evidence_skipped,
             lineage_inserted=lineage_inserted,
+            lineage_reconciled=reconciled,
             lineage_deferred=deferred,
+            exporter_dupes_collapsed=parsed.exporter_dupes_collapsed,
         )
 
-    def _upsert_session(self, session: Session) -> None:
+    def _upsert_session(self, parsed: ParsedSession) -> None:
+        session: Session = parsed.session
         self._conn.execute(
             """
             INSERT INTO sessions(id, harness, project, branch, parent_id,
-                                 started_at, ended_at, scope, intent, outcome)
+                                 started_at, ended_at, scope, intent, outcome,
+                                 adapter_version, classifier_version,
+                                 exporter_dupes_collapsed)
             VALUES (:id, :harness, :project, :branch, :parent_id,
-                    :started_at, :ended_at, :scope, :intent, :outcome)
+                    :started_at, :ended_at, :scope, :intent, :outcome,
+                    :adapter_version, :classifier_version, :exporter_dupes_collapsed)
             ON CONFLICT(id) DO UPDATE SET
-                harness    = excluded.harness,
-                project    = excluded.project,
-                branch     = excluded.branch,
-                parent_id  = excluded.parent_id,
-                started_at = excluded.started_at,
-                ended_at   = excluded.ended_at,
-                scope      = excluded.scope,
-                intent     = excluded.intent,
-                outcome    = excluded.outcome
+                harness                  = excluded.harness,
+                project                  = excluded.project,
+                branch                   = excluded.branch,
+                parent_id                = coalesce(excluded.parent_id, sessions.parent_id),
+                started_at               = excluded.started_at,
+                ended_at                 = excluded.ended_at,
+                scope                    = excluded.scope,
+                intent                   = excluded.intent,
+                outcome                  = excluded.outcome,
+                adapter_version          = excluded.adapter_version,
+                classifier_version       = excluded.classifier_version,
+                exporter_dupes_collapsed = excluded.exporter_dupes_collapsed
             """,
             {
                 "id": session.id,
                 "harness": session.harness,
                 "project": session.project,
                 "branch": session.branch,
-                # A parent we have not ingested yet would trip the self-FK, and the
-                # edge is already recorded in `lineage`.
+                # A parent we have not ingested yet would trip the self-FK. The edge
+                # is never lost: it is parked in `lineage_pending` below, which is
+                # the authoritative record -- `sessions.parent_id` is a convenience
+                # denormalisation that is only filled when the parent is present.
                 "parent_id": session.parent_id if self._session_exists(session.parent_id) else None,
                 "started_at": session.started_at,
                 "ended_at": session.ended_at,
                 "scope": session.scope,
                 "intent": session.intent,
                 "outcome": session.outcome,
+                "adapter_version": parsed.adapter_version,
+                "classifier_version": parsed.classifier_version,
+                "exporter_dupes_collapsed": parsed.exporter_dupes_collapsed,
             },
         )
 
@@ -373,71 +486,149 @@ class Store:
         return inserted, skipped
 
     def _insert_evidence(self, parsed: ParsedSession) -> tuple[int, int]:
-        """Insert the one evidence row this parse justifies, if any.
+        """Write the citation surface: one row per prose event, plus any capture.
 
-        OBSERVED needs the harness's native bytes. REPORTED (the archive path) has
-        none, so the prose we hold becomes the evidence, labelled ``origin='archive'``
-        -- the honest label for "this is a copy, not the original".
+        Reads the events back out of the database rather than trusting the parse, so
+        a re-ingest of an already-stored session re-derives exactly the same rows
+        (and inserts none of them twice).
         """
-        if parsed.evidence_basis == "REPORTED":
-            body = _EVIDENCE_JOINER.join(
-                event.text for event in parsed.events if event.kind in PROSE_KINDS and event.text
+        session_id = parsed.session.id
+        origin = "archive" if parsed.native_source is None else "native"
+        inserted = 0
+        skipped = 0
+        rows = self._conn.execute(
+            """
+            SELECT id, text FROM events
+            WHERE session_id = ? AND kind IN ('user', 'assistant_prose')
+            ORDER BY turn_id, seq, id
+            """,
+            (session_id,),
+        ).fetchall()
+        for row in rows:
+            text = str(row["text"])
+            if not text.strip():
+                continue
+            body_sha256 = _sha256_hex(text.encode("utf-8"))
+            added = self._insert_evidence_row(
+                row_id=event_evidence_id(session_id, origin, body_sha256),
+                session_id=session_id,
+                event_id=int(row["id"]),
+                body=text,
+                body_sha256=body_sha256,
+                raw=None,
+                origin=origin,
+                basis="REPORTED",
             )
-            origin = "archive"
-            source_bytes = body.encode("utf-8")
-        else:
-            native = parsed.native_source
-            if native is None:
-                return 0, 0
-            # `replace` keeps a non-UTF-8 transcript ingestable; body_sha256 is still
-            # taken over the native bytes, so the row records what was captured and
-            # the body is explicitly a lossy text view of it.
+            inserted += added
+            skipped += 1 - added
+
+        native = parsed.native_source
+        if native is not None:
+            # `replace` keeps a non-UTF-8 transcript ingestable; the raw bytes are
+            # retained in full and body_sha256 is taken over them, so the row is a
+            # capture receipt and `body` is explicitly a lossy text view of it.
             body = native.decode("utf-8", errors="replace")
-            origin = "native"
-            source_bytes = native
-        if not body.strip():
-            return 0, 0
-        body_sha256 = _sha256_hex(source_bytes)
-        row_id = evidence_id(parsed.session.id, origin, parsed.evidence_basis, body_sha256)
+            body_sha256 = _sha256_hex(native)
+            added = self._insert_evidence_row(
+                row_id=capture_evidence_id(session_id, body_sha256),
+                session_id=session_id,
+                event_id=None,
+                body=body,
+                body_sha256=body_sha256,
+                raw=native,
+                origin="native",
+                basis="OBSERVED",
+            )
+            inserted += added
+            skipped += 1 - added
+        return inserted, skipped
+
+    def _insert_evidence_row(
+        self,
+        *,
+        row_id: str,
+        session_id: str,
+        event_id: int | None,
+        body: str,
+        body_sha256: str,
+        raw: bytes | None,
+        origin: str,
+        basis: str,
+    ) -> int:
         cur = self._conn.execute(
             """
-            INSERT INTO evidence(id, session_id, body, body_sha256,
-                                 origin, basis, captured_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO evidence(id, session_id, event_id, body, body_sha256,
+                                 raw, origin, basis, captured_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO NOTHING
             """,
-            (
-                row_id,
-                parsed.session.id,
-                body,
-                body_sha256,
-                origin,
-                parsed.evidence_basis,
-                _now(),
-            ),
+            (row_id, session_id, event_id, body, body_sha256, raw, origin, basis, _now()),
         )
-        return (1, 0) if cur.rowcount == 1 else (0, 1)
+        return 1 if cur.rowcount == 1 else 0
 
-    def _insert_lineage(self, parsed: ParsedSession) -> tuple[int, tuple[str, ...]]:
+    def _reconcile_lineage(self, parsed: ParsedSession) -> tuple[int, int, tuple[str, ...]]:
+        """Land what can land, park what cannot, and collect what was waiting for us.
+
+        Returns ``(edges_inserted, pending_reconciled, still_pending)``.
+        """
+        session_id = parsed.session.id
+        # A declared `session.parent_id` is a lineage edge too: if it were only
+        # honoured as a column it would be lost whenever the parent lands later.
+        candidates: list[str] = list(parsed.lineage)
+        if parsed.session.parent_id:
+            candidates.append(parsed.session.parent_id)
+        declared: list[str] = []
+        for parent_id in candidates:
+            if parent_id != session_id and parent_id not in declared:
+                declared.append(parent_id)
         inserted = 0
-        deferred: list[str] = []
-        for parent_id in parsed.lineage:
-            if parent_id == parsed.session.id:
-                continue
-            if not self._session_exists(parent_id):
-                deferred.append(parent_id)
-                continue
-            cur = self._conn.execute(
-                "INSERT INTO lineage(parent_id, child_id) VALUES (?, ?)"
-                " ON CONFLICT(parent_id, child_id) DO NOTHING",
-                (parent_id, parsed.session.id),
-            )
-            inserted += cur.rowcount if cur.rowcount > 0 else 0
-        return inserted, tuple(deferred)
+        for parent_id in declared:
+            if self._session_exists(parent_id):
+                inserted += self._insert_lineage_edge(parent_id, session_id)
+                self._conn.execute(
+                    "DELETE FROM lineage_pending WHERE child_id = ? AND parent_id = ?",
+                    (session_id, parent_id),
+                )
+            else:
+                self._conn.execute(
+                    "INSERT INTO lineage_pending(child_id, parent_id) VALUES (?, ?)"
+                    " ON CONFLICT(child_id, parent_id) DO NOTHING",
+                    (session_id, parent_id),
+                )
 
-    def _evidence_count(self, session_id: str) -> int:
+        # This session may be the parent other children parked an edge for.
+        cur = self._conn.execute(
+            """
+            INSERT INTO lineage(parent_id, child_id)
+            SELECT parent_id, child_id FROM lineage_pending WHERE parent_id = ?
+            ON CONFLICT(parent_id, child_id) DO NOTHING
+            """,
+            (session_id,),
+        )
+        reconciled = max(cur.rowcount, 0)
+        self._conn.execute("DELETE FROM lineage_pending WHERE parent_id = ?", (session_id,))
+
+        still_pending = tuple(
+            str(row["parent_id"])
+            for row in self._conn.execute(
+                "SELECT parent_id FROM lineage_pending WHERE child_id = ? ORDER BY parent_id",
+                (session_id,),
+            ).fetchall()
+        )
+        return inserted, reconciled, still_pending
+
+    def _insert_lineage_edge(self, parent_id: str, child_id: str) -> int:
+        cur = self._conn.execute(
+            "INSERT INTO lineage(parent_id, child_id) VALUES (?, ?)"
+            " ON CONFLICT(parent_id, child_id) DO NOTHING",
+            (parent_id, child_id),
+        )
+        return 1 if cur.rowcount == 1 else 0
+
+    def _citable_evidence_count(self, session_id: str) -> int:
         row = self._conn.execute(
-            "SELECT count(*) AS n FROM evidence WHERE session_id = ?", (session_id,)
+            "SELECT count(*) AS n FROM evidence WHERE session_id = ? AND event_id IS NOT NULL",
+            (session_id,),
         ).fetchone()
         return int(row["n"])
 
@@ -461,82 +652,118 @@ class Store:
 
         Each citation is ``{"evidence_id": ..., "quote": ...}``. The quote is
         resolved to code-point offsets with ``str.find``; a quote that is missing,
-        or that occurs more than once (so "the" offsets are a guess), is refused.
-        The database re-proves the binding in a trigger regardless.
+        or that occurs more than once inside that one evidence body (so "the"
+        offsets are a guess), is refused. The database re-proves the binding in a
+        trigger regardless.
+
+        **Citations are written first** (ADR v1.1): ``claim_citations.claim_id`` is a
+        DEFERRED foreign key, so the citations exist before the claim row does, and
+        the ``claims_need_citation`` trigger can therefore refuse a claim that has
+        none -- including one written by raw SQL.
 
         Returns:
             The content-addressed claim id.
 
         Raises:
-            ClaimValidationError: the claim's own fields are out of contract.
+            ClaimValidationError: the claim's own fields are out of contract, the
+                session is unknown, or ``citations`` is empty.
             CitationError: one or more quotes could not be resolved. Nothing written.
             DuplicateClaimError: this exact claim already exists.
         """
-        self._validate_claim(kind, title, statement, tags, confidence, writer)
+        self._validate_claim(kind, title, statement, tags, confidence, writer, citations)
         new_id = claim_id(session_id, kind, title, statement, tags, confidence, writer)
         self._begin()
         try:
             if not self._session_exists(session_id):
                 raise ClaimValidationError(f"unknown session {session_id!r}")
+            if self._conn.execute("SELECT 1 FROM claims WHERE id = ?", (new_id,)).fetchone():
+                raise DuplicateClaimError(f"claim {new_id} already exists")
             resolved = self._resolve_citations(session_id, citations)
-            try:
-                self._conn.execute(
-                    """
-                    INSERT INTO claims(id, session_id, kind, title, statement, tags,
-                                       confidence, writer, created_at, supersedes)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        new_id,
-                        session_id,
-                        kind,
-                        title,
-                        statement,
-                        json.dumps(list(tags), ensure_ascii=False),
-                        float(confidence),
-                        writer,
-                        created_at or _now(),
-                        supersedes,
-                    ),
-                )
-            except sqlite3.IntegrityError as err:
-                if "claims.id" in str(err) or "UNIQUE" in str(err).upper():
-                    raise DuplicateClaimError(f"claim {new_id} already exists") from err
-                raise
-            for index, (ev_id, start, end, quote) in enumerate(resolved):
-                try:
-                    self._conn.execute(
-                        """
-                        INSERT INTO claim_citations(claim_id, evidence_id, "start", "end", quote)
-                        VALUES (?, ?, ?, ?, ?)
-                        """,
-                        (new_id, ev_id, start, end, quote),
-                    )
-                except sqlite3.IntegrityError as err:
-                    # The claim row is already in this transaction, so the rollback in
-                    # the outer handler is what keeps "all or nothing" true here.
-                    message = str(err)
-                    reason: CitationReason = (
-                        "duplicate_citation"
-                        if "UNIQUE" in message.upper() or "PRIMARY KEY" in message.upper()
-                        else "not_bound"
-                    )
-                    raise CitationError(
-                        [
-                            CitationProblem(
-                                index=index,
-                                evidence_id=ev_id,
-                                quote=quote,
-                                reason=reason,
-                                detail=message,
-                            )
-                        ]
-                    ) from err
+            self._insert_citations(new_id, resolved)
+            self._insert_claim(
+                new_id,
+                session_id,
+                kind,
+                title,
+                statement,
+                tags,
+                confidence,
+                writer,
+                created_at,
+                supersedes,
+            )
         except BaseException:
             self._rollback()
             raise
         self._commit()
         return new_id
+
+    def _insert_citations(self, claim: str, resolved: Sequence[tuple[str, int, int, str]]) -> None:
+        for index, (ev_id, start, end, quote) in enumerate(resolved):
+            try:
+                self._conn.execute(
+                    """
+                    INSERT INTO claim_citations(claim_id, evidence_id, "start", "end", quote)
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (claim, ev_id, start, end, quote),
+                )
+            except sqlite3.IntegrityError as err:
+                message = str(err)
+                reason: CitationReason = (
+                    "duplicate_citation"
+                    if "UNIQUE" in message.upper() or "PRIMARY KEY" in message.upper()
+                    else "not_bound"
+                )
+                raise CitationError(
+                    [
+                        CitationProblem(
+                            index=index,
+                            evidence_id=ev_id,
+                            quote=quote,
+                            reason=reason,
+                            detail=message,
+                        )
+                    ]
+                ) from err
+
+    def _insert_claim(
+        self,
+        claim: str,
+        session_id: str,
+        kind: str,
+        title: str,
+        statement: str,
+        tags: Sequence[str],
+        confidence: float,
+        writer: str,
+        created_at: str | None,
+        supersedes: str | None,
+    ) -> None:
+        try:
+            self._conn.execute(
+                """
+                INSERT INTO claims(id, session_id, kind, title, statement, tags,
+                                   confidence, writer, created_at, supersedes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    claim,
+                    session_id,
+                    kind,
+                    title,
+                    statement,
+                    json.dumps(list(tags), ensure_ascii=False),
+                    float(confidence),
+                    writer,
+                    created_at or _now(),
+                    supersedes,
+                ),
+            )
+        except sqlite3.IntegrityError as err:
+            if "claims.id" in str(err):
+                raise DuplicateClaimError(f"claim {claim} already exists") from err
+            raise
 
     def _validate_claim(
         self,
@@ -546,6 +773,7 @@ class Store:
         tags: Sequence[str],
         confidence: float,
         writer: str,
+        citations: Sequence[Mapping[str, str]],
     ) -> None:
         if kind not in CLAIM_KINDS:
             raise ClaimValidationError(f"kind {kind!r} not in {CLAIM_KINDS}")
@@ -559,6 +787,10 @@ class Store:
             raise ClaimValidationError(f"confidence must be 0.5..1.0, got {confidence}")
         if not writer:
             raise ClaimValidationError("writer is required")
+        if not citations:
+            raise ClaimValidationError(
+                "a claim needs at least one citation: an unproven claim is not a claim"
+            )
 
     def _resolve_citations(
         self,
@@ -570,6 +802,10 @@ class Store:
         Offsets are code points, because that is what SQLite's ``substr()`` counts.
         Byte or UTF-16 arithmetic desynchronises on any astral character and would
         produce citations the trigger then refuses.
+
+        Ambiguity is judged inside the named evidence body only, which under ADR
+        v1.1 is one message: the same phrase in two events is two evidence rows, so
+        naming the row disambiguates it.
         """
         problems: list[CitationProblem] = []
         resolved: list[tuple[str, int, int, str]] = []
@@ -627,16 +863,62 @@ class Store:
 
     # --------------------------------------------------------------------- reads
 
-    def visible_evidence(self, session_id: str) -> list[dict[str, str]]:
-        """Every evidence body available for citation in ``session_id``."""
+    def visible_evidence(self, session_id: str) -> list[dict[str, Any]]:
+        """The citation surface for ``session_id``: one row per prose event.
+
+        Ordered by ``(turn_id, seq)`` -- reading order -- and carrying ``event_id``,
+        so a writer can cite a specific message rather than hunting through a
+        session-sized body. Native capture rows are deliberately absent; see
+        :meth:`captures`.
+        """
         rows = self._conn.execute(
-            "SELECT id, body FROM evidence WHERE session_id = ? ORDER BY captured_at, id",
+            """
+            SELECT ev.id, ev.body, ev.event_id, e.turn_id, e.seq, e.kind
+            FROM evidence AS ev
+            JOIN events AS e ON e.id = ev.event_id
+            WHERE ev.session_id = ?
+            ORDER BY e.turn_id, e.seq, ev.id
+            """,
             (session_id,),
         ).fetchall()
-        return [{"id": str(row["id"]), "body": str(row["body"])} for row in rows]
+        return [dict(row) for row in rows]
+
+    def captures(self, session_id: str) -> list[dict[str, Any]]:
+        """The ``OBSERVED`` native-capture rows: retained bytes plus their digest."""
+        rows = self._conn.execute(
+            """
+            SELECT id, body_sha256, length(raw) AS raw_bytes, origin, captured_at
+            FROM evidence
+            WHERE session_id = ? AND event_id IS NULL
+            ORDER BY captured_at, id
+            """,
+            (session_id,),
+        ).fetchall()
+        return [dict(row) for row in rows]
 
     def search_prose(self, query: str, limit: int = 20) -> list[dict[str, Any]]:
-        """FTS5 search over prose events only (``user`` / ``assistant_prose``)."""
+        """Search prose events with arbitrary human text. Never raises on the query.
+
+        The input goes through :func:`plan_prose_query`, so an ordinary question --
+        ``"Which ADR path did the DoD and WP-9 require?"`` -- is a bag of phrases,
+        not an FTS5 expression. For deliberate FTS5 syntax use
+        :meth:`search_prose_raw`.
+        """
+        planned = plan_prose_query(query)
+        if not planned:
+            return []
+        return self._match(planned, limit)
+
+    def search_prose_raw(self, query: str, limit: int = 20) -> list[dict[str, Any]]:
+        """Search prose events with an explicit FTS5 expression.
+
+        Raises:
+            sqlite3.OperationalError: if ``query`` is not valid FTS5. That is the
+                point of having this as a separate method.
+        """
+        return self._match(query, limit)
+
+    def _match(self, expression: str, limit: int) -> list[dict[str, Any]]:
         rows = self._conn.execute(
             """
             SELECT e.id AS event_id, e.session_id, e.kind, e.text
@@ -646,7 +928,7 @@ class Store:
             ORDER BY bm25(prose_fts)
             LIMIT ?
             """,
-            (query, limit),
+            (expression, limit),
         ).fetchall()
         return [dict(row) for row in rows]
 
@@ -660,6 +942,15 @@ class Store:
             (claim,),
         ).fetchall()
         return [dict(row) for row in rows]
+
+    def pending_lineage(self) -> list[dict[str, str]]:
+        """Every edge still waiting for its parent to be ingested."""
+        rows = self._conn.execute(
+            "SELECT child_id, parent_id FROM lineage_pending ORDER BY child_id, parent_id"
+        ).fetchall()
+        return [
+            {"child_id": str(row["child_id"]), "parent_id": str(row["parent_id"])} for row in rows
+        ]
 
     def row_counts(self) -> dict[str, int]:
         """Row count per table. The cheap way to assert "this changed nothing"."""

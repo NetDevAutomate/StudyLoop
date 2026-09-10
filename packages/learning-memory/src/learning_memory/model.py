@@ -1,4 +1,4 @@
-"""Canonical data model for the ADR-0011 learning-memory store.
+"""Canonical data model for the ADR-0011 v1.1 learning-memory store.
 
 The types here are what an adapter produces and what the store consumes. They
 are deliberately dumb: capture is lossless and typed, and everything useful
@@ -32,6 +32,7 @@ __all__ = [
     "ReviewItemKind",
     "Session",
     "SourceRef",
+    "collapse_adjacent_duplicates",
     "event_content_hash",
 ]
 
@@ -62,13 +63,14 @@ EVENT_KINDS: tuple[EventKind, ...] = (
 )
 
 PROSE_KINDS: tuple[EventKind, ...] = ("user", "assistant_prose")
-"""The only kinds that reach ``prose_fts``."""
+"""The only kinds that reach ``prose_fts`` and the citation surface."""
 
 EvidenceBasis = Literal["OBSERVED", "REPORTED"]
-"""``OBSERVED`` = the harness still holds the native bytes we captured.
+"""``OBSERVED`` = a native capture row: the harness's raw bytes, retained.
 
-``REPORTED`` = the native transcript has been rotated away and the only surviving
-copy is prose we already stored (the archive path, ~5,261 of 5,879 sessions).
+``REPORTED`` = a per-event citation row: the text of one prose event. Under ADR
+v1.1 the store derives the basis of each row from what the adapter actually
+handed over, so this is a column label rather than a switch a caller sets.
 """
 
 ClaimKind = Literal["Problem", "Finding", "Decision", "Procedure", "Preference"]
@@ -99,21 +101,35 @@ def _canonical_json(payload: object) -> bytes:
 
 
 def event_content_hash(
+    turn_id: int,
+    seq: int,
     kind: EventKind,
     actor: str | None,
     tool_name: str | None,
     text: str,
 ) -> str:
-    """Content address of an event, used for the ``UNIQUE(session_id, content_hash)`` dedupe.
+    """Content address of an event, used for ``UNIQUE(session_id, content_hash)``.
 
-    ``turn_id``/``seq`` are deliberately excluded: the legacy store holds 6,591
-    exact-duplicate messages, and the invariant ADR-0011 asks for is that
-    re-import is a no-op *and* that a repeated identical message inside one
-    session collapses to a single row.
+    Position-bearing (ADR v1.1, council finding 5). Re-parsing the same source is
+    still a no-op because the same source yields the same positions, but two
+    identical messages in different turns are two rows -- which is what makes
+    ``retried = same tool call twice`` derivable at all. A position-free hash
+    collapsed 54.7 % of the archive's user/assistant rows, including every
+    repeated tool call in a session.
+
+    Adjacent *exporter* duplicates are the adapter's to fold before emitting; see
+    :func:`collapse_adjacent_duplicates`.
     """
     return hashlib.sha256(
         _canonical_json(
-            {"kind": kind, "actor": actor, "tool_name": tool_name, "text": text},
+            {
+                "turn_id": turn_id,
+                "seq": seq,
+                "kind": kind,
+                "actor": actor,
+                "tool_name": tool_name,
+                "text": text,
+            },
         )
     ).hexdigest()
 
@@ -148,7 +164,38 @@ class Event:
 
     @property
     def content_hash(self) -> str:
-        return event_content_hash(self.kind, self.actor, self.tool_name, self.text)
+        return event_content_hash(
+            self.turn_id, self.seq, self.kind, self.actor, self.tool_name, self.text
+        )
+
+    @property
+    def dedupe_key(self) -> tuple[str, str | None, str | None, str]:
+        """What makes two events "the same message" ignoring where they sit."""
+        return (self.kind, self.actor, self.tool_name, self.text)
+
+
+def collapse_adjacent_duplicates(events: Sequence[Event]) -> tuple[list[Event], int]:
+    """Fold runs of identical adjacent events, returning the survivors and the count.
+
+    This is the adapter's half of council finding 5: position is in the event hash,
+    so the store can no longer collapse anything, and an exporter that wrote the
+    same assistant row twice in a row (37,433 assistant / 95 user rows in the
+    archive) must be cleaned up before emitting.
+
+    Only *adjacent* runs are folded, and only when kind, actor, tool_name and text
+    all match -- a message repeated later in the session is a real second
+    occurrence. Surviving events keep their original ``turn_id``/``seq`` so they
+    still point at their position in the source; the sequence stays monotone but
+    may have gaps.
+    """
+    survivors: list[Event] = []
+    collapsed = 0
+    for event in events:
+        if survivors and survivors[-1].dedupe_key == event.dedupe_key:
+            collapsed += 1
+            continue
+        survivors.append(event)
+    return survivors, collapsed
 
 
 @dataclass(frozen=True, slots=True)
@@ -159,23 +206,33 @@ class SourceRef:
     locator: str
     mtime: float | None = None
     size: int | None = None
+    source_sha256: str | None = None
+    """v1.1: digest of the bytes read, so a receipt can name its input exactly."""
 
 
 @dataclass(frozen=True, slots=True)
 class ParsedSession:
     """An adapter's whole output for one session.
 
-    ``native_source`` is required when ``evidence_basis == "OBSERVED"``; the
-    archive path sets ``REPORTED`` and the store synthesises evidence from the
-    prose it holds instead.
+    ``native_source`` is present when the harness still holds the original
+    transcript; its bytes are retained as one ``OBSERVED`` capture row. The
+    citation surface is always the per-event ``REPORTED`` rows, so a session with
+    no prose events has nothing citable and is refused.
     """
 
     session: Session
     events: Sequence[Event] = ()
     native_source: bytes | None = None
-    evidence_basis: EvidenceBasis = "OBSERVED"
     lineage: list[str] = field(default_factory=list)
-    """Parent session ids: one ``lineage(parent_id, child_id)`` row each."""
+    """Parent session ids: one ``lineage`` (or ``lineage_pending``) row each."""
+    adapter_version: str = "unspecified"
+    """v1.1. Defaulted so fixtures stay short; Stage C's contract suite refuses
+    the default, because an unversioned adapter makes a receipt unreproducible."""
+    classifier_version: str | None = None
+    """v1.1. Set by adapters that *derive* ``kind`` (the archive adapter); ``None``
+    where the harness labelled the events itself."""
+    exporter_dupes_collapsed: int = 0
+    """v1.1. What :func:`collapse_adjacent_duplicates` folded before emitting."""
 
 
 @runtime_checkable
@@ -187,6 +244,7 @@ class HarnessAdapter(Protocol):
     """
 
     harness: str
+    adapter_version: str
 
     def discover(self) -> Iterable[SourceRef]:
         """Yield every transcript this harness currently holds."""

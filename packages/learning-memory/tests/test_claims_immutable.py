@@ -39,8 +39,10 @@ def _seed_claim(store: Store, title: str = "Recall was the failing layer") -> tu
     store.ingest(
         ParsedSession(
             session=Session(id="s-1", harness="kiro"),
-            events=[Event(turn_id=0, seq=0, kind="user", text="what did the ruler say?")],
-            native_source=body.encode("utf-8"),
+            # v1.1: the citation surface is the prose EVENT, so the body under test
+            # is an event's text rather than a native transcript.
+            events=[Event(turn_id=0, seq=0, kind="user", text=body, actor="user")],
+            adapter_version="kiro@1",
         )
     )
     evidence = store.visible_evidence("s-1")[0]["id"]
