@@ -1,0 +1,606 @@
+{
+  "auditor": "deepseek-3.2",
+  "sample": "audit-sample-v2-blinded.json",
+  "verdicts": [
+    {
+      "audit_id": "A001",
+      "verdict": "yes",
+      "code": null,
+      "why": null
+    },
+    {
+      "audit_id": "A002",
+      "verdict": "partial",
+      "code": "over-claim",
+      "why": "Statement says 'generated plugin cache was left untouched rather than patched' but quotes say 'I left the generated plugin cache untouched' - difference between 'was left' (passive) vs 'I left' (active) is a grammatical inference, not a factual difference."
+    },
+    {
+      "audit_id": "A003",
+      "verdict": "yes",
+      "code": null,
+      "why": null
+    },
+    {
+      "audit_id": "A004",
+      "verdict": "partial",
+      "code": "over-claim",
+      "why": "Statement says 'deepseek-r1's answer' but quotes don't mention which model, only refer to 'the model' generically."
+    },
+    {
+      "audit_id": "A005",
+      "verdict": "yes",
+      "code": null,
+      "why": null
+    },
+    {
+      "audit_id": "A006",
+      "verdict": "partial",
+      "code": "over-claim",
+      "why": "Statement says 'Hive Solar Saver and Export Premium' but quotes only mention 'Hive Solar Saver', not 'Export Premium'."
+    },
+    {
+      "audit_id": "A007",
+      "verdict": "yes",
+      "code": null,
+      "why": null
+    },
+    {
+      "audit_id": "A008",
+      "verdict": "yes",
+      "code": null,
+      "why": null
+    },
+    {
+      "audit_id": "A009",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'the cert, config, and Krfb changes still appear in the diff' but quotes only say 'the cert, config, and Krfb changes still appear in the diff' - actually identical, but statement presents this as new information about the NUC dry-run while quotes present it as separate observation."
+    },
+    {
+      "audit_id": "A010",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement adds 'on the first run' which is not in the quotes."
+    },
+    {
+      "audit_id": "A011",
+      "verdict": "yes",
+      "code": null,
+      "why": null
+    },
+    {
+      "audit_id": "A012",
+      "verdict": "yes",
+      "code": null,
+      "why": null
+    },
+    {
+      "audit_id": "A013",
+      "verdict": "yes",
+      "code": null,
+      "why": null
+    },
+    {
+      "audit_id": "A014",
+      "verdict": "yes",
+      "code": null,
+      "why": null
+    },
+    {
+      "audit_id": "A015",
+      "verdict": "yes",
+      "code": null,
+      "why": null
+    },
+    {
+      "audit_id": "A016",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'identifying a source separate from the Ansible playbook run' but quotes don't mention Ansible playbook runs or make this comparison."
+    },
+    {
+      "audit_id": "A017",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'so the Vercel skills failed to load, not because they were themselves broken' but quotes say 'Vercel failures are resource exhaustion—not 14 bad Vercel skills' - 'failed to load' vs 'failures' is inference about nature of failure."
+    },
+    {
+      "audit_id": "A018",
+      "verdict": "partial",
+      "code": "over-claim",
+      "why": "Statement says 'removing those plugins' skills individually would also remove their connector capabilities' but quotes say 'Removing those plugins would also remove their connector capabilities' - 'skills individually' vs 'plugins' is a nuance."
+    },
+    {
+      "audit_id": "A019",
+      "verdict": "yes",
+      "code": null,
+      "why": null
+    },
+    {
+      "audit_id": "A020",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'and was told to keep using it' which is not in the quotes."
+    },
+    {
+      "audit_id": "A021",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'with a 49-day exit-fee-free switching window starting around 27 August' but quotes only say 'your 49-day exit-fee-free switching window should begin' - no mention of '27 August'."
+    },
+    {
+      "audit_id": "A022",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'The assistant proposed comparing current search, improved text retrieval, and relationship-assisted retrieval' but quotes don't specify these three exact approaches."
+    },
+    {
+      "audit_id": "A023",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'estimated 45 to 80 focused developer-days' but quotes say 'budget 45 to 80 focused developer-days to reach a safe standalone sessionweaver' - 'estimated' vs 'budget' is subtle inference about certainty."
+    },
+    {
+      "audit_id": "A024",
+      "verdict": "yes",
+      "code": null,
+      "why": null
+    },
+    {
+      "audit_id": "A025",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'later verification found all eleven skill symlinks dangling after main advanced to a new commit because their target worktree was removed' but quotes only say 'all eleven skill symlinks are now dangling' - 'because their target worktree was removed' is inference, not stated."
+    },
+    {
+      "audit_id": "A026",
+      "verdict": "yes",
+      "code": null,
+      "why": null
+    },
+    {
+      "audit_id": "A027",
+      "verdict": "partial",
+      "code": "over-claim",
+      "why": "Statement says 'so the skill recommends giving them 4000 to 8000 tokens rather than a smaller default' but quotes say 'give them 4000 to 8000 and pass the same number as --max-tokens' - 'skill recommends' vs 'instructions say' is inference about authority."
+    },
+    {
+      "audit_id": "A028",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'so the existing chatgpt cask is the correct installer' but quotes don't mention 'cask' or 'installer', only that Homebrew 'recommends chatgpt'."
+    },
+    {
+      "audit_id": "A029",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'the fix kept both hashes distinct' but quotes say 'The fix keeps both' - 'distinct' vs 'both' is subtle; quotes don't explicitly state they're kept distinct, just that both are kept."
+    },
+    {
+      "audit_id": "A030",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'silently masking shutil.which(\"ttyd\") calls elsewhere' but quotes say 'shutil.which(\"ttyd\") calls elsewhere' - inference that this is 'silently masking' rather than just affecting."
+    },
+    {
+      "audit_id": "A031",
+      "verdict": "partial",
+      "code": "over-claim",
+      "why": "Statement says 'including its uv installation, an older broken pipx copy, skills, hooks, helper, and generated graph output' but quotes list these items - however statement presents as comprehensive list while quotes are descriptive."
+    },
+    {
+      "audit_id": "A032",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'fixing the yamllint mise-shim failure' but quotes don't mention fixing anything, just describe current state."
+    },
+    {
+      "audit_id": "A033",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'so Vercel files failed with EMFILE' but quotes say 'Vercel files failed with EMFILE' - identical but statement rephrases causation differently."
+    },
+    {
+      "audit_id": "A034",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'with the difference attributed to grok-4.6's two wasted retry attempts' but quotes say 'including grok-4.6's 2 wasted retries' - 'attributed to' vs 'including' is inference about causality."
+    },
+    {
+      "audit_id": "A035",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'adversarial correctness reviewer found' but quotes don't mention 'adversarial correctness reviewer', just describe findings."
+    },
+    {
+      "audit_id": "A036",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'distinguishing the environmental flake from the test amendment' which is not in the quotes."
+    },
+    {
+      "audit_id": "A037",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'exposing a first-install defect' which is not in the quotes."
+    },
+    {
+      "audit_id": "A038",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'requiring the user to decide integration steps' which is not in the quotes."
+    },
+    {
+      "audit_id": "A039",
+      "verdict": "yes",
+      "code": null,
+      "why": null
+    },
+    {
+      "audit_id": "A040",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'favoring vendored meross_lan protocol code instead' but quotes say 'in favor of the vendored meross_lan protocol code' - 'favoring' vs 'avoids as dependency in favor of' is similar but statement phrasing implies positive preference."
+    },
+    {
+      "audit_id": "A041",
+      "verdict": "yes",
+      "code": null,
+      "why": null
+    },
+    {
+      "audit_id": "A042",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'which was fixed by adding valid frontmatter' but quotes only say 'Added valid frontmatter' - 'fixed' vs 'added' is inference about causality."
+    },
+    {
+      "audit_id": "A043",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'even though typed evidence was cleared' but quotes say 'even though typed evidence was cleared' - identical but statement adds emphasis not in quotes."
+    },
+    {
+      "audit_id": "A044",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'leaving the output file empty' but quotes say 'the output file (grok-4.6.md) contains only the attribution comment header — the body is empty' - 'empty' vs 'body is empty' is similar but not identical."
+    },
+    {
+      "audit_id": "A045",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'After the shared schema lock fix' which is not in the quotes."
+    },
+    {
+      "audit_id": "A046",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'but the learner must normally enrol within two weeks of receiving the invitation' but quotes say 'You normally have only two weeks to register' - 'learner must' vs 'you normally have' is difference in obligation vs description."
+    },
+    {
+      "audit_id": "A047",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'so the uninstall action had no installation record to remove' but quotes say 'so the Codex uninstall action has no installation record to remove' - similar but statement generalizes from 'Codex uninstall action' to 'uninstall action'."
+    },
+    {
+      "audit_id": "A048",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'NUC12WSHi702 was powered off/unreachable during checks' but quotes say 'NUC12WSHi702 is currently powered off/unreachable, so repository verification can cover it but live-state verification cannot' - statement simplifies and omits the verification nuance."
+    },
+    {
+      "audit_id": "A049",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'After the fix pass' which is not in the quotes."
+    },
+    {
+      "audit_id": "A050",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'while devList (cloudapi.py) returns the devName field' but quotes don't mention 'cloudapi.py' or 'devList'."
+    },
+    {
+      "audit_id": "A051",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'and only GET / was ever tested' but quotes say 'only GET / was ever tested' - identical but statement presents as fact about testing while quotes describe a limitation."
+    },
+    {
+      "audit_id": "A052",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'sharing one semantic-lineage projection between journal validation and repository pre-append checks' but quotes say 'Journal validation and repository pre-append checks now share one semantic-lineage projection' - 'sharing' vs 'now share' is temporal inference."
+    },
+    {
+      "audit_id": "A053",
+      "verdict": "partial",
+      "code": "over-claim",
+      "why": "Statement says 'the assistant would not trust for planning' but quotes say 'I would not trust for tariff planning' - 'assistant' vs 'I' is attribution inference."
+    },
+    {
+      "audit_id": "A054",
+      "verdict": "yes",
+      "code": null,
+      "why": null
+    },
+    {
+      "audit_id": "A055",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'which the assistant judged a budget bug rather than a real opinion' but quotes say 'which is a budget bug not a real opinion' - 'assistant judged' vs 'is' is attribution inference."
+    },
+    {
+      "audit_id": "A056",
+      "verdict": "partial",
+      "code": "over-claim",
+      "why": "Statement says 'still leaves IDs and tiering forgeable by model output' but quotes say 'still leaves IDs and tiering forgeable by model output' - identical but statement presents as conclusion while quotes present as observation."
+    },
+    {
+      "audit_id": "A057",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'with total wall-clock used later stated as about 18.5 minutes' but quotes say 'Total wall-clock used: about 18.5 minutes' - 'later stated' vs 'recorded' is temporal inference."
+    },
+    {
+      "audit_id": "A058",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'and planned to retry' but quotes say 'and will retry' - 'planned' vs 'will' is inference about intention."
+    },
+    {
+      "audit_id": "A059",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'versus the installer's original £855 estimate' but quotes say 'The installer's original £855 estimate becomes approximately £805 when its incorrect 15p export assumption is changed to 12p' - statement simplifies comparison."
+    },
+    {
+      "audit_id": "A060",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'noting reasoning models can exhaust --max-tokens thinking and that the budget should be raised' but quotes say 'reasoning models can exhaust --max-tokens thinking — raise it' - 'should be raised' vs 'raise it' is difference in recommendation strength."
+    },
+    {
+      "audit_id": "A061",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'and after a full browser reload the board still rendered exactly Beta and Delta' but quotes say 'Reload passed: after reopening the Parking panel, exactly Beta and Delta were rendered' - 'full browser reload' vs 'reopening the Parking panel' is specificity difference."
+    },
+    {
+      "audit_id": "A062",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'on the retry' parenthetical but quotes have this as part of description, not as separate attribution."
+    },
+    {
+      "audit_id": "A063",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'causing the sudo preflight task to stall' but quotes don't mention 'stall', just describe the difference."
+    },
+    {
+      "audit_id": "A064",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'which directly contradicts' but quotes present as 'DEFECT, confirmed' - 'contradicts' vs 'defect confirmed' is interpretation."
+    },
+    {
+      "audit_id": "A065",
+      "verdict": "partial",
+      "code": "over-claim",
+      "why": "Statement says 'with onboarding, harness integration, web conversations, approval UI, and browser rendering remaining ahead' but quotes list these items - similar but statement presents as comprehensive while quotes are descriptive."
+    },
+    {
+      "audit_id": "A066",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'so boot failures surface earlier' but quotes don't mention 'surface earlier', just describe the change."
+    },
+    {
+      "audit_id": "A067",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'which treats the directory as a module and fails before test discovery' but quotes say 'it treats the directory as a module and fails before discovery' - similar but statement adds emphasis."
+    },
+    {
+      "audit_id": "A068",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'as instructed' but quotes include instruction as part of description, not as separate directive."
+    },
+    {
+      "audit_id": "A069",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'all green, then verified two docs spot-checks and issued a GREEN verdict' but quotes present verdict first then details - statement reorders and simplifies."
+    },
+    {
+      "audit_id": "A070",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'passing 96 focused and 265 all-planning tests' but quotes say 'Focused lifecycle/repository: 96 passed' and mention '265 all-planning tests' elsewhere - statement combines as if both are test counts."
+    },
+    {
+      "audit_id": "A071",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'while main's working tree is dirty with a stale partial copy' but quotes say 'Main's working tree is dirty with a stale partial copy of that same work' - similar but statement omits 'of that same work'."
+    },
+    {
+      "audit_id": "A072",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'checked with visudo' but quotes say 'validated sudoers entries' - 'checked with visudo' is specific tool inference."
+    },
+    {
+      "audit_id": "A073",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'the reviewer's own scan additionally found' but quotes present as 'my own scan surfaced' - 'reviewer' vs 'my' is attribution inference."
+    },
+    {
+      "audit_id": "A074",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'while 12/12 searches using the project name found matches across historical paths and worktrees' but quotes say '12/12 found matches using the project name, covering historical paths and worktrees' - similar but statement reorders information."
+    },
+    {
+      "audit_id": "A075",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'the agent retried once at --max-tokens 5000' but quotes describe retry as instruction following, not agent action."
+    },
+    {
+      "audit_id": "A076",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'Two unpatched findings were recorded' but quotes present as statements of fact, not as 'recorded' findings."
+    },
+    {
+      "audit_id": "A077",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'only the gateway harness's injected HTML comment does that' but quotes don't mention 'HTML comment', just 'injected comment'."
+    },
+    {
+      "audit_id": "A078",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'a concern unrelated to the new SPA boot test' but quotes don't mention 'unrelated', just present both facts."
+    },
+    {
+      "audit_id": "A079",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'and pre-commit's secret hooks flagged pre-existing fixtures' but quotes say 'pre-commit's secret hooks flag pre-existing fixtures' - 'flagged' vs 'flag' is temporal inference."
+    },
+    {
+      "audit_id": "A080",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'using the council of models via LiteLLM Gateway' but quotes say 'Please use the coucil of models through LiteLLM Gateway' - 'using' vs 'please use' is directive vs description."
+    },
+    {
+      "audit_id": "A081",
+      "verdict": "partial",
+      "code": "over-claim",
+      "why": "Statement says 'The repair separated three concerns' but quotes say 'The repair therefore separates three concerns' - 'separated' vs 'separates' is temporal inference."
+    },
+    {
+      "audit_id": "A082",
+      "verdict": "yes",
+      "code": null,
+      "why": null
+    },
+    {
+      "audit_id": "A083",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'so yamllint resolved an inactive mise shim' but quotes say 'so yamllint resolved an inactive mise shim' - identical but statement presents as causal explanation while quotes describe consequence."
+    },
+    {
+      "audit_id": "A084",
+      "verdict": "partial",
+      "code": "over-claim",
+      "why": "Statement says 'risking old and new writers locking different locations' but quotes say 'or old and new writers could lock different locations' - 'risking' vs 'could' is certainty difference."
+    },
+    {
+      "audit_id": "A085",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'which the model calls a blind spot a documentation-only review can't see' but quotes say 'which is exactly the blind spot a documentation-only review can't see' - 'model calls' vs 'is' is attribution inference."
+    },
+    {
+      "audit_id": "A086",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'The xTiles planner tile could not be deleted by the connector API and had to be removed through the UI' but quotes describe UI deletion failure and patch workaround - statement simplifies."
+    },
+    {
+      "audit_id": "A087",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'causing false-busy deadlock signals during e2e coordination' but quotes say 'causing false-busy deadlock signals' - 'during e2e coordination' is added context."
+    },
+    {
+      "audit_id": "A088",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'conflicts with that page's no-version-numbers convention' but quotes say 'conflicts with that page's actual, explicitly-stated no-version-numbers convention' - statement omits 'explicitly-stated'."
+    },
+    {
+      "audit_id": "A089",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'when run via the repository's file-glob equivalent command instead of the incompatible directory-form command' but quotes don't mention 'instead of', just describe successful approach."
+    },
+    {
+      "audit_id": "A090",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'which is readable from the process table by any other local user' but quotes say 'readable from the process table by any other local user' - identical but statement presents as fact while quotes describe vulnerability."
+    },
+    {
+      "audit_id": "A091",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'a distinction the learner was told to add to the guide' but quotes say 'That distinction goes in the guide' - 'was told' vs 'goes' is directive vs description."
+    },
+    {
+      "audit_id": "A092",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'and a follow-up continuation call is required to produce the remaining sections' but quotes describe continuation as next step in process, not as requirement."
+    },
+    {
+      "audit_id": "A093",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'The learner confirmed they want Superwhisper disabled for now, saying they can enable it again if needed, rather than having it uninstalled' but quotes are just 'yes please, I can enable it again if needed' - statement adds context about 'disabled vs uninstalled'."
+    },
+    {
+      "audit_id": "A094",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'verified with rg' but quotes say 'verified by rg' - 'with' vs 'by' is minor preposition difference."
+    },
+    {
+      "audit_id": "A095",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'and no test is weakened or skipped' but quotes say 'You do not weaken or skip any test' - 'is' vs 'do not' is descriptive vs directive."
+    },
+    {
+      "audit_id": "A096",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'already on the public default branch, and the day's cleanup commit only touched the working tree, not history' but quotes present these as connected facts - statement separates them."
+    },
+    {
+      "audit_id": "A097",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'that the original review had not named' but quotes don't mention 'original review', just describe the gap."
+    },
+    {
+      "audit_id": "A098",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'the same unresolved fact the brief flagged' but quotes say 'mirroring exactly the diagnostic the brief flagged as unresolved' - 'fact' vs 'diagnostic' is nuance."
+    },
+    {
+      "audit_id": "A099",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'progressed through validation stages, reaching 52 targeted tests then 16 repair tests' but quotes present test counts as results, not as progression stages."
+    },
+    {
+      "audit_id": "A100",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "why": "Statement says 'with the state file byte-for-byte unchanged' but quotes say 'with the state file byte-for-byte unchanged' - identical but statement presents as verification detail while quotes present as result."
+    }
+  ]
+}

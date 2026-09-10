@@ -1,0 +1,606 @@
+{
+  "auditor": "deepseek-3.2",
+  "n": 100,
+  "verdicts": [
+    {
+      "audit_id": "A001",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Statement is a near-verbatim match of the quote, only reordering phrasing slightly."
+    },
+    {
+      "audit_id": "A002",
+      "verdict": "yes",
+      "code": null,
+      "reason": "All facts in statement are present in quotes: warning is harmless, plugin requests 5 seconds, Codex enforces 3-second ceiling and clamps it, plugin cache left untouched."
+    },
+    {
+      "audit_id": "A003",
+      "verdict": "yes",
+      "code": null,
+      "reason": "All numbers and attributions match exactly between statement and quotes."
+    },
+    {
+      "audit_id": "A004",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Exact match of facts and numbers: 0 wrong out of 10, 8 verified, 2 unverified."
+    },
+    {
+      "audit_id": "A005",
+      "verdict": "yes",
+      "code": null,
+      "reason": "All facts present: Gate 2 required ≥450 passed with 0 failed, run had 502 passed and 0 failed."
+    },
+    {
+      "audit_id": "A006",
+      "verdict": "partial",
+      "code": "over-claim",
+      "reason": "Statement adds 'Export Premium' and 'rather than switching to a competitor with a higher headline export rate' which aren't in quotes."
+    },
+    {
+      "audit_id": "A007",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Statement accurately summarizes quotes about pausing database redesign until capture/retrieval are dependable."
+    },
+    {
+      "audit_id": "A008",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase of quote about structural proposal being a merge using stable IDs."
+    },
+    {
+      "audit_id": "A009",
+      "verdict": "yes",
+      "code": null,
+      "reason": "All facts present: NUC dry-run completes cleanly with 0 failed/0 unreachable, cert/config/Krfb changes still in diff."
+    },
+    {
+      "audit_id": "A010",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct match, adds 'focused boot E2E test' and 'on the first run' which are reasonable context."
+    },
+    {
+      "audit_id": "A011",
+      "verdict": "yes",
+      "code": null,
+      "reason": "All facts present: tests caught bad registry response and duplicate npm installation, coverage 99% with 95% minimum enforced."
+    },
+    {
+      "audit_id": "A012",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Accurate summary: launchd job is LaunchOnlyOnce, disappears after limit, fix checks launchctl limit value."
+    },
+    {
+      "audit_id": "A013",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase: cleanup deleted 1Password signing key, package recreates source file, WezTerm APT refresh fails."
+    },
+    {
+      "audit_id": "A014",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Exact match of learner's request about using diverse premier models with assistant as arbitrator."
+    },
+    {
+      "audit_id": "A015",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Accurate representation of DeepSeek-R1's proposal about optional agent-session-tools and runtime guards."
+    },
+    {
+      "audit_id": "A016",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Combines facts from both quotes accurately: PID 20487 with Kiro CLI session requesting CLI access via sshd-session."
+    },
+    {
+      "audit_id": "A017",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Accurate summary: shell open-file limit 256, Codex loads ~500 SKILL.md files, Vercel skills failed due to resource exhaustion."
+    },
+    {
+      "audit_id": "A018",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Combines both quotes accurately about connector plugins and removal consequences."
+    },
+    {
+      "audit_id": "A019",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase about formatting fix being amended into existing commit."
+    },
+    {
+      "audit_id": "A020",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "reason": "Adds 'was told to keep using it' which isn't in the quote."
+    },
+    {
+      "audit_id": "A021",
+      "verdict": "yes",
+      "code": null,
+      "reason": "All elements present: tariff name, expiry date, need for replacement decision, 49-day switching window."
+    },
+    {
+      "audit_id": "A022",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Accurate summary of proposal to compare retrieval approaches before evaluating database changes."
+    },
+    {
+      "audit_id": "A023",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Combines both quotes accurately about MVP assessment and developer-day estimate."
+    },
+    {
+      "audit_id": "A024",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Exact match of learner's request for multi-agent orchestration skill."
+    },
+    {
+      "audit_id": "A025",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Combines both quotes accurately about dead symlink and dangling symlinks after main advance."
+    },
+    {
+      "audit_id": "A026",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Exact match of semantic targeting results and test outcomes."
+    },
+    {
+      "audit_id": "A027",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Accurate representation of quote about reasoning models needing larger token budgets."
+    },
+    {
+      "audit_id": "A028",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase about Codex app upgrading into ChatGPT desktop app."
+    },
+    {
+      "audit_id": "A029",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Accurate summary of concurrency race caused by conflating two different hashes."
+    },
+    {
+      "audit_id": "A030",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase about mocking shutil.which and fix with side_effect lambda."
+    },
+    {
+      "audit_id": "A031",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Combines both quotes accurately about Graphify removal from local installation and repository tooling."
+    },
+    {
+      "audit_id": "A032",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Accurate summary of fix making uv a bootstrap dependency and activating mise packages."
+    },
+    {
+      "audit_id": "A033",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase about root cause being macOS low open-file limit causing EMFILE errors."
+    },
+    {
+      "audit_id": "A034",
+      "verdict": "yes",
+      "code": null,
+      "reason": "All facts present: actual spend vs estimate, difference attributed to grok-4.6 retries."
+    },
+    {
+      "audit_id": "A035",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Accurate representation of three bugs found by adversarial reviewer."
+    },
+    {
+      "audit_id": "A036",
+      "verdict": "yes",
+      "code": null,
+      "reason": "All facts present: focused boot test passed on rerun, JS glob suite 87/87."
+    },
+    {
+      "audit_id": "A037",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase about check mode simulating certificate creation then trying to chmod non-existent files."
+    },
+    {
+      "audit_id": "A038",
+      "verdict": "partial",
+      "code": "over-claim",
+      "reason": "Adds 'requiring the user to decide integration steps' which isn't explicitly stated in quotes."
+    },
+    {
+      "audit_id": "A039",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Accurate inference from quote about LearningRecord construction and absence of other creation methods."
+    },
+    {
+      "audit_id": "A040",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Combines both quotes accurately about avoiding meross-iot library in favor of vendored code."
+    },
+    {
+      "audit_id": "A041",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase about plan writes distribution making invariants unenforceable."
+    },
+    {
+      "audit_id": "A042",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Combines both quotes accurately about missing YAML frontmatter and fix."
+    },
+    {
+      "audit_id": "A043",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase about stronger import test exposing evidence retention hole."
+    },
+    {
+      "audit_id": "A044",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Combines both quotes accurately about grok-4.6 token usage and empty output."
+    },
+    {
+      "audit_id": "A045",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Accurate summary of E2E sweep results after schema lock fix."
+    },
+    {
+      "audit_id": "A046",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Combines both quotes accurately about Hive Solar Saver offer details and registration window."
+    },
+    {
+      "audit_id": "A047",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Accurate explanation combining both quotes about uninstall failure due to skill location."
+    },
+    {
+      "audit_id": "A048",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Combines both quotes accurately about NUC system details and unreachable status."
+    },
+    {
+      "audit_id": "A049",
+      "verdict": "partial",
+      "code": "hallucinated-detail",
+      "reason": "Adds '99% coverage' and 'iot-lan CLI help command working' which aren't in quotes."
+    },
+    {
+      "audit_id": "A050",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Accurate combination of quotes about Meross device names and data sources."
+    },
+    {
+      "audit_id": "A051",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Accurate combination of quotes about SecurityHeadersMiddleware issue and limited testing."
+    },
+    {
+      "audit_id": "A052",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Accurate summary of commit effects on retry rejection and semantic-lineage sharing."
+    },
+    {
+      "audit_id": "A053",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase about installer proposal assumptions."
+    },
+    {
+      "audit_id": "A054",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase about request key requirement across persistence boundaries."
+    },
+    {
+      "audit_id": "A055",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Accurate representation of grok-4.6 retry issue as budget bug."
+    },
+    {
+      "audit_id": "A056",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase about design being right destination but not implementation-ready."
+    },
+    {
+      "audit_id": "A057",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Combines both quotes accurately about time usage and wall-clock duration."
+    },
+    {
+      "audit_id": "A058",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase about cost re-estimation after grok-4.6 budget failure."
+    },
+    {
+      "audit_id": "A059",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Accurate calculation from provided numbers about electricity savings."
+    },
+    {
+      "audit_id": "A060",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase about gateway_call.py flagging empty response."
+    },
+    {
+      "audit_id": "A061",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Combines both quotes accurately about card creation and reload results."
+    },
+    {
+      "audit_id": "A062",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase about deepseek-r1 run costs and finish reasons."
+    },
+    {
+      "audit_id": "A063",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Combines both quotes accurately about sudo-rs issue and classic sudo presence."
+    },
+    {
+      "audit_id": "A064",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase about documentation contradiction."
+    },
+    {
+      "audit_id": "A065",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Accurate summary about foundation existing but agentic planner not working end-to-end."
+    },
+    {
+      "audit_id": "A066",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Accurate combination of quotes about boot-contract assertion changes."
+    },
+    {
+      "audit_id": "A067",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase about directory-form JS test command incompatibility."
+    },
+    {
+      "audit_id": "A068",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Combines both quotes accurately about worktree creation and removal."
+    },
+    {
+      "audit_id": "A069",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Accurate summary combining all quotes about verifier gates and GREEN verdict."
+    },
+    {
+      "audit_id": "A070",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Accurate combination of commit details and test results."
+    },
+    {
+      "audit_id": "A071",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Combines both quotes accurately about production capture source and main state."
+    },
+    {
+      "audit_id": "A072",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Accurate combination of quotes about sudo preflight check addition."
+    },
+    {
+      "audit_id": "A073",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase about gateway model findings accuracy."
+    },
+    {
+      "audit_id": "A074",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Combines both quotes accurately about search test results."
+    },
+    {
+      "audit_id": "A075",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Accurate combination of quotes about deepseek-r1 retry process."
+    },
+    {
+      "audit_id": "A076",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase about unpatched findings."
+    },
+    {
+      "audit_id": "A077",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase about model identification in generated text."
+    },
+    {
+      "audit_id": "A078",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Accurate summary about Mermaid test failure unrelated to SPA boot test."
+    },
+    {
+      "audit_id": "A079",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase about Phase 0 regression and lint results."
+    },
+    {
+      "audit_id": "A080",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Accurate combination of learner's goal requirements."
+    },
+    {
+      "audit_id": "A081",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase about repair separating three concerns."
+    },
+    {
+      "audit_id": "A082",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase about harness parity incompleteness."
+    },
+    {
+      "audit_id": "A083",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase about old flow uv activation timing issue."
+    },
+    {
+      "audit_id": "A084",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase about migration risk with configuration paths."
+    },
+    {
+      "audit_id": "A085",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase about exposure not caught by credential detection tools."
+    },
+    {
+      "audit_id": "A086",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase about xTiles planner tile deletion issue."
+    },
+    {
+      "audit_id": "A087",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Combines both quotes accurately about pgrep self-matching issue."
+    },
+    {
+      "audit_id": "A088",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase about verification results of gpt-5.6-sol draft."
+    },
+    {
+      "audit_id": "A089",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase about JS behavior suite passing with file-glob command."
+    },
+    {
+      "audit_id": "A090",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase about security issue with curl command using environment variable."
+    },
+    {
+      "audit_id": "A091",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase about xTiles planner page patchability distinction."
+    },
+    {
+      "audit_id": "A092",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Combines both quotes accurately about truncation and continuation requirement."
+    },
+    {
+      "audit_id": "A093",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Exact match of learner's confirmation about Superwhisper."
+    },
+    {
+      "audit_id": "A094",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase about kill_all_study_sessions caller verification."
+    },
+    {
+      "audit_id": "A095",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase about verifier instructions not to fix anything."
+    },
+    {
+      "audit_id": "A096",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase about commit scan revealing corporate email in public branch."
+    },
+    {
+      "audit_id": "A097",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase about discovered gap in sidebar End Session key."
+    },
+    {
+      "audit_id": "A098",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase about DeepSeek-R1's first diagnostic step."
+    },
+    {
+      "audit_id": "A099",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Combines both quotes accurately about session-repair tooling test progress."
+    },
+    {
+      "audit_id": "A100",
+      "verdict": "yes",
+      "code": null,
+      "reason": "Direct paraphrase about M2 lane fix verification results."
+    }
+  ]
+}
