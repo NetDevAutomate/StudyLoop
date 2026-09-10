@@ -1879,10 +1879,5 @@
    }
   }
  },
- "previous_receipt_sha256": "c66058836c85140882c816dba392fe835a64b804c688285b8f37f4d1285f6b9b",
- "VOIDED": {
-  "by": "receipt council seat gpt-5.6-terra run 4ed818c7",
-  "reason": "gold receipt provenance hashes non-reproducible (ruler-amendment-002 F3/F4); numbers re-derived exactly by the seat and superseded by look 2",
-  "counts_as_dev_look": 1
- }
+ "previous_receipt_sha256": "c66058836c85140882c816dba392fe835a64b804c688285b8f37f4d1285f6b9b"
 }

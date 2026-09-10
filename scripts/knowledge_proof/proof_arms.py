@@ -77,25 +77,31 @@ def B1_planner() -> Arm:  # noqa: N802 - arm names are receipt labels, matched t
     Control arm that separates two effects bundled in ``B1_clean``: (i) a planner that
     never throws, and (ii) an index that holds prose only. This arm keeps the shipped
     ``messages_fts`` over every archive row (tool echo, duplicates and all), the shipped
-    ``bm25(messages_fts)`` ranking, the shipped 200-row candidate budget and first-seen
-    session dedup, and swaps *only* the query text for ``plan_prose_query(question)``.
+    ``bm25(messages_fts)`` ranking, the shipped scope-visibility predicate, the shipped
+    200-row candidate budget and first-seen session dedup, and swaps *only* the query text
+    for ``plan_prose_query(question)``.
 
     If ``B1_planner`` ≈ ``B1_clean``, the lift is the planner. If ``B1_planner`` ≈ ``B1``
     on the questions ``B1`` answered, the lift is the clean index.
     """
+    import importlib
+
     from learning_memory.store import plan_prose_query
+
+    visibility_sql = importlib.import_module("agent_session_tools.context.public").visibility_sql
 
     def arm(archive: sqlite3.Connection, question: str) -> list[str]:
         planned = plan_prose_query(question)
         if not planned:
             return []
+        visible, scope_params = visibility_sql(archive, "s.id")
         rows = archive.execute(
-            "SELECT m.session_id FROM messages m "
+            "SELECT s.id FROM messages m JOIN sessions s ON m.session_id = s.id "
             "JOIN messages_fts ON messages_fts.rowid = m.rowid "
-            "WHERE messages_fts MATCH ? "
+            f"WHERE messages_fts MATCH ? AND {visible} "
             "ORDER BY bm25(messages_fts), m.timestamp DESC "
             f"LIMIT {CANDIDATE_ROWS}",
-            (planned,),
+            [planned, *scope_params],
         ).fetchall()
         seen: list[str] = []
         for (sid,) in rows:
