@@ -4,6 +4,28 @@
 the retrieval half of PR #18 (`memory_recall` over legacy concepts, ontology as a recall arm).
 Retains PR #18's capture half (native evidence, hash binding, the bound-proof trigger design).
 
+## Superseded sections (2026-09-10)
+
+**The claim-centric learning-memory decision recorded in this ADR stands.** What is retired is
+every reference below to the knowledge layers the owner ruled out of the solution on 2026-09-10:
+**OKF import**, the **tier-1 ontology** (migration v48) and the **concept sidecar** (migration
+v49, `memory_winddown`). Those layers, their code, their CLI verbs and their MCP surfaces are
+removed from the product with no remnants — see
+`docs/architecture/session-memory/receipts/okf-removal-inventory-2026-09-10.md`.
+
+Read every mention of them in this document as **historical record only (RETIRED 2026-09-10)**,
+never as a description of shipped or planned behaviour. Two mentions remain, deliberately
+unedited, because they are load-bearing history rather than product description:
+
+- the **Status** line above, which records what this ADR *would have* superseded had the gates
+  passed (`memory_recall` over legacy concepts, ontology as a recall arm) — RETIRED 2026-09-10;
+- **Decision point 5**, whose clause "The tier-1 ontology is not a recall arm" was already a
+  negative constraint and is now moot, the ontology having been removed entirely — RETIRED
+  2026-09-10.
+
+The claims-and-evidence store (`packages/learning-memory`), the canonical typed-event model, the
+derivation rules and the Outcome record are **not** affected by the ruling and remain in force.
+
 ## Context
 
 StudyLoop's memory is one SQLite file holding 5,879 sessions from six coding-agent harnesses.

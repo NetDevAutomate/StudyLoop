@@ -7,44 +7,39 @@ experience may change before `1.0.0`.
 
 ## [Unreleased]
 
+### Removed
+
+- The knowledge-layer experiment is removed in full, with no remnants: **OKF
+  import**, the **derived tier-1 ontology** (migration v48, `ontology_*`
+  tables, `session-maint ontology-rebuild`/`ontology-status`, and the
+  report-only `studyloop doctor --category harness` ontology check) and the
+  **concept sidecar** (migration v49, `session-context winddown`,
+  `session-context concept accept|retire|bind|import-okf|project`, the
+  `memory_winddown` and `memory_recall` MCP tools). None of it was ever
+  released, so nothing a user has installed changes.
+
+  Why: measured under the pre-registered ruler
+  (`docs/architecture/session-memory/validation-ruler.md`), these layers did
+  not establish the recall and decision benefit they were built to prove, and
+  the owner ruled on 2026-09-10 that they are not part of the solution.
+  Inventory and evidence:
+  `docs/architecture/session-memory/receipts/okf-removal-inventory-2026-09-10.md`.
+  The two ontology gates (G3a, G3b) are recorded as withdrawn unscored rather
+  than passed or failed.
+
+  Retained and unaffected: the claim-centric learning memory of
+  [ADR-0011](docs/adr/0011-claim-centric-learning-memory.md)
+  (`packages/learning-memory`, claims and quote-bound evidence), the
+  `study_progress` / `parked_topics` / `teach_back_scores` / `concepts`
+  learning tier and its `get_concept_context` surface, and every
+  `session_search` / `memory_search` retrieval path that shipped.
+
 ### Added
 
-- Concept-first session recall through the new `memory_recall` MCP tool. One
-  shared implicit-AND then OR-fallback planner now powers both recall and
-  `session_search` without changing the latter's row shape, filters, ordering
-  or 300-character previews. Recall applies the B3 scope/tombstone/retired
-  authorization seam, returns concepts before deduplicated raw sessions, and
-  deliberately uses neither embeddings nor ontology. `studyloop install
-  agents` now idempotently registers both `session-db` and `studyloop` MCP
-  servers for Claude Code, Kiro and Codex while preserving unrelated config;
-  doctor reports the registration state. The frozen 25-question live gate is
-  byte-identical to released SessionWeaver v0.2.0 ordered hit lists.
-
-- Concept memory: distill any session into evidence-cited concepts and manage
-  their lifecycle across machines (migration v49, an additive sidecar of
-  immutable roots and append-only events). New `session-context winddown`
-  and `session-context concept accept|retire|bind|import-okf|project`
-  commands, and a `memory_winddown` MCP tool, all with strict field-level
-  validation and atomic writes. Legacy OKF knowledge imports as explicitly
-  labelled `legacy-unbound` (never blendable with bound, citation-backed
-  concepts until deliberately bound to exact evidence). Concept history now
-  replicates with `session-context` replication: both machines converge to
-  one standing per concept under a deterministic logical-clock order in
-  which no wall-clock timestamp participates, and cloned databases are
-  refused with a diagnostic instead of being merged. See
-  [Source-grounded session context](docs/context-memory.md#concepts-wind-down-lifecycle-legacy-import-projection).
-
-- A derived, per-machine tier-1 ontology (projects, harnesses, artifacts,
-  commands, test runs, linked to the sessions that produced them; migration
-  v48). It is never synced — `session-sync` never reads or transfers any
-  `ontology_*` table, and a first-time seed of a new machine strips them from
-  the transferred snapshot so the destination always derives its own.
-  `session-export` refreshes it automatically after every run; a refresh
-  failure never blocks or rolls back the capture that just committed. New
-  `session-maint ontology-rebuild [--incremental]` and `ontology-status`
-  commands, and a report-only `studyloop doctor --category harness` check
-  (presence, coverage, freshness, extraction-version drift). See
-  [Conversation memory, repair and sync](docs/session-memory.md#tier-1-ontology-derived-never-synced).
+- `studyloop install agents` now idempotently registers both the `session-db`
+  and `studyloop` MCP servers for Claude Code, Kiro and Codex while preserving
+  unrelated config; `studyloop doctor --category agents` reports each
+  harness's registration state without changing configuration.
 
 ### Fixed
 

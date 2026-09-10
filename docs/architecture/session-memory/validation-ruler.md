@@ -6,10 +6,24 @@ file; no threshold may change afterwards. Programme root `main @ ec5fb93d`; buil
 `feat/sessionweaver-phase2-retrofit @ 031dbab9`
 ([PR #18](https://github.com/NetDevAutomate/StudyLoop/pull/18)).
 
+## Amendment — knowledge layers withdrawn (2026-09-10)
+
+The owner ruled on 2026-09-10 that three of the layers this ruler was written to score are
+not part of the solution and are removed with no remnants: the legacy external-knowledge
+import, the derived tier-1 structural graph (migration v48), and the concept sidecar
+(migration v49). The naming, inventory and evidence are in the removal-inventory receipt
+dated 2026-09-10 under `receipts/`, and in the superseded-sections note of
+`../../adr/0011-claim-centric-learning-memory.md`, which cites that receipt by path.
+
+The two gates that scored the structural graph — **G3a** and **G3b** — are therefore
+**withdrawn unscored**, and the programme question below no longer names those layers. No
+threshold of a surviving gate (G1, G2, G4, G5, G6) is changed by this amendment. The
+claim-centric learning-memory store the surviving gates measure is unaffected by the ruling.
+
 ## The question, and what "proven" is allowed to mean
 
-Do the knowledge layers — concept sidecar (`memory_winddown` / `memory_recall`), tier-1
-ontology, embeddings — measurably improve what an agent can recall and decide, over the
+Do the knowledge layers — the claim-centric learning-memory store, embeddings —
+measurably improve what an agent can recall and decide, over the
 raw-text FTS5 path that ships today, at an operational cost an agent session can bear?
 
 **Claim matrix.** Each gate licenses exactly one sentence and no other:
@@ -18,8 +32,8 @@ raw-text FTS5 path that ships today, at an operational cost an agent session can
 |---|---|---|
 | G1 | "Concept-fused retrieval recalls gold sessions better than the shipped path by ≥ 0.05, on a sealed set" | decision correctness, agent outcome |
 | G2 | "Wind-down produces citation-bound concepts whose quotes entail the proposition (audited)" | that the concepts are useful |
-| G3a | "The tier-1 graph rebuilds deterministically from source at bounded cost" | that the graph is worth having |
-| G3b | "Ontology arms do / do not lift fused recall, and do / do not answer typed queries" | anything about agent outcome |
+| G3a | *withdrawn unscored (2026-09-10 amendment)* | — |
+| G3b | *withdrawn unscored (2026-09-10 amendment)* | — |
 | G4 | "Embeddings lift paraphrase recall without keyword regression, within budget" | — |
 | G6 | "`memory_search` returns current, quote-supported decisions and surfaces conflicts, with ≥ 0.95 precision" | that agents *use* them well |
 | G5 | "In a blinded 40-pair pilot, transcripts with the knowledge layers were judged better by Δ" | user outcome; it is a pilot |
@@ -80,8 +94,7 @@ operational budgets and G5 all pass — and then only with the word *pilot* atta
 |---|---|---|---|
 | **G1 Recall** | 3 | On SEALED: fused (B1 + **bound** concepts only; legacy-unbound roots excluded from the candidate arm) macro recall@5 ≥ 0.64; established lift vs B1 ≥ +0.05; K and R non-inferior; P point ≥ 0.20 with P lower bound ≥ B1's P point | record "not established"; Stage 5 still runs |
 | **G2 Binding** | 3 | Wind-down re-run (writer model pre-registered below) over the 348 PoC sessions: ≥ 90 % of sessions with ≥ 10 messages yield ≥ 1 `bound = 1` concept; unbound writes = 0; **blinded semantic audit** of a random 100 bound concepts by a second family: ≥ 95 % proposition-entailed-by-quote, full failure taxonomy reported; mutation tests prove rejection of altered body, stale offsets, wrong evidence id, mis-aligned code-point span | record; investigate the writer, never relax the trigger |
-| **G3a Ontology build** | 4 | Live-DB rebuild writes `ontology_build_state`; identical `logical_hash` across two full rebuilds **and** a controlled source mutation changes it; fixture graph matches expected entities and edges; violations 0; cold ≤ 5 s (the code's existing `_MAX_COLD_REBUILD_SECONDS`, not a new claim); the 13,384 / 28,698 anomaly resolved by a per-class source-to-row reconciliation receipt | blocks G3b |
-| **G3b Ontology value** | 4 | Pre-registered comparator: `H` = the Stage 3 fused arm as frozen at G1 (named by commit). Two separate receipts: (i) `OH − H` on SEALED with the established-lift rule; (ii) a **typed-query benchmark** of 30 council-authored questions only a graph can answer (harness of session, parent of subagent, artifacts touched in ≥ 3 sessions of a project) scored for exact-answer accuracy, provenance and p95 latency. **Stage 6 rule:** build ontology *recall* surfaces only if (i) passes; build ontology *typed-query* surfaces only if (ii) accuracy ≥ 0.90 | skip the corresponding Stage 6 items; record both receipts |
+| **G3a / G3b** | 4 | *Withdrawn unscored by the 2026-09-10 amendment above — the layers they scored are removed from the product.* | — |
 | **G4 Embeddings** | 5 | On SEALED vs the frozen non-embedding fused arm: established lift on P ≥ +0.10 with P point ≥ 0.35; K and R non-inferior; concept index build ≤ 60 s; operational budgets met | record; ship with embeddings disabled |
 | **G6 Decision retrieval** | 3 | Held-out decision set (council-authored, ≥ 60 items: current / superseded-by-`corrects` / disputed-by-`contradicts` / no-coverage, ≥ 15 each): `memory_search` top result precision ≥ 0.95 for current items with the supporting quote returned; conflict surfaced (`related_proposals` or `conflict_review`) on ≥ 0.95 of disputed items; abstention or `coverage.limits_reached` on ≥ 0.95 of no-coverage items | record; this blocks the composite claim |
 | **G5 Pilot** | 7 | 40 paired openers on real parked / struggled topics, counterbalanced order, fresh context each; both arms identical model, prompt, tool-call, token and time budgets and **both** keep raw FTS — only the knowledge-layer retrieval differs; tool names and metadata stripped before rating; two-family blind rating on a 5-point rubric (grounded in a prior decision · correct prerequisite ordering · no invented history · substantive first question); Krippendorff α ≥ 0.70 required; Wilcoxon signed-rank on the paired score with pre-registered MID = 0.5 | record "not established" |
