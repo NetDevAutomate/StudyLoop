@@ -1,6 +1,6 @@
 # ADR-0011: Claim-centric learning memory from agent sessions
 
-**Status:** proposed (PoC under measurement) · **Version:** 1.1 (council-revised, see Council record) · **Date:** 2026-09-10 · **Supersedes (if the gates pass):**
+**Status:** **measured — not established** (see *Outcome*, 2026-09-10) · **Version:** 1.2 (outcome recorded) · **Date:** 2026-09-10 · **Would have superseded (gates did not pass):**
 the retrieval half of PR #18 (`memory_recall` over legacy concepts, ontology as a recall arm).
 Retains PR #18's capture half (native evidence, hash binding, the bound-proof trigger design).
 
@@ -290,3 +290,51 @@ captures that carry arguments. The learning-tier export (Stage D.2) consumes `re
 
 Tokenizer for `prose_fts`/claims (porter vs unicode61); whether embeddings on claims clear G4;
 whether lineage roll-up lifts relational recall; whether Findings make acceptable review items.
+
+## Outcome (2026-09-10) — measured under the frozen ruler; recorded, not argued
+
+The PoC was built (Stages B–E: store, adapter, derivation, two writer versions, a 345-session
+claims population) and scored on gold v2 by the committed harness. Receipts are hash-chained in
+`docs/architecture/session-memory/receipts/`; every gate reading was reviewed by a two-family council.
+
+| gate | result | receipt |
+|---|---|---|
+| **G1 recall** | **NOT ESTABLISHED.** SEALED: fused arm `B1_clean_plus_claims` macro recall@5 **0.129** (bar 0.64); it is significantly *worse* than the prose control alone (−0.154, CI95 [−0.252, −0.065]), replicating DEV look 3 (−0.140). Claims alone: 0.091 SEALED / 0.130 DEV, zero on paraphrase. | `stage-g1-sealed-look.json`, `stage-f-look3-claims.json`, `stage-f-look3-mechanism.json` |
+| **G2 binding** | **NOT ESTABLISHED — INSTRUMENT.** Binding invariant held (0 unbound writes over 2,057 citations, two writers). Yield 74.5–82.8 % on the primary denominator (gate 90 %); misses dominated by sessions with no learner turn. Blinded entailment could not be measured: the same auditor model scored identical items 82 → 16 → 86 "yes" across three runs; the two families disagreed by 14–21 points on both writers. writer-v2 > writer-v1 on every seat. | `g2-pilot-e1.json`, `g2-pilot-e1c.json`, `g2-population-e2.json`, `g2-pilot-e1c-audit-instrument.md` |
+| G3–G6, G5 pilot | **Not reached.** | — |
+| **Composite** | "The knowledge layers improve agent decisions" **may not be written.** | `stage-g1-sealed-reading.md`, `council-stage-f-g1.md` |
+
+**What is established (a product finding, not a knowledge-layer result).** The pre-declared prose
+control `B1_clean` — prose-only FTS over the archive-ingested store with a phrase-token OR planner,
+declared in fusion-spec-v1 before any look and never tuned — outscored the shipped retrieval path on
+SEALED by **+0.168** (CI95 lower +0.076; non-inferior on K, P, R), replicating DEV (+0.184). Look 2
+attributed most of that to the shipped AND-first planner (F-B0-1: +0.142 of it). Fixing the planner in
+`agent-session-tools` is the actionable outcome of this programme.
+
+**Why the claims arm failed (retained evidence).** Equal-weight reciprocal rank fusion over a
+high-recall, low-precision claims list (~127 sessions per question from the OR planner) displaces
+prose rank-1/2 gold sessions: of 17 DEV questions lost by fusion, the gold was at prose rank ≤ 2 in
+12 and absent from the claims list in 16. Claims *do* carry relational signal (R 0.207 vs shipped
+0.103 on DEV) and none for paraphrase — they are written in the assistant's vocabulary. Any future
+claims arm must be a **re-ranker or a weighted, precision-gated candidate source**, pre-registered
+afresh; it is not a peer list.
+
+**Deviations recorded.** (1) The SEALED look ran on a byte-identical read-only *copy* of the store
+(sha `f5e923e8…`, unchanged since the E.2 receipt and look 3), not on a copy "rebuilt from the
+manifest" as v1.1 §Evaluation binding states; no arm was tuned against the store — every write was
+writer output under a pre-registered spec. (2) `score.corpus_digest` omits the ruler's "retrieval
+configuration in force" input; retrieval configuration is pinned by other receipt fields
+(`b0_pin`, `candidate_commit`, `fusion_spec.sha256`). (3) Result receipts' `gold_corpus_digest_at_authoring`
+carries the superseded original digest; the mechanical check against amendment-002's per-split
+reference passed for every receipt. All three are in `council-stage-f-g1.md`.
+
+**Open questions — answered or closed.** Tokenizer: porter unicode61 was used throughout; not
+separately tested. Embeddings on claims (G4): not reached. Lineage roll-up: not reached. Findings as
+review items: writer-v2 produced 1,227 claims with 0 unbound writes; their *fidelity* could not be
+measured with a single-model blinded audit — the audit method itself needs a reliability floor before
+this question is answerable.
+
+**Follow-ons (not built in this programme, no gate left to pass):** planner fix in
+`agent-session-tools` (the established result); audit-method redesign (≥ 3 seats, inter-seat
+agreement floor, graded rubric) before any future G2; a claims-as-re-ranker spec if the knowledge
+layer is pursued again; derive-v2 rule fixes; native adapters (C.2); learning-tier export (D.2).
