@@ -294,10 +294,16 @@ def main() -> int:
         }
 
     comparisons = {"B1_vs_B0": compare("B1", "B0")}
-    for name in arms:
-        if name in ("B0", "B1"):
-            continue
+    feature = [name for name in arms if name not in ("B0", "B1")]
+    for name in feature:
         comparisons[f"{name}_vs_B1"] = compare(name, "B1")
+    # fusion-spec-v2: every ordered pair of feature arms, so attribution comparisons such as
+    # ``B1_clean_plus_claims_vs_B1_clean`` come from the committed script, not from hand
+    # arithmetic on the receipt afterwards.
+    for cand in feature:
+        for comp in feature:
+            if cand != comp:
+                comparisons[f"{cand}_vs_{comp}"] = compare(cand, comp)
 
     fusion_spec = pathlib.Path(args.fusion_spec).resolve() if args.fusion_spec else None
     store = pathlib.Path(args.store).expanduser() if args.store else None
