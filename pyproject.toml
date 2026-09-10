@@ -94,7 +94,7 @@ exclude = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["packages/agent-session-tools/tests", "packages/studyloop/tests"]
+testpaths = ["packages/agent-session-tools/tests", "packages/studyloop/tests", "scripts/knowledge_proof/tests"]
 addopts = "--import-mode=importlib -m 'not integration and not e2e and not live_kiro and not live_provider and not live_obsidian and not live_xtiles and not live_ontology and not live_concepts'"
 # Multi-package workspace: both packages/studyloop/tests/ and
 # packages/agent-session-tools/tests/ have their own conftest.py.
