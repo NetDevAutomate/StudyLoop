@@ -154,6 +154,18 @@ _AGENT_CHOICES = RELEASE_HARNESSES
 # Codex carries that reminder directly in its installed AGENTS.md.
 
 
+def _grok_home() -> Path:
+    """Grok Build's home: ``$GROK_HOME`` when set, else ``~/.grok``.
+
+    The same rule the GrokExporter applies when it reads sessions, so the
+    hook and rules StudyLoop writes land where the Grok that produced those
+    sessions actually looks (Grok CLI user guide, 12-project-rules.md:
+    "``$GROK_HOME/rules/`` (default ``~/.grok/rules/``) — always scanned").
+    """
+    override = os.environ.get("GROK_HOME")
+    return Path(override) if override else _HOME / ".grok"
+
+
 @dataclass(frozen=True, slots=True)
 class _HarnessExport:
     """Where a harness's steering file lives + the session-export flag to use."""
@@ -167,6 +179,10 @@ _HARNESS_EXPORT: dict[str, _HarnessExport] = {
     "kiro": _HarnessExport(_HOME / ".kiro/steering/session-db.md", "kiro-only"),
     "opencode": _HarnessExport(_HOME / ".config/opencode/session-db.md", "opencode-only"),
     "pi": _HarnessExport(_HOME / ".pi/agent/session-db.md", "pi-only"),
+    # Grok scans every *.md under $GROK_HOME/rules/ for all projects, which is
+    # the global-steering slot the other four use. The shared AGENTS.md Grok
+    # also reads names the Codex flag, so this file is what carries grok's own.
+    "grok": _HarnessExport(_grok_home() / "rules/session-db.md", "grok-only"),
 }
 
 # Sentinel marking a steering file as carrying the export mandate (idempotency
@@ -176,6 +192,7 @@ _MANDATE_SENTINEL = "studyloop:session-export-mandate"
 _HOOK_SENTINEL = "session-export --claude-only"
 _SESSION_HOOK_SENTINEL = "studyloop:session-export-hook"
 _CODEX_HOOK_SENTINEL = "session-export --codex-only"
+_GROK_HOOK_SENTINEL = "session-export --grok-only"
 
 _MCP_SERVERS: dict[str, dict[str, object]] = {
     "session-db": {"command": "session-db-mcp", "args": []},
@@ -639,6 +656,12 @@ def _codex_hooks_path() -> Path:
     return _HOME / ".codex/hooks.json"
 
 
+def _grok_hooks_path() -> Path:
+    # Grok loads every *.json under $GROK_HOME/hooks/ as global hooks, so
+    # StudyLoop gets a file of its own rather than a slot in someone else's.
+    return _grok_home() / "hooks/studyloop.json"
+
+
 def _kiro_agent_path() -> Path:
     return _HOME / ".kiro/agents/study-mentor.json"
 
@@ -742,6 +765,48 @@ def install_claude_stop_hook() -> int:
     return 1
 
 
+def _merge_session_end_hook(path: Path, *, label: str, sentinel: str, hook: dict) -> int:
+    """Merge one ``SessionEnd`` command hook into a ``{"hooks": {...}}`` JSON file.
+
+    Read-modify-write that preserves every existing group; idempotent (a
+    command already carrying ``sentinel`` is not duplicated). Returns 1 if the
+    hook was added, else 0. ``label`` names the harness in error messages.
+    """
+    import json
+
+    data: dict = {}
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        path.parent.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise InstallError(f"Cannot read {label} hooks {path}: {exc}") from exc
+    else:
+        try:
+            loaded = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise InstallError(f"Cannot merge {label} hook into malformed {path}: {exc}") from exc
+        if not isinstance(loaded, dict):
+            raise InstallError(f"Cannot merge {label} hook: {path} is not a JSON object")
+        data = loaded
+
+    hooks = data.setdefault("hooks", {})
+    if not isinstance(hooks, dict):
+        raise InstallError(f"Cannot merge {label} hook: {path} hooks is not an object")
+    groups = hooks.setdefault("SessionEnd", [])
+    if not isinstance(groups, list):
+        raise InstallError(f"Cannot merge {label} hook: {path} hooks.SessionEnd is not a list")
+
+    for group in groups:
+        for existing in (group or {}).get("hooks", []) if isinstance(group, dict) else []:
+            if sentinel in str(existing.get("command", "")):
+                return 0
+
+    groups.append({"hooks": [hook]})
+    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    return 1
+
+
 def install_codex_session_end_hook() -> int:
     """Merge StudyLoop's SessionEnd hook into ``~/.codex/hooks.json``.
 
@@ -750,50 +815,44 @@ def install_codex_session_end_hook() -> int:
     sentinel. Codex asks the user to trust new command-hook hashes before the
     first execution — the installer cannot and must not bypass that review.
     """
-    import json
-
-    path = _codex_hooks_path()
-    data: dict = {}
-    try:
-        raw = path.read_text(encoding="utf-8")
-    except FileNotFoundError:
-        path.parent.mkdir(parents=True, exist_ok=True)
-    except OSError as exc:
-        raise InstallError(f"Cannot read Codex hooks {path}: {exc}") from exc
-    else:
-        try:
-            loaded = json.loads(raw)
-        except json.JSONDecodeError as exc:
-            raise InstallError(f"Cannot merge Codex hook into malformed {path}: {exc}") from exc
-        if not isinstance(loaded, dict):
-            raise InstallError(f"Cannot merge Codex hook: {path} is not a JSON object")
-        data = loaded
-
-    hooks = data.setdefault("hooks", {})
-    if not isinstance(hooks, dict):
-        raise InstallError(f"Cannot merge Codex hook: {path} hooks is not an object")
-    groups = hooks.setdefault("SessionEnd", [])
-    if not isinstance(groups, list):
-        raise InstallError(f"Cannot merge Codex hook: {path} hooks.SessionEnd is not a list")
-
-    for group in groups:
-        for hook in (group or {}).get("hooks", []) if isinstance(group, dict) else []:
-            if _CODEX_HOOK_SENTINEL in str(hook.get("command", "")):
-                return 0
-
-    groups.append(
-        {
-            "hooks": [
-                {
-                    "type": "command",
-                    "command": f"{_CODEX_HOOK_SENTINEL} >/dev/null 2>&1 || true",
-                    "timeout": 3,
-                }
-            ]
-        }
+    return _merge_session_end_hook(
+        _codex_hooks_path(),
+        label="Codex",
+        sentinel=_CODEX_HOOK_SENTINEL,
+        hook={
+            "type": "command",
+            "command": f"{_CODEX_HOOK_SENTINEL} >/dev/null 2>&1 || true",
+            "timeout": 3,
+        },
     )
-    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
-    return 1
+
+
+#: The shell line Grok runs at ``SessionEnd``. Grok hands the event to the
+#: command as JSON on stdin and, per its hooks guide, includes ``subagentType``
+#: only for a child session's teardown -- so a payload carrying that key is a
+#: subagent ending, not the session, and the export is skipped (the parent's
+#: own ``SessionEnd`` follows). ``grep`` is POSIX, so the line needs nothing
+#: StudyLoop does not already install. Always exits 0: hooks are fail-open
+#: anyway, and an export failure must never surface as a Grok error.
+_GROK_HOOK_COMMAND = f"grep -q '\"subagentType\"' || {_GROK_HOOK_SENTINEL} >/dev/null 2>&1 || true"
+
+
+def install_grok_session_end_hook() -> int:
+    """Write StudyLoop's SessionEnd hook to ``$GROK_HOME/hooks/studyloop.json``.
+
+    Grok Build loads every ``*.json`` under its ``hooks/`` directory as global
+    hooks, so StudyLoop owns this file by name; it is still merged rather than
+    overwritten so anything a user added to it survives. The timeout sits
+    above Grok's 5 s default because a cold ``session-export`` start on a slow
+    machine can exceed it, and below the 10 s exit budget Grok gives
+    ``SessionEnd`` hooks (a measured warm run here took 0.17 s).
+    """
+    return _merge_session_end_hook(
+        _grok_hooks_path(),
+        label="Grok",
+        sentinel=_GROK_HOOK_SENTINEL,
+        hook={"type": "command", "command": _GROK_HOOK_COMMAND, "timeout": 8},
+    )
 
 
 def find_repo_root(start: Path | None = None) -> Path | None:
@@ -1014,6 +1073,8 @@ def install_agent_definitions(
             summary["claude"] = summary.get("claude", 0) + install_claude_stop_hook()
         if "codex" in selected:
             summary["codex"] = summary.get("codex", 0) + install_codex_session_end_hook()
+        if "grok" in selected:
+            summary["grok"] = summary.get("grok", 0) + install_grok_session_end_hook()
         for tool, count in register_mcp_servers(selected).items():
             summary[tool] = summary.get(tool, 0) + count
 

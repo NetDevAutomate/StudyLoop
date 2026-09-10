@@ -146,7 +146,7 @@ that exposes one:
 | Claude Code | global `~/.claude/settings.json` `Stop` hook | native skill link + `session-query` |
 | OpenCode | global plugin, `session.idle` event | shared skill + `session-query` |
 | pi | global extension, `session_shutdown` event | shared skill + `session-query` |
-| Grok Build | none yet — run `session-export --grok-only` | shared skill + `session-query` |
+| Grok Build | global `~/.grok/hooks/studyloop.json` `SessionEnd` hook | shared skill + `session-query` |
 
 All installed hooks run `session-export --<harness>-only` best-effort and never
 block session close. Codex reviews and trusts a newly installed command-hook

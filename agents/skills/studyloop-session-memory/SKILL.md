@@ -78,10 +78,10 @@ user inside the harness. Report an observed export error; doctor checks wiring
 but does not establish success of the latest export. Verify a recent session
 through query when capture is uncertain.
 
-Grok Build is the exception: it is a preview mentor harness for which StudyLoop
-does not yet install a session-end hook, so run `session-export --grok-only`
-yourself at wind-down.
-Its transcripts live under `~/.grok/sessions/` (or `GROK_HOME`).
+Grok Build's hook is `~/.grok/hooks/studyloop.json` (under `GROK_HOME` when
+set): a `SessionEnd` hook that runs `session-export --grok-only` and skips a
+subagent's teardown. Its transcripts live under `~/.grok/sessions/` (or
+`GROK_HOME`).
 
 ## Repair and sharing limits
 

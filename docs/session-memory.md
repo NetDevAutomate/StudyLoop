@@ -41,9 +41,10 @@ sources.
 Grok Build import reads local `chat_history.jsonl` files with sibling
 `summary.json` under `~/.grok/sessions/`, or the configured `GROK_HOME` sessions
 directory. `session-export --grok-only` imports those files. Grok Build is also a
-preview mentor harness alongside OpenCode and pi, but StudyLoop does not yet
-install a session-end hook for it, so run the export yourself at wind-down. Choosing a Grok
-model through a gateway does not identify a conversation archive.
+preview mentor harness alongside OpenCode and pi; the installer writes a
+`SessionEnd` hook to `~/.grok/hooks/studyloop.json` (or `$GROK_HOME/hooks/`) that
+runs that export when a session ends and skips a subagent's own teardown. Choosing a
+Grok model through a gateway does not identify a conversation archive.
 
 Doctor checks executable, skill and hook configuration. A passing wiring check
 does not prove the most recent session was exported. Verify a known recent

@@ -7,6 +7,16 @@ experience may change before `1.0.0`.
 
 ## [Unreleased]
 
+### Added
+
+- Grok Build sessions export automatically at session end. `studyloop install
+  agents` / `studyloop doctor --fix` write `~/.grok/hooks/studyloop.json` (under
+  `GROK_HOME` when set), a `SessionEnd` hook running `session-export
+  --grok-only` that skips a subagent's own teardown and never fails the hook,
+  plus the session-memory mandate in `~/.grok/rules/session-db.md`. Doctor
+  reports `session_export_hook_grok`; the shared `AGENTS.md` wind-down step now
+  names the Grok flag beside Codex's.
+
 ### Fixed
 
 - A fresh install can start a session and call every memory tool from its

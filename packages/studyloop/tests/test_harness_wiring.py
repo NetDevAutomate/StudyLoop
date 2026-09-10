@@ -43,6 +43,7 @@ def test_every_release_harness_has_a_real_session_export_route() -> None:
         "claude": "claude-only",
         "opencode": "opencode-only",
         "pi": "pi-only",
+        "grok": "grok-only",
     }
     assert "session-export --codex-only" in (REPO / "agents" / "codex" / "AGENTS.md").read_text(
         encoding="utf-8"

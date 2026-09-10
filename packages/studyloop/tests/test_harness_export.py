@@ -8,6 +8,8 @@ tmp HOME so the user's real ~/.claude / ~/.kiro are never touched.
 from __future__ import annotations
 
 import json
+import os
+import subprocess
 from pathlib import Path
 from unittest.mock import patch
 
@@ -156,6 +158,102 @@ class TestCodexSessionEndHook:
 
 
 # ---------------------------------------------------------------------------
+# install_grok_session_end_hook
+# ---------------------------------------------------------------------------
+
+
+class TestGrokSessionEndHook:
+    @pytest.fixture(autouse=True)
+    def _no_grok_home_override(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # A developer's own GROK_HOME must not redirect the sandboxed writes.
+        monkeypatch.delenv("GROK_HOME", raising=False)
+
+    def test_adds_hook_preserving_existing(self, home: Path):
+        path = home / ".grok/hooks/studyloop.json"
+        path.parent.mkdir(parents=True)
+        path.write_text(
+            json.dumps(
+                {
+                    "hooks": {
+                        "SessionEnd": [{"hooks": [{"type": "command", "command": "existing-hook"}]}]
+                    }
+                }
+            )
+        )
+
+        assert installers.install_grok_session_end_hook() == 1
+        data = json.loads(path.read_text())
+        commands = [
+            hook["command"] for group in data["hooks"]["SessionEnd"] for hook in group["hooks"]
+        ]
+        assert "existing-hook" in commands
+        assert sum("session-export --grok-only" in command for command in commands) == 1
+        assert installers.install_grok_session_end_hook() == 0
+
+    def test_creates_own_hooks_file(self, home: Path):
+        assert installers.install_grok_session_end_hook() == 1
+        path = home / ".grok/hooks/studyloop.json"
+        data = json.loads(path.read_text())
+        [group] = data["hooks"]["SessionEnd"]
+        [hook] = group["hooks"]
+        assert hook["type"] == "command"
+        assert "session-export --grok-only" in hook["command"]
+        # Above Grok's 5 s default (cold session-export start), below its 10 s
+        # SessionEnd exit budget.
+        assert 5 < hook["timeout"] <= 10
+
+    def test_honours_grok_home(self, home: Path, monkeypatch: pytest.MonkeyPatch):
+        # The exporter reads sessions from $GROK_HOME; the hook must land where
+        # that same Grok looks, not under a ~/.grok it never reads.
+        monkeypatch.setenv("GROK_HOME", str(home / "elsewhere"))
+        assert installers.install_grok_session_end_hook() == 1
+        assert (home / "elsewhere/hooks/studyloop.json").exists()
+        assert not (home / ".grok").exists()
+
+    def test_command_skips_subagent_teardown_and_never_fails(self, home: Path):
+        """Run the installed line under /bin/sh exactly as Grok would.
+
+        Grok hands the SessionEnd event to the command as JSON on stdin and
+        includes ``subagentType`` only for a child session's teardown. A fake
+        ``session-export`` on PATH records each invocation, so this proves the
+        skip and the exit-0 contract instead of asserting on the string.
+        """
+        installers.install_grok_session_end_hook()
+        data = json.loads((home / ".grok/hooks/studyloop.json").read_text())
+        command = data["hooks"]["SessionEnd"][0]["hooks"][0]["command"]
+
+        bin_dir = home / "bin"
+        bin_dir.mkdir()
+        log = home / "calls.log"
+        fake = bin_dir / "session-export"
+        fake.write_text(f'#!/bin/sh\necho "$*" >> "{log}"\nexit "${{FAKE_EXIT:-0}}"\n')
+        fake.chmod(0o755)
+        env = {**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}"}
+
+        def run(payload: dict, **extra_env: str) -> int:
+            proc = subprocess.run(
+                ["/bin/sh", "-c", command],
+                input=json.dumps(payload),
+                text=True,
+                env={**env, **extra_env},
+                capture_output=True,
+            )
+            return proc.returncode
+
+        session = {"hookEventName": "session_end", "sessionId": "abc-123", "cwd": str(home)}
+        assert run(session) == 0
+        assert log.read_text().splitlines() == ["--grok-only"]
+
+        # A subagent's SessionEnd carries subagentType: not the session's end.
+        assert run({**session, "subagentType": "explore"}) == 0
+        assert log.read_text().splitlines() == ["--grok-only"]
+
+        # An export failure must not surface as a Grok hook error.
+        assert run(session, FAKE_EXIT="1") == 0
+        assert log.read_text().splitlines() == ["--grok-only", "--grok-only"]
+
+
+# ---------------------------------------------------------------------------
 # doctor harness check
 # ---------------------------------------------------------------------------
 
@@ -189,8 +287,12 @@ class TestHarnessDoctorCheck:
         assert after["session_memory_skill_claude"] == "pass"
         assert after["session_export_hook_claude"] == "pass"
 
-    def test_all_release_harnesses_get_skill_and_hook_results(self, home: Path):
+    def test_all_release_harnesses_get_skill_and_hook_results(
+        self, home: Path, monkeypatch: pytest.MonkeyPatch
+    ):
         from studyloop.doctor.harness import check_harness_export
+
+        monkeypatch.delenv("GROK_HOME", raising=False)
 
         skill_text = "---\nname: studyloop-session-memory\n---\n"
         hub = home / ".agents/skills/studyloop-session-memory/SKILL.md"
@@ -214,18 +316,19 @@ class TestHarnessDoctorCheck:
         pi.write_text('// studyloop:session-export-hook\n["--pi-only"]')
         installers.install_claude_stop_hook()
         installers.install_codex_session_end_hook()
+        installers.install_grok_session_end_hook()
 
         with (
             patch.object(
                 installers,
                 "detect_available_agent_tools",
-                return_value=["kiro", "codex", "claude", "opencode", "pi"],
+                return_value=["kiro", "codex", "claude", "opencode", "pi", "grok"],
             ),
             patch("studyloop.doctor.harness.shutil.which", return_value="/usr/bin/tool"),
         ):
             results = {result.name: result.status for result in check_harness_export()}
 
-        for tool in ("kiro", "codex", "claude", "opencode", "pi"):
+        for tool in ("kiro", "codex", "claude", "opencode", "pi", "grok"):
             assert results[f"session_memory_skill_{tool}"] == "pass"
             assert results[f"session_export_hook_{tool}"] == "pass"
 

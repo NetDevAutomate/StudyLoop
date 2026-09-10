@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import shutil
+from pathlib import Path
 
 from studyloop import installers
 from studyloop.doctor.models import CheckResult
@@ -96,8 +97,6 @@ def _skill_path(tool: str):
 
 
 def _session_memory_skill_result(tool: str) -> CheckResult:
-    from pathlib import Path
-
     path = Path(_skill_path(tool)).expanduser() / "SKILL.md"
     present = path.exists() and "name: studyloop-session-memory" in path.read_text(encoding="utf-8")
     return CheckResult(
@@ -160,33 +159,55 @@ def _kiro_hook_result() -> CheckResult:
     )
 
 
-def _codex_hook_result() -> CheckResult:
-    path = installers._codex_hooks_path()
+def _json_session_end_hook_result(
+    tool: str, path: Path, sentinel: str, *, label: str, fix_verb: str
+) -> CheckResult:
+    """Check a ``{"hooks": {"SessionEnd": [...]}}`` file for the export command."""
     present = False
     if path.exists():
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
             groups = (data.get("hooks", {}) or {}).get("SessionEnd", []) or []
             present = any(
-                installers._CODEX_HOOK_SENTINEL in str(hook.get("command", ""))
+                sentinel in str(hook.get("command", ""))
                 for group in groups
                 if isinstance(group, dict)
                 for hook in group.get("hooks", [])
                 if isinstance(hook, dict)
             )
-        except (OSError, json.JSONDecodeError):
+        except (OSError, json.JSONDecodeError, AttributeError):
             present = False
     return CheckResult(
         category="harness",
-        name="session_export_hook_codex",
+        name=f"session_export_hook_{tool}",
         status="pass" if present else "warn",
         message=(
-            "codex: automatic SessionEnd export hook installed"
+            f"{tool}: automatic SessionEnd export hook installed"
             if present
-            else f"codex: missing SessionEnd export hook in {path}"
+            else f"{tool}: missing SessionEnd export hook in {path}"
         ),
-        fix_hint="" if present else "studyloop doctor --fix  (merges Codex SessionEnd hook)",
+        fix_hint="" if present else f"studyloop doctor --fix  ({fix_verb} {label} SessionEnd hook)",
         fix_auto=not present,
+    )
+
+
+def _codex_hook_result() -> CheckResult:
+    return _json_session_end_hook_result(
+        "codex",
+        installers._codex_hooks_path(),
+        installers._CODEX_HOOK_SENTINEL,
+        label="Codex",
+        fix_verb="merges",
+    )
+
+
+def _grok_hook_result() -> CheckResult:
+    return _json_session_end_hook_result(
+        "grok",
+        installers._grok_hooks_path(),
+        installers._GROK_HOOK_SENTINEL,
+        label="Grok",
+        fix_verb="writes",
     )
 
 
@@ -223,6 +244,8 @@ def check_harness_export() -> list[CheckResult]:
             results.append(_claude_hook_result())
         elif tool == "codex":
             results.append(_codex_hook_result())
+        elif tool == "grok":
+            results.append(_grok_hook_result())
         elif tool == "kiro":
             results.append(_kiro_hook_result())
         elif tool == "opencode":

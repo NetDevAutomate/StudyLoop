@@ -477,24 +477,19 @@ def test_every_release_harness_has_a_real_session_export_hook_contract() -> None
     # already contain user hooks; their behavior is covered in
     # test_harness_export.py. This assertion prevents a release harness from
     # appearing without an explicit hook strategy decision.
-    strategies = {"kiro", "opencode", "pi", "claude", "codex"}
+    # Grok Build joined on 2026-09-10: install_grok_session_end_hook writes
+    # ~/.grok/hooks/studyloop.json (a SessionEnd hook running
+    # `session-export --grok-only`, skipping subagent teardowns) and
+    # _HARNESS_EXPORT carries its rules-file mandate. Both are covered in
+    # test_harness_export.py.
+    strategies = {"kiro", "opencode", "pi", "claude", "codex", "grok"}
     from studyloop.harnesses import RELEASE_HARNESSES
 
-    # Grok Build is admitted as a LAUNCH harness with no automatic export hook
-    # yet: a ~/.grok/hooks/studyloop.json SessionEnd hook running
-    # `session-export --grok-only` is recorded as a follow-on
-    # (docs/architecture/session-memory/receipts/adapter-scope-2026-09-10.md §6),
-    # not built. Named here so the gap is a declared decision rather than a
-    # silent omission, and so the partition still fails for any OTHER harness
-    # added without one. Its sessions are exportable on demand -- GrokExporter
-    # has ingested real sessions -- just not automatically at session end.
-    no_export_hook_yet = {"grok"}
-
-    assert strategies.isdisjoint(no_export_hook_yet)
-    assert strategies | no_export_hook_yet == set(RELEASE_HARNESSES)
-    # The gap must be REAL, not merely declared: an installer entry appearing for
-    # grok without this set being updated would make the comment above a lie.
-    assert no_export_hook_yet.isdisjoint(installers._HARNESS_EXPORT)
+    # Every release harness has an explicit export strategy, and no strategy
+    # names a harness that is not released. A new harness fails here until
+    # its hook strategy is a decision, not an omission.
+    assert strategies == set(RELEASE_HARNESSES)
+    assert "grok" in installers._HARNESS_EXPORT
 
 
 # ---------------------------------------------------------------------------

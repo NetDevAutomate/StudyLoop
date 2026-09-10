@@ -659,7 +659,7 @@ session-export --sources opencode --sources pi
 session-export --claude-only
 session-export --kiro-only
 session-export --codex-only
-session-export --grok-only       # Grok Build has no automatic hook yet
+session-export --grok-only
 session-export --opencode-only
 session-export --pi-only
 

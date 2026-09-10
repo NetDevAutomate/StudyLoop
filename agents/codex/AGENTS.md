@@ -99,7 +99,8 @@ Guide discovery through Socratic questioning — never lecture:
 Follow `wind-down-protocol.md`:
 1. Record progress: `studyloop progress "<concept>" -t <topic> -c <confidence>`
 2. End session: `studyloop session end --notes "<summary>"` — flushes parking lot to DB, exports to Obsidian
-3. Export the real Codex conversation: `session-export --codex-only`
+3. Export the real conversation: `session-export --codex-only` (Codex) or
+   `session-export --grok-only` (Grok Build reads this same file)
 4. Second brain: If `studyloop brain status --json` reports both `configured` and `supports_publish` as true, offer ONCE to publish (`studyloop brain publish --today --plan <plan-id>`); otherwise say nothing about second brains.
    - xTiles: if that same status reports `provider: xtiles` and an `xtiles` MCP server is connected in this session, follow the `studyloop-xtiles-wind-down` skill instead; otherwise skip this step silently and say nothing about xTiles.
 5. Suggest next review based on spaced repetition intervals
