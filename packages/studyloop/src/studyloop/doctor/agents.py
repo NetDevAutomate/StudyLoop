@@ -29,6 +29,10 @@ TOOL_AGENTS: dict[str, tuple[str, str]] = {
     "claude": ("claude", "~/.claude/agents/socratic-mentor.md"),
     "opencode": ("opencode", "~/.config/opencode/agents/study-mentor.md"),
     "pi": ("pi", "~/.pi/agent/AGENTS.md"),
+    # Deliberately the same repo-root AGENTS.md that Codex reads: Grok Build
+    # discovers the AGENTS.md instruction-file family from the repository root
+    # down to the working directory, so a second copy would only drift.
+    "grok": ("grok", "{repo_root}/AGENTS.md"),
 }
 
 assert tuple(TOOL_AGENTS) == RELEASE_HARNESSES
@@ -145,7 +149,7 @@ def check_agent_definitions() -> list[CheckResult]:
                 "no_ai_tools",
                 "info",
                 "No AI coding tools detected",
-                "Install Kiro CLI, Codex, Claude Code, OpenCode, or pi",
+                "Install Kiro CLI, Codex, Claude Code, OpenCode, pi, or Grok Build",
                 False,
             )
         ]

@@ -75,6 +75,12 @@ _TOOL_LINKS: dict[str, tuple[LinkSpec, ...]] = {
         ),
     ),
     "codex": (LinkSpec("agents/codex/AGENTS.md", "{repo_root}/AGENTS.md"),),
+    # Deliberately the SAME source and target as codex. Grok Build reads the
+    # AGENTS.md instruction-file family from the repository root down to the
+    # working directory, exactly as Codex does, so both harnesses are served by
+    # one repo-root file. A grok-specific copy under agents/grok/ would be a
+    # second body of the same persona and would drift; none has ever existed.
+    "grok": (LinkSpec("agents/codex/AGENTS.md", "{repo_root}/AGENTS.md"),),
     "pi": (
         LinkSpec("agents/pi/AGENTS.md", str(_HOME / ".pi/agent/AGENTS.md")),
         LinkSpec(
@@ -111,9 +117,11 @@ _SHARED_LINKS: tuple[LinkSpec, ...] = (
 )
 
 #: Each harness's own skills directory, only where an extra link is needed.
-#: Codex, OpenCode and pi are absent because all three officially discover the
-#: shared ``~/.agents/skills`` hub directly; duplicate native-directory links
-#: would create two discovery paths to the same skill.
+#: Codex, OpenCode, pi and Grok Build are absent because all four officially
+#: discover the shared ``~/.agents/skills`` hub directly; duplicate
+#: native-directory links would create two discovery paths to the same skill.
+#: Grok Build "also scans ``.agents/skills/`` (and ``commands/``) at each tier"
+#: alongside its own ``.grok/`` roots (Grok CLI 1.0.13 user guide, 08-skills.md).
 XTILES_SKILL_LINKS: dict[str, LinkSpec] = {
     "kiro": LinkSpec(str(XTILES_SKILL_HUB), str(_HOME / ".kiro/skills" / XTILES_SKILL_NAME)),
     "claude": LinkSpec(str(XTILES_SKILL_HUB), str(_HOME / ".claude/skills" / XTILES_SKILL_NAME)),
@@ -475,6 +483,8 @@ def detect_available_agent_tools() -> list[str]:
         available.append("codex")
     if shutil.which("pi") or (_HOME / ".pi").is_dir():
         available.append("pi")
+    if shutil.which("grok") or (_HOME / ".grok").is_dir():
+        available.append("grok")
     return available
 
 
@@ -511,7 +521,7 @@ def install_agent_definitions(
     if not selected:
         raise InstallError(
             "No supported AI tools detected. "
-            "Install Kiro CLI, Codex, Claude Code, OpenCode, or pi first."
+            "Install Kiro CLI, Codex, Claude Code, OpenCode, pi, or Grok Build first."
         )
 
     invalid = [tool for tool in selected if tool not in _AGENT_CHOICES]

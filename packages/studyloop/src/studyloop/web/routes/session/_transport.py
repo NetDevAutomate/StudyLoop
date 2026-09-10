@@ -140,6 +140,11 @@ def _build_acp_transport(config):  # type: ignore[no-untyped-def]
             return shlex.split(test_cmd)
         if _config.agent == "kiro":
             return ["kiro-cli", "acp"]
+        if _config.agent == "grok":
+            # No ``--always-approve``: StudyLoop answers ``session/request_permission``
+            # itself (``ACPTransport.send_permission_response``), so bypassing the
+            # agent's permission prompts would remove a decision the client makes.
+            return ["grok", "agent", "stdio"]
         raise ValueError(f"ACP is not supported for agent {_config.agent!r}")
 
     return lambda: ACPTransport(

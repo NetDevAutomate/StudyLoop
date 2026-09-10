@@ -12,9 +12,10 @@ if TYPE_CHECKING:
 TransportName = Literal["pty", "acp"]
 
 # Agents that speak the Agent Client Protocol. Single source of truth shared by
-# the session-start ACP guard and the options endpoint (_options.py). Kiro is
-# the sole ACP harness in the pre-release contract; the others use PTY.
-ACP_CAPABLE_AGENTS: frozenset[str] = frozenset({"kiro"})
+# the session-start ACP guard and the options endpoint (_options.py). Kiro and
+# Grok Build are the ACP harnesses in the pre-release contract; the others use
+# PTY. Grok Build documents agent mode as a long-lived ACP server over stdio.
+ACP_CAPABLE_AGENTS: frozenset[str] = frozenset({"kiro", "grok"})
 
 
 def slug_session_dir(topic: str) -> str:

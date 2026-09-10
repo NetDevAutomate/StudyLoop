@@ -347,19 +347,26 @@ class SecondBrainConfig:
     xtiles_destination_url: str | None = None
 
 
+def _default_agent_priority() -> list[str]:
+    """The launch-priority default: every release harness, in contract order.
+
+    Derived rather than listed. A hand-maintained literal here silently went
+    stale each time the harness contract changed (it still said five harnesses
+    after Grok Build was re-admitted), and the drift is invisible because
+    ``detect_agents`` appends un-listed registry entries at the end anyway --
+    the harness still launches, just never at the priority the contract implies.
+    Imported lazily to keep ``settings`` importable from ``harnesses`` consumers.
+    """
+    from studyloop.harnesses import RELEASE_HARNESSES
+
+    return list(RELEASE_HARNESSES)
+
+
 @dataclass
 class AgentsConfig:
     """Configuration for AI agent detection and priority."""
 
-    priority: list[str] = field(
-        default_factory=lambda: [
-            "kiro",
-            "codex",
-            "claude",
-            "opencode",
-            "pi",
-        ]
-    )
+    priority: list[str] = field(default_factory=_default_agent_priority)
     custom: dict[str, dict] = field(default_factory=dict)
 
 
@@ -968,7 +975,7 @@ def _load_settings_from_raw(raw_config: dict[str, Any] | None = None) -> Setting
     if ag:
         from studyloop.harnesses import RELEASE_HARNESSES
 
-        default_priority = ["kiro", "codex", "claude", "opencode", "pi"]
+        default_priority = _default_agent_priority()
         custom = ag.get("custom", {})
         admitted = set(RELEASE_HARNESSES) | set(custom)
         configured_priority = ag.get("priority", default_priority)
@@ -1106,7 +1113,7 @@ topics:
 # Override per-session with: studyloop study "topic" --agent kiro
 # Override via env var: STUDYLOOP_AGENT=kiro
 # agents:
-#   priority: [kiro, codex, claude, opencode, pi]
+#   priority: [kiro, codex, claude, opencode, pi, grok]
 # Medication timing (optional — for ADHD stimulant medication awareness)
 # Uncomment to enable medication-aware session recommendations
 # medication:

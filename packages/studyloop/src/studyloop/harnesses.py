@@ -21,7 +21,7 @@ class Harness:
 
 
 CORE_HARNESSES = ("kiro", "codex", "claude")
-PREVIEW_HARNESSES = ("opencode", "pi")
+PREVIEW_HARNESSES = ("opencode", "pi", "grok")
 RELEASE_HARNESSES = (*CORE_HARNESSES, *PREVIEW_HARNESSES)
 
 SESSION_SOURCE_BY_HARNESS: dict[str, str] = {
@@ -30,6 +30,7 @@ SESSION_SOURCE_BY_HARNESS: dict[str, str] = {
     "claude": "claude_code",
     "opencode": "opencode",
     "pi": "pi",
+    "grok": "grok",
 }
 
 HARNESSES: dict[str, Harness] = {
@@ -38,6 +39,9 @@ HARNESSES: dict[str, Harness] = {
     "claude": Harness("claude", "Claude Code", "claude", True),
     "opencode": Harness("opencode", "OpenCode", "opencode", False),
     "pi": Harness("pi", "pi", "pi", False),
+    # "Grok Build" is the product's own name for the `grok` binary (its user
+    # guide and TUI header both use it); "Grok"/"Grok Builder" are not.
+    "grok": Harness("grok", "Grok Build", "grok", False),
 }
 
 

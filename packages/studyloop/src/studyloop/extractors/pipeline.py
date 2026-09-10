@@ -4,7 +4,7 @@ Deterministic Python — no LLM here. The extractor function is injected so test
 can use an isolated double while production supplies the live extractor.
 
 Pre-filter contract:
-- Only process sessions exported by the five release harnesses. The CLI requires
+- Only process sessions exported by the six release harnesses. The CLI requires
   an explicit session id or harness selection, so supporting Claude/Codex does
   not imply scanning arbitrary coding history.
 - Skip a session when more than ``TOOL_USE_THRESHOLD`` of its messages are

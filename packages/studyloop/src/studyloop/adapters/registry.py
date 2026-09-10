@@ -1,4 +1,4 @@
-"""Adapter registry for the five admitted pre-release harnesses.
+"""Adapter registry for the six admitted pre-release harnesses.
 
 Built-in adapters live as sibling modules (e.g. ``claude.py``) and
 expose a module-level ``ADAPTER`` attribute of type ``AgentAdapter``.

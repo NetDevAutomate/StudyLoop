@@ -17,11 +17,11 @@ class StartSessionRequest(BaseModel):
         default=None,
         description=(
             "Session transport: 'pty' (default) or 'acp' (Agent Client "
-            "Protocol, available for Kiro). Any other value — including the "
-            "retired 'ttyd' — is rejected with 422, not silently downgraded. "
-            "STUDYLOOP_TRANSPORT=pty is the only accepted env-var override; "
-            "'acp' is body-only to keep the kill-switch semantics focused on "
-            "the safe path."
+            "Protocol, available for Kiro and Grok Build). Any other value — "
+            "including the retired 'ttyd' — is rejected with 422, not silently "
+            "downgraded. STUDYLOOP_TRANSPORT=pty is the only accepted env-var "
+            "override; 'acp' is body-only to keep the kill-switch semantics "
+            "focused on the safe path."
         ),
     )
 
@@ -32,6 +32,7 @@ _AGENT_INSTALL_HINTS: dict[str, str] = {
     "kiro": "Install Kiro CLI: https://kiro.dev/docs/cli",
     "opencode": "Install OpenCode: https://opencode.ai/docs/install",
     "pi": "Install pi: npm install -g @mariozechner/pi-coding-agent",
+    "grok": "Install Grok Build: curl -fsSL https://x.ai/cli/install.sh | bash",
 }
 
 
