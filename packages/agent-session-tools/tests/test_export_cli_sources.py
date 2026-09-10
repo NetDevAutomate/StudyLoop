@@ -1,4 +1,9 @@
-"""CLI contracts for the preview pi and OpenCode exporters."""
+"""CLI contracts for the export source surface.
+
+Covers the ``--sources`` / ``--<source>-only`` CLI surface for the six
+supported sources (claude, codex, grok, kiro, opencode, pi) and the
+rejection of out-of-scope ones.
+"""
 
 from __future__ import annotations
 

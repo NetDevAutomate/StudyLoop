@@ -1,8 +1,9 @@
 """MCP server for session-db — universal AI tool integration.
 
 Exposes session database as MCP tools via stdio transport.
-Any MCP-compatible admitted harness (Kiro CLI, Codex, Claude Code, OpenCode, or pi)
-can search, browse, and retrieve session context through this server.
+Any MCP-compatible admitted harness (Claude Code, Codex, Grok Build, Kiro CLI,
+OpenCode, or pi) can search, browse, and retrieve session context through this
+server.
 
 Usage:
     session-db-mcp              # Start the server (stdio)
@@ -277,7 +278,7 @@ def _create_server() -> FastMCP:
         Args:
             query: Search terms (supports AND, OR, NOT operators)
             limit: Maximum results to return (default 10)
-            source: Filter by tool source (claude, kiro, gemini, opencode, etc.)
+            source: Filter by tool source (claude, codex, grok, kiro, opencode, pi)
             project: Filter by project name or full path with configured project aliases
         """
         conn = _get_connection()
