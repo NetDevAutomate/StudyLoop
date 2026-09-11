@@ -1,0 +1,60 @@
+{
+ "changed": [
+  {
+   "after": {
+    "hit": false,
+    "miss_class": "ranking",
+    "rank": null,
+    "source": "kiro_cli",
+    "tied": false
+   },
+   "before": {
+    "hit": true,
+    "miss_class": null,
+    "rank": 1,
+    "source": "kiro_cli",
+    "tied": false
+   },
+   "id": "9a6cc701-e1b6-47e2-9f4c-a3af4d7ae4d2"
+  },
+  {
+   "after": {
+    "hit": false,
+    "miss_class": "ranking",
+    "rank": null,
+    "source": "kiro_cli",
+    "tied": false
+   },
+   "before": {
+    "hit": true,
+    "miss_class": null,
+    "rank": 2,
+    "source": "kiro_cli",
+    "tied": false
+   },
+   "id": "9ef695d6-75eb-4136-a743-db83c35ca3de"
+  },
+  {
+   "after": {
+    "hit": true,
+    "miss_class": null,
+    "rank": 4,
+    "source": "codex",
+    "tied": false
+   },
+   "before": {
+    "hit": false,
+    "miss_class": "ranking",
+    "rank": null,
+    "source": "codex",
+    "tied": false
+   },
+   "id": "codex_rollout-2026-07-05T12-13-20-019f31fb-98e1-7162-b255-82c8abb65025-41"
+  }
+ ],
+ "hits_after": 13,
+ "hits_before": 14,
+ "n_outcome_changed": 3,
+ "n_questions": 23,
+ "schema": "studyloop.census-attribution/v1"
+}

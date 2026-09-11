@@ -66,6 +66,15 @@ def dump(db: Path, out: Path) -> None:
     print(f"census {len(payload['census'])} · gold {len(payload['gold'])} → {out}")
 
 
+def _shape(plan: dict) -> dict:
+    return {
+        "explicit": plan["explicit"],
+        "n_terms": len(plan["terms"]),
+        "n_queries": len(plan["queries"]),
+        "note": plan.get("note"),
+    }
+
+
 def compare(before: Path, after: Path, out: Path) -> None:
     a = json.loads(before.read_text(encoding="utf-8"))
     b = json.loads(after.read_text(encoding="utf-8"))
@@ -84,12 +93,15 @@ def compare(before: Path, after: Path, out: Path) -> None:
             "n_after": len(ids_b),
             "n_common": len(common),
             "n_changed": len(changed),
+            # Ids, a hash of the text and the plan SHAPE only: learner turns are
+            # pasted material and may carry credentials, so no text and no terms
+            # leave the dump files (which stay outside the repository).
             "changed": [
                 {
                     "id": i,
-                    "text": b[name][i]["text"],
-                    "before": a[name][i]["plan"],
-                    "after": b[name][i]["plan"],
+                    "text_sha256": hashlib.sha256(b[name][i]["text"].encode()).hexdigest(),
+                    "before": _shape(a[name][i]["plan"]),
+                    "after": _shape(b[name][i]["plan"]),
                 }
                 for i in changed
             ],

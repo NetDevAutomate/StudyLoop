@@ -142,3 +142,45 @@ therefore stand exactly.
 Escalation rule: a REJECT with MAJORs escalates to three seats — **pending Andy's call** whether
 to run the three-seat council now or fold Stage 2 into the Stage 3 three-seat review already
 scheduled.
+
+## Escalation addendum — three seats, 2026-09-11 19:35–19:55
+
+Escalation rule applied (REJECT with MAJORs → three seats). Brief 27.1 KB: the corrected record,
+the single seat's review verbatim, the planner source (`retrieval.py:40-196`) and the planner
+tests added by `c8c105c4`. Verdicts: **astra REJECT** (3 MAJOR, 4 MINOR) · **qwen3-coder
+ACCEPT** (no findings) · **kimi-k2-thinking ACCEPT-WITH-CORRECTIONS** (first call returned
+1,994 reasoning tokens and no text; retried at 20k, 348 words — both files kept).
+
+| seat / id | sev. | finding | disposition |
+|---|---|---|---|
+| astra 1 | MAJOR | the quote regex `"([^"]+)"` skips an empty pair: `"" OR "alpha"` reads `" OR "` as the phrase → not explicit, plans the word `OR` | **CONFIRMED at runtime** (`plan_query('"" OR "alpha"')` → `explicit=False, terms=('"OR"','alpha')`). Fixed in `dfab98b6`: one scanner (`_split_quotes`) for classification and phrase extraction; empty span dropped, unmatched quote opens no phrase, `"alpha"AND"bravo"` explicit. Tests pin all three inputs |
+| astra 2 | MAJOR | "receipts stand exactly" rested on a pattern census, not a plan comparison; `"alpha"AND"bravo"` changed class outside the four counted | **CONFIRMED.** `scripts/eval/stage2_plan_diff.py` dumps `plan_query()` for all 5,434 census texts and all 91 gold questions under a tree and diffs two dumps. `d060d3f2` (the receipts' planner) → `dfab98b6`: **23 / 5,434 census plans changed, 0 / 91 gold** (`stage2-plan-diff.json`; 22 from the scanner, 1 from `c8c105c4`). Receipts regenerated — see below |
+| astra 3 | MAJOR | F1's execution path (`search()` handler) not in the brief | **Evidence gap in the brief, not the code**: `search()` re-plans with `plan_natural_language()` only, after stripping every `fts:` prefix (`retrieval.py:375-389` at HEAD); regression tests through MCP (`test_session_search_planner.py`) and CLI (`test_query_logic.py`) for `fts:fts:alpha?` and `fts:"alpha" OR ? AND` were added by `c8c105c4` and pass (116 tests in the three planner files) |
+| astra 4 | MINOR | zero-regression claim belongs to the transition instrument | **ACCEPTED as worded**: the record already scopes it; the phrase "matches nothing but the question itself" is narrowed here to "matches only messages carrying that exact span, including re-asks" |
+| astra 5 | MINOR | projected golden equality was checked at `d060d3f2`, before `c8c105c4` | **CLOSED**: the golden test itself runs at HEAD and passes (in the 116); the plan-diff shows 0 gold plans changed since `d060d3f2` |
+| astra 6 | MINOR | uppercase operators are a policy heuristic, not proof of intent (`NEAR` bare) | **ACCEPTED**: recorded here as a classifier with compatibility consequences, not an inference about intent; bare `NEAR` stays explicit (FTS5 rejects it → natural-language fallback, no crash) |
+| astra 7 | MINOR | `plan_query(" fTs: ")` yields `queries=()` with no note | **VERIFIED handled**: `search()` returns `plan="none"` with note "the fts: prefix was given with no query after it"; whitespace-only input takes the no-content-terms note |
+| kimi 1/5 | MAJOR/MINOR | `search()` not in the brief | same as astra 3 |
+| kimi 3 | MAJOR | gold set not audited for the reproducer patterns | **CLOSED by the plan-diff**: 0 / 91 gold plans changed |
+| kimi 4 | MAJOR | CLI ≡ MCP evidence "unpublished" | `stage2-census-transitions.json` (`gold_counters`) is committed in this directory; the brief did not include it |
+
+**Receipts regenerated at `dfab98b6` (read-only on the live DB, fingerprint `40a546ef…`, 143,915
+messages — 7 more than at Stage 1):**
+
+- `stage2-gold-v2.json`: identical hits and ranks on all 91 × 3 arms (mcp 0.1585 / cli 0.1585 /
+  frozen 0.1066; 0 / 0 / 42 crashes). One ranked list (A3-41) differs *identically in all three
+  arms* below the hit — the 7 new messages, not the planner; `metrics_sha256` differs for that
+  reason alone.
+- `stage2-census-mcp-v2.json`: hits **3,345 → 3,344** (hit@5 0.6156 → 0.6154); kiro_cli −2,
+  codex +1; every other aggregate unchanged (63 fields).
+- `stage2-census-attribution.json`: the 23 changed-plan questions re-scored through the real
+  tool under both planners with the census's exclusion policy: hits **14 → 13, outcome changed on
+  exactly 3** (2 kiro_cli hits lost, 1 codex hit gained) — the whole census delta, so none of it
+  is database drift. Mechanism, read from the plans: correctly paired quotes turn a long JSON
+  value such as `"stdout":"…"` into one long exact phrase where the mis-paired regex had produced
+  short fragments; the AND query then matches only other messages carrying that span, so it
+  returns rows and never widens. A phrase-length cap is a Stage 4 tuning question; Stage 2
+  keeps the shipped semantics so the change stays attributable.
+
+Stage 2 is **closed** on these receipts. The original `stage2-gold.json` and
+`stage2-census-mcp.json` stand as the receipts of the planner at `d060d3f2`.
