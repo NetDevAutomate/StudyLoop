@@ -22,12 +22,17 @@ from agent_session_tools.eval import K
 from agent_session_tools.eval.arms import _frozen_escape_fts_query, build_arm
 from agent_session_tools.eval.census import collect_questions
 from agent_session_tools.eval.seam import ArmError, Query
-from agent_session_tools.retrieval import plan_query
 
 ROOT = Path(__file__).resolve().parents[2]
 RECEIPTS = ROOT / "docs/architecture/session-memory/receipts/semantic-layer"
 DB = Path.home() / ".config/studyloop/sessions.db"
 GOLDEN = "packages/agent-session-tools/tests/golden/session_search_pre_planner.json"
+CLASS_CODES = {
+    "identical": "I",
+    "frozen_crash": "C",
+    "frozen_empty_live_rows": "E",
+    "different_lists": "D",
+}
 
 
 def sessions(arm, question) -> list[str] | str:
@@ -70,6 +75,8 @@ def census_transitions() -> dict:
             mechanism["whole_question_as_one_phrase" if whole_text_phrase else "other"] += 1
         classes[cls] += 1
         transitions[(cls, f_hit, m_hit)] += 1
+        # Compact row: the MATCH strings are reproducible from the text and
+        # would put the receipt over the repo's large-file limit.
         rows.append(
             {
                 "message_id": q.message_id,
@@ -78,8 +85,7 @@ def census_transitions() -> dict:
                 "class": cls,
                 "frozen_hit": f_hit,
                 "live_hit": m_hit,
-                "frozen_match": escaped if cls != "frozen_crash" else None,
-                "live_plan": plan_query(q.text).queries[:1],
+                "whole": bool(whole_text_phrase and cls != "frozen_crash"),
             }
         )
     elapsed = time.perf_counter() - t0
@@ -98,7 +104,29 @@ def census_transitions() -> dict:
             "frozen": round(sum(r["frozen_hit"] for r in rows) / len(rows), 4),
             "live": round(sum(r["live_hit"] for r in rows) / len(rows), 4),
         },
-        "per_question": rows,
+        "per_question_columns": [
+            "message_id",
+            "source",
+            "class_code",
+            "frozen_hit",
+            "live_hit",
+            "frozen_whole_question_phrase",
+        ],
+        "class_codes": CLASS_CODES,
+        # The session id is derivable from the message id; the MATCH strings
+        # are reproducible from the text. Both are dropped to keep the receipt
+        # under the repository's 500 KB large-file limit.
+        "per_question": [
+            [
+                r["message_id"],
+                r["source"],
+                CLASS_CODES[r["class"]],
+                int(r["frozen_hit"]),
+                int(r["live_hit"]),
+                int(r["whole"]),
+            ]
+            for r in rows
+        ],
     }
 
 
@@ -156,7 +184,7 @@ def main() -> None:
         "census": census_transitions(),
     }
     target = RECEIPTS / "stage2-census-transitions.json"
-    target.write_text(json.dumps(out, indent=1, sort_keys=True) + "\n")
+    target.write_text(json.dumps(out, sort_keys=True, separators=(",", ":")) + "\n")
     summary = {k: v for k, v in out["census"].items() if k != "per_question"}
     print(
         json.dumps(
