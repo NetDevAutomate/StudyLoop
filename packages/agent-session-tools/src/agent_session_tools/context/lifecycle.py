@@ -135,7 +135,6 @@ def purge_session(conn, session_id, *, permanent=True):
             "session_learning_metadata",
             "file_references",
             "scrub_log",
-            "session_embeddings",
             "context_session_projects",
         ):
             conn.execute(f"DELETE FROM {table} WHERE session_id=?", (session_id,))
@@ -245,11 +244,10 @@ def compact(path: Path):
             conn.execute(
                 "INSERT INTO context_evidence_fts(context_evidence_fts) VALUES ('rebuild')"
             )
+            # Migration 48's triggers make this a no-op on a healthy database;
+            # it stays as the sweep for rows written before the triggers existed.
             conn.execute(
                 "DELETE FROM message_embeddings WHERE message_id NOT IN (SELECT id FROM messages)"
-            )
-            conn.execute(
-                "DELETE FROM session_embeddings WHERE session_id NOT IN (SELECT id FROM sessions)"
             )
             # Bind the completion guard to exactly the reconciled snapshot.
             # A control arriving after this transaction must remain pending.

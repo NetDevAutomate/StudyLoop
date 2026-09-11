@@ -122,23 +122,15 @@ def test_cli_routes_do_not_return_hidden_content(scoped_db, command):
     assert "No such command" not in result.output
 
 
-def test_semantic_fts_and_file_hotspots_obey_scope(scoped_db):
+def test_retrieval_service_and_file_hotspots_obey_scope(scoped_db):
     from agent_session_tools.file_hotspots import get_hotspots
-    from agent_session_tools.semantic_search import SearchContext, hybrid_search
+    from agent_session_tools.retrieval import search
 
     conn, *_ = scoped_db
-    result = hybrid_search(conn, "common", fts_only=True)
-    assert len(result) == 1 and result[0].session_id == "shared-personal"
-    assert (
-        hybrid_search(
-            conn,
-            "common",
-            context=SearchContext(project_path="/scope/work"),
-            fts_only=True,
-        )
-        == []
-    )
-    assert_private_absent([r.to_dict() for r in result])
+    result = search(conn, "common")
+    assert len(result.hits) == 1 and result.hits[0].session_id == "shared-personal"
+    assert search(conn, "common", project="/scope/work").hits == ()
+    assert_private_absent(result.to_payload())
     assert_private_absent(get_hotspots(conn))
 
 
@@ -164,39 +156,6 @@ def test_explicit_unknown_scope_can_inspect_only_unclassified(scoped_db, monkeyp
     result = mcp["session_search"](query="common")["rows"]
     assert len(result) == 1 and result[0]["session_id"] == "unknown"
     assert mcp["session_show"](session_id="shared-work").get("error")
-
-
-def test_vector_candidates_and_reference_are_scoped_before_similarity(
-    scoped_db, monkeypatch
-):
-    import agent_session_tools.semantic_search as semantic
-
-    conn, *_ = scoped_db
-    for sid in ("shared-personal", "shared-work", "unknown"):
-        conn.execute(
-            "INSERT INTO message_embeddings(message_id,embedding,model) VALUES (?,?,?)",
-            (sid + "-msg", sid.encode(), "fixture"),
-        )
-        conn.execute(
-            "INSERT INTO session_embeddings(session_id,embedding,model) VALUES (?,?,?)",
-            (sid, sid.encode(), "fixture"),
-        )
-    conn.commit()
-    seen = []
-    monkeypatch.setattr(semantic, "EMBEDDINGS_AVAILABLE", True)
-    monkeypatch.setattr(semantic, "generate_embedding", lambda query: b"query")
-
-    def compare(left, right):
-        seen.append(right)
-        return 0.9
-
-    monkeypatch.setattr(semantic, "cosine_similarity", compare)
-    result = semantic._vector_search(conn, "common", 10, semantic.SearchContext())
-    assert [r["session_id"] for r in result] == ["shared-personal"]
-    assert seen == [b"shared-personal"]
-    seen.clear()
-    assert semantic.find_similar_sessions(conn, "shared-work") == []
-    assert not seen
 
 
 def test_federated_read_checks_full_database_policy(

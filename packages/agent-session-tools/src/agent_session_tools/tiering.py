@@ -47,13 +47,18 @@ logger = logging.getLogger(__name__)
 # Tables whose rows belong to a session/message and must follow it on
 # sync/prune. FK discovery below augments this list at runtime, so tables
 # added later by either package are still cleaned up if they declare FKs.
-_SESSION_CHILD_TABLES = ("session_embeddings", "session_learning_metadata")
+_SESSION_CHILD_TABLES = ("session_learning_metadata",)
 _MESSAGE_CHILD_TABLES = ("message_embeddings", "message_concepts")
 
 # Tables synced into the full DB (with their FK parents). Embeddings are
-# derived data and deliberately NOT synced — they can be regenerated in the
-# full DB if semantic search over history is ever needed.
+# derived data and deliberately NOT synced — they are regenerated locally by
+# ``session-maint embed`` (migration 48; the derived vector index is a sidecar).
 _SYNCED_TABLES = ("sessions", "messages", "file_references")
+
+# Derived tables that must NOT take part in the whole-context retention proof:
+# they are never synced to the full tier, so requiring them there would make
+# ``prune_hot`` silently stop evicting the moment a vector exists in the hot DB.
+_DERIVED_TABLES = frozenset({"message_embeddings"})
 
 
 _MARKER_FILE = ".last_full_sync"
@@ -853,8 +858,6 @@ def _archive_context_complete(conn):
             "session_learning_metadata",
             "file_references",
             "scrub_log",
-            "session_embeddings",
-            "message_embeddings",
             "message_concepts",
         }
         | {
@@ -865,6 +868,7 @@ def _archive_context_complete(conn):
             and t not in bookkeeping
         }
     )
+    tables -= _DERIVED_TABLES
     if not tables <= remote or conn.execute("PRAGMA full.foreign_key_check").fetchone():
         return False
     for table in sorted(tables):

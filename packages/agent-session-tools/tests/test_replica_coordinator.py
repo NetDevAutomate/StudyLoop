@@ -925,7 +925,10 @@ def test_schema47_migration_rollback_and_retry_preserve_captured_rows(
                 migrations.migrate(conn)
         assert list(conn.iterdump()) == before
         migrations.migrate(conn)
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 47
+        assert (
+            conn.execute("PRAGMA user_version").fetchone()[0]
+            == migrations.CURRENT_VERSION
+        )
         assert (
             conn.execute("SELECT count(*) FROM context_replica_basis_sets").fetchone()[
                 0

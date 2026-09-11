@@ -101,7 +101,7 @@ test-semantic:
     just check-semantic-profile
     uv run --group dev pytest \
         packages/agent-session-tools/tests/test_embeddings.py \
-        packages/agent-session-tools/tests/test_semantic_search.py
+        packages/agent-session-tools/tests/test_embedding_schema.py
 
 lint:
     uv run --group dev ruff check .

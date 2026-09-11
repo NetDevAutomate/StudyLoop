@@ -130,13 +130,11 @@ def enrich(memory):
         second = annotations.write(
             c, sid, "note", {"notes": "UNIQUE_PERSONAL_CORRECTION"}
         )
+        # Migration 48 shape: chunked, hashed, dimensioned; no session vectors exist.
         c.execute(
-            "INSERT INTO message_embeddings(message_id,embedding) VALUES (?,?)",
-            (message, b"UNIQUE_PERSONAL_VECTOR"),
-        )
-        c.execute(
-            "INSERT INTO session_embeddings(session_id,embedding) VALUES (?,?)",
-            (sid, b"UNIQUE_PERSONAL_SESSION_VECTOR"),
+            "INSERT INTO message_embeddings"
+            "(message_id,chunk_ix,model,dim,content_sha256,embedding) VALUES (?,?,?,?,?,?)",
+            (message, 0, "fixture-model", 4, "0" * 64, b"UNIQUE_PERSONAL_VECTOR"),
         )
     return {
         "assertion": assertion,
@@ -170,7 +168,6 @@ def test_forget_purges_native_and_detached_legacy_derivatives(memory):
         "context_observations",
         "context_record_owners",
         "message_embeddings",
-        "session_embeddings",
     ):
         assert c.execute(f"SELECT count(*) FROM {table}").fetchone()[0] == 0
     assert c.execute("SELECT count(*) FROM sessions").fetchone()[0] == 1

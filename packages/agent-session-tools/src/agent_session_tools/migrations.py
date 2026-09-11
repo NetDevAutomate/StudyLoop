@@ -13,7 +13,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Current schema version - increment when adding new migrations
-CURRENT_VERSION = 47
+CURRENT_VERSION = 48
 
 # Migration functions: version -> (description, migration_func)
 MIGRATIONS: dict[int, tuple[str, Callable[[sqlite3.Connection], None]]] = {}
@@ -1571,6 +1571,88 @@ def migrate_v47(conn: sqlite3.Connection) -> None:
             conn.execute(f"""CREATE TRIGGER replica_basis_{table}_{event.lower()}
               BEFORE {event} ON {table} BEGIN
               SELECT RAISE(ABORT,'Shared reconciliation bases are immutable'); END""")
+
+
+@migration(
+    48, "Embedding substrate aligned by construction: chunked, hashed, trigger-swept"
+)
+def migrate_v48(conn: sqlite3.Connection) -> None:
+    """Replace the migration-7 embedding tables with a shape that can prove its alignment.
+
+    Migration 7 keyed one vector per message, stored no dimension and no hash of
+    the text embedded, and nothing production ever wrote it. This shape keys on
+    ``(message_id, chunk_ix)`` so a message longer than the model's token cap is
+    several chunks rather than a truncation; carries ``model`` and ``dim`` so a
+    mismatched row is detectable rather than compared byte-wise; and carries
+    ``content_sha256`` of the message text it embedded so a stale vector is a
+    fact (hash mismatch) rather than a suspicion.
+
+    Alignment is enforced by two triggers on ``messages`` that reference ONLY
+    this plain table (never a ``vec0`` virtual table, so every ordinary
+    connection keeps working): a content or id change deletes the message's
+    vectors, and a delete removes them whether or not ``foreign_keys`` is on.
+    The derived ``sqlite-vec`` index lives in a sidecar database and is
+    reconciled from this table; nothing here depends on the extension.
+
+    The migration REFUSES to run when either old table holds rows: nothing in
+    production wrote them, so rows mean someone ran the retired backfill by
+    hand, and derived or not, we do not delete data nobody asked us to.
+    """
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(message_embeddings)")}
+    already_aligned = {"chunk_ix", "content_sha256", "dim"} <= columns
+    if not already_aligned:
+        for table in ("message_embeddings", "session_embeddings"):
+            exists = conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)
+            ).fetchone()
+            if exists and conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]:
+                raise RuntimeError(
+                    f"{table} holds rows from the retired embedding layer; migration 48 "
+                    "will not delete them. Export or drop them deliberately, then rerun."
+                )
+    conn.execute("DROP TABLE IF EXISTS session_embeddings")
+    # A replay (an older version restored under a database that already carries
+    # the aligned table, as the rollback tests do) keeps the table and its rows
+    # and only re-asserts the index and triggers.
+    if not already_aligned:
+        conn.execute("DROP TABLE IF EXISTS message_embeddings")
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS message_embeddings (
+            message_id TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE ON UPDATE CASCADE,
+            chunk_ix INTEGER NOT NULL CHECK (chunk_ix >= 0),
+            model TEXT NOT NULL,
+            dim INTEGER NOT NULL CHECK (dim > 0),
+            content_sha256 TEXT NOT NULL CHECK (length(content_sha256) = 64),
+            truncated INTEGER NOT NULL DEFAULT 0 CHECK (truncated IN (0, 1)),
+            embedding BLOB NOT NULL,
+            created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+            PRIMARY KEY (message_id, chunk_ix)
+        )
+    """)
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_message_embeddings_model "
+        "ON message_embeddings(model, dim)"
+    )
+    conn.execute("DROP TRIGGER IF EXISTS message_embeddings_content_changed")
+    conn.execute("DROP TRIGGER IF EXISTS message_embeddings_message_deleted")
+    # Content rewritten in place (export upsert, scrub, dedup repair) or an id
+    # re-keyed: the vectors describe text that no longer exists, so they go.
+    conn.execute("""
+        CREATE TRIGGER message_embeddings_content_changed
+        AFTER UPDATE OF content, id ON messages
+        WHEN old.content IS NOT new.content OR old.id IS NOT new.id
+        BEGIN
+            DELETE FROM message_embeddings WHERE message_id = old.id;
+        END
+    """)
+    # The FK cascade covers connections with foreign_keys=ON; this covers the rest.
+    conn.execute("""
+        CREATE TRIGGER message_embeddings_message_deleted
+        AFTER DELETE ON messages
+        BEGIN
+            DELETE FROM message_embeddings WHERE message_id = old.id;
+        END
+    """)
 
 
 def check_migration_status(db_path: Path) -> dict:

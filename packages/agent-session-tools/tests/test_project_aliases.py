@@ -4,7 +4,7 @@ import json
 import pytest
 
 from agent_session_tools.query_utils import build_project_filter
-from agent_session_tools.semantic_search import SearchContext, _fts_search
+from agent_session_tools.retrieval import search
 
 
 @pytest.fixture
@@ -77,14 +77,9 @@ def test_fts_uses_configured_aliases(aliases, migrated_db):
     conn.execute(
         "INSERT INTO messages(id,session_id,role,content) VALUES('evidence','historical','assistant','Closure evidence')"
     )
-    results = _fts_search(
-        conn,
-        "Closure",
-        limit=10,
-        context=SearchContext(project_path="/current/personal/studyloop"),
-    )
-    assert len(results) == 1
-    assert results[0]["session_id"] == "historical"
+    result = search(conn, "Closure", limit=10, project="/current/personal/studyloop")
+    assert len(result.hits) == 1
+    assert result.hits[0].session_id == "historical"
 
 
 @pytest.mark.parametrize("command", ["search", "search-cmd"])
