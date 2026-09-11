@@ -47,6 +47,7 @@ from .embedding_alignment import (
     DEFAULT_MIN_CONTENT_LENGTH,
     alignment_report,
     content_sha256,
+    eligible_predicate,
     missing_messages,
     sweep,
 )
@@ -440,21 +441,34 @@ def embed(
     the hash check defends against can be staged.
     """
     started = time.monotonic()
+    if conn.in_transaction:
+        # D-4 is a promise about lock duration: encoding must run with no write
+        # lock held, and every batch must own its BEGIN IMMEDIATE. An ambient
+        # transaction would silently break both, so it is refused rather than
+        # inherited (Stage 3 council, astra finding 4).
+        raise ValueError(
+            "embed() needs a connection with no open transaction: encoding runs "
+            "outside any lock and each batch is written under its own BEGIN IMMEDIATE"
+        )
     model_name, dim = _resolve_pin(model, encoder)
     min_length = _min_content_length()
 
-    swept = 0
     report = alignment_report(
         conn, model=model_name, dim=dim, min_content_length=min_length
     )
-    if report.model_mismatch:
-        if not replace_model:
-            raise ValueError(
-                f"{report.model_mismatch} vector(s) belong to another model or dimension "
-                f"than {model_name} (dim {dim}). Comparing them with this model's vectors "
-                "would be silently wrong. Rerun with --replace-model to sweep them first."
-            )
-        result = sweep(conn, model=model_name, dim=dim)
+    if report.model_mismatch and not replace_model:
+        raise ValueError(
+            f"{report.model_mismatch} vector(s) belong to another model or dimension "
+            f"than {model_name} (dim {dim}). Comparing them with this model's vectors "
+            "would be silently wrong. Rerun with --replace-model to sweep them first."
+        )
+    swept = 0
+    if not report.aligned:
+        # Orphaned, stale and hidden rows are never a choice; another model's
+        # rows go only with --replace-model. Sweeping here means a run that
+        # ends with missing == 0 also ends aligned, whatever happened between
+        # runs (Stage 3 council, astra finding 2).
+        result = sweep(conn, model=model_name, dim=dim, model_mismatch=replace_model)
         conn.commit()
         swept = result.deleted
         logger.info("swept %d misaligned vector(s) before embedding", swept)
@@ -496,7 +510,7 @@ def embed(
             _after_encode()
 
         batch_messages, batch_chunks, batch_skipped, batch_truncated = _write_batch(
-            conn, encoded, model=model_name, dim=dim
+            conn, encoded, model=model_name, dim=dim, min_content_length=min_length
         )
         embedded_messages += batch_messages
         chunks_written += batch_chunks
@@ -560,24 +574,39 @@ def _encode_batch(
 
 
 def _write_batch(
-    conn: sqlite3.Connection, encoded: list[_Encoded], *, model: str, dim: int
+    conn: sqlite3.Connection,
+    encoded: list[_Encoded],
+    *,
+    model: str,
+    dim: int,
+    min_content_length: int,
 ) -> tuple[int, int, int, int]:
-    """Insert an encoded batch under ``BEGIN IMMEDIATE``, re-checking every hash (D-4)."""
-    owns_transaction = not conn.in_transaction
-    if owns_transaction:
-        conn.execute("BEGIN IMMEDIATE")
+    """Insert an encoded batch under ``BEGIN IMMEDIATE``, re-checking hash AND eligibility (D-4).
+
+    The re-read joins ``sessions`` and applies the full eligibility predicate,
+    not just the content hash: a source retired, a session reassigned or a role
+    changed between candidate selection and this lock would otherwise write a
+    vector the doctor has to find later (Stage 3 council, astra finding 2).
+    """
+    eligible_sql, eligible_params = eligible_predicate(
+        min_content_length=min_content_length
+    )
+    conn.execute("BEGIN IMMEDIATE")
     messages = chunks = skipped = truncated = 0
     try:
         for row in encoded:
             current = conn.execute(
-                "SELECT content FROM messages WHERE id = ?", (row.message_id,)
+                "SELECT m.content FROM messages m JOIN sessions s ON s.id = m.session_id "
+                f"WHERE m.id = ? AND {eligible_sql}",
+                [row.message_id, *eligible_params],
             ).fetchone()
             if (
                 current is None
                 or content_sha256(current[0] or "") != row.content_sha256
             ):
-                # Rewritten or deleted between encode and write: still `missing`,
-                # picked up by the next run against the text it now has.
+                # Rewritten, deleted or no longer eligible between encode and
+                # write: skipped. If it is still eligible it is still `missing`
+                # and the next run embeds the text it now has.
                 skipped += 1
                 continue
             conn.executemany(
@@ -601,11 +630,9 @@ def _write_batch(
             chunks += len(row.chunks)
             truncated += sum(1 for _ix, _c, flag, _v in row.chunks if flag)
     except Exception:
-        if owns_transaction:
-            conn.rollback()
+        conn.rollback()
         raise
-    if owns_transaction:
-        conn.commit()
+    conn.commit()
     return messages, chunks, skipped, truncated
 
 
@@ -794,6 +821,51 @@ def knn(
     return out
 
 
+def candidates(
+    conn: sqlite3.Connection,
+    vector: bytes,
+    n: int,
+    *,
+    oversample: int = 4,
+    min_content_length: int = DEFAULT_MIN_CONTENT_LENGTH,
+) -> list[tuple[str, str, int, float]]:
+    """The semantic arm's candidate list: ``(message_id, session_id, chunk_ix, distance)``.
+
+    :func:`knn` is raw and the sidecar is derived, so a key it returns may be
+    stale (the message was scrubbed, deleted or re-keyed since the last
+    reconcile) or hidden (its source retired). This joins every KNN key back to
+    the canonical ``message_embeddings`` row -- same message AND chunk, so a
+    scrub that dropped the row drops the candidate -- and then to
+    ``messages``/``sessions`` under the eligibility predicate the lexical arm
+    shares. Nothing hidden and nothing stale survives, whatever the sidecar
+    holds (design D-6; Stage 3 council, astra finding 5). ``oversample`` fetches
+    ``n * oversample`` raw neighbours so filtering rarely starves the list.
+    """
+    if n <= 0:
+        return []
+    raw = knn(conn, vector, n * oversample)
+    if not raw:
+        return []
+    eligible_sql, eligible_params = eligible_predicate(
+        min_content_length=min_content_length
+    )
+    out: list[tuple[str, str, int, float]] = []
+    for message_id, chunk_ix, distance in raw:
+        row = conn.execute(
+            "SELECT m.session_id FROM message_embeddings e "
+            "JOIN messages m ON m.id = e.message_id "
+            "JOIN sessions s ON s.id = m.session_id "
+            f"WHERE e.message_id = ? AND e.chunk_ix = ? AND {eligible_sql}",
+            [message_id, chunk_ix, *eligible_params],
+        ).fetchone()
+        if row is None:
+            continue
+        out.append((message_id, str(row[0]), chunk_ix, distance))
+        if len(out) == n:
+            break
+    return out
+
+
 __all__ = [
     "INSTALL_HINT",
     "Availability",
@@ -801,6 +873,7 @@ __all__ = [
     "Encoder",
     "SentenceTransformerEncoder",
     "availability",
+    "candidates",
     "chunk_key",
     "chunk_text",
     "embed",

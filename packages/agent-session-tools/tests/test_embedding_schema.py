@@ -264,3 +264,40 @@ def test_content_sha256_is_the_hash_the_triggers_and_doctor_agree_on():
     assert align.content_sha256("abc") == (
         "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
     )
+
+
+@pytest.mark.parametrize("foreign_keys", [True, False])
+def test_simultaneous_id_and_content_change_leaves_no_vector_under_either_id(
+    tmp_path, foreign_keys
+):
+    """Stage 3 council (astra, BLOCKING): with FKs on, ON UPDATE CASCADE moves the rows
+    to new.id before the AFTER trigger runs, so a trigger deleting old.id alone kept
+    the old text's vectors alive under the new identity."""
+    conn = _fresh(tmp_path, foreign_keys=foreign_keys)
+    _seed(conn)
+    _vector(conn, "m1")
+    conn.execute(
+        "UPDATE messages SET id='m1-rev', content='replaced text' WHERE id='m1'"
+    )
+    assert conn.execute("SELECT COUNT(*) FROM message_embeddings").fetchone()[0] == 0
+    report = align.alignment_report(conn, model=MODEL, dim=DIM)
+    assert report.stale == 0 and report.orphaned == 0
+
+
+def test_replay_refuses_to_drop_a_populated_legacy_session_table(tmp_path):
+    """Stage 3 council (astra 3): the session-table check must not depend on whether
+    the message table already has the aligned shape."""
+    conn = _fresh(tmp_path)
+    conn.execute(
+        "CREATE TABLE session_embeddings (session_id TEXT PRIMARY KEY, embedding BLOB NOT NULL)"
+    )
+    conn.execute("INSERT INTO sessions(id, source) VALUES ('s', 'kiro_cli')")
+    conn.execute(
+        "INSERT INTO session_embeddings(session_id, embedding) VALUES ('s', x'00')"
+    )
+    conn.execute("PRAGMA user_version = 47")
+    conn.commit()
+    with pytest.raises(RuntimeError, match="session_embeddings holds rows"):
+        migrate(conn)
+    assert conn.execute("SELECT COUNT(*) FROM session_embeddings").fetchone()[0] == 1
+    assert conn.execute("SELECT COUNT(*) FROM message_embeddings").fetchone()[0] == 0

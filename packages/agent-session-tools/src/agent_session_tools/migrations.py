@@ -1600,16 +1600,20 @@ def migrate_v48(conn: sqlite3.Connection) -> None:
     """
     columns = {row[1] for row in conn.execute("PRAGMA table_info(message_embeddings)")}
     already_aligned = {"chunk_ix", "content_sha256", "dim"} <= columns
-    if not already_aligned:
-        for table in ("message_embeddings", "session_embeddings"):
-            exists = conn.execute(
-                "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)
-            ).fetchone()
-            if exists and conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]:
-                raise RuntimeError(
-                    f"{table} holds rows from the retired embedding layer; migration 48 "
-                    "will not delete them. Export or drop them deliberately, then rerun."
-                )
+    # The session table is checked on every run, aligned message table or not: a
+    # replay must never drop a populated legacy table it was never asked about.
+    legacy_tables = ("session_embeddings",) + (
+        () if already_aligned else ("message_embeddings",)
+    )
+    for table in legacy_tables:
+        exists = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)
+        ).fetchone()
+        if exists and conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]:
+            raise RuntimeError(
+                f"{table} holds rows from the retired embedding layer; migration 48 "
+                "will not delete them. Export or drop them deliberately, then rerun."
+            )
     conn.execute("DROP TABLE IF EXISTS session_embeddings")
     # A replay (an older version restored under a database that already carries
     # the aligned table, as the rollback tests do) keeps the table and its rows
@@ -1641,12 +1645,16 @@ def migrate_v48(conn: sqlite3.Connection) -> None:
     conn.execute("DROP TRIGGER IF EXISTS message_embeddings_message_deleted")
     # Content rewritten in place (export upsert, scrub, dedup repair) or an id
     # re-keyed: the vectors describe text that no longer exists, so they go.
+    # Both ids are named on purpose: with foreign_keys=ON the FK's ON UPDATE
+    # CASCADE has already moved the rows to new.id by the time this AFTER
+    # trigger runs, so deleting by old.id alone would leave the old text's
+    # vectors alive under the new identity (Stage 3 council, astra finding 1).
     conn.execute("""
         CREATE TRIGGER message_embeddings_content_changed
         AFTER UPDATE OF content, id ON messages
         WHEN old.content IS NOT new.content OR old.id IS NOT new.id
         BEGIN
-            DELETE FROM message_embeddings WHERE message_id = old.id;
+            DELETE FROM message_embeddings WHERE message_id IN (old.id, new.id);
         END
     """)
     # The FK cascade covers connections with foreign_keys=ON; this covers the rest.

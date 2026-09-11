@@ -525,3 +525,129 @@ class TestSidecarIndex:
         ).fetchone()[0]
         assert "float[4]" in sql
         assert conn.execute("SELECT COUNT(*) FROM vec.message_vec").fetchone()[0] == 0
+
+
+# ---------------------------------------------------------------------------
+# Stage 3 council corrections
+# ---------------------------------------------------------------------------
+
+
+def test_embed_refuses_an_ambient_transaction(tmp_path: Path):
+    """astra 4: encoding must hold no lock and every batch must own its BEGIN IMMEDIATE."""
+    conn, _ = _db(tmp_path)
+    _seed(conn, {"m1": LONG})
+    conn.execute("BEGIN")
+    with pytest.raises(ValueError, match="no open transaction"):
+        store.embed(conn, encoder=FakeEncoder())
+    conn.rollback()
+    assert _rows(conn) == []
+
+
+def test_a_source_retired_between_encode_and_write_is_not_embedded(tmp_path: Path):
+    """astra 2: the write re-checks the whole eligibility predicate, not only the hash."""
+    conn, db_path = _db(tmp_path)
+    _seed(conn, {"m1": LONG})
+    fired = {"n": 0}
+
+    def retire_the_source_once() -> None:
+        fired["n"] += 1
+        if fired["n"] > 1:
+            return
+        other = sqlite3.connect(db_path)
+        try:
+            other.execute(
+                "UPDATE sessions SET source = 'aider' WHERE id = 's-kiro_cli'"
+            )
+            other.commit()
+        finally:
+            other.close()
+
+    stats = store.embed(
+        conn, encoder=FakeEncoder(), _after_encode=retire_the_source_once
+    )
+    assert stats.embedded_messages == 0 and stats.skipped_changed == 1
+    assert _rows(conn) == []
+    report = align.alignment_report(conn, model="fake-model", dim=DIM)
+    assert report.hidden == 0 and report.eligible == 0
+
+
+def test_embed_sweeps_orphaned_stale_and_hidden_rows_without_being_asked(
+    tmp_path: Path,
+):
+    """astra 2 (second half): a run that ends with missing == 0 also ends aligned."""
+    conn, _ = _db(tmp_path)
+    _seed(conn, {"m1": LONG})
+    _seed(conn, {"h1": LONG + " in a retired source"}, source="aider")
+    conn.execute("PRAGMA foreign_keys=OFF")
+    for message_id, sha in (
+        ("ghost", align.content_sha256("")),  # orphaned
+        ("m1", "0" * 64),  # stale
+        ("h1", align.content_sha256(LONG + " in a retired source")),  # hidden
+    ):
+        conn.execute(
+            "INSERT INTO message_embeddings"
+            "(message_id, chunk_ix, model, dim, content_sha256, embedding) VALUES (?,?,?,?,?,?)",
+            (message_id, 0, "fake-model", DIM, sha, b"\x00" * (DIM * 4)),
+        )
+    conn.commit()
+    assert not align.alignment_report(conn, model="fake-model", dim=DIM).aligned
+
+    stats = store.embed(conn, encoder=FakeEncoder())
+
+    assert stats.swept == 3
+    report = align.alignment_report(conn, model="fake-model", dim=DIM)
+    assert report.complete, report.to_dict()
+    assert {row[0] for row in _rows(conn)} == {"m1"}
+
+
+def test_embed_still_refuses_another_models_rows_unless_told_to_replace(tmp_path: Path):
+    conn, _ = _db(tmp_path)
+    _seed(conn, {"m1": LONG})
+    conn.execute(
+        "INSERT INTO message_embeddings"
+        "(message_id, chunk_ix, model, dim, content_sha256, embedding) VALUES (?,?,?,?,?,?)",
+        ("m1", 0, "other-model", DIM, align.content_sha256(LONG), b"\x00" * (DIM * 4)),
+    )
+    conn.commit()
+    with pytest.raises(ValueError, match="replace-model"):
+        store.embed(conn, encoder=FakeEncoder())
+    assert [row[2] for row in _rows(conn)] == ["other-model"], "refusal deleted nothing"
+
+
+class TestCandidates:
+    """D-6 as a query: nothing stale and nothing hidden survives the join."""
+
+    @pytest.fixture(autouse=True)
+    def _need_extension(self):
+        pytest.importorskip("sqlite_vec")
+
+    def test_stale_hidden_and_deleted_neighbours_are_filtered_out(self, tmp_path: Path):
+        conn, _ = _db(tmp_path)
+        encoder = FakeEncoder()
+        _seed(
+            conn,
+            {"keep": LONG, "scrubbed": LONG + " scrub me", "gone": LONG + " delete me"},
+        )
+        _seed(conn, {"retired": LONG + " retired later"}, source="codex")
+        store.embed(conn, encoder=encoder)
+        store.reconcile(conn)
+        assert conn.execute("SELECT COUNT(*) FROM vec.message_vec").fetchone()[0] == 4
+
+        # The sidecar goes stale on purpose: three writes, no reconcile after them.
+        conn.execute(
+            "UPDATE messages SET content = ? WHERE id = 'scrubbed'",
+            ("[REDACTED] " + LONG,),
+        )
+        conn.execute("DELETE FROM messages WHERE id = 'gone'")
+        conn.execute("UPDATE sessions SET source = 'aider' WHERE id = 's-codex'")
+        conn.commit()
+
+        probe = encoder.encode([LONG])[0]
+        raw = {message_id for message_id, _, _ in store.knn(conn, probe, 10)}
+        assert raw == {"keep", "scrubbed", "gone", "retired"}, (
+            "the raw index still names all four"
+        )
+        filtered = store.candidates(conn, probe, 10)
+        assert [(m, s) for m, s, _, _ in filtered] == [("keep", "s-kiro_cli")]
+        # And the doctor sees the retired-source row as hidden until the next sweep.
+        assert align.alignment_report(conn, model="fake-model", dim=DIM).hidden == 1

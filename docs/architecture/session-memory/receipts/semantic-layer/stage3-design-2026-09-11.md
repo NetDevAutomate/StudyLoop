@@ -98,6 +98,11 @@ lists the write paths; §"Lifecycle tests" below maps each to a test.
   them to `messages`/`sessions` under the same visibility predicate and self-exclusion the
   lexical arm uses, over-fetching `n = k × oversample`. Lane B's test: a KNN over a corpus with
   hidden and visible neighbours, filtered by the predicate, returns no hidden id.
+  **Council correction (astra 5):** the filter is now a function, `embedding_store.candidates()`,
+  and it joins each KNN key to its canonical `message_embeddings` row (same message AND chunk)
+  before the visibility join — so a sidecar that is stale (scrub, delete, re-key since the last
+  `reconcile`) cannot surface a candidate either. Stage 4's fusion calls `candidates()`, never
+  raw `knn()`.
 - **D-7 `auto_embed` on export is bounded and never downloads.** `session-export` runs
   `embedding_store.embed(budget_seconds=config.semantic_search.auto_embed_budget_seconds)`
   (default 20 s) after a successful export **only if** the extension and model are already
@@ -116,7 +121,12 @@ lists the write paths; §"Lifecycle tests" below maps each to a test.
   `~/.config/studyloop/sessions.db` only when the owner installs a new pin or runs a repo
   checkout tool against it. Stage 3 rehearses on a `VACUUM INTO` clone; the live schema
   migration and the live backfill are the owner's call, and the backfill should wait for
-  Stage 4's model choice (51,729 messages: ~1.7 min for MiniLM-L6-v2, ~4× for mpnet).
+  Stage 4's model choice (51,742 messages: ~8 min for MiniLM-L6-v2 with chunking, ~4× for mpnet).
+  **Council correction (astra 9):** the pin is the *mechanism* that keeps migration 48 off the
+  live database, not the authorization. The authorization is the owner's explicit go, recorded
+  in the Stage 3/4 record, before a pin that carries migration 48 is installed or any checkout
+  tool is pointed at the live file. Provenance of the five entry points and the pin is in
+  `stage3-alignment-clone-addendum.json`.
 
 ## Contracts (Lane B owns the implementations; Lane C codes against these names)
 
