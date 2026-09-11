@@ -90,7 +90,17 @@ session-query context SESSION_ID
 ```
 
 Replace `SESSION_ID` with an ID returned by search or list. Project aliases can
-group known checkout paths. Inspect contrary advice and changed requirements;
+group known checkout paths.
+
+Type the question the way you would ask it. Search plans plain language into
+safe full-text terms (all terms first, then any term when nothing matches), so
+a sentence containing "and", "or", a question mark or a backtick is searched,
+not rejected. Only an uppercase `AND`/`OR`/`NOT` or the `fts:` prefix is
+treated as explicit FTS5 syntax (`session-query search 'fts:"exact phrase" NOT
+docker'`). Every result -- the CLI's JSON and the `session_search` MCP tool
+alike -- carries a `retrieval_status` naming the plan, the terms and the
+queries tried, and each row carries a `message_id` to cite, so an empty result
+tells you what was searched instead of saying nothing. Inspect contrary advice and changed requirements;
 the newest or most frequently repeated answer is not automatically the right one.
 Agents should identify the relevant session and explain what remains unverified.
 
