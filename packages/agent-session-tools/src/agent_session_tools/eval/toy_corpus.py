@@ -131,7 +131,7 @@ _TOPICS: tuple[tuple[str, str, str, str, str], ...] = (
 BOILERPLATE = "Please continue with the next task in the plan"
 BOILERPLATE_SESSIONS = ("toy-01", "toy-02", "toy-03", "toy-04", "toy-05", "toy-06")
 
-#: Questions that carry the raw-pass-through crash triggers on today's code.
+#: Questions carrying the raw-pass-through crash triggers of the Stage 1 shipped code (the frozen control).
 CRASH_QUESTIONS: tuple[tuple[str, str, str], ...] = (
     (
         "C-1",
@@ -151,7 +151,7 @@ CRASH_QUESTIONS: tuple[tuple[str, str, str], ...] = (
 class ToyCorpus:
     db_path: Path
     gold_path: Path
-    #: Gold item ids whose question crashes today's raw pass-through.
+    #: Gold item ids whose question crashed the Stage 1 shipped code (the frozen control still does).
     crash_ids: tuple[str, ...]
     #: Session ids sharing the winnable twin turn and the unwinnable boilerplate.
     twin_sessions: tuple[str, ...]

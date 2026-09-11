@@ -147,17 +147,45 @@ class TestSearch:
     def test_search_json_format_returns_valid_json(self, populated_db, capsys):
         search(populated_db, "pytest", output_format="json")
         captured = capsys.readouterr()
-        data = json.loads(captured.out)
-        assert isinstance(data, list)
-        assert len(data) >= 1
-        assert "session_id" in data[0]
-        assert "role" in data[0]
-        assert "preview" in data[0]
+        payload = json.loads(captured.out)
+        assert isinstance(payload["rows"], list)
+        assert len(payload["rows"]) >= 1
+        assert "session_id" in payload["rows"][0]
+        assert "role" in payload["rows"][0]
+        assert "preview" in payload["rows"][0]
 
-    def test_search_json_includes_full_content(self, populated_db, capsys):
+    def test_search_json_row_is_the_shared_agent_shape(self, populated_db, capsys):
+        """The CLI row is ``session_search``'s row plus the CLI's rank and tier.
+
+        Pinned because the retrieval eval pairs the two surfaces by ordered
+        ``message_id``: a CLI row without it cannot be compared to an MCP row.
+        """
         search(populated_db, "pytest", output_format="json")
-        data = json.loads(capsys.readouterr().out)
-        assert "full_content" in data[0]
+        row = json.loads(capsys.readouterr().out)["rows"][0]
+        assert list(row) == [
+            "session_id",
+            "source",
+            "project_path",
+            "updated_at",
+            "role",
+            "timestamp",
+            "preview",
+            "message_id",
+            "rank",
+            "tier",
+        ]
+        assert row["message_id"] == "msg-002"
+        assert row["tier"] == "local"
+
+    def test_search_json_carries_the_retrieval_status(self, populated_db, capsys):
+        search(populated_db, "pytest", output_format="json")
+        status = json.loads(capsys.readouterr().out)["retrieval_status"]
+        assert status["mode"] == "lexical"
+        assert status["plan"] == "and"
+        assert status["terms"] == ["pytest"]
+        assert status["queries"] == ['"pytest"']
+        assert status["widened"] is False
+        assert status["note"] is None
 
     def test_search_markdown_format_has_header(self, populated_db, capsys):
         search(populated_db, "pytest", output_format="markdown")
@@ -165,15 +193,29 @@ class TestSearch:
         assert "# Search Results" in captured.out
         assert "**Query:**" in captured.out
 
-    def test_search_no_results_produces_no_output_for_table(self, populated_db, capsys):
+    def test_search_table_output_ends_with_the_retrieval_status(
+        self, populated_db, capsys
+    ):
+        search(populated_db, "pytest", output_format="table")
+        assert capsys.readouterr().out.rstrip().splitlines()[-1] == (
+            "retrieval: plan=and terms=pytest widened=no"
+        )
+
+    def test_search_no_results_still_says_what_was_searched(self, populated_db, capsys):
+        """ "No rows" is never silent: the status line is the whole output."""
         search(populated_db, "xyznonexistentterm", output_format="table")
         captured = capsys.readouterr()
-        assert captured.out == ""
+        assert captured.out == (
+            "retrieval: plan=and terms=xyznonexistentterm widened=no\n"
+        )
 
-    def test_search_no_results_json_is_empty_list(self, populated_db, capsys):
+    def test_search_no_results_json_is_empty_rows_with_status(
+        self, populated_db, capsys
+    ):
         search(populated_db, "xyznonexistentterm", output_format="json")
-        data = json.loads(capsys.readouterr().out)
-        assert data == []
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["rows"] == []
+        assert payload["retrieval_status"]["terms"] == ["xyznonexistentterm"]
 
     def test_search_limit_respected(self, db, capsys):
         _insert_session(db)
@@ -186,14 +228,73 @@ class TestSearch:
                 timestamp=f"2024-03-01T09:0{i}:00",
             )
         search(db, "pytest", limit=2, output_format="json")
-        data = json.loads(capsys.readouterr().out)
-        assert len(data) <= 2
+        payload = json.loads(capsys.readouterr().out)
+        assert len(payload["rows"]) <= 2
 
     def test_search_with_date_filter(self, populated_db, capsys):
         # since date after the only message — should find nothing
         search(populated_db, "pytest", since="2025-01-01", output_format="json")
-        data = json.loads(capsys.readouterr().out)
-        assert data == []
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["rows"] == []
+
+
+class TestSearchQueryIsPlannedNotParsed:
+    """The CLI hands phrasing to the shared planner instead of building FTS5.
+
+    These are the crash and the silent-zero the shipped CLI produced: a
+    lowercase "and" with punctuation went to ``MATCH`` raw, and a multi-word
+    question was wrapped into a strict adjacency phrase.
+    """
+
+    @pytest.fixture
+    def prose_db(self, db):
+        _insert_session(db)
+        _insert_message(
+            db,
+            id="msg-prose",
+            role="assistant",
+            content=(
+                "The docker build failed and the pytest suite went red; "
+                "run `uv run pytest` to reproduce it."
+            ),
+        )
+        return db
+
+    def test_lowercase_operator_backtick_and_question_mark_do_not_crash(
+        self, prose_db, capsys
+    ):
+        search(
+            prose_db,
+            "why did the docker build and `uv run pytest` go red?",
+            output_format="json",
+        )
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["rows"], "a plain sentence must return the matching message"
+        assert payload["rows"][0]["message_id"] == "msg-prose"
+        assert payload["retrieval_status"]["plan"] in {"and", "or"}
+
+    def test_multi_word_query_is_no_longer_a_strict_phrase(self, prose_db, capsys):
+        """``docker pytest`` is not adjacent in the row; the planner still finds it."""
+        assert not prose_db.execute(
+            "SELECT 1 FROM messages_fts WHERE messages_fts MATCH ?",
+            ('"docker pytest"',),
+        ).fetchall()  # the old escape_fts_query shape: zero rows
+        search(prose_db, "docker pytest", output_format="json")
+        payload = json.loads(capsys.readouterr().out)
+        assert [row["message_id"] for row in payload["rows"]] == ["msg-prose"]
+        assert payload["retrieval_status"]["queries"][0] == '"docker" AND "pytest"'
+
+    def test_widening_to_or_is_reported_in_the_status(self, prose_db, capsys):
+        search(prose_db, "docker kubernetes", output_format="table")
+        assert capsys.readouterr().out.rstrip().splitlines()[-1] == (
+            "retrieval: plan=or terms=docker,kubernetes widened=yes"
+        )
+
+    def test_uppercase_operator_is_still_explicit_fts5(self, prose_db, capsys):
+        search(prose_db, "docker OR kubernetes", output_format="json")
+        payload = json.loads(capsys.readouterr().out)
+        assert [row["message_id"] for row in payload["rows"]] == ["msg-prose"]
+        assert payload["retrieval_status"]["plan"] == "explicit"
 
 
 # ---------------------------------------------------------------------------

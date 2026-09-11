@@ -121,4 +121,5 @@ def test_plain_query_cli_project_aliases(command, aliases, migrated_db):
         ],
     )
     assert result.exit_code == 0, result.output
-    assert [row["session_id"] for row in json.loads(result.output)] == ["yes"]
+    payload = json.loads(result.output)
+    assert [row["session_id"] for row in payload["rows"]] == ["yes"]

@@ -20,8 +20,9 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
+from agent_session_tools import retrieval
 from agent_session_tools.context.legacy import session_record, session_messages
-from agent_session_tools.context.scope import visibility_sql, active_policy, ScopePolicy
+from agent_session_tools.context.scope import visibility_sql, active_policy
 from agent_session_tools.formatters import (
     format_context_only,
     format_markdown,
@@ -41,9 +42,7 @@ from agent_session_tools.query_db import (  # noqa: F401
 )
 from agent_session_tools.query_utils import (
     build_date_filter,
-    build_project_filter,
     check_thresholds,
-    escape_fts_query,
     get_db_size,
     resolve_session_id,
 )
@@ -65,59 +64,6 @@ console = Console()
 logger = logging.getLogger(__name__)
 
 
-def _search_schema(
-    conn: sqlite3.Connection,
-    schema: str,
-    fts_query: str,
-    since: str | None,
-    before: str | None,
-    limit: int,
-    exclude_main_sessions: bool = False,
-    project: str | None = None,
-    scope_policy: ScopePolicy | None = None,
-) -> list[sqlite3.Row]:
-    """Run the FTS search against one schema (``main`` or the attached full DB)."""
-    # FTS5 auxiliary functions (bm25) and MATCH need unqualified table
-    # references, so the FTS pass runs in a subquery whose FROM is
-    # schema-qualified; names inside it resolve within that schema.
-    base_query = f"""
-        SELECT s.source, s.project_path, s.id as session_id, m.role, m.timestamp,
-               substr(m.content, 1, 300) as preview, m.content as full_content,
-               fx.rank as rank
-        FROM (
-            SELECT rowid AS fts_rowid, bm25(messages_fts) AS rank
-            FROM {schema}.messages_fts
-            WHERE messages_fts MATCH ?
-        ) fx
-        JOIN {schema}.messages m ON m.rowid = fx.fts_rowid
-        JOIN {schema}.sessions s ON m.session_id = s.id
-        WHERE 1=1
-    """
-    visible, scope_params = visibility_sql(
-        conn, "s.id", schema=schema, policy=scope_policy
-    )
-    base_query += " AND " + visible
-    params: list = [fts_query, *scope_params]
-    if project:
-        project_clause, project_params = build_project_filter(project)
-        base_query += " AND " + project_clause
-        params.extend(project_params)
-
-    if exclude_main_sessions:
-        # Hot sessions also exist in the full DB (sync) — the full-DB pass
-        # must only surface history the hot DB no longer holds.
-        base_query += " AND s.id NOT IN (SELECT id FROM main.sessions)"
-
-    date_filter, date_params = build_date_filter(since, before)
-    if date_filter:
-        base_query += f" AND ({date_filter.replace('updated_at', 'm.timestamp')})"
-        params.extend(date_params)
-
-    base_query += " ORDER BY rank, m.timestamp DESC LIMIT ?"
-    params.append(limit)
-    return conn.execute(base_query, params).fetchall()
-
-
 def search(
     conn: sqlite3.Connection,
     query: str,
@@ -128,7 +74,15 @@ def search(
     include_full: bool = True,
     project: str | None = None,
 ) -> None:
-    """Full-text search across message content with porter stemming.
+    """Full-text search across message content.
+
+    The query is planned by :mod:`agent_session_tools.retrieval`, the one
+    service ``session_search`` (MCP) and the retrieval eval also call, so the
+    three surfaces cannot disagree about what a phrasing means. Natural
+    language is planned into terms that cannot fail to parse; an uppercase
+    ``AND``/``OR``/``NOT``/``NEAR`` or an ``fts:`` prefix is explicit FTS5.
+    Every result carries a retrieval status, so an empty result is never
+    silent about what was searched.
 
     Federated by default: when a full-history DB is configured and its
     volume is mounted, results include history already pruned from the
@@ -149,8 +103,10 @@ def search(
     require_query_target(primary)
     configured = _configured(load_config())
     with read_boundary():
-        rows = _search_rows(conn, query, limit, since, before, include_full, project)
-        output = _render_search(rows, query, output_format)
+        rows, status = _search_rows(
+            conn, query, limit, since, before, include_full, project
+        )
+        output = _render_search(rows, query, output_format, status)
         if _configured(load_config()) != configured:
             raise ScopeConflict(
                 "Managed history configuration changed; no search output returned"
@@ -158,73 +114,90 @@ def search(
     print(output, end="")
 
 
-def _search_rows(conn, query, limit, since, before, include_full, project):
+def _search_rows(
+    conn: sqlite3.Connection,
+    query: str,
+    limit: int,
+    since: str | None,
+    before: str | None,
+    include_full: bool,
+    project: str | None,
+) -> tuple[list[tuple[retrieval.RetrievalHit, str]], retrieval.RetrievalStatus]:
+    """Run the shared retrieval service over both tiers; return hits and status.
+
+    The CLI never builds FTS5 syntax itself — planning belongs to
+    :func:`agent_session_tools.retrieval.search`. The returned status is the
+    local (``main``) search's: the full tier runs the same plan, so only its
+    ``queries`` could differ, and the caller reports one status.
+    """
     from agent_session_tools.query_db import FULL_SCHEMA, attach_full_db
 
     policy = active_policy()
-    # Escape the query for FTS5
-    fts_query = escape_fts_query(query)
-
-    rows: list[tuple[sqlite3.Row, str]] = [
-        (r, "local")
-        for r in _search_schema(
-            conn,
-            "main",
-            fts_query,
-            since,
-            before,
-            limit,
-            project=project,
-            scope_policy=policy,
-        )
+    local = retrieval.search(
+        conn,
+        query,
+        limit=limit,
+        since=since,
+        before=before,
+        project=project,
+        scope_policy=policy,
+    )
+    rows: list[tuple[retrieval.RetrievalHit, str]] = [
+        (hit, "local") for hit in local.hits
     ]
 
-    full_attached = include_full and attach_full_db(conn)
-    if full_attached:
-        rows.extend(
-            (r, "full")
-            for r in _search_schema(
-                conn,
-                FULL_SCHEMA,
-                fts_query,
-                since,
-                before,
-                limit,
-                exclude_main_sessions=True,
-                project=project,
-                scope_policy=policy,
-            )
+    if include_full and attach_full_db(conn):
+        # Hot sessions also exist in the full DB (sync) — exclude_main_sessions
+        # keeps the full pass to history the hot DB no longer holds.
+        archived = retrieval.search(
+            conn,
+            query,
+            limit=limit,
+            since=since,
+            before=before,
+            project=project,
+            scope_policy=policy,
+            schema=FULL_SCHEMA,
+            exclude_main_sessions=True,
         )
+        rows.extend((hit, "full") for hit in archived.hits)
         # Merge across tiers: BM25 is more negative = more relevant.
-        rows.sort(key=lambda item: (item[0]["rank"], item[0]["timestamp"] or ""))
+        rows.sort(key=lambda item: (item[0].rank, item[0].timestamp or ""))
         rows = rows[:limit]
 
-    return rows
+    return rows, local.status
 
 
-def _render_search(results, query, output_format):
+def _status_line(status: retrieval.RetrievalStatus) -> str:
+    """One line saying how the hits were found — printed even when there are none."""
+    line = (
+        f"retrieval: plan={status.plan} "
+        f"terms={','.join(status.terms) if status.terms else '-'} "
+        f"widened={'yes' if status.widened else 'no'}"
+    )
+    if status.note:
+        line += f" note={status.note}"
+    return line
+
+
+def _render_search(results, query, output_format, status):
     lines = []
 
     def emit(value):
         lines.append(str(value))
 
     if output_format == "json":
-        # JSON output
-        output = []
-        for r, tier in results:
-            output.append(
-                {
-                    "source": r["source"],
-                    "project_path": r["project_path"],
-                    "session_id": r["session_id"],
-                    "role": r["role"],
-                    "timestamp": r["timestamp"] or "unknown",
-                    "preview": r["preview"],
-                    "full_content": r["full_content"],
-                    "tier": tier,
-                }
-            )
-        emit(json.dumps(output, indent=2))
+        # The shared agent-facing payload: identical rows to ``session_search``
+        # (the seven golden keys then ``message_id``), plus the CLI's own rank
+        # and tier, and the retrieval status.
+        payload = {
+            "rows": [
+                {**hit.to_row(), "rank": hit.rank, "tier": tier}
+                for hit, tier in results
+            ],
+            "retrieval_status": status.to_dict(),
+        }
+        emit(json.dumps(payload, indent=2))
 
     elif output_format == "markdown":
         # Markdown output
@@ -233,26 +206,29 @@ def _render_search(results, query, output_format):
         emit(f"**Results:** {len(results)}\n")
         emit("---\n")
 
-        for i, (r, tier) in enumerate(results, 1):
+        for i, (hit, tier) in enumerate(results, 1):
             emit(f"## Result {i}")
-            emit(f"- **Source:** {r['source']}")
-            emit(f"- **Project:** {r['project_path']}")
-            emit(f"- **Session:** {r['session_id'][:20]}...")
-            emit(f"- **Role:** {r['role']}")
-            emit(f"- **Timestamp:** {r['timestamp'] or 'unknown'}")
+            emit(f"- **Source:** {hit.source}")
+            emit(f"- **Project:** {hit.project_path}")
+            emit(f"- **Session:** {hit.session_id[:20]}...")
+            emit(f"- **Role:** {hit.role}")
+            emit(f"- **Timestamp:** {hit.timestamp or 'unknown'}")
             if tier == "full":
                 emit("- **Tier:** full history (pruned locally)")
             emit("**Preview:**")
-            emit(f"```\n{r['preview']}\n```\n")
+            emit(f"```\n{hit.preview}\n```\n")
             emit("---\n")
+        emit(_status_line(status))
 
     else:
         # Table output (default)
-        for r, tier in results:
+        for hit, tier in results:
             tier_tag = " [full]" if tier == "full" else ""
-            emit(f"\n[{r['source']}]{tier_tag} {r['project_path']}")
-            emit(f"  {r['role']} @ {r['timestamp'] or 'unknown'}")
-            emit(f"  {r['preview']}...")
+            emit(f"\n[{hit.source}]{tier_tag} {hit.project_path}")
+            emit(f"  {hit.role} @ {hit.timestamp or 'unknown'}")
+            emit(f"  {hit.preview}...")
+        # Never silent: with no hits this line is the whole output.
+        emit(_status_line(status))
 
     return "\n".join(lines) + "\n" if lines else ""
 

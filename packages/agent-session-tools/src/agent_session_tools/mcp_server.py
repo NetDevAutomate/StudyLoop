@@ -70,29 +70,6 @@ def _row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
     return dict(row)
 
 
-def _session_search_queries(query: str) -> tuple[str, ...]:
-    """Preserve explicit FTS syntax; widen only implicit plain-text queries."""
-    from agent_session_tools.query_utils import escape_fts_query
-
-    upper = query.upper()
-    explicit = any(operator in upper for operator in (" AND ", " OR ", " NOT "))
-    stripped = query.strip()
-    explicitly_quoted = '"' in query or (
-        len(stripped) >= 2 and stripped.startswith("'") and stripped.endswith("'")
-    )
-    if explicit or explicitly_quoted:
-        return (escape_fts_query(query),)
-
-    from agent_session_tools.query_planner import plan
-
-    query_plan = plan(query)
-    if not query_plan.and_query:
-        return ()
-    if query_plan.and_query == query_plan.or_query:
-        return (query_plan.and_query,)
-    return query_plan.and_query, query_plan.or_query
-
-
 def _guard_scope(fn):
     """Convert an unconfigured-scope failure into the shared diagnostic.
 
@@ -336,56 +313,64 @@ def _create_server() -> FastMCP:
         limit: int = 10,
         source: str | None = None,
         project: str | None = None,
-    ) -> list[dict[str, Any]]:
-        """Search sessions by keyword using full-text search.
+        exclude_message_ids: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Search sessions for messages, by question or by keywords.
 
-        Returns matching messages with session context. Use session_context()
-        to retrieve full token-efficient excerpts from interesting results.
+        Ask in natural language. A sentence carrying lowercase "and", "or",
+        "not", punctuation, apostrophes or backticks is planned into quoted
+        content terms before it reaches the index, so no phrasing can fail to
+        parse. Returns ``{"rows": [...], "retrieval_status": {...}}``; empty
+        ``rows`` is never silent, because the status says what was searched.
+
+        ``retrieval_status`` fields:
+            mode: "lexical" -- keyword matching over the FTS index, not
+                semantic similarity, so wording matters.
+            plan: which form produced the rows -- "and" (all terms), "or"
+                (widened after AND found nothing), "explicit" (your own FTS5
+                syntax), or "none" (nothing searchable was left).
+            terms: the content terms kept after stop words and tokens shorter
+                than three characters were dropped.
+            queries: every FTS5 MATCH string tried, in the order tried.
+            widened: true when the AND form found nothing and OR was tried.
+            note: any departure from what was literally asked -- a rejected
+                explicit query, or a query with no content terms.
+
+        Explicit FTS5 is opt-in and case-sensitive: use an UPPERCASE operator
+        (``error OR authentication``, ``delta NOT echo``) or the ``fts:``
+        prefix (``fts:auth* NEAR/3 failure``), which is passed through
+        verbatim. Lowercase "and"/"or"/"not" are ordinary words. An explicit
+        query the index rejects is re-planned as natural language, with the
+        rejection recorded in ``note``.
+
+        Each row carries ``message_id`` -- the citation handle for that exact
+        message, and the value to pass back in ``exclude_message_ids``. Use
+        session_context() for a token-efficient excerpt of a whole session.
 
         Args:
-            query: Search terms (supports AND, OR, NOT operators)
-            limit: Maximum results to return (default 10)
+            query: A question, keywords, or explicit FTS5 syntax (UPPERCASE
+                operator or ``fts:`` prefix).
+            limit: Maximum rows to return (default 10)
             source: Filter by tool source (claude_code, codex, grok, kiro_cli,
                 opencode, pi). Legacy sources are hidden unless named explicitly.
             project: Filter by project name or full path with configured project aliases
+            exclude_message_ids: ``message_id`` values to skip -- pass back the
+                ids of messages already seen to page past them.
         """
         conn = _get_connection()
         try:
+            from agent_session_tools import retrieval
             from agent_session_tools.sources import is_supported
 
-            for fts_query in _session_search_queries(query):
-                sql = """
-                    SELECT s.id as session_id, s.source, s.project_path,
-                           s.updated_at, m.role, m.timestamp,
-                           substr(m.content, 1, 300) as preview
-                    FROM messages m
-                    JOIN sessions s ON m.session_id = s.id
-                    JOIN messages_fts ON messages_fts.rowid = m.rowid
-                    WHERE messages_fts MATCH ?
-                """
-                visible, scope_params = visibility_sql(
-                    conn,
-                    "s.id",
-                    include_retired_sources=bool(source) and not is_supported(source),
-                )
-                sql += " AND " + visible
-                params: list[Any] = [fts_query, *scope_params]
-
-                if source:
-                    sql += " AND s.source = ?"
-                    params.append(source)
-                if project:
-                    project_clause, project_params = build_project_filter(project)
-                    sql += " AND " + project_clause
-                    params.extend(project_params)
-
-                sql += " ORDER BY bm25(messages_fts), m.timestamp DESC LIMIT ?"
-                params.append(limit)
-
-                rows = conn.execute(sql, params).fetchall()
-                if rows:
-                    return [_row_to_dict(row) for row in rows]
-            return []
+            return retrieval.search(
+                conn,
+                query,
+                limit=limit,
+                source=source,
+                project=project,
+                include_retired_sources=bool(source) and not is_supported(source),
+                exclude_message_ids=tuple(exclude_message_ids or ()),
+            ).to_payload()
         finally:
             conn.close()
 

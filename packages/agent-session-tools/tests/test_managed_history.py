@@ -67,7 +67,7 @@ def test_forgotten_source_cannot_return_through_stale_full_history(history, caps
     with closing(records.connect(history["hot"])) as conn:
         forget_session(conn, "study", apply=True)
         query_logic.search(conn, "ORCHID", output_format="json")
-    assert json.loads(capsys.readouterr().out) == []
+    assert json.loads(capsys.readouterr().out)["rows"] == []
 
 
 def test_unforgotten_scoped_archive_remains_useful(history, capsys):
@@ -78,9 +78,9 @@ def test_unforgotten_scoped_archive_remains_useful(history, capsys):
         conn.commit()
         query_logic.search(conn, "ORCHID", output_format="json")
     result = json.loads(capsys.readouterr().out)
-    assert len(result) == 1
-    assert result[0]["session_id"] == "study"
-    assert result[0]["tier"] == "full"
+    assert len(result["rows"]) == 1
+    assert result["rows"][0]["session_id"] == "study"
+    assert result["rows"][0]["tier"] == "full"
     assert "ORCHID_PRIVATE_work" not in json.dumps(result)
 
 
@@ -99,7 +99,7 @@ def test_current_withdrawal_hides_stale_archive(history, capsys, status):
         )
         conn.commit()
         query_logic.search(conn, "ORCHID", output_format="json")
-    assert json.loads(capsys.readouterr().out) == []
+    assert json.loads(capsys.readouterr().out)["rows"] == []
     # Denial blocks body reads, but the scoped owner can still permanently forget
     # this archive-only source. A regrant does not undo that permanent intent.
     assert managed.forget_with_history("study", apply=True)["applied"]
@@ -155,7 +155,7 @@ def test_archive_cannot_override_existing_canonical_scope(history, capsys):
         )
         conn.commit()
         query_logic.search(conn, "ORCHID", output_format="json")
-    assert json.loads(capsys.readouterr().out) == []
+    assert json.loads(capsys.readouterr().out)["rows"] == []
     with pytest.raises(ValueError, match="unavailable"):
         managed.forget_with_history("study", apply=True)
     with closing(records.connect(history["hot"])) as conn:
@@ -176,7 +176,7 @@ def test_offline_full_reports_pending_then_retries_without_resurrection(
     offline.rename(history["full"])
     with closing(records.connect(history["hot"])) as conn:
         query_logic.search(conn, "ORCHID", output_format="json")
-    assert json.loads(capsys.readouterr().out) == []
+    assert json.loads(capsys.readouterr().out)["rows"] == []
     result = CliRunner().invoke(app, ["cleanup"])
     assert result.exit_code == 0, result.output
     assert json.loads(result.stdout)["complete"]
@@ -430,7 +430,7 @@ def test_removed_archive_is_not_retained_by_config_cache(history, capsys):
             purge_session(conn, "study", permanent=False)
         conn.commit()
         query_logic.search(conn, "ORCHID", output_format="json")
-    assert json.loads(capsys.readouterr().out) == []
+    assert json.loads(capsys.readouterr().out)["rows"] == []
 
 
 @pytest.mark.parametrize(

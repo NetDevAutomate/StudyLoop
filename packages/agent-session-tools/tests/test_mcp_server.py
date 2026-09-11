@@ -176,33 +176,46 @@ def _get_tools():
 class TestSessionSearch:
     def test_search_returns_results(self, mock_db_path):
         tools = _get_tools()
-        results = tools["session_search"](query="authentication")
-        assert len(results) > 0
-        assert results[0]["session_id"] == "sess-auth-001"
+        payload = tools["session_search"](query="authentication")
+        assert len(payload["rows"]) > 0
+        assert payload["rows"][0]["session_id"] == "sess-auth-001"
+        assert payload["retrieval_status"]["mode"] == "lexical"
 
     def test_search_no_results(self, mock_db_path):
         tools = _get_tools()
-        results = tools["session_search"](query="nonexistent_xyz_term")
-        assert len(results) == 0
+        payload = tools["session_search"](query="nonexistent_xyz_term")
+        assert payload["rows"] == []
+        # An empty result is never silent: the status says what was searched.
+        assert payload["retrieval_status"]["queries"] == ['"nonexistent_xyz_term"']
 
     def test_search_with_source_filter(self, mock_db_path):
         tools = _get_tools()
-        results = tools["session_search"](
+        payload = tools["session_search"](
             query="error OR authentication", source="kiro_cli"
         )
-        for r in results:
+        for r in payload["rows"]:
             assert r["source"] == "kiro_cli"
 
     def test_search_with_project_filter(self, mock_db_path):
         tools = _get_tools()
-        results = tools["session_search"](query="middleware", project="webapp")
-        assert len(results) > 0
-        assert "webapp" in results[0]["project_path"]
+        payload = tools["session_search"](query="middleware", project="webapp")
+        assert len(payload["rows"]) > 0
+        assert "webapp" in payload["rows"][0]["project_path"]
 
     def test_search_respects_limit(self, mock_db_path):
         tools = _get_tools()
-        results = tools["session_search"](query="the", limit=1)
-        assert len(results) <= 1
+        # "middleware" matches two messages, so the cap is doing the work here.
+        assert len(tools["session_search"](query="middleware")["rows"]) == 2
+        assert len(tools["session_search"](query="middleware", limit=1)["rows"]) == 1
+
+    def test_search_rows_carry_the_message_id_citation_handle(self, mock_db_path):
+        tools = _get_tools()
+        rows = tools["session_search"](query="middleware")["rows"]
+        assert {row["message_id"] for row in rows} == {"msg-1", "msg-2"}
+        remaining = tools["session_search"](
+            query="middleware", exclude_message_ids=["msg-1"]
+        )["rows"]
+        assert [row["message_id"] for row in remaining] == ["msg-2"]
 
 
 class TestSessionList:
@@ -512,8 +525,13 @@ def test_mcp_search_and_list_expand_only_configured_project_aliases(
     )
     monkeypatch.setenv("STUDYLOOP_CONFIG", str(config))
     tools = _get_tools()
-    found = tools["session_search"](query="middleware", project="/current/webapp")
+    found = tools["session_search"](query="middleware", project="/current/webapp")[
+        "rows"
+    ]
     assert found and all(row["session_id"] == "sess-auth-001" for row in found)
     listed = tools["session_list"](project="/current/webapp")
     assert len(listed) == 1
-    assert tools["session_search"](query="middleware", project="/work/webapp") == []
+    assert (
+        tools["session_search"](query="middleware", project="/work/webapp")["rows"]
+        == []
+    )

@@ -88,7 +88,15 @@ def _resolve_write_session_id(conn, session_id: str) -> str:
 @app.command("search")
 @app.command("search-cmd", hidden=True)
 def search_cmd(
-    query: Annotated[str, typer.Argument(help="Search query")],
+    query: Annotated[
+        str,
+        typer.Argument(
+            help=(
+                "Search query: a plain sentence, or explicit FTS5 via uppercase "
+                "AND/OR/NOT/NEAR or an 'fts:' prefix"
+            )
+        ),
+    ],
     db: Annotated[Path | None, db_option] = None,
     limit: Annotated[int, typer.Option("-n", "--limit", help="Max results")] = 10,
     since: Annotated[
@@ -116,6 +124,15 @@ def search_cmd(
     ] = False,
 ) -> None:
     """Full-text search across message content.
+
+    A plain sentence is safe: lowercase words -- including "and", "or", "not" --
+    are searched as words, and punctuation cannot break the query. FTS5 syntax
+    is explicit only: an uppercase AND / OR / NOT / NEAR, or an "fts:" prefix
+    (fts:docker NEAR/5 build). Double-quoted spans stay phrases.
+
+    Every run reports how it searched (plan, terms, whether it widened), so an
+    empty result says why. --output-format json emits the same rows as the MCP
+    session_search tool, plus rank and tier, under a "rows" key.
 
     Federated by default: when a full-history DB is configured
     (database.full_db_path) and reachable, results include pruned history,

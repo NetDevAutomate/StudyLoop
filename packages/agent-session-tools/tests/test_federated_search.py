@@ -79,7 +79,10 @@ def _search_json(capsys, **kwargs) -> list[dict]:
         search(conn, "decorators", output_format="json", **kwargs)
     finally:
         conn.close()
-    return json.loads(capsys.readouterr().out)
+    # The CLI emits the shared retrieval payload: rows plus how they were found.
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["retrieval_status"]["mode"] == "lexical"
+    return payload["rows"]
 
 
 class TestFederatedSearch:

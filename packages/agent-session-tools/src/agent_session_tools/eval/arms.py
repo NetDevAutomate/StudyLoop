@@ -5,12 +5,14 @@
   gated on. It is the only arm whose failures are the failures a user meets.
 * :class:`CliArm` runs ``session-query search`` as a subprocess: the second
   real interface, and a check that the two agree.
-* :class:`FrozenShippedArm` is a *frozen* copy of today's query planning and
-  today's ``session_search`` SQL. Today it must return exactly what
-  :class:`McpArm` returns -- that equality is what proves the copy faithful.
-  Later stages change the shipped path and pair against this frozen control,
-  so it deliberately duplicates the planner instead of importing it: an
-  import would move with the fix and stop being a control.
+* :class:`FrozenShippedArm` is a *frozen* copy of stage 1's query planning and
+  stage 1's ``session_search`` SQL. It is the control the fixed path is scored
+  against, so it deliberately duplicates the planner instead of importing it:
+  an import would move with the fix and stop being a control. Its planner is
+  pinned as a fixed table in ``tests/golden/frozen_planner_pins.json``, taken
+  from the shipped planner while stage 1 still shipped; the live planner has
+  since changed by design, so an equality test against it would now fail for
+  the right reason and prove nothing.
 """
 
 from __future__ import annotations
@@ -87,10 +89,12 @@ def _run(coro: Coroutine[Any, Any, Any]) -> Any:
 def _message_id(row: dict[str, Any], index: int) -> str:
     """A stable id for one returned message row.
 
-    The shipped ``session_search`` projection carries no message id (checked:
-    it returns ``session_id, source, project_path, updated_at, role,
-    timestamp, preview``), so a positional id keyed to the session is
-    synthesised. If the projection ever gains a real id this picks it up.
+    The retrieval service projects a real ``message_id`` (a text exporter id /
+    UUID) on every row, and that is the citation handle the census excludes
+    by, so it is preferred. The positional fallback survives only for a row
+    that carries no id at all -- the pre-Stage-2 tool, whose projection was
+    ``session_id, source, project_path, updated_at, role, timestamp,
+    preview`` and nothing else.
     """
     for key in ("message_id", "msg_id", "id"):
         value = row.get(key)
@@ -99,15 +103,97 @@ def _message_id(row: dict[str, Any], index: int) -> str:
     return f"{row.get('session_id', '?')}#{index}:{row.get('timestamp', '')}"
 
 
+def _split_payload(payload: Any) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
+    """Split a search payload into ``(rows, retrieval_status)``.
+
+    Three shapes reach this, and an arm has to read all of them so the harness
+    can be pointed at either side of the Stage 2 cut:
+
+    * ``{"rows": [...], "retrieval_status": {...}}`` -- the retrieval
+      service's shared payload. FastMCP returns a tool's ``dict`` as the
+      structured content itself, and the CLI prints the same document.
+    * ``{"result": [...]}`` -- what FastMCP wraps a ``list`` return in, i.e.
+      the pre-Stage-2 ``session_search`` tool.
+    * ``[...]`` -- a bare list, i.e. the pre-Stage-2 CLI's ``--output-format
+      json``.
+
+    Anything else yields no rows rather than raising: an unreadable payload is
+    an empty result for the ruler, not a crash to classify.
+    """
+
+    def _rows(value: Any) -> list[dict[str, Any]]:
+        if not isinstance(value, list):
+            return []
+        return [row for row in value if isinstance(row, dict)]
+
+    if isinstance(payload, list):
+        return _rows(payload), None
+    if not isinstance(payload, dict):
+        return [], None
+    if "rows" in payload:
+        status = payload.get("retrieval_status")
+        return _rows(payload.get("rows")), status if isinstance(status, dict) else None
+    return _rows(payload.get("result")), None
+
+
+def _json_document(text: str) -> str:
+    """The JSON document inside CLI stdout, ignoring anything printed before it.
+
+    The payload is an object now and was a bare array before Stage 2, so the
+    document starts at whichever of ``{`` or ``[`` appears first.
+    """
+    starts = [pos for pos in (text.find("{"), text.find("[")) if pos != -1]
+    return text[min(starts) :] if starts else text
+
+
+def _tool_argument_names(tool_name: str) -> frozenset[str]:
+    """The argument names the registered MCP tool accepts, from its input schema.
+
+    Read once at arm construction so an arm knows before its first query
+    whether the shipped tool can exclude at all -- cheaper and far more
+    legible than provoking a pydantic validation error with a throwaway call
+    and classifying the wreckage.
+    """
+    try:
+        from agent_session_tools import mcp_server
+
+        tools = _run(mcp_server.mcp.list_tools())
+    except Exception:  # pragma: no cover - a broken server is not this arm's business
+        return frozenset()
+    for tool in tools:
+        if getattr(tool, "name", None) != tool_name:
+            continue
+        schema = getattr(tool, "parameters", None)
+        if isinstance(schema, dict):
+            properties = schema.get("properties")
+            if isinstance(properties, dict):
+                return frozenset(str(key) for key in properties)
+        return frozenset()
+    return frozenset()
+
+
 class McpArm:
-    """The shipped ``session_search`` tool, driven through FastMCP ``call_tool``."""
+    """The shipped ``session_search`` tool, driven through FastMCP ``call_tool``.
+
+    ``supports_exclusion`` is decided at construction from the tool's own
+    input schema: the retrieval service takes ``exclude_message_ids`` and
+    filters inside the SQL, which is what makes a self-retrieval census
+    through the real agent interface honest. Against the pre-Stage-2 tool the
+    argument is absent, the flag is ``False``, and the ruler filters the
+    returned hits instead.
+    """
 
     name = "mcp"
-    supports_exclusion = False
+    #: The tool argument that lets the census exclude a question's own message.
+    EXCLUDE_ARG = "exclude_message_ids"
 
     def __init__(self, db_path: Path | str, rows: int = DEFAULT_ROWS) -> None:
         self.db_path = Path(db_path).expanduser()
         self.rows = rows
+        self.tool_arguments = _tool_argument_names("session_search")
+        self.supports_exclusion = self.EXCLUDE_ARG in self.tool_arguments
+        #: ``retrieval_status`` from the most recent call, or ``None``.
+        self.last_status: dict[str, Any] | None = None
 
     def _rows(self, query: Query) -> list[dict[str, Any]]:
         from unittest.mock import patch
@@ -119,6 +205,8 @@ class McpArm:
             arguments["source"] = query.source
         if query.project is not None:
             arguments["project"] = query.project
+        if self.supports_exclusion and query.exclude_message_ids:
+            arguments[self.EXCLUDE_ARG] = sorted(query.exclude_message_ids)
         with (
             patch(
                 "agent_session_tools.mcp_server._get_db_path",
@@ -127,19 +215,26 @@ class McpArm:
             _quiet_errors(),
         ):
             result = _run(mcp_server.mcp.call_tool("session_search", arguments))
-        structured = getattr(result, "structured_content", None)
-        if not isinstance(structured, dict):
-            return []
-        payload = structured.get("result", [])
-        return [row for row in payload if isinstance(row, dict)]
+        rows, status = _split_payload(getattr(result, "structured_content", None))
+        self.last_status = status
+        return rows
 
     def search(self, query: Query, k: int) -> list[Hit]:
         try:
             rows = self._rows(query)
         except Exception as exc:
             raise ArmError(classify_failure(exc), str(exc)) from exc
+        # Message ids are excluded in the tool's SQL; session ids have no tool
+        # argument, so they are dropped here -- before the collapse, so ``k``
+        # still bounds *surviving* sessions. When the tool cannot exclude at
+        # all the ruler owns both filters and this arm must not pre-empt it.
+        excluded_sessions = (
+            query.exclude_session_ids if self.supports_exclusion else frozenset()
+        )
         pairs = [
-            (str(row["session_id"]), _message_id(row, i)) for i, row in enumerate(rows)
+            (str(row["session_id"]), _message_id(row, i))
+            for i, row in enumerate(rows)
+            if str(row["session_id"]) not in excluded_sessions
         ]
         return collapse_to_sessions(pairs, k, method="mcp")
 
@@ -150,6 +245,7 @@ class McpArm:
             "rows": self.rows,
             "db_path": str(self.db_path),
             "git_commit": _git_head(),
+            "supports_exclusion": self.supports_exclusion,
         }
 
 
@@ -157,12 +253,15 @@ class CliArm:
     """``session-query search`` as a subprocess -- the other real interface."""
 
     name = "cli"
+    #: The CLI has no exclusion flag, so the ruler filters this arm's hits.
     supports_exclusion = False
 
     def __init__(self, db_path: Path | str, rows: int = DEFAULT_ROWS) -> None:
         self.db_path = Path(db_path).expanduser()
         self.rows = rows
         self.argv_prefix, self.invocation = self._resolve()
+        #: ``retrieval_status`` from the most recent call, or ``None``.
+        self.last_status: dict[str, Any] | None = None
 
     @staticmethod
     def _resolve() -> tuple[list[str], str]:
@@ -209,16 +308,11 @@ class CliArm:
         if not text:
             return []
         try:
-            payload = json.loads(
-                text[text.index("[") :] if text.startswith("[") else text
-            )
+            payload = json.loads(_json_document(text))
         except (ValueError, json.JSONDecodeError) as exc:
             raise ArmError("other", f"unparsable CLI output: {exc}") from exc
-        rows = (
-            [row for row in payload if isinstance(row, dict)]
-            if isinstance(payload, list)
-            else []
-        )
+        rows, status = _split_payload(payload)
+        self.last_status = status
         pairs = [
             (str(row["session_id"]), _message_id(row, i)) for i, row in enumerate(rows)
         ]
@@ -235,10 +329,11 @@ class CliArm:
 
 
 # --------------------------------------------------------------------------- frozen replica
-# Verbatim copies of today's query planning (query_planner.STOP / plan,
-# query_utils.escape_fts_query, mcp_server._session_search_queries) and today's
-# session_search SQL. Frozen on purpose: a later stage fixes the shipped path,
-# and a control that imported the fix would move with it.
+# Verbatim copies of stage 1's query planning (query_planner.STOP / plan,
+# query_utils.escape_fts_query, mcp_server._session_search_queries) and stage 1's
+# session_search SQL. Frozen on purpose: stage 2 fixed the shipped path, and a
+# control that imported the fix would have moved with it. Nothing below may
+# change; tests/golden/frozen_planner_pins.json is what enforces that.
 
 _FROZEN_STOP = frozenset(
     "a an the is are was were be been being do does did to of in on for with"
@@ -270,7 +365,12 @@ def _frozen_plan(question: str) -> tuple[str, str]:
 
 
 def frozen_session_search_queries(query: str) -> tuple[str, ...]:
-    """Frozen copy of ``mcp_server._session_search_queries`` as it ships today."""
+    """Frozen copy of ``mcp_server._session_search_queries`` as stage 1 shipped it.
+
+    Pinned by ``tests/golden/frozen_planner_pins.json``, generated from the
+    shipped helper at commit 79425cbe over 96 inputs (the stage-1 arm tests
+    plus every gold DEV question).
+    """
     upper = query.upper()
     explicit = any(operator in upper for operator in (" AND ", " OR ", " NOT "))
     stripped = query.strip()
@@ -288,11 +388,12 @@ def frozen_session_search_queries(query: str) -> tuple[str, ...]:
 
 
 class FrozenShippedArm:
-    """Today's shipped lexical path, pinned in this file as the stage-1 control.
+    """Stage 1's shipped lexical path, pinned in this file as the control.
 
-    With no exclusions requested the SQL is byte-identical to the shipped
-    tool's. ``Query.exclude_*`` adds ``NOT IN`` clauses at query time, which
-    is what lets the census score self-retrieval honestly through this arm.
+    The SQL is a verbatim copy of what ``session_search`` ran before the
+    retrieval service replaced it. ``Query.exclude_*`` adds ``NOT IN`` clauses
+    at query time, which is what lets the census score self-retrieval honestly
+    through this arm.
     """
 
     name = "frozen"

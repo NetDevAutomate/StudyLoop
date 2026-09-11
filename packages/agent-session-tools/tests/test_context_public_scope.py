@@ -78,9 +78,9 @@ def assert_private_absent(output):
 
 def test_all_mcp_reads_and_clean_scan_obey_scope(scoped_db):
     mcp = tools()
-    search = mcp["session_search"](query="common")
+    search = mcp["session_search"](query="common")["rows"]
     assert len(search) == 1 and search[0]["session_id"] == "shared-personal"
-    assert mcp["session_search"](query="common", project="/scope/work") == []
+    assert mcp["session_search"](query="common", project="/scope/work")["rows"] == []
     assert len(mcp["session_list"]()) == 1
     assert (
         mcp["session_show"](session_id="shared")["session"]["id"] == "shared-personal"
@@ -145,7 +145,7 @@ def test_semantic_fts_and_file_hotspots_obey_scope(scoped_db):
 def test_next_mcp_request_observes_reclassification(scoped_db):
     conn, _, config, settings = scoped_db
     mcp = tools()
-    assert len(mcp["session_search"](query="common")) == 1
+    assert len(mcp["session_search"](query="common")["rows"]) == 1
     settings["memory"]["projects"]["personal"]["scope"] = "work"
     config.write_text(json.dumps(settings))
     from agent_session_tools.context.scope import ScopeError
@@ -155,13 +155,13 @@ def test_next_mcp_request_observes_reclassification(scoped_db):
     apply_policy(
         conn, ScopePolicy.from_config(settings), actor="fixture", dry_run=False
     )
-    assert mcp["session_search"](query="common") == []
+    assert mcp["session_search"](query="common")["rows"] == []
 
 
 def test_explicit_unknown_scope_can_inspect_only_unclassified(scoped_db, monkeypatch):
     monkeypatch.setenv("SESSION_CONTEXT_SCOPE", "unclassified")
     mcp = tools()
-    result = mcp["session_search"](query="common")
+    result = mcp["session_search"](query="common")["rows"]
     assert len(result) == 1 and result[0]["session_id"] == "unknown"
     assert mcp["session_show"](session_id="shared-work").get("error")
 
@@ -233,7 +233,7 @@ def test_federated_read_checks_full_database_policy(
         search(conn, "common", output_format="json")
         output = capsys.readouterr().out
         result = json.loads(output)
-        assert {r["session_id"] for r in result} == {
+        assert {r["session_id"] for r in result["rows"]} == {
             "shared-personal",
             "historical-personal",
         }

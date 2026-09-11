@@ -161,12 +161,13 @@ class TestListSessions:
 class TestSearch:
     def test_hides_a_retired_source_by_default(self, scoped_db, capsys):
         search(scoped_db, "partition", output_format="json")
-        found = {row["source"] for row in json.loads(capsys.readouterr().out)}
+        payload = json.loads(capsys.readouterr().out)
+        found = {row["source"] for row in payload["rows"]}
         assert found == {"kiro_cli", "grok", "study_mentor"}
 
     def test_body_of_a_retired_session_is_not_returned(self, scoped_db, capsys):
         search(scoped_db, "aiderprose", output_format="json")
-        assert json.loads(capsys.readouterr().out) == []
+        assert json.loads(capsys.readouterr().out)["rows"] == []
 
 
 class TestStats:
@@ -284,10 +285,11 @@ class TestMcpSurfaces:
             # "partition" is a shared token in every fixture body, so an empty
             # result would be a tokenizer artefact rather than proof of scoping.
             default = {
-                row["source"] for row in tools["session_search"](query="partition")
+                row["source"]
+                for row in tools["session_search"](query="partition")["rows"]
             }
             assert default == {"kiro_cli", "grok", "study_mentor"}
-            named = tools["session_search"](query="partition", source="aider")
+            named = tools["session_search"](query="partition", source="aider")["rows"]
             assert [row["session_id"] for row in named] == ["sess-aider-004"]
 
     def test_session_stats_reports_hidden_sources(self, scoped_db_path):
