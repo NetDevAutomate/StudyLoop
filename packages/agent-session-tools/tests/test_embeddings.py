@@ -170,6 +170,7 @@ def test_supported_models_contains_exactly_expected_keys():
         "nomic-embed-text-v1.5",
         "all-mpnet-base-v2",
         "bge-base-en-v1.5",
+        "bge-small-en-v1.5",
         "all-MiniLM-L6-v2",
         "codebert-base",
     }
