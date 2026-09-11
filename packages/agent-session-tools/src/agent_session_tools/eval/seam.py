@@ -24,6 +24,7 @@ Rules of the contract:
 
 from __future__ import annotations
 
+import re
 import sqlite3
 from collections.abc import Iterable
 from dataclasses import dataclass, field
@@ -66,18 +67,29 @@ class ArmError(Exception):
         self.kind = kind
 
 
+#: The four failure classes Stage 4 counted, keyed by the FTS5 token they name.
+_NAMED_TOKENS = {"`": "backtick", "?": "question-mark", ",": "comma"}
+_SYNTAX_NEAR = re.compile(r'syntax error near "((?:[^"\\]|\\.)*)"')
+
+
 def classify_failure(exc: BaseException) -> str:
-    """Map an exception raised by an engine to a crash-census class."""
+    """Map an exception raised by an engine to a crash-census class.
+
+    FTS5 syntax errors are classified by the offending token so a census can
+    name every hat the one raw-pass-through defect wears: ``backtick``,
+    ``question-mark`` and ``comma`` keep their Stage 4 names, any other token
+    becomes ``syntax:<token>`` (``syntax:<``, ``syntax:/``, ``syntax:and`` ...).
+    A column-filter misparse is ``no-such-column``; anything else from SQLite
+    is ``operational-error``; everything else is ``other``.
+    """
     text = str(exc)
-    if "`" in text:
-        return "backtick"
-    if '"?"' in text:
-        return "question-mark"
-    if '","' in text:
-        return "comma"
+    match = _SYNTAX_NEAR.search(text)
+    if match:
+        token = match.group(1)
+        return _NAMED_TOKENS.get(token, f"syntax:{token[:24] or 'empty'}")
     if "no such column" in text:
         return "no-such-column"
-    if isinstance(exc, sqlite3.OperationalError):
+    if isinstance(exc, sqlite3.OperationalError) or "OperationalError" in text:
         return "operational-error"
     return "other"
 
