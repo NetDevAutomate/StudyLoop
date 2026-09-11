@@ -117,7 +117,7 @@ def test_bridge_correction_and_forget_recompute_without_orphan_edges(graph_db):
 def test_native_parent_forgetting_removes_projected_relationship(graph_db):
     conn, _, _, roots = graph_db
     conn.execute(
-        "INSERT INTO sessions(id,source,project_path) VALUES ('native','fixture',?)",
+        "INSERT INTO sessions(id,source,project_path) VALUES ('native','kiro_cli',?)",
         (str(roots["personal"]),),
     )
     conn.commit()

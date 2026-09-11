@@ -787,7 +787,7 @@ def test_notes_require_both_native_and_study_parent_scope_and_purge_dependencies
         assert not conn.execute("SELECT 1 FROM sessions WHERE id='unknown-native'").fetchone()
         conn.execute(
             "INSERT INTO sessions(id,source,project_path) "
-            "VALUES ('other-personal','fixture','/consumer/personal')"
+            "VALUES ('other-personal','kiro_cli','/consumer/personal')"
         )
         conn.execute(
             "INSERT INTO context_session_projects(session_id,project_id) "
