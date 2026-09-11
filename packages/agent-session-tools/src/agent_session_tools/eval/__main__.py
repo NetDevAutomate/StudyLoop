@@ -15,12 +15,13 @@ import argparse
 import sys
 from itertools import permutations
 from pathlib import Path
+from typing import Any
 
 from . import K, SEED
 from .arms import ARMS, DEFAULT_ROWS, build_arm
 from .census import census_receipt, collect_questions, run_census
 from .gold import load_gold, score_arm
-from .metrics import cluster_bootstrap
+from .metrics import cluster_bootstrap, non_inferiority
 from .receipt import build_receipt, write_receipt
 
 
@@ -93,12 +94,17 @@ def _run_gold(args: argparse.Namespace) -> int:
         arm = build_arm(name, db_path, args.rows)
         results[name] = score_arm(arm, items, args.k)
 
-    comparisons = {
-        f"{a}_vs_{b}": cluster_bootstrap(
+    comparisons: dict[str, Any] = {}
+    for a, b in permutations(names, 2):
+        comparisons[f"{a}_vs_{b}"] = cluster_bootstrap(
             results[a].per_item, results[b].per_item, items
         )
-        for a, b in permutations(names, 2)
-    }
+        # Stage 4 gate G2 / freeze guardrail 5: the exact-match (K) stratum on
+        # its own, so a semantic arm cannot buy paraphrase recall with keyword
+        # regressions hidden inside the macro.
+        comparisons[f"{a}_vs_{b}_K"] = non_inferiority(
+            results[a].per_item, results[b].per_item, items, margin=0.0, stratum="K"
+        )
 
     from .arms import _git_head
 

@@ -23,9 +23,11 @@ never silent.
 
 from __future__ import annotations
 
+import logging
+import os
 import re
 import sqlite3
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass
 from typing import Any
 
@@ -43,7 +45,30 @@ FTS_PREFIX = "fts:"
 # is a word, which is exactly the distinction the shipped code got wrong.
 _EXPLICIT_OPERATOR = re.compile(r"(?<![\w\"])(AND|OR|NOT|NEAR)(?![\w\"])")
 
+logger = logging.getLogger(__name__)
+
 MODE_LEXICAL = "lexical"
+MODE_HYBRID = "hybrid"
+MODES = (MODE_LEXICAL, MODE_HYBRID)
+MODE_ENV = "STUDYLOOP_RETRIEVAL_MODE"
+"""Per-process override of the configured mode; the eval harness pins arms with it."""
+
+# Stage 4 pre-registration (receipts/semantic-layer/stage4-preregistration-
+# 2026-09-11.md): two message-level lists of FUSION_DEPTH, Reciprocal Rank
+# Fusion with k = RRF_K, no weights, k not tuned. The semantic arm asks the
+# filtered candidate call for SEMANTIC_CANDIDATE_ROWS chunk rows and keeps a
+# message's best (smallest) distance.
+FUSION_DEPTH = 50
+RRF_K = 60
+SEMANTIC_CANDIDATE_ROWS = 100
+
+# Query-side instruction per model, from the model card. Passages were embedded
+# bare in every case; only bge documents a query prefix.
+QUERY_PREFIXES: dict[str, str] = {
+    "BAAI/bge-small-en-v1.5": "Represent this sentence for searching relevant passages: ",
+    "bge-small-en-v1.5": "Represent this sentence for searching relevant passages: ",
+}
+
 PLAN_AND = "and"
 PLAN_OR = "or"
 PLAN_EXPLICIT = "explicit"
@@ -83,11 +108,14 @@ class RetrievalHit:
 class RetrievalStatus:
     """What was actually searched. Returned with every result, empty or not.
 
-    ``mode`` is ``"lexical"`` until the semantic arm ships; ``plan`` names the
-    form that produced the hits (``and``, ``or`` after widening, ``explicit``
-    FTS5, or ``none`` when nothing could be searched); ``queries`` lists every
-    ``MATCH`` string tried, in order; ``note`` explains any departure from
-    what the caller literally asked for.
+    ``mode`` is ``"hybrid"`` when the lexical and semantic arms both ran and
+    were fused, ``"lexical"`` otherwise (the note says why when hybrid was
+    asked for); ``plan`` names the lexical form that produced the hits
+    (``and``, ``or`` after widening, ``explicit`` FTS5, or ``none`` when
+    nothing could be searched); ``queries`` lists every ``MATCH`` string
+    tried, in order; ``note`` explains any departure from what the caller
+    literally asked for; ``semantic`` names the model and how many fused hits
+    the semantic arm alone contributed.
     """
 
     mode: str
@@ -96,6 +124,7 @@ class RetrievalStatus:
     queries: tuple[str, ...]
     widened: bool = False
     note: str | None = None
+    semantic: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
@@ -210,7 +239,7 @@ def plan_query(query: str) -> QueryPlan:
     return plan_natural_language(stripped)
 
 
-def _search_sql(
+def _filter_clauses(
     conn: sqlite3.Connection,
     *,
     schema: str,
@@ -223,27 +252,13 @@ def _search_sql(
     include_retired_sources: bool,
     exclude_message_ids: tuple[str, ...],
     exclude_session_ids: tuple[str, ...],
-    include_content: bool,
-    limit: int,
 ) -> tuple[str, list[Any]]:
-    """Build the one SQL statement every surface runs; ``MATCH`` is the first parameter."""
-    content_column = ", m.content AS full_content" if include_content else ""
-    # bm25() and MATCH need an unqualified FTS table reference, so the FTS pass
-    # runs in a subquery whose FROM names the schema -- this is what lets the
-    # CLI federate over the attached full-history database.
-    sql = f"""
-        SELECT m.id AS message_id, s.id AS session_id, s.source, s.project_path,
-               s.updated_at, m.role, m.timestamp,
-               substr(m.content, 1, {PREVIEW_CHARS}) AS preview, fx.rank AS rank
-               {content_column}
-        FROM (
-            SELECT rowid AS fts_rowid, bm25(messages_fts) AS rank
-            FROM {schema}.messages_fts
-            WHERE messages_fts MATCH ?
-        ) fx
-        JOIN {schema}.messages m ON m.rowid = fx.fts_rowid
-        JOIN {schema}.sessions s ON m.session_id = s.id
-        WHERE 1=1
+    """The WHERE clauses both arms share, starting with visibility.
+
+    One function on purpose: whatever the semantic arm finds is hydrated
+    through exactly these clauses, so a session the lexical arm may not return
+    (retired source, other project, excluded id) is not returned by the
+    semantic arm either.
     """
     visible, scope_params = visibility_sql(
         conn,
@@ -252,7 +267,7 @@ def _search_sql(
         policy=scope_policy,
         include_retired_sources=include_retired_sources,
     )
-    sql += " AND " + visible
+    sql = " AND " + visible
     params: list[Any] = [*scope_params]
     if source:
         sql += " AND s.source = ?"
@@ -273,9 +288,105 @@ def _search_sql(
     if exclude_session_ids:
         sql += f" AND s.id NOT IN ({','.join('?' * len(exclude_session_ids))})"
         params.extend(exclude_session_ids)
-    sql += " ORDER BY rank, m.timestamp DESC LIMIT ?"
+    return sql, params
+
+
+def _select_columns(include_content: bool) -> str:
+    content_column = ", m.content AS full_content" if include_content else ""
+    return (
+        "SELECT m.id AS message_id, s.id AS session_id, s.source, s.project_path, "
+        "s.updated_at, m.role, m.timestamp, "
+        f"substr(m.content, 1, {PREVIEW_CHARS}) AS preview"
+        f"{content_column}"
+    )
+
+
+def _search_sql(
+    conn: sqlite3.Connection,
+    *,
+    schema: str,
+    source: str | None,
+    project: str | None,
+    since: str | None,
+    before: str | None,
+    exclude_main_sessions: bool,
+    scope_policy: ScopePolicy | None,
+    include_retired_sources: bool,
+    exclude_message_ids: tuple[str, ...],
+    exclude_session_ids: tuple[str, ...],
+    include_content: bool,
+    limit: int,
+) -> tuple[str, list[Any]]:
+    """Build the one SQL statement every surface runs; ``MATCH`` is the first parameter."""
+    # bm25() and MATCH need an unqualified FTS table reference, so the FTS pass
+    # runs in a subquery whose FROM names the schema -- this is what lets the
+    # CLI federate over the attached full-history database.
+    sql = f"""
+        {_select_columns(include_content)}, fx.rank AS rank
+        FROM (
+            SELECT rowid AS fts_rowid, bm25(messages_fts) AS rank
+            FROM {schema}.messages_fts
+            WHERE messages_fts MATCH ?
+        ) fx
+        JOIN {schema}.messages m ON m.rowid = fx.fts_rowid
+        JOIN {schema}.sessions s ON m.session_id = s.id
+        WHERE 1=1
+    """
+    clauses, params = _filter_clauses(
+        conn,
+        schema=schema,
+        source=source,
+        project=project,
+        since=since,
+        before=before,
+        exclude_main_sessions=exclude_main_sessions,
+        scope_policy=scope_policy,
+        include_retired_sources=include_retired_sources,
+        exclude_message_ids=exclude_message_ids,
+        exclude_session_ids=exclude_session_ids,
+    )
+    sql += clauses + " ORDER BY rank, m.timestamp DESC LIMIT ?"
     params.append(limit)
     return sql, params
+
+
+def _hydrate_sql(
+    conn: sqlite3.Connection,
+    message_ids: Sequence[str],
+    *,
+    schema: str,
+    source: str | None,
+    project: str | None,
+    since: str | None,
+    before: str | None,
+    exclude_main_sessions: bool,
+    scope_policy: ScopePolicy | None,
+    include_retired_sources: bool,
+    exclude_message_ids: tuple[str, ...],
+    exclude_session_ids: tuple[str, ...],
+    include_content: bool,
+) -> tuple[str, list[Any]]:
+    """The semantic arm's rows: the candidate ids, through the lexical arm's filters."""
+    sql = f"""
+        {_select_columns(include_content)}, 0.0 AS rank
+        FROM {schema}.messages m
+        JOIN {schema}.sessions s ON m.session_id = s.id
+        WHERE m.id IN ({",".join("?" * len(message_ids))})
+    """
+    clauses, params = _filter_clauses(
+        conn,
+        schema=schema,
+        source=source,
+        project=project,
+        since=since,
+        before=before,
+        exclude_main_sessions=exclude_main_sessions,
+        scope_policy=scope_policy,
+        include_retired_sources=include_retired_sources,
+        exclude_message_ids=exclude_message_ids,
+        exclude_session_ids=exclude_session_ids,
+    )
+    return sql + clauses, [*message_ids, *params]
 
 
 def _run(
@@ -306,6 +417,155 @@ def _hits(rows: Iterable[Any]) -> tuple[RetrievalHit, ...]:
     return tuple(hits)
 
 
+def resolve_mode(requested: str | None = None) -> str:
+    """Which mode a search runs in: the argument, else ``STUDYLOOP_RETRIEVAL_MODE``,
+    else ``semantic_search.hybrid`` in the config, else lexical.
+
+    An unknown value is a caller error, not a silent fallback."""
+    if requested is None:
+        requested = os.environ.get(MODE_ENV) or None
+    if requested is None:
+        try:
+            from agent_session_tools.config_loader import get_semantic_config
+
+            requested = (
+                MODE_HYBRID if get_semantic_config().get("hybrid") else MODE_LEXICAL
+            )
+        except Exception:  # config unreadable: the lexical arm always works
+            requested = MODE_LEXICAL
+    if requested not in MODES:
+        raise ValueError(
+            f"unknown retrieval mode {requested!r}; expected one of {MODES}"
+        )
+    return requested
+
+
+_ENCODERS: dict[str, Any] = {}
+
+
+def _encoder(model: str) -> Any:
+    """One loaded model per process; a search never downloads (offline)."""
+    encoder = _ENCODERS.get(model)
+    if encoder is None:
+        from agent_session_tools import embedding_store
+
+        os.environ.setdefault("HF_HUB_OFFLINE", "1")
+        encoder = embedding_store.SentenceTransformerEncoder(model)
+        _ENCODERS[model] = encoder
+    return encoder
+
+
+def _semantic_ranking(
+    conn: sqlite3.Connection, query: str, *, schema: str
+) -> tuple[list[str], dict[str, Any] | None, str | None]:
+    """The semantic arm: ``(ranked message ids, description, reason it could not run)``.
+
+    Reads the pin from ``message_embeddings`` (one model per database), encodes
+    the query with that model (plus its documented query instruction, if any),
+    asks the filtered candidate call for chunk rows and keeps each message's
+    best distance. Anything that stops the arm is returned as a reason and the
+    caller stays lexical -- a search never fails because the semantic layer is
+    not there.
+    """
+    if schema != "main":
+        return [], None, "semantic arm runs on the main database only"
+    try:
+        from agent_session_tools import embedding_store
+
+        pins = conn.execute(
+            "SELECT model, dim, COUNT(*) FROM message_embeddings GROUP BY model, dim"
+        ).fetchall()
+    except sqlite3.OperationalError as exc:
+        return [], None, f"no embeddings table ({exc})"
+    if not pins:
+        return [], None, "no vectors in message_embeddings"
+    if len(pins) > 1:
+        return (
+            [],
+            None,
+            "message_embeddings holds more than one model; run embed-check --fix",
+        )
+    model, dim, rows = str(pins[0][0]), int(pins[0][1]), int(pins[0][2])
+    ready = embedding_store.availability(model)
+    if not ready.ready:
+        return [], None, ready.reason or "semantic layer unavailable"
+    try:
+        encoder = _encoder(model)
+        if int(encoder.dim) != dim:
+            return (
+                [],
+                None,
+                f"model {model} is {encoder.dim}-d but the table holds {dim}-d rows",
+            )
+        vector = encoder.encode([QUERY_PREFIXES.get(model, "") + query])[0]
+        chunk_rows = embedding_store.candidates(conn, vector, SEMANTIC_CANDIDATE_ROWS)
+    except (
+        Exception
+    ) as exc:  # the arm is optional; the reason is reported, never raised
+        logger.warning("semantic arm skipped: %s", exc)
+        return [], None, f"semantic arm failed ({type(exc).__name__}: {exc})"
+    best: dict[str, float] = {}
+    for message_id, _session_id, _chunk_ix, distance in chunk_rows:
+        if distance < best.get(message_id, float("inf")):
+            best[message_id] = distance
+    ranked = sorted(best, key=lambda m: best[m])[:FUSION_DEPTH]
+    return ranked, {"model": model, "dim": dim, "vectors": rows}, None
+
+
+def _newest_first(timestamp: str | None) -> tuple[bool, str]:
+    """A key that sorts ISO timestamps newest first inside an ascending sort; None last."""
+    if timestamp is None:
+        return (True, "")
+    return (False, "".join(chr(0x10FFFF - ord(c)) for c in str(timestamp)))
+
+
+def _fuse(
+    lexical: Sequence[RetrievalHit],
+    semantic_ids: Sequence[str],
+    semantic_rows: dict[str, RetrievalHit],
+    *,
+    limit: int,
+) -> tuple[tuple[RetrievalHit, ...], int]:
+    """Reciprocal Rank Fusion of the two message lists; ``(hits, semantic-only count)``.
+
+    ``score(m) = sum over arms of 1 / (RRF_K + rank)``, rank starting at 1.
+    Ties: present in both arms first, then lexical rank, then newest
+    timestamp. ``RetrievalHit.rank`` on a fused hit is ``-score`` so that
+    "lower is better" still holds for every caller that sorts by it.
+    """
+    score: dict[str, float] = {}
+    lexical_rank: dict[str, int] = {}
+    rows: dict[str, RetrievalHit] = {}
+    for rank, hit in enumerate(lexical, 1):
+        lexical_rank[hit.message_id] = rank
+        rows[hit.message_id] = hit
+        score[hit.message_id] = score.get(hit.message_id, 0.0) + 1.0 / (RRF_K + rank)
+    semantic_seen: set[str] = set()
+    for rank, message_id in enumerate(semantic_ids, 1):
+        hit = semantic_rows.get(message_id)
+        if hit is None:  # filtered out by the shared clauses
+            continue
+        semantic_seen.add(message_id)
+        rows.setdefault(message_id, hit)
+        score[message_id] = score.get(message_id, 0.0) + 1.0 / (RRF_K + rank)
+
+    def key(message_id: str) -> tuple[float, int, int, bool, str]:
+        in_both = message_id in lexical_rank and message_id in semantic_seen
+        return (
+            -score[message_id],
+            0 if in_both else 1,
+            lexical_rank.get(message_id, FUSION_DEPTH + 1),
+            *_newest_first(rows[message_id].timestamp),
+        )
+
+    ordered = sorted(score, key=key)[:limit]
+    fused = tuple(
+        RetrievalHit(**{**asdict(rows[m]), "rank": -score[m]}) for m in ordered
+    )
+    semantic_only = sum(1 for m in ordered if m not in lexical_rank)
+    return fused, semantic_only
+
+
 def search(
     conn: sqlite3.Connection,
     query: str,
@@ -322,8 +582,15 @@ def search(
     exclude_message_ids: Iterable[str] = (),
     exclude_session_ids: Iterable[str] = (),
     include_content: bool = False,
+    mode: str | None = None,
 ) -> RetrievalResult:
     """Search message content for ``query`` and say how it was searched.
+
+    ``mode`` is ``"lexical"`` or ``"hybrid"``; ``None`` resolves through
+    :func:`resolve_mode`. Hybrid runs the lexical plan exactly as lexical does,
+    then the semantic arm, and fuses the two message lists (Stage 4
+    pre-registration). When the semantic arm cannot run, the result is the
+    lexical one with ``status.mode == "lexical"`` and the reason in ``note``.
 
     ``conn`` must have ``sqlite3.Row`` rows available (``row_factory`` is set
     for the call when it is not). Results are ordered by bm25 rank then
@@ -337,8 +604,81 @@ def search(
     """
     if conn.row_factory is None:
         conn.row_factory = sqlite3.Row
+    resolved_mode = resolve_mode(mode)
     excluded_messages = tuple(str(m) for m in exclude_message_ids)
     excluded_sessions = tuple(str(s) for s in exclude_session_ids)
+    filters: dict[str, Any] = dict(
+        schema=schema,
+        source=source,
+        project=project,
+        since=since,
+        before=before,
+        exclude_main_sessions=exclude_main_sessions,
+        scope_policy=scope_policy,
+        include_retired_sources=include_retired_sources,
+        exclude_message_ids=excluded_messages,
+        exclude_session_ids=excluded_sessions,
+    )
+    lexical_depth = max(limit, FUSION_DEPTH) if resolved_mode == MODE_HYBRID else limit
+
+    def finish(
+        rows: Iterable[Any],
+        *,
+        plan: str,
+        terms: tuple[str, ...],
+        widened: bool,
+        note: str | None,
+    ) -> RetrievalResult:
+        lexical_hits = _hits(rows)
+        status_mode = MODE_LEXICAL
+        semantic_info: dict[str, Any] | None = None
+        hits: tuple[RetrievalHit, ...] = lexical_hits[:limit]
+        if resolved_mode == MODE_HYBRID and plan != PLAN_EXPLICIT:
+            ranked, semantic_info, reason = _semantic_ranking(
+                conn, query, schema=schema
+            )
+            if reason is not None:
+                note = f"{note}; " if note else ""
+                note += f"hybrid requested but lexical only: {reason}"
+            else:
+                semantic_rows: dict[str, RetrievalHit] = {}
+                if ranked:
+                    hydrate_sql, hydrate_params = _hydrate_sql(
+                        conn, ranked, include_content=include_content, **filters
+                    )
+                    semantic_rows = {
+                        hit.message_id: hit
+                        for hit in _hits(
+                            conn.execute(hydrate_sql, hydrate_params).fetchall()
+                        )
+                    }
+                hits, semantic_only = _fuse(
+                    lexical_hits, ranked, semantic_rows, limit=limit
+                )
+                status_mode = MODE_HYBRID
+                assert semantic_info is not None
+                semantic_info = {
+                    **semantic_info,
+                    "candidates": len(ranked),
+                    "after_filters": len(semantic_rows),
+                    "semantic_only_in_result": semantic_only,
+                }
+        elif resolved_mode == MODE_HYBRID:
+            note = f"{note}; " if note else ""
+            note += "explicit FTS5 syntax is searched lexically"
+        return RetrievalResult(
+            hits=hits,
+            status=RetrievalStatus(
+                mode=status_mode,
+                plan=plan,
+                terms=terms,
+                queries=tuple(tried),
+                widened=widened,
+                note=note,
+                semantic=semantic_info if status_mode == MODE_HYBRID else None,
+            ),
+        )
+
     sql, params = _search_sql(
         conn,
         schema=schema,
@@ -352,7 +692,7 @@ def search(
         exclude_message_ids=excluded_messages,
         exclude_session_ids=excluded_sessions,
         include_content=include_content,
-        limit=limit,
+        limit=lexical_depth,
     )
 
     query_plan = plan_query(query)
@@ -388,15 +728,7 @@ def search(
                 body = body[len(FTS_PREFIX) :].strip()
             query_plan = plan_natural_language(body)
         else:
-            return RetrievalResult(
-                hits=_hits(rows),
-                status=RetrievalStatus(
-                    mode=MODE_LEXICAL,
-                    plan=PLAN_EXPLICIT,
-                    terms=(),
-                    queries=tuple(tried),
-                ),
-            )
+            return finish(rows, plan=PLAN_EXPLICIT, terms=(), widened=False, note=None)
 
     if not query_plan.queries:
         return RetrievalResult(
@@ -415,15 +747,11 @@ def search(
         rows = _run(conn, sql, match, params)
         if rows or index == len(query_plan.queries) - 1:
             widened = index > 0
-            return RetrievalResult(
-                hits=_hits(rows),
-                status=RetrievalStatus(
-                    mode=MODE_LEXICAL,
-                    plan=PLAN_OR if widened else PLAN_AND,
-                    terms=query_plan.terms,
-                    queries=tuple(tried),
-                    widened=widened,
-                    note=note,
-                ),
+            return finish(
+                rows,
+                plan=PLAN_OR if widened else PLAN_AND,
+                terms=query_plan.terms,
+                widened=widened,
+                note=note,
             )
     raise AssertionError("unreachable: the planner returned queries but none ran")

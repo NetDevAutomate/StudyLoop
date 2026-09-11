@@ -368,7 +368,7 @@ class TestRegistry:
     #: The arms that filter inside the engine rather than leaving it to the ruler:
     #: the frozen replica's ``NOT IN`` clauses, and the tool's own
     #: ``exclude_message_ids``. The CLI still has no such flag.
-    EXCLUDING = {"frozen", "mcp"}
+    EXCLUDING = {"frozen", "mcp", "hybrid"}
 
     @pytest.mark.parametrize("name", sorted(ARMS))
     def test_every_registered_arm_builds_and_reports_its_name(self, name, eval_db):

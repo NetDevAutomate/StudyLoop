@@ -20,6 +20,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import re
 import shutil
 import sqlite3
@@ -187,6 +188,9 @@ class McpArm:
     #: The tool argument that lets the census exclude a question's own message.
     EXCLUDE_ARG = "exclude_message_ids"
 
+    #: Which retrieval mode this arm pins through ``STUDYLOOP_RETRIEVAL_MODE``.
+    mode = "lexical"
+
     def __init__(self, db_path: Path | str, rows: int = DEFAULT_ROWS) -> None:
         self.db_path = Path(db_path).expanduser()
         self.rows = rows
@@ -214,7 +218,8 @@ class McpArm:
             ),
             _quiet_errors(),
         ):
-            result = _run(mcp_server.mcp.call_tool("session_search", arguments))
+            with patch.dict(os.environ, {"STUDYLOOP_RETRIEVAL_MODE": self.mode}):
+                result = _run(mcp_server.mcp.call_tool("session_search", arguments))
         rows, status = _split_payload(getattr(result, "structured_content", None))
         self.last_status = status
         return rows
@@ -242,11 +247,19 @@ class McpArm:
         return {
             "arm": self.name,
             "interface": "fastmcp call_tool(session_search)",
+            "mode": self.mode,
             "rows": self.rows,
             "db_path": str(self.db_path),
             "git_commit": _git_head(),
             "supports_exclusion": self.supports_exclusion,
         }
+
+
+class HybridMcpArm(McpArm):
+    """The same tool with the hybrid mode pinned (Stage 4)."""
+
+    name = "hybrid"
+    mode = "hybrid"
 
 
 class CliArm:
@@ -255,6 +268,8 @@ class CliArm:
     name = "cli"
     #: The CLI has no exclusion flag, so the ruler filters this arm's hits.
     supports_exclusion = False
+    #: Which retrieval mode the subprocess is pinned to.
+    mode = "lexical"
 
     def __init__(self, db_path: Path | str, rows: int = DEFAULT_ROWS) -> None:
         self.db_path = Path(db_path).expanduser()
@@ -298,6 +313,7 @@ class CliArm:
                 timeout=300,
                 check=False,
                 cwd=str(_repo_root()),
+                env={**os.environ, "STUDYLOOP_RETRIEVAL_MODE": self.mode},
             )
         except (OSError, subprocess.SubprocessError) as exc:
             raise ArmError(classify_failure(exc), str(exc)) from exc
@@ -322,10 +338,18 @@ class CliArm:
         return {
             "arm": self.name,
             "interface": f"{self.invocation} search --output-format json",
+            "mode": self.mode,
             "rows": self.rows,
             "db_path": str(self.db_path),
             "git_commit": _git_head(),
         }
+
+
+class HybridCliArm(CliArm):
+    """The CLI with the hybrid mode pinned; pays the model load per invocation."""
+
+    name = "cli-hybrid"
+    mode = "hybrid"
 
 
 # --------------------------------------------------------------------------- frozen replica
@@ -484,7 +508,9 @@ class FrozenShippedArm:
 #: Arm name -> constructor, for ``--arms mcp,cli,frozen``.
 ARMS = {
     McpArm.name: McpArm,
+    HybridMcpArm.name: HybridMcpArm,
     CliArm.name: CliArm,
+    HybridCliArm.name: HybridCliArm,
     FrozenShippedArm.name: FrozenShippedArm,
 }
 
