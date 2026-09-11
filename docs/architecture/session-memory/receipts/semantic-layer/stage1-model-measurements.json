@@ -1,0 +1,340 @@
+{
+  "corpus": {
+    "counts": {
+      "embeddable": 51729,
+      "messages_table_total": 143911,
+      "sessions_table_total": 5879,
+      "sessions_visible": 4600,
+      "visible_all_roles_any_length": 132442,
+      "visible_all_roles_len_ge_50": 51855,
+      "visible_user_assistant_any_length": 132315
+    },
+    "crude_byte_ruler_for_comparison_only": {
+      "count_over_2000_chars_full_set": 7446,
+      "note": "The plan's 2 KB ruler. It understates real overflow at a 256-token cap (14.39% vs 21.8% measured) and roughly matches a 512-token cap (15.65%).",
+      "share_over_2000_chars_full_set": 0.143942
+    },
+    "db": "/Users/ataylor/.config/studyloop/sessions.db",
+    "embeddable_definition": "messages.role IN ('user','assistant') AND length(messages.content) >= 50, in sessions admitted by agent_session_tools.context.scope.visibility_sql",
+    "full_set_char_distribution": {
+      "count_over_2000_chars": 7446,
+      "max": 961112,
+      "mean": 1820.0,
+      "min": 50,
+      "n": 51729,
+      "p50": 204,
+      "p90": 3271,
+      "p95": 6571,
+      "p99": 26532,
+      "share_over_2000_chars": 0.143942
+    },
+    "roles_visible": {
+      "assistant": 119292,
+      "toolResult": 127,
+      "user": 13023
+    },
+    "sample": {
+      "char_distribution": {
+        "max": 175196,
+        "mean": 1909.7,
+        "min": 50,
+        "n": 2000,
+        "p50": 201,
+        "p95": 6235,
+        "p99": 27708,
+        "share_over_2000_chars": 0.1375,
+        "total_chars": 3819480
+      },
+      "ids_sha256_of_newline_joined": "213e7ccf3259c7b52b79ae821a71993b3f10dfdce10fbf6ea3fb0b7b1ce8aafa",
+      "n": 2000,
+      "seed": 20260911,
+      "tracks_full_set": "sample share > 2,000 chars 13.75% vs full-set 14.39% (0.64 pp apart)"
+    },
+    "sql": {
+      "count": "SELECT COUNT(*) FROM messages m JOIN sessions s ON s.id = m.session_id WHERE m.role IN ('user','assistant') AND length(m.content) >= 50 AND <visibility_sql(conn,'s.id')>",
+      "n_scope_params": 7,
+      "sample": "SELECT m.id ... ORDER BY m.id, then random.Random(20260911).sample(ids, 2000)",
+      "scope_params_note": "the 7 bound values are the sorted SUPPORTED_SOURCES harness labels",
+      "visibility_fragment_rendered": "((NOT EXISTS (SELECT 1 FROM main.context_session_projects sp WHERE sp.session_id=s.id) OR 0) AND NOT EXISTS (SELECT 1 FROM main.context_tombstones tomb WHERE tomb.session_id=s.id) AND NOT EXISTS (SELECT 1 FROM main.context_retirements retired WHERE retired.kind='session' AND retired.object_id=s.id) AND NOT EXISTS (SELECT 1 FROM main.context_replica_denials denied WHERE denied.kind='session' AND denied.object_id=s.id AND denied.status!='released') AND EXISTS (SELECT 1 FROM main.sessions scoped_src WHERE scoped_src.id=s.id AND scoped_src.source IN (?,?,?,?,?,?,?)))",
+      "visibility_helper": "from agent_session_tools.context.scope import visibility_sql; sql, params = visibility_sql(conn, 's.id')  # appended as in mcp_server.session_stats / semantic_search"
+    }
+  },
+  "correction_to_prior_receipts": {
+    "delta_pct": 9.64,
+    "explanation": "lane-A.md and plan-brief.md cite 57,247 embeddable messages. That count was taken WITHOUT the visibility predicate: SELECT COUNT(*) FROM messages WHERE role IN ('user','assistant') AND length(content) >= 50 returns 57,250 today. With visibility_sql applied - which the plan requires, since a hidden session must never be embedded or returned - the embeddable set is 51,729 across 4,600 of 5,879 sessions. Every projection in this receipt uses 51,729.",
+    "measured_now": 51729,
+    "prior_figure": 57247
+  },
+  "created_utc": "2026-09-11T09:21:17+00:00",
+  "git_commit": "3826a9b4febd3eb6073189fd0a13a192f66b787c",
+  "material_threshold": "The plan defines overflow as material when > 5% of embeddable messages exceed the model's token cap. All three candidates exceed it (15.65% - 21.8%), so chunking is required whichever model Stage 4 picks.",
+  "models": [
+    {
+      "cold_load_note": "warm HF cache, no download",
+      "cold_load_seconds": 2.899,
+      "dimension": 384,
+      "max_seq_length": 256,
+      "name": "sentence-transformers/all-MiniLM-L6-v2",
+      "query_latency_ms": {
+        "max": 3.84,
+        "mean": 3.58,
+        "min": 3.32,
+        "n": 20,
+        "p50": 3.57,
+        "p95": 3.82,
+        "warm_up": "1 encode before timing",
+        "words_per_query_range": [
+          12,
+          14
+        ]
+      },
+      "storage": {
+        "bytes_per_vector_float32": 1536,
+        "projected_corpus_bytes": 79455744,
+        "projected_corpus_mb": 75.8
+      },
+      "throughput": {
+        "dtype": "float32",
+        "encode_call": "model.encode(batch_size=64, convert_to_numpy=True, normalize_embeddings=True), device='cpu'",
+        "encode_seconds": 3.91,
+        "messages_per_second": 511.55,
+        "projected_backfill_minutes": 1.69,
+        "projected_full_corpus_n": 51729,
+        "sample_n": 2000,
+        "vector_shape": [
+          2000,
+          384
+        ]
+      },
+      "token_overflow": {
+        "material_over_5pct": true,
+        "method": "model.tokenizer(batch, truncation=False, padding=False, add_special_tokens=True); count > max_seq_length",
+        "over_cap_count": 436,
+        "over_cap_share": 0.218,
+        "sample_n": 2000,
+        "tokens_max": 71913,
+        "tokens_mean": 650.1,
+        "tokens_p50": 53,
+        "tokens_p95": 2032,
+        "tokens_p99": 10152
+      },
+      "unverified": []
+    },
+    {
+      "cold_load_note": "warm HF cache, no download",
+      "cold_load_seconds": 2.865,
+      "dimension": 384,
+      "max_seq_length": 512,
+      "name": "BAAI/bge-small-en-v1.5",
+      "query_latency_ms": {
+        "max": 6.58,
+        "mean": 6.31,
+        "min": 5.86,
+        "n": 20,
+        "p50": 6.35,
+        "p95": 6.49,
+        "warm_up": "1 encode before timing",
+        "words_per_query_range": [
+          12,
+          14
+        ]
+      },
+      "storage": {
+        "bytes_per_vector_float32": 1536,
+        "projected_corpus_bytes": 79455744,
+        "projected_corpus_mb": 75.8
+      },
+      "throughput": {
+        "dtype": "float32",
+        "encode_call": "model.encode(batch_size=64, convert_to_numpy=True, normalize_embeddings=True), device='cpu'",
+        "encode_seconds": 11.16,
+        "messages_per_second": 179.18,
+        "projected_backfill_minutes": 4.81,
+        "projected_full_corpus_n": 51729,
+        "sample_n": 2000,
+        "vector_shape": [
+          2000,
+          384
+        ]
+      },
+      "token_overflow": {
+        "material_over_5pct": true,
+        "method": "model.tokenizer(batch, truncation=False, padding=False, add_special_tokens=True); count > max_seq_length",
+        "over_cap_count": 313,
+        "over_cap_share": 0.1565,
+        "sample_n": 2000,
+        "tokens_max": 71913,
+        "tokens_mean": 650.1,
+        "tokens_p50": 53,
+        "tokens_p95": 2032,
+        "tokens_p99": 10152
+      },
+      "unverified": []
+    },
+    {
+      "cold_load_note": "warm HF cache, no download",
+      "cold_load_seconds": 2.595,
+      "dimension": 768,
+      "max_seq_length": 384,
+      "name": "sentence-transformers/all-mpnet-base-v2",
+      "query_latency_ms": {
+        "max": 15.89,
+        "mean": 15.02,
+        "min": 14.35,
+        "n": 20,
+        "p50": 14.95,
+        "p95": 15.73,
+        "warm_up": "1 encode before timing",
+        "words_per_query_range": [
+          12,
+          14
+        ]
+      },
+      "storage": {
+        "bytes_per_vector_float32": 3072,
+        "projected_corpus_bytes": 158911488,
+        "projected_corpus_mb": 151.5
+      },
+      "throughput": {
+        "dtype": "float32",
+        "encode_call": "model.encode(batch_size=64, convert_to_numpy=True, normalize_embeddings=True), device='cpu'",
+        "encode_seconds": 30.88,
+        "messages_per_second": 64.77,
+        "projected_backfill_minutes": 13.31,
+        "projected_full_corpus_n": 51729,
+        "sample_n": 2000,
+        "vector_shape": [
+          2000,
+          768
+        ]
+      },
+      "token_overflow": {
+        "material_over_5pct": true,
+        "method": "model.tokenizer(batch, truncation=False, padding=False, add_special_tokens=True); count > max_seq_length",
+        "over_cap_count": 362,
+        "over_cap_share": 0.181,
+        "sample_n": 2000,
+        "tokens_max": 71913,
+        "tokens_mean": 650.1,
+        "tokens_p50": 53,
+        "tokens_p95": 2032,
+        "tokens_p99": 10152
+      },
+      "unverified": []
+    }
+  ],
+  "platform": {
+    "cpu_count": 16,
+    "machine": "arm64",
+    "python": "3.12.8",
+    "sqlite": "3.47.1",
+    "torch": "2.13.0",
+    "torch_num_threads": 12
+  },
+  "purpose": "Plan-council F3/F5/F6: token-cap overflow with each model's real tokenizer, throughput / bytes / index size at corpus scale, warm query latency, and the message-length distribution of the embeddable corpus. Measurement only - the model choice is Stage 4's bake-off on the ruler.",
+  "queries_used_for_warm_latency": [
+    "what did we decide about the sqlite vec extension for semantic search here",
+    "how does the visibility predicate hide retired harness sessions from every read path",
+    "why did we remove the gemini cli harness from the studyloop supported adapter set",
+    "explain the difference between the dev split and the sealed held out questions",
+    "where is the token cap overflow measured for each candidate embedding model today",
+    "what happened when the pre commit detect secrets hook flagged the regenerated manifest",
+    "how do i run the full test suite and the lint gates together",
+    "which model gave the best recall on the paraphrase census gold question set",
+    "what is the plan for chunking long assistant messages before embedding them",
+    "describe the scope policy error raised when project definitions have not been applied",
+    "how many embeddable user and assistant messages exist in the visible sessions today",
+    "what did the council say about shipping the semantic arm off by default",
+    "explain how the deterministic sample seed keeps these measurements reproducible across reruns",
+    "why is bytes per vector a worse ruler than the real tokenizer count",
+    "what were the warm query latency numbers for the small english embedding model",
+    "how does the withdrawal gate interact with the archive schema during a read",
+    "what is the projected backfill time for the whole corpus on this laptop",
+    "which harnesses are still supported after the six adapter decision was ruled final",
+    "how should the receipts separate byte stable metrics from reported wall clock timings",
+    "what integration tests must prove a scrubbed message loses its vector in transaction"
+  ],
+  "read_only": "sessions.db opened as sqlite3.connect('file:'+path+'?mode=ro', uri=True); rollback + close, never written. sqlite-vec work in a scratch :memory: db.",
+  "receipt": "stage1-model-measurements",
+  "seed": 20260911,
+  "sqlite_vec": {
+    "method": "scratch :memory: db, sqlite_vec 0.1.6 loaded, vec0 table, 57,247 random unit-norm float32 vectors inserted in one transaction; 25 KNN top-20 queries with random unit query vectors after one warm-up. N kept at 57,247 to stay comparable with the already-recorded 384-d run.",
+    "prior_recorded_384d_knn_ms": 4.8,
+    "ratio_768d_over_384d_knn_mean": 1.86,
+    "runs": [
+      {
+        "db_bytes": 177692672,
+        "db_mb": 169.5,
+        "dim": 768,
+        "index_build_seconds": 1.49,
+        "knn_top20_ms": {
+          "max": 9.62,
+          "mean": 8.54,
+          "min": 8.25,
+          "n": 25,
+          "p50": 8.44,
+          "p95": 9.32
+        },
+        "raw_float32_payload_bytes": 175862784,
+        "raw_float32_payload_mb": 167.7,
+        "sqlite_version": "3.47.1",
+        "vec_version": "v0.1.6",
+        "vectors": 57247
+      },
+      {
+        "db_bytes": 89497600,
+        "db_mb": 85.4,
+        "dim": 384,
+        "index_build_seconds": 0.92,
+        "knn_top20_ms": {
+          "max": 4.78,
+          "mean": 4.58,
+          "min": 4.42,
+          "n": 25,
+          "p50": 4.57,
+          "p95": 4.73
+        },
+        "raw_float32_payload_bytes": 87931392,
+        "raw_float32_payload_mb": 83.9,
+        "sqlite_version": "3.47.1",
+        "vec_version": "v0.1.6",
+        "vectors": 57247
+      }
+    ]
+  },
+  "tokenizer_finding": {
+    "claim": "All three candidates segment this corpus identically, so token-cap overflow differs ONLY by each model's configured cap.",
+    "evidence": "Independent check with three separate tokenizer objects (BertTokenizer vocab 30522 x2, MPNetTokenizer vocab 30527) over the first 300 sample texts: total token count 257,305 for all three, per-text counts equal.",
+    "mechanism": "lowercase WordPiece over the same 30,522-entry base vocabulary.",
+    "token_counts_shared": {
+      "chars_per_token_mean": 2.937,
+      "max": 71913,
+      "mean": 650.1,
+      "p50": 53,
+      "p95": 2032,
+      "p99": 10152
+    }
+  },
+  "unverified": [
+    {
+      "item": "first-use Hugging Face download path",
+      "reason": "all three models were already in the local HF cache (~/.cache/huggingface/hub), so no network fetch was exercised. Cold-load seconds are disk load + init, NOT download."
+    },
+    {
+      "item": "index size and KNN latency on real embeddings",
+      "reason": "measured on random unit vectors in an in-memory database. Real embeddings cluster, and an on-disk file adds page/WAL overhead, so treat these as an order-of-magnitude floor, not the shipped figure."
+    },
+    {
+      "item": "full-corpus backfill wall time",
+      "reason": "projected from a 2,000-message sample (n = 51,729 / measured msgs per second). No full backfill was run, and the projection assumes the sample's length mix and a quiet machine."
+    },
+    {
+      "item": "retrieval quality of any model",
+      "reason": "this receipt measures cost only. Recall / lift is Stage 4's bake-off on the ruler; nothing here favours a model on quality."
+    },
+    {
+      "item": "timings are reported, not byte-stable",
+      "reason": "per council kimi F5/F6 - wall-clock numbers vary with machine load and must not be compared across runs or machines."
+    }
+  ]
+}
