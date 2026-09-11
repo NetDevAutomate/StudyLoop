@@ -1,0 +1,75 @@
+{
+ "alignment_after_embed": {
+  "aligned": true,
+  "complete": true,
+  "dim": 384,
+  "eligible": 51742,
+  "embedded": 51742,
+  "hidden": 0,
+  "min_content_length": 50,
+  "missing": 0,
+  "model": "all-MiniLM-L6-v2",
+  "model_mismatch": 0,
+  "orphaned": 0,
+  "rows": 174371,
+  "stale": 0
+ },
+ "chunks": {
+  "messages": 51742,
+  "per_message_histogram": {
+   "1": 39863,
+   "2": 3057,
+   "3-5": 4186,
+   "6-20": 3397,
+   ">20": 1239,
+   "max_chunks_one_message": 1099
+  },
+  "rows": 174371,
+  "truncated": 3008
+ },
+ "clone": {
+  "clone_user_version": 48,
+  "live_user_version_before_and_after": 47,
+  "migration_48_seconds": 0.005,
+  "sessions_db_bytes": 1424175104,
+  "sidecar_bytes": 291864576,
+  "source": "~/.config/studyloop/sessions.db via VACUUM INTO (mode=ro)"
+ },
+ "embed": {
+  "batch_size": 128,
+  "chunks_per_second": 365.6,
+  "chunks_written": 174371,
+  "cli": "session-maint embed --db <clone> --model all-MiniLM-L6-v2 --batch-size 128",
+  "device": "mps",
+  "dim": 384,
+  "embedded_messages": 51742,
+  "hard_windowed_chunks": 3008,
+  "messages_per_second": 108.5,
+  "model": "all-MiniLM-L6-v2",
+  "seconds": 476.9
+ },
+ "first_attempt": {
+  "cause": "planner probed the (model, dim) index inside the correlated NOT EXISTS of the backlog query (missing count 289 s vs 0.19 s without the index)",
+  "disposition": "index removed from migration 48 before it reached any database",
+  "index_present": "idx_message_embeddings_model(model, dim)",
+  "observed_rate_chunks_per_second": 6
+ },
+ "git_commit": "c949331f638f016973cfc09514603df1b3622037 (+ uncommitted lanes B/C/A at receipt time)",
+ "index": {
+  "reconcile_after_cli": {
+   "deleted": 0,
+   "inserted": 0,
+   "seconds": 0.53
+  },
+  "vec_rows": 174371,
+  "vec_rows_equal_table_rows": true
+ },
+ "knn_latency_ms": {
+  "n": 20,
+  "note": "5 probe questions x 10 repeats, warm, MPS encode excluded",
+  "p50": 40.94,
+  "p95": 42.92,
+  "queries": 50
+ },
+ "schema": "studyloop.stage3-rehearsal/v1"
+}
