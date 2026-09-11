@@ -288,10 +288,15 @@ def frozen_session_search_queries(query: str) -> tuple[str, ...]:
 
 
 class FrozenShippedArm:
-    """Today's shipped lexical path, pinned in this file as the stage-1 control."""
+    """Today's shipped lexical path, pinned in this file as the stage-1 control.
+
+    With no exclusions requested the SQL is byte-identical to the shipped
+    tool's. ``Query.exclude_*`` adds ``NOT IN`` clauses at query time, which
+    is what lets the census score self-retrieval honestly through this arm.
+    """
 
     name = "frozen"
-    supports_exclusion = False
+    supports_exclusion = True
 
     def __init__(self, db_path: Path | str, rows: int = DEFAULT_ROWS) -> None:
         self.db_path = Path(db_path).expanduser()
@@ -335,6 +340,14 @@ class FrozenShippedArm:
                     project_clause, project_params = build_project_filter(query.project)
                     sql += " AND " + project_clause
                     params.extend(project_params)
+                if query.exclude_message_ids:
+                    excluded = sorted(query.exclude_message_ids)
+                    sql += " AND m.id NOT IN (" + ",".join("?" * len(excluded)) + ")"
+                    params.extend(excluded)
+                if query.exclude_session_ids:
+                    excluded = sorted(query.exclude_session_ids)
+                    sql += " AND s.id NOT IN (" + ",".join("?" * len(excluded)) + ")"
+                    params.extend(excluded)
                 sql += " ORDER BY bm25(messages_fts), m.timestamp DESC LIMIT ?"
                 params.append(self.rows)
                 rows = conn.execute(sql, params).fetchall()

@@ -43,6 +43,8 @@ class ItemScore:
     error_kind: str | None = None
     error: str | None = None
     latency_ms: float = 0.0
+    #: Ranked session ids the arm returned -- parity between arms is list-level.
+    ranked: tuple[str, ...] = ()
 
     def value(self, field: Field) -> float:
         return float(self.hit) if field == "hit" else self.rr
@@ -57,6 +59,7 @@ class ItemScore:
             "error_kind": self.error_kind,
             "error": self.error,
             "latency_ms": self.latency_ms,
+            "ranked": list(self.ranked),
         }
 
 

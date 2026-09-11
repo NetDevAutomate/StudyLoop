@@ -146,18 +146,25 @@ def test_census_sees_the_planted_twins_and_the_unwinnable_boilerplate(
         boiler = [q for q in questions if q.text.strip() == BOILERPLATE]
         assert len(boiler) == len(toy.boilerplate_sessions)
         assert all(q.twins == len(toy.boilerplate_sessions) - 1 for q in boiler)
-        assert all(q.unwinnable(K) for q in boiler)
+        assert all(q.tied(K) for q in boiler)
         twins = [
             q for q in questions if q.session_id in toy.twin_sessions and q.twins == 1
         ]
         assert {q.session_id for q in twins} == set(toy.twin_sessions)
-        assert not any(q.unwinnable(K) for q in twins)
+        assert not any(q.tied(K) for q in twins)
 
-        result = run_census(conn, build_arm("mcp", toy.db_path, 4 * K), questions, k=K)
+        # The shipped tool cannot exclude the question itself (no message ids),
+        # so the census refuses it; the frozen replica excludes at SQL level.
+        with pytest.raises(ValueError, match="cannot exclude"):
+            run_census(conn, build_arm("mcp", toy.db_path, K), questions, k=K)
+        result = run_census(conn, build_arm("frozen", toy.db_path, K), questions, k=K)
     finally:
         conn.close()
-    assert result.n_unwinnable == len(toy.boilerplate_sessions)
-    assert result.ceiling == pytest.approx(1 - result.n_unwinnable / result.n_eligible)
-    assert 0.0 <= result.hit_rate_of_ceiling <= 1.0
-    assert result.hits_unwinnable <= result.n_unwinnable
-    assert result.miss_vocab + result.miss_ranking + result.hits == result.n_eligible
+    assert result.n_tied == len(toy.boilerplate_sessions)
+    assert result.untied_share == pytest.approx(1 - result.n_tied / result.n_eligible)
+    assert 0.0 <= result.hit_rate_untied <= 1.0
+    assert result.hits_tied <= result.n_tied
+    assert (
+        result.miss_vocab + result.miss_crash + result.miss_ranking + result.hits
+        == result.n_eligible
+    )

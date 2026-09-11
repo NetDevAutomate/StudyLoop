@@ -140,15 +140,16 @@ def census_db(tmp_path: Path) -> sqlite3.Connection:
 
 
 class FakeArm:
-    """A ruler-side-exclusion arm returning rankings the test planted.
+    """An exclusion-capable arm returning rankings the test planted.
 
-    ``supports_exclusion = False`` on purpose: it exercises the census's
-    ``rows = 4 * k`` request plus :func:`~agent_session_tools.eval.seam.apply_exclusions`,
-    which is the path a real MCP or CLI arm takes.
+    ``supports_exclusion = True``: like the frozen arm's ``NOT IN`` clauses, it
+    drops the query's excluded message ids and sessions itself, which is the
+    only kind of arm a self-retrieval census may run through (the census
+    refuses the other kind -- see :class:`NoExclusionArm`).
     """
 
     name = "fake"
-    supports_exclusion = False
+    supports_exclusion = True
 
     def __init__(
         self,
@@ -164,14 +165,26 @@ class FakeArm:
         self.calls.append((query, k))
         if self.crash_on is not None and self.crash_on in query.text:
             raise ArmError("backtick", "fts5: unterminated ` in query")
-        ranked = self.rankings.get(query.text, [])
+        ranked = [
+            (session_id, message_id)
+            for session_id, message_id in self.rankings.get(query.text, [])
+            if message_id not in query.exclude_message_ids
+            and session_id not in query.exclude_session_ids
+        ]
         return [
             Hit(session_id, (message_id,), None, "fake")
             for session_id, message_id in ranked
-        ]
+        ][:k]
 
     def describe(self) -> dict[str, object]:
         return {"arm": "fake", "planted": len(self.rankings)}
+
+
+class NoExclusionArm(FakeArm):
+    """What the shipped MCP tool is today: no message ids, no way to exclude."""
+
+    name = "no-exclusion"
+    supports_exclusion = False
 
 
 def _by_id(questions: list[CensusQuestion]) -> dict[str, CensusQuestion]:
@@ -204,17 +217,17 @@ def test_twins_count_other_visible_sessions_only(census_db):
     # count, so one twin each, and both stay winnable at K=5.
     assert by_id["m-alpha-q"].twins == 1
     assert by_id["m-beta-q"].twins == 1
-    assert by_id["m-alpha-q"].unwinnable(K) is False
+    assert by_id["m-alpha-q"].tied(K) is False
 
     # Q2 lives in eight sessions: seven twins each, 7 + 1 > 5.
     assert by_id["m-twin-1-q"].twins == 7
-    assert all(by_id[f"m-twin-{n}-q"].unwinnable(K) is True for n in range(1, 9))
-    assert by_id["m-twin-1-q"].unwinnable(7) is True
-    assert by_id["m-twin-1-q"].unwinnable(8) is False
+    assert all(by_id[f"m-twin-{n}-q"].tied(K) is True for n in range(1, 9))
+    assert by_id["m-twin-1-q"].tied(7) is True
+    assert by_id["m-twin-1-q"].tied(8) is False
 
     # A question with no twin is winnable at any k >= 1.
     assert by_id["m-island-q"].twins == 0
-    assert by_id["m-island-q"].unwinnable(1) is False
+    assert by_id["m-island-q"].tied(1) is False
 
 
 def test_whitespace_normalised_text_still_counts_as_a_twin(census_db):
@@ -277,16 +290,14 @@ def test_zero_overlap_miss_is_a_vocabulary_gap_and_a_worded_miss_is_ranking(cens
     assert result.hits == 0
 
 
-def test_own_message_is_excluded_by_apply_exclusions_so_the_session_drops_out(
-    census_db,
-):
+def test_own_message_is_excluded_at_query_time_so_the_session_drops_out(census_db):
     """The arm ranks alpha's own question first; the census must not count it."""
     arm = FakeArm({Q1: [("sess-alpha", "m-alpha-q"), ("sess-beta", "m-beta-q")]})
     questions = [q for q in collect_questions(census_db) if q.message_id == "m-alpha-q"]
     result = run_census(census_db, arm, questions, k=K)
 
     query, requested = arm.calls[0]
-    assert requested == 4 * K
+    assert requested == K
     assert query.exclude_message_ids == frozenset({"m-alpha-q"})
     row = result.rows[0]
     assert row.hit is False
@@ -329,18 +340,21 @@ def test_ceiling_arithmetic_counts_unwinnable_twins_out_of_the_denominator(censu
     result = run_census(census_db, arm, questions, k=K)
 
     assert result.n_eligible == 11
-    assert result.n_unwinnable == 8
-    assert result.ceiling == pytest.approx(3 / 11)
+    assert result.n_tied == 8
+    assert result.untied_share == pytest.approx(3 / 11)
     # alpha hits; among the twins only sess-twin-1 gets its own session back.
     assert result.hits == 2
     assert result.hit_rate == pytest.approx(2 / 11)
     # The twin hit is luck on an unwinnable question: reported, never credited.
-    assert result.hits_unwinnable == 1
-    assert result.hit_rate_of_ceiling == pytest.approx(1 / 3)
+    assert result.hits_tied == 1
+    assert result.hit_rate_untied == pytest.approx(1 / 3)
     assert result.miss_ranking == 8
-    assert result.miss_ranking_winnable == 1
+    assert result.miss_ranking_untied == 1
     assert result.miss_vocab == 1
-    assert result.miss_vocab + result.miss_ranking + result.hits == result.n_eligible
+    assert (
+        result.miss_vocab + result.miss_crash + result.miss_ranking + result.hits
+        == result.n_eligible
+    )
 
 
 def test_twin_histogram_and_per_source_breakdown(census_db):
@@ -351,14 +365,15 @@ def test_twin_histogram_and_per_source_breakdown(census_db):
     assert sum(result.twin_histogram.values()) == result.n_eligible
     assert result.by_source["kiro_cli"]["n"] == 10
     assert result.by_source["kiro_cli"]["hits"] == 1
-    assert result.by_source["kiro_cli"]["unwinnable"] == 8
+    assert result.by_source["kiro_cli"]["tied"] == 8
     assert result.by_source["claude_code"] == {
         "n": 1,
-        "unwinnable": 0,
+        "tied": 0,
         "hits": 0,
         "miss_vocab": 0,
+        "miss_crash": 0,
         "miss_ranking": 1,
-        "miss_ranking_winnable": 1,
+        "miss_ranking_untied": 1,
         "hit_rate": 0.0,
     }
 
@@ -371,11 +386,11 @@ def test_examples_quote_zero_overlap_and_winnable_ranking_misses(census_db):
     ]
     assert result.zero_overlap_examples[0]["text"] == ISLAND_Q[:160]
     winnable = {
-        example["session_id"] for example in result.winnable_ranking_miss_examples
+        example["session_id"] for example in result.untied_ranking_miss_examples
     }
     # The eight unwinnable twin questions are ranking misses but not headroom.
     assert winnable == {"sess-alpha", "sess-beta"}
-    assert len(result.winnable_ranking_miss_examples) == 2
+    assert len(result.untied_ranking_miss_examples) == 2
 
 
 def test_an_arm_crash_is_a_miss_not_a_skip(census_db):
@@ -424,7 +439,7 @@ def test_receipt_is_json_able_and_keeps_timings_out_of_the_metrics(census_db, tm
 
     assert json.loads(json.dumps(receipt))["artefact"] == "paraphrase-census"
     assert receipt["metrics"]["n_eligible"] == 11
-    assert receipt["metrics"]["n_unwinnable"] == 8
+    assert receipt["metrics"]["n_tied"] == 8
     assert receipt["metrics"]["twin_histogram"] == {"0": 1, "1": 2, "7": 8}
     assert receipt["arm"] == {"name": "fake", "config": {"arm": "fake", "planted": 1}}
     assert receipt["database"]["size_bytes"] == len(b"not really a database")
@@ -447,3 +462,20 @@ def test_the_tokenizer_stems_stops_and_drops_bare_numbers():
     assert "src/agent_session_tools/eval" in content_tokens(
         "read src/agent_session_tools/eval"
     )
+
+
+def test_census_refuses_an_arm_that_cannot_exclude_the_question_itself(census_db):
+    """Fail closed: through such an arm a hit could be the question finding itself."""
+    arm = NoExclusionArm({Q1: [("sess-alpha", "m-alpha-q")]})
+    questions = [q for q in collect_questions(census_db) if q.message_id == "m-alpha-q"]
+    with pytest.raises(ValueError, match="cannot exclude"):
+        run_census(census_db, arm, questions, k=K)
+
+
+def test_ruler_side_exclusion_drops_hits_of_unknown_provenance():
+    """A hit with no message ids cannot be cleared when messages are excluded."""
+    from agent_session_tools.eval.seam import apply_exclusions
+
+    query = Query("q", exclude_message_ids=frozenset({"m-1"}))
+    hits = [Hit("s-unknown", ()), Hit("s-clean", ("m-2",)), Hit("s-self", ("m-1",))]
+    assert [h.session_id for h in apply_exclusions(hits, query, 5)] == ["s-clean"]

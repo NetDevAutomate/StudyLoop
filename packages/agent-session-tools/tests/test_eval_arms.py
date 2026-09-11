@@ -212,7 +212,9 @@ class TestRegistry:
     def test_every_registered_arm_builds_and_reports_its_name(self, name, eval_db):
         arm = build_arm(name, eval_db, rows=4)
         assert arm.name == name
-        assert arm.supports_exclusion is False
+        # Only the frozen replica can exclude at query time (NOT IN clauses); the
+        # shipped tool returns no message ids and the CLI has no such flag.
+        assert arm.supports_exclusion is (arm.name == "frozen")
         assert arm.describe()["rows"] == 4
 
     def test_an_unknown_arm_is_refused(self, eval_db):

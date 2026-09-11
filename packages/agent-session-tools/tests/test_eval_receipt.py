@@ -140,7 +140,12 @@ class TestSchema:
             "comparisons",
             "metrics_sha256",
         }
-        assert set(receipt["db"]) == {"path", "size_bytes", "fingerprint"}
+        assert set(receipt["db"]) == {"path", "size_bytes", "fingerprint", "visibility"}
+        assert set(receipt["db"]["visibility"]) == {
+            "admitted_sources",
+            "visible_sessions",
+            "total_sessions",
+        }
         assert receipt["db"]["size_bytes"] > 0
         assert receipt["gold"]["sha256"] == "deadbeef"
         assert receipt["gold"]["n"] == 3

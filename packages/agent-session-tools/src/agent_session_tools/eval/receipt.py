@@ -33,6 +33,33 @@ if TYPE_CHECKING:
 UNSTABLE_KEYS = ("created_utc", "latency_ms", "metrics_sha256", "elapsed_ms")
 
 
+def resolved_visibility(db_path: Path | str) -> dict[str, Any]:
+    """What the scope policy resolved to when this receipt was written.
+
+    Records the admitted source list and the visible/total session counts so
+    two receipts can be compared for corpus identity, not just fingerprint
+    equality (stage-1 council F5).
+    """
+    from agent_session_tools.context.scope import visibility_sql
+    from agent_session_tools.sources import SUPPORTED_SOURCES
+
+    path = Path(db_path).expanduser()
+    conn = sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)
+    try:
+        visible, params = visibility_sql(conn, "s.id")
+        total = conn.execute("SELECT COUNT(*) FROM sessions").fetchone()[0]
+        shown = conn.execute(
+            "SELECT COUNT(*) FROM sessions s WHERE " + visible, params
+        ).fetchone()[0]
+    finally:
+        conn.close()
+    return {
+        "admitted_sources": sorted(SUPPORTED_SOURCES),
+        "visible_sessions": int(shown),
+        "total_sessions": int(total),
+    }
+
+
 def db_fingerprint(db_path: Path | str) -> str:
     """Digest of ``(session_id, source, visible, message_count)`` over every session.
 
@@ -84,6 +111,7 @@ def build_receipt(
         "db": {
             "path": str(path),
             "size_bytes": path.stat().st_size if path.exists() else 0,
+            "visibility": resolved_visibility(path),
             "fingerprint": fingerprint
             if fingerprint is not None
             else db_fingerprint(path),

@@ -181,6 +181,7 @@ def score_arm(arm: Retriever, items: Sequence[dict[str, Any]], k: int = K) -> Ar
             error_kind=error_kind,
             error=error,
             latency_ms=latency_ms,
+            ranked=tuple(ranked),
         )
     return ArmResult(
         name=arm.name,

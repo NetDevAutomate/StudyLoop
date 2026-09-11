@@ -19,16 +19,16 @@ Proxy: every learner turn in a human-driven session (session id not
    ``k`` distinct sessions returned. A miss is classed ``vocabulary_gap`` when
    overlap is ``0.0`` (no token could have matched) and ``ranking`` otherwise.
 
-**Twin-aware ceiling (plan council F6).** Some questions cannot be won by any
+**Twin-aware untied_share (plan council F6).** Some questions cannot be won by any
 ranker. When the same question text appears verbatim in more than ``k``
 sessions, every one of those sessions is an equally good lexical *and* semantic
 match -- identical text ties any text ranker and any embedding -- so the own
 session's presence in the top ``k`` is a coin toss, not retrieval quality. A
-question is therefore *unwinnable* iff ``twins + 1 > k``, where ``twins`` is
+question is therefore *tied* iff ``twins + 1 > k``, where ``twins`` is
 the number of OTHER visible sessions holding a user message with the same
-(whitespace-normalised) text. ``hit_rate_of_ceiling`` divides hits on
-*winnable* questions by the winnable population -- the number an arm is
-actually accountable for -- and ``miss_ranking_winnable`` is the real headroom.
+(whitespace-normalised) text. ``hit_rate_untied`` divides hits on
+*untied* questions by the untied population -- the number an arm is
+actually accountable for -- and ``miss_ranking_untied`` is the real headroom.
 
 Limits, stated up front: this compares a question with its OWN session, where
 the assistant usually echoes the learner's terms. A real cross-session lookup
@@ -105,6 +105,7 @@ TOKEN_RE = re.compile(r"[a-z0-9_][a-z0-9_./-]{1,}")
 
 _MISS_VOCABULARY = "vocabulary_gap"
 _MISS_RANKING = "ranking"
+_MISS_CRASH = "crash"
 
 _METHOD = (
     "Every learner turn in a visible non-agent session is treated as a question "
@@ -159,7 +160,7 @@ def _normalise(text: str) -> str:
 
 @dataclass(frozen=True, slots=True)
 class CensusQuestion:
-    """One eligible learner turn and what the ceiling needs to know about it."""
+    """One eligible learner turn and what the untied_share needs to know about it."""
 
     message_id: str
     session_id: str
@@ -169,7 +170,7 @@ class CensusQuestion:
     #: Other VISIBLE sessions holding a user message with the same text.
     twins: int
 
-    def unwinnable(self, k: int) -> bool:
+    def tied(self, k: int) -> bool:
         """True when identical text in more than ``k`` sessions ties any ranker."""
         return self.twins + 1 > k
 
@@ -183,7 +184,7 @@ class CensusRow:
     source: str
     text: str
     twins: int
-    unwinnable: bool
+    tied: bool
     overlap: float
     hit: bool
     rank: int | None
@@ -198,27 +199,30 @@ class CensusResult:
     arm: str
     k: int
     n_eligible: int
-    n_unwinnable: int
+    n_tied: int
     #: Winnable share of the population -- the highest hit rate any arm can reach.
-    ceiling: float
+    untied_share: float
     hits: int
     hit_rate: float
     #: Hits on questions no text ranker can win (a tie broken the arm's way).
     #: Reported, never credited: they are luck, not retrieval.
-    hits_unwinnable: int
-    #: ``(hits - hits_unwinnable) / (n_eligible - n_unwinnable)`` -- the share
-    #: of the *winnable* population the arm actually won. Bounded by 1.0.
-    hit_rate_of_ceiling: float
+    hits_tied: int
+    #: ``(hits - hits_tied) / (n_eligible - n_tied)`` -- the share
+    #: of the *untied* population the arm actually won. Bounded by 1.0.
+    hit_rate_untied: float
     miss_vocab: int
+    #: Questions the arm never ranked because it raised. Never folded into
+    #: ``miss_ranking``: a crash says nothing about ranking.
+    miss_crash: int
     miss_ranking: int
-    #: Ranking misses on winnable questions -- the real headroom.
-    miss_ranking_winnable: int
+    #: Ranking misses on untied questions -- the real headroom.
+    miss_ranking_untied: int
     overlap_mean: float
     overlap_median: float
     by_source: dict[str, dict[str, Any]]
     twin_histogram: dict[int, int]
     zero_overlap_examples: list[dict[str, Any]]
-    winnable_ranking_miss_examples: list[dict[str, Any]]
+    untied_ranking_miss_examples: list[dict[str, Any]]
     crashes: dict[str, int]
     rows: tuple[CensusRow, ...] = field(repr=False, default=())
     elapsed_seconds: float = 0.0
@@ -250,8 +254,8 @@ def collect_questions(
     itself is a measurable question.
 
     ``k`` is accepted so a caller collects and scores against one cut-off; the
-    twin ceiling is only meaningful relative to it (see
-    :meth:`CensusQuestion.unwinnable`). ``sample`` draws deterministically with
+    twin untied_share is only meaningful relative to it (see
+    :meth:`CensusQuestion.tied`). ``sample`` draws deterministically with
     ``random.Random(seed).sample`` over the id-ordered eligible list.
     """
     if k < 1:
@@ -374,7 +378,7 @@ def run_census(
     questions: list[CensusQuestion],
     k: int = K,
 ) -> CensusResult:
-    """Score ``arm`` on ``questions``: overlap, self-retrieval@k and the ceiling.
+    """Score ``arm`` on ``questions``: overlap, self-retrieval@k and the untied_share.
 
     ``n_eligible`` is ``len(questions)`` -- the whole eligible population, or the
     sample :func:`collect_questions` drew. An arm crash is a miss, never a skip:
@@ -383,6 +387,12 @@ def run_census(
     """
     if not questions:
         raise ValueError("The census needs at least one eligible question")
+    if not getattr(arm, "supports_exclusion", False):
+        raise ValueError(
+            f"arm {arm.name!r} cannot exclude the question's own message at query time; "
+            "a self-retrieval census through it would credit finding the question itself. "
+            "Use an arm with supports_exclusion=True (frozen, or the Stage 2 service)."
+        )
     overlaps, self_ids = _overlap_and_self_ids(conn, questions)
 
     rows: list[CensusRow] = []
@@ -390,18 +400,21 @@ def run_census(
     started = time.monotonic()
     for question in questions:
         overlap = overlaps[question.message_id]
+        crashed = False
         try:
             ranked = _ranked_sessions(arm, question, self_ids[question.message_id], k)
         except ArmError as exc:
             crashes[exc.kind] += 1
-            ranked = []
+            ranked, crashed = [], True
         except Exception as exc:  # a crash is a miss, never an aborted census
             crashes[classify_failure(exc)] += 1
-            ranked = []
+            ranked, crashed = [], True
         hit = question.session_id in ranked
         rank = ranked.index(question.session_id) + 1 if hit else None
         miss_class = None
-        if not hit:
+        if crashed:
+            miss_class = _MISS_CRASH  # never folded into ranking: the arm never ranked
+        elif not hit:
             miss_class = _MISS_VOCABULARY if overlap == 0.0 else _MISS_RANKING
         rows.append(
             CensusRow(
@@ -410,7 +423,7 @@ def run_census(
                 source=question.source,
                 text=question.text,
                 twins=question.twins,
-                unwinnable=question.unwinnable(k),
+                tied=question.tied(k),
                 overlap=overlap,
                 hit=hit,
                 rank=rank,
@@ -430,9 +443,9 @@ def _fold(
 ) -> CensusResult:
     """Aggregate per-question rows into the reported numbers."""
     n = len(rows)
-    n_unwinnable = sum(1 for r in rows if r.unwinnable)
-    winnable = n - n_unwinnable
-    hits_unwinnable = sum(1 for r in rows if r.hit and r.unwinnable)
+    n_tied = sum(1 for r in rows if r.tied)
+    untied = n - n_tied
+    hits_tied = sum(1 for r in rows if r.hit and r.tied)
     hits = sum(1 for r in rows if r.hit)
     by_source: dict[str, dict[str, Any]] = {}
     for row in rows:
@@ -440,21 +453,24 @@ def _fold(
             row.source,
             {
                 "n": 0,
-                "unwinnable": 0,
+                "tied": 0,
                 "hits": 0,
                 "miss_vocab": 0,
+                "miss_crash": 0,
                 "miss_ranking": 0,
-                "miss_ranking_winnable": 0,
+                "miss_ranking_untied": 0,
             },
         )
         bucket["n"] += 1
-        bucket["unwinnable"] += int(row.unwinnable)
+        bucket["tied"] += int(row.tied)
         bucket["hits"] += int(row.hit)
         if row.miss_class == _MISS_VOCABULARY:
             bucket["miss_vocab"] += 1
+        elif row.miss_class == _MISS_CRASH:
+            bucket["miss_crash"] += 1
         elif row.miss_class == _MISS_RANKING:
             bucket["miss_ranking"] += 1
-            bucket["miss_ranking_winnable"] += int(not row.unwinnable)
+            bucket["miss_ranking_untied"] += int(not row.tied)
     for bucket in by_source.values():
         bucket["hit_rate"] = bucket["hits"] / bucket["n"]
     overlaps = [r.overlap for r in rows]
@@ -462,16 +478,17 @@ def _fold(
         arm=arm.name,
         k=k,
         n_eligible=n,
-        n_unwinnable=n_unwinnable,
-        ceiling=winnable / n,
+        n_tied=n_tied,
+        untied_share=untied / n,
         hits=hits,
         hit_rate=hits / n,
-        hits_unwinnable=hits_unwinnable,
-        hit_rate_of_ceiling=((hits - hits_unwinnable) / winnable) if winnable else 0.0,
+        hits_tied=hits_tied,
+        hit_rate_untied=((hits - hits_tied) / untied) if untied else 0.0,
         miss_vocab=sum(1 for r in rows if r.miss_class == _MISS_VOCABULARY),
+        miss_crash=sum(1 for r in rows if r.miss_class == _MISS_CRASH),
         miss_ranking=sum(1 for r in rows if r.miss_class == _MISS_RANKING),
-        miss_ranking_winnable=sum(
-            1 for r in rows if r.miss_class == _MISS_RANKING and not r.unwinnable
+        miss_ranking_untied=sum(
+            1 for r in rows if r.miss_class == _MISS_RANKING and not r.tied
         ),
         overlap_mean=statistics.fmean(overlaps),
         overlap_median=statistics.median(overlaps),
@@ -480,10 +497,8 @@ def _fold(
         zero_overlap_examples=[_example(r) for r in rows if r.overlap == 0.0][
             :EXAMPLES
         ],
-        winnable_ranking_miss_examples=[
-            _example(r)
-            for r in rows
-            if r.miss_class == _MISS_RANKING and not r.unwinnable
+        untied_ranking_miss_examples=[
+            _example(r) for r in rows if r.miss_class == _MISS_RANKING and not r.tied
         ][:EXAMPLES],
         crashes=dict(sorted(crashes.items())),
         rows=tuple(rows),
@@ -543,15 +558,16 @@ def census_receipt(
         },
         "metrics": {
             "n_eligible": result.n_eligible,
-            "n_unwinnable": result.n_unwinnable,
-            "ceiling": round(result.ceiling, 4),
+            "n_tied": result.n_tied,
+            "untied_share": round(result.untied_share, 4),
             "hits": result.hits,
             "hit_rate": round(result.hit_rate, 4),
-            "hits_unwinnable": result.hits_unwinnable,
-            "hit_rate_of_ceiling": round(result.hit_rate_of_ceiling, 4),
+            "hits_tied": result.hits_tied,
+            "hit_rate_untied": round(result.hit_rate_untied, 4),
             "miss_vocab": result.miss_vocab,
+            "miss_crash": result.miss_crash,
             "miss_ranking": result.miss_ranking,
-            "miss_ranking_winnable": result.miss_ranking_winnable,
+            "miss_ranking_untied": result.miss_ranking_untied,
             "overlap": {
                 "mean": round(result.overlap_mean, 4),
                 "median": round(result.overlap_median, 4),
@@ -570,7 +586,7 @@ def census_receipt(
         },
         "examples": {
             "zero_overlap": result.zero_overlap_examples,
-            "winnable_ranking_miss": result.winnable_ranking_miss_examples,
+            "winnable_ranking_miss": result.untied_ranking_miss_examples,
         },
         "timings": {
             "elapsed_seconds": round(result.elapsed_seconds, 3),

@@ -134,11 +134,17 @@ def apply_exclusions(hits: list[Hit], query: Query, k: int) -> list[Hit]:
     """Ruler-side exclusion for arms that cannot filter at query time.
 
     Drops excluded sessions and excluded message ids; a hit whose every
-    message was excluded disappears. Truncates to ``k``.
+    message was excluded disappears, and so does a hit that carries no
+    message ids when messages are being excluded (unknown provenance is
+    treated as excluded -- fail closed). Truncates to ``k``.
     """
     out: list[Hit] = []
     for hit in hits:
         if hit.session_id in query.exclude_session_ids:
+            continue
+        if query.exclude_message_ids and not hit.message_ids:
+            # Provenance unknown: the ruler cannot tell whether an excluded
+            # message produced this hit, so it is dropped (fail closed).
             continue
         kept = tuple(m for m in hit.message_ids if m not in query.exclude_message_ids)
         if hit.message_ids and not kept:

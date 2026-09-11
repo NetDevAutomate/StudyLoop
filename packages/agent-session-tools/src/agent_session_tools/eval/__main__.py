@@ -154,11 +154,11 @@ def _run_census(args: argparse.Namespace) -> int:
     out = write_receipt(args.out, receipt)
     crashes = ", ".join(f"{k}={n}" for k, n in result.crashes.items()) or "none"
     print(
-        f"{result.arm:>8}  eligible {result.n_eligible}  unwinnable {result.n_unwinnable}"
-        f"  ceiling {result.ceiling:.4f}  hit@{result.k} {result.hit_rate:.4f}"
-        f"  of-ceiling {result.hit_rate_of_ceiling:.4f}"
-        f"  miss vocab {result.miss_vocab}  ranking {result.miss_ranking}"
-        f" (winnable {result.miss_ranking_winnable})  crashes {crashes}"
+        f"{result.arm:>8}  eligible {result.n_eligible}  tied {result.n_tied}"
+        f"  untied-share {result.untied_share:.4f}  hit@{result.k} {result.hit_rate:.4f}"
+        f"  hit-untied {result.hit_rate_untied:.4f}"
+        f"  miss vocab {result.miss_vocab}  crash {result.miss_crash}  ranking {result.miss_ranking}"
+        f" (untied {result.miss_ranking_untied})  crashes {crashes}"
         f"  {result.elapsed_seconds:.1f} s"
     )
     print(f"receipt -> {out}")
