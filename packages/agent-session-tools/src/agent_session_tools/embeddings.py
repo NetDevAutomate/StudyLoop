@@ -45,6 +45,15 @@ SUPPORTED_MODELS = {
         "description": "State-of-art retrieval model, excellent for search",
         "hf_name": "BAAI/bge-base-en-v1.5",
     },
+    # Stage 1 bake-off candidate (semantic-layer plan): 384-d like MiniLM but a
+    # 512-token window, so a third fewer messages overflow the cap.
+    "bge-small-en-v1.5": {
+        "dimensions": 384,
+        "size_mb": 130,
+        "max_tokens": 512,
+        "description": "Small retrieval model with a 512-token window",
+        "hf_name": "BAAI/bge-small-en-v1.5",
+    },
     # Fast and small - good for initial testing
     "all-MiniLM-L6-v2": {
         "dimensions": 384,
