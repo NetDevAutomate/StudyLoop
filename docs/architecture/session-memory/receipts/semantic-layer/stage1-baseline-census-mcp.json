@@ -1,0 +1,366 @@
+{
+  "arm": {
+    "config": {
+      "arm": "mcp",
+      "db_path": "/Users/ataylor/.config/studyloop/sessions.db",
+      "git_commit": "9a48a6ad0b9cc852e617bea20b0931b876d2f4ae",
+      "interface": "fastmcp call_tool(session_search)",
+      "rows": 20
+    },
+    "name": "mcp"
+  },
+  "artefact": "paraphrase-census",
+  "database": {
+    "path": "/Users/ataylor/.config/studyloop/sessions.db",
+    "sha256": "911bc89caeb3f16ccacc188dd08f19812bf7cd07a914d63d31d1e7e66c5bdf75",
+    "size_bytes": 1069207552
+  },
+  "examples": {
+    "winnable_ranking_miss": [
+      {
+        "message_id": "000708d3-fb88-4949-bcd8-0caa647a6a67",
+        "overlap": 0.2308,
+        "session_id": "kiro_84767644-91d3-4a27-ab5e-9393117edc82",
+        "source": "kiro_cli",
+        "text": "\u276f otool -L /usr/local/bin/ytui_music\n/usr/local/bin/ytui_music:\n\t@rpath/libmpv.2.dylib (compatibility version 2.0.0, current version 2.0.0)\n\t/System/Library/Fra",
+        "twins": 0
+      },
+      {
+        "message_id": "001743dc-1755-4bd8-805e-7451384f5c80",
+        "overlap": 0.52,
+        "session_id": "kiro_89e6790d-c179-4489-bb76-f41722a5b2bf",
+        "source": "kiro_cli",
+        "text": "1) I can justify a design decision out loud without hedging. 2) I can write a test before the code it covers and not delete it later. 3) I can model a domain an",
+        "twins": 0
+      },
+      {
+        "message_id": "0034f289-265b-4cc1-b5d4-f7ab3de509d9",
+        "overlap": 0.125,
+        "session_id": "kiro_33b5a7ed-dce9-463d-8e25-ee8de07fa3d9",
+        "source": "kiro_cli",
+        "text": "Importing sheets from Excel files\nIn the previous exercises, you saw that the Excel file contains two sheets, '2002' and '2004'. The next step is to import thes",
+        "twins": 0
+      },
+      {
+        "message_id": "003de54f-a569-45cc-9bc5-296a3bdce193",
+        "overlap": 0.54,
+        "session_id": "bc4bcfac-f528-46a0-8a2b-8eeb37552f0b",
+        "source": "claude_code",
+        "text": "<observed_from_primary_session>\n  <what_happened>Bash</what_happened>\n  <occurred_at>2026-07-22T12:58:00.106Z</occurred_at>\n  <working_directory>/Volumes/Base/c",
+        "twins": 0
+      },
+      {
+        "message_id": "008d67d9-24ae-445e-961e-25a5cf2bcb46",
+        "overlap": 0.6923,
+        "session_id": "kiro_caf2a0ec-bca4-464e-84b7-ead98ef458e2",
+        "source": "kiro_cli",
+        "text": "I've corrected the attachments to CWAN to the connectivity subnets in all regions for all VPCS and us-west-2 and ap-southeast-2 work, it's only eu-west-1 not wo",
+        "twins": 0
+      },
+      {
+        "message_id": "00920344-bb58-439b-8e89-407d4a20affa",
+        "overlap": 0.3333,
+        "session_id": "kiro_f411d987-3692-4cf3-9f6d-adbb49f987d3",
+        "source": "kiro_cli",
+        "text": "git history should have a working postgressql, just v14 not v15",
+        "twins": 0
+      },
+      {
+        "message_id": "00b15d1b-29ae-5638-9095-fc0e20f6169b",
+        "overlap": 0.6667,
+        "session_id": "kiro_d4a0b7e5-6836-4acb-babf-46b32e9b5714",
+        "source": "kiro_cli",
+        "text": "please can you modify the ./scripts/install.sh to check for uv, if it's not installed, run the uv install script:   curl -LsSf https://astral.sh/uv/install.sh |",
+        "twins": 0
+      },
+      {
+        "message_id": "00e13338-b202-4a06-86f6-5820951b1774",
+        "overlap": 0.9211,
+        "session_id": "1757d171-bcda-4299-ae6c-b311fa590d5f",
+        "source": "claude_code",
+        "text": "<observed_from_primary_session>\n  <what_happened>Bash</what_happened>\n  <occurred_at>2026-07-25T10:21:01.213Z</occurred_at>\n  <working_directory>/Volumes/Base/c",
+        "twins": 0
+      },
+      {
+        "message_id": "012a703d-89fa-48ae-a1a8-8ee42e2064ff",
+        "overlap": 0.6667,
+        "session_id": "kiro_bdc63cdc-9106-475d-accd-95b9d277d529",
+        "source": "kiro_cli",
+        "text": "A fw things to note:\n- The Infographics errored - failed to create, so we should catch the errors; I tried again and it has created\n- The slides have two option",
+        "twins": 0
+      },
+      {
+        "message_id": "014d4dfb-db3f-4a65-9f84-f6f738811e7c",
+        "overlap": 0.6667,
+        "session_id": "kiro_0ddb7962-053d-4ccf-a2ce-42c92043abba",
+        "source": "kiro_cli",
+        "text": "is there anything we can do to get the zshrc to be accurage and also any changes to any of the zsh function files as these two are big ones... often installers ",
+        "twins": 0
+      },
+      {
+        "message_id": "018370f1-f041-43f5-9ee8-203dd6adda1f",
+        "overlap": 1.0,
+        "session_id": "b573a6c5-cd30-4e61-9154-b97cef84251b",
+        "source": "claude_code",
+        "text": "<command-name>/goal</command-name>\n            <command-message>goal</command-message>\n            <command-args>Please can you apply best practices and where v",
+        "twins": 0
+      },
+      {
+        "message_id": "01905398-b35a-4452-95e8-ecc359ab167d",
+        "overlap": 0.6667,
+        "session_id": "kiro_3fb79dde-cfb8-426f-9ce3-974531b97c9e",
+        "source": "kiro_cli",
+        "text": "Fantastic, please can you use the mcp server to create the IaC code  (CDK both in TypeScript and Python), both formats for CloudFormation too please - this is s",
+        "twins": 0
+      }
+    ],
+    "zero_overlap": [
+      {
+        "message_id": "03f5ad50-e0cd-4b68-b6bd-b0e44c755f55",
+        "overlap": 0.0,
+        "session_id": "kiro_729a44b7-7779-4908-8141-0e30f788ce83",
+        "source": "kiro_cli",
+        "text": "In a few words, summarize our conversation so far.",
+        "twins": 48
+      },
+      {
+        "message_id": "054749ab-6538-4272-a78e-fefd1a3b7856",
+        "overlap": 0.0,
+        "session_id": "kiro_9a59c60c-4b1d-4ef2-b0c4-d114da578848",
+        "source": "kiro_cli",
+        "text": "please can you help resolve:\n\n\u276f uv venv -p 3.14.0\nUsing CPython 3.14.0 interpreter at: /opt/homebrew/opt/python@3.14/bin/python3.14\nCreating virtual environment",
+        "twins": 0
+      },
+      {
+        "message_id": "055b6d04-f49f-40f7-a312-5b5a6136dd27",
+        "overlap": 0.0,
+        "session_id": "kiro_96fc3d99-8532-4eb7-bbcf-30bf0a4836af",
+        "source": "kiro_cli",
+        "text": "an perfect! the (N) was the missing peice! Thank you",
+        "twins": 0
+      },
+      {
+        "message_id": "07d926ab-3f0c-488f-9bbf-bbdd03f208ea",
+        "overlap": 0.0,
+        "session_id": "kiro_e51776d1-3392-44ca-b841-164a16701e0c",
+        "source": "kiro_cli",
+        "text": "what is needed to refactor this repo to allow me to install it as a uv tool (this works) but also to include the \"notebooklm-py[browser]\"?",
+        "twins": 0
+      },
+      {
+        "message_id": "09c9f463-6f5a-4123-903b-278658d6262a",
+        "overlap": 0.0,
+        "session_id": "kiro_76c9e685-20cd-4b2d-ac81-1d5e3cc6d7d3",
+        "source": "kiro_cli",
+        "text": "running: \n\nrain ls -r us-west-2 | grep -v COMPLETE | awk 'NR>1'\n  SageMakerWorkshopBase: CREATE_IN_PROGRESS\n\nHow do I set FS to : in awk so I only print the fir",
+        "twins": 0
+      },
+      {
+        "message_id": "0b9d4e7a-b073-40de-b5d3-9f6d9cb204df",
+        "overlap": 0.0,
+        "session_id": "kiro_c83626ff-f16c-4646-a954-7ba9184c8b37",
+        "source": "kiro_cli",
+        "text": "repo_init is a shell function from /Users/taylaand/.dotfiles/.config/zsh/config.d/repo_init.zsh\n\nIs there any way to update the .pre-commit.yaml to look for acc",
+        "twins": 0
+      },
+      {
+        "message_id": "0cacd784-d091-42d5-85ff-ea4618560f9a",
+        "overlap": 0.0,
+        "session_id": "kiro_3cf73360-94b3-48a6-86ae-3d5cd8c1b3a9",
+        "source": "kiro_cli",
+        "text": "In a few words, summarize our conversation so far.",
+        "twins": 48
+      },
+      {
+        "message_id": "0db91b9c-56d7-4fa1-92bf-c07e05dd0532",
+        "overlap": 0.0,
+        "session_id": "kiro_c80dbf6e-4c39-4e9b-b135-a09b5fc7e71a",
+        "source": "kiro_cli",
+        "text": "\u276f ollama ls | grep cloud | awk 'NR>1 {print $1}' | xargs -I {} ollama rm {}\ndeleted 'gpt-oss:20b-cloud'\ndeleted 'gpt-oss:120b-cloud'\ndeleted 'deepseek-v3.1:671b",
+        "twins": 0
+      },
+      {
+        "message_id": "0fd945a5-f833-4311-9fb4-d4e3a1d70ecd",
+        "overlap": 0.0,
+        "session_id": "kiro_dfa780ea-9dc3-492a-bade-5b722022ef62",
+        "source": "kiro_cli",
+        "text": "can you provide the mcp.json snippet from promptz please?",
+        "twins": 0
+      },
+      {
+        "message_id": "10593b33-d5c4-4d70-9e8f-821ba254f31c",
+        "overlap": 0.0,
+        "session_id": "kiro_98a5ff0a-56a7-41b6-ad9f-765844401a09",
+        "source": "kiro_cli",
+        "text": "{\"content\":[{\"type\":\"text\",\"text\":\"{\\n  \\\"thoughtNumber\\\": 3,\\n  \\\"totalThoughts\\\": 3,\\n  \\\"nextThoughtNeeded\\\": false,\\n  \\\"branches\\\": [],\\n  \\\"thoughtHistory",
+        "twins": 0
+      },
+      {
+        "message_id": "115bf13e-6d79-4d61-bce4-9b97f121e4da",
+        "overlap": 0.0,
+        "session_id": "kiro_a3076bb3-8010-452b-acba-91dd1a454b84",
+        "source": "kiro_cli",
+        "text": "In a few words, summarize our conversation so far.",
+        "twins": 48
+      },
+      {
+        "message_id": "14ffa550-c976-421f-a961-12b7bbbf069f",
+        "overlap": 0.0,
+        "session_id": "kiro_fc645c07-e965-492b-974d-6a136298b9f1",
+        "source": "kiro_cli",
+        "text": "what's the easiest way to find . any file or directory with the name factory in it?",
+        "twins": 0
+      }
+    ]
+  },
+  "limits": "Own-session comparison: the assistant usually echoes the learner's terms, and cross-session vocabulary drift is larger, so every paraphrase rate is a LOWER bound. Not comparable with the knowledge-proof store's census.",
+  "method": "Every learner turn in a visible non-agent session is treated as a question about its own session. Overlap is the share of the question's stemmed content tokens present in some OTHER prose message of the same session; self-retrieval@k asks the arm the question with the question's own message and its identical re-asks excluded, and records whether the own session is among the first k distinct sessions returned.",
+  "metrics": {
+    "by_source": {
+      "claude_code": {
+        "hit_rate": 0.6111,
+        "hits": 1180,
+        "miss_ranking": 725,
+        "miss_ranking_winnable": 657,
+        "miss_vocab": 26,
+        "n": 1931,
+        "unwinnable": 144
+      },
+      "codex": {
+        "hit_rate": 0.4689,
+        "hits": 498,
+        "miss_ranking": 559,
+        "miss_ranking_winnable": 425,
+        "miss_vocab": 5,
+        "n": 1062,
+        "unwinnable": 155
+      },
+      "grok": {
+        "hit_rate": 0.4573,
+        "hits": 91,
+        "miss_ranking": 108,
+        "miss_ranking_winnable": 108,
+        "miss_vocab": 0,
+        "n": 199,
+        "unwinnable": 0
+      },
+      "kiro_cli": {
+        "hit_rate": 0.4833,
+        "hits": 1073,
+        "miss_ranking": 1050,
+        "miss_ranking_winnable": 1031,
+        "miss_vocab": 97,
+        "n": 2220,
+        "unwinnable": 98
+      },
+      "opencode": {
+        "hit_rate": 0.5,
+        "hits": 8,
+        "miss_ranking": 7,
+        "miss_ranking_winnable": 7,
+        "miss_vocab": 1,
+        "n": 16,
+        "unwinnable": 0
+      },
+      "pi": {
+        "hit_rate": 1.0,
+        "hits": 6,
+        "miss_ranking": 0,
+        "miss_ranking_winnable": 0,
+        "miss_vocab": 0,
+        "n": 6,
+        "unwinnable": 0
+      }
+    },
+    "ceiling": 0.9269,
+    "crashes": {
+      "comma": 379,
+      "no-such-column": 368,
+      "other": 4,
+      "question-mark": 112,
+      "syntax:!": 27,
+      "syntax:#": 7,
+      "syntax:$": 4,
+      "syntax:%": 2,
+      "syntax:&": 2,
+      "syntax:'": 120,
+      "syntax:)": 6,
+      "syntax:*": 1,
+      "syntax:-": 9,
+      "syntax:.": 269,
+      "syntax:/": 123,
+      "syntax:5": 1,
+      "syntax::": 3,
+      "syntax:<": 803,
+      "syntax:=": 6,
+      "syntax:>": 3,
+      "syntax:@": 10,
+      "syntax:Compose": 1,
+      "syntax:[": 18,
+      "syntax:again": 1,
+      "syntax:and": 1,
+      "syntax:branch": 2,
+      "syntax:code": 3,
+      "syntax:controller": 3,
+      "syntax:curiosity": 1,
+      "syntax:edge": 2,
+      "syntax:entries": 1,
+      "syntax:hook": 1,
+      "syntax:machines": 1,
+      "syntax:need": 1,
+      "syntax:objects": 1,
+      "syntax:option": 1,
+      "syntax:options": 1,
+      "syntax:organised": 1,
+      "syntax:profile": 1,
+      "syntax:ring": 1,
+      "syntax:run": 1,
+      "syntax:them": 1,
+      "syntax:tool": 1,
+      "syntax:troubleshooting": 1,
+      "syntax:~": 44
+    },
+    "hit_rate": 0.5256,
+    "hit_rate_of_ceiling": 0.5509,
+    "hits": 2856,
+    "hits_unwinnable": 81,
+    "miss_ranking": 2449,
+    "miss_ranking_winnable": 2228,
+    "miss_vocab": 129,
+    "n_eligible": 5434,
+    "n_unwinnable": 397,
+    "overlap": {
+      "mean": 0.7107,
+      "median": 0.8
+    },
+    "twin_histogram": {
+      "0": 4644,
+      "1": 225,
+      "10": 11,
+      "13": 47,
+      "14": 45,
+      "15": 16,
+      "18": 19,
+      "2": 43,
+      "3": 103,
+      "32": 46,
+      "4": 22,
+      "48": 91,
+      "5": 41,
+      "55": 74,
+      "6": 7
+    }
+  },
+  "parameters": {
+    "k": 5,
+    "max_words": 200,
+    "min_content_tokens": 3,
+    "stop_words": 141,
+    "tokenizer": "[a-z0-9_][a-z0-9_./-]{1,}"
+  },
+  "schema": "studyloop.retrieval-eval/v1",
+  "timings": {
+    "elapsed_seconds": 142.579,
+    "questions_per_second": 38.11
+  }
+}
