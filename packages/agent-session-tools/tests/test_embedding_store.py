@@ -651,3 +651,69 @@ class TestCandidates:
         assert [(m, s) for m, s, _, _ in filtered] == [("keep", "s-kiro_cli")]
         # And the doctor sees the retired-source row as hidden until the next sweep.
         assert align.alignment_report(conn, model="fake-model", dim=DIM).hidden == 1
+
+    def test_a_reused_key_does_not_resurrect_the_old_texts_vector(self, tmp_path: Path):
+        """astra (confirmation seat): after a rewrite and a re-embed the key exists again,
+        but the sidecar still answers with the OLD text's vector and distance."""
+        conn, _ = _db(tmp_path)
+        encoder = FakeEncoder()
+        _seed(conn, {"m": LONG})
+        store.embed(conn, encoder=encoder)
+        store.reconcile(conn)
+        old_vector = encoder.encode([LONG])[0]
+        new_text = (
+            "completely different text after the exporter rewrote this message body"
+        )
+        conn.execute("UPDATE messages SET content = ? WHERE id = 'm'", (new_text,))
+        conn.commit()
+        store.embed(
+            conn, encoder=encoder
+        )  # canonical row for key m#0 exists again, new bytes
+        assert (
+            conn.execute(
+                "SELECT embedding FROM message_embeddings WHERE message_id='m'"
+            ).fetchone()[0]
+            == encoder.encode([new_text])[0]
+        )
+
+        raw = store.knn(conn, old_vector, 5)
+        assert raw and raw[0][0] == "m" and raw[0][2] < 1e-6, (
+            "the stale sidecar still answers"
+        )
+        assert store.candidates(conn, old_vector, 5) == []
+        assert store.reconcile(conn) == (1, 1), (
+            "a changed pair is one delete and one insert"
+        )
+        after = store.candidates(conn, old_vector, 5)
+        assert [(m, c) for m, _, c, _ in after] == [("m", 0)] and after[0][3] > 0.1, (
+            "after reconcile the key answers with the NEW vector's distance, never zero"
+        )
+        fresh = store.candidates(conn, encoder.encode([new_text])[0], 5)
+        assert [(m, c) for m, _, c, _ in fresh] == [("m", 0)]
+
+    def test_over_fetch_refills_until_the_live_neighbours_are_found(
+        self, tmp_path: Path
+    ):
+        """astra (confirmation seat, MINOR): forty nearer stale entries must not starve ten live ones."""
+        conn, _ = _db(tmp_path)
+        encoder = FakeEncoder()
+        stale = {f"stale{i:02d}": f"{LONG} stale variant number {i}" for i in range(40)}
+        live = {f"live{i:02d}": f"{LONG} live variant number {i}" for i in range(10)}
+        _seed(conn, {**stale, **live})
+        store.embed(conn, encoder=encoder)
+        store.reconcile(conn)
+        # Make the forty stale: rewrite their content (trigger drops the canonical rows).
+        for message_id in stale:
+            conn.execute(
+                "UPDATE messages SET content = ? WHERE id = ?",
+                (f"rewritten {message_id} " + LONG, message_id),
+            )
+        conn.commit()
+        # Probe with a stale vector so the stale forty rank first in the raw index.
+        probe = encoder.encode([stale["stale00"]])[0]
+        raw_ids = [m for m, _, _ in store.knn(conn, probe, 50)]
+        assert sum(m.startswith("stale") for m in raw_ids[:40]) >= 30, (
+            "stale ones lead the raw list"
+        )
+        found = store.candidates(conn, probe, 10)
+        assert len(found) == 10 and all(m.startswith("live") for m, _, _, _ in found)

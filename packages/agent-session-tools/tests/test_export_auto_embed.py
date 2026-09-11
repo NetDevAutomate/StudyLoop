@@ -287,3 +287,66 @@ class TestWiring:
         export_sessions._run_export(tmp_path / "sessions.db", set(), True)
 
         assert len(seen) == 1, "the auto-embed hook did not run for a successful export"
+
+
+class TestRealPath:
+    """The production caller really hands embed() a connection with no open transaction."""
+
+    def test_the_export_connection_reaches_embed_without_an_ambient_transaction(
+        self,
+        tmp_path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        import struct
+        from importlib.resources import files
+
+        from agent_session_tools import embedding_store
+        from agent_session_tools.migrations import migrate
+
+        class Encoder:
+            name, dim, max_tokens = "fake-model", 4, 64
+
+            def count_tokens(self, text: str) -> int:
+                return len(text.split())
+
+            def encode(self, texts):  # noqa: ANN001
+                return [struct.pack("<4f", 1.0, 0.0, 0.0, 0.0) for _ in texts]
+
+        db = tmp_path / "sessions.db"
+        conn = sqlite3.connect(db)
+        conn.executescript(
+            files("agent_session_tools").joinpath("schema.sql").read_text()
+        )
+        migrate(conn)
+        conn.execute("INSERT INTO sessions(id, source) VALUES ('s', 'kiro_cli')")
+        conn.execute(
+            "INSERT INTO messages(id, session_id, role, content) VALUES ('m', 's', 'user', ?)",
+            ("a learner question long enough to be embedded by the export hook path",),
+        )
+        conn.commit()  # what export_run has just done when the hook is called
+
+        seen: dict[str, bool] = {}
+        real_embed = embedding_store.embed
+
+        def spy(conn_arg, **kwargs):
+            seen["in_transaction_at_entry"] = conn_arg.in_transaction
+            return real_embed(conn_arg, encoder=Encoder(), **kwargs)
+
+        monkeypatch.setattr(embedding_store, "embed", spy)
+        monkeypatch.setattr(
+            embedding_store,
+            "availability",
+            lambda model=None: embedding_store.Availability(True, True, True, "ready"),
+        )
+        monkeypatch.setattr(
+            embedding_store, "_resolve_pin", lambda model, encoder: ("fake-model", 4)
+        )
+
+        export_sessions._maybe_auto_embed(conn)
+
+        assert seen == {"in_transaction_at_entry": False}
+        assert (
+            conn.execute("SELECT COUNT(*) FROM message_embeddings").fetchone()[0] == 1
+        )
+        assert "embedded 1 messages" in capsys.readouterr().out

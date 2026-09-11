@@ -699,14 +699,22 @@ def _vec_table_sql(conn: sqlite3.Connection) -> str | None:
 def ensure_index(conn: sqlite3.Connection, *, model: str, dim: int) -> None:
     """Load ``sqlite-vec``, attach the sidecar, and create the ``vec0`` table if absent.
 
-    A sidecar built for another dimension is not migrated: it is derived data,
-    so it is dropped and rebuilt by the next :func:`reconcile`.
+    The table carries two auxiliary columns beside the vector: ``content_sha256``
+    and ``model``, copied from the canonical row. They are what lets
+    :func:`reconcile` see that a key's vector was replaced (a re-embed after a
+    rewrite reuses the key) and what lets :func:`candidates` refuse a sidecar
+    answer that no longer matches the table -- without pulling vector bytes.
+    A sidecar built for another dimension, or without the auxiliary columns
+    (the first rehearsal's shape), is derived data: dropped and rebuilt by the
+    next :func:`reconcile`.
     """
     _attach_sidecar(conn)
     existing = _vec_table_sql(conn)
-    if existing is not None and f"float[{dim}]" not in existing:
+    if existing is not None and (
+        f"float[{dim}]" not in existing or "+content_sha256" not in existing
+    ):
         logger.info(
-            "sidecar vector index has a different dimension than %s (dim %d); rebuilding",
+            "sidecar vector index has another shape than %s (dim %d) needs; rebuilding",
             model,
             dim,
         )
@@ -715,7 +723,8 @@ def ensure_index(conn: sqlite3.Connection, *, model: str, dim: int) -> None:
     if existing is None:
         conn.execute(
             f"CREATE VIRTUAL TABLE IF NOT EXISTS {SIDECAR_SCHEMA}.{VEC_TABLE} "
-            f"USING vec0(chunk_key TEXT PRIMARY KEY, embedding float[{dim}])"
+            f"USING vec0(chunk_key TEXT PRIMARY KEY, embedding float[{dim}], "
+            "+content_sha256 TEXT, +model TEXT)"
         )
 
 
@@ -733,10 +742,14 @@ def split_chunk_key(key: str) -> tuple[str, int]:
 def reconcile(conn: sqlite3.Connection) -> tuple[int, int]:
     """Make the sidecar match ``message_embeddings`` exactly -> ``(inserted, deleted)``.
 
-    The index is derived, so this is always safe to run and is the repair for a
-    missing, stale or corrupt sidecar. It refuses only when the table itself is
-    ambiguous (rows from two dimensions), which is a job for
-    ``embedding_alignment.sweep`` first.
+    Three cases, all decided from ``(content_sha256, model)`` per chunk key so no
+    vector bytes cross into Python: a key only in the table is inserted; a key
+    only in the sidecar is deleted; a key in both whose pair differs (a re-embed
+    under a reused key, or another model under the same key) is deleted and
+    re-inserted, and counts once in each number. The index is derived, so this
+    is always safe to run and is the repair for a missing, stale or corrupt
+    sidecar. It refuses only when the table itself is ambiguous (rows from two
+    dimensions), which is a job for ``embedding_alignment.sweep`` first.
     """
     pins = conn.execute("SELECT DISTINCT model, dim FROM message_embeddings").fetchall()
     if len({int(dim) for _model, dim in pins}) > 1:
@@ -756,21 +769,23 @@ def reconcile(conn: sqlite3.Connection) -> tuple[int, int]:
     model, dim = str(pins[0][0]), int(pins[0][1])
     ensure_index(conn, model=model, dim=dim)
 
-    wanted = {
-        chunk_key(message_id, chunk_ix)
-        for message_id, chunk_ix in conn.execute(
-            "SELECT message_id, chunk_ix FROM message_embeddings"
+    wanted: dict[str, tuple[str, str]] = {
+        chunk_key(message_id, chunk_ix): (str(sha), str(row_model))
+        for message_id, chunk_ix, sha, row_model in conn.execute(
+            "SELECT message_id, chunk_ix, content_sha256, model FROM message_embeddings"
         )
     }
-    present = {
-        key
-        for (key,) in conn.execute(
-            f"SELECT chunk_key FROM {SIDECAR_SCHEMA}.{VEC_TABLE}"
+    present: dict[str, tuple[str, str]] = {
+        str(key): (str(sha), str(row_model))
+        for key, sha, row_model in conn.execute(
+            f"SELECT chunk_key, content_sha256, model FROM {SIDECAR_SCHEMA}.{VEC_TABLE}"
         )
     }
-
-    to_delete = sorted(present - wanted)
-    to_insert = sorted(wanted - present)
+    changed = {
+        key for key in wanted.keys() & present.keys() if wanted[key] != present[key]
+    }
+    to_delete = sorted((present.keys() - wanted.keys()) | changed)
+    to_insert = sorted((wanted.keys() - present.keys()) | changed)
     for key in to_delete:
         conn.execute(
             f"DELETE FROM {SIDECAR_SCHEMA}.{VEC_TABLE} WHERE chunk_key = ?", (key,)
@@ -778,14 +793,16 @@ def reconcile(conn: sqlite3.Connection) -> tuple[int, int]:
     for key in to_insert:
         message_id, chunk_ix = split_chunk_key(key)
         row = conn.execute(
-            "SELECT embedding FROM message_embeddings WHERE message_id=? AND chunk_ix=?",
+            "SELECT embedding, content_sha256, model FROM message_embeddings "
+            "WHERE message_id=? AND chunk_ix=?",
             (message_id, chunk_ix),
         ).fetchone()
         if row is None:  # deleted between the two reads; the next run settles it
             continue
         conn.execute(
-            f"INSERT INTO {SIDECAR_SCHEMA}.{VEC_TABLE}(chunk_key, embedding) VALUES (?,?)",
-            (key, row[0]),
+            f"INSERT INTO {SIDECAR_SCHEMA}.{VEC_TABLE}"
+            "(chunk_key, embedding, content_sha256, model) VALUES (?,?,?,?)",
+            (key, row[0], row[1], row[2]),
         )
     conn.commit()
     return len(to_insert), len(to_delete)
@@ -827,43 +844,64 @@ def candidates(
     n: int,
     *,
     oversample: int = 4,
+    max_oversample: int = 64,
     min_content_length: int = DEFAULT_MIN_CONTENT_LENGTH,
 ) -> list[tuple[str, str, int, float]]:
     """The semantic arm's candidate list: ``(message_id, session_id, chunk_ix, distance)``.
 
     :func:`knn` is raw and the sidecar is derived, so a key it returns may be
     stale (the message was scrubbed, deleted or re-keyed since the last
-    reconcile) or hidden (its source retired). This joins every KNN key back to
-    the canonical ``message_embeddings`` row -- same message AND chunk, so a
-    scrub that dropped the row drops the candidate -- and then to
-    ``messages``/``sessions`` under the eligibility predicate the lexical arm
-    shares. Nothing hidden and nothing stale survives, whatever the sidecar
-    holds (design D-6; Stage 3 council, astra finding 5). ``oversample`` fetches
-    ``n * oversample`` raw neighbours so filtering rarely starves the list.
+    reconcile) or hidden (its source retired). Each raw neighbour survives only
+    if all three hold:
+
+    * its canonical ``message_embeddings`` row exists AND carries the same
+      ``(content_sha256, model)`` the sidecar row does -- key existence alone
+      is not enough, because a re-embed after a rewrite reuses the key while
+      the sidecar still carries the old text's vector (Stage 3 council, astra);
+    * its message and session pass the eligibility predicate the lexical arm
+      shares (hidden never returned, design D-6);
+
+    Over-fetch starts at ``n * oversample`` raw neighbours and doubles, up to
+    ``n * max_oversample``, while the filtered list is short and the index still
+    has more to give -- a stale-heavy neighbourhood cannot starve the result
+    below what the index actually holds within that bound.
     """
     if n <= 0:
-        return []
-    raw = knn(conn, vector, n * oversample)
-    if not raw:
         return []
     eligible_sql, eligible_params = eligible_predicate(
         min_content_length=min_content_length
     )
-    out: list[tuple[str, str, int, float]] = []
-    for message_id, chunk_ix, distance in raw:
-        row = conn.execute(
-            "SELECT m.session_id FROM message_embeddings e "
-            "JOIN messages m ON m.id = e.message_id "
-            "JOIN sessions s ON s.id = m.session_id "
-            f"WHERE e.message_id = ? AND e.chunk_ix = ? AND {eligible_sql}",
-            [message_id, chunk_ix, *eligible_params],
-        ).fetchone()
-        if row is None:
-            continue
-        out.append((message_id, str(row[0]), chunk_ix, distance))
-        if len(out) == n:
-            break
-    return out
+    requested = max(n, n * oversample)
+    ceiling = max(requested, n * max_oversample)
+    while True:
+        raw = knn(conn, vector, requested)
+        out: list[tuple[str, str, int, float]] = []
+        for message_id, chunk_ix, distance in raw:
+            row = conn.execute(
+                "SELECT m.session_id, e.content_sha256, e.model FROM message_embeddings e "
+                "JOIN messages m ON m.id = e.message_id "
+                "JOIN sessions s ON s.id = m.session_id "
+                f"WHERE e.message_id = ? AND e.chunk_ix = ? AND {eligible_sql}",
+                [message_id, chunk_ix, *eligible_params],
+            ).fetchone()
+            if row is None:
+                continue
+            answered = conn.execute(
+                f"SELECT content_sha256, model FROM {SIDECAR_SCHEMA}.{VEC_TABLE} "
+                "WHERE chunk_key = ?",
+                (chunk_key(message_id, chunk_ix),),
+            ).fetchone()
+            if answered is None or (str(answered[0]), str(answered[1])) != (
+                str(row[1]),
+                str(row[2]),
+            ):
+                continue  # the sidecar answered for a vector the table no longer holds
+            out.append((message_id, str(row[0]), chunk_ix, distance))
+            if len(out) == n:
+                return out
+        if len(raw) < requested or requested >= ceiling:
+            return out
+        requested = min(requested * 2, ceiling)
 
 
 __all__ = [

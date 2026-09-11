@@ -1,0 +1,44 @@
+{
+ "candidates_call_on_clone": {
+  "distinct_sessions": 8,
+  "n": 20,
+  "returned": 20,
+  "seconds": 0.068
+ },
+ "eligibility_predicate_equivalence_live_db": {
+  "eligible_predicate_except_stage1_predicate": 0,
+  "equivalent": true,
+  "messages": 143960,
+  "stage1_predicate_except_eligible_predicate": 0
+ },
+ "git_commit_before_corrections_commit": "f8c1ff0d2f13d2a083c8d3bb980e267a965e3a83",
+ "regression_tests_added": [
+  "test_embedding_schema.py::test_simultaneous_id_and_content_change_leaves_no_vector_under_either_id[True|False]",
+  "test_embedding_schema.py::test_replay_refuses_to_drop_a_populated_legacy_session_table",
+  "test_embedding_store.py::test_embed_refuses_an_ambient_transaction",
+  "test_embedding_store.py::test_a_source_retired_between_encode_and_write_is_not_embedded",
+  "test_embedding_store.py::test_embed_sweeps_orphaned_stale_and_hidden_rows_without_being_asked",
+  "test_embedding_store.py::test_embed_still_refuses_another_models_rows_unless_told_to_replace",
+  "test_embedding_store.py::TestCandidates::test_stale_hidden_and_deleted_neighbours_are_filtered_out",
+  "test_embedding_store.py::TestCandidates::test_a_reused_key_does_not_resurrect_the_old_texts_vector",
+  "test_embedding_store.py::TestCandidates::test_over_fetch_refills_until_the_live_neighbours_are_found",
+  "test_export_auto_embed.py::TestRealPath::test_the_export_connection_reaches_embed_without_an_ambient_transaction"
+ ],
+ "schema": "studyloop.stage3-corrections/v1",
+ "sidecar_rebuild_with_aux_columns_on_clone": {
+  "first_reconcile": {
+   "deleted": 0,
+   "inserted": 174371,
+   "seconds": 6.4
+  },
+  "second_reconcile": {
+   "deleted": 0,
+   "inserted": 0,
+   "seconds": 2.26
+  },
+  "vec_rows": 174371,
+  "vec_table_sql": "CREATE VIRTUAL TABLE message_vec USING vec0(chunk_key TEXT PRIMARY KEY, embedding float[384], +content_sha256 TEXT, +model TEXT)"
+ },
+ "targeted_suite_result": "94 passed (schema, store, lifecycle, profile, hook, doctor)",
+ "working_tree": "corrections applied, not yet committed when measured"
+}
