@@ -820,6 +820,17 @@ def knn(
     """
     if n <= 0:
         return []
+    return [(m, c, d) for m, c, d, _sha, _model in _knn_with_pairs(conn, vector, n)]
+
+
+def _knn_with_pairs(
+    conn: sqlite3.Connection, vector: bytes, n: int
+) -> list[tuple[str, int, float, str, str]]:
+    """:func:`knn` plus the sidecar's ``(content_sha256, model)`` for each neighbour.
+
+    The auxiliary columns ride along with the KNN result for free; reading
+    them back per key would be a point lookup each and ``IN (...)`` makes vec0
+    scan the table."""
     _attach_sidecar(conn)
     if _vec_table_sql(conn) is None:
         raise RuntimeError(
@@ -827,14 +838,14 @@ def knn(
             "embedding_store.reconcile) to build it"
         )
     rows = conn.execute(
-        f"SELECT chunk_key, distance FROM {SIDECAR_SCHEMA}.{VEC_TABLE} "
+        f"SELECT chunk_key, distance, content_sha256, model FROM {SIDECAR_SCHEMA}.{VEC_TABLE} "
         "WHERE embedding MATCH ? AND k = ?",
         (vector, n),
     ).fetchall()
-    out: list[tuple[str, int, float]] = []
-    for key, distance in rows:
+    out: list[tuple[str, int, float, str, str]] = []
+    for key, distance, sha, model in rows:
         message_id, chunk_ix = split_chunk_key(key)
-        out.append((message_id, chunk_ix, float(distance)))
+        out.append((message_id, chunk_ix, float(distance), str(sha), str(model)))
     return out
 
 
@@ -843,7 +854,7 @@ def candidates(
     vector: bytes,
     n: int,
     *,
-    oversample: int = 4,
+    oversample: int = 1,
     max_oversample: int = 64,
     min_content_length: int = DEFAULT_MIN_CONTENT_LENGTH,
 ) -> list[tuple[str, str, int, float]]:
@@ -861,10 +872,14 @@ def candidates(
     * its message and session pass the eligibility predicate the lexical arm
       shares (hidden never returned, design D-6);
 
-    Over-fetch starts at ``n * oversample`` raw neighbours and doubles, up to
+    The raw fetch starts at ``n * oversample`` neighbours and doubles, up to
     ``n * max_oversample``, while the filtered list is short and the index still
     has more to give -- a stale-heavy neighbourhood cannot starve the result
-    below what the index actually holds within that bound.
+    below what the index actually holds within that bound. The schedule does
+    not change the answer: the result is always the first ``n`` survivors in
+    distance order, however far the fetch had to go to find them. It starts at
+    ``n`` because vec0's KNN cost grows with ``k`` (measured on 106k rows:
+    k=100 33 ms, k=400 59 ms) and a clean corpus rarely needs a refill.
     """
     if n <= 0:
         return []
@@ -874,31 +889,34 @@ def candidates(
     requested = max(n, n * oversample)
     ceiling = max(requested, n * max_oversample)
     while True:
-        raw = knn(conn, vector, requested)
+        raw = _knn_with_pairs(conn, vector, requested)
         out: list[tuple[str, str, int, float]] = []
-        for message_id, chunk_ix, distance in raw:
-            row = conn.execute(
-                "SELECT m.session_id, e.content_sha256, e.model FROM message_embeddings e "
-                "JOIN messages m ON m.id = e.message_id "
-                "JOIN sessions s ON s.id = m.session_id "
-                f"WHERE e.message_id = ? AND e.chunk_ix = ? AND {eligible_sql}",
-                [message_id, chunk_ix, *eligible_params],
-            ).fetchone()
-            if row is None:
-                continue
-            answered = conn.execute(
-                f"SELECT content_sha256, model FROM {SIDECAR_SCHEMA}.{VEC_TABLE} "
-                "WHERE chunk_key = ?",
-                (chunk_key(message_id, chunk_ix),),
-            ).fetchone()
-            if answered is None or (str(answered[0]), str(answered[1])) != (
-                str(row[1]),
-                str(row[2]),
-            ):
-                continue  # the sidecar answered for a vector the table no longer holds
-            out.append((message_id, str(row[0]), chunk_ix, distance))
-            if len(out) == n:
-                return out
+        if raw:
+            # One statement for the whole batch: the canonical rows that pass
+            # the shared predicate (row-value IN uses the primary key). The
+            # sidecar's (sha, model) came back with the KNN rows themselves.
+            placeholders = ",".join("(?,?)" for _ in raw)
+            canonical: dict[tuple[str, int], tuple[str, str, str]] = {
+                (str(r[0]), int(r[1])): (str(r[2]), str(r[3]), str(r[4]))
+                for r in conn.execute(
+                    "SELECT e.message_id, e.chunk_ix, m.session_id, e.content_sha256, e.model "
+                    "FROM message_embeddings e "
+                    "JOIN messages m ON m.id = e.message_id "
+                    "JOIN sessions s ON s.id = m.session_id "
+                    f"WHERE (e.message_id, e.chunk_ix) IN (VALUES {placeholders}) "
+                    f"AND {eligible_sql}",
+                    [*(v for m, c, *_rest in raw for v in (m, c)), *eligible_params],
+                )
+            }
+            for message_id, chunk_ix, distance, sha, model in raw:
+                row = canonical.get((message_id, chunk_ix))
+                if row is None:
+                    continue
+                if (sha, model) != (row[1], row[2]):
+                    continue  # the sidecar answered for a vector the table no longer holds
+                out.append((message_id, row[0], chunk_ix, distance))
+                if len(out) == n:
+                    return out
         if len(raw) < requested or requested >= ceiling:
             return out
         requested = min(requested * 2, ceiling)

@@ -472,23 +472,21 @@ def _semantic_ranking(
     try:
         from agent_session_tools import embedding_store
 
-        pins = conn.execute(
-            "SELECT model, dim, COUNT(*) FROM message_embeddings GROUP BY model, dim"
-        ).fetchall()
+        # One row names the pin (one model per database, kept by the store);
+        # rows of any other model can never match the sidecar's (sha, model)
+        # pair in candidates(), so no per-call census of the table is needed.
+        pin = conn.execute(
+            "SELECT model, dim FROM message_embeddings LIMIT 1"
+        ).fetchone()
     except sqlite3.OperationalError as exc:
         return [], None, f"no embeddings table ({exc})"
-    if not pins:
+    if pin is None:
         return [], None, "no vectors in message_embeddings"
-    if len(pins) > 1:
-        return (
-            [],
-            None,
-            "message_embeddings holds more than one model; run embed-check --fix",
-        )
-    model, dim, rows = str(pins[0][0]), int(pins[0][1]), int(pins[0][2])
-    ready = embedding_store.availability(model)
-    if not ready.ready:
-        return [], None, ready.reason or "semantic layer unavailable"
+    model, dim = str(pin[0]), int(pin[1])
+    if model not in _ENCODERS:  # first call in this process: is the layer even here?
+        ready = embedding_store.availability(model)
+        if not ready.ready:
+            return [], None, ready.reason or "semantic layer unavailable"
     try:
         encoder = _encoder(model)
         if int(encoder.dim) != dim:
@@ -509,7 +507,7 @@ def _semantic_ranking(
         if distance < best.get(message_id, float("inf")):
             best[message_id] = distance
     ranked = sorted(best, key=lambda m: best[m])[:FUSION_DEPTH]
-    return ranked, {"model": model, "dim": dim, "vectors": rows}, None
+    return ranked, {"model": model, "dim": dim}, None
 
 
 def _newest_first(timestamp: str | None) -> tuple[bool, str]:

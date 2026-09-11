@@ -235,7 +235,7 @@ class TestHybrid:
         info = hybrid.status.semantic
         assert info is not None
         assert info["after_filters"] <= info["candidates"] <= retrieval.FUSION_DEPTH
-        assert info["vectors"] == 2
+        assert info["model"] == "scripted-model"
 
 
 class TestFusion:

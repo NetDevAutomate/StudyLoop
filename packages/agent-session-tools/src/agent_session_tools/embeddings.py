@@ -33,7 +33,10 @@ SUPPORTED_MODELS = {
     "all-mpnet-base-v2": {
         "dimensions": 768,
         "size_mb": 420,
-        "max_tokens": 512,
+        # The published model's max_seq_length is 384 (checked 2026-09-11); the
+        # Stage 4 bake-off embedded mpnet with 512-token chunks against this
+        # entry's old value, so its tails past 384 tokens were truncated.
+        "max_tokens": 384,
         "description": "Good general-purpose model with strong semantic understanding",
         "hf_name": "sentence-transformers/all-mpnet-base-v2",
     },
