@@ -139,23 +139,24 @@ def _phrase_terms(text: str) -> tuple[tuple[str, ...], str]:
     return tuple(phrases), remainder
 
 
-def plan_query(query: str) -> QueryPlan:
-    """Turn what the caller typed into FTS5 ``MATCH`` strings that cannot fail to parse.
+def _has_operator_outside_quotes(text: str) -> bool:
+    """True when an uppercase FTS5 operator appears outside every double-quoted span.
 
-    Natural language becomes quoted content terms, tried as an AND query and
-    widened to OR when the AND form finds nothing (today's shipped behaviour,
-    pinned by the planner golden). Double-quoted spans are kept as phrases so
-    adjacency survives planning. Only an uppercase operator or the ``fts:``
-    prefix makes the query explicit FTS5, passed through verbatim.
+    ``"error OR warning" recovery`` is a phrase plus a word, not an explicit
+    query: an operator inside quotes is part of the phrase.
     """
-    stripped = query.strip()
-    if stripped.lower().startswith(FTS_PREFIX):
-        body = stripped[len(FTS_PREFIX) :].strip()
-        return QueryPlan(explicit=True, terms=(), queries=(body,) if body else ())
-    if _EXPLICIT_OPERATOR.search(stripped):
-        return QueryPlan(explicit=True, terms=(), queries=(stripped,))
+    return bool(_EXPLICIT_OPERATOR.search(_PHRASE.sub(" ", text)))
 
-    phrases, remainder = _phrase_terms(stripped)
+
+def plan_natural_language(query: str) -> QueryPlan:
+    """Plan ``query`` as natural language, never as explicit FTS5.
+
+    Double-quoted spans are kept as phrases so adjacency survives planning;
+    the remaining words become quoted content terms, tried as an AND query and
+    widened to OR when the AND form finds nothing (today's shipped behaviour,
+    pinned by the planner golden). Nothing this returns can fail to parse.
+    """
+    phrases, remainder = _phrase_terms(query.strip())
     words = _terms(remainder)
     terms = (*phrases, *words)
     if not terms:
@@ -175,6 +176,22 @@ def plan_query(query: str) -> QueryPlan:
     or_query = " OR ".join(quoted)
     queries = (and_query,) if and_query == or_query else (and_query, or_query)
     return QueryPlan(explicit=False, terms=terms, queries=queries)
+
+
+def plan_query(query: str) -> QueryPlan:
+    """Turn what the caller typed into FTS5 ``MATCH`` strings that cannot fail to parse.
+
+    Only the ``fts:`` prefix or an uppercase operator *outside* double quotes
+    makes the query explicit FTS5, passed through verbatim; everything else
+    goes to :func:`plan_natural_language`.
+    """
+    stripped = query.strip()
+    if stripped.lower().startswith(FTS_PREFIX):
+        body = stripped[len(FTS_PREFIX) :].strip()
+        return QueryPlan(explicit=True, terms=(), queries=(body,) if body else ())
+    if _has_operator_outside_quotes(stripped):
+        return QueryPlan(explicit=True, terms=(), queries=(stripped,))
+    return plan_natural_language(stripped)
 
 
 def _search_sql(
@@ -347,13 +364,13 @@ def search(
                 f"explicit FTS5 syntax was rejected ({exc}); "
                 "the query was searched as natural language instead"
             )
-            stripped = query.strip()
-            body = (
-                stripped[len(FTS_PREFIX) :]
-                if stripped.lower().startswith(FTS_PREFIX)
-                else stripped
-            )
-            query_plan = plan_query(_defuse_operators(body))
+            # Re-plan as natural language only -- never re-enter explicit
+            # detection, or ``fts:fts:x?`` and a second uppercase operator
+            # would run unguarded and crash. Every prefix is stripped.
+            body = query.strip()
+            while body.lower().startswith(FTS_PREFIX):
+                body = body[len(FTS_PREFIX) :].strip()
+            query_plan = plan_natural_language(body)
         else:
             return RetrievalResult(
                 hits=_hits(rows),
@@ -393,9 +410,4 @@ def search(
                     note=note,
                 ),
             )
-    raise AssertionError("unreachable: plan_query returned queries but none ran")
-
-
-def _defuse_operators(text: str) -> str:
-    """Lower-case the uppercase operators so a rejected explicit query plans as words."""
-    return _EXPLICIT_OPERATOR.sub(lambda m: m.group(0).lower(), text)
+    raise AssertionError("unreachable: the planner returned queries but none ran")

@@ -959,3 +959,26 @@ class TestGenerateSummaryContext:
         messages = [{"role": "user", "content": "task", "seq": 0}]
         result = _generate_summary_context(session, messages, max_tokens=10000)
         assert "tokens" in result.lower()
+
+
+class TestCouncilStage2Regressions:
+    """The two planner defects the Stage 2 seat found, through the CLI surface."""
+
+    def test_nested_fts_prefix_and_broken_syntax_never_crash_the_cli(
+        self, populated_db, capsys
+    ):
+        for query in ("fts:fts:pytest?", 'fts:"pytest" OR ? AND'):
+            search(populated_db, query, output_format="json")
+            payload = json.loads(capsys.readouterr().out)
+            status = payload["retrieval_status"]
+            assert status["plan"] in {"and", "or"}, (query, status)
+            assert "rejected" in status["note"]
+            assert payload["rows"], query
+
+    def test_an_operator_inside_quotes_is_planned_not_explicit(
+        self, populated_db, capsys
+    ):
+        search(populated_db, '"unit OR tests" pytest', output_format="json")
+        status = json.loads(capsys.readouterr().out)["retrieval_status"]
+        assert status["plan"] in {"and", "or"}
+        assert status["queries"][0] == '"unit OR tests" AND "pytest"'

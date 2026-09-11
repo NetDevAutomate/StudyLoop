@@ -359,3 +359,41 @@ def test_session_search_safely_plans_adversarial_plain_text_punctuation(
     assert [row["preview"] for row in first["rows"]] == expected
     assert first == second
     assert first["retrieval_status"]["plan"] == "or"
+
+
+def test_session_search_survives_nested_fts_prefixes_and_a_twice_broken_query(
+    planner_search,
+) -> None:
+    """Council Stage 2 F1: the fallback after a rejected explicit query must plan
+    as natural language only. Re-entering explicit detection ran ``alpha?``
+    unguarded and crashed the tool."""
+    for query in ("fts:fts:alpha?", 'fts:"alpha" OR ? AND', "fts:  fts: alpha ?"):
+        payload = planner_search(query=query)
+        status = payload["retrieval_status"]
+        assert status["plan"] in {"and", "or"}, (query, status)
+        assert "rejected" in (status["note"] or ""), (query, status)
+        assert [row["session_id"] for row in payload["rows"]] == ["sess-auth-001"]
+
+
+def test_session_search_keeps_an_operator_inside_quotes_as_part_of_the_phrase(
+    planner_search,
+) -> None:
+    """Council Stage 2 F2: ``"error OR warning" recovery`` is a phrase plus a
+    word, so it plans (and widens) like any sentence; uppercase and lowercase
+    inside the quotes must behave identically. The fixture has no message
+    containing both, so only the OR widening can reach ``error diagnostic``."""
+    upper = planner_search(query='"error OR warning" recovery')
+    lower = planner_search(query='"error or warning" recovery')
+    assert (
+        upper["retrieval_status"]["plan"] == lower["retrieval_status"]["plan"] == "or"
+    )
+    assert upper["retrieval_status"]["queries"] == [
+        '"error OR warning" AND "recovery"',
+        '"error OR warning" OR "recovery"',
+    ]
+    assert upper["rows"] == lower["rows"] or [
+        r["session_id"] for r in upper["rows"]
+    ] == [r["session_id"] for r in lower["rows"]]
+    # An operator OUTSIDE the quotes is still explicit.
+    explicit = planner_search(query='"exact phrase" OR authentication')
+    assert explicit["retrieval_status"]["plan"] == "explicit"
