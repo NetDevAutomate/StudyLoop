@@ -64,3 +64,26 @@ def test_a_phrase_with_an_inner_operator_survives_as_one_term():
         '"error OR warning" AND "recovery"',
         '"error OR warning" OR "recovery"',
     )
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        '"" OR "alpha"',  # the empty pair must not swallow the operator into a phrase
+        '"alpha"AND"bravo"',  # an operator between two phrases is outside both
+        '"unterminated OR',  # an unmatched quote opens no phrase; what follows is outside
+    ],
+)
+def test_quote_edge_cases_are_classified_by_a_scanner_not_a_regex(query):
+    """Escalation council F1/F2: the regex ``"([^"]+)"`` skipped an empty pair and
+    read ``" OR "`` as the phrase, so ``"" OR "alpha"`` planned the word ``OR``."""
+    assert plan_query(query).explicit is True
+
+
+def test_phrase_extraction_uses_the_same_scanner_as_classification():
+    plan = plan_natural_language('"" OR "alpha"')
+    assert plan.terms == ('"alpha"',)  # the empty span is dropped, OR is a stop word
+    plan = plan_natural_language('alpha "bravo')
+    assert plan.terms == ("alpha", "bravo")  # the unmatched quote is not a phrase
+    plan = plan_natural_language('"a" "b" c')
+    assert plan.terms == ('"a"', '"b"')  # phrases keep their length; ``c`` is too short

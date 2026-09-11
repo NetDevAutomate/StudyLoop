@@ -42,7 +42,6 @@ FTS_PREFIX = "fts:"
 # FTS5 operators are case-sensitive uppercase. Lowercase "and" in a sentence
 # is a word, which is exactly the distinction the shipped code got wrong.
 _EXPLICIT_OPERATOR = re.compile(r"(?<![\w\"])(AND|OR|NOT|NEAR)(?![\w\"])")
-_PHRASE = re.compile(r'"([^"]+)"')
 
 MODE_LEXICAL = "lexical"
 PLAN_AND = "and"
@@ -128,24 +127,41 @@ class QueryPlan:
     note: str | None = None
 
 
+def _split_quotes(text: str) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """Split ``text`` into the spans inside double quotes and the text outside them.
+
+    A scanner, not a regex: ``"" OR "alpha"`` has an empty phrase, an ``OR``
+    outside every quote and one real phrase, where the regex ``"([^"]+)"``
+    skipped the empty pair and read ``" OR "`` as the phrase. An unbalanced
+    trailing quote opens no phrase; what follows it is outside text.
+    """
+    parts = text.split('"')
+    if len(parts) % 2 == 0:  # odd number of quotes: the last opener is unmatched
+        parts[-2] = parts[-2] + " " + parts[-1]
+        parts = parts[:-1]
+    inside = tuple(parts[1::2])
+    outside = tuple(parts[0::2])
+    return inside, outside
+
+
 def _phrase_terms(text: str) -> tuple[tuple[str, ...], str]:
     """Lift double-quoted spans out as phrase terms; return them and the remainder."""
-    phrases: list[str] = []
-    for span in _PHRASE.findall(text):
-        cleaned = " ".join(span.replace('"', " ").split())
-        if cleaned:
-            phrases.append(f'"{cleaned}"')
-    remainder = _PHRASE.sub(" ", text)
-    return tuple(phrases), remainder
+    inside, outside = _split_quotes(text)
+    phrases = tuple(
+        f'"{cleaned}"' for span in inside if (cleaned := " ".join(span.split()))
+    )
+    return phrases, " ".join(outside)
 
 
 def _has_operator_outside_quotes(text: str) -> bool:
     """True when an uppercase FTS5 operator appears outside every double-quoted span.
 
     ``"error OR warning" recovery`` is a phrase plus a word, not an explicit
-    query: an operator inside quotes is part of the phrase.
+    query: an operator inside quotes is part of the phrase. ``"alpha"AND"bravo"``
+    is explicit: the operator sits between two phrases, outside both.
     """
-    return bool(_EXPLICIT_OPERATOR.search(_PHRASE.sub(" ", text)))
+    _, outside = _split_quotes(text)
+    return bool(_EXPLICIT_OPERATOR.search(" ".join(outside)))
 
 
 def plan_natural_language(query: str) -> QueryPlan:
