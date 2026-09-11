@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import sqlite3
 
 import click
 from rich.table import Table
@@ -232,8 +233,6 @@ def _apply_fixes(results: list[CheckResult]) -> list[str]:
         # `session-maint fts-check --fix`. Shelling out is what left the remedy
         # printed but unexecuted, and it would depend on that console script
         # being on PATH inside whatever environment doctor happens to run in.
-        import sqlite3
-
         from agent_session_tools.tiering import repair_fts
         from studyloop.doctor.database import _get_sessions_db_path
 
@@ -243,6 +242,45 @@ def _apply_fixes(results: list[CheckResult]) -> list[str]:
             f"repaired FTS index: {integrity.fts_rows:,} rows for "
             f"{integrity.messages_with_content:,} messages"
         )
+
+    if needs("database", "embeddings_alignment"):
+        # Same shape as the FTS repair above, and for the same reason: the
+        # remedy must run, not merely be printed. `sweep()` is plain SQL over
+        # `message_embeddings` (no model, no extension), so it always runs;
+        # `reconcile()` rebuilds the derived sqlite-vec sidecar and is therefore
+        # optional — a missing extension leaves the alignment repaired and the
+        # sidecar to be rebuilt by the next `session-maint embed`.
+        import importlib
+
+        from agent_session_tools import embedding_alignment
+        from studyloop.doctor.database import (
+            _configured_embedding_model,
+            _get_sessions_db_path,
+        )
+
+        model, dim = _configured_embedding_model()
+        conn = sqlite3.connect(_get_sessions_db_path())
+        try:
+            swept = embedding_alignment.sweep(conn, model=model, dim=dim)
+            conn.commit()
+            detail = (
+                f"swept {swept.deleted:,} misaligned vectors "
+                f"(orphaned {swept.orphaned:,}, stale {swept.stale:,}, "
+                f"model_mismatch {swept.model_mismatch:,}, hidden {swept.hidden:,})"
+            )
+            try:
+                store = importlib.import_module("agent_session_tools.embedding_store")
+                inserted, deleted = store.reconcile(conn)
+                conn.commit()
+                detail += f"; sidecar index reconciled (+{inserted:,}/-{deleted:,})"
+            except (ImportError, sqlite3.OperationalError) as exc:
+                # sqlite-vec absent, or no sidecar to attach: the vectors of
+                # record are already aligned, so say what did NOT run instead of
+                # failing a fix that succeeded.
+                detail += f"; sidecar index not rebuilt ({exc})"
+        finally:
+            conn.close()
+        actions.append(f"repaired embeddings alignment: {detail}")
 
     if any(r.category == "agents" and r.status in ("warn", "fail") and r.fix_auto for r in results):
         repo_root = require_repo_root()

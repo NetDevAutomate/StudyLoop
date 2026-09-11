@@ -928,6 +928,198 @@ def prune(
         )
 
 
+# ==================== Embedding Commands ====================
+
+
+def _configured_embedding(model: str | None) -> tuple[str, int]:
+    """``(model name, dim)`` from the registry -- reads config, never loads a model."""
+    from agent_session_tools.embeddings import get_model_config
+
+    if model is None:
+        cfg = _get_config().get("semantic_search", {})
+        import os
+
+        model = os.getenv("EMBEDDING_MODEL") or cfg.get("model") or "all-mpnet-base-v2"
+    return model, int(get_model_config(model)["dimensions"])
+
+
+def _min_content_length() -> int:
+    from agent_session_tools.embedding_alignment import DEFAULT_MIN_CONTENT_LENGTH
+
+    cfg = _get_config().get("semantic_search", {})
+    return int(cfg.get("min_content_length", DEFAULT_MIN_CONTENT_LENGTH))
+
+
+def _print_alignment(report) -> None:
+    print(
+        f"Model {report.model} (dim {report.dim}) — {report.rows:,} vector row(s) for "
+        f"{report.eligible:,} eligible message(s)"
+    )
+    print(f"  missing (backlog):  {report.missing:,}")
+    print(f"  orphaned:           {report.orphaned:,}")
+    print(f"  stale:              {report.stale:,}")
+    print(f"  model_mismatch:     {report.model_mismatch:,}")
+    print(f"  hidden:             {report.hidden:,}")
+
+
+@app.command("embed")
+def embed_cmd(
+    db: Annotated[Path | None, db_option] = None,
+    model: Annotated[
+        str | None,
+        typer.Option("--model", help="Embedding model (default: from config)"),
+    ] = None,
+    budget_seconds: Annotated[
+        float | None,
+        typer.Option("--budget-seconds", help="Stop between batches after N seconds"),
+    ] = None,
+    batch_size: Annotated[
+        int, typer.Option("--batch-size", help="Messages encoded per write transaction")
+    ] = 64,
+    replace_model: Annotated[
+        bool,
+        typer.Option(
+            "--replace-model",
+            help="Sweep vectors from another model/dimension first (they cannot be compared)",
+        ),
+    ] = False,
+) -> None:
+    """Embed the backlog of eligible messages, then reconcile the vector index."""
+    from agent_session_tools import embedding_store
+    from agent_session_tools.embeddings import is_available as embeddings_installed
+
+    db_path = db if db else _get_db_path()
+    if not db_path.exists():
+        print(f"❌ Database not found: {db_path}")
+        raise typer.Exit(1)
+
+    model_name, _dim = _configured_embedding(model)
+    availability = embedding_store.availability(model_name)
+    # D-8: a missing dependency is an install instruction and exit 1, never a
+    # traceback and never a silent no-op. A cold model cache is different: this
+    # command is the interactive path that is allowed to fetch it (the export
+    # hook, D-7, is the path that must not).
+    if not availability.extension_ok or not embeddings_installed():
+        print(f"❌ Semantic layer not installed: {availability.reason}")
+        if embedding_store.INSTALL_HINT not in availability.reason:
+            print(f"   {embedding_store.INSTALL_HINT}")
+        raise typer.Exit(1)
+    if not availability.model_ok:
+        print(f"⬇️  Model {model_name} is not in the local cache yet — fetching once...")
+
+    conn = sqlite3.connect(db_path)
+    try:
+        try:
+            stats = embedding_store.embed(
+                conn,
+                model=model_name,
+                budget_seconds=budget_seconds,
+                batch_size=batch_size,
+                replace_model=replace_model,
+            )
+        except ValueError as exc:  # model/dim mismatch without --replace-model
+            print(f"❌ {exc}")
+            raise typer.Exit(1) from exc
+        except RuntimeError as exc:
+            print(f"❌ {exc}")
+            raise typer.Exit(1) from exc
+
+        if stats.swept:
+            print(f"🧹 Swept {stats.swept:,} vector(s) from another model/dimension")
+        print(
+            f"✅ Embedded {stats.embedded_messages:,} message(s) "
+            f"({stats.chunks_written:,} chunk(s), {stats.truncated_chunks:,} hard-windowed) "
+            f"with {stats.model} in {stats.seconds:.1f}s"
+        )
+        if stats.skipped_changed:
+            print(
+                f"↻  Skipped {stats.skipped_changed:,} message(s) rewritten mid-run "
+                "— still in the backlog for the next run"
+            )
+        print(f"   Backlog remaining: {stats.remaining:,}")
+
+        inserted, deleted = embedding_store.reconcile(conn)
+        sidecar = embedding_store.sidecar_path(db_path)
+        size_mb = sidecar.stat().st_size / (1024 * 1024) if sidecar.exists() else 0.0
+        print(
+            f"🧭 Vector index reconciled: +{inserted:,} / -{deleted:,} "
+            f"({sidecar.name}, {size_mb:.1f} MB)"
+        )
+        logger.info(
+            "embed: %d messages, %d chunks, %d skipped, %d remaining, %.1fs",
+            stats.embedded_messages,
+            stats.chunks_written,
+            stats.skipped_changed,
+            stats.remaining,
+            stats.seconds,
+        )
+    finally:
+        conn.close()
+    raise typer.Exit(0)
+
+
+@app.command("embed-check")
+def embed_check(
+    db: Annotated[Path | None, db_option] = None,
+    fix: Annotated[
+        bool,
+        typer.Option("--fix", help="Sweep misaligned vectors and reconcile the index"),
+    ] = False,
+) -> None:
+    """Check the embedding alignment invariants (orphaned / stale / model / hidden)."""
+    from agent_session_tools import embedding_store
+    from agent_session_tools.embedding_alignment import alignment_report, sweep
+
+    db_path = db if db else _get_db_path()
+    if not db_path.exists():
+        print(f"❌ Database not found: {db_path}")
+        raise typer.Exit(1)
+
+    model_name, dim = _configured_embedding(None)
+    min_length = _min_content_length()
+    conn = sqlite3.connect(db_path)
+    try:
+        report = alignment_report(
+            conn, model=model_name, dim=dim, min_content_length=min_length
+        )
+        _print_alignment(report)
+        if report.complete:
+            print("✅ Embeddings aligned and complete")
+            raise typer.Exit(0)
+        if report.aligned:
+            # Only the embed job can shrink the backlog: it needs the model.
+            print(f"✅ Embeddings aligned; {report.missing:,} still to embed")
+            print("   Run 'session-maint embed' to work through the backlog.")
+            raise typer.Exit(0)
+
+        if not fix:
+            print("⚠️  Misaligned vectors present. Run with --fix to sweep them.")
+            raise typer.Exit(1)
+
+        swept = sweep(conn, model=model_name, dim=dim)
+        conn.commit()
+        print(
+            f"🧹 Swept {swept.deleted:,} vector(s): orphaned {swept.orphaned:,}, "
+            f"stale {swept.stale:,}, model_mismatch {swept.model_mismatch:,}, "
+            f"hidden {swept.hidden:,}"
+        )
+        try:
+            inserted, deleted = embedding_store.reconcile(conn)
+            print(f"🧭 Vector index reconciled: +{inserted:,} / -{deleted:,}")
+        except (RuntimeError, ValueError) as exc:
+            # The sidecar is derived: an unavailable extension leaves the record
+            # correct and the index stale, which the next embed rebuilds.
+            print(f"ℹ️  Vector index not reconciled ({exc}); the record is aligned.")
+
+        after = alignment_report(
+            conn, model=model_name, dim=dim, min_content_length=min_length
+        )
+        _print_alignment(after)
+        raise typer.Exit(0 if after.aligned else 1)
+    finally:
+        conn.close()
+
+
 # ==================== Main Entry Point ====================
 
 

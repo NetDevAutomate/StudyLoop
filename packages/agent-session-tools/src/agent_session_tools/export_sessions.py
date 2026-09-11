@@ -9,6 +9,8 @@ Supported sources:
 - pi coding agent (~/.pi/agent/sessions/)
 """
 
+import importlib
+import os
 import shutil
 import sqlite3
 from contextlib import nullcontext
@@ -21,6 +23,7 @@ import typer
 from agent_session_tools.config_loader import (
     get_db_path,
     get_obsidian_config,
+    get_semantic_config,
     load_config,
 )
 from agent_session_tools.exporters import (
@@ -170,6 +173,57 @@ SOURCE_CHOICES = [
 ]
 
 
+def _maybe_auto_embed(conn: sqlite3.Connection) -> None:
+    """Top up the semantic index after a successful export — bounded, never blocking.
+
+    Design D-7: ``session-export`` is what a SessionEnd hook runs, so this step
+    must never download a 90 MB model and must never hold a session close open on
+    inference. Two guards do that:
+
+    * ``availability()`` is asked first and never downloads — when the model or
+      the ``sqlite-vec`` extension is not already local, this prints the one line
+      naming ``session-maint embed`` and returns. The export still exits 0.
+    * ``embed()`` is given ``semantic_search.auto_embed_budget_seconds`` (20s by
+      default) and stops when it is spent; whatever is left stays in the backlog
+      (``missing``) for the next run or an explicit ``session-maint embed``.
+
+    ``embedding_store`` is imported lazily, inside the function: importing it at
+    module scope would pull sentence-transformers into every ``session-export``
+    process, including the ones with no semantic extra installed at all. The
+    whole hook is wrapped so that nothing here can fail an export that already
+    committed — a derived index is not worth a lost session.
+    """
+    try:
+        semantic = get_semantic_config()
+        if not semantic.get("auto_embed", True):
+            return
+
+        store = importlib.import_module("agent_session_tools.embedding_store")
+        available = store.availability()
+        if not available.ready:
+            print(
+                f"semantic index not built: {available.reason}; run session-maint embed"
+            )
+            return
+
+        budget = semantic.get("auto_embed_budget_seconds", 20)
+        # availability() has just confirmed the model is in the local cache, so
+        # the load can run offline: sentence-transformers otherwise issues a HEAD
+        # request per model file to look for updates, and a SessionEnd hook must
+        # not wait on the network (or fail without it). Process-wide, but this
+        # process is the export and ends with it.
+        os.environ.setdefault("HF_HUB_OFFLINE", "1")
+        stats = store.embed(conn, budget_seconds=budget)
+        print(
+            f"semantic index: embedded {stats.embedded_messages} messages, "
+            f"{stats.remaining} remaining ({stats.seconds:.1f}s)"
+        )
+    except Exception as exc:
+        # Deliberately broad: the export has already committed, and a derived
+        # index is never worth failing it. One line, exit 0, backlog intact.
+        print(f"warning: semantic index step skipped: {exc}")
+
+
 def _run_export(
     output_path: Path,
     sources: set[str],
@@ -263,6 +317,10 @@ def _run_export(
         print(
             f"  {row['source']}: {row['sessions']} sessions, {row['messages']} messages"
         )
+
+    # Semantic index top-up (after the commit above, while the connection is
+    # still open, and before the Obsidian branch — which can return early).
+    _maybe_auto_embed(conn)
 
     # ---------------------------------------------------------------------------
     # Obsidian vault export (after DB commit, before close)

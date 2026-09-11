@@ -1629,10 +1629,14 @@ def migrate_v48(conn: sqlite3.Connection) -> None:
             PRIMARY KEY (message_id, chunk_ix)
         )
     """)
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_message_embeddings_model "
-        "ON message_embeddings(model, dim)"
-    )
+    # No secondary index on (model, dim): measured on a 1 GB clone, its presence
+    # made the planner probe it (model=?) inside the correlated NOT EXISTS of the
+    # backlog query instead of the primary key on message_id -- 289 s against
+    # 0.19 s for the same count. Every lookup this table serves is by message_id,
+    # which the primary key already covers; the mismatch count is an inequality
+    # scan an index cannot help. Dropped here as well for databases that ran the
+    # first form of this migration before it shipped anywhere.
+    conn.execute("DROP INDEX IF EXISTS idx_message_embeddings_model")
     conn.execute("DROP TRIGGER IF EXISTS message_embeddings_content_changed")
     conn.execute("DROP TRIGGER IF EXISTS message_embeddings_message_deleted")
     # Content rewritten in place (export upsert, scrub, dedup repair) or an id

@@ -145,6 +145,7 @@ def check_sessions_db() -> list[CheckResult]:
             )
         ]
         results.extend(_check_fts_drift(conn, db_path))
+        results.extend(_check_embeddings_alignment(conn, db_path))
         results.extend(_check_legacy_sources(conn))
         conn.close()
         return results
@@ -265,5 +266,143 @@ def _check_fts_drift(conn: sqlite3.Connection, db_path: Path) -> list[CheckResul
             # This was False while the remedy string was still shown, so
             # `doctor --fix` printed the repair command and never ran it.
             fix_auto=True,
+        )
+    ]
+
+
+# The two halves of the `semantic` extra. Either one absent means the embed job
+# cannot run, so a database with no vectors is a statement of fact rather than a
+# fault (design D-8, "loud degradation").
+_SEMANTIC_EXTRA_MODULES = ("sentence_transformers", "sqlite_vec")
+
+
+def _missing_semantic_modules() -> tuple[str, ...]:
+    """Which halves of the ``semantic`` extra are absent — without importing them.
+
+    ``find_spec`` rather than a real ``import``: importing
+    ``sentence_transformers`` pulls torch and costs seconds, and this runs on
+    every ``studyloop doctor``. The condition measured is the same one D-8 names
+    (the extra is not installed), just without paying for it.
+    """
+    missing: list[str] = []
+    for name in _SEMANTIC_EXTRA_MODULES:
+        try:
+            found = importlib.util.find_spec(name) is not None
+        except (ImportError, ValueError):
+            # A broken or namespace-shadowed install is "not usable" here.
+            found = False
+        if not found:
+            missing.append(name)
+    return tuple(missing)
+
+
+def _configured_embedding_model() -> tuple[str, int | None]:
+    """``(model, dim)`` the alignment report and ``doctor --fix`` must agree on.
+
+    ``dim`` is ``None`` for a model outside ``SUPPORTED_MODELS`` (a hand-set
+    ``EMBEDDING_MODEL``), which makes the mismatch check compare the model name
+    alone instead of inventing a dimension to compare against. Lives here so the
+    check and the fix in ``cli/_doctor.py`` cannot resolve it differently — a
+    sweep against a different model than the report counted would delete the
+    vectors the report called aligned.
+    """
+    from agent_session_tools.config_loader import get_embedding_model
+    from agent_session_tools.embeddings import SUPPORTED_MODELS
+
+    model = get_embedding_model()
+    dimensions = SUPPORTED_MODELS.get(model, {}).get("dimensions")
+    return model, dimensions if isinstance(dimensions, int) else None
+
+
+def _check_embeddings_alignment(conn: sqlite3.Connection, db_path: Path) -> list[CheckResult]:
+    """Prove the ``message_embeddings`` invariant with counts rather than trust.
+
+    Migration 48's triggers are what stop a vector outliving the text it
+    describes, and the eligibility predicate is what stops a hidden session being
+    embedded at all. Those are the mechanisms; this is the proof —
+    ``embedding_alignment.alignment_report`` counts five states and this reports
+    them.
+
+    Only ``missing`` (the backlog) needs the model to shrink, so it is the one
+    state reported as a warning the learner has to act on themselves
+    (``session-maint embed``); everything else is plain SQL and
+    ``doctor --fix`` does it in-process, exactly as the FTS repair does.
+    """
+    try:
+        from agent_session_tools import embedding_alignment
+    except ImportError:
+        return []
+
+    model, dim = _configured_embedding_model()
+    try:
+        report = embedding_alignment.alignment_report(conn, model=model, dim=dim)
+    except sqlite3.OperationalError:
+        # No message_embeddings table (a database below migration 48) — nothing
+        # to check, same disposition as _check_fts_drift on a fresh DB.
+        return []
+
+    missing_modules = _missing_semantic_modules()
+    if missing_modules and report.rows == 0:
+        return [
+            CheckResult(
+                "database",
+                "embeddings_alignment",
+                "info",
+                f"semantic layer not installed ({', '.join(missing_modules)} missing); "
+                f"0 message_embeddings rows, {report.eligible:,} messages eligible",
+                "uv tool install 'agent-session-tools[semantic]'",
+                fix_auto=False,
+            )
+        ]
+
+    if report.complete:
+        return [
+            CheckResult(
+                "database",
+                "embeddings_alignment",
+                "pass",
+                f"message_embeddings aligned ({report.rows:,} vectors for "
+                f"{report.eligible:,} eligible messages, model {model})",
+                "",
+                fix_auto=False,
+            )
+        ]
+
+    if not report.aligned:
+        states = ", ".join(
+            f"{label} {count:,}"
+            for label, count in (
+                ("orphaned", report.orphaned),
+                ("stale", report.stale),
+                ("model_mismatch", report.model_mismatch),
+                ("hidden", report.hidden),
+            )
+            if count
+        )
+        return [
+            CheckResult(
+                "database",
+                "embeddings_alignment",
+                "fail",
+                f"message_embeddings misaligned: {states} (of {report.rows:,} vectors)",
+                "session-maint embed-check --fix",
+                # Auto-fixable: cli/_doctor.py calls embedding_alignment.sweep()
+                # directly, then rebuilds the derived sidecar index when the
+                # sqlite-vec extension is present.
+                fix_auto=True,
+            )
+        ]
+
+    return [
+        CheckResult(
+            "database",
+            "embeddings_alignment",
+            "warn",
+            f"message_embeddings backlog: {report.missing:,} of {report.eligible:,} "
+            f"eligible messages have no vector for {model}",
+            "session-maint embed",
+            # NOT auto-fixable: shrinking the backlog means running the model,
+            # which doctor must never do on the learner's behalf (D-7).
+            fix_auto=False,
         )
     ]

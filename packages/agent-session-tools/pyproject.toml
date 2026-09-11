@@ -66,6 +66,10 @@ semantic = [
     "sentence-transformers>=2.2.0",
     "numpy>=1.24.0",
     "einops>=0.8.2",
+    # The vec0 index lives in a sidecar database (Stage 3 D-2), so this is only
+    # ever loaded by code that asked for the semantic layer -- never by a plain
+    # connection doing maintenance.
+    "sqlite-vec>=0.1.6",
 ]
 tts = [
     "kokoro-onnx>=0.4.0",

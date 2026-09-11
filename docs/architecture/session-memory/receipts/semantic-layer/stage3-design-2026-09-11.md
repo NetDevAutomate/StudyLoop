@@ -30,7 +30,7 @@ lists the write paths; §"Lifecycle tests" below maps each to a test.
                      content_sha256 TEXT CHECK(length = 64), truncated INTEGER CHECK IN (0,1),
                      embedding BLOB, created_at TEXT, PRIMARY KEY(message_id, chunk_ix))
   ```
-  plus `idx_message_embeddings_model(model, dim)` and two triggers on `messages` that reference
+  and two triggers on `messages` that reference
   only this plain table: `message_embeddings_content_changed` (AFTER UPDATE OF content, id, WHEN
   the value actually changed → delete the message's vectors) and
   `message_embeddings_message_deleted` (AFTER DELETE → delete; covers connections with
@@ -43,11 +43,16 @@ lists the write paths; §"Lifecycle tests" below maps each to a test.
   `alignment_report()` → `AlignmentReport(eligible, embedded, missing, orphaned, stale,
   model_mismatch, hidden, rows)`, `sweep()` (deletes everything but the backlog),
   `missing_messages()` (the embed job's candidate list), `content_sha256()`.
-- **Tiering / lifecycle**: `_SESSION_CHILD_TABLES` loses `session_embeddings`;
-  `_DERIVED_TABLES = {message_embeddings}` is subtracted from `_archive_context_complete`'s
-  table set (closes lane C §4: `prune_hot` would otherwise stop evicting the moment a hot
-  vector existed, because embeddings are never synced to the full tier); purge child list and
-  the compact orphan sweep drop the dead table.
+- **Tiering / lifecycle**: `_SESSION_CHILD_TABLES` loses `session_embeddings`; the two
+  embedding tables are removed from `_archive_context_complete`'s literal table set, and
+  `_DERIVED_TABLES = {message_embeddings}` is subtracted from that set as a guard (closes lane
+  C §4: `prune_hot` would otherwise stop evicting the moment a hot vector existed, because
+  embeddings are never synced to the full tier). Lane A verified the mechanism: the literal
+  removal is the fix and the subtraction alone is not load-bearing — `message_embeddings` is
+  not in `records.TABLES` and does not start with `context_`, so it only ever entered the set
+  through the literal. The prune test is therefore bound to the outcome (eviction happens with
+  vectors present), not to either mechanism. Purge child list and the compact orphan sweep
+  drop the dead table.
 - **Retirement**: `semantic_search.py` (581 lines, zero production callers, migration-7 shape)
   and `tests/test_semantic_search.py` deleted; the storage half of `embeddings.py`
   (`embed_message` … `backfill_embeddings`) and its 21 tests removed; the model layer

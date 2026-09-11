@@ -9,6 +9,7 @@ import sys
 REQUIRED_IMPORTS = {
     "numpy": "numpy",
     "sentence_transformers": "sentence-transformers",
+    "sqlite_vec": "sqlite-vec",
 }
 
 

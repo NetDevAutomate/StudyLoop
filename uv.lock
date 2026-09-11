@@ -35,6 +35,7 @@ all = [
     { name = "numpy" },
     { name = "sentence-transformers" },
     { name = "sounddevice" },
+    { name = "sqlite-vec" },
     { name = "textual" },
     { name = "tiktoken" },
     { name = "watchdog" },
@@ -49,6 +50,7 @@ semantic = [
     { name = "einops" },
     { name = "numpy" },
     { name = "sentence-transformers" },
+    { name = "sqlite-vec" },
 ]
 test = [
     { name = "sqlite-vec" },
@@ -96,6 +98,7 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
     { name = "sentence-transformers", marker = "extra == 'semantic'", specifier = ">=2.2.0" },
     { name = "sounddevice", marker = "extra == 'tts'", specifier = ">=0.5.0" },
+    { name = "sqlite-vec", marker = "extra == 'semantic'", specifier = ">=0.1.6" },
     { name = "sqlite-vec", marker = "extra == 'test'", specifier = ">=0.1.6" },
     { name = "textual", marker = "extra == 'tui'", specifier = ">=0.40.0" },
     { name = "tiktoken", marker = "extra == 'tokens'", specifier = ">=0.5.0" },

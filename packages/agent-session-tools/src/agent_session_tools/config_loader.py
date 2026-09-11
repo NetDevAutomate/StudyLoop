@@ -85,6 +85,13 @@ DEFAULT_CONFIG = {
         "min_content_length": 50,
         # Auto-embed on export
         "auto_embed": True,
+        # Wall-clock ceiling for the auto-embed step on a single export (D-7).
+        # `session-export` runs inside a SessionEnd hook, so the embed job is
+        # bounded and skipped entirely unless the model and extension are
+        # already local -- it must never block a session close on inference,
+        # and it must never download a model. Raise it for a machine catching
+        # up on a large backlog; the backlog shrinks across runs either way.
+        "auto_embed_budget_seconds": 20,
     },
     "obsidian": {
         # Feature gate — default OFF; set to true to enable vault export
@@ -401,7 +408,9 @@ def get_semantic_config(config: dict[str, Any] | None = None) -> dict[str, Any]:
     """Get semantic search configuration.
 
     Returns:
-        Dict with model, fts_weight, semantic_weight, min_content_length, auto_embed
+        Dict with model, fts_weight, semantic_weight, min_content_length,
+        auto_embed and auto_embed_budget_seconds (the wall-clock ceiling for the
+        embed step ``session-export`` runs after a successful export).
     """
     if config is None:
         config = load_config()

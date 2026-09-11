@@ -48,7 +48,19 @@ def _isolated_studyloop_config(tmp_path, monkeypatch):
     isolated = tmp_path / "isolated-studyloop-config.yaml"
     # Legacy fixtures intentionally have no project classification. Explicitly
     # inspect that scope in tests; production defaults still require a choice.
-    isolated.write_text("memory:\n  default_scope: unclassified\n")
+    #
+    # `semantic_search.auto_embed: false` is part of the same isolation, added
+    # with the D-7 export hook: `_maybe_auto_embed` runs after every successful
+    # export and embeds for real whenever the model is ALREADY in the local
+    # Hugging Face cache — which it is on a developer's own machine. That turned
+    # unrelated export tests into minutes of CPU and pytest-timeout failures.
+    # The learner's cached model is ambient state, and keeping ambient state out
+    # of tests is exactly what this fixture is for. Tests that exercise the hook
+    # enable it explicitly and stub `embedding_store` (see
+    # test_export_auto_embed.py).
+    isolated.write_text(
+        "memory:\n  default_scope: unclassified\nsemantic_search:\n  auto_embed: false\n"
+    )
     monkeypatch.setenv("STUDYLOOP_CONFIG", str(isolated))
     monkeypatch.delenv("SESSION_CONTEXT_SCOPE", raising=False)
     import agent_session_tools.maintenance as maintenance_mod
