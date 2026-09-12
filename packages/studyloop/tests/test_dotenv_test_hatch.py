@@ -171,3 +171,66 @@ def test_accessor_returns_the_real_pre_import_export_unharmed(tmp_path: Path) ->
 
     assert proc.returncode == 0, proc.stderr
     assert proc.stdout.strip() == repr("from-real-shell-export")
+
+
+# ---------------------------------------------------------------------------
+# Import must survive an ancestor `.env` the process may not stat.
+#
+# Found 2026-09-12: with cwd under ~/.kiro/crew/… (KiroCrew's private tree,
+# which is NOT a StudyLoop harness), the parent walk reached
+# ~/.kiro/crew/.env, `is_file()` raised PermissionError(EPERM), and every
+# studyloop entry point died at import. The documented contract is "silent
+# no-op". The fault is injected at the stat boundary in the fresh interpreter
+# because a real non-traversable ancestor cannot also be a subprocess cwd.
+# ---------------------------------------------------------------------------
+
+_INJECT_EPERM_ON_LOCKED_ENV = (
+    "import pathlib, os\n"
+    "_orig = pathlib.Path.is_file\n"
+    "def _is_file(self, *a, **k):\n"
+    "    if self.name == '.env' and self.parent.name == 'locked':\n"
+    "        raise PermissionError(1, 'Operation not permitted', str(self))\n"
+    "    return _orig(self, *a, **k)\n"
+    "pathlib.Path.is_file = _is_file\n"
+    "import studyloop\n"
+    "print(repr(os.environ.get('STUDYLOOP_OTHER_THING')))\n"
+)
+
+
+def _run_with_locked_ancestor(cwd: Path) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, "-c", _INJECT_EPERM_ON_LOCKED_ENV],
+        cwd=str(cwd),
+        env={"PATH": os.environ.get("PATH", "")},
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+
+
+def test_unstatable_ancestor_env_is_skipped_not_fatal(tmp_path: Path) -> None:
+    """An ancestor `.env` that raises on stat must not crash the import."""
+    locked = tmp_path / "locked"
+    work = locked / "deeper" / "cwd"
+    work.mkdir(parents=True)
+    (locked / ".env").write_text("STUDYLOOP_OTHER_THING=locked\n")
+
+    proc = _run_with_locked_ancestor(work)
+
+    assert proc.returncode == 0, proc.stderr
+    assert proc.stdout.strip() == "None"
+    assert "PermissionError" not in proc.stderr
+
+
+def test_readable_env_above_an_unstatable_dir_still_loads(tmp_path: Path) -> None:
+    """Skipping an unreadable candidate keeps walking; a readable one above it wins."""
+    (tmp_path / ".env").write_text("STUDYLOOP_OTHER_THING=above\n")
+    locked = tmp_path / "locked"
+    work = locked / "cwd"
+    work.mkdir(parents=True)
+    (locked / ".env").write_text("STUDYLOOP_OTHER_THING=locked\n")
+
+    proc = _run_with_locked_ancestor(work)
+
+    assert proc.returncode == 0, proc.stderr
+    assert proc.stdout.strip() == "'above'"

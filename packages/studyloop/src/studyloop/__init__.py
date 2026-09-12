@@ -52,7 +52,15 @@ def _load_dotenv_once() -> Path | None:
     here = Path.cwd()
     for candidate in (here, *here.parents[:6]):
         env_file = candidate / ".env"
-        if env_file.is_file():
+        try:
+            found = env_file.is_file()
+        except OSError:
+            # An ancestor we may not stat (a sandboxed home, another tool's
+            # private directory such as ~/.kiro/crew) must not take every
+            # studyloop entry point down at import. Skip it and keep walking:
+            # the documented contract is "silent no-op", not "crash".
+            continue
+        if found:
             load_dotenv(env_file, override=False)
             return env_file
     return None
