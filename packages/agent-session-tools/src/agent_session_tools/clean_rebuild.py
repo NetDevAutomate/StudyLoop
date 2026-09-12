@@ -66,7 +66,6 @@ FOLLOW_SESSION: Final[frozenset[str]] = frozenset(
         "context_record_owners",
         "context_observation_session_owners",
         "context_session_projects",
-        "ontology_structural",
     }
 )
 
@@ -168,6 +167,7 @@ REBUILT: Final[frozenset[str]] = frozenset(
         "context_concept_fts",
         "context_retention_origins",
         "ontology_build_state",
+        "ontology_structural",
         "ontology_class",
         "ontology_property",
         "ontology_individual",
@@ -193,6 +193,7 @@ class RebuildStats:
     messages_total: int = 0
     tables_copied: dict[str, int] = field(default_factory=dict)
     tables_rebuilt: tuple[str, ...] = ()
+    tables_carried: tuple[str, ...] = ()
     fk_violations: int = 0
     fts_rows: int = 0
     dest_size_mb: float = 0.0
@@ -211,6 +212,10 @@ class RebuildStats:
                 lines.append(f"    {t:36s} {n:>9,}")
         if self.tables_rebuilt:
             lines.append(f"  rebuilt  : {', '.join(sorted(self.tables_rebuilt))}")
+        if self.tables_carried:
+            lines.append(
+                f"  carried  : {', '.join(self.tables_carried)}  (DDL absent from migration)"
+            )
         if not self.dry_run:
             lines.append(f"  fk_check : {self.fk_violations} violation(s)")
             lines.append(f"  fts rows : {self.fts_rows:,}")
@@ -321,6 +326,45 @@ def _cols(conn: sqlite3.Connection, table: str, schema: str) -> list[str]:
     return [r[1] for r in conn.execute(f'PRAGMA {schema}.table_info("{table}")')]
 
 
+def carry_missing_tables(
+    conn: sqlite3.Connection, classified: dict[str, str]
+) -> list[str]:
+    """Create, in ``main``, every classified source table the migration did not.
+
+    The live database has tables written by packages other than the exporter
+    (``study_plans`` and the ``context_concept*`` family on 2026-09-12); a
+    fresh ``init_db`` does not create them, and a copy into a missing table
+    would silently move zero rows. Carry the source's own DDL so the new file
+    is a superset of what every writer expects. Rebuilt/virtual/singleton
+    tables are excluded: their DDL belongs to the migration or is regenerated.
+    """
+    dest_tables = set(_user_tables(conn, "main"))
+    created: list[str] = []
+    for table, group in sorted(classified.items()):
+        if table in dest_tables or group in {
+            "rebuilt",
+            "fts_shadow",
+            "instance_singleton",
+        }:
+            continue
+        row = conn.execute(
+            "SELECT sql FROM src.sqlite_master WHERE type='table' AND name=?", (table,)
+        ).fetchone()
+        if row is None or not row[0]:
+            raise RuntimeError(
+                f"cannot carry DDL for {table}: no CREATE statement in source"
+            )
+        conn.execute(row[0])
+        for (idx_sql,) in conn.execute(
+            "SELECT sql FROM src.sqlite_master WHERE type='index' AND tbl_name=? AND sql IS NOT NULL",
+            (table,),
+        ):
+            conn.execute(idx_sql)
+        created.append(table)
+        logger.info("clean-rebuild: carried DDL for %s (absent from migration)", table)
+    return created
+
+
 def _copy(
     conn: sqlite3.Connection,
     table: str,
@@ -331,6 +375,10 @@ def _copy(
 ) -> int:
     src_cols = _cols(conn, table, "src")
     dest_cols = set(_cols(conn, table, "main"))
+    if not dest_cols:
+        raise RuntimeError(
+            f"destination has no table {table}; carry_missing_tables must run first"
+        )
     cols = [c for c in src_cols if c in dest_cols]
     if not cols:
         return 0
@@ -350,7 +398,9 @@ def _copy(
     return conn.execute(q).rowcount
 
 
-_IN_SESSIONS = "WHERE session_id IN (SELECT id FROM temp.keep_sessions)"
+_IN_SESSIONS = (
+    "WHERE session_id IS NULL OR session_id IN (SELECT id FROM temp.keep_sessions)"
+)
 _IN_MESSAGES = "WHERE message_id IN (SELECT id FROM temp.keep_messages)"
 _EVIDENCE_WHERE = (
     "WHERE session_id IN (SELECT id FROM temp.keep_sessions) "
@@ -454,12 +504,12 @@ def rebuild_clean(
     if not dry_run:
         if dest is None:
             raise ValueError("dest is required unless dry_run")
+        if dest.resolve() == source.resolve():
+            raise ValueError("dest must differ from source")
         if dest.exists():
             raise FileExistsError(
                 f"Destination already exists, refusing to overwrite: {dest}"
             )
-        if dest.resolve() == source.resolve():
-            raise ValueError("dest must differ from source")
 
     stats = RebuildStats(dry_run=dry_run, source=source, dest=dest)
     src_uri = source.resolve().as_uri() + "?mode=ro"
@@ -505,6 +555,9 @@ def rebuild_clean(
         conn.execute("ATTACH DATABASE ? AS src", (src_uri,))
         conn.execute("BEGIN")
         classified = classify_schema(conn, "src")
+        carried = carry_missing_tables(conn, classified)
+        if carried:
+            stats.tables_carried = tuple(carried)
         s_kept, s_total, m_kept, m_total = _build_keep_sets(conn)
         stats.sessions_kept, stats.sessions_total = s_kept, s_total
         stats.messages_kept, stats.messages_total = m_kept, m_total
