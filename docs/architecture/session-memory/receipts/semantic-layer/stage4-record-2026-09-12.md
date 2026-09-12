@@ -170,3 +170,39 @@ pre-correction measurement and stay committed as such.
 3. Decide whether 150–157 ms against 146 keeps a semantic arm that passed every recall gate off by
    default. If not, that is a **new pre-registration** (gate, warm-up, load, repetitions,
    estimator, aggregation named first), not an edit to this one.
+
+## Incident addendum — the live database reached schema 48 outside the owner gate (found 2026-09-12 17:05 BST)
+
+**What was found** (read-only opens, `?mode=ro`): `~/.config/studyloop/sessions.db` reports
+`PRAGMA user_version = 48`; `message_embeddings` has migration 48's columns and **0 rows**;
+`session_embeddings` is gone. At the Stage 3 addendum (2026-09-11 ≈ 22:00 BST) the same file was
+at 47 with migration 7's columns. The WAL's last write is 2026-09-12 00:03 BST; the newest message
+in the database is stamped 2026-09-11T19:13:45Z, and no session has `updated_at` after 20:00 BST
+on the 11th. The write at 00:03 was therefore DDL, not content.
+
+**Who ran it**: not a command this stage issued. Every path this stage ran against the live file
+opened it `?mode=ro`; the harness's MCP arm opens read-only; `session-query` does not migrate on
+open; every write ran against `VACUUM INTO` clones (paths named in the receipts). The code paths
+that *do* migrate on open are `session-export`, `session-context` and the records CLI — from a
+build with `CURRENT_VERSION = 48`, i.e. the repository's `.venv`, not the production pin
+(`~/.local/bin/*` → uv tool → `fb606468`, still `CURRENT_VERSION = 47`). The likely trigger is a
+`session-export` resolved through `PATH` to `.venv/bin` — `~/.kiro/agents/study-mentor.json`'s
+SessionEnd hook uses the bare command, where `~/.claude/settings.json` uses the absolute pinned
+path. Which process fired it is **UNVERIFIED**; the hooks discard their output (`|| true`).
+
+**Consequence, verified**: the pinned production build refuses the file —
+`RuntimeError: Database schema v48 is newer than supported v47; upgrade agent-session-tools
+before accessing it` — so every export through the pin has failed silently since the migration.
+**No session has been captured since 20:13 BST on 2026-09-11.** Read paths that do not migrate on
+open (the MCP `session_search`) are unaffected.
+
+**Remedy** (this is also the next planned step): install a production pin built from a CI-green
+`main` at or after `73ee7221` (procedure in `~/.local/share/sessionweaver/production-pins/
+fb606468/provenance.md`); set `semantic_search.model: bge-small-en-v1.5` in
+`~/.config/studyloop/config.yaml` **before** the first export runs, because `embed()` pins the
+configured model into an empty table and the shipped default is `all-mpnet-base-v2`; then
+`session-maint embed --model bge-small-en-v1.5` (backfill, ≈12 min), `session-maint embed-check`
+(all counts 0), and the sidecar appears as `~/.config/studyloop/sessions.vec.db`. Hook hygiene
+for Stage 5: every hook names the pinned absolute path; exporters must not swallow a schema
+refusal. The Stage 5 item "drop the migration-7 tables (owner-gated)" is moot: migration 48
+dropped them when it ran.
