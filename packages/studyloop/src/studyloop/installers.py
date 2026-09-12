@@ -190,6 +190,36 @@ _HARNESS_EXPORT: dict[str, _HarnessExport] = {
 _MANDATE_SENTINEL = "studyloop:session-export-mandate"
 # Sentinel inside the Claude Stop hook command (idempotent merge + doctor check).
 _HOOK_SENTINEL = "session-export --claude-only"
+
+#: Where every export hook appends its output and a dated line on failure.
+EXPORT_HOOK_LOG = "$HOME/.config/studyloop/export-hook.log"
+#: The exporter every hook calls: the uv tool bin, never a PATH lookup.
+PINNED_EXPORTER = "$HOME/.local/bin/session-export"
+
+
+def export_hook_command(flag: str) -> str:
+    """The one shell line every SessionEnd/Stop hook runs.
+
+    Pinned path, not ``session-export`` from ``PATH``: a shell whose PATH puts a
+    development checkout first would otherwise run unpinned code against the
+    learner's database (that is how the live database reached schema 48 on
+    2026-09-11, see the Stage 4 record). Never silent: stdout and stderr go to
+    :data:`EXPORT_HOOK_LOG` and a failure leaves a dated line with the exit
+    status -- while the hook itself still exits 0, so a broken exporter can
+    never block a session from closing.
+    """
+    return (
+        f"{PINNED_EXPORTER} {flag} >>{EXPORT_HOOK_LOG} 2>&1 || "
+        f'{{ rc=$?; echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) session-export {flag} FAILED exit=$rc" '
+        f">>{EXPORT_HOOK_LOG}; }}"
+    )
+
+
+def hook_command_is_canonical(command: str, flag: str) -> bool:
+    """True when a hook already runs :func:`export_hook_command` for ``flag``."""
+    return command.strip() == export_hook_command(flag)
+
+
 _SESSION_HOOK_SENTINEL = "studyloop:session-export-hook"
 _CODEX_HOOK_SENTINEL = "session-export --codex-only"
 _GROK_HOOK_SENTINEL = "session-export --grok-only"
@@ -742,11 +772,18 @@ def install_claude_stop_hook() -> int:
     if not isinstance(stop, list):
         raise InstallError(f"Cannot merge Claude hook: {settings_path} hooks.Stop is not a list")
 
-    # Idempotency: bail if any existing Stop hook already runs session-export.
+    # Idempotency: an existing session-export Stop hook is kept if it is already
+    # the canonical command, and rewritten in place if it is a legacy form (a
+    # PATH lookup, or output discarded with ``|| true``).
+    canonical = export_hook_command("--claude-only")
     for group in stop:
         for h in (group or {}).get("hooks", []) if isinstance(group, dict) else []:
             if _HOOK_SENTINEL in str(h.get("command", "")):
-                return 0
+                if hook_command_is_canonical(str(h.get("command", "")), "--claude-only"):
+                    return 0
+                h["command"] = canonical
+                settings_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+                return 1
 
     stop.append(
         {
@@ -754,7 +791,7 @@ def install_claude_stop_hook() -> int:
             "hooks": [
                 {
                     "type": "command",
-                    "command": f"{_HOOK_SENTINEL} >/dev/null 2>&1 || true",
+                    "command": canonical,
                     "timeout": 30,
                     "async": True,
                 }

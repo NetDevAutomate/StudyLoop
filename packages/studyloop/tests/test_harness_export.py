@@ -323,7 +323,9 @@ class TestHarnessDoctorCheck:
         kiro = home / ".kiro/agents/study-mentor.json"
         kiro.parent.mkdir(parents=True, exist_ok=True)
         kiro.write_text(
-            json.dumps({"hooks": {"stop": [{"command": "session-export --kiro-only || true"}]}})
+            json.dumps(
+                {"hooks": {"stop": [{"command": installers.export_hook_command("--kiro-only")}]}}
+            )
         )
         opencode = home / ".config/opencode/plugins/studyloop-session-export.js"
         opencode.parent.mkdir(parents=True)

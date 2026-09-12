@@ -53,9 +53,30 @@ def _steering_result(tool: str) -> CheckResult:
     )
 
 
+def _legacy_hook_result(tool: str, name: str) -> CheckResult:
+    """A hook that exports, but through PATH or with its output discarded.
+
+    That shape is how the live database was migrated by an unpinned checkout and
+    how the resulting export failures stayed invisible (Stage 4 record, incident
+    addendum); ``--fix`` rewrites it to :func:`installers.export_hook_command`.
+    """
+    return CheckResult(
+        category="harness",
+        name=name,
+        status="warn",
+        message=(
+            f"{tool}: session-export hook runs an unpinned command or discards its output; "
+            f"a failing export would be silent"
+        ),
+        fix_hint="studyloop doctor --fix  (rewrites the hook to the pinned, logged command)",
+        fix_auto=True,
+    )
+
+
 def _claude_hook_result() -> CheckResult:
     settings_path = installers._HOME / ".claude/settings.json"
     present = False
+    canonical = False
     if settings_path.exists():
         try:
             data = json.loads(settings_path.read_text(encoding="utf-8"))
@@ -64,19 +85,23 @@ def _claude_hook_result() -> CheckResult:
                 if not isinstance(group, dict):
                     continue
                 for h in group.get("hooks", []):
-                    if installers._HOOK_SENTINEL in str(h.get("command", "")):
+                    command = str(h.get("command", ""))
+                    if installers._HOOK_SENTINEL in command:
                         present = True
+                        canonical = installers.hook_command_is_canonical(command, "--claude-only")
         except (OSError, json.JSONDecodeError):
             present = False
-    if present:
+    if present and canonical:
         return CheckResult(
             category="harness",
             name="session_export_hook_claude",
             status="pass",
-            message="claude: session-export Stop hook registered",
+            message="claude: session-export Stop hook registered (pinned, logged)",
             fix_hint="",
             fix_auto=False,
         )
+    if present:
+        return _legacy_hook_result("claude", "session_export_hook_claude")
     return CheckResult(
         category="harness",
         name="session_export_hook_claude",
@@ -134,17 +159,20 @@ def _text_hook_result(tool: str, path, command: str) -> CheckResult:
 def _kiro_hook_result() -> CheckResult:
     path = installers._kiro_agent_path()
     present = False
+    canonical = False
     if path.exists():
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
             stop = (data.get("hooks", {}) or {}).get("stop", []) or []
-            present = any(
-                "session-export --kiro-only" in str(hook.get("command", ""))
-                for hook in stop
-                if isinstance(hook, dict)
-            )
+            for hook in stop:
+                command = str(hook.get("command", "")) if isinstance(hook, dict) else ""
+                if "session-export --kiro-only" in command:
+                    present = True
+                    canonical = installers.hook_command_is_canonical(command, "--kiro-only")
         except (OSError, json.JSONDecodeError):
             present = False
+    if present and not canonical:
+        return _legacy_hook_result("kiro", "session_export_hook_kiro")
     return CheckResult(
         category="harness",
         name="session_export_hook_kiro",
@@ -230,10 +258,14 @@ def _executable_result(command: str) -> CheckResult:
 
 def check_harness_export() -> list[CheckResult]:
     """Verify detected harnesses have query skill + automatic export hook."""
+    from studyloop.doctor.exporter import check_export_freshness, check_exporter_schema
+
     results: list[CheckResult] = [
         _executable_result("session-query"),
         _executable_result("session-export"),
         _executable_result("session-db-mcp"),
+        check_exporter_schema(),
+        check_export_freshness(),
     ]
     detected = installers.detect_available_agent_tools()
     for tool in detected:
