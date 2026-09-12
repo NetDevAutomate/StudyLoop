@@ -255,3 +255,59 @@ def test_archive_moves_never_deletes(src: Path, tmp_path: Path) -> None:
     assert (tmp_path / "archive" / (target.name + "-wal")).exists()
     readme = (tmp_path / "archive" / "README.md").read_text()
     assert "2026-12-12" in readme and target.name in readme
+
+
+# ── CLI ───────────────────────────────────────────────────────────────────────
+
+
+def test_cli_dry_run_by_default_writes_nothing(src: Path, tmp_path: Path) -> None:
+    from typer.testing import CliRunner
+
+    from agent_session_tools.maintenance import app
+
+    before = src.read_bytes()
+    r = CliRunner().invoke(
+        app, ["clean-start", "--db", str(src), "--dest", str(tmp_path / "new.db")]
+    )
+    assert r.exit_code == 0, r.output
+    assert "DRY RUN" in r.output and "keep 1 of 3" in r.output
+    assert not (tmp_path / "new.db").exists()
+    assert src.read_bytes() == before
+
+
+def test_cli_yes_requires_dest(src: Path) -> None:
+    from typer.testing import CliRunner
+
+    from agent_session_tools.maintenance import app
+
+    r = CliRunner().invoke(app, ["clean-start", "--db", str(src), "--yes"])
+    assert r.exit_code == 2 and "--dest" in r.output
+
+
+def test_cli_full_run_with_archive_deletes_nothing(src: Path, tmp_path: Path) -> None:
+    from typer.testing import CliRunner
+
+    from agent_session_tools.maintenance import app
+
+    payload = src.read_bytes()
+    dest = tmp_path / "new" / "sessions.db"
+    archive = tmp_path / "archive"
+    r = CliRunner().invoke(
+        app,
+        [
+            "clean-start",
+            "--db",
+            str(src),
+            "--dest",
+            str(dest),
+            "--yes",
+            "--archive-to",
+            str(archive),
+        ],
+    )
+    assert r.exit_code == 0, r.output
+    assert dest.exists() and "fk_check : 0" in r.output
+    assert not src.exists(), "source must be MOVED to the archive"
+    archived = [p for p in archive.iterdir() if p.suffix == ".db"]
+    assert len(archived) == 1 and archived[0].read_bytes() == payload
+    assert (archive / "README.md").exists()

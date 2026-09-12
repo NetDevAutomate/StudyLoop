@@ -1178,6 +1178,79 @@ def corpus_audit(
     raise typer.Exit(0)
 
 
+@app.command("clean-start")
+def clean_start(
+    db: Annotated[Path | None, db_option] = None,
+    dest: Annotated[
+        Path | None,
+        typer.Option(
+            "--dest", help="Path for the NEW filtered database (required with --yes)"
+        ),
+    ] = None,
+    yes: Annotated[
+        bool,
+        typer.Option(
+            "--yes", help="Actually write --dest. Without it this is a dry run."
+        ),
+    ] = False,
+    archive_to: Annotated[
+        Path | None,
+        typer.Option(
+            "--archive-to",
+            help="After a successful write, MOVE the source database into this directory (cold archive). Never deletes.",
+        ),
+    ] = None,
+) -> None:
+    """Build a NEW sessions.db holding only real conversations (policy C).
+
+    Keeps sessions from the six supported harnesses that contain at least one
+    human turn, and within them only human/prose messages. The source is
+    opened read-only and never modified. Dry run by default: the keep-set and
+    table manifest are printed and nothing is written. Pass ``--dest`` and
+    ``--yes`` to write; pass ``--archive-to`` to also move the source into a
+    cold archive directory afterwards (a move, with a README naming the
+    owner's review date).
+
+    Owner decision 2026-09-12: clean start now, archive cold, decide deletion
+    later. This command cannot delete anything.
+    """
+    from agent_session_tools.clean_rebuild import archive_source, rebuild_clean
+
+    source = db if db else _get_db_path()
+    if not source.exists():
+        print(f"❌ Database not found: {source}")
+        raise typer.Exit(1)
+
+    if not yes:
+        stats = rebuild_clean(source, dest, dry_run=True)
+        print(stats.render())
+        print("\nDry run. Re-run with --dest <path> --yes to write the new database.")
+        raise typer.Exit(0)
+
+    if dest is None:
+        print("❌ --yes requires --dest")
+        raise typer.Exit(2)
+    if (
+        archive_to is not None
+        and archive_to.resolve() == dest.resolve().parent
+        and dest.name == source.name
+    ):
+        print(
+            "❌ --archive-to would receive the source while --dest reuses its name in place; choose a distinct --dest"
+        )
+        raise typer.Exit(2)
+
+    stats = rebuild_clean(source, dest, dry_run=False)
+    print(stats.render())
+
+    if archive_to is not None:
+        target = archive_source(source, archive_to)
+        print(f"\n📦 Source moved to cold archive: {target}")
+        print(f"   README with the review date: {archive_to / 'README.md'}")
+        print("   Nothing was deleted.")
+    raise typer.Exit(0)
+
+
 # ==================== Main Entry Point ====================
 
 
