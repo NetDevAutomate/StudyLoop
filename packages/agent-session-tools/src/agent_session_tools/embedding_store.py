@@ -105,7 +105,9 @@ class SentenceTransformerEncoder:
     :meth:`encode` rather than written into the table.
     """
 
-    def __init__(self, model: str | None = None) -> None:
+    def __init__(
+        self, model: str | None = None, *, local_files_only: bool = False
+    ) -> None:
         from .embeddings import get_configured_model, get_model, get_model_config
 
         name = model or get_configured_model()
@@ -113,7 +115,7 @@ class SentenceTransformerEncoder:
         self.name = name
         self.dim = int(config["dimensions"])
         self.max_tokens = int(config["max_tokens"])
-        self._model = get_model(name)
+        self._model = get_model(name, local_files_only=local_files_only)
 
     def count_tokens(self, text: str) -> int:
         """Length of the sequence the model would actually see, special tokens included.

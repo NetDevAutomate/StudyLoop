@@ -118,6 +118,25 @@ def _embedded(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> sqlite3.Connec
     return conn
 
 
+class TestOfflineLoading:
+    def test_the_search_path_loads_the_encoder_local_only(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        """astra 3: never a download during a search, whatever the environment says."""
+        seen: dict[str, object] = {}
+
+        class Fake:
+            def __init__(self, model, *, local_files_only=False):
+                seen["model"], seen["local_files_only"] = model, local_files_only
+
+        monkeypatch.setattr(store, "SentenceTransformerEncoder", Fake)
+        monkeypatch.setenv("HF_HUB_OFFLINE", "0")
+        retrieval._ENCODERS.pop("some-model", None)
+        retrieval._encoder("some-model")
+        assert seen == {"model": "some-model", "local_files_only": True}
+        retrieval._ENCODERS.pop("some-model", None)
+
+
 class TestModeResolution:
     def test_argument_beats_environment_beats_config(
         self, monkeypatch: pytest.MonkeyPatch
@@ -272,6 +291,24 @@ class TestFusion:
             lexical, ["dropped", "a"], {"a": lexical[0]}, limit=10
         )
         assert [h.message_id for h in fused] == ["a"] and semantic_only == 0
+
+    def test_survivors_are_ranked_densely_after_the_filters(self):
+        """astra 2: an excluded rank-1 must not push every survivor one place down."""
+        rows = {m: self._hit(m) for m in ("s1", "s2")}
+        fused, _ = retrieval._fuse([], ["excluded", "s1", "s2"], rows, limit=10)
+        assert [h.message_id for h in fused] == ["s1", "s2"]
+        assert fused[0].rank == pytest.approx(-1 / 61), "s1 holds rank 1, not rank 2"
+        assert fused[1].rank == pytest.approx(-1 / 62)
+
+    def test_both_lists_are_cut_to_the_fusion_depth(self):
+        lexical = [self._hit(f"l{i:03d}") for i in range(60)]
+        semantic_ids = [f"s{i:03d}" for i in range(60)]
+        rows = {m: self._hit(m) for m in semantic_ids}
+        fused, _ = retrieval._fuse(lexical, semantic_ids, rows, limit=200)
+        ids = {h.message_id for h in fused}
+        assert len(fused) == 100
+        assert "l049" in ids and "l050" not in ids
+        assert "s049" in ids and "s050" not in ids
 
     def test_an_exact_tie_goes_to_the_lexical_arm(self):
         """Lexical rank 1 and semantic rank 1 score the same; lexical presence breaks it."""

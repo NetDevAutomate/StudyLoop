@@ -285,8 +285,9 @@ def test_get_model_nomic_passes_trust_remote_code_true(mock_model):
     """nomic models require trust_remote_code=True at load time."""
     captured: dict = {}
 
-    def capture_st(hf_name, trust_remote_code=False):
+    def capture_st(hf_name, trust_remote_code=False, local_files_only=False):
         captured["trust_remote_code"] = trust_remote_code
+        captured["local_files_only"] = local_files_only
         return mock_model
 
     with patch.object(emb, "SentenceTransformer", side_effect=capture_st):
@@ -300,8 +301,9 @@ def test_get_model_nomic_passes_trust_remote_code_true(mock_model):
 def test_get_model_non_nomic_passes_trust_remote_code_false(mock_model):
     captured: dict = {}
 
-    def capture_st(hf_name, trust_remote_code=False):
+    def capture_st(hf_name, trust_remote_code=False, local_files_only=False):
         captured["trust_remote_code"] = trust_remote_code
+        captured["local_files_only"] = local_files_only
         return mock_model
 
     with patch.object(emb, "SentenceTransformer", side_effect=capture_st):
@@ -599,3 +601,19 @@ def embed_db():
     _insert_session(conn, "sess-001")
     yield conn
     conn.close()
+
+
+def test_get_model_passes_local_files_only_through(monkeypatch):
+    """The search path loads local-only whatever HF_HUB_OFFLINE says (Stage 4 council, astra 3)."""
+    captured = {}
+    mock_model = type("M", (), {"get_sentence_embedding_dimension": lambda self: 384})()
+
+    def capture_st(hf_name, trust_remote_code=False, local_files_only=False):
+        captured["local_files_only"] = local_files_only
+        return mock_model
+
+    monkeypatch.setattr(emb, "EMBEDDINGS_AVAILABLE", True)
+    monkeypatch.setattr(emb, "SentenceTransformer", capture_st)
+    monkeypatch.setattr(emb, "_models", {})
+    emb.get_model("all-MiniLM-L6-v2", local_files_only=True)
+    assert captured == {"local_files_only": True}

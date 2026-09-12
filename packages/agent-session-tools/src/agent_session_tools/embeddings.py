@@ -209,7 +209,9 @@ def list_supported_models() -> list[dict]:
     ]
 
 
-def get_model(model_name: str | None = None) -> "SentenceTransformer":
+def get_model(
+    model_name: str | None = None, *, local_files_only: bool = False
+) -> "SentenceTransformer":
     """Get or lazily load the embedding model.
 
     Supports multiple models simultaneously - each is cached separately.
@@ -218,6 +220,10 @@ def get_model(model_name: str | None = None) -> "SentenceTransformer":
         model_name: Name of the model to use. If None, uses DEFAULT_MODEL.
                     Can be either a short name (e.g., "nomic-embed-text-v1.5")
                     or a full HuggingFace name.
+        local_files_only: Load from the local Hugging Face cache only and never
+                    contact the hub -- the search path's setting, so a query
+                    can never turn into a download whatever ``HF_HUB_OFFLINE``
+                    says in the environment.
 
     Returns:
         Loaded SentenceTransformer model
@@ -254,6 +260,7 @@ def get_model(model_name: str | None = None) -> "SentenceTransformer":
         _models[model_name] = SentenceTransformer(
             hf_name,
             trust_remote_code=trust_remote,
+            local_files_only=local_files_only,
         )
         _current_model_name = model_name
 

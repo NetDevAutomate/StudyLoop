@@ -211,11 +211,16 @@ def non_inferiority(
         for _ in range(resamples)
     )
     lower = draws[int(0.025 * resamples)] if names else 0.0
+    upper = draws[max(int(0.975 * resamples) - 1, 0)] if names else 0.0
     return {
         "stratum": stratum or "macro",
         "point": point,
         "ci95_lower": lower,
+        "ci95_upper": upper,
+        # Kept for older readers: the negated lower bound, NOT the upper
+        # endpoint of the delta (Stage 4 council, kimi 1 / astra 5).
         "regression_upper95": -lower,
+        "upper_at_least_zero": upper >= 0.0,
         "margin": margin,
         "resamples": resamples,
         "seed": seed,

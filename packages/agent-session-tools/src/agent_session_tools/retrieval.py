@@ -449,8 +449,12 @@ def _encoder(model: str) -> Any:
     if encoder is None:
         from agent_session_tools import embedding_store
 
+        # local_files_only is what makes "a search never downloads" true; the
+        # environment variable is only a courtesy for libraries that read it.
         os.environ.setdefault("HF_HUB_OFFLINE", "1")
-        encoder = embedding_store.SentenceTransformerEncoder(model)
+        encoder = embedding_store.SentenceTransformerEncoder(
+            model, local_files_only=True
+        )
         _ENCODERS[model] = encoder
     return encoder
 
@@ -506,7 +510,9 @@ def _semantic_ranking(
     for message_id, _session_id, _chunk_ix, distance in chunk_rows:
         if distance < best.get(message_id, float("inf")):
             best[message_id] = distance
-    ranked = sorted(best, key=lambda m: best[m])[:FUSION_DEPTH]
+    # Every collapsed message, in distance order: the fusion applies the shared
+    # filters first and then keeps the first FUSION_DEPTH survivors.
+    ranked = sorted(best, key=lambda m: best[m])
     return ranked, {"model": model, "dim": dim}, None
 
 
@@ -526,6 +532,11 @@ def _fuse(
 ) -> tuple[tuple[RetrievalHit, ...], int]:
     """Reciprocal Rank Fusion of the two message lists; ``(hits, semantic-only count)``.
 
+    Both lists are the arms' top ``FUSION_DEPTH`` *after* the shared filters:
+    the lexical list is cut here, and a semantic candidate the filters dropped
+    does not hold a rank -- the survivors are ranked 1.. densely, so an
+    excluded rank-1 (the census excludes the question's own message) does not
+    push every survivor one place down (Stage 4 council, astra 2).
     ``score(m) = sum over arms of 1 / (RRF_K + rank)``, rank starting at 1.
     Ties: present in both arms first, then lexical rank, then newest
     timestamp. ``RetrievalHit.rank`` on a fused hit is ``-score`` so that
@@ -534,17 +545,15 @@ def _fuse(
     score: dict[str, float] = {}
     lexical_rank: dict[str, int] = {}
     rows: dict[str, RetrievalHit] = {}
-    for rank, hit in enumerate(lexical, 1):
+    for rank, hit in enumerate(lexical[:FUSION_DEPTH], 1):
         lexical_rank[hit.message_id] = rank
         rows[hit.message_id] = hit
         score[hit.message_id] = score.get(hit.message_id, 0.0) + 1.0 / (RRF_K + rank)
     semantic_seen: set[str] = set()
-    for rank, message_id in enumerate(semantic_ids, 1):
-        hit = semantic_rows.get(message_id)
-        if hit is None:  # filtered out by the shared clauses
-            continue
+    surviving = [m for m in semantic_ids if m in semantic_rows][:FUSION_DEPTH]
+    for rank, message_id in enumerate(surviving, 1):
         semantic_seen.add(message_id)
-        rows.setdefault(message_id, hit)
+        rows.setdefault(message_id, semantic_rows[message_id])
         score[message_id] = score.get(message_id, 0.0) + 1.0 / (RRF_K + rank)
 
     def key(message_id: str) -> tuple[float, int, int, bool, str]:
@@ -658,7 +667,7 @@ def search(
                 semantic_info = {
                     **semantic_info,
                     "candidates": len(ranked),
-                    "after_filters": len(semantic_rows),
+                    "after_filters": min(len(semantic_rows), FUSION_DEPTH),
                     "semantic_only_in_result": semantic_only,
                 }
         elif resolved_mode == MODE_HYBRID:

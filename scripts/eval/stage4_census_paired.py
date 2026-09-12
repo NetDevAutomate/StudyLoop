@@ -22,6 +22,7 @@ import sys
 import time
 from collections import defaultdict
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 from agent_session_tools.eval import SEED, K
 from agent_session_tools.eval.arms import _git_head, build_arm
@@ -33,8 +34,60 @@ from agent_session_tools.eval.census import (
 )
 from agent_session_tools.eval.receipt import write_receipt
 
+if TYPE_CHECKING:
+    from agent_session_tools.eval.seam import Hit, Query
+
 MARGIN = -0.01
 RESAMPLES = 10_000
+
+
+def assert_paired(a: CensusResult, b: CensusResult) -> None:
+    """Both arms must have scored the same questions with the same pairing keys."""
+    a_rows = {row.message_id: row for row in a.rows}
+    b_rows = {row.message_id: row for row in b.rows}
+    if len(a_rows) != len(a.rows) or len(b_rows) != len(b.rows):
+        raise ValueError("duplicate message ids in a census result")
+    if a_rows.keys() != b_rows.keys():
+        raise ValueError("the two arms scored different question sets")
+    for message_id, row in a_rows.items():
+        other = b_rows[message_id]
+        if (row.session_id, row.tied, row.twins) != (other.session_id, other.tied, other.twins):
+            raise ValueError(f"pairing keys differ for question {message_id}")
+
+
+class HiddenLeakCounter:
+    """Wraps an arm: every returned session is checked against the hidden set."""
+
+    def __init__(self, arm: Any, hidden: frozenset[str]) -> None:
+        self._arm = arm
+        self._hidden = hidden
+        self.name: str = arm.name
+        self.supports_exclusion: bool = getattr(arm, "supports_exclusion", False)
+        self.checked = 0
+        self.leaks = 0
+
+    def search(self, query: Query, k: int) -> list[Hit]:
+        hits: list[Hit] = self._arm.search(query, k)
+        for hit in hits:
+            self.checked += 1
+            if hit.session_id in self._hidden:
+                self.leaks += 1
+        return hits
+
+    def describe(self) -> dict[str, object]:
+        return self._arm.describe()
+
+
+def crosstab(a: CensusResult, b: CensusResult) -> dict[str, dict[str, int]]:
+    """Gains and losses of ``a`` against ``b`` by ``b``'s miss class (b = lexical)."""
+    a_rows = {row.message_id: row for row in a.rows}
+    out: dict[str, dict[str, int]] = {}
+    for row in b.rows:
+        klass = "hit" if row.hit else str(row.miss_class)
+        cell = out.setdefault(f"lexical_{klass}", {"n": 0, "hybrid_hit": 0, "hybrid_miss": 0})
+        cell["n"] += 1
+        cell["hybrid_hit" if a_rows[row.message_id].hit else "hybrid_miss"] += 1
+    return out
 
 
 def paired_delta(a: CensusResult, b: CensusResult, *, untied_only: bool) -> dict[str, object]:
@@ -110,13 +163,27 @@ def main(argv: list[str] | None = None) -> int:
     questions = collect_questions(conn, k=args.k, sample=args.sample, seed=SEED)
     print(f"{len(questions)} eligible questions", file=sys.stderr)
 
+    from agent_session_tools.sources import SUPPORTED_SOURCES
+
+    admitted = sorted(set(SUPPORTED_SOURCES) | {"study_mentor"})
+    hidden = frozenset(
+        str(r[0])
+        for r in conn.execute(
+            f"SELECT id FROM sessions WHERE source NOT IN ({','.join('?' * len(admitted))})",
+            admitted,
+        )
+    )
     results: dict[str, CensusResult] = {}
+    leak_counts: dict[str, dict[str, int]] = {}
     for name in (args.arm_b, args.arm_a):
-        arm = build_arm(name, db_path, args.rows)
+        arm = HiddenLeakCounter(build_arm(name, db_path, args.rows), hidden)
         started = time.monotonic()
         results[name] = run_census(conn, arm, questions, args.k)
         elapsed = time.monotonic() - started
+        leak_counts[name] = {"session_ids_checked": arm.checked, "hidden_returned": arm.leaks}
         receipt = census_receipt(results[name], db_path=db_path, arm_describe=arm.describe())
+        receipt["hidden_sessions_in_db"] = len(hidden)
+        receipt["hidden_check"] = leak_counts[name]
         path = write_receipt(out_dir / f"stage4-census-{args.tag}-{name}.json", receipt)
         print(
             f"{name}: hit@{args.k} {results[name].hit_rate:.4f} in {elapsed:.0f}s -> {path}",
@@ -124,6 +191,7 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     a, b = results[args.arm_a], results[args.arm_b]
+    assert_paired(a, b)
     paired = {
         "schema": "studyloop.stage4-census-paired/v1",
         "git_commit": _git_head(),
@@ -135,10 +203,19 @@ def main(argv: list[str] | None = None) -> int:
         "all_questions": paired_delta(a, b, untied_only=False),
         "untied_questions": paired_delta(a, b, untied_only=True),
         "transitions": transitions(a, b),
+        "crosstab_by_lexical_class": crosstab(a, b),
+        "hidden_sessions_in_db": len(hidden),
+        "hidden_check": leak_counts,
+        "miss_class_definitions": {
+            "vocabulary_gap": "no content token of the question appears in any other visible "
+            "prose message of its own session (overlap == 0)",
+            "ranking": "some overlap, but the session was not in the top k",
+        },
     }
     path = out_dir / f"stage4-census-{args.tag}-paired.json"
     path.write_text(json.dumps(paired, indent=1, sort_keys=True) + "\n")
-    print(json.dumps({k: paired[k] for k in ("hit_rate", "all_questions", "transitions")}))
+    keys = ("hit_rate", "all_questions", "transitions", "crosstab_by_lexical_class", "hidden_check")
+    print(json.dumps({k: paired[k] for k in keys}))
     return 0
 
 
