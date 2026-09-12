@@ -1,0 +1,329 @@
+{
+  "arm": {
+    "config": {
+      "arm": "hybrid",
+      "db_path": "/Users/ataylor/.kiro/crew/scratch/runtime-c4f1e9df/bakeoff-bge/sessions.db",
+      "git_commit": "73c50ace2a43d3827b5748ca703ff98a14d70d5c",
+      "interface": "fastmcp call_tool(session_search)",
+      "mode": "hybrid",
+      "rows": 20,
+      "supports_exclusion": true
+    },
+    "name": "hybrid"
+  },
+  "artefact": "paraphrase-census",
+  "database": {
+    "path": "/Users/ataylor/.kiro/crew/scratch/runtime-c4f1e9df/bakeoff-bge/sessions.db",
+    "sha256": "280b53562b84ed0ae262ebd991f3155d51428966b1f5adef9a8baada017a95c2",
+    "size_bytes": 1280954368
+  },
+  "examples": {
+    "winnable_ranking_miss": [
+      {
+        "message_id": "0007be46-5fdb-4092-8851-6151eb917596",
+        "overlap": 0.6667,
+        "session_id": "kiro_ad5cd211-1f5b-4932-a36b-4b976d1333fd",
+        "source": "kiro_cli",
+        "text": "What is OpenCodes API used for in the playbook?",
+        "twins": 0
+      },
+      {
+        "message_id": "001743dc-1755-4bd8-805e-7451384f5c80",
+        "overlap": 0.52,
+        "session_id": "kiro_89e6790d-c179-4489-bb76-f41722a5b2bf",
+        "source": "kiro_cli",
+        "text": "1) I can justify a design decision out loud without hedging. 2) I can write a test before the code it covers and not delete it later. 3) I can model a domain an",
+        "twins": 0
+      },
+      {
+        "message_id": "005942ac-d612-4148-8b95-8fed54464aa3",
+        "overlap": 0.4,
+        "session_id": "kiro_f59eec0d-8558-4765-a534-c5c0132e9890",
+        "source": "kiro_cli",
+        "text": "aplogies, please continue. Odd that these scripts used to work",
+        "twins": 0
+      },
+      {
+        "message_id": "00920344-bb58-439b-8e89-407d4a20affa",
+        "overlap": 0.3333,
+        "session_id": "kiro_f411d987-3692-4cf3-9f6d-adbb49f987d3",
+        "source": "kiro_cli",
+        "text": "git history should have a working postgressql, just v14 not v15",
+        "twins": 0
+      },
+      {
+        "message_id": "0097e8a0-ab7c-4240-8148-8b51d0df4e15",
+        "overlap": 0.9286,
+        "session_id": "db386f02-ef8c-41d8-b4aa-9b2b68d0ed23",
+        "source": "claude_code",
+        "text": "<observed_from_primary_session>\n  <what_happened>Bash</what_happened>\n  <occurred_at>2026-07-06T08:41:59.009Z</occurred_at>\n  <working_directory>/Volumes/Base/c",
+        "twins": 0
+      },
+      {
+        "message_id": "01bc5ad9-b410-4e80-85c7-25a3134633a0",
+        "overlap": 1.0,
+        "session_id": "61749428-4696-42b0-abec-abfdd1bc94fa",
+        "source": "claude_code",
+        "text": "<command-name>/plugin</command-name>\n            <command-message>plugin</command-message>\n            <command-args></command-args>",
+        "twins": 3
+      },
+      {
+        "message_id": "0227eb57-bbeb-417a-b86c-9b23a2b054dd",
+        "overlap": 0.6364,
+        "session_id": "kiro_82f552ac-fecb-4acc-8a61-77eff86fcd2b",
+        "source": "kiro_cli",
+        "text": "Repeat your final deliberation only, with the same eight numbered sections, no tool calls, no preamble, under 900 words.",
+        "twins": 1
+      },
+      {
+        "message_id": "0245164f-ef69-402a-af65-344481566056",
+        "overlap": 0.5,
+        "session_id": "kiro_7ea3d909-3d12-4386-af52-d5f6935e7459",
+        "source": "kiro_cli",
+        "text": "is there scope looking at https://github.com/catppuccin/tmux/discussions/317 to get helpful information in the status line?",
+        "twins": 0
+      },
+      {
+        "message_id": "0251e395-36c3-47bc-8253-71d3cb62dec7",
+        "overlap": 0.7143,
+        "session_id": "kiro_aa926578-49a7-44a4-986c-63f593eb7c0a",
+        "source": "kiro_cli",
+        "text": "yes please, can you use the same approach to work through these in the order you see best?",
+        "twins": 0
+      },
+      {
+        "message_id": "02b2d0b7-e689-4abd-ba2c-0f28d98b6b08",
+        "overlap": 0.75,
+        "session_id": "0c8da87e-f134-46b9-852c-d4ba91c8a114",
+        "source": "claude_code",
+        "text": "<observed_from_primary_session>\n  <what_happened>Bash</what_happened>\n  <occurred_at>2026-07-25T07:42:56.799Z</occurred_at>\n  <working_directory>/Volumes/Base/c",
+        "twins": 0
+      },
+      {
+        "message_id": "02b5d3ff-0370-4444-b8fa-17f465b77a9d",
+        "overlap": 0.1429,
+        "session_id": "kiro_f3fb038f-2ce3-4118-b72c-6e1dd2c69d09",
+        "source": "kiro_cli",
+        "text": "{\"exit_status\":\"0\",\"stdout\":\"src/lab_nuke/destroyers/sagemaker.py:12:        for page in self.paginate(client, 'list_endpoints', 'Endpoints'):\\nsrc/lab_nuke/des",
+        "twins": 0
+      },
+      {
+        "message_id": "02c482ec-a813-473d-a5dc-b8a6cc869ef7",
+        "overlap": 0.7302,
+        "session_id": "7b3f5f36-0ed8-446a-a5f7-14804b89c389",
+        "source": "claude_code",
+        "text": "Base directory for this skill: /Users/ataylor/.claude/skills/web-design-guidelines\n\n# Web Interface Guidelines\n\nReview files for compliance with Web Interface G",
+        "twins": 0
+      }
+    ],
+    "zero_overlap": [
+      {
+        "message_id": "03f5ad50-e0cd-4b68-b6bd-b0e44c755f55",
+        "overlap": 0.0,
+        "session_id": "kiro_729a44b7-7779-4908-8141-0e30f788ce83",
+        "source": "kiro_cli",
+        "text": "In a few words, summarize our conversation so far.",
+        "twins": 48
+      },
+      {
+        "message_id": "054749ab-6538-4272-a78e-fefd1a3b7856",
+        "overlap": 0.0,
+        "session_id": "kiro_9a59c60c-4b1d-4ef2-b0c4-d114da578848",
+        "source": "kiro_cli",
+        "text": "please can you help resolve:\n\n\u276f uv venv -p 3.14.0\nUsing CPython 3.14.0 interpreter at: /opt/homebrew/opt/python@3.14/bin/python3.14\nCreating virtual environment",
+        "twins": 0
+      },
+      {
+        "message_id": "055b6d04-f49f-40f7-a312-5b5a6136dd27",
+        "overlap": 0.0,
+        "session_id": "kiro_96fc3d99-8532-4eb7-bbcf-30bf0a4836af",
+        "source": "kiro_cli",
+        "text": "an perfect! the (N) was the missing peice! Thank you",
+        "twins": 0
+      },
+      {
+        "message_id": "07d926ab-3f0c-488f-9bbf-bbdd03f208ea",
+        "overlap": 0.0,
+        "session_id": "kiro_e51776d1-3392-44ca-b841-164a16701e0c",
+        "source": "kiro_cli",
+        "text": "what is needed to refactor this repo to allow me to install it as a uv tool (this works) but also to include the \"notebooklm-py[browser]\"?",
+        "twins": 0
+      },
+      {
+        "message_id": "09c9f463-6f5a-4123-903b-278658d6262a",
+        "overlap": 0.0,
+        "session_id": "kiro_76c9e685-20cd-4b2d-ac81-1d5e3cc6d7d3",
+        "source": "kiro_cli",
+        "text": "running: \n\nrain ls -r us-west-2 | grep -v COMPLETE | awk 'NR>1'\n  SageMakerWorkshopBase: CREATE_IN_PROGRESS\n\nHow do I set FS to : in awk so I only print the fir",
+        "twins": 0
+      },
+      {
+        "message_id": "0b9d4e7a-b073-40de-b5d3-9f6d9cb204df",
+        "overlap": 0.0,
+        "session_id": "kiro_c83626ff-f16c-4646-a954-7ba9184c8b37",
+        "source": "kiro_cli",
+        "text": "repo_init is a shell function from /Users/taylaand/.dotfiles/.config/zsh/config.d/repo_init.zsh\n\nIs there any way to update the .pre-commit.yaml to look for acc",
+        "twins": 0
+      },
+      {
+        "message_id": "0cacd784-d091-42d5-85ff-ea4618560f9a",
+        "overlap": 0.0,
+        "session_id": "kiro_3cf73360-94b3-48a6-86ae-3d5cd8c1b3a9",
+        "source": "kiro_cli",
+        "text": "In a few words, summarize our conversation so far.",
+        "twins": 48
+      },
+      {
+        "message_id": "0db91b9c-56d7-4fa1-92bf-c07e05dd0532",
+        "overlap": 0.0,
+        "session_id": "kiro_c80dbf6e-4c39-4e9b-b135-a09b5fc7e71a",
+        "source": "kiro_cli",
+        "text": "\u276f ollama ls | grep cloud | awk 'NR>1 {print $1}' | xargs -I {} ollama rm {}\ndeleted 'gpt-oss:20b-cloud'\ndeleted 'gpt-oss:120b-cloud'\ndeleted 'deepseek-v3.1:671b",
+        "twins": 0
+      },
+      {
+        "message_id": "0fd945a5-f833-4311-9fb4-d4e3a1d70ecd",
+        "overlap": 0.0,
+        "session_id": "kiro_dfa780ea-9dc3-492a-bade-5b722022ef62",
+        "source": "kiro_cli",
+        "text": "can you provide the mcp.json snippet from promptz please?",
+        "twins": 0
+      },
+      {
+        "message_id": "10593b33-d5c4-4d70-9e8f-821ba254f31c",
+        "overlap": 0.0,
+        "session_id": "kiro_98a5ff0a-56a7-41b6-ad9f-765844401a09",
+        "source": "kiro_cli",
+        "text": "{\"content\":[{\"type\":\"text\",\"text\":\"{\\n  \\\"thoughtNumber\\\": 3,\\n  \\\"totalThoughts\\\": 3,\\n  \\\"nextThoughtNeeded\\\": false,\\n  \\\"branches\\\": [],\\n  \\\"thoughtHistory",
+        "twins": 0
+      },
+      {
+        "message_id": "115bf13e-6d79-4d61-bce4-9b97f121e4da",
+        "overlap": 0.0,
+        "session_id": "kiro_a3076bb3-8010-452b-acba-91dd1a454b84",
+        "source": "kiro_cli",
+        "text": "In a few words, summarize our conversation so far.",
+        "twins": 48
+      },
+      {
+        "message_id": "14ffa550-c976-421f-a961-12b7bbbf069f",
+        "overlap": 0.0,
+        "session_id": "kiro_fc645c07-e965-492b-974d-6a136298b9f1",
+        "source": "kiro_cli",
+        "text": "what's the easiest way to find . any file or directory with the name factory in it?",
+        "twins": 0
+      }
+    ]
+  },
+  "limits": "Own-session comparison: the assistant usually echoes the learner's terms, and cross-session vocabulary drift is larger, so every paraphrase rate is a LOWER bound. Not comparable with the knowledge-proof store's census.",
+  "method": "Every learner turn in a visible non-agent session is treated as a question about its own session. Overlap is the share of the question's stemmed content tokens present in some OTHER prose message of the same session; self-retrieval@k asks the arm the question with the question's own message and its identical re-asks excluded, and records whether the own session is among the first k distinct sessions returned.",
+  "metrics": {
+    "by_source": {
+      "claude_code": {
+        "hit_rate": 0.8395,
+        "hits": 1622,
+        "miss_crash": 0,
+        "miss_ranking": 272,
+        "miss_ranking_untied": 154,
+        "miss_vocab": 38,
+        "n": 1932,
+        "tied": 144
+      },
+      "codex": {
+        "hit_rate": 0.6064,
+        "hits": 644,
+        "miss_crash": 0,
+        "miss_ranking": 395,
+        "miss_ranking_untied": 247,
+        "miss_vocab": 23,
+        "n": 1062,
+        "tied": 155
+      },
+      "grok": {
+        "hit_rate": 0.608,
+        "hits": 121,
+        "miss_crash": 0,
+        "miss_ranking": 78,
+        "miss_ranking_untied": 78,
+        "miss_vocab": 0,
+        "n": 199,
+        "tied": 0
+      },
+      "kiro_cli": {
+        "hit_rate": 0.6252,
+        "hits": 1388,
+        "miss_crash": 0,
+        "miss_ranking": 641,
+        "miss_ranking_untied": 621,
+        "miss_vocab": 191,
+        "n": 2220,
+        "tied": 98
+      },
+      "opencode": {
+        "hit_rate": 0.5,
+        "hits": 8,
+        "miss_crash": 0,
+        "miss_ranking": 6,
+        "miss_ranking_untied": 6,
+        "miss_vocab": 2,
+        "n": 16,
+        "tied": 0
+      },
+      "pi": {
+        "hit_rate": 0.6667,
+        "hits": 4,
+        "miss_crash": 0,
+        "miss_ranking": 1,
+        "miss_ranking_untied": 1,
+        "miss_vocab": 1,
+        "n": 6,
+        "tied": 0
+      }
+    },
+    "crashes": {},
+    "hit_rate": 0.6968,
+    "hit_rate_untied": 0.7517,
+    "hits": 3787,
+    "hits_tied": 0,
+    "miss_crash": 0,
+    "miss_ranking": 1393,
+    "miss_ranking_untied": 1107,
+    "miss_vocab": 255,
+    "n_eligible": 5435,
+    "n_tied": 397,
+    "overlap": {
+      "mean": 0.7107,
+      "median": 0.8
+    },
+    "twin_histogram": {
+      "0": 4645,
+      "1": 225,
+      "10": 11,
+      "13": 47,
+      "14": 45,
+      "15": 16,
+      "18": 19,
+      "2": 43,
+      "3": 103,
+      "32": 46,
+      "4": 22,
+      "48": 91,
+      "5": 41,
+      "55": 74,
+      "6": 7
+    },
+    "untied_share": 0.927
+  },
+  "parameters": {
+    "k": 5,
+    "max_words": 200,
+    "min_content_tokens": 3,
+    "stop_words": 141,
+    "tokenizer": "[a-z0-9_][a-z0-9_./-]{1,}"
+  },
+  "schema": "studyloop.retrieval-eval/v1",
+  "timings": {
+    "elapsed_seconds": 2033.948,
+    "questions_per_second": 2.67
+  }
+}

@@ -1,0 +1,49 @@
+{
+ "all_questions": {
+  "ci95": [
+   0.06306760847628658,
+   0.102880658436214
+  ],
+  "clusters": 848,
+  "margin": -0.01,
+  "non_inferior": true,
+  "point": 0.08132474701011959,
+  "questions": 5435,
+  "resamples": 10000,
+  "seed": 20260910,
+  "untied_only": false
+ },
+ "arms": {
+  "a": "hybrid",
+  "b": "mcp"
+ },
+ "database": "/Users/ataylor/.kiro/crew/scratch/runtime-c4f1e9df/bakeoff-bge/sessions.db",
+ "git_commit": "73c50ace2a43d3827b5748ca703ff98a14d70d5c",
+ "hit_rate": {
+  "hybrid": 0.6967801287948482,
+  "mcp": 0.6154553817847286
+ },
+ "k": 5,
+ "schema": "studyloop.stage4-census-paired/v1",
+ "tag": "bge",
+ "transitions": {
+  "a_only": 531,
+  "b_only": 89,
+  "both_hit": 3256,
+  "neither": 1559
+ },
+ "untied_questions": {
+  "ci95": [
+   0.06763205529043936,
+   0.11108456760630674
+  ],
+  "clusters": 776,
+  "margin": -0.01,
+  "non_inferior": true,
+  "point": 0.08773322747121874,
+  "questions": 5038,
+  "resamples": 10000,
+  "seed": 20260910,
+  "untied_only": true
+ }
+}

@@ -92,6 +92,13 @@ DEFAULT_CONFIG = {
         # and it must never download a model. Raise it for a machine catching
         # up on a large backlog; the backlog shrinks across runs either way.
         "auto_embed_budget_seconds": 20,
+        # Fuse the semantic arm into session_search / session-query (Stage 4,
+        # receipts/semantic-layer/stage4-record-2026-09-12.md). Off by default
+        # because the pre-registered latency gate (p95 <= 146 ms) measured
+        # 150-153 ms on the bake-off clone; recall gates were met. Setting it
+        # true, or STUDYLOOP_RETRIEVAL_MODE=hybrid, turns it on for a database
+        # that has been embedded (`session-maint embed`).
+        "hybrid": False,
     },
     "obsidian": {
         # Feature gate — default OFF; set to true to enable vault export
