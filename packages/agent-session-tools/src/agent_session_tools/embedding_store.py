@@ -168,7 +168,7 @@ class Availability:
 
 def _extension_available() -> tuple[bool, str]:
     try:
-        import sqlite_vec
+        import sqlite_vec  # pyright: ignore[reportMissingImports] -- optional extra
     except ImportError:
         return False, f"sqlite-vec is not installed; install: {INSTALL_HINT}"
     probe = sqlite3.connect(":memory:")
@@ -658,7 +658,7 @@ def _main_database_file(conn: sqlite3.Connection) -> str:
 
 def _load_extension(conn: sqlite3.Connection) -> None:
     try:
-        import sqlite_vec
+        import sqlite_vec  # pyright: ignore[reportMissingImports] -- optional extra
     except ImportError as exc:
         raise RuntimeError(
             f"sqlite-vec is not installed; install: {INSTALL_HINT}"
