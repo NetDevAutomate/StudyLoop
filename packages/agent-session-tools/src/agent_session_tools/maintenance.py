@@ -1120,6 +1120,64 @@ def embed_check(
         conn.close()
 
 
+@app.command("corpus-audit")
+def corpus_audit(
+    db: Annotated[Path | None, db_option] = None,
+    as_json: Annotated[
+        bool, typer.Option("--json", help="Machine-readable output")
+    ] = False,
+) -> None:
+    """Classify every message by kind and report what a learner-only filter keeps.
+
+    Read-only: the database is opened in ``mode=ro`` and nothing is written.
+    This is the manifest a filtered rebuild is judged against — the same
+    ``MESSAGE_KIND_SQL`` decides both, so the numbers here are the numbers a
+    rebuild will act on.
+    """
+    import json
+
+    from agent_session_tools.corpus import audit_corpus, render_audit
+
+    db_path = db if db else _get_db_path()
+    if not db_path.exists():
+        print(f"❌ Database not found: {db_path}")
+        raise typer.Exit(1)
+
+    conn = sqlite3.connect(f"file:{db_path.resolve()}?mode=ro", uri=True)
+    try:
+        audit = audit_corpus(conn)
+    finally:
+        conn.close()
+
+    if as_json:
+        payload = {
+            "db": str(db_path),
+            "messages": audit.messages,
+            "sessions": audit.sessions,
+            "by_kind": audit.by_kind,
+            "learner_messages": audit.learner_messages,
+            "sessions_kept": audit.sessions_kept,
+            "sessions_dropped": audit.sessions_dropped,
+            "per_source": [
+                {
+                    "source": s.source,
+                    "sessions": s.sessions,
+                    "sessions_kept": s.sessions_kept,
+                    "messages": s.messages,
+                    "learner_messages": s.learner_messages,
+                    "by_kind": s.by_kind,
+                }
+                for s in audit.per_source
+            ],
+            "learning_tier": audit.learning_tier,
+        }
+        print(json.dumps(payload, indent=2, sort_keys=True))
+    else:
+        print(f"📊 Corpus audit — {db_path}\n")
+        print(render_audit(audit))
+    raise typer.Exit(0)
+
+
 # ==================== Main Entry Point ====================
 
 

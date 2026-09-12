@@ -258,3 +258,96 @@ def test_sql_and_python_agree_on_real_rows() -> None:
         if sql_k != message_kind(r, c)
     ]
     assert not disagreements, disagreements[:10]
+
+
+# ── Audit ─────────────────────────────────────────────────────────────────────
+
+
+def _mini_db(path: Path) -> None:
+    from agent_session_tools.export_sessions import init_db
+
+    init_db(str(path)).close()
+    c = sqlite3.connect(path)
+    with c:
+        c.execute("INSERT INTO sessions (id, source) VALUES ('s-human', 'kiro_cli')")
+        c.execute("INSERT INTO sessions (id, source) VALUES ('s-junk', 'claude_code')")
+        c.execute("INSERT INTO sessions (id, source) VALUES ('s-empty', 'codex')")
+        rows = [
+            ("m1", "s-human", "user", "Can you explain how Spark partitions work?"),
+            (
+                "m2",
+                "s-human",
+                "assistant",
+                "Partitions are the unit of parallelism in Spark; each task reads one.",
+            ),
+            ("m3", "s-human", "assistant", "[tool:Bash]"),
+            ("m4", "s-junk", "assistant", "[tool:Read]"),
+            ("m5", "s-junk", "user", "[LiteLLM Request: x]"),
+            ("m6", "s-junk", "assistant", "ok."),
+        ]
+        c.executemany(
+            "INSERT INTO messages (id, session_id, role, content) VALUES (?, ?, ?, ?)",
+            rows,
+        )
+    c.close()
+
+
+def test_audit_counts_and_keep_drop(tmp_path: Path) -> None:
+    from agent_session_tools.corpus import audit_corpus
+
+    db = tmp_path / "s.db"
+    _mini_db(db)
+    conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+    try:
+        a = audit_corpus(conn)
+    finally:
+        conn.close()
+    assert a.messages == 6 and a.sessions == 3
+    assert a.by_kind == {
+        KIND_HUMAN: 1,
+        KIND_PROSE: 1,
+        KIND_TOOL_ECHO: 2,
+        KIND_PROXY_PROBE: 1,
+        KIND_STUB: 1,
+    }
+    assert a.learner_messages == 2
+    # s-human kept (has learner rows); s-junk dropped (none); s-empty dropped (no messages at all)
+    assert a.sessions_kept == 1 and a.sessions_dropped == 2
+    by_src = {s.source: s for s in a.per_source}
+    assert (
+        by_src["kiro_cli"].sessions_kept == 1
+        and by_src["claude_code"].sessions_kept == 0
+    )
+    assert by_src["codex"].sessions == 1 and by_src["codex"].messages == 0
+    assert a.learning_tier.get("parked_topics") == 0
+
+
+def test_render_audit_marks_keep_and_drop(tmp_path: Path) -> None:
+    from agent_session_tools.corpus import audit_corpus, render_audit
+
+    db = tmp_path / "s.db"
+    _mini_db(db)
+    conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+    try:
+        text = render_audit(audit_corpus(conn))
+    finally:
+        conn.close()
+    assert "tool_echo" in text and "drop" in text and "keep" in text
+    assert "drops 2 sessions" in text
+
+
+def test_cli_corpus_audit_is_read_only(tmp_path: Path) -> None:
+    from typer.testing import CliRunner
+
+    from agent_session_tools.maintenance import app
+
+    db = tmp_path / "s.db"
+    _mini_db(db)
+    before = db.read_bytes()
+    result = CliRunner().invoke(app, ["corpus-audit", "--db", str(db), "--json"])
+    assert result.exit_code == 0, result.output
+    import json
+
+    payload = json.loads(result.output)
+    assert payload["messages"] == 6 and payload["sessions_dropped"] == 2
+    assert db.read_bytes() == before, "audit must not write to the database"

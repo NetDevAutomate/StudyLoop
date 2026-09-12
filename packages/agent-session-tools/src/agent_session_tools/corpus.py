@@ -29,6 +29,8 @@ type this, did a model write prose, or did a harness emit bookkeeping.
 from __future__ import annotations
 
 import re
+import sqlite3
+from dataclasses import dataclass
 from typing import Final
 
 # ── Vocabulary ────────────────────────────────────────────────────────────────
@@ -198,8 +200,169 @@ def learner_kinds_sql(kind_expr: str = MESSAGE_KIND_SQL) -> str:
     return f"({kind_expr}) IN ({', '.join(_sql_str(k) for k in sorted(LEARNER_KINDS))})"
 
 
+# ── Read-only audit (the manifest a filtered rebuild is judged against) ───────
+
+
+@dataclass(frozen=True, slots=True)
+class SourceAudit:
+    """Per-``sessions.source`` composition."""
+
+    source: str
+    sessions: int
+    messages: int
+    by_kind: dict[str, int]
+    sessions_kept: int  # sessions with >= 1 learner-kind message
+
+    @property
+    def learner_messages(self) -> int:
+        return sum(self.by_kind.get(k, 0) for k in LEARNER_KINDS)
+
+
+@dataclass(frozen=True, slots=True)
+class CorpusAudit:
+    """What the corpus is made of, and what a learner-only filter would keep.
+
+    Everything here is derived from ``MESSAGE_KIND_SQL`` inside one read-only
+    query per table, so the numbers are exactly the ones the filtered rebuild
+    will act on — not an approximation of them.
+    """
+
+    messages: int
+    sessions: int
+    by_kind: dict[str, int]
+    per_source: tuple[SourceAudit, ...]
+    learning_tier: dict[str, int]
+
+    @property
+    def learner_messages(self) -> int:
+        return sum(self.by_kind.get(k, 0) for k in LEARNER_KINDS)
+
+    @property
+    def sessions_kept(self) -> int:
+        return sum(s.sessions_kept for s in self.per_source)
+
+    @property
+    def sessions_dropped(self) -> int:
+        return self.sessions - self.sessions_kept
+
+    def share(self, kind: str) -> float:
+        return self.by_kind.get(kind, 0) / self.messages if self.messages else 0.0
+
+
+#: Learner-facing tables whose row counts the audit reports. All were zero on
+#: the live database on 2026-09-12 except study_plans/study_sessions/parked_topics
+#: at one row each — the fact that motivated this module.
+LEARNING_TIER_TABLES: Final[tuple[str, ...]] = (
+    "study_sessions",
+    "study_progress",
+    "parked_topics",
+    "teach_back_scores",
+    "concepts",
+    "knowledge_bridges",
+    "practice_attempts",
+    "card_reviews",
+    "study_plans",
+)
+
+
+def audit_corpus(conn: sqlite3.Connection) -> CorpusAudit:
+    """Classify every message in ``conn`` and summarise. Reads only."""
+    kind_expr = build_message_kind_sql("m.role", "m.content")
+    total_by_kind: dict[str, int] = {}
+    per_source: list[SourceAudit] = []
+
+    rows = conn.execute(
+        f"""
+        SELECT s.source, {kind_expr} AS kind, COUNT(*) AS n
+        FROM messages m JOIN sessions s ON s.id = m.session_id
+        GROUP BY s.source, kind
+        """
+    ).fetchall()
+    kinds_by_source: dict[str, dict[str, int]] = {}
+    for source, kind, n in rows:
+        kinds_by_source.setdefault(source or "", {})[kind] = n
+        total_by_kind[kind] = total_by_kind.get(kind, 0) + n
+
+    session_counts = dict(
+        conn.execute("SELECT source, COUNT(*) FROM sessions GROUP BY source").fetchall()
+    )
+    kept_counts = dict(
+        conn.execute(
+            f"""
+            SELECT s.source, COUNT(DISTINCT s.id)
+            FROM sessions s JOIN messages m ON m.session_id = s.id
+            WHERE {learner_kinds_sql(kind_expr)}
+            GROUP BY s.source
+            """
+        ).fetchall()
+    )
+    for source in sorted(
+        set(session_counts) | set(kinds_by_source), key=lambda s: s or ""
+    ):
+        by_kind = kinds_by_source.get(source or "", {})
+        per_source.append(
+            SourceAudit(
+                source=source or "",
+                sessions=session_counts.get(source, 0),
+                messages=sum(by_kind.values()),
+                by_kind=by_kind,
+                sessions_kept=kept_counts.get(source, 0),
+            )
+        )
+
+    tier: dict[str, int] = {}
+    for table in LEARNING_TIER_TABLES:
+        try:
+            tier[table] = conn.execute(f'SELECT COUNT(*) FROM "{table}"').fetchone()[0]
+        except sqlite3.OperationalError:
+            continue  # table absent on an older schema — report what exists
+
+    return CorpusAudit(
+        messages=sum(total_by_kind.values()),
+        sessions=sum(session_counts.values()),
+        by_kind=total_by_kind,
+        per_source=tuple(per_source),
+        learning_tier=tier,
+    )
+
+
+def render_audit(audit: CorpusAudit) -> str:
+    """Plain-text manifest: totals, per-kind shares, per-source keep/drop, tier."""
+    out: list[str] = []
+    out.append(f"messages: {audit.messages:,}   sessions: {audit.sessions:,}")
+    out.append("")
+    out.append("BY KIND")
+    for kind, n in sorted(audit.by_kind.items(), key=lambda kv: -kv[1]):
+        mark = "keep" if kind in LEARNER_KINDS else "drop"
+        out.append(f"  {kind:12s} {n:>9,}  {audit.share(kind):6.1%}  {mark}")
+    out.append("")
+    out.append(
+        f"LEARNER-ONLY FILTER keeps {audit.learner_messages:,} messages "
+        f"({audit.learner_messages / audit.messages if audit.messages else 0:.1%}) "
+        f"in {audit.sessions_kept:,} sessions; drops {audit.sessions_dropped:,} sessions "
+        "that contain no learner-kind message"
+    )
+    out.append("")
+    out.append("PER SOURCE            sessions   kept    messages   learner")
+    for s in sorted(audit.per_source, key=lambda s: -s.messages):
+        out.append(
+            f"  {s.source:18s} {s.sessions:>8,} {s.sessions_kept:>6,} {s.messages:>11,} "
+            f"{s.learner_messages:>9,}"
+        )
+    out.append("")
+    out.append("LEARNING TIER (row counts, carried verbatim)")
+    for table, n in audit.learning_tier.items():
+        out.append(f"  {table:20s} {n:>6,}")
+    return "\n".join(out)
+
+
 __all__ = [
     "ACK_MAX_CHARS",
+    "CorpusAudit",
+    "LEARNING_TIER_TABLES",
+    "SourceAudit",
+    "audit_corpus",
+    "render_audit",
     "ALL_KINDS",
     "BRIEF_MIN_CHARS",
     "KIND_ACK",
