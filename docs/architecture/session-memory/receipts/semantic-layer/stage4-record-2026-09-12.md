@@ -117,3 +117,56 @@ cd packages/agent-session-tools && HF_HUB_OFFLINE=1 uv run --group dev python -m
 The clone lives in the session scratch directory and is reclaimed with the session; to regenerate:
 `VACUUM INTO` a clone of the live database, `migrate`, `session-maint embed --db <clone> --model
 bge-small-en-v1.5` (about 12 minutes). `hybrid_vs_mcp.ci95[0] >= 0.05` in the receipt is G1.
+
+## Council addendum — three seats, 2026-09-12 00:5x
+
+Brief 38.4 KB (`reviews/2026-09-10-outstanding-work/stage14-hybrid/`). Verdicts: **astra
+ACCEPT-WITH-CORRECTIONS** (10 MAJOR, 1 MINOR) · **kimi-k2-thinking ACCEPT-WITH-CORRECTIONS** (3
+MINOR) · **qwen3-coder ACCEPT-WITH-CORRECTIONS** (1 "BLOCKING" that confirms the G4 failure was
+handled correctly, 2 MAJOR wording, 3 MINOR). Every MAJOR verified at source. The original
+sections above are unchanged; this addendum corrects them.
+
+| seat / id | finding | disposition |
+|---|---|---|
+| astra 2 | **the fusion departed from the pre-registration**: the semantic list was cut to 50 and ranked *before* the shared filters, so an excluded candidate still held its rank (in the census the question's own message is usually semantic rank 1 — every semantic score was 1/(k+r+1)); `max(limit, 50)` could feed more than 50 lexical rows | **CONFIRMED by reading, fixed in `73ee7221`**: survivors are ranked densely after the filters; both lists are cut to exactly 50. Tests `test_survivors_are_ranked_densely_after_the_filters`, `test_both_lists_are_cut_to_the_fusion_depth`. **Everything on bge was re-measured as v2** (below). Gold is unaffected (no exclusions on gold: identical numbers); the census moved by +0.0006 |
+| astra 3 | `os.environ.setdefault("HF_HUB_OFFLINE", "1")` does not stop a download when the environment says `0` | **CONFIRMED, fixed**: the search path loads with `local_files_only=True` (`embeddings.get_model`, `SentenceTransformerEncoder`); test with `HF_HUB_OFFLINE=0` set |
+| astra 5 · kimi 1 | G2 as written uses the delta CI's **upper** endpoint; the receipt boolean tests the lower with margin 0; `regression_upper95` is the negated lower bound, not the upper | **CONFIRMED, fixed**: `non_inferiority` now reports `ci95_upper` and `upper_at_least_zero`; the old field is kept and labelled. v2 bge K stratum: point +0.121, CI95 **[+0.030, +0.242]**, upper ≥ 0 ✅ (also the stricter lower-bound test). mpnet under the written rule: upper +0.182 ≥ 0 → passes G2; under the receipt boolean it did not — selection unaffected. The owner checks **G1 and G2** on SEALED |
+| astra 6 | census pairing unasserted; gold bootstrap correctness unverified from the brief | **ACCEPTED**: `assert_paired` checks identical id sets, sessions, tied flags and twin counts; an independent re-implementation of the gold cluster bootstrap from the receipt's per-item hits reproduces the CI **exactly** ([+0.0605, +0.1895], `stage4-p-stratum-diagnostic-bge.json`) |
+| astra 4 | hidden-session evidence covered 300 of 5,435 census questions | **ACCEPTED, closed by measurement**: the paired census now checks every returned session of both arms — v2: **0** hidden in 23,341 (lexical) and **0** in 25,683 (hybrid) returned session ids over all 5,435 questions; 1,279 hidden sessions in the clone; gold receipts 0 in 5,873 |
+| astra 7 · qwen 3, 6 | "440 ranking recoveries" is a net figure; provenance unproven | **ACCEPTED, replaced by the cross-tab** (v2): of the lexical arm's **1,833 ranking misses the hybrid hits 537** (29.3 %); of its **257 vocabulary-gap misses, 2** (0.8 %); of its **3,345 hits, 94 are lost** (2.8 %). Net +445. Wording: *primarily re-ranking of lexical near-misses, with minimal vocabulary bridging*. Whether a recovered session entered through a semantic-only message is not attributed |
+| astra 8 · kimi 2 · qwen 2 | P: "1 → 2" is net; H1 "wrong" overstated; "gap is usually a new topic" is causal without annotation | **ACCEPTED**: paired P transitions (bge, gold): both 1, hybrid-only **1**, lexical-only 0, neither 27; K: +4 / −0; R: +6 / −0 (`stage4-p-stratum-diagnostic-bge.json`). H1 said the lift would *concentrate* in P; it did not (P +1 of 29, K +4 of 33, R +6 of 29). bge semantic-arm coverage: P gold session in its top-50 messages 6/29, in its first five sessions 2/29 (lexical 2 and 1) — fusion is not suppressing P coverage the arm has. "New topic, not paraphrase" is downgraded to a **hypothesis that needs annotation** |
+| astra 9 | mpnet "lower bound" unjustified | **ACCEPTED**: mpnet is a **confounded arm** (512-token chunks against a 384-token model); a corrected bake-off was not run and would be recorded separately |
+| astra 10 | provenance: quiet receipts name `d2263ac5` while the efficiency change is `08de69bf`; `metrics_sha256` differs between receipts | **EXPLAINED**: the quiet receipts were generated with the efficiency change applied in the working tree and HEAD still `d2263ac5`; `metrics_sha256` covers the stable view *including the database path*, which changed with the scratch directory — identity of answers is shown by ranked-id comparison, which the v2 all-arms receipt makes item by item (`cli` ≡ `mcp`, `cli-hybrid` ≡ `hybrid`). For SEALED the selected clone is preserved (see below) |
+| astra 1 · qwen 4 · kimi 4 | the pre-registration named no repetition or aggregation; "median 148, not met with confidence" is post-hoc language; the margin is 2.7–4.8 %, not 3 %; the secondary's census was not re-run | **ACCEPTED**: results are reported as they are. v2 primary p95 **157 / 153 / 150 ms** (three runs, quiet machine) — all above 146. Secondary (cap 32) **148.7 / 145.5 / 142.6** — one run above the gate, two below; recall identical to the primary. The secondary's G3 was **not** re-measured. The decision (off by default) rests on the primary, which fails in every run. Any future gate names warm-up, load, repetitions, estimator and aggregation *before* it is measured |
+| astra 11 · qwen 5 | "87th-slowest" reverses the order; parity should cite the ranked-id field; "520 ms" source | **ACCEPTED**: p95 here is the 87th value ascending, i.e. the **fifth-slowest** of 91; parity is the `per_item.ranked` identity, item by item, in `stage4-v2-bge-gold-all-arms.json`; 520 ms is `stage4-bakeoff-minilm-gold.json` (first MiniLM run, under load) |
+| kimi 3 | miss-class definitions absent from the receipt | **ACCEPTED**: `miss_class_definitions` in the paired receipt |
+
+### v2 numbers (code `73ee7221`, bge clone, quiet machine, load ≈ 6 on 16 cores)
+
+| ruler | lexical | hybrid v2 | paired | receipt |
+|---|---|---|---|---|
+| gold DEV macro R@5 | 0.1585 | **0.2793** (K 0.424 · P 0.069 · R 0.345 · MRR 0.1801) | +0.1209 **[+0.0605, +0.1895]**; K [+0.030, +0.242] | `stage4-v2-bge-gold-all-arms.json` |
+| gold DEV, CLI arms | 0.1585 (p50 142 ms) | 0.2793 (p50 **3.17 s**) | ranked ids identical item by item, both modes | same |
+| census hit@5 (5,435) | 0.6155 (3,345) | **0.6973** (3,790) | **+0.0819 [+0.0634, +0.1037]**; untied 5,038 questions in receipt | `stage4-census-bge-v2-paired.json` |
+| census transitions | | | both 3,251 · hybrid-only **539** · lexical-only **94** · neither 1,551 | same |
+| hidden returned | 0 / 23,341 | 0 / 25,683 | | same |
+| latency p95 (3 runs) | 89 / 90 / 92 | **157 / 153 / 150** | gate 146 ❌ | `stage4-v2-latency-bge-run{1,2,3}.json` |
+| secondary cap 32 p95 | | **148.7 / 145.5 / 142.6** (recall identical) | mixed: 1 above, 2 below | `stage4-v2-secondary-bge-cap32-run{1,2,3}.json` |
+
+The decision stands: **hybrid off by default; "lexical, semantic deferred"**; G1 and G2 on SEALED by
+the owner. The v1 receipts (`stage4-census-bge-*.json`, `stage4-latency-bge-run*.json`,
+`stage4-secondary-bge-cap32-run*.json`, `stage4-bakeoff-bge-gold-all-arms.json`) are the
+pre-correction measurement and stay committed as such.
+
+### For the owner, before SEALED
+
+1. Preserve the selected clone: `bakeoff-bge/sessions.db` + `sessions.vec.db` (1.28 GB + 180 MB) —
+   it lives in the session scratch directory and is reclaimed with the session. Copy it to a path
+   you own, or regenerate (VACUUM INTO a clone of the live database → `migrate` →
+   `session-maint embed --db <clone> --model bge-small-en-v1.5`, ~12 min) and compare its
+   `session-maint embed-check` counts (all zero) before the run.
+2. Run the command in "What the owner does for G1" against that clone at code `73ee7221` or later;
+   read `hybrid_vs_mcp.ci95[0] >= 0.05` (G1) **and** `hybrid_vs_mcp_K.upper_at_least_zero` (G2).
+3. Decide whether 150–157 ms against 146 keeps a semantic arm that passed every recall gate off by
+   default. If not, that is a **new pre-registration** (gate, warm-up, load, repetitions,
+   estimator, aggregation named first), not an edit to this one.

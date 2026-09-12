@@ -1,0 +1,81 @@
+{
+ "all_questions": {
+  "ci95": [
+   0.06340396905482677,
+   0.10373850068506557
+  ],
+  "clusters": 848,
+  "margin": -0.01,
+  "non_inferior": true,
+  "point": 0.08187672493100276,
+  "questions": 5435,
+  "resamples": 10000,
+  "seed": 20260910,
+  "untied_only": false
+ },
+ "arms": {
+  "a": "hybrid",
+  "b": "mcp"
+ },
+ "crosstab_by_lexical_class": {
+  "lexical_hit": {
+   "hybrid_hit": 3251,
+   "hybrid_miss": 94,
+   "n": 3345
+  },
+  "lexical_ranking": {
+   "hybrid_hit": 537,
+   "hybrid_miss": 1296,
+   "n": 1833
+  },
+  "lexical_vocabulary_gap": {
+   "hybrid_hit": 2,
+   "hybrid_miss": 255,
+   "n": 257
+  }
+ },
+ "database": "/Users/ataylor/.kiro/crew/scratch/runtime-afb856c9/bakeoff-bge/sessions.db",
+ "git_commit": "73ee72212b876cfaa40b6d6db46397919853a7a9",
+ "hidden_check": {
+  "hybrid": {
+   "hidden_returned": 0,
+   "session_ids_checked": 25683
+  },
+  "mcp": {
+   "hidden_returned": 0,
+   "session_ids_checked": 23341
+  }
+ },
+ "hidden_sessions_in_db": 1279,
+ "hit_rate": {
+  "hybrid": 0.6973321067157314,
+  "mcp": 0.6154553817847286
+ },
+ "k": 5,
+ "miss_class_definitions": {
+  "ranking": "some overlap, but the session was not in the top k",
+  "vocabulary_gap": "no content token of the question appears in any other visible prose message of its own session (overlap == 0)"
+ },
+ "schema": "studyloop.stage4-census-paired/v1",
+ "tag": "bge-v2",
+ "transitions": {
+  "a_only": 539,
+  "b_only": 94,
+  "both_hit": 3251,
+  "neither": 1551
+ },
+ "untied_questions": {
+  "ci95": [
+   0.06792654662150116,
+   0.11188054533650725
+  ],
+  "clusters": 776,
+  "margin": -0.01,
+  "non_inferior": true,
+  "point": 0.08832870186581977,
+  "questions": 5038,
+  "resamples": 10000,
+  "seed": 20260910,
+  "untied_only": true
+ }
+}

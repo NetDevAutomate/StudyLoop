@@ -95,7 +95,7 @@ DEFAULT_CONFIG = {
         # Fuse the semantic arm into session_search / session-query (Stage 4,
         # receipts/semantic-layer/stage4-record-2026-09-12.md). Off by default
         # because the pre-registered latency gate (p95 <= 146 ms) measured
-        # 150-153 ms on the bake-off clone; recall gates were met. Setting it
+        # 150-157 ms on the bake-off clone; every recall gate was met. Setting it
         # true, or STUDYLOOP_RETRIEVAL_MODE=hybrid, turns it on for a database
         # that has been embedded (`session-maint embed`).
         "hybrid": False,

@@ -1,0 +1,66 @@
+{
+ "git_commit": "73ee72212b876cfaa40b6d6db46397919853a7a9",
+ "gold_receipt": "stage4-v2-bge-gold-all-arms.json",
+ "independent_gold_bootstrap": {
+  "ci95": [
+   0.060541310541310546,
+   0.1895161290322581
+  ],
+  "identical_to_6dp": true,
+  "method": "own re-implementation from per_item hits: resample gold clusters with replacement, macro over strata present, 10,000 draws, seed 20260910, percentile",
+  "point": 0.12086381051898293,
+  "receipt_ci95": [
+   0.060541310541310546,
+   0.1895161290322581
+  ]
+ },
+ "model": "bge-small-en-v1.5",
+ "note": "coverage = the gold session appears among the semantic arm's collapsed messages (top 50 by best distance) / among its first five distinct sessions; lexical = the lexical arm at depth 50. A miss here is a retrieval fact, not a statement about why the question is hard.",
+ "paired_transitions_by_stratum": {
+  "K": {
+   "both_hit": 10,
+   "hybrid_only": 4,
+   "lexical_only": 0,
+   "n": 33,
+   "neither": 19
+  },
+  "P": {
+   "both_hit": 1,
+   "hybrid_only": 1,
+   "lexical_only": 0,
+   "n": 29,
+   "neither": 27
+  },
+  "R": {
+   "both_hit": 4,
+   "hybrid_only": 6,
+   "lexical_only": 0,
+   "n": 29,
+   "neither": 19
+  }
+ },
+ "schema": "studyloop.stage4-p-stratum-diagnostic/v1",
+ "semantic_arm_coverage_by_stratum": {
+  "K": {
+   "lexical_top50_any": 13,
+   "lexical_top5_sessions": 10,
+   "n": 33,
+   "semantic_top50_messages_any": 14,
+   "semantic_top5_sessions": 13
+  },
+  "P": {
+   "lexical_top50_any": 2,
+   "lexical_top5_sessions": 1,
+   "n": 29,
+   "semantic_top50_messages_any": 6,
+   "semantic_top5_sessions": 2
+  },
+  "R": {
+   "lexical_top50_any": 7,
+   "lexical_top5_sessions": 4,
+   "n": 29,
+   "semantic_top50_messages_any": 16,
+   "semantic_top5_sessions": 9
+  }
+ }
+}
