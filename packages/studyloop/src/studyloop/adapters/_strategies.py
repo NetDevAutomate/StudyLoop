@@ -100,6 +100,30 @@ def _mcp_command() -> list[str]:
     ]
 
 
+def _session_db_mcp_command() -> list[str]:
+    """Return the command list for launching session-db-mcp.
+
+    Mirrors :func:`_mcp_command`'s PATH-first, ``uv run`` fallback for the
+    sibling session-memory server (package ``agent-session-tools``). Has no
+    ``--dev`` concept -- that flag only ever applies to ``studyloop-mcp``.
+
+    Returns:
+        A list suitable for use as ``command + args`` in an MCP config.
+    """
+    if shutil.which("session-db-mcp"):
+        return ["session-db-mcp"]
+
+    # Repo root is six levels up from this file (see _mcp_command above).
+    repo_root = Path(__file__).parent.parent.parent.parent.parent.parent
+    return [
+        "uv",
+        "run",
+        "--project",
+        str(repo_root / "packages" / "agent-session-tools"),
+        "session-db-mcp",
+    ]
+
+
 def write_mcp_config(
     session_dir: Path,
     *,
@@ -112,7 +136,11 @@ def write_mcp_config(
     Supported formats:
 
     * ``"generic"`` — Claude Code / generic MCP schema at ``.mcp.json``
-    * ``"opencode"`` — OpenCode schema at ``.opencode/opencode.json``
+    * ``"opencode"`` — OpenCode schema at ``.opencode/opencode.json``, both
+      StudyLoop servers registered as ``session-db`` and ``studyloop``
+      (matching the ``_MCP_SERVERS`` names ``installers.py`` registers
+      globally for other harnesses; ``studyloop-mcp``/``session-db-mcp``
+      remain the console-script COMMANDS, never server names)
 
     Args:
         session_dir: Root of the session workspace; config paths are
@@ -144,11 +172,16 @@ def write_mcp_config(
         default_path = ".opencode/opencode.json"
         config = {
             "mcp": {
-                "studyloop-mcp": {
+                "session-db": {
+                    "command": _session_db_mcp_command(),
+                    "enabled": True,
+                    "type": "local",
+                },
+                "studyloop": {
                     "command": cmd,
                     "enabled": True,
                     "type": "local",
-                }
+                },
             }
         }
     else:

@@ -5,7 +5,9 @@ OpenCode uses --agent <name> to select an agent defined in
 function writes the persona as a markdown file with YAML frontmatter
 in the session directory. MCP uses a different schema from others:
 "command" is a flat array, "enabled" (not "disabled"),
-"type": "local" required.
+"type": "local" required. Both StudyLoop MCP servers are registered
+here (per-session) as "session-db" and "studyloop" -- the same names
+installers.py registers globally for the other harnesses.
 """
 
 from __future__ import annotations

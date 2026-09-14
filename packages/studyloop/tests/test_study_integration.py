@@ -1022,10 +1022,18 @@ class TestMultiAgentSessionLaunch:
         config = session_dir / ".opencode" / "opencode.json"
         assert config.exists(), "OpenCode adapter should write opencode.json"
         data = json.loads(config.read_text())
-        mcp = data["mcp"]["studyloop-mcp"]
+        assert "studyloop-mcp" not in data["mcp"], (
+            "studyloop-mcp is the console-script COMMAND, never a server name"
+        )
+        mcp = data["mcp"]["studyloop"]
         assert isinstance(mcp["command"], list), "OpenCode command must be array"
         assert mcp["enabled"] is True
         assert mcp["type"] == "local"
+
+        session_db = data["mcp"]["session-db"]
+        assert isinstance(session_db["command"], list)
+        assert session_db["enabled"] is True
+        assert session_db["type"] == "local"
 
     def test_all_agents_support_topic_logging(self, tmp_path):
         """All agents can log topics via the studyloop wrapper in the session dir."""
