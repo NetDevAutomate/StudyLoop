@@ -410,3 +410,33 @@ def test_study_plans_doc_does_not_deny_the_real_plan_mcp_tool() -> None:
     assert any(tool in text for tool in plan_tools), (
         f"docs/study-plans.md should name the real plan-write tool {plan_tools}"
     )
+
+
+# ---------------------------------------------------------------------------
+# W42 -- orphaned reference script + leftover scratch text
+# ---------------------------------------------------------------------------
+
+
+def test_claude_session_export_hook_matches_export_hook_command() -> None:
+    """agents/claude/hooks/session-export.sh is not read by any install path
+    (installers.install_claude_stop_hook writes the hook command inline via
+    export_hook_command); kept only as a reference copy, so it must stay in
+    sync with the real generator or it will silently mislead a reader."""
+    import studyloop.installers as installers
+
+    text = (_repo_root() / "agents/claude/hooks/session-export.sh").read_text(encoding="utf-8")
+    assert installers.export_hook_command("--claude-only") in text
+
+
+@pytest.mark.parametrize(
+    "relative", ["agents/shared/personas/study.md", "agents/shared/personas/co-study.md"]
+)
+def test_persona_files_start_with_their_mode_heading(relative: str) -> None:
+    path = _repo_root() / relative
+    text = path.read_text(encoding="utf-8")
+    first_line = next(line for line in text.splitlines() if line.strip())
+    stem = path.stem  # e.g. "co-study"
+    expected_mode = "-".join(word.capitalize() for word in stem.split("-")) + " Mode"
+    assert first_line.startswith(f"# {expected_mode}"), (
+        f"{relative} must start with '# {expected_mode}', got: {first_line!r}"
+    )
