@@ -36,6 +36,26 @@ def _isolate_install_surfaces(monkeypatch: pytest.MonkeyPatch, home: Path) -> No
     monkeypatch.setattr(installers, "install_session_db_mandate", lambda *_args, **_kwargs: {})
     monkeypatch.setattr(installers, "install_claude_stop_hook", lambda: 0)
     monkeypatch.setattr(installers, "install_codex_session_end_hook", lambda: 0)
+    # Deterministic, no-real-binary isolation for Grok Build: a bare PATH means
+    # shutil.which("grok") can never resolve the developer's real install, and
+    # deleting GROK_HOME means _grok_home() falls back to the isolated `home`
+    # above rather than a real machine's $GROK_HOME.
+    monkeypatch.setenv("PATH", str(home / "empty-bin"))
+    monkeypatch.delenv("GROK_HOME", raising=False)
+
+
+def _fake_grok_bin_dir(tmp_path: Path, script: str) -> Path:
+    """Create a directory on PATH containing an executable ``grok`` script.
+
+    The binding rule for this lane: subprocess calls to `grok` are asserted
+    by argv via this kind of fake binary, never the developer's real CLI.
+    """
+    bin_dir = tmp_path / "fake-bin"
+    bin_dir.mkdir(exist_ok=True)
+    grok = bin_dir / "grok"
+    grok.write_text(script, encoding="utf-8")
+    grok.chmod(0o755)
+    return bin_dir
 
 
 def _write_unrelated_configs(home: Path) -> dict[Path, str]:
@@ -117,13 +137,30 @@ def test_doctor_reports_each_harness_mcp_registration_without_mutating(
     home.mkdir()
     _isolate_install_surfaces(monkeypatch, home)
     _write_unrelated_configs(home)
-    installers.install_agent_definitions(_repo_root(), tools=["claude", "kiro", "codex"])
+    bin_dir = _fake_grok_bin_dir(
+        tmp_path,
+        "#!/bin/sh\n"
+        'if [ "$1 $2" = "mcp add" ]; then exit 0; fi\n'
+        'if [ "$1 $2 $3" = "mcp list --json" ]; then\n'
+        '  echo \'[{"command": "session-db-mcp", "args": [], "enabled": true,'
+        ' "name": "session-db", "scope": "user"},'
+        ' {"command": "studyloop-mcp", "args": [], "enabled": true,'
+        ' "name": "studyloop", "scope": "user"}]\'\n'
+        "  exit 0\n"
+        "fi\n"
+        "exit 1\n",
+    )
+    monkeypatch.setenv("PATH", str(bin_dir))
+    installers.install_agent_definitions(
+        _repo_root(), tools=["claude", "kiro", "codex", "opencode", "grok"]
+    )
     before = {
         path: path.read_bytes()
         for path in (
             home / ".claude.json",
             home / ".kiro/settings/mcp.json",
             home / ".codex/config.toml",
+            home / ".config/opencode/opencode.json",
         )
     }
 
@@ -133,8 +170,375 @@ def test_doctor_reports_each_harness_mcp_registration_without_mutating(
         ("mcp_claude", "pass"),
         ("mcp_kiro", "pass"),
         ("mcp_codex", "pass"),
+        ("mcp_opencode", "pass"),
+        ("mcp_grok", "pass"),
     ]
     assert {path: path.read_bytes() for path in before} == before
+
+
+def test_doctor_check_mcp_registration_yields_entry_for_every_mcp_harness(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """(d) check_mcp_registration() names every installers._MCP_HARNESSES entry,
+
+    by set equality, whether or not that harness is actually registered.
+    """
+    home = tmp_path / "home"
+    home.mkdir()
+    _isolate_install_surfaces(monkeypatch, home)
+
+    results = doctor_agents.check_mcp_registration()
+
+    assert {result.name for result in results} == {
+        f"mcp_{tool}" for tool in installers._MCP_HARNESSES
+    }
+    assert all(result.status in {"pass", "warn"} for result in results)
+
+
+# ---------------------------------------------------------------------------
+# OpenCode global registration (L8-mcp-opencode-grok)
+# ---------------------------------------------------------------------------
+
+_OPENCODE_EXPECTED = {
+    "session-db": {
+        "command": ["session-db-mcp"],
+        "enabled": True,
+        "type": "local",
+    },
+    "studyloop": {
+        "command": ["studyloop-mcp"],
+        "enabled": True,
+        "type": "local",
+    },
+}
+
+
+def test_opencode_global_merge_registers_both_servers_preserving_unrelated_json(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home = tmp_path / "home"
+    home.mkdir()
+    _isolate_install_surfaces(monkeypatch, home)
+    config_path = home / ".config/opencode/opencode.json"
+    config_path.parent.mkdir(parents=True)
+    unrelated = '    "other": {"command": ["echo"], "enabled": true, "type": "local"}'
+    config_path.write_text(
+        '{\n  "theme": "keep",\n  "mcp": {\n' + unrelated + "\n  }\n}\n",
+        encoding="utf-8",
+    )
+
+    assert installers.register_mcp_servers(["opencode"]) == {"opencode": 1}
+
+    text = config_path.read_text(encoding="utf-8")
+    data = json.loads(text)
+    assert {name: data["mcp"][name] for name in _OPENCODE_EXPECTED} == _OPENCODE_EXPECTED
+    assert data["theme"] == "keep"
+    assert unrelated in text, "unrelated mcp.other entry must survive byte-for-byte"
+
+    # Idempotent re-run: no further write once both servers are correct.
+    first_bytes = config_path.read_bytes()
+    assert installers.register_mcp_servers(["opencode"]) == {"opencode": 0}
+    assert config_path.read_bytes() == first_bytes
+
+
+def test_opencode_global_merge_creates_missing_config(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home = tmp_path / "home"
+    home.mkdir()
+    _isolate_install_surfaces(monkeypatch, home)
+
+    assert installers.register_mcp_servers(["opencode"]) == {"opencode": 1}
+
+    config_path = home / ".config/opencode/opencode.json"
+    data = json.loads(config_path.read_text(encoding="utf-8"))
+    assert data["mcp"] == _OPENCODE_EXPECTED
+
+
+def test_opencode_uninstall_removes_only_studyloop_entries(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home = tmp_path / "home"
+    home.mkdir()
+    _isolate_install_surfaces(monkeypatch, home)
+    config_path = home / ".config/opencode/opencode.json"
+    config_path.parent.mkdir(parents=True)
+    config_path.write_text(
+        json.dumps(
+            {
+                "theme": "keep",
+                "mcp": {"other": {"command": ["echo"], "enabled": True, "type": "local"}},
+            }
+        ),
+        encoding="utf-8",
+    )
+    installers.register_mcp_servers(["opencode"])
+
+    assert installers.unregister_mcp_servers(["opencode"]) == {"opencode": 2}
+
+    data = json.loads(config_path.read_text(encoding="utf-8"))
+    assert set(data["mcp"]) == {"other"}
+    assert data["theme"] == "keep"
+    # Idempotent: nothing left to remove.
+    assert installers.unregister_mcp_servers(["opencode"]) == {"opencode": 0}
+
+
+def test_opencode_status_matches_registered_state(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home = tmp_path / "home"
+    home.mkdir()
+    _isolate_install_surfaces(monkeypatch, home)
+
+    assert installers.mcp_registration_status(["opencode"]) == {"opencode": False}
+    installers.register_mcp_servers(["opencode"])
+    assert installers.mcp_registration_status(["opencode"]) == {"opencode": True}
+
+
+# ---------------------------------------------------------------------------
+# Grok Build registration via its own CLI (L8-mcp-opencode-grok)
+# ---------------------------------------------------------------------------
+
+_GROK_ADD_RECORDING_SCRIPT = '#!/bin/sh\necho "$@" >> "{log}"\nexit 0\n'
+
+
+def test_grok_registration_issues_exactly_two_mcp_add_argv_lines(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home = tmp_path / "home"
+    home.mkdir()
+    _isolate_install_surfaces(monkeypatch, home)
+    log = tmp_path / "argv.log"
+    bin_dir = _fake_grok_bin_dir(tmp_path, _GROK_ADD_RECORDING_SCRIPT.format(log=log))
+    monkeypatch.setenv("PATH", str(bin_dir))
+
+    assert installers.register_mcp_servers(["grok"]) == {"grok": 2}
+
+    lines = log.read_text(encoding="utf-8").splitlines()
+    assert lines == [
+        "mcp add --scope user --transport stdio session-db session-db-mcp",
+        "mcp add --scope user --transport stdio studyloop studyloop-mcp",
+    ]
+
+
+def test_grok_registration_skips_cleanly_when_binary_absent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """No `grok` on PATH: registration reports "skipped" (0, no exception) --
+
+    the installer's overall run still completes (the CLI's exit 0), not a
+    hard failure for a preview harness merely being absent.
+    """
+    home = tmp_path / "home"
+    home.mkdir()
+    _isolate_install_surfaces(monkeypatch, home)
+
+    assert installers.register_mcp_servers(["grok"]) == {"grok": 0}
+    # The wider install run (links, mandate, hook) still completes normally;
+    # it does not raise merely because grok's MCP registration was skipped.
+    installers.install_agent_definitions(_repo_root(), tools=["grok"])
+
+
+_GROK_LIST_FIXTURE_SCRIPT = (
+    "#!/bin/sh\n"
+    'if [ "$1 $2 $3" = "mcp list --json" ]; then\n'
+    "  echo '{fixture}'\n"
+    "  exit 0\n"
+    "fi\n"
+    "exit 1\n"
+)
+
+#: Council grok F7: `grok mcp list --json` on grok 1.0.13 is a JSON array of
+#: objects shaped {command, args, enabled, name, scope}.
+_GROK_LIST_FIXTURE_BOTH_REGISTERED = json.dumps(
+    [
+        {
+            "command": "session-db-mcp",
+            "args": [],
+            "enabled": True,
+            "name": "session-db",
+            "scope": "user",
+        },
+        {
+            "command": "studyloop-mcp",
+            "args": [],
+            "enabled": True,
+            "name": "studyloop",
+            "scope": "user",
+        },
+    ]
+)
+
+
+def test_grok_status_parses_grok_mcp_list_json_fixture(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home = tmp_path / "home"
+    home.mkdir()
+    _isolate_install_surfaces(monkeypatch, home)
+    bin_dir = _fake_grok_bin_dir(
+        tmp_path,
+        _GROK_LIST_FIXTURE_SCRIPT.format(fixture=_GROK_LIST_FIXTURE_BOTH_REGISTERED),
+    )
+    monkeypatch.setenv("PATH", str(bin_dir))
+
+    assert installers.mcp_registration_status(["grok"]) == {"grok": True}
+
+
+def test_grok_status_false_when_list_reports_only_one_server(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home = tmp_path / "home"
+    home.mkdir()
+    _isolate_install_surfaces(monkeypatch, home)
+    partial_fixture = json.dumps(
+        [
+            {
+                "command": "session-db-mcp",
+                "args": [],
+                "enabled": True,
+                "name": "session-db",
+                "scope": "user",
+            }
+        ]
+    )
+    bin_dir = _fake_grok_bin_dir(
+        tmp_path, _GROK_LIST_FIXTURE_SCRIPT.format(fixture=partial_fixture)
+    )
+    monkeypatch.setenv("PATH", str(bin_dir))
+
+    assert installers.mcp_registration_status(["grok"]) == {"grok": False}
+
+
+def test_grok_status_false_when_binary_absent_and_no_legacy_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home = tmp_path / "home"
+    home.mkdir()
+    _isolate_install_surfaces(monkeypatch, home)
+
+    assert installers.mcp_registration_status(["grok"]) == {"grok": False}
+
+
+def test_grok_legacy_user_settings_entry_counts_as_registered_without_duplicating(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """council kimi F13: an older $GROK_HOME/user-settings.json mcpServers map
+
+    counts as registered read-only; registration must not create a duplicate
+    entry for a name already present there.
+    """
+    home = tmp_path / "home"
+    home.mkdir()
+    _isolate_install_surfaces(monkeypatch, home)
+    grok_home = home / ".grok"
+    grok_home.mkdir(parents=True)
+    (grok_home / "user-settings.json").write_text(
+        json.dumps({"mcpServers": {"session-db": {"command": "session-db-mcp"}}}),
+        encoding="utf-8",
+    )
+    log = tmp_path / "argv.log"
+    bin_dir = _fake_grok_bin_dir(tmp_path, _GROK_ADD_RECORDING_SCRIPT.format(log=log))
+    monkeypatch.setenv("PATH", str(bin_dir))
+
+    # Only the name NOT already in user-settings.json is registered via the CLI.
+    assert installers.register_mcp_servers(["grok"]) == {"grok": 1}
+    lines = log.read_text(encoding="utf-8").splitlines()
+    assert lines == ["mcp add --scope user --transport stdio studyloop studyloop-mcp"]
+
+    # And status is True from the legacy file alone, with no `grok mcp list` call
+    # needed once every name is covered there plus the one just registered.
+    fixture = json.dumps(
+        [{"command": "studyloop-mcp", "args": [], "enabled": True, "name": "studyloop"}]
+    )
+    list_bin_dir = _fake_grok_bin_dir(tmp_path, _GROK_LIST_FIXTURE_SCRIPT.format(fixture=fixture))
+    monkeypatch.setenv("PATH", str(list_bin_dir))
+    assert installers.mcp_registration_status(["grok"]) == {"grok": True}
+
+
+def test_grok_uninstall_removes_both_servers_via_cli(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home = tmp_path / "home"
+    home.mkdir()
+    _isolate_install_surfaces(monkeypatch, home)
+    log = tmp_path / "remove.log"
+    script = f'#!/bin/sh\necho "$@" >> "{log}"\nexit 0\n'
+    bin_dir = _fake_grok_bin_dir(tmp_path, script)
+    monkeypatch.setenv("PATH", str(bin_dir))
+
+    assert installers.unregister_mcp_servers(["grok"]) == {"grok": 2}
+
+    lines = log.read_text(encoding="utf-8").splitlines()
+    assert lines == ["mcp remove session-db", "mcp remove studyloop"]
+
+
+@pytest.mark.integration
+def test_grok_add_list_remove_lifecycle_with_real_binary(tmp_path: Path) -> None:
+    """Opt-in: exercises the REAL `grok` CLI end to end in a temp GROK_HOME.
+
+    Skipped unless `grok` is genuinely on PATH (this is the one place in this
+    file that is allowed to invoke it -- everywhere else uses a fake binary).
+    """
+    import os
+    import shutil
+
+    binary = shutil.which("grok")
+    if binary is None:
+        pytest.skip("grok is not installed on PATH")
+
+    grok_home = tmp_path / "grok-home"
+    grok_home.mkdir()
+    env = {**os.environ, "GROK_HOME": str(grok_home)}
+    import subprocess
+
+    add_session_db = subprocess.run(
+        [
+            binary,
+            "mcp",
+            "add",
+            "--scope",
+            "user",
+            "--transport",
+            "stdio",
+            "session-db",
+            "session-db-mcp",
+        ],
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    add_studyloop = subprocess.run(
+        [
+            binary,
+            "mcp",
+            "add",
+            "--scope",
+            "user",
+            "--transport",
+            "stdio",
+            "studyloop",
+            "studyloop-mcp",
+        ],
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert add_session_db.returncode == 0, add_session_db.stderr
+    assert add_studyloop.returncode == 0, add_studyloop.stderr
+
+    listed = subprocess.run(
+        [binary, "mcp", "list", "--json"], env=env, capture_output=True, text=True
+    )
+    assert listed.returncode == 0, listed.stderr
+    names = {entry["name"] for entry in json.loads(listed.stdout)}
+    assert {"session-db", "studyloop"} <= names
+
+    for name in ("session-db", "studyloop"):
+        removed = subprocess.run(
+            [binary, "mcp", "remove", name], env=env, capture_output=True, text=True
+        )
+        assert removed.returncode == 0, removed.stderr
 
 
 def test_registration_repairs_owned_json_entry_without_reformatting_unrelated_entry(
@@ -500,3 +904,41 @@ def test_json_repair_rejects_comments_without_mutating_input(
         installers.register_mcp_servers(["claude"])
 
     assert path.read_bytes() == original
+
+
+# ---------------------------------------------------------------------------
+# Docs congruence (L8-mcp-opencode-grok TESTS FIRST (e))
+# ---------------------------------------------------------------------------
+
+
+def _repo_text(relative: str) -> str:
+    return (_repo_root() / relative).read_text(encoding="utf-8")
+
+
+def test_mcp_readme_has_no_stale_not_registered_for_opencode_wording() -> None:
+    text = _repo_text("agents/mcp/README.md")
+    assert "not registered for OpenCode" not in text
+
+
+def test_session_memory_skill_names_pi_as_cli_only_by_design() -> None:
+    """pi's own README states "No MCP" by design; the skill documents that
+
+    rather than a repo-side registration gap.
+    """
+    text = _repo_text("agents/skills/studyloop-session-memory/SKILL.md")
+    assert "pi has no MCP by design" in text
+
+
+def test_session_memory_skill_marks_opencode_and_grok_as_mcp_plus_fallback() -> None:
+    text = _repo_text("agents/skills/studyloop-session-memory/SKILL.md")
+    assert "MCP + fallback" in text
+
+
+def test_topic_exercises_generic_mcp_example_uses_studyloop_as_server_name() -> None:
+    """council grok F9: `studyloop-mcp` is the console-script COMMAND, never a
+
+    server name -- the generic MCP config sample must key by `studyloop`.
+    """
+    text = _repo_text("docs/topic-exercises.md")
+    assert '"studyloop": {' in text
+    assert '"studyloop-mcp": {' not in text
