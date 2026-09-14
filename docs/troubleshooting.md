@@ -47,6 +47,16 @@ Diagnose which interpreter uv is actually resolving from this checkout:
 uv python find
 ```
 
+Note that plain `uv python find` reports the repo's `.python-version` pin
+even if `UV_PYTHON` is set — unlike `uv run`/`uv sync`, it does not treat that
+env var as an override once a version file exists. To check what a specific
+override would actually resolve to, pass it as an argument (this is exactly
+what `./scripts/install.sh` does internally):
+
+```bash
+uv python find 3.13
+```
+
 If that is not the interpreter you expected, set `UV_PYTHON` before running
 the installer (or any `uv run`/`uv sync` command) to pin a specific supported
 version:

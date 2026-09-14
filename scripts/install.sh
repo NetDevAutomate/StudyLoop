@@ -65,7 +65,18 @@ export PATH="$HOME/.local/bin:$PATH"
 # does not gate on a `python3` found on PATH: uv resolves and, if needed,
 # downloads the interpreter .python-version pins (or UV_PYTHON overrides)
 # regardless of what a bare `python3` on PATH happens to be.
-py_path=$(cd "$REPO_DIR" && uv python find)
+#
+# `uv python find` (unlike `uv sync`/`uv run`) does NOT treat UV_PYTHON as
+# taking priority over an on-disk .python-version file -- once this repo's
+# .python-version exists, a plain `uv python find` reports 3.12 even with
+# UV_PYTHON=3.13 set, which would make this diagnostic lie about what
+# `uv sync` is about to do. Passing UV_PYTHON as an explicit request
+# argument makes `uv python find` agree with `uv sync`.
+if [ -n "${UV_PYTHON:-}" ]; then
+  py_path=$(cd "$REPO_DIR" && uv python find "$UV_PYTHON")
+else
+  py_path=$(cd "$REPO_DIR" && uv python find)
+fi
 py_ver=$("$py_path" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
 
 py_supported=false

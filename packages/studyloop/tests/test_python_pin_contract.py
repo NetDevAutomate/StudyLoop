@@ -161,12 +161,20 @@ def test_install_mentor_prompt_has_no_stale_310() -> None:
 
 
 @pytest.mark.integration
-def test_uv_python_find_honours_uv_python_env_override() -> None:
-    """A2: `UV_PYTHON` overrides `.python-version` for `uv python find`."""
+def test_uv_python_find_honours_uv_python_when_passed_explicitly() -> None:
+    """A2/A25, verified against uv 0.12.5: plain `uv python find` reads
+    .python-version directly during project discovery and does NOT treat a
+    bare `UV_PYTHON` env var as an override once that file exists -- only
+    `uv sync`/`uv run` treat UV_PYTHON as an "explicit request" that beats
+    .python-version. scripts/install.sh therefore passes UV_PYTHON as an
+    explicit `uv python find` argument when set, which does take priority
+    and agrees with what `uv sync` will actually do; this pins that
+    mechanism rather than the (incorrect) assumption that the bare env var
+    alone is enough."""
     env = dict(os.environ)
     env["UV_PYTHON"] = "3.13"
     py_path = subprocess.run(
-        ["uv", "python", "find"],
+        ["uv", "python", "find", "3.13"],
         cwd=REPO_ROOT,
         env=env,
         check=True,
