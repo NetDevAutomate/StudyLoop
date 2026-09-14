@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from typing import TYPE_CHECKING
 from unittest.mock import call, patch
 
@@ -9,6 +10,12 @@ from studyloop.installers import install_workspace_tools
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+# The invoking interpreter's minor version (the synced venv under `uv run`).
+# install_workspace_tools pins every `uv tool install` to this value (A3) so
+# the new tool venvs share the workspace's minor rather than whatever `uv
+# tool install` would otherwise resolve on its own.
+_PY_VER = f"{sys.version_info.major}.{sys.version_info.minor}"
 
 
 def _workspace(tmp_path: Path) -> Path:
@@ -31,7 +38,16 @@ def test_install_workspace_tools_installs_expected_tool_commands(tmp_path: Path)
     assert run.call_args_list == [
         call(["uv", "sync", "--all-packages"], cwd=repo_root),
         call(
-            ["uv", "tool", "install", f"{agent_pkg}[all]", "--editable", "--force"],
+            [
+                "uv",
+                "tool",
+                "install",
+                "--python",
+                _PY_VER,
+                f"{agent_pkg}[all]",
+                "--editable",
+                "--force",
+            ],
             cwd=repo_root,
         ),
         call(
@@ -39,6 +55,8 @@ def test_install_workspace_tools_installs_expected_tool_commands(tmp_path: Path)
                 "uv",
                 "tool",
                 "install",
+                "--python",
+                _PY_VER,
                 f"{studyloop_pkg}[all]",
                 "--with-editable",
                 str(agent_pkg),
@@ -60,3 +78,5 @@ def test_install_workspace_tools_can_skip_sync_and_force(tmp_path: Path) -> None
     commands = [args.args[0] for args in run.call_args_list]
     assert ["uv", "sync", "--all-packages"] not in commands
     assert all("--force" not in command for command in commands)
+    assert all(command[:5][:4] == ["uv", "tool", "install", "--python"] for command in commands)
+    assert all(command[4] == _PY_VER for command in commands)

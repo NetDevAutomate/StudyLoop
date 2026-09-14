@@ -17,7 +17,11 @@ Step-by-step installation and configuration for StudyLoop.
 
 ## Prerequisites
 
-- **Python 3.12+** (both studyloop and agent-session-tools require 3.12+)
+- **Python 3.12 or 3.13** (both tested in CI). The installer defaults to 3.12
+  through `.python-version` and downloads it with uv if needed; set
+  `UV_PYTHON=3.13 ./scripts/install.sh` to choose another. 3.14 installs but
+  is checked only by the nightly install job; the installer refuses anything
+  else.
 - **[uv](https://docs.astral.sh/uv/)** — Python package manager
 - **tmux 3.1+** — required for `studyloop study` split-pane sessions (`brew install tmux` on macOS, `apt install tmux` on Linux)
 - **Optional**: Obsidian or another Markdown folder for study notes. Notes are
@@ -90,14 +94,22 @@ first setup if `config.yaml` does not exist yet.
 ### What the installer does
 
 `./scripts/install.sh` will:
-1. Verify Python 3.12+ is installed
+1. Verify the interpreter uv resolves is supported: Python 3.12 or 3.13 (both
+   tested in CI). It defaults to 3.12 through `.python-version` and downloads
+   it with uv if needed; set `UV_PYTHON=3.13 ./scripts/install.sh` to choose
+   another. 3.14 installs but is checked only by the nightly install job; the
+   installer refuses anything else
 2. Install `uv` if not already available
 3. Run `uv sync`
 4. Delegate to `studyloop install tools` — installs `studyloop[all]` (web UI,
    content generation, Bedrock, MCP, NotebookLM, TUI) and
    `agent-session-tools[all]` (TTS, semantic session search), and always adds
    `agent-session-tools` into the `studyloop` tool venv too — that part is not
-   gated behind any extra, so it happens on every source install
+   gated behind any extra, so it happens on every source install. Both global
+   `uv tool install` calls pass `--python` explicitly, pinned to the
+   interpreter `uv sync` just used, so the globally-installed CLI tool cannot
+   silently pick a different interpreter than the workspace it was built
+   against
 5. Delegate to `studyloop install agents`
 6. Run lightweight installed CLI smoke checks
 
@@ -200,8 +212,9 @@ studyloop install tools
 studyloop install agents
 studyloop doctor --fix
 
-# Install optional semantic search support
-uv pip install agent-session-tools[semantic]
+# Install optional semantic search support (in-workspace form -- agent-session-tools
+# is not published, so a bare `pip install`/`uv pip install` cannot resolve it)
+uv sync --all-packages --extra semantic  # or: just sync-semantic
 ```
 
 For **Ansible playbooks**, clone the repo then run the install script:

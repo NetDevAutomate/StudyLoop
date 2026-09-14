@@ -60,8 +60,11 @@ The current release is best suited to:
 
 ## Try one study session
 
-StudyLoop currently installs from source on macOS or Linux and requires Python
-3.12 or newer.
+StudyLoop currently installs from source on macOS or Linux. Python 3.12 or
+3.13 (both tested in CI): the installer defaults to 3.12 through
+`.python-version` and downloads it with uv if needed; set
+`UV_PYTHON=3.13 ./scripts/install.sh` to choose another. 3.14 installs but is
+checked only by the nightly install job; the installer refuses anything else.
 
 ```bash
 git clone https://github.com/NetDevAutomate/StudyLoop.git studyloop
