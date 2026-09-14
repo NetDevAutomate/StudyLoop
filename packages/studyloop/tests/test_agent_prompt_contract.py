@@ -16,6 +16,7 @@ import subprocess
 import tomllib
 from pathlib import Path
 
+import click
 import pytest
 import typer
 from typer.testing import CliRunner
@@ -542,4 +543,107 @@ def test_persona_files_start_with_their_mode_heading(relative: str) -> None:
     expected_mode = "-".join(word.capitalize() for word in stem.split("-")) + " Mode"
     assert first_line.startswith(f"# {expected_mode}"), (
         f"{relative} must start with '# {expected_mode}', got: {first_line!r}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# L7 (d) -- prompt contract: every ``studyloop <command> [<sub>]`` the
+# canonical study-plan-architect body instructs resolves to a REGISTERED
+# click command, every ``--flag`` it uses is a declared option of that
+# command, and the positional-argument count in the example is consistent
+# with that command's real click.Argument params. Checking the canonical
+# file also covers the three native definitions, since the sync test above
+# pins them byte-identical to it after their header.
+# ---------------------------------------------------------------------------
+
+_PLAN_ARCHITECT_INVOCATION_RE = re.compile(r"^\$?\s*studyloop\b")
+
+
+def _plan_architect_invocations() -> list[tuple[int, str]]:
+    text = (_repo_root() / _PLAN_ARCHITECT_CANONICAL).read_text(encoding="utf-8")
+    found: list[tuple[int, str]] = []
+    for line_no, raw in enumerate(text.splitlines(), start=1):
+        candidates = re.findall(r"`([^`]+)`", raw)
+        if not candidates:
+            stripped = raw.strip()
+            if _PLAN_ARCHITECT_INVOCATION_RE.match(stripped):
+                candidates = [stripped]
+        for candidate in candidates:
+            candidate = candidate.strip()
+            if _PLAN_ARCHITECT_INVOCATION_RE.match(candidate):
+                found.append((line_no, candidate))
+    return found
+
+
+def _plan_architect_invocation_params() -> list:
+    return [
+        pytest.param(line_no, example, id=f"{line_no}:{example}")
+        for line_no, example in _plan_architect_invocations()
+    ]
+
+
+def _option_takes_a_value(cmd, opt_string: str) -> bool:
+    for param in cmd.params:
+        if isinstance(param, click.Option) and opt_string in (
+            tuple(param.opts) + tuple(param.secondary_opts)
+        ):
+            return not param.is_flag
+    return False
+
+
+def test_plan_architect_names_at_least_one_command_example() -> None:
+    assert _plan_architect_invocations(), "canonical plan-architect body names no commands at all"
+
+
+@pytest.mark.parametrize("line_no, example", _plan_architect_invocation_params())
+def test_plan_architect_invocation_resolves_with_matching_positional_count(
+    line_no: int, example: str
+) -> None:
+    from test_docs_drift import _cut_at_shell_metachar, _declared_option_strings, _load_cli_group
+
+    root = _load_cli_group()
+    root_ctx = click.Context(root, info_name="studyloop")
+
+    cut = _cut_at_shell_metachar(example)
+    tokens = shlex.split(cut, comments=True)
+    assert tokens and tokens[0] == "studyloop", f"line {line_no}: not a studyloop invocation"
+
+    current: click.Command = root
+    current_ctx = root_ctx
+    still_descending = True
+    positionals: list[str] = []
+    skip_next = False
+
+    for token in tokens[1:]:
+        if skip_next:
+            skip_next = False
+            continue
+        if token.startswith("-"):
+            opt = token.split("=", 1)[0] if "=" in token else token
+            declared = _declared_option_strings(current)
+            assert opt in declared, (
+                f"line {line_no}: {opt!r} is not a declared option of "
+                f"{current.name!r} ({example!r})"
+            )
+            if "=" not in token and _option_takes_a_value(current, opt):
+                skip_next = True
+            continue
+        if still_descending and isinstance(current, click.Group):
+            sub = current.get_command(current_ctx, token)
+            if sub is not None:
+                current_ctx = click.Context(sub, parent=current_ctx, info_name=token)
+                current = sub
+                continue
+            still_descending = False
+        else:
+            still_descending = False
+        positionals.append(token)
+
+    argument_params = [p for p in current.params if isinstance(p, click.Argument)]
+    required = sum(1 for p in argument_params if p.required)
+    total = len(argument_params)
+    assert required <= len(positionals) <= total, (
+        f"line {line_no}: {example!r} resolved to {current.name!r} with "
+        f"{len(positionals)} positional token(s) ({positionals!r}) but it declares "
+        f"{required}..{total} click.Argument param(s)"
     )
