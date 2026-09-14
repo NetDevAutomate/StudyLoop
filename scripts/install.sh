@@ -11,6 +11,12 @@ step()  { printf "\n${BOLD}▸ %s${NC}\n" "$1"; }
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 REPO_DIR=$(dirname "$SCRIPT_DIR")
 
+# Interpreters this installer will proceed with. uv downloads 3.12 (the
+# repo's .python-version pin) automatically if it is missing; 3.13 and 3.14
+# are accepted when UV_PYTHON selects them, but 3.14 is checked only by the
+# nightly install job, not this script.
+SUPPORTED_PYTHONS=("3.12" "3.13" "3.14")
+
 TOOLS_ONLY=false
 AGENTS_ONLY=false
 NON_INTERACTIVE=false
@@ -39,20 +45,6 @@ done
 
 step "Checking prerequisites"
 
-if command -v python3 >/dev/null 2>&1; then
-  PY_VER=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
-  PY_MAJOR=$(echo "$PY_VER" | cut -d. -f1)
-  PY_MINOR=$(echo "$PY_VER" | cut -d. -f2)
-  if [ "$PY_MAJOR" -lt 3 ] || [ "$PY_MINOR" -lt 12 ]; then
-    err "Python >= 3.12 required (found ${PY_VER})"
-    exit 1
-  fi
-  info "Python ${PY_VER} found"
-else
-  err "python3 not found. Install Python >= 3.12"
-  exit 1
-fi
-
 if command -v uv >/dev/null 2>&1; then
   info "uv $(uv --version 2>/dev/null | head -1) found"
 else
@@ -67,6 +59,28 @@ else
 fi
 
 export PATH="$HOME/.local/bin:$PATH"
+
+# A25: `uv python find` prints a resolved interpreter PATH, not a version, so
+# the version has to be asked of that interpreter directly. This deliberately
+# does not gate on a `python3` found on PATH: uv resolves and, if needed,
+# downloads the interpreter .python-version pins (or UV_PYTHON overrides)
+# regardless of what a bare `python3` on PATH happens to be.
+py_path=$(cd "$REPO_DIR" && uv python find)
+py_ver=$("$py_path" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+
+py_supported=false
+for supported in "${SUPPORTED_PYTHONS[@]}"; do
+  if [ "$py_ver" = "$supported" ]; then
+    py_supported=true
+  fi
+done
+
+if ! $py_supported; then
+  err "Python ${py_ver} from ${py_path} is not supported (need one of: ${SUPPORTED_PYTHONS[*]}). Set UV_PYTHON to choose a supported version, e.g. UV_PYTHON=3.13 ./scripts/install.sh"
+  exit 1
+fi
+
+info "uv will use Python ${py_ver} from ${py_path} (pinned by .python-version; override with UV_PYTHON=3.13)"
 
 run_cli() {
   (cd "$REPO_DIR" && uv run studyloop "$@")
