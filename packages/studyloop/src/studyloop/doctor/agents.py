@@ -285,21 +285,41 @@ def check_agent_definitions() -> list[CheckResult]:
 
 
 def check_mcp_registration() -> list[CheckResult]:
-    """Report whether both StudyLoop MCP servers are registered per harness."""
-    from studyloop.installers import mcp_registration_status
+    """Report whether both StudyLoop MCP servers are registered per harness.
+
+    Grok Build gets a richer message naming which file satisfied
+    registration -- the legacy ``$GROK_HOME/user-settings.json`` map or the
+    ``config.toml`` ``grok mcp add`` writes -- since the two are read from
+    different sources and only one of them is StudyLoop-owned.
+    """
+    from studyloop.installers import _MCP_HARNESSES, _grok_registration_detail
+    from studyloop.installers import mcp_registration_status as _status
+
+    non_grok = [tool for tool in _MCP_HARNESSES if tool != "grok"]
+    status = _status(non_grok)
 
     results: list[CheckResult] = []
-    for tool, registered in mcp_registration_status().items():
+    for tool in _MCP_HARNESSES:
+        if tool == "grok":
+            registered, source = _grok_registration_detail()
+            message = (
+                f"grok has session-db and studyloop MCP servers registered via {source}"
+                if registered and source
+                else "grok MCP registration is missing or incomplete"
+            )
+        else:
+            registered = status[tool]
+            message = (
+                f"{tool} has session-db and studyloop MCP servers registered"
+                if registered
+                else f"{tool} MCP registration is missing or incomplete"
+            )
         results.append(
             CheckResult(
                 "agents",
                 f"mcp_{tool}",
                 "pass" if registered else "warn",
-                (
-                    f"{tool} has session-db and studyloop MCP servers registered"
-                    if registered
-                    else f"{tool} MCP registration is missing or incomplete"
-                ),
+                message,
                 "" if registered else "studyloop install agents",
                 False,
             )

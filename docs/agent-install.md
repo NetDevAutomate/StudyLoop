@@ -110,8 +110,8 @@ It also receives the opt-in `studyloop-xtiles-wind-down` skill at `~/.claude/ski
 
 Two separate mechanisms write two separate sets of files, at two different times:
 
-- **`studyloop install agents --tool opencode`** (the install command above) writes a **global** `study-mentor` agent definition to `~/.config/opencode/agents/study-mentor.md`, available to any OpenCode session on the machine.
-- **`studyloop study --agent opencode`** (starting a session) separately writes a **project-local** `.opencode/agents/study-mentor.md` and `.opencode/opencode.json` (StudyLoop's MCP server, in OpenCode's own config schema) into that session's working directory. This happens at session start, not at install time — if you only ran the install command and are looking for these project-local files, that's why they aren't there yet.
+- **`studyloop install agents --tool opencode`** (the install command above) writes a **global** `study-mentor` agent definition to `~/.config/opencode/agents/study-mentor.md`, available to any OpenCode session on the machine, and registers both StudyLoop MCP servers (`session-db`, `studyloop`) into `~/.config/opencode/opencode.json`'s `mcp` object.
+- **`studyloop study --agent opencode`** (starting a session) separately writes a **project-local** `.opencode/agents/study-mentor.md` and `.opencode/opencode.json` (both StudyLoop MCP servers, in OpenCode's own config schema) into that session's working directory. This happens at session start, not at install time — if you only ran the install command and are looking for these project-local files, that's why they aren't there yet.
 
 Either path gets you the same mentor behaviour. StudyLoop does not choose or hard-code an OpenCode model; your working OpenCode provider and model remain authoritative.
 
@@ -175,9 +175,9 @@ that exposes one:
 | Kiro CLI | `stop` hook in the global `study-mentor` agent | bundled `session-db-mcp`, plus skill fallback |
 | Codex | global `~/.codex/hooks.json` `SessionEnd` hook | shared skill + `session-query` |
 | Claude Code | global `~/.claude/settings.json` `Stop` hook | native skill link + `session-query` |
-| OpenCode | global plugin, `session.idle` event | shared skill + `session-query` |
-| pi | global extension, `session_shutdown` event | shared skill + `session-query` |
-| Grok Build | global `~/.grok/hooks/studyloop.json` `SessionEnd` hook | shared skill + `session-query` |
+| OpenCode | global plugin, `session.idle` event | shared skill + `session-db`/`studyloop` MCP + `session-query` fallback |
+| pi | global extension, `session_shutdown` event | shared skill + `session-query` (no MCP by design) |
+| Grok Build | global `~/.grok/hooks/studyloop.json` `SessionEnd` hook | shared skill + `session-db`/`studyloop` MCP + `session-query` fallback |
 
 All installed hooks run `session-export --<harness>-only` best-effort and never
 block session close. Codex reviews and trusts a newly installed command-hook

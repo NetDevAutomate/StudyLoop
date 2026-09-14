@@ -49,10 +49,10 @@ session-query search "<current topic>" --project "$PWD"
 
 Then call `memory_search` for prior decisions and disputes about the topic, and
 `get_concept_context` for its prerequisite edges, before choosing what to teach
-first. This file is shared by Codex and Grok Build: in Claude Code, Kiro CLI
-and Codex the session-db MCP server is registered; in other harnesses
-(including Grok Build reading this same file) use
-`session-query search "<topic>" --project "$PWD"` instead.
+first. This file is shared by Codex and Grok Build: in Claude Code, Kiro CLI,
+Codex, OpenCode and Grok Build the session-db MCP server is registered
+(Grok Build's own `grok mcp add` CLI does it, not this file); in other
+harnesses use `session-query search "<topic>" --project "$PWD"` instead.
 
 Then run the StudyLoop learning-state checks:
 

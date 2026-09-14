@@ -158,11 +158,12 @@ The `studyloop-mcp` server exposes 10 MCP tools for courses, backlog, and progre
 uv run --project packages/studyloop studyloop-mcp
 ```
 
-**Agent config** — already included in `agents/claude/mcp.json`. For other agents, add:
+**Agent config** — already included in `agents/claude/mcp.json`. For other agents, add (the
+server NAME is `studyloop`; `studyloop-mcp` is the console-script COMMAND, never a server name):
 ```json
 {
   "mcpServers": {
-    "studyloop-mcp": {
+    "studyloop": {
       "command": "uv",
       "args": ["run", "--project", "/path/to/packages/studyloop", "studyloop-mcp"]
     }
@@ -209,13 +210,11 @@ uv run --project packages/agent-session-tools session-db-mcp
 ```
 
 **Agent config** — included in `agents/claude/mcp.json` and
-`agents/kiro/study-mentor.json`. pi and Grok Build have no repo-owned MCP file;
-add both servers to the harness's own config. Codex has no repo-owned MCP
-file either, but needs no manual step: `studyloop install agents --tool codex`
-already writes both `[mcp_servers.session-db]` and `[mcp_servers.studyloop]`
-entries into `~/.codex/config.toml` automatically, via `register_mcp_servers`
-(`installers.py:647`) / `_merge_codex_mcp_config` (`installers.py:612`). The
-TOML below is a reference for running Codex without the StudyLoop installer:
+`agents/kiro/study-mentor.json`. Codex, OpenCode and Grok Build have no
+repo-owned MCP file, but need no manual step: `studyloop install agents --tool <x>`
+already registers both servers globally for each of them, via
+`register_mcp_servers` (`installers.py`). The config below is a reference for
+running each harness without the StudyLoop installer:
 
 - Codex — `~/.codex/config.toml` (only needed without the installer):
   ```toml
@@ -227,32 +226,25 @@ TOML below is a reference for running Codex without the StudyLoop installer:
   command = "studyloop-mcp"
   args = []
   ```
-- Grok Build — `~/.grok/config.toml`, same shape as Codex, or register with the
-  CLI (`grok mcp add session-db -- session-db-mcp` and
-  `grok mcp add studyloop -- studyloop-mcp`):
-  ```toml
-  [mcp_servers.session-db]
-  command = "session-db-mcp"
-  args = []
-
-  [mcp_servers.studyloop]
-  command = "studyloop-mcp"
-  args = []
+- Grok Build — registered with the CLI (never hand-write
+  `~/.grok/config.toml`; `grok mcp list` reads it back):
+  ```bash
+  grok mcp add --scope user --transport stdio session-db session-db-mcp
+  grok mcp add --scope user --transport stdio studyloop studyloop-mcp
   ```
-- OpenCode — no repo-owned MCP file either (a stale, wrong-schema reference
-  file under `agents/opencode/` was removed in the 2026-09-14 congruence
-  review). `studyloop install agents --tool opencode` writes `.opencode/opencode.json`
-  automatically, via `_strategies.write_mcp_config(fmt="opencode")`
-  (`adapters/_strategies.py:143-153`). It registers only `studyloop-mcp`
-  (`get_concept_context`, `record_plan_learning`, ...) in OpenCode's own
-  schema (top-level `mcp` key, flat `command` array, `enabled`/`type: local`)
-  — `session-db` is not registered for OpenCode, so `memory_search` there
-  falls back to the `session-query` CLI (see the `studyloop-session-memory`
-  skill).
-- pi — this release does not verify a pi MCP registration path (pi's
-  `settings.json` carries no `mcpServers` key). pi mentors use the CLI
-  fallbacks the skill names — `session-query`, `session-context search`,
-  `studyloop mastery graph` — until one is documented.
+  An older install may instead carry these two names in
+  `$GROK_HOME/user-settings.json`'s `mcpServers` map; the installer treats a
+  name already present there as registered and does not add a duplicate.
+- OpenCode — `studyloop install agents --tool opencode` writes both servers
+  into `~/.config/opencode/opencode.json`'s `mcp` object automatically, via
+  `_strategies.write_mcp_config(fmt="opencode")`, in OpenCode's own schema
+  (flat `command` array, `enabled`/`type: local`). The same per-session
+  adapter (`adapters/opencode.py`) writes both into the session-local
+  `.opencode/opencode.json` too.
+- pi — has no MCP registration path by design: pi's own README states "No
+  MCP" (build CLI tools with skills, or an extension), so pi is CLI-fallback
+  only. pi mentors use the CLI fallbacks the skill names — `session-query`,
+  `session-context search`, `studyloop mastery graph`.
 
 Both commands are installed by `uv tool install studyloop` and
 `uv tool install agent-session-tools`; use the `uv run --project ...` form

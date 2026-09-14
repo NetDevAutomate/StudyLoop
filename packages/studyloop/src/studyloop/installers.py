@@ -245,14 +245,25 @@ _MCP_SERVERS: dict[str, dict[str, object]] = {
     "session-db": {"command": "session-db-mcp", "args": []},
     "studyloop": {"command": "studyloop-mcp", "args": []},
 }
-_MCP_HARNESSES = ("claude", "kiro", "codex")
+#: Every harness the installer registers both StudyLoop MCP servers into
+#: globally. pi is deliberately absent -- its README states "No MCP" by
+#: design (build CLI tools with skills, or an extension), so pi stays
+#: CLI-fallback-only (session-query / session-context / mastery graph).
+_MCP_HARNESSES = ("claude", "kiro", "codex", "opencode", "grok")
 
 
 def _mcp_config_path(tool: str) -> Path:
+    """The config file a harness's MCP registration lives in.
+
+    Grok Build is deliberately absent: it has no repo-owned config file to
+    merge bytes into -- registration goes through its own CLI
+    (:func:`register_grok_mcp_servers`) instead.
+    """
     paths = {
         "claude": _HOME / ".claude.json",
         "kiro": _HOME / ".kiro/settings/mcp.json",
         "codex": _HOME / ".codex/config.toml",
+        "opencode": _HOME / ".config/opencode/opencode.json",
     }
     try:
         return paths[tool]
@@ -354,15 +365,29 @@ def _append_json_members(
     return raw[:content_end] + insertion + raw[close:]
 
 
-def _merge_json_mcp_config(path: Path) -> int:
+def _merge_json_mcp_config(
+    path: Path,
+    *,
+    container_key: str = "mcpServers",
+    servers: Mapping[str, dict[str, object]] | None = None,
+) -> int:
+    """Byte-preserving merge of ``servers`` into ``path``'s ``container_key`` object.
+
+    Generalised over the container key and server payload so OpenCode's
+    ``mcp`` container (:func:`_merge_opencode_mcp_config`) reuses the same
+    span-based merge as Claude/Kiro's ``mcpServers`` container -- one owned-key
+    repair algorithm, not two copies that could drift (council grok F8).
+    """
     import json
+
+    owned = dict(servers) if servers is not None else _MCP_SERVERS
 
     try:
         raw = path.read_bytes().decode("utf-8")
     except FileNotFoundError:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
-            json.dumps({"mcpServers": _MCP_SERVERS}, indent=2) + "\n",
+            json.dumps({container_key: owned}, indent=2) + "\n",
             encoding="utf-8",
         )
         return 1
@@ -378,48 +403,115 @@ def _merge_json_mcp_config(path: Path) -> int:
     root_span = _json_root_object_span(raw)
     if root_span is None:
         raise InstallError(f"Cannot locate root object in MCP config {path}")
-    current = loaded.get("mcpServers")
+    current = loaded.get(container_key)
     if isinstance(current, dict) and all(
-        current.get(name) == value for name, value in _MCP_SERVERS.items()
+        current.get(name) == value for name, value in owned.items()
     ):
         return 0
 
-    if "mcpServers" not in loaded:
-        updated = _append_json_members(raw, root_span, {"mcpServers": _MCP_SERVERS})
+    if container_key not in loaded:
+        updated = _append_json_members(raw, root_span, {container_key: owned})
     elif not isinstance(current, dict):
-        container_span = _json_value_span(raw, "mcpServers", root_span)
+        container_span = _json_value_span(raw, container_key, root_span)
         if container_span is None:
-            raise InstallError(f"Cannot locate mcpServers value in {path}")
-        rendered = json.dumps(_MCP_SERVERS, separators=(", ", ": "))
+            raise InstallError(f"Cannot locate {container_key} value in {path}")
+        rendered = json.dumps(owned, separators=(", ", ": "))
         updated = raw[: container_span[0]] + rendered + raw[container_span[1] :]
     else:
-        mcp_span = _json_object_span(raw, "mcpServers")
+        mcp_span = _json_object_span(raw, container_key)
         if mcp_span is None:
-            raise InstallError(f"Cannot locate mcpServers object in {path}")
-        incorrect = {
-            name: value for name, value in _MCP_SERVERS.items() if current.get(name) != value
-        }
+            raise InstallError(f"Cannot locate {container_key} object in {path}")
+        incorrect = {name: value for name, value in owned.items() if current.get(name) != value}
         updated = raw
         for name in sorted(set(incorrect) & set(current)):
-            mcp_span = _json_object_span(updated, "mcpServers")
+            mcp_span = _json_object_span(updated, container_key)
             if mcp_span is None:
-                raise InstallError(f"Cannot locate mcpServers object in {path}")
+                raise InstallError(f"Cannot locate {container_key} object in {path}")
             nested = updated[mcp_span[0] : mcp_span[1]]
             value_span = _json_value_span(nested, name)
             if value_span is None:
                 raise InstallError(f"Cannot locate owned MCP server {name} in {path}")
             value_start = mcp_span[0] + value_span[0]
             value_end = mcp_span[0] + value_span[1]
-            rendered = json.dumps(_MCP_SERVERS[name], separators=(", ", ": "))
+            rendered = json.dumps(owned[name], separators=(", ", ": "))
             updated = updated[:value_start] + rendered + updated[value_end:]
         absent = {name: value for name, value in incorrect.items() if name not in current}
         if absent:
-            mcp_span = _json_object_span(updated, "mcpServers")
+            mcp_span = _json_object_span(updated, container_key)
             if mcp_span is None:
-                raise InstallError(f"Cannot locate mcpServers object in {path}")
+                raise InstallError(f"Cannot locate {container_key} object in {path}")
             updated = _append_json_members(updated, mcp_span, absent)
     path.write_bytes(updated.encode("utf-8"))
     return 1
+
+
+def _mcp_server_args(config: dict[str, object]) -> list[object]:
+    """The ``args`` list of one ``_MCP_SERVERS`` entry, typed for iteration.
+
+    ``_MCP_SERVERS`` is typed ``dict[str, dict[str, object]]`` so both the
+    ``command`` string and the ``args`` list share one value type; this
+    narrows ``args`` back to a list pyright (and callers that splat it) can
+    iterate.
+    """
+    args = config["args"]
+    return list(args) if isinstance(args, list) else []
+
+
+def _opencode_mcp_servers() -> dict[str, dict[str, object]]:
+    """The two StudyLoop servers rendered in OpenCode's own MCP schema.
+
+    Same ``_MCP_SERVERS`` names (``session-db``, ``studyloop``) as every other
+    globally-registered harness -- only the value shape differs: a flat
+    ``command`` array plus ``enabled``/``type: local`` (council grok F9:
+    ``studyloop-mcp``/``session-db-mcp`` are console-script COMMANDS, never
+    server names).
+    """
+    return {
+        name: {
+            "command": [config["command"], *_mcp_server_args(config)],
+            "enabled": True,
+            "type": "local",
+        }
+        for name, config in _MCP_SERVERS.items()
+    }
+
+
+def _merge_opencode_mcp_config(path: Path) -> int:
+    """Merge both StudyLoop servers into OpenCode's global ``mcp`` container."""
+    return _merge_json_mcp_config(path, container_key="mcp", servers=_opencode_mcp_servers())
+
+
+def _remove_json_mcp_entries(path: Path, container_key: str, names: set[str]) -> int:
+    """Remove ``names`` from ``path``'s ``container_key`` object, if present.
+
+    Reserialises the file rather than preserving bytes: registration merges
+    preserve bytes because a live config a human tuned may carry adjacent
+    formatting worth keeping, but removal is a rarer, explicit action where a
+    clean rewrite is an acceptable trade for simplicity. Returns 0 (never
+    raises) for a missing, malformed, or already-clean file.
+    """
+    import json
+
+    try:
+        raw = path.read_bytes().decode("utf-8")
+    except (FileNotFoundError, OSError, UnicodeDecodeError):
+        return 0
+    try:
+        loaded = json.loads(raw)
+    except json.JSONDecodeError:
+        return 0
+    if not isinstance(loaded, dict):
+        return 0
+    container = loaded.get(container_key)
+    if not isinstance(container, dict):
+        return 0
+    present = names & set(container)
+    if not present:
+        return 0
+    for name in present:
+        del container[name]
+    path.write_text(json.dumps(loaded, indent=2) + "\n", encoding="utf-8")
+    return len(present)
 
 
 def _toml_marker_path(value: object, path: tuple[str, ...] = ()) -> tuple[str, ...] | None:
@@ -661,6 +753,153 @@ def _merge_codex_mcp_config(path: Path) -> int:
     return 1
 
 
+def _grok_user_settings_path() -> Path:
+    """The legacy MCP config some Grok Build installs still carry.
+
+    An older shape (``$GROK_HOME/user-settings.json`` with an ``mcpServers``
+    map) that predates the ``grok mcp add`` CLI (council kimi F13).
+    StudyLoop never writes this file -- it is read-only detection, so
+    registration does not create a duplicate entry under a second name when
+    a server is already present here.
+    """
+    return _grok_home() / "user-settings.json"
+
+
+def _grok_legacy_registered_names() -> set[str]:
+    """StudyLoop server names already present in the legacy user-settings.json."""
+    import json
+
+    try:
+        data = json.loads(_grok_user_settings_path().read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return set()
+    servers = data.get("mcpServers") if isinstance(data, dict) else None
+    if not isinstance(servers, dict):
+        return set()
+    return {name for name in _MCP_SERVERS if name in servers}
+
+
+def _grok_mcp_list(binary: str) -> list[dict[str, object]] | None:
+    """Parse ``grok mcp list --json``; ``None`` on any failure, never raises.
+
+    Verified live on grok 1.0.13 (council grok F7): a JSON array of objects
+    shaped ``{command, args, enabled, name, scope}``.
+    """
+    import json
+
+    try:
+        result = subprocess.run(
+            [binary, "mcp", "list", "--json"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if result.returncode != 0:
+        return None
+    try:
+        parsed = json.loads(result.stdout)
+    except (json.JSONDecodeError, TypeError):
+        return None
+    return parsed if isinstance(parsed, list) else None
+
+
+def register_grok_mcp_servers() -> int:
+    """Register both StudyLoop MCP servers with Grok Build's own CLI.
+
+    Runs ``grok mcp add --scope user --transport stdio <name> <command>`` for
+    each server not already present. Returns 0 (never raises) when ``grok``
+    is not on PATH -- Grok Build is a preview harness the installer must not
+    fail hard for merely being absent -- and skips a name already registered
+    under the legacy ``user-settings.json`` map (council kimi F13) so the
+    CLI does not create a duplicate entry.
+    """
+    binary = shutil.which("grok")
+    if binary is None:
+        return 0
+    legacy = _grok_legacy_registered_names()
+    changed = 0
+    for name, config in _MCP_SERVERS.items():
+        if name in legacy:
+            continue
+        cmd = [
+            binary,
+            "mcp",
+            "add",
+            "--scope",
+            "user",
+            "--transport",
+            "stdio",
+            name,
+            str(config["command"]),
+            *(str(arg) for arg in _mcp_server_args(config)),
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        if result.returncode == 0:
+            changed += 1
+    return changed
+
+
+def unregister_grok_mcp_servers() -> int:
+    """Remove both StudyLoop MCP servers via ``grok mcp remove <name>``.
+
+    Returns 0 (never raises) when ``grok`` is not on PATH.
+    """
+    binary = shutil.which("grok")
+    if binary is None:
+        return 0
+    changed = 0
+    for name in _MCP_SERVERS:
+        result = subprocess.run(
+            [binary, "mcp", "remove", name], capture_output=True, text=True, check=False
+        )
+        if result.returncode == 0:
+            changed += 1
+    return changed
+
+
+def _grok_registration_detail() -> tuple[bool, str | None]:
+    """Registration state plus which file satisfied it, for doctor messaging.
+
+    A server present in the legacy ``user-settings.json`` map counts as
+    registered without running the CLI at all (council kimi F13); the second
+    element then names that file. Otherwise falls back to ``grok mcp list
+    --json``; when that covers both names the second element names
+    ``config.toml`` (the file ``grok mcp add`` writes) instead. Both `grok`
+    being absent and the CLI call failing report ``(False, None)`` rather
+    than raising.
+    """
+    legacy = _grok_legacy_registered_names()
+    if set(_MCP_SERVERS) <= legacy:
+        return True, str(_grok_user_settings_path())
+    binary = shutil.which("grok")
+    if binary is None:
+        return False, None
+    entries = _grok_mcp_list(binary)
+    if entries is None:
+        return False, None
+    live = {
+        entry.get("name")
+        for entry in entries
+        if isinstance(entry, dict)
+        and entry.get("command") == _MCP_SERVERS.get(str(entry.get("name")), {}).get("command")
+    }
+    if set(_MCP_SERVERS) <= (legacy | live):
+        return True, str(_grok_home() / "config.toml")
+    return False, None
+
+
+def _grok_registration_status() -> bool:
+    """True when both StudyLoop MCP servers are registered with Grok Build.
+
+    Thin wrapper over :func:`_grok_registration_detail` for callers that only
+    need the bool (e.g. :func:`mcp_registration_status`'s uniform per-tool map).
+    """
+    return _grok_registration_detail()[0]
+
+
 def register_mcp_servers(tools: list[str] | None = None) -> dict[str, int]:
     """Register both StudyLoop MCP servers in supported harness configs."""
     selected = [
@@ -668,10 +907,35 @@ def register_mcp_servers(tools: list[str] | None = None) -> dict[str, int]:
     ]
     changed: dict[str, int] = {}
     for tool in selected:
-        path = _mcp_config_path(tool)
-        changed[tool] = (
-            _merge_codex_mcp_config(path) if tool == "codex" else _merge_json_mcp_config(path)
-        )
+        if tool == "codex":
+            changed[tool] = _merge_codex_mcp_config(_mcp_config_path(tool))
+        elif tool == "opencode":
+            changed[tool] = _merge_opencode_mcp_config(_mcp_config_path(tool))
+        elif tool == "grok":
+            changed[tool] = register_grok_mcp_servers()
+        else:
+            changed[tool] = _merge_json_mcp_config(_mcp_config_path(tool))
+    return changed
+
+
+def unregister_mcp_servers(tools: list[str]) -> dict[str, int]:
+    """Remove StudyLoop's owned MCP entries for the given tools.
+
+    Only OpenCode and Grok Build are supported. Claude/Kiro/Codex
+    registration is deliberately never removed here: their configs are
+    user-owned JSON/TOML files ``install_agent_definitions`` already skips
+    rewriting on uninstall, and this function does not change that.
+    """
+    changed: dict[str, int] = {}
+    for tool in tools:
+        if tool == "opencode":
+            changed[tool] = _remove_json_mcp_entries(
+                _mcp_config_path("opencode"), "mcp", set(_MCP_SERVERS)
+            )
+        elif tool == "grok":
+            changed[tool] = unregister_grok_mcp_servers()
+        else:
+            raise InstallError(f"MCP unregistration is not supported for tool: {tool}")
     return changed
 
 
@@ -683,16 +947,25 @@ def mcp_registration_status(tools: list[str] | None = None) -> dict[str, bool]:
     selected = list(tools or _MCP_HARNESSES)
     status: dict[str, bool] = {}
     for tool in selected:
+        if tool == "grok":
+            status[tool] = _grok_registration_status()
+            continue
         path = _mcp_config_path(tool)
         try:
             if tool == "codex":
                 data = tomllib.loads(path.read_text(encoding="utf-8"))
                 current = data.get("mcp_servers", {})
+                servers = _MCP_SERVERS
+            elif tool == "opencode":
+                data = json.loads(path.read_text(encoding="utf-8"))
+                current = data.get("mcp", {})
+                servers = _opencode_mcp_servers()
             else:
                 data = json.loads(path.read_text(encoding="utf-8"))
                 current = data.get("mcpServers", {})
+                servers = _MCP_SERVERS
             status[tool] = isinstance(current, dict) and all(
-                current.get(name) == value for name, value in _MCP_SERVERS.items()
+                current.get(name) == value for name, value in servers.items()
             )
         except (OSError, ValueError, TypeError):
             status[tool] = False
@@ -1187,6 +1460,9 @@ __all__ = [
     "install_agent_definitions",
     "install_workspace_tools",
     "mcp_registration_status",
+    "register_grok_mcp_servers",
     "register_mcp_servers",
     "require_repo_root",
+    "unregister_grok_mcp_servers",
+    "unregister_mcp_servers",
 ]
