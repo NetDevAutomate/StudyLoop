@@ -1,4 +1,4 @@
-"""Config health checks: Obsidian vault, review directories, pandoc, tmux-resurrect."""
+"""Config health checks: Obsidian vault, review directories, pandoc."""
 
 from __future__ import annotations
 
@@ -212,24 +212,57 @@ def check_obsidian_export() -> list[CheckResult]:
     # Export is enabled — verify vault_path / memory_dir is accessible.
     vault_path = Path(obsidian.vault_path).expanduser()
     memory_dir = vault_path / obsidian.memory_dir
-    if vault_path.is_dir():
+    if not vault_path.is_dir():
         return [
             CheckResult(
                 "config",
                 "obsidian_export",
-                "pass",
-                f"Obsidian export enabled; memory dir: {memory_dir}",
-                "",
+                "warn",
+                f"Obsidian export enabled but vault not found: {vault_path}",
+                f"Create directory or update config: {vault_path}",
                 False,
             )
         ]
+
+    # W10: the vault existing is not enough -- verify the memory directory
+    # itself is WRITABLE (mirroring check_second_brain's
+    # os.access(vault, os.W_OK) pattern below), creating it on demand when
+    # the vault exists but the subdirectory doesn't yet. A read-only memory
+    # dir silently breaks every export write with no signal until now.
+    if not memory_dir.is_dir():
+        try:
+            memory_dir.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            return [
+                CheckResult(
+                    "config",
+                    "obsidian_export",
+                    "warn",
+                    f"Obsidian export enabled but memory dir could not be created: {memory_dir}",
+                    f"mkdir -p {memory_dir}",
+                    False,
+                )
+            ]
+
+    if not os.access(memory_dir, os.W_OK):
+        return [
+            CheckResult(
+                "config",
+                "obsidian_export",
+                "warn",
+                f"Obsidian export enabled but memory dir is not writable: {memory_dir}",
+                f"Check the permissions on {memory_dir}",
+                False,
+            )
+        ]
+
     return [
         CheckResult(
             "config",
             "obsidian_export",
-            "warn",
-            f"Obsidian export enabled but vault not found: {vault_path}",
-            f"Create directory or update config: {vault_path}",
+            "pass",
+            f"Obsidian export enabled; memory dir: {memory_dir}",
+            "",
             False,
         )
     ]

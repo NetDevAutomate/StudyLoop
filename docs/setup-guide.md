@@ -57,8 +57,11 @@ After adding, reload your tmux config:
 tmux source-file ~/.tmux.conf
 ```
 
-Run `studyloop doctor` to verify the configuration — it checks for
-tmux-resurrect and warns if the restore hook is not detected.
+Run `studyloop doctor` to verify tmux itself is installed and at a supported
+version.
+
+The restore hook above is a manual step. Add it yourself if you use one of
+those two tmux plugins; `doctor` does not check for it.
 
 ## Installation
 

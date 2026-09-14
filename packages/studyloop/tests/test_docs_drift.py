@@ -570,3 +570,16 @@ def test_tts_pause_is_not_documented() -> None:
                 assert "pause" not in tts_section, (
                     f"{location}: documents tts.pause, which no TTS backend reads"
                 )
+
+
+def test_doctor_prerequisites_paragraph_does_not_claim_tmux_resurrect_check() -> None:
+    """W09: `studyloop doctor` no longer checks tmux-resurrect (removed
+    deliberately in fa80b937 -- "herdr replaced tmux, a missing restore hook
+    is not a health condition"). The Prerequisites section must not claim
+    otherwise; the manual restore-hook instructions above it may stay."""
+    text = (DOCS_DIR / "setup-guide.md").read_text()
+    prerequisites_section = text.split("## Installation", 1)[0]
+    paragraphs = [p for p in prerequisites_section.split("\n\n") if "studyloop doctor" in p]
+    assert paragraphs, "expected a 'studyloop doctor' mention in the Prerequisites section"
+    for paragraph in paragraphs:
+        assert "tmux-resurrect" not in paragraph.lower(), paragraph
