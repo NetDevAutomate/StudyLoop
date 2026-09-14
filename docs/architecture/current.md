@@ -433,8 +433,8 @@ All four are gated on a single non-reactive flag `this._suppressStreamingBubble`
 | Typing indicator + final bubble DOM | `index.html` | ~836 |
 | Theme palettes (CSS vars) | `packages/studyloop/src/studyloop/web/static/style.css` | end of file |
 | Settings store (palette, dyslexic, light) | `packages/studyloop/src/studyloop/web/static/components.js` | ~43 |
-| `/api/session/start` (ACP path) | `packages/studyloop/src/studyloop/web/routes/session.py` | ~687 |
-| Persona injection backend | `packages/studyloop/src/studyloop/web/routes/session.py` | ~783 |
+| `/api/session/start` (ACP path) | `packages/studyloop/src/studyloop/web/routes/session/_start.py` | `start_session` dispatches to `_start_acp_session` |
+| Persona injection backend | `packages/studyloop/src/studyloop/web/routes/session/_start.py` | `_start_acp_session` builds and hashes the persona |
 | ACPTransport `_dispatch_frame` | `packages/studyloop/src/studyloop/session/transports/acp.py` | — |
 | Live Kiro Playwright test (regression fence) | `packages/studyloop/tests/test_web_acp_dogfood_kiro.py` | full file |
 | Stub-driven chat-UI e2e | `packages/studyloop/tests/test_web_acp_chat_ui.py` | full file |
@@ -514,7 +514,7 @@ flowchart TB
       Scope["resolve_scope<br/>(content/scope.py)<br/>course / section /<br/>topic_struggles"]
       Runner["generate_concurrently<br/>(generators/runner.py)"]
       Factory["get_generator<br/>(generators/__init__.py)"]
-      Adapters["StubGenerator<br/>OllamaGenerator<br/>BedrockGenerator<br/>OpenAICompatGenerator<br/>AnthropicCompatGenerator<br/>provider prompts + validation"]
+      Adapters["OllamaGenerator<br/>BedrockGenerator<br/>OpenAICompatGenerator<br/>AnthropicCompatGenerator<br/>provider prompts + validation"]
       Secrets["secrets.get_secret(slug)<br/>──────────<br/>encrypted store → env.<br/>auth_kind: api_key /<br/>bedrock_bearer / local_keyless"]
       Helpers["on-existing helpers<br/>(storage.next_unique_path,<br/>FlashcardDeck.merge_dedupe,<br/>QuizDeck.merge_dedupe)"]
     end
@@ -558,7 +558,7 @@ sequenceDiagram
     participant Job as run_job (asyncio task)
     participant Scope as resolve_scope
     participant Runner as generate_concurrently
-    participant Gen as Generator (OpenAI / Anthropic / Stub / ...)
+    participant Gen as Generator (Ollama / Bedrock / OpenAI / Anthropic / ...)
     participant FS as content.base_path
     participant WS as WS /content/generate/ws
 
@@ -609,7 +609,6 @@ sequenceDiagram
 | Scope resolver (`resolve_scope`) | `packages/studyloop/src/studyloop/content/scope.py` | full file |
 | Generator factory + Protocol | `packages/studyloop/src/studyloop/content/generators/__init__.py` | full file |
 | Provider profile registry | `packages/studyloop/src/studyloop/content/generators/provider_profiles.py` | full file |
-| Stub generator | `packages/studyloop/src/studyloop/content/generators/stub.py` | full file |
 | OpenAI Chat Completions adapter | `packages/studyloop/src/studyloop/content/generators/openai_compat.py` | full file |
 | Anthropic Messages adapter | `packages/studyloop/src/studyloop/content/generators/anthropic_compat.py` | full file |
 | Shared retry-with-correction helper | `packages/studyloop/src/studyloop/content/generators/_retry.py` | full file |
@@ -698,7 +697,7 @@ flowchart TB
 | Read-root resolver | `packages/studyloop/src/studyloop/settings.py` | `resolve_study_dirs` |
 | Recursive deck discovery | `packages/studyloop/src/studyloop/review_loader.py` | `discover_directories` |
 | Course / cards routes | `packages/studyloop/src/studyloop/web/routes/courses.py`, `cards.py` | — |
-| Providers / test / secrets routes | `packages/studyloop/src/studyloop/web/routes/content_gen.py` | `list_providers`, `/providers/{slug}/test`, `/secrets` |
+| Providers / test / secrets routes | `packages/studyloop/src/studyloop/web/routes/content_gen/_catalog.py`, `_secrets.py` | `list_providers`, `test_provider`, `list_secrets`/`store_key`/`delete_key` |
 | Scale + settings e2e | `tests/test_web_course_list_scale_e2e.py`, `tests/test_web_settings_panel_e2e.py` | geometry + behaviour |
 
 ---

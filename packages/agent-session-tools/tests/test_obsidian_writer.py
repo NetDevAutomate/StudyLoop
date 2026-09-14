@@ -94,6 +94,22 @@ class TestWriteSessionToVault:
         # Must be inside AgentMemory (or whatever memory_dir is configured)
         assert result.parent.name == _OBSIDIAN_DEFAULTS["memory_dir"]
 
+    def test_filename_template_controls_written_filename(self, tmp_path: Path) -> None:
+        """W37 dead-key fix: ``obsidian.filename_template`` must actually shape
+        the filename _make_filename() produces, not sit unread while the
+        function hardcodes ``$date-$source-$slug`` regardless of config.
+        """
+        vault = _make_vault(tmp_path)
+        cfg = {**_OBSIDIAN_CFG, "filename_template": "note--$slug--$source--$date"}
+
+        result = write_session_to_vault(_SESSION, _MESSAGES, vault, obsidian_cfg=cfg)
+
+        assert result is not None
+        assert result.stem.startswith("note--"), (
+            f"filename_template was ignored; got {result.stem!r}"
+        )
+        assert result.stem == "note--my-project-44445555--claude-code--2024-03-15"
+
     def test_frontmatter_contains_required_keys(self, tmp_path: Path) -> None:
         """The frontmatter must carry all Dataview-required fields."""
         vault = _make_vault(tmp_path)

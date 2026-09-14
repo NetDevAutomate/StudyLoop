@@ -260,6 +260,49 @@ def validate_adr_statuses(repo_root: Path) -> None:
         )
 
 
+def validate_release_tag(repo_root: Path, version: str) -> None:
+    """--release mode only: a released version must have a matching git tag,
+
+    and the CHANGELOG's dated heading for that version must be on or after
+    the tag's own commit date. W41: the 0.3.0 release note and CHANGELOG
+    entry were dated before the commit that actually bumped the version, and
+    no ``v0.3.0`` tag was ever cut -- nothing caught either.
+    """
+    tag = f"v{version}"
+    tag_exists = (
+        subprocess.run(
+            ["git", "rev-parse", "--verify", "--quiet", f"{tag}^{{commit}}"],
+            cwd=repo_root,
+            capture_output=True,
+            timeout=60,
+            check=False,
+        ).returncode
+        == 0
+    )
+    if not tag_exists:
+        raise ValueError(f"no git tag {tag!r} found; cut it before releasing {version}")
+
+    tag_date = _git(repo_root, "log", "-1", "--format=%ad", "--date=short", tag)
+
+    changelog_path = repo_root / "CHANGELOG.md"
+    if not changelog_path.is_file():
+        raise ValueError(f"missing {changelog_path}")
+    heading_re = re.compile(rf"^##\s*\[{re.escape(version)}\]\s*-\s*(\d{{4}}-\d{{2}}-\d{{2}})")
+    changelog_date = None
+    for line in changelog_path.read_text(encoding="utf-8").splitlines():
+        match = heading_re.match(line.strip())
+        if match:
+            changelog_date = match.group(1)
+            break
+    if changelog_date is None:
+        raise ValueError(f"CHANGELOG.md has no dated heading for [{version}]")
+    if changelog_date < tag_date:
+        raise ValueError(
+            f"CHANGELOG.md dates {version} as {changelog_date}, before tag {tag}'s "
+            f"commit date {tag_date}"
+        )
+
+
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Check StudyLoop release notes and wheel metadata match pyproject version.",
@@ -297,6 +340,7 @@ def main(argv: list[str] | None = None) -> int:
         validate_release_note(repo_root, version)
         validate_adr_statuses(repo_root)
         if args.release:
+            validate_release_tag(repo_root, version)
             validate_openspec_changes_shipped(repo_root)
             validate_new_archives(repo_root)
         if not args.skip_wheel:

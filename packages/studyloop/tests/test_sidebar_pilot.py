@@ -10,12 +10,10 @@ Run with:
 
 from __future__ import annotations
 
+import ast
 import json
-from typing import TYPE_CHECKING
+from pathlib import Path
 from unittest.mock import MagicMock, patch
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 import pytest
 
@@ -329,3 +327,78 @@ def test_mtime_or_zero_returns_the_real_mtime(tmp_path: Path) -> None:
     real = tmp_path / "state.json"
     real.write_text("{}")
     assert _mtime_or_zero(real) == real.stat().st_mtime
+
+
+# ---------------------------------------------------------------------------
+# W43: docs/tui-guide.md's Timer section describes a fixed 0-25/25-50/50+
+# minute colour schedule that doesn't match _timer_phase()'s real,
+# energy-adaptive behaviour. These pin the real behaviour the doc now
+# describes.
+# ---------------------------------------------------------------------------
+
+
+def test_timer_phase_at_default_energy_is_amber_at_twenty_minutes() -> None:
+    """At the default energy=5 (Medium band), 20 minutes is already amber --
+
+    the doc's old fixed table (Fresh 0-25 min = Green) implied it should
+    still be green until minute 25.
+    """
+    from studyloop.tui.sidebar import _timer_phase
+
+    assert _timer_phase(20 * 60, energy=5) == "amber"
+
+
+def test_timer_phase_matches_break_thresholds_at_every_energy_band() -> None:
+    """_timer_phase's green/amber/red boundaries are exactly the Break
+
+    Banner's micro/short thresholds for the same energy band -- there is no
+    separate fixed schedule, which is the claim the doc note now makes.
+    """
+    from studyloop.logic.break_logic import THRESHOLDS
+    from studyloop.tui.sidebar import _timer_phase
+
+    for band, thresholds in THRESHOLDS.items():
+        energy = {"low": 1, "medium": 5, "high": 7}[band]
+        assert _timer_phase((thresholds.micro - 1) * 60, energy) == "green"
+        assert _timer_phase(thresholds.micro * 60, energy) == "amber"
+        assert _timer_phase(thresholds.short * 60, energy) == "red"
+
+
+def _poll_ipc_files_sleep_seconds() -> int:
+    """The literal seconds passed to ``time_mod.sleep()`` inside
+
+    ``_poll_ipc_files``, read from source with ``ast`` -- not
+    ``inspect.getsource`` on the live attribute, which conftest.py's
+    autouse fixtures can shadow for unrelated functions (see
+    test_docs_drift.py's ``_static_function_source`` for the same
+    precaution).
+    """
+    import inspect
+
+    from studyloop.tui import sidebar as sidebar_mod
+
+    source_file = inspect.getsourcefile(sidebar_mod)
+    assert source_file is not None
+    source = Path(source_file).read_text()
+    tree = ast.parse(source)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name == "_poll_ipc_files":
+            for call in ast.walk(node):
+                if (
+                    isinstance(call, ast.Call)
+                    and isinstance(call.func, ast.Attribute)
+                    and call.func.attr == "sleep"
+                    and call.args
+                    and isinstance(call.args[0], ast.Constant)
+                    and isinstance(call.args[0].value, int)
+                ):
+                    return call.args[0].value
+    raise LookupError("no time_mod.sleep(...) call found in _poll_ipc_files")
+
+
+def test_poll_ipc_files_sleeps_two_seconds_not_one() -> None:
+    """W43: docs/tui-guide.md said 'every second'; the real poll interval is
+
+    two seconds (sidebar.py's own docstring at ``_poll_ipc_files`` agrees).
+    """
+    assert _poll_ipc_files_sleep_seconds() == 2

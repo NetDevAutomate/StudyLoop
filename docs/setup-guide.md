@@ -342,6 +342,24 @@ agents:
   priority: [codex, kiro, claude, opencode, pi, grok]
 ```
 
+### Custom agents
+
+Any CLI-based AI agent not already supported can be wired in via config,
+without touching source: `agents.custom.<name>` builds an `AgentAdapter` at
+runtime from a template (`packages/studyloop/src/studyloop/adapters/_custom.py`):
+
+```yaml
+agents:
+  custom:
+    my-agent:
+      binary: my-agent
+      strategy: cli-flag       # cli-flag | cwd-file
+      launch: "{binary} --read {persona}"
+      resume: "{binary} --read {persona} --resume"
+      mcp:
+        format: generic
+```
+
 ### Web PWA (recommended)
 
 The study web app requires no extra dependencies — just run:
@@ -527,6 +545,8 @@ Environment variable overrides:
 - `EMBEDDING_MODEL` — override embedding model
 - `STUDYLOOP_RETRIEVAL_MODE` — override the retrieval mode (`lexical` or
   `hybrid`) for a single process, ahead of `semantic_search.hybrid`
+- `WARNING_THRESHOLD_MB` — override `thresholds.warning_mb`
+- `CRITICAL_THRESHOLD_MB` — override `thresholds.critical_mb`
 
 ### Web Terminal Settings
 

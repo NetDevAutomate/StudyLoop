@@ -105,9 +105,23 @@ def _make_slug(project_path: str | None, session_id: str) -> str:
     return _slugify(f"{project_name}-{suffix}")
 
 
-def _make_filename(date_str: str, source: str, slug: str) -> str:
-    """Return the bare filename (no extension): <date>-<source>-<slug>."""
-    return f"{date_str}-{_slugify(source)}-{slug}"
+def _make_filename(
+    date_str: str, source: str, slug: str, template: str | None = None
+) -> str:
+    """Return the bare filename (no extension) built from *template*.
+
+    *template* uses ``$date``/``$source``/``$slug`` placeholders (see
+    ``obsidian.filename_template`` in config.yaml). Defaults to
+    ``_OBSIDIAN_DEFAULTS["filename_template"]`` (``$date-$source-$slug``,
+    i.e. the historical hardcoded shape) when not given or empty, so every
+    existing call site that doesn't pass a template is unaffected.
+    """
+    resolved_template: str = template or str(_OBSIDIAN_DEFAULTS["filename_template"])
+    return (
+        resolved_template.replace("$date", date_str)
+        .replace("$source", _slugify(source))
+        .replace("$slug", slug)
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -417,7 +431,9 @@ def write_session_to_vault(
     project_path = session.get("project_path") or ""
 
     slug = _make_slug(project_path, session_id)
-    note_id = _make_filename(date_str, source, slug)
+    note_id = _make_filename(
+        date_str, source, slug, obsidian_cfg.get("filename_template")
+    )
     filename = f"{note_id}.md"
     target_path = (memory_dir / filename).resolve()
 
@@ -644,7 +660,9 @@ def write_vault_notes(
             source = session.get("source") or "unknown"
             project_path = session.get("project_path") or ""
             slug = _make_slug(project_path, session_id)
-            note_id = _make_filename(date_str, source, slug)
+            note_id = _make_filename(
+                date_str, source, slug, obsidian_cfg.get("filename_template")
+            )
             target_path = memory_dir / f"{note_id}.md"
 
             related_links: list[str] = []
@@ -686,6 +704,7 @@ def write_vault_notes(
                     date_str,
                     source,
                     _make_slug(session.get("project_path") or "", session_id),
+                    obsidian_cfg.get("filename_template"),
                 )
             else:
                 result["written"] += 1

@@ -9,7 +9,7 @@ For deeper diagrams, see:
 - [Current Architecture](architecture/current.md)
 - [Target Architecture](architecture/target.md)
 - [Web UI Guide](web-ui-guide.md)
-- [Repository Standards](standards/repo-standards.md)
+- [Contributing](../CONTRIBUTING.md)
 
 ## Big Picture
 
@@ -43,7 +43,7 @@ flowchart TB
         Recap["recap today<br/>win + repair + next action"]
         Mastery["mastery graph<br/>weak links"]
         EvidenceCmd["progress / teachback<br/>follow-up command"]
-        Generator["Card generator<br/>(pluggable: Ollama / Bedrock /<br/>OpenAI / OpenRouter / Gemini /<br/>Anthropic / Stub)"]
+        Generator["Card generator<br/>(pluggable: Ollama / Bedrock /<br/>OpenAI / OpenRouter / Gemini /<br/>Anthropic)"]
         JSON["Flashcard/quiz JSON"]
         Review["SM-2 review"]
     end
@@ -176,7 +176,7 @@ flowchart LR
     Resolve["resolve_scope<br/>course / section /<br/>topic_struggles"]
     Task["GenerationTask(count)<br/>from count_per_source"]
     Generate["studyloop content generate-cards<br/>or Generate panel<br/>(WebUI)"]
-    Backend["CardGenerator<br/>Ollama / Bedrock /<br/>OpenAI / OpenRouter / Gemini /<br/>Anthropic / Stub"]
+    Backend["CardGenerator<br/>Ollama / Bedrock /<br/>OpenAI / OpenRouter / Gemini /<br/>Anthropic"]
     Schema["Pydantic validation"]
     Artefacts["course/flashcards<br/>course/quizzes"]
     PWA["Web review"]

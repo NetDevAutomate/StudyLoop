@@ -120,7 +120,11 @@ studyloop web --lan
 Use the address and password printed in the terminal. LAN mode uses HTTP Basic
 Auth, but it is still intended for a trusted local network—not direct exposure to
 the internet. A tunnel or reverse proxy changes the security boundary and is not
-part of the supported quick path.
+part of the supported quick path: its Origin header differs from the LAN host's,
+so WebSocket connections through it are rejected by default. If you still need
+one, set `STUDYLOOP_ALLOWED_ORIGINS` to a comma-separated list of exact origins
+(scheme + host + port, no wildcards) — see
+[Troubleshooting](troubleshooting.md#web-and-lan-access).
 
 ## If a live agent does not appear
 
