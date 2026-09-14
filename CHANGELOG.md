@@ -59,8 +59,8 @@ experience may change before `1.0.0`.
   state which harnesses register MCP servers (Claude Code, Kiro CLI, Codex) and
   which speak ACP (Kiro CLI, Grok Build). CONTRIBUTING.md and SECURITY.md no
   longer name a version line that goes stale. Reviewed against the OKF removal:
-  no `okf`/`ontolog` code and no `kirocrew` reference remain, and tests now lock
-  both out.
+  no `okf`/`ontolog` code remains and no reference to Kiro's crew tooling (never
+  a StudyLoop harness) remains; tests now lock both out.
 - Session-memory documentation describes the shipped database: schema 48, the
   embedding substrate, the retrieval modes and their precedence, and the
   `session-maint embed`/`embed-check` commands. The `semantic_search` example
