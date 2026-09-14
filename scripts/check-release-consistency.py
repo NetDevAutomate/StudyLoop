@@ -47,13 +47,20 @@ def validate_release_note(repo_root: Path, version: str) -> None:
     if not release_note_path.is_file():
         raise ValueError(f"missing release note: releases/v{version}.md")
     first_heading = ""
-    for line in release_note_path.read_text(encoding="utf-8").splitlines():
+    text = release_note_path.read_text(encoding="utf-8")
+    for line in text.splitlines():
         if line.startswith("#"):
             first_heading = line.strip()
             break
     if f"v{version}" not in first_heading:
         raise ValueError(
             f"release note title must mention v{version}; got {first_heading or '<none>'}"
+        )
+    # A skeleton straight from scripts/prepare-release.py is not a release note.
+    if "- Release summary." in text:
+        raise ValueError(
+            f"releases/v{version}.md is still the prepare-release skeleton "
+            "('- Release summary.'); write the release notes before releasing"
         )
 
 
@@ -323,8 +330,19 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         action="store_true",
         help=(
             "Also fail on unarchived, undeferred openspec changes with commits "
-            "since the last tag (release-check mode; open changes are legal "
-            "during a cycle, so preflight does not pass this)."
+            "since the last tag, and require the version's git tag to exist "
+            "(release-check mode; open changes are legal during a cycle, so "
+            "preflight does not pass this)."
+        ),
+    )
+    parser.add_argument(
+        "--pre-tag",
+        action="store_true",
+        help=(
+            "With --release: defer ONLY the git-tag/CHANGELOG-date assertion, "
+            "naming the tag still to be cut. `just release-check` runs before the "
+            "tag exists and uses this; `just release-verify` runs the strict form "
+            "after tagging."
         ),
     )
     return parser.parse_args(argv)
@@ -340,7 +358,10 @@ def main(argv: list[str] | None = None) -> int:
         validate_release_note(repo_root, version)
         validate_adr_statuses(repo_root)
         if args.release:
-            validate_release_tag(repo_root, version)
+            if args.pre_tag:
+                print(f"release tag pending: cut v{version} after this check passes")
+            else:
+                validate_release_tag(repo_root, version)
             validate_openspec_changes_shipped(repo_root)
             validate_new_archives(repo_root)
         if not args.skip_wheel:
