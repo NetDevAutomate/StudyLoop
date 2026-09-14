@@ -546,3 +546,27 @@ def test_yaml_block_keys_are_known(doc_name: str, block_index: int) -> None:
     assert not unknown, (
         f"{location}: unknown top-level key(s) {sorted(unknown)} not in {sorted(known)}"
     )
+
+
+def test_tts_pause_is_not_documented() -> None:
+    """W14: `tts.pause` is documented in two config examples but never read by
+    any TTS backend (agent_session_tools/speak.py's `_get_tts_config()` never
+    looks it up) -- a config key that does nothing must not be in the docs a
+    learner copies from."""
+    for doc_name in _YAML_BLOCK_DOCS:
+        doc_path = DOCS_DIR / doc_name
+        if not doc_path.is_file():
+            continue
+        for _idx, start_line, text in _iter_yaml_blocks(doc_path):
+            location = f"{doc_name}:{start_line}"
+            try:
+                parsed = yaml.safe_load(text)
+            except yaml.YAMLError:
+                continue
+            if not isinstance(parsed, dict):
+                continue
+            tts_section = parsed.get("tts")
+            if isinstance(tts_section, dict):
+                assert "pause" not in tts_section, (
+                    f"{location}: documents tts.pause, which no TTS backend reads"
+                )

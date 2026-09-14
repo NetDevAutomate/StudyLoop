@@ -530,7 +530,6 @@ tts:
   backend: kokoro        # kokoro | openvox | qwen3 | macos
   voice: am_michael      # kokoro voice (am_michael, af_heart, bf_emma, etc.)
   speed: 1.5             # 0.5 = slow, 1.0 = normal, 1.5 = fast
-  pause: 0.0             # seconds between sentences
   macos_voice: Samantha
 ```
 
@@ -549,7 +548,6 @@ tts:
   # Kokoro/Qwen/macOS fallback settings still apply.
   voice: am_michael      # kokoro voice (am_michael, af_heart, bf_emma, etc.)
   speed: 1.5             # 0.5 = slow, 1.0 = normal, 1.5 = fast
-  pause: 0.0             # seconds between sentences
   macos_voice: Samantha
 ```
 
