@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING
 from unittest.mock import patch
+
+import pytest
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -213,12 +216,14 @@ class TestCheckObsidianExport:
         assert results[0].status == "info"
         assert "disabled" in results[0].message.lower()
 
-    def test_returns_pass_when_export_enabled_and_vault_exists(self, tmp_path: Path):
-        """When export_enabled is True and vault_path exists, returns pass."""
+    def test_returns_pass_when_export_enabled_and_memory_dir_exists(self, tmp_path: Path):
+        """When export_enabled is True and the vault AND its memory directory
+        exist (writable), returns pass. A vault without the memory subdirectory
+        is a warn -- see test_plain_doctor_does_not_create_a_missing_memory_dir."""
         from studyloop.doctor.config import check_obsidian_export
 
         vault = tmp_path / "vault"
-        vault.mkdir()
+        (vault / "AgentMemory").mkdir(parents=True)
         obs_cfg = _make_obsidian_config(
             export_enabled=True,
             vault_path=str(vault),
@@ -258,6 +263,68 @@ class TestCheckObsidianExport:
         assert len(results) == 1
         assert results[0].status == "warn"
         assert str(missing_vault) in results[0].message
+
+    def test_plain_doctor_does_not_create_a_missing_memory_dir(self, tmp_path: Path):
+        """A29 (council, Astra Q4.3): `studyloop doctor` without --fix must not
+        mutate the filesystem. A vault that exists but has no memory
+        subdirectory yet is reported as warn with a `mkdir -p` remediation;
+        the directory is NOT created by the check itself."""
+        from studyloop.doctor.config import check_obsidian_export
+
+        vault = tmp_path / "vault"
+        vault.mkdir()
+        memory_dir = vault / "AgentMemory"
+        obs_cfg = _make_obsidian_config(
+            export_enabled=True,
+            vault_path=str(vault),
+            memory_dir="AgentMemory",
+        )
+        with patch(
+            "studyloop.doctor.config._load_settings",
+            return_value=_make_settings(obsidian_base=str(vault), obsidian=obs_cfg),
+        ):
+            results = check_obsidian_export()
+
+        assert not memory_dir.exists(), "a read-only doctor check created a directory"
+        assert len(results) == 1
+        assert results[0].status == "warn"
+        assert str(memory_dir) in results[0].message
+        assert "mkdir -p" in results[0].fix_hint
+
+    @pytest.mark.skipif(
+        hasattr(os, "geteuid") and os.geteuid() == 0,
+        reason="root ignores directory permission bits",
+    )
+    def test_returns_warn_when_memory_dir_is_not_writable(self, tmp_path: Path):
+        """W10: doctor's Obsidian export check must verify the memory
+        directory is WRITABLE, not just that the vault exists -- a read-only
+        memory dir silently breaks every session-export write."""
+        from studyloop.doctor.config import check_obsidian_export
+
+        vault = tmp_path / "vault"
+        memory_dir = vault / "AgentMemory"
+        memory_dir.mkdir(parents=True)
+        memory_dir.chmod(0o500)
+        try:
+            obs_cfg = _make_obsidian_config(
+                export_enabled=True,
+                vault_path=str(vault),
+                memory_dir="AgentMemory",
+            )
+            with patch(
+                "studyloop.doctor.config._load_settings",
+                return_value=_make_settings(
+                    obsidian_base=str(vault),
+                    obsidian=obs_cfg,
+                ),
+            ):
+                results = check_obsidian_export()
+        finally:
+            memory_dir.chmod(0o700)
+
+        assert len(results) == 1
+        assert results[0].status in ("warn", "fail")
+        assert str(memory_dir) in results[0].message
 
 
 # check_unknown_config_keys (R-34) lives in cli/_doctor.py, not doctor/config.py

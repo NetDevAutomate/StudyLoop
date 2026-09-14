@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -946,9 +947,17 @@ def install_workspace_tools(
         _run(["uv", "sync", "--all-packages"], cwd=repo_root)
 
     packages_dir = repo_root / "packages"
+    # Pins every `uv tool install` below to the INVOKING interpreter's minor
+    # version -- the synced venv running under `uv run` right now -- so the
+    # new global tool venvs share the workspace's minor instead of whatever
+    # `uv tool install` would otherwise resolve on its own (A3). This is
+    # deliberately sys.version_info, not sys.executable: a venv interpreter
+    # is the wrong base for a new tool venv, so identity is not passed, only
+    # the minor version.
+    py_version = f"{sys.version_info.major}.{sys.version_info.minor}"
     for pkg_dir in sorted(p for p in packages_dir.iterdir() if p.is_dir()):
         package_name = pkg_dir.name
-        cmd = ["uv", "tool", "install"]
+        cmd = ["uv", "tool", "install", "--python", py_version]
         # Both packages install with their [all] aggregate extra so a single
         # `./scripts/install.sh` yields a fully working tool — web UI, content
         # generation, Bedrock (boto3), MCP server, NotebookLM, TUI, and

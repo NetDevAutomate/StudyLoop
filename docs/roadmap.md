@@ -13,7 +13,13 @@ The current release supports:
 - local content generation from Markdown, text, and supported PDF sources;
 - study plans stored as readable Markdown with session checkpoints;
 - searchable session history and optional Obsidian export;
-- laptop and tablet Web UI layouts.
+- laptop and tablet Web UI layouts;
+- a choice of second brain (shipped in 0.3.0): `studyloop brain destination set`
+  and the Today panel's launcher let a plan and today's next action appear
+  where a learner already keeps their thinking. Obsidian is the free, local
+  option and works now; support for a connected visual planner is served
+  through the learner's own assistant rather than by StudyLoop holding a
+  credential.
 
 Work in this phase is about trustworthy installation, recovery, accessibility,
 and documentation. A feature is not considered ready merely because a backend
@@ -36,10 +42,6 @@ The next product improvements are:
 - a guided planning conversation that turns a learner's own words into a useful
   plan without silently inventing goals or evidence;
 - stronger continuity between active plans, Today, review, and the next session;
-- a choice of second brain, so a plan and today's next action can appear where a
-  learner already keeps their thinking. Obsidian is the free, local option and
-  works now; support for a connected visual planner is served through the
-  learner's own assistant rather than by StudyLoop holding a credential;
 - clearer in-product explanations when an agent, voice backend, or optional
   integration is unavailable;
 - broader manual accessibility testing and more contributor-friendly UI evidence.

@@ -34,6 +34,37 @@ just test
 Use `just sync-full` only when validating optional extras. The full profile
 pulls heavier optional stacks such as semantic search and TTS dependencies.
 
+### The installer picked an unexpected Python
+
+Python 3.12 or 3.13 (both tested in CI). The installer defaults to 3.12
+through `.python-version` and downloads it with uv if needed; set
+`UV_PYTHON=3.13 ./scripts/install.sh` to choose another. 3.14 installs but is
+checked only by the nightly install job; the installer refuses anything else.
+
+Diagnose which interpreter uv is actually resolving from this checkout:
+
+```bash
+uv python find
+```
+
+Note that plain `uv python find` reports the repo's `.python-version` pin
+even if `UV_PYTHON` is set — unlike `uv run`/`uv sync`, it does not treat that
+env var as an override once a version file exists. To check what a specific
+override would actually resolve to, pass it as an argument (this is exactly
+what `./scripts/install.sh` does internally):
+
+```bash
+uv python find 3.13
+```
+
+If that is not the interpreter you expected, set `UV_PYTHON` before running
+the installer (or any `uv run`/`uv sync` command) to pin a specific supported
+version:
+
+```bash
+UV_PYTHON=3.13 ./scripts/install.sh
+```
+
 ## Optional Profiles
 
 Use profile checks when a change touches a specific optional surface:
@@ -69,6 +100,13 @@ studyloop web --lan
 Configured LAN passwords are not printed. Generated one-time passwords are
 printed once. If a phone or tablet cannot connect, check that the shown LAN URL
 uses the host's real LAN address and that the device is on the same network.
+
+A WebSocket connection through a tunnel or reverse proxy has a different Origin
+than the LAN host expects, and is rejected by default. Set
+`STUDYLOOP_ALLOWED_ORIGINS` to a comma-separated list of exact origins (scheme
++ host + port, no wildcards) to allow them explicitly — this is not a
+supported quick path (see [Web UI Guide](web-ui-guide.md#use-it-from-another-device)),
+just an escape hatch for a trusted setup that needs it.
 
 ## The Browser Terminal Shows "No Terminal Available"
 

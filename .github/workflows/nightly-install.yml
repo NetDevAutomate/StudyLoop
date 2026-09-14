@@ -13,7 +13,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
-        python-version: ["3.12", "3.13"]
+        python-version: ["3.12", "3.13", "3.14"]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     steps:
@@ -52,3 +52,35 @@ jobs:
 
       - name: Verify agent-session-tools entry point
         run: uv run session-export --help
+
+  # A4: the real `uv tool install` path -- the one a fresh clone's
+  # ./scripts/install.sh actually uses -- otherwise has zero execution
+  # coverage anywhere in CI. This runs it for real, into a scratch tool
+  # dir, and proves the two global console scripts it installs work.
+  installer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          python-version: "3.12"
+
+      - name: Run scripts/install.sh
+        # HOME is isolated because `studyloop install agents` writes into it
+        # (~/.kiro, ~/.claude, ~/.codex, ~/.config/opencode). With a fresh HOME
+        # there is no Python 3.12 either, so this also exercises the script's
+        # `uv python install` fallback every night.
+        env:
+          HOME: ${{ runner.temp }}/home
+          UV_TOOL_DIR: ${{ runner.temp }}/tools
+          UV_TOOL_BIN_DIR: ${{ runner.temp }}/bin
+        run: mkdir -p "$HOME" && ./scripts/install.sh --non-interactive --no-smoke
+
+      - name: Verify installed CLI entry points
+        env:
+          UV_TOOL_BIN_DIR: ${{ runner.temp }}/bin
+        run: |
+          "$UV_TOOL_BIN_DIR/studyloop" --version
+          "$UV_TOOL_BIN_DIR/session-export" --help

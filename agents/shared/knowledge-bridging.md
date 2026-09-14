@@ -36,8 +36,12 @@ knowledge_domains:
         - "mise en place"
         - "flavour balancing"
         - "heat management"
-  bridges: []  # populated dynamically via studyloop bridge add
 ```
+
+Bridges are not part of this config — `studyloop bridge add` writes them to
+the sessions database, not config.yaml (`KnowledgeDomainsConfig` in
+`settings.py` has no `bridges` field and silently ignores one if you add it
+by hand). See "Step 4: Persist" below for where they actually live.
 
 ### Interactive Configure Flow
 
@@ -66,7 +70,9 @@ The agent identifies structural mappings between the student's known concepts an
 The student validates, rejects, or modifies each bridge.
 
 **Step 4: Persist**
-Validated bridges are saved via `studyloop bridge add` and written to config.
+Validated bridges are saved via `studyloop bridge add`, which records them in
+the sessions database (`history/bridges.py`'s `record_bridge()`), not
+config.yaml. Read them back with `studyloop bridge list`.
 
 ## Bridge Lifecycle
 

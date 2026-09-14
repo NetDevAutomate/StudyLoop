@@ -208,11 +208,16 @@ two of its tools at session start, alongside `get_concept_context` above:
 uv run --project packages/agent-session-tools session-db-mcp
 ```
 
-**Agent config** — included in `agents/claude/mcp.json`, `agents/opencode/mcp.json`
-and `agents/kiro/study-mentor.json`. Codex, pi and Grok Build have no repo-owned
-MCP file; add both servers to the harness's own config:
+**Agent config** — included in `agents/claude/mcp.json` and
+`agents/kiro/study-mentor.json`. pi and Grok Build have no repo-owned MCP file;
+add both servers to the harness's own config. Codex has no repo-owned MCP
+file either, but needs no manual step: `studyloop install agents --tool codex`
+already writes both `[mcp_servers.session-db]` and `[mcp_servers.studyloop]`
+entries into `~/.codex/config.toml` automatically, via `register_mcp_servers`
+(`installers.py:647`) / `_merge_codex_mcp_config` (`installers.py:612`). The
+TOML below is a reference for running Codex without the StudyLoop installer:
 
-- Codex — `~/.codex/config.toml`:
+- Codex — `~/.codex/config.toml` (only needed without the installer):
   ```toml
   [mcp_servers.session-db]
   command = "session-db-mcp"
@@ -234,6 +239,16 @@ MCP file; add both servers to the harness's own config:
   command = "studyloop-mcp"
   args = []
   ```
+- OpenCode — no repo-owned MCP file either (a stale, wrong-schema reference
+  file under `agents/opencode/` was removed in the 2026-09-14 congruence
+  review). `studyloop install agents --tool opencode` writes `.opencode/opencode.json`
+  automatically, via `_strategies.write_mcp_config(fmt="opencode")`
+  (`adapters/_strategies.py:143-153`). It registers only `studyloop-mcp`
+  (`get_concept_context`, `record_plan_learning`, ...) in OpenCode's own
+  schema (top-level `mcp` key, flat `command` array, `enabled`/`type: local`)
+  — `session-db` is not registered for OpenCode, so `memory_search` there
+  falls back to the `session-query` CLI (see the `studyloop-session-memory`
+  skill).
 - pi — this release does not verify a pi MCP registration path (pi's
   `settings.json` carries no `mcpServers` key). pi mentors use the CLI
   fallbacks the skill names — `session-query`, `session-context search`,

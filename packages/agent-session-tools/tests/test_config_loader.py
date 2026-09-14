@@ -195,6 +195,77 @@ class TestGetDbPath:
         assert result == Path("/test/path.db")
 
 
+class TestGetDbPathMatchesStudyloopSettings:
+    """A10: agent_session_tools.config_loader.get_db_path() must honour a
+    top-level ``session_db`` key with EXACTLY studyloop.settings.get_db_path()'s
+    precedence (settings.py:1033-1054) -- session_db, then database.path, then
+    STUDYLOOP_DB, then the hardcoded default -- so the console scripts
+    (session-export/session-query/session-sync/...) stop diverging from
+    studyloop's own doctor check about which sessions.db is live.
+    """
+
+    @staticmethod
+    def _write_config(config_path: Path, text: str) -> None:
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text(text, encoding="utf-8")
+
+    def _both_db_paths(self, monkeypatch, tmp_path, yaml_text, env_db=None):
+        from studyloop import settings as studyloop_settings
+
+        config_path = tmp_path / "config.yaml"
+        self._write_config(config_path, yaml_text)
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
+        if env_db is None:
+            monkeypatch.delenv("STUDYLOOP_DB", raising=False)
+        else:
+            monkeypatch.setenv("STUDYLOOP_DB", env_db)
+
+        studyloop_path = studyloop_settings.get_db_path()
+        agent_tools_path = get_db_path()
+        return studyloop_path, agent_tools_path
+
+    def test_only_session_db_set(self, monkeypatch, tmp_path):
+        studyloop_path, agent_tools_path = self._both_db_paths(
+            monkeypatch,
+            tmp_path,
+            "session_db: /tmp/only-session-db.sqlite3\n",
+        )
+        assert (
+            agent_tools_path == studyloop_path == Path("/tmp/only-session-db.sqlite3")
+        )
+
+    def test_only_database_path_set(self, monkeypatch, tmp_path):
+        studyloop_path, agent_tools_path = self._both_db_paths(
+            monkeypatch,
+            tmp_path,
+            "database:\n  path: /tmp/only-database-path.sqlite3\n",
+        )
+        assert (
+            agent_tools_path
+            == studyloop_path
+            == Path("/tmp/only-database-path.sqlite3")
+        )
+
+    def test_both_set_session_db_wins(self, monkeypatch, tmp_path):
+        studyloop_path, agent_tools_path = self._both_db_paths(
+            monkeypatch,
+            tmp_path,
+            "session_db: /tmp/session-db-wins.sqlite3\n"
+            "database:\n  path: /tmp/database-path-loses.sqlite3\n",
+        )
+        assert (
+            agent_tools_path == studyloop_path == Path("/tmp/session-db-wins.sqlite3")
+        )
+
+    def test_neither_set_falls_back_to_default(self, monkeypatch, tmp_path):
+        studyloop_path, agent_tools_path = self._both_db_paths(
+            monkeypatch,
+            tmp_path,
+            "logging:\n  level: DEBUG\n",
+        )
+        assert agent_tools_path == studyloop_path
+
+
 class TestGetBackupDir:
     """Tests for get_backup_dir function."""
 

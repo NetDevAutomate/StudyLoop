@@ -78,9 +78,6 @@ DEFAULT_CONFIG = {
         # Note: nomic-embed-text-v1.5 has compatibility issues with sentence-transformers 5.x
         # Fast option: "all-MiniLM-L6-v2" for testing
         "model": "all-mpnet-base-v2",
-        # Hybrid search weights (must sum to 1.0)
-        "fts_weight": 0.4,
-        "semantic_weight": 0.6,
         # Minimum content length to embed
         "min_content_length": 50,
         # Auto-embed on export
@@ -368,8 +365,14 @@ def _deep_merge(base: dict, update: dict) -> None:
 def get_db_path(config: dict[str, Any] | None = None) -> Path:
     """Get database path from config.
 
-    Precedence: an explicit ``database.path`` config key wins, then
-    ``STUDYLOOP_DB``, then the hardcoded default.
+    Precedence: an explicit top-level ``session_db`` config key wins, then
+    ``database.path``, then ``STUDYLOOP_DB``, then the hardcoded default --
+    EXACTLY ``studyloop.settings.get_db_path()``'s precedence (settings.py:
+    1033-1054). Without honouring ``session_db`` here too, every
+    agent-session-tools console script (session-export/session-query/
+    session-sync/session-maint/session-repair/session-db-mcp) silently
+    diverges from studyloop and studyloop's own doctor check about which
+    sessions.db is live.
 
     ``STUDYLOOP_DB`` replaces only the hardcoded default so a test run — or a
     subprocess it spawns — cannot fall through to the learner's real
@@ -381,6 +384,9 @@ def get_db_path(config: dict[str, Any] | None = None) -> Path:
     """
     if config is None:
         config = load_config()
+    session_db = str(config.get("session_db") or "")
+    if session_db:
+        return Path(session_db).expanduser()
     configured = str(config["database"]["path"])
     env_db = os.environ.get("STUDYLOOP_DB")
     if env_db and configured == DEFAULT_CONFIG["database"]["path"]:
@@ -415,9 +421,10 @@ def get_semantic_config(config: dict[str, Any] | None = None) -> dict[str, Any]:
     """Get semantic search configuration.
 
     Returns:
-        Dict with model, fts_weight, semantic_weight, min_content_length,
-        auto_embed and auto_embed_budget_seconds (the wall-clock ceiling for the
-        embed step ``session-export`` runs after a successful export).
+        Dict with model, min_content_length, auto_embed,
+        auto_embed_budget_seconds (the wall-clock ceiling for the embed step
+        ``session-export`` runs after a successful export) and hybrid (the
+        RRF-fusion on/off gate; see ``retrieval.resolve_mode``).
     """
     if config is None:
         config = load_config()

@@ -101,7 +101,11 @@ conversation should work through. It does not itself start an agent.
   or the Today card.
 - The Web UI does not launch a planning agent or automatically structure the
   brain dump.
-- There are no study-plan MCP tools; agents that manage plans use the CLI.
+- `record_plan_learning` (`mcp/tools.py:129`) is the one plan-write MCP tool —
+  it appends a learning record to a plan, and is what the second-brain
+  wind-down flow calls before any second-brain projection (see
+  [second-brain.md](second-brain.md)). Broader plan management (list, show,
+  new, evaluate, milestone, status) remains CLI-only.
 
 These gaps are stated here so that a plan never appears more connected than it
 is. See the [roadmap](roadmap.md) for the intended continuity work.

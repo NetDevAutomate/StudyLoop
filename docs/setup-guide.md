@@ -17,7 +17,11 @@ Step-by-step installation and configuration for StudyLoop.
 
 ## Prerequisites
 
-- **Python 3.12+** (both studyloop and agent-session-tools require 3.12+)
+- **Python 3.12 or 3.13** (both tested in CI). The installer defaults to 3.12
+  through `.python-version` and downloads it with uv if needed; set
+  `UV_PYTHON=3.13 ./scripts/install.sh` to choose another. 3.14 installs but
+  is checked only by the nightly install job; the installer refuses anything
+  else.
 - **[uv](https://docs.astral.sh/uv/)** — Python package manager
 - **tmux 3.1+** — required for `studyloop study` split-pane sessions (`brew install tmux` on macOS, `apt install tmux` on Linux)
 - **Optional**: Obsidian or another Markdown folder for study notes. Notes are
@@ -57,8 +61,11 @@ After adding, reload your tmux config:
 tmux source-file ~/.tmux.conf
 ```
 
-Run `studyloop doctor` to verify the configuration — it checks for
-tmux-resurrect and warns if the restore hook is not detected.
+Run `studyloop doctor` to verify tmux itself is installed and at a supported
+version.
+
+The restore hook above is a manual step. Add it yourself if you use one of
+those two tmux plugins; `doctor` does not check for it.
 
 ## Installation
 
@@ -90,14 +97,22 @@ first setup if `config.yaml` does not exist yet.
 ### What the installer does
 
 `./scripts/install.sh` will:
-1. Verify Python 3.12+ is installed
+1. Verify the interpreter uv resolves is supported: Python 3.12 or 3.13 (both
+   tested in CI). It defaults to 3.12 through `.python-version` and downloads
+   it with uv if needed; set `UV_PYTHON=3.13 ./scripts/install.sh` to choose
+   another. 3.14 installs but is checked only by the nightly install job; the
+   installer refuses anything else
 2. Install `uv` if not already available
 3. Run `uv sync`
 4. Delegate to `studyloop install tools` — installs `studyloop[all]` (web UI,
    content generation, Bedrock, MCP, NotebookLM, TUI) and
    `agent-session-tools[all]` (TTS, semantic session search), and always adds
    `agent-session-tools` into the `studyloop` tool venv too — that part is not
-   gated behind any extra, so it happens on every source install
+   gated behind any extra, so it happens on every source install. Both global
+   `uv tool install` calls pass `--python` explicitly, pinned to the
+   interpreter `uv sync` just used, so the globally-installed CLI tool cannot
+   silently pick a different interpreter than the workspace it was built
+   against
 5. Delegate to `studyloop install agents`
 6. Run lightweight installed CLI smoke checks
 
@@ -200,8 +215,9 @@ studyloop install tools
 studyloop install agents
 studyloop doctor --fix
 
-# Install optional semantic search support
-uv pip install agent-session-tools[semantic]
+# Install optional semantic search support (in-workspace form -- agent-session-tools
+# is not published, so a bare `pip install`/`uv pip install` cannot resolve it)
+uv sync --all-packages --extra semantic  # or: just sync-semantic
 ```
 
 For **Ansible playbooks**, clone the repo then run the install script:
@@ -324,6 +340,24 @@ To make Codex CLI the default coding assistant for study sessions, set the agent
 ```yaml
 agents:
   priority: [codex, kiro, claude, opencode, pi, grok]
+```
+
+### Custom agents
+
+Any CLI-based AI agent not already supported can be wired in via config,
+without touching source: `agents.custom.<name>` builds an `AgentAdapter` at
+runtime from a template (`packages/studyloop/src/studyloop/adapters/_custom.py`):
+
+```yaml
+agents:
+  custom:
+    my-agent:
+      binary: my-agent
+      strategy: cli-flag       # cli-flag | cwd-file
+      launch: "{binary} --read {persona}"
+      resume: "{binary} --read {persona} --resume"
+      mcp:
+        format: generic
 ```
 
 ### Web PWA (recommended)
@@ -495,16 +529,24 @@ thresholds:
 
 semantic_search:
   model: all-mpnet-base-v2    # embedding model
-  fts_weight: 0.4             # hybrid search: FTS weight
-  semantic_weight: 0.6        # hybrid search: vector weight
   min_content_length: 50
   auto_embed: true
+  hybrid: false  # true enables RRF fusion once vectors exist; STUDYLOOP_RETRIEVAL_MODE overrides
 ```
+
+Embed the backlog with `session-maint embed` (`--model`, `--budget-seconds`,
+`--batch-size`, `--replace-model`), audit alignment with `session-maint
+embed-check [--fix]`; `studyloop doctor` reports the same state as
+`embeddings_alignment`.
 
 Environment variable overrides:
 - `DATABASE_PATH` — override database location
 - `LOG_LEVEL` — set logging level (DEBUG, INFO, WARNING, ERROR)
 - `EMBEDDING_MODEL` — override embedding model
+- `STUDYLOOP_RETRIEVAL_MODE` — override the retrieval mode (`lexical` or
+  `hybrid`) for a single process, ahead of `semantic_search.hybrid`
+- `WARNING_THRESHOLD_MB` — override `thresholds.warning_mb`
+- `CRITICAL_THRESHOLD_MB` — override `thresholds.critical_mb`
 
 ### Web Terminal Settings
 
@@ -530,7 +572,6 @@ tts:
   backend: kokoro        # kokoro | openvox | qwen3 | macos
   voice: am_michael      # kokoro voice (am_michael, af_heart, bf_emma, etc.)
   speed: 1.5             # 0.5 = slow, 1.0 = normal, 1.5 = fast
-  pause: 0.0             # seconds between sentences
   macos_voice: Samantha
 ```
 
@@ -549,7 +590,6 @@ tts:
   # Kokoro/Qwen/macOS fallback settings still apply.
   voice: am_michael      # kokoro voice (am_michael, af_heart, bf_emma, etc.)
   speed: 1.5             # 0.5 = slow, 1.0 = normal, 1.5 = fast
-  pause: 0.0             # seconds between sentences
   macos_voice: Samantha
 ```
 
@@ -759,7 +799,7 @@ The toolkit runs on Windows via WSL2 (Windows Subsystem for Linux).
 ### Prerequisites
 
 1. Install WSL2 with Ubuntu: `wsl --install -d Ubuntu`
-2. Inside WSL2, install Python 3.12+ and uv:
+2. Inside WSL2, install uv (the installer then provides Python 3.12 itself; 3.12 and 3.13 are the tested versions):
    ```bash
    curl -LsSf https://astral.sh/uv/install.sh | sh
    ```
@@ -914,6 +954,7 @@ Check that the AI tool's data directory exists:
 - Codex CLI: exported from Codex transcript storage if present on this machine
 - OpenCode: `~/.local/share/opencode/storage/`
 - pi: `~/.pi/agent/sessions/`
+- Grok Build: `~/.grok/sessions/`, searched recursively for `chat_history.jsonl`, or `$GROK_HOME/sessions/`
 
 For pi or OpenCode, run `studyloop doctor --category agents` first, then use the
 general [Troubleshooting](troubleshooting.md) guide with the harness's own CLI

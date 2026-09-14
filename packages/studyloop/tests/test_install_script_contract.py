@@ -19,6 +19,24 @@ def test_justfile_has_shellcheck_recipe_for_install_and_release_scripts() -> Non
     assert "scripts/smoke-uv-tool-install.sh" in justfile_text
 
 
+def test_release_check_runs_smoke_uv_tool_install() -> None:
+    """W28: scripts/smoke-uv-tool-install.sh exercises the real `uv tool
+    install` path -- implicated in a live UV_PYTHON interpreter-mismatch bug
+    report -- but was shellcheck-only. release-check must actually run it."""
+    repo_root = Path(__file__).resolve().parents[3]
+    justfile_text = (repo_root / "Justfile").read_text()
+
+    release_check_line = next(
+        line for line in justfile_text.splitlines() if line.startswith("release-check:")
+    )
+    assert "smoke-uv-tool-install" in release_check_line
+
+    assert "smoke-uv-tool-install:" in justfile_text
+    recipe_index = justfile_text.index("smoke-uv-tool-install:")
+    recipe_body = justfile_text[recipe_index : recipe_index + 200]
+    assert "scripts/smoke-uv-tool-install.sh" in recipe_body
+
+
 def test_install_script_smoke_checks_run_self_test_json() -> None:
     repo_root = Path(__file__).resolve().parents[3]
     script = repo_root / "scripts" / "install.sh"

@@ -4,7 +4,12 @@ A minimal, repeatable path for getting value from StudyLoop without configuring 
 
 ## What you need
 
-- Python 3.12+, [uv](https://docs.astral.sh/uv/), and **tmux 3.1+** (for `studyloop study`)
+- [uv](https://docs.astral.sh/uv/) and **tmux 3.1+** (for `studyloop study`).
+  Python 3.12 or 3.13 (both tested in CI): the installer defaults to 3.12
+  through `.python-version` and downloads it with uv if needed; set
+  `UV_PYTHON=3.13 ./scripts/install.sh` to choose another. 3.14 installs but
+  is checked only by the nightly install job; the installer refuses anything
+  else.
 - One supported AI coding agent on your PATH: Kiro CLI, Codex, Claude Code,
   OpenCode, pi, or Grok Build. Kiro is the documented first-session path.
 - Optional: Obsidian vault for study notes; optional: Ollama or AWS Bedrock for local/cloud card generation
@@ -85,7 +90,7 @@ studyloop doctor --fix
 3. If you use Kiro and want struggle signals in progress tracking:
 
    ```bash
-   studyloop extract-struggles --incremental --dry-run --model <bedrock-model-id>
+   studyloop extract-struggles --incremental --dry-run --model <bedrock-model-id> --harness kiro
    ```
 
    `--model` is required — it names the Bedrock model that reads your sessions.

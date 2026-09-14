@@ -77,6 +77,7 @@ obsidian:
   moc_dir: AgentMemory/MOC
   backlinks: true
   granularity: both               # both | session
+  filename_template: "$date-$source-$slug"  # placeholders: $date, $source, $slug
 ```
 
 **3. Setup wizard:** `studyloop setup` asks whether to enable export at the

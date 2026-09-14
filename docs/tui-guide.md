@@ -69,7 +69,7 @@ graph LR
     TIMER -->|"time thresholds"| BREAK
 ```
 
-The sidebar polls these files every second. When the agent logs a topic via `studyloop topic`, the sidebar updates within 1-2 seconds.
+The sidebar polls these files every two seconds. When the agent logs a topic via `studyloop topic`, the sidebar updates within 1-2 seconds.
 
 ---
 
@@ -81,13 +81,13 @@ The timer shows elapsed time or Pomodoro cycles depending on the session mode.
 
 **Elapsed mode** (default for `--mode study`):
 
-The timer counts up from 00:00:00, changing colour as time passes:
-
-| Phase | Time | Colour | Meaning |
-|-------|------|--------|---------|
-| Fresh | 0-25 min | Green | Deep work zone |
-| Sustained | 25-50 min | Amber | Consider a break soon |
-| Extended | 50+ min | Red | Break recommended |
+The timer counts up from 00:00:00, changing colour as time passes. It does not
+use a separate fixed schedule — the timer reuses the same energy-adaptive
+thresholds as the [Break Banner](#break-banner) table below (Low 15/30 min,
+Medium 20/40 min, High 25/50 min): green until the micro-break minute, amber
+until the short-break minute, red after. At the default energy=5 (Medium
+band), that means the timer turns amber at 20 minutes and red at 40 minutes —
+not at 25/50 minutes as a separate fixed table would imply.
 
 **Pomodoro mode** (default for `--mode co-study`):
 
@@ -136,7 +136,7 @@ Appears automatically based on elapsed time and energy level. The sidebar uses e
 | Medium (4-6) | 20 min | 40 min | 75 min |
 | High (7-10) | 25 min | 50 min | 90 min |
 
-The banner is colour-coded (blue for micro, amber for short, red for long) and auto-dismisses when the timer is paused.
+The banner is colour-coded (darker amber for micro, amber for short, red for long) and auto-dismisses when the timer is paused.
 
 ---
 

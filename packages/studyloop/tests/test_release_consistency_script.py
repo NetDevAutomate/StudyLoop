@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -31,6 +32,50 @@ def run_check(repo_root: Path) -> subprocess.CompletedProcess[str]:
         text=True,
         capture_output=True,
     )
+
+
+def run_release_check(repo_root: Path) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, str(SCRIPT), "--repo-root", str(repo_root), "--skip-wheel", "--release"],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+
+
+def init_git_repo_with_tag(
+    repo_root: Path, *, tag: str | None, tag_date: str, commit_message: str = "init"
+) -> None:
+    """A minimal git repo containing every file already written under
+
+    *repo_root*, committed on *tag_date* and optionally tagged *tag* on that
+    same commit -- the fixture W41's release-tag check tests need.
+    """
+
+    def run(*args: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            ["git", *args], cwd=repo_root, check=True, capture_output=True, text=True
+        )
+
+    env_date = f"{tag_date}T12:00:00"
+    run("init", "-q")
+    run("config", "user.email", "test@example.com")
+    run("config", "user.name", "Test")
+    run("add", "-A")
+    subprocess.run(
+        ["git", "commit", "-q", "-m", commit_message],
+        cwd=repo_root,
+        check=True,
+        capture_output=True,
+        text=True,
+        env={
+            **os.environ,
+            "GIT_AUTHOR_DATE": env_date,
+            "GIT_COMMITTER_DATE": env_date,
+        },
+    )
+    if tag is not None:
+        run("tag", tag)
 
 
 def run_check_with_artifacts(repo_root: Path) -> subprocess.CompletedProcess[str]:
@@ -124,3 +169,62 @@ def test_release_consistency_fails_when_root_pyproject_is_missing(tmp_path: Path
 
     assert result.returncode == 1
     assert "pyproject.toml" in result.stderr
+
+
+# ---------------------------------------------------------------------------
+# W41: --release mode must also assert a git tag exists and that the
+# CHANGELOG's dated heading for the version is on or after the tag's own
+# commit date.
+# ---------------------------------------------------------------------------
+
+
+def _write_release_fixture(tmp_path: Path, version: str, changelog_date: str) -> None:
+    write_package_version(tmp_path, version)
+    write_root_version(tmp_path, version)
+    releases_dir = tmp_path / "releases"
+    releases_dir.mkdir()
+    (releases_dir / f"v{version}.md").write_text(f"# v{version}\n", encoding="utf-8")
+    (tmp_path / "CHANGELOG.md").write_text(
+        f"# Changelog\n\n## [{version}] - {changelog_date}\n\n- stuff\n",
+        encoding="utf-8",
+    )
+
+
+def test_release_tag_check_fails_when_tag_missing(tmp_path: Path) -> None:
+    _write_release_fixture(tmp_path, "1.2.3", "2026-09-06")
+    init_git_repo_with_tag(tmp_path, tag=None, tag_date="2026-09-06")
+
+    result = run_release_check(tmp_path)
+
+    assert result.returncode == 1
+    assert "no git tag" in result.stderr
+    assert "v1.2.3" in result.stderr
+
+
+def test_release_tag_check_passes_when_tag_exists_and_changelog_date_on_or_after(
+    tmp_path: Path,
+) -> None:
+    _write_release_fixture(tmp_path, "1.2.3", "2026-09-06")
+    init_git_repo_with_tag(tmp_path, tag="v1.2.3", tag_date="2026-09-06")
+
+    result = run_release_check(tmp_path)
+
+    assert result.returncode == 0, result.stderr
+    assert "release consistency passed" in result.stdout
+
+
+def test_release_tag_check_fails_when_changelog_date_before_tag_commit_date(
+    tmp_path: Path,
+) -> None:
+    """The bug this check exists to catch (W41): CHANGELOG dates a version
+
+    earlier than the commit its own tag actually sits on.
+    """
+    _write_release_fixture(tmp_path, "1.2.3", "2026-09-05")
+    init_git_repo_with_tag(tmp_path, tag="v1.2.3", tag_date="2026-09-06")
+
+    result = run_release_check(tmp_path)
+
+    assert result.returncode == 1
+    assert "2026-09-05" in result.stderr
+    assert "2026-09-06" in result.stderr

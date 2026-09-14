@@ -91,7 +91,7 @@ studyloop plan evaluate PLAN_ID [--phase start|mid|end] [--record] [--study-id I
 studyloop plan reindex                    # Rebuild the plan index in the sessions DB
 studyloop plan path                       # Print the plan document directory
 
-# Topic exercises — DEVELOPER PREVIEW (hidden unless root --dev is set)
+# Topic exercises — DEVELOPER PREVIEW (root `--dev` before `exercise` works; `--dev --help` omits it)
 studyloop --dev exercise new --topic TOPIC [--plan ID] [--requirement R] [--reference FILE]
 studyloop --dev exercise from-milestone PLAN_ID [--index N]  # Draft from a plan milestone
 studyloop --dev exercise import PATH            # Import a hand-authored exercise document
@@ -114,14 +114,16 @@ studyloop prune --days 30 --apply         # Actually delete (only verified-in-fu
 
 # Configuration & health
 studyloop setup                           # Interactive setup wizard
-studyloop install tools                   # Install global CLI entrypoints from repo
-studyloop install agents                  # Install agent definitions for detected tools
+studyloop install tools [--repo-root PATH] [--sync|--skip-sync] [--force|--no-force]
+                                          # Install global CLI entrypoints from repo
+studyloop install agents [--repo-root PATH] [--uninstall]
+                                          # Install (or remove) agent definitions for detected tools
 studyloop config init                     # Advanced/legacy config initializer
 studyloop config show                     # Display current configuration
 studyloop self-test                       # Lightweight post-install smoke check
 studyloop doctor                          # Full health check
 studyloop update                          # Check for available updates
-studyloop upgrade                         # Apply all available updates
+studyloop upgrade [--force]                # Apply all available updates (skip confirmation prompts)
 
 # Backup & restore
 studyloop backup [--tag NAME]             # Snapshot DB + config to backups/
@@ -131,6 +133,7 @@ studyloop restore BACKUP --confirm        # Restore from backup (safety backup f
 # Web
 studyloop web [--port PORT] [--lan] [--password SECRET] # Launch study web app (PWA)
 studyloop web --dev                       # Dev mode: swap xterm.js for an alternative renderer
+studyloop-mcp [--dev]                     # MCP server exposing studyloop's own tools
 ```
 
 ### Study Sessions
@@ -226,10 +229,10 @@ agent/harness files.
 | Code | Meaning |
 |------|---------|
 | `0` | All checks pass — installation is healthy |
-| `1` | Warnings or failures that can be fixed — run `studyloop doctor --fix` |
+| `1` | Warnings or failures reported; `--fix` resolves only checks marked auto-fixable — unresolved failures print their own manual remediation |
 | `2` | Core failure — a fundamental component is broken (e.g. wrong Python version) |
 
-**Check categories:** `core` (Python, packages, config, tmux), `database` (review DB, sessions DB), `config` (Obsidian vault + `.obsidian/` marker, Obsidian export config, review dirs, pandoc), `deps` (optional packages), `agents` (AI tool definitions), `voice` (local Kokoro model files, `afplay`, and Kokoro-server reachability when configured), `harness` (session-export wiring). There is no `updates` category yet — it would only ever report "no release found" until studyloop is actually published somewhere.
+**Check categories:** `core` (Python, packages, config, tmux), `database` (review DB, sessions DB, `embeddings_alignment`), `config` (Obsidian vault + `.obsidian/` marker, Obsidian export config, review dirs, pandoc, `active_topic_limit`, `unknown_config_keys`, and — when configured — `second_brain`), `deps` (optional packages), `agents` (AI tool definitions), `voice` (local Kokoro model files, `afplay`, and Kokoro-server reachability when configured), `harness` (session-export wiring, `exporter_schema`, `export_freshness`). There is no `updates` category yet — it would only ever report "no release found" until studyloop is actually published somewhere.
 
 ### Spaced Repetition Intervals
 
@@ -379,6 +382,8 @@ studyloop plan show PLAN_ID --markdown
 studyloop plan milestone PLAN_ID 0 --done
 studyloop plan evaluate PLAN_ID --phase mid --record
 studyloop plan status PLAN_ID complete
+studyloop plan record PLAN_ID --title T [--body B|--body-file F] [--status S] [--json]
+                                          # Append a learning record (wind-down's "record first" step)
 studyloop plan reindex                    # Rebuild the DB index from the documents
 ```
 
@@ -399,6 +404,9 @@ studyloop brain publish --plan python-decorators
 studyloop brain pull python-decorators     # print your own notes for a plan
 studyloop brain template --print "Study Plan.md"
 studyloop brain template --install         # copy the templates into your vault
+studyloop brain destination set --provider xtiles --url URL  # Retain a reviewed destination
+studyloop brain destination clear --provider xtiles          # Clear a retained destination
+studyloop brain wind-down [--connector NAME] [--json]         # Decide the one second-brain offer
 ```
 
 Nothing is written anywhere until you opt in, and nothing ever writes back to the plan document — the plan Markdown stays the single source of truth. StudyLoop writes only files carrying its own `studyloop:` frontmatter marker, so a note you wrote by hand is never overwritten; `brain pull` reads the sibling `Study/Plans/<plan-id>.notes.md` that StudyLoop never touches.
@@ -545,10 +553,18 @@ session-query check-size                 # Check DB size against thresholds
 session-query profiles                   # Manage export profiles/templates
 session-sync push|pull|sync REMOTE       # Sync database across machines
 session-sync all                         # Push all peers before pulling all peers
+session-sync status|endpoints            # Show configured peers / listener status
+session-sync permission PEER --scope SCOPE --action withdraw|regrant  # Queue a peer permission change
 session-maint vacuum|reindex|schema|archive  # Database maintenance
 session-maint delete --confirm            # Permanently delete old sessions
 session-maint find-duplicates|fts-check|compact  # Integrity and rescue
 session-maint sync-full|snapshot|prune    # Full-DB sync, snapshot, verified prune
+session-maint embed [--model NAME] [--budget-seconds N] [--batch-size N] [--replace-model]
+                                          # Embed the backlog (doctor's embeddings_alignment remediation)
+session-maint embed-check [--fix]        # Audit/repair message_embeddings alignment
+session-context SESSION_ID               # Token-efficient excerpt for a session
+tutor-checkpoint                         # Structured teach-back checkpoint tool
+session-db-mcp                           # MCP server (stdio) for the session tools above
 study-speak "text" [-b openvox|kokoro|qwen3|macos] [-v VOICE] [-s SPEED]
                                           # Speak text aloud using local TTS
 ```
@@ -649,7 +665,9 @@ updated in that run; use `--obsidian-backfill` for the one-time full history imp
 
 ### Optional Extras
 
+agent-session-tools is not published, so these install from the workspace, not PyPI:
+
 ```bash
-uv pip install agent-session-tools[semantic]  # Vector embeddings search
-uv pip install agent-session-tools[tokens]    # Token counting
+uv sync --all-packages --extra semantic               # Vector embeddings search
+uv sync --package agent-session-tools --extra tokens   # Token counting
 ```

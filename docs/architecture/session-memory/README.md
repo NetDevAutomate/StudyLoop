@@ -60,9 +60,20 @@ one file, the archive's FTS read path, the StudyLoop learning tier and the evide
 Two derived caches sit beside the file and are safe to delete: `explorer_fts.db`
 (lesson search) and `<content.base_path>/content_index.db` (course discovery).
 
-**Search on `main` is FTS5 keyword only.** `hybrid_search` (RRF) exists with a
-single reference — its own definition — and both embedding tables hold 0 rows.
-Multi-word queries are wrapped as a *phrase*, so they get stricter, not looser.
+**Search on `main` is FTS5 keyword only (2026-09-09 state).** `hybrid_search`
+(RRF) existed with a single reference — its own definition — and both
+embedding tables held 0 rows. Multi-word queries are wrapped as a *phrase*, so
+they get stricter, not looser.
+
+**2026-09-14 addendum (SHIPPED):** the `hybrid_search` symbol above no longer
+exists; schema 48 shipped the mainline embedding substrate (`message_embeddings`,
+chunked/hashed, trigger-swept, with an optional `sqlite-vec` sidecar) and the
+fusion path is `retrieval.py`'s `resolve_mode()` / `search()` / `_fuse()`
+(Reciprocal Rank Fusion, unweighted, off by default). The "0 rows" claim above
+is stale: once `session-maint embed` has run, `message_embeddings` holds tens
+of thousands of rows. See the [Stage 4
+record](receipts/semantic-layer/stage4-record-2026-09-12.md) for the fusion
+design and gate.
 
 ## Why each claim is believed — restated at receipt strength
 

@@ -500,10 +500,16 @@ def test_every_release_harness_has_a_real_session_export_hook_contract() -> None
 # (what was previously *decided or disputed* about a topic, quote-bound) and
 # get_concept_context (the topic's prerequisite edges). Both were reachable and
 # named by no agent file, so no mentor ever called them. The recipe lives once
-# in the studyloop-session-memory skill; every harness definition must carry the
-# same one-sentence instruction so a reviewer can grep for parity rather than
-# audit prose. Kiro is the one harness whose definition also allow-lists tools,
-# so there the instruction is only real if the allowlist and server config agree.
+# in the studyloop-session-memory skill; every harness definition must name both
+# tools so a reviewer can grep for parity rather than audit prose. Kiro is the
+# one harness whose definition also allow-lists tools, so there the instruction
+# is only real if the allowlist and server config agree.
+#
+# The exact wording is identical ONLY for harnesses where session-db-mcp is
+# actually registered (installers._MCP_HARNESSES): elsewhere -- pi and
+# OpenCode, neither of which installers.py wires session-db-mcp into -- the
+# instruction must hedge memory_search behind a CLI fallback instead, so those
+# two carry different prose by design (W20, 2026-09-14 congruence review).
 
 _MENTOR_DEFINITIONS = (
     "agents/kiro/study-mentor.json",
@@ -518,12 +524,20 @@ _SHARED_MEMORY_DOCS = (
     "agents/skills/studyloop-session-memory/SKILL.md",
 )
 _SESSION_START_TOOLS = ("session_search", "memory_search", "get_concept_context")
-#: The sentence every prose definition carries verbatim (whitespace-normalised).
+#: The sentence every prose definition whose harness has session-db-mcp
+#: registered carries verbatim (whitespace-normalised).
 _SESSION_START_SENTENCE = (
     "call `memory_search` for prior decisions and disputes about the topic, and "
     "`get_concept_context` for its prerequisite edges, before choosing what to "
     "teach first"
 )
+#: Prose definition -> the installers.py tool id that harness corresponds to.
+_MENTOR_DEFINITION_TOOL_ID = {
+    "agents/codex/AGENTS.md": "codex",
+    "agents/claude/socratic-mentor.md": "claude",
+    "agents/opencode/study-mentor.md": "opencode",
+    "agents/pi/AGENTS.md": "pi",
+}
 
 
 def _normalised(text: str) -> str:
@@ -537,12 +551,19 @@ def test_every_harness_names_the_session_start_memory_tools(relative: str) -> No
     assert not missing, f"{relative} never names {missing}"
 
 
-@pytest.mark.parametrize("relative", [p for p in _MENTOR_DEFINITIONS if not p.endswith(".json")])
+@pytest.mark.parametrize(
+    "relative",
+    [
+        p
+        for p in _MENTOR_DEFINITIONS
+        if not p.endswith(".json") and _MENTOR_DEFINITION_TOOL_ID[p] in installers._MCP_HARNESSES
+    ],
+)
 def test_prose_definitions_carry_the_identical_instruction(relative: str) -> None:
     text = _normalised((_repo_root() / relative).read_text(encoding="utf-8"))
     assert _SESSION_START_SENTENCE in text, (
         f"{relative} paraphrases the session-start instruction; keep it identical "
-        "across harnesses so drift is a grep, not an audit"
+        "across harnesses whose session-db MCP server installers.py registers"
     )
 
 
@@ -564,7 +585,7 @@ def test_kiro_allowlist_and_servers_match_the_instruction() -> None:
         assert tool in allowed, f"Kiro instructs {tool} but its allowlist refuses it"
 
 
-@pytest.mark.parametrize("relative", ["agents/claude/mcp.json", "agents/opencode/mcp.json"])
+@pytest.mark.parametrize("relative", ["agents/claude/mcp.json"])
 def test_repo_owned_mcp_configs_register_both_servers(relative: str) -> None:
     servers = json.loads((_repo_root() / relative).read_text(encoding="utf-8"))["mcpServers"]
     assert "studyloop-mcp" in servers and "session-db" in servers, (

@@ -99,6 +99,11 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: uv sync --locked --all-packages --group dev
+      # A24: setup-uv's python-version input sets UV_PYTHON, which overrides
+      # the repo's .python-version pin -- verified by the action's own
+      # README. This step makes a broken override fail loud instead of
+      # silently testing the wrong interpreter.
+      - run: uv run python -c "import sys; v='${{ matrix.python-version }}'.split('.'); assert sys.version_info[:2] == (int(v[0]), int(v[1])), sys.version"
       - run: uv run --group dev pytest --tb=short --cov=packages --cov-report=term-missing
 
   js:

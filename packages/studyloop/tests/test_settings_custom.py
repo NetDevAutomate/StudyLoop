@@ -900,3 +900,36 @@ def test_unknown_top_level_keys_empty_for_a_fully_known_config(tmp_path, monkeyp
     from studyloop.settings import unknown_top_level_keys
 
     assert unknown_top_level_keys() == []
+
+
+def test_known_top_level_keys_covers_agent_session_tools_default_config():
+    """W12: database/hosts/semantic_search/thresholds/logging/excluded_dirs are
+    exactly the sections docs/setup-guide.md tells users to add, and are read
+    directly by agent-session-tools (database, thresholds, logging,
+    semantic_search, excluded_dirs live in its DEFAULT_CONFIG; hosts is native
+    studyloop code -- shared.py's _resolve_hosts). The doctor's unknown-key
+    check false-positiving on them is a same-package oversight against
+    _RAW_ONLY_SECTIONS' own stated rule, not purely a cross-package gap: fixing
+    it here also fixes the more dangerous message in `studyloop config show`
+    (cli/_config.py), which shares this same known_top_level_keys() call."""
+    from agent_session_tools.config_loader import DEFAULT_CONFIG
+    from studyloop.settings import known_top_level_keys
+
+    known = known_top_level_keys()
+    assert set(DEFAULT_CONFIG) <= known
+
+
+def test_known_top_level_keys_covers_the_full_docs_drift_derivation():
+    """The full key-derivation test_docs_drift.py's own _known_top_level_keys()
+    already performs (unioning DEFAULT_CONFIG and scanning shared.py's
+    _resolve_hosts for `hosts`) must be a subset of known_top_level_keys() --
+    `hosts` is native studyloop code, not just agent-session-tools'
+    DEFAULT_CONFIG, so this is a stronger assertion than the DEFAULT_CONFIG
+    check alone."""
+    from test_docs_drift import _known_top_level_keys
+
+    from studyloop.settings import known_top_level_keys
+
+    known = known_top_level_keys()
+    full_derivation = _known_top_level_keys()
+    assert full_derivation <= known, sorted(full_derivation - known)

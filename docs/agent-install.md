@@ -15,6 +15,11 @@ StudyLoop also includes complete integrations for **OpenCode**, **pi**, and **Gr
 Gemini CLI and Antigravity are not mentor harnesses in this pre-release.
 Their presence on your computer will not make StudyLoop advertise or select them.
 
+The study-plan-architect personas under `agents/` (Claude, OpenCode, Kiro) are
+drafts, not yet wired into any installer's link table — `studyloop install
+agents` does not place them. Shipping them is an owner decision; build a study
+plan today with `studyloop web`'s Study Plans tab or `studyloop plan new`.
+
 ## Install automatically
 
 From a StudyLoop source checkout, install every supported harness detected on your computer:
@@ -206,9 +211,9 @@ StudyLoop installs canonical skills once under `~/.agents/skills/`:
     └── references/harnesses.md
 ```
 
-Codex, OpenCode and pi discover this directory directly. Kiro and Claude use
-symlinks from `~/.kiro/skills/` and `~/.claude/skills/`. One body per skill
-means an update reaches every supported harness without copy drift.
+Codex, OpenCode, pi and Grok Build discover this directory directly. Kiro and
+Claude use symlinks from `~/.kiro/skills/` and `~/.claude/skills/`. One body
+per skill means an update reaches every supported harness without copy drift.
 
 The xTiles skill remains self-gating: it is silent unless the configured
 second-brain provider is xTiles and an xTiles MCP server is connected. The

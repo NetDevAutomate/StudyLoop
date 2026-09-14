@@ -11,6 +11,7 @@ three at most -- so most of these assert what is NOT asked as much as what is.
 
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING
 
 import pytest
@@ -221,7 +222,9 @@ class TestHarnessDetection:
     ) -> None:
         result = runner.invoke(cli, ["setup"], input="\n")
         assert result.exit_code == 0, result.output
-        assert _written(_patch_config_dir)["ai_assistant"] == "kiro"
+        written = _written(_patch_config_dir)
+        assert "ai_assistant" not in written
+        assert written["agents"]["priority"][0] == "kiro"
         assert "Which AI assistant" not in result.output
 
     def test_ambiguous_detection_asks(
@@ -232,7 +235,105 @@ class TestHarnessDetection:
         monkeypatch.setattr(setup_mod, "_detect_harness", lambda: ["kiro", "codex"])
         result = runner.invoke(cli, ["setup"], input="\ncodex\n")
         assert result.exit_code == 0, result.output
-        assert _written(_patch_config_dir)["ai_assistant"] == "codex"
+        written = _written(_patch_config_dir)
+        assert "ai_assistant" not in written
+        assert written["agents"]["priority"][0] == "codex"
+
+    def test_ambiguous_detection_reorders_without_clobbering_the_rest_of_priority(
+        self, runner: CliRunner, _patch_config_dir: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A11: the wizard must never clobber an existing agents.priority
+        list -- it reorders it, keeping every other entry."""
+        import studyloop.cli._setup as setup_mod
+
+        config_dir = _patch_config_dir
+        config_dir.mkdir(parents=True, exist_ok=True)
+        (config_dir / "config.yaml").write_text(
+            "agents:\n  priority: [claude, kiro, codex]\n  custom:\n    kiro: {binary: kiro-cli}\n"
+        )
+        monkeypatch.setattr(setup_mod, "_detect_harness", lambda: ["kiro", "codex"])
+
+        result = runner.invoke(cli, ["setup"], input="\ncodex\n")
+
+        assert result.exit_code == 0, result.output
+        written = _written(config_dir)
+        assert written["agents"]["priority"] == ["codex", "claude", "kiro"]
+        assert written["agents"]["custom"] == {"kiro": {"binary": "kiro-cli"}}
+
+    def test_written_config_has_no_unknown_top_level_keys(
+        self, runner: CliRunner, _patch_config_dir: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The wizard's own next recommended step is `doctor --fix`; a
+        top-level key no consumer reads (the old `ai_assistant`) is flagged
+        there as retired the moment setup finishes."""
+        import studyloop.cli._setup as setup_mod
+        from studyloop.settings import unknown_top_level_keys
+
+        monkeypatch.setattr(setup_mod, "_detect_harness", lambda: ["kiro", "codex"])
+        result = runner.invoke(cli, ["setup"], input="\ncodex\n")
+
+        assert result.exit_code == 0, result.output
+        written = _written(_patch_config_dir)
+        assert unknown_top_level_keys(written) == []
+
+    def test_chosen_harness_wins_detect_agents(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Integration: real binaries on PATH, real config file, real
+        detect_agents() -- not a monkeypatched `_detect_harness`."""
+        import studyloop.cli._setup as setup_mod
+        from studyloop.adapters.registry import detect_agents
+
+        bin_dir = tmp_path / "fakebin"
+        bin_dir.mkdir()
+        for binary in ("kiro-cli", "codex"):
+            fake = bin_dir / binary
+            fake.write_text("#!/bin/sh\ntrue\n")
+            fake.chmod(0o755)
+        monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}")
+        monkeypatch.delenv("STUDYLOOP_AGENT", raising=False)
+
+        config_path = tmp_path / "config" / "config.yaml"
+        monkeypatch.setattr(setup_mod, "CONFIG_DIR", config_path.parent)
+        monkeypatch.delenv("STUDYLOOP_CONFIG", raising=False)
+
+        runner = CliRunner()
+        result = runner.invoke(setup_mod.setup, input="\ncodex\n")
+
+        assert result.exit_code == 0, result.output
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
+        assert detect_agents()[0] == "codex"
+
+    def test_studyloop_agent_env_still_wins_over_the_written_priority(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A11 (council): the wizard reorders agents.priority, but the
+        STUDYLOOP_AGENT override must still be consulted first by
+        detect_agents() -- the env var is the documented per-shell override
+        and the wizard must not have displaced it."""
+        import studyloop.cli._setup as setup_mod
+        from studyloop.adapters.registry import detect_agents
+
+        bin_dir = tmp_path / "fakebin"
+        bin_dir.mkdir()
+        for binary in ("kiro-cli", "codex"):
+            fake = bin_dir / binary
+            fake.write_text("#!/bin/sh\ntrue\n")
+            fake.chmod(0o755)
+        monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}")
+        monkeypatch.delenv("STUDYLOOP_AGENT", raising=False)
+
+        config_path = tmp_path / "config" / "config.yaml"
+        monkeypatch.setattr(setup_mod, "CONFIG_DIR", config_path.parent)
+        monkeypatch.delenv("STUDYLOOP_CONFIG", raising=False)
+
+        result = CliRunner().invoke(setup_mod.setup, input="\ncodex\n")
+        assert result.exit_code == 0, result.output
+        assert _written(config_path.parent)["agents"]["priority"][0] == "codex"
+
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
+        monkeypatch.setenv("STUDYLOOP_AGENT", "kiro")
+        assert detect_agents()[0] == "kiro", "the env override must beat the wizard's priority"
 
 
 class TestLegacyConfigSurvives:
