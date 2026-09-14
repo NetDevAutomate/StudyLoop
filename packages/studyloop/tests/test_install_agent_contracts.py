@@ -585,7 +585,7 @@ def test_kiro_allowlist_and_servers_match_the_instruction() -> None:
         assert tool in allowed, f"Kiro instructs {tool} but its allowlist refuses it"
 
 
-@pytest.mark.parametrize("relative", ["agents/claude/mcp.json", "agents/opencode/mcp.json"])
+@pytest.mark.parametrize("relative", ["agents/claude/mcp.json"])
 def test_repo_owned_mcp_configs_register_both_servers(relative: str) -> None:
     servers = json.loads((_repo_root() / relative).read_text(encoding="utf-8"))["mcpServers"]
     assert "studyloop-mcp" in servers and "session-db" in servers, (

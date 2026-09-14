@@ -289,3 +289,24 @@ def test_shared_mcp_conditional_matches_the_installers_mcp_harness_set(relative:
         f"{relative} names {tool_ids} but installers._MCP_HARNESSES is "
         f"{set(installers._MCP_HARNESSES)}"
     )
+
+
+# ---------------------------------------------------------------------------
+# W22 -- agents/opencode/mcp.json is orphaned and wrong-schema; delete it and
+# stop pointing users at it.
+# ---------------------------------------------------------------------------
+
+
+def test_opencode_mcp_json_does_not_exist_and_is_unreferenced() -> None:
+    repo_root = _repo_root()
+    assert not (repo_root / "agents/opencode/mcp.json").exists()
+
+    for path in _agents_text_files():
+        text = path.read_text(encoding="utf-8")
+        assert "opencode/mcp.json" not in text, f"{path} still references opencode/mcp.json"
+
+    for path in (repo_root / "docs").rglob("*.md"):
+        if "receipts" in path.parts:
+            continue  # frozen historical evidence, not a live doc
+        text = path.read_text(encoding="utf-8")
+        assert "opencode/mcp.json" not in text, f"{path} still references opencode/mcp.json"

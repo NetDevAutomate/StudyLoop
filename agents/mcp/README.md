@@ -239,6 +239,16 @@ TOML below is a reference for running Codex without the StudyLoop installer:
   command = "studyloop-mcp"
   args = []
   ```
+- OpenCode — no repo-owned MCP file either (a stale, wrong-schema reference
+  file under `agents/opencode/` was removed in the 2026-09-14 congruence
+  review). `studyloop install agents --tool opencode` writes `.opencode/opencode.json`
+  automatically, via `_strategies.write_mcp_config(fmt="opencode")`
+  (`adapters/_strategies.py:143-153`). It registers only `studyloop-mcp`
+  (`get_concept_context`, `record_plan_learning`, ...) in OpenCode's own
+  schema (top-level `mcp` key, flat `command` array, `enabled`/`type: local`)
+  — `session-db` is not registered for OpenCode, so `memory_search` there
+  falls back to the `session-query` CLI (see the `studyloop-session-memory`
+  skill).
 - pi — this release does not verify a pi MCP registration path (pi's
   `settings.json` carries no `mcpServers` key). pi mentors use the CLI
   fallbacks the skill names — `session-query`, `session-context search`,
