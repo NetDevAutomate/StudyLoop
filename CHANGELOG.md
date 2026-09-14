@@ -152,7 +152,7 @@ experience may change before `1.0.0`.
   at all. Every batch commit now records the failure and continues; the database
   is still rolled back exactly as before.
 
-## [0.3.0] - 2026-09-05
+## [0.3.0] - 2026-09-06
 
 ### Added
 
