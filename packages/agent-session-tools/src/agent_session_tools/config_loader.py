@@ -368,8 +368,14 @@ def _deep_merge(base: dict, update: dict) -> None:
 def get_db_path(config: dict[str, Any] | None = None) -> Path:
     """Get database path from config.
 
-    Precedence: an explicit ``database.path`` config key wins, then
-    ``STUDYLOOP_DB``, then the hardcoded default.
+    Precedence: an explicit top-level ``session_db`` config key wins, then
+    ``database.path``, then ``STUDYLOOP_DB``, then the hardcoded default --
+    EXACTLY ``studyloop.settings.get_db_path()``'s precedence (settings.py:
+    1033-1054). Without honouring ``session_db`` here too, every
+    agent-session-tools console script (session-export/session-query/
+    session-sync/session-maint/session-repair/session-db-mcp) silently
+    diverges from studyloop and studyloop's own doctor check about which
+    sessions.db is live.
 
     ``STUDYLOOP_DB`` replaces only the hardcoded default so a test run — or a
     subprocess it spawns — cannot fall through to the learner's real
@@ -381,6 +387,9 @@ def get_db_path(config: dict[str, Any] | None = None) -> Path:
     """
     if config is None:
         config = load_config()
+    session_db = str(config.get("session_db") or "")
+    if session_db:
+        return Path(session_db).expanduser()
     configured = str(config["database"]["path"])
     env_db = os.environ.get("STUDYLOOP_DB")
     if env_db and configured == DEFAULT_CONFIG["database"]["path"]:
