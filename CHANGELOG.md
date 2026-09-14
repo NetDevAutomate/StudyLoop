@@ -27,7 +27,8 @@ experience may change before `1.0.0`.
 - The source install selects its Python deterministically and says so. A
   committed `.python-version` (3.12) drives `uv sync`/`uv run`;
   `studyloop install tools` passes the same minor to every `uv tool install`;
-  `./scripts/install.sh` prints the interpreter uv resolved and refuses
+  `./scripts/install.sh` prints the interpreter uv resolved, installs the
+  pinned 3.12 through uv when no matching interpreter exists, and refuses
   anything outside 3.12–3.14; `UV_PYTHON=3.13 ./scripts/install.sh` is the
   documented override. The nightly install workflow now runs the real
   installer (a separate `installer` job) and checks Python 3.14 as a signal;
