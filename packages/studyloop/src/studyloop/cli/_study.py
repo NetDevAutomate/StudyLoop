@@ -191,7 +191,7 @@ def _agent_names() -> list[str]:
     "--mode",
     "-m",
     default="study",
-    type=click.Choice(["study", "co-study"]),
+    type=click.Choice(["study", "co-study", "plan-architect"]),
     help="Session mode.",
 )
 @click.option(

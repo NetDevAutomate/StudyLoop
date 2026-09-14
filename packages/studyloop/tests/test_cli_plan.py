@@ -211,3 +211,47 @@ def test_reindex_reports_a_count(runner: CliRunner) -> None:
     result = runner.invoke(cli, ["plan", "reindex"])
     assert result.exit_code == 0
     assert "Reindexed" in result.output
+
+
+def test_architect_delegates_to_study_with_plan_architect_mode(
+    runner: CliRunner, tmp_path, monkeypatch
+) -> None:
+    """``studyloop plan architect`` is a convenience alias for the real launch:
+    the same ``studyloop study`` machinery, pinned to topic "Study plan" and
+    mode "plan-architect" -- never a second launch path."""
+    from unittest.mock import patch
+
+    captured: dict = {}
+
+    def _fake_start_session(topic, agent, mode, timer, energy, web, **kwargs):
+        captured["topic"] = topic
+        captured["mode"] = mode
+        captured["agent"] = agent
+
+    def _tmux(args, **kwargs):
+        from unittest.mock import MagicMock
+
+        if "-V" in args:
+            return MagicMock(returncode=0, stdout="tmux 3.4\n", stderr="")
+        if "has-session" in args:
+            return MagicMock(returncode=1, stdout="", stderr="")
+        return MagicMock(returncode=0, stdout="%0\n", stderr="")
+
+    with (
+        patch("studyloop.tmux.shutil.which", return_value="/usr/bin/tmux"),
+        patch("studyloop.tmux.subprocess.run", side_effect=_tmux),
+        patch("studyloop.agent_launcher.shutil.which", return_value="/usr/bin/claude"),
+        patch("studyloop.session_state.read_session_state", return_value={}),
+        patch("studyloop.session_state.STATE_FILE", tmp_path / "state.json"),
+        patch("studyloop.session_state.SESSION_DIR", tmp_path),
+        patch("studyloop.session_state.TOPICS_FILE", tmp_path / "topics.md"),
+        patch("studyloop.session_state.PARKING_FILE", tmp_path / "parking.md"),
+        patch("studyloop.history.start_study_session", return_value="abc12345"),
+        patch("studyloop.session.start.start_session", side_effect=_fake_start_session),
+    ):
+        monkeypatch.setenv("TMUX", "/tmp/tmux")
+        result = runner.invoke(cli, ["plan", "architect"])
+
+    assert result.exit_code == 0, result.output
+    assert captured["topic"] == "Study plan"
+    assert captured["mode"] == "plan-architect"
