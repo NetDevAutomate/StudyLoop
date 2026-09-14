@@ -214,8 +214,52 @@ _HOOK_SENTINEL = "session-export --claude-only"
 
 #: Where every export hook appends its output and a dated line on failure.
 EXPORT_HOOK_LOG = "$HOME/.config/studyloop/export-hook.log"
-#: The exporter every hook calls: the uv tool bin, never a PATH lookup.
+#: The exporter every hook calls when uv's tool bin dir is the default
+#: (``~/.local/bin``): the ``$HOME`` form survives a home directory that moves.
 PINNED_EXPORTER = "$HOME/.local/bin/session-export"
+
+
+def _uv_tool_bin_dir_from_uv() -> Path | None:
+    """``uv tool dir --bin`` -- the directory uv installs tool executables into."""
+    try:
+        done = subprocess.run(
+            ["uv", "tool", "dir", "--bin"],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=15,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    out = done.stdout.strip()
+    return Path(out) if out else None
+
+
+def uv_tool_bin_dir() -> Path | None:
+    """Where uv puts tool executables: ``UV_TOOL_BIN_DIR`` when set, else what uv reports."""
+    override = os.environ.get("UV_TOOL_BIN_DIR")
+    if override:
+        return Path(override).expanduser()
+    return _uv_tool_bin_dir_from_uv()
+
+
+def pinned_exporter() -> str:
+    """The exporter path every hook embeds.
+
+    ``$HOME/.local/bin/session-export`` when uv's tool bin dir is the default,
+    else the absolute directory uv actually installs into. Found on 2026-09-14
+    by the first run of scripts/smoke-uv-tool-install.sh inside
+    ``just release-check``: with ``UV_TOOL_BIN_DIR`` set, the hooks and doctor's
+    ``exporter_schema`` still named a path that did not exist.
+    """
+    bin_dir = uv_tool_bin_dir()
+    # Compare against the REAL home: the `$HOME` in PINNED_EXPORTER is expanded by
+    # the shell at hook time, so uv's default (`~/.local/bin`) is the portable case
+    # regardless of any test-time redirection of ``_HOME``.
+    default = Path.home() / ".local/bin"
+    if bin_dir is None or bin_dir.expanduser().resolve() == default.resolve():
+        return PINNED_EXPORTER
+    return str(bin_dir.expanduser() / "session-export")
 
 
 def export_hook_command(flag: str) -> str:
@@ -230,7 +274,7 @@ def export_hook_command(flag: str) -> str:
     never block a session from closing.
     """
     return (
-        f"{PINNED_EXPORTER} {flag} >>{EXPORT_HOOK_LOG} 2>&1 || "
+        f"{pinned_exporter()} {flag} >>{EXPORT_HOOK_LOG} 2>&1 || "
         f'{{ rc=$?; echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) session-export {flag} FAILED exit=$rc" '
         f">>{EXPORT_HOOK_LOG}; }}"
     )

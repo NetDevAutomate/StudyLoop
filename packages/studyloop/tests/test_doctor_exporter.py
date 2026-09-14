@@ -31,6 +31,33 @@ class TestHookCommand:
         assert "FAILED exit=$rc" in cmd and "rc=$?" in cmd, "the exporter's own exit status"
         assert "|| true" not in cmd and "/dev/null" not in cmd
 
+    def test_the_pin_follows_a_non_default_uv_tool_bin_dir(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Found by the first-ever run of scripts/smoke-uv-tool-install.sh in
+        `just release-check` (2026-09-14): with UV_TOOL_BIN_DIR pointing away
+        from ~/.local/bin, the hooks and doctor's exporter_schema still assumed
+        `$HOME/.local/bin/session-export`, so doctor reported fail and every hook
+        would have called a path that does not exist."""
+        bin_dir = tmp_path / "tools-bin"
+        monkeypatch.setenv("UV_TOOL_BIN_DIR", str(bin_dir))
+        cmd = installers.export_hook_command("--kiro-only")
+        assert cmd.startswith(f"{bin_dir}/session-export --kiro-only"), cmd
+        assert exporter.pinned_exporter_path() == bin_dir / "session-export"
+
+    def test_the_pin_keeps_the_portable_home_form_for_uv_default_bin_dir(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """uv's default tool bin dir is ~/.local/bin; hooks then embed `$HOME/...`
+        so an installed hook survives a home directory that moves."""
+        monkeypatch.delenv("UV_TOOL_BIN_DIR", raising=False)
+        monkeypatch.setattr(
+            installers, "_uv_tool_bin_dir_from_uv", lambda: installers._HOME / ".local/bin"
+        )
+        assert installers.export_hook_command("--kiro-only").startswith(
+            "$HOME/.local/bin/session-export --kiro-only"
+        )
+
     def test_a_broken_exporter_leaves_a_dated_line_and_the_hook_exits_zero(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:

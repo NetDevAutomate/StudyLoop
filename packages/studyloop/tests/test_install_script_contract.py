@@ -73,3 +73,14 @@ def test_install_script_help_documents_supported_flags() -> None:
     assert "--agents-only" in result.stdout
     assert "--non-interactive" in result.stdout
     assert "--no-smoke" in result.stdout
+
+
+def test_uv_tool_smoke_pins_the_interpreter_like_the_installer() -> None:
+    """scripts/smoke-uv-tool-install.sh calls `uv tool install` directly (not
+    through installers.install_workspace_tools), so it must pin the interpreter
+    the same way -- from .python-version -- or it silently smokes a different
+    Python than the installer ships (it built watchdog from source on 3.14)."""
+    repo_root = Path(__file__).resolve().parents[3]
+    text = (repo_root / "scripts/smoke-uv-tool-install.sh").read_text()
+    assert ".python-version" in text
+    assert text.count("--python") >= 2, "both uv tool install calls must pass --python"

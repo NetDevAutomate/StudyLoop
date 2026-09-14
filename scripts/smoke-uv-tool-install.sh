@@ -23,9 +23,13 @@ export XDG_DATA_HOME="$tmp/xdg-data"
 export UV_TOOL_BIN_DIR="$tmp/bin"
 TOOL_BIN="$UV_TOOL_BIN_DIR"
 
-uv tool install --force --editable "$ROOT_DIR/packages/studyloop[all]" \
+# The same interpreter pin the installer applies (installers.install_workspace_tools
+# passes --python); without it this smoke exercised whatever Python uv found.
+PY_REQUEST="$(tr -d '[:space:]' < "$ROOT_DIR/.python-version")"
+
+uv tool install --force --editable --python "$PY_REQUEST" "$ROOT_DIR/packages/studyloop[all]" \
   --with-editable "$ROOT_DIR/packages/agent-session-tools"
-uv tool install --force --editable "$ROOT_DIR/packages/agent-session-tools[all]"
+uv tool install --force --editable --python "$PY_REQUEST" "$ROOT_DIR/packages/agent-session-tools[all]"
 
 test -x "$TOOL_BIN/studyloop"
 test -x "$TOOL_BIN/session-export"

@@ -71,6 +71,13 @@ _Nothing yet._
 
 ### Fixed
 
+- Export hooks and doctor's `exporter_schema` check follow uv's real tool bin
+  directory (`UV_TOOL_BIN_DIR`, else `uv tool dir --bin`) instead of assuming
+  `~/.local/bin`; with the default directory the portable `$HOME/.local/bin`
+  form is unchanged. Found by the first run of the `uv tool install` smoke
+  inside `just release-check`. The smoke itself now pins the interpreter from
+  `.python-version` like the installer.
+
 - Installing from source no longer depends on whichever `python3` happens to be
   on `PATH`: the installer used to validate that interpreter and then let `uv`
   pick a different one, and `uv tool install` resolved without any `--python`

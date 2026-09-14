@@ -32,8 +32,8 @@ _VERSION_SNIPPET = (
 
 
 def pinned_exporter_path() -> Path:
-    """The exporter every hook calls (``installers.PINNED_EXPORTER`` with ``$HOME`` expanded)."""
-    return Path(installers.PINNED_EXPORTER.replace("$HOME", str(installers._HOME)))
+    """The exporter every hook calls (``installers.pinned_exporter()`` with ``$HOME`` expanded)."""
+    return Path(installers.pinned_exporter().replace("$HOME", str(installers._HOME)))
 
 
 def exporter_schema_version(exporter: Path, timeout: float = 30.0) -> int | None:
