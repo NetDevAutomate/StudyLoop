@@ -799,7 +799,7 @@ The toolkit runs on Windows via WSL2 (Windows Subsystem for Linux).
 ### Prerequisites
 
 1. Install WSL2 with Ubuntu: `wsl --install -d Ubuntu`
-2. Inside WSL2, install Python 3.12+ and uv:
+2. Inside WSL2, install uv (the installer then provides Python 3.12 itself; 3.12 and 3.13 are the tested versions):
    ```bash
    curl -LsSf https://astral.sh/uv/install.sh | sh
    ```

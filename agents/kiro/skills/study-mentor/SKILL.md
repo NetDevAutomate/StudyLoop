@@ -79,6 +79,7 @@ studyloop content generate-cards ~/Obsidian/Personal/Study/<topic-or-course> --c
 
 # Progress tracking
 uv run tutor-checkpoint <skill-name> --notes "<notes>"
+session-query search "<skill-name>"   # read back prior checkpoints for a skill
 
 # Cross-machine sync
 studyloop state pull              # Get latest from hub

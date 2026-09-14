@@ -19,7 +19,7 @@ Before installing anything, gather facts. Run these commands and note the result
 ```bash
 uname -s                    # Detect OS: Darwin=macOS, Linux=Linux
 uname -m                    # Architecture: arm64, x86_64
-python3 --version           # Python version (need 3.12+)
+python3 --version           # informational only: uv installs Python 3.12 for the repo (3.12 and 3.13 are tested)
 which uv 2>/dev/null        # Preferred package manager
 which brew 2>/dev/null      # macOS Homebrew
 which pip3 2>/dev/null      # Fallback package manager

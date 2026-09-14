@@ -68,10 +68,15 @@ jobs:
           python-version: "3.12"
 
       - name: Run scripts/install.sh
+        # HOME is isolated because `studyloop install agents` writes into it
+        # (~/.kiro, ~/.claude, ~/.codex, ~/.config/opencode). With a fresh HOME
+        # there is no Python 3.12 either, so this also exercises the script's
+        # `uv python install` fallback every night.
         env:
+          HOME: ${{ runner.temp }}/home
           UV_TOOL_DIR: ${{ runner.temp }}/tools
           UV_TOOL_BIN_DIR: ${{ runner.temp }}/bin
-        run: ./scripts/install.sh --non-interactive --no-smoke
+        run: mkdir -p "$HOME" && ./scripts/install.sh --non-interactive --no-smoke
 
       - name: Verify installed CLI entry points
         env:

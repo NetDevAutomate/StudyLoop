@@ -222,3 +222,25 @@ def test_install_script_installs_the_pinned_python_when_absent() -> None:
     find_at = text.index("uv python find")
     install_at = text.index("uv python install")
     assert find_at < install_at, "the install fallback must follow the find attempt"
+
+
+def test_install_script_reports_the_tool_venv_interpreters() -> None:
+    """Astra Q1.1 (A26): the script prints the interpreter uv resolved BEFORE the
+    install; it must also report the interpreter each tool venv actually got,
+    so a workspace/tool mismatch is visible in the install log rather than
+    inferred. `uv tool dir` locates the tool venvs."""
+    text = INSTALL_SCRIPT.read_text()
+    assert "uv tool dir" in text
+    assert text.index("CLI tools installed") < text.index("uv tool dir")
+
+
+def test_nightly_installer_job_isolates_home() -> None:
+    """Astra Q1.4 (A27): `studyloop install agents` writes into HOME (~/.kiro,
+    ~/.claude, ~/.codex, ~/.config/opencode); the nightly installer job must
+    point HOME at the runner's temp dir, not just the uv tool dirs."""
+    jobs = yaml.safe_load((REPO_ROOT / ".github/workflows/nightly-install.yml").read_text())["jobs"]
+    installer = jobs["installer"]
+    install_steps = [s for s in installer["steps"] if "scripts/install.sh" in str(s.get("run", ""))]
+    assert install_steps, "no step runs scripts/install.sh"
+    env = install_steps[0].get("env", {})
+    assert "HOME" in env and "runner.temp" in str(env["HOME"]), env

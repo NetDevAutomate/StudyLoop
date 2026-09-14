@@ -79,6 +79,7 @@ studyloop wins                    # Show learning wins
 # Progress tracking
 studyloop progress "<concept>" -t <topic> -c <confidence>
 uv run tutor-checkpoint <skill-name> --notes "<notes>"
+session-query search "<skill-name>"   # read back prior checkpoints for a skill
 
 # Cross-machine sync
 studyloop state pull              # Get latest from hub

@@ -174,6 +174,17 @@ else
 fi
 info "CLI tools installed"
 
+# A26: the interpreter uv resolved was reported before the install; report the
+# one each tool venv actually received, so a workspace/tool mismatch is visible
+# in this log instead of inferred later.
+tool_dir=$(uv tool dir)
+for tool in studyloop agent-session-tools; do
+  tool_py="${tool_dir}/${tool}/bin/python"
+  if [ -x "$tool_py" ]; then
+    info "${tool} tool venv uses Python $("$tool_py" -c 'import sys; print(sys.version.split()[0])')"
+  fi
+done
+
 if ! $NO_SMOKE; then
   run_smoke_checks
 fi

@@ -225,24 +225,23 @@ def check_obsidian_export() -> list[CheckResult]:
         ]
 
     # W10: the vault existing is not enough -- verify the memory directory
-    # itself is WRITABLE (mirroring check_second_brain's
-    # os.access(vault, os.W_OK) pattern below), creating it on demand when
-    # the vault exists but the subdirectory doesn't yet. A read-only memory
-    # dir silently breaks every export write with no signal until now.
+    # itself exists and is WRITABLE (mirroring check_second_brain's
+    # os.access(vault, os.W_OK) pattern below). A read-only memory dir
+    # silently breaks every export write with no signal until now.
+    #
+    # A29: a doctor CHECK never mutates. A missing subdirectory is reported
+    # with the command that creates it; the first export creates it too.
     if not memory_dir.is_dir():
-        try:
-            memory_dir.mkdir(parents=True, exist_ok=True)
-        except OSError:
-            return [
-                CheckResult(
-                    "config",
-                    "obsidian_export",
-                    "warn",
-                    f"Obsidian export enabled but memory dir could not be created: {memory_dir}",
-                    f"mkdir -p {memory_dir}",
-                    False,
-                )
-            ]
+        return [
+            CheckResult(
+                "config",
+                "obsidian_export",
+                "warn",
+                f"Obsidian export enabled but memory dir does not exist yet: {memory_dir}",
+                f"mkdir -p {memory_dir}",
+                False,
+            )
+        ]
 
     if not os.access(memory_dir, os.W_OK):
         return [
