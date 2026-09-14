@@ -456,6 +456,82 @@ def test_grok_legacy_user_settings_entry_counts_as_registered_without_duplicatin
     assert installers.mcp_registration_status(["grok"]) == {"grok": True}
 
 
+def test_doctor_grok_message_names_the_legacy_user_settings_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Finding (major, agents.py:247): doctor's grok message must name which
+
+    file satisfied registration. When both server names are covered by the
+    legacy ``user-settings.json`` map (council kimi F13), the message names
+    that file, not the generic ``config.toml``.
+    """
+    home = tmp_path / "home"
+    home.mkdir()
+    _isolate_install_surfaces(monkeypatch, home)
+    grok_home = home / ".grok"
+    grok_home.mkdir(parents=True)
+    legacy_path = grok_home / "user-settings.json"
+    legacy_path.write_text(
+        json.dumps(
+            {
+                "mcpServers": {
+                    "session-db": {"command": "session-db-mcp"},
+                    "studyloop": {"command": "studyloop-mcp"},
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    results = doctor_agents.check_mcp_registration()
+
+    grok_result = next(result for result in results if result.name == "mcp_grok")
+    assert grok_result.status == "pass"
+    assert str(legacy_path) in grok_result.message
+    assert "config.toml" not in grok_result.message
+
+
+def test_doctor_grok_message_names_the_config_toml_when_cli_registered(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Same finding: when registration is satisfied via `grok mcp list`
+
+    (i.e. `grok mcp add`/config.toml, not the legacy file), the message
+    names config.toml instead.
+    """
+    home = tmp_path / "home"
+    home.mkdir()
+    _isolate_install_surfaces(monkeypatch, home)
+    bin_dir = _fake_grok_bin_dir(
+        tmp_path, _GROK_LIST_FIXTURE_SCRIPT.format(fixture=_GROK_LIST_FIXTURE_BOTH_REGISTERED)
+    )
+    monkeypatch.setenv("PATH", str(bin_dir))
+
+    results = doctor_agents.check_mcp_registration()
+
+    grok_result = next(result for result in results if result.name == "mcp_grok")
+    assert grok_result.status == "pass"
+    assert str(home / ".grok/config.toml") in grok_result.message
+    assert "user-settings.json" not in grok_result.message
+
+
+def test_doctor_grok_message_is_generic_when_not_registered(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Neither source registered: no file name to report, generic warn message."""
+    home = tmp_path / "home"
+    home.mkdir()
+    _isolate_install_surfaces(monkeypatch, home)
+
+    results = doctor_agents.check_mcp_registration()
+
+    grok_result = next(result for result in results if result.name == "mcp_grok")
+    assert grok_result.status == "warn"
+    assert "config.toml" not in grok_result.message
+    assert "user-settings.json" not in grok_result.message
+    assert grok_result.message == "grok MCP registration is missing or incomplete"
+
+
 def test_grok_uninstall_removes_both_servers_via_cli(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

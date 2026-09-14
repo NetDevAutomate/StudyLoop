@@ -844,30 +844,44 @@ def unregister_grok_mcp_servers() -> int:
     return changed
 
 
-def _grok_registration_status() -> bool:
-    """True when both StudyLoop MCP servers are registered with Grok Build.
+def _grok_registration_detail() -> tuple[bool, str | None]:
+    """Registration state plus which file satisfied it, for doctor messaging.
 
     A server present in the legacy ``user-settings.json`` map counts as
-    registered without running the CLI at all (council kimi F13). Otherwise
-    falls back to ``grok mcp list --json``; both `grok` being absent and the
-    CLI call failing report "not registered" rather than raising.
+    registered without running the CLI at all (council kimi F13); the second
+    element then names that file. Otherwise falls back to ``grok mcp list
+    --json``; when that covers both names the second element names
+    ``config.toml`` (the file ``grok mcp add`` writes) instead. Both `grok`
+    being absent and the CLI call failing report ``(False, None)`` rather
+    than raising.
     """
     legacy = _grok_legacy_registered_names()
     if set(_MCP_SERVERS) <= legacy:
-        return True
+        return True, str(_grok_user_settings_path())
     binary = shutil.which("grok")
     if binary is None:
-        return False
+        return False, None
     entries = _grok_mcp_list(binary)
     if entries is None:
-        return False
+        return False, None
     live = {
         entry.get("name")
         for entry in entries
         if isinstance(entry, dict)
         and entry.get("command") == _MCP_SERVERS.get(str(entry.get("name")), {}).get("command")
     }
-    return set(_MCP_SERVERS) <= (legacy | live)
+    if set(_MCP_SERVERS) <= (legacy | live):
+        return True, str(_grok_home() / "config.toml")
+    return False, None
+
+
+def _grok_registration_status() -> bool:
+    """True when both StudyLoop MCP servers are registered with Grok Build.
+
+    Thin wrapper over :func:`_grok_registration_detail` for callers that only
+    need the bool (e.g. :func:`mcp_registration_status`'s uniform per-tool map).
+    """
+    return _grok_registration_detail()[0]
 
 
 def register_mcp_servers(tools: list[str] | None = None) -> dict[str, int]:
