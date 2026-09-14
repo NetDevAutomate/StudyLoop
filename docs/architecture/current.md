@@ -900,6 +900,9 @@ flowchart TB
 
 - **The Pomodoro overlay**, OpenDyslexic toggle — orthogonal UI concerns, not part of the session pipeline. (Voice output is now documented in its own C4 L3 component section above.)
 - **The Generate panel implementation details beyond the C4 slice above** — provider-specific prompt tuning and deck-quality judging are documented in [Content Pipeline](../content-pipeline.md).
-- **MCP servers** — see [MCP](../../agents/mcp/README.md). Claude Code, Kiro CLI and Codex register the
-  session-db and studyloop MCP servers (installers._MCP_HARNESSES); OpenCode, pi and Grok Build do not yet.
+- **MCP servers** — see [MCP](../../agents/mcp/README.md). Claude Code, Kiro CLI and Codex register both the
+  session-db and studyloop MCP servers globally via the CLI config installers write
+  (installers._MCP_HARNESSES). OpenCode's per-session adapter (`adapters/opencode.py`) writes its own
+  `opencode.json` naming only the studyloop MCP server, not session-db-mcp. pi and Grok Build have no MCP
+  registration path today.
 - **ttyd** — **fully retired**, browser surface and server transport alike ([ADR-0005](../adr/0005-retire-ttyd-browser-surface.md), [ADR-0008](../adr/0008-retire-ttyd-entirely.md)); the web session surfaces are xterm.js over a PTY WebSocket and the ACP chat surface. Background in [Web UI Guide § The retired ttyd iframe](../web-ui-guide.md#the-retired-ttyd-iframe). `tmux` remains the terminal session host for `studyloop study` — that command was never ttyd-dependent.

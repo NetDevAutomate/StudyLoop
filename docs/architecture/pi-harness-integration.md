@@ -337,8 +337,8 @@ or `~/.pi` exists (`installers.py:484`), and then yields three pi checks:
 | Check | Source | Passes when |
 |---|---|---|
 | `session_memory_skill_pi` | `_session_memory_skill_result` | `~/.agents/skills/studyloop-session-memory/SKILL.md` exists and contains `name: studyloop-session-memory` |
-| `export_mandate_pi` | `_steering_result`, `:29` | `~/.pi/agent/session-db.md` exists and contains `studyloop:session-export-mandate` |
-| `session_export_hook_pi` | `_text_hook_result` via the `pi` branch, `:236-243` | the installed extension exists and contains **both** `studyloop:session-export-hook` and `"--pi-only"` |
+| `export_mandate_pi` | `_steering_result` | `~/.pi/agent/session-db.md` exists and contains `studyloop:session-export-mandate` |
+| `session_export_hook_pi` | `_text_hook_result` via the `pi` branch | the installed extension exists and contains **both** `studyloop:session-export-hook` and `"--pi-only"` |
 
 All three warn rather than fail, and all three are `fix_auto=True`, so
 `studyloop doctor --fix` repairs them. No pi special-casing exists outside the one

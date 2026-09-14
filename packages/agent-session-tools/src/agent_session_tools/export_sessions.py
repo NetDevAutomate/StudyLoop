@@ -7,7 +7,7 @@ Supported sources:
 - Kiro CLI (~/Library/Application Support/kiro-cli/)
 - OpenCode (~/.local/share/opencode/storage/)
 - pi coding agent (~/.pi/agent/sessions/)
-- grok: Grok Build (~/.grok/, searched recursively for chat_history.jsonl, or $GROK_HOME)
+- grok: Grok Build (~/.grok/sessions/, searched recursively for chat_history.jsonl, or $GROK_HOME/sessions/)
 """
 
 import importlib
@@ -490,7 +490,7 @@ def export(
     - kiro_cli: Kiro CLI (~/Library/Application Support/kiro-cli/)
     - opencode: OpenCode CLI (~/.local/share/opencode/storage/)
     - pi: pi coding agent (~/.pi/agent/sessions/)
-    - grok: Grok Build (~/.grok/, searched recursively for chat_history.jsonl, or $GROK_HOME)
+    - grok: Grok Build (~/.grok/sessions/, searched recursively for chat_history.jsonl, or $GROK_HOME/sessions/)
 
     Examples:
         session-export                          # Export all sources

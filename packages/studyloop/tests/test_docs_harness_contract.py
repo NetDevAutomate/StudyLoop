@@ -125,16 +125,34 @@ def test_no_stale_version_pin(rel_path: str) -> None:
     assert not re.search(r"0\.\d+\.x", text), f"{rel_path} still pins a literal 0.x.y version"
 
 
-def test_grok_build_not_described_as_a_non_mentor() -> None:
-    """packages/agent-session-tools/README.md must not call Grok a non-mentor.
+def test_readme_describes_grok_as_admitted_preview_harness_with_live_hook() -> None:
+    """packages/agent-session-tools/README.md's Grok Build sentence matches code.
 
-    Grok Build ships an automatic SessionEnd hook (installers.py) and is a
-    PREVIEW_HARNESSES member, so "Grok is ... not a StudyLoop mentor" is a
-    stale claim.
+    Grok Build ships an automatic SessionEnd hook (installers._grok_hooks_path)
+    and is a PREVIEW_HARNESSES member, so the sentence naming Grok must name
+    the harness's real label and the real hook path installers.py writes --
+    structural facts, not a copied prose fragment.
     """
+    from studyloop.installers import _grok_hooks_path
+
     assert "grok" in PREVIEW_HARNESSES
     text = _read("packages/agent-session-tools/README.md")
-    assert "not a StudyLoop mentor" not in text
+    # A "sentence" boundary can't be a bare '.', since the hook filename
+    # ('studyloop.json') contains one; use the markdown paragraph instead.
+    paragraphs = re.split(r"\n\s*\n", text)
+    grok_preview_paragraphs = [p for p in paragraphs if "Grok" in p and "preview" in p.lower()]
+    assert grok_preview_paragraphs, (
+        "README.md is missing a paragraph describing Grok Build as a preview harness"
+    )
+    # Markdown soft-wraps lines, so a label can be split by a newline where a
+    # space belongs; collapse whitespace before substring checks.
+    sentence = re.sub(r"\s+", " ", grok_preview_paragraphs[0])
+    assert HARNESSES["grok"].label in sentence
+    hook_path = _grok_hooks_path()
+    hook_component = f"{hook_path.parent.name}/{hook_path.name}"
+    assert hook_component in sentence, (
+        f"Grok Build sentence is missing the live hook path {hook_component!r}: {sentence}"
+    )
 
 
 def test_install_mentor_detection_block_names_all_six_binaries() -> None:
@@ -164,10 +182,14 @@ def test_session_export_help_names_every_harness_source() -> None:
     from typer.testing import CliRunner
 
     from agent_session_tools.export_sessions import app
+    from studyloop.harnesses import SESSION_SOURCE_BY_HARNESS
 
     result = CliRunner().invoke(app, ["--help"])
     assert result.exit_code == 0
-    assert "grok" in result.output
+    missing = [
+        source for source in SESSION_SOURCE_BY_HARNESS.values() if source not in result.output
+    ]
+    assert not missing, f"--help output is missing session source(s): {missing}"
 
 
 def test_first_week_extract_struggles_examples_pass_harness() -> None:
@@ -202,13 +224,23 @@ def test_relative_markdown_links_resolve(rel_path: str) -> None:
 
 
 def test_current_architecture_mcp_claim_matches_installers() -> None:
-    """(e) current.md must not claim MCP is Kiro-only when more harnesses register it."""
+    """(e) current.md's MCP bullet names every harness installers._MCP_HARNESSES
+
+    registers globally, mirroring test_target_architecture_names_every_acp_capable_agent's
+    approach: extract the bullet by stable structure, then compare against the
+    code-derived set rather than matching a hardcoded prose fragment.
+    """
     from studyloop.installers import _MCP_HARNESSES
 
     assert len(_MCP_HARNESSES) > 1
     text = _read("docs/architecture/current.md")
-    assert "only the Kiro adapter" not in text
-    assert "Kiro only" not in text
+    bullet_match = re.search(r"\*\*MCP servers\*\*.*?(?=\n- \*\*|\n\n)", text, re.DOTALL)
+    assert bullet_match, "current.md is missing the MCP servers bullet"
+    bullet = bullet_match.group(0)
+    missing = [
+        HARNESSES[agent].label for agent in _MCP_HARNESSES if HARNESSES[agent].label not in bullet
+    ]
+    assert not missing, f"MCP bullet is missing globally-registered harness label(s): {missing}"
 
 
 def test_target_architecture_names_every_acp_capable_agent() -> None:
@@ -242,11 +274,17 @@ def test_pi_harness_integration_grok_row_matches_installers() -> None:
     row_match = re.search(r"\| Grok Build[^\n]*\|", text)
     assert row_match, "pi-harness-integration.md is missing a Grok Build row"
     row = row_match.group(0)
-    assert "none today" not in row
-    assert "GROK_HOME/hooks" in row
-    assert "GROK_HOME/rules" in row
     assert "grok" in _HARNESS_EXPORT
-    assert callable(_grok_hooks_path)
+    hook_path = _grok_hooks_path()
+    mandate_path = _HARNESS_EXPORT["grok"].steering_path
+    hook_component = f"{hook_path.parent.name}/{hook_path.name}"
+    mandate_component = f"{mandate_path.parent.name}/{mandate_path.name}"
+    assert hook_component in row, (
+        f"Grok Build row is missing the live hook path {hook_component!r}: {row}"
+    )
+    assert mandate_component in row, (
+        f"Grok Build row is missing the live steering mandate path {mandate_component!r}: {row}"
+    )
 
 
 def test_pi_harness_integration_has_no_stale_line_number_citations() -> None:
