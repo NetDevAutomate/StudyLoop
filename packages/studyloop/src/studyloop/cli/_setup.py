@@ -181,6 +181,19 @@ def _merge_managed(existing: dict, managed: dict) -> dict:
     return merged
 
 
+def _priority_with_chosen_first(existing_priority: list[str], chosen: str) -> list[str]:
+    """Reorder ``agents.priority`` so ``chosen`` is first, keeping the rest.
+
+    A11: never clobber an existing list -- start from the config's own
+    ``agents.priority`` when one exists (deduplicated, chosen moved to the
+    front), falling back to the registry's release order only for a config
+    that has none yet.
+    """
+    base = existing_priority or list(RELEASE_HARNESSES)
+    rest = [name for name in base if name != chosen]
+    return [chosen, *rest]
+
+
 def _default_notes_answer(existing: dict) -> str:
     """Pre-fill the notes prompt from config, so a re-run is all-Enter.
 
@@ -289,22 +302,33 @@ def setup() -> None:
 
     # ------------------------------------------------------------------
     # Question 3 — the harness. Asked ONLY when detection is ambiguous.
+    #
+    # A11: wire the answer into agents.priority (the chosen harness first,
+    # keeping the rest) instead of writing an inert top-level `ai_assistant`
+    # key -- detect_agents() (adapters/registry.py) only ever consults
+    # STUDYLOOP_AGENT and agents.priority, so `ai_assistant` did nothing but
+    # get flagged as a retired key by the wizard's own next recommended
+    # step, `studyloop doctor --fix`.
     # ------------------------------------------------------------------
     detected = _detect_harness()
+    existing_priority = existing.get("agents", {}).get("priority") or []
     if len(detected) == 1:
-        managed["ai_assistant"] = detected[0]
+        managed["agents"] = {
+            "priority": _priority_with_chosen_first(existing_priority, detected[0])
+        }
         console.print(
             f"[dim]Found {detected[0]} on your PATH — using it for study sessions.[/dim]\n"
         )
     elif detected:
         console.print("[bold]Which AI assistant should run your study sessions?[/bold]")
+        current_choice = next((name for name in existing_priority if name in detected), detected[0])
         assistant = click.prompt(
             "  Assistant",
-            default=str(existing.get("ai_assistant") or detected[0]),
+            default=current_choice,
             type=click.Choice(detected, case_sensitive=False),
             show_choices=True,
         )
-        managed["ai_assistant"] = assistant
+        managed["agents"] = {"priority": _priority_with_chosen_first(existing_priority, assistant)}
         console.print("")
     else:
         console.print(
