@@ -70,6 +70,13 @@ Configured LAN passwords are not printed. Generated one-time passwords are
 printed once. If a phone or tablet cannot connect, check that the shown LAN URL
 uses the host's real LAN address and that the device is on the same network.
 
+A WebSocket connection through a tunnel or reverse proxy has a different Origin
+than the LAN host expects, and is rejected by default. Set
+`STUDYLOOP_ALLOWED_ORIGINS` to a comma-separated list of exact origins (scheme
++ host + port, no wildcards) to allow them explicitly — this is not a
+supported quick path (see [Web UI Guide](web-ui-guide.md#use-it-from-another-device)),
+just an escape hatch for a trusted setup that needs it.
+
 ## The Browser Terminal Shows "No Terminal Available"
 
 The live console has two renderers, chosen by the session's `transport`:

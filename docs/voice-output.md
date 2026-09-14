@@ -112,6 +112,18 @@ tts:
     product, and no code path is specific to it. Only the URL changes between
     servers.
 
+Qwen3 profile — `lang` and `device` are qwen3-specific and ignored by every
+other backend:
+
+```yaml
+tts:
+  backend: qwen3
+  lang: en        # ltts language code; defaults to en
+  device: mps     # ltts inference device (mps on Apple Silicon); defaults to mps
+  voice: am_michael
+  speed: 1.0
+```
+
 ### Overriding the server for a single command
 
 `STUDYLOOP_TTS_BASE_URL`, `STUDYLOOP_TTS_VOICE` and `STUDYLOOP_TTS_MODEL` override

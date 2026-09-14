@@ -2,8 +2,8 @@
 
 ## Supported versions
 
-StudyLoop is pre-1.0. Security fixes target the `0.1.x` line only — there is
-no older release to backport to.
+StudyLoop is pre-1.0. Security fixes target the latest tagged release line
+only; older lines receive none.
 
 ## Reporting a vulnerability
 
