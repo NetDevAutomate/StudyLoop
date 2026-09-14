@@ -11,10 +11,10 @@ step()  { printf "\n${BOLD}▸ %s${NC}\n" "$1"; }
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 REPO_DIR=$(dirname "$SCRIPT_DIR")
 
-# Interpreters this installer will proceed with. uv downloads 3.12 (the
-# repo's .python-version pin) automatically if it is missing; 3.13 and 3.14
-# are accepted when UV_PYTHON selects them, but 3.14 is checked only by the
-# nightly install job, not this script.
+# Interpreters this installer will proceed with. 3.12 is the repo's
+# .python-version pin and is installed through uv if it is missing; 3.13 and
+# 3.14 are accepted when UV_PYTHON selects them, but 3.14 is checked only by
+# the nightly install job, not this script.
 SUPPORTED_PYTHONS=("3.12" "3.13" "3.14")
 
 TOOLS_ONLY=false
@@ -72,10 +72,21 @@ export PATH="$HOME/.local/bin:$PATH"
 # UV_PYTHON=3.13 set, which would make this diagnostic lie about what
 # `uv sync` is about to do. Passing UV_PYTHON as an explicit request
 # argument makes `uv python find` agree with `uv sync`.
-if [ -n "${UV_PYTHON:-}" ]; then
-  py_path=$(cd "$REPO_DIR" && uv python find "$UV_PYTHON")
-else
-  py_path=$(cd "$REPO_DIR" && uv python find)
+#
+# `uv python find` only FINDS. On a machine with no interpreter matching the
+# request (a fresh laptop with Homebrew's newest Python only), it fails where
+# `uv sync` would have downloaded one. So a miss falls back to
+# `uv python install <request>` -- the same managed download `uv sync` would
+# perform, done here explicitly so the user sees it before the heavy
+# dependency download starts.
+py_request="${UV_PYTHON:-$(tr -d '[:space:]' < "$REPO_DIR/.python-version")}"
+if ! py_path=$(cd "$REPO_DIR" && uv python find "$py_request" 2>/dev/null); then
+  warn "No Python ${py_request} found locally — installing it with uv..."
+  if ! (cd "$REPO_DIR" && uv python install "$py_request"); then
+    err "Could not install Python ${py_request} with uv. Install it (e.g. 'uv python install ${py_request}') or set UV_PYTHON to an installed version, then rerun."
+    exit 1
+  fi
+  py_path=$(cd "$REPO_DIR" && uv python find "$py_request")
 fi
 py_ver=$("$py_path" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
 

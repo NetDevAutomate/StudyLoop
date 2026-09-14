@@ -208,3 +208,17 @@ def test_uv_python_find_defaults_to_the_python_version_pin() -> None:
         text=True,
     ).stdout.strip()
     assert version == _python_version_pin()
+
+
+def test_install_script_installs_the_pinned_python_when_absent() -> None:
+    """Acceptance run 2026-09-14 (fresh HOME, Homebrew 3.14 only): `uv python find`
+    only *finds*, so on a machine without a 3.12 the pre-check failed with "No
+    interpreter found for Python 3.12" before `uv sync` -- which downloads
+    automatically -- ever ran. The script must fall back to `uv python install`
+    for the requested version, exactly what `uv sync` would have done, but
+    visibly and before the heavy dependency download."""
+    text = INSTALL_SCRIPT.read_text()
+    assert "uv python install" in text, "install.sh never installs a missing pinned interpreter"
+    find_at = text.index("uv python find")
+    install_at = text.index("uv python install")
+    assert find_at < install_at, "the install fallback must follow the find attempt"
