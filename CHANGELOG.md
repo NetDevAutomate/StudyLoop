@@ -7,6 +7,10 @@ experience may change before `1.0.0`.
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [0.4.0] - 2026-09-14
+
 ### Added
 
 - The study-plan-architect is a first-class mentor role in every harness. One
