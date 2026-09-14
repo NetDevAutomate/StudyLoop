@@ -385,3 +385,28 @@ def test_bridge_add_persists_to_the_database_not_config_yaml(tmp_path, monkeypat
     assert config_path.read_bytes() == before, "bridge add must never touch config.yaml"
     bridges = get_bridges(source_domain="networking")
     assert any(b["target_concept"] == "Spark partition distribution" for b in bridges), bridges
+
+
+# ---------------------------------------------------------------------------
+# W16 -- record_plan_learning is a real MCP write path for plans; the doc
+# must not claim there are none.
+# ---------------------------------------------------------------------------
+
+
+def test_study_plans_doc_does_not_deny_the_real_plan_mcp_tool() -> None:
+    import inspect
+
+    from studyloop.mcp import tools as mcp_tools
+
+    source = inspect.getsource(mcp_tools)
+    tool_functions = re.findall(r"@tool\(\)\s+def (\w+)\(([^)]*)\)", source)
+    plan_tools = [name for name, params in tool_functions if "plan_id" in params]
+    assert plan_tools, "expected at least one @tool() operating on plan_id"
+
+    text = (_repo_root() / "docs/study-plans.md").read_text(encoding="utf-8")
+    assert "no study-plan MCP tools" not in text, (
+        f"docs/study-plans.md denies study-plan MCP tools but {plan_tools} exist"
+    )
+    assert any(tool in text for tool in plan_tools), (
+        f"docs/study-plans.md should name the real plan-write tool {plan_tools}"
+    )
