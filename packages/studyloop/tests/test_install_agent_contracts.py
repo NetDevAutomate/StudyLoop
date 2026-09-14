@@ -506,10 +506,13 @@ def test_every_release_harness_has_a_real_session_export_hook_contract() -> None
 # is only real if the allowlist and server config agree.
 #
 # The exact wording is identical ONLY for harnesses where session-db-mcp is
-# actually registered (installers._MCP_HARNESSES): elsewhere -- pi and
-# OpenCode, neither of which installers.py wires session-db-mcp into -- the
-# instruction must hedge memory_search behind a CLI fallback instead, so those
-# two carry different prose by design (W20, 2026-09-14 congruence review).
+# actually registered (installers._MCP_HARNESSES): elsewhere -- pi, which
+# has no MCP by design (its README states "No MCP"; see L8-mcp-opencode-grok)
+# and installers.py never wires session-db-mcp into -- the instruction must
+# hedge memory_search behind a CLI fallback instead, so pi carries different
+# prose by design (W20, 2026-09-14 congruence review). OpenCode moved into the
+# registered set once `studyloop install agents --tool opencode` started
+# registering session-db-mcp globally (L8-mcp-opencode-grok).
 
 _MENTOR_DEFINITIONS = (
     "agents/kiro/study-mentor.json",

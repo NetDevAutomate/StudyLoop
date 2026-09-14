@@ -207,19 +207,26 @@ _PROSE_HARNESS_TO_TOOL_ID = {
     "Claude Code": "claude",
     "Kiro CLI": "kiro",
     "Codex": "codex",
+    "OpenCode": "opencode",
+    "Grok Build": "grok",
 }
 
 
-@pytest.mark.parametrize("relative", ["agents/pi/AGENTS.md", "agents/opencode/study-mentor.md"])
+@pytest.mark.parametrize("relative", ["agents/pi/AGENTS.md"])
 def test_memory_search_is_hedged_with_a_session_query_fallback(relative: str) -> None:
-    """pi and OpenCode never get session-db-mcp (installers._MCP_HARNESSES),
-    so memory_search must name the CLI fallback near the call, exactly as
-    agents/skills/studyloop-session-memory/SKILL.md phrases the pattern
-    elsewhere (MCP tool when connected, CLI fallback otherwise).
+    """pi never gets session-db-mcp (installers._MCP_HARNESSES; pi has no MCP
+
+    by design), so memory_search must name the CLI fallback near the call,
+    exactly as agents/skills/studyloop-session-memory/SKILL.md phrases the
+    pattern elsewhere (MCP tool when connected, CLI fallback otherwise).
+    OpenCode moved out of this set once `studyloop install agents --tool
+    opencode` started registering session-db-mcp globally
+    (L8-mcp-opencode-grok) -- see
+    test_opencode_get_concept_context_is_wired_and_not_hedged below for its
+    unhedged counterpart.
     """
     import studyloop.installers as installers
 
-    assert "opencode" not in installers._MCP_HARNESSES
     assert "pi" not in installers._MCP_HARNESSES
 
     text = (_repo_root() / relative).read_text(encoding="utf-8")
@@ -264,6 +271,27 @@ def test_opencode_get_concept_context_is_wired_and_not_hedged() -> None:
     assert "mastery graph" not in window, (
         f"get_concept_context is wired for OpenCode via studyloop-mcp; it should "
         f"not carry a CLI-fallback hedge: {window!r}"
+    )
+
+
+def test_opencode_memory_search_is_wired_and_not_hedged() -> None:
+    """OpenCode is now in installers._MCP_HARNESSES (L8-mcp-opencode-grok):
+
+    `studyloop install agents --tool opencode` registers session-db-mcp
+    globally, so memory_search must not carry the "only when connected"
+    session-query hedge there any more.
+    """
+    import studyloop.installers as installers
+
+    assert "opencode" in installers._MCP_HARNESSES
+
+    text = (_repo_root() / "agents/opencode/study-mentor.md").read_text(encoding="utf-8")
+    match = re.search(r"memory_search", text)
+    assert match, "agents/opencode/study-mentor.md no longer mentions memory_search"
+    window = text[match.end() : match.end() + 80]
+    assert "session-query" not in window, (
+        f"memory_search is wired for OpenCode via session-db-mcp; it should not "
+        f"carry a CLI-fallback hedge immediately after the call: {window!r}"
     )
 
 
