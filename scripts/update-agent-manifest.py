@@ -14,15 +14,18 @@ AGENTS_DIR = REPO_ROOT / "agents"
 TRACKED_FILES: dict[str, list[str]] = {
     "claude": [
         "claude/socratic-mentor.md",
+        "claude/study-plan-architect.md",
         "claude/study-generate.md",
         "claude/study-setup.md",
         "claude/study-audio.md",
     ],
     "kiro": [
         "kiro/study-mentor.json",
+        "kiro/study-plan-architect.json",
     ],
     "opencode": [
         "opencode/study-mentor.md",
+        "opencode/study-plan-architect.md",
         "opencode/plugins/studyloop-session-export.js",
     ],
     "codex": ["codex/AGENTS.md"],

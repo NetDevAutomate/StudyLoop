@@ -16,6 +16,7 @@ import subprocess
 import tomllib
 from pathlib import Path
 
+import click
 import pytest
 import typer
 from typer.testing import CliRunner
@@ -274,6 +275,40 @@ def test_agents_md_is_the_codex_symlink() -> None:
     assert root_agents.read_text(encoding="utf-8") == codex_agents.read_text(encoding="utf-8")
 
 
+# ---------------------------------------------------------------------------
+# L7 -- study-plan-architect: ONE canonical body, carried verbatim by every
+# native harness definition after its own harness-specific header (frontmatter
+# for Claude/OpenCode, nothing at all for Kiro), exactly like AGENTS.md ==
+# agents/codex/AGENTS.md above.
+# ---------------------------------------------------------------------------
+
+_PLAN_ARCHITECT_CANONICAL = "agents/shared/personas/plan-architect.md"
+
+
+def _strip_frontmatter(text: str) -> str:
+    """Drop a leading ``---\\n...\\n---\\n`` YAML frontmatter block, if present."""
+    if not text.startswith("---\n"):
+        return text
+    end = text.find("\n---\n", 4)
+    assert end != -1, "frontmatter opened with '---' but never closed"
+    return text[end + len("\n---\n") :]
+
+
+@pytest.mark.parametrize(
+    "relative",
+    [
+        "agents/claude/study-plan-architect.md",
+        "agents/opencode/study-plan-architect.md",
+        "agents/kiro/study-plan-architect/persona.md",
+    ],
+)
+def test_plan_architect_native_files_carry_the_canonical_body_verbatim(relative: str) -> None:
+    repo_root = _repo_root()
+    canonical = (repo_root / _PLAN_ARCHITECT_CANONICAL).read_text(encoding="utf-8").lstrip("\n")
+    body = _strip_frontmatter((repo_root / relative).read_text(encoding="utf-8")).lstrip("\n")
+    assert body == canonical, f"{relative} body has drifted from {_PLAN_ARCHITECT_CANONICAL}"
+
+
 @pytest.mark.parametrize(
     "relative", ["agents/codex/AGENTS.md", "agents/shared/session-db-mandate.md"]
 )
@@ -322,20 +357,49 @@ def test_opencode_mcp_json_does_not_exist_and_is_unreferenced() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_install_sh_does_not_advertise_the_unshipped_study_plan_architect() -> None:
+def test_install_sh_advertises_the_shipped_study_plan_architect() -> None:
+    """L7: study-plan-architect is now wired into every installer link table
+    (installers._TOOL_LINKS), so install.sh's next-steps text names the real
+    launch command instead of staying silent about it."""
+    import studyloop.installers as installers
+
+    assert "study-plan-architect" in installers._TOOL_LINKS["claude"][1].source
+
     text = (_repo_root() / "scripts/install.sh").read_text(encoding="utf-8")
-    assert "study-plan-architect" not in text
+    assert "study-plan-architect" in text
+    assert "plan architect" in text
 
 
-def test_agent_install_doc_flags_study_plan_architect_as_not_installed() -> None:
+def test_agent_install_doc_flags_study_plan_architect_as_installed() -> None:
     text = _normalised((_repo_root() / "docs/agent-install.md").read_text(encoding="utf-8"))
     assert "study-plan-architect" in text
     match = re.search(r"[^.]*study-plan-architect[^.]*\.", text)
     assert match, "docs/agent-install.md mentions study-plan-architect without a sentence"
-    assert re.search(r"draft|not (?:yet )?install", match.group(0), re.IGNORECASE), (
-        f"docs/agent-install.md must say study-plan-architect is not yet installed: "
+    assert not re.search(r"draft|not (?:yet )?install", match.group(0), re.IGNORECASE), (
+        f"docs/agent-install.md still says study-plan-architect is not installed: "
         f"{match.group(0)!r}"
     )
+
+
+def test_no_in_scope_doc_still_says_the_plan_architect_personas_are_not_installed() -> None:
+    """The L5 sentence flagging the three persona files as drafts must be gone
+    from every doc this lane touches, now that installers._TOOL_LINKS ships
+    them."""
+    for relative in ("docs/agent-install.md", "docs/study-plans.md"):
+        text = (_repo_root() / relative).read_text(encoding="utf-8")
+        assert "drafts, not yet wired into any installer" not in text, relative
+
+
+@pytest.mark.parametrize("relative", ["docs/agent-install.md", "docs/study-plans.md"])
+def test_plan_architect_docs_name_the_flow(relative: str) -> None:
+    text = (_repo_root() / relative).read_text(encoding="utf-8")
+    assert "plan-architect" in text or "plan architect" in text
+
+
+def test_cli_reference_names_the_plan_architect_mode_and_command() -> None:
+    text = (_repo_root() / "docs/cli-reference.md").read_text(encoding="utf-8")
+    assert "plan-architect" in text
+    assert "plan architect" in text
 
 
 # ---------------------------------------------------------------------------
@@ -479,4 +543,107 @@ def test_persona_files_start_with_their_mode_heading(relative: str) -> None:
     expected_mode = "-".join(word.capitalize() for word in stem.split("-")) + " Mode"
     assert first_line.startswith(f"# {expected_mode}"), (
         f"{relative} must start with '# {expected_mode}', got: {first_line!r}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# L7 (d) -- prompt contract: every ``studyloop <command> [<sub>]`` the
+# canonical study-plan-architect body instructs resolves to a REGISTERED
+# click command, every ``--flag`` it uses is a declared option of that
+# command, and the positional-argument count in the example is consistent
+# with that command's real click.Argument params. Checking the canonical
+# file also covers the three native definitions, since the sync test above
+# pins them byte-identical to it after their header.
+# ---------------------------------------------------------------------------
+
+_PLAN_ARCHITECT_INVOCATION_RE = re.compile(r"^\$?\s*studyloop\b")
+
+
+def _plan_architect_invocations() -> list[tuple[int, str]]:
+    text = (_repo_root() / _PLAN_ARCHITECT_CANONICAL).read_text(encoding="utf-8")
+    found: list[tuple[int, str]] = []
+    for line_no, raw in enumerate(text.splitlines(), start=1):
+        candidates = re.findall(r"`([^`]+)`", raw)
+        if not candidates:
+            stripped = raw.strip()
+            if _PLAN_ARCHITECT_INVOCATION_RE.match(stripped):
+                candidates = [stripped]
+        for candidate in candidates:
+            candidate = candidate.strip()
+            if _PLAN_ARCHITECT_INVOCATION_RE.match(candidate):
+                found.append((line_no, candidate))
+    return found
+
+
+def _plan_architect_invocation_params() -> list:
+    return [
+        pytest.param(line_no, example, id=f"{line_no}:{example}")
+        for line_no, example in _plan_architect_invocations()
+    ]
+
+
+def _option_takes_a_value(cmd, opt_string: str) -> bool:
+    for param in cmd.params:
+        if isinstance(param, click.Option) and opt_string in (
+            tuple(param.opts) + tuple(param.secondary_opts)
+        ):
+            return not param.is_flag
+    return False
+
+
+def test_plan_architect_names_at_least_one_command_example() -> None:
+    assert _plan_architect_invocations(), "canonical plan-architect body names no commands at all"
+
+
+@pytest.mark.parametrize("line_no, example", _plan_architect_invocation_params())
+def test_plan_architect_invocation_resolves_with_matching_positional_count(
+    line_no: int, example: str
+) -> None:
+    from test_docs_drift import _cut_at_shell_metachar, _declared_option_strings, _load_cli_group
+
+    root = _load_cli_group()
+    root_ctx = click.Context(root, info_name="studyloop")
+
+    cut = _cut_at_shell_metachar(example)
+    tokens = shlex.split(cut, comments=True)
+    assert tokens and tokens[0] == "studyloop", f"line {line_no}: not a studyloop invocation"
+
+    current: click.Command = root
+    current_ctx = root_ctx
+    still_descending = True
+    positionals: list[str] = []
+    skip_next = False
+
+    for token in tokens[1:]:
+        if skip_next:
+            skip_next = False
+            continue
+        if token.startswith("-"):
+            opt = token.split("=", 1)[0] if "=" in token else token
+            declared = _declared_option_strings(current)
+            assert opt in declared, (
+                f"line {line_no}: {opt!r} is not a declared option of "
+                f"{current.name!r} ({example!r})"
+            )
+            if "=" not in token and _option_takes_a_value(current, opt):
+                skip_next = True
+            continue
+        if still_descending and isinstance(current, click.Group):
+            sub = current.get_command(current_ctx, token)
+            if sub is not None:
+                current_ctx = click.Context(sub, parent=current_ctx, info_name=token)
+                current = sub
+                continue
+            still_descending = False
+        else:
+            still_descending = False
+        positionals.append(token)
+
+    argument_params = [p for p in current.params if isinstance(p, click.Argument)]
+    required = sum(1 for p in argument_params if p.required)
+    total = len(argument_params)
+    assert required <= len(positionals) <= total, (
+        f"line {line_no}: {example!r} resolved to {current.name!r} with "
+        f"{len(positionals)} positional token(s) ({positionals!r}) but it declares "
+        f"{required}..{total} click.Argument param(s)"
     )

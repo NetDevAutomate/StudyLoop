@@ -192,6 +192,33 @@ class TestBuildCanonicalPersona:
         content = build_canonical_persona("co-study", "Spark", 3)
         assert "co-study" in content.lower() or "companion" in content.lower()
 
+    def test_plan_architect_mode_carries_the_canonical_body_and_names_its_mode(self) -> None:
+        from studyloop.agent_launcher import build_canonical_persona
+
+        repo_root = Path(__file__).resolve()
+        while not (repo_root / "agents/manifest.json").exists():
+            repo_root = repo_root.parent
+        canonical = (repo_root / "agents/shared/personas/plan-architect.md").read_text(
+            encoding="utf-8"
+        )
+
+        content = build_canonical_persona("plan-architect", "Study plan", 5)
+
+        assert "**Mode:** plan-architect" in content
+        assert canonical.strip() in content
+
+    def test_default_persona_handles_an_unrecognised_mode_without_raising(self) -> None:
+        """Belt-and-braces: build_canonical_persona("plan-architect", ...) never
+        reaches _default_persona today (agents/shared/personas/plan-architect.md
+        exists), but the fallback must still degrade gracefully -- to the
+        generic "study mode" default, not a KeyError -- if that file were ever
+        missing."""
+        from studyloop.agent_launcher import _default_persona
+
+        content = _default_persona("plan-architect")
+        assert isinstance(content, str)
+        assert content.strip()
+
 
 # ---------------------------------------------------------------------------
 # Backward-compatible wrappers

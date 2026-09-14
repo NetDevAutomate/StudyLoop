@@ -405,6 +405,38 @@ def plan_reindex() -> None:
     console.print(f"[green]Reindexed[/green] {count} plan(s).")
 
 
+@plan_group.command("architect")
+@click.option(
+    "--agent",
+    "-a",
+    help="AI agent to launch (auto-detects if omitted).",
+)
+@click.pass_context
+def plan_architect(ctx: click.Context, agent: str | None) -> None:
+    """Start a study-plan-architect session.
+
+    Convenience alias for ``studyloop study --mode plan-architect``, pinned to
+    the topic "Study plan" so the interview-and-evaluate mentor never needs a
+    topic of its own -- it is the same launch machinery every other mode uses,
+    never a second launch path.
+    """
+    from studyloop.cli._study import study
+
+    ctx.invoke(
+        study,
+        topic="Study plan",
+        agent=agent,
+        mode="plan-architect",
+        timer=None,
+        energy=5,
+        web=False,
+        lan=False,
+        password="",
+        resume=False,
+        end_session=False,
+    )
+
+
 @plan_group.command("path")
 def plan_path_cmd() -> None:
     """Print the directory holding plan documents."""

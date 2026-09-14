@@ -242,3 +242,70 @@ class TestAgentDefinitionCheck:
         ):
             results = check_agent_definitions()
         assert any(r.status == "info" for r in results)
+
+
+class TestPlanArchitectDefinitionCheck:
+    """L7: doctor reports the new study-plan-architect files through the SAME
+    check_agent_definitions loop that already reports study-mentor's, not a
+    parallel check -- a harness with two native definitions in the manifest
+    must have both checked, not just the first one found."""
+
+    def test_checks_every_manifest_key_for_a_tool_not_just_the_first(self, tmp_path: Path):
+        import hashlib
+
+        import studyloop.installers as installers
+        from studyloop.doctor.agents import check_agent_definitions
+
+        architect_path = tmp_path / "study-plan-architect.md"
+        architect_path.write_text("architect body")
+        architect_hash = hashlib.sha256(architect_path.read_bytes()).hexdigest()[:16]
+
+        manifest = {
+            "version": 1,
+            "agents": {
+                "claude/socratic-mentor.md": {"hash": "not-installed", "updated": "2026-03-17"},
+                "claude/study-plan-architect.md": {
+                    "hash": architect_hash,
+                    "updated": "2026-03-17",
+                },
+            },
+        }
+        fake_links = {
+            "claude": (
+                installers.LinkSpec(
+                    "agents/claude/socratic-mentor.md",
+                    str(tmp_path / "nonexistent-primary.md"),
+                ),
+                installers.LinkSpec(
+                    "agents/claude/study-plan-architect.md",
+                    str(architect_path),
+                ),
+            )
+        }
+
+        with (
+            patch("studyloop.doctor.agents._detect_ai_tools", return_value=["claude"]),
+            patch(
+                "studyloop.doctor.agents._get_agent_install_path",
+                return_value=tmp_path / "nonexistent-primary.md",
+            ),
+            patch(
+                "studyloop.doctor.agents._fetch_manifest_with_reason",
+                return_value=(manifest, ""),
+            ),
+            patch.object(installers, "_TOOL_LINKS", fake_links),
+        ):
+            results = check_agent_definitions()
+
+        by_name = {r.name: r for r in results}
+        assert by_name["agent_claude"].status == "warn"  # primary not installed
+        secondary = [
+            r
+            for name, r in by_name.items()
+            if name != "agent_claude" and name.startswith("agent_claude")
+        ]
+        assert secondary, f"no second check emitted for claude's second definition: {by_name}"
+        assert secondary[0].status == "pass"
+        assert "study-plan-architect" in secondary[0].message or "study-plan-architect" in (
+            secondary[0].name
+        )

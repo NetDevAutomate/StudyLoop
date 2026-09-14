@@ -154,6 +154,37 @@ class TestStudyCommand:
 
             assert result.exit_code == 0
 
+    def test_help_lists_plan_architect_mode(self, runner):
+        result = runner.invoke(study, ["--help"])
+        assert result.exit_code == 0
+        assert "plan-architect" in result.output
+
+    def test_accepts_plan_architect_mode_with_elapsed_timer_default(self, runner, tmp_path):
+        captured: dict = {}
+
+        def _fake_start_session(topic, agent, mode, timer, energy, web, **kwargs):
+            captured["mode"] = mode
+            captured["timer"] = timer
+
+        with (
+            patch("studyloop.tmux.shutil.which", return_value="/usr/bin/tmux"),
+            patch("studyloop.tmux.subprocess.run", side_effect=_tmux_side_effect),
+            patch("studyloop.agent_launcher.shutil.which", return_value="/usr/bin/claude"),
+            patch("studyloop.session_state.read_session_state", return_value={}),
+            patch("studyloop.session_state.STATE_FILE", tmp_path / "state.json"),
+            patch("studyloop.session_state.SESSION_DIR", tmp_path),
+            patch("studyloop.session_state.TOPICS_FILE", tmp_path / "topics.md"),
+            patch("studyloop.session_state.PARKING_FILE", tmp_path / "parking.md"),
+            patch("studyloop.history.start_study_session", return_value="abc12345"),
+            patch("studyloop.session.start.start_session", side_effect=_fake_start_session),
+            patch.dict("os.environ", {"TMUX": "/tmp/tmux"}),
+        ):
+            result = runner.invoke(study, ["Study plan", "--mode", "plan-architect"])
+
+        assert result.exit_code == 0, result.output
+        assert captured["mode"] == "plan-architect"
+        assert captured["timer"] == "elapsed"
+
 
 class TestStudyEnd:
     def test_end_no_session(self, runner):

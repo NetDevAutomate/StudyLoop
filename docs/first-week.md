@@ -27,7 +27,14 @@ studyloop doctor --fix
 ## Day 1 — Install and one live session
 
 1. Run `studyloop doctor --fix` until core checks pass.
-2. Start a short study session (pick one topic you care about):
+2. Optional: be interviewed into a study plan first, so the first session has
+   a mission to work against:
+
+   ```bash
+   studyloop plan architect
+   ```
+
+3. Start a short study session (pick one topic you care about):
 
    ```bash
    studyloop study "Python decorators" --energy 6
@@ -41,9 +48,9 @@ studyloop doctor --fix
 
    Open the **Study Session** tab, choose a topic and agent, and start.
 
-3. At the end of the session, run `studyloop study --end` or end from the web UI.
+4. At the end of the session, run `studyloop study --end` or end from the web UI.
 
-4. Check context for next time:
+5. Check context for next time:
 
    ```bash
    studyloop resume
