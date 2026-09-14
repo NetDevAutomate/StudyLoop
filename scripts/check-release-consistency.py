@@ -47,13 +47,20 @@ def validate_release_note(repo_root: Path, version: str) -> None:
     if not release_note_path.is_file():
         raise ValueError(f"missing release note: releases/v{version}.md")
     first_heading = ""
-    for line in release_note_path.read_text(encoding="utf-8").splitlines():
+    text = release_note_path.read_text(encoding="utf-8")
+    for line in text.splitlines():
         if line.startswith("#"):
             first_heading = line.strip()
             break
     if f"v{version}" not in first_heading:
         raise ValueError(
             f"release note title must mention v{version}; got {first_heading or '<none>'}"
+        )
+    # A skeleton straight from scripts/prepare-release.py is not a release note.
+    if "- Release summary." in text:
+        raise ValueError(
+            f"releases/v{version}.md is still the prepare-release skeleton "
+            "('- Release summary.'); write the release notes before releasing"
         )
 
 

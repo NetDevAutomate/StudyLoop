@@ -280,3 +280,24 @@ def test_justfile_release_check_uses_pre_tag_mode_and_release_verify_is_strict()
     verify = recipes["release-verify"]
     assert "--release" in verify and "--pre-tag" not in verify, verify
     assert "release-consistency-shipped" in recipes["release-check"]
+
+
+def test_release_note_that_is_still_the_prepare_release_skeleton_fails(tmp_path: Path) -> None:
+    """Council (grok F16): validate_release_note() checked only that the file
+    exists and its title names the version, so the skeleton
+    `scripts/prepare-release.py` writes ("- Release summary.") would pass a
+    release gate with no release notes at all."""
+    write_package_version(tmp_path, "1.2.3")
+    write_root_version(tmp_path, "1.2.3")
+    releases_dir = tmp_path / "releases"
+    releases_dir.mkdir()
+    skeleton = (
+        "# v1.2.3\n\n## Changes\n\n- Release summary.\n\n"
+        "## Verification\n\n- `just release-check`\n"
+    )
+    (releases_dir / "v1.2.3.md").write_text(skeleton, encoding="utf-8")
+
+    result = run_check(tmp_path)
+
+    assert result.returncode == 1
+    assert "skeleton" in result.stderr.lower() or "release summary" in result.stderr.lower()
