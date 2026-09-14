@@ -595,6 +595,22 @@ _RAW_ONLY_SECTIONS: frozenset[str] = frozenset(
         "tts",  # learning/voice.py, doctor/voice.py
         "focus",  # focus.py — the body-double focus-contract section
         "memory",  # agent-session-tools owns explicit context scope policy
+        "medication",  # cli/_review.py's resume() — check_medication_window
+        "hosts",  # shared.py's _resolve_hosts — native studyloop code, not
+        # just agent-session-tools
+        # The rest are read directly by agent_session_tools.config_loader
+        # from the SAME shared config.yaml (see that module's DEFAULT_CONFIG
+        # and its own docstring for why studyloop.settings doesn't cover
+        # them) -- exactly the sections docs/setup-guide.md tells users to
+        # add, so leaving them out here made the doctor's unknown-key check
+        # false-positive on its own documented examples.
+        "database",
+        "thresholds",
+        "logging",
+        "tui",
+        "semantic_search",
+        "excluded_dirs",
+        "endpoints",  # legacy sync format, agent_session_tools.get_endpoints()
     }
 )
 
