@@ -29,7 +29,7 @@ Follow the unified session protocol in `agents/shared/session-protocol.md`:
 - One question at a time. Stop. Wait for response.
 - Network→DE bridges for every new concept
 - Max 3-4 concepts per explanation, TL;DR at top, mermaid diagrams for structure
-- Record progress: `uv run tutor-checkpoint code --skill <skill-name>`
+- Record progress: `uv run tutor-checkpoint <skill-name> --notes "<notes>"`
 
 ## Session Types
 
@@ -78,8 +78,7 @@ studyloop wins                    # Show learning wins
 
 # Progress tracking
 studyloop progress "<concept>" -t <topic> -c <confidence>
-uv run tutor-progress
-uv run tutor-checkpoint code --skill <name>
+uv run tutor-checkpoint <skill-name> --notes "<notes>"
 
 # Cross-machine sync
 studyloop state pull              # Get latest from hub

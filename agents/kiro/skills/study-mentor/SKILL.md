@@ -78,8 +78,7 @@ studyloop content generate-cards ~/Obsidian/Personal/Study/Courses/Udemy/MyCours
 studyloop content generate-cards ~/Obsidian/Personal/Study/<topic-or-course> --course <course-slug>
 
 # Progress tracking
-uv run tutor-progress
-uv run tutor-checkpoint code --skill <name>
+uv run tutor-checkpoint <skill-name> --notes "<notes>"
 
 # Cross-machine sync
 studyloop state pull              # Get latest from hub

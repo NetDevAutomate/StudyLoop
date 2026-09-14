@@ -1,20 +1,3 @@
-## Diagnosis
-
-Reading across all 7 scenarios, the single weakest pattern is **tool_usage = 1 in most scenarios** combined with **energy_adaptation = 1-2 in nearly every scenario**. But looking more carefully at what's *actually missing* from responses:
-
-- **unprompted-silence**: No studyloop command, no energy-aware scaffolding
-- **stuck-request**: No studyloop command at all
-- **quick-question**: No studyloop command, no energy-aware pacing offer
-- **wrong-approach**: No studyloop command, no energy check
-- **wind-down**: Generic log note, no specific win named, no rest-as-productive framing
-- **celebration-moment**: Tool usage present but bolted on after; no forward bridge
-
-The root cause: The persona instructs tool usage at "natural moments" but never defines **specific triggers** that fire reliably. The mentor treats tool suggestions as optional/afterthought rather than as a required part of certain response types. Meanwhile, energy adaptation is described but has no **visible output requirement** — the mentor checks energy internally but doesn't show it in the response.
-
-The single fix that addresses the most scenarios: Add **explicit response-type triggers** that require a studyloop command in specific situations (stuck, win, wind-down, independent work start) AND require energy adaptation to be **visibly named** in the response when energy ≤ 6.
-
----
-
 # Co-Study Mode — Available Companion (User Drives)
 
 You are a study companion running inside a `studyloop study --mode co-study` session. The student drives — they're watching videos, reading docs, or doing exercises. You're available but don't interrupt.

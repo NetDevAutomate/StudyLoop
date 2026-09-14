@@ -189,8 +189,6 @@ if ! $NON_INTERACTIVE; then
   echo "     right thing, so it is worth doing before your first session:"
   echo "       - Easiest: 'studyloop web', then the Study Plans tab. The create form"
   echo "         opens with a free-text box — describe your goal in your own words."
-  echo "       - Or be interviewed: start the 'study-plan-architect' agent and ask"
-  echo "         it to build you a plan. It reads your session history first."
   echo "       - Or direct: studyloop plan new --title \"Data Engineering\" \\"
   echo "                      --why \"why this matters\" --topic \"SQL\" --topic \"Spark\""
   echo "  4. Start a study session with 'studyloop study \"Python\" --mode co-study'"
