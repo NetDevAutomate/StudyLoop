@@ -190,3 +190,102 @@ def test_status_line_renders_the_persisted_energy_label(tmp_path) -> None:
     )
     assert result.returncode == 0, result.stderr
     assert "Med" in result.stdout, f"expected the medium-energy label, got: {result.stdout!r}"
+
+
+# ---------------------------------------------------------------------------
+# W20 -- hedge memory_search / get_concept_context exactly where the server
+# behind them is actually unwired for the harness reading the instruction.
+# ---------------------------------------------------------------------------
+
+#: Prose harness names as they appear in the generic conditional, mapped to
+#: the installers.py tool id they correspond to.
+_PROSE_HARNESS_TO_TOOL_ID = {
+    "Claude Code": "claude",
+    "Kiro CLI": "kiro",
+    "Codex": "codex",
+}
+
+
+@pytest.mark.parametrize("relative", ["agents/pi/AGENTS.md", "agents/opencode/study-mentor.md"])
+def test_memory_search_is_hedged_with_a_session_query_fallback(relative: str) -> None:
+    """pi and OpenCode never get session-db-mcp (installers._MCP_HARNESSES),
+    so memory_search must name the CLI fallback near the call, exactly as
+    agents/skills/studyloop-session-memory/SKILL.md phrases the pattern
+    elsewhere (MCP tool when connected, CLI fallback otherwise).
+    """
+    import studyloop.installers as installers
+
+    assert "opencode" not in installers._MCP_HARNESSES
+    assert "pi" not in installers._MCP_HARNESSES
+
+    text = (_repo_root() / relative).read_text(encoding="utf-8")
+    match = re.search(r"memory_search", text)
+    assert match, f"{relative} no longer mentions memory_search"
+    window = text[match.end() : match.end() + 200]
+    assert "session-query" in window, (
+        f"{relative} instructs memory_search without hedging it for a harness "
+        f"session-db-mcp is not wired into: {window!r}"
+    )
+
+
+def test_pi_has_no_mcp_adapter_and_hedges_get_concept_context_too() -> None:
+    """pi's adapter defines no mcp_setup at all, so unlike OpenCode it must
+    hedge get_concept_context as well, not just memory_search."""
+    from studyloop.adapters.pi import ADAPTER
+
+    assert ADAPTER.mcp_setup is None
+
+    text = (_repo_root() / "agents/pi/AGENTS.md").read_text(encoding="utf-8")
+    match = re.search(r"get_concept_context", text)
+    assert match, "agents/pi/AGENTS.md no longer mentions get_concept_context"
+    window = text[max(0, match.start() - 200) : match.end() + 200]
+    assert "mastery graph" in window, (
+        f"pi has no studyloop MCP server either; get_concept_context needs the "
+        f"studyloop mastery graph CLI fallback nearby: {window!r}"
+    )
+
+
+def test_opencode_get_concept_context_is_wired_and_not_hedged() -> None:
+    """OpenCode's adapter DOES register studyloop-mcp (write_mcp_config(fmt=
+    "opencode")), so get_concept_context must not be hedged there -- hedging a
+    tool that already works would misinform the mentor."""
+    from studyloop.adapters.opencode import ADAPTER
+
+    assert ADAPTER.mcp_setup is not None
+
+    text = (_repo_root() / "agents/opencode/study-mentor.md").read_text(encoding="utf-8")
+    match = re.search(r"get_concept_context", text)
+    assert match, "agents/opencode/study-mentor.md no longer mentions get_concept_context"
+    window = text[max(0, match.start() - 80) : match.end() + 80]
+    assert "mastery graph" not in window, (
+        f"get_concept_context is wired for OpenCode via studyloop-mcp; it should "
+        f"not carry a CLI-fallback hedge: {window!r}"
+    )
+
+
+def test_agents_md_is_the_codex_symlink() -> None:
+    repo_root = _repo_root()
+    root_agents = repo_root / "AGENTS.md"
+    codex_agents = repo_root / "agents/codex/AGENTS.md"
+    assert root_agents.read_text(encoding="utf-8") == codex_agents.read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    "relative", ["agents/codex/AGENTS.md", "agents/shared/session-db-mandate.md"]
+)
+def test_shared_mcp_conditional_matches_the_installers_mcp_harness_set(relative: str) -> None:
+    """The generic conditional in the two SHARED files must name exactly the
+    harnesses installers._MCP_HARNESSES registers session-db for -- derived
+    from code, not copied prose."""
+    import studyloop.installers as installers
+
+    text = (_repo_root() / relative).read_text(encoding="utf-8")
+    match = re.search(r"in ([^.]+?) the session-db MCP server is registered", text)
+    assert match, f"{relative} is missing the generic session-db-registered conditional"
+    normalised = re.sub(r"\s+", " ", match.group(1))
+    named = {name.strip() for name in re.split(r",| and ", normalised) if name.strip()}
+    tool_ids = {_PROSE_HARNESS_TO_TOOL_ID[name] for name in named}
+    assert tool_ids == set(installers._MCP_HARNESSES), (
+        f"{relative} names {tool_ids} but installers._MCP_HARNESSES is "
+        f"{set(installers._MCP_HARNESSES)}"
+    )

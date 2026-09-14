@@ -26,9 +26,13 @@ session-query search "<current topic>" --project "$PWD"
 Briefly mention relevant prior context before proceeding. If neither path is
 available, report that once and continue without inventing replacement data.
 
-Then call `memory_search` for prior decisions and disputes about the topic, and
-`get_concept_context` for its prerequisite edges, before choosing what to teach
-first.
+Then call `memory_search` for prior decisions and disputes about the topic
+when the session-db MCP server is connected; otherwise use
+`session-query search "<topic>" --project "$PWD"`. Call `get_concept_context`
+for its prerequisite edges when the studyloop MCP server is connected;
+otherwise use `studyloop mastery graph --topic "<topic>" --format json`. pi
+has neither MCP server wired in this release, so expect to use both CLI
+fallbacks.
 
 ## Session Export
 

@@ -5,7 +5,10 @@ Prefer the `session_search` MCP tool with the current project path; if that MCP
 tool is unavailable, run the installed `session-query` CLI instead. Then call
 `memory_search` for prior decisions and disputes about the topic, and
 `get_concept_context` for its prerequisite edges, before choosing what to teach
-first. Briefly mention only findings relevant to the user's current request.
+first. This file is shared across harnesses: in Claude Code, Kiro CLI and
+Codex the session-db MCP server is registered; in other harnesses use
+`session-query` instead. Briefly mention only findings relevant to the user's
+current request.
 
 ## Session Export (end of session)
 
