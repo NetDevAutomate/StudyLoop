@@ -61,12 +61,17 @@ def test_smoke_uv_tool_install_uses_isolated_tool_home_and_runs_cli_smoke() -> N
     assert 'export XDG_DATA_HOME="$tmp/xdg-data"' in script_text
     assert 'export UV_TOOL_BIN_DIR="$tmp/bin"' in script_text
     assert 'TOOL_BIN="$UV_TOOL_BIN_DIR"' in script_text
-    assert 'uv tool install --force --editable "$ROOT_DIR/packages/studyloop[all]"' in script_text
+    # The smoke pins the interpreter from .python-version, as the installer does.
+    assert 'PY_REQUEST="$(tr -d \'[:space:]\' < "$ROOT_DIR/.python-version")"' in script_text
+    assert (
+        'uv tool install --force --editable --python "$PY_REQUEST" '
+        '"$ROOT_DIR/packages/studyloop[all]"'
+    ) in script_text
     assert '--with-editable "$ROOT_DIR/packages/agent-session-tools"' in script_text
     assert (
-        'uv tool install --force --editable "$ROOT_DIR/packages/agent-session-tools[all]"'
-        in script_text
-    )
+        'uv tool install --force --editable --python "$PY_REQUEST" '
+        '"$ROOT_DIR/packages/agent-session-tools[all]"'
+    ) in script_text
     assert 'test -x "$TOOL_BIN/studyloop"' in script_text
     assert 'test -x "$TOOL_BIN/session-export"' in script_text
     assert (
