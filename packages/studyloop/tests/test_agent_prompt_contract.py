@@ -356,20 +356,49 @@ def test_opencode_mcp_json_does_not_exist_and_is_unreferenced() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_install_sh_does_not_advertise_the_unshipped_study_plan_architect() -> None:
+def test_install_sh_advertises_the_shipped_study_plan_architect() -> None:
+    """L7: study-plan-architect is now wired into every installer link table
+    (installers._TOOL_LINKS), so install.sh's next-steps text names the real
+    launch command instead of staying silent about it."""
+    import studyloop.installers as installers
+
+    assert "study-plan-architect" in installers._TOOL_LINKS["claude"][1].source
+
     text = (_repo_root() / "scripts/install.sh").read_text(encoding="utf-8")
-    assert "study-plan-architect" not in text
+    assert "study-plan-architect" in text
+    assert "plan architect" in text
 
 
-def test_agent_install_doc_flags_study_plan_architect_as_not_installed() -> None:
+def test_agent_install_doc_flags_study_plan_architect_as_installed() -> None:
     text = _normalised((_repo_root() / "docs/agent-install.md").read_text(encoding="utf-8"))
     assert "study-plan-architect" in text
     match = re.search(r"[^.]*study-plan-architect[^.]*\.", text)
     assert match, "docs/agent-install.md mentions study-plan-architect without a sentence"
-    assert re.search(r"draft|not (?:yet )?install", match.group(0), re.IGNORECASE), (
-        f"docs/agent-install.md must say study-plan-architect is not yet installed: "
+    assert not re.search(r"draft|not (?:yet )?install", match.group(0), re.IGNORECASE), (
+        f"docs/agent-install.md still says study-plan-architect is not installed: "
         f"{match.group(0)!r}"
     )
+
+
+def test_no_in_scope_doc_still_says_the_plan_architect_personas_are_not_installed() -> None:
+    """The L5 sentence flagging the three persona files as drafts must be gone
+    from every doc this lane touches, now that installers._TOOL_LINKS ships
+    them."""
+    for relative in ("docs/agent-install.md", "docs/study-plans.md"):
+        text = (_repo_root() / relative).read_text(encoding="utf-8")
+        assert "drafts, not yet wired into any installer" not in text, relative
+
+
+@pytest.mark.parametrize("relative", ["docs/agent-install.md", "docs/study-plans.md"])
+def test_plan_architect_docs_name_the_flow(relative: str) -> None:
+    text = (_repo_root() / relative).read_text(encoding="utf-8")
+    assert "plan-architect" in text or "plan architect" in text
+
+
+def test_cli_reference_names_the_plan_architect_mode_and_command() -> None:
+    text = (_repo_root() / "docs/cli-reference.md").read_text(encoding="utf-8")
+    assert "plan-architect" in text
+    assert "plan architect" in text
 
 
 # ---------------------------------------------------------------------------

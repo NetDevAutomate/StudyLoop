@@ -15,10 +15,12 @@ StudyLoop also includes complete integrations for **OpenCode**, **pi**, and **Gr
 Gemini CLI and Antigravity are not mentor harnesses in this pre-release.
 Their presence on your computer will not make StudyLoop advertise or select them.
 
-The study-plan-architect personas under `agents/` (Claude, OpenCode, Kiro) are
-drafts, not yet wired into any installer's link table — `studyloop install
-agents` does not place them. Shipping them is an owner decision; build a study
-plan today with `studyloop web`'s Study Plans tab or `studyloop plan new`.
+The `study-plan-architect` persona (Claude, OpenCode, Kiro) interviews you into
+a study plan and evaluates it against real study evidence at the start,
+middle, and end of a session — see [Study Plans](study-plans.md). It installs
+alongside the mentor via `studyloop install agents` and starts with
+`studyloop plan architect` on every harness (see "Start a study session"
+below and each harness's section for the native name).
 
 ## Install automatically
 
@@ -69,6 +71,12 @@ kiro-cli chat --agent study-mentor
 
 Kiro is the demo harness because it makes the named mentor and session flow visible without requiring users to understand prompt files.
 
+Kiro also receives the `study-plan-architect` agent. Start it directly with:
+
+```bash
+kiro-cli chat --agent study-plan-architect
+```
+
 Kiro also receives the opt-in `studyloop-xtiles-wind-down` skill at `~/.kiro/skills/`, as a symlink to the shared copy described below. It stays silent unless your second-brain provider is `xtiles` and an `xtiles` MCP server is connected.
 
 ### Codex
@@ -77,9 +85,17 @@ Codex reads the StudyLoop `AGENTS.md` from the project. Launching through `study
 
 That `AGENTS.md` carries one self-gated line about xTiles at wind-down, inert unless your provider is `xtiles` and an `xtiles` MCP server is connected. Codex needs no skill link of its own: it reads `~/.agents/skills/` natively, which is where the shared copy lives.
 
+Codex has no named-agent feature, so the study-plan-architect persona reaches it the same way the mentor does — through the launcher, not a second `AGENTS.md`:
+
+```bash
+studyloop study --mode plan-architect --agent codex
+```
+
 ### Claude Code
 
 Claude Code receives the `socratic-mentor` agent and a session-export hook. The installer merges the hook into existing settings and does not replace unrelated hooks.
+
+Claude Code also receives the `study-plan-architect` subagent, installed the same way. Start it with `/agents study-plan-architect` inside a Claude Code session, or launch it through StudyLoop with `studyloop study --mode plan-architect --agent claude`.
 
 Configure Claude Code's model provider before starting a StudyLoop session. If
 you use AWS Bedrock, Claude Code needs Bedrock enabled and valid AWS credentials
@@ -103,6 +119,11 @@ Both copies of the mentor definition carry the same self-gated xTiles line as
 Codex's. OpenCode reads the shared `~/.agents/skills/` hub directly, so the
 installer does not create a redundant `~/.config/opencode/skills/` link.
 
+OpenCode also receives a global `study-plan-architect` agent definition at
+`~/.config/opencode/agents/study-plan-architect.md`. Select it from OpenCode's
+agent picker, or launch it through StudyLoop with
+`studyloop study --mode plan-architect --agent opencode`.
+
 ### pi
 
 pi reads the project `AGENTS.md` and resumes through its native `--continue` option. Its session-export mandate writes real pi sessions to StudyLoop’s session database; it does not generate fixture or placeholder progress.
@@ -111,11 +132,16 @@ Its `AGENTS.md` carries the same self-gated xTiles line. pi discovers the
 shared `~/.agents/skills/` hub natively, so both the xTiles wind-down skill and
 the session-memory skill are available without a duplicate link.
 
+pi has no named-agent feature either, so reach the study-plan-architect
+persona through the launcher: `studyloop study --mode plan-architect --agent pi`.
+
 ### Grok Build
 
 Grok Build is xAI's terminal coding agent (binary `grok`). It reads the repo-root `AGENTS.md` — the same file Codex reads — so `studyloop install agents --tool grok` links that one shared definition instead of a Grok-specific copy that could drift. There is no `agents/grok/` directory, by design. Launching through `studyloop study` creates the session context and starts Grok Build in that directory; it resumes through its native `--resume` option.
 
 Because it is the same file, it carries the same self-gated xTiles line as Codex's. Grok Build also discovers the shared `~/.agents/skills/` hub natively (its skill discovery scans `.agents/skills/` at every tier), so the `studyloop-session-memory` skill reaches it with no Grok-specific link.
+
+Grok Build has no named-agent feature: `studyloop study --mode plan-architect --agent grok` launches the study-plan-architect persona the same way.
 
 If `grok` is not on your PATH yet:
 
