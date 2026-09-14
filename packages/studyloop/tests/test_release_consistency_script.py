@@ -34,13 +34,13 @@ def run_check(repo_root: Path) -> subprocess.CompletedProcess[str]:
     )
 
 
-def run_release_check(repo_root: Path) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        [sys.executable, str(SCRIPT), "--repo-root", str(repo_root), "--skip-wheel", "--release"],
-        check=False,
-        text=True,
-        capture_output=True,
-    )
+def run_release_check(
+    repo_root: Path, *, pre_tag: bool = False
+) -> subprocess.CompletedProcess[str]:
+    argv = [sys.executable, str(SCRIPT), "--repo-root", str(repo_root), "--skip-wheel", "--release"]
+    if pre_tag:
+        argv.append("--pre-tag")
+    return subprocess.run(argv, check=False, text=True, capture_output=True)
 
 
 def init_git_repo_with_tag(
@@ -228,3 +228,55 @@ def test_release_tag_check_fails_when_changelog_date_before_tag_commit_date(
     assert result.returncode == 1
     assert "2026-09-05" in result.stderr
     assert "2026-09-06" in result.stderr
+
+
+# ---------------------------------------------------------------------------
+# The tag assertion above made `just release-check` (which runs --release)
+# impossible to pass BEFORE the tag it demands exists. --pre-tag is the
+# pre-cut mode: every other release check runs, the tag/date assertion is
+# deferred and named, and `just release-verify` runs the strict form after
+# the tag is cut.
+# ---------------------------------------------------------------------------
+
+
+def test_pre_tag_mode_passes_without_a_tag_and_names_the_pending_tag(tmp_path: Path) -> None:
+    _write_release_fixture(tmp_path, "1.2.3", "2026-09-06")
+    init_git_repo_with_tag(tmp_path, tag=None, tag_date="2026-09-06")
+
+    result = run_release_check(tmp_path, pre_tag=True)
+
+    assert result.returncode == 0, result.stderr
+    assert "v1.2.3" in result.stdout and "pending" in result.stdout
+
+
+def test_pre_tag_mode_still_runs_the_other_release_checks(tmp_path: Path) -> None:
+    """--pre-tag defers ONLY the tag/date assertion; a missing release note
+    must still fail in pre-tag mode."""
+    write_package_version(tmp_path, "1.2.3")
+    write_root_version(tmp_path, "1.2.3")
+    (tmp_path / "CHANGELOG.md").write_text(
+        "# Changelog\n\n## [1.2.3] - 2026-09-06\n", encoding="utf-8"
+    )
+    init_git_repo_with_tag(tmp_path, tag=None, tag_date="2026-09-06")
+
+    result = run_release_check(tmp_path, pre_tag=True)
+
+    assert result.returncode == 1
+    assert "release" in result.stderr.lower()
+
+
+def test_justfile_release_check_uses_pre_tag_mode_and_release_verify_is_strict() -> None:
+    justfile = (Path(__file__).resolve().parents[3] / "Justfile").read_text(encoding="utf-8")
+    recipes: dict[str, str] = {}
+    current = None
+    for line in justfile.splitlines():
+        if line and not line[0].isspace() and ":" in line and not line.startswith("#"):
+            current = line.split(":", 1)[0].split()[0]
+            recipes[current] = line
+        elif current and line.startswith((" ", "\t")):
+            recipes[current] += "\n" + line
+    shipped = recipes["release-consistency-shipped"]
+    assert "--release" in shipped and "--pre-tag" in shipped, shipped
+    verify = recipes["release-verify"]
+    assert "--release" in verify and "--pre-tag" not in verify, verify
+    assert "release-consistency-shipped" in recipes["release-check"]

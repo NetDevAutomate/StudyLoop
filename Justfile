@@ -194,7 +194,15 @@ release-consistency:
 # Deliberately NOT part of preflight: open changes are legal during a cycle;
 # only shipping one is not. Both guards would have fired on the 0.2.0 cut
 # (2026-09-04 review, Q5).
+# Pre-tag form: everything --release checks EXCEPT the git-tag/CHANGELOG-date
+# assertion, which cannot hold before the tag this gate precedes exists. It
+# prints the tag still to be cut.
 release-consistency-shipped:
+    uv run python scripts/check-release-consistency.py --skip-wheel --release --pre-tag
+
+# Strict form, run AFTER `git tag vX.Y.Z`: the tag must exist and the CHANGELOG
+# heading for the version must not predate the tag's commit.
+release-verify:
     uv run python scripts/check-release-consistency.py --skip-wheel --release
 
 prepare-release version:
