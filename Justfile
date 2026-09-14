@@ -144,6 +144,14 @@ smoke-installed:
     ./scripts/build-release.sh
     tmp="$(mktemp -d)" && uv venv "$tmp/venv" && uv pip install --python "$tmp/venv/bin/python" dist/studyloop-*.whl packages/agent-session-tools && STUDYLOOP_EXPECT_BIN_DIR="$tmp/venv/bin" PATH="$tmp/venv/bin:$PATH" ./scripts/smoke-installed-cli.sh
 
+# W28: the real global `uv tool install` path -- what a fresh checkout's
+# ./scripts/install.sh actually runs -- was shellcheck-only (see `shellcheck`
+# above); a live UV_PYTHON interpreter-mismatch bug report implicated exactly
+# this path having zero execution coverage. Runs both `uv tool install`
+# invocations for real into a scratch UV_TOOL_BIN_DIR and smokes the result.
+smoke-uv-tool-install:
+    ./scripts/smoke-uv-tool-install.sh
+
 # R-29: every extra studyloop's wheel advertises (content, bedrock, notebooklm,
 # tui, web, mcp, all) must install and import from a BARE wheel -- no
 # workspace, no --with-editable, no sibling package on disk. Also asserts
@@ -231,7 +239,7 @@ xtiles-auth:
 
 preflight: lint typecheck test test-js docs release-consistency spec-check
 
-release-check: test test-js lint typecheck shellcheck docs audit audit-full release-consistency-shipped smoke-installed smoke-extras smoke-web
+release-check: test test-js lint typecheck shellcheck docs audit audit-full release-consistency-shipped smoke-installed smoke-uv-tool-install smoke-extras smoke-web
 
 # "Would GitHub Actions pass?" locally, before pushing. `check` runs the
 # host-answerable gates (lint, typecheck, test, sast, audit, docs, ...); `lint`

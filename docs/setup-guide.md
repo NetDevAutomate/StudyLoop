@@ -105,7 +105,11 @@ first setup if `config.yaml` does not exist yet.
    content generation, Bedrock, MCP, NotebookLM, TUI) and
    `agent-session-tools[all]` (TTS, semantic session search), and always adds
    `agent-session-tools` into the `studyloop` tool venv too — that part is not
-   gated behind any extra, so it happens on every source install
+   gated behind any extra, so it happens on every source install. Both global
+   `uv tool install` calls pass `--python` explicitly, pinned to the
+   interpreter `uv sync` just used, so the globally-installed CLI tool cannot
+   silently pick a different interpreter than the workspace it was built
+   against
 5. Delegate to `studyloop install agents`
 6. Run lightweight installed CLI smoke checks
 
