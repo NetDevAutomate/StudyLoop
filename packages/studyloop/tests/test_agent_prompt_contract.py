@@ -8,11 +8,15 @@ instruct, rather than pinning line numbers or copied prose.
 
 from __future__ import annotations
 
+import json
 import re
 import shlex
+import shutil
+import subprocess
 import tomllib
 from pathlib import Path
 
+import pytest
 import typer
 from typer.testing import CliRunner
 
@@ -155,3 +159,34 @@ def test_every_tutor_checkpoint_invocation_parses(tmp_path, monkeypatch) -> None
         if result.exit_code != 0:
             failures.append((str(path.relative_to(repo_root)), raw, result.output))
     assert not failures, f"tutor-checkpoint invocations that do not parse: {failures}"
+
+
+# ---------------------------------------------------------------------------
+# W19 -- Claude Code status line renders the persisted energy_label, not the
+# numeric 1-10 energy field the case statement can never match.
+# ---------------------------------------------------------------------------
+
+
+def test_status_line_renders_the_persisted_energy_label(tmp_path) -> None:
+    bash = shutil.which("bash")
+    if bash is None:
+        pytest.skip("bash not available")
+
+    repo_root = _repo_root()
+    script = repo_root / "agents/claude/study-statusline.sh"
+    fake_home = tmp_path / "home"
+    (fake_home / ".config/studyloop").mkdir(parents=True)
+    state_file = fake_home / ".config/studyloop/session-state.json"
+    state_file.write_text(json.dumps({"energy": 5, "energy_label": "medium"}))
+
+    result = subprocess.run(
+        [bash, str(script)],
+        input=json.dumps({"model": {"display_name": "test"}}) + "\n",
+        capture_output=True,
+        text=True,
+        env={"HOME": str(fake_home), "PATH": "/usr/bin:/bin"},
+        timeout=10,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "Med" in result.stdout, f"expected the medium-energy label, got: {result.stdout!r}"

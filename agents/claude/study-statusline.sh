@@ -54,7 +54,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 try:
     state = json.loads(Path('$STATE_FILE').read_text())
-    print(f'ENERGY={state.get(\"energy\", \"-\")}')
+    print(f'ENERGY={state.get(\"energy_label\", \"-\")}')
     pomo = state.get('pomodoro', {})
     if pomo:
         print(f'POMO_PHASE={pomo.get(\"phase\", \"-\")}')
