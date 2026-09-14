@@ -48,6 +48,14 @@ _TOOL_LINKS: dict[str, tuple[LinkSpec, ...]] = {
     "kiro": (
         LinkSpec("agents/kiro/study-mentor.json", str(_HOME / ".kiro/agents/study-mentor.json")),
         LinkSpec("agents/kiro/study-mentor", str(_HOME / ".kiro/agents/study-mentor")),
+        LinkSpec(
+            "agents/kiro/study-plan-architect.json",
+            str(_HOME / ".kiro/agents/study-plan-architect.json"),
+        ),
+        LinkSpec(
+            "agents/kiro/study-plan-architect",
+            str(_HOME / ".kiro/agents/study-plan-architect"),
+        ),
         LinkSpec("agents/kiro/skills/study-mentor", str(_HOME / ".kiro/skills/study-mentor")),
         LinkSpec(
             "agents/kiro/skills/audhd-socratic-mentor",
@@ -68,11 +76,19 @@ _TOOL_LINKS: dict[str, tuple[LinkSpec, ...]] = {
             "agents/claude/socratic-mentor.md",
             str(_HOME / ".claude/agents/socratic-mentor.md"),
         ),
+        LinkSpec(
+            "agents/claude/study-plan-architect.md",
+            str(_HOME / ".claude/agents/study-plan-architect.md"),
+        ),
     ),
     "opencode": (
         LinkSpec(
             "agents/opencode/study-mentor.md",
             str(_HOME / ".config/opencode/agents/study-mentor.md"),
+        ),
+        LinkSpec(
+            "agents/opencode/study-plan-architect.md",
+            str(_HOME / ".config/opencode/agents/study-plan-architect.md"),
         ),
         LinkSpec(
             "agents/opencode/plugins/studyloop-session-export.js",

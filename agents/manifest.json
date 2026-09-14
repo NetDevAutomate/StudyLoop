@@ -5,6 +5,10 @@
       "hash": "b0be77358df99a1b",
       "updated": "2026-09-14"
     },
+    "claude/study-plan-architect.md": {
+      "hash": "b4a764b14bb3c699",
+      "updated": "2026-09-14"
+    },
     "codex/AGENTS.md": {
       "hash": "88a07563baa5eb6a",
       "updated": "2026-09-14"
@@ -13,12 +17,20 @@
       "hash": "522568fa2d454102",
       "updated": "2026-09-14"
     },
+    "kiro/study-plan-architect.json": {
+      "hash": "0413496971aadd35",
+      "updated": "2026-09-14"
+    },
     "opencode/plugins/studyloop-session-export.js": {
       "hash": "769ed9efdda111a9",
       "updated": "2026-09-14"
     },
     "opencode/study-mentor.md": {
       "hash": "5a3f596dee13ae95",
+      "updated": "2026-09-14"
+    },
+    "opencode/study-plan-architect.md": {
+      "hash": "e282b64aa320e70b",
       "updated": "2026-09-14"
     },
     "pi/AGENTS.md": {
