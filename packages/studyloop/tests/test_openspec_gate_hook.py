@@ -139,3 +139,28 @@ def test_the_wrappers_call_the_same_one_body() -> None:
     body = GATE.read_text(encoding="utf-8")
     assert "NOT ENFORCEMENT" in body
     assert "release-check" in body
+
+
+def test_claude_wrapper_commands_are_project_dir_relative() -> None:
+    """W44: Claude Code docs say "${CLAUDE_PROJECT_DIR}: the project root
+    where the session started" and "Handlers run in the current directory" --
+    a plain relative ``uv run python scripts/openspec-gate.py`` breaks the
+    moment a session's cwd drifts from the repo root (a `cd` mid-session
+    broke every later hook invocation on 2026-09-14). Every Claude hook
+    command must anchor on ${CLAUDE_PROJECT_DIR} explicitly, both for the
+    script path and for `uv run --project`.
+
+    .codex/hooks.json and .kiro/hooks/openspec-gate.json are unchanged --
+    neither harness's hook documentation makes the same "current directory"
+    guarantee-breaking claim, so there is no equivalent bug to fix there."""
+    settings = json.loads((GATE.parents[1] / ".claude" / "settings.json").read_text())
+    commands = [
+        hook["command"]
+        for event in settings["hooks"].values()
+        for group in event
+        for hook in group["hooks"]
+    ]
+    assert commands, "expected at least one Claude hook command"
+    for command in commands:
+        assert "${CLAUDE_PROJECT_DIR}" in command, command
+        assert "scripts/openspec-gate.py" in command, command

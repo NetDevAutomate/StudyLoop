@@ -91,7 +91,7 @@ studyloop plan evaluate PLAN_ID [--phase start|mid|end] [--record] [--study-id I
 studyloop plan reindex                    # Rebuild the plan index in the sessions DB
 studyloop plan path                       # Print the plan document directory
 
-# Topic exercises — DEVELOPER PREVIEW (hidden unless root --dev is set)
+# Topic exercises — DEVELOPER PREVIEW (root `--dev` before `exercise` works; `--dev --help` omits it)
 studyloop --dev exercise new --topic TOPIC [--plan ID] [--requirement R] [--reference FILE]
 studyloop --dev exercise from-milestone PLAN_ID [--index N]  # Draft from a plan milestone
 studyloop --dev exercise import PATH            # Import a hand-authored exercise document
@@ -226,7 +226,7 @@ agent/harness files.
 | Code | Meaning |
 |------|---------|
 | `0` | All checks pass — installation is healthy |
-| `1` | Warnings or failures that can be fixed — run `studyloop doctor --fix` |
+| `1` | Warnings or failures reported; `--fix` resolves only checks marked auto-fixable — unresolved failures print their own manual remediation |
 | `2` | Core failure — a fundamental component is broken (e.g. wrong Python version) |
 
 **Check categories:** `core` (Python, packages, config, tmux), `database` (review DB, sessions DB), `config` (Obsidian vault + `.obsidian/` marker, Obsidian export config, review dirs, pandoc), `deps` (optional packages), `agents` (AI tool definitions), `voice` (local Kokoro model files, `afplay`, and Kokoro-server reachability when configured), `harness` (session-export wiring). There is no `updates` category yet — it would only ever report "no release found" until studyloop is actually published somewhere.

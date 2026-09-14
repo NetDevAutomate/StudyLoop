@@ -546,3 +546,68 @@ def test_yaml_block_keys_are_known(doc_name: str, block_index: int) -> None:
     assert not unknown, (
         f"{location}: unknown top-level key(s) {sorted(unknown)} not in {sorted(known)}"
     )
+
+
+def test_tts_pause_is_not_documented() -> None:
+    """W14: `tts.pause` is documented in two config examples but never read by
+    any TTS backend (agent_session_tools/speak.py's `_get_tts_config()` never
+    looks it up) -- a config key that does nothing must not be in the docs a
+    learner copies from."""
+    for doc_name in _YAML_BLOCK_DOCS:
+        doc_path = DOCS_DIR / doc_name
+        if not doc_path.is_file():
+            continue
+        for _idx, start_line, text in _iter_yaml_blocks(doc_path):
+            location = f"{doc_name}:{start_line}"
+            try:
+                parsed = yaml.safe_load(text)
+            except yaml.YAMLError:
+                continue
+            if not isinstance(parsed, dict):
+                continue
+            tts_section = parsed.get("tts")
+            if isinstance(tts_section, dict):
+                assert "pause" not in tts_section, (
+                    f"{location}: documents tts.pause, which no TTS backend reads"
+                )
+
+
+def test_doctor_prerequisites_paragraph_does_not_claim_tmux_resurrect_check() -> None:
+    """W09: `studyloop doctor` no longer checks tmux-resurrect (removed
+    deliberately in fa80b937 -- "herdr replaced tmux, a missing restore hook
+    is not a health condition"). The Prerequisites section must not claim
+    otherwise; the manual restore-hook instructions above it may stay."""
+    text = (DOCS_DIR / "setup-guide.md").read_text()
+    prerequisites_section = text.split("## Installation", 1)[0]
+    paragraphs = [p for p in prerequisites_section.split("\n\n") if "studyloop doctor" in p]
+    assert paragraphs, "expected a 'studyloop doctor' mention in the Prerequisites section"
+    for paragraph in paragraphs:
+        assert "tmux-resurrect" not in paragraph.lower(), paragraph
+
+
+def test_dev_exercise_comment_does_not_overclaim_dev_help_listing() -> None:
+    """W36 (A12: the LazyGroup/sys.argv fix is overturned as the risky Click
+    change; this is DOC ONLY). `studyloop --dev --help` never lists
+    `exercise` -- Click processes the eager `--help` callback (which renders
+    the command list) before the non-eager `--dev` flag populates
+    ctx.params, regardless of where `--dev` sits on the command line. The
+    comment introducing the exercise examples must say so instead of
+    implying `--dev --help` would show them."""
+    from click.testing import CliRunner
+
+    from studyloop.cli import cli
+
+    text = (DOCS_DIR / "cli-reference.md").read_text()
+    lines = [line for line in text.splitlines() if "Topic exercises" in line and "--dev" in line]
+    assert len(lines) == 1, lines
+    comment = lines[0]
+    assert "--dev --help" in comment or "--dev` `--help`" in comment
+    assert "hidden unless root --dev is set" not in comment
+
+    # The claim being made must actually be true: --dev before the
+    # subcommand works, but --dev --help's own listing omits it.
+    runner = CliRunner()
+    working = runner.invoke(cli, ["--dev", "exercise", "--help"])
+    assert working.exit_code == 0, working.output
+    dev_help = runner.invoke(cli, ["--dev", "--help"])
+    assert "exercise" not in dev_help.output

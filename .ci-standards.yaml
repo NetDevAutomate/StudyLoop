@@ -60,15 +60,20 @@ checks:
     command: uv run python scripts/check-release-consistency.py --skip-wheel
 
   # ci.yml `sast` job. Same bandit skip list as .pre-commit-config.yaml's
-  # bandit hook (B101,B104,B105,B106,B107,B108,B110,B310,B404,B602,B603,B606,
+  # bandit hook (B101,B104,B105,B106,B107,B108,B110,B310,B404,B603,B606,
   # B607,B608 -- CLI tool: subprocess, SQLite, test fixtures, graceful
   # degradation) so a local pass means the same findings CI would report.
+  # B602 (shell=True) is deliberately NOT in this list, exactly like ci.yml
+  # and the pre-commit hook: its one real hit is suppressed with a specific
+  # `# nosec B602` (practice.py, adapters/_custom.py) instead, and a skip
+  # here that's more lenient than the real gates would be a false-green
+  # local check -- see test_sast_and_pre_commit_bandit_skip_lists_agree.
   # Not warn_only: the ci.yml sast job has no continue-on-error, so a local
   # mirror that warned instead of failed would report green when CI would not.
   sast:
     command: >-
       uv run --group dev bandit --recursive
-      --skip B101,B104,B105,B106,B107,B108,B110,B310,B404,B602,B603,B606,B607,B608
+      --skip B101,B104,B105,B106,B107,B108,B110,B310,B404,B603,B606,B607,B608
       packages/
 
   # ci.yml `audit` job / Justfile `audit` recipe, chained into one shell

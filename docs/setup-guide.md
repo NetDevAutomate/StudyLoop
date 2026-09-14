@@ -61,8 +61,11 @@ After adding, reload your tmux config:
 tmux source-file ~/.tmux.conf
 ```
 
-Run `studyloop doctor` to verify the configuration — it checks for
-tmux-resurrect and warns if the restore hook is not detected.
+Run `studyloop doctor` to verify tmux itself is installed and at a supported
+version.
+
+The restore hook above is a manual step. Add it yourself if you use one of
+those two tmux plugins; `doctor` does not check for it.
 
 ## Installation
 
@@ -543,7 +546,6 @@ tts:
   backend: kokoro        # kokoro | openvox | qwen3 | macos
   voice: am_michael      # kokoro voice (am_michael, af_heart, bf_emma, etc.)
   speed: 1.5             # 0.5 = slow, 1.0 = normal, 1.5 = fast
-  pause: 0.0             # seconds between sentences
   macos_voice: Samantha
 ```
 
@@ -562,7 +564,6 @@ tts:
   # Kokoro/Qwen/macOS fallback settings still apply.
   voice: am_michael      # kokoro voice (am_michael, af_heart, bf_emma, etc.)
   speed: 1.5             # 0.5 = slow, 1.0 = normal, 1.5 = fast
-  pause: 0.0             # seconds between sentences
   macos_voice: Samantha
 ```
 

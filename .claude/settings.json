@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run python scripts/openspec-gate.py pre-tool-use",
+            "command": "uv run --project \"${CLAUDE_PROJECT_DIR}\" python \"${CLAUDE_PROJECT_DIR}/scripts/openspec-gate.py\" pre-tool-use",
             "timeout": 30
           }
         ]
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run python scripts/openspec-gate.py remind",
+            "command": "uv run --project \"${CLAUDE_PROJECT_DIR}\" python \"${CLAUDE_PROJECT_DIR}/scripts/openspec-gate.py\" remind",
             "timeout": 30
           }
         ]
