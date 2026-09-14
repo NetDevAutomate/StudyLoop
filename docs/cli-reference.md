@@ -649,7 +649,9 @@ updated in that run; use `--obsidian-backfill` for the one-time full history imp
 
 ### Optional Extras
 
+agent-session-tools is not published, so these install from the workspace, not PyPI:
+
 ```bash
-uv pip install agent-session-tools[semantic]  # Vector embeddings search
-uv pip install agent-session-tools[tokens]    # Token counting
+uv sync --all-packages --extra semantic               # Vector embeddings search
+uv sync --package agent-session-tools --extra tokens   # Token counting
 ```
