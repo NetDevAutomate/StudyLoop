@@ -336,3 +336,52 @@ def test_agent_install_doc_flags_study_plan_architect_as_not_installed() -> None
         f"docs/agent-install.md must say study-plan-architect is not yet installed: "
         f"{match.group(0)!r}"
     )
+
+
+# ---------------------------------------------------------------------------
+# W15 -- validated knowledge bridges persist to the sessions database, never
+# to config.yaml (settings.py's KnowledgeDomainsConfig has no bridges field).
+# ---------------------------------------------------------------------------
+
+
+def test_bridge_add_persists_to_the_database_not_config_yaml(tmp_path, monkeypatch) -> None:
+    from click.testing import CliRunner as ClickCliRunner
+
+    from studyloop.cli import cli
+    from studyloop.history.bridges import get_bridges
+
+    click_runner = ClickCliRunner()
+
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        "knowledge_domains:\n"
+        "  primary: networking\n"
+        "  anchors:\n"
+        "    - concept: ECMP load balancing\n"
+        "      comfort: 10\n"
+        "  bridges: []  # populated dynamically via studyloop bridge add\n"
+    )
+    before = config_path.read_bytes()
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
+    monkeypatch.setenv("STUDYLOOP_DB", str(tmp_path / "sessions.db"))
+
+    result = click_runner.invoke(
+        cli,
+        [
+            "bridge",
+            "add",
+            "ECMP load balancing",
+            "-s",
+            "networking",
+            "Spark partition distribution",
+            "-t",
+            "spark",
+            "-m",
+            "both distribute work across parallel processors",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+
+    assert config_path.read_bytes() == before, "bridge add must never touch config.yaml"
+    bridges = get_bridges(source_domain="networking")
+    assert any(b["target_concept"] == "Spark partition distribution" for b in bridges), bridges
