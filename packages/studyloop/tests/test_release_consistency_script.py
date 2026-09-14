@@ -297,7 +297,13 @@ def test_release_note_that_is_still_the_prepare_release_skeleton_fails(tmp_path:
     )
     (releases_dir / "v1.2.3.md").write_text(skeleton, encoding="utf-8")
 
-    result = run_check(tmp_path)
+    # Mid-cycle the skeleton is a legitimate intermediate state (prepare-release
+    # writes it; the notes come later), so the ordinary check accepts it ...
+    assert run_check(tmp_path).returncode == 0
+
+    # ... but no release mode does, pre-tag or strict.
+    init_git_repo_with_tag(tmp_path, tag=None, tag_date="2026-09-06")
+    result = run_release_check(tmp_path, pre_tag=True)
 
     assert result.returncode == 1
     assert "skeleton" in result.stderr.lower() or "release summary" in result.stderr.lower()
