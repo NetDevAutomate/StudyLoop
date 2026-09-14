@@ -387,6 +387,46 @@ def test_bridge_add_persists_to_the_database_not_config_yaml(tmp_path, monkeypat
     assert any(b["target_concept"] == "Spark partition distribution" for b in bridges), bridges
 
 
+def test_knowledge_bridging_doc_sample_config_matches_the_real_schema() -> None:
+    """The sample config.yaml block must not invent a ``bridges`` key, and
+    Step 4 must name the function that actually persists a bridge.
+
+    Pinning W15: bridges live in the sessions database (``record_bridge`` in
+    ``history/bridges.py``), never in ``KnowledgeDomainsConfig``.
+    """
+    import dataclasses
+    import inspect
+
+    import yaml
+
+    from studyloop import settings
+    from studyloop.history import bridges as bridges_module
+
+    model_fields = {f.name for f in dataclasses.fields(settings.KnowledgeDomainsConfig)}
+
+    text = (_repo_root() / "agents/shared/knowledge-bridging.md").read_text(encoding="utf-8")
+    match = re.search(r"```yaml\n(.*?)```", text, re.DOTALL)
+    assert match, "knowledge-bridging.md should have a fenced yaml sample config"
+    sample = yaml.safe_load(match.group(1))
+    sample_keys = set(sample["knowledge_domains"])
+    assert sample_keys <= model_fields, (
+        f"sample config keys {sample_keys - model_fields} are not real fields of "
+        f"KnowledgeDomainsConfig {model_fields}"
+    )
+
+    persist_fns = [
+        name
+        for name, _ in inspect.getmembers(bridges_module, inspect.isfunction)
+        if name.startswith("record_")
+    ]
+    assert persist_fns, "expected a record_* persistence function in history/bridges.py"
+
+    step_four = text.split("**Step 4: Persist**", 1)[1]
+    assert any(fn in step_four for fn in persist_fns), (
+        f"Step 4: Persist should name the real persistence function {persist_fns}"
+    )
+
+
 # ---------------------------------------------------------------------------
 # W16 -- record_plan_learning is a real MCP write path for plans; the doc
 # must not claim there are none.
