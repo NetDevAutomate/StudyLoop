@@ -91,7 +91,7 @@ studyloop plan evaluate PLAN_ID [--phase start|mid|end] [--record] [--study-id I
 studyloop plan reindex                    # Rebuild the plan index in the sessions DB
 studyloop plan path                       # Print the plan document directory
 
-# Topic exercises — DEVELOPER PREVIEW (hidden unless root --dev is set)
+# Topic exercises — DEVELOPER PREVIEW (root `--dev` before `exercise` works; `--dev --help` omits it)
 studyloop --dev exercise new --topic TOPIC [--plan ID] [--requirement R] [--reference FILE]
 studyloop --dev exercise from-milestone PLAN_ID [--index N]  # Draft from a plan milestone
 studyloop --dev exercise import PATH            # Import a hand-authored exercise document

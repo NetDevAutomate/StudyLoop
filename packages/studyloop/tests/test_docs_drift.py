@@ -583,3 +583,31 @@ def test_doctor_prerequisites_paragraph_does_not_claim_tmux_resurrect_check() ->
     assert paragraphs, "expected a 'studyloop doctor' mention in the Prerequisites section"
     for paragraph in paragraphs:
         assert "tmux-resurrect" not in paragraph.lower(), paragraph
+
+
+def test_dev_exercise_comment_does_not_overclaim_dev_help_listing() -> None:
+    """W36 (A12: the LazyGroup/sys.argv fix is overturned as the risky Click
+    change; this is DOC ONLY). `studyloop --dev --help` never lists
+    `exercise` -- Click processes the eager `--help` callback (which renders
+    the command list) before the non-eager `--dev` flag populates
+    ctx.params, regardless of where `--dev` sits on the command line. The
+    comment introducing the exercise examples must say so instead of
+    implying `--dev --help` would show them."""
+    from click.testing import CliRunner
+
+    from studyloop.cli import cli
+
+    text = (DOCS_DIR / "cli-reference.md").read_text()
+    lines = [line for line in text.splitlines() if "Topic exercises" in line and "--dev" in line]
+    assert len(lines) == 1, lines
+    comment = lines[0]
+    assert "--dev --help" in comment or "--dev` `--help`" in comment
+    assert "hidden unless root --dev is set" not in comment
+
+    # The claim being made must actually be true: --dev before the
+    # subcommand works, but --dev --help's own listing omits it.
+    runner = CliRunner()
+    working = runner.invoke(cli, ["--dev", "exercise", "--help"])
+    assert working.exit_code == 0, working.output
+    dev_help = runner.invoke(cli, ["--dev", "--help"])
+    assert "exercise" not in dev_help.output
