@@ -19,6 +19,12 @@ experience may change before `1.0.0`.
 
 ### Fixed
 
+- `studyloop doctor` no longer crashes on a Kiro CLI that has migrated the
+  `study-mentor` agent file. The shipped template writes
+  `{"hooks": {"stop": [...]}}`; a migrated file writes `{"hooks": [{"trigger":
+  "stop", "action": {...}}]}`, and the Kiro hook check assumed the first shape.
+  It now reads either, so the session-export hook is still reported present,
+  canonical or legacy whichever schema the installed Kiro CLI uses.
 - A fresh install can start a session and call every memory tool from its
   first run, instead of hitting an unhandled traceback or a bare sqlite
   error. Both packages' config writers now write `memory.default_scope:

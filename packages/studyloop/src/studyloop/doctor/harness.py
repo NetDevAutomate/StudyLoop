@@ -156,6 +156,32 @@ def _text_hook_result(tool: str, path, command: str) -> CheckResult:
     )
 
 
+def _kiro_stop_commands(data: object) -> list[str]:
+    """Stop-hook command strings from either Kiro agent schema.
+
+    The shipped template uses ``{"hooks": {"stop": [{"command": ...}]}}``; a
+    Kiro CLI that has migrated the file writes ``{"hooks": [{"trigger": "stop",
+    "action": {"type": "command", "command": ...}}]}``. The doctor used to
+    assume the first and crash on the second.
+    """
+    if not isinstance(data, dict):
+        return []
+    hooks = data.get("hooks")
+    commands: list[str] = []
+    if isinstance(hooks, dict):
+        for hook in hooks.get("stop", []) or []:
+            if isinstance(hook, dict):
+                commands.append(str(hook.get("command", "")))
+    elif isinstance(hooks, list):
+        for hook in hooks:
+            if not isinstance(hook, dict) or hook.get("trigger") != "stop":
+                continue
+            action = hook.get("action")
+            if isinstance(action, dict):
+                commands.append(str(action.get("command", "")))
+    return commands
+
+
 def _kiro_hook_result() -> CheckResult:
     path = installers._kiro_agent_path()
     present = False
@@ -163,9 +189,7 @@ def _kiro_hook_result() -> CheckResult:
     if path.exists():
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
-            stop = (data.get("hooks", {}) or {}).get("stop", []) or []
-            for hook in stop:
-                command = str(hook.get("command", "")) if isinstance(hook, dict) else ""
+            for command in _kiro_stop_commands(data):
                 if "session-export --kiro-only" in command:
                     present = True
                     canonical = installers.hook_command_is_canonical(command, "--kiro-only")

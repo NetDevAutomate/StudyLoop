@@ -128,6 +128,49 @@ class TestKiroHookCheck:
         )
         assert _kiro_hook_result().status == "pass"
 
+    def test_the_migrated_kiro_agent_schema_is_read_too(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A Kiro CLI that migrated the file writes hooks as a list of trigger/action objects."""
+        home = tmp_path / "home"
+        (home / ".kiro/agents").mkdir(parents=True)
+        monkeypatch.setattr(installers, "_HOME", home)
+        agent = home / ".kiro/agents/study-mentor.json"
+        agent.write_text(
+            json.dumps(
+                {
+                    "hooks": [
+                        {
+                            "name": "stop-0",
+                            "trigger": "stop",
+                            "action": {
+                                "type": "command",
+                                "command": "session-export --kiro-only >/dev/null 2>&1 || true",
+                            },
+                            "timeout": 10,
+                        }
+                    ]
+                }
+            )
+        )
+        assert _kiro_hook_result().status == "warn", "legacy command in the new schema"
+        agent.write_text(
+            json.dumps(
+                {
+                    "hooks": [
+                        {
+                            "trigger": "stop",
+                            "action": {
+                                "type": "command",
+                                "command": installers.export_hook_command("--kiro-only"),
+                            },
+                        }
+                    ]
+                }
+            )
+        )
+        assert _kiro_hook_result().status == "pass"
+
 
 def _fake_exporter(path: Path, version: int | None) -> Path:
     """A console script whose shebang runs THIS interpreter with a stub agent_session_tools."""
