@@ -324,8 +324,9 @@ def _create_server() -> FastMCP:
         ``rows`` is never silent, because the status says what was searched.
 
         ``retrieval_status`` fields:
-            mode: "lexical" -- keyword matching over the FTS index, not
-                semantic similarity, so wording matters.
+            mode: "hybrid" when the lexical and semantic arms both ran and
+                were fused, "lexical" otherwise (the note says why when
+                hybrid was asked for but could not run).
             plan: which form produced the rows -- "and" (all terms), "or"
                 (widened after AND found nothing), "explicit" (your own FTS5
                 syntax), or "none" (nothing searchable was left).

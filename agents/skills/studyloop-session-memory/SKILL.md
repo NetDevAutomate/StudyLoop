@@ -86,8 +86,8 @@ subagent's teardown. Its transcripts live under `~/.grok/sessions/` (or
 ## Repair and sharing limits
 
 Use `session-repair` to inspect an existing database before proposing an explicit
-`--apply` repair with backup. Do not use this schema-30 candidate on a database
-upgraded by the separate context-memory research branch.
+`--apply` repair with backup. The exporter and the database must agree on the
+schema; `studyloop doctor` reports `exporter_schema`.
 
 `session-sync all` transfers through the existing trusted-database transport.
 Each destination must be permitted to receive the entire selected database.

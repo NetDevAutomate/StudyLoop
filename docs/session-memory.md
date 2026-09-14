@@ -75,11 +75,21 @@ backup until you have checked the recovered history. Each machine can recover
 only transcripts available there; no parser can recover deleted original files
 or certify that every cloud conversation is present.
 
-This release uses schema 47 (`migrations.CURRENT_VERSION`); sync refuses any
-database whose `user_version` differs, in either direction. Do not use it to
-downgrade a database upgraded by a research branch — the unmerged Phase 2 work
-adds tables at v48 and later. Rehearse upgrades and recovery on a disposable
-copy of a supported database first.
+This release uses schema 48 (`migrations.CURRENT_VERSION`); sync refuses any
+database whose `user_version` differs, in either direction. Schema 48 is the
+shipped embedding substrate: a chunked, content-hashed `message_embeddings`
+table kept aligned by trigger, with an optional `sqlite-vec` sidecar index.
+Rehearse upgrades and recovery on a disposable copy of a supported database
+first.
+
+Embedding is opt-in and offline: run `session-maint embed` to fill the
+backlog (`session-maint embed-check --fix` audits and repairs it; `studyloop
+doctor` reports the same state as `embeddings_alignment`). Once a database is
+embedded, set `semantic_search.hybrid: true` in `config.yaml` (or export
+`STUDYLOOP_RETRIEVAL_MODE=hybrid`) to fuse the semantic arm into
+`session_search`/`session-query`. Every result's `retrieval_status.mode` is
+`"hybrid"` when both arms ran and were fused, `"lexical"` otherwise (the
+`note` field says why when hybrid was asked for but could not run).
 
 ## Find useful history
 
