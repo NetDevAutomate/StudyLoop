@@ -208,7 +208,11 @@ def test_pre_commit_bandit_skip_excludes_b602() -> None:
 
 
 def test_sast_and_pre_commit_bandit_skip_lists_agree() -> None:
-    """The two skip lists are meant to be the same list in two places."""
+    """W26: the bandit --skip list must be the SAME list in three places --
+    ci.yml, .pre-commit-config.yaml, and .ci-standards.yaml (the local CI
+    mirror) -- or a local `ci-standards check` pass is not evidence CI would
+    also pass. .ci-standards.yaml previously carried an extra B602, more
+    lenient than the real gates, which is a false-green local check."""
     data = _workflow()
     sast_skipped = set(_bandit_skip_list_from_run(data["jobs"]["sast"]["steps"][-1]["run"]))
 
@@ -224,4 +228,11 @@ def test_sast_and_pre_commit_bandit_skip_lists_agree() -> None:
     args = bandit_hook["args"]
     precommit_skipped = set(args[args.index("--skip") + 1].split(","))
 
-    assert sast_skipped == precommit_skipped
+    ci_standards_data = yaml.safe_load(
+        (REPO_ROOT / ".ci-standards.yaml").read_text(encoding="utf-8")
+    )
+    ci_standards_skipped = set(
+        _bandit_skip_list_from_run(ci_standards_data["checks"]["sast"]["command"])
+    )
+
+    assert sast_skipped == precommit_skipped == ci_standards_skipped
