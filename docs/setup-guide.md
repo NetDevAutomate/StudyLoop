@@ -495,16 +495,22 @@ thresholds:
 
 semantic_search:
   model: all-mpnet-base-v2    # embedding model
-  fts_weight: 0.4             # hybrid search: FTS weight
-  semantic_weight: 0.6        # hybrid search: vector weight
   min_content_length: 50
   auto_embed: true
+  hybrid: false  # true enables RRF fusion once vectors exist; STUDYLOOP_RETRIEVAL_MODE overrides
 ```
+
+Embed the backlog with `session-maint embed` (`--model`, `--budget-seconds`,
+`--batch-size`, `--replace-model`), audit alignment with `session-maint
+embed-check [--fix]`; `studyloop doctor` reports the same state as
+`embeddings_alignment`.
 
 Environment variable overrides:
 - `DATABASE_PATH` — override database location
 - `LOG_LEVEL` — set logging level (DEBUG, INFO, WARNING, ERROR)
 - `EMBEDDING_MODEL` — override embedding model
+- `STUDYLOOP_RETRIEVAL_MODE` — override the retrieval mode (`lexical` or
+  `hybrid`) for a single process, ahead of `semantic_search.hybrid`
 
 ### Web Terminal Settings
 

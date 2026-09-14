@@ -61,8 +61,8 @@ entire selected database. This candidate is unsuitable for syncing a mixed
 work/personal store to a destination allowed to receive only one part. Preserving
 the current transport does not satisfy the richer product's scope requirements.
 
-Do not install this schema-30 candidate against a database upgraded by the
-research branch. It is not a downgrade tool and does not preserve the modern
+The exporter and the database must agree on the schema; `studyloop doctor`
+reports `exporter_schema`. It is not a downgrade tool and does not preserve the modern
 scope/retirement contract. Rehearse upgrades on a copy of an existing supported
 database. No owner database or real peer was modified by this audit.
 

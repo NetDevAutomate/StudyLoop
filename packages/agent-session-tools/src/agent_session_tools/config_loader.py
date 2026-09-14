@@ -78,9 +78,6 @@ DEFAULT_CONFIG = {
         # Note: nomic-embed-text-v1.5 has compatibility issues with sentence-transformers 5.x
         # Fast option: "all-MiniLM-L6-v2" for testing
         "model": "all-mpnet-base-v2",
-        # Hybrid search weights (must sum to 1.0)
-        "fts_weight": 0.4,
-        "semantic_weight": 0.6,
         # Minimum content length to embed
         "min_content_length": 50,
         # Auto-embed on export
@@ -415,9 +412,10 @@ def get_semantic_config(config: dict[str, Any] | None = None) -> dict[str, Any]:
     """Get semantic search configuration.
 
     Returns:
-        Dict with model, fts_weight, semantic_weight, min_content_length,
-        auto_embed and auto_embed_budget_seconds (the wall-clock ceiling for the
-        embed step ``session-export`` runs after a successful export).
+        Dict with model, min_content_length, auto_embed,
+        auto_embed_budget_seconds (the wall-clock ceiling for the embed step
+        ``session-export`` runs after a successful export) and hybrid (the
+        RRF-fusion on/off gate; see ``retrieval.resolve_mode``).
     """
     if config is None:
         config = load_config()

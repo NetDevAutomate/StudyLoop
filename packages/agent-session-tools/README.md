@@ -43,8 +43,8 @@ database; search project filters are not transfer permissions. Sync does not
 propagate forgetting or guarantee convergence after conflicting edits.
 See [configuration and reconciliation](docs/sync-after-repair.md).
 
-Do not use this schema-30 candidate against a database upgraded by the context
-research branch. It is not a downgrade tool.
+The exporter and the database must agree on the schema; `studyloop doctor`
+reports `exporter_schema`. It is not a downgrade tool.
 
 ## MCP Server (session-db-mcp)
 
