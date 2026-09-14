@@ -208,11 +208,16 @@ two of its tools at session start, alongside `get_concept_context` above:
 uv run --project packages/agent-session-tools session-db-mcp
 ```
 
-**Agent config** — included in `agents/claude/mcp.json`, `agents/opencode/mcp.json`
-and `agents/kiro/study-mentor.json`. Codex, pi and Grok Build have no repo-owned
-MCP file; add both servers to the harness's own config:
+**Agent config** — included in `agents/claude/mcp.json` and
+`agents/kiro/study-mentor.json`. pi and Grok Build have no repo-owned MCP file;
+add both servers to the harness's own config. Codex has no repo-owned MCP
+file either, but needs no manual step: `studyloop install agents --tool codex`
+already writes both `[mcp_servers.session-db]` and `[mcp_servers.studyloop]`
+entries into `~/.codex/config.toml` automatically, via `register_mcp_servers`
+(`installers.py:647`) / `_merge_codex_mcp_config` (`installers.py:612`). The
+TOML below is a reference for running Codex without the StudyLoop installer:
 
-- Codex — `~/.codex/config.toml`:
+- Codex — `~/.codex/config.toml` (only needed without the installer):
   ```toml
   [mcp_servers.session-db]
   command = "session-db-mcp"
