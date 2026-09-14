@@ -928,6 +928,7 @@ Check that the AI tool's data directory exists:
 - Codex CLI: exported from Codex transcript storage if present on this machine
 - OpenCode: `~/.local/share/opencode/storage/`
 - pi: `~/.pi/agent/sessions/`
+- Grok Build: `~/.grok/sessions/`, searched recursively for `chat_history.jsonl`, or `$GROK_HOME/sessions/`
 
 For pi or OpenCode, run `studyloop doctor --category agents` first, then use the
 general [Troubleshooting](troubleshooting.md) guide with the harness's own CLI

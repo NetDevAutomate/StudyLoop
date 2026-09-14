@@ -28,10 +28,11 @@ which codex 2>/dev/null     # Codex (core)
 which claude 2>/dev/null    # Claude Code (core)
 which opencode 2>/dev/null  # OpenCode (preview)
 which pi 2>/dev/null        # pi (preview)
+which grok 2>/dev/null      # Grok Build (preview)
 ls ~/.config/studyloop/config.yaml 2>/dev/null && echo "config exists" || echo "config missing"
 ```
 
-**Why this matters**: `studyloop` uses `uv` for package management when available (faster, isolated environments). Harness detection is limited to StudyLoop's pre-release contract: Kiro CLI, Codex, Claude Code, OpenCode, and pi. Config detection tells us whether to run `config init` or skip it.
+**Why this matters**: `studyloop` uses `uv` for package management when available (faster, isolated environments). Harness detection is limited to StudyLoop's pre-release contract: Kiro CLI, Codex, Claude Code, OpenCode, pi, and Grok Build. Config detection tells us whether to run `config init` or skip it.
 
 Summarise findings before proceeding:
 - OS + architecture

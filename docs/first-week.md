@@ -90,7 +90,7 @@ studyloop doctor --fix
 3. If you use Kiro and want struggle signals in progress tracking:
 
    ```bash
-   studyloop extract-struggles --incremental --dry-run --model <bedrock-model-id>
+   studyloop extract-struggles --incremental --dry-run --model <bedrock-model-id> --harness kiro
    ```
 
    `--model` is required — it names the Bedrock model that reads your sessions.

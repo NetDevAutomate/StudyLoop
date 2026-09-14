@@ -12,9 +12,18 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
-from agent_session_tools.export_sessions import SOURCE_CHOICES, app
+from agent_session_tools.export_sessions import SOURCE_CHOICES, app, export
 
 runner = CliRunner()
+
+
+class TestExportDocstringNamesEverySource:
+    """L2-harness-scope: the export() docstring is what --help renders."""
+
+    def test_every_source_choice_named_in_docstring(self) -> None:
+        doc = export.__doc__ or ""
+        missing = [s for s in SOURCE_CHOICES if s not in doc]
+        assert not missing, f"export() docstring is missing source(s): {missing}"
 
 
 class TestReleaseSourceChoices:
