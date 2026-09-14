@@ -304,6 +304,37 @@ class TestHarnessDetection:
         monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
         assert detect_agents()[0] == "codex"
 
+    def test_studyloop_agent_env_still_wins_over_the_written_priority(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A11 (council): the wizard reorders agents.priority, but the
+        STUDYLOOP_AGENT override must still be consulted first by
+        detect_agents() -- the env var is the documented per-shell override
+        and the wizard must not have displaced it."""
+        import studyloop.cli._setup as setup_mod
+        from studyloop.adapters.registry import detect_agents
+
+        bin_dir = tmp_path / "fakebin"
+        bin_dir.mkdir()
+        for binary in ("kiro-cli", "codex"):
+            fake = bin_dir / binary
+            fake.write_text("#!/bin/sh\ntrue\n")
+            fake.chmod(0o755)
+        monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}")
+        monkeypatch.delenv("STUDYLOOP_AGENT", raising=False)
+
+        config_path = tmp_path / "config" / "config.yaml"
+        monkeypatch.setattr(setup_mod, "CONFIG_DIR", config_path.parent)
+        monkeypatch.delenv("STUDYLOOP_CONFIG", raising=False)
+
+        result = CliRunner().invoke(setup_mod.setup, input="\ncodex\n")
+        assert result.exit_code == 0, result.output
+        assert _written(config_path.parent)["agents"]["priority"][0] == "codex"
+
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
+        monkeypatch.setenv("STUDYLOOP_AGENT", "kiro")
+        assert detect_agents()[0] == "kiro", "the env override must beat the wizard's priority"
+
 
 class TestLegacyConfigSurvives:
     def test_twenty_topic_config_is_not_truncated_or_reordered(

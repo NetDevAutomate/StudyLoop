@@ -9,6 +9,34 @@ experience may change before `1.0.0`.
 
 ### Added
 
+- Semantic session search. Schema 48 adds an embedding substrate to the
+  session database (`message_embeddings`, chunked and content-hashed, with a
+  `sqlite-vec` sidecar index); `session-maint embed` fills the backlog,
+  `session-maint embed-check [--fix]` audits alignment, `studyloop doctor`
+  reports `embeddings_alignment`, and the export hook keeps vectors current.
+  Every agent-facing search (`session_search` over MCP, `session-query`, the
+  retrieval half of `memory_search`) now goes through one `retrieval.search`
+  service, so identical requests return identical ordered results. Natural
+  language queries no longer crash on FTS5 syntax. Hybrid mode fuses the
+  lexical and embedding arms with unweighted Reciprocal Rank Fusion; it is
+  off by default and enabled with `semantic_search.hybrid: true` or, for one
+  process, `STUDYLOOP_RETRIEVAL_MODE=hybrid`.
+- Doctor checks `exporter_schema` (the installed `session-export` agrees with
+  the database schema) and `export_freshness`; session-export hooks are pinned
+  to the installed binary by absolute path and log what they did.
+- The source install selects its Python deterministically and says so. A
+  committed `.python-version` (3.12) drives `uv sync`/`uv run`;
+  `studyloop install tools` passes the same minor to every `uv tool install`;
+  `./scripts/install.sh` prints the interpreter uv resolved and refuses
+  anything outside 3.12–3.14; `UV_PYTHON=3.13 ./scripts/install.sh` is the
+  documented override. The nightly install workflow now runs the real
+  installer (a separate `installer` job) and checks Python 3.14 as a signal;
+  CI asserts each matrix job runs the Python it names.
+- `obsidian.filename_template` is honoured by the Obsidian export (it was
+  documented but never read).
+- `scripts/check-release-consistency.py --release` also requires the version's
+  git tag to exist and the CHANGELOG heading date to be no earlier than it.
+
 - Grok Build sessions export automatically at session end. `studyloop install
   agents` / `studyloop doctor --fix` write `~/.grok/hooks/studyloop.json` (under
   `GROK_HOME` when set), a `SessionEnd` hook running `session-export
@@ -19,6 +47,54 @@ experience may change before `1.0.0`.
 
 ### Fixed
 
+- Installing from source no longer depends on whichever `python3` happens to be
+  on `PATH`: the installer used to validate that interpreter and then let `uv`
+  pick a different one, and `uv tool install` resolved without any `--python`
+  at all (reported by a user who needed `UV_PYTHON=3.12`). See "Added".
+- The documentation and the code now agree on the harness contract: six
+  first-party mentor harnesses everywhere (Kiro CLI, Codex and Claude Code core;
+  OpenCode, pi and Grok Build preview), `session-export --help` lists the Grok
+  source, the mentor install guide detects `grok`, and the architecture notes
+  state which harnesses register MCP servers (Claude Code, Kiro CLI, Codex) and
+  which speak ACP (Kiro CLI, Grok Build). CONTRIBUTING.md and SECURITY.md no
+  longer name a version line that goes stale. Reviewed against the OKF removal:
+  no `okf`/`ontolog` code and no `kirocrew` reference remain, and tests now lock
+  both out.
+- Session-memory documentation describes the shipped database: schema 48, the
+  embedding substrate, the retrieval modes and their precedence, and the
+  `session-maint embed`/`embed-check` commands. The `semantic_search` example
+  no longer lists `fts_weight`/`semantic_weight` (removed from the defaults as
+  well: fusion is unweighted), the `session_search` MCP docstring names both
+  retrieval modes, and the four copies of an obsolete "schema-30" warning are
+  gone.
+- Configuration keys behave as documented. `agent-session-tools` honours a
+  top-level `session_db:` with the same precedence as `studyloop`, so both
+  packages open the same database; `studyloop doctor` no longer flags the
+  `database`, `hosts`, `semantic_search`, `thresholds`, `logging` and
+  `excluded_dirs` sections the setup guide recommends as unknown; `studyloop
+  setup` puts the chosen harness first in `agents.priority` instead of writing
+  a dead `ai_assistant` key; the Obsidian doctor check verifies the memory
+  directory is writable; the undocumented `tts.pause` key and the false
+  tmux-resurrect doctor claim are removed from the setup guide.
+- Installed mentor prompts only instruct commands and tools that exist: the
+  phantom `tutor-progress` command is replaced by the real
+  `tutor-checkpoint <skill> --notes`; the Claude Code status line renders the
+  energy label; pi and OpenCode prompts fall back to `session-query` where the
+  session-db MCP server is not registered; the MCP README says the installer
+  writes Codex's config; the orphaned, wrong-schema `agents/opencode/mcp.json`
+  is deleted; the installer's next steps no longer name the unshipped
+  `study-plan-architect` agent.
+- Architecture and reference docs match the tree: file maps point at the real
+  modules, the deleted "Stub" card generator is gone from the backend lists,
+  dead links are fixed, the TUI guide's timer numbers come from the code, the
+  first-week `extract-struggles` example passes the required `--harness`, the
+  CLI reference documents `session-maint embed`/`embed-check` and the doctor
+  exit codes accurately, and the study-plans guide acknowledges the
+  `record_plan_learning` MCP tool.
+- Developer tooling: the Claude Code `openspec-gate` hook resolves its script
+  through `${CLAUDE_PROJECT_DIR}` (a `cd` in the session used to break every
+  shell call), the local `ci-standards` bandit skip list matches CI, and
+  `just release-check` runs the `uv tool install` smoke script.
 - `studyloop doctor` no longer crashes on a Kiro CLI that has migrated the
   `study-mentor` agent file. The shipped template writes
   `{"hooks": {"stop": [...]}}`; a migrated file writes `{"hooks": [{"trigger":
@@ -56,7 +132,7 @@ experience may change before `1.0.0`.
   at all. Every batch commit now records the failure and continues; the database
   is still rolled back exactly as before.
 
-## [0.3.0] - 2026-09-05
+## [0.3.0] - 2026-09-06
 
 ### Added
 

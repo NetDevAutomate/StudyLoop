@@ -376,3 +376,68 @@ def test_filename_template_documented_iff_code_reads_it() -> None:
         "obsidian.filename_template is read by _make_filename() but "
         "docs/obsidian-export.md never mentions it"
     )
+
+
+# ---------------------------------------------------------------------------
+# (g) W38 -- an ADR's own ``**Status:**`` header and its row in the
+# docs/adr/README.md index must agree on the status word. ADR-0009 said
+# "Accepted" in its file while the index said "Proposed" and nothing caught it;
+# ``validate_adr_statuses()`` compares an ADR against release tags, not against
+# the index. ADRs 0001-0007 predate the Status header and are skipped.
+# ---------------------------------------------------------------------------
+
+_ADR_STATUS_WORDS = ("Accepted", "Proposed", "Superseded", "Deprecated")
+_ADR_INDEX_ROW = re.compile(r"^\|\s*\[(\d{4})\]\([^)]+\)\s*\|[^|]*\|\s*([^|]+?)\s*\|")
+_ADR_STATUS_HEADER = re.compile(r"^\*\*Status:\*\*\s*([A-Za-z]+)")
+
+
+def _adr_index_statuses(adr_dir: Path) -> dict[str, str]:
+    rows: dict[str, str] = {}
+    for line in (adr_dir / "README.md").read_text(encoding="utf-8").splitlines():
+        match = _ADR_INDEX_ROW.match(line)
+        if match:
+            rows[match.group(1)] = match.group(2).split()[0]
+    assert rows, "no ADR index rows parsed from docs/adr/README.md"
+    return rows
+
+
+def _adr_file_statuses(adr_dir: Path) -> dict[str, str]:
+    statuses: dict[str, str] = {}
+    for path in sorted(adr_dir.glob("[0-9][0-9][0-9][0-9]-*.md")):
+        for line in path.read_text(encoding="utf-8").splitlines():
+            match = _ADR_STATUS_HEADER.match(line.strip())
+            if match:
+                statuses[path.name[:4]] = match.group(1)
+                break
+    return statuses
+
+
+def _adr_status_mismatches(adr_dir: Path) -> list[str]:
+    index = _adr_index_statuses(adr_dir)
+    files = _adr_file_statuses(adr_dir)
+    problems: list[str] = []
+    for number, file_status in files.items():
+        assert file_status in _ADR_STATUS_WORDS, f"ADR-{number}: unexpected status {file_status!r}"
+        index_status = index.get(number)
+        if index_status is None:
+            problems.append(f"ADR-{number} has no row in docs/adr/README.md")
+        elif index_status != file_status:
+            problems.append(f"ADR-{number}: file says {file_status}, index says {index_status}")
+    return problems
+
+
+def test_adr_status_headers_agree_with_the_readme_index() -> None:
+    assert _adr_status_mismatches(DOCS_DIR / "adr") == []
+
+
+def test_adr_status_checker_detects_a_drifted_index_row(tmp_path: Path) -> None:
+    """Positive control: the checker must actually fire on the ADR-0009 class of
+    drift, otherwise the green test above proves nothing."""
+    adr_dir = tmp_path / "adr"
+    adr_dir.mkdir()
+    (adr_dir / "0042-example.md").write_text("# ADR-0042\n\n**Status:** Accepted, 2026-09-14.\n")
+    (adr_dir / "README.md").write_text(
+        "| ADR | Title | Status | Change |\n|---|---|---|---|\n"
+        "| [0042](0042-example.md) | Example | Proposed | `x` |\n"
+    )
+    assert _adr_status_mismatches(adr_dir) == ["ADR-0042: file says Accepted, index says Proposed"]
