@@ -254,7 +254,7 @@ Two independent paths, in order of reliability:
 
 How that compares across the supported harnesses, as wired in `installers.py`
 (`_HARNESS_EXPORT` at `:161-167`, hook paths at `:177-190`) and checked in
-`doctor/harness.py:210-243`:
+`check_harness_export()`:
 
 | Harness | Automatic hook | Steering mandate |
 |---|---|---|
@@ -263,7 +263,7 @@ How that compares across the supported harnesses, as wired in `installers.py`
 | Kiro CLI | `~/.kiro/agents/study-mentor.json` | `~/.kiro/steering/session-db.md` |
 | OpenCode | plugin `~/.config/opencode/plugins/studyloop-session-export.js` | `~/.config/opencode/session-db.md` |
 | pi | extension `~/.pi/agent/extensions/studyloop-session-export.ts` | `~/.pi/agent/session-db.md` |
-| Grok Build (preview) | none today | none today |
+| Grok Build (preview) | global `$GROK_HOME/hooks/studyloop.json` `SessionEnd` hook | `$GROK_HOME/rules/session-db.md` |
 
 ```mermaid
 sequenceDiagram
@@ -330,13 +330,13 @@ raises `typer.BadParameter` (`:465-467`).
 
 ## Doctor Coverage
 
-`check_harness_export()` (`doctor/harness.py:210`) iterates
+`check_harness_export()` iterates
 `installers.detect_available_agent_tools()`. pi is detected when `pi` is on `PATH`
 or `~/.pi` exists (`installers.py:484`), and then yields three pi checks:
 
 | Check | Source | Passes when |
 |---|---|---|
-| `session_memory_skill_pi` | `_session_memory_skill_result`, `doctor/harness.py:98` | `~/.agents/skills/studyloop-session-memory/SKILL.md` exists and contains `name: studyloop-session-memory` |
+| `session_memory_skill_pi` | `_session_memory_skill_result` | `~/.agents/skills/studyloop-session-memory/SKILL.md` exists and contains `name: studyloop-session-memory` |
 | `export_mandate_pi` | `_steering_result`, `:29` | `~/.pi/agent/session-db.md` exists and contains `studyloop:session-export-mandate` |
 | `session_export_hook_pi` | `_text_hook_result` via the `pi` branch, `:236-243` | the installed extension exists and contains **both** `studyloop:session-export-hook` and `"--pi-only"` |
 

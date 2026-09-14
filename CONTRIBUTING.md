@@ -24,5 +24,5 @@ just preflight
 - Conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) (Contributor Covenant 2.1).
 - Security concerns go through [GitHub's private advisory form](https://github.com/NetDevAutomate/StudyLoop/security/advisories/new), never a public issue.
 
-StudyLoop is a 0.1.x pre-release with five first-party mentor harnesses (Kiro CLI, Codex and Claude Code are
-core; OpenCode and pi are preview). Proposals for another harness start with an issue, not a pull request.
+StudyLoop is a pre-1.0 pre-release with six first-party mentor harnesses (Kiro CLI, Codex and Claude Code are
+core; OpenCode, pi and Grok Build are preview). Proposals for another harness start with an issue, not a pull request.

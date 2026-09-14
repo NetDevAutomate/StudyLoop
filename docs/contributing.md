@@ -5,7 +5,7 @@ Socratic questioning, and the tool wraps that session in structure — plans, sp
 for stray thoughts, a wind-down. This guide is the single reference for contributing to it: how the repository
 is organised, how to set up, how changes are made and proven, and how pull requests are reviewed.
 
-The project is a **pre-release (0.1.x)**. Six mentor harnesses are first-party: Kiro CLI, Codex and Claude
+The project is a **pre-1.0 pre-release**. Six mentor harnesses are first-party: Kiro CLI, Codex and Claude
 Code are core; OpenCode, pi and Grok Build are preview. Everything else is out of scope until an issue
 defines it.
 

@@ -12,7 +12,7 @@ test monkeypatches ``studyloop.history._connection._connect`` to a tmp DB.
 from __future__ import annotations
 
 import sqlite3
-from typing import TYPE_CHECKING
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -25,9 +25,6 @@ from studyloop.extractors.pipeline import (
     extract_and_write,
     pre_filter,
 )
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 # study_progress schema — mirrors progress.py (14 columns incl. the v22
 # course/section provenance columns). Kept local so the test does not import
@@ -478,3 +475,26 @@ def test_cli_incremental_dry_run_no_write(tmp_db: Path) -> None:
     assert result.exit_code == 1, result.output
     assert "Session unavailable in the configured scope" in result.output
     assert _count_struggling(tmp_db) == 0
+
+
+def _first_week_day3_flags() -> list[str]:
+    """Extract the exact flags from docs/first-week.md's Day 3 extract-struggles
+
+    example, so this test tracks the doc instead of a copy of its prose.
+    """
+    doc_path = Path(__file__).resolve().parents[3] / "docs" / "first-week.md"
+    text = doc_path.read_text(encoding="utf-8")
+    line = next(line for line in text.splitlines() if "studyloop extract-struggles" in line)
+    tokens = line.strip().split()[2:]  # drop "studyloop" and "extract-struggles"
+    return ["example.live-model" if t == "<bedrock-model-id>" else t for t in tokens]
+
+
+def test_first_week_day3_example_does_not_raise_usage_error(tmp_db: Path) -> None:
+    """(W05) The Day 3 'If you use Kiro' example must be a runnable command --
+
+    docs/first-week.md:88 currently omits --harness, which _extract.py:153-156
+    rejects with a UsageError before the database is ever opened.
+    """
+    result = CliRunner().invoke(extract_struggles_cmd, _first_week_day3_flags())
+
+    assert result.exit_code == 0, result.output

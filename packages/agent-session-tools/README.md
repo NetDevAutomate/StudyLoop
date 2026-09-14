@@ -1,8 +1,9 @@
 # agent-session-tools
 
 Export, search and sync local coding conversations from Claude Code, Codex,
-Grok CLI, Kiro CLI, OpenCode, pi and supported oh-my-pi archives. Grok is an
-import source, not a StudyLoop mentor or automatically installed hook.
+Grok Build, Kiro CLI, OpenCode, pi and supported oh-my-pi archives. Grok
+Build is an admitted preview harness with an automatic SessionEnd hook
+(`$GROK_HOME/hooks/studyloop.json`), same as the other release harnesses.
 
 Part of [StudyLoop](https://github.com/NetDevAutomate/StudyLoop).
 

@@ -7,7 +7,7 @@
 
 ## Direction in one paragraph
 
-StudyLoop is moving from a tmux + assistant-CLI core to a **local-first, web-first, plugin-based** study platform. The web/PWA replaces tmux as the primary learner UI. ACP becomes the preferred transport (currently Kiro only — no other mentor harness speaks ACP). PTY remains the fallback for agents that don't speak ACP. ttyd is retired ([ADR-0008](../adr/0008-retire-ttyd-entirely.md)) — every web session now uses PTY or ACP. Native macOS / iOS clients use the same local HTTP + WebSocket API later.
+StudyLoop is moving from a tmux + assistant-CLI core to a **local-first, web-first, plugin-based** study platform. The web/PWA replaces tmux as the primary learner UI. ACP becomes the preferred transport (available for Kiro CLI and Grok Build today — no other mentor harness speaks ACP yet). PTY remains the fallback for agents that don't speak ACP. ttyd is retired ([ADR-0008](../adr/0008-retire-ttyd-entirely.md)) — every web session now uses PTY or ACP. Native macOS / iOS clients use the same local HTTP + WebSocket API later.
 
 ---
 

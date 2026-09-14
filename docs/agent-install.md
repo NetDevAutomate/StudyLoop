@@ -206,9 +206,9 @@ StudyLoop installs canonical skills once under `~/.agents/skills/`:
     └── references/harnesses.md
 ```
 
-Codex, OpenCode and pi discover this directory directly. Kiro and Claude use
-symlinks from `~/.kiro/skills/` and `~/.claude/skills/`. One body per skill
-means an update reaches every supported harness without copy drift.
+Codex, OpenCode, pi and Grok Build discover this directory directly. Kiro and
+Claude use symlinks from `~/.kiro/skills/` and `~/.claude/skills/`. One body
+per skill means an update reaches every supported harness without copy drift.
 
 The xTiles skill remains self-gating: it is silent unless the configured
 second-brain provider is xTiles and an xTiles MCP server is connected. The
