@@ -207,6 +207,18 @@ class TestBuildCanonicalPersona:
         assert "**Mode:** plan-architect" in content
         assert canonical.strip() in content
 
+    def test_default_persona_handles_an_unrecognised_mode_without_raising(self) -> None:
+        """Belt-and-braces: build_canonical_persona("plan-architect", ...) never
+        reaches _default_persona today (agents/shared/personas/plan-architect.md
+        exists), but the fallback must still degrade gracefully -- to the
+        generic "study mode" default, not a KeyError -- if that file were ever
+        missing."""
+        from studyloop.agent_launcher import _default_persona
+
+        content = _default_persona("plan-architect")
+        assert isinstance(content, str)
+        assert content.strip()
+
 
 # ---------------------------------------------------------------------------
 # Backward-compatible wrappers
