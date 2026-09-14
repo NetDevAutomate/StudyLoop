@@ -9,6 +9,25 @@ experience may change before `1.0.0`.
 
 ### Added
 
+- The study-plan-architect is a first-class mentor role in every harness. One
+  canonical persona (`agents/shared/personas/plan-architect.md`) is delivered by
+  the launcher through `studyloop study --mode plan-architect` (or the
+  `studyloop plan architect` alias) to Codex, pi and Grok Build, and installed
+  as a native named agent for Claude Code, Kiro CLI and OpenCode by
+  `studyloop install agents`; doctor reports the definitions; the installer's
+  next steps point at it again.
+- OpenCode and Grok Build now get both StudyLoop MCP servers (`session-db`,
+  `studyloop`) registered by `studyloop install agents` / `doctor --fix`:
+  OpenCode globally in `~/.config/opencode/opencode.json` and per session, Grok
+  Build through `grok mcp add` (status read from `grok mcp list --json`, the
+  legacy `user-settings.json` map honoured read-only). Server names are the
+  same in every harness config; `studyloop-mcp` and `session-db-mcp` are the
+  commands. The CLI fallback (`session-query`) stays documented for all six;
+  pi remains CLI-only because it has no MCP support by design.
+- `just release-check` can run before the release tag exists: the release
+  consistency check gained a `--pre-tag` mode that defers only the tag/date
+  assertion, `just release-verify` runs the strict form after tagging, and a
+  release note that is still the `prepare-release` skeleton now fails the gate.
 - Semantic session search. Schema 48 adds an embedding substrate to the
   session database (`message_embeddings`, chunked and content-hashed, with a
   `sqlite-vec` sidecar index); `session-maint embed` fills the backlog,

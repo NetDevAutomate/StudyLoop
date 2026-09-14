@@ -14,6 +14,14 @@
   "tools": [
     "@builtin"
   ],
+  "hooks": {
+    "stop": [
+      {
+        "command": "$HOME/.local/bin/session-export --kiro-only >>$HOME/.config/studyloop/export-hook.log 2>&1 || { rc=$?; echo \"$(date -u +%Y-%m-%dT%H:%M:%SZ) session-export --kiro-only FAILED exit=$rc\" >>$HOME/.config/studyloop/export-hook.log; }",
+        "description": "studyloop:session-export-hook"
+      }
+    ]
+  },
   "allowedTools": [
     "fs_read",
     "execute_bash",

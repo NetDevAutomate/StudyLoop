@@ -15,7 +15,7 @@ For a generic MCP config, the development flag is explicit in the server's
 ```json
 {
   "mcpServers": {
-    "studyloop-mcp": {
+    "studyloop": {
       "command": "studyloop-mcp",
       "args": ["--dev"]
     }

@@ -180,6 +180,7 @@ Run `studyloop study` without a topic to open the textual picker for body double
 |------|------|---------------|------------|
 | Study | (default) | Elapsed | Socratic mentor drives |
 | Co-study | `--mode co-study` | Pomodoro | User drives, agent available |
+| Plan architect | `--mode plan-architect` | Elapsed | Interviews, drafts, and evaluates a study plan |
 
 **Low-level session commands** (used internally by `studyloop study`):
 
@@ -385,6 +386,7 @@ studyloop plan status PLAN_ID complete
 studyloop plan record PLAN_ID --title T [--body B|--body-file F] [--status S] [--json]
                                           # Append a learning record (wind-down's "record first" step)
 studyloop plan reindex                    # Rebuild the DB index from the documents
+studyloop plan architect [--agent claude]  # Launch the study-plan-architect (studyloop study --mode plan-architect)
 ```
 
 Omitted answers are left **explicitly blank** in the document rather than invented, and `readiness` reports what is still missing. Activation (`--activate`, or `plan status … active`) is **refused** while a plan lacks a mission, success criteria, or milestones — an unevaluable plan must not look active.

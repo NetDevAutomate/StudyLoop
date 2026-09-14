@@ -69,11 +69,29 @@ class TestMcpConfigWriter:
         assert config_path.exists()
         data = json.loads(config_path.read_text())
         assert "mcp" in data
-        assert "studyloop-mcp" in data["mcp"]
-        entry = data["mcp"]["studyloop-mcp"]
+        assert "studyloop-mcp" not in data["mcp"], (
+            "studyloop-mcp is the console-script COMMAND, never a server name"
+        )
+        entry = data["mcp"]["studyloop"]
         assert entry["enabled"] is True
         assert entry["type"] == "local"
         assert "command" in entry
+
+    def test_opencode_format_also_registers_session_db(self, tmp_path):
+        """OpenCode's per-session config carries both StudyLoop MCP servers,
+
+        matching every other harness the installer registers globally
+        (council grok F9: 'studyloop-mcp' is the studyloop server's COMMAND,
+        never a server name).
+        """
+        from studyloop.adapters._strategies import write_mcp_config
+
+        write_mcp_config(tmp_path, fmt="opencode")
+        data = json.loads((tmp_path / ".opencode" / "opencode.json").read_text())
+        entry = data["mcp"]["session-db"]
+        assert entry["enabled"] is True
+        assert entry["type"] == "local"
+        assert entry["command"][-1] == "session-db-mcp"
 
     def test_dev_flag_is_explicit_in_generic_mcp_config(self, tmp_path, monkeypatch):
         from studyloop.adapters import _strategies
@@ -89,7 +107,20 @@ class TestMcpConfigWriter:
         monkeypatch.setattr(_strategies, "_mcp_command", lambda: ["studyloop-mcp"])
         _strategies.write_mcp_config(tmp_path, fmt="opencode", dev=True)
         data = json.loads((tmp_path / ".opencode" / "opencode.json").read_text())
-        assert data["mcp"]["studyloop-mcp"]["command"] == ["studyloop-mcp", "--dev"]
+        assert data["mcp"]["studyloop"]["command"] == ["studyloop-mcp", "--dev"]
+
+    def test_dev_flag_is_not_applied_to_opencode_session_db_command(self, tmp_path, monkeypatch):
+        """--dev exposes studyloop-mcp's developer-preview tools only;
+
+        session-db-mcp has no --dev concept.
+        """
+        from studyloop.adapters import _strategies
+
+        monkeypatch.setattr(_strategies, "_mcp_command", lambda: ["studyloop-mcp"])
+        monkeypatch.setattr(_strategies, "_session_db_mcp_command", lambda: ["session-db-mcp"])
+        _strategies.write_mcp_config(tmp_path, fmt="opencode", dev=True)
+        data = json.loads((tmp_path / ".opencode" / "opencode.json").read_text())
+        assert data["mcp"]["session-db"]["command"] == ["session-db-mcp"]
 
     def test_custom_path_override(self, tmp_path):
         from studyloop.adapters._strategies import write_mcp_config

@@ -15,10 +15,12 @@ StudyLoop also includes complete integrations for **OpenCode**, **pi**, and **Gr
 Gemini CLI and Antigravity are not mentor harnesses in this pre-release.
 Their presence on your computer will not make StudyLoop advertise or select them.
 
-The study-plan-architect personas under `agents/` (Claude, OpenCode, Kiro) are
-drafts, not yet wired into any installer's link table — `studyloop install
-agents` does not place them. Shipping them is an owner decision; build a study
-plan today with `studyloop web`'s Study Plans tab or `studyloop plan new`.
+The `study-plan-architect` persona (Claude, OpenCode, Kiro) interviews you into
+a study plan and evaluates it against real study evidence at the start,
+middle, and end of a session — see [Study Plans](study-plans.md). It installs
+alongside the mentor via `studyloop install agents` and starts with
+`studyloop plan architect` on every harness (see "Start a study session"
+below and each harness's section for the native name).
 
 ## Install automatically
 
@@ -69,6 +71,12 @@ kiro-cli chat --agent study-mentor
 
 Kiro is the demo harness because it makes the named mentor and session flow visible without requiring users to understand prompt files.
 
+Kiro also receives the `study-plan-architect` agent. Start it directly with:
+
+```bash
+kiro-cli chat --agent study-plan-architect
+```
+
 Kiro also receives the opt-in `studyloop-xtiles-wind-down` skill at `~/.kiro/skills/`, as a symlink to the shared copy described below. It stays silent unless your second-brain provider is `xtiles` and an `xtiles` MCP server is connected.
 
 ### Codex
@@ -77,9 +85,17 @@ Codex reads the StudyLoop `AGENTS.md` from the project. Launching through `study
 
 That `AGENTS.md` carries one self-gated line about xTiles at wind-down, inert unless your provider is `xtiles` and an `xtiles` MCP server is connected. Codex needs no skill link of its own: it reads `~/.agents/skills/` natively, which is where the shared copy lives.
 
+Codex has no named-agent feature, so the study-plan-architect persona reaches it the same way the mentor does — through the launcher, not a second `AGENTS.md`:
+
+```bash
+studyloop study --mode plan-architect --agent codex
+```
+
 ### Claude Code
 
 Claude Code receives the `socratic-mentor` agent and a session-export hook. The installer merges the hook into existing settings and does not replace unrelated hooks.
+
+Claude Code also receives the `study-plan-architect` subagent, installed the same way. Inside a Claude Code session, ask for it by name ("use the study-plan-architect subagent to build my study plan"); `/agents` lists the installed subagents. Or launch it through StudyLoop with `studyloop study --mode plan-architect --agent claude`.
 
 Configure Claude Code's model provider before starting a StudyLoop session. If
 you use AWS Bedrock, Claude Code needs Bedrock enabled and valid AWS credentials
@@ -94,14 +110,19 @@ It also receives the opt-in `studyloop-xtiles-wind-down` skill at `~/.claude/ski
 
 Two separate mechanisms write two separate sets of files, at two different times:
 
-- **`studyloop install agents --tool opencode`** (the install command above) writes a **global** `study-mentor` agent definition to `~/.config/opencode/agents/study-mentor.md`, available to any OpenCode session on the machine.
-- **`studyloop study --agent opencode`** (starting a session) separately writes a **project-local** `.opencode/agents/study-mentor.md` and `.opencode/opencode.json` (StudyLoop's MCP server, in OpenCode's own config schema) into that session's working directory. This happens at session start, not at install time — if you only ran the install command and are looking for these project-local files, that's why they aren't there yet.
+- **`studyloop install agents --tool opencode`** (the install command above) writes a **global** `study-mentor` agent definition to `~/.config/opencode/agents/study-mentor.md`, available to any OpenCode session on the machine, and registers both StudyLoop MCP servers (`session-db`, `studyloop`) into `~/.config/opencode/opencode.json`'s `mcp` object.
+- **`studyloop study --agent opencode`** (starting a session) separately writes a **project-local** `.opencode/agents/study-mentor.md` and `.opencode/opencode.json` (both StudyLoop MCP servers, in OpenCode's own config schema) into that session's working directory. This happens at session start, not at install time — if you only ran the install command and are looking for these project-local files, that's why they aren't there yet.
 
 Either path gets you the same mentor behaviour. StudyLoop does not choose or hard-code an OpenCode model; your working OpenCode provider and model remain authoritative.
 
 Both copies of the mentor definition carry the same self-gated xTiles line as
 Codex's. OpenCode reads the shared `~/.agents/skills/` hub directly, so the
 installer does not create a redundant `~/.config/opencode/skills/` link.
+
+OpenCode also receives a global `study-plan-architect` agent definition at
+`~/.config/opencode/agents/study-plan-architect.md`. Select it from OpenCode's
+agent picker, or launch it through StudyLoop with
+`studyloop study --mode plan-architect --agent opencode`.
 
 ### pi
 
@@ -111,11 +132,16 @@ Its `AGENTS.md` carries the same self-gated xTiles line. pi discovers the
 shared `~/.agents/skills/` hub natively, so both the xTiles wind-down skill and
 the session-memory skill are available without a duplicate link.
 
+pi has no named-agent feature either, so reach the study-plan-architect
+persona through the launcher: `studyloop study --mode plan-architect --agent pi`.
+
 ### Grok Build
 
 Grok Build is xAI's terminal coding agent (binary `grok`). It reads the repo-root `AGENTS.md` — the same file Codex reads — so `studyloop install agents --tool grok` links that one shared definition instead of a Grok-specific copy that could drift. There is no `agents/grok/` directory, by design. Launching through `studyloop study` creates the session context and starts Grok Build in that directory; it resumes through its native `--resume` option.
 
 Because it is the same file, it carries the same self-gated xTiles line as Codex's. Grok Build also discovers the shared `~/.agents/skills/` hub natively (its skill discovery scans `.agents/skills/` at every tier), so the `studyloop-session-memory` skill reaches it with no Grok-specific link.
+
+Grok Build has no named-agent feature: `studyloop study --mode plan-architect --agent grok` launches the study-plan-architect persona the same way.
 
 If `grok` is not on your PATH yet:
 
@@ -149,9 +175,9 @@ that exposes one:
 | Kiro CLI | `stop` hook in the global `study-mentor` agent | bundled `session-db-mcp`, plus skill fallback |
 | Codex | global `~/.codex/hooks.json` `SessionEnd` hook | shared skill + `session-query` |
 | Claude Code | global `~/.claude/settings.json` `Stop` hook | native skill link + `session-query` |
-| OpenCode | global plugin, `session.idle` event | shared skill + `session-query` |
-| pi | global extension, `session_shutdown` event | shared skill + `session-query` |
-| Grok Build | global `~/.grok/hooks/studyloop.json` `SessionEnd` hook | shared skill + `session-query` |
+| OpenCode | global plugin, `session.idle` event | shared skill + `session-db`/`studyloop` MCP + `session-query` fallback |
+| pi | global extension, `session_shutdown` event | shared skill + `session-query` (no MCP by design) |
+| Grok Build | global `~/.grok/hooks/studyloop.json` `SessionEnd` hook | shared skill + `session-db`/`studyloop` MCP + `session-query` fallback |
 
 All installed hooks run `session-export --<harness>-only` best-effort and never
 block session close. Codex reviews and trusts a newly installed command-hook

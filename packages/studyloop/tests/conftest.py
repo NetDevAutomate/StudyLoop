@@ -802,10 +802,12 @@ _REAL_HARNESS_FILES: tuple[Path, ...] = (
     _REAL_HOME / ".kiro/agents/study-mentor.json",
     _REAL_HOME / ".config/opencode/session-db.md",
     _REAL_HOME / ".config/opencode/plugins/studyloop-session-export.js",
+    _REAL_HOME / ".config/opencode/opencode.json",
     _REAL_HOME / ".pi/agent/session-db.md",
     _REAL_HOME / ".pi/agent/extensions/studyloop-session-export.ts",
     _REAL_GROK_HOME / "hooks/studyloop.json",
     _REAL_GROK_HOME / "rules/session-db.md",
+    _REAL_GROK_HOME / "config.toml",
 )
 
 

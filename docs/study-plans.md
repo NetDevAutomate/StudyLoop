@@ -71,6 +71,21 @@ Milestone checkboxes update the Markdown plan itself. Activation is refused when
 the plan has no mission, success criteria, or milestones, because an empty active
 plan would create noise rather than direction.
 
+## Build a plan with the study-plan-architect
+
+Instead of filling in the form yourself, be interviewed. The
+`study-plan-architect` persona runs the mission-first interview described
+above, then evaluates the plan against real study evidence at the start,
+middle, and end of every session run against it. It ships to every harness —
+see [Connect your AI coding tool](agent-install.md) for the native start
+command on your harness. The launcher-driven form works everywhere:
+
+```bash
+studyloop plan architect
+# or, choosing a harness explicitly:
+studyloop study --mode plan-architect --agent claude
+```
+
 ## Use plans from the terminal
 
 ```bash

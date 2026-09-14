@@ -53,6 +53,39 @@ def _get_agent_install_path(tool: str) -> Path:
     return Path(path_template).expanduser()
 
 
+def _agent_definition_install_path(tool: str, key: str) -> Path | None:
+    """Resolve the on-disk install path for one manifest key under ``tool``.
+
+    The primary (canary) definition -- the one path per tool in
+    :data:`TOOL_AGENTS`, used for the smoke test and long-standing currency
+    check -- still resolves through :func:`_get_agent_install_path`, so tests
+    that patch it keep working unchanged. Any OTHER manifest key sharing this
+    tool's prefix (a second native agent definition, e.g.
+    ``study-plan-architect.md`` alongside ``socratic-mentor.md``) resolves
+    through the matching :data:`studyloop.installers._TOOL_LINKS` entry
+    instead. This is what lets :func:`check_agent_definitions` report a new
+    native definition by extending its existing loop rather than adding a
+    parallel, hand-maintained table.
+
+    A key whose link target is a directory (no file suffix -- e.g. Kiro's
+    resources folder link) has no single file to hash, and is skipped.
+    """
+    primary_path = TOOL_AGENTS[tool][1]
+    if Path(primary_path).name == Path(key).name:
+        return _get_agent_install_path(tool)
+
+    from studyloop.installers import _TOOL_LINKS
+
+    repo_root = find_repo_root(Path.cwd()) or Path.cwd()
+    for spec in _TOOL_LINKS.get(tool, ()):
+        if spec.source != f"agents/{key}":
+            continue
+        if not Path(spec.source).suffix:
+            return None
+        return Path(spec.target.format(repo_root=repo_root)).expanduser()
+    return None
+
+
 def _smoke_test(binary: str) -> tuple[bool, str]:
     """Run ``binary --version`` and return (ok, version_or_error).
 
@@ -188,7 +221,6 @@ def check_agent_definitions() -> list[CheckResult]:
     manifest_agents = manifest.get("agents", {})
 
     for tool in tools:
-        install_path = _get_agent_install_path(tool)
         tool_keys = [k for k in manifest_agents if k.startswith(f"{tool}/")]
         if not tool_keys:
             results.append(
@@ -198,19 +230,28 @@ def check_agent_definitions() -> list[CheckResult]:
             )
             continue
 
+        primary_name = Path(TOOL_AGENTS[tool][1]).name
         for key in tool_keys:
+            install_path = _agent_definition_install_path(tool, key)
+            if install_path is None:
+                continue  # e.g. a directory link with nothing to hash
+
+            is_primary = Path(key).name == primary_name
+            check_name = f"agent_{tool}" if is_primary else f"agent_{tool}_{Path(key).stem}"
+            label = tool if is_primary else f"{tool} {Path(key).stem}"
+
             if not install_path.exists():
                 results.append(
                     CheckResult(
                         "agents",
-                        f"agent_{tool}",
+                        check_name,
                         "warn",
                         f"{tool} detected but agent definition not installed",
                         "studyloop upgrade --component agents",
                         fix_auto=True,
                     )
                 )
-                break
+                continue
 
             local_hash = _hash_file(install_path)
             expected_hash = manifest_agents[key]["hash"]
@@ -218,9 +259,9 @@ def check_agent_definitions() -> list[CheckResult]:
                 results.append(
                     CheckResult(
                         "agents",
-                        f"agent_{tool}",
+                        check_name,
                         "pass",
-                        f"{tool} agent definition current",
+                        f"{label} agent definition current",
                         "",
                         False,
                     )
@@ -229,37 +270,56 @@ def check_agent_definitions() -> list[CheckResult]:
                 results.append(
                     CheckResult(
                         "agents",
-                        f"agent_{tool}",
+                        check_name,
                         "warn",
                         (
-                            f"{tool} agent definition outdated"
+                            f"{label} agent definition outdated"
                             f" (local={local_hash[:8]}... expected={expected_hash[:8]}...)"
                         ),
                         "studyloop upgrade --component agents",
                         fix_auto=True,
                     )
                 )
-            break
 
     return results
 
 
 def check_mcp_registration() -> list[CheckResult]:
-    """Report whether both StudyLoop MCP servers are registered per harness."""
-    from studyloop.installers import mcp_registration_status
+    """Report whether both StudyLoop MCP servers are registered per harness.
+
+    Grok Build gets a richer message naming which file satisfied
+    registration -- the legacy ``$GROK_HOME/user-settings.json`` map or the
+    ``config.toml`` ``grok mcp add`` writes -- since the two are read from
+    different sources and only one of them is StudyLoop-owned.
+    """
+    from studyloop.installers import _MCP_HARNESSES, _grok_registration_detail
+    from studyloop.installers import mcp_registration_status as _status
+
+    non_grok = [tool for tool in _MCP_HARNESSES if tool != "grok"]
+    status = _status(non_grok)
 
     results: list[CheckResult] = []
-    for tool, registered in mcp_registration_status().items():
+    for tool in _MCP_HARNESSES:
+        if tool == "grok":
+            registered, source = _grok_registration_detail()
+            message = (
+                f"grok has session-db and studyloop MCP servers registered via {source}"
+                if registered and source
+                else "grok MCP registration is missing or incomplete"
+            )
+        else:
+            registered = status[tool]
+            message = (
+                f"{tool} has session-db and studyloop MCP servers registered"
+                if registered
+                else f"{tool} MCP registration is missing or incomplete"
+            )
         results.append(
             CheckResult(
                 "agents",
                 f"mcp_{tool}",
                 "pass" if registered else "warn",
-                (
-                    f"{tool} has session-db and studyloop MCP servers registered"
-                    if registered
-                    else f"{tool} MCP registration is missing or incomplete"
-                ),
+                message,
                 "" if registered else "studyloop install agents",
                 False,
             )

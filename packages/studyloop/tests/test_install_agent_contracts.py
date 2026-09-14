@@ -82,7 +82,14 @@ def _is_installed_source(source: str, installer_sources: set[str]) -> bool:
 
 
 def _definition_sources_by_tool() -> dict[str, set[str]]:
-    definition_names = {"AGENTS.md", "socratic-mentor.md", "study-mentor.json", "study-mentor.md"}
+    definition_names = {
+        "AGENTS.md",
+        "socratic-mentor.md",
+        "study-mentor.json",
+        "study-mentor.md",
+        "study-plan-architect.json",
+        "study-plan-architect.md",
+    }
     result: dict[str, set[str]] = {}
     for tool, sources in _installer_sources_by_tool().items():
         result[tool] = {
@@ -506,10 +513,13 @@ def test_every_release_harness_has_a_real_session_export_hook_contract() -> None
 # is only real if the allowlist and server config agree.
 #
 # The exact wording is identical ONLY for harnesses where session-db-mcp is
-# actually registered (installers._MCP_HARNESSES): elsewhere -- pi and
-# OpenCode, neither of which installers.py wires session-db-mcp into -- the
-# instruction must hedge memory_search behind a CLI fallback instead, so those
-# two carry different prose by design (W20, 2026-09-14 congruence review).
+# actually registered (installers._MCP_HARNESSES): elsewhere -- pi, which
+# has no MCP by design (its README states "No MCP"; see L8-mcp-opencode-grok)
+# and installers.py never wires session-db-mcp into -- the instruction must
+# hedge memory_search behind a CLI fallback instead, so pi carries different
+# prose by design (W20, 2026-09-14 congruence review). OpenCode moved into the
+# registered set once `studyloop install agents --tool opencode` started
+# registering session-db-mcp globally (L8-mcp-opencode-grok).
 
 _MENTOR_DEFINITIONS = (
     "agents/kiro/study-mentor.json",
@@ -587,10 +597,185 @@ def test_kiro_allowlist_and_servers_match_the_instruction() -> None:
 
 @pytest.mark.parametrize("relative", ["agents/claude/mcp.json"])
 def test_repo_owned_mcp_configs_register_both_servers(relative: str) -> None:
+    from studyloop.installers import _MCP_SERVERS
+
     servers = json.loads((_repo_root() / relative).read_text(encoding="utf-8"))["mcpServers"]
-    assert "studyloop-mcp" in servers and "session-db" in servers, (
-        f"{relative} must register both servers or get_concept_context / "
+    # Server NAMES follow installers._MCP_SERVERS (council grok F9); the console
+    # scripts (`studyloop-mcp`, `session-db-mcp`) are the COMMANDS, never names.
+    assert set(_MCP_SERVERS) <= set(servers), (
+        f"{relative} must register {sorted(_MCP_SERVERS)} or get_concept_context / "
         "memory_search are instructed but unreachable"
     )
-    for name in ("studyloop-mcp", "session-db"):
-        assert servers[name]["args"][-1] in {"studyloop-mcp", "session-db-mcp"}
+    for name, spec in _MCP_SERVERS.items():
+        assert servers[name]["args"][-1] == spec["command"]
+
+
+# ---------------------------------------------------------------------------
+# L7 -- native study-plan-architect definitions ship for Claude, OpenCode, and
+# Kiro, alongside the mentor definitions the same tables already carry.
+# ---------------------------------------------------------------------------
+
+
+def test_plan_architect_native_definitions_are_in_the_tool_link_tables() -> None:
+    sources = _installer_sources_by_tool()
+    assert "agents/claude/study-plan-architect.md" in sources["claude"]
+    assert "agents/opencode/study-plan-architect.md" in sources["opencode"]
+    assert "agents/kiro/study-plan-architect.json" in sources["kiro"]
+    assert "agents/kiro/study-plan-architect" in sources["kiro"]
+
+
+def test_install_agents_places_the_plan_architect_definitions(tmp_path: Path, monkeypatch) -> None:
+    """With ``_HOME`` sandboxed, ``install agents`` places the study-plan-
+    architect files for claude/opencode/kiro, and Kiro's carries the same
+    session-export stop hook study-mentor.json does, with no mcpServers."""
+    repo_root = _repo_root()
+    detected = ["claude", "opencode", "kiro"]
+
+    monkeypatch.setattr(installers, "_HOME", tmp_path)
+    monkeypatch.setattr(
+        installers,
+        "_TOOL_LINKS",
+        {
+            tool: tuple(
+                installers.LinkSpec(spec.source, _rebase(spec.target, tmp_path)) for spec in specs
+            )
+            for tool, specs in installers._TOOL_LINKS.items()
+        },
+    )
+    monkeypatch.setattr(
+        installers,
+        "_SHARED_LINKS",
+        tuple(
+            installers.LinkSpec(spec.source, _rebase(spec.target, tmp_path))
+            for spec in installers._SHARED_LINKS
+        ),
+    )
+    monkeypatch.setattr(
+        installers,
+        "XTILES_SKILL_LINKS",
+        {
+            tool: installers.LinkSpec(
+                _rebase(spec.source, tmp_path), _rebase(spec.target, tmp_path)
+            )
+            for tool, spec in installers.XTILES_SKILL_LINKS.items()
+        },
+    )
+    monkeypatch.setattr(
+        installers,
+        "SESSION_MEMORY_SKILL_LINKS",
+        {
+            tool: installers.LinkSpec(
+                _rebase(spec.source, tmp_path), _rebase(spec.target, tmp_path)
+            )
+            for tool, spec in installers.SESSION_MEMORY_SKILL_LINKS.items()
+        },
+    )
+    monkeypatch.setattr(
+        installers,
+        "_HARNESS_EXPORT",
+        {
+            tool: installers._HarnessExport(
+                Path(_rebase(str(spec.steering_path), tmp_path)), spec.export_flag
+            )
+            for tool, spec in installers._HARNESS_EXPORT.items()
+        },
+    )
+
+    installers.install_agent_definitions(repo_root, tools=detected)
+
+    claude_path = tmp_path / ".claude/agents/study-plan-architect.md"
+    opencode_path = tmp_path / ".config/opencode/agents/study-plan-architect.md"
+    kiro_json = tmp_path / ".kiro/agents/study-plan-architect.json"
+    kiro_dir = tmp_path / ".kiro/agents/study-plan-architect"
+
+    assert claude_path.is_symlink(), "claude study-plan-architect.md was not linked"
+    assert opencode_path.is_symlink(), "opencode study-plan-architect.md was not linked"
+    assert kiro_json.is_symlink(), "kiro study-plan-architect.json was not linked"
+    assert kiro_dir.is_symlink(), "kiro study-plan-architect/ directory was not linked"
+    assert (kiro_dir / "persona.md").is_file()
+
+    definition = json.loads(kiro_json.read_text(encoding="utf-8"))
+    assert definition["prompt"] == "file://study-plan-architect/persona.md"
+    resolved_prompt = kiro_json.resolve().parent / "study-plan-architect" / "persona.md"
+    assert resolved_prompt.is_file(), "the prompt file:// resource does not resolve once linked"
+    assert "mcpServers" not in definition, "study-plan-architect.json must carry no mcpServers"
+    hooks = definition["hooks"]["stop"]
+    assert any(hook["command"] == installers.export_hook_command("--kiro-only") for hook in hooks)
+
+
+def _install_kiro_into_fake_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Run the real installer for Kiro with every home-relative target rebased into tmp_path."""
+    repo_root = _repo_root()
+    monkeypatch.setattr(installers, "_HOME", tmp_path)
+    monkeypatch.setattr(
+        installers,
+        "_TOOL_LINKS",
+        {
+            tool: tuple(
+                installers.LinkSpec(spec.source, _rebase(spec.target, tmp_path)) for spec in specs
+            )
+            for tool, specs in installers._TOOL_LINKS.items()
+        },
+    )
+    monkeypatch.setattr(
+        installers,
+        "_SHARED_LINKS",
+        tuple(
+            installers.LinkSpec(spec.source, _rebase(spec.target, tmp_path))
+            for spec in installers._SHARED_LINKS
+        ),
+    )
+    monkeypatch.setattr(
+        installers,
+        "XTILES_SKILL_LINKS",
+        {
+            tool: installers.LinkSpec(
+                _rebase(spec.source, tmp_path), _rebase(spec.target, tmp_path)
+            )
+            for tool, spec in installers.XTILES_SKILL_LINKS.items()
+        },
+    )
+    monkeypatch.setattr(
+        installers,
+        "SESSION_MEMORY_SKILL_LINKS",
+        {
+            tool: installers.LinkSpec(
+                _rebase(spec.source, tmp_path), _rebase(spec.target, tmp_path)
+            )
+            for tool, spec in installers.SESSION_MEMORY_SKILL_LINKS.items()
+        },
+    )
+    monkeypatch.setattr(
+        installers,
+        "_HARNESS_EXPORT",
+        {
+            tool: installers._HarnessExport(
+                Path(_rebase(str(spec.steering_path), tmp_path)), spec.export_flag
+            )
+            for tool, spec in installers._HARNESS_EXPORT.items()
+        },
+    )
+    installers.install_agent_definitions(repo_root, tools=["kiro"])
+    return tmp_path / ".kiro"
+
+
+@pytest.mark.parametrize("agent", ["study-mentor", "study-plan-architect"])
+def test_every_kiro_agent_file_resource_resolves_once_installed(
+    agent: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Kiro resolves `file://` resources relative to the agent file's directory
+    (`~/.kiro/agents/`) or to its home (`~/.kiro/`); every resource an installed
+    agent declares must exist under one of the two, or Kiro loads the agent
+    without the material it was written to use. study-plan-architect.json
+    declared six `file://shared/*.md` resources that no link ever created
+    (council phase 2, L7 reviewer)."""
+    kiro_home = _install_kiro_into_fake_home(tmp_path, monkeypatch)
+    definition = json.loads((kiro_home / "agents" / f"{agent}.json").read_text(encoding="utf-8"))
+    resources = [definition["prompt"], *definition.get("resources", [])]
+    unresolved = []
+    for resource in resources:
+        assert resource.startswith("file://"), resource
+        rel = resource.removeprefix("file://")
+        if not ((kiro_home / "agents" / rel).is_file() or (kiro_home / rel).is_file()):
+            unresolved.append(resource)
+    assert not unresolved, f"{agent}.json resources do not resolve after install: {unresolved}"

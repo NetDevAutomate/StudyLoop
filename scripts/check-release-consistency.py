@@ -42,6 +42,21 @@ def validate_root_version_matches_package(repo_root: Path, package_version: str)
         )
 
 
+def validate_release_note_is_written(repo_root: Path, version: str) -> None:
+    """Release mode only: a note still carrying prepare-release's skeleton line
+
+    is not a release note. Mid-cycle the skeleton is a legitimate intermediate
+    state (prepare-release writes it; the notes come later), so the ordinary
+    check does not run this.
+    """
+    text = (repo_root / "releases" / f"v{version}.md").read_text(encoding="utf-8")
+    if "- Release summary." in text:
+        raise ValueError(
+            f"releases/v{version}.md is still the prepare-release skeleton "
+            "('- Release summary.'); write the release notes before releasing"
+        )
+
+
 def validate_release_note(repo_root: Path, version: str) -> None:
     release_note_path = repo_root / "releases" / f"v{version}.md"
     if not release_note_path.is_file():
@@ -55,12 +70,6 @@ def validate_release_note(repo_root: Path, version: str) -> None:
     if f"v{version}" not in first_heading:
         raise ValueError(
             f"release note title must mention v{version}; got {first_heading or '<none>'}"
-        )
-    # A skeleton straight from scripts/prepare-release.py is not a release note.
-    if "- Release summary." in text:
-        raise ValueError(
-            f"releases/v{version}.md is still the prepare-release skeleton "
-            "('- Release summary.'); write the release notes before releasing"
         )
 
 
@@ -358,6 +367,7 @@ def main(argv: list[str] | None = None) -> int:
         validate_release_note(repo_root, version)
         validate_adr_statuses(repo_root)
         if args.release:
+            validate_release_note_is_written(repo_root, version)
             if args.pre_tag:
                 print(f"release tag pending: cut v{version} after this check passes")
             else:

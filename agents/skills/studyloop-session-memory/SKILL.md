@@ -28,6 +28,23 @@ session-query search "<topic or error>" --project "$PWD"
 Run `session-query --help` for filters and output modes. A missing MCP server is
 not a reason to skip retrieval; the CLI is the deterministic fallback.
 
+### MCP registration per harness
+
+| Harness | session-db / studyloop MCP | Fallback |
+|---|---|---|
+| Kiro CLI | MCP + fallback | `session-query` / `studyloop mastery graph` |
+| Codex | MCP + fallback | `session-query` / `studyloop mastery graph` |
+| Claude Code | MCP + fallback | `session-query` / `studyloop mastery graph` |
+| OpenCode | MCP + fallback | `session-query` / `studyloop mastery graph` |
+| Grok Build | MCP + fallback | `session-query` / `studyloop mastery graph` |
+| pi | fallback only | `session-query` / `session-context search` / `studyloop mastery graph` |
+
+`studyloop install agents --tool <harness>` registers both MCP servers
+globally for every harness above except pi. pi has no MCP by design: its own
+README states "No MCP" (build CLI tools with skills, or an extension), so a
+pi mentor always uses the CLI fallbacks in this table, not just when a server
+happens to be disconnected.
+
 ### Prior decisions: `memory_search`
 
 `session_search` finds where a topic was *discussed*. `memory_search` (same
