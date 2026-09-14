@@ -95,7 +95,7 @@ studyloop study --mode plan-architect --agent codex
 
 Claude Code receives the `socratic-mentor` agent and a session-export hook. The installer merges the hook into existing settings and does not replace unrelated hooks.
 
-Claude Code also receives the `study-plan-architect` subagent, installed the same way. Start it with `/agents study-plan-architect` inside a Claude Code session, or launch it through StudyLoop with `studyloop study --mode plan-architect --agent claude`.
+Claude Code also receives the `study-plan-architect` subagent, installed the same way. Inside a Claude Code session, ask for it by name ("use the study-plan-architect subagent to build my study plan"); `/agents` lists the installed subagents. Or launch it through StudyLoop with `studyloop study --mode plan-architect --agent claude`.
 
 Configure Claude Code's model provider before starting a StudyLoop session. If
 you use AWS Bedrock, Claude Code needs Bedrock enabled and valid AWS credentials

@@ -597,13 +597,17 @@ def test_kiro_allowlist_and_servers_match_the_instruction() -> None:
 
 @pytest.mark.parametrize("relative", ["agents/claude/mcp.json"])
 def test_repo_owned_mcp_configs_register_both_servers(relative: str) -> None:
+    from studyloop.installers import _MCP_SERVERS
+
     servers = json.loads((_repo_root() / relative).read_text(encoding="utf-8"))["mcpServers"]
-    assert "studyloop-mcp" in servers and "session-db" in servers, (
-        f"{relative} must register both servers or get_concept_context / "
+    # Server NAMES follow installers._MCP_SERVERS (council grok F9); the console
+    # scripts (`studyloop-mcp`, `session-db-mcp`) are the COMMANDS, never names.
+    assert set(_MCP_SERVERS) <= set(servers), (
+        f"{relative} must register {sorted(_MCP_SERVERS)} or get_concept_context / "
         "memory_search are instructed but unreachable"
     )
-    for name in ("studyloop-mcp", "session-db"):
-        assert servers[name]["args"][-1] in {"studyloop-mcp", "session-db-mcp"}
+    for name, spec in _MCP_SERVERS.items():
+        assert servers[name]["args"][-1] == spec["command"]
 
 
 # ---------------------------------------------------------------------------
@@ -697,3 +701,81 @@ def test_install_agents_places_the_plan_architect_definitions(tmp_path: Path, mo
     assert "mcpServers" not in definition, "study-plan-architect.json must carry no mcpServers"
     hooks = definition["hooks"]["stop"]
     assert any(hook["command"] == installers.export_hook_command("--kiro-only") for hook in hooks)
+
+
+def _install_kiro_into_fake_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Run the real installer for Kiro with every home-relative target rebased into tmp_path."""
+    repo_root = _repo_root()
+    monkeypatch.setattr(installers, "_HOME", tmp_path)
+    monkeypatch.setattr(
+        installers,
+        "_TOOL_LINKS",
+        {
+            tool: tuple(
+                installers.LinkSpec(spec.source, _rebase(spec.target, tmp_path)) for spec in specs
+            )
+            for tool, specs in installers._TOOL_LINKS.items()
+        },
+    )
+    monkeypatch.setattr(
+        installers,
+        "_SHARED_LINKS",
+        tuple(
+            installers.LinkSpec(spec.source, _rebase(spec.target, tmp_path))
+            for spec in installers._SHARED_LINKS
+        ),
+    )
+    monkeypatch.setattr(
+        installers,
+        "XTILES_SKILL_LINKS",
+        {
+            tool: installers.LinkSpec(
+                _rebase(spec.source, tmp_path), _rebase(spec.target, tmp_path)
+            )
+            for tool, spec in installers.XTILES_SKILL_LINKS.items()
+        },
+    )
+    monkeypatch.setattr(
+        installers,
+        "SESSION_MEMORY_SKILL_LINKS",
+        {
+            tool: installers.LinkSpec(
+                _rebase(spec.source, tmp_path), _rebase(spec.target, tmp_path)
+            )
+            for tool, spec in installers.SESSION_MEMORY_SKILL_LINKS.items()
+        },
+    )
+    monkeypatch.setattr(
+        installers,
+        "_HARNESS_EXPORT",
+        {
+            tool: installers._HarnessExport(
+                Path(_rebase(str(spec.steering_path), tmp_path)), spec.export_flag
+            )
+            for tool, spec in installers._HARNESS_EXPORT.items()
+        },
+    )
+    installers.install_agent_definitions(repo_root, tools=["kiro"])
+    return tmp_path / ".kiro"
+
+
+@pytest.mark.parametrize("agent", ["study-mentor", "study-plan-architect"])
+def test_every_kiro_agent_file_resource_resolves_once_installed(
+    agent: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Kiro resolves `file://` resources relative to the agent file's directory
+    (`~/.kiro/agents/`) or to its home (`~/.kiro/`); every resource an installed
+    agent declares must exist under one of the two, or Kiro loads the agent
+    without the material it was written to use. study-plan-architect.json
+    declared six `file://shared/*.md` resources that no link ever created
+    (council phase 2, L7 reviewer)."""
+    kiro_home = _install_kiro_into_fake_home(tmp_path, monkeypatch)
+    definition = json.loads((kiro_home / "agents" / f"{agent}.json").read_text(encoding="utf-8"))
+    resources = [definition["prompt"], *definition.get("resources", [])]
+    unresolved = []
+    for resource in resources:
+        assert resource.startswith("file://"), resource
+        rel = resource.removeprefix("file://")
+        if not ((kiro_home / "agents" / rel).is_file() or (kiro_home / rel).is_file()):
+            unresolved.append(resource)
+    assert not unresolved, f"{agent}.json resources do not resolve after install: {unresolved}"

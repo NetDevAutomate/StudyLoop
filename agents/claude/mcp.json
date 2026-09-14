@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "studyloop-mcp": {
+    "studyloop": {
       "command": "uv",
       "args": [
         "run",
