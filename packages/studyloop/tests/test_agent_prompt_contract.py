@@ -31,6 +31,10 @@ def _repo_root() -> Path:
     return root
 
 
+def _normalised(text: str) -> str:
+    return " ".join(text.split())
+
+
 def _agents_text_files() -> list[Path]:
     """Every prose/config file under ``agents/`` a mentor could read as instructions.
 
@@ -310,3 +314,25 @@ def test_opencode_mcp_json_does_not_exist_and_is_unreferenced() -> None:
             continue  # frozen historical evidence, not a live doc
         text = path.read_text(encoding="utf-8")
         assert "opencode/mcp.json" not in text, f"{path} still references opencode/mcp.json"
+
+
+# ---------------------------------------------------------------------------
+# W23 -- study-plan-architect is not wired into any installer; stop telling
+# scripts/install.sh users to start it.
+# ---------------------------------------------------------------------------
+
+
+def test_install_sh_does_not_advertise_the_unshipped_study_plan_architect() -> None:
+    text = (_repo_root() / "scripts/install.sh").read_text(encoding="utf-8")
+    assert "study-plan-architect" not in text
+
+
+def test_agent_install_doc_flags_study_plan_architect_as_not_installed() -> None:
+    text = _normalised((_repo_root() / "docs/agent-install.md").read_text(encoding="utf-8"))
+    assert "study-plan-architect" in text
+    match = re.search(r"[^.]*study-plan-architect[^.]*\.", text)
+    assert match, "docs/agent-install.md mentions study-plan-architect without a sentence"
+    assert re.search(r"draft|not (?:yet )?install", match.group(0), re.IGNORECASE), (
+        f"docs/agent-install.md must say study-plan-architect is not yet installed: "
+        f"{match.group(0)!r}"
+    )
