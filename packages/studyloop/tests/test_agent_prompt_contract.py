@@ -274,6 +274,40 @@ def test_agents_md_is_the_codex_symlink() -> None:
     assert root_agents.read_text(encoding="utf-8") == codex_agents.read_text(encoding="utf-8")
 
 
+# ---------------------------------------------------------------------------
+# L7 -- study-plan-architect: ONE canonical body, carried verbatim by every
+# native harness definition after its own harness-specific header (frontmatter
+# for Claude/OpenCode, nothing at all for Kiro), exactly like AGENTS.md ==
+# agents/codex/AGENTS.md above.
+# ---------------------------------------------------------------------------
+
+_PLAN_ARCHITECT_CANONICAL = "agents/shared/personas/plan-architect.md"
+
+
+def _strip_frontmatter(text: str) -> str:
+    """Drop a leading ``---\\n...\\n---\\n`` YAML frontmatter block, if present."""
+    if not text.startswith("---\n"):
+        return text
+    end = text.find("\n---\n", 4)
+    assert end != -1, "frontmatter opened with '---' but never closed"
+    return text[end + len("\n---\n") :]
+
+
+@pytest.mark.parametrize(
+    "relative",
+    [
+        "agents/claude/study-plan-architect.md",
+        "agents/opencode/study-plan-architect.md",
+        "agents/kiro/study-plan-architect/persona.md",
+    ],
+)
+def test_plan_architect_native_files_carry_the_canonical_body_verbatim(relative: str) -> None:
+    repo_root = _repo_root()
+    canonical = (repo_root / _PLAN_ARCHITECT_CANONICAL).read_text(encoding="utf-8").lstrip("\n")
+    body = _strip_frontmatter((repo_root / relative).read_text(encoding="utf-8")).lstrip("\n")
+    assert body == canonical, f"{relative} body has drifted from {_PLAN_ARCHITECT_CANONICAL}"
+
+
 @pytest.mark.parametrize(
     "relative", ["agents/codex/AGENTS.md", "agents/shared/session-db-mandate.md"]
 )
