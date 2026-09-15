@@ -10,7 +10,7 @@ Branch: `fix/plan-integration-bugs` (RED at `3a4f6b01`). §5 stream: `feat/lexic
 
 ## Phase 0 — Bug B (D-1) · owner: agent A · files: `planning/evaluation.py`
 
-- [ ] **T0.1** Honour `record_checkpoint`'s boolean in `evaluate_and_record`; append the existing string
+- [x] **T0.1** (`c16ffa35`) Honour `record_checkpoint`'s boolean in `evaluate_and_record`; append the existing string
       `"checkpoint not saved to the database"` when it is `False`. Keep the `except` for a raise.
       DoD: `uv run --group dev pytest packages/studyloop/tests/test_planning_evaluation.py -q` → all pass,
       including `test_failed_checkpoint_db_write_is_reported_as_a_warning` and
