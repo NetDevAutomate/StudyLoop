@@ -85,6 +85,19 @@ class MultiLineMentor:
         return "line one\nline two"
 
 
+class ParagraphBreakMentor:
+    """A mentor whose reply has a BLANK line in the middle -- an ordinary
+    paragraph break, the common shape of a real tutoring reply. Real tmux
+    still echoes the blank line as its own (empty) pane line, but
+    ``capture-pane`` output is filtered to non-blank lines only, so that
+    echoed blank line never appears in what ``_capture()`` returns and must
+    never be queued as something the reader waits to see."""
+
+    async def send(self, message: str) -> str:
+        assert message
+        return "para one\n\npara two"
+
+
 class TestFromEnv:
     def test_missing_command_names_the_env_var(
         self, monkeypatch: pytest.MonkeyPatch, socket_dir: Path
@@ -326,6 +339,54 @@ class TestConverseLoop:
         )
 
         result = await actor.converse(MultiLineMentor())
+
+        assert result.outcome is TerminationOutcome.COMPLETED
+        assert [t.learner_message for t in result.transcript] == ["learner turn 1"]
+        await actor.aclose()
+
+    async def test_mentor_reply_with_blank_paragraph_break_is_not_misread(
+        self, monkeypatch: pytest.MonkeyPatch, socket_dir: Path
+    ) -> None:
+        """A blank line inside ``mentor_reply`` (a paragraph break) must not
+        get queued as a pending-echo entry that can never be dequeued --
+        ``_capture()`` only ever returns NON-BLANK lines, so an empty
+        pending-echo entry would sit at the head of the queue forever,
+        blocking every later echo match and causing the NEXT real line
+        ("para two") to be misread as a new learner turn.
+        """
+        pane: list[str] = ["learner turn 1"]
+        script_replies = [DONE_SENTINEL]
+        pane_height = 24
+
+        def fake_tmux(*args, socket_dir):
+            cmd = args[0]
+            if cmd == "new-session":
+                return _ok()
+            if cmd == "send-keys":
+                text = args[3]
+                # Real tmux: an embedded literal newline in `text` is
+                # echoed back as separate pane lines, INCLUDING a blank
+                # line for an embedded blank line -- never one.
+                pane.extend(text.splitlines())
+                if script_replies:
+                    pane.append(script_replies.pop(0))
+                return _ok()
+            if cmd == "capture-pane":
+                padded = pane + [""] * (pane_height - len(pane))
+                return _ok("\n".join(padded))
+            if cmd == "kill-session":
+                return _ok()
+            raise AssertionError(f"unexpected tmux command: {cmd}")
+
+        monkeypatch.setattr("acceptance.actors.harness._tmux", fake_tmux)
+        actor = HarnessActor(
+            command=("sh",),
+            socket_dir=socket_dir,
+            reply_timeout=2.0,
+            budget=BudgetGuard(max_turns=10),
+        )
+
+        result = await actor.converse(ParagraphBreakMentor())
 
         assert result.outcome is TerminationOutcome.COMPLETED
         assert [t.learner_message for t in result.transcript] == ["learner turn 1"]

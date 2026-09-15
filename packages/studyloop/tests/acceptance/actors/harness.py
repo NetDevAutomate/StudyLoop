@@ -205,12 +205,18 @@ class HarnessActor:
         # newline in `text` is treated as its own Enter keystroke by
         # send-keys, so tmux echoes each line SEPARATELY (verified against
         # real tmux 3.7b), not as one multi-line entry. Queue one
-        # pending-echo entry per resulting line (mirroring how _capture()
-        # observes it via splitlines()) so the reader skips every echoed
-        # fragment instead of handing the mentor's own words back to the
-        # mentor as new learner turns.
+        # pending-echo entry per resulting NON-BLANK line, mirroring what
+        # _capture() actually returns (it filters to non-blank lines only)
+        # rather than raw splitlines(): a blank line inside `text` (e.g. a
+        # paragraph break) is echoed by tmux too, but never comes back out
+        # of _capture(), so queuing it here would leave a pending-echo
+        # entry that can NEVER be dequeued -- permanently blocking every
+        # later echo match and causing the next real line to be misread as
+        # a new learner turn.
         for line in text.splitlines() or [text]:
-            self._pending_echo.append(line.strip())
+            stripped = line.strip()
+            if stripped:
+                self._pending_echo.append(stripped)
 
     def _capture(self) -> list[str]:
         result = _tmux("capture-pane", "-p", "-t", self.session_name, socket_dir=self.socket_dir)
