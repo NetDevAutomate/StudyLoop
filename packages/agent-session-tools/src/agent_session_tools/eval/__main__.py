@@ -7,6 +7,14 @@
 Every arm answers every gold question in the same run against the same
 database, then each ordered pair is compared with the paired cluster
 bootstrap. Nothing is written to the database: the arms read it read-only.
+
+``stage5-latency`` is the third door -- Stage 5's Gate L measurement runner
+(:mod:`.stage5_latency`), which launches independent process starts instead of
+scoring one:
+
+    python -m agent_session_tools.eval stage5-latency \
+        --db ~/.local/share/studyloop/eval-clones/bakeoff-bge-20260915/sessions.db \
+        --out receipt.json
 """
 
 from __future__ import annotations
@@ -77,6 +85,20 @@ def _parser() -> argparse.ArgumentParser:
         "--sample", type=int, help="score a deterministic sample of N questions"
     )
     census.add_argument("--seed", type=int, default=SEED, help="sample seed")
+
+    # Stage 5 Gate L is a measurement runner rather than a ruler, but it is
+    # invoked the same way as one so there is a single door into the harness.
+    # Its own module keeps a lean ``child`` entry point (one start = one fresh
+    # interpreter), which this parser deliberately does not expose: a child is
+    # launched by the parent, never by hand.
+    from .stage5_latency import add_parent_arguments
+
+    add_parent_arguments(
+        sub.add_parser(
+            "stage5-latency",
+            help="Gate L: resident-state latency for the mcp/web default flip",
+        )
+    )
     return parser
 
 
@@ -177,6 +199,10 @@ def main(argv: list[str] | None = None) -> int:
         return _run_gold(args)
     if args.ruler == "census":
         return _run_census(args)
+    if args.ruler == "stage5-latency":
+        from .stage5_latency import run_parent
+
+        return run_parent(args)
     return 2
 
 
