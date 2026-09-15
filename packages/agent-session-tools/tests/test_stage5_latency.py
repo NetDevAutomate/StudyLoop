@@ -714,3 +714,16 @@ class TestReceipt:
     def test_the_overall_verdict_is_the_cells_and_never_a_pool(self, receipt):
         assert receipt["verdict"]["cells_reported"] == 1
         assert "no pooling" in receipt["verdict"]["rule"]
+
+
+class TestMeasurementConfigMeasuresTheShippingSystem:
+    def test_query_encoder_is_auto_not_a_hardcoded_backend(self, tmp_path):
+        """The Gate L SUT is the system as it ships: query_encoder resolves
+        per the schema default ('auto' since the A2 flip, Gate P PASS), not a
+        backend pinned by the tool. The 2026-09-15 torch-pinned run is kept as
+        the torch-path receipt; this pins the corrected SUT.
+        """
+        from agent_session_tools.eval.stage5_latency import measurement_config
+
+        config = measurement_config(tmp_path / "sessions.db", "bge-small-en-v1.5")
+        assert config["semantic_search"]["query_encoder"] == "auto"

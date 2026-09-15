@@ -1192,7 +1192,11 @@ def measurement_config(db_path: Path, model: str) -> dict[str, Any]:
         "_note": MEASUREMENT_CONFIG_NOTE,
         "database": {"path": str(db_path)},
         "memory": {"default_scope": "unclassified", "projects": {}},
-        "semantic_search": {"model": model, "query_encoder": "torch"},
+        # The SUT is the system as it ships: "auto" is the schema default
+        # since the A2 flip (Gate P PASS, stage5-parity-verdict.json), so the
+        # measured query encoder is exactly what a real MCP/web process runs.
+        # The 2026-09-15 torch-pinned receipt is kept as the torch-path record.
+        "semantic_search": {"model": model, "query_encoder": "auto"},
     }
 
 

@@ -1,0 +1,3199 @@
+{
+ "args": {
+  "cells": [
+   "c1-idle",
+   "c1-load",
+   "c4-idle",
+   "c4-load"
+  ],
+  "db": "/Users/ataylor/.local/share/studyloop/eval-clones/bakeoff-bge-20260915/sessions.db",
+  "out": "/Users/ataylor/code/personal/tools/studyloop/docs/architecture/session-memory/receipts/semantic-layer/stage5-latency-gateL-2026-09-15-shipping.json",
+  "requests": 100,
+  "resamples": 2000,
+  "rows": 10,
+  "seed": 20260915,
+  "smoke": false,
+  "starts": 30
+ },
+ "cells": {
+  "c1-idle": {
+   "_raw_request_timings": "dropped from the committed receipt (repo 500KB hook); the full receipt with every per-request value is /Users/ataylor/.local/share/studyloop/eval-receipts/stage5-latency-gateL-2026-09-15-shipping-full.json sha256=62d98fdd321cbe4c697a62f5b088e6b77fe6c4282cd5aca316125bd670ff5e35",
+   "by_start": {
+    "start-000": {
+     "hybrid": {
+      "max_ms": 107.2,
+      "n": 100,
+      "p50_ms": 35.49,
+      "p95_ms": 75.27
+     },
+     "lexical": {
+      "max_ms": 82.19,
+      "n": 100,
+      "p50_ms": 11.59,
+      "p95_ms": 51.68
+     },
+     "overhead": {
+      "max_ms": 28.57,
+      "n": 100,
+      "p50_ms": 23.51,
+      "p95_ms": 25.89
+     }
+    },
+    "start-001": {
+     "hybrid": {
+      "max_ms": 106.86,
+      "n": 100,
+      "p50_ms": 34.94,
+      "p95_ms": 75.56
+     },
+     "lexical": {
+      "max_ms": 83.11,
+      "n": 100,
+      "p50_ms": 11.77,
+      "p95_ms": 53.02
+     },
+     "overhead": {
+      "max_ms": 26.8,
+      "n": 100,
+      "p50_ms": 23.13,
+      "p95_ms": 25.84
+     }
+    },
+    "start-002": {
+     "hybrid": {
+      "max_ms": 107.9,
+      "n": 100,
+      "p50_ms": 35.16,
+      "p95_ms": 76.88
+     },
+     "lexical": {
+      "max_ms": 87.2,
+      "n": 100,
+      "p50_ms": 11.56,
+      "p95_ms": 51.62
+     },
+     "overhead": {
+      "max_ms": 27.24,
+      "n": 100,
+      "p50_ms": 23.27,
+      "p95_ms": 25.71
+     }
+    },
+    "start-003": {
+     "hybrid": {
+      "max_ms": 109.41,
+      "n": 100,
+      "p50_ms": 35.43,
+      "p95_ms": 76.71
+     },
+     "lexical": {
+      "max_ms": 84.82,
+      "n": 100,
+      "p50_ms": 11.78,
+      "p95_ms": 51.91
+     },
+     "overhead": {
+      "max_ms": 28.03,
+      "n": 100,
+      "p50_ms": 23.53,
+      "p95_ms": 26.21
+     }
+    },
+    "start-004": {
+     "hybrid": {
+      "max_ms": 109.1,
+      "n": 100,
+      "p50_ms": 35.48,
+      "p95_ms": 77.95
+     },
+     "lexical": {
+      "max_ms": 83.99,
+      "n": 100,
+      "p50_ms": 11.9,
+      "p95_ms": 53.63
+     },
+     "overhead": {
+      "max_ms": 27.76,
+      "n": 100,
+      "p50_ms": 23.52,
+      "p95_ms": 25.84
+     }
+    },
+    "start-005": {
+     "hybrid": {
+      "max_ms": 111.33,
+      "n": 100,
+      "p50_ms": 35.33,
+      "p95_ms": 77.15
+     },
+     "lexical": {
+      "max_ms": 82.44,
+      "n": 100,
+      "p50_ms": 11.77,
+      "p95_ms": 53.58
+     },
+     "overhead": {
+      "max_ms": 28.89,
+      "n": 100,
+      "p50_ms": 23.39,
+      "p95_ms": 26.1
+     }
+    },
+    "start-006": {
+     "hybrid": {
+      "max_ms": 108.96,
+      "n": 100,
+      "p50_ms": 35.31,
+      "p95_ms": 75.13
+     },
+     "lexical": {
+      "max_ms": 83.64,
+      "n": 100,
+      "p50_ms": 11.65,
+      "p95_ms": 51.56
+     },
+     "overhead": {
+      "max_ms": 28.48,
+      "n": 100,
+      "p50_ms": 23.55,
+      "p95_ms": 25.66
+     }
+    },
+    "start-007": {
+     "hybrid": {
+      "max_ms": 108.96,
+      "n": 100,
+      "p50_ms": 35.47,
+      "p95_ms": 77.35
+     },
+     "lexical": {
+      "max_ms": 83.61,
+      "n": 100,
+      "p50_ms": 11.69,
+      "p95_ms": 53.43
+     },
+     "overhead": {
+      "max_ms": 27.99,
+      "n": 100,
+      "p50_ms": 23.51,
+      "p95_ms": 25.82
+     }
+    },
+    "start-008": {
+     "hybrid": {
+      "max_ms": 109.0,
+      "n": 100,
+      "p50_ms": 35.43,
+      "p95_ms": 76.17
+     },
+     "lexical": {
+      "max_ms": 83.84,
+      "n": 100,
+      "p50_ms": 11.88,
+      "p95_ms": 51.77
+     },
+     "overhead": {
+      "max_ms": 27.26,
+      "n": 100,
+      "p50_ms": 23.45,
+      "p95_ms": 25.95
+     }
+    },
+    "start-009": {
+     "hybrid": {
+      "max_ms": 108.51,
+      "n": 100,
+      "p50_ms": 35.31,
+      "p95_ms": 76.21
+     },
+     "lexical": {
+      "max_ms": 85.74,
+      "n": 100,
+      "p50_ms": 11.85,
+      "p95_ms": 53.11
+     },
+     "overhead": {
+      "max_ms": 27.48,
+      "n": 100,
+      "p50_ms": 23.54,
+      "p95_ms": 26.25
+     }
+    },
+    "start-010": {
+     "hybrid": {
+      "max_ms": 108.62,
+      "n": 100,
+      "p50_ms": 35.51,
+      "p95_ms": 76.32
+     },
+     "lexical": {
+      "max_ms": 84.04,
+      "n": 100,
+      "p50_ms": 11.74,
+      "p95_ms": 53.03
+     },
+     "overhead": {
+      "max_ms": 29.21,
+      "n": 100,
+      "p50_ms": 23.34,
+      "p95_ms": 25.79
+     }
+    },
+    "start-011": {
+     "hybrid": {
+      "max_ms": 112.31,
+      "n": 100,
+      "p50_ms": 35.46,
+      "p95_ms": 77.23
+     },
+     "lexical": {
+      "max_ms": 85.1,
+      "n": 100,
+      "p50_ms": 11.87,
+      "p95_ms": 53.47
+     },
+     "overhead": {
+      "max_ms": 27.54,
+      "n": 100,
+      "p50_ms": 23.71,
+      "p95_ms": 26.27
+     }
+    },
+    "start-012": {
+     "hybrid": {
+      "max_ms": 111.62,
+      "n": 100,
+      "p50_ms": 35.54,
+      "p95_ms": 76.22
+     },
+     "lexical": {
+      "max_ms": 86.91,
+      "n": 100,
+      "p50_ms": 11.65,
+      "p95_ms": 52.28
+     },
+     "overhead": {
+      "max_ms": 27.06,
+      "n": 100,
+      "p50_ms": 23.52,
+      "p95_ms": 25.54
+     }
+    },
+    "start-013": {
+     "hybrid": {
+      "max_ms": 109.59,
+      "n": 100,
+      "p50_ms": 35.56,
+      "p95_ms": 75.86
+     },
+     "lexical": {
+      "max_ms": 82.85,
+      "n": 100,
+      "p50_ms": 11.63,
+      "p95_ms": 51.1
+     },
+     "overhead": {
+      "max_ms": 28.55,
+      "n": 100,
+      "p50_ms": 23.66,
+      "p95_ms": 26.73
+     }
+    },
+    "start-014": {
+     "hybrid": {
+      "max_ms": 109.2,
+      "n": 100,
+      "p50_ms": 35.49,
+      "p95_ms": 76.73
+     },
+     "lexical": {
+      "max_ms": 84.89,
+      "n": 100,
+      "p50_ms": 11.74,
+      "p95_ms": 52.04
+     },
+     "overhead": {
+      "max_ms": 28.45,
+      "n": 100,
+      "p50_ms": 23.56,
+      "p95_ms": 25.81
+     }
+    },
+    "start-015": {
+     "hybrid": {
+      "max_ms": 111.52,
+      "n": 100,
+      "p50_ms": 35.56,
+      "p95_ms": 77.11
+     },
+     "lexical": {
+      "max_ms": 85.74,
+      "n": 100,
+      "p50_ms": 11.81,
+      "p95_ms": 53.35
+     },
+     "overhead": {
+      "max_ms": 27.95,
+      "n": 100,
+      "p50_ms": 23.31,
+      "p95_ms": 26.66
+     }
+    },
+    "start-016": {
+     "hybrid": {
+      "max_ms": 107.16,
+      "n": 100,
+      "p50_ms": 35.21,
+      "p95_ms": 77.07
+     },
+     "lexical": {
+      "max_ms": 83.55,
+      "n": 100,
+      "p50_ms": 11.83,
+      "p95_ms": 53.66
+     },
+     "overhead": {
+      "max_ms": 27.63,
+      "n": 100,
+      "p50_ms": 23.47,
+      "p95_ms": 25.49
+     }
+    },
+    "start-017": {
+     "hybrid": {
+      "max_ms": 108.71,
+      "n": 100,
+      "p50_ms": 35.59,
+      "p95_ms": 76.81
+     },
+     "lexical": {
+      "max_ms": 83.92,
+      "n": 100,
+      "p50_ms": 11.84,
+      "p95_ms": 52.49
+     },
+     "overhead": {
+      "max_ms": 26.54,
+      "n": 100,
+      "p50_ms": 23.41,
+      "p95_ms": 25.94
+     }
+    },
+    "start-018": {
+     "hybrid": {
+      "max_ms": 107.82,
+      "n": 100,
+      "p50_ms": 35.68,
+      "p95_ms": 77.22
+     },
+     "lexical": {
+      "max_ms": 82.64,
+      "n": 100,
+      "p50_ms": 11.85,
+      "p95_ms": 52.49
+     },
+     "overhead": {
+      "max_ms": 27.52,
+      "n": 100,
+      "p50_ms": 23.5,
+      "p95_ms": 26.26
+     }
+    },
+    "start-019": {
+     "hybrid": {
+      "max_ms": 110.5,
+      "n": 100,
+      "p50_ms": 35.53,
+      "p95_ms": 76.32
+     },
+     "lexical": {
+      "max_ms": 84.12,
+      "n": 100,
+      "p50_ms": 11.61,
+      "p95_ms": 53.74
+     },
+     "overhead": {
+      "max_ms": 28.59,
+      "n": 100,
+      "p50_ms": 23.58,
+      "p95_ms": 26.31
+     }
+    },
+    "start-020": {
+     "hybrid": {
+      "max_ms": 109.54,
+      "n": 100,
+      "p50_ms": 35.83,
+      "p95_ms": 77.07
+     },
+     "lexical": {
+      "max_ms": 83.69,
+      "n": 100,
+      "p50_ms": 11.92,
+      "p95_ms": 53.72
+     },
+     "overhead": {
+      "max_ms": 28.95,
+      "n": 100,
+      "p50_ms": 23.37,
+      "p95_ms": 26.39
+     }
+    },
+    "start-021": {
+     "hybrid": {
+      "max_ms": 107.44,
+      "n": 100,
+      "p50_ms": 35.5,
+      "p95_ms": 76.23
+     },
+     "lexical": {
+      "max_ms": 82.53,
+      "n": 100,
+      "p50_ms": 11.87,
+      "p95_ms": 52.05
+     },
+     "overhead": {
+      "max_ms": 27.84,
+      "n": 100,
+      "p50_ms": 23.57,
+      "p95_ms": 26.05
+     }
+    },
+    "start-022": {
+     "hybrid": {
+      "max_ms": 108.51,
+      "n": 100,
+      "p50_ms": 35.3,
+      "p95_ms": 76.8
+     },
+     "lexical": {
+      "max_ms": 85.2,
+      "n": 100,
+      "p50_ms": 11.84,
+      "p95_ms": 52.24
+     },
+     "overhead": {
+      "max_ms": 28.74,
+      "n": 100,
+      "p50_ms": 23.38,
+      "p95_ms": 26.12
+     }
+    },
+    "start-023": {
+     "hybrid": {
+      "max_ms": 110.2,
+      "n": 100,
+      "p50_ms": 35.87,
+      "p95_ms": 76.59
+     },
+     "lexical": {
+      "max_ms": 85.31,
+      "n": 100,
+      "p50_ms": 12.06,
+      "p95_ms": 54.01
+     },
+     "overhead": {
+      "max_ms": 28.01,
+      "n": 100,
+      "p50_ms": 23.71,
+      "p95_ms": 25.85
+     }
+    },
+    "start-024": {
+     "hybrid": {
+      "max_ms": 108.86,
+      "n": 100,
+      "p50_ms": 35.36,
+      "p95_ms": 77.27
+     },
+     "lexical": {
+      "max_ms": 84.96,
+      "n": 100,
+      "p50_ms": 11.75,
+      "p95_ms": 53.4
+     },
+     "overhead": {
+      "max_ms": 26.78,
+      "n": 100,
+      "p50_ms": 23.49,
+      "p95_ms": 25.94
+     }
+    },
+    "start-025": {
+     "hybrid": {
+      "max_ms": 110.28,
+      "n": 100,
+      "p50_ms": 35.74,
+      "p95_ms": 76.89
+     },
+     "lexical": {
+      "max_ms": 86.27,
+      "n": 100,
+      "p50_ms": 11.97,
+      "p95_ms": 52.07
+     },
+     "overhead": {
+      "max_ms": 27.02,
+      "n": 100,
+      "p50_ms": 23.44,
+      "p95_ms": 25.39
+     }
+    },
+    "start-026": {
+     "hybrid": {
+      "max_ms": 108.13,
+      "n": 100,
+      "p50_ms": 34.9,
+      "p95_ms": 77.36
+     },
+     "lexical": {
+      "max_ms": 84.1,
+      "n": 100,
+      "p50_ms": 11.68,
+      "p95_ms": 54.45
+     },
+     "overhead": {
+      "max_ms": 27.99,
+      "n": 100,
+      "p50_ms": 23.08,
+      "p95_ms": 26.29
+     }
+    },
+    "start-027": {
+     "hybrid": {
+      "max_ms": 111.88,
+      "n": 100,
+      "p50_ms": 35.16,
+      "p95_ms": 76.67
+     },
+     "lexical": {
+      "max_ms": 86.69,
+      "n": 100,
+      "p50_ms": 11.85,
+      "p95_ms": 53.3
+     },
+     "overhead": {
+      "max_ms": 27.14,
+      "n": 100,
+      "p50_ms": 23.19,
+      "p95_ms": 25.93
+     }
+    },
+    "start-028": {
+     "hybrid": {
+      "max_ms": 111.6,
+      "n": 100,
+      "p50_ms": 35.45,
+      "p95_ms": 77.91
+     },
+     "lexical": {
+      "max_ms": 84.11,
+      "n": 100,
+      "p50_ms": 11.88,
+      "p95_ms": 53.6
+     },
+     "overhead": {
+      "max_ms": 27.5,
+      "n": 100,
+      "p50_ms": 23.62,
+      "p95_ms": 26.27
+     }
+    },
+    "start-029": {
+     "hybrid": {
+      "max_ms": 107.72,
+      "n": 100,
+      "p50_ms": 35.08,
+      "p95_ms": 76.49
+     },
+     "lexical": {
+      "max_ms": 85.84,
+      "n": 100,
+      "p50_ms": 11.6,
+      "p95_ms": 52.02
+     },
+     "overhead": {
+      "max_ms": 27.39,
+      "n": 100,
+      "p50_ms": 23.32,
+      "p95_ms": 25.88
+     }
+    }
+   },
+   "cell": "c1-idle",
+   "concurrency": 1,
+   "degraded_reasons": {},
+   "degraded_to_lexical": 0,
+   "errors": {
+    "hybrid": 0,
+    "lexical": 0
+   },
+   "first_query": {
+    "bootstrap": {
+     "n": 30,
+     "one_sided": 0.95,
+     "point_p50_ms": 606.019375147298,
+     "point_p95_ms": 625.0011250376701,
+     "resamples": 2000,
+     "seed": 20260915,
+     "starts": 30,
+     "ub95_p95_ms": 656.3210419844836
+    },
+    "degraded": 0,
+    "errors": 0,
+    "max_ms": 656.3210419844836,
+    "modes": {
+     "hybrid": 30
+    },
+    "p50_ms": 606.019375147298,
+    "p95_ms": 625.0011250376701,
+    "values_ms": [
+     656.3210419844836,
+     635.3478748351336,
+     604.0639998391271,
+     606.11541592516,
+     617.1116658952087,
+     623.0141660198569,
+     601.0703749489039,
+     612.1444581076503,
+     603.4148749895394,
+     603.5005829762667,
+     603.8957920391113,
+     606.1021250206977,
+     619.926042156294,
+     597.6631660014391,
+     600.2037920989096,
+     608.0545000731945,
+     602.3640420753509,
+     603.1015000771731,
+     602.7048749383539,
+     621.6013329103589,
+     597.6507500745356,
+     606.019375147298,
+     598.6647501122206,
+     625.0011250376701,
+     600.7183329202235,
+     597.971374867484,
+     621.0284591652453,
+     608.2862918265164,
+     617.9246660321951,
+     602.0082919858396
+    ]
+   },
+   "hybrid": {
+    "n": 3000,
+    "one_sided": 0.95,
+    "point_p50_ms": 35.38570809178054,
+    "point_p95_ms": 77.25637499243021,
+    "resamples": 2000,
+    "seed": 20260915,
+    "starts": 30,
+    "ub95_p95_ms": 77.35216617584229
+   },
+   "hybrid_answered": 3000,
+   "lexical": {
+    "n": 3000,
+    "one_sided": 0.95,
+    "point_p50_ms": 11.77208311855793,
+    "point_p95_ms": 53.62733290530741,
+    "resamples": 2000,
+    "seed": 20260915,
+    "starts": 30,
+    "ub95_p95_ms": 53.72183304280043
+   },
+   "note": "",
+   "overhead": {
+    "n": 3000,
+    "one_sided": 0.95,
+    "point_p50_ms": 23.442167090252042,
+    "point_p95_ms": 26.170042110607028,
+    "resamples": 2000,
+    "seed": 20260915,
+    "starts": 30,
+    "ub95_p95_ms": 26.259290985763073
+   },
+   "requests_per_start": [
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100
+   ],
+   "starts": 30,
+   "verdict": {
+    "checks": {
+     "first_query_p95_ms": {
+      "pass": true,
+      "reads": "p95 of the startup-race first query across starts, degraded and error outcomes included",
+      "threshold_ms": 3500.0,
+      "value": 625.0011250376701
+     },
+     "hybrid_answered": {
+      "pass": true,
+      "reads": "measured requests the hybrid leg actually answered in hybrid mode; zero means the semantic arm never ran and the cell measured lexical twice",
+      "required": ">= 1",
+      "value": 3000
+     },
+     "overhead_p95_ms": {
+      "pass": true,
+      "reads": "p95 of the paired hybrid-lexical per-request difference",
+      "threshold_ms": 100.0,
+      "value": 26.170042110607028
+     },
+     "ub95_p95_ms": {
+      "pass": true,
+      "reads": "one-sided 95% upper bound on p95 wall, clustered by start",
+      "threshold_ms": 200.0,
+      "value": 77.35216617584229
+     }
+    },
+    "failed_checks": [],
+    "pass": true
+   },
+   "warm": {
+    "discarded_query_p95_ms": 36.36074997484684,
+    "load_p95_ms": 306.6624170169234,
+    "states": {
+     "warm": 30
+    },
+    "total_p50_ms": 331.7631669342518,
+    "total_p95_ms": 342.0594169292599
+   },
+   "workload": "idle"
+  },
+  "c1-load": {
+   "_raw_request_timings": "dropped from the committed receipt (repo 500KB hook); the full receipt with every per-request value is /Users/ataylor/.local/share/studyloop/eval-receipts/stage5-latency-gateL-2026-09-15-shipping-full.json sha256=62d98fdd321cbe4c697a62f5b088e6b77fe6c4282cd5aca316125bd670ff5e35",
+   "by_start": {
+    "start-000": {
+     "hybrid": {
+      "max_ms": 124.52,
+      "n": 100,
+      "p50_ms": 42.1,
+      "p95_ms": 85.51
+     },
+     "lexical": {
+      "max_ms": 92.84,
+      "n": 100,
+      "p50_ms": 13.16,
+      "p95_ms": 58.14
+     },
+     "overhead": {
+      "max_ms": 74.45,
+      "n": 100,
+      "p50_ms": 28.03,
+      "p95_ms": 36.18
+     }
+    },
+    "start-001": {
+     "hybrid": {
+      "max_ms": 126.32,
+      "n": 100,
+      "p50_ms": 43.55,
+      "p95_ms": 86.96
+     },
+     "lexical": {
+      "max_ms": 96.41,
+      "n": 100,
+      "p50_ms": 13.71,
+      "p95_ms": 58.64
+     },
+     "overhead": {
+      "max_ms": 44.19,
+      "n": 100,
+      "p50_ms": 29.14,
+      "p95_ms": 36.34
+     }
+    },
+    "start-002": {
+     "hybrid": {
+      "max_ms": 132.92,
+      "n": 100,
+      "p50_ms": 45.29,
+      "p95_ms": 87.0
+     },
+     "lexical": {
+      "max_ms": 98.8,
+      "n": 100,
+      "p50_ms": 14.3,
+      "p95_ms": 63.98
+     },
+     "overhead": {
+      "max_ms": 41.04,
+      "n": 100,
+      "p50_ms": 29.98,
+      "p95_ms": 35.12
+     }
+    },
+    "start-003": {
+     "hybrid": {
+      "max_ms": 134.31,
+      "n": 100,
+      "p50_ms": 45.19,
+      "p95_ms": 89.87
+     },
+     "lexical": {
+      "max_ms": 96.66,
+      "n": 100,
+      "p50_ms": 13.65,
+      "p95_ms": 60.99
+     },
+     "overhead": {
+      "max_ms": 37.66,
+      "n": 100,
+      "p50_ms": 29.81,
+      "p95_ms": 35.26
+     }
+    },
+    "start-004": {
+     "hybrid": {
+      "max_ms": 126.57,
+      "n": 100,
+      "p50_ms": 43.34,
+      "p95_ms": 93.21
+     },
+     "lexical": {
+      "max_ms": 97.93,
+      "n": 100,
+      "p50_ms": 13.99,
+      "p95_ms": 60.65
+     },
+     "overhead": {
+      "max_ms": 42.7,
+      "n": 100,
+      "p50_ms": 28.9,
+      "p95_ms": 33.97
+     }
+    },
+    "start-005": {
+     "hybrid": {
+      "max_ms": 130.38,
+      "n": 100,
+      "p50_ms": 43.92,
+      "p95_ms": 90.71
+     },
+     "lexical": {
+      "max_ms": 101.2,
+      "n": 100,
+      "p50_ms": 13.68,
+      "p95_ms": 62.78
+     },
+     "overhead": {
+      "max_ms": 37.61,
+      "n": 100,
+      "p50_ms": 29.74,
+      "p95_ms": 34.66
+     }
+    },
+    "start-006": {
+     "hybrid": {
+      "max_ms": 127.3,
+      "n": 100,
+      "p50_ms": 43.39,
+      "p95_ms": 91.0
+     },
+     "lexical": {
+      "max_ms": 95.91,
+      "n": 100,
+      "p50_ms": 13.52,
+      "p95_ms": 59.77
+     },
+     "overhead": {
+      "max_ms": 38.71,
+      "n": 100,
+      "p50_ms": 29.11,
+      "p95_ms": 34.36
+     }
+    },
+    "start-007": {
+     "hybrid": {
+      "max_ms": 126.4,
+      "n": 100,
+      "p50_ms": 43.75,
+      "p95_ms": 86.86
+     },
+     "lexical": {
+      "max_ms": 96.07,
+      "n": 100,
+      "p50_ms": 13.57,
+      "p95_ms": 60.91
+     },
+     "overhead": {
+      "max_ms": 40.98,
+      "n": 100,
+      "p50_ms": 28.9,
+      "p95_ms": 35.69
+     }
+    },
+    "start-008": {
+     "hybrid": {
+      "max_ms": 125.38,
+      "n": 100,
+      "p50_ms": 45.23,
+      "p95_ms": 92.17
+     },
+     "lexical": {
+      "max_ms": 94.74,
+      "n": 100,
+      "p50_ms": 13.64,
+      "p95_ms": 61.03
+     },
+     "overhead": {
+      "max_ms": 41.82,
+      "n": 100,
+      "p50_ms": 30.32,
+      "p95_ms": 35.76
+     }
+    },
+    "start-009": {
+     "hybrid": {
+      "max_ms": 127.09,
+      "n": 100,
+      "p50_ms": 44.86,
+      "p95_ms": 88.53
+     },
+     "lexical": {
+      "max_ms": 98.06,
+      "n": 100,
+      "p50_ms": 13.31,
+      "p95_ms": 58.89
+     },
+     "overhead": {
+      "max_ms": 38.63,
+      "n": 100,
+      "p50_ms": 29.13,
+      "p95_ms": 34.52
+     }
+    },
+    "start-010": {
+     "hybrid": {
+      "max_ms": 122.15,
+      "n": 100,
+      "p50_ms": 44.2,
+      "p95_ms": 93.56
+     },
+     "lexical": {
+      "max_ms": 94.05,
+      "n": 100,
+      "p50_ms": 14.08,
+      "p95_ms": 60.83
+     },
+     "overhead": {
+      "max_ms": 54.56,
+      "n": 100,
+      "p50_ms": 29.3,
+      "p95_ms": 35.88
+     }
+    },
+    "start-011": {
+     "hybrid": {
+      "max_ms": 135.89,
+      "n": 100,
+      "p50_ms": 44.95,
+      "p95_ms": 94.28
+     },
+     "lexical": {
+      "max_ms": 101.04,
+      "n": 100,
+      "p50_ms": 14.32,
+      "p95_ms": 62.47
+     },
+     "overhead": {
+      "max_ms": 41.19,
+      "n": 100,
+      "p50_ms": 29.61,
+      "p95_ms": 37.39
+     }
+    },
+    "start-012": {
+     "hybrid": {
+      "max_ms": 123.29,
+      "n": 100,
+      "p50_ms": 43.8,
+      "p95_ms": 86.71
+     },
+     "lexical": {
+      "max_ms": 93.69,
+      "n": 100,
+      "p50_ms": 13.3,
+      "p95_ms": 57.8
+     },
+     "overhead": {
+      "max_ms": 42.38,
+      "n": 100,
+      "p50_ms": 29.02,
+      "p95_ms": 35.59
+     }
+    },
+    "start-013": {
+     "hybrid": {
+      "max_ms": 125.54,
+      "n": 100,
+      "p50_ms": 44.27,
+      "p95_ms": 86.63
+     },
+     "lexical": {
+      "max_ms": 96.76,
+      "n": 100,
+      "p50_ms": 13.63,
+      "p95_ms": 58.91
+     },
+     "overhead": {
+      "max_ms": 43.33,
+      "n": 100,
+      "p50_ms": 29.61,
+      "p95_ms": 35.56
+     }
+    },
+    "start-014": {
+     "hybrid": {
+      "max_ms": 125.22,
+      "n": 100,
+      "p50_ms": 44.74,
+      "p95_ms": 90.55
+     },
+     "lexical": {
+      "max_ms": 97.36,
+      "n": 100,
+      "p50_ms": 13.43,
+      "p95_ms": 60.97
+     },
+     "overhead": {
+      "max_ms": 38.85,
+      "n": 100,
+      "p50_ms": 29.97,
+      "p95_ms": 36.34
+     }
+    },
+    "start-015": {
+     "hybrid": {
+      "max_ms": 132.45,
+      "n": 100,
+      "p50_ms": 47.09,
+      "p95_ms": 96.0
+     },
+     "lexical": {
+      "max_ms": 101.97,
+      "n": 100,
+      "p50_ms": 13.62,
+      "p95_ms": 60.7
+     },
+     "overhead": {
+      "max_ms": 39.98,
+      "n": 100,
+      "p50_ms": 31.48,
+      "p95_ms": 37.19
+     }
+    },
+    "start-016": {
+     "hybrid": {
+      "max_ms": 127.5,
+      "n": 100,
+      "p50_ms": 44.21,
+      "p95_ms": 90.57
+     },
+     "lexical": {
+      "max_ms": 92.87,
+      "n": 100,
+      "p50_ms": 13.54,
+      "p95_ms": 58.95
+     },
+     "overhead": {
+      "max_ms": 43.27,
+      "n": 100,
+      "p50_ms": 29.87,
+      "p95_ms": 35.53
+     }
+    },
+    "start-017": {
+     "hybrid": {
+      "max_ms": 131.88,
+      "n": 100,
+      "p50_ms": 44.28,
+      "p95_ms": 89.45
+     },
+     "lexical": {
+      "max_ms": 95.48,
+      "n": 100,
+      "p50_ms": 13.39,
+      "p95_ms": 59.82
+     },
+     "overhead": {
+      "max_ms": 40.84,
+      "n": 100,
+      "p50_ms": 29.76,
+      "p95_ms": 35.78
+     }
+    },
+    "start-018": {
+     "hybrid": {
+      "max_ms": 132.73,
+      "n": 100,
+      "p50_ms": 46.42,
+      "p95_ms": 91.81
+     },
+     "lexical": {
+      "max_ms": 97.58,
+      "n": 100,
+      "p50_ms": 13.69,
+      "p95_ms": 61.06
+     },
+     "overhead": {
+      "max_ms": 45.55,
+      "n": 100,
+      "p50_ms": 30.69,
+      "p95_ms": 36.98
+     }
+    },
+    "start-019": {
+     "hybrid": {
+      "max_ms": 127.61,
+      "n": 100,
+      "p50_ms": 44.56,
+      "p95_ms": 90.9
+     },
+     "lexical": {
+      "max_ms": 95.99,
+      "n": 100,
+      "p50_ms": 13.99,
+      "p95_ms": 59.85
+     },
+     "overhead": {
+      "max_ms": 42.11,
+      "n": 100,
+      "p50_ms": 29.95,
+      "p95_ms": 36.58
+     }
+    },
+    "start-020": {
+     "hybrid": {
+      "max_ms": 138.56,
+      "n": 100,
+      "p50_ms": 45.56,
+      "p95_ms": 91.26
+     },
+     "lexical": {
+      "max_ms": 110.73,
+      "n": 100,
+      "p50_ms": 13.88,
+      "p95_ms": 60.61
+     },
+     "overhead": {
+      "max_ms": 54.52,
+      "n": 100,
+      "p50_ms": 30.24,
+      "p95_ms": 35.97
+     }
+    },
+    "start-021": {
+     "hybrid": {
+      "max_ms": 130.03,
+      "n": 100,
+      "p50_ms": 46.09,
+      "p95_ms": 90.58
+     },
+     "lexical": {
+      "max_ms": 99.58,
+      "n": 100,
+      "p50_ms": 13.62,
+      "p95_ms": 61.9
+     },
+     "overhead": {
+      "max_ms": 42.88,
+      "n": 100,
+      "p50_ms": 30.39,
+      "p95_ms": 36.55
+     }
+    },
+    "start-022": {
+     "hybrid": {
+      "max_ms": 132.77,
+      "n": 100,
+      "p50_ms": 44.55,
+      "p95_ms": 91.71
+     },
+     "lexical": {
+      "max_ms": 98.83,
+      "n": 100,
+      "p50_ms": 13.77,
+      "p95_ms": 61.28
+     },
+     "overhead": {
+      "max_ms": 40.36,
+      "n": 100,
+      "p50_ms": 29.88,
+      "p95_ms": 35.92
+     }
+    },
+    "start-023": {
+     "hybrid": {
+      "max_ms": 130.12,
+      "n": 100,
+      "p50_ms": 44.56,
+      "p95_ms": 91.33
+     },
+     "lexical": {
+      "max_ms": 98.67,
+      "n": 100,
+      "p50_ms": 14.14,
+      "p95_ms": 60.88
+     },
+     "overhead": {
+      "max_ms": 40.99,
+      "n": 100,
+      "p50_ms": 30.24,
+      "p95_ms": 35.1
+     }
+    },
+    "start-024": {
+     "hybrid": {
+      "max_ms": 130.74,
+      "n": 100,
+      "p50_ms": 45.13,
+      "p95_ms": 92.57
+     },
+     "lexical": {
+      "max_ms": 99.01,
+      "n": 100,
+      "p50_ms": 13.78,
+      "p95_ms": 62.54
+     },
+     "overhead": {
+      "max_ms": 39.1,
+      "n": 100,
+      "p50_ms": 30.1,
+      "p95_ms": 36.44
+     }
+    },
+    "start-025": {
+     "hybrid": {
+      "max_ms": 137.05,
+      "n": 100,
+      "p50_ms": 45.85,
+      "p95_ms": 95.81
+     },
+     "lexical": {
+      "max_ms": 106.74,
+      "n": 100,
+      "p50_ms": 14.29,
+      "p95_ms": 63.7
+     },
+     "overhead": {
+      "max_ms": 43.73,
+      "n": 100,
+      "p50_ms": 31.11,
+      "p95_ms": 36.41
+     }
+    },
+    "start-026": {
+     "hybrid": {
+      "max_ms": 129.87,
+      "n": 100,
+      "p50_ms": 45.05,
+      "p95_ms": 90.58
+     },
+     "lexical": {
+      "max_ms": 98.75,
+      "n": 100,
+      "p50_ms": 14.0,
+      "p95_ms": 63.34
+     },
+     "overhead": {
+      "max_ms": 40.42,
+      "n": 100,
+      "p50_ms": 30.15,
+      "p95_ms": 36.28
+     }
+    },
+    "start-027": {
+     "hybrid": {
+      "max_ms": 142.09,
+      "n": 100,
+      "p50_ms": 46.62,
+      "p95_ms": 92.99
+     },
+     "lexical": {
+      "max_ms": 99.41,
+      "n": 100,
+      "p50_ms": 13.82,
+      "p95_ms": 62.3
+     },
+     "overhead": {
+      "max_ms": 42.68,
+      "n": 100,
+      "p50_ms": 30.87,
+      "p95_ms": 36.73
+     }
+    },
+    "start-028": {
+     "hybrid": {
+      "max_ms": 133.49,
+      "n": 100,
+      "p50_ms": 45.91,
+      "p95_ms": 93.65
+     },
+     "lexical": {
+      "max_ms": 106.29,
+      "n": 100,
+      "p50_ms": 14.3,
+      "p95_ms": 61.95
+     },
+     "overhead": {
+      "max_ms": 43.81,
+      "n": 100,
+      "p50_ms": 31.13,
+      "p95_ms": 38.99
+     }
+    },
+    "start-029": {
+     "hybrid": {
+      "max_ms": 136.98,
+      "n": 100,
+      "p50_ms": 46.58,
+      "p95_ms": 94.37
+     },
+     "lexical": {
+      "max_ms": 100.42,
+      "n": 100,
+      "p50_ms": 14.39,
+      "p95_ms": 63.88
+     },
+     "overhead": {
+      "max_ms": 41.94,
+      "n": 100,
+      "p50_ms": 30.64,
+      "p95_ms": 38.13
+     }
+    }
+   },
+   "cell": "c1-load",
+   "concurrency": 1,
+   "degraded_reasons": {},
+   "degraded_to_lexical": 0,
+   "errors": {
+    "hybrid": 0,
+    "lexical": 0
+   },
+   "first_query": {
+    "bootstrap": {
+     "n": 30,
+     "one_sided": 0.95,
+     "point_p50_ms": 707.9594579990953,
+     "point_p95_ms": 740.4288342222571,
+     "resamples": 2000,
+     "seed": 20260915,
+     "starts": 30,
+     "ub95_p95_ms": 761.5951248444617
+    },
+    "degraded": 0,
+    "errors": 0,
+    "max_ms": 761.5951248444617,
+    "modes": {
+     "hybrid": 30
+    },
+    "p50_ms": 707.9594579990953,
+    "p95_ms": 740.4288342222571,
+    "values_ms": [
+     633.4235419053584,
+     711.6121251601726,
+     754.7942090313882,
+     727.5430408772081,
+     694.7732090484351,
+     720.8060419652611,
+     694.2948750220239,
+     707.9594579990953,
+     702.2325419820845,
+     740.4288342222571,
+     657.7866659499705,
+     761.5951248444617,
+     659.0089579112828,
+     677.9512499924749,
+     703.9582920260727,
+     676.2362499721348,
+     677.1098340395838,
+     723.3295829501003,
+     720.4754590056837,
+     719.0576249267906,
+     692.1420828439295,
+     692.2667499165982,
+     704.4735420495272,
+     723.7473330460489,
+     715.7330000773072,
+     691.5912921540439,
+     713.0939171183854,
+     697.9089579544961,
+     723.7348749767989,
+     721.7545420862734
+    ]
+   },
+   "hybrid": {
+    "n": 3000,
+    "one_sided": 0.95,
+    "point_p50_ms": 44.86541589722037,
+    "point_p95_ms": 92.15983282774687,
+    "resamples": 2000,
+    "seed": 20260915,
+    "starts": 30,
+    "ub95_p95_ms": 92.70337503403425
+   },
+   "hybrid_answered": 3000,
+   "lexical": {
+    "n": 3000,
+    "one_sided": 0.95,
+    "point_p50_ms": 13.781083980575204,
+    "point_p95_ms": 61.763790901750326,
+    "resamples": 2000,
+    "seed": 20260915,
+    "starts": 30,
+    "ub95_p95_ms": 62.473209109157324
+   },
+   "note": "",
+   "overhead": {
+    "n": 3000,
+    "one_sided": 0.95,
+    "point_p50_ms": 29.86850100569427,
+    "point_p95_ms": 36.50216688401997,
+    "resamples": 2000,
+    "seed": 20260915,
+    "starts": 30,
+    "ub95_p95_ms": 36.72362491488457
+   },
+   "requests_per_start": [
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100
+   ],
+   "starts": 30,
+   "verdict": {
+    "checks": {
+     "first_query_p95_ms": {
+      "pass": true,
+      "reads": "p95 of the startup-race first query across starts, degraded and error outcomes included",
+      "threshold_ms": 3500.0,
+      "value": 740.4288342222571
+     },
+     "hybrid_answered": {
+      "pass": true,
+      "reads": "measured requests the hybrid leg actually answered in hybrid mode; zero means the semantic arm never ran and the cell measured lexical twice",
+      "required": ">= 1",
+      "value": 3000
+     },
+     "overhead_p95_ms": {
+      "pass": true,
+      "reads": "p95 of the paired hybrid-lexical per-request difference",
+      "threshold_ms": 100.0,
+      "value": 36.50216688401997
+     },
+     "ub95_p95_ms": {
+      "pass": true,
+      "reads": "one-sided 95% upper bound on p95 wall, clustered by start",
+      "threshold_ms": 200.0,
+      "value": 92.70337503403425
+     }
+    },
+    "failed_checks": [],
+    "pass": true
+   },
+   "warm": {
+    "discarded_query_p95_ms": 49.18983392417431,
+    "load_p95_ms": 365.2776249218732,
+    "states": {
+     "warm": 30
+    },
+    "total_p50_ms": 393.31379206851125,
+    "total_p95_ms": 410.83791689015925
+   },
+   "workload": "load"
+  },
+  "c4-idle": {
+   "_raw_request_timings": "dropped from the committed receipt (repo 500KB hook); the full receipt with every per-request value is /Users/ataylor/.local/share/studyloop/eval-receipts/stage5-latency-gateL-2026-09-15-shipping-full.json sha256=62d98fdd321cbe4c697a62f5b088e6b77fe6c4282cd5aca316125bd670ff5e35",
+   "by_start": {
+    "start-000": {
+     "hybrid": {
+      "max_ms": 153.09,
+      "n": 100,
+      "p50_ms": 105.73,
+      "p95_ms": 123.52
+     },
+     "lexical": {
+      "max_ms": 120.28,
+      "n": 100,
+      "p50_ms": 52.38,
+      "p95_ms": 89.67
+     },
+     "overhead": {
+      "max_ms": 71.43,
+      "n": 100,
+      "p50_ms": 44.49,
+      "p95_ms": 64.49
+     }
+    },
+    "start-001": {
+     "hybrid": {
+      "max_ms": 156.68,
+      "n": 100,
+      "p50_ms": 100.84,
+      "p95_ms": 121.36
+     },
+     "lexical": {
+      "max_ms": 127.15,
+      "n": 100,
+      "p50_ms": 53.42,
+      "p95_ms": 94.97
+     },
+     "overhead": {
+      "max_ms": 60.45,
+      "n": 100,
+      "p50_ms": 40.48,
+      "p95_ms": 53.22
+     }
+    },
+    "start-002": {
+     "hybrid": {
+      "max_ms": 155.68,
+      "n": 100,
+      "p50_ms": 100.11,
+      "p95_ms": 126.47
+     },
+     "lexical": {
+      "max_ms": 120.34,
+      "n": 100,
+      "p50_ms": 52.38,
+      "p95_ms": 92.42
+     },
+     "overhead": {
+      "max_ms": 59.95,
+      "n": 100,
+      "p50_ms": 41.64,
+      "p95_ms": 55.46
+     }
+    },
+    "start-003": {
+     "hybrid": {
+      "max_ms": 154.39,
+      "n": 100,
+      "p50_ms": 102.78,
+      "p95_ms": 122.84
+     },
+     "lexical": {
+      "max_ms": 120.96,
+      "n": 100,
+      "p50_ms": 52.85,
+      "p95_ms": 84.88
+     },
+     "overhead": {
+      "max_ms": 69.14,
+      "n": 100,
+      "p50_ms": 41.85,
+      "p95_ms": 61.12
+     }
+    },
+    "start-004": {
+     "hybrid": {
+      "max_ms": 157.85,
+      "n": 100,
+      "p50_ms": 102.12,
+      "p95_ms": 123.52
+     },
+     "lexical": {
+      "max_ms": 119.17,
+      "n": 100,
+      "p50_ms": 52.75,
+      "p95_ms": 88.25
+     },
+     "overhead": {
+      "max_ms": 62.86,
+      "n": 100,
+      "p50_ms": 39.54,
+      "p95_ms": 60.15
+     }
+    },
+    "start-005": {
+     "hybrid": {
+      "max_ms": 177.16,
+      "n": 100,
+      "p50_ms": 108.98,
+      "p95_ms": 138.25
+     },
+     "lexical": {
+      "max_ms": 143.37,
+      "n": 100,
+      "p50_ms": 59.43,
+      "p95_ms": 94.32
+     },
+     "overhead": {
+      "max_ms": 82.81,
+      "n": 100,
+      "p50_ms": 45.09,
+      "p95_ms": 67.19
+     }
+    },
+    "start-006": {
+     "hybrid": {
+      "max_ms": 171.21,
+      "n": 100,
+      "p50_ms": 108.27,
+      "p95_ms": 143.53
+     },
+     "lexical": {
+      "max_ms": 125.84,
+      "n": 100,
+      "p50_ms": 54.28,
+      "p95_ms": 91.94
+     },
+     "overhead": {
+      "max_ms": 74.5,
+      "n": 100,
+      "p50_ms": 47.44,
+      "p95_ms": 66.8
+     }
+    },
+    "start-007": {
+     "hybrid": {
+      "max_ms": 152.4,
+      "n": 100,
+      "p50_ms": 99.64,
+      "p95_ms": 128.77
+     },
+     "lexical": {
+      "max_ms": 116.75,
+      "n": 100,
+      "p50_ms": 50.52,
+      "p95_ms": 88.44
+     },
+     "overhead": {
+      "max_ms": 67.46,
+      "n": 100,
+      "p50_ms": 45.21,
+      "p95_ms": 58.96
+     }
+    },
+    "start-008": {
+     "hybrid": {
+      "max_ms": 155.84,
+      "n": 100,
+      "p50_ms": 104.07,
+      "p95_ms": 127.43
+     },
+     "lexical": {
+      "max_ms": 120.7,
+      "n": 100,
+      "p50_ms": 53.13,
+      "p95_ms": 94.02
+     },
+     "overhead": {
+      "max_ms": 67.74,
+      "n": 100,
+      "p50_ms": 45.27,
+      "p95_ms": 61.43
+     }
+    },
+    "start-009": {
+     "hybrid": {
+      "max_ms": 153.44,
+      "n": 100,
+      "p50_ms": 100.81,
+      "p95_ms": 128.76
+     },
+     "lexical": {
+      "max_ms": 121.98,
+      "n": 100,
+      "p50_ms": 52.34,
+      "p95_ms": 92.74
+     },
+     "overhead": {
+      "max_ms": 62.72,
+      "n": 100,
+      "p50_ms": 42.57,
+      "p95_ms": 58.94
+     }
+    },
+    "start-010": {
+     "hybrid": {
+      "max_ms": 158.74,
+      "n": 100,
+      "p50_ms": 107.08,
+      "p95_ms": 131.78
+     },
+     "lexical": {
+      "max_ms": 122.53,
+      "n": 100,
+      "p50_ms": 52.64,
+      "p95_ms": 93.0
+     },
+     "overhead": {
+      "max_ms": 64.77,
+      "n": 100,
+      "p50_ms": 48.81,
+      "p95_ms": 61.32
+     }
+    },
+    "start-011": {
+     "hybrid": {
+      "max_ms": 149.04,
+      "n": 100,
+      "p50_ms": 103.88,
+      "p95_ms": 122.92
+     },
+     "lexical": {
+      "max_ms": 123.86,
+      "n": 100,
+      "p50_ms": 52.2,
+      "p95_ms": 86.51
+     },
+     "overhead": {
+      "max_ms": 69.71,
+      "n": 100,
+      "p50_ms": 42.14,
+      "p95_ms": 65.52
+     }
+    },
+    "start-012": {
+     "hybrid": {
+      "max_ms": 148.36,
+      "n": 100,
+      "p50_ms": 101.09,
+      "p95_ms": 121.61
+     },
+     "lexical": {
+      "max_ms": 116.87,
+      "n": 100,
+      "p50_ms": 51.64,
+      "p95_ms": 90.1
+     },
+     "overhead": {
+      "max_ms": 59.91,
+      "n": 100,
+      "p50_ms": 40.46,
+      "p95_ms": 58.06
+     }
+    },
+    "start-013": {
+     "hybrid": {
+      "max_ms": 160.23,
+      "n": 100,
+      "p50_ms": 101.94,
+      "p95_ms": 125.04
+     },
+     "lexical": {
+      "max_ms": 121.09,
+      "n": 100,
+      "p50_ms": 52.63,
+      "p95_ms": 90.95
+     },
+     "overhead": {
+      "max_ms": 75.89,
+      "n": 100,
+      "p50_ms": 42.63,
+      "p95_ms": 62.56
+     }
+    },
+    "start-014": {
+     "hybrid": {
+      "max_ms": 158.58,
+      "n": 100,
+      "p50_ms": 106.88,
+      "p95_ms": 129.26
+     },
+     "lexical": {
+      "max_ms": 121.29,
+      "n": 100,
+      "p50_ms": 55.85,
+      "p95_ms": 95.98
+     },
+     "overhead": {
+      "max_ms": 74.22,
+      "n": 100,
+      "p50_ms": 44.83,
+      "p95_ms": 62.86
+     }
+    },
+    "start-015": {
+     "hybrid": {
+      "max_ms": 156.88,
+      "n": 100,
+      "p50_ms": 104.56,
+      "p95_ms": 129.3
+     },
+     "lexical": {
+      "max_ms": 124.07,
+      "n": 100,
+      "p50_ms": 55.51,
+      "p95_ms": 92.0
+     },
+     "overhead": {
+      "max_ms": 71.78,
+      "n": 100,
+      "p50_ms": 41.65,
+      "p95_ms": 71.05
+     }
+    },
+    "start-016": {
+     "hybrid": {
+      "max_ms": 152.57,
+      "n": 100,
+      "p50_ms": 100.87,
+      "p95_ms": 125.9
+     },
+     "lexical": {
+      "max_ms": 117.64,
+      "n": 100,
+      "p50_ms": 52.95,
+      "p95_ms": 94.33
+     },
+     "overhead": {
+      "max_ms": 75.16,
+      "n": 100,
+      "p50_ms": 40.65,
+      "p95_ms": 66.97
+     }
+    },
+    "start-017": {
+     "hybrid": {
+      "max_ms": 149.31,
+      "n": 100,
+      "p50_ms": 100.27,
+      "p95_ms": 123.94
+     },
+     "lexical": {
+      "max_ms": 119.37,
+      "n": 100,
+      "p50_ms": 52.5,
+      "p95_ms": 91.4
+     },
+     "overhead": {
+      "max_ms": 68.26,
+      "n": 100,
+      "p50_ms": 42.22,
+      "p95_ms": 61.39
+     }
+    },
+    "start-018": {
+     "hybrid": {
+      "max_ms": 157.11,
+      "n": 100,
+      "p50_ms": 100.49,
+      "p95_ms": 122.71
+     },
+     "lexical": {
+      "max_ms": 123.7,
+      "n": 100,
+      "p50_ms": 52.28,
+      "p95_ms": 90.92
+     },
+     "overhead": {
+      "max_ms": 64.06,
+      "n": 100,
+      "p50_ms": 41.76,
+      "p95_ms": 59.51
+     }
+    },
+    "start-019": {
+     "hybrid": {
+      "max_ms": 157.2,
+      "n": 100,
+      "p50_ms": 100.31,
+      "p95_ms": 121.34
+     },
+     "lexical": {
+      "max_ms": 126.34,
+      "n": 100,
+      "p50_ms": 52.66,
+      "p95_ms": 90.66
+     },
+     "overhead": {
+      "max_ms": 65.51,
+      "n": 100,
+      "p50_ms": 40.06,
+      "p95_ms": 58.41
+     }
+    },
+    "start-020": {
+     "hybrid": {
+      "max_ms": 155.78,
+      "n": 100,
+      "p50_ms": 102.8,
+      "p95_ms": 121.16
+     },
+     "lexical": {
+      "max_ms": 119.73,
+      "n": 100,
+      "p50_ms": 53.89,
+      "p95_ms": 91.65
+     },
+     "overhead": {
+      "max_ms": 59.13,
+      "n": 100,
+      "p50_ms": 43.12,
+      "p95_ms": 56.01
+     }
+    },
+    "start-021": {
+     "hybrid": {
+      "max_ms": 153.81,
+      "n": 100,
+      "p50_ms": 102.72,
+      "p95_ms": 124.45
+     },
+     "lexical": {
+      "max_ms": 120.37,
+      "n": 100,
+      "p50_ms": 50.72,
+      "p95_ms": 88.78
+     },
+     "overhead": {
+      "max_ms": 66.44,
+      "n": 100,
+      "p50_ms": 42.29,
+      "p95_ms": 62.4
+     }
+    },
+    "start-022": {
+     "hybrid": {
+      "max_ms": 156.72,
+      "n": 100,
+      "p50_ms": 99.34,
+      "p95_ms": 130.72
+     },
+     "lexical": {
+      "max_ms": 123.63,
+      "n": 100,
+      "p50_ms": 53.22,
+      "p95_ms": 90.9
+     },
+     "overhead": {
+      "max_ms": 68.98,
+      "n": 100,
+      "p50_ms": 41.93,
+      "p95_ms": 59.29
+     }
+    },
+    "start-023": {
+     "hybrid": {
+      "max_ms": 150.47,
+      "n": 100,
+      "p50_ms": 101.73,
+      "p95_ms": 124.16
+     },
+     "lexical": {
+      "max_ms": 121.03,
+      "n": 100,
+      "p50_ms": 51.82,
+      "p95_ms": 89.13
+     },
+     "overhead": {
+      "max_ms": 66.32,
+      "n": 100,
+      "p50_ms": 44.09,
+      "p95_ms": 62.96
+     }
+    },
+    "start-024": {
+     "hybrid": {
+      "max_ms": 157.64,
+      "n": 100,
+      "p50_ms": 99.76,
+      "p95_ms": 119.84
+     },
+     "lexical": {
+      "max_ms": 118.54,
+      "n": 100,
+      "p50_ms": 51.37,
+      "p95_ms": 88.04
+     },
+     "overhead": {
+      "max_ms": 68.91,
+      "n": 100,
+      "p50_ms": 43.98,
+      "p95_ms": 62.48
+     }
+    },
+    "start-025": {
+     "hybrid": {
+      "max_ms": 153.26,
+      "n": 100,
+      "p50_ms": 101.81,
+      "p95_ms": 120.42
+     },
+     "lexical": {
+      "max_ms": 121.66,
+      "n": 100,
+      "p50_ms": 52.38,
+      "p95_ms": 92.56
+     },
+     "overhead": {
+      "max_ms": 66.38,
+      "n": 100,
+      "p50_ms": 41.01,
+      "p95_ms": 63.15
+     }
+    },
+    "start-026": {
+     "hybrid": {
+      "max_ms": 157.88,
+      "n": 100,
+      "p50_ms": 101.05,
+      "p95_ms": 127.79
+     },
+     "lexical": {
+      "max_ms": 121.42,
+      "n": 100,
+      "p50_ms": 51.96,
+      "p95_ms": 90.9
+     },
+     "overhead": {
+      "max_ms": 65.31,
+      "n": 100,
+      "p50_ms": 42.58,
+      "p95_ms": 60.7
+     }
+    },
+    "start-027": {
+     "hybrid": {
+      "max_ms": 156.51,
+      "n": 100,
+      "p50_ms": 97.5,
+      "p95_ms": 119.44
+     },
+     "lexical": {
+      "max_ms": 126.96,
+      "n": 100,
+      "p50_ms": 51.29,
+      "p95_ms": 91.39
+     },
+     "overhead": {
+      "max_ms": 65.26,
+      "n": 100,
+      "p50_ms": 39.03,
+      "p95_ms": 61.0
+     }
+    },
+    "start-028": {
+     "hybrid": {
+      "max_ms": 151.24,
+      "n": 100,
+      "p50_ms": 99.44,
+      "p95_ms": 122.0
+     },
+     "lexical": {
+      "max_ms": 119.24,
+      "n": 100,
+      "p50_ms": 52.07,
+      "p95_ms": 93.13
+     },
+     "overhead": {
+      "max_ms": 63.74,
+      "n": 100,
+      "p50_ms": 41.99,
+      "p95_ms": 59.97
+     }
+    },
+    "start-029": {
+     "hybrid": {
+      "max_ms": 152.44,
+      "n": 100,
+      "p50_ms": 97.78,
+      "p95_ms": 120.96
+     },
+     "lexical": {
+      "max_ms": 119.65,
+      "n": 100,
+      "p50_ms": 52.88,
+      "p95_ms": 93.12
+     },
+     "overhead": {
+      "max_ms": 62.08,
+      "n": 100,
+      "p50_ms": 40.75,
+      "p95_ms": 56.48
+     }
+    }
+   },
+   "cell": "c4-idle",
+   "concurrency": 4,
+   "degraded_reasons": {},
+   "degraded_to_lexical": 0,
+   "errors": {
+    "hybrid": 0,
+    "lexical": 0
+   },
+   "first_query": {
+    "bootstrap": {
+     "n": 30,
+     "one_sided": 0.95,
+     "point_p50_ms": 591.9898748397827,
+     "point_p95_ms": 617.8295419085771,
+     "resamples": 2000,
+     "seed": 20260915,
+     "starts": 30,
+     "ub95_p95_ms": 637.4444160610437
+    },
+    "degraded": 0,
+    "errors": 0,
+    "max_ms": 637.4444160610437,
+    "modes": {
+     "hybrid": 30
+    },
+    "p50_ms": 591.9898748397827,
+    "p95_ms": 617.8295419085771,
+    "values_ms": [
+     607.2884169407189,
+     597.8536249604076,
+     590.1612499728799,
+     594.8109999299049,
+     593.6399579513818,
+     597.1841670107096,
+     612.1407081373036,
+     629.0556669700891,
+     617.8295419085771,
+     588.5130830574781,
+     590.1908748783171,
+     593.6573331709951,
+     591.9898748397827,
+     591.1641248967499,
+     580.4177499376237,
+     637.4444160610437,
+     578.4161670599133,
+     591.4082499220967,
+     581.9294999819249,
+     594.7022091131657,
+     580.2223749924451,
+     587.6373751088977,
+     592.484625056386,
+     591.9528328813612,
+     603.3773750532418,
+     581.2546671368182,
+     586.8846671655774,
+     590.9500839188695,
+     579.80579091236,
+     592.2649998683482
+    ]
+   },
+   "hybrid": {
+    "n": 3000,
+    "one_sided": 0.95,
+    "point_p50_ms": 101.87079105526209,
+    "point_p95_ms": 126.57516705803573,
+    "resamples": 2000,
+    "seed": 20260915,
+    "starts": 30,
+    "ub95_p95_ms": 128.66837484762073
+   },
+   "hybrid_answered": 3000,
+   "lexical": {
+    "n": 3000,
+    "one_sided": 0.95,
+    "point_p50_ms": 52.69641592167318,
+    "point_p95_ms": 92.74300001561642,
+    "resamples": 2000,
+    "seed": 20260915,
+    "starts": 30,
+    "ub95_p95_ms": 93.13295898027718
+   },
+   "note": "",
+   "overhead": {
+    "n": 3000,
+    "one_sided": 0.95,
+    "point_p50_ms": 42.24058287218213,
+    "point_p95_ms": 61.77450018003583,
+    "resamples": 2000,
+    "seed": 20260915,
+    "starts": 30,
+    "ub95_p95_ms": 62.859124736860394
+   },
+   "requests_per_start": [
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100
+   ],
+   "starts": 30,
+   "verdict": {
+    "checks": {
+     "first_query_p95_ms": {
+      "pass": true,
+      "reads": "p95 of the startup-race first query across starts, degraded and error outcomes included",
+      "threshold_ms": 3500.0,
+      "value": 617.8295419085771
+     },
+     "hybrid_answered": {
+      "pass": true,
+      "reads": "measured requests the hybrid leg actually answered in hybrid mode; zero means the semantic arm never ran and the cell measured lexical twice",
+      "required": ">= 1",
+      "value": 3000
+     },
+     "overhead_p95_ms": {
+      "pass": true,
+      "reads": "p95 of the paired hybrid-lexical per-request difference",
+      "threshold_ms": 100.0,
+      "value": 61.77450018003583
+     },
+     "ub95_p95_ms": {
+      "pass": true,
+      "reads": "one-sided 95% upper bound on p95 wall, clustered by start",
+      "threshold_ms": 200.0,
+      "value": 128.66837484762073
+     }
+    },
+    "failed_checks": [],
+    "pass": true
+   },
+   "warm": {
+    "discarded_query_p95_ms": 36.68449982069433,
+    "load_p95_ms": 303.56987519189715,
+    "states": {
+     "warm": 30
+    },
+    "total_p50_ms": 324.3858339264989,
+    "total_p95_ms": 340.2621252462268
+   },
+   "workload": "idle"
+  },
+  "c4-load": {
+   "_raw_request_timings": "dropped from the committed receipt (repo 500KB hook); the full receipt with every per-request value is /Users/ataylor/.local/share/studyloop/eval-receipts/stage5-latency-gateL-2026-09-15-shipping-full.json sha256=62d98fdd321cbe4c697a62f5b088e6b77fe6c4282cd5aca316125bd670ff5e35",
+   "by_start": {
+    "start-000": {
+     "hybrid": {
+      "max_ms": 207.04,
+      "n": 100,
+      "p50_ms": 130.27,
+      "p95_ms": 174.28
+     },
+     "lexical": {
+      "max_ms": 137.19,
+      "n": 100,
+      "p50_ms": 66.67,
+      "p95_ms": 109.07
+     },
+     "overhead": {
+      "max_ms": 100.18,
+      "n": 100,
+      "p50_ms": 58.51,
+      "p95_ms": 86.37
+     }
+    },
+    "start-001": {
+     "hybrid": {
+      "max_ms": 197.84,
+      "n": 100,
+      "p50_ms": 137.73,
+      "p95_ms": 177.74
+     },
+     "lexical": {
+      "max_ms": 141.53,
+      "n": 100,
+      "p50_ms": 67.27,
+      "p95_ms": 110.08
+     },
+     "overhead": {
+      "max_ms": 105.28,
+      "n": 100,
+      "p50_ms": 62.22,
+      "p95_ms": 97.38
+     }
+    },
+    "start-002": {
+     "hybrid": {
+      "max_ms": 200.48,
+      "n": 100,
+      "p50_ms": 134.47,
+      "p95_ms": 173.61
+     },
+     "lexical": {
+      "max_ms": 139.03,
+      "n": 100,
+      "p50_ms": 67.73,
+      "p95_ms": 109.09
+     },
+     "overhead": {
+      "max_ms": 87.23,
+      "n": 100,
+      "p50_ms": 61.71,
+      "p95_ms": 76.57
+     }
+    },
+    "start-003": {
+     "hybrid": {
+      "max_ms": 207.75,
+      "n": 100,
+      "p50_ms": 137.22,
+      "p95_ms": 178.04
+     },
+     "lexical": {
+      "max_ms": 143.96,
+      "n": 100,
+      "p50_ms": 71.58,
+      "p95_ms": 113.64
+     },
+     "overhead": {
+      "max_ms": 90.11,
+      "n": 100,
+      "p50_ms": 63.04,
+      "p95_ms": 85.63
+     }
+    },
+    "start-004": {
+     "hybrid": {
+      "max_ms": 206.04,
+      "n": 100,
+      "p50_ms": 132.53,
+      "p95_ms": 169.93
+     },
+     "lexical": {
+      "max_ms": 153.17,
+      "n": 100,
+      "p50_ms": 69.51,
+      "p95_ms": 111.89
+     },
+     "overhead": {
+      "max_ms": 88.99,
+      "n": 100,
+      "p50_ms": 60.33,
+      "p95_ms": 77.37
+     }
+    },
+    "start-005": {
+     "hybrid": {
+      "max_ms": 202.53,
+      "n": 100,
+      "p50_ms": 136.7,
+      "p95_ms": 184.86
+     },
+     "lexical": {
+      "max_ms": 136.84,
+      "n": 100,
+      "p50_ms": 71.4,
+      "p95_ms": 114.86
+     },
+     "overhead": {
+      "max_ms": 98.24,
+      "n": 100,
+      "p50_ms": 59.39,
+      "p95_ms": 82.6
+     }
+    },
+    "start-006": {
+     "hybrid": {
+      "max_ms": 192.02,
+      "n": 100,
+      "p50_ms": 134.06,
+      "p95_ms": 179.95
+     },
+     "lexical": {
+      "max_ms": 146.43,
+      "n": 100,
+      "p50_ms": 69.89,
+      "p95_ms": 113.71
+     },
+     "overhead": {
+      "max_ms": 93.41,
+      "n": 100,
+      "p50_ms": 57.34,
+      "p95_ms": 82.06
+     }
+    },
+    "start-007": {
+     "hybrid": {
+      "max_ms": 203.04,
+      "n": 100,
+      "p50_ms": 132.72,
+      "p95_ms": 173.67
+     },
+     "lexical": {
+      "max_ms": 144.08,
+      "n": 100,
+      "p50_ms": 68.85,
+      "p95_ms": 112.35
+     },
+     "overhead": {
+      "max_ms": 95.04,
+      "n": 100,
+      "p50_ms": 62.22,
+      "p95_ms": 87.2
+     }
+    },
+    "start-008": {
+     "hybrid": {
+      "max_ms": 211.12,
+      "n": 100,
+      "p50_ms": 131.33,
+      "p95_ms": 161.12
+     },
+     "lexical": {
+      "max_ms": 150.23,
+      "n": 100,
+      "p50_ms": 69.42,
+      "p95_ms": 112.2
+     },
+     "overhead": {
+      "max_ms": 91.95,
+      "n": 100,
+      "p50_ms": 56.4,
+      "p95_ms": 80.38
+     }
+    },
+    "start-009": {
+     "hybrid": {
+      "max_ms": 212.16,
+      "n": 100,
+      "p50_ms": 141.37,
+      "p95_ms": 179.57
+     },
+     "lexical": {
+      "max_ms": 146.34,
+      "n": 100,
+      "p50_ms": 74.21,
+      "p95_ms": 112.08
+     },
+     "overhead": {
+      "max_ms": 88.22,
+      "n": 100,
+      "p50_ms": 65.07,
+      "p95_ms": 83.66
+     }
+    },
+    "start-010": {
+     "hybrid": {
+      "max_ms": 209.37,
+      "n": 100,
+      "p50_ms": 131.11,
+      "p95_ms": 171.87
+     },
+     "lexical": {
+      "max_ms": 140.25,
+      "n": 100,
+      "p50_ms": 69.05,
+      "p95_ms": 105.38
+     },
+     "overhead": {
+      "max_ms": 100.87,
+      "n": 100,
+      "p50_ms": 59.2,
+      "p95_ms": 73.59
+     }
+    },
+    "start-011": {
+     "hybrid": {
+      "max_ms": 187.52,
+      "n": 100,
+      "p50_ms": 127.1,
+      "p95_ms": 179.03
+     },
+     "lexical": {
+      "max_ms": 143.69,
+      "n": 100,
+      "p50_ms": 71.62,
+      "p95_ms": 111.96
+     },
+     "overhead": {
+      "max_ms": 93.21,
+      "n": 100,
+      "p50_ms": 55.27,
+      "p95_ms": 80.1
+     }
+    },
+    "start-012": {
+     "hybrid": {
+      "max_ms": 197.15,
+      "n": 100,
+      "p50_ms": 134.91,
+      "p95_ms": 174.07
+     },
+     "lexical": {
+      "max_ms": 153.05,
+      "n": 100,
+      "p50_ms": 70.69,
+      "p95_ms": 108.6
+     },
+     "overhead": {
+      "max_ms": 106.03,
+      "n": 100,
+      "p50_ms": 60.82,
+      "p95_ms": 88.08
+     }
+    },
+    "start-013": {
+     "hybrid": {
+      "max_ms": 220.53,
+      "n": 100,
+      "p50_ms": 137.89,
+      "p95_ms": 175.74
+     },
+     "lexical": {
+      "max_ms": 149.21,
+      "n": 100,
+      "p50_ms": 69.07,
+      "p95_ms": 109.01
+     },
+     "overhead": {
+      "max_ms": 100.08,
+      "n": 100,
+      "p50_ms": 64.52,
+      "p95_ms": 84.81
+     }
+    },
+    "start-014": {
+     "hybrid": {
+      "max_ms": 226.02,
+      "n": 100,
+      "p50_ms": 146.97,
+      "p95_ms": 188.66
+     },
+     "lexical": {
+      "max_ms": 152.21,
+      "n": 100,
+      "p50_ms": 71.82,
+      "p95_ms": 117.71
+     },
+     "overhead": {
+      "max_ms": 105.94,
+      "n": 100,
+      "p50_ms": 68.44,
+      "p95_ms": 93.33
+     }
+    },
+    "start-015": {
+     "hybrid": {
+      "max_ms": 195.29,
+      "n": 100,
+      "p50_ms": 139.49,
+      "p95_ms": 183.09
+     },
+     "lexical": {
+      "max_ms": 150.35,
+      "n": 100,
+      "p50_ms": 70.88,
+      "p95_ms": 119.72
+     },
+     "overhead": {
+      "max_ms": 90.39,
+      "n": 100,
+      "p50_ms": 65.65,
+      "p95_ms": 84.14
+     }
+    },
+    "start-016": {
+     "hybrid": {
+      "max_ms": 233.3,
+      "n": 100,
+      "p50_ms": 147.49,
+      "p95_ms": 186.62
+     },
+     "lexical": {
+      "max_ms": 150.11,
+      "n": 100,
+      "p50_ms": 74.05,
+      "p95_ms": 118.09
+     },
+     "overhead": {
+      "max_ms": 110.53,
+      "n": 100,
+      "p50_ms": 70.59,
+      "p95_ms": 97.31
+     }
+    },
+    "start-017": {
+     "hybrid": {
+      "max_ms": 203.57,
+      "n": 100,
+      "p50_ms": 130.82,
+      "p95_ms": 175.66
+     },
+     "lexical": {
+      "max_ms": 140.83,
+      "n": 100,
+      "p50_ms": 70.81,
+      "p95_ms": 109.84
+     },
+     "overhead": {
+      "max_ms": 101.65,
+      "n": 100,
+      "p50_ms": 56.76,
+      "p95_ms": 84.4
+     }
+    },
+    "start-018": {
+     "hybrid": {
+      "max_ms": 219.46,
+      "n": 100,
+      "p50_ms": 145.68,
+      "p95_ms": 185.71
+     },
+     "lexical": {
+      "max_ms": 150.58,
+      "n": 100,
+      "p50_ms": 73.72,
+      "p95_ms": 114.27
+     },
+     "overhead": {
+      "max_ms": 103.24,
+      "n": 100,
+      "p50_ms": 64.98,
+      "p95_ms": 89.42
+     }
+    },
+    "start-019": {
+     "hybrid": {
+      "max_ms": 205.44,
+      "n": 100,
+      "p50_ms": 143.5,
+      "p95_ms": 191.77
+     },
+     "lexical": {
+      "max_ms": 148.21,
+      "n": 100,
+      "p50_ms": 73.34,
+      "p95_ms": 115.95
+     },
+     "overhead": {
+      "max_ms": 96.99,
+      "n": 100,
+      "p50_ms": 66.4,
+      "p95_ms": 89.5
+     }
+    },
+    "start-020": {
+     "hybrid": {
+      "max_ms": 200.12,
+      "n": 100,
+      "p50_ms": 140.59,
+      "p95_ms": 178.68
+     },
+     "lexical": {
+      "max_ms": 151.2,
+      "n": 100,
+      "p50_ms": 72.37,
+      "p95_ms": 114.05
+     },
+     "overhead": {
+      "max_ms": 101.44,
+      "n": 100,
+      "p50_ms": 59.91,
+      "p95_ms": 84.81
+     }
+    },
+    "start-021": {
+     "hybrid": {
+      "max_ms": 210.33,
+      "n": 100,
+      "p50_ms": 142.88,
+      "p95_ms": 180.87
+     },
+     "lexical": {
+      "max_ms": 142.96,
+      "n": 100,
+      "p50_ms": 74.07,
+      "p95_ms": 117.8
+     },
+     "overhead": {
+      "max_ms": 117.38,
+      "n": 100,
+      "p50_ms": 65.28,
+      "p95_ms": 90.32
+     }
+    },
+    "start-022": {
+     "hybrid": {
+      "max_ms": 206.7,
+      "n": 100,
+      "p50_ms": 141.15,
+      "p95_ms": 181.52
+     },
+     "lexical": {
+      "max_ms": 148.92,
+      "n": 100,
+      "p50_ms": 74.61,
+      "p95_ms": 117.02
+     },
+     "overhead": {
+      "max_ms": 84.26,
+      "n": 100,
+      "p50_ms": 65.35,
+      "p95_ms": 82.62
+     }
+    },
+    "start-023": {
+     "hybrid": {
+      "max_ms": 216.72,
+      "n": 100,
+      "p50_ms": 143.63,
+      "p95_ms": 181.99
+     },
+     "lexical": {
+      "max_ms": 152.93,
+      "n": 100,
+      "p50_ms": 69.17,
+      "p95_ms": 115.41
+     },
+     "overhead": {
+      "max_ms": 95.0,
+      "n": 100,
+      "p50_ms": 68.0,
+      "p95_ms": 89.66
+     }
+    },
+    "start-024": {
+     "hybrid": {
+      "max_ms": 211.47,
+      "n": 100,
+      "p50_ms": 143.99,
+      "p95_ms": 183.2
+     },
+     "lexical": {
+      "max_ms": 148.92,
+      "n": 100,
+      "p50_ms": 71.0,
+      "p95_ms": 115.31
+     },
+     "overhead": {
+      "max_ms": 104.45,
+      "n": 100,
+      "p50_ms": 66.84,
+      "p95_ms": 92.5
+     }
+    },
+    "start-025": {
+     "hybrid": {
+      "max_ms": 241.33,
+      "n": 100,
+      "p50_ms": 149.28,
+      "p95_ms": 191.82
+     },
+     "lexical": {
+      "max_ms": 169.38,
+      "n": 100,
+      "p50_ms": 73.63,
+      "p95_ms": 121.08
+     },
+     "overhead": {
+      "max_ms": 101.08,
+      "n": 100,
+      "p50_ms": 63.84,
+      "p95_ms": 94.52
+     }
+    },
+    "start-026": {
+     "hybrid": {
+      "max_ms": 264.63,
+      "n": 100,
+      "p50_ms": 143.01,
+      "p95_ms": 187.04
+     },
+     "lexical": {
+      "max_ms": 149.69,
+      "n": 100,
+      "p50_ms": 74.2,
+      "p95_ms": 116.32
+     },
+     "overhead": {
+      "max_ms": 114.94,
+      "n": 100,
+      "p50_ms": 63.69,
+      "p95_ms": 92.31
+     }
+    },
+    "start-027": {
+     "hybrid": {
+      "max_ms": 221.92,
+      "n": 100,
+      "p50_ms": 146.87,
+      "p95_ms": 192.9
+     },
+     "lexical": {
+      "max_ms": 155.57,
+      "n": 100,
+      "p50_ms": 73.69,
+      "p95_ms": 126.86
+     },
+     "overhead": {
+      "max_ms": 104.1,
+      "n": 100,
+      "p50_ms": 65.83,
+      "p95_ms": 92.44
+     }
+    },
+    "start-028": {
+     "hybrid": {
+      "max_ms": 226.57,
+      "n": 100,
+      "p50_ms": 137.98,
+      "p95_ms": 202.27
+     },
+     "lexical": {
+      "max_ms": 147.26,
+      "n": 100,
+      "p50_ms": 67.36,
+      "p95_ms": 117.48
+     },
+     "overhead": {
+      "max_ms": 116.71,
+      "n": 100,
+      "p50_ms": 66.47,
+      "p95_ms": 95.24
+     }
+    },
+    "start-029": {
+     "hybrid": {
+      "max_ms": 248.12,
+      "n": 100,
+      "p50_ms": 148.9,
+      "p95_ms": 209.52
+     },
+     "lexical": {
+      "max_ms": 165.24,
+      "n": 100,
+      "p50_ms": 72.45,
+      "p95_ms": 124.65
+     },
+     "overhead": {
+      "max_ms": 114.37,
+      "n": 100,
+      "p50_ms": 72.3,
+      "p95_ms": 95.36
+     }
+    }
+   },
+   "cell": "c4-load",
+   "concurrency": 4,
+   "degraded_reasons": {},
+   "degraded_to_lexical": 0,
+   "errors": {
+    "hybrid": 0,
+    "lexical": 0
+   },
+   "first_query": {
+    "bootstrap": {
+     "n": 30,
+     "one_sided": 0.95,
+     "point_p50_ms": 670.9204998333007,
+     "point_p95_ms": 721.8595000449568,
+     "resamples": 2000,
+     "seed": 20260915,
+     "starts": 30,
+     "ub95_p95_ms": 738.3979170117527
+    },
+    "degraded": 0,
+    "errors": 0,
+    "max_ms": 738.3979170117527,
+    "modes": {
+     "hybrid": 30
+    },
+    "p50_ms": 670.9204998333007,
+    "p95_ms": 721.8595000449568,
+    "values_ms": [
+     605.9249171521515,
+     630.0453341100365,
+     655.0685830879956,
+     649.9135841149837,
+     703.966666944325,
+     658.4369170013815,
+     656.7774580325931,
+     650.8011249825358,
+     662.3555838596076,
+     656.9920829497278,
+     682.4550828896463,
+     644.3311250768602,
+     673.7701250240207,
+     687.1773328166455,
+     721.8595000449568,
+     689.9532091338187,
+     738.3979170117527,
+     663.13900006935,
+     668.1621251627803,
+     666.7638751678169,
+     652.8264170046896,
+     707.9017499927431,
+     676.2946669477969,
+     670.9204998333007,
+     673.624207964167,
+     675.042208051309,
+     699.3477500509471,
+     661.3464159891009,
+     707.8941250219941,
+     734.7333747893572
+    ]
+   },
+   "hybrid": {
+    "n": 3000,
+    "one_sided": 0.95,
+    "point_p50_ms": 138.57979094609618,
+    "point_p95_ms": 184.4806671142578,
+    "resamples": 2000,
+    "seed": 20260915,
+    "starts": 30,
+    "ub95_p95_ms": 186.91095802932978
+   },
+   "hybrid_answered": 3000,
+   "lexical": {
+    "n": 3000,
+    "one_sided": 0.95,
+    "point_p50_ms": 71.21079205535352,
+    "point_p95_ms": 116.4361669216305,
+    "resamples": 2000,
+    "seed": 20260915,
+    "starts": 30,
+    "ub95_p95_ms": 118.04554215632379
+   },
+   "note": "",
+   "overhead": {
+    "n": 3000,
+    "one_sided": 0.95,
+    "point_p50_ms": 62.91433400474489,
+    "point_p95_ms": 89.04841705225408,
+    "resamples": 2000,
+    "seed": 20260915,
+    "starts": 30,
+    "ub95_p95_ms": 90.45145800337195
+   },
+   "requests_per_start": [
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100
+   ],
+   "starts": 30,
+   "verdict": {
+    "checks": {
+     "first_query_p95_ms": {
+      "pass": true,
+      "reads": "p95 of the startup-race first query across starts, degraded and error outcomes included",
+      "threshold_ms": 3500.0,
+      "value": 721.8595000449568
+     },
+     "hybrid_answered": {
+      "pass": true,
+      "reads": "measured requests the hybrid leg actually answered in hybrid mode; zero means the semantic arm never ran and the cell measured lexical twice",
+      "required": ">= 1",
+      "value": 3000
+     },
+     "overhead_p95_ms": {
+      "pass": true,
+      "reads": "p95 of the paired hybrid-lexical per-request difference",
+      "threshold_ms": 100.0,
+      "value": 89.04841705225408
+     },
+     "ub95_p95_ms": {
+      "pass": true,
+      "reads": "one-sided 95% upper bound on p95 wall, clustered by start",
+      "threshold_ms": 200.0,
+      "value": 186.91095802932978
+     }
+    },
+    "failed_checks": [],
+    "pass": true
+   },
+   "warm": {
+    "discarded_query_p95_ms": 46.71783302910626,
+    "load_p95_ms": 359.85916713252664,
+    "states": {
+     "warm": 30
+    },
+    "total_p50_ms": 372.52587475813925,
+    "total_p95_ms": 404.4230829458684
+   },
+   "workload": "load"
+  }
+ },
+ "created_utc": "2026-09-15T13:57:39+00:00",
+ "db": {
+  "embeddings": {
+   "dim": 384,
+   "model": "bge-small-en-v1.5",
+   "vectors": 41239
+  },
+  "fingerprint": "be96843859a237fe92f14bb5d3a20e06e238c6d898179ce8b01102772cfa0008",
+  "path": "/Users/ataylor/.local/share/studyloop/eval-clones/bakeoff-bge-20260915/sessions.db",
+  "quick_fingerprint": "2b5c990027b21c8ba3467a104b2a376baab91ab7703571d42dbe3e0c0d7c29d5",
+  "size_bytes": 891744256,
+  "visibility": {
+   "admitted_sources": [
+    "claude_code",
+    "codex",
+    "grok",
+    "kiro_cli",
+    "opencode",
+    "pi",
+    "study_mentor"
+   ],
+   "total_sessions": 2173,
+   "visible_sessions": 2173
+  }
+ },
+ "environment": {
+  "child_quick_fingerprints": [
+   "2b5c990027b21c8ba3467a104b2a376baab91ab7703571d42dbe3e0c0d7c29d5"
+  ],
+  "config": {
+   "_note": "written by stage5_latency for Gate L: semantic_search.hybrid is deliberately ABSENT so retrieval.resolve_mode falls through to SURFACE_DEFAULTS and the surface flip is what gets measured",
+   "database": {
+    "path": "/Users/ataylor/.local/share/studyloop/eval-clones/bakeoff-bge-20260915/sessions.db"
+   },
+   "memory": {
+    "default_scope": "unclassified",
+    "projects": {}
+   },
+   "semantic_search": {
+    "model": "bge-small-en-v1.5",
+    "query_encoder": "auto"
+   }
+  },
+  "config_sha256": "fcee31ae492ce0de870fe385fade56c44011d755832dd3e2e9f94f850adc05bc",
+  "corpus_drifted_mid_run": [],
+  "cpu_count": 16,
+  "flip_simulated_by": "retrieval.SURFACE_DEFAULTS[SURFACE_MCP]",
+  "interface": "fastmcp call_tool(session_search), one loop per start",
+  "lost_starts": [],
+  "platform": "macOS-27.0-arm64-arm-64bit",
+  "preflight_blockers": [],
+  "python": "3.12.8",
+  "stripped_env": [
+   "STUDYLOOP_RETRIEVAL_MODE",
+   "STUDYLOOP_QUERY_ENCODER",
+   "DATABASE_PATH",
+   "STUDYLOOP_DB"
+  ],
+  "surface": "mcp"
+ },
+ "full_receipt": {
+  "note": "recompute the cluster bootstrap from the full file; the committed metrics_sha256 is the FULL receipt's",
+  "path": "/Users/ataylor/.local/share/studyloop/eval-receipts/stage5-latency-gateL-2026-09-15-shipping-full.json",
+  "sha256": "62d98fdd321cbe4c697a62f5b088e6b77fe6c4282cd5aca316125bd670ff5e35"
+ },
+ "gate": "L (L-astra): resident-state latency for the mcp/web default flip",
+ "gates": {
+  "clustered_by": "start",
+  "first_query_p95_ms": 3500.0,
+  "one_sided_confidence": 0.95,
+  "overhead_p95_ms": 100.0,
+  "ub95_p95_ms": 200.0
+ },
+ "git_commit": "ff84414379336823d68ff465e313aacd901ccbe5",
+ "gold": {
+  "n": 91,
+  "path": "/Users/ataylor/code/personal/tools/studyloop/docs/architecture/session-memory/receipts/gold-v2-dev.json",
+  "set": "DEV",
+  "sha256": "5632cd2b02a77dbd95ded3fae3aa32fa1599cd43929f43e44aa132343c3c6098",
+  "version": "v2"
+ },
+ "metrics_sha256": "1082492654d6cf0ab5e4e4359bcc428c8f8dce947bb18b95affa24b60460b319",
+ "pre_registration": "docs/architecture/session-memory/receipts/semantic-layer/stage5-preregistration-2026-09-15.md",
+ "schema": "studyloop.stage5-latency/v1",
+ "verdict": {
+  "cells_reported": 4,
+  "failing_cells": [],
+  "pass": true,
+  "rule": "no pooling: every cell is reported and any failing cell fails Gate L (stage5 pre-registration, Gate L / L-astra)"
+ },
+ "workload": {
+  "cores": 16,
+  "name": "spin-half-cores",
+  "processes": 8,
+  "relaunched": "once per start, terminated when that start exits",
+  "settle_seconds": 0.25,
+  "spin": "python integer loop, no allocation and no I/O",
+  "ttl_seconds": 600.0
+ }
+}
