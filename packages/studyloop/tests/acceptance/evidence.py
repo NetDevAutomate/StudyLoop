@@ -4,11 +4,12 @@ B4 owns the FULL bundle-writer schema -- ``manifest.json`` with run id,
 repo sha + dirty-tree identity, harness/actor versions, platform, auth
 mode, rubric version+hash, full pass/fail/skip counts, file inventory with
 sha256s, all captured into a DURABLE evidence root resolved from the real
-environment BEFORE scratch substitution -- but that writer has not landed
-yet, and this lane (B2) needs somewhere to put its per-run evidence NOW so
-a harness-matrix run is not silently unrecorded.
+environment BEFORE scratch substitution -- that writer now exists in-tree
+(``tests/acceptance/uat/bundle.py``) but is not yet wired into this lane's
+call sites, and this lane (B2) needs somewhere to put its per-run evidence
+NOW so a harness-matrix run is not silently unrecorded.
 
-Until B4's writer lands, this module writes the NARROWEST bundle this
+Until the callers migrate, this module writes the NARROWEST bundle this
 lane's own validators need: a plain directory per run holding the turn
 records (pane text is EVIDENCE here, never an assertion target -- D-17)
 and a small ``manifest.json`` naming the harness, actor, outcome, turn

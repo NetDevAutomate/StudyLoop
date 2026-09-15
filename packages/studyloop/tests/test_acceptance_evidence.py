@@ -117,8 +117,8 @@ class TestWriteEvidenceBundle:
     ) -> None:
         """Structural note, not a copy of B4's schema: the field NAMES this
         minimal writer uses (run_id/harness/actor/outcome) must already
-        match what B4's full writer describes, so migrating callers to
-        B4's real writer later is a rename, not a rewrite."""
+        match what B4's full writer describes (see the Coverage inventory's
+        field-name mapping in docs/acceptance-testing.md)."""
         bundle = write_evidence_bundle(
             tmp_path,
             run_id="shape",
