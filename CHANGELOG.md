@@ -24,7 +24,7 @@ experience may change before `1.0.0`.
   search can now use a pinned fp32 ONNX `bge-small-en-v1.5` (artefact
   revision + sha256 recorded in the model registry; fetched only by explicit
   user action, never mid-search), cached by (model, backend, revision) with
-  single-flight construction and load-phase events. Default unchanged (torch).
+  single-flight construction and load-phase events (default: see Changed).
 - An honest load indicator for encoder loads: timer-driven stderr phase
   messages past 300 ms ("last load: X s" from per-machine cold/warm records —
   never a percentage bar), and a web encoder-warm status chip fed by
@@ -32,14 +32,24 @@ experience may change before `1.0.0`.
 
 ### Changed
 
-- Retrieval mode resolution is tri-state and per-surface: an explicit
+- **Semantic search is no longer opt-in on long-lived surfaces.** Retrieval
+  mode resolution is tri-state and per-surface: an explicit
   `semantic_search.hybrid: true|false` in the config file always wins; an
-  absent key falls through to the surface default (`resolve_mode(surface=…)`).
-  Surface defaults are unchanged in this release — the mcp/web flip to hybrid
-  is held behind the Stage 5 pre-registered gate
-  (`docs/architecture/session-memory/receipts/semantic-layer/stage5-preregistration-2026-09-15.md`).
-  The `retrieval_status` payload's field-level schema is now pinned by a
-  contract test.
+  absent key falls through to the surface default (`resolve_mode(surface=…)`),
+  and the MCP and web surfaces now default to **hybrid** while the one-shot
+  CLI stays lexical. The flip passed the owner-signed Stage 5 gate on the
+  shipping system (30 starts × 100 requests per cell: p95 upper bound
+  77–187 ms against ≤ 200 ms, paired overhead 26–89 ms against ≤ 100 ms,
+  first-query p95 618–740 ms against ≤ 3,500 ms; receipts under
+  `docs/architecture/session-memory/receipts/semantic-layer/`), and is
+  provisional pending the owner's SEALED G1/G2 run. The `retrieval_status`
+  payload's field-level schema is now pinned by a contract test.
+- **The query side of a hybrid search defaults to the ONNX encoder**
+  (`semantic_search.query_encoder: auto` — onnx where the model has a pinned
+  artefact, torch otherwise; explicit `torch`/`onnx` always wins). Parity
+  against the torch encoder passed on the full gold DEV set (91/91 identical
+  ranked lists, cosine ≥ 0.999 per query); encoder load falls from ~2.9 s to
+  ~0.2 s and a one-shot CLI hybrid search from ~2.9 s to ~0.33 s p50.
 
 ### Removed
 
