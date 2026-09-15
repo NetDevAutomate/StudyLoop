@@ -269,6 +269,7 @@ def create_app(
         session,
         tts,
     )
+    from studyloop.web.routes import retrieval as retrieval_routes
 
     app.include_router(courses.router, prefix="/api")
     app.include_router(cards.router, prefix="/api")
@@ -294,6 +295,9 @@ def create_app(
     app.include_router(plans.router, prefix="/api")
     app.include_router(second_brain.router, prefix="/api")
     app.include_router(tts.router, prefix="/api")
+    # The encoder-warm status chip reads this (lane A4): the boot warm takes
+    # seconds and was previously invisible to a learner searching in that window.
+    app.include_router(retrieval_routes.router, prefix="/api")
 
     try:
         from studyloop.web.routes.session._options import warm_session_options_index
