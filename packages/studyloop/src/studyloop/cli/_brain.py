@@ -295,11 +295,12 @@ def _selected_plan_ids(
         return []
     if plan_ids:
         return list(plan_ids)
-    from studyloop.planning import list_plans
+    from studyloop.planning import PlanApplication
 
+    plans = PlanApplication()
     if publish_all:
-        return [plan.plan_id for plan in list_plans()]
-    return [plan.plan_id for plan in list_plans(status="active")]
+        return [plan.plan_id for plan in plans.browse()]
+    return [plan.plan_id for plan in plans.browse(status="active")]
 
 
 def _publish(backend, plan_ids: list[str], *, today: bool) -> list[PublishResult]:

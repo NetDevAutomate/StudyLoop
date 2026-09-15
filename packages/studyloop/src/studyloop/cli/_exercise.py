@@ -241,25 +241,24 @@ def exercise_from_milestone(plan_id: str, index: int | None, as_json: bool) -> N
     plan uses against ``study_progress`` — so the exercise, the milestone, and
     the confidence evidence all name the same thing.
     """
-    from studyloop.planning import load_plan
-    from studyloop.planning.store import InvalidPlanIdError, PlanNotFoundError
+    from studyloop.planning import PlanApplication, PlanError
 
     try:
-        plan = load_plan(plan_id)
-    except (PlanNotFoundError, InvalidPlanIdError) as exc:
+        detail = PlanApplication().inspect(plan_id)
+    except PlanError as exc:
         _fail(str(exc))
 
-    if not plan.milestones:
+    if not detail.milestones:
         _fail(f"Plan {plan_id!r} has no milestones to build exercises from.")
     if index is None:
-        milestone = plan.next_milestone() or plan.milestones[0]
-    elif 0 <= index < len(plan.milestones):
-        milestone = plan.milestones[index]
+        milestone = next((m for m in detail.milestones if not m.done), detail.milestones[0])
+    elif 0 <= index < len(detail.milestones):
+        milestone = detail.milestones[index]
     else:
-        _fail(f"No milestone at index {index} (plan has {len(plan.milestones)}).")
+        _fail(f"No milestone at index {index} (plan has {len(detail.milestones)}).")
 
-    item = from_milestone(plan.plan_id, milestone.title, milestone.concepts)
-    item.set_id = unique_set_id(plan.plan_id, item.topic)
+    item = from_milestone(detail.summary.plan_id, milestone.title, list(milestone.concepts))
+    item.set_id = unique_set_id(detail.summary.plan_id, item.topic)
     try:
         path = create_set(item)
     except (ExerciseSetExistsError, InvalidSetIdError) as exc:

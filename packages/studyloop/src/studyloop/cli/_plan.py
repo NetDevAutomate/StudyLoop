@@ -7,11 +7,14 @@ default human output stays readable in a terminal sidebar.
 ``plan evaluate`` prints the Markdown block by default: that is what an agent
 pastes into the conversation at each of the three session checkpoints.
 
-``list``, ``show`` and ``status`` read and write through
-:class:`~studyloop.planning.PlanApplication`, so the activation refusal here is
-the same refusal the Web API gives — same blockers, same nudges, no write.
-``new``, ``interview``, ``evaluate``, ``milestone`` and ``record`` move onto
-the seam in Phase 2 and still use the storage modules directly.
+Every command reads and writes through
+:class:`~studyloop.planning.PlanApplication` — ``browse`` / ``inspect`` /
+``prepare_planning`` to read, ``apply`` with an intent to write, ``assess`` to
+evaluate — so the activation refusal here is the same refusal the Web API
+gives (same blockers, same nudges, no write), a milestone set is idempotent,
+and a recorded checkpoint reports both of its sinks. This module maps domain
+errors to exit codes and messages (design §2) and formats output; it holds no
+plan rule of its own and imports no storage module (D-6).
 """
 
 from __future__ import annotations
@@ -26,44 +29,32 @@ from rich.table import Table
 from studyloop.cli._shared import console
 from studyloop.planning import (
     PLAN_STATUSES,
+    AssessPlan,
+    CreatePlan,
     InvalidField,
     InvalidMilestone,
     InvalidPlanId,
+    LearningRecordSpec,
     PlanApplication,
     PlanConflict,
     PlanError,
     PlanNotFound,
     PlanNotReady,
     ReadinessView,
-    StudyPlan,
+    RevisePlan,
+    SetMilestone,
     TransitionLifecycle,
-    create_plan,
-    draft_plan,
-    evaluate_and_record,
-    evaluate_plan,
-    interview_spec,
-    load_plan,
     plans_dir,
-    record_learning,
-    reindex_all,
-    save_plan,
-    seed_from_history,
-    unique_plan_id,
-)
-from studyloop.planning.store import (
-    InvalidPlanIdError,
-    PlanExistsError,
-    PlanNotFoundError,
 )
 
 if TYPE_CHECKING:
-    from studyloop.planning import PlanDetail
+    from studyloop.planning import AssessmentResult, PlanDetail, PlanDetailIntent
 
 
 def _fail(message: str) -> NoReturn:
     """Print an error and exit non-zero, never a traceback.
 
-    Typed ``NoReturn`` so callers like :func:`_load` are provably
+    Typed ``NoReturn`` so callers like :func:`_inspect` are provably
     non-optional — otherwise every use site has to defend against a ``None``
     that can never actually arrive.
     """
@@ -101,14 +92,19 @@ def _inspect(plan_id: str, *, include_markdown: bool = False) -> PlanDetail:
         _fail_for(exc, plan_id)
 
 
-def _load(plan_id: str) -> StudyPlan:
-    """Load the mutable model for the commands Phase 2 has not migrated yet."""
+def _apply(intent: PlanDetailIntent) -> PlanDetail:
+    """Apply one intent, mapping any refusal to the one-line failure."""
     try:
-        return load_plan(plan_id)
-    except PlanNotFoundError:
-        _fail(f"No study plan with id {plan_id!r}. Try: studyloop plan list")
-    except InvalidPlanIdError as exc:
-        _fail(str(exc))
+        return PlanApplication().apply(intent)
+    except PlanError as exc:
+        _fail_for(exc, intent.plan_id or "")
+
+
+def _assess(intent: AssessPlan) -> AssessmentResult:
+    try:
+        return PlanApplication().assess(intent)
+    except PlanError as exc:
+        _fail_for(exc, intent.plan_id)
 
 
 def _print_readiness(check: ReadinessView) -> None:
@@ -252,47 +248,46 @@ def plan_new(
     """Create a study plan.
 
     Omitted answers are left explicitly blank in the document rather than
-    invented, and ``readiness`` reports what is still missing.
+    invented, and ``readiness`` reports what is still missing. ``--activate``
+    is the same ``CreatePlan`` with ``status="active"``: the seam judges the
+    resulting document and refuses — writing nothing — when it is incomplete,
+    exactly as ``plan status <id> active`` and the Web API do.
     """
-    plan = draft_plan(
-        title,
-        {
-            "why": why,
-            "success": list(success),
-            "topics": list(topics),
-            "constraints": list(constraints),
-            "out_of_scope": list(out_of_scope),
-            "milestones": list(milestones),
-            "resources": list(resources),
-            "target_date": target_date,
-            "energy_floor": energy_floor,
-        },
-        plan_id=unique_plan_id(title),
+    detail = _apply(
+        CreatePlan(
+            title=title,
+            answers={
+                "why": why,
+                "success": list(success),
+                "topics": list(topics),
+                "constraints": list(constraints),
+                "out_of_scope": list(out_of_scope),
+                "milestones": list(milestones),
+                "resources": list(resources),
+                "target_date": target_date,
+                "energy_floor": energy_floor,
+            },
+            status="active" if activate else "draft",
+        )
     )
-
-    check = ReadinessView.from_plan(plan)
-    if activate:
-        if not check.ready:
-            _refuse_activation(check)
-        plan.status = "active"
-
-    try:
-        path = create_plan(plan)
-    except PlanExistsError as exc:
-        _fail(str(exc))
-    except InvalidPlanIdError as exc:
-        _fail(str(exc))
+    # Plans live as ``<id>.md`` in the plans directory (``studyloop plan
+    # path``); the path is shown as a convenience for the learner, not read.
+    path = plans_dir() / f"{detail.summary.plan_id}.md"
 
     if as_json:
         click.echo(
             json.dumps(
-                {"plan": plan.summary(), "readiness": check.to_json_dict(), "path": str(path)},
+                {
+                    "plan": detail.summary.to_json_dict(),
+                    "readiness": detail.readiness.to_json_dict(),
+                    "path": str(path),
+                },
                 indent=2,
             )
         )
         return
-    console.print(f"[green]Created[/green] {plan.plan_id} → {path}")
-    _print_readiness(check)
+    console.print(f"[green]Created[/green] {detail.summary.plan_id} → {path}")
+    _print_readiness(detail.readiness)
 
 
 @plan_group.command("interview")
@@ -303,17 +298,18 @@ def plan_interview(as_json: bool) -> None:
     An agent calls this to learn what to ask, and what the databases already
     suggest the learner should plan for.
     """
-    questions = interview_spec()
-    seed = seed_from_history()
+    brief = PlanApplication().prepare_planning()
+    seed = brief.to_json_dict()["seed"]
     if as_json:
+        questions = brief.to_json_dict()["questions"]
         click.echo(json.dumps({"questions": questions, "seed": seed}, indent=2))
         return
 
     console.print("[bold]Plan interview[/bold] — work through these in order.\n")
-    for index, question in enumerate(questions, 1):
-        flag = "" if question["required"] else " [dim](optional)[/dim]"
-        console.print(f"{index}. {question['prompt']}{flag}")
-        console.print(f"   [dim]{question['why']}[/dim]")
+    for index, question in enumerate(brief.interview, 1):
+        flag = "" if question.required else " [dim](optional)[/dim]"
+        console.print(f"{index}. {question.prompt}{flag}")
+        console.print(f"   [dim]{question.why}[/dim]")
 
     if seed.get("struggling_topics"):
         console.print("\n[bold]Struggling recently[/bold]")
@@ -340,19 +336,26 @@ def plan_interview(as_json: bool) -> None:
 @click.option("--study-id", default="", help="Session id to attribute the checkpoint to.")
 @click.option("--json", "as_json", is_flag=True, help="Machine-readable output.")
 def plan_evaluate(plan_id: str, phase: str, record: bool, study_id: str, as_json: bool) -> None:
-    """Evaluate a plan against your study and session history."""
-    plan = _load(plan_id)
-    evaluation = (
-        evaluate_and_record(plan, phase, study_id=study_id)
-        if record
-        else evaluate_plan(plan, phase, study_id=study_id)
-    )
+    """Evaluate a plan against your study and session history.
+
+    With ``--record`` the checkpoint goes to the durable log and to the plan
+    document; each write is reported on its own, so a failed database write
+    is named rather than hidden behind "recorded".
+    """
+    result = _assess(AssessPlan(plan_id=plan_id, phase=phase, study_id=study_id, record=record))
     if as_json:
-        click.echo(json.dumps(evaluation.to_dict(), indent=2, default=str))
+        click.echo(json.dumps(result.evaluation.to_json_dict(), indent=2, default=str))
         return
-    click.echo(evaluation.as_markdown())
-    if record:
+    click.echo(result.evaluation.markdown)
+    if not record:
+        return
+    if result.recording_complete:
         console.print("[green]Checkpoint recorded.[/green]")
+    else:
+        console.print(
+            "[yellow]Checkpoint partially recorded — "
+            f"database: {result.db_write}, document: {result.document_write}[/yellow]"
+        )
 
 
 @plan_group.command("milestone")
@@ -360,17 +363,23 @@ def plan_evaluate(plan_id: str, phase: str, record: bool, study_id: str, as_json
 @click.argument("index", type=int)
 @click.option("--done/--undone", "done", default=None, help="Set explicitly instead of toggling.")
 def plan_milestone(plan_id: str, index: int, done: bool | None) -> None:
-    """Toggle (or set) a milestone's completion state."""
-    plan = _load(plan_id)
-    if index < 0 or index >= len(plan.milestones):
-        _fail(f"No milestone at index {index} (plan has {len(plan.milestones)}).")
-    milestone = plan.milestones[index]
-    milestone.done = (not milestone.done) if done is None else done
-    save_plan(plan)
+    """Toggle (or set) a milestone's completion state.
+
+    Either way the write is one idempotent ``SetMilestone``: with a flag the
+    state is set as asked (running it twice is safe); without one the current
+    state is read and its opposite is set. An index the plan does not have —
+    past the end or negative — is refused by the seam.
+    """
+    if done is None:
+        current = _inspect(plan_id)
+        done = not any(m.index == index and m.done for m in current.milestones)
+    detail = _apply(SetMilestone(plan_id=plan_id, index=index, done=done))
+    milestone = detail.milestones[index]
     state = "done" if milestone.done else "not done"
     console.print(
         f"[green]{milestone.title}[/green] → {state}  "
-        f"({plan.milestone_done}/{plan.milestone_total}, {plan.progress_pct}%)"
+        f"({detail.summary.milestone_done}/{detail.summary.milestone_total}, "
+        f"{detail.summary.progress_pct}%)"
     )
 
 
@@ -384,10 +393,7 @@ def plan_status(plan_id: str, status: str) -> None:
     criteria, or milestones — an unevaluable plan must not look active. The
     refusal is the seam's, so it is the same one the Web API gives.
     """
-    try:
-        detail = PlanApplication().apply(TransitionLifecycle(plan_id=plan_id, status=status))
-    except PlanError as exc:
-        _fail_for(exc, plan_id)  # PlanNotReady → the blockers, exit 1; the rest one line each
+    detail = _apply(TransitionLifecycle(plan_id=plan_id, status=status))
     console.print(f"[green]{detail.summary.plan_id}[/green] → {status}")
 
 
@@ -413,25 +419,28 @@ def plan_record(
 ) -> None:
     """Append a learning record to a plan — the wind-down's 'record first' step.
 
-    Parses the document, appends the record to the model, and re-renders the
-    whole file, so the on-disk shape stays the renderer's business (ADR-0010).
-    Re-running with the same title and body is a no-op, which makes it safe for
-    an agent to retry.
+    One ``RevisePlan`` carrying the record: the seam parses the document,
+    appends through the store's single learning-record rule, and re-renders
+    the whole file, so the on-disk shape stays the renderer's business
+    (ADR-0010). Re-running with the same title and body adds nothing, which
+    makes it safe for an agent to retry; ``created`` says which happened.
     """
     if body and body_file:
         _fail("Pass --body or --body-file, not both.")
     if body_file:
         body = Path(body_file).read_text(encoding="utf-8")
-    plan = _load(plan_id)  # maps not-found/invalid-id to the friendly failure
-    try:
-        record, created = record_learning(plan.plan_id, title, body=body, status=status)
-    except ValueError as exc:
-        _fail(str(exc))
+    spec = LearningRecordSpec(title=title, body=body, status=status)
+    before = _inspect(plan_id)  # maps not-found/invalid-id to the friendly failure
+    detail = _apply(RevisePlan(plan_id=plan_id, learning_record=spec))
+    record = detail.learning_record_matching(spec)
+    if record is None:  # pragma: no cover - the seam just appended or matched it
+        _fail(f"Learning record {spec.title!r} was not persisted on {plan_id!r}.")
+    created = before.learning_record_matching(spec) is None
     if as_json:
         click.echo(
             json.dumps(
                 {
-                    "plan_id": plan.plan_id,
+                    "plan_id": detail.summary.plan_id,
                     "number": record.number,
                     "title": record.title,
                     "status": record.status,
@@ -448,7 +457,7 @@ def plan_record(
 @plan_group.command("reindex")
 def plan_reindex() -> None:
     """Rebuild the derived plan index in the sessions DB from the documents."""
-    count = reindex_all()
+    count = PlanApplication().reindex()
     console.print(f"[green]Reindexed[/green] {count} plan(s).")
 
 

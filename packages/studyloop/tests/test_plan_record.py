@@ -18,6 +18,7 @@ from click.testing import CliRunner
 from studyloop.cli import cli
 from studyloop.planning import (
     LearningRecord,
+    Milestone,
     Mission,
     StudyPlan,
     create_plan,
@@ -35,12 +36,21 @@ def isolated_plans_dir(tmp_path, monkeypatch):
 
 
 def _seed(plan_id: str = "decorators", records: list[LearningRecord] | None = None) -> StudyPlan:
+    # A *ready* active plan. The seam's resulting-document gate (Phase 1,
+    # review-1 F1b) refuses any write that would re-save an active plan with
+    # no success criteria or milestones — so the CLI and MCP paths below,
+    # which now go through RevisePlan, need a document that could legally be
+    # active. The store-level tests are indifferent to the shape.
     plan = StudyPlan(
         plan_id=plan_id,
         title="Python Decorators",
         status="active",
         topics=["python"],
-        mission=Mission(why="They keep appearing in code review."),
+        mission=Mission(
+            why="They keep appearing in code review.",
+            success=["Explain the wrapper relationship unprompted."],
+        ),
+        milestones=[Milestone(title="Trace a decorated call", concepts=["wrapper", "closure"])],
         learning_records=records or [],
     )
     create_plan(plan)
