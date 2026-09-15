@@ -11,8 +11,10 @@ a harness-matrix run is not silently unrecorded.
 Until B4's writer lands, this module writes the NARROWEST bundle this
 lane's own validators need: a plain directory per run holding the turn
 records (pane text is EVIDENCE here, never an assertion target -- D-17)
-and a small ``manifest.json`` naming the harness, actor, outcome and turn
-count. The shape is deliberately close to a SUBSET of B4's described
+and a small ``manifest.json`` naming the harness, actor, outcome, turn
+count, and -- council D-21(7) -- the harness version, platform, and auth
+mode (each optional, recorded as ``null`` when unknown, never simply
+absent). The shape is deliberately close to a SUBSET of B4's described
 schema (same field names: ``run_id``, ``harness``, ``actor``, ``outcome``)
 so that swapping this module out for a call into B4's real writer is a
 rename, not a rewrite.
@@ -61,8 +63,18 @@ def write_evidence_bundle(
     actor: str,
     outcome: str,
     turns: list[dict],
+    platform: str | None = None,
+    auth_mode: str | None = None,
+    harness_version: str | None = None,
 ) -> EvidenceBundle:
     """Write ``manifest.json`` + ``turns.json`` for one acceptance run.
+
+    ``platform``/``auth_mode``/``harness_version`` are council D-21(7)'s
+    "harness version, platform, auth mode" -- optional (default ``None``,
+    recorded as such) because not every caller knows all three yet (a
+    presence-only probe has no version to report), but the KEYS are always
+    present in the manifest so a reader never has to guess whether "not
+    recorded" means "empty string" or "key absent".
 
     Raises :class:`UnsafeRunIdError` for a ``run_id`` that is empty or could
     escape ``evidence_root`` (a leading ``.``/``/`` or an embedded path
@@ -85,6 +97,9 @@ def write_evidence_bundle(
         "actor": actor,
         "outcome": outcome,
         "turn_count": len(turns),
+        "platform": platform,
+        "auth_mode": auth_mode,
+        "harness_version": harness_version,
     }
     manifest_path = run_dir / "manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")

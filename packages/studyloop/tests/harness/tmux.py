@@ -24,8 +24,21 @@ import time
 class TmuxHarness:
     """Low-level tmux control for integration tests."""
 
-    def __init__(self) -> None:
+    def __init__(self, env: dict[str, str] | None = None) -> None:
+        """``env`` is the environment every ``tmux`` invocation this
+        instance makes will run under -- in particular ``TMUX_TMPDIR``,
+        which selects which tmux SERVER a command talks to (review finding,
+        B2 fix round 1): a bare ``TmuxHarness()`` addresses the CALLER's
+        (this test process's) ``TMUX_TMPDIR``, which is NOT the socket a
+        child process launched under a scratch env (`ScratchEnv.env`)
+        receives. Driving a scratch-isolated child requires
+        ``TmuxHarness(env=scratch_env.env)`` -- otherwise every
+        ``session_exists``/``capture_pane``/``send_keys`` call silently
+        talks to the wrong (or no) tmux server. Defaults to this process's
+        own environment, unchanged, for every non-scratch caller (e.g.
+        ``tests/test_harness_drive.py``'s scripted-`sh`-harness fixtures)."""
         self._managed_sessions: list[str] = []
+        self._env: dict[str, str] = dict(env) if env is not None else dict(os.environ)
 
     # ------------------------------------------------------------------
     # Polling
@@ -71,13 +84,16 @@ class TmuxHarness:
     # tmux commands
     # ------------------------------------------------------------------
 
-    @staticmethod
-    def _tmux(*args: str) -> subprocess.CompletedProcess[str]:
-        """Run a tmux command."""
+    def _tmux(self, *args: str) -> subprocess.CompletedProcess[str]:
+        """Run a tmux command under THIS instance's env (see ``__init__``'s
+        docstring) -- never the inherited default, which would silently
+        resolve a different ``TMUX_TMPDIR`` than the one a scratch-isolated
+        child actually received."""
         return subprocess.run(
             ["tmux", *args],
             capture_output=True,
             text=True,
+            env=self._env,
         )
 
     def session_exists(self, name: str) -> bool:

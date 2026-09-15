@@ -13,9 +13,12 @@ ORDER (this lane's brief, council amendment): codex + claude first (E-03
 usage), then kiro over tmux (CORE -- its web-ACP coverage in B1 does not
 certify the CLI path), then the three PREVIEW harnesses opencode/pi/grok,
 never a blocker. ``HARNESS_ORDER`` is a literal re-ordering of
-``RELEASE_HARNESSES``, not a hand-maintained separate list --
-``test_harness_order_is_exactly_release_harnesses_reordered`` below is the
-structural guard that keeps the two from drifting apart.
+``RELEASE_HARNESSES``, not a hand-maintained separate list -- the structural
+guard that keeps the two from drifting apart lives in
+``tests/test_harness_matrix_live_mechanics.py`` (an UNGATED module, not
+behind the ``acceptance`` marker: council D-19/D-26's "matrix, never one
+green check" applies to drift guards too -- a guard that only runs under
+``STUDYLOOP_ACC=1`` never actually guards CI).
 
 Every live turn is budget-guarded (``harness.drive.PaneDriver``, grok F9): a
 per-turn timeout AND a max-turns ceiling, so a runaway real binary can never
@@ -44,6 +47,8 @@ rather than hanging.
 from __future__ import annotations
 
 import json
+import platform
+import secrets
 import shutil
 import subprocess
 import sys
@@ -53,7 +58,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from studyloop.harnesses import RELEASE_HARNESSES, get_harness
+from studyloop.harnesses import get_harness
 
 _tests_dir = Path(__file__).resolve().parent.parent
 if str(_tests_dir) not in sys.path:
@@ -78,28 +83,28 @@ pytestmark = [
 
 #: Literal re-order of RELEASE_HARNESSES -- see the module docstring's ORDER
 #: section. Verified a pure re-ordering (never a hand-drifted separate list)
-#: by test_harness_order_is_exactly_release_harnesses_reordered below.
+#: by test_harness_matrix_live_mechanics.py's
+#: test_harness_order_is_exactly_release_harnesses_reordered (an UNGATED
+#: module -- see that file's module docstring for why this guard must not
+#: live behind the acceptance marker).
 HARNESS_ORDER: tuple[str, ...] = ("codex", "claude", "kiro", "opencode", "pi", "grok")
 
+#: D-21(2) requires "start -> >=3 scripted turns -> ...". Three free-form
+#: turns, not scripted around any particular expected reply (D-17: pane
+#: text is evidence, never an assertion target).
 SCRIPT = load_turn_script(
     {
         "version": 1,
         "turns": [
             {"prompt": "In one short sentence, what is a Python decorator?"},
             {"prompt": "Thanks. In one short sentence, what is a closure?"},
+            {"prompt": "One more: in one short sentence, what is a generator?"},
         ],
     }
 )
 
 _MAX_TURNS = len(SCRIPT.turns)
 _PER_TURN_TIMEOUT = 90.0
-
-
-def test_harness_order_is_exactly_release_harnesses_reordered() -> None:
-    assert set(HARNESS_ORDER) == set(RELEASE_HARNESSES), (
-        f"HARNESS_ORDER {sorted(HARNESS_ORDER)} has drifted from "
-        f"RELEASE_HARNESSES {sorted(RELEASE_HARNESSES)}"
-    )
 
 
 def _kiro_probe(binary: str, env: Mapping[str, str]) -> tuple[bool, str]:
@@ -146,44 +151,21 @@ PROBES: dict[str, Callable[[str, Mapping[str, str]], tuple[bool, str]]] = {
 
 
 def harness_available(name: str, env: Mapping[str, str]) -> tuple[bool, str]:
-    """Named-skip predicate (D-13): report WHICH binary/step is missing."""
+    """Named-skip predicate (D-13): report WHICH binary/step is missing.
+
+    Resolves the binary against ``env``'s OWN ``PATH`` -- the same PATH the
+    child launch below actually gets -- rather than this test process's
+    PATH (review finding, B2 fix round 1): ``build_scratch_child_env``
+    preserves PATH today, so the two currently agree, but that agreement is
+    an invariant of the scratch-env builder, not of this function, and must
+    not silently start depending on which PATH ``shutil.which`` happened to
+    default to."""
     harness = get_harness(name)
-    binary = shutil.which(harness.binary)
+    binary = shutil.which(harness.binary, path=env.get("PATH"))
     if not binary:
         return False, f"{harness.binary} not on PATH"
     probe = PROBES.get(name, _presence_only_probe)
     return probe(binary, env)
-
-
-class TestAvailabilityPredicateMechanics:
-    """(a) TESTS FIRST item: "no binary -> named skip", proven directly
-    against the predicate rather than only via a live run -- so this
-    passes in CI with zero real harness binaries installed."""
-
-    @pytest.mark.parametrize("harness_name", HARNESS_ORDER)
-    def test_missing_binary_is_a_named_skip_reason(
-        self, harness_name: str, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.setattr(shutil, "which", lambda _name: None)
-        ok, reason = harness_available(harness_name, {})
-        assert ok is False
-        assert get_harness(harness_name).binary in reason
-
-    def test_kiro_probe_names_the_login_failure(self, tmp_path: Path) -> None:
-        stub = tmp_path / "kiro-cli"
-        stub.write_text("#!/bin/sh\necho 'Not logged in' >&2\nexit 1\n", encoding="utf-8")
-        stub.chmod(0o755)
-
-        ok, reason = _kiro_probe(str(stub), {"PATH": "/usr/bin:/bin", "HOME": str(tmp_path)})
-
-        assert ok is False
-        assert "kiro-cli" in reason
-        assert "not logged in" in reason.lower()
-
-    def test_presence_only_probe_passes_once_the_binary_exists(self) -> None:
-        ok, reason = _presence_only_probe("/bin/true", {})
-        assert ok is True
-        assert reason == ""
 
 
 class TestHarnessMatrixLive:
@@ -230,10 +212,25 @@ class TestHarnessMatrixLive:
             timeout=30,
         )
 
-        tmux = TmuxHarness()
+        # `TmuxHarness(env=scratch_env.env)`, NOT a bare `TmuxHarness()`:
+        # every tmux invocation this instance makes must resolve the SAME
+        # `TMUX_TMPDIR` the child process below actually received, or every
+        # `session_exists`/`capture_pane`/`send_keys` call silently talks
+        # to the wrong (or no) tmux server (review finding, B2 fix round 1;
+        # see `TmuxHarness.__init__`'s docstring and
+        # `test_harness_matrix_live_mechanics.py`'s positive control).
+        tmux = TmuxHarness(env=scratch_env.env)
         state_file = scratch_env.config_dir / "session-state.json"
         outcome = "errored"
         session_name = ""
+        # `driver` stays None if an earlier wait_for (session-state.json,
+        # tmux session, pane children) is what fails -- the outer finally
+        # below must still write A bundle in that case (review finding, B2
+        # fix round 1: previously `write_evidence_bundle` lived in an INNER
+        # finally scoped only to the turn loop, so exactly those failures
+        # -- the ones findings 1 and 2 guaranteed -- wrote no bundle at all,
+        # making the `outcome = "errored"` initialisation above dead code).
+        driver: PaneDriver | None = None
         try:
             tmux.wait_for(
                 state_file.exists,
@@ -266,25 +263,12 @@ class TestHarnessMatrixLive:
             driver = PaneDriver(
                 tmux, main_pane, max_turns=_MAX_TURNS, per_turn_timeout=_PER_TURN_TIMEOUT
             )
-            try:
-                for turn in SCRIPT.turns:
-                    driver.send_turn(turn.prompt)
-                outcome = "completed"
-            except TurnBudgetExceededError:
-                outcome = "budget-exhausted"
-                raise
-            finally:
-                write_evidence_bundle(
-                    tmp_path / "evidence",
-                    run_id=f"{harness_name}-{int(time.time())}",
-                    harness=harness_name,
-                    actor="scripted",
-                    outcome=outcome,
-                    turns=[
-                        {"prompt": r.prompt, "pane_output": r.pane_output, "elapsed": r.elapsed}
-                        for r in driver.records
-                    ],
-                )
+            for turn in SCRIPT.turns:
+                driver.send_turn(turn.prompt)
+            outcome = "completed"
+        except TurnBudgetExceededError:
+            outcome = "budget-exhausted"
+            raise
         finally:
             subprocess.run(
                 [sys.executable, "-m", "studyloop.cli", "study", "--end"],
@@ -300,8 +284,84 @@ class TestHarnessMatrixLive:
                     msg=f"{harness_name}: tmux session not destroyed after --end",
                 )
             tmux.cleanup()
+            write_evidence_bundle(
+                tmp_path / "evidence",
+                # A random suffix, not just second-granularity time(): two
+                # harnesses (or two runs of this same harness) finishing
+                # within the same wall-clock second must never collide on a
+                # run id -- write_evidence_bundle raises FileExistsError on
+                # a collision, from inside THIS finally, which would mask
+                # whatever real failure is already in flight.
+                run_id=f"{harness_name}-{int(time.time())}-{secrets.token_hex(4)}",
+                harness=harness_name,
+                actor="scripted",
+                outcome=outcome,
+                platform=platform.platform(),
+                auth_mode="verified" if harness_name == "kiro" else "presence-only",
+                turns=[
+                    {"prompt": r.prompt, "pane_output": r.pane_output, "elapsed": r.elapsed}
+                    for r in (driver.records if driver is not None else [])
+                ],
+            )
 
         final_state = json.loads(state_file.read_text())
         assert final_state.get("mode") == "ended", (
             f"{harness_name}: expected mode='ended', got {final_state.get('mode')!r}"
+        )
+
+        # D-21(2): "start -> >=3 scripted turns -> topic logged -> wind-down
+        # -> RESUME" -- the lifecycle is not complete at wind-down alone.
+        # `studyloop study --resume` rebuilds the (dead, but preserved)
+        # session directory; this is the SAME CLI path
+        # test_study_integration.py's TestSessionResume already exercises
+        # against a stub agent, driven here for real against `harness_name`.
+        resume = subprocess.run(
+            [sys.executable, "-m", "studyloop.cli", "study", "--resume"],
+            capture_output=True,
+            text=True,
+            env=scratch_env.env,
+            timeout=30,
+        )
+        resumed_session_name = ""
+        try:
+            tmux.wait_for(
+                lambda: json.loads(state_file.read_text()).get("mode") != "ended",
+                timeout=15,
+                msg=(
+                    f"{harness_name}: --resume never moved mode off 'ended' "
+                    f"(exit={resume.returncode}, stderr={resume.stderr[-500:]!r})"
+                ),
+            )
+            resumed_state = json.loads(state_file.read_text())
+            resumed_session_name = resumed_state.get("tmux_session", "")
+            assert resumed_session_name.startswith("study-"), (
+                f"{harness_name}: resume produced no study-* tmux session, "
+                f"got {resumed_session_name!r}"
+            )
+            tmux.track_session(resumed_session_name)
+            tmux.wait_for(
+                lambda: tmux.session_exists(resumed_session_name),
+                timeout=15,
+                msg=f"{harness_name}: resumed tmux session {resumed_session_name}",
+            )
+        finally:
+            subprocess.run(
+                [sys.executable, "-m", "studyloop.cli", "study", "--end"],
+                capture_output=True,
+                text=True,
+                env=scratch_env.env,
+                timeout=15,
+            )
+            if resumed_session_name:
+                tmux.wait_for(
+                    lambda: not tmux.session_exists(resumed_session_name),
+                    timeout=15,
+                    msg=f"{harness_name}: resumed tmux session not destroyed after --end",
+                )
+            tmux.cleanup()
+
+        resumed_final_state = json.loads(state_file.read_text())
+        assert resumed_final_state.get("mode") == "ended", (
+            f"{harness_name}: expected mode='ended' after the resumed session's own "
+            f"--end, got {resumed_final_state.get('mode')!r}"
         )

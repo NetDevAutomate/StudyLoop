@@ -95,16 +95,26 @@ class PaneDriver:
             current = self.tmux.capture_pane(self.pane_id, lines=400)
             return _non_blank_line_count(current) > baseline_lines + 1
 
+        turn_number = len(self.records) + 1
         try:
             self.tmux.wait_for(
                 _replied,
                 timeout=self.per_turn_timeout,
                 interval=self.poll_interval,
-                msg=f"reply on pane {self.pane_id!r} after turn {len(self.records) + 1}",
+                msg=f"reply on pane {self.pane_id!r} after turn {turn_number}",
             )
         except TimeoutError as exc:
+            # Capture and record whatever the pane shows RIGHT NOW, before
+            # raising -- this is exactly the run where evidence matters
+            # most (a hung/silent harness), and a bundle writer that only
+            # sees `driver.records` (evidence.py's caller does) must not
+            # find it empty just because the turn that hung never got a
+            # normal return (review finding, B2 fix round 1).
+            elapsed = time.monotonic() - start
+            output = self.tmux.capture_pane(self.pane_id, lines=400)
+            self.records.append(TurnRecord(prompt=prompt, pane_output=output, elapsed=elapsed))
             raise TurnBudgetExceededError(
-                f"turn {len(self.records) + 1} exceeded {self.per_turn_timeout}s "
+                f"turn {turn_number} exceeded {self.per_turn_timeout}s "
                 f"with no reply on pane {self.pane_id!r} -- treating the runaway "
                 "harness as budget-exhausted, not retrying"
             ) from exc

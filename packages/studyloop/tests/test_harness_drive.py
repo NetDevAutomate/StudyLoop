@@ -172,3 +172,21 @@ class TestBudgetEnforcement:
         # actually fired near the configured timeout rather than hanging for
         # the test's own default pytest timeout.
         assert elapsed < 5.0
+
+    def test_timeout_still_records_a_turn_before_raising(
+        self, silent_harness: tuple[TmuxHarness, str]
+    ) -> None:
+        """Evidence must survive the exact run where it matters most: a
+        hung/silent harness. A caller that only inspects `driver.records`
+        after catching TurnBudgetExceededError (as the harness-matrix live
+        test's evidence-bundle writer does) must find the pane capture from
+        the timed-out turn, not an empty list."""
+        tmux, pane_id = silent_harness
+        driver = PaneDriver(tmux, pane_id, max_turns=5, per_turn_timeout=1.0, poll_interval=0.1)
+
+        with pytest.raises(TurnBudgetExceededError):
+            driver.send_turn("are you there?")
+
+        assert len(driver.records) == 1
+        assert driver.records[0].prompt == "are you there?"
+        assert driver.records[0].elapsed >= 1.0

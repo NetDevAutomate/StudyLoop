@@ -28,6 +28,7 @@ import os
 import secrets
 import shutil
 import subprocess
+import tempfile
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -39,11 +40,30 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 _SENTINEL_NAME = ".studyloop-acceptance-sentinel"
-_TMUX_SOCKET_SUBDIR = ".tmux-acc"
+
+#: macOS's `sockaddr_un.sun_path` holds at most 104 bytes (Linux's is a
+#: little more generous at 108, but 104 is the binding constraint on the
+#: owner's platform). tmux's actual socket is `<TMUX_TMPDIR>/tmux-<uid>/
+#: default` -- verified empirically that a realistic pytest `tmp_path`
+#: (`.../pytest-of-ataylor/pytest-999/<long test id>/home/.tmux-acc/tmux-501/
+#: default`) produces a 145-149 char path there, well past the limit, and
+#: `tmux new-session` fails outright with "error connecting to ... (File
+#: name too long)" -- not a hang, not a slow failure, a dead-on-arrival
+#: socket. The scratch tmux socket dir must therefore live under a SHORT
+#: root, never under the (potentially very deep) scratch HOME.
+_UNIX_SOCKET_PATH_LIMIT = 104
+_TMUX_SOCKET_TMP_ROOT = "/tmp"
+_TMUX_SOCKET_TMP_PREFIX = "sl-acc-"
 
 
 class UnsafeSweepError(RuntimeError):
     """Raised when a sweep guard trips. Sweeping never proceeds after this."""
+
+
+class TmuxSocketPathTooLongError(RuntimeError):
+    """Raised if a freshly-created scratch tmux socket dir is, somehow,
+    still too long for AF_UNIX's `sun_path` -- a defensive check, not an
+    expected outcome, since `_TMUX_SOCKET_TMP_ROOT` is chosen to be short."""
 
 
 @dataclass
@@ -93,6 +113,35 @@ def _kill_scratch_tmux_server(socket_dir: Path) -> None:
     )
 
 
+def _assert_socket_dir_short_enough(socket_dir: Path) -> None:
+    """Defensive check: the ACTUAL socket tmux opens is
+    ``<socket_dir>/tmux-<uid>/default``, not ``socket_dir`` itself -- verify
+    that full path, not just the directory tempfile handed back."""
+    candidate = socket_dir / f"tmux-{os.getuid()}" / "default"
+    if len(str(candidate)) >= _UNIX_SOCKET_PATH_LIMIT:
+        raise TmuxSocketPathTooLongError(
+            f"scratch tmux socket path {candidate} is {len(str(candidate))} "
+            f"chars, at or past AF_UNIX's {_UNIX_SOCKET_PATH_LIMIT}-byte "
+            "sun_path limit -- tmux would fail to start a server here"
+        )
+
+
+def _assert_safe_to_remove_tmux_socket_dir(socket_dir: Path) -> None:
+    """Guard the OUT-OF-``home`` sweep step the same way ``assert_safe_to_sweep``
+    guards the home tree: refuse (hard error, never skip) unless the
+    resolved path is unambiguously one this module created."""
+    resolved = socket_dir.resolve()
+    tmp_root = Path(_TMUX_SOCKET_TMP_ROOT).resolve()
+    if not resolved.is_relative_to(tmp_root) or not resolved.name.startswith(
+        _TMUX_SOCKET_TMP_PREFIX
+    ):
+        raise UnsafeSweepError(
+            f"refusing to remove tmux socket dir {socket_dir}: resolved to "
+            f"{resolved}, which is not a {_TMUX_SOCKET_TMP_PREFIX!r}-prefixed "
+            f"directory directly under {tmp_root}"
+        )
+
+
 def create_scratch_environment(
     tmp_path: Path,
     *,
@@ -121,9 +170,20 @@ def create_scratch_environment(
     # under the developer's REAL environment must never be what a live
     # tmux-driven acceptance lane attaches to. tmux requires its socket
     # directory to be private (mode 0700), same as the real ~/.tmux/ default.
-    tmux_socket_dir = home / _TMUX_SOCKET_SUBDIR
-    tmux_socket_dir.mkdir(parents=True, exist_ok=True)
+    #
+    # Deliberately NOT under `home`: `home` is rooted at the caller's
+    # `tmp_path`, which under a real pytest run can already be 80+ chars
+    # deep before this function adds anything -- past the point where
+    # appending tmux's own `tmux-<uid>/default` suffix fits in AF_UNIX's
+    # 104-byte `sun_path` (see `_UNIX_SOCKET_PATH_LIMIT` above). A short,
+    # unrelated `/tmp` directory is used instead, and swept explicitly in
+    # `sweep_scratch` below since it now sits outside the tree that
+    # function's `shutil.rmtree(scratch.home, ...)` call reaches.
+    tmux_socket_dir = Path(
+        tempfile.mkdtemp(prefix=_TMUX_SOCKET_TMP_PREFIX, dir=_TMUX_SOCKET_TMP_ROOT)
+    )
     tmux_socket_dir.chmod(0o700)
+    _assert_socket_dir_short_enough(tmux_socket_dir)
 
     token = secrets.token_hex(16)
     sentinel_path = home / _SENTINEL_NAME
@@ -214,6 +274,13 @@ def sweep_scratch(scratch: ScratchEnv, *, real_home: Path | None = None) -> None
     scratch.stop_descendants()
     assert_safe_to_sweep(scratch, real_home=real_home)
     shutil.rmtree(scratch.home, ignore_errors=False)
+
+    # The tmux socket dir lives OUTSIDE `scratch.home` (see
+    # `create_scratch_environment`), so the rmtree above never reaches it --
+    # sweep it separately, behind its own guard.
+    if scratch.tmux_socket_dir.exists():
+        _assert_safe_to_remove_tmux_socket_dir(scratch.tmux_socket_dir)
+        shutil.rmtree(scratch.tmux_socket_dir, ignore_errors=True)
 
 
 @contextmanager

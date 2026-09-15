@@ -211,14 +211,33 @@ below.
 
 For each harness, `STUDYLOOP_ACC=1 just testacc <harness>` drives
 `studyloop study --agent <harness>` for real, under the same scratch-env +
-tmux-socket isolation the rest of this document describes, then sends the
-scripted turns and ends the session. Order matters and is fixed, not
-alphabetical: `codex` and `claude` first (highest real usage), then `kiro`
-over tmux (its web-ACP coverage above does not certify the CLI path), then
-the three PREVIEW harnesses `opencode`, `pi`, `grok` — never a blocker on
-the CORE three. `HARNESS_ORDER` in the test module is a literal re-ordering
-of `RELEASE_HARNESSES`, verified by a structural test rather than left free
-to drift.
+tmux-socket isolation the rest of this document describes, then sends
+**three or more** scripted turns (council D-21(2)'s floor), resumes the
+ended session (D-21(2)'s "wind-down → resume"), and ends it again. Order
+matters and is fixed, not alphabetical: `codex` and `claude` first (highest
+real usage), then `kiro` over tmux (its web-ACP coverage above does not
+certify the CLI path), then the three PREVIEW harnesses `opencode`, `pi`,
+`grok` — never a blocker on the CORE three. `HARNESS_ORDER` in the test
+module is a literal re-ordering of `RELEASE_HARNESSES`; the structural
+guard that keeps the two from drifting apart — full order, length, no
+duplicates, not just a set comparison — lives in
+`tests/test_harness_matrix_live_mechanics.py`, **outside** the `acceptance`
+marker, so it runs in every `just test`/CI invocation, not only under
+`STUDYLOOP_ACC=1` (council D-19/D-26: a drift guard gated behind an opt-in
+nobody sets in CI never actually guards anything).
+
+The scratch tmux socket directory (see "Subprocess isolation" above) lives
+under a short `/tmp`-rooted path, **not** under the scratch `HOME`: a
+pytest `tmp_path`-rooted socket dir plus tmux's own `tmux-<uid>/default`
+suffix can exceed AF_UNIX's 104-byte `sun_path` limit, at which point `tmux
+new-session` fails outright ("File name too long") rather than merely
+running slowly — see `tests/test_acceptance_isolation.py`'s regression
+test. Every `TmuxHarness` this lane constructs against a scratch child is
+built as `TmuxHarness(env=scratch_env.env)`, never a bare `TmuxHarness()`:
+the latter addresses THIS test process's own `TMUX_TMPDIR`, not the
+scratch child's, and would silently talk to the wrong (or no) tmux server
+— see `tests/test_harness_matrix_live_mechanics.py`'s
+`TestTmuxHarnessSocketWiring` for the CI-safe positive/negative control.
 
 ### Turn delivery and the budget guard
 
@@ -229,9 +248,14 @@ non-blank line count to grow past what a single echoed prompt line would
 already account for. Every turn is budget-guarded two ways: a per-turn
 timeout and a total max-turns ceiling (grok F9), so a runaway harness (a
 hang, a silent failure, an auth prompt nothing answers) is cut off as
-`TurnBudgetExceededError` rather than hanging the run. Unit-tested in
-`tests/test_harness_drive.py` against a scripted `sh` "harness" — never a
-real coding-agent binary — including the runaway-harness cutoff case.
+`TurnBudgetExceededError` rather than hanging the run. On a timeout, the
+pane is still captured and appended to `driver.records` *before* the
+exception is raised — the evidence bundle below is written from the outer
+`finally`, so a run that never gets past the FIRST wait (session state,
+tmux session, or pane children) still produces a bundle, not silence.
+Unit-tested in `tests/test_harness_drive.py` against a scripted `sh`
+"harness" — never a real coding-agent binary — including the
+runaway-harness cutoff case and the timeout-still-records-a-turn case.
 
 ### Availability probes (per-harness quirks as fixtures)
 
@@ -248,45 +272,85 @@ sixth harness is a one-line addition, not a body rewrite.
 
 Every driven run writes a small evidence bundle via
 `tests/acceptance/evidence.py`: a `manifest.json` (run id, harness, actor,
-outcome, turn count) plus a `turns.json` capturing each turn's prompt, pane
-output, and elapsed time — pane text is **evidence attached to the bundle**,
-never itself an assertion target (D-17). This is deliberately the
-*narrowest* bundle this lane's own validators need, not B4's full schema
-(durable evidence root resolved before scratch substitution, repo sha,
-rubric hash, file inventory with sha256s, …) — the field names
-(`run_id`/`harness`/`actor`/`outcome`) are chosen to match a subset of B4's
-described schema, so migrating callers to B4's real writer is a rename, not
-a rewrite.
+outcome, turn count, and — council D-21(7) — `platform`/`auth_mode`/
+`harness_version`, each recorded as `null` when unknown rather than simply
+absent) plus a `turns.json` capturing each turn's prompt, pane output, and
+elapsed time — pane text is **evidence attached to the bundle**, never
+itself an assertion target (D-17). The run id carries a random suffix
+(`secrets.token_hex(4)`), not just second-granularity `time.time()`, so two
+runs finishing within the same wall-clock second never collide and mask a
+real failure with a `FileExistsError` from inside the bundle-writer's own
+`finally`. This is deliberately the *narrowest* bundle this lane's own
+validators need, not B4's full schema (durable evidence root resolved
+before scratch substitution, repo sha, rubric hash, file inventory with
+sha256s, …) — the field names (`run_id`/`harness`/`actor`/`outcome`) are
+chosen to match a subset of B4's described schema, so migrating callers to
+B4's real writer is a rename, not a rewrite.
 
 ### Coverage inventory
 
-| Feature | web (ACP) | CLI/tmux |
-| --- | --- | --- |
-| kiro | ✅ `test_kiro_web_acp_lane.py` (mechanical validators) | ✅ `test_harness_matrix_live.py` (mechanical validators; verified auth probe) |
-| codex | — (not a web-ACP surface) | ✅ `test_harness_matrix_live.py` (mechanical validators; presence-only probe) |
-| claude | — (not a web-ACP surface) | ✅ `test_harness_matrix_live.py` (mechanical validators; presence-only probe) |
-| opencode (PREVIEW) | — | ✅ `test_harness_matrix_live.py` (mechanical validators; presence-only probe) |
-| pi (PREVIEW) | — | ✅ `test_harness_matrix_live.py` (mechanical validators; presence-only probe) |
-| grok (PREVIEW) | — | ✅ `test_harness_matrix_live.py` (mechanical validators; presence-only probe) |
+Council D-19: a matrix, **never one green check per harness** — this table
+therefore reports two DIFFERENT things per cell, because "a gated test
+file exists for this harness" and "this harness has a recorded clean live
+run" are not the same claim, and conflating them is exactly what D-19
+forbids. As of this writing, **every** CLI/tmux cell's live-run count is
+`0/O-6` (O-6: the owner's required number of independent clean runs,
+astra proposed 3) — the CLI/tmux path's two structural blockers (a scratch
+tmux socket path past AF_UNIX's `sun_path` limit, and a `TmuxHarness` that
+addressed the wrong tmux server) are now fixed and mechanically verified
+(`tests/test_acceptance_isolation.py`, `tests/test_harness_matrix_live_mechanics.py`),
+but no live run against a real harness binary has been executed under this
+fix. Updating the live-run count is a follow-up action on the owner's
+machine, not a claim this document makes in advance of it.
 
-Tracked exclusions (named here, not silently absent):
+| Feature | web (ACP): test exists (gated) | web (ACP): recorded clean live run | CLI/tmux: test exists (gated) | CLI/tmux: recorded clean live run |
+| --- | --- | --- | --- | --- |
+| kiro | ✅ `test_kiro_web_acp_lane.py` (mechanical validators) | 0/O-6 | ✅ `test_harness_matrix_live.py` (mechanical validators; verified auth probe) | 0/O-6 |
+| codex | — (not a web-ACP surface) | n/a | ✅ `test_harness_matrix_live.py` (mechanical validators; presence-only probe) | 0/O-6 |
+| claude | — (not a web-ACP surface) | n/a | ✅ `test_harness_matrix_live.py` (mechanical validators; presence-only probe) | 0/O-6 |
+| opencode (PREVIEW) | — | n/a | ✅ `test_harness_matrix_live.py` (mechanical validators; presence-only probe) | 0/O-6 |
+| pi (PREVIEW) | — | n/a | ✅ `test_harness_matrix_live.py` (mechanical validators; presence-only probe) | 0/O-6 |
+| grok (PREVIEW) | — | n/a | ✅ `test_harness_matrix_live.py` (mechanical validators; presence-only probe) | 0/O-6 |
 
-- **DB-row-level validators** (topic/struggle rows, `session_search`
-  id-set membership, a written wind-down record) are not implemented in
-  either lane above. That schema belongs to the session-memory subsystem;
-  wiring validators through it, and through B4's full evidence writer, is
-  B4's job.
+Tracked exclusions (named here, not silently absent, each with the lane
+that owns closing it):
+
+- **D-21(1) "install + doctor + launch green"**: only *launch* is driven
+  by this lane. `studyloop install` has real side effects (installs uv
+  tools / agent definition files onto the machine running the test) and is
+  deliberately NOT invoked by an automated acceptance run; `studyloop
+  doctor`'s read-only checks are not yet wired in either. **Owner: this
+  lane (B2)**, a follow-up, not B4's.
+- **D-21(3) "lexical `session_search` hits a prior turn id"** and
+  **DB-row-level validators generally** (topic/struggle rows,
+  `session_search` id-set membership, a written wind-down record) are not
+  implemented in either lane above. That schema belongs to the
+  session-memory subsystem. **Owner: B4.**
+- **D-21(4) "export writes a valid session artefact"**: no export step
+  exists in either lane. The closest existing CLI surface
+  (`studyloop brain publish`) writes to a configurable second-brain
+  destination, not a lexical "session artefact", and wiring it in was
+  judged too broad a scope-add for a fix round with no live run to verify
+  it against. **Owner: B4** (the evidence-writer/session-artefact schema
+  this depends on is already B4's).
+- **D-21(6) "persona/mode header correct"**: only `mode == "ended"` is
+  asserted. The mentor's *persona* is not recorded anywhere in
+  `session-state.json` (only `mode`, `topic`, `energy`, …) — verifying it
+  would mean asserting on pane text, which D-17 forbids as an assertion
+  target. **Owner: B4** (a DB-row-level persona-hash validator, per
+  `history.sessions.update_persona_hash`, is the right shape once B4's
+  validators land).
 - **Per-harness authenticated-availability probes**: only `kiro` has one.
   The other five harnesses fall back to binary-presence-only, so a present
   but unauthenticated binary surfaces as a live-run **failure** (budget
   cutoff via `TurnBudgetExceededError`), not a named skip, until each gets
-  its own probe.
+  its own probe. **Owner: this lane (B2)**, a follow-up.
 - **The durable evidence root**: `tests/acceptance/evidence.py` writes
   under whatever root its caller passes (the test's own `tmp_path`), not
-  B4's durable, pre-scratch-substitution root.
+  B4's durable, pre-scratch-substitution root. **Owner: B4.**
 - **`grok`-over-ACP**: an optional follow-up per this lane's own council
   amendment, never a blocker on the CORE three or the other two PREVIEW
-  harnesses.
+  harnesses. **Owner: this lane (B2)**, optional.
 
 ## Rules that keep the tier honest
 

@@ -40,9 +40,36 @@ class TestWriteEvidenceBundle:
             "actor": "scripted",
             "outcome": "completed",
             "turn_count": 1,
+            "platform": None,
+            "auth_mode": None,
+            "harness_version": None,
         }
         turns = json.loads(bundle.turns_path.read_text())
         assert turns == [{"prompt": "what is a decorator?", "pane_output": "reply: ..."}]
+
+    def test_records_platform_auth_mode_and_harness_version_when_provided(
+        self, tmp_path: Path
+    ) -> None:
+        """D-21(7): a recorded live run's bundle must carry the harness
+        version, platform, and auth mode alongside the pane transcript --
+        not just the narrower run_id/harness/actor/outcome shape this
+        writer started with."""
+        bundle = write_evidence_bundle(
+            tmp_path,
+            run_id="claude-run-001",
+            harness="claude",
+            actor="scripted",
+            outcome="completed",
+            turns=[],
+            platform="macOS-15.0-arm64",
+            auth_mode="presence-only",
+            harness_version="1.2.3",
+        )
+
+        manifest = json.loads(bundle.manifest_path.read_text())
+        assert manifest["platform"] == "macOS-15.0-arm64"
+        assert manifest["auth_mode"] == "presence-only"
+        assert manifest["harness_version"] == "1.2.3"
 
     def test_rejects_empty_run_id(self, tmp_path: Path) -> None:
         with pytest.raises(UnsafeRunIdError):
