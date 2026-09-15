@@ -27,12 +27,14 @@ computed by hand.
 | Gold | `receipts/gold-v2-dev.json`, sha256 `5632cd2b02a77dbd95ded3fae3aa32fa1599cd43929f43e44aa132343c3c6098`, 91 items, 57 clusters, strata K 33 / P 29 / R 29, set DEV, `gold_version` v2 |
 | Arms | `mcp`, `mcp:or_first_filtered`, `mcp:and_first_unfiltered`, `mcp:or_only_unfiltered`, `mcp:and_then_prose_or` — all through the `mcp` transport (`STUDYLOOP_RETRIEVAL_MODE=lexical`, `rows=10`, `k=5`) |
 | Inference | paired cluster bootstrap, 57 clusters, 10,000 resamples, seed 20260910, percentile CI95 |
-| Gold run | `created_utc` 2026-09-15T21:08:06+00:00, exit 0; `metrics_sha256` `b58861fadeb87dfa63a931bb3c413098b045fd6fbbbb378a624125bed64d132d` |
+| Gold run (measured) | `created_utc` **2026-09-15T21:08:06+00:00**, exit 0; `metrics_sha256` `b58861fadeb87dfa63a931bb3c413098b045fd6fbbbb378a624125bed64d132d` — the run the raw and committed receipts below are made from |
 | Raw receipt (outside the repo) | `~/.local/share/studyloop/eval-clones/lexical-or-fallback-20260915/or-fallback-dev-2026-09-15.raw.json` — 293,937 bytes, sha256 `6b8c18095850e1cd253129af6d143a2be1b9407ce6938533117d4bd3e447b57d` (also recorded inside the committed receipt as `derived_from.raw_sha256`) |
 | Committed receipt | `receipts/lexical/or-fallback-dev-2026-09-15.json` — the raw receipt with digests in `sha256:<hex>` / `git:<sha>` notation plus the `verdict` block |
-| Reproducibility | an earlier gold run at the same tree against the same clone (2026-09-15T20:49:40+00:00, left uncommitted by the previous agent and kept beside the raw receipt as `*.raw.prev-agent-2049Z.json`) has the identical `metrics_sha256` `b58861fa…`; the stable view reproduced byte for byte |
+| Runs, and what their agreement shows | The gold command was executed **twice** at the same tree (`ed6281b4`) against the same clone. First run: **2026-09-15T20:49:40+00:00**, by the previous agent, left uncommitted and kept beside the raw receipt as `or-fallback-dev-2026-09-15.raw.prev-agent-2049Z.json` (293,926 bytes). Second run: **2026-09-15T21:08:06+00:00**, the measured run above. Both carry the identical `metrics_sha256` `b58861fa…` — the stable view (every metric, per-item row and comparison, timings excluded) reproduced byte for byte. That identity shows **deterministic reproduction on the same tree and the same clone**; it is **not independent evidence** for the outcome, because the same code over the same corpus with the same seed can only agree. Every number in this receipt is one measurement, reproduced once. *(Reworded 2026-09-15 after council review; the earlier row described this as reproducibility without saying what kind.)* |
 
-The two commands were exactly those in the pre-registration's "How the run is made" block.
+The two commands were exactly those in the pre-registration's "How the run is made" block (the gold
+command executed twice, as recorded in *Runs* above; the verdict command once, from the second
+run's raw receipt).
 
 ## Per-arm results (DEV, k=5, 91 items, 61-item ceiling)
 
@@ -58,8 +60,9 @@ compared. Full-precision values are in the JSON (`arms.<name>.metrics`).
 
 What moved, from the per-item rows: the candidate's ranked list differs from the shipped one on
 **30 of 91** items (a list can only differ where the shipped `AND` arm returned nothing and the
-widen ran) and is identical on the other 61. Hits changed on four: gained `A1-75` (R, rank 3); lost
-`A2-11` (K, was rank 3) and `A3-33` (R, was rank 5); `A1-46` (K) rose from rank 4 to rank 1 (a hit
+widen ran) and is identical on the other 61. Three items changed hit status (one gain, two
+losses): gained `A1-75` (R, rank 3); lost `A2-11` (K, was rank 3) and `A3-33` (R, was rank 5).
+One hit changed rank without changing status: `A1-46` (K) rose from rank 4 to rank 1 (a hit
 either way — the main source of the small MRR gain). Net: K −1 item, P 0, R 0 → macro −0.0101.
 
 ## Adopt rule — the four frozen clauses
@@ -73,6 +76,16 @@ either way — the main source of the small MRR gain). Net: K −1 item, P 0, R 
 
 `decided_by: 1_recall_ci95_lower_above_zero`. The rule is a conjunction; one failing clause is a
 reject.
+
+**Clause 2 was vacuous on this baseline** (council review, 2026-09-15 — a lesson for the next
+registration, not a change to this one). The shipped macro precision@5 is **0.0363**
+(0.03629397422500871), so a permitted drop of **0.05 absolute** would have let the candidate's
+precision fall to **zero** and still pass: the guardrail could not have failed on this baseline
+whatever the candidate returned. It held here (drop 0.0020), but it constrained nothing. A future
+registration on a baseline this low should state the precision guardrail relative to the baseline
+(a fraction of it, or a one-sided lower bound on the paired precision delta), and check before
+freezing that the bound can actually bite. The rule as frozen is applied as frozen; nothing here is
+revisited after seeing the numbers.
 
 ```
 adopt: false
@@ -100,8 +113,11 @@ hypothesis for a new pre-registration, not an adoption under this one" — so it
 nothing else is done with it. For whoever pre-registers it: the same receipt already shows the
 precision@5 gain of either `OR`-only arm over the shipped arm is not itself established
 (`or_first_filtered` +0.0115, CI95 [−0.0012, +0.0242]; `or_only_unfiltered` +0.0115, CI95
-[−0.0027, +0.0260]), and the raw-token form pays for it in latency (p50 136.7 ms against 42.5 ms
-filtered and 17.8 ms shipped).
+[−0.0027, +0.0260]). Latency was frozen as *reported, never compared* (pre-registration,
+"Metrics and inference"): the per-arm p50 values in the table above (136.7 ms raw-token, 42.5 ms
+filtered, 17.8 ms shipped) are descriptive and sit outside the registered analysis; no latency
+comparison or conclusion is part of this receipt. *(Corrected 2026-09-15 after council review:
+an earlier wording drew a comparative latency conclusion here; it is withdrawn.)*
 
 ## Not measured here
 
