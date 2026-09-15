@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 
 from agent_session_tools import embedding_store as store
+from agent_session_tools import query_encoders
 from agent_session_tools import retrieval
 from agent_session_tools.migrations import migrate
 
@@ -109,7 +110,9 @@ def _embedded(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> sqlite3.Connec
     stats = store.embed(conn, encoder=encoder)
     assert stats.embedded_messages == 2, "the hidden session is never embedded"
     store.reconcile(conn)
-    monkeypatch.setitem(retrieval._ENCODERS, "scripted-model", encoder)
+    monkeypatch.setitem(
+        query_encoders._ENCODERS, query_encoders.cache_key("scripted-model"), encoder
+    )
     monkeypatch.setattr(
         store,
         "availability",
@@ -131,10 +134,10 @@ class TestOfflineLoading:
 
         monkeypatch.setattr(store, "SentenceTransformerEncoder", Fake)
         monkeypatch.setenv("HF_HUB_OFFLINE", "0")
-        retrieval._ENCODERS.pop("some-model", None)
+        query_encoders.reset_cache()
         retrieval._encoder("some-model")
         assert seen == {"model": "some-model", "local_files_only": True}
-        retrieval._ENCODERS.pop("some-model", None)
+        query_encoders.reset_cache()
 
 
 class TestModeResolution:
@@ -194,6 +197,48 @@ class TestDegradation:
             result.status.note or ""
         )
         assert {h.message_id for h in result.hits} == {"decoy", "answer"}
+
+    def test_hybrid_degrades_to_lexical_when_the_configured_backend_is_unknown(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        """A typo'd ``semantic_search.query_encoder`` used to raise ``ValueError``
+        outside the semantic arm's try block and crash the whole search instead
+        of degrading (reviewer finding: ``resolve_backend()`` at retrieval.py:490
+        ran outside the try starting at :500)."""
+        conn = _embedded(tmp_path, monkeypatch)
+        monkeypatch.setattr(
+            "agent_session_tools.config_loader.get_semantic_config",
+            lambda: {"query_encoder": "vibes"},
+        )
+        result = retrieval.search(conn, PARAPHRASE, mode="hybrid")
+        assert result.status.mode == "lexical"
+        assert "hybrid requested but lexical only" in (result.status.note or "")
+        assert "unknown query encoder backend" in (result.status.note or "")
+
+    def test_hybrid_reports_the_sqlite_vec_install_hint_even_when_onnx_is_selected(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        """The extension half of the availability pre-check used to run
+        torch-only, so an onnx-backed search on a machine without sqlite-vec
+        fell through to a generic 'semantic arm failed' message instead of
+        the friendly install hint (reviewer finding on retrieval.py:491)."""
+        conn = _embedded(tmp_path, monkeypatch)
+        monkeypatch.setattr(
+            "agent_session_tools.config_loader.get_semantic_config",
+            lambda: {"query_encoder": "onnx"},
+        )
+        monkeypatch.setattr(
+            store,
+            "_extension_available",
+            lambda: (
+                False,
+                f"sqlite-vec is not installed; install: {store.INSTALL_HINT}",
+            ),
+        )
+        result = retrieval.search(conn, PARAPHRASE, mode="hybrid")
+        assert result.status.mode == "lexical"
+        assert "sqlite-vec is not installed" in (result.status.note or "")
+        assert store.INSTALL_HINT in (result.status.note or "")
 
 
 class TestHybrid:

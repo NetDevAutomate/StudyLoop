@@ -27,8 +27,11 @@ import logging
 import os
 import re
 import sqlite3
+import threading
+import time
 from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass
+from enum import Enum
 from typing import Any
 
 from agent_session_tools.context.scope import ScopePolicy, visibility_sql
@@ -52,6 +55,40 @@ MODE_HYBRID = "hybrid"
 MODES = (MODE_LEXICAL, MODE_HYBRID)
 MODE_ENV = "STUDYLOOP_RETRIEVAL_MODE"
 """Per-process override of the configured mode; the eval harness pins arms with it."""
+
+# Which caller asked (lane A1, council D-1/D-2). A one-shot CLI process pays
+# a cold encoder load per invocation, so it stays lexical until the ONNX
+# fast-load path (lane A2) has receipts; a long-lived process (MCP server,
+# web server) pre-warms the encoder once and pays ~55 ms/query resident
+# (E-A5), so it can default to hybrid. ``SURFACE_DEFAULTS`` is the single
+# flip point (grok F1): every other mechanism in this module is surface-
+# agnostic, and the flip itself is one dict-literal edit, landed as its own
+# commit (council REC-2) once the pre-registered latency receipt is signed.
+SURFACE_CLI = "cli"
+SURFACE_MCP = "mcp"
+SURFACE_WEB = "web"
+SURFACES = (SURFACE_CLI, SURFACE_MCP, SURFACE_WEB)
+
+SURFACE_DEFAULTS: dict[str, str] = {
+    SURFACE_CLI: MODE_LEXICAL,
+    SURFACE_MCP: MODE_HYBRID,
+    SURFACE_WEB: MODE_HYBRID,
+}
+"""The surface default a caller gets when nothing else (arg, env, explicit
+config `true`/`false`) decided the mode.
+
+THE FLIP (council REC-2): this dict is the single, clearly-labelled commit at
+the tip of lane A1-hybrid-default's branch. ``mcp``/``web`` default to hybrid
+here because both are long-lived processes that pre-warm the query encoder at
+boot (:func:`warm_query_encoder`) and pay only the resident per-query cost
+(E-A5); ``cli`` stays lexical because a one-shot process pays a cold load per
+invocation. This default is PROVISIONAL PENDING SEALED (council D-4/O-2): it
+is gated on the coordinator holding this commit until the Stage 5
+pre-registration's resident-state latency receipt is owner-signed
+(``docs/architecture/session-memory/receipts/semantic-layer/
+stage5-preregistration-*.md``). Dropping this one commit reverts every
+surface to lexical; nothing else in this module, lane A2's factory, or lane
+A4's phase indicator depends on which mode is default here."""
 
 # Stage 4 pre-registration (receipts/semantic-layer/stage4-preregistration-
 # 2026-09-11.md): two message-level lists of FUSION_DEPTH, Reciprocal Rank
@@ -417,22 +454,37 @@ def _hits(rows: Iterable[Any]) -> tuple[RetrievalHit, ...]:
     return tuple(hits)
 
 
-def resolve_mode(requested: str | None = None) -> str:
-    """Which mode a search runs in: the argument, else ``STUDYLOOP_RETRIEVAL_MODE``,
-    else ``semantic_search.hybrid`` in the config, else lexical.
+def resolve_mode(requested: str | None = None, *, surface: str = SURFACE_CLI) -> str:
+    """Which mode a search runs in (council D-1 tri-state):
 
-    An unknown value is a caller error, not a silent fallback."""
+    1. ``requested`` (an explicit argument -- always wins).
+    2. ``STUDYLOOP_RETRIEVAL_MODE`` (a per-process override).
+    3. ``semantic_search.hybrid`` in the config, but ONLY when it is
+       explicitly ``true``/``false`` -- the schema default is the sentinel
+       ``None`` ("unset"), so an absent key never masquerades as "the user
+       said false".
+    4. ``SURFACE_DEFAULTS[surface]`` -- what an unconfigured caller on this
+       surface gets.
+
+    An unknown ``mode`` or ``surface`` is a caller error, not a silent
+    fallback."""
+    if surface not in SURFACES:
+        raise ValueError(
+            f"unknown retrieval surface {surface!r}; expected one of {SURFACES}"
+        )
     if requested is None:
         requested = os.environ.get(MODE_ENV) or None
     if requested is None:
         try:
             from agent_session_tools.config_loader import get_semantic_config
 
-            requested = (
-                MODE_HYBRID if get_semantic_config().get("hybrid") else MODE_LEXICAL
-            )
+            configured = get_semantic_config().get("hybrid")
         except Exception:  # config unreadable: the lexical arm always works
-            requested = MODE_LEXICAL
+            configured = False
+        if configured is None:  # unset: the surface default decides (D-1)
+            requested = SURFACE_DEFAULTS[surface]
+        else:
+            requested = MODE_HYBRID if configured else MODE_LEXICAL
     if requested not in MODES:
         raise ValueError(
             f"unknown retrieval mode {requested!r}; expected one of {MODES}"
@@ -440,23 +492,54 @@ def resolve_mode(requested: str | None = None) -> str:
     return requested
 
 
-_ENCODERS: dict[str, Any] = {}
-
-
 def _encoder(model: str) -> Any:
-    """One loaded model per process; a search never downloads (offline)."""
-    encoder = _ENCODERS.get(model)
-    if encoder is None:
-        from agent_session_tools import embedding_store
+    """The query-side encoder for ``model``, via the construction seam.
 
-        # local_files_only is what makes "a search never downloads" true; the
-        # environment variable is only a courtesy for libraries that read it.
-        os.environ.setdefault("HF_HUB_OFFLINE", "1")
-        encoder = embedding_store.SentenceTransformerEncoder(
-            model, local_files_only=True
+    Backend selection (torch|onnx), the ``(model, backend, revision)`` cache
+    and single-flight construction all live in :mod:`query_encoders` now
+    (lane A2, council D-2) -- this function is just the one call site every
+    caller in this module goes through, so a backend switch never needs a
+    second edit here.
+
+    It is also where the load stops being silent (lane A4, council D-8): the
+    factory's phase hook drives a timer-driven stderr indicator, so a search
+    that has to wait for the encoder says which phase it is in and how long it
+    has been there. A cached encoder emits no phases, so a warm search prints
+    nothing; the indicator writes to stderr only, so a ``--json`` consumer's
+    stdout is byte-identical either way.
+
+    A warm hit skips the indicator's construction entirely (nit finding #7,
+    fix round 1): ``query_encoders.is_cached`` exists exactly so a caller can
+    tell a cache hit from a real load without constructing anything, and on a
+    long-lived mcp/web process almost every search after boot IS a cache hit
+    -- building a ``PhaseIndicator`` (and, on a TTY, spawning and joining a
+    ticker thread) for a call that will emit no phases at all was pure
+    per-search overhead. ``is_cached`` resolves the same cache key the
+    factory does, so a genuinely unresolvable key (e.g. an unpinned onnx
+    model) makes it raise too -- caught here and treated as "not cached" so
+    the call falls through to the factory below, which raises the SAME error
+    itself. That keeps the key-resolution invariant right above this comment
+    intact: this fast path must never become a second place that reports a
+    resolution failure with its own message.
+    """
+    from agent_session_tools import load_indicator, query_encoders
+
+    # local_files_only is what makes "a search never downloads" true; the
+    # environment variable is only a courtesy for libraries that read it.
+    os.environ.setdefault("HF_HUB_OFFLINE", "1")
+    try:
+        cached = query_encoders.is_cached(model)
+    except Exception:
+        cached = False
+    if cached:
+        return query_encoders.get_query_encoder(model, local_files_only=True)
+    with load_indicator.PhaseIndicator() as indicator:
+        # No key argument on purpose: the factory resolves the key (and reports
+        # an unpinned artefact) -- resolving it here too would raise the
+        # indicator's copy of that error instead of the factory's.
+        return query_encoders.get_query_encoder(
+            model, local_files_only=True, on_phase=indicator.on_phase
         )
-        _ENCODERS[model] = encoder
-    return encoder
 
 
 def _semantic_ranking(
@@ -487,11 +570,26 @@ def _semantic_ranking(
     if pin is None:
         return [], None, "no vectors in message_embeddings"
     model, dim = str(pin[0]), int(pin[1])
-    if model not in _ENCODERS:  # first call in this process: is the layer even here?
-        ready = embedding_store.availability(model)
-        if not ready.ready:
-            return [], None, ready.reason or "semantic layer unavailable"
+    from agent_session_tools import query_encoders
+
     try:
+        backend = query_encoders.resolve_backend()
+        # The extension half of the pre-check is unconditional (a pure import
+        # + in-memory probe, no fetch) so the friendly sqlite-vec install hint
+        # still surfaces on every backend, not just torch.
+        extension_ok, extension_reason = embedding_store._extension_available()
+        if not extension_ok:
+            return [], None, extension_reason or "semantic layer unavailable"
+        if backend == query_encoders.BACKEND_TORCH and not query_encoders.is_cached(
+            model, backend
+        ):
+            # Cheap pre-check, torch only: a cache lookup, never a fetch (D-7).
+            # onnx skips the model half and relies on the construction attempt
+            # below, which fails the same way -- offline, explanatory, caught
+            # here.
+            model_ok, model_reason = embedding_store._model_available(model)
+            if not model_ok:
+                return [], None, model_reason or "semantic layer unavailable"
         encoder = _encoder(model)
         if int(encoder.dim) != dim:
             return (
@@ -590,14 +688,20 @@ def search(
     exclude_session_ids: Iterable[str] = (),
     include_content: bool = False,
     mode: str | None = None,
+    surface: str = SURFACE_CLI,
 ) -> RetrievalResult:
     """Search message content for ``query`` and say how it was searched.
 
     ``mode`` is ``"lexical"`` or ``"hybrid"``; ``None`` resolves through
-    :func:`resolve_mode`. Hybrid runs the lexical plan exactly as lexical does,
-    then the semantic arm, and fuses the two message lists (Stage 4
-    pre-registration). When the semantic arm cannot run, the result is the
-    lexical one with ``status.mode == "lexical"`` and the reason in ``note``.
+    :func:`resolve_mode`, which also takes ``surface`` -- the caller (``cli``,
+    ``mcp`` or ``web``, see :data:`SURFACES`) whose :data:`SURFACE_DEFAULTS`
+    entry decides the mode when nothing more specific did. Every caller that
+    does not pass ``surface`` gets ``"cli"``, so an unwired call site keeps
+    today's behaviour unchanged. Hybrid runs the lexical plan exactly as
+    lexical does, then the semantic arm, and fuses the two message lists
+    (Stage 4 pre-registration). When the semantic arm cannot run, the result is
+    the lexical one with ``status.mode == "lexical"`` and the reason in
+    ``note``.
 
     ``conn`` must have ``sqlite3.Row`` rows available (``row_factory`` is set
     for the call when it is not). Results are ordered by bm25 rank then
@@ -611,7 +715,7 @@ def search(
     """
     if conn.row_factory is None:
         conn.row_factory = sqlite3.Row
-    resolved_mode = resolve_mode(mode)
+    resolved_mode = resolve_mode(mode, surface=surface)
     excluded_messages = tuple(str(m) for m in exclude_message_ids)
     excluded_sessions = tuple(str(s) for s in exclude_session_ids)
     filters: dict[str, Any] = dict(
@@ -762,3 +866,154 @@ def search(
                 note=note,
             )
     raise AssertionError("unreachable: the planner returned queries but none ran")
+
+
+# ---------------------------------------------------------------------------
+# Encoder pre-warm for long-lived surfaces (lane A1, council D-3)
+# ---------------------------------------------------------------------------
+#
+# A one-shot CLI process has nothing to warm -- it loads, searches once, and
+# exits. A long-lived process (the MCP server, the web server) is different:
+# paying the encoder's load cost on the FIRST search means the learner's
+# first query is slow, invisibly, with no boot-time signal that anything is
+# happening. ``warm_query_encoder`` starts that load on a background thread
+# at server boot instead, through A2's factory (:mod:`query_encoders`), so a
+# search racing the warm shares its single-flight construction rather than
+# paying twice. Lane A4 renders this state; this module only produces it.
+
+
+class WarmState(str, Enum):
+    """Where the background encoder warm for this process is."""
+
+    COLD = "cold"
+    WARMING = "warming"
+    WARM = "warm"
+    FAILED = "failed"
+    DISABLED = "disabled"
+
+
+@dataclass(frozen=True, slots=True)
+class EncoderWarmStatus:
+    """The current state of the background query-encoder warm, for a status surface.
+
+    ``elapsed`` is wall-clock seconds for the load that produced this status
+    (``None`` while cold or disabled); ``detail`` carries the failure reason
+    when ``state`` is :attr:`WarmState.FAILED`, or why warming was skipped
+    when :attr:`WarmState.DISABLED`.
+    """
+
+    state: WarmState
+    model: str | None = None
+    elapsed: float | None = None
+    detail: str = ""
+
+
+_warm_lock = threading.Lock()
+_warm_status = EncoderWarmStatus(state=WarmState.COLD)
+
+
+def encoder_warm_status() -> EncoderWarmStatus:
+    """The current state of this process's background encoder warm."""
+    with _warm_lock:
+        return _warm_status
+
+
+def reset_warm_status() -> None:
+    """Test-only: put the warm status back to its just-started state."""
+    global _warm_status
+    with _warm_lock:
+        _warm_status = EncoderWarmStatus(state=WarmState.COLD)
+
+
+def _set_warm_status(status: EncoderWarmStatus) -> None:
+    global _warm_status
+    with _warm_lock:
+        _warm_status = status
+
+
+def warm_query_encoder(
+    *, surface: str, model: str | None = None, blocking: bool = False
+) -> threading.Thread | None:
+    """Warm the query encoder in the background for a long-lived ``surface``.
+
+    Call once at a process-lifetime boundary (MCP server / web server boot),
+    never at first search. Returns immediately -- the load itself runs on a
+    daemon thread -- unless ``blocking=True`` (tests only). A surface whose
+    resolved mode is not hybrid reports :attr:`WarmState.DISABLED` and never
+    imports anything heavy: warming an encoder nothing will use is pure cost.
+
+    A search that races this warm shares the same single-flight construction
+    in :mod:`query_encoders` (keyed by ``(model, backend, revision)``) and
+    blocks on that lock rather than constructing a second encoder.
+    """
+    if resolve_mode(surface=surface) != MODE_HYBRID:
+        _set_warm_status(
+            EncoderWarmStatus(
+                state=WarmState.DISABLED,
+                detail=f"the {surface!r} surface is not resolving to hybrid",
+            )
+        )
+        return None
+
+    from agent_session_tools import load_indicator, query_encoders
+    from agent_session_tools.config_loader import get_semantic_config
+
+    resolved_model = model or get_semantic_config().get("model")
+    if not resolved_model:
+        _set_warm_status(
+            EncoderWarmStatus(
+                state=WarmState.DISABLED,
+                detail="no semantic_search.model is configured",
+            )
+        )
+        return None
+
+    def _run() -> None:
+        _set_warm_status(
+            EncoderWarmStatus(state=WarmState.WARMING, model=resolved_model)
+        )
+        start = time.monotonic()
+        try:
+            # Matches ``_encoder()``: a courtesy for libraries that read the
+            # env var, ``local_files_only`` is what actually makes "a warm
+            # never downloads" true. Set here too -- a warm bypasses
+            # ``_encoder()`` entirely, so without this line a background warm
+            # on a process that never ran a search first could go online.
+            os.environ.setdefault("HF_HUB_OFFLINE", "1")
+            # render=False: a boot-time background warm has no waiting learner
+            # to inform, and a server's stderr is a log. The DURATION is still
+            # recorded (council D-10) -- it is the same receipt a later
+            # foreground load reads its "last load" from, and the web chip
+            # (lane A4) renders this warm's live state from
+            # ``encoder_warm_status()`` instead.
+            with load_indicator.PhaseIndicator(render=False) as indicator:
+                query_encoders.get_query_encoder(
+                    resolved_model,
+                    local_files_only=True,
+                    warmup=True,
+                    on_phase=indicator.on_phase,
+                )
+        except Exception as exc:
+            _set_warm_status(
+                EncoderWarmStatus(
+                    state=WarmState.FAILED,
+                    model=resolved_model,
+                    elapsed=time.monotonic() - start,
+                    detail=f"{type(exc).__name__}: {exc}",
+                )
+            )
+            return
+        _set_warm_status(
+            EncoderWarmStatus(
+                state=WarmState.WARM,
+                model=resolved_model,
+                elapsed=time.monotonic() - start,
+            )
+        )
+
+    if blocking:
+        _run()
+        return None
+    thread = threading.Thread(target=_run, name="query-encoder-warm", daemon=True)
+    thread.start()
+    return thread

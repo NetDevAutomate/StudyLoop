@@ -415,3 +415,34 @@ def test_launch_target_serves_inert_state_full_stack(env) -> None:
 
     mutation = requests.post(f"{env.base_url}/api/second-brain/launch-target", timeout=15)
     assert mutation.status_code == 405, mutation.text
+
+
+# ---------------------------------------------------------------------------
+# Encoder warm status — GET /api/retrieval/health
+# ---------------------------------------------------------------------------
+
+
+def test_retrieval_health_reports_a_real_warm_state(env) -> None:
+    """The warm chip's endpoint answers from a real subprocess server.
+
+    Worth a full-stack leg rather than a waiver: in-process the warm never runs
+    (a bare ``TestClient`` executes no lifespan), so only a real server proves
+    that boot-time warm reports through this route at all -- and that a warm
+    which cannot find a model degrades to ``failed``/``disabled`` with a reason
+    instead of hanging the page or 500ing. The hermetic world has no cached
+    model, so any of the five states is a legitimate answer; what is asserted is
+    that the state is one of them and that the unhappy ones explain themselves.
+    """
+    import requests
+
+    from agent_session_tools.retrieval import WarmState
+
+    resp = requests.get(f"{env.base_url}/api/retrieval/health", timeout=15)
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert set(body) == {"state", "model", "elapsed", "detail"}
+    assert body["state"] in {state.value for state in WarmState}
+    if body["state"] in {WarmState.FAILED.value, WarmState.DISABLED.value}:
+        assert body["detail"], "an unhappy warm state without a reason is the bug"
+    if body["state"] == WarmState.WARM.value:
+        assert body["elapsed"] is not None and body["elapsed"] >= 0

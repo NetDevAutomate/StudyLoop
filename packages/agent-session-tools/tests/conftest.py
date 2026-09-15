@@ -72,6 +72,23 @@ def _isolated_studyloop_config(tmp_path, monkeypatch):
     monkeypatch.setattr(maintenance_mod, "_config", None)
 
 
+@pytest.fixture(autouse=True)
+def _isolated_state_dir(tmp_path, monkeypatch):
+    """Point writable state at a per-test directory, never the learner's own.
+
+    The repo-root ``conftest.py`` does this for the whole workspace, but it is
+    only loaded when pytest's rootdir is the repo root -- this package has its
+    own ``pyproject.toml``, so running its tests directly makes THIS the
+    rootdir and that file is never imported. Without this fixture, anything
+    that persists state (``load_indicator``'s encoder-load durations, lane A4)
+    writes into the learner's real ``~/.local/share/studyloop`` from a unit
+    test, which is exactly the leak
+    ``private-docs/0005-vendor-picker-lists-repo-directories.md`` records.
+    """
+    state = tmp_path / "isolated-state"
+    monkeypatch.setenv("STUDYLOOP_STATE_DIR", str(state))
+
+
 @pytest.fixture
 def temp_db():
     """Create a temporary SQLite database for testing."""

@@ -371,6 +371,7 @@ def _create_server() -> FastMCP:
                 project=project,
                 include_retired_sources=bool(source) and not is_supported(source),
                 exclude_message_ids=tuple(exclude_message_ids or ()),
+                surface=retrieval.SURFACE_MCP,
             ).to_payload()
         finally:
             conn.close()
@@ -728,6 +729,15 @@ def main():
             "Install with: uv tool install agent-session-tools"
         )
         raise SystemExit(1)
+
+    # Process-lifetime boundary, not first search (council D-3): a background
+    # thread, so a cold or disabled warm never delays serving. Deliberately
+    # NOT at module import time (the `mcp = _create_server()` line above) --
+    # every test and CLI script that imports this module would otherwise pay
+    # for (or degrade-report on) an encoder warm it never asked for.
+    from agent_session_tools import retrieval
+
+    retrieval.warm_query_encoder(surface=retrieval.SURFACE_MCP)
 
     mcp.run()
 

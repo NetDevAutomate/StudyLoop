@@ -69,11 +69,96 @@ they get stricter, not looser.
 exists; schema 48 shipped the mainline embedding substrate (`message_embeddings`,
 chunked/hashed, trigger-swept, with an optional `sqlite-vec` sidecar) and the
 fusion path is `retrieval.py`'s `resolve_mode()` / `search()` / `_fuse()`
-(Reciprocal Rank Fusion, unweighted, off by default). The "0 rows" claim above
-is stale: once `session-maint embed` has run, `message_embeddings` holds tens
-of thousands of rows. See the [Stage 4
+(Reciprocal Rank Fusion, unweighted). Whether a given call runs hybrid or
+lexical is decided **per surface** — see the addendum immediately below. The
+"0 rows" claim above is stale: once `session-maint embed` has run,
+`message_embeddings` holds tens of thousands of rows. See the [Stage 4
 record](receipts/semantic-layer/stage4-record-2026-09-12.md) for the fusion
 design and gate.
+
+**2026-09-15 addendum (lane A1, council D-1/D-2/D-3):** `semantic_search.hybrid`
+is a tri-state config key, not a plain boolean. Its schema default is the
+sentinel `None` ("unset") — `config_loader.load_config()` deep-merges user
+YAML over the schema default, so a boolean default made "the key was never
+set" and "the user explicitly wrote `false`" produce the identical merged
+value, and a per-surface default could never actually take effect (council
+D-1, verified blocking). Resolution order, in `retrieval.resolve_mode()`:
+
+1. An explicit argument to the call (`mode=...`) — always wins.
+2. `STUDYLOOP_RETRIEVAL_MODE` — a per-process override.
+3. `semantic_search.hybrid: true`/`false` in `config.yaml` — honoured on
+   every surface once set, regardless of the surface default below. This is
+   also the upgrade path for a config written before this addendum.
+4. The calling surface's own default (`retrieval.SURFACE_DEFAULTS`), when
+   none of the above applies.
+
+| Surface | Default | Why | Force the other mode |
+|---|---|---|---|
+| `cli` (`session-query search`) | lexical | a one-shot process pays the encoder's cold-load cost per invocation; stays lexical until the fast ONNX query-side load (lane A2) has its own receipts | `hybrid: true` in `config.yaml`, or `STUDYLOOP_RETRIEVAL_MODE=hybrid` |
+| `mcp` (`session_search` tool) | **hybrid** (provisional pending SEALED, below) | a long-lived process pre-warms the query encoder once at boot (below) and pays only the ~55 ms/query resident cost (E-A5) | `hybrid: false` in `config.yaml`, or `STUDYLOOP_RETRIEVAL_MODE=lexical` |
+| `web` (the study web server) | **hybrid** (provisional pending SEALED, below) | same reasoning as `mcp` | same as `mcp` |
+
+**The `mcp`/`web` hybrid default is provisional pending SEALED.** Stage 4's
+`hybrid` gate (G1/G2, `stage4-preregistration-2026-09-11.md`) was scored once,
+DEV-reported, and the SEALED run remains the owner's separate obligation. This
+lane's flip is gated on a NEW pre-registration measuring the *resident*
+steady state (warm-up excluded and reported separately, p95 wall AND paired
+hybrid−lexical overhead) — see
+`receipts/semantic-layer/stage5-preregistration-2026-09-15.md` — and the
+owner accepts the residual SEALED risk at that sign-off (council D-4/O-2),
+not here.
+
+**Encoder pre-warm.** `mcp`/`web` start a background warm at server boot
+(never at import time, never on first search) through the same
+single-flight factory `retrieval._encoder()` uses, so a search racing the
+warm shares one construction. `retrieval.encoder_warm_status()` reports
+`cold`/`warming`/`warm`/`failed`/`disabled` + model + elapsed; lane A4 renders
+it as a phase indicator.
+
+**2026-09-15 addendum (lane A4, council D-8/D-10): what the load indicator
+means.** When a load makes you wait, the tooling says which PHASE it is in —
+`runtime_import` (importing the backend), `weights` (constructing the
+encoder, which is the slow one), then either `warmup` (a throwaway encode
+ran) or `disabled` (warm-up was NOT requested for this load — this does
+*not* mean the semantic layer is off; `ready` still follows it, same as
+`warmup` would), then `ready` — plus the elapsed time, ticking. `failed` is
+the one phase that really is terminal: any exception during the load emits
+it instead of whatever phase came next, and the load stopped. Both encoders
+emit the same `query_encoders.LoadPhase` vocabulary: the query-side factory
+and the corpus-side `embedding_store._load_encoder()`.
+
+**There is no percentage bar, and there never will be.** Nothing in a model
+load reports its own completion fraction, so any percentage would be a number
+the tool made up. A bar that fills at an invented rate is worse than silence:
+it teaches you to distrust every other number the tool shows you.
+
+**Where "last load" comes from.** `load_indicator` persists the duration of
+each completed load under `get_state_dir()`
+(`encoder-load-durations.json`), keyed by `(model, backend, revision)` *and* a
+coarse hardware fingerprint, with the last cold and last warm load stored
+separately. The next load quotes that one measurement — `last load: 2.9s` —
+never "usually ~2.9s", because one sample is not a distribution. A key with no
+sample says `first load on this machine may take a few seconds`, and a key whose
+only sample is of the other kind names that kind (`last cold load: 2.9s`)
+instead of passing it off as comparable. Cold versus warm is decided by
+recency (a load within `WARM_WINDOW_SECONDS` of the previous one is warm): a
+documented heuristic for choosing which measured number applies, not a
+prediction. That record is also the load-duration receipt the acceptance tier
+regression-checks; CI checks the machine-independent lazy-import contract
+instead, because a wall clock in CI measures the runner.
+
+Where each surface renders it:
+
+| Surface | How it appears | Suppressed when |
+|---|---|---|
+| `cli` | a line on **stderr**, first drawn at 300 ms and updated on a timer while a phase blocks: `loading semantic model (bge-small-en-v1.5): weights ... 1.2s (last load: 2.9s)` | stderr is not a TTY, unless `STUDYLOOP_LOAD_INDICATOR=1` forces it (`=0` forces it off) |
+| `mcp` | nothing on the protocol stream — stdout carries JSON-RPC and stderr is a log; the duration is still recorded | always, in practice (a server's stderr is not a TTY) |
+| `web` | the `#encoder-warm-chip` status chip, polling `GET /api/retrieval/health` (the exact fields of `retrieval.EncoderWarmStatus`) | the warm is `cold` or `warm` — the chip speaks up for `warming`/`failed`/`disabled` |
+
+**Suppression off a TTY is a courtesy, not a readiness signal.** Silence means
+"this stream is a pipe or a log", never "nothing is loading". A caller that
+needs to know sets `STUDYLOOP_LOAD_INDICATOR=1`, or reads
+`retrieval.encoder_warm_status()` / the web endpoint.
 
 ## Why each claim is believed — restated at receipt strength
 
