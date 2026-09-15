@@ -224,6 +224,98 @@ def test_import_document_keeps_its_frontmatter_id_and_stays_draft(app: PlanAppli
     assert store.list_plan_ids() == ["imported"]
 
 
+# --- Council review 1, F5: import identity precedence and the successful active paths ---
+
+_READY_IMPORT_DOC = (
+    "---\nid: imported\ntitle: Imported Plan\nstatus: {status}\n"
+    "created: 2025-12-24T10:00:00+00:00\nupdated: 2025-12-24T10:00:00+00:00\n---\n\n"
+    "# Imported Plan\n\n## Mission\n\n### Why\n\nBecause it matters.\n\n"
+    "### Success\n\n- Can do the thing\n\n"
+    "## Milestones\n\n- [ ] **Step** `(concepts: x)`\n"
+)
+
+
+def test_import_explicit_id_overrides_frontmatter_without_creating_old_id(
+    app: PlanApplication,
+) -> None:
+    detail = app.apply(
+        ImportDocument(markdown=_READY_IMPORT_DOC.format(status="draft"), plan_id="chosen")
+    )
+    assert detail.summary.plan_id == "chosen"
+    assert store.list_plan_ids() == ["chosen"], "the frontmatter id must not become a file"
+    on_disk = store.load_plan("chosen")
+    assert on_disk.plan_id == "chosen", "the stored frontmatter names the id it was saved under"
+
+
+def test_import_without_id_allocates_unique_title_slug(app: PlanApplication) -> None:
+    no_id = _READY_IMPORT_DOC.format(status="draft").replace("id: imported\n", "")
+    assert "id:" not in no_id.split("---")[1]
+
+    first = app.apply(ImportDocument(markdown=no_id))
+    second = app.apply(ImportDocument(markdown=no_id))
+
+    assert first.summary.plan_id == "imported-plan"
+    assert second.summary.plan_id == "imported-plan-2", "the fallback id is unique, not a clash"
+    assert store.list_plan_ids() == ["imported-plan", "imported-plan-2"]
+
+
+def test_import_preserves_document_created(app: PlanApplication) -> None:
+    detail = app.apply(ImportDocument(markdown=_READY_IMPORT_DOC.format(status="draft")))
+    assert detail.summary.created == "2025-12-24T10:00:00+00:00"
+    assert store.load_plan("imported").created == "2025-12-24T10:00:00+00:00"
+
+
+def test_ready_active_import_succeeds(app: PlanApplication) -> None:
+    detail = app.apply(ImportDocument(markdown=_READY_IMPORT_DOC.format(status="active")))
+    assert detail.summary.status == "active"
+    assert detail.readiness.ready is True
+    assert [p.plan_id for p in app.browse(status="active")] == ["imported"]
+
+
+def test_ready_active_replacement_succeeds(app: PlanApplication) -> None:
+    app.apply(CreatePlan(title="Imported Plan", answers=READY_ANSWERS, plan_id="imported"))
+    active_doc = store.load_plan_text("imported").replace("status: draft", "status: active")
+
+    detail = app.apply(ReplaceDocument(plan_id="imported", markdown=active_doc))
+
+    assert detail.summary.status == "active"
+    assert detail.readiness.ready is True
+    assert store.load_plan("imported").status == "active"
+
+
+@pytest.mark.parametrize(
+    "write",
+    [
+        ReplaceDocument(
+            plan_id="target",
+            markdown=_READY_IMPORT_DOC.format(status="draft").replace("id: imported", "id: other"),
+        ),
+        RevisePlan(plan_id="target", title="Renamed"),
+        TransitionLifecycle(plan_id="target", status="paused"),
+    ],
+    ids=["replace", "revise", "transition"],
+)
+def test_replace_keeps_requested_storage_identity_when_frontmatter_disagrees(
+    app: PlanApplication,
+    isolated_plans_dir,
+    write: ReplaceDocument | RevisePlan | TransitionLifecycle,
+) -> None:
+    """The id is the file. A hand-edited document whose frontmatter names some
+    other id is still addressed, and re-saved, as the file it lives in — one
+    updated target document, never a second file under the frontmatter's id."""
+    store.plans_dir()  # creates the directory
+    (isolated_plans_dir / "target.md").write_text(
+        _READY_IMPORT_DOC.format(status="draft").replace("id: imported", "id: other"),
+        encoding="utf-8",
+    )
+
+    detail = app.apply(write)
+
+    assert detail.summary.plan_id == "target"
+    assert store.list_plan_ids() == ["target"], "no second document under the frontmatter id"
+    assert "id: target" in store.load_plan_text("target")
+
+
 def test_create_transition_replace_refusal_payload_is_identical(app: PlanApplication) -> None:
     # Door 1: create-with-status.
     with pytest.raises(PlanNotReady) as via_create:

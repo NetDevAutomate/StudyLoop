@@ -74,6 +74,12 @@ _CLAMPED_FIELDS: tuple[tuple[str, int, int], ...] = (
 #: section or record on the next load and silently restructure the document.
 _HEADING_LINE_RE = re.compile(r"\A#{1,3}\s")
 
+#: Passed to the parser as the fallback id so the seam can tell "the
+#: frontmatter named no id" apart from a real one and allocate a unique slug
+#: itself. Deliberately fails ``store.validate_plan_id`` (spaces, brackets):
+#: if it ever leaked past ``_import`` the write would be refused, not filed.
+_NO_FRONTMATTER_ID = "<no frontmatter id>"
+
 
 def _normalise_status(value: str) -> str:
     status = (value or "").strip().lower()
@@ -247,17 +253,27 @@ class PlanApplication:
         return self._persist_new(plan, overwrite=intent.overwrite)
 
     def _import(self, intent: ImportDocument) -> PlanDetail:
-        plan = self._parse(intent.markdown, plan_id="")
+        """Identity precedence: explicit ``plan_id``, else frontmatter, else a unique title slug.
+
+        The id is settled before the readiness gate so a refusal names the
+        document that would have been written. A document without an id is
+        given the same collision-safe slug ``CreatePlan`` derives (``-2``,
+        ``-3``… on a clash) rather than the bare title slug, which would turn
+        a second import of the same title into a conflict.
+        """
+        plan = self._parse(intent.markdown, plan_id=_NO_FRONTMATTER_ID)
         explicit_id = (intent.plan_id or "").strip()
         if explicit_id:
             plan.plan_id = explicit_id
+        elif plan.plan_id == _NO_FRONTMATTER_ID:
+            plan.plan_id = store.unique_plan_id(plan.title)
         return self._persist_new(plan, overwrite=intent.overwrite)
 
     def _replace(self, intent: ReplaceDocument) -> PlanDetail:
         current = self._load(intent.plan_id)
         replacement = self._parse(intent.markdown, plan_id=current.plan_id)
         # A whole-document edit may not rename the plan or rewrite its birth
-        # date: the id is the file, and ``created`` is history.
+        # date: the id is the file (``_load`` pins it), and ``created`` is history.
         replacement.plan_id = current.plan_id
         replacement.created = current.created
         if replacement.status == "active":
@@ -357,12 +373,23 @@ class PlanApplication:
 
     @staticmethod
     def _load(plan_id: str) -> StudyPlan:
+        """Load by storage identity: the returned model is pinned to the file's id.
+
+        The parser lets a document's frontmatter ``id`` win over the filename,
+        so a hand-edited plan whose frontmatter names some other id would
+        otherwise be re-saved under that other id — a second file, and the
+        one the caller asked about left untouched. Every write path loads
+        through here, so "the id is the file" holds on all of them (F5).
+        """
         try:
-            return store.load_plan(plan_id)
+            storage_id = store.validate_plan_id(plan_id)
+            plan = store.load_plan(storage_id)
         except store.PlanNotFoundError as exc:
             raise PlanNotFound(str(exc)) from exc
         except store.InvalidPlanIdError as exc:
             raise InvalidPlanId(str(exc)) from exc
+        plan.plan_id = storage_id
+        return plan
 
     @staticmethod
     def _load_text(plan_id: str) -> str:
