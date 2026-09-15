@@ -406,6 +406,9 @@ class TestFailureAndDisabled:
         assert load_indicator.last_load(KEY, load_indicator.KIND_COLD) is None
 
     def test_a_disabled_phase_renders_honestly(self) -> None:
+        """DISABLED means "warm-up was not requested", NOT "the semantic
+        layer is off" -- ``ready`` still follows it. The rendered label must
+        not read like the layer is switched off (minor finding, fix round 1)."""
         indicator = load_indicator.PhaseIndicator(
             KEY, stream=io.StringIO(), render=True
         )
@@ -418,7 +421,9 @@ class TestFailureAndDisabled:
                     detail="warmup not requested",
                 )
             )
-            assert "disabled" in indicator.line()
+            line = indicator.line()
+            assert load_indicator.PHASE_LABELS[LoadPhase.DISABLED] in line
+            assert "disabled" not in line
 
     def test_a_cached_encoder_emits_nothing_and_records_nothing(self) -> None:
         stream = io.StringIO()
@@ -427,6 +432,78 @@ class TestFailureAndDisabled:
             pass  # the factory returned a cached encoder: no phases at all
         assert stream.getvalue() == ""
         assert load_indicator.last_load(KEY, load_indicator.KIND_COLD) is None
+
+    def test_a_pending_tick_write_never_lands_after_the_closing_line(self) -> None:
+        """Regression for nit finding #7 (fix round 1).
+
+        ``on_phase`` used to flip ``_finished`` only AFTER writing the
+        closing line, and the tick writer's own ``_finished`` guard ran
+        BEFORE it took the lock -- never re-checked once inside it. So a
+        ticker thread that had already read ``_finished`` as False (it
+        decided to render before the terminal event arrived) but had not
+        yet reached its write -- e.g. parked waiting for the lock the
+        closing write also needs -- could still append one more stale
+        render after ``ready``/``failed`` once that lock freed up.
+
+        Reproduced deterministically, without relying on real scheduling
+        luck: a gate on the indicator's lock holds a "ticker" thread's
+        acquisition open until AFTER ``on_phase(READY)`` -- including its
+        own closing write -- has fully returned on this (main) thread. The
+        ticker thread's outer check therefore ran (and passed) before the
+        close; only its write is delayed past it.
+        """
+        stream = io.StringIO()
+        indicator = load_indicator.PhaseIndicator(KEY, stream=stream, render=False)
+        indicator._started_at = time.monotonic()
+        indicator.on_phase(
+            PhaseEvent(phase=LoadPhase.WEIGHTS, key=KEY, at=time.monotonic())
+        )
+        stale_render = indicator.line()
+        indicator._write(
+            stale_render
+        )  # a legitimate earlier tick: `_wrote` is now True
+
+        gate = threading.Event()
+        real_lock = indicator._lock
+        racer_holder: list[threading.Thread] = []
+
+        class _GatedLock:
+            """Delays ``acquire()`` from the racer thread only, until ``gate``."""
+
+            def acquire(self, *args: object, **kwargs: object) -> bool:
+                if threading.current_thread() is racer_holder[0]:
+                    gate.wait(timeout=1)
+                return real_lock.acquire(*args, **kwargs)  # type: ignore[arg-type]
+
+            def release(self) -> None:
+                real_lock.release()
+
+            def __enter__(self) -> None:
+                self.acquire()
+
+            def __exit__(self, *_exc: object) -> None:
+                self.release()
+
+        indicator._lock = _GatedLock()  # type: ignore[assignment]
+
+        racer = threading.Thread(target=indicator._write, args=(stale_render,))
+        racer_holder.append(racer)
+        racer.start()
+        # The racer's outer guard has already run (``_finished`` was False);
+        # it is now parked on the gate, exactly like a real ticker thread
+        # that decided to render before the terminal event arrived.
+
+        indicator.on_phase(
+            PhaseEvent(phase=LoadPhase.READY, key=KEY, at=time.monotonic())
+        )
+        # The close, including its own write, has now fully happened on this
+        # thread. Only now does the parked "ticker" get to run.
+        gate.set()
+        racer.join(timeout=1)
+
+        lines = _rendered(stream)
+        assert lines, "the closing line was never written"
+        assert lines[-1].startswith("semantic model"), lines
 
 
 # ---------------------------------------------------------------------------
@@ -453,6 +530,26 @@ class TestQuerySideWiring:
         monkeypatch.setattr(embedding_store, "SentenceTransformerEncoder", Boom)
         with pytest.raises(RuntimeError, match="kaboom"):
             retrieval._encoder("bge-small-en-v1.5")
+
+    def test_a_warm_cache_hit_skips_the_indicator_entirely(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Nit finding #7 (fix round 1): ``query_encoders.is_cached`` already
+        exists precisely so a caller can tell a warm hit from a real load --
+        every search on a long-lived mcp/web process was paying for a
+        ``PhaseIndicator`` construction and, on a TTY, a spawned+joined
+        ticker thread even though a cached encoder emits no phases and
+        renders nothing."""
+        monkeypatch.setattr(embedding_store, "SentenceTransformerEncoder", FakeEncoder)
+        retrieval._encoder("bge-small-en-v1.5")  # first call: real cold load
+        assert query_encoders.is_cached("bge-small-en-v1.5", "torch")
+
+        def _explode(*_args: object, **_kwargs: object) -> None:
+            raise AssertionError("a cached load must not construct an indicator")
+
+        monkeypatch.setattr(load_indicator, "PhaseIndicator", _explode)
+        # A warm hit must not even try to build the indicator.
+        retrieval._encoder("bge-small-en-v1.5")
 
     def test_the_indicator_never_resolves_the_key_itself(
         self, monkeypatch: pytest.MonkeyPatch

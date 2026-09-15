@@ -455,10 +455,24 @@ def test_arch_readme_states_the_no_percentage_rule() -> None:
     assert "completion fraction" in section
 
 
-def test_arch_readme_uses_the_last_load_wording_and_refuses_usually() -> None:
-    """grok F7: one persisted sample is not a distribution."""
+def test_arch_readme_uses_the_last_load_wording_and_refuses_usually(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """grok F7: one persisted sample is not a distribution.
+
+    The rendered phrase is derived from ``last_load_phrase`` itself (nit
+    finding #6, fix round 1) rather than copied as prose: a change to that
+    f-string now fails THIS test instead of silently drifting from the doc.
+    """
+    from agent_session_tools import load_indicator
+
+    monkeypatch.setenv(load_indicator.STATE_DIR_ENV, str(tmp_path))
+    key = ("bge-small-en-v1.5", "torch", "unpinned")
+    load_indicator.record_load(key, 2.9, kind=load_indicator.KIND_COLD)
+    phrase = load_indicator.last_load_phrase(key, load_indicator.KIND_COLD)
+
     section = _indicator_section(ARCH_README_MD.read_text(encoding="utf-8"))
-    assert "last load: 2.9s" in section
+    assert phrase in section
     assert 'never "usually' in section
 
 

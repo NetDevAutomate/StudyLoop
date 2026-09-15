@@ -90,6 +90,4 @@ document.addEventListener('alpine:init', () => {
       }, 1500);
     },
   });
-
-  Alpine.store('encoderWarm').init();
 });

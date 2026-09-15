@@ -90,7 +90,12 @@ PHASE_LABELS: dict[LoadPhase, str] = {
     LoadPhase.WARMUP: "warm-up",
     LoadPhase.READY: "ready",
     LoadPhase.FAILED: "failed",
-    LoadPhase.DISABLED: "disabled",
+    # NOT "disabled": A2 emits this INSTEAD OF warmup when warm-up was not
+    # requested, and `ready` still follows it -- it is not a terminal
+    # alternative and it does not mean the semantic layer is off. "disabled"
+    # would read as exactly that (minor finding, fix round 1; see also
+    # `retrieval.WarmState.DISABLED`, a genuinely different, terminal state).
+    LoadPhase.DISABLED: "no warm-up",
 }
 
 _TERMINAL_PHASES = (LoadPhase.READY, LoadPhase.FAILED)
@@ -102,13 +107,33 @@ _TERMINAL_PHASES = (LoadPhase.READY, LoadPhase.FAILED)
 
 
 def state_dir() -> Path:
-    """Where durations are persisted, honouring ``STUDYLOOP_STATE_DIR``.
+    """Where durations are persisted -- matches ``studyloop.settings.get_state_dir()``.
+
+    ``agent_session_tools`` cannot import ``studyloop.settings`` (the
+    dependency runs the other way), so it resolves the state directory
+    itself, reading the SAME ``config.yaml`` and honouring the SAME
+    precedence: an explicit top-level ``state_dir:`` key wins over
+    ``STUDYLOOP_STATE_DIR``, which wins over the hardcoded default --
+    exactly ``settings.py``'s ``_SCALAR_FIELDS`` order (a raw config value
+    always overrides the dataclass field's env-aware default). Without
+    mirroring that precedence, a learner who sets ``state_dir:`` in their
+    config.yaml would have durations persisted somewhere the rest of the
+    product never looks (major finding, fix round 1).
 
     Resolved at call time, never bound at import: a test (or a subprocess it
-    spawns) redirects writable state with the environment variable, and
-    ``settings.py``'s import-time ``CONFIG_DIR`` is exactly the trap that
-    causes (council D-11). ``Path.home()`` is read here for the same reason.
+    spawns) redirects writable state with the environment variable or its own
+    config file, and ``settings.py``'s import-time ``CONFIG_DIR`` is exactly
+    the trap that causes (council D-11). ``Path.home()`` is read here for the
+    same reason.
     """
+    from .config_loader import expand_path, load_config
+
+    try:
+        configured = load_config().get("state_dir")
+    except (OSError, ValueError):
+        configured = None
+    if configured:
+        return expand_path(str(configured))
     if env_dir := os.environ.get(STATE_DIR_ENV):
         return Path(env_dir).expanduser()
     return Path.home() / ".local" / "share" / "studyloop"
@@ -400,9 +425,19 @@ class PhaseIndicator:
                 kind=self.kind,
                 fingerprint=self._fingerprint,
             )
-        if self._wrote:  # only close a line we actually opened
-            self._write(self.line(), final=True)
+        # Mark finished BEFORE the closing write, not after: a ticker thread
+        # that already read `_finished` as False (it decided to render
+        # before this terminal event arrived) but has not yet reached its
+        # own write -- e.g. it is parked waiting for the same lock this
+        # write also takes -- must see `_finished` already true once it
+        # gets there, or it can append a stray line after this one (nit
+        # finding #7, fix round 1). `_write`'s own guard re-checks
+        # `_finished` INSIDE the lock, so this assignment's visibility to
+        # any other thread is what actually closes the race, not just the
+        # reordering.
         self._finished = True
+        if self._wrote:  # only close a line we actually opened
+            self._write(self.line(), final=True, force=True)
 
     def phase(self, phase: LoadPhase, detail: str = "") -> None:
         """Emit a phase for a loader that has no hook of its own (corpus side).
@@ -452,10 +487,22 @@ class PhaseIndicator:
             if self._stop.wait(self._tick):
                 return
 
-    def _write(self, line: str, *, final: bool = False) -> None:
-        if not line or self._stream is None or self._finished:
+    def _write(self, line: str, *, final: bool = False, force: bool = False) -> None:
+        """Render ``line``, unless the reporter has already closed.
+
+        ``force`` is set only by :meth:`on_phase`'s own closing write: the
+        check below runs INSIDE the lock, re-validated at write time rather
+        than once at call entry, so a tick call that entered this method
+        before ``_finished`` was set cannot still land after the closing
+        write got there first (nit finding #7, fix round 1) -- whichever of
+        the two actually acquires the lock second simply finds ``_finished``
+        already true and returns without writing.
+        """
+        if not line or self._stream is None:
             return
         with self._lock:
+            if self._finished and not force:
+                return
             self._width = max(self._width, len(line))
             padded = line.ljust(self._width)
             try:

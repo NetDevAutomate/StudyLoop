@@ -23,7 +23,7 @@ pytest.importorskip("fastapi")
 
 from fastapi.testclient import TestClient  # pyright: ignore[reportMissingImports]
 
-from agent_session_tools import load_indicator, retrieval
+from agent_session_tools import embedding_store, load_indicator, query_encoders, retrieval
 from studyloop.web.app import create_app
 
 STATIC = Path(__file__).parent.parent / "src" / "studyloop" / "web" / "static"
@@ -69,12 +69,22 @@ class TestTheHealthEndpoint:
         assert payload["elapsed"] == pytest.approx(1.25)
 
     def test_the_endpoint_never_loads_an_encoder(self, monkeypatch) -> None:
-        """Reading a status must not become a reason to construct anything."""
+        """Reading a status must not become a reason to construct anything.
+
+        Patches the CONSTRUCTION SEAM (``query_encoders.get_query_encoder``
+        and ``embedding_store.SentenceTransformerEncoder``), not the one
+        convenience wrapper (``retrieval.warm_query_encoder``) the route never
+        called in the first place -- the route only calls
+        ``retrieval.encoder_warm_status()``, so patching the wrapper alone
+        passed even before the route existed and would keep passing for any
+        future edit that constructed an encoder through a different call site
+        (minor finding, fix round 1)."""
 
         def _explode(*_args: object, **_kwargs: object) -> None:
             raise AssertionError("the status endpoint constructed an encoder")
 
-        monkeypatch.setattr(retrieval, "warm_query_encoder", _explode)
+        monkeypatch.setattr(query_encoders, "get_query_encoder", _explode)
+        monkeypatch.setattr(embedding_store, "SentenceTransformerEncoder", _explode)
         client = TestClient(create_app(study_dirs=[]))
         assert client.get("/api/retrieval/health").status_code == 200
 
@@ -97,6 +107,17 @@ class TestTheChipAsset:
         assert "/js/retrieval-chip.js" in html
         assert 'id="encoder-warm-chip"' in html
 
+    def test_the_chip_relies_on_alpines_own_auto_init(self) -> None:
+        """``Alpine.store(name, value)`` already calls ``value.init()`` on
+        registration (verified against the vendored bundle: Alpine 3.14.8's
+        registration path calls a store's own ``init()`` unconditionally). An
+        explicit second call here doubles every immediate fetch and the
+        1500 ms poller for the lifetime of the page. The sibling asset
+        (nav-and-panel-stores.js) relies on the auto-init and never
+        self-calls; this file must not deviate (minor finding, fix round 1)."""
+        source = CHIP_JS.read_text(encoding="utf-8")
+        assert not re.search(r"Alpine\.store\([^)]*\)\.init\(\)", source)
+
 
 class TestStateDirAgreement:
     def test_both_packages_default_to_the_same_state_dir(
@@ -118,3 +139,27 @@ class TestStateDirAgreement:
 
         monkeypatch.setenv(load_indicator.STATE_DIR_ENV, str(tmp_path / "elsewhere"))
         assert load_indicator.state_dir() == settings._default_state_dir()
+
+    def test_a_configured_state_dir_wins_over_both_defaults(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """``settings.get_state_dir()`` goes through ``load_settings().state_dir``,
+        and a raw ``state_dir:`` key in config.yaml overrides that field's
+        env-aware default (settings.py's ``_SCALAR_FIELDS``). Before the fix,
+        ``load_indicator.state_dir()`` never consulted config.yaml at all, so a
+        learner who set ``state_dir:`` had durations persisted somewhere the
+        rest of the product never looked (major finding, fix round 1) --
+        exactly the two resolvers this class's other tests deliberately do
+        NOT exercise, because they agree trivially."""
+        from studyloop import settings
+
+        configured = tmp_path / "custom-state"
+        config_path = tmp_path / "config.yaml"
+        config_path.write_text(f"state_dir: {configured}\n")
+        monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
+        # An env override must NOT win over an explicit config-file key --
+        # that is settings.py's own precedence, and the two packages must
+        # agree on it too.
+        monkeypatch.setenv(load_indicator.STATE_DIR_ENV, str(tmp_path / "elsewhere"))
+        assert settings.get_state_dir() == configured
+        assert load_indicator.state_dir() == settings.get_state_dir()

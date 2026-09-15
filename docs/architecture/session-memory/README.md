@@ -117,11 +117,15 @@ it as a phase indicator.
 
 **2026-09-15 addendum (lane A4, council D-8/D-10): what the load indicator
 means.** When a load makes you wait, the tooling says which PHASE it is in —
-`runtime_import` (importing the backend), `weights` (constructing the encoder,
-which is the slow one), `warmup` (a throwaway encode), then `ready`, or
-`failed`/`disabled` — plus the elapsed time, ticking. Both encoders emit the
-same `query_encoders.LoadPhase` vocabulary: the query-side factory and the
-corpus-side `embedding_store._load_encoder()`.
+`runtime_import` (importing the backend), `weights` (constructing the
+encoder, which is the slow one), then either `warmup` (a throwaway encode
+ran) or `disabled` (warm-up was NOT requested for this load — this does
+*not* mean the semantic layer is off; `ready` still follows it, same as
+`warmup` would), then `ready` — plus the elapsed time, ticking. `failed` is
+the one phase that really is terminal: any exception during the load emits
+it instead of whatever phase came next, and the load stopped. Both encoders
+emit the same `query_encoders.LoadPhase` vocabulary: the query-side factory
+and the corpus-side `embedding_store._load_encoder()`.
 
 **There is no percentage bar, and there never will be.** Nothing in a model
 load reports its own completion fraction, so any percentage would be a number

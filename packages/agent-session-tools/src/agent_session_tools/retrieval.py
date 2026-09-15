@@ -507,12 +507,32 @@ def _encoder(model: str) -> Any:
     has been there. A cached encoder emits no phases, so a warm search prints
     nothing; the indicator writes to stderr only, so a ``--json`` consumer's
     stdout is byte-identical either way.
+
+    A warm hit skips the indicator's construction entirely (nit finding #7,
+    fix round 1): ``query_encoders.is_cached`` exists exactly so a caller can
+    tell a cache hit from a real load without constructing anything, and on a
+    long-lived mcp/web process almost every search after boot IS a cache hit
+    -- building a ``PhaseIndicator`` (and, on a TTY, spawning and joining a
+    ticker thread) for a call that will emit no phases at all was pure
+    per-search overhead. ``is_cached`` resolves the same cache key the
+    factory does, so a genuinely unresolvable key (e.g. an unpinned onnx
+    model) makes it raise too -- caught here and treated as "not cached" so
+    the call falls through to the factory below, which raises the SAME error
+    itself. That keeps the key-resolution invariant right above this comment
+    intact: this fast path must never become a second place that reports a
+    resolution failure with its own message.
     """
     from agent_session_tools import load_indicator, query_encoders
 
     # local_files_only is what makes "a search never downloads" true; the
     # environment variable is only a courtesy for libraries that read it.
     os.environ.setdefault("HF_HUB_OFFLINE", "1")
+    try:
+        cached = query_encoders.is_cached(model)
+    except Exception:
+        cached = False
+    if cached:
+        return query_encoders.get_query_encoder(model, local_files_only=True)
     with load_indicator.PhaseIndicator() as indicator:
         # No key argument on purpose: the factory resolves the key (and reports
         # an unpinned artefact) -- resolving it here too would raise the
