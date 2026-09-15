@@ -23,3 +23,29 @@ D-16) -- these backends only ever produce the LEARNER's turns.
 """
 
 from __future__ import annotations
+
+from acceptance.actors.budget import BudgetGuard
+from acceptance.actors.factory import KNOWN_ACTORS, get_actor, skip_reason
+from acceptance.actors.protocol import (
+    ActorError,
+    ConversationResult,
+    LearnerActor,
+    LearnerTurn,
+    MentorTransport,
+    TerminationOutcome,
+    TokenUsage,
+)
+
+__all__ = [
+    "KNOWN_ACTORS",
+    "ActorError",
+    "BudgetGuard",
+    "ConversationResult",
+    "LearnerActor",
+    "LearnerTurn",
+    "MentorTransport",
+    "TerminationOutcome",
+    "TokenUsage",
+    "get_actor",
+    "skip_reason",
+]
