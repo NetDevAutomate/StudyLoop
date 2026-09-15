@@ -21,6 +21,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+import huggingface_hub.constants
 import pytest
 
 from agent_session_tools import embedding_store as store
@@ -303,11 +304,29 @@ class TestFactoryTruthTable:
         assert all(result is results[0] for result in results)
 
 
+def _isolate_hf_cache(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Point every already-imported HF cache lookup at an empty directory.
+
+    ``HF_HUB_CACHE`` is computed from ``HF_HOME`` at *import* time
+    (``huggingface_hub.constants``), and ``huggingface_hub`` is already
+    imported by the time these tests run -- so ``monkeypatch.setenv("HF_HOME",
+    ...)`` alone is a no-op: ``hf_hub_download`` and
+    ``AutoTokenizer.from_pretrained`` both resolve their cache directory via
+    ``constants.HF_HUB_CACHE`` (a qualified module-attribute lookup at call
+    time, verified against the installed huggingface_hub/transformers), so
+    patching the constant itself is what actually isolates them from the
+    owner's real cache (repo TEST SHAPE rule: patch the constant the code
+    reads, not the environment variable it was computed from).
+    """
+    empty_cache = tmp_path / "hf-empty"
+    monkeypatch.setattr(huggingface_hub.constants, "HF_HUB_CACHE", str(empty_cache))
+
+
 class TestOfflineRule:
     def test_constructing_with_the_artefact_absent_raises_and_never_touches_the_network(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ):
-        monkeypatch.setenv("HF_HOME", str(tmp_path / "hf-empty"))
+        _isolate_hf_cache(monkeypatch, tmp_path)
         monkeypatch.setenv("HF_HUB_OFFLINE", "0")  # even if this says "go online"...
 
         def _blocked(*_args, **_kwargs):
@@ -318,7 +337,7 @@ class TestOfflineRule:
         with pytest.raises(RuntimeError, match="not in the local Hugging Face cache"):
             OnnxEncoder(ONNX_MODEL, local_files_only=True)
 
-    def test_hybrid_search_degrades_to_lexical_when_onnx_is_selected_and_absent(
+    def test_a_hybrid_query_degrades_to_lexical_when_onnx_is_selected_and_absent(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ):
         pytest.importorskip("sqlite_vec")
@@ -328,7 +347,7 @@ class TestOfflineRule:
         from agent_session_tools import retrieval
         from agent_session_tools.migrations import migrate
 
-        monkeypatch.setenv("HF_HOME", str(tmp_path / "hf-empty"))
+        _isolate_hf_cache(monkeypatch, tmp_path)
         monkeypatch.setattr(
             "agent_session_tools.config_loader.get_semantic_config",
             lambda: {"query_encoder": "onnx"},
@@ -458,7 +477,7 @@ class TestParitySmokeMachinery:
     with the reason; a real run needs the cached artefact, council D-26).
     """
 
-    def test_identical_vectors_have_cosine_one_and_agree_on_ranking(self):
+    def test_cosine_of_a_vector_with_itself_is_one(self):
         from agent_session_tools import embeddings as embeddings_mod
 
         texts = ["north text", "east text", "south text"]
@@ -479,6 +498,53 @@ class TestParitySmokeMachinery:
         cosine = embeddings_mod.cosine_similarity(base, perturbed)
         assert cosine >= 0.999
 
+    @staticmethod
+    def _rank_by_cosine(query: bytes, corpus: dict[str, bytes]) -> list[str]:
+        from agent_session_tools import embeddings as embeddings_mod
+
+        return sorted(
+            corpus,
+            key=lambda text: -embeddings_mod.cosine_similarity(query, corpus[text]),
+        )
+
+    def test_ranking_by_cosine_is_identical_between_a_reference_and_a_perturbed_arm(
+        self,
+    ):
+        """The ranking half of parity smoke (d), missing until now: a per-text
+        perturbation that stays above the pre-registered cosine floor
+        (>= 0.999) -- the torch-vs-onnx worst case this lane exists to bound
+        -- must not change the ranked order over the fixture corpus. This is
+        the exact asymmetry risk the parity gate exists to catch: a query
+        vector from a different runtime than the corpus vectors changes
+        ranking even when every individual vector still "agrees".
+        """
+        from agent_session_tools import embeddings as embeddings_mod
+
+        query = struct.pack("<4f", 1.0, 0.0, 0.0, 0.0)
+        reference_arm = {
+            "closest text": struct.pack("<4f", 0.98, 0.20, 0.0, 0.0),
+            "middle text": struct.pack("<4f", 0.70, 0.71, 0.0, 0.0),
+            "farthest text": struct.pack("<4f", 0.10, 0.99, 0.10, 0.0),
+        }
+        # Stand-in for a second backend's output on the same texts: each
+        # vector nudged just enough to probe the floor, not to define it.
+        perturbed_arm = {
+            "closest text": struct.pack("<4f", 0.981, 0.194, 0.001, 0.0),
+            "middle text": struct.pack("<4f", 0.699, 0.712, -0.002, 0.001),
+            "farthest text": struct.pack("<4f", 0.101, 0.988, 0.101, -0.001),
+        }
+
+        for text in reference_arm:
+            cosine = embeddings_mod.cosine_similarity(
+                reference_arm[text], perturbed_arm[text]
+            )
+            assert cosine >= 0.999, f"{text!r}: perturbation floor violated ({cosine})"
+
+        reference_ranking = self._rank_by_cosine(query, reference_arm)
+        perturbed_ranking = self._rank_by_cosine(query, perturbed_arm)
+        assert reference_ranking == perturbed_ranking
+        assert reference_ranking == ["closest text", "middle text", "farthest text"]
+
 
 @pytest.mark.integration
 class TestOnnxTorchParityAcceptance:
@@ -490,7 +556,7 @@ class TestOnnxTorchParityAcceptance:
     this run for real.
     """
 
-    def test_cosine_and_top1_agreement_on_a_tiny_fixture(self):
+    def test_cosine_and_ranking_agree_between_torch_and_onnx_on_a_tiny_fixture(self):
         from huggingface_hub import try_to_load_from_cache
 
         from agent_session_tools.embeddings import ONNX_ARTIFACTS
@@ -519,22 +585,44 @@ class TestOnnxTorchParityAcceptance:
             "the deployment pipeline failed because the docker image tag was wrong",
             "ranking rows per group is exactly what window functions are for",
         ]
+        query = "how do I rank rows within each group using a window function"
         torch_model = SentenceTransformer(
             hf_name, revision=revision, local_files_only=True
         )
         torch_vectors = torch_model.encode(fixture, normalize_embeddings=True)
+        torch_query_vector = torch_model.encode([query], normalize_embeddings=True)[0]
 
         onnx = OnnxEncoder(ONNX_MODEL, local_files_only=True)
         onnx_vectors = onnx.encode(fixture)
+        (onnx_query_bytes,) = onnx.encode([query])
 
+        torch_corpus: dict[str, bytes] = {}
+        onnx_corpus: dict[str, bytes] = {}
         for text, torch_vector, onnx_bytes in zip(
             fixture, torch_vectors, onnx_vectors, strict=True
         ):
+            torch_bytes = torch_vector.astype("<f4").tobytes()
             onnx_vector = embeddings_mod.embedding_from_bytes(onnx_bytes)
             cosine = embeddings_mod.cosine_similarity(
-                torch_vector.astype("<f4").tobytes(),
+                torch_bytes,
                 onnx_vector.astype("<f4").tobytes(),
             )
             assert cosine >= 0.999, (
                 f"{text!r}: cosine {cosine} below the pre-registered floor"
             )
+            torch_corpus[text] = torch_bytes
+            onnx_corpus[text] = onnx_bytes
+
+        # The ranking half of parity (deliverable 3.iii's CI-safe proxy): the
+        # two arms must agree on the ORDER of the fixture corpus against a
+        # query, not just per-text cosine -- that is the asymmetry risk a
+        # cosine-only check cannot see.
+        torch_ranking = TestParitySmokeMachinery._rank_by_cosine(
+            torch_query_vector.astype("<f4").tobytes(), torch_corpus
+        )
+        onnx_ranking = TestParitySmokeMachinery._rank_by_cosine(
+            onnx_query_bytes, onnx_corpus
+        )
+        assert torch_ranking == onnx_ranking, (
+            f"ranked order diverged: torch={torch_ranking!r} onnx={onnx_ranking!r}"
+        )
