@@ -28,12 +28,7 @@ import pytest
 
 from agent_session_tools import retrieval
 from agent_session_tools.migrations import migrate
-
-# RED (S.1): the helper does not exist yet, so this module fails to import until
-# S.3 lands it; the ignore keeps the commit-time pyright hook honest about that.
-from agent_session_tools.query_planner import (
-    prose_or_query,  # pyright: ignore[reportAttributeAccessIssue]
-)
+from agent_session_tools.query_planner import prose_or_query
 from agent_session_tools.retrieval import plan_natural_language, plan_query, search
 
 _GOLDEN = Path(__file__).parent / "golden" / "session_search_pre_planner.json"
