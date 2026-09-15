@@ -95,8 +95,8 @@ D-1, verified blocking). Resolution order, in `retrieval.resolve_mode()`:
 | Surface | Default | Why | Force the other mode |
 |---|---|---|---|
 | `cli` (`session-query search`) | lexical | a one-shot process pays the encoder's cold-load cost per invocation; stays lexical until the fast ONNX query-side load (lane A2) has its own receipts | `hybrid: true` in `config.yaml`, or `STUDYLOOP_RETRIEVAL_MODE=hybrid` |
-| `mcp` (`session_search` tool) | **hybrid** (provisional pending SEALED, below) | a long-lived process pre-warms the query encoder once at boot (below) and pays only the ~55 ms/query resident cost (E-A5) | `hybrid: false` in `config.yaml`, or `STUDYLOOP_RETRIEVAL_MODE=lexical` |
-| `web` (the study web server) | **hybrid** (provisional pending SEALED, below) | same reasoning as `mcp` | same as `mcp` |
+| `mcp` (`session_search` tool) | lexical, wired to flip to hybrid pending the Stage 5 sign-off | a long-lived process pre-warms the query encoder once at boot (below) and pays only the ~55 ms/query resident cost (E-A5) | `hybrid: false` in `config.yaml`, or `STUDYLOOP_RETRIEVAL_MODE=lexical` |
+| `web` (the study web server) | lexical, wired to flip to hybrid pending the Stage 5 sign-off | same reasoning as `mcp` | same as `mcp` |
 
 **The `mcp`/`web` hybrid default is provisional pending SEALED.** Stage 4's
 `hybrid` gate (G1/G2, `stage4-preregistration-2026-09-11.md`) was scored once,

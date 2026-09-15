@@ -71,24 +71,15 @@ SURFACES = (SURFACE_CLI, SURFACE_MCP, SURFACE_WEB)
 
 SURFACE_DEFAULTS: dict[str, str] = {
     SURFACE_CLI: MODE_LEXICAL,
-    SURFACE_MCP: MODE_HYBRID,
-    SURFACE_WEB: MODE_HYBRID,
+    SURFACE_MCP: MODE_LEXICAL,
+    SURFACE_WEB: MODE_LEXICAL,
 }
 """The surface default a caller gets when nothing else (arg, env, explicit
-config `true`/`false`) decided the mode.
-
-THE FLIP (council REC-2): this dict is the single, clearly-labelled commit at
-the tip of lane A1-hybrid-default's branch. ``mcp``/``web`` default to hybrid
-here because both are long-lived processes that pre-warm the query encoder at
-boot (:func:`warm_query_encoder`) and pay only the resident per-query cost
-(E-A5); ``cli`` stays lexical because a one-shot process pays a cold load per
-invocation. This default is PROVISIONAL PENDING SEALED (council D-4/O-2): it
-is gated on the coordinator holding this commit until the Stage 5
-pre-registration's resident-state latency receipt is owner-signed
+config `true`/`false`) decided the mode. Kept lexical for every surface
+until the Stage 5 pre-registration's resident-state latency receipt passes
 (``docs/architecture/session-memory/receipts/semantic-layer/
-stage5-preregistration-*.md``). Dropping this one commit reverts every
-surface to lexical; nothing else in this module, lane A2's factory, or lane
-A4's phase indicator depends on which mode is default here."""
+stage5-preregistration-*.md``, owner-signed) -- see the dedicated flip commit
+at the tip of this lane's branch, which changes only this dict."""
 
 # Stage 4 pre-registration (receipts/semantic-layer/stage4-preregistration-
 # 2026-09-11.md): two message-level lists of FUSION_DEPTH, Reciprocal Rank
