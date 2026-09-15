@@ -10,9 +10,10 @@ that exists once per adapter.
 
 The seam fixes that by construction:
 
-* adapters read through :meth:`browse`, :meth:`inspect` and
-  :meth:`prepare_planning`, and write only through :meth:`apply` with an
-  intent from :mod:`~studyloop.planning.intents`;
+* adapters read through :meth:`browse`, :meth:`inspect`,
+  :meth:`prepare_planning` and :meth:`get_active_guidance`, write only
+  through :meth:`apply` with an intent from :mod:`~studyloop.planning.intents`,
+  and evaluate through :meth:`assess`;
 * :meth:`apply` runs the readiness check whenever the *resulting* document
   would be active — whichever door it came through — and raises
   :class:`~studyloop.planning.errors.PlanNotReady` before any write;
@@ -33,32 +34,50 @@ constructor takes no path.
 from __future__ import annotations
 
 import logging
-import re
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, assert_never
+from typing import TYPE_CHECKING, assert_never, overload
 
-from . import authoring, index, store
-from .errors import InvalidField, InvalidPlanId, PlanConflict, PlanNotFound, PlanNotReady
+from . import authoring, evaluation, index, store
+from .errors import (
+    InvalidField,
+    InvalidMilestone,
+    InvalidPlanId,
+    PlanConflict,
+    PlanNotFound,
+    PlanNotReady,
+)
 from .intents import (
+    AssessPlan,
     CreatePlan,
+    DeletePlan,
     ImportDocument,
     LearningRecordSpec,
+    PlanDetailIntent,
     PlanIntent,
     ReplaceDocument,
     RevisePlan,
+    SetMilestone,
     TransitionLifecycle,
 )
 from .markdown import parse_plan
-from .models import PLAN_STATUSES, LearningRecord, Milestone
+from .models import CHECKPOINT_PHASES, PLAN_STATUSES, Milestone
 from .views import (
+    ActiveGuidance,
+    ActivePlanGuidance,
+    AssessmentResult,
     CheckpointHistoryView,
+    DeleteResult,
     PlanDetail,
+    PlanEvaluationView,
     PlanningBrief,
     PlanSummary,
     ReadinessView,
+    SinkStatus,
 )
 
 if TYPE_CHECKING:
+    from datetime import date
+
     from .models import StudyPlan
 
 logger = logging.getLogger(__name__)
@@ -70,9 +89,11 @@ _CLAMPED_FIELDS: tuple[tuple[str, int, int], ...] = (
     ("review_cadence_days", 1, 90),
 )
 
-#: An H1-H3 line inside a learning record body would be re-parsed as a new
-#: section or record on the next load and silently restructure the document.
-_HEADING_LINE_RE = re.compile(r"\A#{1,3}\s")
+#: The two recording warnings ``evaluate_and_record`` appends (Phase 0 / Bug B).
+#: ``assess`` reads them back into the structured sink report; the strings
+#: themselves stay in ``warnings`` for callers that only ever read those.
+_DB_WARNING = "checkpoint not saved to the database"
+_DOCUMENT_WARNING = "checkpoint not appended to the plan document"
 
 #: Passed to the parser as the fallback id so the seam can tell "the
 #: frontmatter named no id" apart from a real one and allocate a unique slug
@@ -130,36 +151,18 @@ def _milestones_from(items: object) -> list[Milestone]:
 
 
 def _append_learning_record(plan: StudyPlan, spec: LearningRecordSpec) -> None:
-    """Append ``spec`` to ``plan`` unless an identical record already exists.
+    """Apply the store's learning-record rule to the revision candidate.
 
-    The same rules as :func:`studyloop.planning.store.record_learning` — the
-    legacy writer the CLI and MCP still use until Phase 2 moves them onto
-    ``RevisePlan`` — applied to the candidate in memory so the revision stays
-    one save. Raises :class:`InvalidField` for an empty title or a body whose
-    H1-H3 lines would restructure the document on the next parse.
+    One copy of the rule — :func:`studyloop.planning.store.append_learning_record`
+    — reached from here and from the store's own ``record_learning``. Applied
+    to the candidate in memory so the record lands in the revision's single
+    save; the store's ``ValueError`` (empty title, H1-H3 lines in the body)
+    becomes the seam's :class:`InvalidField`.
     """
-    title = spec.title.strip()
-    if not title:
-        msg = "a learning record needs a title"
-        raise InvalidField(msg)
-    body = spec.body.strip()
-    for line in body.splitlines():
-        if _HEADING_LINE_RE.match(line.strip()):
-            msg = (
-                "a learning record body cannot contain #, ## or ### headings "
-                f"(found {line.strip()!r}); use #### or deeper, or plain prose"
-            )
-            raise InvalidField(msg)
-    if any(r.title == title and r.body == body for r in plan.learning_records):
-        return
-    plan.learning_records.append(
-        LearningRecord(
-            number=max((r.number for r in plan.learning_records), default=0) + 1,
-            title=title,
-            body=body,
-            status=spec.status.strip() or "active",
-        )
-    )
+    try:
+        store.append_learning_record(plan, spec.title, body=spec.body, status=spec.status)
+    except ValueError as exc:
+        raise InvalidField(str(exc)) from exc
 
 
 class PlanApplication:
@@ -209,15 +212,60 @@ class PlanApplication:
             existing_plans=self.browse(),
         )
 
+    def get_active_guidance(self, *, today: date | None = None) -> ActiveGuidance:
+        """One :class:`ActivePlanGuidance` per active plan, ordered by plan id.
+
+        Plan-static and cheap — the documents are parsed once and no session
+        history is read — so the ``now`` ranker (design §3, D-5) can call it
+        on every request. ``today`` pins the target-date urgency for tests and
+        frozen-clock callers; it defaults to the real UTC date.
+
+        A document the store could not parse is named in the collection's
+        ``warnings`` rather than silently absent, and a parseable-but-odd
+        active plan (no milestones, a target date that is not a date) is
+        represented with per-plan warnings rather than raised on.
+        """
+        parsed = store.list_plans()
+        seen = {plan.plan_id for plan in parsed}
+        warnings = tuple(
+            f"study plan {plan_id!r} could not be parsed and is not represented"
+            for plan_id in store.list_plan_ids()
+            if plan_id not in seen
+        )
+        plans = tuple(
+            ActivePlanGuidance.from_plan(plan, today=today)
+            for plan in sorted(parsed, key=lambda plan: plan.plan_id)
+            if plan.status == "active"
+        )
+        return ActiveGuidance(plans=plans, warnings=warnings)
+
+    def reindex(self) -> int:
+        """Rebuild the derived SQLite index from the documents. Returns rows written.
+
+        The index is a cache the store refreshes best-effort on every save;
+        this is the recovery path when that refresh failed or the database
+        was rebuilt. Exposed here so ``studyloop plan reindex`` does not need
+        to import the index module (D-6).
+        """
+        return index.reindex_all()
+
     # ------------------------------------------------------------------
     # Writes
     # ------------------------------------------------------------------
 
-    def apply(self, intent: PlanIntent) -> PlanDetail:
+    @overload
+    def apply(self, intent: DeletePlan) -> DeleteResult: ...
+
+    @overload
+    def apply(self, intent: PlanDetailIntent) -> PlanDetail: ...
+
+    def apply(self, intent: PlanIntent) -> PlanDetail | DeleteResult:
         """Carry out one intent and return the plan as it now is.
 
-        Raises a :class:`~studyloop.planning.errors.PlanError` subclass and
-        writes nothing when the intent is refused.
+        ``DeletePlan`` is the exception: there is no "now" for a deleted plan,
+        so it returns a :class:`DeleteResult`. Raises a
+        :class:`~studyloop.planning.errors.PlanError` subclass and writes
+        nothing when the intent is refused.
         """
         if isinstance(intent, CreatePlan):
             return self._create(intent)
@@ -229,7 +277,56 @@ class PlanApplication:
             return self._transition(intent)
         if isinstance(intent, RevisePlan):
             return self._revise(intent)
+        if isinstance(intent, SetMilestone):
+            return self._set_milestone(intent)
+        if isinstance(intent, DeletePlan):
+            return self._delete(intent)
         assert_never(intent)
+
+    def assess(self, intent: AssessPlan) -> AssessmentResult:
+        """Evaluate a plan at a checkpoint and report what was recorded where.
+
+        ``record=False`` calls :func:`~studyloop.planning.evaluation.evaluate_plan`
+        and touches nothing. ``record=True`` calls the Phase-0
+        :func:`~studyloop.planning.evaluation.evaluate_and_record` — the one
+        checkpoint writer; this method adds no second — and reads its two
+        recording warnings back into ``db_write`` / ``document_write``. A
+        failed sink is an outcome on the result, never an exception: the
+        evaluation succeeded and the caller gets it (D-1, D-3).
+        """
+        plan = self._load(intent.plan_id)  # 404 before 400: the plan before the phase
+        phase = (intent.phase or "").strip().lower()
+        if phase not in CHECKPOINT_PHASES:
+            msg = f"phase must be one of {CHECKPOINT_PHASES}"
+            raise InvalidField(msg)
+        study_id = (intent.study_id or "").strip()
+
+        if not intent.record:
+            result = evaluation.evaluate_plan(plan, phase, study_id=study_id)
+            return AssessmentResult(
+                evaluation=PlanEvaluationView.from_evaluation(result),
+                db_write="not_requested",
+                document_write="not_requested",
+                warnings=tuple(result.warnings),
+            )
+
+        result = evaluation.evaluate_and_record(
+            plan, phase, study_id=study_id, append_to_plan=intent.append_to_plan
+        )
+        db_write: SinkStatus = "failed" if _DB_WARNING in result.warnings else "saved"
+        document_write: SinkStatus
+        if not intent.append_to_plan:
+            document_write = "not_requested"
+        elif _DOCUMENT_WARNING in result.warnings:
+            document_write = "failed"
+        else:
+            document_write = "saved"
+        return AssessmentResult(
+            evaluation=PlanEvaluationView.from_evaluation(result),
+            db_write=db_write,
+            document_write=document_write,
+            warnings=tuple(result.warnings),
+        )
 
     def _create(self, intent: CreatePlan) -> PlanDetail:
         title = intent.title.strip()
@@ -331,6 +428,47 @@ class PlanApplication:
             self._assert_can_be_active(candidate)
         store.save_plan(candidate)  # preserves plan_id + created; bumps updated
         return PlanDetail.from_plan(candidate)
+
+    def _set_milestone(self, intent: SetMilestone) -> PlanDetail:
+        """Set one milestone's state on the loaded candidate; one gate, one save.
+
+        Set, not toggle: applying the same intent twice leaves the same
+        document, so a retried call is safe. A negative index is refused
+        rather than read as Python's "from the end" — a milestone index is a
+        position in the plan, not a list trick.
+        """
+        candidate = self._load(intent.plan_id)
+        total = len(candidate.milestones)
+        if not 0 <= intent.index < total:
+            msg = f"No milestone at index {intent.index} (plan has {total})"
+            raise InvalidMilestone(msg)
+        candidate.milestones[intent.index].done = bool(intent.done)
+        if candidate.status == "active":
+            self._assert_can_be_active(candidate)
+        store.save_plan(candidate)
+        return PlanDetail.from_plan(candidate)
+
+    def _delete(self, intent: DeletePlan) -> DeleteResult:
+        """Remove the canonical document; keep the durable checkpoint log.
+
+        The plan must exist before the confirmation is judged (404 before
+        400, like every write), and an unconfirmed intent writes nothing.
+        The store's ``delete_plan`` also drops the derived index row and
+        deliberately leaves ``study_plan_checkpoints`` alone: the log is
+        evidence about the learner's sessions, not about the file.
+        """
+        plan = self._load(intent.plan_id)
+        if not intent.confirmed:
+            msg = f"deleting {plan.plan_id!r} requires confirmed=True"
+            raise InvalidField(msg)
+        try:
+            deleted = store.delete_plan(plan.plan_id)
+        except store.InvalidPlanIdError as exc:  # pragma: no cover - validated by _load
+            raise InvalidPlanId(str(exc)) from exc
+        if not deleted:  # vanished between the load and the unlink
+            msg = f"no study plan with id {plan.plan_id!r}"
+            raise PlanNotFound(msg)
+        return DeleteResult(plan_id=plan.plan_id)
 
     # ------------------------------------------------------------------
     # Internals

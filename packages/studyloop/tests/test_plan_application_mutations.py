@@ -35,16 +35,16 @@ from studyloop.planning.errors import (
     PlanNotReady,
 )
 from studyloop.planning.intents import (
-    AssessPlan,  # pyright: ignore[reportAttributeAccessIssue]  # RED: lands in T2.2
-    DeletePlan,  # pyright: ignore[reportAttributeAccessIssue]  # RED: lands in T2.2
+    AssessPlan,
+    DeletePlan,
     LearningRecordSpec,
     RevisePlan,
-    SetMilestone,  # pyright: ignore[reportAttributeAccessIssue]  # RED: lands in T2.2
+    SetMilestone,
 )
 from studyloop.planning.models import Milestone, Mission, StudyPlan
 from studyloop.planning.views import (
-    AssessmentResult,  # pyright: ignore[reportAttributeAccessIssue]  # RED: lands in T2.2
-    DeleteResult,  # pyright: ignore[reportAttributeAccessIssue]  # RED: lands in T2.2
+    AssessmentResult,
+    DeleteResult,
     PlanDetail,
 )
 
@@ -253,9 +253,7 @@ def test_delete_returns_delete_result_and_document_gone(app: PlanApplication) ->
 
 def test_delete_retains_checkpoint_history(app: PlanApplication) -> None:
     _plan("demo")
-    recorded = app.assess(  # pyright: ignore[reportAttributeAccessIssue]  # RED: T2.2
-        AssessPlan(plan_id="demo", phase="start", study_id="sess-1", record=True)
-    )
+    recorded = app.assess(AssessPlan(plan_id="demo", phase="start", study_id="sess-1", record=True))
     assert recorded.db_write == "saved"
     assert _database_checkpoints("demo") == ["start"]
 
@@ -290,9 +288,7 @@ def test_assess_preview_writes_neither_sink(app: PlanApplication, monkeypatch) -
 
     monkeypatch.setattr(index_module, "record_checkpoint", must_not_be_called)
 
-    result = app.assess(  # pyright: ignore[reportAttributeAccessIssue]  # RED: T2.2
-        AssessPlan(plan_id="demo", phase="mid", record=False)
-    )
+    result = app.assess(AssessPlan(plan_id="demo", phase="mid", record=False))
 
     assert isinstance(result, AssessmentResult)
     assert result.db_write == "not_requested"
@@ -311,9 +307,7 @@ def test_assess_preview_writes_neither_sink(app: PlanApplication, monkeypatch) -
 def test_assess_record_true_reports_both_sinks_saved(app: PlanApplication) -> None:
     _plan("demo")
 
-    result = app.assess(  # pyright: ignore[reportAttributeAccessIssue]  # RED: T2.2
-        AssessPlan(plan_id="demo", phase="end", study_id="sess-9")
-    )
+    result = app.assess(AssessPlan(plan_id="demo", phase="end", study_id="sess-9"))
 
     assert result.db_write == "saved"
     assert result.document_write == "saved"
@@ -334,9 +328,7 @@ def test_assess_db_failure_reports_failed_sink_and_returns_evaluation(
     _plan("demo")
     monkeypatch.setattr(index_module, "record_checkpoint", lambda evaluation, *, study_id="": False)
 
-    result = app.assess(  # pyright: ignore[reportAttributeAccessIssue]  # RED: T2.2
-        AssessPlan(plan_id="demo", phase="start")
-    )
+    result = app.assess(AssessPlan(plan_id="demo", phase="start"))
 
     assert result.db_write == "failed"
     assert result.document_write == "saved"
@@ -358,9 +350,7 @@ def test_assess_document_failure_reported_independently(app: PlanApplication, mo
 
     monkeypatch.setattr(store, "save_plan", refuse_write)
 
-    result = app.assess(  # pyright: ignore[reportAttributeAccessIssue]  # RED: T2.2
-        AssessPlan(plan_id="demo", phase="start")
-    )
+    result = app.assess(AssessPlan(plan_id="demo", phase="start"))
 
     assert result.db_write == "saved", "the database sink succeeded on its own"
     assert result.document_write == "failed"
@@ -375,9 +365,7 @@ def test_assess_append_to_plan_false_leaves_document_sink_not_requested(
     app: PlanApplication,
 ) -> None:
     _plan("demo")
-    result = app.assess(  # pyright: ignore[reportAttributeAccessIssue]  # RED: T2.2
-        AssessPlan(plan_id="demo", phase="start", append_to_plan=False)
-    )
+    result = app.assess(AssessPlan(plan_id="demo", phase="start", append_to_plan=False))
     assert result.db_write == "saved"
     assert result.document_write == "not_requested"
     assert result.recording_complete is True
@@ -388,14 +376,10 @@ def test_assess_append_to_plan_false_leaves_document_sink_not_requested(
 def test_assess_unknown_plan_and_bad_phase(app: PlanApplication) -> None:
     # 404 before 400: the plan must exist before the phase is judged.
     with pytest.raises(PlanNotFound):
-        app.assess(  # pyright: ignore[reportAttributeAccessIssue]  # RED: T2.2
-            AssessPlan(plan_id="missing", phase="nope")
-        )
+        app.assess(AssessPlan(plan_id="missing", phase="nope"))
     _plan("demo")
     with pytest.raises(InvalidField):
-        app.assess(  # pyright: ignore[reportAttributeAccessIssue]  # RED: T2.2
-            AssessPlan(plan_id="demo", phase="nope")
-        )
+        app.assess(AssessPlan(plan_id="demo", phase="nope"))
     assert _document_checkpoints("demo") == []
     assert _database_checkpoints("demo") == []
 
@@ -409,9 +393,7 @@ def test_assessment_result_is_frozen_and_matches_the_legacy_evaluation_dict(
     from studyloop.planning.evaluation import evaluate_plan
 
     _plan("demo")
-    result = app.assess(  # pyright: ignore[reportAttributeAccessIssue]  # RED: T2.2
-        AssessPlan(plan_id="demo", phase="start", record=False)
-    )
+    result = app.assess(AssessPlan(plan_id="demo", phase="start", record=False))
     legacy = evaluate_plan(store.load_plan("demo"), "start")
 
     payload = result.evaluation.to_json_dict()
@@ -452,9 +434,10 @@ def test_malformed_plan_browse_matches_store_list(app: PlanApplication, isolated
     _plan("good")
     _plan("also-good", status="active")
     store.plans_dir()
-    (isolated_plans_dir / "broken.md").write_text(
-        "---\nthis: [is not: valid: yaml\n---\n# Broken\n", encoding="utf-8"
-    )
+    # The frontmatter parser falls back to a naive key/value reader, so a
+    # document has to be genuinely unreadable to be skipped: bytes that are not
+    # UTF-8 at all.
+    (isolated_plans_dir / "broken.md").write_bytes(b"\xff\xfe not a text file")
 
     browsed = [p.plan_id for p in app.browse()]
 
@@ -481,7 +464,7 @@ def test_learning_record_validation_is_the_stores_single_copy(
         msg = "the store said no"
         raise ValueError(msg)
 
-    monkeypatch.setattr(store, "append_learning_record", refuse)  # RED: lands in T2.2
+    monkeypatch.setattr(store, "append_learning_record", refuse)
 
     with pytest.raises(InvalidField, match="the store said no"):
         app.apply(RevisePlan(plan_id="demo", learning_record=LearningRecordSpec(title="Fine")))
@@ -496,10 +479,10 @@ def test_plan_detail_finds_the_learning_record_a_spec_would_match(app: PlanAppli
     spec = LearningRecordSpec(title="  Window frames default to RANGE ", body=" Not ROWS. ")
 
     before = app.inspect("demo")
-    assert before.learning_record_matching(spec) is None  # pyright: ignore[reportAttributeAccessIssue]  # RED: T2.2
+    assert before.learning_record_matching(spec) is None
 
     after = app.apply(RevisePlan(plan_id="demo", learning_record=spec))
-    found = after.learning_record_matching(spec)  # pyright: ignore[reportAttributeAccessIssue]  # RED: T2.2
+    found = after.learning_record_matching(spec)
     assert found is not None
     assert (found.number, found.title, found.body) == (
         1,
@@ -507,7 +490,7 @@ def test_plan_detail_finds_the_learning_record_a_spec_would_match(app: PlanAppli
         "Not ROWS.",
     )
     assert (
-        after.learning_record_matching(  # pyright: ignore[reportAttributeAccessIssue]  # RED: T2.2
+        after.learning_record_matching(
             LearningRecordSpec(title="Window frames default to RANGE", body="Different body")
         )
         is None
@@ -522,6 +505,6 @@ def test_plan_detail_finds_the_learning_record_a_spec_would_match(app: PlanAppli
 def test_reindex_rebuilds_the_derived_index_and_returns_the_count(app: PlanApplication) -> None:
     _plan("one")
     _plan("two", status="active")
-    count = app.reindex()  # pyright: ignore[reportAttributeAccessIssue]  # RED: T2.2
+    count = app.reindex()
     assert count == 2
     assert sorted(row["plan_id"] for row in index_module.indexed_plans()) == ["one", "two"]

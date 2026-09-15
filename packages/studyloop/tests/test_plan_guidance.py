@@ -26,11 +26,11 @@ from studyloop.planning import store
 from studyloop.planning.application import PlanApplication
 from studyloop.planning.models import Milestone, Mission, StudyPlan
 from studyloop.planning.views import (
-    ActiveGuidance,  # pyright: ignore[reportAttributeAccessIssue]  # RED: lands in T2.2
-    ActivePlanGuidance,  # pyright: ignore[reportAttributeAccessIssue]  # RED: lands in T2.2
+    ActiveGuidance,
+    ActivePlanGuidance,
     MilestoneView,
     PlanSummary,
-    normalise_match_key,  # pyright: ignore[reportAttributeAccessIssue]  # RED: lands in T2.2
+    normalise_match_key,
 )
 
 TODAY = date(2026, 9, 16)
@@ -80,7 +80,7 @@ def _active(
 
 
 def _guidance(app: PlanApplication, *, today: date | None = TODAY) -> ActiveGuidance:
-    return app.get_active_guidance(today=today)  # pyright: ignore[reportAttributeAccessIssue]  # RED: T2.2
+    return app.get_active_guidance(today=today)
 
 
 # ---------------------------------------------------------------------------
@@ -94,7 +94,7 @@ def test_active_guidance_one_per_active_plan_with_match_keys_and_urgency(
         topics=["SQL", "Data-Engineering"],
         milestones=[
             Milestone(title="OVER clause", done=True, concepts=["Window-Function"]),
-            Milestone(title="Ranking", concepts=["RANK()", "dense rank"]),
+            Milestone(title="Ranking", concepts=["RANK vs DENSE_RANK", "dense rank"]),
             Milestone(title="Frames", concepts=["window frame"]),
         ],
         target_date=(TODAY + timedelta(days=30)).isoformat(),
@@ -116,12 +116,19 @@ def test_active_guidance_one_per_active_plan_with_match_keys_and_urgency(
     assert sql.plan.status == "active"
     assert isinstance(sql.next_milestone, MilestoneView)
     assert (sql.next_milestone.index, sql.next_milestone.title) == (1, "Ranking")
-    assert sql.next_milestone.concepts == ("RANK()", "dense rank")
+    assert sql.next_milestone.concepts == ("RANK vs DENSE_RANK", "dense rank")
     # Topics and every milestone's concepts — done or not — casefolded with
     # punctuation stripped, so a candidate topic "data-engineering" or a due
     # concept "Window Function" matches by equality, never by substring.
     assert sql.match_keys == frozenset(
-        {"sql", "data engineering", "window function", "rank", "dense rank", "window frame"}
+        {
+            "sql",
+            "data engineering",
+            "window function",
+            "rank vs dense rank",
+            "dense rank",
+            "window frame",
+        }
     )
     assert isinstance(sql.match_keys, frozenset)
     assert sql.target_urgency == "later"
@@ -227,9 +234,7 @@ def test_active_guidance_warns_on_malformed_documents(
         "target_date: someday\n---\n\n# No Milestones\n\n## Mission\n\n### Why\n\nBecause.\n",
         encoding="utf-8",
     )
-    (isolated_plans_dir / "broken.md").write_text(
-        "---\nthis: [is not: valid: yaml\n---\n# Broken\n", encoding="utf-8"
-    )
+    (isolated_plans_dir / "broken.md").write_bytes(b"\xff\xfe not a text file")
     _active("healthy")
 
     guidance = _guidance(app)

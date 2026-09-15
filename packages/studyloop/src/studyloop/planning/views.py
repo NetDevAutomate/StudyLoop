@@ -14,14 +14,20 @@ behaviour-identical when the routes and commands migrate onto the seam;
 
 from __future__ import annotations
 
+import re
+import unicodedata
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from .authoring import readiness
 
 if TYPE_CHECKING:
+    from datetime import date
+
+    from .evaluation import PlanEvaluation
+    from .intents import LearningRecordSpec
     from .models import Checkpoint, LearningRecord, Milestone, Mission, Resource, StudyPlan
 
 
@@ -48,6 +54,25 @@ def _freeze(value: object) -> object:
     raise TypeError(msg)
 
 
+def _freeze_rows(value: object) -> object:
+    """Like :func:`_freeze`, but for database rows an evaluation carries.
+
+    The checkpoint log has always been written with ``json.dumps(...,
+    default=str)`` and the CLI prints it the same way, so a non-JSON leaf
+    (a ``date`` from a driver, say) is rendered — ``isoformat()`` when it has
+    one, else ``str()`` — rather than refused. Refusing would turn a
+    successful evaluation into a crash over one column's type.
+    """
+    if isinstance(value, Mapping):
+        return MappingProxyType({str(key): _freeze_rows(item) for key, item in value.items()})
+    if isinstance(value, list | tuple | set | frozenset):
+        return tuple(_freeze_rows(item) for item in value)
+    if isinstance(value, _SEED_SCALARS):
+        return value
+    render = getattr(value, "isoformat", None)
+    return render() if callable(render) else str(value)
+
+
 def _thaw(value: object) -> object:
     """Inverse of :func:`_freeze`: fresh dicts and lists, ready for ``json.dumps``."""
     if isinstance(value, Mapping):
@@ -55,6 +80,25 @@ def _thaw(value: object) -> object:
     if isinstance(value, tuple):
         return [_thaw(item) for item in value]
     return value
+
+
+_NON_WORD_RE = re.compile(r"[^\w\s]|_", re.UNICODE)
+
+
+def normalise_match_key(text: str) -> str:
+    """The key on which a plan topic or concept matches a study candidate.
+
+    Casefold, replace punctuation (and ``_``) with spaces, collapse runs of
+    whitespace, strip. ``"Data-Engineering"`` and ``"data engineering"`` are
+    the same key; ``"RANK()"`` is ``"rank"``. The ``now`` ranker applies this
+    same function to its candidates, so plan matching is *equality on the
+    key* and never a substring test (design §3 step 4) — ``"rank"`` does not
+    match ``"frank"``. Unicode is NFKC-normalised first so a full-width or
+    composed form does not defeat the equality.
+    """
+    folded = unicodedata.normalize("NFKC", text).casefold()
+    spaced = _NON_WORD_RE.sub(" ", folded)
+    return " ".join(spaced.split())
 
 
 @dataclass(frozen=True)
@@ -403,6 +447,21 @@ class PlanDetail:
             payload["history"] = [entry.to_json_dict() for entry in self.history]
         return payload
 
+    def learning_record_matching(self, spec: LearningRecordSpec) -> LearningRecordView | None:
+        """The record ``spec`` would be a duplicate of, or ``None``.
+
+        Identity is the store's idempotency rule — same title and body after
+        the whitespace trim the parser applies
+        (:func:`studyloop.planning.store.append_learning_record`). An adapter
+        that reports ``created`` asks this before and after the revision
+        instead of carrying its own copy of that rule.
+        """
+        title, body = spec.title.strip(), spec.body.strip()
+        for record in self.learning_records:
+            if record.title == title and record.body == body:
+                return record
+        return None
+
 
 @dataclass(frozen=True)
 class PlanningBrief:
@@ -452,4 +511,281 @@ class PlanningBrief:
             "questions": [item.to_json_dict() for item in self.interview],
             "seed": _thaw(self.evidence_seed),
             "existing_plans": [plan.to_json_dict() for plan in self.existing_plans],
+        }
+
+
+# ---------------------------------------------------------------------------
+# Phase 2 views: deletion, assessment, active-plan guidance
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class DeleteResult:
+    """The outcome of a confirmed ``DeletePlan``.
+
+    A ``PlanDetail`` describes a plan as it now is; a deleted plan has no "now",
+    so ``apply`` returns this instead (council review 1, GPT hazard table). The
+    canonical document and its derived index row are gone; the durable
+    checkpoint log in the sessions database is retained by design.
+    """
+
+    plan_id: str
+
+    def to_json_dict(self) -> dict[str, Any]:
+        return {"deleted": True, "plan_id": self.plan_id}
+
+
+SinkStatus = Literal["not_requested", "saved", "failed"]
+TargetUrgency = Literal["overdue", "soon", "later", "undated"]
+
+#: Days-until-target at or below which a target date is ``soon``.
+SOON_WITHIN_DAYS = 7
+
+
+@dataclass(frozen=True)
+class PlanEvaluationView:
+    """A frozen :class:`~studyloop.planning.evaluation.PlanEvaluation`.
+
+    Field for field the same as the mutable evaluation, with tuples for lists
+    and read-only mappings for database rows, plus ``markdown`` — the block an
+    agent pastes into the conversation, rendered once at construction so no
+    caller needs the mutable object to print it. :meth:`to_json_dict` returns
+    exactly ``PlanEvaluation.to_dict()``, so the REST body and the CLI
+    ``--json`` shape do not change when the adapters delegate (D-3).
+    """
+
+    plan_id: str
+    plan_title: str
+    phase: str
+    verdict: str
+    headline: str
+    at: str
+    study_id: str
+    progress_pct: int
+    milestone_total: int
+    milestone_done: int
+    next_milestone: str
+    next_concepts: tuple[str, ...]
+    days_since_activity: int | None
+    days_until_target: int | None
+    due_reviews: tuple[Mapping[str, object], ...]
+    struggles: tuple[Mapping[str, object], ...]
+    concept_evidence: tuple[Mapping[str, object], ...]
+    unverified_milestones: tuple[str, ...]
+    drift_topics: tuple[str, ...]
+    recommendations: tuple[str, ...]
+    warnings: tuple[str, ...]
+    markdown: str
+
+    @classmethod
+    def from_evaluation(cls, evaluation: PlanEvaluation) -> PlanEvaluationView:
+        data = evaluation.to_dict()
+        return cls(
+            plan_id=str(data["plan_id"]),
+            plan_title=str(data["plan_title"]),
+            phase=str(data["phase"]),
+            verdict=str(data["verdict"]),
+            headline=str(data["headline"]),
+            at=str(data["at"]),
+            study_id=str(data["study_id"]),
+            progress_pct=int(data["progress_pct"]),
+            milestone_total=int(data["milestone_total"]),
+            milestone_done=int(data["milestone_done"]),
+            next_milestone=str(data["next_milestone"]),
+            next_concepts=tuple(str(item) for item in data["next_concepts"]),
+            days_since_activity=data["days_since_activity"],
+            days_until_target=data["days_until_target"],
+            due_reviews=_rows(data["due_reviews"]),
+            struggles=_rows(data["struggles"]),
+            concept_evidence=_rows(data["concept_evidence"]),
+            unverified_milestones=tuple(str(item) for item in data["unverified_milestones"]),
+            drift_topics=tuple(str(item) for item in data["drift_topics"]),
+            recommendations=tuple(str(item) for item in data["recommendations"]),
+            warnings=tuple(str(item) for item in data["warnings"]),
+            markdown=evaluation.as_markdown(),
+        )
+
+    def to_json_dict(self) -> dict[str, Any]:
+        """``PlanEvaluation.to_dict()``, key for key, in fresh containers."""
+        return {
+            "plan_id": self.plan_id,
+            "plan_title": self.plan_title,
+            "phase": self.phase,
+            "verdict": self.verdict,
+            "headline": self.headline,
+            "at": self.at,
+            "study_id": self.study_id,
+            "progress_pct": self.progress_pct,
+            "milestone_total": self.milestone_total,
+            "milestone_done": self.milestone_done,
+            "next_milestone": self.next_milestone,
+            "next_concepts": list(self.next_concepts),
+            "days_since_activity": self.days_since_activity,
+            "days_until_target": self.days_until_target,
+            "due_reviews": _thaw(self.due_reviews),
+            "struggles": _thaw(self.struggles),
+            "concept_evidence": _thaw(self.concept_evidence),
+            "unverified_milestones": list(self.unverified_milestones),
+            "drift_topics": list(self.drift_topics),
+            "recommendations": list(self.recommendations),
+            "warnings": list(self.warnings),
+        }
+
+
+def _rows(items: object) -> tuple[Mapping[str, object], ...]:
+    frozen = _freeze_rows(items)
+    if not isinstance(frozen, tuple):  # pragma: no cover - to_dict() always yields lists here
+        msg = "evaluation rows must be a list"
+        raise TypeError(msg)
+    return tuple(row for row in frozen if isinstance(row, Mapping))
+
+
+@dataclass(frozen=True)
+class AssessmentResult:
+    """What ``assess`` did: the evaluation, and the fate of each requested sink.
+
+    ``db_write`` is the durable checkpoint log; ``document_write`` is the plan
+    document's own Checkpoints table. Each is ``not_requested`` (a preview, or
+    ``append_to_plan=False``), ``saved`` or ``failed`` — the two are
+    independent (D-1), and a failure is a *reported outcome*, never an
+    exception, because the evaluation itself succeeded and the caller is
+    entitled to it. ``warnings`` is the evaluation's full warning list,
+    recording warnings included, so a caller that only ever read
+    ``evaluation.warnings`` sees the same strings.
+    """
+
+    evaluation: PlanEvaluationView
+    db_write: SinkStatus
+    document_write: SinkStatus
+    warnings: tuple[str, ...]
+
+    @property
+    def recording_complete(self) -> bool:
+        """``True`` when every *requested* sink was saved.
+
+        Vacuously true for a preview: nothing was asked for, so nothing is
+        missing. Adapters that print "recorded" check ``record`` themselves.
+        """
+        return "failed" not in (self.db_write, self.document_write)
+
+    def to_json_dict(self) -> dict[str, Any]:
+        return {
+            "evaluation": self.evaluation.to_json_dict(),
+            "markdown": self.evaluation.markdown,
+            "db_write": self.db_write,
+            "document_write": self.document_write,
+            "recording_complete": self.recording_complete,
+            "warnings": list(self.warnings),
+        }
+
+
+@dataclass(frozen=True)
+class ActivePlanGuidance:
+    """What the ``now`` ranker needs to know about one active plan (D-5).
+
+    Plan-static: computed from the document alone, no session-history scan.
+    ``match_keys`` are :func:`normalise_match_key` over the topics and every
+    milestone's concepts, done or not — a due review on a finished milestone's
+    concept is still plan-related repair. ``next_milestone`` is the first
+    unchecked one. ``completion_action`` replaces a study candidate when every
+    milestone is ticked (design §3 step 9). ``warnings`` name defects in this
+    document that the guidance worked around rather than raised.
+    """
+
+    plan: PlanSummary
+    next_milestone: MilestoneView | None
+    match_keys: frozenset[str]
+    target_urgency: TargetUrgency
+    energy_floor: int
+    completion_action: str | None
+    warnings: tuple[str, ...]
+
+    @classmethod
+    def from_plan(cls, plan: StudyPlan, *, today: date | None = None) -> ActivePlanGuidance:
+        warnings: list[str] = []
+        keys = {normalise_match_key(topic) for topic in plan.topics}
+        for milestone in plan.milestones:
+            keys.update(normalise_match_key(concept) for concept in milestone.concepts)
+        keys.discard("")
+
+        next_view = next(
+            (
+                MilestoneView.from_milestone(index, milestone)
+                for index, milestone in enumerate(plan.milestones)
+                if not milestone.done
+            ),
+            None,
+        )
+
+        if not plan.milestones:
+            warnings.append(f"active plan {plan.plan_id!r} has no milestones")
+        if not keys:
+            warnings.append(
+                f"active plan {plan.plan_id!r} names no topics or concepts — nothing can match it"
+            )
+
+        days = plan.days_until_target(today)
+        if plan.target_date and days is None:
+            warnings.append(
+                f"target_date {plan.target_date!r} on {plan.plan_id!r} is not a date; "
+                "treated as undated"
+            )
+        urgency: TargetUrgency
+        if days is None:
+            urgency = "undated"
+        elif days < 0:
+            urgency = "overdue"
+        elif days <= SOON_WITHIN_DAYS:
+            urgency = "soon"
+        else:
+            urgency = "later"
+
+        completion = None
+        if plan.milestones and next_view is None:
+            completion = (
+                f"Every milestone of {plan.title!r} is checked off — close the plan "
+                "or extend it with a follow-on mission."
+            )
+
+        return cls(
+            plan=PlanSummary.from_plan(plan),
+            next_milestone=next_view,
+            match_keys=frozenset(keys),
+            target_urgency=urgency,
+            energy_floor=plan.energy_floor,
+            completion_action=completion,
+            warnings=tuple(warnings),
+        )
+
+    def to_json_dict(self) -> dict[str, Any]:
+        return {
+            "plan": self.plan.to_json_dict(),
+            "next_milestone": (
+                None if self.next_milestone is None else self.next_milestone.to_json_dict()
+            ),
+            "match_keys": sorted(self.match_keys),
+            "target_urgency": self.target_urgency,
+            "energy_floor": self.energy_floor,
+            "completion_action": self.completion_action,
+            "warnings": list(self.warnings),
+        }
+
+
+@dataclass(frozen=True)
+class ActiveGuidance:
+    """Every active plan's guidance, ordered by plan id, plus collection warnings.
+
+    A collection, never a singleton: several plans may be active at once.
+    ``warnings`` at this level name documents that could not be represented
+    at all — an unparseable file the store skipped, say — so the ranker knows
+    its picture is incomplete rather than believing there is nothing there.
+    """
+
+    plans: tuple[ActivePlanGuidance, ...]
+    warnings: tuple[str, ...]
+
+    def to_json_dict(self) -> dict[str, Any]:
+        return {
+            "plans": [plan.to_json_dict() for plan in self.plans],
+            "warnings": list(self.warnings),
         }

@@ -41,6 +41,7 @@ from studyloop.planning import (
     PlanApplication,
     PlanConflict,
     PlanDetail,
+    PlanDetailIntent,
     PlanError,
     PlanIntent,
     PlanNotFound,
@@ -97,7 +98,7 @@ def _inspect(plan_id: str, **options: Any) -> PlanDetail:
         raise _http_error(exc) from exc
 
 
-def _apply(intent: PlanIntent) -> PlanDetail:
+def _apply(intent: PlanDetailIntent) -> PlanDetail:
     try:
         return _application().apply(intent)
     except PlanError as exc:
