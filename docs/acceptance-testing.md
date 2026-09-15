@@ -16,7 +16,7 @@ failure, never a silent no-op — see "Rules that keep the tier honest" below.
 | Unit | `just test` | Logic, contracts, protocol conformance | Nothing external |
 | Integration | `pytest -m integration` | Real tmux/SQLite | tmux installed |
 | Browser (e2e) | `just e2e` | Web UI journeys against fake agents | Playwright Chromium |
-| **Acceptance** | `just testacc` | A **real** harness through the real product surface, real DB/session artefacts, a deterministic scripted learner | `STUDYLOOP_ACC=1`; the harness's real binary; opt-in, never runs in CI |
+| **Acceptance** | `just testacc` | A **real** harness through the real product surface, a deterministic scripted learner, a disposable scratch env | `STUDYLOOP_ACC=1`; the harness's real binary; opt-in, never runs in CI |
 | UAT (sign-off) | `STUDYLOOP_UAT=1` under `tests/acceptance/uat/` | Browser journeys + pedagogy graded against a written rubric, for a release sign-off | Its own opt-in on top of acceptance; a later lane |
 
 Acceptance sits between the browser suite (which fakes the agent) and UAT
@@ -58,18 +58,34 @@ just testacc kiro                               # just Kiro, scripted actor
 just testacc kiro scripted tests/acceptance/test_kiro_web_acp_lane.py
 ```
 
+The one table that maps every positional argument to what it actually sets:
+
+| Position | `just` parameter | Env var / effect | Default when omitted |
+| --- | --- | --- | --- |
+| (always) | — | `STUDYLOOP_ACC=1` | n/a — the recipe always sets this |
+| 1st | `HARNESS` | `STUDYLOOP_ACC_HARNESS` | `""` → all six harnesses |
+| 2nd | `ACTOR` | `STUDYLOOP_ACC_ACTOR` | `"scripted"` |
+| 3rd | `TESTS` | passed straight through as the pytest path argument, not an env var | `packages/studyloop/tests/acceptance/` |
+
 The recipe sets `STUDYLOOP_ACC=1` for you; it is the one place you don't set
 that variable by hand. Under the hood it is:
 
 ```bash
 STUDYLOOP_ACC=1 STUDYLOOP_ACC_HARNESS="<harness>" STUDYLOOP_ACC_ACTOR="<actor>" \
-    uv run --group dev pytest -m acceptance <tests>
+    uv run --group dev pytest -m acceptance \
+    --ignore=packages/studyloop/tests/acceptance/uat <tests>
 ```
 
 Without `STUDYLOOP_ACC=1`, `just test` (and CI) never see these tests at
 all — the `acceptance` marker is deselected by default in **both**
 `pyproject.toml` files, the same pattern already used for `integration`,
 `e2e` and every `live_*` marker.
+
+`--ignore=.../acceptance/uat` is permanent, not a placeholder: `tests/acceptance/uat/`
+is reserved for the UAT (sign-off) tier's own additional opt-in
+(`STUDYLOOP_UAT=1`, a later lane's contract) and a plain `testacc` invocation
+must never collect it, even once real tests land there — see "Where it sits
+in the test pyramid" above.
 
 ## Subprocess isolation, not an in-process monkeypatch
 
@@ -90,7 +106,16 @@ built with a sanitized environment *before* that subprocess ever imports
   credential-scrubbing (`build_child_env`) with an override of `HOME`,
   `STUDYLOOP_STATE_DIR`, and every `XDG_*` base directory — so a harness
   binary that reads `XDG_CONFIG_HOME` directly, rather than deriving a path
-  from `HOME`, still lands under the scratch tree.
+  from `HOME`, still lands under the scratch tree. `build_child_env`'s own
+  deny-list additionally strips `STUDYLOOP_TEST_ACP_CMD`/`STUDYLOOP_TEST_AGENT_CMD`
+  — a stale export left in a developer's shell must never let an agent child
+  re-enter the stub-agent test hatch instead of the real mentor binary.
+- Every scratch env also gets its own `TMUX_TMPDIR`, under the scratch tree —
+  a dedicated tmux socket directory per run, so a live tmux-driven lane can
+  never attach to a shared server started under the developer's real
+  environment. `create_scratch_environment` registers a `tmux kill-server`
+  descendant stopper scoped to that socket, run before the sweeper ever
+  touches the filesystem.
 
 ## The guarded sweeper
 
@@ -124,11 +149,7 @@ A turn script is plain data:
   "version": 1,
   "turns": [
     {"prompt": "In one sentence, what is a Python decorator?"},
-    {
-      "prompt": "And a closure?",
-      "expect_contains": ["closure"],
-      "expect_not_contains": ["I don't know"]
-    }
+    {"prompt": "And a closure?"}
   ]
 }
 ```
@@ -136,6 +157,13 @@ A turn script is plain data:
 The loader is strict: an unknown top-level or per-turn field is a loud
 `TurnScriptError`, not a silently-ignored key, and the format is versioned so
 a future incompatible shape is rejected by name rather than misread.
+
+`expect_contains` / `expect_not_contains` are **reserved, not yet honoured**:
+the format accepts them as known per-turn fields so a future turn-runner's
+shape is already settled, but no executor evaluates them anywhere in this
+lane yet — setting either to a non-empty list raises `TurnScriptError` rather
+than silently accepting a predicate nothing checks. Leave them unset until a
+later lane wires an executor through the field.
 
 The mentor side (the real harness binary) is **never** mocked in a live
 acceptance test — only the learner's turns are scripted. Hermetic plumbing
@@ -151,6 +179,17 @@ session with the study persona, sends the scripted turns, and asserts the
 assistant answered each one before the session ends cleanly. Missing
 `kiro-cli`, or a `kiro-cli whoami` that fails, is a **named skip** — the
 reason states which binary or step was missing, never a bare "skipped."
+
+The availability probe runs `kiro-cli whoami` under the **same scratch HOME**
+the server (and the kiro-cli child it spawns) will actually get, not the
+test process's real environment: kiro-cli's credential store is
+HOME-derived, so a machine authenticated in the real HOME but not under a
+fresh scratch HOME must skip, naming that, rather than pass the probe and
+then hang for the full reply timeout once the live session never answers.
+`STUDYLOOP_ACC_HARNESS` also gates this lane directly — selecting anything
+that does not include `kiro` (e.g. `just testacc codex`) named-skips it
+before a scratch env or a browser context is ever built, so a run never
+starts a real, billed Kiro session it was not asked to select.
 
 The CLI/tmux path (all six harnesses, not just Kiro-over-web) is a later
 lane's job, tracked as the harness × surface × transport coverage matrix.
