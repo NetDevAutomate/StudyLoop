@@ -24,6 +24,7 @@ from studyloop.session.child_env import (
     CHILD_ENV_DENY,
     CHILD_ENV_DENY_PAT,
     build_child_env,
+    build_scratch_child_env,
 )
 
 
@@ -222,6 +223,58 @@ class TestSecurityReviewProbeTable:
         actually_kept = set(clean)
         assert actually_stripped == expected_stripped
         assert actually_kept == expected_kept
+
+
+class TestScratchChildEnv:
+    """(e) the acceptance-tier sanitized env: scratch HOME, no real-home XDG leak.
+
+    ``build_scratch_child_env`` is what tests/acceptance/isolation.py hands to
+    every subprocess an acceptance test drives — see docs/acceptance-testing.md.
+    """
+
+    def test_home_and_state_dir_point_at_scratch(self, tmp_path) -> None:
+        home = tmp_path / "home"
+        state_dir = home / ".local" / "share" / "studyloop"
+        env = build_scratch_child_env(home=home, state_dir=state_dir, caller_env={})
+        assert env["HOME"] == str(home)
+        assert env["STUDYLOOP_STATE_DIR"] == str(state_dir)
+
+    def test_real_home_xdg_vars_never_survive(self, tmp_path) -> None:
+        home = tmp_path / "home"
+        state_dir = home / ".local" / "share" / "studyloop"
+        real_home_leak = "/Users/real-learner"
+        caller_env = {
+            "XDG_CONFIG_HOME": f"{real_home_leak}/.config",
+            "XDG_DATA_HOME": f"{real_home_leak}/.local/share",
+            "XDG_CACHE_HOME": f"{real_home_leak}/.cache",
+            "XDG_STATE_HOME": f"{real_home_leak}/.local/state",
+            "XDG_RUNTIME_DIR": f"{real_home_leak}/.run",
+        }
+        env = build_scratch_child_env(home=home, state_dir=state_dir, caller_env=caller_env)
+        for value in env.values():
+            assert real_home_leak not in value, (
+                f"a real-home path leaked into the scratch child env: {value!r}"
+            )
+        # The four base dirs are overridden to point under scratch, not merely
+        # deleted -- a harness that reads XDG_CONFIG_HOME directly must still
+        # land under `home`, never fall through to ITS OWN default resolution.
+        assert env["XDG_CONFIG_HOME"] == str(home / ".config")
+        assert env["XDG_DATA_HOME"] == str(home / ".local/share")
+        assert env["XDG_CACHE_HOME"] == str(home / ".cache")
+        assert env["XDG_STATE_HOME"] == str(home / ".local/state")
+        # XDG_RUNTIME_DIR has no scratch equivalent defined -- scrubbed clean,
+        # not merely left holding the real leak.
+        assert "XDG_RUNTIME_DIR" not in env
+
+    def test_still_scrubs_credentials(self, tmp_path) -> None:
+        home = tmp_path / "home"
+        state_dir = home / ".local" / "share" / "studyloop"
+        env = build_scratch_child_env(
+            home=home,
+            state_dir=state_dir,
+            caller_env={"OPENAI_API_KEY": "sk-live-secret"},  # pragma: allowlist secret
+        )
+        assert "OPENAI_API_KEY" not in env
 
 
 class TestEveryTransportUsesIt:
