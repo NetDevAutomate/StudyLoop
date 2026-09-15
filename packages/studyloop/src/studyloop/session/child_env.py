@@ -32,6 +32,12 @@ if TYPE_CHECKING:
 #:
 #: STUDYLOOP_TEST_AGENT_CMD is the test harness's escape hatch for substituting a
 #: fake agent; a real child inheriting it could re-enter the harness path.
+#: STUDYLOOP_TEST_ACP_CMD is the same escape hatch for the ACP transport: it
+#: overrides the ACP argv entirely (web/routes/session/_transport.py) and
+#: bypasses the binary-presence check (web/routes/session/_start.py). A stale
+#: export left in a developer's shell would otherwise let an agent child --
+#: acceptance-test or production -- re-enter the stub-agent path instead of
+#: spawning the real mentor binary the caller asked for.
 #: STUDYLOOP_CONFIG would point the child at the parent's config, including its
 #: configured paths.
 #: DATABASE_URL is named explicitly because its SHAPE is innocent while its VALUE
@@ -41,6 +47,7 @@ if TYPE_CHECKING:
 CHILD_ENV_DENY: frozenset[str] = frozenset(
     {
         "STUDYLOOP_TEST_AGENT_CMD",
+        "STUDYLOOP_TEST_ACP_CMD",
         "STUDYLOOP_CONFIG",
         "DATABASE_URL",
     }

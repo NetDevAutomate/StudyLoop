@@ -162,7 +162,11 @@ class TestScrubbing:
         assert not (set(self.MUST_STRIP) & set(self.MUST_KEEP))
 
     def test_named_keys_are_removed_regardless_of_shape(self) -> None:
-        env = {"STUDYLOOP_TEST_AGENT_CMD": "fake", "STUDYLOOP_CONFIG": "/tmp/c.yaml"}
+        env = {
+            "STUDYLOOP_TEST_AGENT_CMD": "fake",
+            "STUDYLOOP_TEST_ACP_CMD": "fake-acp",
+            "STUDYLOOP_CONFIG": "/tmp/c.yaml",
+        }
         assert build_child_env(env) == {}
 
     def test_a_name_merely_containing_token_is_kept(self) -> None:
@@ -275,6 +279,23 @@ class TestScratchChildEnv:
             caller_env={"OPENAI_API_KEY": "sk-live-secret"},  # pragma: allowlist secret
         )
         assert "OPENAI_API_KEY" not in env
+
+    def test_test_acp_cmd_hatch_never_reaches_the_scratch_child(self, tmp_path) -> None:
+        """A stale ``STUDYLOOP_TEST_ACP_CMD`` in the developer's shell must
+        never reach an acceptance-test child: it overrides the ACP argv
+        entirely (web/routes/session/_transport.py) and bypasses the binary
+        check (web/routes/session/_start.py), so it can silently swap a real
+        kiro-cli mentor for the stub agent -- the exact thing council D-16
+        forbids for a live acceptance test. See test_web_acp_dogfood_kiro.py's
+        own ``env.pop("STUDYLOOP_TEST_ACP_CMD", None)  # belt-and-braces``."""
+        home = tmp_path / "home"
+        state_dir = home / ".local" / "share" / "studyloop"
+        env = build_scratch_child_env(
+            home=home,
+            state_dir=state_dir,
+            caller_env={"STUDYLOOP_TEST_ACP_CMD": "python -m tests._stub_acp_agent"},
+        )
+        assert "STUDYLOOP_TEST_ACP_CMD" not in env
 
 
 class TestEveryTransportUsesIt:
