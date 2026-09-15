@@ -151,7 +151,11 @@ class OnnxEncoder:
         if self.pooling == "cls":
             pooled = last_hidden_state[:, 0, :]
         else:
-            mask = feed["attention_mask"][:, :, None].astype(last_hidden_state.dtype)
+            # Read the mask from the unfiltered tokenizer output, not ``feed``:
+            # ``feed`` is filtered down to the names the ONNX graph declares,
+            # so a graph that does not declare ``attention_mask`` as an input
+            # would make this a KeyError rather than pooling.
+            mask = encoded["attention_mask"][:, :, None].astype(last_hidden_state.dtype)
             summed = (last_hidden_state * mask).sum(axis=1)
             counts = np.clip(mask.sum(axis=1), 1e-9, None)
             pooled = summed / counts

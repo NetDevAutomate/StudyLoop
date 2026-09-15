@@ -37,7 +37,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
 
-from .embedding_store import INSTALL_HINT, Encoder
+from .embedding_store import Encoder
 
 BACKEND_TORCH = "torch"
 BACKEND_ONNX = "onnx"
@@ -257,7 +257,6 @@ __all__ = [
     "BACKEND_TORCH",
     "BACKENDS",
     "EncoderKey",
-    "INSTALL_HINT",
     "LoadPhase",
     "PhaseEvent",
     "PhaseListener",
