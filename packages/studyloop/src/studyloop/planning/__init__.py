@@ -11,6 +11,7 @@ mission-first, learning records as ADRs, primary sources over recall.
 
 from __future__ import annotations
 
+from .application import PlanApplication
 from .authoring import (
     INTERVIEW,
     InterviewQuestion,
@@ -18,6 +19,15 @@ from .authoring import (
     interview_spec,
     readiness,
     seed_from_history,
+)
+from .errors import (
+    InvalidField,
+    InvalidMilestone,
+    InvalidPlanId,
+    PlanConflict,
+    PlanError,
+    PlanNotFound,
+    PlanNotReady,
 )
 from .evaluation import (
     CHECKPOINT_PHASES,
@@ -27,6 +37,13 @@ from .evaluation import (
     evaluate_plan,
 )
 from .index import checkpoint_history, indexed_plans, reindex_all
+from .intents import (
+    CreatePlan,
+    ImportDocument,
+    PlanIntent,
+    ReplaceDocument,
+    TransitionLifecycle,
+)
 from .markdown import (
     MISSION_SUBSECTION_HEADINGS,
     PLAN_SECTION_HEADINGS,
@@ -66,6 +83,19 @@ from .store import (
     save_plan,
     unique_plan_id,
 )
+from .views import (
+    CheckpointHistoryView,
+    CheckpointView,
+    InterviewItemView,
+    LearningRecordView,
+    MilestoneView,
+    MissionView,
+    PlanDetail,
+    PlanningBrief,
+    PlanSummary,
+    ReadinessView,
+    ResourceView,
+)
 
 __all__ = [
     "CHECKPOINT_PHASES",
@@ -74,20 +104,44 @@ __all__ = [
     "PLAN_SECTION_HEADINGS",
     "PLAN_STATUSES",
     "Checkpoint",
+    "CheckpointHistoryView",
+    "CheckpointView",
     "ConceptEvidence",
+    "CreatePlan",
     "HerdrBackend",
+    "ImportDocument",
+    "InterviewItemView",
     "InterviewQuestion",
+    "InvalidField",
+    "InvalidMilestone",
+    "InvalidPlanId",
     "InvalidPlanIdError",
     "LearningRecord",
+    "LearningRecordView",
     "Milestone",
+    "MilestoneView",
     "Mission",
+    "MissionView",
     "Multiplexer",
+    "PlanApplication",
+    "PlanConflict",
+    "PlanDetail",
+    "PlanError",
     "PlanEvaluation",
     "PlanExistsError",
+    "PlanIntent",
+    "PlanNotFound",
     "PlanNotFoundError",
+    "PlanNotReady",
+    "PlanSummary",
+    "PlanningBrief",
+    "ReadinessView",
+    "ReplaceDocument",
     "Resource",
+    "ResourceView",
     "StudyPlan",
     "TmuxBackend",
+    "TransitionLifecycle",
     "available_backends",
     "checkpoint_history",
     "create_plan",

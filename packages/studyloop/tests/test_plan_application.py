@@ -11,12 +11,6 @@ raise the same ``PlanNotReady`` carrying the same ``ReadinessView``, and none
 of them writes anything before refusing.
 """
 
-# RED-commit only: the seam modules do not exist yet, so the imports below
-# cannot resolve. The workspace pre-commit hook runs pyright over tests too;
-# without this directive the RED test could not be committed before the code
-# it specifies (T1.1 DoD: "the module imports fail"). T1.2 removes this line.
-# pyright: reportMissingImports=false, reportAttributeAccessIssue=false
-
 from __future__ import annotations
 
 import dataclasses
@@ -355,12 +349,17 @@ def test_prepare_planning_returns_interview_seed_and_summaries(
     brief = app.prepare_planning()
 
     assert [q.key for q in brief.interview] == [q["key"] for q in interview_spec()]
-    assert brief.evidence_seed["struggling_topics"][0]["topic"] == "joins"
+    # Deep-frozen: the seed's lists arrive as tuples, its dicts read-only.
+    assert set(brief.evidence_seed) == set(fake_seed)
+    assert isinstance(brief.evidence_seed["struggling_topics"], tuple)
+    with pytest.raises(TypeError):
+        brief.evidence_seed["notes"] = []  # type: ignore[index]  # read-only mapping
     assert [p.plan_id for p in brief.existing_plans] == ["existing"]
 
     payload = brief.to_json_dict()
     assert payload["questions"] == interview_spec()
     assert payload["seed"] == fake_seed
+    assert payload["seed"]["struggling_topics"][0]["topic"] == "joins"
     assert payload["existing_plans"][0]["plan_id"] == "existing"
     json.dumps(payload)  # nothing un-serialisable leaked through
 
