@@ -1120,6 +1120,59 @@ def embed_check(
         conn.close()
 
 
+# ==================== Query Encoder Artefact Commands ====================
+
+
+@app.command("fetch-query-encoder")
+def fetch_query_encoder(
+    model: Annotated[
+        str | None,
+        typer.Option(
+            "--model",
+            help="Embedding model (default: the database's pin, then config)",
+        ),
+    ] = None,
+) -> None:
+    """Fetch + verify the pinned ONNX query-encoder artefact (explicit action only).
+
+    Downloads the pinned onnx/model.onnx, tokenizer.json and
+    tokenizer_config.json at the exact revision recorded in
+    embeddings.ONNX_ARTIFACTS, verifies each against its registered sha256
+    (and, for the onnx graph, its pinned size), and reports what/where/size.
+
+    Never runs from a search or the SessionEnd export hook -- this command
+    and 'studyloop doctor --fix' are the only two callers. Exit codes
+    distinguish the three non-failure outcomes (deliberately outside click's
+    reserved 1/2 range -- see docs/cli-reference.md): 0 nothing needed
+    fetching (already cached and verified), 3 fetched it just now, 4
+    declined because HF_HUB_OFFLINE=1 is set; any other failure (unknown
+    model, verification mismatch, missing dependency) exits 1.
+    """
+    from agent_session_tools.artefact_fetch import (
+        EXIT_CODES,
+        ArtefactVerificationError,
+        fetch_query_encoder_artefact,
+    )
+
+    try:
+        result = fetch_query_encoder_artefact(model)
+    except (ValueError, ArtefactVerificationError, RuntimeError) as exc:
+        print(f"❌ {exc}")
+        raise typer.Exit(1) from exc
+
+    if result.status == "offline_skip":
+        print(f"⏭️  {result.detail}")
+        raise typer.Exit(EXIT_CODES[result.status])
+
+    verb = "Already cached" if result.status == "already_cached" else "Fetched"
+    print(f"✅ {verb}: {result.hf_name}@{result.revision} (model: {result.model})")
+    for f in result.files:
+        print(f"   {f.relpath}: {f.size_bytes:,} bytes (sha256 verified) -> {f.path}")
+    total_mb = result.total_bytes / (1024 * 1024)
+    print(f"   total: {total_mb:.1f} MB")
+    raise typer.Exit(EXIT_CODES[result.status])
+
+
 # ==================== Main Entry Point ====================
 
 

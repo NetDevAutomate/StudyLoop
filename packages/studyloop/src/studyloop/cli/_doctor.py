@@ -95,6 +95,7 @@ def _get_registry():
     from studyloop.doctor.database import check_review_db, check_sessions_db
     from studyloop.doctor.deps import check_optional_deps
     from studyloop.doctor.harness import check_harness_export
+    from studyloop.doctor.query_encoder import check_query_encoder_artefact
     from studyloop.doctor.voice import check_voice_readiness
 
     registry = CheckerRegistry()
@@ -135,6 +136,7 @@ def _get_registry():
     for fn in config_checks:
         registry.register("config")(fn)
     registry.register("deps")(check_optional_deps)
+    registry.register("deps")(check_query_encoder_artefact)
     # check_system_binaries (bin_ttyd) is gone: ttyd is fully retired
     # (ADR-0005, ADR-0008) -- nothing installs, spawns, or reads a ttyd
     # process any more, so reporting its absence would be noise with no
@@ -281,6 +283,23 @@ def _apply_fixes(results: list[CheckResult]) -> list[str]:
         finally:
             conn.close()
         actions.append(f"repaired embeddings alignment: {detail}")
+
+    if needs("deps", "query_encoder_artefact"):
+        # Explicit user action, D-7: this branch only runs because the
+        # learner passed --fix. Calls the library directly (same shape as
+        # the FTS/embeddings repairs above) rather than shelling out to
+        # `session-maint fetch-query-encoder`.
+        from agent_session_tools.artefact_fetch import (
+            ArtefactVerificationError,
+            fetch_query_encoder_artefact,
+        )
+
+        try:
+            fetched = fetch_query_encoder_artefact()
+        except (ValueError, ArtefactVerificationError, RuntimeError) as exc:
+            raise InstallError(str(exc)) from exc
+        verb = "already cached" if fetched.status == "already_cached" else "fetched"
+        actions.append(f"query encoder artefact {verb}: {fetched.hf_name}@{fetched.revision}")
 
     if any(r.category == "agents" and r.status in ("warn", "fail") and r.fix_auto for r in results):
         repo_root = require_repo_root()
