@@ -922,6 +922,36 @@ def _set_warm_status(status: EncoderWarmStatus) -> None:
         _warm_status = status
 
 
+def _pinned_db_model() -> str | None:
+    """The model pinned in the configured database's ``message_embeddings``.
+
+    A warm must heat the encoder searches will use: ``_semantic_ranking``
+    reads its pin from the database, not from config, and the config's model
+    (a schema default on a fresh machine) may name an encoder no search ever
+    encodes with -- warming that one is pure cost and the first real search
+    still pays the cold load. Read-only, and any failure means "no pin": the
+    warm then falls back to the configured model exactly as before.
+    """
+    try:
+        from pathlib import Path
+
+        from agent_session_tools.config_loader import load_config
+
+        db_path = Path(load_config()["database"]["path"])
+        if not db_path.exists():
+            return None
+        conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+        try:
+            row = conn.execute(
+                "SELECT model FROM message_embeddings LIMIT 1"
+            ).fetchone()
+        finally:
+            conn.close()
+        return str(row[0]) if row and row[0] else None
+    except Exception:
+        return None
+
+
 def warm_query_encoder(
     *, surface: str, model: str | None = None, blocking: bool = False
 ) -> threading.Thread | None:
@@ -949,7 +979,7 @@ def warm_query_encoder(
     from agent_session_tools import load_indicator, query_encoders
     from agent_session_tools.config_loader import get_semantic_config
 
-    resolved_model = model or get_semantic_config().get("model")
+    resolved_model = model or _pinned_db_model() or get_semantic_config().get("model")
     if not resolved_model:
         _set_warm_status(
             EncoderWarmStatus(

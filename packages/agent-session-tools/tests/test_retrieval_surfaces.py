@@ -39,6 +39,11 @@ from agent_session_tools.migrations import migrate
 
 def _write_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, body: str) -> None:
     config_path = tmp_path / "config.yaml"
+    # Hermetic by default: the warm consults the configured database for its
+    # model pin, and a fixture that names no database would otherwise read the
+    # developer's real ~/.config/studyloop/sessions.db.
+    if "database:" not in body:
+        body = f"database:\n  path: {tmp_path / 'absent.db'}\n" + body
     config_path.write_text(body, encoding="utf-8")
     monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
     monkeypatch.delenv(retrieval.MODE_ENV, raising=False)
@@ -493,3 +498,113 @@ class TestRetrievalStatusSchemaContract:
             "note",
             "semantic",
         }
+
+
+class TestWarmModelResolution:
+    """The warm must heat the encoder searches will use.
+
+    ``_semantic_ranking`` reads its model pin from ``message_embeddings`` in
+    the database; a warm that reads only ``semantic_search.model`` heats an
+    encoder no search encodes with whenever the config model differs from the
+    corpus pin (the schema default does). Resolution: explicit argument, then
+    the database pin, then the configured model.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _clean_state(self):
+        query_encoders.reset_cache()
+        retrieval.reset_warm_status()
+        yield
+        query_encoders.reset_cache()
+        retrieval.reset_warm_status()
+
+    def _db(self, tmp_path: Path, pin: str | None) -> Path:
+        db_path = tmp_path / "sessions.db"
+        conn = sqlite3.connect(db_path)
+        conn.executescript(
+            files("agent_session_tools").joinpath("schema.sql").read_text()
+        )
+        migrate(conn)
+        if pin is not None:
+            conn.execute(
+                "INSERT INTO sessions(id, source, updated_at) "
+                "VALUES ('s-a', 'kiro_cli', '2026-09-01')"
+            )
+            conn.execute(
+                "INSERT INTO messages(id, session_id, role, content, timestamp, seq) "
+                "VALUES ('m-a', 's-a', 'assistant', 'pinned corpus text', "
+                "'2026-09-01T10:00:00', 1)"
+            )
+            conn.execute(
+                "INSERT INTO message_embeddings(message_id, chunk_ix, model, dim, "
+                "content_sha256, truncated, embedding) VALUES ('m-a', 0, ?, 4, ?, 0, ?)",
+                (pin, "ab" * 32, b"\x00" * 16),
+            )
+        conn.commit()
+        conn.close()
+        return db_path
+
+    def _warmed_model(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        *,
+        pin: str | None,
+        explicit: str | None = None,
+    ) -> tuple[str | None, list[str]]:
+        db_path = self._db(tmp_path, pin)
+        _semantic_config_from_yaml(
+            tmp_path,
+            monkeypatch,
+            f"database:\n  path: {db_path}\n"
+            "semantic_search:\n  hybrid: true\n  model: config-model\n",
+        )
+        constructed: list[str] = []
+
+        def fake_get_query_encoder(model, **kwargs):
+            constructed.append(model)
+
+            class Fake:
+                name = model
+                dim = 4
+                max_tokens = 64
+
+                def count_tokens(self, text):
+                    return len(text.split())
+
+                def encode(self, texts):
+                    return [b"\x00" * 16 for _ in texts]
+
+            return Fake()
+
+        monkeypatch.setattr(query_encoders, "get_query_encoder", fake_get_query_encoder)
+        retrieval.warm_query_encoder(
+            surface=retrieval.SURFACE_MCP, model=explicit, blocking=True
+        )
+        return retrieval.encoder_warm_status().model, constructed
+
+    def test_the_database_pin_beats_the_configured_model(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        warmed, constructed = self._warmed_model(
+            tmp_path, monkeypatch, pin="pinned-model"
+        )
+        assert retrieval.encoder_warm_status().state == retrieval.WarmState.WARM
+        assert warmed == "pinned-model"
+        assert constructed == ["pinned-model"]
+
+    def test_the_configured_model_is_the_fallback_without_a_pin(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        warmed, constructed = self._warmed_model(tmp_path, monkeypatch, pin=None)
+        assert warmed == "config-model"
+        assert constructed == ["config-model"]
+
+    def test_an_explicit_model_argument_beats_both(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        warmed, constructed = self._warmed_model(
+            tmp_path, monkeypatch, pin="pinned-model", explicit="explicit-model"
+        )
+        assert warmed == "explicit-model"
+        assert constructed == ["explicit-model"]
