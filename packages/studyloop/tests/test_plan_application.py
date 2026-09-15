@@ -45,6 +45,14 @@ def isolated_plans_dir(tmp_path, monkeypatch):
     return tmp_path / "study-plans"
 
 
+@pytest.fixture(autouse=True)
+def isolated_checkpoint_db(tmp_path, monkeypatch):
+    """A fresh checkpoint database per test, so "no history" is a fact about
+    this test rather than about what the suite's shared database holds (F6)."""
+    monkeypatch.setenv("STUDYLOOP_DB", str(tmp_path / "sessions.db"))
+    return tmp_path / "sessions.db"
+
+
 @pytest.fixture
 def app() -> PlanApplication:
     return PlanApplication()
@@ -131,7 +139,47 @@ def test_inspect_carries_markdown_and_history_only_on_request(app: PlanApplicati
 
     full = app.inspect("demo", include_markdown=True, include_history=True)
     assert full.markdown is not None and full.markdown.startswith("---")
-    assert full.history == ()  # nothing recorded yet, but the log was asked for
+    assert full.history == ()  # nothing recorded in THIS test's database, but the log was asked for
+
+
+def test_inspect_history_is_newest_first_and_honours_the_limit(app: PlanApplication) -> None:
+    """Seed the isolated checkpoint log directly and read it back through the seam."""
+    from studyloop.planning import index
+    from studyloop.planning.evaluation import PlanEvaluation
+
+    store.create_plan(_ready_plan("demo"))
+    for phase in ("start", "mid", "end"):
+        evaluation = PlanEvaluation(
+            plan_id="demo", plan_title="Demo", phase=phase, verdict="on-track", headline=phase
+        )
+        assert index.record_checkpoint(evaluation, study_id=f"sess-{phase}") is True
+
+    full = app.inspect("demo", include_history=True)
+    assert full.history is not None
+    assert [entry.phase for entry in full.history] == ["end", "mid", "start"]
+    assert all(entry.plan_id == "demo" for entry in full.history)
+    assert full.history[0].study_id == "sess-end"
+    assert full.history[0].summary == "end"
+    assert full.history[0].created_at, "the row's timestamp travels with the view"
+
+    limited = app.inspect("demo", include_history=True, history_limit=2)
+    assert limited.history is not None
+    assert [entry.phase for entry in limited.history] == ["end", "mid"]
+
+    payload = full.to_json_dict()
+    assert [row["phase"] for row in payload["history"]] == ["end", "mid", "start"]
+    assert set(payload["history"][0]) == {
+        "plan_id",
+        "study_id",
+        "phase",
+        "verdict",
+        "summary",
+        "created_at",
+    }
+    # Another plan's log is not this plan's.
+    assert app.inspect("demo", include_history=True).history == full.history
+    store.create_plan(_ready_plan("other"))
+    assert app.inspect("other", include_history=True).history == ()
 
 
 def test_inspect_markdown_translates_store_not_found_after_initial_load(
