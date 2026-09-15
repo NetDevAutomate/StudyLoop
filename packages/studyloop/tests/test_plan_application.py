@@ -134,6 +134,26 @@ def test_inspect_carries_markdown_and_history_only_on_request(app: PlanApplicati
     assert full.history == ()  # nothing recorded yet, but the log was asked for
 
 
+def test_inspect_markdown_translates_store_not_found_after_initial_load(
+    app: PlanApplication, monkeypatch
+) -> None:
+    """F3: the raw-text read happens after the parse succeeded; if the document
+    vanishes in between, the store error must still surface as the domain
+    ``PlanNotFound`` the adapters map — not escape as a ``LookupError``."""
+    store.create_plan(_ready_plan("demo"))
+
+    def vanished(plan_id: str) -> str:
+        msg = f"no study plan with id {plan_id!r}"
+        raise store.PlanNotFoundError(msg)
+
+    monkeypatch.setattr(store, "load_plan_text", vanished)
+
+    with pytest.raises(PlanNotFound):
+        app.inspect("demo", include_markdown=True)
+    # Without the raw text nothing else is read from the store a second time.
+    assert app.inspect("demo").summary.plan_id == "demo"
+
+
 # ---------------------------------------------------------------------------
 # Activation is readiness-gated on EVERY entry path (D-2)
 # ---------------------------------------------------------------------------

@@ -26,7 +26,11 @@ from rich.table import Table
 from studyloop.cli._shared import console
 from studyloop.planning import (
     PLAN_STATUSES,
+    InvalidField,
+    InvalidMilestone,
+    InvalidPlanId,
     PlanApplication,
+    PlanConflict,
     PlanError,
     PlanNotFound,
     PlanNotReady,
@@ -68,9 +72,25 @@ def _fail(message: str) -> NoReturn:
 
 
 def _fail_for(exc: PlanError, plan_id: str) -> NoReturn:
-    """Map a seam refusal to the CLI's message and exit code (design §2)."""
+    """Map a seam refusal to the CLI's message and exit code (design §2).
+
+    Every domain error has its own line, so an agent reading the output can
+    tell a missing plan from a taken id from a bad value without parsing the
+    seam's exception text. The final ``_fail`` is the safety net for a
+    ``PlanError`` subclass this mapping has not met yet.
+    """
     if isinstance(exc, PlanNotFound):
         _fail(f"No study plan with id {plan_id!r}. Try: studyloop plan list")
+    if isinstance(exc, PlanNotReady):
+        _refuse_activation(exc.readiness)
+    if isinstance(exc, PlanConflict):
+        _fail(f"A study plan with id {plan_id!r} already exists. Choose another id.")
+    if isinstance(exc, InvalidPlanId):
+        _fail(f"Invalid plan id {plan_id!r}: {exc}")
+    if isinstance(exc, InvalidField):
+        _fail(f"Invalid value: {exc}")
+    if isinstance(exc, InvalidMilestone):
+        _fail(f"No such milestone on {plan_id!r}: {exc}")
     _fail(str(exc))
 
 
@@ -125,7 +145,10 @@ def plan_group() -> None:
 @click.option("--json", "as_json", is_flag=True, help="Machine-readable output.")
 def plan_list(status: str | None, as_json: bool) -> None:
     """List study plans."""
-    plans = PlanApplication().browse(status=status)
+    try:
+        plans = PlanApplication().browse(status=status)
+    except PlanError as exc:
+        _fail_for(exc, status or "")
     if as_json:
         click.echo(json.dumps([p.to_json_dict() for p in plans], indent=2))
         return
@@ -363,10 +386,8 @@ def plan_status(plan_id: str, status: str) -> None:
     """
     try:
         detail = PlanApplication().apply(TransitionLifecycle(plan_id=plan_id, status=status))
-    except PlanNotReady as exc:
-        _refuse_activation(exc.readiness)
     except PlanError as exc:
-        _fail_for(exc, plan_id)
+        _fail_for(exc, plan_id)  # PlanNotReady → the blockers, exit 1; the rest one line each
     console.print(f"[green]{detail.summary.plan_id}[/green] → {status}")
 
 

@@ -186,7 +186,7 @@ class PlanApplication:
     ) -> PlanDetail:
         """One plan in full. Raises ``PlanNotFound`` / ``InvalidPlanId``."""
         plan = self._load(plan_id)
-        markdown = store.load_plan_text(plan.plan_id) if include_markdown else None
+        markdown = self._load_text(plan.plan_id) if include_markdown else None
         history = None
         if include_history:
             history = tuple(
@@ -359,6 +359,20 @@ class PlanApplication:
     def _load(plan_id: str) -> StudyPlan:
         try:
             return store.load_plan(plan_id)
+        except store.PlanNotFoundError as exc:
+            raise PlanNotFound(str(exc)) from exc
+        except store.InvalidPlanIdError as exc:
+            raise InvalidPlanId(str(exc)) from exc
+
+    @staticmethod
+    def _load_text(plan_id: str) -> str:
+        """The raw document, with the same store-error translation as :meth:`_load`.
+
+        Read after the parse succeeded, so a document deleted in between must
+        still surface as the domain error every adapter maps (F3).
+        """
+        try:
+            return store.load_plan_text(plan_id)
         except store.PlanNotFoundError as exc:
             raise PlanNotFound(str(exc)) from exc
         except store.InvalidPlanIdError as exc:

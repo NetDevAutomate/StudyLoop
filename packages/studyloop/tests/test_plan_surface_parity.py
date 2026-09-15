@@ -21,7 +21,17 @@ from click.testing import CliRunner
 from fastapi.testclient import TestClient
 
 from studyloop.cli import cli
-from studyloop.planning import store
+from studyloop.planning import PlanApplication, store
+from studyloop.planning.errors import (
+    InvalidField,
+    InvalidMilestone,
+    InvalidPlanId,
+    PlanConflict,
+    PlanError,
+    PlanNotReady,
+)
+from studyloop.planning.models import StudyPlan
+from studyloop.planning.views import ReadinessView
 from studyloop.web.app import create_app
 
 _ANSI = re.compile(r"\x1b\[[0-9;]*m")
@@ -206,3 +216,54 @@ def test_duplicate_id_is_a_conflict_even_when_the_new_document_is_unready_active
     )
     assert clash.status_code == 409, clash.text
     assert store.load_plan_text("ready-plan") == before
+
+
+# --- Council review 1, F3: the CLI maps every seam refusal, on every command ------
+#
+# Click's ``--status`` Choice already refuses an unknown filter, so the seam
+# refusal below is simulated: the point is that a domain error reaching
+# ``plan list`` is a one-line message and exit 1, never a traceback.
+
+
+def test_plan_list_domain_refusal_exits_without_traceback(shell: CliRunner, monkeypatch) -> None:
+    def refuse(self: PlanApplication, *, status: str | None = None):
+        msg = "status must be one of ('draft', 'active', 'paused', 'complete', 'abandoned')"
+        raise InvalidField(msg)
+
+    monkeypatch.setattr(PlanApplication, "browse", refuse)
+
+    result = shell.invoke(cli, ["plan", "list", "--status", "draft"])
+    assert result.exit_code == 1, result.output
+    assert "Traceback" not in result.output
+    assert "status must be one of" in result.output
+
+
+@pytest.mark.parametrize(
+    ("refusal", "expected"),
+    [
+        (PlanConflict("study plan 'demo' already exists"), "already exists"),
+        (InvalidField("title cannot be empty"), "Invalid value: title cannot be empty"),
+        (InvalidPlanId("invalid plan id: 'demo'"), "Invalid plan id"),
+        (InvalidMilestone("no milestone at index 7"), "No such milestone"),
+        (
+            PlanNotReady(ReadinessView.from_plan(StudyPlan(plan_id="demo", title="Demo"))),
+            "Cannot activate 'demo'",
+        ),
+    ],
+    ids=["conflict", "invalid-field", "invalid-id", "invalid-milestone", "not-ready"],
+)
+def test_cli_maps_each_seam_refusal_to_a_specific_message(
+    shell: CliRunner, monkeypatch, refusal: PlanError, expected: str
+) -> None:
+    """Design §2: each domain error has its own CLI line; none falls through to
+    the bare exception text or a traceback."""
+
+    def refuse(self: PlanApplication, intent):
+        raise refusal
+
+    monkeypatch.setattr(PlanApplication, "apply", refuse)
+
+    result = shell.invoke(cli, ["plan", "status", "demo", "active"])
+    assert result.exit_code == 1, result.output
+    assert "Traceback" not in result.output
+    assert expected in _ANSI.sub("", result.output)
