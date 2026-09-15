@@ -1,11 +1,22 @@
 # Stage 5 lane A2 — ONNX query encoder: artefact pin + parity pre-registration
 
-Written at `1854026775f8f733c9014cb2f9e54237fe54e309` (lane base), before any parity number was
-computed. Council amendments this lane implements: goes first in the A-chain and owns the
-construction seam (D-2); fp32 first, int8 only as a follow-up if fp32 misses the 0.5 s load
-target (D-5); the artefact is pinned before coding (D-6).
+Written before any parity number was computed. Council amendments this lane implements: goes
+first in the A-chain and owns the construction seam (D-2); fp32 first, int8 only as a follow-up
+if fp32 misses the 0.5 s load target (D-5); the artefact is pinned before coding (D-6).
 
-## D-6 — the pinned artefact (recorded before `agent_session_tools.onnx_encoder` existed)
+**Correction (fix round 1):** the paragraph above originally claimed this receipt was written at
+the lane base commit (`18540267`), before `agent_session_tools.onnx_encoder` existed. Git does
+not support that: the pin (`embeddings.ONNX_ARTIFACTS`) and the implementation that reads it
+(`onnx_encoder.py`) landed together in `e86c3f02`, and this receipt is the commit after it
+(`d82618a3`). What D-6 actually gets from this lane is: the pin and the implementation in one
+commit (so no implementation-without-a-pin window ever existed on this branch), this receipt
+recorded immediately after, and the pinned values independently re-verified against upstream
+before this fix round closed (every field in the table below re-checked against
+`BAAI/bge-small-en-v1.5`'s own file listing and matched). Treat that re-verification as the
+substitute evidence for "pinned before coding" rather than the commit-ordering claim.
+
+## D-6 — the pinned artefact (recorded alongside `agent_session_tools.onnx_encoder`, in the same
+commit; independently re-verified in the fix round below)
 
 Checked 2026-09-15 against `BAAI/bge-small-en-v1.5`'s own file listing
 (`https://huggingface.co/api/models/BAAI/bge-small-en-v1.5?blobs=true`), the same upstream commit
@@ -75,14 +86,35 @@ Then, offline (`HF_HUB_OFFLINE=1`, `local_files_only=True` throughout), on the 3
 | "the deployment pipeline failed because the docker..." | 1.000000 |
 | "ranking rows per group is exactly what window..." | 1.000000 |
 
-Every gate this lane pre-registered is met on this sample: top-1/top-5 trivially agree at
-cosine 1.0, far above the 0.999 diagnostic floor. Load time (single warm-process run, not the
-Stage 1 cold-process protocol — **not** a substitute for a receipt-grade cold/warm measurement):
-onnx encoder construction 0.094 s, a second construction (warm HF cache) 0.074 s — both already
-under the 0.5 s target (D-5), so int8 is not motivated by this sample. `onnx.encode()` on the
-3-text batch took 0.004 s against torch's 0.091 s for the same batch, in the same warm process.
-This one run is evidence the pipeline is wired correctly end-to-end; it is not the statistically
-repeated, cold-process, gold-DEV receipt the gates above call for — that stays deferred, below.
+Load time (single warm-process run, not the Stage 1 cold-process protocol — **not** a substitute
+for a receipt-grade cold/warm measurement): onnx encoder construction 0.094 s, a second
+construction (warm HF cache) 0.074 s — both already under the 0.5 s target (D-5), so int8 is not
+motivated by this sample. `onnx.encode()` on the 3-text batch took 0.004 s against torch's 0.091 s
+for the same batch, in the same warm process. This one run is evidence the pipeline is wired
+correctly end-to-end; it is not the statistically repeated, cold-process, gold-DEV receipt the
+gates above call for — that stays deferred, below.
+
+**Correction (fix round 1) — top-1/top-5 were not actually computed here originally.** The
+paragraph that used to sit here said "top-1/top-5 trivially agree at cosine 1.0" — that is an
+inference from the per-text cosine number, not a measurement of the ranking gate this lane
+pre-registered. `test_query_encoders.py::TestOnnxTorchParityAcceptance` now also encodes a query
+("how do I rank rows within each group using a window function") with both arms and ranks the
+3-text fixture by cosine to it under each arm independently. Re-running the same scratch-cache
+demonstration with that query added:
+
+```
+torch ranking: ['use a window function with PARTITION BY...',
+                'ranking rows per group is exactly what window...',
+                'the deployment pipeline failed because the docker...']
+onnx  ranking: ['use a window function with PARTITION BY...',
+                'ranking rows per group is exactly what window...',
+                'the deployment pipeline failed because the docker...']
+```
+
+The two ranked lists are identical (top-1 agreement 100%, and the full 3-item order matches, so
+the ordered-top-5 gate is vacuously met on a 3-item fixture) — a real measurement now, not an
+inference from the cosine table, though still on the same 3-sentence sample and not the
+gold-DEV set.
 
 ## What is measured now vs. deferred
 
@@ -118,8 +150,22 @@ backfill action, and — for the gold-DEV run — the owner's Stage 4 clone; cou
 * Real cold/warm load-time measurement — needs the artefact fetched; the phase-hook events this
   lane adds (`RUNTIME_IMPORT` → `WEIGHTS` → `READY`, with monotonic timestamps) are exactly what
   that measurement would time.
+
 * fp32 vs the 0.5 s target, and therefore whether int8 is in scope at all (D-5) — depends on the
   above.
+
+**Brief deliverable 4 (the in-lane fixture fallback) is PARTIAL, not fully met — say so plainly.**
+The brief's fallback for "no Stage 4 clone" is a *committed*, deterministic, few-hundred-chunk
+fixture corpus, embedded with the torch encoder in-lane, with both arms compared on it. What
+exists instead is the 3-sentence inline fixture in `TestOnnxTorchParityAcceptance` (cosine *and*,
+as of this fix round, ranking agreement — see the correction above) plus the synthetic-vector
+ranking machinery in `TestParitySmokeMachinery`. That is real evidence at unit scale, but it is
+not the few-hundred-chunk corpus deliverable 4 asks for, and it is gated on the artefact being
+cached (it skips by default in a clean worktree). A merge on this lane's evidence alone is
+relying on: (a) the unit/mechanics tier being green, (b) the one demonstration run above (3
+sentences, single process, artefact fetched to a scratch cache and deleted, not receipt-grade),
+and (c) the gold-DEV run staying explicitly deferred to the coordinator with the owner's Stage 4
+clone. It is not relying on a committed corpus-scale parity comparison, because none exists yet.
 
 ## Corpus side (council QA2.2)
 
