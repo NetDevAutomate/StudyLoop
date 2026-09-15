@@ -17,7 +17,7 @@ failure, never a silent no-op — see "Rules that keep the tier honest" below.
 | Integration | `pytest -m integration` | Real tmux/SQLite | tmux installed |
 | Browser (e2e) | `just e2e` | Web UI journeys against fake agents | Playwright Chromium |
 | **Acceptance** | `just testacc` | A **real** harness through the real product surface, a deterministic scripted learner, a disposable scratch env | `STUDYLOOP_ACC=1`; the harness's real binary; opt-in, never runs in CI |
-| UAT (sign-off) | `STUDYLOOP_UAT=1` under `tests/acceptance/uat/` | Browser journeys + pedagogy graded against a written rubric, for a release sign-off | Its own opt-in on top of acceptance; a later lane |
+| UAT (sign-off) | `STUDYLOOP_UAT=1` under `tests/acceptance/uat/` | Browser journeys + pedagogy graded against a written rubric, for a release sign-off | Its own opt-in on top of acceptance (`just testuat`); see "The UAT (sign-off) tier" below |
 
 Acceptance sits between the browser suite (which fakes the agent) and UAT
 (which grades pedagogy). Its job is narrower than either: prove the real
@@ -37,7 +37,8 @@ learner's session should — with nothing standing in for the mentor.
 | `STUDYLOOP_ACC_DIRECT_PROVIDER` | `ACTOR=direct`: a `provider_profiles` slug (`openai`, `openrouter`, `gemini`, `anthropic`) | unset → `openai` |
 | `STUDYLOOP_ACC_DIRECT_MODEL` | `ACTOR=direct`: a curated model id within that provider | unset → the provider's cheapest curated model |
 | `STUDYLOOP_ACC_HARNESS_ACTOR_CMD` | `ACTOR=harness`: the command that launches the second harness | unset → `harness` skips, naming it |
-| `STUDYLOOP_UAT` | The UAT tier's own, additional opt-in (a later lane) | unset (tier is off) |
+| `STUDYLOOP_UAT` | The UAT tier's own, additional opt-in ON TOP OF `STUDYLOOP_ACC=1` (both must be `1`) | unset (tier is off) |
+| `STUDYLOOP_UAT_EVIDENCE_ROOT` | Overrides the UAT tier's durable evidence root (council D-14) | unset → `~/.local/share/studyloop/uat/<run-id>/` |
 
 An unknown value in `STUDYLOOP_ACC_HARNESS` or `STUDYLOOP_ACC_ACTOR` **fails
 the run**, naming the bad value and the known set — it is a typo you made,
@@ -439,12 +440,96 @@ that owns closing it):
   but unauthenticated binary surfaces as a live-run **failure** (budget
   cutoff via `TurnBudgetExceededError`), not a named skip, until each gets
   its own probe. **Owner: this lane (B2)**, a follow-up.
-- **The durable evidence root**: `tests/acceptance/evidence.py` writes
-  under whatever root its caller passes (the test's own `tmp_path`), not
-  B4's durable, pre-scratch-substitution root. **Owner: B4.**
+- **The durable evidence root**: `tests/acceptance/evidence.py` (B2's
+  minimal writer) still writes under whatever root its caller passes (the
+  test's own `tmp_path`), not the durable, pre-scratch-substitution root.
+  B4's full schema (`tests/acceptance/uat/bundle.py`: `resolve_durable_root`,
+  the manifest schema, sha256 file inventory) now EXISTS and is unit-tested
+  (`test_uat_bundle_writer.py`), but swapping `evidence.py`'s callers over to
+  it is still a follow-up — same field names by design, so it is a rename,
+  not a rewrite, per `evidence.py`'s own docstring. **Owner: B4** (schema
+  delivered; integration into the harness-matrix lane's evidence calls
+  pending).
 - **`grok`-over-ACP**: an optional follow-up per this lane's own council
   amendment, never a blocker on the CORE three or the other two PREVIEW
   harnesses. **Owner: this lane (B2)**, optional.
+
+## The UAT (sign-off) tier
+
+UAT is the extended sign-off tier the owner described verbatim: browser
+journeys through the real web UI with Playwright traces + screenshots,
+pedagogy graded against a WRITTEN, VERSIONED rubric by a council of
+models with the coordinator as final arbitrator, and a complete evidence
+bundle recorded OUTSIDE the user's public data/directory/docs.
+
+It gets its OWN opt-in on top of acceptance (council D-13):
+`STUDYLOOP_UAT=1`, required IN ADDITION to `STUDYLOOP_ACC=1` — set both,
+or invoke `just testuat`, which sets both for you. Every test under
+`tests/acceptance/uat/` lives behind this second gate, enforced by that
+subpackage's own `conftest.py`, and a plain `just testacc` (or the bare
+`acceptance` marker) never collects it — see `--ignore=.../acceptance/uat`
+on the `testacc` recipe above.
+
+### What ships in this lane
+
+| Module | Job |
+| --- | --- |
+| `tests/acceptance/uat/bundle.py` | The full evidence-bundle writer: `manifest.json` (run id, date, repo sha + dirty/patch identity, harness+version, platform, auth mode, actor backend+model, rubric version+hash, seeds, full pass/fail/skip counts, failure artefacts, a sha256 file inventory), a path-escape guard, and `resolve_durable_root` — the durable evidence root resolved from an explicitly-passed "real" environment, never from a live `STUDYLOOP_STATE_DIR` (council D-14). |
+| `tests/acceptance/uat/redaction.py` | The versioned, hash-pinned redaction rule list (`data/redaction_rules_v1.yaml` + `data/redaction_registry.json`) and the redacted-summary generator `releases/` may ingest — allowlisted structured fields only, with every field's VALUE also scanned for a leaked home path or key-shaped token before it is trusted as clean. |
+| `tests/acceptance/uat/rubric.py` | The versioned, hash-pinned sign-off rubric loader (`data/rubric_v1.md`, markdown+YAML frontmatter): criteria, scale anchors, cited evidence per criterion, and an explicit `reject_if` list. |
+| `tests/acceptance/uat/strict_runner.py` | The strict sign-off semantics (council D-13): zero cells selected is a FAIL, any REQUIRED cell recorded as skipped (or simply missing) is a FAIL — a sign-off can never pass through skips. |
+| `tests/acceptance/uat/test_journey_smoke.py` | A CI-safe mechanics smoke test: the hermetic server (E-B2) + a scripted turn sequence + the bundle writer, composed end to end, with the mentor played by the repo's existing ACP stub (`tests/_stub_acp_agent.py`) — no real harness binary, no LLM, no network. |
+
+### Hash-pinning, the same shape twice
+
+Both the redaction rules and the rubric are versioned markdown/YAML
+documents whose `version` field is pinned, in a small sibling
+`*_registry.json`, to that exact file's sha256. Editing either file in
+place — changing its content without bumping `version` and registering a
+new hash — is rejected by the loader (`RedactionRulesTamperedError` /
+`RubricTamperedError`), never silently accepted. This is "never gate at
+the point estimate": the rubric version + hash a run graded against enters
+that run's manifest BEFORE grading starts, so a run can never be graded
+against a rubric that was edited mid-grading.
+
+### Mechanism tests are UNGATED (council D-19/D-26)
+
+Every module above has an ungated unit-test twin living directly under
+`tests/` — `test_uat_bundle_writer.py`, `test_uat_redaction.py`,
+`test_uat_rubric_loader.py`, `test_uat_strict_runner.py` — carrying no
+`acceptance` marker, so they run in every `just test`/CI invocation. Only
+the live-ish `test_journey_smoke.py` lives inside the gated
+`tests/acceptance/uat/` tree, matching the same "a drift guard gated
+behind an opt-in nobody sets in CI never actually guards anything"
+principle `test_harness_matrix_live_mechanics.py` already established for
+the harness matrix.
+
+### What this lane deliberately left out
+
+The brief's full scope is considerably larger than what a single fix
+round can land test-first. Named here, not silently absent:
+
+- **The real UAT journeys** (session start → study conversation with an
+  LLM learner → topic/struggle logging → wind-down → resume → review,
+  plus embedding/hybrid-retrieval checks and fault journeys) are not
+  implemented. `test_journey_smoke.py` proves the MECHANICS three
+  pieces above compose; it is not a sign-off run, grades no rubric, and
+  uses a scripted stub mentor rather than a real coding harness.
+- **Council grading** (each seat receiving a bundle summary + rubric and
+  returning cited per-criterion scores, hash-pinned seat identities, an
+  `ARBITRATION` file) is not implemented — the rubric loader and
+  redaction generator this depends on exist; the grading procedure and
+  the arbitration workflow around them do not yet.
+- **The sign-off definition as a released, checkable contract** (which
+  journeys must pass + the rubric floor + the no-skipped-required-cells
+  rule, wired into the release process) is not written — `strict_runner.py`
+  provides the semantics a future sign-off definition would call.
+- **Wiring `bundle.py` into the existing harness-matrix acceptance lane's
+  evidence calls** (`tests/acceptance/evidence.py`) is not done — see
+  "Coverage inventory" above.
+- **`releases/uat-signoff-template.md`** documents the redacted-summary
+  shape a real sign-off run's release note would carry; no real run has
+  produced one yet.
 
 ## Rules that keep the tier honest
 
