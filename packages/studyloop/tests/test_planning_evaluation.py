@@ -188,3 +188,34 @@ def test_reader_exception_is_caught_by_the_safe_wrapper(monkeypatch) -> None:
     got = evaluation_module._safe("study_progress", _raise, [], warnings)
     assert got == []
     assert warnings and "study_progress" in warnings[0]
+
+
+# --- Partial checkpoint recording must be reported, never silent (issue #7/#9) ---
+#
+# ``record_checkpoint`` swallows its own failures and returns ``False``
+# (no database, or the INSERT failed). ``evaluate_and_record`` must surface
+# that as a warning exactly as it does for a *raised* failure; before the fix
+# the boolean was discarded and the evaluation claimed complete recording.
+
+
+def test_failed_checkpoint_db_write_is_reported_as_a_warning(monkeypatch) -> None:
+    from studyloop.planning import index as index_module
+    from studyloop.planning.evaluation import evaluate_and_record
+
+    monkeypatch.setattr(index_module, "record_checkpoint", lambda evaluation, *, study_id="": False)
+
+    result = evaluate_and_record(_plan(), "start", append_to_plan=False)
+
+    assert any("database" in w for w in result.warnings), result.warnings
+    assert result.verdict in {"on-track", "at-risk", "stalled", "complete"}
+
+
+def test_successful_checkpoint_db_write_adds_no_warning(monkeypatch) -> None:
+    from studyloop.planning import index as index_module
+    from studyloop.planning.evaluation import evaluate_and_record
+
+    monkeypatch.setattr(index_module, "record_checkpoint", lambda evaluation, *, study_id="": True)
+
+    result = evaluate_and_record(_plan(), "start", append_to_plan=False)
+
+    assert not any("database" in w for w in result.warnings), result.warnings

@@ -176,6 +176,43 @@ def test_patch_refuses_to_activate_an_incomplete_plan(client: TestClient) -> Non
     assert client.get(f"/api/plans/{plan_id}").json()["plan"]["status"] == "draft"
 
 
+# --- Activation is readiness-gated on EVERY entry path (issue #7, invariant 3) ---
+#
+# The PATCH ``status`` path above already refuses. These two pin the other two
+# doors into the "active" state: create-with-status and whole-document
+# replacement. Before the fix, both let an unready plan become active.
+
+
+def test_create_refuses_an_active_status_on_an_unready_plan(client: TestClient) -> None:
+    refused = client.post("/api/plans", json={"title": "Vague", "status": "active", "answers": {}})
+    assert refused.status_code == 422, refused.text
+    detail = refused.json()["detail"]
+    assert detail["ready"] is False
+    assert detail["blockers"]
+
+    # Nothing was persisted as active.
+    active = client.get("/api/plans", params={"status": "active"}).json()
+    assert active["count"] == 0
+
+
+def test_markdown_replacement_refuses_an_unready_active_document(client: TestClient) -> None:
+    plan_id = _create(client)
+    before = client.get(f"/api/plans/{plan_id}").json()["markdown"]
+
+    # Same document, but flip status to active and strip every milestone.
+    head, _, _body = before.partition("\n## Milestones")
+    unready_active = head.replace("status: draft", "status: active") + "\n"
+
+    refused = client.patch(f"/api/plans/{plan_id}", json={"markdown": unready_active})
+    assert refused.status_code == 422, refused.text
+    assert refused.json()["detail"]["ready"] is False
+
+    # The stored document is untouched.
+    after = client.get(f"/api/plans/{plan_id}").json()
+    assert after["plan"]["status"] == "draft"
+    assert after["plan"]["milestone_total"] == 2
+
+
 def test_patch_updates_metadata_and_milestones(client: TestClient) -> None:
     plan_id = _create(client)
     response = client.patch(
