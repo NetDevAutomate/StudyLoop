@@ -135,6 +135,104 @@ def _clusters_of(
     return dict(clusters)
 
 
+def precision_values(
+    per_item: Mapping[str, ItemScore], items: Sequence[Mapping[str, Any]], k: int
+) -> dict[str, float]:
+    """Per-item precision@k: gold sessions among the first ``k`` ranked, over ``k``.
+
+    The denominator is ``k`` even when the arm returned fewer sessions -- an
+    empty (or crashed) answer is precision ``0.0``, never undefined -- so a
+    widen step that returns five sessions to find one gold is scored against
+    the same denominator as an ``AND`` arm that returned one (§5
+    pre-registration, guardrail 2). Gold ids are read from ``items`` because
+    :class:`ItemScore` carries the ranked list but not the ruler's answer key.
+    """
+    gold = {str(item["id"]): set(item["gold_session_ids"]) for item in items}
+    return {
+        item_id: len(set(score.ranked[:k]) & gold.get(item_id, set())) / k
+        for item_id, score in per_item.items()
+    }
+
+
+def macro_average_values(
+    per_item: Mapping[str, ItemScore], values: Mapping[str, float]
+) -> dict[str, Any]:
+    """:func:`macro_average` over an arbitrary per-item value map (strata from ``per_item``)."""
+    by_stratum: defaultdict[str, list[float]] = defaultdict(list)
+    for item_id, score in per_item.items():
+        by_stratum[score.stratum].append(values[item_id])
+    if not by_stratum:
+        return {"by_stratum": {}, "macro": 0.0}
+    strata = {name: sum(vals) / len(vals) for name, vals in sorted(by_stratum.items())}
+    return {"by_stratum": strata, "macro": sum(strata.values()) / len(strata)}
+
+
+def precision_at_k(
+    per_item: Mapping[str, ItemScore], items: Sequence[Mapping[str, Any]], k: int
+) -> dict[str, Any]:
+    """Macro precision@K over strata (a guardrail, reported beside recall)."""
+    return macro_average_values(per_item, precision_values(per_item, items, k))
+
+
+def _macro_diff_values(
+    sample: Iterable[str],
+    clusters: Mapping[str, list[str]],
+    stratum_of: Mapping[str, str],
+    a_values: Mapping[str, float],
+    b_values: Mapping[str, float],
+) -> float:
+    """Macro (over strata present in the sample) paired difference ``a - b``."""
+    by_stratum: defaultdict[str, list[float]] = defaultdict(list)
+    for cluster in sample:
+        for item_id in clusters[cluster]:
+            by_stratum[stratum_of[item_id]].append(
+                a_values[item_id] - b_values[item_id]
+            )
+    if not by_stratum:
+        return 0.0
+    return sum(sum(v) / len(v) for v in by_stratum.values()) / len(by_stratum)
+
+
+def paired_cluster_bootstrap(
+    a_values: Mapping[str, float],
+    b_values: Mapping[str, float],
+    items: Sequence[Mapping[str, Any]],
+    resamples: int = RESAMPLES,
+    seed: int = SEED,
+) -> dict[str, Any]:
+    """Paired cluster bootstrap of a macro-averaged per-item value difference ``a - b``.
+
+    The one resampling scheme every paired interval in the harness uses: gold
+    clusters (not items) are drawn with replacement, ``resamples`` times, from
+    ``random.Random(seed)``, and the percentile CI95 of the macro difference
+    is reported. :func:`cluster_bootstrap` is this over hits; precision and
+    MRR intervals pass their own per-item values. ``lower_above_zero`` is the
+    §5 adopt clause 1 (D-12) -- weaker than :data:`.MIN_LIFT`, and named so
+    the two are never confused.
+    """
+    clusters = _clusters_of(items)
+    names = sorted(clusters)
+    stratum_of = {str(item["id"]): str(item["stratum"]) for item in items}
+    rng = random.Random(seed)  # nosec B311 - statistical bootstrap, not cryptography
+    point = _macro_diff_values(names, clusters, stratum_of, a_values, b_values)
+    draws = sorted(
+        _macro_diff_values(
+            rng.choices(names, k=len(names)), clusters, stratum_of, a_values, b_values
+        )
+        for _ in range(resamples)
+    )
+    lower = draws[int(0.025 * resamples)] if names else 0.0
+    upper = draws[max(int(0.975 * resamples) - 1, 0)] if names else 0.0
+    return {
+        "point": point,
+        "ci95": [lower, upper],
+        "resamples": resamples,
+        "seed": seed,
+        "clusters": len(names),
+        "lower_above_zero": lower > 0.0,
+    }
+
+
 def _macro_diff(
     sample: Iterable[str],
     clusters: Mapping[str, list[str]],
@@ -164,24 +262,24 @@ def cluster_bootstrap(
     Gold clusters (not items) are the resampling unit, because items inside a
     cluster share a session and are not independent. Percentile CI95; a lift
     is *established* only when the lower bound clears :data:`.MIN_LIFT`.
+    :func:`paired_cluster_bootstrap` over the per-item hits, with the same
+    draws in the same order (pinned against a committed receipt by
+    ``tests/test_eval_metrics.py``).
     """
-    clusters = _clusters_of(items)
-    names = sorted(clusters)
-    rng = random.Random(seed)  # nosec B311 - statistical bootstrap, not cryptography
-    point = _macro_diff(names, clusters, a_per_item, b_per_item)
-    draws = sorted(
-        _macro_diff(rng.choices(names, k=len(names)), clusters, a_per_item, b_per_item)
-        for _ in range(resamples)
+    stats = paired_cluster_bootstrap(
+        {item_id: float(score.hit) for item_id, score in a_per_item.items()},
+        {item_id: float(score.hit) for item_id, score in b_per_item.items()},
+        items,
+        resamples=resamples,
+        seed=seed,
     )
-    lower = draws[int(0.025 * resamples)]
-    upper = draws[max(int(0.975 * resamples) - 1, 0)]
     return {
-        "point": point,
-        "ci95": [lower, upper],
+        "point": stats["point"],
+        "ci95": stats["ci95"],
         "resamples": resamples,
         "seed": seed,
-        "clusters": len(names),
-        "established": lower >= MIN_LIFT,
+        "clusters": stats["clusters"],
+        "established": stats["ci95"][0] >= MIN_LIFT,
     }
 
 
@@ -238,7 +336,11 @@ __all__ = [
     "hit_and_rank",
     "latency_percentiles",
     "macro_average",
+    "macro_average_values",
     "mrr_at_k",
     "non_inferiority",
+    "paired_cluster_bootstrap",
+    "precision_at_k",
+    "precision_values",
     "recall_at_k",
 ]

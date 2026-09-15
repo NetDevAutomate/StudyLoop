@@ -14,7 +14,7 @@ from __future__ import annotations
 import hashlib
 import json
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -26,6 +26,7 @@ from .metrics import (
     hit_and_rank,
     latency_percentiles,
     mrr_at_k,
+    precision_at_k,
     recall_at_k,
 )
 from .seam import ArmError, Query, classify_failure
@@ -133,11 +134,14 @@ class ArmResult:
     latency_ms: dict[str, float]
     config: dict[str, Any]
     k: int
+    #: Macro precision@K (§5 guardrail); the same shape as ``recall``.
+    precision: dict[str, Any] = field(default_factory=dict)
 
     def metrics(self) -> dict[str, Any]:
         """The receipt's per-arm metric block (no timings -- those are separate)."""
         return {
             f"recall@{self.k}": self.recall,
+            f"precision@{self.k}": self.precision,
             f"mrr@{self.k}": self.mrr,
             "crashes": self.crashes,
             "n": len(self.per_item),
@@ -187,6 +191,7 @@ def score_arm(arm: Retriever, items: Sequence[dict[str, Any]], k: int = K) -> Ar
         name=arm.name,
         per_item=per_item,
         recall=recall_at_k(per_item),
+        precision=precision_at_k(per_item, items, k),
         mrr=mrr_at_k(per_item),
         errors_by_kind=errors_by_kind(per_item),
         crashes=crash_count(per_item),
