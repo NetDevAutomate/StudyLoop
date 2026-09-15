@@ -198,6 +198,48 @@ class TestDegradation:
         )
         assert {h.message_id for h in result.hits} == {"decoy", "answer"}
 
+    def test_hybrid_degrades_to_lexical_when_the_configured_backend_is_unknown(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        """A typo'd ``semantic_search.query_encoder`` used to raise ``ValueError``
+        outside the semantic arm's try block and crash the whole search instead
+        of degrading (reviewer finding: ``resolve_backend()`` at retrieval.py:490
+        ran outside the try starting at :500)."""
+        conn = _embedded(tmp_path, monkeypatch)
+        monkeypatch.setattr(
+            "agent_session_tools.config_loader.get_semantic_config",
+            lambda: {"query_encoder": "vibes"},
+        )
+        result = retrieval.search(conn, PARAPHRASE, mode="hybrid")
+        assert result.status.mode == "lexical"
+        assert "hybrid requested but lexical only" in (result.status.note or "")
+        assert "unknown query encoder backend" in (result.status.note or "")
+
+    def test_hybrid_reports_the_sqlite_vec_install_hint_even_when_onnx_is_selected(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        """The extension half of the availability pre-check used to run
+        torch-only, so an onnx-backed search on a machine without sqlite-vec
+        fell through to a generic 'semantic arm failed' message instead of
+        the friendly install hint (reviewer finding on retrieval.py:491)."""
+        conn = _embedded(tmp_path, monkeypatch)
+        monkeypatch.setattr(
+            "agent_session_tools.config_loader.get_semantic_config",
+            lambda: {"query_encoder": "onnx"},
+        )
+        monkeypatch.setattr(
+            store,
+            "_extension_available",
+            lambda: (
+                False,
+                f"sqlite-vec is not installed; install: {store.INSTALL_HINT}",
+            ),
+        )
+        result = retrieval.search(conn, PARAPHRASE, mode="hybrid")
+        assert result.status.mode == "lexical"
+        assert "sqlite-vec is not installed" in (result.status.note or "")
+        assert store.INSTALL_HINT in (result.status.note or "")
+
 
 class TestHybrid:
     def test_a_paraphrase_with_no_shared_word_is_found_by_the_semantic_arm(

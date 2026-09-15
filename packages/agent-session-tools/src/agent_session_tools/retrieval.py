@@ -487,17 +487,24 @@ def _semantic_ranking(
     model, dim = str(pin[0]), int(pin[1])
     from agent_session_tools import query_encoders
 
-    backend = query_encoders.resolve_backend()
-    if backend == query_encoders.BACKEND_TORCH and not query_encoders.is_cached(
-        model, backend
-    ):
-        # Cheap pre-check, torch only: a cache lookup, never a fetch (D-7).
-        # onnx skips this and relies on the construction attempt below,
-        # which fails the same way -- offline, explanatory, caught here.
-        ready = embedding_store.availability(model)
-        if not ready.ready:
-            return [], None, ready.reason or "semantic layer unavailable"
     try:
+        backend = query_encoders.resolve_backend()
+        # The extension half of the pre-check is unconditional (a pure import
+        # + in-memory probe, no fetch) so the friendly sqlite-vec install hint
+        # still surfaces on every backend, not just torch.
+        extension_ok, extension_reason = embedding_store._extension_available()
+        if not extension_ok:
+            return [], None, extension_reason or "semantic layer unavailable"
+        if backend == query_encoders.BACKEND_TORCH and not query_encoders.is_cached(
+            model, backend
+        ):
+            # Cheap pre-check, torch only: a cache lookup, never a fetch (D-7).
+            # onnx skips the model half and relies on the construction attempt
+            # below, which fails the same way -- offline, explanatory, caught
+            # here.
+            model_ok, model_reason = embedding_store._model_available(model)
+            if not model_ok:
+                return [], None, model_reason or "semantic layer unavailable"
         encoder = _encoder(model)
         if int(encoder.dim) != dim:
             return (
