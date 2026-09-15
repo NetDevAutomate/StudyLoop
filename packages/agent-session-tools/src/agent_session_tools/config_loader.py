@@ -96,6 +96,12 @@ DEFAULT_CONFIG = {
         # true, or STUDYLOOP_RETRIEVAL_MODE=hybrid, turns it on for a database
         # that has been embedded (`session-maint embed`).
         "hybrid": False,
+        # Which encoder answers the QUERY side of a search (lane A2,
+        # council D-2): "torch" (sentence-transformers, unchanged) or "onnx"
+        # (the fast fp32 path). Corpus embeddings are always torch-built
+        # regardless of this value (council QA2.2). An unknown value is a
+        # caller error -- see query_encoders.resolve_backend.
+        "query_encoder": "torch",
     },
     "obsidian": {
         # Feature gate — default OFF; set to true to enable vault export
@@ -423,8 +429,10 @@ def get_semantic_config(config: dict[str, Any] | None = None) -> dict[str, Any]:
     Returns:
         Dict with model, min_content_length, auto_embed,
         auto_embed_budget_seconds (the wall-clock ceiling for the embed step
-        ``session-export`` runs after a successful export) and hybrid (the
-        RRF-fusion on/off gate; see ``retrieval.resolve_mode``).
+        ``session-export`` runs after a successful export), hybrid (the
+        RRF-fusion on/off gate; see ``retrieval.resolve_mode``) and
+        query_encoder (the QUERY-side backend, "torch" or "onnx"; see
+        ``query_encoders.resolve_backend``).
     """
     if config is None:
         config = load_config()

@@ -440,23 +440,21 @@ def resolve_mode(requested: str | None = None) -> str:
     return requested
 
 
-_ENCODERS: dict[str, Any] = {}
-
-
 def _encoder(model: str) -> Any:
-    """One loaded model per process; a search never downloads (offline)."""
-    encoder = _ENCODERS.get(model)
-    if encoder is None:
-        from agent_session_tools import embedding_store
+    """The query-side encoder for ``model``, via the construction seam.
 
-        # local_files_only is what makes "a search never downloads" true; the
-        # environment variable is only a courtesy for libraries that read it.
-        os.environ.setdefault("HF_HUB_OFFLINE", "1")
-        encoder = embedding_store.SentenceTransformerEncoder(
-            model, local_files_only=True
-        )
-        _ENCODERS[model] = encoder
-    return encoder
+    Backend selection (torch|onnx), the ``(model, backend, revision)`` cache
+    and single-flight construction all live in :mod:`query_encoders` now
+    (lane A2, council D-2) -- this function is just the one call site every
+    caller in this module goes through, so a backend switch never needs a
+    second edit here.
+    """
+    from agent_session_tools import query_encoders
+
+    # local_files_only is what makes "a search never downloads" true; the
+    # environment variable is only a courtesy for libraries that read it.
+    os.environ.setdefault("HF_HUB_OFFLINE", "1")
+    return query_encoders.get_query_encoder(model, local_files_only=True)
 
 
 def _semantic_ranking(
@@ -487,7 +485,15 @@ def _semantic_ranking(
     if pin is None:
         return [], None, "no vectors in message_embeddings"
     model, dim = str(pin[0]), int(pin[1])
-    if model not in _ENCODERS:  # first call in this process: is the layer even here?
+    from agent_session_tools import query_encoders
+
+    backend = query_encoders.resolve_backend()
+    if backend == query_encoders.BACKEND_TORCH and not query_encoders.is_cached(
+        model, backend
+    ):
+        # Cheap pre-check, torch only: a cache lookup, never a fetch (D-7).
+        # onnx skips this and relies on the construction attempt below,
+        # which fails the same way -- offline, explanatory, caught here.
         ready = embedding_store.availability(model)
         if not ready.ready:
             return [], None, ready.reason or "semantic layer unavailable"

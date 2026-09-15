@@ -75,6 +75,35 @@ SUPPORTED_MODELS = {
     },
 }
 
+# ---------------------------------------------------------------------------
+# ONNX query-side artefacts (lane A2, council D-6): pinned to an exact upstream
+# commit BEFORE agent_session_tools.onnx_encoder.OnnxEncoder existed to load
+# them. Checked 2026-09-15 against BAAI/bge-small-en-v1.5's own file listing
+# (huggingface.co/api/models/BAAI/bge-small-en-v1.5?blobs=true) -- sha256 is
+# the LFS blob hash for onnx/model.onnx, and the sha256 of the tokenizer files
+# as fetched at that revision (they are not LFS, so the repo API's own
+# "blobId" for them is a git blob hash, not a content sha256; hashed locally
+# instead). ``pooling`` is CLS + L2-normalise per the repo's own
+# 1_Pooling/config.json (pooling_mode_cls_token=true) and modules.json
+# (2_Normalize) -- NOT mean pooling.
+#
+# fp32 first (council D-5): int8 is out of scope for this lane unless the
+# fp32 load measures > 0.5 s, and would be a second, separately pinned entry
+# here, never a silent re-quantisation of this one.
+# ---------------------------------------------------------------------------
+ONNX_ARTIFACTS: dict[str, dict[str, object]] = {
+    "bge-small-en-v1.5": {
+        "hf_name": "BAAI/bge-small-en-v1.5",
+        "revision": "5c38ec7c405ec4b44b94cc5a9bb96e735b38267a",  # pragma: allowlist secret -- a public git commit hash, not a secret
+        "onnx_relpath": "onnx/model.onnx",
+        "onnx_sha256": "828e1496d7fabb79cfa4dcd84fa38625c0d3d21da474a00f08db0f559940cf35",  # pragma: allowlist secret -- a content hash, not a secret
+        "onnx_size_bytes": 133093490,
+        "tokenizer_sha256": "d241a60d5e8f04cc1b2b3e9ef7a4921b27bf526d9f6050ab90f9267a1f9e5c66",  # pragma: allowlist secret -- a content hash, not a secret
+        "tokenizer_config_sha256": "9261e7d79b44c8195c1cada2b453e55b00aeb81e907a6664974b4d7776172ab3",  # pragma: allowlist secret -- a content hash, not a secret
+        "pooling": "cls",
+    },
+}
+
 # Default model - can be overridden via config.yaml or EMBEDDING_MODEL env var
 # See config_loader.get_embedding_model() for the configured value
 # Note: nomic-embed-text-v1.5 has compatibility issues with sentence-transformers 5.x

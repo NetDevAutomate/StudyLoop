@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 
 from agent_session_tools import embedding_store as store
+from agent_session_tools import query_encoders
 from agent_session_tools import retrieval
 from agent_session_tools.migrations import migrate
 
@@ -109,7 +110,9 @@ def _embedded(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> sqlite3.Connec
     stats = store.embed(conn, encoder=encoder)
     assert stats.embedded_messages == 2, "the hidden session is never embedded"
     store.reconcile(conn)
-    monkeypatch.setitem(retrieval._ENCODERS, "scripted-model", encoder)
+    monkeypatch.setitem(
+        query_encoders._ENCODERS, query_encoders.cache_key("scripted-model"), encoder
+    )
     monkeypatch.setattr(
         store,
         "availability",
@@ -131,10 +134,10 @@ class TestOfflineLoading:
 
         monkeypatch.setattr(store, "SentenceTransformerEncoder", Fake)
         monkeypatch.setenv("HF_HUB_OFFLINE", "0")
-        retrieval._ENCODERS.pop("some-model", None)
+        query_encoders.reset_cache()
         retrieval._encoder("some-model")
         assert seen == {"model": "some-model", "local_files_only": True}
-        retrieval._ENCODERS.pop("some-model", None)
+        query_encoders.reset_cache()
 
 
 class TestModeResolution:
