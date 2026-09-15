@@ -10,23 +10,28 @@ they never silently no-op. See docs/acceptance-testing.md.
 from __future__ import annotations
 
 import os
+import shutil
+import tempfile
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 
 from studyloop.harnesses import RELEASE_HARNESSES
 
+from .actors.factory import KNOWN_ACTORS as _FACTORY_KNOWN_ACTORS
 from .isolation import create_scratch_environment, sweep_scratch
 
 if TYPE_CHECKING:
     from collections.abc import Generator
-    from pathlib import Path
 
     from .isolation import ScratchEnv
 
-#: ACTOR=scripted is the only backend B1 implements (D-16 scoping). B3 adds
-#: gateway/direct/harness behind the same env var; extend this set there.
-KNOWN_ACTORS = frozenset({"scripted"})
+#: Imported, not re-declared: ``acceptance/actors/factory.py`` owns the one
+#: list of actor names, so this gate and the factory can never disagree
+#: about which ``STUDYLOOP_ACC_ACTOR`` values exist (B1 had a local
+#: ``frozenset({"scripted"})`` here because no factory existed yet).
+KNOWN_ACTORS = _FACTORY_KNOWN_ACTORS
 
 _ACC_ENV = "STUDYLOOP_ACC"
 _HARNESS_ENV = "STUDYLOOP_ACC_HARNESS"
@@ -78,10 +83,7 @@ def _acceptance_gate() -> None:
 
     actor = selected_actor()
     if actor not in KNOWN_ACTORS:
-        pytest.fail(
-            f"unknown {_ACTOR_ENV} value: {actor!r}; known actors: "
-            f"{sorted(KNOWN_ACTORS)} (gateway/direct/harness ship in a later lane)"
-        )
+        pytest.fail(f"unknown {_ACTOR_ENV} value: {actor!r}; known actors: {sorted(KNOWN_ACTORS)}")
 
 
 @pytest.fixture()
@@ -96,3 +98,54 @@ def scratch_env(tmp_path: Path) -> Generator[ScratchEnv, None, None]:
         yield scratch
     finally:
         sweep_scratch(scratch)
+
+
+@pytest.fixture()
+def actor_socket_dir() -> Generator[Path, None, None]:
+    """A dedicated, SHORT-path tmux socket directory for ``ACTOR=harness``.
+
+    Council D-11 gives the harness actor its own isolation: a second harness
+    process must never share a tmux server with the mentor's, so it gets its
+    own socket directory rather than the ``ScratchEnv``'s ``TMUX_TMPDIR``.
+
+    Not under the pytest ``tmp_path`` this tier otherwise uses, and not
+    under the scratch ``HOME``, for a mechanical reason: a unix socket path
+    is capped at 104 bytes (macOS), and both of those paths are long enough
+    that tmux cannot build a socket beneath them. ``HarnessActor`` reports
+    that limit by name; this fixture avoids hitting it.
+    """
+    root = Path(tempfile.mkdtemp(prefix="sl-acc-actor-", dir="/tmp"))
+    try:
+        yield root / "sock"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@pytest.fixture()
+def learner_actor_factory(actor_socket_dir: Path):
+    """Build the selected ``STUDYLOOP_ACC_ACTOR`` backend, or skip by name.
+
+    The one place an acceptance test should get its learner from: it applies
+    the contract's credential rule (council D-15) -- "no key -> skip naming
+    the variable; never fail, never prompt" -- BEFORE constructing anything,
+    so a run on a machine without a gateway key skips with
+    ``missing LITELLM_API_KEY`` rather than raising from a constructor.
+
+    It also supplies the per-actor resources a caller should not have to
+    know about -- notably the harness actor's own tmux socket directory
+    (D-11) -- so a test body reads the same for every actor.
+
+    An unknown actor name still fails loudly; the ``_acceptance_gate``
+    fixture above has already rejected one by then.
+    """
+    from .actors.factory import get_actor, skip_reason
+
+    def build(**kwargs):
+        actor = selected_actor()
+        reason = skip_reason(actor, env=dict(os.environ), turn_script=kwargs.get("turn_script"))
+        if reason is not None:
+            pytest.skip(f"actor {actor!r} unavailable: {reason}")
+        kwargs.setdefault("harness_socket_dir", actor_socket_dir)
+        return get_actor(actor, **kwargs)
+
+    return build

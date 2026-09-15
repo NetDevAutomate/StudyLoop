@@ -30,19 +30,19 @@ learner's session should — with nothing standing in for the mentor.
 | --- | --- | --- |
 | `STUDYLOOP_ACC` | Must be exactly `1` or every acceptance test skips, naming this variable and this file | unset (tier is off) |
 | `STUDYLOOP_ACC_HARNESS` | Comma list of harnesses to run (`kiro,codex,claude,opencode,pi,grok`) | unset → **all six** |
-| `STUDYLOOP_ACC_ACTOR` | Which learner backend drives the conversation | unset → `scripted` |
+| `STUDYLOOP_ACC_ACTOR` | Which learner backend drives the conversation (see "The learner actors" below) | unset → `scripted` |
+| `LITELLM_API_KEY` | `ACTOR=gateway`: the key for your LiteLLM proxy | unset → `gateway` skips, naming it |
+| `LITELLM_BASE_URL` | `ACTOR=gateway`: your proxy's address | unset → `http://127.0.0.1:4000` |
+| `STUDYLOOP_ACC_GATEWAY_MODEL` | `ACTOR=gateway`: which alias behind the proxy plays the learner | unset → `gateway` skips, naming it |
+| `STUDYLOOP_ACC_DIRECT_PROVIDER` | `ACTOR=direct`: a `provider_profiles` slug (`openai`, `openrouter`, `gemini`, `anthropic`) | unset → `openai` |
+| `STUDYLOOP_ACC_DIRECT_MODEL` | `ACTOR=direct`: a curated model id within that provider | unset → the provider's cheapest curated model |
+| `STUDYLOOP_ACC_HARNESS_ACTOR_CMD` | `ACTOR=harness`: the command that launches the second harness | unset → `harness` skips, naming it |
 | `STUDYLOOP_UAT` | The UAT tier's own, additional opt-in (a later lane) | unset (tier is off) |
 
 An unknown value in `STUDYLOOP_ACC_HARNESS` or `STUDYLOOP_ACC_ACTOR` **fails
 the run**, naming the bad value and the known set — it is a typo you made,
-not something to skip past quietly.
-
-`STUDYLOOP_ACC_ACTOR` currently supports only `scripted` — a deterministic,
-versioned turn script with no LLM on the learner side (see "The scripted
-actor" below). `gateway` (LiteLLM), `direct` (a plain provider SDK) and
-`harness` (a second harness plays the learner) are a later lane's job; the
-env var's shape is reserved now so this lane's tests already assert against
-the final contract.
+not something to skip past quietly. A *missing credential* is the opposite
+case and skips by name: see "Credentials: skip by name, never fail" below.
 
 ## Running it
 
@@ -138,7 +138,101 @@ inspection, never swept "just in case." See
 full create-then-sweep lifecycle never touches a planted file outside the
 scratch tree.
 
-## The scripted actor
+## The learner actors
+
+The learner side of an acceptance conversation is **pluggable**: four
+backends behind one test-side protocol (`tests/acceptance/actors/`). The
+mentor side is **never** simulated in a live acceptance test — hermetic
+plumbing tests that fake the mentor are the one named exception, and they
+say so.
+
+| Actor | What plays the learner | Needs | Cost per run |
+| --- | --- | --- | --- |
+| `scripted` | An ordered, versioned turn script — no LLM at all | Nothing (the CI-safe default) | Free |
+| `gateway` | A model alias behind your local LiteLLM proxy | `LITELLM_API_KEY` + `STUDYLOOP_ACC_GATEWAY_MODEL` | Priced by the alias, capped by the budget guard |
+| `direct` | OpenAI or Anthropic's own API, no proxy in the middle | the provider's own key (e.g. `OPENAI_API_KEY`) | Priced by the model, capped by the budget guard |
+| `harness` | A second coding-harness process, over its own tmux socket | `tmux` + `STUDYLOOP_ACC_HARNESS_ACTOR_CMD` | Whatever that harness's own subscription charges — **not observable from here** |
+
+Every actor returns the same normalized result: a transcript of
+`(learner_message, mentor_reply, usage)` turns plus one explicit
+termination outcome — `completed`, `budget-exhausted`, `cancelled`, or
+`errored`. **A transcript is always captured**, on every outcome including
+the failures: an actor never raises for an expected condition, so partial
+evidence from a run that went wrong is still there to grade.
+
+`CardGenerator` (`studyloop.content.generators`) is deliberately *not*
+reused: it is a flashcard protocol, and a conversation is not a deck. The
+actors follow the same repo idiom — a `runtime_checkable` Protocol plus a
+factory keyed off a config value — with conversation-shaped members.
+
+### Token accounting is honest, never guessed
+
+`usage` reports `None` — not `0` — where a backend genuinely cannot observe
+a count. `ACTOR=harness` gives terminal output, not tokens, so it reports
+unknown for every turn. `ACTOR=scripted` reports `0`, which is the *true*
+figure: there is no model on the learner side to spend anything.
+
+### The budget guard: max turns AND max output tokens
+
+Every LLM-backed actor is capped on both, and the cap is a **hard abort**,
+not a warning. The check happens *before* a turn starts, so a run never pays
+for a turn it then discards; hitting either cap ends the conversation with
+`budget-exhausted` and the transcript so far.
+
+This is load-bearing rather than defensive: an LLM learner has no
+natural-completion signal in this tier — nothing decides "the student seems
+satisfied, stop" — so **the budget guard is what ends a `gateway`/`direct`
+conversation**. A run that ends `budget-exhausted` is the normal case, not a
+failure. Turning the model's own "I'm done" into a stop condition is a
+judgement call left to the lane that owns rubric judging.
+
+An unknown output-token count is never counted against the cap (an unknown
+spend is not assumed to be zero, but it is not treated as a violation
+either) — which means `ACTOR=harness` is effectively capped on turn count
+alone. That is the honest consequence of not being able to see its usage.
+
+### Credentials: skip by name, never fail
+
+A missing key or binary is a **named skip**, never a failure and never a
+prompt: `gateway` without `LITELLM_API_KEY` skips saying exactly that.
+Every backend is asked whether it can run *before* anything constructs it,
+so an absent credential never surfaces as an exception from a constructor.
+
+An unknown `STUDYLOOP_ACC_ACTOR` value is still a loud failure — a typo is
+not a reason to skip.
+
+### `ACTOR=gateway` reads its address from the environment
+
+The gateway backend is not a `provider_profiles` registry row, for the
+reason [`contributing.md`](contributing.md) already gives: a registry row's
+base URL is fixed in code, and a per-machine proxy address needs an
+environment override the registry does not have. So `gateway` reads
+`LITELLM_BASE_URL` (defaulting to the proxy's usual local address) directly.
+Never commit a gateway hostname, port or key.
+
+### `ACTOR=direct` reuses the provider registry's *data*
+
+`direct` resolves its base URL, auth variable and curated model list through
+`provider_profiles` — the vendor endpoints are already curated there — but
+issues a plain chat/messages call rather than the forced-tool-call shape card
+generation uses. Only the two generic HTTP adapters are supported,
+`openai_compat` and `anthropic_compat`; `bedrock` (boto3/SigV4) and `ollama`
+(local, keyless) are out of scope for a backend that exists specifically for
+"I have a vendor API key but no gateway".
+
+### `ACTOR=harness` gets its own tmux socket
+
+A second harness process must never share a tmux server with the mentor's,
+or with one started under your real environment, so this backend requires its
+own socket directory and passes `TMUX_TMPDIR` explicitly on every tmux call —
+it never mutates the test process's own environment.
+
+One practical constraint it now reports clearly rather than failing
+cryptically: a unix socket path is capped at 104 bytes on macOS, and a
+directory under pytest's `tmp_path` exceeds that. Pass a short directory; the
+error names the limit and the fix.
+
+### The scripted actor
 
 `ACTOR=scripted` drives the **mentor** through an ordered, versioned turn
 script rather than a live LLM on the learner side (`tests/acceptance/turn_script.py`).
