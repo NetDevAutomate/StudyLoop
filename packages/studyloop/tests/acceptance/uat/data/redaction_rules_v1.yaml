@@ -1,0 +1,26 @@
+# UAT redaction rules, version 1 (council D-22 / kimi F12).
+#
+# VERSIONED AND HASH-PINNED exactly like the rubric: this file's sha256 is
+# pinned in redaction_registry.json under this same "version" key. Editing
+# this file in place, without bumping "version" AND registering the new
+# hash, is rejected by tests/acceptance/uat/redaction.py's loader -- see
+# RedactionRulesTamperedError.
+#
+# "allowed_fields" is the COMPLETE allowlist a redacted summary may carry
+# into releases/ (council D-22): structured fields only, never raw traces,
+# screenshots, message bodies, absolute home paths, or keys.
+version: 1
+allowed_fields:
+  - run_id
+  - date
+  - repo_sha
+  - harness
+  - harness_version
+  - actor_backend
+  - actor_model
+  - rubric_version
+  - rubric_hash
+  - journeys
+  - per_criterion_scores
+  - arbitration_note
+  - private_bundle_digest

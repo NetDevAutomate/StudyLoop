@@ -4,11 +4,12 @@ B4 owns the FULL bundle-writer schema -- ``manifest.json`` with run id,
 repo sha + dirty-tree identity, harness/actor versions, platform, auth
 mode, rubric version+hash, full pass/fail/skip counts, file inventory with
 sha256s, all captured into a DURABLE evidence root resolved from the real
-environment BEFORE scratch substitution -- but that writer has not landed
-yet, and this lane (B2) needs somewhere to put its per-run evidence NOW so
-a harness-matrix run is not silently unrecorded.
+environment BEFORE scratch substitution -- that writer now exists in-tree
+(``tests/acceptance/uat/bundle.py``) but is not yet wired into this lane's
+call sites, and this lane (B2) needs somewhere to put its per-run evidence
+NOW so a harness-matrix run is not silently unrecorded.
 
-Until B4's writer lands, this module writes the NARROWEST bundle this
+Until the callers migrate, this module writes the NARROWEST bundle this
 lane's own validators need: a plain directory per run holding the turn
 records (pane text is EVIDENCE here, never an assertion target -- D-17)
 and a small ``manifest.json`` naming the harness, actor, outcome, turn
@@ -16,8 +17,13 @@ count, and -- council D-21(7) -- the harness version, platform, and auth
 mode (each optional, recorded as ``null`` when unknown, never simply
 absent). The shape is deliberately close to a SUBSET of B4's described
 schema (same field names: ``run_id``, ``harness``, ``actor``, ``outcome``)
-so that swapping this module out for a call into B4's real writer is a
-rename, not a rewrite.
+so that swapping this module out for a call into B4's real writer stays
+CLOSE to a rename. It is not a pure rename, though: B4's landed writer
+(``tests/acceptance/uat/bundle.py``) names the corresponding fields
+``actor_backend``/``actor_model``/nested ``counts`` rather than this
+module's flat ``actor``/``outcome``/``turn_count``, so the eventual swap is
+a small field-mapping change (see docs/acceptance-testing.md's "Coverage
+inventory" tracked-exclusions list for the exact mapping and its owner).
 
 LEFT OUT (tracked, not silently skipped): the DURABLE evidence root (its
 own env var, default ``~/.local/share/studyloop/uat/<run-id>/``, resolved
