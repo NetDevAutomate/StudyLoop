@@ -446,9 +446,12 @@ that owns closing it):
   B4's full schema (`tests/acceptance/uat/bundle.py`: `resolve_durable_root`,
   the manifest schema, sha256 file inventory) now EXISTS and is unit-tested
   (`test_uat_bundle_writer.py`), but swapping `evidence.py`'s callers over to
-  it is still a follow-up — same field names by design, so it is a rename,
-  not a rewrite, per `evidence.py`'s own docstring. **Owner: B4** (schema
-  delivered; integration into the harness-matrix lane's evidence calls
+  it is still a follow-up — the two schemas share a handful of field names
+  by design (`run_id`, `harness`), but `evidence.py`'s `actor`/`outcome`/
+  `turn_count` and `bundle.py`'s `actor_backend`/`actor_model`/nested
+  `counts` diverge in both name and shape, so this is a small field-mapping
+  change, not a pure rename. **Owner: B4** (schema delivered; integration
+  into the harness-matrix lane's evidence calls, including that mapping,
   pending).
 - **`grok`-over-ACP**: an optional follow-up per this lane's own council
   amendment, never a blocker on the CORE three or the other two PREVIEW
@@ -474,7 +477,7 @@ on the `testacc` recipe above.
 
 | Module | Job |
 | --- | --- |
-| `tests/acceptance/uat/bundle.py` | The full evidence-bundle writer: `manifest.json` (run id, date, repo sha + dirty/patch identity, harness+version, platform, auth mode, actor backend+model, rubric version+hash, seeds, full pass/fail/skip counts, failure artefacts, a sha256 file inventory), a path-escape guard, and `resolve_durable_root` — the durable evidence root resolved from an explicitly-passed "real" environment, never from a live `STUDYLOOP_STATE_DIR` (council D-14). |
+| `tests/acceptance/uat/bundle.py` | The full evidence-bundle writer: `manifest.json` (run id, date, repo sha + dirty/patch identity, harness+version, platform, auth mode, actor backend+model, rubric version+hash, seeds, full pass/fail/skip counts, failure artefacts, a sha256 file inventory), a path-escape guard, and `resolve_durable_root` — the durable evidence root resolved from an explicitly-passed "real" environment, never from a live `STUDYLOOP_STATE_DIR` (council D-14). The run dir it creates is private (`0o700`) and every write — named files and `manifest.json` — is atomic (temp file + `os.replace`); see "The durable evidence root: privacy, atomicity, retention" below for the full D-14 breakdown including retention policy. |
 | `tests/acceptance/uat/redaction.py` | The versioned, hash-pinned redaction rule list (`data/redaction_rules_v1.yaml` + `data/redaction_registry.json`) and the redacted-summary generator `releases/` may ingest — allowlisted structured fields only, with every field's VALUE also scanned for a leaked home path or key-shaped token before it is trusted as clean. |
 | `tests/acceptance/uat/rubric.py` | The versioned, hash-pinned sign-off rubric loader (`data/rubric_v1.md`, markdown+YAML frontmatter): criteria, scale anchors, cited evidence per criterion, and an explicit `reject_if` list. |
 | `tests/acceptance/uat/strict_runner.py` | The strict sign-off semantics (council D-13): zero cells selected is a FAIL, any REQUIRED cell recorded as skipped (or simply missing) is a FAIL — a sign-off can never pass through skips. |
@@ -491,6 +494,35 @@ new hash — is rejected by the loader (`RedactionRulesTamperedError` /
 the point estimate": the rubric version + hash a run graded against enters
 that run's manifest BEFORE grading starts, so a run can never be graded
 against a rubric that was edited mid-grading.
+
+### The durable evidence root: privacy, atomicity, retention (D-14)
+
+The brief names three properties for the durable evidence root beyond
+"resolved from the pre-substitution environment" (already covered above):
+
+- **Created private.** `write_bundle` creates (or, for a pre-existing
+  directory, tightens) the run directory to `0o700` regardless of the
+  process umask — a shared box or CI runner with a permissive umask (e.g.
+  `022`) must never leave a bundle world- or group-readable, since it can
+  carry real learner transcripts and message bodies before redaction runs.
+- **Exported atomically.** Every file `write_bundle` writes, including
+  `manifest.json` itself, goes through a temp-file-then-`os.replace` in the
+  same directory as its final path. A crash between the temp write and the
+  rename can never leave a half-written artefact observable at its final
+  name — the destination is either the complete old content (if any) or
+  the complete new content, never a partial one.
+- **Retention.** UAT evidence bundles are NOT swept automatically — that is
+  the entire point of resolving a durable root outside the acceptance
+  tier's per-test scratch `STUDYLOOP_STATE_DIR` sweeper (D-14). Bundles
+  accumulate under `~/.local/share/studyloop/uat/<run-id>/` (or
+  `STUDYLOOP_UAT_EVIDENCE_ROOT`) until a human prunes them; there is no
+  code-enforced expiry. Recommended practice: keep a private bundle only
+  as long as its run may need re-inspection (a rule of thumb is 90 days),
+  then delete the run directory — the REDACTED summary this bundle
+  produced into `releases/` (see `releases/uat-signoff-template.md`) is
+  the durable, shareable record that outlives it. This is a documentation
+  and operator-discipline control, not an automated one; a future lane may
+  add a `studyloop uat prune --older-than` command, but none exists yet.
 
 ### Mechanism tests are UNGATED (council D-19/D-26)
 

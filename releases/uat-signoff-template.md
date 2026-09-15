@@ -12,6 +12,13 @@ the full mechanism, and council rulings D-13/D-14/D-22 (kimi F12/F13) in
 `reviews/2026-09-15-acceptance-harness/` for why the shape below is
 exactly this and no more.
 
+**Retention**: this redacted summary is the durable, shareable record —
+unlike the private bundle it was redacted from (created `0o700`, held
+under `~/.local/share/studyloop/uat/<run-id>/` with no automatic expiry),
+this file is meant to be committed under `releases/vX/` and kept
+indefinitely. See `docs/acceptance-testing.md`'s "privacy, atomicity,
+retention" subsection for the private bundle's retention guidance.
+
 ## Fields
 
 | Field | Meaning |

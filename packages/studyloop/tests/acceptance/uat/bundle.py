@@ -30,14 +30,23 @@ Two separate concerns, two separate functions:
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
+import os
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
+
+#: The run dir is 'created private' (council D-14, brief §2): a shared or
+#: CI box's umask (commonly ``022``) would otherwise leave a bundle that
+#: can carry real learner transcripts and message bodies world- or
+#: group-readable. Owner read/write/execute only.
+_RUN_DIR_MODE = 0o700
 
 _MANIFEST_NAME = "manifest.json"
 
@@ -152,6 +161,29 @@ def _assert_within_run_dir(run_dir: Path, relative: str) -> Path:
     return dest
 
 
+def _atomic_write_bytes(dest: Path, content: bytes) -> None:
+    """Write ``content`` to ``dest`` atomically (D-14: 'exported atomically').
+
+    Writes to a temp file in the SAME directory as ``dest`` (so the final
+    ``os.replace`` is a same-filesystem rename, not a copy) then replaces
+    ``dest`` in one atomic step. A crash -- or a raised exception -- between
+    the temp write and the replace leaves ``dest`` completely untouched
+    (either absent, or still holding whatever content it had before) and
+    never a half-written file at its final path. The temp file itself is
+    cleaned up on any failure so no stray artefact survives.
+    """
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(dir=dest.parent, prefix=f".{dest.name}.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "wb") as handle:
+            handle.write(content)
+        os.replace(tmp_name, dest)
+    except BaseException:
+        with contextlib.suppress(FileNotFoundError):
+            os.unlink(tmp_name)
+        raise
+
+
 def build_file_inventory(run_dir: Path) -> dict[str, str]:
     """Map every regular file under ``run_dir`` to its sha256 (D-22)."""
     inventory: dict[str, str] = {}
@@ -175,12 +207,18 @@ def write_bundle(
     BEFORE ``manifest.json`` itself exists -- so the manifest can embed a
     hash of every OTHER artefact in the run without needing to hash (or
     exclude) itself.
+
+    The run dir is created (or, if it already existed, tightened) to
+    ``0o700`` -- 'created private', D-14 -- and every file this function
+    writes, including ``manifest.json``, goes through a temp-file-then-
+    ``os.replace`` so the export is atomic: nothing this function writes
+    can ever be observed half-written at its final path.
     """
     run_dir.mkdir(parents=True, exist_ok=True)
+    run_dir.chmod(_RUN_DIR_MODE)
     for relative, content in (files or {}).items():
         dest = _assert_within_run_dir(run_dir, relative)
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_bytes(content)
+        _atomic_write_bytes(dest, content)
 
     inventory = build_file_inventory(run_dir)
     manifest: dict[str, object] = {
@@ -204,7 +242,7 @@ def write_bundle(
     }
     manifest_path = run_dir / _MANIFEST_NAME
     rendered = json.dumps(manifest, indent=2, sort_keys=True) + "\n"
-    manifest_path.write_text(rendered, encoding="utf-8")
+    _atomic_write_bytes(manifest_path, rendered.encode("utf-8"))
     return manifest_path
 
 
