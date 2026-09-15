@@ -6,13 +6,19 @@ default human output stays readable in a terminal sidebar.
 
 ``plan evaluate`` prints the Markdown block by default: that is what an agent
 pastes into the conversation at each of the three session checkpoints.
+
+``list``, ``show`` and ``status`` read and write through
+:class:`~studyloop.planning.PlanApplication`, so the activation refusal here is
+the same refusal the Web API gives — same blockers, same nudges, no write.
+``new``, ``interview``, ``evaluate``, ``milestone`` and ``record`` move onto
+the seam in Phase 2 and still use the storage modules directly.
 """
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import NoReturn
+from typing import TYPE_CHECKING, NoReturn
 
 import click
 from rich.table import Table
@@ -20,17 +26,20 @@ from rich.table import Table
 from studyloop.cli._shared import console
 from studyloop.planning import (
     PLAN_STATUSES,
+    PlanApplication,
+    PlanError,
+    PlanNotFound,
+    PlanNotReady,
+    ReadinessView,
     StudyPlan,
+    TransitionLifecycle,
     create_plan,
     draft_plan,
     evaluate_and_record,
     evaluate_plan,
     interview_spec,
-    list_plans,
     load_plan,
-    load_plan_text,
     plans_dir,
-    readiness,
     record_learning,
     reindex_all,
     save_plan,
@@ -42,6 +51,9 @@ from studyloop.planning.store import (
     PlanExistsError,
     PlanNotFoundError,
 )
+
+if TYPE_CHECKING:
+    from studyloop.planning import PlanDetail
 
 
 def _fail(message: str) -> NoReturn:
@@ -55,7 +67,22 @@ def _fail(message: str) -> NoReturn:
     raise SystemExit(1)
 
 
+def _fail_for(exc: PlanError, plan_id: str) -> NoReturn:
+    """Map a seam refusal to the CLI's message and exit code (design §2)."""
+    if isinstance(exc, PlanNotFound):
+        _fail(f"No study plan with id {plan_id!r}. Try: studyloop plan list")
+    _fail(str(exc))
+
+
+def _inspect(plan_id: str, *, include_markdown: bool = False) -> PlanDetail:
+    try:
+        return PlanApplication().inspect(plan_id, include_markdown=include_markdown)
+    except PlanError as exc:
+        _fail_for(exc, plan_id)
+
+
 def _load(plan_id: str) -> StudyPlan:
+    """Load the mutable model for the commands Phase 2 has not migrated yet."""
     try:
         return load_plan(plan_id)
     except PlanNotFoundError:
@@ -64,16 +91,23 @@ def _load(plan_id: str) -> StudyPlan:
         _fail(str(exc))
 
 
-def _print_readiness(check: dict) -> None:
+def _print_readiness(check: ReadinessView) -> None:
     """Show what still blocks activation, then what would merely improve it."""
-    if check["blockers"]:
+    if check.blockers:
         console.print("[yellow]Not ready to activate:[/yellow]")
-        for item in check["blockers"]:
+        for item in check.blockers:
             console.print(f"  [red]•[/red] {item}")
     else:
         console.print("[green]Ready to activate.[/green]")
-    for item in check["nudges"]:
+    for item in check.nudges:
         console.print(f"  [dim]• {item}[/dim]")
+
+
+def _refuse_activation(check: ReadinessView) -> NoReturn:
+    """The one way every command says no to activating an incomplete plan."""
+    console.print(f"[red]Cannot activate {check.plan_id!r} — the plan is incomplete.[/red]")
+    _print_readiness(check)
+    raise SystemExit(1)
 
 
 @click.group("plan")
@@ -91,9 +125,9 @@ def plan_group() -> None:
 @click.option("--json", "as_json", is_flag=True, help="Machine-readable output.")
 def plan_list(status: str | None, as_json: bool) -> None:
     """List study plans."""
-    plans = list_plans(status=status or "")
+    plans = PlanApplication().browse(status=status)
     if as_json:
-        click.echo(json.dumps([p.summary() for p in plans], indent=2))
+        click.echo(json.dumps([p.to_json_dict() for p in plans], indent=2))
         return
     if not plans:
         console.print("[dim]No study plans yet. Create one: studyloop plan new --title ...[/dim]")
@@ -106,15 +140,12 @@ def plan_list(status: str | None, as_json: bool) -> None:
     table.add_column("Progress")
     table.add_column("Next", style="dim")
     for plan in plans:
-        # Bind once: calling next_milestone() twice both re-walks the milestone
-        # list and leaves the Optional unnarrowed for the type checker.
-        nxt = plan.next_milestone()
         table.add_row(
             plan.plan_id,
             plan.title,
             plan.status,
             f"{plan.milestone_done}/{plan.milestone_total} ({plan.progress_pct}%)",
-            nxt.title if nxt else "—",
+            plan.next_milestone or "—",
         )
     console.print(table)
 
@@ -125,46 +156,42 @@ def plan_list(status: str | None, as_json: bool) -> None:
 @click.option("--json", "as_json", is_flag=True, help="Machine-readable output.")
 def plan_show(plan_id: str, as_markdown: bool, as_json: bool) -> None:
     """Show one study plan."""
-    plan = _load(plan_id)
+    detail = _inspect(plan_id, include_markdown=as_markdown)
     if as_markdown:
-        click.echo(load_plan_text(plan.plan_id))
+        click.echo(detail.markdown or "")
         return
     if as_json:
         click.echo(
             json.dumps(
                 {
-                    "plan": plan.summary(),
-                    "mission": {
-                        "why": plan.mission.why,
-                        "success": plan.mission.success,
-                        "constraints": plan.mission.constraints,
-                        "out_of_scope": plan.mission.out_of_scope,
-                    },
+                    "plan": detail.summary.to_json_dict(),
+                    "mission": detail.mission.to_json_dict(),
                     "milestones": [
-                        {"title": m.title, "done": m.done, "concepts": m.concepts}
-                        for m in plan.milestones
+                        {"title": m.title, "done": m.done, "concepts": list(m.concepts)}
+                        for m in detail.milestones
                     ],
-                    "readiness": readiness(plan),
+                    "readiness": detail.readiness.to_json_dict(),
                 },
                 indent=2,
             )
         )
         return
 
+    plan = detail.summary
     console.print(f"[bold]{plan.title}[/bold]  [dim]({plan.plan_id})[/dim]")
     console.print(f"Status: {plan.status}   Progress: {plan.milestone_done}/{plan.milestone_total}")
-    if plan.mission.why:
-        console.print(f"\n[bold]Why[/bold]\n  {plan.mission.why}")
-    if plan.milestones:
+    if detail.mission.why:
+        console.print(f"\n[bold]Why[/bold]\n  {detail.mission.why}")
+    if detail.milestones:
         console.print("\n[bold]Milestones[/bold]")
-        for index, milestone in enumerate(plan.milestones):
+        for milestone in detail.milestones:
             box = "x" if milestone.done else " "
             concepts = (
                 f"  [dim]({', '.join(milestone.concepts)})[/dim]" if milestone.concepts else ""
             )
-            console.print(f"  [{box}] {index}. {milestone.title}{concepts}")
+            console.print(f"  [{box}] {milestone.index}. {milestone.title}{concepts}")
     console.print()
-    _print_readiness(readiness(plan))
+    _print_readiness(detail.readiness)
 
 
 @plan_group.command("new")
@@ -220,12 +247,10 @@ def plan_new(
         plan_id=unique_plan_id(title),
     )
 
-    check = readiness(plan)
+    check = ReadinessView.from_plan(plan)
     if activate:
-        if not check["ready"]:
-            console.print(f"[red]Cannot activate {plan.plan_id!r} — the plan is incomplete.[/red]")
-            _print_readiness(check)
-            raise SystemExit(1)
+        if not check.ready:
+            _refuse_activation(check)
         plan.status = "active"
 
     try:
@@ -237,7 +262,10 @@ def plan_new(
 
     if as_json:
         click.echo(
-            json.dumps({"plan": plan.summary(), "readiness": check, "path": str(path)}, indent=2)
+            json.dumps(
+                {"plan": plan.summary(), "readiness": check.to_json_dict(), "path": str(path)},
+                indent=2,
+            )
         )
         return
     console.print(f"[green]Created[/green] {plan.plan_id} → {path}")
@@ -330,18 +358,16 @@ def plan_status(plan_id: str, status: str) -> None:
     """Change a plan's lifecycle state.
 
     Activation is refused while the plan is missing a mission, success
-    criteria, or milestones — an unevaluable plan must not look active.
+    criteria, or milestones — an unevaluable plan must not look active. The
+    refusal is the seam's, so it is the same one the Web API gives.
     """
-    plan = _load(plan_id)
-    if status == "active":
-        check = readiness(plan)
-        if not check["ready"]:
-            console.print(f"[red]Cannot activate {plan.plan_id!r} — the plan is incomplete.[/red]")
-            _print_readiness(check)
-            raise SystemExit(1)
-    plan.status = status
-    save_plan(plan)
-    console.print(f"[green]{plan.plan_id}[/green] → {status}")
+    try:
+        detail = PlanApplication().apply(TransitionLifecycle(plan_id=plan_id, status=status))
+    except PlanNotReady as exc:
+        _refuse_activation(exc.readiness)
+    except PlanError as exc:
+        _fail_for(exc, plan_id)
+    console.print(f"[green]{detail.summary.plan_id}[/green] → {status}")
 
 
 @plan_group.command("record")
