@@ -32,9 +32,11 @@ pytestmark = pytest.mark.skipif(
     reason="fastmcp not installed",
 )
 
+from agent_session_tools import retrieval  # noqa: E402
 from agent_session_tools.eval import arms as arms_module  # noqa: E402
 from agent_session_tools.eval.arms import (  # noqa: E402
     ARMS,
+    PLANNERS,
     CliArm,
     FrozenShippedArm,
     McpArm,
@@ -42,8 +44,15 @@ from agent_session_tools.eval.arms import (  # noqa: E402
     _split_payload,
     build_arm,
     frozen_session_search_queries,
+    plan_and_first_unfiltered,
+    plan_and_then_prose_or,
+    plan_or_first_filtered,
+    plan_or_only_unfiltered,
+    split_arm_name,
 )
 from agent_session_tools.eval.seam import ArmError, Query  # noqa: E402
+from agent_session_tools.query_planner import prose_or_query  # noqa: E402
+from agent_session_tools.retrieval import plan_natural_language  # noqa: E402
 
 SESSIONS = ("s-alpha", "s-beta", "s-gamma", "s-delta")
 #: A nonsense token planted in one session only, so a hit is unambiguous.
@@ -380,3 +389,157 @@ class TestRegistry:
     def test_an_unknown_arm_is_refused(self, eval_db):
         with pytest.raises(ValueError, match="unknown arm"):
             build_arm("semantic", eval_db)
+
+
+class TestPlannerVariants:
+    """§5 (D-12): the planner axis is orthogonal to the transport axis.
+
+    Each variant is a pure function standing in for
+    ``retrieval.plan_natural_language``; the explicit door in ``plan_query`` is
+    never substituted, so it is identical across variants by construction.
+    """
+
+    #: A sentence with stop words, a short token and one planted term.
+    SENTENCE = f"is the {PLANTED} a spike"
+
+    def test_the_five_planners_are_registered_and_shipped_substitutes_nothing(self):
+        assert list(PLANNERS) == [
+            "shipped",
+            "or_first_filtered",
+            "and_first_unfiltered",
+            "or_only_unfiltered",
+            "and_then_prose_or",
+        ]
+        assert PLANNERS["shipped"] is None
+        assert all(callable(fn) for name, fn in PLANNERS.items() if name != "shipped")
+
+    def test_or_first_filtered_is_the_shipped_or_form_alone(self):
+        plan = plan_or_first_filtered(self.SENTENCE)
+        assert plan.explicit is False
+        assert plan.terms == (PLANTED, "spike")
+        assert plan.queries == (f'"{PLANTED}" OR "spike"',)
+
+    def test_and_first_unfiltered_keeps_every_raw_token(self):
+        plan = plan_and_first_unfiltered(self.SENTENCE)
+        assert plan.terms == ("is", "the", PLANTED, "a", "spike")
+        assert plan.queries == (
+            f'"is" AND "the" AND "{PLANTED}" AND "a" AND "spike"',
+            f'"is" OR "the" OR "{PLANTED}" OR "a" OR "spike"',
+        )
+
+    def test_or_only_unfiltered_is_the_branch_function_verbatim(self):
+        plan = plan_or_only_unfiltered(self.SENTENCE)
+        assert plan.queries == (prose_or_query(self.SENTENCE),)
+        assert plan.queries == (f'"is" OR "the" OR "{PLANTED}" OR "a" OR "spike"',)
+
+    def test_the_candidate_keeps_the_shipped_and_arm_and_swaps_only_the_widen(self):
+        shipped = plan_natural_language(self.SENTENCE)
+        candidate = plan_and_then_prose_or(self.SENTENCE)
+        assert candidate.terms == shipped.terms == (PLANTED, "spike")
+        assert candidate.queries[0] == shipped.queries[0] == f'"{PLANTED}" AND "spike"'
+        assert candidate.queries[1] == prose_or_query(self.SENTENCE)
+        assert candidate.queries[1] != shipped.queries[1]
+        assert len(candidate.queries) == 2
+
+    def test_the_candidate_keeps_the_shipped_no_content_terms_return(self):
+        """The widen is never reached without an AND arm in front of it."""
+        shipped = plan_natural_language("what is the?")
+        candidate = plan_and_then_prose_or("what is the?")
+        assert candidate == shipped
+        assert candidate.queries == ()
+        assert candidate.note and "stop words" in candidate.note
+        # The unfiltered arms DO search such a query: that is their hypothesis.
+        assert plan_or_only_unfiltered("what is the?").queries == (
+            '"what" OR "is" OR "the?"',
+        )
+
+    def test_the_candidate_deduplicates_when_the_widen_equals_the_and_arm(self):
+        plan = plan_and_then_prose_or(PLANTED)
+        assert plan.queries == (f'"{PLANTED}"',)
+
+    def test_the_candidate_keeps_phrases_in_the_and_arm(self):
+        plan = plan_and_then_prose_or('"error OR warning" recovery')
+        assert plan.terms == ('"error OR warning"', "recovery")
+        assert plan.queries == (
+            '"error OR warning" AND "recovery"',
+            '"""error" OR "OR" OR "warning""" OR "recovery"',
+        )
+
+    @pytest.mark.parametrize("name", [n for n in PLANNERS if n != "shipped"])
+    def test_every_unfiltered_or_filtered_plan_is_never_explicit(self, name):
+        variant = PLANNERS[name]
+        assert variant is not None
+        for query in ("fts:fts:alpha?", "alpha OR ?", 'NOT "x" AND', "???"):
+            plan = variant(query)
+            assert plan.explicit is False, (name, query)
+
+    def test_split_arm_name(self):
+        assert split_arm_name("mcp") == ("mcp", "shipped")
+        assert split_arm_name("mcp:and_then_prose_or") == ("mcp", "and_then_prose_or")
+        assert split_arm_name("hybrid:or_only_unfiltered") == (
+            "hybrid",
+            "or_only_unfiltered",
+        )
+
+    def test_build_arm_carries_the_variant_in_name_and_describe(self, eval_db):
+        arm = build_arm("mcp:and_then_prose_or", eval_db, rows=4)
+        assert isinstance(arm, McpArm)
+        assert arm.name == "mcp:and_then_prose_or"
+        assert arm.planner == "and_then_prose_or"
+        assert arm.describe()["planner"] == "and_then_prose_or"
+        assert arm.describe()["arm"] == "mcp:and_then_prose_or"
+        assert build_arm("mcp:shipped", eval_db).name == "mcp"
+        assert build_arm("mcp", eval_db).describe()["planner"] == "shipped"
+
+    def test_an_unknown_planner_is_refused(self, eval_db):
+        with pytest.raises(ValueError, match="unknown planner"):
+            build_arm("mcp:plan_prose", eval_db)
+
+    @pytest.mark.parametrize("transport", ["cli", "frozen", "cli-hybrid"])
+    def test_out_of_process_and_control_arms_refuse_a_variant(self, transport, eval_db):
+        with pytest.raises(ValueError, match="cannot take a planner variant"):
+            build_arm(f"{transport}:and_then_prose_or", eval_db)
+
+    def test_the_candidate_widens_through_the_real_tool_with_the_prose_or(
+        self, eval_db
+    ):
+        """End to end: the AND arm finds nothing, the prose-OR widen runs, and
+        ``retrieval_status.queries`` shows the substituted widen string."""
+        shipped = McpArm(eval_db, rows=10)
+        candidate = McpArm(eval_db, rows=10, planner="and_then_prose_or")
+        query = Query(text=f"is {PLANTED} a quokkasaurus")
+
+        shipped_ids = [hit.session_id for hit in shipped.search(query, 5)]
+        assert shipped.last_status is not None
+        assert shipped.last_status["plan"] == "or"
+        assert shipped.last_status["queries"] == [
+            f'"{PLANTED}" AND "quokkasaurus"',
+            f'"{PLANTED}" OR "quokkasaurus"',
+        ]
+
+        candidate_ids = [hit.session_id for hit in candidate.search(query, 5)]
+        assert candidate.last_status is not None
+        assert candidate.last_status["plan"] == "or"
+        assert candidate.last_status["widened"] is True
+        assert candidate.last_status["terms"] == [PLANTED, "quokkasaurus"]
+        assert candidate.last_status["queries"] == [
+            f'"{PLANTED}" AND "quokkasaurus"',
+            f'"is" OR "{PLANTED}" OR "a" OR "quokkasaurus"',
+        ]
+        assert "s-alpha" in candidate_ids
+        assert shipped_ids == ["s-alpha"]
+
+    def test_the_substitution_never_leaks_past_the_call(self, eval_db):
+        before = retrieval.plan_natural_language
+        McpArm(eval_db, planner="or_only_unfiltered").search(Query(text=PLANTED), 5)
+        assert retrieval.plan_natural_language is before
+
+    def test_the_explicit_door_is_identical_under_every_variant(self, eval_db):
+        shipped = McpArm(eval_db, rows=10)
+        expected = _ids(shipped, "percentile OR bootstrap")
+        for name in PLANNERS:
+            arm = McpArm(eval_db, rows=10, planner=name)
+            assert _ids(arm, "percentile OR bootstrap") == expected, name
+            assert arm.last_status is not None
+            assert arm.last_status["plan"] == "explicit", name
+            assert _ids(arm, "fts:percentile OR bootstrap") == expected, name
