@@ -64,9 +64,16 @@ def _quote_prose_token(token: str) -> str:
 def prose_or_query(question: str) -> str:
     """The §5 candidate widen string: every raw token quoted and joined with ``OR``.
 
-    Nothing this returns can fail to parse: each token is a double-quoted FTS5
-    string, so operators, columns, prefixes and punctuation inside it are
-    plain text for the tokenizer. Returns ``""`` when no token survives.
+    Every *nonempty* string this returns is well-formed FTS5: each token is a
+    double-quoted string with embedded quotes doubled, so operators, column
+    filters, prefixes and punctuation inside it are plain text for the
+    tokenizer, and the query grammar cannot be broken by what the learner
+    typed. Two things are outside that guarantee and belong to the caller:
+    the return is ``""`` when no token survives, and an empty ``MATCH`` is a
+    syntax error, so the caller must treat ``""`` as "nothing to search"
+    rather than run it; and the backend's own limits (query length, term
+    count) are not ruled out here -- the S.1 tests establish parse-safety for
+    the inputs they name, not for every possible input.
     """
     return " OR ".join(_quote_prose_token(token) for token in prose_tokens(question))
 

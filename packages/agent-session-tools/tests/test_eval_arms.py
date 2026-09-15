@@ -21,9 +21,11 @@ Three claims here are load-bearing for the whole harness:
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 from pathlib import Path
 from typing import Any
+from unittest.mock import Mock
 
 import pytest
 
@@ -543,3 +545,148 @@ class TestPlannerVariants:
             assert arm.last_status is not None
             assert arm.last_status["plan"] == "explicit", name
             assert _ids(arm, "fts:percentile OR bootstrap") == expected, name
+
+
+class TestPlannerIsolation:
+    """Council review (GPT §3): the candidate's binding constraints, pinned one by one.
+
+    The pre-registration binds the candidate to change *one thing* -- the widen
+    string -- and binds the substitution to the natural-language entry only.
+    Each test here is one of those bindings, stated against the code as it
+    ran on 2026-09-15; none of them changed the code.
+    """
+
+    SENTENCE = f"is the {PLANTED} a spike"
+
+    def test_candidate_preserves_and_terms_and_note(self):
+        """Terms, the AND string and the note are the shipped planner's, verbatim."""
+        for query in (
+            self.SENTENCE,
+            '"error OR warning" recovery',
+            "what is the?",  # no content terms: the shipped note travels with it
+            "___",  # a content term with no alphanumeric: shipped terms, empty widen
+        ):
+            shipped = plan_natural_language(query)
+            candidate = plan_and_then_prose_or(query)
+            assert candidate.explicit is shipped.explicit is False, query
+            assert candidate.terms == shipped.terms, query
+            assert candidate.note == shipped.note, query
+            assert candidate.queries[:1] == shipped.queries[:1], query  # the AND arm
+        assert plan_and_then_prose_or("what is the?").note is not None
+
+    def test_candidate_empty_content_never_searches(self, eval_db, monkeypatch):
+        """No content terms: the shipped ``plan=none`` return, and the widen is never built."""
+        never = Mock(side_effect=AssertionError("the widen was built with no AND arm"))
+        monkeypatch.setattr(arms_module, "prose_or_query", never)
+        arm = McpArm(eval_db, rows=10, planner="and_then_prose_or")
+        for text in ("what is the?", "is it", "   "):
+            assert arm.search(Query(text=text), 5) == [], text
+            assert arm.last_status is not None, text
+            assert arm.last_status["plan"] == "none", text
+            assert arm.last_status["queries"] == [], text
+            assert arm.last_status["widened"] is False, text
+        never.assert_not_called()
+
+    def test_candidate_deduplicates_equal_queries(self):
+        """One lowercase content token: AND string and prose widen coincide, one query runs."""
+        assert plan_and_then_prose_or(PLANTED).queries == (f'"{PLANTED}"',)
+        # Case is a real difference: the shipped arm lowercases, the prose widen does not.
+        capitalised = PLANTED.capitalize()
+        assert plan_and_then_prose_or(capitalised).queries == (
+            f'"{PLANTED}"',
+            f'"{capitalised}"',
+        )
+        # Whatever the input, a plan never tries the same string twice.
+        for query in (PLANTED, capitalised, self.SENTENCE, "bm25 bm25", "___"):
+            queries = plan_and_then_prose_or(query).queries
+            assert len(queries) == len(set(queries)), query
+
+    def test_candidate_empty_widen_is_dropped_not_searched(self):
+        """A content term with no alphanumeric (``___``) is a shipped term the prose
+        tokeniser drops: the widen string is empty, and an empty ``MATCH`` cannot run.
+
+        The review asked whether any shipped-content input reaches this branch;
+        these do. The shipped planner widens ``"---" AND "..."`` to its own OR
+        form; the candidate has no widen string to try and stops at the AND arm.
+        """
+        assert prose_or_query("___") == ""
+        assert plan_and_then_prose_or("___").queries == ('"___"',)
+        shipped = plan_natural_language("--- ...")
+        candidate = plan_and_then_prose_or("--- ...")
+        assert shipped.queries == ('"---" AND "..."', '"---" OR "..."')
+        assert candidate.terms == shipped.terms == ("---", "...")
+        assert candidate.queries == ('"---" AND "..."',)
+
+    def test_all_variants_bypass_planning_for_explicit_input(
+        self, eval_db, monkeypatch
+    ):
+        """Explicit FTS5 never reaches a substituted planner: ``plan_query`` classifies
+        first, and only natural language is handed on. Each variant is wrapped in a
+        spy so the claim is "not called", not merely "same result"."""
+        for name, variant in PLANNERS.items():
+            if variant is None:
+                continue
+            spy = Mock(wraps=variant)
+            monkeypatch.setitem(arms_module.PLANNERS, name, spy)
+            arm = McpArm(eval_db, rows=10, planner=name)
+            for text in (
+                "percentile OR bootstrap",
+                "fts:percentile OR bootstrap",
+                '"exact phrase" OR authentication',
+                "fts:",
+            ):
+                arm.search(Query(text=text), 5)
+                assert arm.last_status is not None, (name, text)
+                assert arm.last_status["plan"] in {"explicit", "none"}, (name, text)
+            spy.assert_not_called()
+            # The spy is live: natural language does reach it, once per call.
+            arm.search(Query(text=PLANTED), 5)
+            spy.assert_called_once_with(PLANTED)
+
+    def test_rejected_explicit_syntax_is_replanned_by_the_planner_in_force(
+        self, eval_db, monkeypatch
+    ):
+        """The one route from the explicit door to a planner: FTS5 rejects the
+        explicit string and the service re-plans it as natural language. That
+        re-plan goes through whichever natural-language planner is in force --
+        the shipped one on the shipped arm, the variant on a variant arm -- so
+        it is the same route under every arm, and the S.1 door tests (well-formed
+        explicit input) are unaffected. Recorded here so the boundary is written
+        down rather than assumed."""
+        spy = Mock(wraps=plan_and_then_prose_or)
+        monkeypatch.setitem(arms_module.PLANNERS, "and_then_prose_or", spy)
+        arm = McpArm(eval_db, rows=10, planner="and_then_prose_or")
+        arm.search(
+            Query(text=f"{PLANTED} OR"), 5
+        )  # a trailing operator: explicit, rejected
+        assert arm.last_status is not None
+        assert arm.last_status["note"] and "rejected" in arm.last_status["note"]
+        spy.assert_called_once_with(f"{PLANTED} OR")
+
+    def test_planner_patch_restored_after_tool_error(self, eval_db, monkeypatch):
+        """A transport failure inside the patched call restores the module attribute
+        and the environment, so the next arm -- shipped included -- plans as itself."""
+        before = retrieval.plan_natural_language
+        mode_before = os.environ.get("STUDYLOOP_RETRIEVAL_MODE")
+        arm = McpArm(eval_db, rows=10, planner="and_then_prose_or")
+
+        def explode(coro):
+            coro.close()  # the coroutine is never awaited; do not warn about it
+            raise RuntimeError("tool transport failed")
+
+        monkeypatch.setattr(arms_module, "_run", explode)
+        with pytest.raises(ArmError) as raised:
+            arm.search(Query(text=PLANTED), 5)
+        assert raised.value.kind == "other"
+        assert "tool transport failed" in str(raised.value)
+        assert retrieval.plan_natural_language is before
+        assert os.environ.get("STUDYLOOP_RETRIEVAL_MODE") == mode_before
+        monkeypatch.undo()
+
+        shipped = McpArm(eval_db, rows=10)
+        assert _ids(shipped, f"is {PLANTED} a quokkasaurus") == ["s-alpha"]
+        assert shipped.last_status is not None
+        assert shipped.last_status["queries"] == [
+            f'"{PLANTED}" AND "quokkasaurus"',
+            f'"{PLANTED}" OR "quokkasaurus"',  # the shipped widen, not the prose one
+        ]

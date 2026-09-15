@@ -169,7 +169,9 @@ def test_prose_or_drops_tokens_without_alphanumerics() -> None:
     ],
 )
 def test_prose_or_cannot_fail_to_parse(conn: sqlite3.Connection, query: str) -> None:
-    """The candidate's claim: whatever the learner typed, the OR form is valid FTS5."""
+    """The candidate's claim, for the inputs named here: the nonempty OR form is
+    valid FTS5. (An empty return is the caller's to handle -- an empty ``MATCH``
+    is itself a syntax error -- and backend limits are not exercised.)"""
     match = prose_or_query(query)
     assert match, query
     conn.execute("SELECT rowid FROM messages_fts WHERE messages_fts MATCH ?", (match,))

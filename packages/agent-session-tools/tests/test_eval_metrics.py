@@ -291,6 +291,91 @@ class TestPrecisionAtK:
     def test_empty_input_is_zero_not_a_crash(self):
         assert precision_at_k({}, [], 5) == {"by_stratum": {}, "macro": 0.0}
 
+    def test_precision_fixed_denominator_for_short_and_empty_results(self):
+        """Guardrail 2 as registered: the denominator is ``k``, never the list length.
+
+        An AND arm that returns one session to find one gold and a widen that
+        returns five to find one are scored on the same denominator; a short
+        or empty list is a low precision, not a high one and not undefined.
+        """
+        items = [
+            {
+                "id": "q",
+                "cluster": "c",
+                "stratum": "K",
+                "gold_session_ids": ["g1", "g2"],
+            }
+        ]
+
+        def precision(ranked: tuple[str, ...], k: int) -> float:
+            score = ItemScore("K", "c", 1, 1.0, 1, ranked=ranked)
+            return precision_values({"q": score}, items, k)["q"]
+
+        assert precision(("g1",), 5) == 1 / 5  # one back, one gold: 1/5, not 1/1
+        assert precision(("g1", "g2"), 5) == 2 / 5  # two back, both gold: not 2/2
+        assert precision(("g1", "x"), 3) == 1 / 3
+        assert precision((), 5) == 0.0  # nothing back is 0.0, never undefined
+        assert precision(("x",), 5) == 0.0
+        # The same list under a smaller k: the denominator follows k, not the list.
+        assert precision(("g1", "g2"), 2) == 1.0
+        assert precision(("g1", "g2"), 1) == 1.0
+
+    def test_crashed_item_has_zero_precision_and_mrr(self):
+        """A crash is a miss on every metric: hit 0, rr 0.0, precision 0.0, in the denominator.
+
+        Driven through :func:`eval.gold.score_arm`, the path a real crash takes,
+        so the per-item row a crash produces is the one scored here rather than
+        one written by hand.
+        """
+        from agent_session_tools.eval.gold import score_arm
+        from agent_session_tools.eval.seam import ArmError, Hit, Query
+
+        class Arm:
+            name = "stub"
+            supports_exclusion = False
+
+            def search(self, query: Query, k: int) -> list[Hit]:
+                if "crash" in query.text:
+                    raise ArmError("backtick", 'fts5: syntax error near "`"')
+                return [Hit("g-answered", ("m-1",), None, "stub")]
+
+            def describe(self) -> dict[str, object]:
+                return {"arm": self.name}
+
+        items = [
+            {
+                "id": "ok",
+                "question": "answered",
+                "stratum": "K",
+                "cluster": "c1",
+                "gold_session_ids": ["g-answered"],
+            },
+            {
+                "id": "boom",
+                "question": "this one will crash",
+                "stratum": "K",
+                "cluster": "c2",
+                "gold_session_ids": ["g-crashed"],
+            },
+        ]
+        result = score_arm(Arm(), items, k=5)
+        crashed = result.per_item["boom"]
+        assert crashed.error_kind == "backtick"
+        assert (crashed.hit, crashed.rr, crashed.rank, crashed.ranked) == (
+            0,
+            0.0,
+            None,
+            (),
+        )
+        assert precision_values(result.per_item, items, 5) == {"ok": 1 / 5, "boom": 0.0}
+        # Both items are in every denominator: K is 1/2 on recall, MRR and precision.
+        assert result.crashes == 1
+        assert result.errors_by_kind == {"backtick": 1}
+        assert result.recall["by_stratum"] == {"K": 0.5}
+        assert result.mrr["by_stratum"] == {"K": 0.5}
+        assert result.precision["by_stratum"] == pytest.approx({"K": 0.1})
+        assert result.metrics()["n"] == 2
+
 
 class TestPairedClusterBootstrap:
     def test_it_is_the_recall_bootstrap_when_fed_hits(self):
