@@ -41,6 +41,11 @@ if TYPE_CHECKING:
 
 _SENTINEL_NAME = ".studyloop-acceptance-sentinel"
 
+#: The config every scratch HOME starts with. `topics: []` keeps first-run
+#: onboarding out of the journeys; `memory.default_scope` is what lets a
+#: session START at all (see create_scratch_environment).
+_SEEDED_CONFIG = "topics: []\nmemory:\n  default_scope: unclassified\n"
+
 #: macOS's `sockaddr_un.sun_path` holds at most 104 bytes (Linux's is a
 #: little more generous at 108, but 104 is the binding constraint on the
 #: owner's platform). tmux's actual socket is `<TMUX_TMPDIR>/tmux-<uid>/
@@ -163,8 +168,14 @@ def create_scratch_environment(
     config_dir = home / ".config" / "studyloop"
     config_dir.mkdir(parents=True, exist_ok=True)
     # Seeded, not empty: a real first-run would trip migration/onboarding
-    # prompts the acceptance journeys are not testing.
-    (config_dir / "config.yaml").write_text("topics: []\n", encoding="utf-8")
+    # prompts the acceptance journeys are not testing. The context-memory
+    # scope is part of that seed: `agent_session_tools.context.scope` refuses
+    # to infer a scope from anything (no `memory.default_scope`, no project
+    # root => `studyloop study` exits 2 before any harness launches), so a
+    # scratch without one could never reach the harness a live lane is
+    # certifying -- found by the first live harness-evidence run, 2026-09-16.
+    # `unclassified` is the least-privileged of the three valid values.
+    (config_dir / "config.yaml").write_text(_SEEDED_CONFIG, encoding="utf-8")
 
     # Dedicated tmux socket directory per run: a shared tmux server started
     # under the developer's REAL environment must never be what a live

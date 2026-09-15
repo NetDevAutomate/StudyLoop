@@ -42,6 +42,30 @@ class TestScratchCreation:
         assert scratch.config_dir.is_dir()
         assert (scratch.config_dir / "config.yaml").exists()
 
+    def test_seeded_config_carries_a_default_context_scope(self, tmp_path: Path) -> None:
+        """A scratch is a fresh install, and a fresh install cannot start a session.
+
+        The context-memory scope policy (``agent_session_tools.context.scope``)
+        refuses to infer a scope: with no ``memory.default_scope`` and no
+        project root, ``studyloop study`` exits 2 ("No context scope
+        configured") BEFORE any harness is launched -- found 2026-09-16 by the
+        first live harness-evidence run, where every harness failed identically
+        at this gate. The seeded config therefore has to carry a scope, or the
+        live lane can never reach the harness it is meant to certify.
+        """
+        import yaml
+
+        from agent_session_tools.context.scope import ScopePolicy
+
+        scratch = create_scratch_environment(tmp_path)
+        config = yaml.safe_load((scratch.config_dir / "config.yaml").read_text())
+        assert config["memory"]["default_scope"] == "unclassified"
+        # The same object the product builds from this file must resolve a
+        # scope without consulting a project root, cwd, or an env override.
+        policy = ScopePolicy.from_config(config)
+        assert policy.default_scope is not None
+        assert policy.default_scope.value == "unclassified"
+
     def test_dedicated_tmux_socket_dir_is_deliberately_outside_scratch_home(
         self, tmp_path: Path
     ) -> None:
