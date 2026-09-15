@@ -45,7 +45,8 @@ Branch: `fix/plan-integration-bugs` (RED at `3a4f6b01`). §5 stream: `feat/lexic
       with scenarios for create-with-status, document replacement, status transition. Public doc:
       `docs/study-plans.md` gains an "Activation" paragraph; the "does not do yet" list is **not** edited
       until the corresponding phase ships.
-- [ ] **T1.7** Commit in logical steps (`feat(planning): …`, `refactor(web): …`, `refactor(cli): …`,
+- [x] **T1.7** (gates run at `2ca6bdb0`: `just lint` 0, `just typecheck` 0 errors, plan-filtered pytest 346 passed exit 0,
+      full suite 4576 passed / 4 skipped exit 0) Commit in logical steps (`feat(planning): …`, `refactor(web): …`, `refactor(cli): …`,
       `docs(spec): …`). DoD: `just lint && just typecheck` exit 0; `pytest packages/studyloop/tests -q -x
       -k "plan or planning"` exit 0.
 - [ ] ⚖ **Council review 1** (`openai.gpt-6-astra`, `grok-4.6`, `qwen3-coder`): diff `3a4f6b01..HEAD`,
