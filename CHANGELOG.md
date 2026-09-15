@@ -7,6 +7,40 @@ experience may change before `1.0.0`.
 
 ## [Unreleased]
 
+### Added
+
+- An acceptance-test tier modelled on the Terraform provider's `make testacc`:
+  every test under `packages/studyloop/tests/acceptance/` skips with a named
+  reason unless `STUDYLOOP_ACC=1`; `just testacc` selects harnesses
+  (`STUDYLOOP_ACC_HARNESS`), actors and `-k` expressions; each test runs in a
+  guarded scratch environment (fresh HOME and state dir, sanitized child env,
+  dedicated tmux socket, symlink/sentinel sweeper guards, an escape-canary
+  test) that can never touch `~/.config/studyloop`; a versioned turn-script
+  format drives a deterministic scripted learner; the first live lane runs
+  Kiro over web ACP. The UAT tier is reserved behind an additional
+  `STUDYLOOP_UAT=1`. See `docs/acceptance-testing.md`.
+- A query-encoder construction seam for the semantic layer
+  (`semantic_search.query_encoder: torch|onnx`): the query side of a hybrid
+  search can now use a pinned fp32 ONNX `bge-small-en-v1.5` (artefact
+  revision + sha256 recorded in the model registry; fetched only by explicit
+  user action, never mid-search), cached by (model, backend, revision) with
+  single-flight construction and load-phase events. Default unchanged (torch).
+- An honest load indicator for encoder loads: timer-driven stderr phase
+  messages past 300 ms ("last load: X s" from per-machine cold/warm records —
+  never a percentage bar), and a web encoder-warm status chip fed by
+  `GET /api/retrieval/health`.
+
+### Changed
+
+- Retrieval mode resolution is tri-state and per-surface: an explicit
+  `semantic_search.hybrid: true|false` in the config file always wins; an
+  absent key falls through to the surface default (`resolve_mode(surface=…)`).
+  Surface defaults are unchanged in this release — the mcp/web flip to hybrid
+  is held behind the Stage 5 pre-registered gate
+  (`docs/architecture/session-memory/receipts/semantic-layer/stage5-preregistration-2026-09-15.md`).
+  The `retrieval_status` payload's field-level schema is now pinned by a
+  contract test.
+
 ### Removed
 
 - The forbidden-token test that failed the suite whenever "KiroCrew" appeared
