@@ -76,6 +76,7 @@ exclude_docs: |
   !/roadmap.md
   !/architecture.md
   !/contributing.md
+  !/acceptance-testing.md
   !/images/**
   !/stylesheets/**
   !/javascripts/**
@@ -104,3 +105,4 @@ nav:
     - Architecture Overview: architecture.md
     - Roadmap: roadmap.md
   - Contribute: contributing.md
+  - Acceptance Testing: acceptance-testing.md

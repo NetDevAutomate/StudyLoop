@@ -105,6 +105,24 @@ test-semantic:
         packages/agent-session-tools/tests/test_embedding_store.py \
         packages/agent-session-tools/tests/test_embedding_semantic_profile.py
 
+# The `testacc` gate (AWS Terraform Provider `make testacc` analogy, owner's
+# explicit reference): every acceptance test SKIPS with a clear reason unless
+# STUDYLOOP_ACC=1, which this recipe sets. Args are POSITIONAL, not
+# make-style KEY=value -- `just` has no such syntax; `just testacc HARNESS=x`
+# would bind the literal string "HARNESS=x" as HARNESS's value, not set
+# HARNESS to x (see test_acceptance_gate.py::TestJustRecipeArgumentSyntax and
+# docs/acceptance-testing.md). Invoke positionally:
+#   just testacc                                   # all harnesses, scripted actor
+#   just testacc kiro                               # just kiro, scripted actor
+#   just testacc kiro gateway                       # kiro, LiteLLM-backed learner
+#   just testacc kiro scripted tests/acceptance/test_kiro_web_acp_lane.py
+# HARNESS is a comma list (STUDYLOOP_ACC_HARNESS); empty means "all six" --
+# the default the gate itself applies when the var is unset (O-7/D-23).
+testacc HARNESS="" ACTOR="scripted" TESTS="packages/studyloop/tests/acceptance/":
+    STUDYLOOP_ACC=1 STUDYLOOP_ACC_HARNESS="{{HARNESS}}" STUDYLOOP_ACC_ACTOR="{{ACTOR}}" \
+        uv run --group dev pytest -m acceptance \
+        --ignore=packages/studyloop/tests/acceptance/uat {{TESTS}}
+
 lint:
     uv run --group dev ruff check .
     uv run --group dev ruff format --check .
