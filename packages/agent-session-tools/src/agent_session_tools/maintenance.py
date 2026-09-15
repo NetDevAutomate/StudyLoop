@@ -1142,10 +1142,11 @@ def fetch_query_encoder(
 
     Never runs from a search or the SessionEnd export hook -- this command
     and 'studyloop doctor --fix' are the only two callers. Exit codes
-    distinguish the three non-failure outcomes: 0 nothing needed fetching
-    (already cached and verified), 2 fetched it just now, 3 declined because
-    HF_HUB_OFFLINE=1 is set; any other failure (unknown model, verification
-    mismatch, missing dependency) exits 1.
+    distinguish the three non-failure outcomes (deliberately outside click's
+    reserved 1/2 range -- see docs/cli-reference.md): 0 nothing needed
+    fetching (already cached and verified), 3 fetched it just now, 4
+    declined because HF_HUB_OFFLINE=1 is set; any other failure (unknown
+    model, verification mismatch, missing dependency) exits 1.
     """
     from agent_session_tools.artefact_fetch import (
         EXIT_CODES,
@@ -1166,7 +1167,7 @@ def fetch_query_encoder(
     verb = "Already cached" if result.status == "already_cached" else "Fetched"
     print(f"✅ {verb}: {result.hf_name}@{result.revision} (model: {result.model})")
     for f in result.files:
-        print(f"   {f.relpath}: {f.size_bytes:,} bytes (sha256 verified)")
+        print(f"   {f.relpath}: {f.size_bytes:,} bytes (sha256 verified) -> {f.path}")
     total_mb = result.total_bytes / (1024 * 1024)
     print(f"   total: {total_mb:.1f} MB")
     raise typer.Exit(EXIT_CODES[result.status])

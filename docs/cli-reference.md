@@ -233,7 +233,7 @@ agent/harness files.
 | `1` | Warnings or failures reported; `--fix` resolves only checks marked auto-fixable — unresolved failures print their own manual remediation |
 | `2` | Core failure — a fundamental component is broken (e.g. wrong Python version) |
 
-**Check categories:** `core` (Python, packages, config, tmux), `database` (review DB, sessions DB, `embeddings_alignment`), `config` (Obsidian vault + `.obsidian/` marker, Obsidian export config, review dirs, pandoc, `active_topic_limit`, `unknown_config_keys`, and — when configured — `second_brain`), `deps` (optional packages, `query_encoder_artefact` -- the pinned ONNX artefact `session-maint fetch-query-encoder` fetches), `agents` (AI tool definitions), `voice` (local Kokoro model files, `afplay`, and Kokoro-server reachability when configured), `harness` (session-export wiring, `exporter_schema`, `export_freshness`). There is no `updates` category yet — it would only ever report "no release found" until studyloop is actually published somewhere.
+**Check categories:** `core` (Python, packages, config, tmux), `database` (review DB, sessions DB, `embeddings_alignment`), `config` (Obsidian vault + `.obsidian/` marker, Obsidian export config, review dirs, pandoc, `active_topic_limit`, `unknown_config_keys`, and — when configured — `second_brain`), `deps` (optional packages, `query_encoder_artefact` — the pinned ONNX artefact `session-maint fetch-query-encoder` fetches), `agents` (AI tool definitions), `voice` (local Kokoro model files, `afplay`, and Kokoro-server reachability when configured), `harness` (session-export wiring, `exporter_schema`, `export_freshness`). There is no `updates` category yet — it would only ever report "no release found" until studyloop is actually published somewhere.
 
 ### Spaced Repetition Intervals
 
@@ -572,6 +572,17 @@ session-db-mcp                           # MCP server (stdio) for the session to
 study-speak "text" [-b openvox|kokoro|qwen3|macos] [-v VOICE] [-s SPEED]
                                           # Speak text aloud using local TTS
 ```
+
+**Exit codes for `session-maint fetch-query-encoder`:** deliberately outside
+click's reserved 1 (hard failure) / 2 (usage error) range, so a wrapper script
+never mistakes a typo'd option for a successful fetch.
+
+| Code | Meaning |
+|------|---------|
+| `0` | Already cached and verified — nothing needed fetching |
+| `1` | Failure — unknown model, sha256 verification mismatch, or missing dependency |
+| `3` | Fetched (and verified) just now |
+| `4` | Declined — `HF_HUB_OFFLINE=1` is set |
 
 ### Supported Sources
 

@@ -40,11 +40,14 @@ CacheStatus = Literal["pass", "warn", "fail"]
 
 # Exit codes for the CLI command, distinguishing all three success-ish
 # outcomes from each other and from a hard failure (1): "nothing needed
-# doing" (0), "downloaded it just now" (2), "declined because offline" (3).
+# doing" (0), "downloaded it just now" (3), "declined because offline" (4).
+# Deliberately outside click's reserved range (1 hard failure, 2 usage
+# error -- click.UsageError.exit_code == 2) so a wrapper keying off these
+# codes never confuses "fetched" with a typo'd option (E-A5 finding 3).
 EXIT_CODES: dict[FetchStatus, int] = {
     "already_cached": 0,
-    "fetched": 2,
-    "offline_skip": 3,
+    "fetched": 3,
+    "offline_skip": 4,
 }
 
 
@@ -181,25 +184,13 @@ def fetch_query_encoder_artefact(model: str | None = None) -> FetchResult:
         msg = f"huggingface-hub is not installed; install: {INSTALL_HINT}"
         raise RuntimeError(msg) from exc
 
-    fetched: list[FetchedFile] = []
-    any_new = False
-    for relpath, sha_key, size_key in _fetch_plan(artefact):
-        was_cached = bool(try_to_load_from_cache(hf_name, relpath, revision=revision))
-        if not was_cached:
-            any_new = True
-        downloaded = hf_hub_download(
-            hf_name, relpath, revision=revision, local_files_only=False
-        )
-        path = Path(downloaded)
-        actual_sha = _sha256_of(path)
-        expected_sha = str(artefact[sha_key])
-        if actual_sha != expected_sha:
-            msg = (
-                f"{hf_name}/{relpath}@{revision}: sha256 mismatch "
-                f"(expected {expected_sha}, got {actual_sha}) -- refusing to "
-                "trust this file for query encoding"
-            )
-            raise ArtefactVerificationError(msg)
+    def _verify(path: Path, size_key: str | None) -> tuple[str, int]:
+        # Size before hash: a cheap pre-filter that can actually short-circuit
+        # a wrong file (E-A5 finding 7). Checking sha256 first can never
+        # catch a size-pin bug -- identical sha256 implies identical bytes
+        # implies identical length, so a size check running only after a
+        # passing hash check is unreachable except as a false-rejection of a
+        # correct artefact.
         size_bytes = path.stat().st_size
         if size_key is not None:
             expected_size = int(artefact[size_key])  # type: ignore[arg-type]
@@ -209,6 +200,48 @@ def fetch_query_encoder_artefact(model: str | None = None) -> FetchResult:
                     f"(expected {expected_size:,} bytes, got {size_bytes:,})"
                 )
                 raise ArtefactVerificationError(msg)
+        return _sha256_of(path), size_bytes
+
+    fetched: list[FetchedFile] = []
+    any_new = False
+    for relpath, sha_key, size_key in _fetch_plan(artefact):
+        was_cached = bool(try_to_load_from_cache(hf_name, relpath, revision=revision))
+        if not was_cached:
+            any_new = True
+        downloaded = hf_hub_download(
+            hf_name,
+            relpath,
+            revision=revision,
+            local_files_only=False,
+            force_download=False,
+        )
+        path = Path(downloaded)
+        expected_sha = str(artefact[sha_key])
+        actual_sha, size_bytes = _verify(path, size_key)
+        if actual_sha != expected_sha and was_cached:
+            # hf_hub_download without force_download returns the existing
+            # cache pointer even when its contents no longer match the
+            # registry pin -- a stale/substituted blob is handed straight
+            # back and re-rejected forever otherwise (E-A5 finding 2). Retry
+            # once with a real re-download before treating this as a
+            # genuine supply-chain failure.
+            any_new = True
+            downloaded = hf_hub_download(
+                hf_name,
+                relpath,
+                revision=revision,
+                local_files_only=False,
+                force_download=True,
+            )
+            path = Path(downloaded)
+            actual_sha, size_bytes = _verify(path, size_key)
+        if actual_sha != expected_sha:
+            msg = (
+                f"{hf_name}/{relpath}@{revision}: sha256 mismatch "
+                f"(expected {expected_sha}, got {actual_sha}) -- refusing to "
+                "trust this file for query encoding"
+            )
+            raise ArtefactVerificationError(msg)
         fetched.append(
             FetchedFile(
                 relpath=relpath, path=path, sha256=actual_sha, size_bytes=size_bytes

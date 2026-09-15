@@ -41,10 +41,10 @@ class TestFetchQueryEncoderCommand:
         assert result.exit_code == 0
         assert "Already cached" in result.output
 
-    def test_fetched_exits_two(self, monkeypatch):
+    def test_fetched_exits_three(self, monkeypatch):
         fetched_file = artefact_fetch.FetchedFile(
             relpath="onnx/model.onnx",
-            path=Path("/tmp/unused"),  # not read by the CLI's print path
+            path=Path("/fake/hf/cache/onnx_model.onnx"),
             sha256="abc",
             size_bytes=1024,
         )
@@ -53,17 +53,20 @@ class TestFetchQueryEncoderCommand:
             lambda model=None: _fake_result("fetched", files=(fetched_file,)),
         )
         result = runner.invoke(app, ["fetch-query-encoder"])
-        assert result.exit_code == 2
+        assert result.exit_code == 3
         assert "Fetched" in result.output
         assert "onnx/model.onnx" in result.output
+        # what/where/size, not just what/size (E-A5 finding 5): the local
+        # cache path the artefact actually landed at must be printed too.
+        assert "/fake/hf/cache/onnx_model.onnx" in result.output
 
-    def test_offline_skip_exits_three(self, monkeypatch):
+    def test_offline_skip_exits_four(self, monkeypatch):
         monkeypatch.setattr(
             "agent_session_tools.artefact_fetch.fetch_query_encoder_artefact",
             lambda model=None: _fake_result("offline_skip"),
         )
         result = runner.invoke(app, ["fetch-query-encoder"])
-        assert result.exit_code == 3
+        assert result.exit_code == 4
         assert "HF_HUB_OFFLINE" in result.output
 
     def test_verification_failure_exits_one(self, monkeypatch):

@@ -63,13 +63,16 @@ def _install_fake_downloader(
 ) -> None:
     overrides = content_overrides or {}
 
-    def fake_download(repo_id, filename, *, revision, local_files_only):
+    def fake_download(
+        repo_id, filename, *, revision, local_files_only, force_download=False
+    ):
         calls.append(
             {
                 "repo_id": repo_id,
                 "filename": filename,
                 "revision": revision,
                 "local_files_only": local_files_only,
+                "force_download": force_download,
             }
         )
         content = overrides.get(filename, _content_for(filename))
@@ -165,15 +168,114 @@ class TestFetchQueryEncoderArtefact:
     def test_wrong_sha_fixture_fails_verification(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ):
+        # Same length as ONNX_BYTES so this exercises the sha256 check
+        # specifically, not the (now earlier-running) size check.
+        corrupted = bytes(b ^ 0xFF for b in ONNX_BYTES)
+        assert len(corrupted) == len(ONNX_BYTES)
         calls: list[dict[str, Any]] = []
         _install_fake_downloader(
             monkeypatch,
             tmp_path,
             calls,
-            content_overrides={"onnx/model.onnx": b"CORRUPTED not the pinned bytes"},
+            content_overrides={"onnx/model.onnx": corrupted},
         )
         monkeypatch.setattr(
             "huggingface_hub.try_to_load_from_cache", lambda *a, **k: False
+        )
+
+        with pytest.raises(
+            artefact_fetch.ArtefactVerificationError, match="sha256 mismatch"
+        ):
+            artefact_fetch.fetch_query_encoder_artefact(FAKE_MODEL)
+        # Not cached before the call, so the mismatch is a genuine bad
+        # download -- no repair retry, and no second call for that file.
+        onnx_calls = [c for c in calls if c["filename"] == "onnx/model.onnx"]
+        assert len(onnx_calls) == 1
+
+    def test_size_mismatch_is_caught_before_hashing_and_reported_distinctly(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        """A wrong ``onnx_size_bytes`` registry pin must be caught, and
+        reported as a size mismatch rather than silently passing (E-A5
+        finding 7): identical sha256 implies identical length, so the size
+        check has to run BEFORE the hash to ever be reachable at all.
+        """
+        from agent_session_tools import embeddings
+
+        bad_artefact = dict(_fake_artefact())
+        bad_artefact["onnx_size_bytes"] = len(ONNX_BYTES) + 1
+        monkeypatch.setitem(embeddings.ONNX_ARTIFACTS, FAKE_MODEL, bad_artefact)
+
+        calls: list[dict[str, Any]] = []
+        _install_fake_downloader(monkeypatch, tmp_path, calls)
+        monkeypatch.setattr(
+            "huggingface_hub.try_to_load_from_cache", lambda *a, **k: False
+        )
+
+        with pytest.raises(
+            artefact_fetch.ArtefactVerificationError, match="size mismatch"
+        ):
+            artefact_fetch.fetch_query_encoder_artefact(FAKE_MODEL)
+
+    def test_stale_cached_file_with_bad_sha_is_repaired_with_force_download(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        """A cached blob that no longer matches the registry's sha256 (E-A5
+        finding 2) must be repaired, not handed straight back forever:
+        ``hf_hub_download`` without ``force_download`` returns the existing
+        (stale) pointer path, so the fetch must retry once with
+        ``force_download=True`` before giving up.
+        """
+        calls: list[dict[str, Any]] = []
+        corrupted = bytes(b ^ 0xFF for b in ONNX_BYTES)  # same length, wrong content
+
+        def fake_download(
+            repo_id, filename, *, revision, local_files_only, force_download=False
+        ):
+            calls.append({"filename": filename, "force_download": force_download})
+            dest = tmp_path / filename.replace("/", "_")
+            if filename == "onnx/model.onnx" and not force_download:
+                dest.write_bytes(corrupted)
+            else:
+                dest.write_bytes(_content_for(filename))
+            return str(dest)
+
+        monkeypatch.setattr("huggingface_hub.hf_hub_download", fake_download)
+        monkeypatch.setattr(
+            "huggingface_hub.try_to_load_from_cache", lambda *a, **k: "cached-pointer"
+        )
+
+        result = artefact_fetch.fetch_query_encoder_artefact(FAKE_MODEL)
+
+        assert result.status == "fetched"
+        onnx = next(f for f in result.files if f.relpath == "onnx/model.onnx")
+        assert onnx.sha256 == _sha(ONNX_BYTES)
+
+        onnx_calls = [c for c in calls if c["filename"] == "onnx/model.onnx"]
+        assert len(onnx_calls) == 2
+        assert onnx_calls[0]["force_download"] is False
+        assert onnx_calls[1]["force_download"] is True
+
+    def test_stale_cached_file_still_bad_after_retry_raises(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        """If the repair retry ALSO mismatches, that is a genuine
+        supply-chain signal -- raise, don't retry forever."""
+        corrupted = bytes(b ^ 0xFF for b in ONNX_BYTES)
+
+        def fake_download(
+            repo_id, filename, *, revision, local_files_only, force_download=False
+        ):
+            dest = tmp_path / filename.replace("/", "_")
+            content = (
+                corrupted if filename == "onnx/model.onnx" else _content_for(filename)
+            )
+            dest.write_bytes(content)
+            return str(dest)
+
+        monkeypatch.setattr("huggingface_hub.hf_hub_download", fake_download)
+        monkeypatch.setattr(
+            "huggingface_hub.try_to_load_from_cache", lambda *a, **k: "cached-pointer"
         )
 
         with pytest.raises(
@@ -203,6 +305,13 @@ class TestExitCodesDistinguishOutcomes:
         codes = set(artefact_fetch.EXIT_CODES.values())
         assert len(codes) == 3
         assert artefact_fetch.EXIT_CODES["already_cached"] == 0
+
+    def test_no_success_code_collides_with_clicks_reserved_codes(self):
+        # click.UsageError.exit_code == 2 and a hard failure here is 1 --
+        # a success/skip outcome must never be mistaken for either.
+        codes = set(artefact_fetch.EXIT_CODES.values())
+        assert 1 not in codes
+        assert 2 not in codes
 
 
 class TestCheckCachedArtefact:
