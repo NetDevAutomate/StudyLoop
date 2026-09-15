@@ -114,6 +114,92 @@ class TestOnnxConfigured:
         assert result.status == "fail"
         assert result.fix_auto is True
 
+    def test_warn_when_onnx_configured_but_model_has_no_pinned_artefact(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        """A ``query_encoder: onnx`` config paired with a model that has no
+        entry in ``embeddings.ONNX_ARTIFACTS`` (e.g. the default
+        all-mpnet-base-v2) must warn with real remediation, not crash the
+        checker as an unhandled ValueError (E-A5 finding 4)."""
+        from agent_session_tools import query_encoders
+
+        monkeypatch.setattr(query_encoders, "resolve_backend", lambda: "onnx")
+        monkeypatch.setattr(
+            "agent_session_tools.artefact_fetch.resolve_fetch_model",
+            lambda model=None: "all-mpnet-base-v2",
+        )
+
+        def _boom(model=None):
+            raise ValueError("no pinned ONNX artefact for model 'all-mpnet-base-v2'")
+
+        monkeypatch.setattr("agent_session_tools.artefact_fetch.check_cached_artefact", _boom)
+        from studyloop.doctor.query_encoder import check_query_encoder_artefact
+
+        (result,) = check_query_encoder_artefact()
+        assert result.status == "warn"
+        assert result.fix_auto is False
+        assert "all-mpnet-base-v2" in result.message
+        assert "Report this bug" not in result.message
+
+
+class TestAutoBackendConcretisesPerModel:
+    """Reconciles this check with wave-1's ``auto`` backend (council finding
+    A5-1): ``BACKEND_AUTO``/``_concretise`` do not exist on this lane's base
+    ref yet, so these tests add them via monkeypatch to prove the check
+    reconciles automatically once that lane lands, instead of comparing the
+    un-concretised backend string against ``onnx`` and going silent on
+    exactly the shipped-default configuration this lane exists to protect.
+    """
+
+    def test_auto_concretising_to_onnx_for_this_model_is_checked(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        from agent_session_tools import query_encoders
+        from agent_session_tools.artefact_fetch import FETCH_COMMAND, CacheCheck
+
+        monkeypatch.setattr(query_encoders, "resolve_backend", lambda: "auto")
+        monkeypatch.setattr(
+            query_encoders, "_concretise", lambda model, backend: "onnx", raising=False
+        )
+        monkeypatch.setattr(
+            "agent_session_tools.artefact_fetch.resolve_fetch_model",
+            lambda model=None: "bge-small-en-v1.5",
+        )
+        monkeypatch.setattr(
+            "agent_session_tools.artefact_fetch.check_cached_artefact",
+            lambda model=None: CacheCheck(
+                model="bge-small-en-v1.5",
+                hf_name="BAAI/bge-small-en-v1.5",
+                revision="5c38ec7",
+                status="warn",
+                detail="not cached: onnx/model.onnx",
+            ),
+        )
+        from studyloop.doctor.query_encoder import check_query_encoder_artefact
+
+        (result,) = check_query_encoder_artefact()
+        assert result.status == "warn"
+        assert result.fix_auto is True
+        assert FETCH_COMMAND in result.fix_hint
+
+    def test_auto_concretising_to_torch_for_this_model_is_info(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        from agent_session_tools import query_encoders
+
+        monkeypatch.setattr(query_encoders, "resolve_backend", lambda: "auto")
+        monkeypatch.setattr(
+            query_encoders, "_concretise", lambda model, backend: "torch", raising=False
+        )
+        monkeypatch.setattr(
+            "agent_session_tools.artefact_fetch.resolve_fetch_model",
+            lambda model=None: "all-mpnet-base-v2",
+        )
+        from studyloop.doctor.query_encoder import check_query_encoder_artefact
+
+        (result,) = check_query_encoder_artefact()
+        assert result.status == "info"
+
 
 class TestDoctorFixInvokesTheFetch:
     def test_apply_fixes_calls_fetch_query_encoder_artefact(self, monkeypatch: pytest.MonkeyPatch):
