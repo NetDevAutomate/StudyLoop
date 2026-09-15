@@ -72,6 +72,29 @@ class TestSurfaceRegistry:
             retrieval.resolve_mode(surface="vibes")
 
 
+class TestTheFlip:
+    """THE FLIP (council REC-2): the final, single, clearly-labelled commit.
+
+    Pinned here rather than in ``TestSurfaceRegistry`` above so dropping just
+    that one commit (and this test with it) leaves every earlier commit's
+    suite green on its own -- these are the only assertions in the whole
+    lane that depend on which mode is the current default.
+    """
+
+    def test_cli_stays_lexical(self) -> None:
+        assert (
+            retrieval.SURFACE_DEFAULTS[retrieval.SURFACE_CLI] == retrieval.MODE_LEXICAL
+        )
+
+    def test_mcp_and_web_default_to_hybrid(self) -> None:
+        assert (
+            retrieval.SURFACE_DEFAULTS[retrieval.SURFACE_MCP] == retrieval.MODE_HYBRID
+        )
+        assert (
+            retrieval.SURFACE_DEFAULTS[retrieval.SURFACE_WEB] == retrieval.MODE_HYBRID
+        )
+
+
 class TestTriStateTruthTable:
     """Council D-1's truth table: arg > env > explicit file > surface default."""
 
