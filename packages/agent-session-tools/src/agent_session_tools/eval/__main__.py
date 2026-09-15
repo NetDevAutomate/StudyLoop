@@ -102,6 +102,28 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _format_comparison(pair: str, stats: dict) -> str:
+    """One console line per comparison, speaking BOTH receipt shapes.
+
+    Delta comparisons carry a ``ci95`` pair; the K non-inferiority entry
+    carries ``ci95_upper``/``upper_at_least_zero`` instead (Stage 4 addendum,
+    astra 5 / kimi 1). The 2026-09-15 SEALED run proved the printer must
+    never assume one shape: it crashed AFTER the receipt was written, on the
+    first two-arm run that reached the K entry.
+    """
+    if "ci95" in stats:
+        low, high = stats["ci95"]
+        return (
+            f"{pair:>16}  delta macro {stats['point']:+.4f}"
+            f"  CI95 [{low:+.4f}, {high:+.4f}]  established={stats['established']}"
+        )
+    return (
+        f"{pair:>16}  delta {stats.get('stratum', '?')} {stats['point']:+.4f}"
+        f"  CI95 upper {stats['ci95_upper']:+.4f}"
+        f"  upper_at_least_zero={stats['upper_at_least_zero']}"
+    )
+
+
 def _run_gold(args: argparse.Namespace) -> int:
     db_path = Path(args.db).expanduser()
     if not db_path.exists():
@@ -152,11 +174,7 @@ def _run_gold(args: argparse.Namespace) -> int:
             f"  p50 {result.latency_ms['p50']:.1f} ms  p95 {result.latency_ms['p95']:.1f} ms"
         )
     for pair, stats in comparisons.items():
-        low, high = stats["ci95"]
-        print(
-            f"{pair:>16}  delta macro {stats['point']:+.4f}"
-            f"  CI95 [{low:+.4f}, {high:+.4f}]  established={stats['established']}"
-        )
+        print(_format_comparison(pair, stats))
     print(f"metrics_sha256 {receipt['metrics_sha256']}")
     print(f"receipt -> {out}")
     return 0

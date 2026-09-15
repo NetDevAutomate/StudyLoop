@@ -187,3 +187,39 @@ class TestScoreArm:
         )
         assert score_arm(arm, ITEMS, 5).per_item["i1"].hit == 0
         assert score_arm(arm, ITEMS, 6).per_item["i1"].hit == 1
+
+
+class TestComparisonLineFormatting:
+    """The 2026-09-15 SEALED run crashed the PRINTER (KeyError: 'ci95') after
+    the receipt was safely written: the K non-inferiority comparison carries
+    the corrected ``ci95_upper``/``upper_at_least_zero`` shape (Stage 4
+    addendum, astra 5 / kimi 1), not a ``ci95`` pair. The formatter must
+    speak both shapes; a receipt should never need a working printer.
+    """
+
+    def test_a_delta_comparison_formats_with_its_ci95_pair(self):
+        from agent_session_tools.eval.__main__ import _format_comparison
+
+        line = _format_comparison(
+            "hybrid_vs_mcp",
+            {"point": 0.0146, "ci95": [-0.0452, 0.0848], "established": False},
+        )
+        assert "hybrid_vs_mcp" in line
+        assert "+0.0146" in line and "-0.0452" in line and "established=False" in line
+
+    def test_a_non_inferiority_comparison_formats_without_ci95(self):
+        from agent_session_tools.eval.__main__ import _format_comparison
+
+        line = _format_comparison(
+            "hybrid_vs_mcp_K",
+            {
+                "point": 0.0417,
+                "ci95_upper": 0.2083,
+                "upper_at_least_zero": True,
+                "stratum": "K",
+                "margin": 0.0,
+            },
+        )
+        assert "hybrid_vs_mcp_K" in line
+        assert "upper" in line and "+0.2083" in line
+        assert "upper_at_least_zero=True" in line
