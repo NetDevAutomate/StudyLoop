@@ -145,19 +145,37 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
             body: The record's body, as Markdown prose.
             status: Record status (default "active").
         """
-        from studyloop.planning import record_learning
-        from studyloop.planning.store import InvalidPlanIdError, PlanNotFoundError
+        from studyloop.planning import (
+            LearningRecordSpec,
+            PlanApplication,
+            PlanError,
+            PlanNotReady,
+            RevisePlan,
+        )
 
+        # One RevisePlan through the seam: the store's single learning-record
+        # rule and the resulting-document gate both apply, and every refusal is
+        # a domain error mapped here — a not-ready plan names its blockers so
+        # the agent can tell the learner what to fix (design §2).
+        spec = LearningRecordSpec(title=title, body=body, status=status)
+        plans = PlanApplication()
         try:
-            record, created = record_learning(plan_id, title, body=body, status=status)
-        except (PlanNotFoundError, InvalidPlanIdError, ValueError) as exc:
+            before = plans.inspect(plan_id)
+            detail = plans.apply(RevisePlan(plan_id=plan_id, learning_record=spec))
+        except PlanNotReady as exc:
+            blockers = "; ".join(exc.readiness.blockers)
+            raise ToolError(f"{exc}: {blockers}") from exc
+        except PlanError as exc:
             raise ToolError(str(exc)) from exc
+        record = detail.learning_record_matching(spec)
+        if record is None:  # pragma: no cover - the seam just appended or matched it
+            raise ToolError(f"learning record {spec.title!r} was not persisted on {plan_id!r}")
         return {
-            "plan_id": plan_id,
+            "plan_id": detail.summary.plan_id,
             "number": record.number,
             "title": record.title,
             "status": record.status,
-            "created": created,
+            "created": before.learning_record_matching(spec) is None,
         }
 
     @tool()
