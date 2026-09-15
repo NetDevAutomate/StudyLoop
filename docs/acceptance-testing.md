@@ -191,13 +191,102 @@ that does not include `kiro` (e.g. `just testacc codex`) named-skips it
 before a scratch env or a browser context is ever built, so a run never
 starts a real, billed Kiro session it was not asked to select.
 
-The CLI/tmux path (all six harnesses, not just Kiro-over-web) is a later
-lane's job, tracked as the harness × surface × transport coverage matrix.
-This lane's validators are mechanical (a real session started, real turns
-were answered, the session ended without a crash) rather than DB-row-level
-(topic/struggle rows, `session_search` id-set membership, a written
-wind-down record) — those validators depend on the session-memory schema a
-later lane wires into the acceptance tier's evidence writer.
+The CLI/tmux path (all six harnesses, not just Kiro-over-web) is
+`tests/acceptance/test_harness_matrix_live.py`, described in "The CLI/tmux
+harness matrix" below. This lane's validators are mechanical (a real
+session started, real turns were answered, the session ended without a
+crash) rather than DB-row-level (topic/struggle rows, `session_search`
+id-set membership, a written wind-down record) — those validators depend on
+the session-memory schema and B4's evidence-writer wiring; see "Coverage
+inventory" below for the exact tracked exclusion.
+
+## The CLI/tmux harness matrix (all six harnesses)
+
+`tests/acceptance/test_harness_matrix_live.py` extends the Kiro-over-web
+proof above to every `RELEASE_HARNESSES` member over the CLI/tmux surface —
+`E-B8` is where all six harnesses actually launch, not only Kiro. Coverage
+is published as a **matrix** (harness × surface × transport), never a
+single green check per harness (council D-19): see "Coverage inventory"
+below.
+
+For each harness, `STUDYLOOP_ACC=1 just testacc <harness>` drives
+`studyloop study --agent <harness>` for real, under the same scratch-env +
+tmux-socket isolation the rest of this document describes, then sends the
+scripted turns and ends the session. Order matters and is fixed, not
+alphabetical: `codex` and `claude` first (highest real usage), then `kiro`
+over tmux (its web-ACP coverage above does not certify the CLI path), then
+the three PREVIEW harnesses `opencode`, `pi`, `grok` — never a blocker on
+the CORE three. `HARNESS_ORDER` in the test module is a literal re-ordering
+of `RELEASE_HARNESSES`, verified by a structural test rather than left free
+to drift.
+
+### Turn delivery and the budget guard
+
+`tests/harness/drive.py`'s `PaneDriver` sends one scripted turn at a time to
+the mentor's tmux pane and waits for a **reply** — not merely for the pane
+to change, which a keystroke echo alone would satisfy — by requiring the
+non-blank line count to grow past what a single echoed prompt line would
+already account for. Every turn is budget-guarded two ways: a per-turn
+timeout and a total max-turns ceiling (grok F9), so a runaway harness (a
+hang, a silent failure, an auth prompt nothing answers) is cut off as
+`TurnBudgetExceededError` rather than hanging the run. Unit-tested in
+`tests/test_harness_drive.py` against a scripted `sh` "harness" — never a
+real coding-agent binary — including the runaway-harness cutoff case.
+
+### Availability probes (per-harness quirks as fixtures)
+
+Every harness gets a **named skip** when its binary is missing (D-13). Only
+`kiro` has a verified, side-effect-free "authenticated under THIS scratch
+HOME" probe (`kiro-cli whoami`, the same check the web-ACP lane above uses);
+the other five fall back to a presence-only check — see "Coverage
+inventory" for why that is a tracked exclusion rather than a silently
+weaker guarantee. Probes live in a `PROBES` dict keyed by harness name, not
+an `if`/`elif` chain inside the test body, so adding a real probe for a
+sixth harness is a one-line addition, not a body rewrite.
+
+### Evidence (minimal, pending B4)
+
+Every driven run writes a small evidence bundle via
+`tests/acceptance/evidence.py`: a `manifest.json` (run id, harness, actor,
+outcome, turn count) plus a `turns.json` capturing each turn's prompt, pane
+output, and elapsed time — pane text is **evidence attached to the bundle**,
+never itself an assertion target (D-17). This is deliberately the
+*narrowest* bundle this lane's own validators need, not B4's full schema
+(durable evidence root resolved before scratch substitution, repo sha,
+rubric hash, file inventory with sha256s, …) — the field names
+(`run_id`/`harness`/`actor`/`outcome`) are chosen to match a subset of B4's
+described schema, so migrating callers to B4's real writer is a rename, not
+a rewrite.
+
+### Coverage inventory
+
+| Feature | web (ACP) | CLI/tmux |
+| --- | --- | --- |
+| kiro | ✅ `test_kiro_web_acp_lane.py` (mechanical validators) | ✅ `test_harness_matrix_live.py` (mechanical validators; verified auth probe) |
+| codex | — (not a web-ACP surface) | ✅ `test_harness_matrix_live.py` (mechanical validators; presence-only probe) |
+| claude | — (not a web-ACP surface) | ✅ `test_harness_matrix_live.py` (mechanical validators; presence-only probe) |
+| opencode (PREVIEW) | — | ✅ `test_harness_matrix_live.py` (mechanical validators; presence-only probe) |
+| pi (PREVIEW) | — | ✅ `test_harness_matrix_live.py` (mechanical validators; presence-only probe) |
+| grok (PREVIEW) | — | ✅ `test_harness_matrix_live.py` (mechanical validators; presence-only probe) |
+
+Tracked exclusions (named here, not silently absent):
+
+- **DB-row-level validators** (topic/struggle rows, `session_search`
+  id-set membership, a written wind-down record) are not implemented in
+  either lane above. That schema belongs to the session-memory subsystem;
+  wiring validators through it, and through B4's full evidence writer, is
+  B4's job.
+- **Per-harness authenticated-availability probes**: only `kiro` has one.
+  The other five harnesses fall back to binary-presence-only, so a present
+  but unauthenticated binary surfaces as a live-run **failure** (budget
+  cutoff via `TurnBudgetExceededError`), not a named skip, until each gets
+  its own probe.
+- **The durable evidence root**: `tests/acceptance/evidence.py` writes
+  under whatever root its caller passes (the test's own `tmp_path`), not
+  B4's durable, pre-scratch-substitution root.
+- **`grok`-over-ACP**: an optional follow-up per this lane's own council
+  amendment, never a blocker on the CORE three or the other two PREVIEW
+  harnesses.
 
 ## Rules that keep the tier honest
 
