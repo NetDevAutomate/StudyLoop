@@ -564,6 +564,8 @@ session-maint sync-full|snapshot|prune    # Full-DB sync, snapshot, verified pru
 session-maint embed [--model NAME] [--budget-seconds N] [--batch-size N] [--replace-model]
                                           # Embed the backlog (doctor's embeddings_alignment remediation)
 session-maint embed-check [--fix]        # Audit/repair message_embeddings alignment
+session-maint fetch-query-encoder [--model NAME]
+                                          # Fetch + verify the pinned ONNX query-encoder artefact
 session-context SESSION_ID               # Token-efficient excerpt for a session
 tutor-checkpoint                         # Structured teach-back checkpoint tool
 session-db-mcp                           # MCP server (stdio) for the session tools above

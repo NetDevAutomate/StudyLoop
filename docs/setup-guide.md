@@ -542,6 +542,15 @@ Embed the backlog with `session-maint embed` (`--model`, `--budget-seconds`,
 embed-check [--fix]`; `studyloop doctor` reports the same state as
 `embeddings_alignment`.
 
+If `query_encoder` resolves to `onnx` (the fast query-side path, `auto` or
+an explicit `onnx`), the query encoder also needs its own pinned artefact
+(`onnx/model.onnx` + tokenizer files) in the local Hugging Face cache.
+Nothing fetches it implicitly — not a search, not the SessionEnd export
+hook — because a query must never trigger a download. Fetch and verify it
+once with `session-maint fetch-query-encoder [--model NAME]`;
+`studyloop doctor` reports the same state as `query_encoder_artefact` and
+`doctor --fix` runs the fetch for you.
+
 Environment variable overrides:
 - `DATABASE_PATH` — override database location
 - `LOG_LEVEL` — set logging level (DEBUG, INFO, WARNING, ERROR)

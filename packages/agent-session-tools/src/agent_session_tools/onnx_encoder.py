@@ -30,6 +30,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
+from .artefact_fetch import FETCH_COMMAND
 from .embedding_store import INSTALL_HINT
 
 
@@ -121,7 +122,7 @@ def _load_tokenizer(hf_name: str, revision: str, *, local_files_only: bool) -> A
     except Exception as exc:
         raise RuntimeError(
             f"tokenizer for {hf_name}@{revision} is not in the local Hugging Face "
-            "cache; run the install/doctor/backfill path to fetch it once "
+            f"cache; run `{FETCH_COMMAND}` to fetch it once "
             f"(never mid-search): {type(exc).__name__}: {exc}"
         ) from exc
     return _RustTokenizer(Tokenizer.from_file(path))
@@ -149,7 +150,7 @@ def _load_session(
     except Exception as exc:
         raise RuntimeError(
             f"onnx artefact {hf_name}/{relpath}@{revision} is not in the local "
-            "Hugging Face cache; run the install/doctor/backfill path to fetch "
+            f"Hugging Face cache; run `{FETCH_COMMAND}` to fetch "
             f"it once (never mid-search): {type(exc).__name__}: {exc}"
         ) from exc
     return onnxruntime.InferenceSession(path, providers=["CPUExecutionProvider"])
