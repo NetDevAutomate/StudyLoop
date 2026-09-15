@@ -13,6 +13,7 @@ See docs/acceptance-testing.md for the tiers table and every env var.
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
 import tomllib
@@ -91,15 +92,108 @@ class TestGateSkipReason:
 
 
 class TestNightlyWorkflowNeverOptsIn:
+    def test_nightly_uat_workflow_is_the_one_this_guard_names(self) -> None:
+        """Non-vacuity floor: if ``nightly-uat.yml`` is ever renamed, the
+        ``nightly-*.yml`` glob below silently stops covering the exact file
+        D-24 names, and the parametrized scan degrades to an empty-parameter
+        skip instead of a failure -- the guard would have disappeared with
+        nothing telling anyone. Mirrors test_port_uniqueness.py's
+        ``test_the_scan_actually_finds_the_ports``."""
+        names = {p.name for p in (REPO_ROOT / ".github" / "workflows").glob("nightly-*.yml")}
+        assert "nightly-uat.yml" in names, (
+            f"nightly-uat.yml not found among {sorted(names)}; the D-24 guard "
+            "below would silently stop covering it"
+        )
+
     @pytest.mark.parametrize(
         "workflow",
-        sorted((REPO_ROOT / ".github" / "workflows").glob("nightly-*.yml")),
+        sorted((REPO_ROOT / ".github" / "workflows").glob("*.yml")),
         ids=lambda p: p.name,
     )
     def test_no_acceptance_or_uat_opt_in(self, workflow: Path) -> None:
+        """Every workflow, not just nightly-*: ci.yml is the workflow that
+        actually runs pytest and is the likelier place a future
+        STUDYLOOP_ACC=1 would land -- a scan limited to nightly-* never
+        covers it."""
         text = workflow.read_text()
         assert "STUDYLOOP_ACC" not in text, f"{workflow} sets/references STUDYLOOP_ACC"
         assert "STUDYLOOP_UAT" not in text, f"{workflow} sets/references STUDYLOOP_UAT"
+
+
+# ---------------------------------------------------------------------------
+# tests/acceptance/uat/ is reserved for the UAT tier (D-13): a plain
+# testacc-shaped invocation must never collect it, even once B4 lands real
+# tests there.
+# ---------------------------------------------------------------------------
+
+
+class TestUatSubtreeReservedButNeverCollectedByPlainTestacc:
+    def test_uat_subtree_is_ignored_by_the_testacc_shape(self) -> None:
+        uat_dir = ACCEPTANCE_DIR / "uat"
+        receipt = uat_dir / "test_zzz_ignore_receipt.py"
+        receipt.write_text(
+            "import pytest\n\n"
+            "pytestmark = [pytest.mark.acceptance]\n\n\n"
+            "def test_would_be_collected_if_the_ignore_flag_ever_broke():\n"
+            "    assert True\n",
+            encoding="utf-8",
+        )
+        try:
+            ignored = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "pytest",
+                    "-p",
+                    "no:cacheprovider",
+                    "-m",
+                    "acceptance",
+                    "--collect-only",
+                    "-q",
+                    f"--ignore={uat_dir}",
+                    str(ACCEPTANCE_DIR),
+                ],
+                cwd=STUDYLOOP_PKG_DIR,
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+            assert "zzz_ignore_receipt" not in ignored.stdout, ignored.stdout[-4000:]
+
+            # Sanity: without the ignore flag the same receipt WOULD be
+            # collected -- proves the assertion above tests the flag itself,
+            # not an accident of an otherwise-empty uat/ directory.
+            unignored = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "pytest",
+                    "-p",
+                    "no:cacheprovider",
+                    "-m",
+                    "acceptance",
+                    "--collect-only",
+                    "-q",
+                    str(ACCEPTANCE_DIR),
+                ],
+                cwd=STUDYLOOP_PKG_DIR,
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+            assert "zzz_ignore_receipt" in unignored.stdout, unignored.stdout[-4000:]
+        finally:
+            receipt.unlink(missing_ok=True)
+
+    def test_testacc_recipe_ignores_the_uat_subtree(self) -> None:
+        """The Justfile's `testacc` recipe body itself must carry the
+        --ignore flag -- the test above proves the flag WORKS; this proves
+        it is actually wired into the recipe a contributor runs."""
+        justfile = (REPO_ROOT / "Justfile").read_text(encoding="utf-8")
+        recipe_start = justfile.index("\ntestacc ")
+        recipe_end = justfile.index("\n\n", recipe_start)
+        recipe_body = justfile[recipe_start:recipe_end]
+        assert "--ignore" in recipe_body and "acceptance/uat" in recipe_body, recipe_body
 
 
 # ---------------------------------------------------------------------------
@@ -107,6 +201,7 @@ class TestNightlyWorkflowNeverOptsIn:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skipif(shutil.which("just") is None, reason="just not on PATH")
 class TestJustRecipeArgumentSyntax:
     def test_positional_args_substitute(self) -> None:
         result = subprocess.run(

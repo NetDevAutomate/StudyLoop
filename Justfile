@@ -120,7 +120,8 @@ test-semantic:
 # the default the gate itself applies when the var is unset (O-7/D-23).
 testacc HARNESS="" ACTOR="scripted" TESTS="packages/studyloop/tests/acceptance/":
     STUDYLOOP_ACC=1 STUDYLOOP_ACC_HARNESS="{{HARNESS}}" STUDYLOOP_ACC_ACTOR="{{ACTOR}}" \
-        uv run --group dev pytest -m acceptance {{TESTS}}
+        uv run --group dev pytest -m acceptance \
+        --ignore=packages/studyloop/tests/acceptance/uat {{TESTS}}
 
 lint:
     uv run --group dev ruff check .
