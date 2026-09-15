@@ -6,7 +6,7 @@ Course Explorer already uses), so the plan renders as a proper document rather
 than a bespoke widget.
 
 Write paths are deliberately narrow: create from an interview payload, patch
-metadata/milestones, toggle one milestone, and run an evaluation checkpoint.
+metadata/milestones, set one milestone, run an evaluation checkpoint, delete.
 Free-form Markdown replacement is allowed but validated by re-parsing, so a
 malformed body is rejected instead of corrupting a plan.
 
@@ -14,12 +14,12 @@ Policy lives in :class:`~studyloop.planning.PlanApplication`, not here. Every
 path that can make a plan active — create-with-status, document import,
 whole-document replacement, status transition, and any in-place revision of a
 plan that is or becomes active — goes through ``apply`` and is refused by the
-same readiness gate with the same 422 body. This module only maps domain
-errors to status codes (design §2); it holds no rule of its own.
-
-Still on direct storage imports until Phase 2 moves them onto the seam:
-evaluation (``AssessPlan``), the milestone toggle (``SetMilestone``) and
-delete (``DeletePlan``).
+same readiness gate with the same 422 body. Evaluation goes through ``assess``
+and reports both recording sinks; the milestone checkbox is an idempotent
+``SetMilestone``; ``DELETE`` is a confirmed ``DeletePlan`` — the HTTP verb is
+the confirmation this route contract has always had. This module only maps
+domain errors to status codes (design §2) and translates bodies; it holds no
+rule of its own and imports no storage module (D-6).
 """
 
 from __future__ import annotations
@@ -31,9 +31,11 @@ from fastapi import APIRouter, Body, HTTPException, Query
 from fastapi.responses import PlainTextResponse
 
 from studyloop.planning import (
-    CHECKPOINT_PHASES,
     PLAN_STATUSES,
+    AssessmentResult,
+    AssessPlan,
     CreatePlan,
+    DeletePlan,
     ImportDocument,
     InvalidField,
     InvalidMilestone,
@@ -48,14 +50,7 @@ from studyloop.planning import (
     PlanNotReady,
     ReplaceDocument,
     RevisePlan,
-    evaluate_and_record,
-    evaluate_plan,
-    load_plan,
-)
-from studyloop.planning.store import (
-    InvalidPlanIdError,
-    PlanNotFoundError,
-    delete_plan,
+    SetMilestone,
 )
 
 logger = logging.getLogger(__name__)
@@ -105,6 +100,13 @@ def _apply(intent: PlanDetailIntent) -> PlanDetail:
         raise _http_error(exc) from exc
 
 
+def _assess(intent: AssessPlan) -> AssessmentResult:
+    try:
+        return _application().assess(intent)
+    except PlanError as exc:
+        raise _http_error(exc) from exc
+
+
 def _written(detail: PlanDetail, **flags: bool) -> dict[str, Any]:
     """The body every successful write returns: a flag, the summary, readiness."""
     return {
@@ -112,16 +114,6 @@ def _written(detail: PlanDetail, **flags: bool) -> dict[str, Any]:
         "plan": detail.summary.to_json_dict(),
         "readiness": detail.readiness.to_json_dict(),
     }
-
-
-def _load_or_404(plan_id: str):
-    """Load the mutable model for the paths that Phase 2 has not migrated yet."""
-    try:
-        return load_plan(plan_id)
-    except PlanNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except InvalidPlanIdError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 # ---------------------------------------------------------------------------
@@ -186,29 +178,35 @@ def preview_evaluation(
     phase: str = Query("start", pattern="^(start|mid|end)$"),
 ) -> dict:
     """Evaluate without recording — safe to poll from the UI."""
-    plan = _load_or_404(plan_id)
-    evaluation = evaluate_plan(plan, phase)
-    return {"evaluation": evaluation.to_dict(), "markdown": evaluation.as_markdown()}
+    result = _assess(AssessPlan(plan_id=plan_id, phase=phase, record=False))
+    return {"evaluation": result.evaluation.to_json_dict(), "markdown": result.evaluation.markdown}
 
 
 @router.post("/plans/{plan_id}/evaluate", status_code=201)
 def record_evaluation(plan_id: str, payload: Annotated[dict | None, Body()] = None) -> dict:
-    """Run and record a checkpoint (DB log + appended to the plan document)."""
+    """Run and record a checkpoint (DB log + appended to the plan document).
+
+    ``recorded`` is honest: ``true`` only when every requested sink was saved.
+    The two sinks are reported individually so a client can tell "the plan
+    document has the row but the database does not" from the reverse, instead
+    of reading a bare ``true`` that Bug B (issue #7) showed could be a lie.
+    """
     payload = payload or {}
-    phase = str(payload.get("phase", "start")).strip().lower()
-    if phase not in CHECKPOINT_PHASES:
-        raise HTTPException(status_code=400, detail=f"phase must be one of {CHECKPOINT_PHASES}")
-    plan = _load_or_404(plan_id)
-    evaluation = evaluate_and_record(
-        plan,
-        phase,
-        study_id=str(payload.get("study_id", "")).strip(),
-        append_to_plan=bool(payload.get("append_to_plan", True)),
+    result = _assess(
+        AssessPlan(
+            plan_id=plan_id,
+            phase=str(payload.get("phase", "start")),
+            study_id=str(payload.get("study_id", "")),
+            record=True,
+            append_to_plan=bool(payload.get("append_to_plan", True)),
+        )
     )
     return {
-        "recorded": True,
-        "evaluation": evaluation.to_dict(),
-        "markdown": evaluation.as_markdown(),
+        "recorded": result.recording_complete,
+        "db_write": result.db_write,
+        "document_write": result.document_write,
+        "evaluation": result.evaluation.to_json_dict(),
+        "markdown": result.evaluation.markdown,
     }
 
 
@@ -281,23 +279,14 @@ def patch_plan(plan_id: str, payload: Annotated[dict, Body()]) -> dict:
 def toggle_milestone(plan_id: str, index: int) -> dict:
     """Flip one milestone's done state — the checkbox in the plan view.
 
-    Expressed as a full-list ``RevisePlan`` until Phase 2 ships the idempotent
-    ``SetMilestone`` intent, so the write goes through the seam's gate rather
-    than a route-side store write.
+    The route reads the current state and asks the seam to *set* its
+    opposite: ``SetMilestone`` is idempotent, so a retried request cannot
+    flip the box twice, and the index check is the seam's — an index the plan
+    does not have is ``InvalidMilestone`` (404), never a route-side rule.
     """
-    detail = _inspect(plan_id)
-    if index < 0 or index >= len(detail.milestones):
-        raise HTTPException(status_code=404, detail=f"no milestone at index {index}")
-    milestones = [
-        {
-            "title": milestone.title,
-            "done": (not milestone.done) if milestone.index == index else milestone.done,
-            "concepts": list(milestone.concepts),
-            "notes": milestone.notes,
-        }
-        for milestone in detail.milestones
-    ]
-    updated = _apply(RevisePlan(plan_id=plan_id, milestones=milestones))
+    current = _inspect(plan_id)
+    already_done = any(m.index == index and m.done for m in current.milestones)
+    updated = _apply(SetMilestone(plan_id=plan_id, index=index, done=not already_done))
     return {
         "updated": True,
         "index": index,
@@ -308,11 +297,14 @@ def toggle_milestone(plan_id: str, index: int) -> dict:
 
 @router.delete("/plans/{plan_id}")
 def remove_plan(plan_id: str) -> dict:
-    """Delete a plan document. Checkpoint history is intentionally retained."""
+    """Delete a plan document. Checkpoint history is intentionally retained.
+
+    The ``DELETE`` verb is the confirmation this route has always required, so
+    the intent is applied confirmed; the seam still refuses an unknown id
+    (404) or a malformed one (400) before anything is removed.
+    """
     try:
-        deleted = delete_plan(plan_id)
-    except InvalidPlanIdError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    if not deleted:
-        raise HTTPException(status_code=404, detail=f"no study plan with id {plan_id!r}")
-    return {"deleted": True, "plan_id": plan_id}
+        result = _application().apply(DeletePlan(plan_id=plan_id, confirmed=True))
+    except PlanError as exc:
+        raise _http_error(exc) from exc
+    return result.to_json_dict()
