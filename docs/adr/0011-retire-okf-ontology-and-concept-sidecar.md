@@ -6,8 +6,8 @@
 the branch ADR *0011-claim-centric-learning-memory* on `feat/knowledge-proof` (marked RETIRED there;
 its claim-centric learning-memory decision itself stands and will be renumbered when merged).
 [Superseded 2026-09-15: that decision was never merged and will not be. Decision: close PR #19 and
-tag tip `464a8cdc` as `archive/feat-knowledge-proof-2026-09-15`. Execution pending; recorded here
-when command output establishes it. See *Disposition after semantic-layer completion* below. The
+tag tip `464a8cdc` as `archive/feat-knowledge-proof-2026-09-15`. Executed 2026-09-15: PR #19 CLOSED at 2026-09-15T22:48:27Z;
+tag pushed, resolving to `464a8cdc3d95`. See *Disposition after semantic-layer completion* below. The
 sentence is kept as written.]
 
 ## Context
@@ -131,9 +131,12 @@ that no longer hold are marked superseded in place, and this section records wha
    it.
 
 4. **Branch disposition.** Decision: close PR #19 and tag tip `464a8cdc` as
-   `archive/feat-knowledge-proof-2026-09-15`. Execution pending; recorded here when command output
-   establishes it (`gh pr view 19 --json state,closedAt` reporting `CLOSED`, and
-   `git rev-parse 'archive/feat-knowledge-proof-2026-09-15^{commit}'` resolving to `464a8cdc…`).
+   `archive/feat-knowledge-proof-2026-09-15`. **Executed 2026-09-15**, command output:
+   `gh pr view 19 --json state,closedAt` → `CLOSED at 2026-09-15T22:48:27Z`; the disposition comment is on the PR;
+   `git rev-parse 'archive/feat-knowledge-proof-2026-09-15^{commit}'` → `464a8cdc3d95b7221dd35de1c0cdcc0a339f46c9`
+   (tag pushed). The remote branch `feat/knowledge-proof` remains until the repository ruleset
+   ("Default": deletion + non-fast-forward blocked on all branches, no bypass actors) is relaxed
+   by the owner; its tip is the tagged commit, so nothing is unreachable meanwhile.
    Once tagged, the branch's primary receipts (Stage F, the claims-layer gate results cited in
    *Context*) stay reachable via that tag. Nothing from the branch is to be deleted from history.
    *(Reworded 2026-09-15 after council review: an earlier wording stated the closure and the tag as
