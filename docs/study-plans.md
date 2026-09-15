@@ -71,6 +71,18 @@ Milestone checkboxes update the Markdown plan itself. Activation is refused when
 the plan has no mission, success criteria, or milestones, because an empty active
 plan would create noise rather than direction.
 
+## Activation
+
+A plan becomes **active** only once it can be evaluated: it needs a mission
+*why*, at least one success criterion, and at least one milestone. That check
+runs on every route into the active state — creating a plan as active, changing
+its status, replacing its whole document, or importing a document whose
+frontmatter already says `active` — and it is the same check whichever surface
+you use. The Web UI answers a refusal with the list of blockers; the CLI prints
+the same list and exits non-zero. Nothing is written when activation is refused,
+so a plan never appears active while it cannot be tracked. More than one plan can
+be active at a time.
+
 ## Build a plan with the study-plan-architect
 
 Instead of filling in the form yourself, be interviewed. The

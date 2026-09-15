@@ -18,7 +18,7 @@ Branch: `fix/plan-integration-bugs` (RED at `3a4f6b01`). §5 stream: `feat/lexic
 
 ## Phase 1 — #8 seam + Bug A (D-2, D-3, D-4) · owner: agent A · files: `planning/{errors,views,intents,application}.py`, `planning/__init__.py`, `cli/_plan.py`, `web/routes/plans.py`, new tests, specs, docs
 
-- [ ] **T1.1** RED `tests/test_plan_application.py`: `test_browse_filters_by_status_deterministically`,
+- [x] **T1.1** (`fd385cd7`) RED `tests/test_plan_application.py`: `test_browse_filters_by_status_deterministically`,
       `test_inspect_unknown_id_raises_plan_not_found`, `test_create_unready_active_raises_plan_not_ready`,
       `test_transition_unready_to_active_raises_plan_not_ready`,
       `test_replace_unready_active_document_raises_and_does_not_persist`,
@@ -26,19 +26,19 @@ Branch: `fix/plan-integration-bugs` (RED at `3a4f6b01`). §5 stream: `feat/lexic
       `test_multiple_ready_active_plans_are_valid`, `test_create_duplicate_id_without_overwrite_raises_conflict`,
       `test_prepare_planning_returns_interview_seed_and_summaries`, `test_views_are_immutable_and_json_fresh`.
       DoD: the module imports fail or the tests fail on `3a4f6b01`; committed as `test(planning): RED …`.
-- [ ] **T1.2** Implement `errors.py`, `views.py`, `intents.py` (`CreatePlan`, `ReplaceDocument`,
+- [x] **T1.2** (`c113983c`) Implement `errors.py`, `views.py`, `intents.py` (`CreatePlan`, `ReplaceDocument`,
       `TransitionLifecycle` only), `application.py` (`browse`, `inspect`, `prepare_planning`, `apply` for
       those three intents). Re-export views/intents/errors from `planning/__init__.py`.
       DoD: T1.1 green; `uv run --group dev pyright packages/studyloop/src/studyloop/planning` → 0 errors.
-- [ ] **T1.3** Migrate `web/routes/plans.py` list/detail/create/PATCH-status/PATCH-markdown to the seam;
+- [x] **T1.3** (`e16340ca`) Migrate `web/routes/plans.py` list/detail/create/PATCH-status/PATCH-markdown to the seam;
       delete the route-local readiness gate; map errors per design §2.
       DoD: `pytest packages/studyloop/tests/test_web_plans.py -q` → **all** pass (the two RED go green, every
       pre-existing assertion unchanged); `rg -n 'readiness\(' packages/studyloop/src/studyloop/web/routes/plans.py`
       → 0 hits.
-- [ ] **T1.4** Migrate `cli/_plan.py` list/show/status to the seam (`_print_readiness` consumes
+- [x] **T1.4** (`1d071758`) Migrate `cli/_plan.py` list/show/status to the seam (`_print_readiness` consumes
       `ReadinessView`; exit codes and output unchanged).
       DoD: `pytest packages/studyloop/tests/test_cli_plan.py -q` → all pass, assertions unchanged.
-- [ ] **T1.5** Cross-surface parity RED+GREEN `tests/test_plan_surface_parity.py`:
+- [x] **T1.5** (`3fe51ebf`) Cross-surface parity RED+GREEN `tests/test_plan_surface_parity.py`:
       `test_activation_refusal_is_identical_via_cli_and_web` (same blockers, no mutation).
 - [ ] **T1.6** Delta specs: `openspec/changes/plan-application-seam/specs/{web-ui,cli-surface,
       active-learning-decisions}/spec.md` — requirement "Activation is readiness-gated on every entry path"
