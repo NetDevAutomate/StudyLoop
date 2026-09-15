@@ -15,6 +15,19 @@ a function of the receipt and the tree and not of a reader's eye:
 4. ``tests/golden/session_search_pre_planner.json`` is byte-identical to the
    form committed at ``d060d3f2``.
 
+The same registration's prose names two rejects that sit *in front of* the
+clauses, and the council review of 2026-09-15 asked for them to be encoded
+rather than left to a reader: "crashes appeared" is a reject, and "a different
+arm won" is a new hypothesis, never an adoption under this rule. :func:`judge`
+therefore checks **eligibility** first -- the pair judged is the registered
+pair, and neither arm crashed -- and names a failed check in ``decided_by``
+ahead of any failed clause. The four clauses keep their names and numbers.
+
+A receipt that cannot be judged -- a non-finite number, a reversed interval, a
+crash count its own per-item rows contradict -- is refused with
+``ValueError``, the way a missing arm is refused with ``KeyError``: a
+malformed receipt is an error, never a verdict, so the door fails closed.
+
 It also derives the *committed* form of the receipt: the raw gold receipt with
 every digest written in ``sha256:<hex>`` notation and the commit as
 ``git:<sha>``, plus the verdict block. The repository's ``detect-secrets`` hook
@@ -26,12 +39,16 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import math
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from agent_session_tools.retrieval import QueryPlan, plan_query
 
 from . import K
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 #: Clause 2's frozen threshold: absolute macro precision@K drop the candidate may cost.
 PRECISION_DROP_MAX = 0.05
@@ -42,8 +59,14 @@ PRE_PLANNER_GOLDEN_RELATIVE = Path(
 PRE_PLANNER_GOLDEN_SHA256 = "7152dae40af4918dffd6a51cc4b7d399c433384a3caa9a7ca64164e7a56795f6"  # pragma: allowlist secret
 #: Where the rule these clauses implement is written down.
 RULE = "docs/architecture/session-memory/receipts/lexical/preregistration-2026-09-15.md"
+#: The one pair :data:`RULE` registers; any other pair is compared, never adopted.
 DEFAULT_CANDIDATE = "mcp:and_then_prose_or"
 DEFAULT_CONTROL = "mcp"
+
+#: Eligibility checks from the registration's prose, named in ``decided_by``
+#: when they fail. They are not clauses and do not renumber the four.
+ELIGIBILITY_REGISTERED_PAIR = "eligibility:registered_pair"
+ELIGIBILITY_NO_CRASHES = "eligibility:no_crashes"
 
 #: Receipt keys whose values are bare hex digests in the raw gold receipt.
 _SHA256_KEYS = frozenset({"sha256", "fingerprint", "metrics_sha256"})
@@ -79,6 +102,62 @@ def golden_sha256(root: Path | None = None) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _finite(value: Any, what: str) -> float:
+    """``value`` as a finite float, or ``ValueError`` naming ``what`` was wrong.
+
+    A string is refused even when it would parse: a receipt is written by
+    :mod:`.receipt` as numbers, and a number that arrives as text has been
+    through something the registration did not name. ``+inf`` is refused
+    because ``inf > 0`` is true and would otherwise satisfy clause 1.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"{what} is not a number: {value!r}")
+    number = float(value)
+    if not math.isfinite(number):
+        raise ValueError(f"{what} is not finite: {value!r}")
+    return number
+
+
+def _interval(value: Any, what: str) -> tuple[float, float]:
+    """``value`` as a finite ``(lower, upper)`` with ``lower <= upper``."""
+    if not isinstance(value, (list, tuple)) or len(value) != 2:
+        raise ValueError(f"{what} is not a [lower, upper] pair: {value!r}")
+    lower = _finite(value[0], f"{what}[0]")
+    upper = _finite(value[1], f"{what}[1]")
+    if lower > upper:
+        raise ValueError(f"{what} is reversed: lower {lower!r} > upper {upper!r}")
+    return lower, upper
+
+
+def _crashes(arm: Mapping[str, Any], name: str) -> int:
+    """The arm's crash count, cross-checked against its own per-item rows.
+
+    :func:`.gold.score_arm` writes a crash twice -- ``error_kind`` on the item
+    and the total in ``metrics.crashes`` -- so the two must agree; a count the
+    rows contradict is a receipt that has been edited, not measured.
+    """
+    declared = arm["metrics"]["crashes"]
+    if isinstance(declared, bool) or not isinstance(declared, int) or declared < 0:
+        raise ValueError(f"arm {name!r}: metrics.crashes is not a count: {declared!r}")
+    per_item = arm.get("per_item")
+    if isinstance(per_item, dict):
+        counted = sum(
+            1
+            for row in per_item.values()
+            if isinstance(row, dict) and row.get("error_kind") is not None
+        )
+        if counted != declared:
+            raise ValueError(
+                f"arm {name!r}: metrics.crashes is {declared} but {counted} per-item "
+                "rows carry an error_kind"
+            )
+    return declared
+
+
+def _plural(count: int, noun: str) -> str:
+    return f"{count} {noun}" if count == 1 else f"{count} {noun}s"
+
+
 def judge(
     receipt: dict[str, Any],
     *,
@@ -87,10 +166,14 @@ def judge(
     k: int = K,
     root: Path | None = None,
 ) -> dict[str, Any]:
-    """Evaluate the four frozen clauses against ``receipt``; never adopts on a missing arm.
+    """Evaluate eligibility, then the four frozen clauses, against ``receipt``.
 
-    ``decided_by`` names every clause that failed (the rule is a conjunction,
-    so any one of them decides a reject); on an adopt it says so explicitly.
+    Never adopts on a missing arm (``KeyError``) or a malformed receipt
+    (``ValueError``). ``decided_by`` names every eligibility check and every
+    clause that failed, in that order (the rule is a conjunction, so any one
+    of them decides a reject); on an adopt it says so explicitly. The four
+    clauses are computed and reported for any pair -- that is the generic
+    comparison -- but only the registered pair can be labelled ``adopt``.
     """
     arms = receipt["arms"]
     for name in (candidate, control):
@@ -98,16 +181,40 @@ def judge(
             raise KeyError(
                 f"arm {name!r} is not in the receipt; present: {sorted(arms)}"
             )
-    recall = receipt["comparisons"][f"{candidate}_vs_{control}"]
+    ineligible: list[str] = []
+    if (candidate, control) != (DEFAULT_CANDIDATE, DEFAULT_CONTROL):
+        ineligible.append(
+            f"{ELIGIBILITY_REGISTERED_PAIR} (the rule registers {DEFAULT_CANDIDATE} "
+            f"vs {DEFAULT_CONTROL}; judged {candidate} vs {control})"
+        )
+    crashes = {name: _crashes(arms[name], name) for name in (candidate, control)}
+    if any(crashes.values()):
+        crashed = ", ".join(
+            f"{name} crashed on {_plural(count, 'item')}"
+            for name, count in crashes.items()
+            if count
+        )
+        ineligible.append(f"{ELIGIBILITY_NO_CRASHES} ({crashed})")
+
+    pair = f"{candidate}_vs_{control}"
+    recall = receipt["comparisons"][pair]
+    lower, _upper = _interval(recall["ci95"], f"comparisons.{pair}.ci95")
+    _finite(recall["point"], f"comparisons.{pair}.point")
     precision_key = f"precision@{k}"
-    candidate_precision = float(arms[candidate]["metrics"][precision_key]["macro"])
-    control_precision = float(arms[control]["metrics"][precision_key]["macro"])
+    candidate_precision = _finite(
+        arms[candidate]["metrics"][precision_key]["macro"],
+        f"arms.{candidate}.metrics.{precision_key}.macro",
+    )
+    control_precision = _finite(
+        arms[control]["metrics"][precision_key]["macro"],
+        f"arms.{control}.metrics.{precision_key}.macro",
+    )
     drop = control_precision - candidate_precision
     door = explicit_door_holds()
     current_golden = golden_sha256(root)
     clauses: dict[str, dict[str, Any]] = {
         "1_recall_ci95_lower_above_zero": {
-            "holds": float(recall["ci95"][0]) > 0.0,
+            "holds": lower > 0.0,
             "point": recall["point"],
             "ci95": list(recall["ci95"]),
             "resamples": recall["resamples"],
@@ -131,7 +238,7 @@ def judge(
         },
     }
     failed = [name for name, clause in clauses.items() if not clause["holds"]]
-    adopt = not failed
+    adopt = not ineligible and not failed
     return {
         "adopt": adopt,
         "candidate": candidate,
@@ -139,7 +246,7 @@ def judge(
         "k": k,
         "rule": RULE,
         "clauses": clauses,
-        "decided_by": failed or ["all four clauses hold"],
+        "decided_by": [*ineligible, *failed] or ["all four clauses hold"],
     }
 
 
@@ -201,6 +308,8 @@ def format_verdict(verdict: dict[str, Any]) -> str:
 __all__ = [
     "DEFAULT_CANDIDATE",
     "DEFAULT_CONTROL",
+    "ELIGIBILITY_NO_CRASHES",
+    "ELIGIBILITY_REGISTERED_PAIR",
     "PRECISION_DROP_MAX",
     "PRE_PLANNER_GOLDEN_RELATIVE",
     "PRE_PLANNER_GOLDEN_SHA256",
