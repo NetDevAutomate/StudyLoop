@@ -95,18 +95,25 @@ D-1, verified blocking). Resolution order, in `retrieval.resolve_mode()`:
 | Surface | Default | Why | Force the other mode |
 |---|---|---|---|
 | `cli` (`session-query search`) | lexical | a one-shot process pays the encoder's cold-load cost per invocation; stays lexical until the fast ONNX query-side load (lane A2) has its own receipts | `hybrid: true` in `config.yaml`, or `STUDYLOOP_RETRIEVAL_MODE=hybrid` |
-| `mcp` (`session_search` tool) | **hybrid** (provisional pending SEALED, below) | a long-lived process pre-warms the query encoder once at boot (below) and pays only the ~55 ms/query resident cost (E-A5) | `hybrid: false` in `config.yaml`, or `STUDYLOOP_RETRIEVAL_MODE=lexical` |
-| `web` (the study web server) | **hybrid** (provisional pending SEALED, below) | same reasoning as `mcp` | same as `mcp` |
+| `mcp` (`session_search` tool) | **hybrid** (SEALED outcome recorded, below) | a long-lived process pre-warms the query encoder once at boot (below) and pays only the ~55 ms/query resident cost (E-A5) | `hybrid: false` in `config.yaml`, or `STUDYLOOP_RETRIEVAL_MODE=lexical` |
+| `web` (the study web server) | **hybrid** (SEALED outcome recorded, below) | same reasoning as `mcp` | same as `mcp` |
 
-**The `mcp`/`web` hybrid default is provisional pending SEALED.** Stage 4's
-`hybrid` gate (G1/G2, `stage4-preregistration-2026-09-11.md`) was scored once,
-DEV-reported, and the SEALED run remains the owner's separate obligation. This
-lane's flip is gated on a NEW pre-registration measuring the *resident*
-steady state (warm-up excluded and reported separately, p95 wall AND paired
-hybrid−lexical overhead) — see
-`receipts/semantic-layer/stage5-preregistration-2026-09-15.md` — and the
-owner accepts the residual SEALED risk at that sign-off (council D-4/O-2),
-not here.
+**The `mcp`/`web` hybrid default: SEALED has been run (once, by the owner,
+2026-09-15) and the outcome is recorded.** G2 (K-stratum non-inferiority)
+PASSED (`upper_at_least_zero=true`, point +0.042); G1 (established lift,
+CI95 lower ≥ +0.05) was NOT met on the 84-question sealed set — point
++0.015, CI95 [−0.045, +0.085], an interval that contains both zero and the
+census's established +0.082 (n=5,435, CI95 [+0.063, +0.104]): consistent
+with the census, under-powered to confirm it independently. Under the Stage
+5 registration's re-open clause (O-2) the owner ruled on 2026-09-15 to KEEP
+the hybrid default, resting its evidentiary basis on the census + DEV +
+latency receipts, with this paragraph as the honest record — see the
+SEALED-outcome addendum in
+`receipts/semantic-layer/stage5-preregistration-2026-09-15.md` and the
+aggregates-only receipt `receipts/semantic-layer/stage5-sealed-bge-gold.json`
+(the full receipt, containing the sealed questions, stays private and
+sha256-pinned). An explicit `hybrid: false` in `config.yaml` still wins on
+every surface.
 
 **Encoder pre-warm.** `mcp`/`web` start a background warm at server boot
 (never at import time, never on first search) through the same

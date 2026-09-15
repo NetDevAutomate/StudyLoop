@@ -70,7 +70,10 @@ experience may change before `1.0.0`.
   77–187 ms against ≤ 200 ms, paired overhead 26–89 ms against ≤ 100 ms,
   first-query p95 618–740 ms against ≤ 3,500 ms; receipts under
   `docs/architecture/session-memory/receipts/semantic-layer/`), and is
-  provisional pending the owner's SEALED G1/G2 run. The `retrieval_status`
+  confirmed against the owner's one-shot SEALED run (G2 non-inferiority
+  passed; G1's +0.05 lift was not established at n=84 — consistent with, but
+  under-powered against, the census; the owner ruled to keep the default
+  under the registration's re-open clause, receipt committed). The `retrieval_status`
   payload's field-level schema is now pinned by a contract test.
 - **The query side of a hybrid search defaults to the ONNX encoder**
   (`semantic_search.query_encoder: auto` — onnx where the model has a pinned

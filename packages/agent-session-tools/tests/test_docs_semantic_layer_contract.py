@@ -364,12 +364,17 @@ def test_arch_readme_mode_table_names_every_surface() -> None:
     assert _mode_table_surfaces(text) == set(retrieval.SURFACES)
 
 
-def test_arch_readme_states_the_sealed_provisional_note() -> None:
-    """Council D-4/O-2: the mcp/web hybrid default is provisional pending the
-    owner's separate SEALED obligation -- the doc must say so, not just the
-    lane's internal receipts."""
+def test_arch_readme_states_the_sealed_outcome() -> None:
+    """Council D-4/O-2, updated 2026-09-15 evening: SEALED has been run (once)
+    and O-2's re-open clause fired -- the doc must carry the honest OUTCOME
+    (G2 met, G1 not established, owner ruled to keep the default), never the
+    stale pending note and never a quiet deletion of the record."""
     text = ARCH_README_MD.read_text(encoding="utf-8")
-    assert "provisional pending SEALED" in text
+    assert "provisional pending SEALED" not in text  # the pending note is spent
+    assert "SEALED" in text
+    outcome = text.lower()
+    assert "g1" in outcome and "g2" in outcome
+    assert "keep the hybrid default" in outcome or "keep\nthe hybrid default" in outcome
 
 
 def _stage5_preregistration_names(text: str) -> set[str]:

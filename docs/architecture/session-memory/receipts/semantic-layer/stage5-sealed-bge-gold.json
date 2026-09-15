@@ -1,0 +1,173 @@
+{
+ "arms": {
+  "hybrid": {
+   "config": {
+    "arm": "hybrid",
+    "db_path": "/Users/ataylor/.local/share/studyloop/eval-clones/bakeoff-bge-20260915/sessions.db",
+    "git_commit": "47a330659aa197dfd12dbdae43ba0fcde0372ec3",
+    "interface": "fastmcp call_tool(session_search)",
+    "mode": "hybrid",
+    "rows": 10,
+    "supports_exclusion": true
+   },
+   "errors_by_kind": {},
+   "latency_ms": {
+    "p50": 58.08229099966411,
+    "p95": 99.03124999982538
+   },
+   "metrics": {
+    "crashes": 0,
+    "mrr@5": {
+     "by_stratum": {
+      "K": 0.23958333333333334,
+      "P": 0.08064516129032258,
+      "R": 0.13908045977011493
+     },
+     "macro": 0.1531029847979236
+    },
+    "n": 84,
+    "recall@5": {
+     "by_stratum": {
+      "K": 0.2916666666666667,
+      "P": 0.0967741935483871,
+      "R": 0.20689655172413793
+     },
+     "macro": 0.19844580397973055
+    }
+   },
+   "per_item": "withheld from the committed receipt: 84 per-item rows contain the SEALED question texts; the full receipt (sha256-pinned below) stays private"
+  },
+  "mcp": {
+   "config": {
+    "arm": "mcp",
+    "db_path": "/Users/ataylor/.local/share/studyloop/eval-clones/bakeoff-bge-20260915/sessions.db",
+    "git_commit": "47a330659aa197dfd12dbdae43ba0fcde0372ec3",
+    "interface": "fastmcp call_tool(session_search)",
+    "mode": "lexical",
+    "rows": 10,
+    "supports_exclusion": true
+   },
+   "errors_by_kind": {},
+   "latency_ms": {
+    "p50": 18.681875000766013,
+    "p95": 71.83199999963108
+   },
+   "metrics": {
+    "crashes": 0,
+    "mrr@5": {
+     "by_stratum": {
+      "K": 0.19583333333333333,
+      "P": 0.08709677419354839,
+      "R": 0.13218390804597702
+     },
+     "macro": 0.13837133852428626
+    },
+    "n": 84,
+    "recall@5": {
+     "by_stratum": {
+      "K": 0.25,
+      "P": 0.12903225806451613,
+      "R": 0.1724137931034483
+     },
+     "macro": 0.18381535038932148
+    }
+   },
+   "per_item": "withheld from the committed receipt: 84 per-item rows contain the SEALED question texts; the full receipt (sha256-pinned below) stays private"
+  }
+ },
+ "comparisons": {
+  "hybrid_vs_mcp": {
+   "ci95": [
+    -0.04524886877828055,
+    0.08476190476190476
+   ],
+   "clusters": 56,
+   "established": false,
+   "point": 0.014630453590409096,
+   "resamples": 10000,
+   "seed": 20260910
+  },
+  "hybrid_vs_mcp_K": {
+   "ci95_lower": -0.08333333333333333,
+   "ci95_upper": 0.20833333333333334,
+   "clusters": 24,
+   "margin": 0.0,
+   "non_inferior": false,
+   "point": 0.041666666666666664,
+   "regression_upper95": 0.08333333333333333,
+   "resamples": 10000,
+   "seed": 20260910,
+   "stratum": "K",
+   "upper_at_least_zero": true
+  },
+  "mcp_vs_hybrid": {
+   "ci95": [
+    -0.08476190476190476,
+    0.04524886877828055
+   ],
+   "clusters": 56,
+   "established": false,
+   "point": -0.014630453590409096,
+   "resamples": 10000,
+   "seed": 20260910
+  },
+  "mcp_vs_hybrid_K": {
+   "ci95_lower": -0.20833333333333334,
+   "ci95_upper": 0.08333333333333333,
+   "clusters": 24,
+   "margin": 0.0,
+   "non_inferior": false,
+   "point": -0.041666666666666664,
+   "regression_upper95": 0.20833333333333334,
+   "resamples": 10000,
+   "seed": 20260910,
+   "stratum": "K",
+   "upper_at_least_zero": true
+  }
+ },
+ "created_utc": "2026-09-15T16:43:19+00:00",
+ "db": {
+  "fingerprint": "be96843859a237fe92f14bb5d3a20e06e238c6d898179ce8b01102772cfa0008",
+  "path": "/Users/ataylor/.local/share/studyloop/eval-clones/bakeoff-bge-20260915/sessions.db",
+  "size_bytes": 891744256,
+  "visibility": {
+   "admitted_sources": [
+    "claude_code",
+    "codex",
+    "grok",
+    "kiro_cli",
+    "opencode",
+    "pi",
+    "study_mentor"
+   ],
+   "total_sessions": 2173,
+   "visible_sessions": 2173
+  }
+ },
+ "full_receipt": {
+  "note": "the SEALED set's content never enters the repo; metrics_sha256 above is the FULL receipt's",
+  "path": "/Users/ataylor/.local/share/studyloop/eval-receipts/stage5-sealed-bge-gold-full.json",
+  "sha256": "7c1e525716f9ecb1e7a3bf31b333318f21b3367acd7ebcd799d91d5674138380"
+ },
+ "git_commit": "47a330659aa197dfd12dbdae43ba0fcde0372ec3",
+ "gold": {
+  "clusters": 56,
+  "known_unwinnable": [
+   "A1-13",
+   "A1-70",
+   "A1-71"
+  ],
+  "n": 84,
+  "path": "/Users/ataylor/.local/share/studyloop/knowledge-proof/sealed/gold-v2-sealed.json",
+  "set": "SEALED",
+  "sha256": "90ef67ad066d46ff86e0dde27cf04a4932896155c932ea5f93391ca097d08ca7",
+  "strata": {
+   "K": 24,
+   "P": 31,
+   "R": 29
+  },
+  "version": "v2"
+ },
+ "metrics_sha256": "160a4dfdb6c7777dc445d8cb5e677fac94364a93b0afbecbee5376b287ee0c74",
+ "schema": "studyloop.retrieval-eval/v1"
+}

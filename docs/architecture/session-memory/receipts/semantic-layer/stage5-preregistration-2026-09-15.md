@@ -74,3 +74,25 @@ KNN/corpus access (a daemon is no remedy for the latter). Unchosen (record): D-g
 Signed: owner selections recorded in-session 2026-09-15 (see
 `reviews/2026-09-15-acceptance-harness/council/ARBITRATION.md`, "Owner decisions"); committed at
 the sha this file lands in.
+
+## Addendum — SEALED outcome (2026-09-15 evening; the signed text above is unchanged)
+
+The owner ran SEALED exactly once (`gold-v2-sealed.json`, sha256 `90ef67ad…`, 84 questions;
+clone fingerprint `be968438…`; code `47a33065`; receipt
+`stage5-sealed-bge-gold.json` — aggregates-only in the repo, full receipt with the sealed
+question texts private at `~/.local/share/studyloop/eval-receipts/stage5-sealed-bge-gold-full.json`,
+sha256 `7c1e525716f9ecb1…`):
+
+| gate | condition | measured | verdict |
+|---|---|---|---|
+| G1 established lift | `hybrid_vs_mcp.ci95[0]` ≥ +0.05 | point +0.0146, CI95 [−0.0452, +0.0848] | **not met** |
+| G2 K non-inferiority | `upper_at_least_zero` | true (point +0.0417, upper +0.2083) | **met** |
+
+O-2's re-open clause fired. Owner ruling (2026-09-15, in-session): **the hybrid default for
+`mcp`/`web` stays**, documented honestly — its evidentiary basis is the census (+0.082 on 5,435
+real questions, CI95 [+0.063, +0.104], established) plus DEV and the Gate L/P receipts; SEALED
+at n=84 is consistent with that lift (the census point sits inside SEALED's interval) but
+under-powered to establish it independently, and the harm guard (G2) passed. A future,
+larger sealed set may be commissioned for a one-shot re-validation; this one's one-shot
+budget is spent. The unchosen option (revert to lexical default, citing this receipt) is
+recorded as available at any time via one config line or a revert of the flip commit.
