@@ -468,6 +468,33 @@ class TestNoImportTimeCost:
         assert result.returncode == 0, result.stdout + result.stderr
         assert result.stdout.strip() == "OK"
 
+    def test_importing_embeddings_never_imports_an_ml_runtime(self):
+        """The ONNX ctor reads ``embeddings.ONNX_ARTIFACTS``; an eager
+        sentence-transformers probe there measured 2.1 s -- the whole load
+        budget. Availability is probed with ``find_spec``, never by importing.
+        """
+        script = (
+            "import sys; "
+            "import agent_session_tools.embeddings as e; "
+            "assert 'torch' not in sys.modules, 'torch imported at import time'; "
+            "assert 'sentence_transformers' not in sys.modules, "
+            "'sentence_transformers imported at import time'; "
+            "assert 'transformers' not in sys.modules, "
+            "'transformers imported at import time'; "
+            "assert isinstance(e.is_available(), bool); "
+            "assert 'sentence_transformers' not in sys.modules, "
+            "'is_available() must probe without importing'; "
+            "print('OK')"
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", script],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert result.stdout.strip() == "OK"
+
 
 class TestParitySmokeMachinery:
     """The CI-safe proxy (d): tests the comparison machinery, not a real model.
@@ -626,3 +653,106 @@ class TestOnnxTorchParityAcceptance:
         assert torch_ranking == onnx_ranking, (
             f"ranked order diverged: torch={torch_ranking!r} onnx={onnx_ranking!r}"
         )
+
+
+class TestRustTokenizerAdapter:
+    """The tokenizer rides the Rust ``tokenizers`` library, not transformers.
+
+    ``AutoTokenizer`` construction measured ~2.0 s of the encoder's ~2.2 s
+    cold load -- the bulk of the very cost lane A2 exists to kill (the signed
+    load gate is < 0.5 s). The adapter wraps the pinned ``tokenizer.json``
+    (whose sha256 the registry records) and speaks just enough of the
+    transformers call convention that ``OnnxEncoder`` and the injected test
+    fakes are unchanged.
+    """
+
+    def _tiny_tokenizer(self):
+        from tokenizers import Tokenizer
+        from tokenizers.models import WordPiece
+        from tokenizers.pre_tokenizers import Whitespace
+
+        vocab = {
+            "[UNK]": 0,
+            "[CLS]": 1,
+            "[SEP]": 2,
+            "[PAD]": 3,
+            "rank": 4,
+            "rows": 5,
+            "group": 6,
+            "window": 7,
+        }
+        tokenizer = Tokenizer(WordPiece(vocab, unk_token="[UNK]"))
+        tokenizer.pre_tokenizer = Whitespace()
+        return tokenizer
+
+    def _adapter(self):
+        from agent_session_tools.onnx_encoder import _RustTokenizer
+
+        return _RustTokenizer(self._tiny_tokenizer())
+
+    def test_batch_call_returns_int64_arrays_padded_to_equal_length(self):
+        import numpy as np
+
+        encoded = self._adapter()(
+            ["rank rows", "rank"],
+            padding=True,
+            truncation=True,
+            max_length=8,
+            return_tensors="np",
+        )
+        assert set(encoded) >= {"input_ids", "attention_mask"}
+        for key in ("input_ids", "attention_mask"):
+            value = encoded[key]
+            assert isinstance(value, np.ndarray) and value.dtype == np.int64
+            assert value.shape[0] == 2
+        ids = encoded["input_ids"]
+        mask = encoded["attention_mask"]
+        assert ids.shape == mask.shape
+        # The shorter text is padded and its padding is masked out.
+        assert int(mask[0].sum()) > int(mask[1].sum())
+
+    def test_truncation_cuts_to_max_length(self):
+        encoded = self._adapter()(
+            ["rank rows group window rank rows group window"],
+            padding=True,
+            truncation=True,
+            max_length=4,
+            return_tensors="np",
+        )
+        assert encoded["input_ids"].shape[1] == 4
+
+    def test_single_string_path_serves_count_tokens(self):
+        encoded = self._adapter()("rank rows group")
+        assert len(encoded["input_ids"]) == 3
+
+    def test_load_tokenizer_never_imports_transformers(self):
+        """Cache-gated like the parity acceptance test: skip without the pin."""
+        from huggingface_hub import try_to_load_from_cache
+
+        from agent_session_tools.embeddings import ONNX_ARTIFACTS
+
+        artefact = ONNX_ARTIFACTS[ONNX_MODEL]
+        hf_name, revision = str(artefact["hf_name"]), str(artefact["revision"])
+        if not try_to_load_from_cache(hf_name, "tokenizer.json", revision=revision):
+            pytest.skip(
+                f"pinned tokenizer for {hf_name}@{revision} is not in the local "
+                "Hugging Face cache; fetch it once via install/doctor/backfill"
+            )
+        code = (
+            "import sys\n"
+            "from agent_session_tools.onnx_encoder import _load_tokenizer\n"
+            f"tok = _load_tokenizer({hf_name!r}, {revision!r}, local_files_only=True)\n"
+            "ids = tok('a small parity check sentence')['input_ids']\n"
+            "assert len(ids) > 0\n"
+            "assert 'transformers' not in sys.modules, 'transformers was imported'\n"
+            "print('OK')\n"
+        )
+        import os
+
+        done = subprocess.run(  # noqa: S603 - fixed argv, no shell
+            [sys.executable, "-c", code],
+            capture_output=True,
+            text=True,
+            env={**os.environ, "HF_HUB_OFFLINE": "1"},
+        )
+        assert done.returncode == 0 and "OK" in done.stdout, done.stderr

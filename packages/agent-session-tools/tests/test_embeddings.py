@@ -118,7 +118,6 @@ def mock_model():
     with (
         patch.object(emb, "EMBEDDINGS_AVAILABLE", True),
         patch.object(emb, "_models", {}),
-        patch.object(emb, "np", np),
     ):
         yield model
 
@@ -265,7 +264,7 @@ def test_get_model_raises_import_error_when_unavailable():
 
 @requires_numpy
 def test_get_model_caches_loaded_model(mock_model):
-    with patch.object(emb, "SentenceTransformer", return_value=mock_model):
+    with patch("sentence_transformers.SentenceTransformer", return_value=mock_model):
         emb._models.clear()
         m1 = emb.get_model("all-MiniLM-L6-v2")
         m2 = emb.get_model("all-MiniLM-L6-v2")
@@ -274,7 +273,7 @@ def test_get_model_caches_loaded_model(mock_model):
 
 @requires_numpy
 def test_get_model_none_defaults_to_default_model(mock_model):
-    with patch.object(emb, "SentenceTransformer", return_value=mock_model):
+    with patch("sentence_transformers.SentenceTransformer", return_value=mock_model):
         emb._models.clear()
         emb.get_model(None)
     assert emb.DEFAULT_MODEL in emb._models
@@ -290,7 +289,7 @@ def test_get_model_nomic_passes_trust_remote_code_true(mock_model):
         captured["local_files_only"] = local_files_only
         return mock_model
 
-    with patch.object(emb, "SentenceTransformer", side_effect=capture_st):
+    with patch("sentence_transformers.SentenceTransformer", side_effect=capture_st):
         emb._models.clear()
         emb.get_model("nomic-embed-text-v1.5")
 
@@ -306,7 +305,7 @@ def test_get_model_non_nomic_passes_trust_remote_code_false(mock_model):
         captured["local_files_only"] = local_files_only
         return mock_model
 
-    with patch.object(emb, "SentenceTransformer", side_effect=capture_st):
+    with patch("sentence_transformers.SentenceTransformer", side_effect=capture_st):
         emb._models.clear()
         emb.get_model("all-MiniLM-L6-v2")
 
@@ -321,7 +320,7 @@ def test_get_model_dimension_mismatch_logs_warning(mock_model, caplog):
     )
 
     with (
-        patch.object(emb, "SentenceTransformer", return_value=mock_model),
+        patch("sentence_transformers.SentenceTransformer", return_value=mock_model),
         patch.object(emb, "_models", {}),
         caplog.at_level(logging.WARNING),
     ):
@@ -344,7 +343,7 @@ def test_generate_embedding_raises_import_error_when_unavailable():
 @requires_numpy
 def test_generate_embedding_returns_bytes(mock_model):
     with (
-        patch.object(emb, "SentenceTransformer", return_value=mock_model),
+        patch("sentence_transformers.SentenceTransformer", return_value=mock_model),
         patch.object(emb, "_models", {}),
     ):
         result = emb.generate_embedding("This is a test sentence.")
@@ -368,7 +367,7 @@ def test_generate_embedding_truncates_text_exceeding_max_tokens(mock_model):
     mock_model.encode.side_effect = capture_encode
 
     with (
-        patch.object(emb, "SentenceTransformer", return_value=mock_model),
+        patch("sentence_transformers.SentenceTransformer", return_value=mock_model),
         patch.object(emb, "_models", {}),
     ):
         emb.generate_embedding(long_text, "all-MiniLM-L6-v2")
@@ -390,7 +389,7 @@ def test_generate_embedding_short_text_passed_unchanged(mock_model):
     mock_model.encode.side_effect = capture_encode
 
     with (
-        patch.object(emb, "SentenceTransformer", return_value=mock_model),
+        patch("sentence_transformers.SentenceTransformer", return_value=mock_model),
         patch.object(emb, "_models", {}),
     ):
         emb.generate_embedding(short_text, "all-MiniLM-L6-v2")
@@ -401,7 +400,7 @@ def test_generate_embedding_short_text_passed_unchanged(mock_model):
 @requires_numpy
 def test_generate_embedding_populates_model_cache(mock_model):
     with (
-        patch.object(emb, "SentenceTransformer", return_value=mock_model),
+        patch("sentence_transformers.SentenceTransformer", return_value=mock_model),
         patch.object(emb, "_models", {}),
     ):
         emb.generate_embedding("test text", "all-MiniLM-L6-v2")
@@ -612,8 +611,10 @@ def test_get_model_passes_local_files_only_through(monkeypatch):
         captured["local_files_only"] = local_files_only
         return mock_model
 
+    import sentence_transformers
+
     monkeypatch.setattr(emb, "EMBEDDINGS_AVAILABLE", True)
-    monkeypatch.setattr(emb, "SentenceTransformer", capture_st)
+    monkeypatch.setattr(sentence_transformers, "SentenceTransformer", capture_st)
     monkeypatch.setattr(emb, "_models", {})
     emb.get_model("all-MiniLM-L6-v2", local_files_only=True)
     assert captured == {"local_files_only": True}

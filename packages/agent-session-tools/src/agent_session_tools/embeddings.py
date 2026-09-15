@@ -168,19 +168,31 @@ NOISE_PATTERNS = {
 MIN_MEANINGFUL_LENGTH = 50  # Characters (about 12-15 words)
 MIN_CODE_LENGTH = 20  # Shorter threshold for code content
 
-# Check if sentence-transformers is available
-try:
-    import numpy as np  # pyright: ignore[reportMissingImports]
-    from sentence_transformers import SentenceTransformer  # pyright: ignore[reportMissingImports]
 
-    EMBEDDINGS_AVAILABLE = True
-except ImportError:
-    EMBEDDINGS_AVAILABLE = False
-    if TYPE_CHECKING:
-        import numpy as np  # pyright: ignore[reportMissingImports]
-        from sentence_transformers import (  # pyright: ignore[reportMissingImports]
-            SentenceTransformer,
+# Availability is probed WITHOUT importing: an eager sentence-transformers
+# import here measured 2.1 s and was paid by everything that reads this
+# module's registry -- including the ONNX query encoder whose whole purpose
+# is a sub-0.5 s load (Stage 5). ``find_spec`` locates the packages without
+# executing them; the actual import happens inside ``get_model()``.
+def _ml_runtime_available() -> bool:
+    from importlib.util import find_spec
+
+    try:
+        return (
+            find_spec("numpy") is not None
+            and find_spec("sentence_transformers") is not None
         )
+    except (ImportError, ValueError):
+        return False
+
+
+EMBEDDINGS_AVAILABLE = _ml_runtime_available()
+
+if TYPE_CHECKING:
+    import numpy as np  # pyright: ignore[reportMissingImports]
+    from sentence_transformers import (  # pyright: ignore[reportMissingImports]
+        SentenceTransformer,
+    )
 
 
 def is_available() -> bool:
@@ -286,6 +298,10 @@ def get_model(
         # Special handling for nomic model which requires trust_remote_code
         trust_remote = "nomic" in hf_name.lower()
 
+        from sentence_transformers import (  # pyright: ignore[reportMissingImports]
+            SentenceTransformer,
+        )
+
         _models[model_name] = SentenceTransformer(
             hf_name,
             trust_remote_code=trust_remote,
@@ -335,6 +351,8 @@ def generate_embedding(text: str, model_name: str | None = None) -> bytes:
         text = text[:max_chars]
         logger.debug(f"Truncated text to {max_chars} chars for model {model_name}")
 
+    import numpy as np  # pyright: ignore[reportMissingImports]
+
     embedding = model.encode(text, convert_to_numpy=True)
     return embedding.astype(np.float32).tobytes()
 
@@ -364,6 +382,8 @@ def embedding_from_bytes(embedding_bytes: bytes) -> "np.ndarray":
     """
     if not EMBEDDINGS_AVAILABLE:
         raise ImportError("numpy is required to decode embeddings")
+    import numpy as np  # pyright: ignore[reportMissingImports]
+
     return np.frombuffer(embedding_bytes, dtype=np.float32)
 
 
@@ -379,6 +399,8 @@ def cosine_similarity(a: bytes, b: bytes) -> float:
     """
     if not EMBEDDINGS_AVAILABLE:
         raise ImportError("numpy is required for similarity computation")
+
+    import numpy as np  # pyright: ignore[reportMissingImports]
 
     vec_a = np.frombuffer(a, dtype=np.float32)
     vec_b = np.frombuffer(b, dtype=np.float32)

@@ -33,16 +33,90 @@ from typing import Any
 from .embedding_store import INSTALL_HINT
 
 
+class _RustTokenizer:
+    """The pinned ``tokenizer.json`` through the Rust ``tokenizers`` library.
+
+    ``transformers.AutoTokenizer`` measured ~2.0 s of the encoder's ~2.2 s
+    cold load (import + slow-tokenizer construction) -- the bulk of the very
+    cost this module exists to kill (< 0.5 s load gate, Stage 5). The fast
+    tokenizer is also what sentence-transformers runs internally, so the query
+    side tokenises the way the corpus was tokenised. Speaks just enough of the
+    transformers call convention (a dict of int64 arrays / a plain id list for
+    one string) that ``OnnxEncoder`` and the injected test fakes are unchanged.
+
+    Truncation/padding are per-call state on the underlying tokenizer, so a
+    lock serialises configure+encode: one encoder instance is shared across
+    threads (single-flight cache; concurrency 4 on the MCP surface).
+    """
+
+    def __init__(self, tokenizer: Any) -> None:
+        import threading
+
+        self._tokenizer = tokenizer
+        self._lock = threading.Lock()
+
+    def __call__(
+        self,
+        texts: Any,
+        *,
+        padding: bool = False,
+        truncation: bool = False,
+        max_length: int | None = None,
+        return_tensors: str | None = None,
+        add_special_tokens: bool = True,
+    ) -> dict[str, Any]:
+        if isinstance(texts, str):
+            with self._lock:
+                self._tokenizer.no_truncation()
+                encoding = self._tokenizer.encode(
+                    texts, add_special_tokens=add_special_tokens
+                )
+            return {"input_ids": list(encoding.ids)}
+
+        import numpy as np
+
+        with self._lock:
+            if truncation and max_length:
+                self._tokenizer.enable_truncation(max_length=max_length)
+            else:
+                self._tokenizer.no_truncation()
+            if padding:
+                self._tokenizer.enable_padding()
+            else:
+                self._tokenizer.no_padding()
+            encodings = self._tokenizer.encode_batch(
+                list(texts), add_special_tokens=add_special_tokens
+            )
+        return {
+            "input_ids": np.asarray([e.ids for e in encodings], dtype=np.int64),
+            "token_type_ids": np.asarray(
+                [e.type_ids for e in encodings], dtype=np.int64
+            ),
+            "attention_mask": np.asarray(
+                [e.attention_mask for e in encodings], dtype=np.int64
+            ),
+        }
+
+
 def _load_tokenizer(hf_name: str, revision: str, *, local_files_only: bool) -> Any:
     try:
-        from transformers import AutoTokenizer  # pyright: ignore[reportMissingImports]
+        from tokenizers import Tokenizer  # pyright: ignore[reportMissingImports]
     except ImportError as exc:
         raise RuntimeError(
-            f"transformers is not installed; install: {INSTALL_HINT}"
+            f"tokenizers is not installed; install: {INSTALL_HINT}"
         ) from exc
     try:
-        return AutoTokenizer.from_pretrained(
-            hf_name, revision=revision, local_files_only=local_files_only
+        from huggingface_hub import hf_hub_download
+    except ImportError as exc:
+        raise RuntimeError(
+            f"huggingface-hub is not installed; install: {INSTALL_HINT}"
+        ) from exc
+    try:
+        path = hf_hub_download(
+            hf_name,
+            "tokenizer.json",
+            revision=revision,
+            local_files_only=local_files_only,
         )
     except Exception as exc:
         raise RuntimeError(
@@ -50,6 +124,7 @@ def _load_tokenizer(hf_name: str, revision: str, *, local_files_only: bool) -> A
             "cache; run the install/doctor/backfill path to fetch it once "
             f"(never mid-search): {type(exc).__name__}: {exc}"
         ) from exc
+    return _RustTokenizer(Tokenizer.from_file(path))
 
 
 def _load_session(
