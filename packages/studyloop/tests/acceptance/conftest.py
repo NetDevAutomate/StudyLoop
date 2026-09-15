@@ -46,6 +46,24 @@ def selected_actor() -> str:
     return os.environ.get(_ACTOR_ENV, "scripted").strip() or "scripted"
 
 
+def require_harness(harness: str) -> None:
+    """Named-skip a harness-specific acceptance test that was not selected.
+
+    ``STUDYLOOP_ACC_HARNESS`` is parsed and validated (see
+    :func:`selected_harnesses` and the ``_acceptance_gate`` fixture above)
+    but nothing previously acted on the selection: a harness-specific lane
+    test ran regardless of which harnesses were selected. Call this at the
+    top of a lane test (or, better, from an autouse per-module fixture, so
+    it runs before any other fixture in that test builds a scratch env or a
+    browser context) to turn "not selected" into a named skip rather than
+    an unconditionally-live run — e.g. ``STUDYLOOP_ACC_HARNESS=codex`` must
+    never start a real, billed Kiro session it was not asked to select.
+    """
+    selected = selected_harnesses()
+    if harness not in selected:
+        pytest.skip(f"{harness} not selected via {_HARNESS_ENV} (selected: {', '.join(selected)})")
+
+
 @pytest.fixture(autouse=True)
 def _acceptance_gate() -> None:
     if os.environ.get(_ACC_ENV) != "1":

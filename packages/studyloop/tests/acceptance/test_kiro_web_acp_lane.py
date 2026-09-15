@@ -24,10 +24,17 @@ wiring it in is squarely B2 (harness matrix, DB-backed evidence) / B4 (the
 UAT bundle writer)'s job. This lane proves the MECHANICS: real kiro-cli,
 real scratch isolation, a real ACP lifecycle, never executed against the
 owner's real config.
+
+AUTH NOTE: the scratch config seeded by ``acceptance/isolation.py`` sets no
+``lan_password``, so the server this lane drives requires no HTTP Basic auth
+at all -- nothing in this module reads credentials from the developer's REAL
+``~/.config/studyloop`` (that would authenticate the browser against a value
+that cannot correspond to the scratch server's actual, absent, requirement).
 """
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import sys
@@ -45,12 +52,13 @@ _tests_dir = Path(__file__).resolve().parent.parent
 if str(_tests_dir) not in sys.path:
     sys.path.insert(0, str(_tests_dir))
 
-from _playwright_helpers import effective_credentials, start_web_server  # noqa: E402
+from _playwright_helpers import start_web_server  # noqa: E402
 
+from acceptance.conftest import require_harness  # noqa: E402
 from acceptance.turn_script import load_turn_script  # noqa: E402
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Generator, Mapping
 
     from playwright.sync_api import Browser, BrowserContext, Page
 
@@ -71,31 +79,42 @@ SCRIPT = load_turn_script(
 )
 
 
-def _kiro_available() -> tuple[bool, str]:
-    """Named-skip predicate (D-13): report WHICH binary/step is missing."""
+def _kiro_available(env: Mapping[str, str] | None = None) -> tuple[bool, str]:
+    """Named-skip predicate (D-13): report WHICH binary/step is missing.
+
+    ``env`` must be the SAME environment the server (and therefore the
+    kiro-cli child it spawns) will actually get -- kiro-cli's credential
+    store is HOME-derived, so probing with the test process's REAL
+    environment while the server runs under a scratch HOME would pass here
+    and then hang the live test for its full reply timeout once the
+    unauthenticated scratch kiro-cli never answers. Defaults to the real
+    environment only for callers (e.g. the binary-absent mechanics test)
+    that never reach the point of starting a server.
+    """
     binary = shutil.which("kiro-cli") or shutil.which("kiro")
     if not binary:
         return False, "kiro-cli not on PATH"
+    probe_env = dict(env) if env is not None else dict(os.environ)
     try:
-        result = subprocess.run([binary, "whoami"], capture_output=True, timeout=5, text=True)
+        result = subprocess.run(
+            [binary, "whoami"], capture_output=True, timeout=5, text=True, env=probe_env
+        )
     except (subprocess.TimeoutExpired, OSError) as exc:
         return False, f"kiro-cli whoami errored: {exc}"
     if result.returncode != 0:
-        return False, f"kiro-cli whoami failed: {result.stderr.strip()[:200]}"
+        detail = result.stderr.strip()[:200] or "whoami exited non-zero"
+        return False, f"kiro-cli not logged in under this HOME ({detail})"
     return True, ""
 
 
 def _end_session(port: int) -> None:
-    import base64
     import contextlib
     import urllib.error
     import urllib.request
 
-    user, password = effective_credentials()
+    # No Basic auth: see the module docstring's AUTH NOTE -- the scratch
+    # config this lane runs against sets no lan_password.
     req = urllib.request.Request(f"http://127.0.0.1:{port}/api/session/end", method="POST")
-    if password:
-        creds = base64.b64encode(f"{user}:{password}".encode()).decode()
-        req.add_header("Authorization", f"Basic {creds}")
     # Already ended / nothing active is not this helper's job to assert.
     with contextlib.suppress(urllib.error.HTTPError):
         urllib.request.urlopen(req, timeout=10)
@@ -193,11 +212,8 @@ def _send_turn_and_wait_for_reply(page: Page, prompt: str, *, prior_replies: int
 
 @pytest.fixture()
 def _acp_auth_context(browser: Browser) -> Generator[BrowserContext, None, None]:
-    user, password = effective_credentials()
-    ctx_args: dict = {}
-    if password:
-        ctx_args["http_credentials"] = {"username": user, "password": password}
-    context = browser.new_context(**ctx_args)
+    """No HTTP Basic auth: see the module docstring's AUTH NOTE."""
+    context = browser.new_context()
     try:
         yield context
     finally:
@@ -205,12 +221,20 @@ def _acp_auth_context(browser: Browser) -> Generator[BrowserContext, None, None]
 
 
 class TestKiroWebAcpLane:
+    @pytest.fixture(autouse=True)
+    def _require_kiro_harness_selected(self) -> None:
+        """Named-skip BEFORE ``scratch_env``/``_acp_auth_context`` build
+        anything (autouse fixtures run first within their scope), so
+        ``STUDYLOOP_ACC_HARNESS=codex`` never starts a real, billed Kiro
+        session it was not asked to select."""
+        require_harness("kiro")
+
     def test_scripted_learner_completes_a_full_lifecycle(
         self,
         scratch_env: ScratchEnv,
         _acp_auth_context: BrowserContext,
     ) -> None:
-        ok, reason = _kiro_available()
+        ok, reason = _kiro_available(scratch_env.env)
         if not ok:
             pytest.skip(f"Live Kiro unavailable: {reason}")
 
@@ -257,3 +281,21 @@ class TestKiroWebAcpLane:
         ok, reason = _kiro_available()
         assert ok is False
         assert "kiro-cli" in reason
+
+    def test_named_skip_when_not_logged_in_under_the_probed_home(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """(3) an authenticated REAL env must not make this predicate pass
+        while the scratch HOME the server actually gets is unauthenticated
+        -- probing with the SAME env the child receives turns that gap into
+        a named skip instead of a 90s hang followed by a live-run failure."""
+        stub = tmp_path / "kiro-cli"
+        stub.write_text("#!/bin/sh\necho 'Not logged in' >&2\nexit 1\n", encoding="utf-8")
+        stub.chmod(0o755)
+        monkeypatch.setattr(shutil, "which", lambda _name: str(stub))
+
+        ok, reason = _kiro_available({"PATH": "/usr/bin:/bin", "HOME": str(tmp_path)})
+
+        assert ok is False
+        assert "kiro-cli" in reason
+        assert "not logged in" in reason.lower()

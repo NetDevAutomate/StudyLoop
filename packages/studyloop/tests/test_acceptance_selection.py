@@ -81,3 +81,41 @@ class TestUnknownValuesFailLoudly:
         assert result.returncode != 0, combined[-4000:]
         assert "unknown" in combined.lower(), combined[-4000:]
         assert "not-a-real-actor" in combined, combined[-4000:]
+
+
+class TestHarnessSelectionGatesTheKiroLane:
+    """(finding 4) STUDYLOOP_ACC_HARNESS must actually SELECT, not just parse
+    and validate -- otherwise `just testacc codex` still starts a real,
+    billed Kiro session it was never asked to select."""
+
+    def test_kiro_lane_named_skips_when_harness_not_selected(self) -> None:
+        env = {
+            **os.environ,
+            "STUDYLOOP_ACC": "1",
+            "STUDYLOOP_ACC_HARNESS": "codex",
+        }
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "pytest",
+                "-p",
+                "no:cacheprovider",
+                "-m",
+                "acceptance",
+                "-k",
+                "test_scripted_learner_completes_a_full_lifecycle",
+                "-rs",
+                "--no-header",
+                str(ACCEPTANCE_DIR),
+            ],
+            cwd=STUDYLOOP_PKG_DIR,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        combined = result.stdout + result.stderr
+        assert result.returncode == 0, combined[-4000:]
+        assert "1 skipped" in combined, combined[-4000:]
+        assert "kiro not selected" in combined.lower(), combined[-4000:]
