@@ -321,14 +321,30 @@ class PlanApplication:
     # ------------------------------------------------------------------
 
     def _persist_new(self, plan: StudyPlan, *, overwrite: bool) -> PlanDetail:
-        """Gate, then create. The gate runs first so a refusal writes nothing."""
+        """Identity, then conflict, then readiness, then create.
+
+        The order is the contract (spec: "Duplicate id without overwrite" is a
+        conflict unconditionally): a malformed id is an id error and a taken id
+        is a conflict, whatever else is wrong with the incoming document. The
+        readiness gate runs after both and before the write, so a refusal of
+        any kind writes nothing. The store repeats the conflict check inside
+        ``create_plan`` for the race between this probe and the write.
+        """
+        try:
+            plan.plan_id = store.validate_plan_id(plan.plan_id)
+            exists = store.plan_path(plan.plan_id).exists()
+        except store.InvalidPlanIdError as exc:
+            raise InvalidPlanId(str(exc)) from exc
+        if exists and not overwrite:
+            msg = f"study plan {plan.plan_id!r} already exists"
+            raise PlanConflict(msg)
         if plan.status == "active":
             self._assert_can_be_active(plan)
         try:
             store.create_plan(plan, overwrite=overwrite)
         except store.PlanExistsError as exc:
             raise PlanConflict(str(exc)) from exc
-        except store.InvalidPlanIdError as exc:
+        except store.InvalidPlanIdError as exc:  # pragma: no cover - validated above
             raise InvalidPlanId(str(exc)) from exc
         return PlanDetail.from_plan(plan)
 

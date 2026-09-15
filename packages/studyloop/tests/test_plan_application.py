@@ -301,6 +301,59 @@ def test_create_without_an_explicit_id_derives_a_unique_one(app: PlanApplication
     assert second.summary.plan_id == "glue-etl-2"
 
 
+# --- Council review 1, F4: identity and conflict are judged before readiness ---
+
+_UNREADY_ACTIVE_DOC = (
+    "---\nid: taken\ntitle: Taken\nstatus: active\n---\n\n"
+    "# Taken\n\n## Milestones\n\n_No milestones yet._\n"
+)
+
+
+@pytest.mark.parametrize(
+    "clash",
+    [
+        CreatePlan(title="Taken", answers={}, plan_id="taken", status="active"),
+        ImportDocument(markdown=_UNREADY_ACTIVE_DOC),
+        ImportDocument(
+            markdown=_UNREADY_ACTIVE_DOC.replace("id: taken", "id: other"), plan_id="taken"
+        ),
+    ],
+    ids=["create-with-status", "import-frontmatter-id", "import-explicit-id"],
+)
+def test_duplicate_unready_active_create_reports_conflict(
+    app: PlanApplication, clash: CreatePlan | ImportDocument
+) -> None:
+    """The spec's "Duplicate id without overwrite" promises a conflict
+    unconditionally: an id that is already taken is a conflict even when the
+    incoming document would also have failed the readiness gate."""
+    store.create_plan(_ready_plan("taken"))
+    before = store.load_plan_text("taken")
+
+    with pytest.raises(PlanConflict):
+        app.apply(clash)
+
+    assert store.load_plan_text("taken") == before
+    assert store.list_plan_ids() == ["taken"]
+
+
+@pytest.mark.parametrize(
+    "malformed",
+    [
+        CreatePlan(title="Vague", answers={}, plan_id="../escape", status="active"),
+        ImportDocument(markdown=_UNREADY_ACTIVE_DOC, plan_id="../escape"),
+    ],
+    ids=["create", "import"],
+)
+def test_malformed_explicit_id_is_refused_before_readiness(
+    app: PlanApplication, malformed: CreatePlan | ImportDocument
+) -> None:
+    """Identity validation precedes the gate: a traversal id is an id error,
+    not a readiness refusal, and nothing is written either way."""
+    with pytest.raises(InvalidPlanId):
+        app.apply(malformed)
+    assert store.list_plan_ids() == []
+
+
 @pytest.mark.parametrize(
     "intent",
     [
