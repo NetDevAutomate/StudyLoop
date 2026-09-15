@@ -1,0 +1,39 @@
+{
+ "gate": "Gate P, option P-coordinator (stage5-preregistration-2026-09-15.md)",
+ "arms": "cli-hybrid, torch vs onnx query encoder, same clone, same gold DEV 91",
+ "top1_agreement": "91/91",
+ "top1_pass": true,
+ "ordered_top5_agreement": "91/91",
+ "top5_pass": true,
+ "full_ranked_identical": "91/91",
+ "cosine_min": 0.9999998807907104,
+ "cosine_mean": 1.0000000379897735,
+ "cosine_pass": true,
+ "divergences": [],
+ "metrics_sha256_identical": true,
+ "load_gate": {
+  "onnx_cold_load_ms_three_runs": [
+   203,
+   197,
+   199
+  ],
+  "gate_ms": 500,
+  "pass": true,
+  "encode_ms_range": [
+   1.5,
+   2.2
+  ],
+  "encode_gate_ms": 50
+ },
+ "invocation_p50_ms": {
+  "torch": 2869.2,
+  "onnx": 332.6
+ },
+ "receipts": [
+  "stage5-parity-torch-gold.json",
+  "stage5-parity-onnx-gold.json"
+ ],
+ "clone_fingerprint": "be96843859a237fe92f14bb5d3a20e06e238c6d898179ce8b01102772cfa0008",
+ "git_commit": "ff84414379336823d68ff465e313aacd901ccbe5",
+ "overall_pass": true
+}

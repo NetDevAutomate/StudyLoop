@@ -1,0 +1,1626 @@
+{
+  "arms": {
+    "cli-hybrid": {
+      "config": {
+        "arm": "cli-hybrid",
+        "db_path": "/Users/ataylor/.local/share/studyloop/eval-clones/bakeoff-bge-20260915/sessions.db",
+        "git_commit": "ff84414379336823d68ff465e313aacd901ccbe5",
+        "interface": "session-query search --output-format json",
+        "mode": "hybrid",
+        "rows": 10
+      },
+      "errors_by_kind": {},
+      "latency_ms": {
+        "p50": 332.6256670989096,
+        "p95": 390.9101248718798
+      },
+      "metrics": {
+        "crashes": 0,
+        "mrr@5": {
+          "by_stratum": {
+            "K": 0.2676767676767677,
+            "P": 0.017241379310344827,
+            "R": 0.25
+          },
+          "macro": 0.17830604899570415
+        },
+        "n": 91,
+        "recall@5": {
+          "by_stratum": {
+            "K": 0.30303030303030304,
+            "P": 0.034482758620689655,
+            "R": 0.3103448275862069
+          },
+          "macro": 0.21595262974573318
+        }
+      },
+      "per_item": {
+        "A1-1": {
+          "cluster": "codex_rollout-2026-09-05T17-40-01-01a07270-f770-71a0-907c-69f5eb474d5d",
+          "error": null,
+          "error_kind": null,
+          "hit": 1,
+          "latency_ms": 329.7247919254005,
+          "rank": 1,
+          "ranked": [
+            "codex_rollout-2026-09-05T17-40-01-01a07270-f770-71a0-907c-69f5eb474d5d",
+            "agent-a01d1f46474573662",
+            "agent-a6d5a6ff23fed4627",
+            "agent-a8e5328dc9db9bba7",
+            "kiro_93774693-5678-4f39-a8e8-d5af41512945"
+          ],
+          "rr": 1.0,
+          "stratum": "K"
+        },
+        "A1-102": {
+          "cluster": "codex_rollout-2026-08-05T12-15-47-019fd1a2-fe4b-7302-a5ec-c8b3922d7261",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 330.69462492130697,
+          "rank": null,
+          "ranked": [
+            "agent-abeed2a4d28359b02",
+            "codex_rollout-2026-09-05T17-40-01-01a07270-f770-71a0-907c-69f5eb474d5d",
+            "agent-ac30e6574a77dc9a0",
+            "agent-a7de10bd551af842c",
+            "agent-acfcdd892f8d0df07"
+          ],
+          "rr": 0.0,
+          "stratum": "R"
+        },
+        "A1-103": {
+          "cluster": "kiro_e869a1be-f71e-4085-93c0-c87aa78c0d83",
+          "error": null,
+          "error_kind": null,
+          "hit": 1,
+          "latency_ms": 350.639333948493,
+          "rank": 3,
+          "ranked": [
+            "codex_rollout-2026-09-05T17-40-01-01a07270-f770-71a0-907c-69f5eb474d5d",
+            "ddae6300-4460-4fb3-9848-bccc26601585",
+            "kiro_e869a1be-f71e-4085-93c0-c87aa78c0d83",
+            "agent-a069e838ff794adf8",
+            "agent-a0e21dc654b5f4e44"
+          ],
+          "rr": 0.3333333333333333,
+          "stratum": "K"
+        },
+        "A1-104": {
+          "cluster": "kiro_e869a1be-f71e-4085-93c0-c87aa78c0d83",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 325.2109580207616,
+          "rank": null,
+          "ranked": [
+            "agent-a01d1f46474573662",
+            "codex_rollout-2026-08-23T19-36-21-01a02fe8-cf61-7ae2-ab06-49386594223e",
+            "agent-a8e5328dc9db9bba7",
+            "codex_rollout-2026-08-24T04-50-10-01a031e3-d70d-7773-a3ec-de5c106e1e92",
+            "agent-a6d5a6ff23fed4627"
+          ],
+          "rr": 0.0,
+          "stratum": "P"
+        },
+        "A1-106": {
+          "cluster": "agent-adbdbce3d7234f8a1",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 368.1332089472562,
+          "rank": null,
+          "ranked": [
+            "codex_rollout-2026-09-05T17-40-01-01a07270-f770-71a0-907c-69f5eb474d5d",
+            "agent-a7de7eab92bca51bb",
+            "codex_rollout-2026-06-03T21-20-35-019e8f25-2062-7b90-8578-2b578f22d70f",
+            "codex_rollout-2026-08-03T12-04-28-019fc74b-ea31-7cc1-9e3a-454254189a82",
+            "agent-a6f987cc16b1745c3"
+          ],
+          "rr": 0.0,
+          "stratum": "K"
+        },
+        "A1-13": {
+          "cluster": "litellm_1762645035",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 325.62412484548986,
+          "rank": null,
+          "ranked": [
+            "codex_rollout-2026-08-24T01-00-23-01a03111-768f-7793-b9cc-d64e4a55d53a",
+            "agent-abeed2a4d28359b02",
+            "codex_rollout-2026-09-05T17-40-01-01a07270-f770-71a0-907c-69f5eb474d5d",
+            "codex_rollout-2026-08-24T00-32-25-01a030f7-dc9e-73e3-92cc-8ea651ba550a",
+            "agent-a4462958fb7f07b6e"
+          ],
+          "rr": 0.0,
+          "stratum": "K"
+        },
+        "A1-25": {
+          "cluster": "agent-a73fba58677c6a072",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 330.9497919399291,
+          "rank": null,
+          "ranked": [
+            "agent-ac488b2",
+            "kiro_0c1bb160-7900-4a13-8f12-6e500ea3e899",
+            "agent-ae11528865ea4bb85",
+            "kiro_0ddb7962-053d-4ccf-a2ce-42c92043abba",
+            "codex_rollout-2026-09-04T07-33-22-01a06b1f-355b-7133-be65-fc3b32116733"
+          ],
+          "rr": 0.0,
+          "stratum": "K"
+        },
+        "A1-34": {
+          "cluster": "agent-ac4761601d11d5248",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 322.65925011597574,
+          "rank": null,
+          "ranked": [
+            "agent-ae995b50d14922efe",
+            "agent-a0fbf1e84509b0a87",
+            "8b3dcec3-8a47-4710-bca9-a1e3abee9ee8",
+            "agent-ab9e811fdd7183d8a",
+            "codex_rollout-2026-09-05T17-40-01-01a07270-f770-71a0-907c-69f5eb474d5d"
+          ],
+          "rr": 0.0,
+          "stratum": "K"
+        },
+        "A1-37": {
+          "cluster": "codex_rollout-2026-08-04T22-41-58-019fceb9-ea66-7831-9426-a6b9ffc3bd24",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 330.11108287610114,
+          "rank": null,
+          "ranked": [
+            "codex_rollout-2026-09-04T09-58-03-01a06ba3-acea-7772-b1aa-dedc1c3e9079",
+            "codex_rollout-2026-08-24T07-51-35-01a03289-eefe-70d2-8d3e-f0ab7349bb3d",
+            "codex_rollout-2026-09-05T17-40-01-01a07270-f770-71a0-907c-69f5eb474d5d",
+            "codex_rollout-2026-08-24T09-07-52-01a032cf-c40c-7932-b3ab-afe33ec48cc9",
+            "kiro_513e9573-5568-4536-a707-036067a741de"
+          ],
+          "rr": 0.0,
+          "stratum": "K"
+        },
+        "A1-4": {
+          "cluster": "agent-ab0ac2216e9729093",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 332.6256670989096,
+          "rank": null,
+          "ranked": [
+            "codex_rollout-2026-09-04T09-58-03-01a06ba3-acea-7772-b1aa-dedc1c3e9079",
+            "codex_rollout-2026-09-04T09-43-03-01a06b95-f021-77c0-8f7e-afcadbc5a5e2",
+            "codex_rollout-2026-09-05T17-40-01-01a07270-f770-71a0-907c-69f5eb474d5d",
+            "codex_rollout-2026-08-24T00-32-25-01a030f7-dc9e-73e3-92cc-8ea651ba550a",
+            "56866d9d-6ce0-44d2-b453-f461d5b933bf"
+          ],
+          "rr": 0.0,
+          "stratum": "K"
+        },
+        "A1-43": {
+          "cluster": "agent-a228515def9b8adb7",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 342.58270799182355,
+          "rank": null,
+          "ranked": [
+            "codex_rollout-2026-09-05T17-40-01-01a07270-f770-71a0-907c-69f5eb474d5d",
+            "kiro_eb60f2f9-847b-4a7e-b472-c266e25d0f4e",
+            "agent-a8e5328dc9db9bba7",
+            "agent-abeed2a4d28359b02",
+            "agent-a6d5a6ff23fed4627"
+          ],
+          "rr": 0.0,
+          "stratum": "K"
+        },
+        "A1-45": {
+          "cluster": "agent-a73fba58677c6a072",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 355.8110829908401,
+          "rank": null,
+          "ranked": [
+            "codex_rollout-2026-09-05T17-40-01-01a07270-f770-71a0-907c-69f5eb474d5d",
+            "kiro_0c1bb160-7900-4a13-8f12-6e500ea3e899",
+            "4d2b8ba3-46f2-42f5-adc8-4acddf6b80fb",
+            "codex_rollout-2026-09-04T09-58-03-01a06ba3-acea-7772-b1aa-dedc1c3e9079",
+            "codex_rollout-2026-06-28T14-57-27-019f0e85-5534-76c0-ab00-e48e99798a84"
+          ],
+          "rr": 0.0,
+          "stratum": "R"
+        },
+        "A1-46": {
+          "cluster": "kiro_f59eec0d-8558-4765-a534-c5c0132e9890",
+          "error": null,
+          "error_kind": null,
+          "hit": 1,
+          "latency_ms": 347.27879194542766,
+          "rank": 1,
+          "ranked": [
+            "kiro_f59eec0d-8558-4765-a534-c5c0132e9890",
+            "kiro_caf2a0ec-bca4-464e-84b7-ead98ef458e2",
+            "kiro_375ac9d7-9f73-47f6-bb1a-55172f10dc70",
+            "codex_rollout-2026-09-05T17-40-01-01a07270-f770-71a0-907c-69f5eb474d5d",
+            "codex_rollout-2026-08-03T12-04-28-019fc74b-ea31-7cc1-9e3a-454254189a82"
+          ],
+          "rr": 1.0,
+          "stratum": "K"
+        },
+        "A1-49": {
+          "cluster": "agent-a5878da096325b9a9",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 330.0900000613183,
+          "rank": null,
+          "ranked": [
+            "codex_rollout-2026-08-24T00-32-25-01a030f7-dc9e-73e3-92cc-8ea651ba550a",
+            "agent-a0e38cc",
+            "56866d9d-6ce0-44d2-b453-f461d5b933bf",
+            "agent-a7de10bd551af842c",
+            "agent-aa8b6880c93af48d3"
+          ],
+          "rr": 0.0,
+          "stratum": "K"
+        },
+        "A1-5": {
+          "cluster": "agent-ab0ac2216e9729093",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 334.2234578449279,
+          "rank": null,
+          "ranked": [
+            "agent-a01d1f46474573662",
+            "codex_rollout-2026-08-23T19-36-21-01a02fe8-cf61-7ae2-ab06-49386594223e",
+            "agent-a8e5328dc9db9bba7",
+            "codex_rollout-2026-08-24T04-50-10-01a031e3-d70d-7773-a3ec-de5c106e1e92",
+            "agent-a6d5a6ff23fed4627"
+          ],
+          "rr": 0.0,
+          "stratum": "P"
+        },
+        "A1-55": {
+          "cluster": "agent-a0b2a98dadf265bc2",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 332.81887508928776,
+          "rank": null,
+          "ranked": [
+            "agent-aa8b6880c93af48d3",
+            "codex_rollout-2026-09-05T17-40-01-01a07270-f770-71a0-907c-69f5eb474d5d",
+            "agent-aac5d28d43feffd58",
+            "agent-a7a0e4fbf39bd35b1",
+            "agent-a0e38cc"
+          ],
+          "rr": 0.0,
+          "stratum": "K"
+        },
+        "A1-57": {
+          "cluster": "agent-ac4761601d11d5248",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 325.0975830014795,
+          "rank": null,
+          "ranked": [
+            "agent-abeed2a4d28359b02",
+            "agent-a0fbf1e84509b0a87",
+            "agent-ac30e6574a77dc9a0",
+            "agent-a91f26db92572f6a6",
+            "agent-acfcdd892f8d0df07"
+          ],
+          "rr": 0.0,
+          "stratum": "R"
+        },
+        "A1-58": {
+          "cluster": "agent-a4a371538cb138f8e",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 322.21629098057747,
+          "rank": null,
+          "ranked": [
+            "agent-a676b70243ccab761",
+            "agent-ac30e6574a77dc9a0",
+            "agent-abeed2a4d28359b02",
+            "agent-acfcdd892f8d0df07",
+            "agent-a330ba7166c3456e4"
+          ],
+          "rr": 0.0,
+          "stratum": "K"
+        },
+        "A1-6": {
+          "cluster": "agent-a864c7e00e4d9e89b",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 323.3063330408186,
+          "rank": null,
+          "ranked": [
+            "agent-abeed2a4d28359b02",
+            "codex_rollout-2026-09-05T17-40-01-01a07270-f770-71a0-907c-69f5eb474d5d",
+            "agent-ac30e6574a77dc9a0",
+            "agent-acfcdd892f8d0df07",
+            "ddae6300-4460-4fb3-9848-bccc26601585"
+          ],
+          "rr": 0.0,
+          "stratum": "R"
+        },
+        "A1-63": {
+          "cluster": "codex_rollout-2026-08-04T22-41-58-019fceb9-ea66-7831-9426-a6b9ffc3bd24",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 348.8712920807302,
+          "rank": null,
+          "ranked": [
+            "codex_rollout-2026-08-24T09-07-52-01a032cf-c40c-7932-b3ab-afe33ec48cc9",
+            "codex_rollout-2026-09-05T17-40-01-01a07270-f770-71a0-907c-69f5eb474d5d",
+            "codex_rollout-2026-08-23T22-44-38-01a03095-3102-7930-b2a3-bf79bd3ffc63",
+            "4d2b8ba3-46f2-42f5-adc8-4acddf6b80fb",
+            "56866d9d-6ce0-44d2-b453-f461d5b933bf"
+          ],
+          "rr": 0.0,
+          "stratum": "R"
+        },
+        "A1-64": {
+          "cluster": "agent-a3bb83d90e48ec56f",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 327.77329185046256,
+          "rank": null,
+          "ranked": [
+            "agent-ae995b50d14922efe",
+            "8b3dcec3-8a47-4710-bca9-a1e3abee9ee8",
+            "agent-a7a0e4fbf39bd35b1",
+            "kiro_93774693-5678-4f39-a8e8-d5af41512945",
+            "codex_rollout-2026-09-05T17-40-01-01a07270-f770-71a0-907c-69f5eb474d5d"
+          ],
+          "rr": 0.0,
+          "stratum": "K"
+        },
+        "A1-65": {
+          "cluster": "agent-a3bb83d90e48ec56f",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 323.4602080192417,
+          "rank": null,
+          "ranked": [
+            "agent-abeed2a4d28359b02",
+            "agent-a8e5328dc9db9bba7",
+            "agent-a0ad7a1",
+            "agent-a2ccfc47f27476015",
+            "codex_rollout-2026-09-05T17-40-01-01a07270-f770-71a0-907c-69f5eb474d5d"
+          ],
+          "rr": 0.0,
+          "stratum": "P"
+        },
+        "A1-70": {
+          "cluster": "litellm_1764852027",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 332.6979170087725,
+          "rank": null,
+          "ranked": [
+            "codex_rollout-2026-08-23T19-36-21-01a02fe8-cf61-7ae2-ab06-49386594223e",
+            "agent-a03211819c466a714",
+            "agent-a4462958fb7f07b6e",
+            "agent-a599fa5447d6931eb",
+            "agent-a09431bb450066d18"
+          ],
+          "rr": 0.0,
+          "stratum": "K"
+        },
+        "A1-71": {
+          "cluster": "litellm_1764852027",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 325.57754195295274,
+          "rank": null,
+          "ranked": [
+            "codex_rollout-2026-08-24T09-33-40-01a032e7-6449-7a73-bbd7-2496468670cb",
+            "codex_rollout-2026-07-15T17-39-48-019f66a6-1741-7c22-90e7-bef07ee91ef9",
+            "codex_rollout-2026-08-24T09-08-10-01a032d0-0bcd-7532-8d3a-90ac9eddea8a",
+            "agent-ae84449",
+            "codex_rollout-2026-08-24T09-08-00-01a032cf-e69a-74e3-81cf-3b6fc0e93e5d"
+          ],
+          "rr": 0.0,
+          "stratum": "P"
+        },
+        "A1-75": {
+          "cluster": "kiro_f59eec0d-8558-4765-a534-c5c0132e9890",
+          "error": null,
+          "error_kind": null,
+          "hit": 1,
+          "latency_ms": 350.82275001332164,
+          "rank": 1,
+          "ranked": [
+            "kiro_f59eec0d-8558-4765-a534-c5c0132e9890",
+            "kiro_caf2a0ec-bca4-464e-84b7-ead98ef458e2",
+            "codex_rollout-2026-08-23T19-36-21-01a02fe8-cf61-7ae2-ab06-49386594223e",
+            "codex_rollout-2026-09-05T17-40-01-01a07270-f770-71a0-907c-69f5eb474d5d",
+            "4d2b8ba3-46f2-42f5-adc8-4acddf6b80fb"
+          ],
+          "rr": 1.0,
+          "stratum": "R"
+        },
+        "A1-76": {
+          "cluster": "agent-ae2d578a2fb3692e5",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 354.7477079555392,
+          "rank": null,
+          "ranked": [
+            "codex_rollout-2026-09-05T17-40-01-01a07270-f770-71a0-907c-69f5eb474d5d",
+            "codex_rollout-2026-07-15T17-43-53-019f66a9-cff4-71d3-b1a0-d9e772cd753e",
+            "agent-a30a4630609c7bc17",
+            "agent-a8b4455",
+            "codex_rollout-2026-08-03T12-04-28-019fc74b-ea31-7cc1-9e3a-454254189a82"
+          ],
+          "rr": 0.0,
+          "stratum": "K"
+        },
+        "A1-77": {
+          "cluster": "agent-ae2d578a2fb3692e5",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 326.94037491455674,
+          "rank": null,
+          "ranked": [
+            "agent-a01d1f46474573662",
+            "codex_rollout-2026-08-23T19-36-21-01a02fe8-cf61-7ae2-ab06-49386594223e",
+            "agent-a8e5328dc9db9bba7",
+            "codex_rollout-2026-08-24T04-50-10-01a031e3-d70d-7773-a3ec-de5c106e1e92",
+            "agent-a6d5a6ff23fed4627"
+          ],
+          "rr": 0.0,
+          "stratum": "P"
+        },
+        "A1-79": {
+          "cluster": "agent-acdc2dc57d3550798",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 327.6077921036631,
+          "rank": null,
+          "ranked": [
+            "agent-aa43068",
+            "agent-a8e5328dc9db9bba7",
+            "agent-abeed2a4d28359b02",
+            "agent-a676b70243ccab761",
+            "agent-a63671a296a1165d2"
+          ],
+          "rr": 0.0,
+          "stratum": "K"
+        },
+        "A1-8": {
+          "cluster": "codex_rollout-2026-09-05T11-32-29-01a07120-7c68-78e2-a887-485db4c848c6",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 323.17637489177287,
+          "rank": null,
+          "ranked": [
+            "codex_rollout-2026-08-24T09-33-40-01a032e7-6449-7a73-bbd7-2496468670cb",
+            "codex_rollout-2026-07-15T17-39-48-019f66a6-1741-7c22-90e7-bef07ee91ef9",
+            "codex_rollout-2026-08-24T09-08-10-01a032d0-0bcd-7532-8d3a-90ac9eddea8a",
+            "agent-ae84449",
+            "codex_rollout-2026-08-24T09-08-00-01a032cf-e69a-74e3-81cf-3b6fc0e93e5d"
+          ],
+          "rr": 0.0,
+          "stratum": "P"
+        },
+        "A1-81": {
+          "cluster": "agent-a5878da096325b9a9",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 322.439500130713,
+          "rank": null,
+          "ranked": [
+            "agent-abeed2a4d28359b02",
+            "agent-a7de10bd551af842c",
+            "agent-ac30e6574a77dc9a0",
+            "agent-a0e38cc",
+            "agent-acfcdd892f8d0df07"
+          ],
+          "rr": 0.0,
+          "stratum": "R"
+        },
+        "A1-82": {
+          "cluster": "agent-a659929",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 331.03541703894734,
+          "rank": null,
+          "ranked": [
+            "agent-ae6a36b16f8da3433",
+            "agent-ad71749",
+            "agent-a356b7c3413f55ac3",
+            "agent-a68400d",
+            "agent-a3b58ea0b2e20b26b"
+          ],
+          "rr": 0.0,
+          "stratum": "K"
+        },
+        "A1-85": {
+          "cluster": "agent-a877979363b8b0015",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 330.0471669062972,
+          "rank": null,
+          "ranked": [
+            "agent-a7de10bd551af842c",
+            "agent-adf53faa416b6890b",
+            "agent-a68400d",
+            "agent-a0e38cc",
+            "a61bf3ad-f906-4b1c-835d-d8c17910b4b7"
+          ],
+          "rr": 0.0,
+          "stratum": "K"
+        },
+        "A1-88": {
+          "cluster": "agent-a9e5b08e2c524697c",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 330.82779101096094,
+          "rank": null,
+          "ranked": [
+            "6fb48773-2648-40bd-bcd0-fa79450c83e8",
+            "agent-a676b70243ccab761",
+            "agent-a0e38cc",
+            "codex_rollout-2026-09-05T17-40-01-01a07270-f770-71a0-907c-69f5eb474d5d",
+            "codex_rollout-2026-08-24T00-32-25-01a030f7-dc9e-73e3-92cc-8ea651ba550a"
+          ],
+          "rr": 0.0,
+          "stratum": "K"
+        },
+        "A1-89": {
+          "cluster": "agent-a9e5b08e2c524697c",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 333.3363749552518,
+          "rank": null,
+          "ranked": [
+            "codex_rollout-2026-08-24T09-33-40-01a032e7-6449-7a73-bbd7-2496468670cb",
+            "codex_rollout-2026-07-15T17-39-48-019f66a6-1741-7c22-90e7-bef07ee91ef9",
+            "codex_rollout-2026-08-24T09-08-10-01a032d0-0bcd-7532-8d3a-90ac9eddea8a",
+            "agent-ae84449",
+            "codex_rollout-2026-08-24T09-08-00-01a032cf-e69a-74e3-81cf-3b6fc0e93e5d"
+          ],
+          "rr": 0.0,
+          "stratum": "P"
+        },
+        "A1-93": {
+          "cluster": "agent-a0b2a98dadf265bc2",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 321.75216590985656,
+          "rank": null,
+          "ranked": [
+            "agent-abeed2a4d28359b02",
+            "codex_rollout-2026-09-05T17-40-01-01a07270-f770-71a0-907c-69f5eb474d5d",
+            "agent-ac30e6574a77dc9a0",
+            "agent-acfcdd892f8d0df07",
+            "agent-a0e38cc"
+          ],
+          "rr": 0.0,
+          "stratum": "R"
+        },
+        "A1-97": {
+          "cluster": "agent-a06f3b43bc470c379",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 348.3155840076506,
+          "rank": null,
+          "ranked": [
+            "codex_rollout-2026-06-06T08-44-56-019e9be4-623b-7773-9c9f-f3efd7c65d70",
+            "a61bf3ad-f906-4b1c-835d-d8c17910b4b7",
+            "codex_rollout-2026-09-05T17-40-01-01a07270-f770-71a0-907c-69f5eb474d5d",
+            "86297936-a3d3-48d2-ba9d-f56c2a0d435f"
+          ],
+          "rr": 0.0,
+          "stratum": "K"
+        },
+        "A1-98": {
+          "cluster": "agent-a06f3b43bc470c379",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 328.10737495310605,
+          "rank": null,
+          "ranked": [
+            "codex_rollout-2026-08-24T09-33-40-01a032e7-6449-7a73-bbd7-2496468670cb",
+            "codex_rollout-2026-07-15T17-39-48-019f66a6-1741-7c22-90e7-bef07ee91ef9",
+            "codex_rollout-2026-08-24T09-08-10-01a032d0-0bcd-7532-8d3a-90ac9eddea8a",
+            "agent-ae84449",
+            "codex_rollout-2026-08-24T09-08-00-01a032cf-e69a-74e3-81cf-3b6fc0e93e5d"
+          ],
+          "rr": 0.0,
+          "stratum": "P"
+        },
+        "A1-99": {
+          "cluster": "agent-a4a371538cb138f8e",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 323.4243330080062,
+          "rank": null,
+          "ranked": [
+            "agent-abeed2a4d28359b02",
+            "kiro_321cca75-3534-464d-8ab2-c14f010ddb7d",
+            "agent-ac30e6574a77dc9a0",
+            "a56aa41c-211a-480c-b60c-cbeaf0ea301a",
+            "agent-acfcdd892f8d0df07"
+          ],
+          "rr": 0.0,
+          "stratum": "R"
+        },
+        "A2-1": {
+          "cluster": "agent-acompact-dd339248ab5c079a",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 341.13958291709423,
+          "rank": null,
+          "ranked": [
+            "kiro_e4be0256-4ad1-441a-bb8d-d60439daf7d7",
+            "agent-a617d4bbdc7bc9ed6",
+            "codex_rollout-2026-08-23T21-51-29-01a03064-8536-7b32-b38b-064248dcc27d",
+            "agent-aed37a28de2b175f8",
+            "agent-af71101f9fc08f6db"
+          ],
+          "rr": 0.0,
+          "stratum": "K"
+        },
+        "A2-11": {
+          "cluster": "agent-a4b5218c8ca872f1c",
+          "error": null,
+          "error_kind": null,
+          "hit": 1,
+          "latency_ms": 367.26849991828203,
+          "rank": 2,
+          "ranked": [
+            "agent-a63671a296a1165d2",
+            "agent-a4b5218c8ca872f1c",
+            "agent-ae21d27a8e9b337d2",
+            "agent-a84ac5c11c714e828",
+            "agent-a451b775227aa017b"
+          ],
+          "rr": 0.5,
+          "stratum": "K"
+        },
+        "A2-13": {
+          "cluster": "agent-a1508daab229ec20f",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 336.20012481696904,
+          "rank": null,
+          "ranked": [
+            "agent-a3ff1fa834a4bc612",
+            "agent-ae11528865ea4bb85",
+            "kiro_0c1bb160-7900-4a13-8f12-6e500ea3e899",
+            "kiro_0243731c-196a-4daf-83cf-9c994b853a19",
+            "agent-aed37a28de2b175f8"
+          ],
+          "rr": 0.0,
+          "stratum": "K"
+        },
+        "A2-14": {
+          "cluster": "codex_rollout-2026-08-03T13-57-44-019fc7b3-99b5-7d21-9a6d-7fcc09f7e3c3",
+          "error": null,
+          "error_kind": null,
+          "hit": 1,
+          "latency_ms": 343.73058285564184,
+          "rank": 1,
+          "ranked": [
+            "codex_rollout-2026-08-03T13-57-44-019fc7b3-99b5-7d21-9a6d-7fcc09f7e3c3",
+            "kiro_832e8f01-a1a5-45fa-99c2-461e17241895",
+            "codex_rollout-2026-06-24T21-47-00-019efb62-db8a-7ac0-845d-8182838733e2",
+            "codex_rollout-2026-06-23T22-21-51-019ef65c-664e-7bc3-92f4-2e82d6d9c935",
+            "agent-a23cfae"
+          ],
+          "rr": 1.0,
+          "stratum": "K"
+        },
+        "A2-16": {
+          "cluster": "kiro_6a947b3a-b21f-4be7-a62e-f249c3088fbf",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 327.01170817017555,
+          "rank": null,
+          "ranked": [
+            "agent-a8e3f49",
+            "agent-a691e23",
+            "agent-a659929",
+            "agent-a0274ca",
+            "agent-ae11528865ea4bb85"
+          ],
+          "rr": 0.0,
+          "stratum": "K"
+        },
+        "A2-18": {
+          "cluster": "kiro_9efdd47a-99ba-4e81-9567-3965bbaebc1d",
+          "error": null,
+          "error_kind": null,
+          "hit": 1,
+          "latency_ms": 391.71729097142816,
+          "rank": 1,
+          "ranked": [
+            "kiro_9efdd47a-99ba-4e81-9567-3965bbaebc1d",
+            "kiro_8CwPYnqKO",
+            "kiro_858b6fd2-fed3-4f74-8d1b-7dc2c7bcff8f",
+            "codex_rollout-2026-08-03T12-04-28-019fc74b-ea31-7cc1-9e3a-454254189a82"
+          ],
+          "rr": 1.0,
+          "stratum": "K"
+        },
+        "A2-2": {
+          "cluster": "agent-ac0866f51f55f374c",
+          "error": null,
+          "error_kind": null,
+          "hit": 1,
+          "latency_ms": 325.7377501577139,
+          "rank": 1,
+          "ranked": [
+            "agent-ac0866f51f55f374c",
+            "agent-a069e838ff794adf8",
+            "agent-a7a0e4fbf39bd35b1",
+            "agent-aa7b024642f5e00af",
+            "codex_rollout-2026-08-24T06-18-57-01a03235-1f26-7440-8539-39df638c48b4"
+          ],
+          "rr": 1.0,
+          "stratum": "K"
+        },
+        "A2-23": {
+          "cluster": "agent-a7855d0b998e53e57",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 343.1186249945313,
+          "rank": null,
+          "ranked": [
+            "agent-abeed2a4d28359b02",
+            "kiro_0ddb7962-053d-4ccf-a2ce-42c92043abba",
+            "codex_rollout-2026-08-24T03-38-54-01a031a2-97fe-7421-b5bf-25292698a103",
+            "codex_rollout-2026-06-11T08-09-07-019eb583-6557-7083-becf-16885ad6b98b",
+            "d118d92f-9a3c-48ce-a758-08b7288137b6"
+          ],
+          "rr": 0.0,
+          "stratum": "P"
+        },
+        "A2-25": {
+          "cluster": "agent-a5f13bd6f001d12d3",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 369.6209581103176,
+          "rank": null,
+          "ranked": [
+            "kiro_9c4b5d74-71f4-4553-befa-fc5dabcf24b0",
+            "kiro_0ddb7962-053d-4ccf-a2ce-42c92043abba",
+            "codex_rollout-2026-08-03T12-04-28-019fc74b-ea31-7cc1-9e3a-454254189a82",
+            "kiro_e7e9c56d-2289-4b2c-9a03-1dcfc8499812",
+            "agent-afddc85"
+          ],
+          "rr": 0.0,
+          "stratum": "P"
+        },
+        "A2-3": {
+          "cluster": "agent-a64a3310bf5f98653",
+          "error": null,
+          "error_kind": null,
+          "hit": 1,
+          "latency_ms": 337.67562499269843,
+          "rank": 1,
+          "ranked": [
+            "agent-a64a3310bf5f98653",
+            "agent-af3c43fa16d857b34",
+            "agent-a1e0a2b9ac30362c9",
+            "agent-a7a0e4fbf39bd35b1",
+            "agent-af98112f29a0807cc"
+          ],
+          "rr": 1.0,
+          "stratum": "K"
+        },
+        "A2-30": {
+          "cluster": "agent-acbbee93e7c1bb8fb",
+          "error": null,
+          "error_kind": null,
+          "hit": 1,
+          "latency_ms": 327.95499986968935,
+          "rank": 2,
+          "ranked": [
+            "agent-acda489",
+            "agent-acbbee93e7c1bb8fb",
+            "agent-a59c5d6076385e24b",
+            "codex_rollout-2026-09-04T09-58-03-01a06ba3-acea-7772-b1aa-dedc1c3e9079",
+            "agent-ab701fb047b45a520"
+          ],
+          "rr": 0.5,
+          "stratum": "P"
+        },
+        "A2-31": {
+          "cluster": "agent-a0de0cee0c61efd52",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 330.4939160589129,
+          "rank": null,
+          "ranked": [
+            "agent-abeed2a4d28359b02",
+            "agent-afab1c47724e4d5d5",
+            "agent-ac13fe430290887f3",
+            "agent-ad74213e7d91f7cd9",
+            "agent-ae0fcb219dec0d907"
+          ],
+          "rr": 0.0,
+          "stratum": "P"
+        },
+        "A2-33": {
+          "cluster": "agent-a72f69a3c2fbb81cf",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 336.8013750296086,
+          "rank": null,
+          "ranked": [
+            "agent-ae682d9",
+            "agent-aef6724",
+            "agent-acompact-5c8c6bffafa6a5aa",
+            "agent-a28e360618f048004",
+            "agent-af1c3f8cb9ba44529"
+          ],
+          "rr": 0.0,
+          "stratum": "P"
+        },
+        "A2-36": {
+          "cluster": "agent-a73dd4c942fd05652",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 325.6980830337852,
+          "rank": null,
+          "ranked": [
+            "codex_rollout-2026-07-15T17-43-49-019f66a9-beba-7c51-a3fe-cb2bbffbe688",
+            "agent-a1a4c6e07ed2da6ce",
+            "agent-ae11528865ea4bb85",
+            "kiro_6a947b3a-b21f-4be7-a62e-f249c3088fbf",
+            "codex_rollout-2026-06-03T21-20-35-019e8f25-2062-7b90-8578-2b578f22d70f"
+          ],
+          "rr": 0.0,
+          "stratum": "P"
+        },
+        "A2-38": {
+          "cluster": "agent-a958dad756b3b7270",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 348.5705000348389,
+          "rank": null,
+          "ranked": [
+            "agent-a54bf04654b29b91f",
+            "agent-aa932a3b32a3c52f5",
+            "agent-a9bfb3e2f9187b188",
+            "codex_rollout-2026-08-03T12-04-28-019fc74b-ea31-7cc1-9e3a-454254189a82",
+            "4ff3d44d-627f-45e3-ba69-1033f6d901d6"
+          ],
+          "rr": 0.0,
+          "stratum": "P"
+        },
+        "A2-39": {
+          "cluster": "agent-ad86fdd029abe014e",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 332.50395813956857,
+          "rank": null,
+          "ranked": [
+            "agent-ae11528865ea4bb85",
+            "agent-aed37a28de2b175f8",
+            "agent-a450375d42acabac7",
+            "codex_rollout-2026-08-23T19-36-21-01a02fe8-cf61-7ae2-ab06-49386594223e",
+            "agent-abeed2a4d28359b02"
+          ],
+          "rr": 0.0,
+          "stratum": "P"
+        },
+        "A2-40": {
+          "cluster": "agent-a90e6a05fdde8f6e3",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 328.16391717642546,
+          "rank": null,
+          "ranked": [
+            "agent-acf676a",
+            "agent-a691e23",
+            "agent-a2345da",
+            "agent-a04005b",
+            "agent-ab78338"
+          ],
+          "rr": 0.0,
+          "stratum": "P"
+        },
+        "A2-41": {
+          "cluster": "agent-acompact-dd339248ab5c079a",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 394.94587504304945,
+          "rank": null,
+          "ranked": [
+            "codex_rollout-2026-08-23T22-12-58-01a03078-30e5-79e3-9dd2-6a4aa63620b5",
+            "codex_rollout-2026-08-05T12-15-47-019fd1a2-fe4b-7302-a5ec-c8b3922d7261",
+            "codex_rollout-2026-08-27T20-07-20-01a0449e-9d4c-7d03-b2c1-7cbecd9adb0f",
+            "codex_rollout-2026-08-23T19-36-21-01a02fe8-cf61-7ae2-ab06-49386594223e",
+            "codex_rollout-2026-09-05T17-40-01-01a07270-f770-71a0-907c-69f5eb474d5d"
+          ],
+          "rr": 0.0,
+          "stratum": "R"
+        },
+        "A2-42": {
+          "cluster": "agent-ac0866f51f55f374c",
+          "error": null,
+          "error_kind": null,
+          "hit": 1,
+          "latency_ms": 415.167833911255,
+          "rank": 1,
+          "ranked": [
+            "agent-ac0866f51f55f374c",
+            "agent-aa7b024642f5e00af",
+            "agent-a069e838ff794adf8",
+            "codex_rollout-2026-09-05T17-40-01-01a07270-f770-71a0-907c-69f5eb474d5d",
+            "agent-a8ee58c6cdb673334"
+          ],
+          "rr": 1.0,
+          "stratum": "R"
+        },
+        "A2-43": {
+          "cluster": "agent-a64a3310bf5f98653",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 371.71645811758935,
+          "rank": null,
+          "ranked": [
+            "agent-a4b5218c8ca872f1c",
+            "agent-a91f26db92572f6a6",
+            "agent-aea4a502e5dcda1db",
+            "codex_rollout-2026-08-03T12-04-29-019fc74b-ea71-7bd1-97f7-64c3d019022f",
+            "agent-a1636b574b81fab86"
+          ],
+          "rr": 0.0,
+          "stratum": "R"
+        },
+        "A2-44": {
+          "cluster": "agent-a3ff1fa834a4bc612",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 430.4744170513004,
+          "rank": null,
+          "ranked": [
+            "agent-aed37a28de2b175f8",
+            "codex_rollout-2026-08-27T20-07-20-01a0449e-9d4c-7d03-b2c1-7cbecd9adb0f",
+            "codex_rollout-2026-08-24T03-38-54-01a031a2-97fe-7421-b5bf-25292698a103",
+            "agent-a59b2c1ff5d9a98c4",
+            "codex_rollout-2026-07-14T16-21-41-019f6138-356e-7c03-a4e8-af25808c9ac0"
+          ],
+          "rr": 0.0,
+          "stratum": "R"
+        },
+        "A2-46": {
+          "cluster": "agent-a4b5218c8ca872f1c",
+          "error": null,
+          "error_kind": null,
+          "hit": 1,
+          "latency_ms": 357.19958296976984,
+          "rank": 1,
+          "ranked": [
+            "agent-a4b5218c8ca872f1c",
+            "agent-a63671a296a1165d2",
+            "agent-ae21d27a8e9b337d2",
+            "agent-ab65c5da31bcc3930",
+            "agent-a6b222bb0e631d27c"
+          ],
+          "rr": 1.0,
+          "stratum": "R"
+        },
+        "A2-48": {
+          "cluster": "agent-a5f13bd6f001d12d3",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 338.8907921034843,
+          "rank": null,
+          "ranked": [
+            "agent-ae11528865ea4bb85",
+            "agent-aed37a28de2b175f8",
+            "agent-a6d5a6ff23fed4627",
+            "agent-a01d1f46474573662",
+            "agent-a36de42"
+          ],
+          "rr": 0.0,
+          "stratum": "R"
+        },
+        "A2-5": {
+          "cluster": "agent-ab3f05e36525a3a0e",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 339.2502081114799,
+          "rank": null,
+          "ranked": [
+            "agent-a6daae845b0dcdf05",
+            "agent-ae22c8e75ffed09cc",
+            "agent-acbbee93e7c1bb8fb",
+            "agent-af474c4c764ace4f8",
+            "agent-a6375a2067884739a"
+          ],
+          "rr": 0.0,
+          "stratum": "K"
+        },
+        "A2-53": {
+          "cluster": "agent-acbbee93e7c1bb8fb",
+          "error": null,
+          "error_kind": null,
+          "hit": 1,
+          "latency_ms": 335.71700006723404,
+          "rank": 2,
+          "ranked": [
+            "agent-a295937",
+            "agent-acbbee93e7c1bb8fb",
+            "agent-a25de2e",
+            "agent-a1636b574b81fab86",
+            "agent-a801349"
+          ],
+          "rr": 0.5,
+          "stratum": "R"
+        },
+        "A2-54": {
+          "cluster": "agent-a0de0cee0c61efd52",
+          "error": null,
+          "error_kind": null,
+          "hit": 1,
+          "latency_ms": 390.9101248718798,
+          "rank": 1,
+          "ranked": [
+            "agent-a4b5218c8ca872f1c",
+            "codex_rollout-2026-06-02T07-53-23-019e871b-c103-76d3-a3bf-2c9a4662d480",
+            "codex_rollout-2026-08-23T19-36-21-01a02fe8-cf61-7ae2-ab06-49386594223e",
+            "agent-acbbee93e7c1bb8fb",
+            "codex_rollout-2026-06-03T21-20-35-019e8f25-2062-7b90-8578-2b578f22d70f"
+          ],
+          "rr": 1.0,
+          "stratum": "R"
+        },
+        "A2-56": {
+          "cluster": "agent-a72f69a3c2fbb81cf",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 459.44408304058015,
+          "rank": null,
+          "ranked": [
+            "agent-a8c22b1",
+            "agent-ae955b4",
+            "kiro_af9459d7-2a19-45b0-b1e8-c29aa0df6661",
+            "agent-aa8b6880c93af48d3",
+            "kiro_34d44273-90bd-4c7e-8df5-7462b8db8784"
+          ],
+          "rr": 0.0,
+          "stratum": "R"
+        },
+        "A2-6": {
+          "cluster": "agent-a3ff1fa834a4bc612",
+          "error": null,
+          "error_kind": null,
+          "hit": 1,
+          "latency_ms": 330.8673750143498,
+          "rank": 1,
+          "ranked": [
+            "agent-a3ff1fa834a4bc612",
+            "agent-a0248be0ae1400994",
+            "codex_rollout-2026-09-04T09-58-03-01a06ba3-acea-7772-b1aa-dedc1c3e9079",
+            "agent-af001de56ace17ebd",
+            "grok_01a05ed7-91b8-72a1-ae18-2f64db661010"
+          ],
+          "rr": 1.0,
+          "stratum": "K"
+        },
+        "A2-60": {
+          "cluster": "kiro_9efdd47a-99ba-4e81-9567-3965bbaebc1d",
+          "error": null,
+          "error_kind": null,
+          "hit": 1,
+          "latency_ms": 358.38070791214705,
+          "rank": 1,
+          "ranked": [
+            "kiro_9efdd47a-99ba-4e81-9567-3965bbaebc1d",
+            "kiro_f59eec0d-8558-4765-a534-c5c0132e9890",
+            "codex_rollout-2026-07-11T14-18-34-019f5154-68cc-7731-854c-678d770fa43a",
+            "kiro_a685823b-2bfa-43e7-8db7-2c437de99b78",
+            "codex_rollout-2026-08-23T19-36-21-01a02fe8-cf61-7ae2-ab06-49386594223e"
+          ],
+          "rr": 1.0,
+          "stratum": "R"
+        },
+        "A2-61": {
+          "cluster": "agent-ab9e811fdd7183d8a",
+          "error": null,
+          "error_kind": null,
+          "hit": 1,
+          "latency_ms": 321.5283330064267,
+          "rank": 1,
+          "ranked": [
+            "agent-ab9e811fdd7183d8a",
+            "agent-a243cce4c8ec6cd15",
+            "agent-ad2b08f0bfe07324d",
+            "agent-a3006053cef2c298f",
+            "agent-ae3485c4dc32629e7"
+          ],
+          "rr": 1.0,
+          "stratum": "K"
+        },
+        "A2-64": {
+          "cluster": "agent-aadaa32",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 358.44520782120526,
+          "rank": null,
+          "ranked": [
+            "kiro_e49d8b88-2c03-456b-ae31-4dc39a65eca5",
+            "codex_rollout-2026-08-03T12-04-28-019fc74b-ea2d-7ee2-a1da-6c7e5eece358",
+            "codex_rollout-2026-08-03T12-04-28-019fc74b-ea42-7180-9dde-1f8b6b5d3749",
+            "agent-a60fafd",
+            "codex_rollout-2026-08-03T12-04-44-019fc74c-2883-7c90-987c-c14c70ae226a"
+          ],
+          "rr": 0.0,
+          "stratum": "P"
+        },
+        "A2-65": {
+          "cluster": "agent-ab9e811fdd7183d8a",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 338.33775017410517,
+          "rank": null,
+          "ranked": [
+            "agent-a8e5328dc9db9bba7",
+            "agent-abeed2a4d28359b02",
+            "agent-a6d5a6ff23fed4627",
+            "agent-a01d1f46474573662",
+            "agent-a2d7281bac628fef5"
+          ],
+          "rr": 0.0,
+          "stratum": "R"
+        },
+        "A2-8": {
+          "cluster": "codex_rollout-2026-08-03T12-04-44-019fc74c-287f-7b72-9994-49ac22ee115b",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 347.2289580386132,
+          "rank": null,
+          "ranked": [
+            "codex_rollout-2026-08-23T21-15-59-01a03044-061e-7b41-8b38-d8bf4bf03b6a",
+            "codex_rollout-2026-08-23T19-36-21-01a02fe8-cf61-7ae2-ab06-49386594223e",
+            "agent-a3ff1fa834a4bc612",
+            "agent-af5c94a22f3f2985e",
+            "codex_rollout-2026-08-24T01-00-17-01a03111-5f26-7871-b5de-a911638528ec"
+          ],
+          "rr": 0.0,
+          "stratum": "K"
+        },
+        "A3-10": {
+          "cluster": "agent-awt-t13-implementer-9015e6629815c6e0",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 328.05283297784626,
+          "rank": null,
+          "ranked": [
+            "agent-abeed2a4d28359b02",
+            "kiro_b39ab9e7-4e5a-4c3a-b244-bcdc1ed04ebc",
+            "agent-a01d1f46474573662",
+            "codex_rollout-2026-09-05T17-40-01-01a07270-f770-71a0-907c-69f5eb474d5d",
+            "agent-a6d5a6ff23fed4627"
+          ],
+          "rr": 0.0,
+          "stratum": "P"
+        },
+        "A3-11": {
+          "cluster": "codex_rollout-2026-07-12T20-43-23-019f57db-13f5-7ea0-9307-33fb0f8900ad",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 361.7440420202911,
+          "rank": null,
+          "ranked": [
+            "codex_rollout-2026-09-05T17-40-01-01a07270-f770-71a0-907c-69f5eb474d5d",
+            "kiro_c1abe0f3-8b02-45b0-a8ce-ac22a05adddb",
+            "agent-a608e2eaeffb4976e",
+            "codex_rollout-2026-08-23T19-36-21-01a02fe8-cf61-7ae2-ab06-49386594223e",
+            "agent-ab6f9bf5f80470f67"
+          ],
+          "rr": 0.0,
+          "stratum": "P"
+        },
+        "A3-12": {
+          "cluster": "codex_rollout-2026-08-24T09-07-52-01a032cf-c40c-7932-b3ab-afe33ec48cc9",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 334.11462511867285,
+          "rank": null,
+          "ranked": [
+            "codex_rollout-2026-08-23T21-37-33-01a03057-c68f-7f11-b9a2-432aae2da65a",
+            "codex_rollout-2026-08-04T22-47-02-019fcebe-8e4e-7800-84d4-c7bb607ab511",
+            "codex_rollout-2026-09-04T09-58-03-01a06ba3-acea-7772-b1aa-dedc1c3e9079",
+            "codex_rollout-2026-09-05T17-40-01-01a07270-f770-71a0-907c-69f5eb474d5d",
+            "kiro_4a8791bd-64b8-4d64-9736-f54784863154"
+          ],
+          "rr": 0.0,
+          "stratum": "P"
+        },
+        "A3-13": {
+          "cluster": "codex_rollout-2026-08-23T20-40-53-01a03023-e530-7323-8b49-13afd306f2e2",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 375.9750840254128,
+          "rank": null,
+          "ranked": [
+            "codex_rollout-2026-08-23T19-36-21-01a02fe8-cf61-7ae2-ab06-49386594223e",
+            "codex_rollout-2026-08-24T01-00-17-01a03111-5f26-7871-b5de-a911638528ec",
+            "codex_rollout-2026-08-27T20-07-20-01a0449e-9d4c-7d03-b2c1-7cbecd9adb0f",
+            "codex_rollout-2026-09-05T17-40-01-01a07270-f770-71a0-907c-69f5eb474d5d"
+          ],
+          "rr": 0.0,
+          "stratum": "P"
+        },
+        "A3-15": {
+          "cluster": "codex_rollout-2026-09-05T18-17-19-01a07293-1e21-79d1-85f0-41e4c3f91e49",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 331.2366248574108,
+          "rank": null,
+          "ranked": [
+            "agent-ae11528865ea4bb85",
+            "019e7e4e-cb04-7442-ba62-340d14792ec2",
+            "codex_rollout-2026-09-04T09-43-03-01a06b95-f021-77c0-8f7e-afcadbc5a5e2",
+            "codex_rollout-2026-06-03T21-20-35-019e8f25-2062-7b90-8578-2b578f22d70f",
+            "codex_rollout-2026-08-03T12-04-29-019fc74b-ea71-7bd1-97f7-64c3d019022f"
+          ],
+          "rr": 0.0,
+          "stratum": "P"
+        },
+        "A3-19": {
+          "cluster": "codex_rollout-2026-06-13T22-02-15-019ec2ca-dc02-7f92-8743-7b750860db90",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 331.00524987094104,
+          "rank": null,
+          "ranked": [
+            "agent-aed37a28de2b175f8",
+            "kiro_d673945e-7ece-4836-9a3a-94a0a40ecbc3",
+            "codex_rollout-2026-09-04T09-43-03-01a06b95-f021-77c0-8f7e-afcadbc5a5e2",
+            "kiro_c67cd901-7219-4616-9b4f-ab37c0616f54",
+            "kiro_f359bf2d-c139-428f-9084-3c39cc5633a5"
+          ],
+          "rr": 0.0,
+          "stratum": "P"
+        },
+        "A3-20": {
+          "cluster": "grok_019f4b90-b772-7f00-99fd-a3696982bfe9",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 329.13266704417765,
+          "rank": null,
+          "ranked": [
+            "agent-a06f143",
+            "kiro_375ac9d7-9f73-47f6-bb1a-55172f10dc70",
+            "agent-ae11528865ea4bb85",
+            "codex_rollout-2026-09-05T12-58-00-01a0716e-c5d1-7803-b763-43a943ce377e",
+            "agent-a3d1ee7daa522bdad"
+          ],
+          "rr": 0.0,
+          "stratum": "P"
+        },
+        "A3-21": {
+          "cluster": "agent-aimpl-t4t5-glue-eb0fe23883be5989",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 331.2632499728352,
+          "rank": null,
+          "ranked": [
+            "agent-abeed2a4d28359b02",
+            "codex_rollout-2026-07-14T16-16-42-019f6133-a705-7d90-92eb-de9ce15a8339",
+            "codex_rollout-2026-08-23T19-36-21-01a02fe8-cf61-7ae2-ab06-49386594223e",
+            "codex_rollout-2026-07-12T20-56-56-019f57e7-7dec-7c51-9b29-08f379c7615d",
+            "agent-a6f1d0d42b537a73c"
+          ],
+          "rr": 0.0,
+          "stratum": "P"
+        },
+        "A3-26": {
+          "cluster": "kiro_8CwPYnqKO",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 339.17558402754366,
+          "rank": null,
+          "ranked": [
+            "codex_rollout-2026-09-05T17-40-01-01a07270-f770-71a0-907c-69f5eb474d5d",
+            "codex_rollout-2026-08-24T02-08-29-01a0314f-d0f8-71f3-a72c-03e677fc950e",
+            "codex_rollout-2026-08-23T19-36-21-01a02fe8-cf61-7ae2-ab06-49386594223e",
+            "agent-a579e2b94eaadcc0b",
+            "codex_rollout-2026-08-05T09-49-22-019fd11c-f1f6-7f81-ad91-08afd4709c73"
+          ],
+          "rr": 0.0,
+          "stratum": "R"
+        },
+        "A3-27": {
+          "cluster": "codex_rollout-2026-07-05T12-13-20-019f31fb-98e1-7162-b255-82c8abb65025",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 332.13720889762044,
+          "rank": null,
+          "ranked": [
+            "agent-a1eb89059a7f63fc7",
+            "codex_rollout-2026-08-04T14-38-01-019fccfe-d920-71e3-b337-4fde010dcbb7",
+            "agent-aed37a28de2b175f8",
+            "codex_rollout-2026-08-04T22-47-02-019fcebe-8e4e-7800-84d4-c7bb607ab511",
+            "agent-ae11528865ea4bb85"
+          ],
+          "rr": 0.0,
+          "stratum": "R"
+        },
+        "A3-3": {
+          "cluster": "codex_rollout-2026-08-03T12-04-44-019fc74c-2880-7803-bc50-a6d6b121b24a",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 350.78695812262595,
+          "rank": null,
+          "ranked": [
+            "codex_rollout-2026-09-05T17-40-01-01a07270-f770-71a0-907c-69f5eb474d5d",
+            "codex_rollout-2026-08-03T12-04-44-019fc74c-2883-7c90-987c-c14c70ae226a",
+            "agent-a49941c9e3a26a104",
+            "019e7e4e-cb04-7442-ba62-340d14792ec2",
+            "codex_rollout-2026-08-20T19-26-40-01a0206c-db0a-7ae3-a7b8-16abcb6aee52"
+          ],
+          "rr": 0.0,
+          "stratum": "P"
+        },
+        "A3-31": {
+          "cluster": "agent-awt-t13-implementer-9015e6629815c6e0",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 329.01416602544487,
+          "rank": null,
+          "ranked": [
+            "agent-abeed2a4d28359b02",
+            "kiro_f3fb038f-2ce3-4118-b72c-6e1dd2c69d09",
+            "kiro_7e303ce1-b924-4a64-bfc4-8de27271253f",
+            "kiro_af64b2e3-9d8a-4f17-8ee7-e2ab53b6441a",
+            "codex_rollout-2026-07-15T17-43-47-019f66a9-b8eb-71f0-ade9-26a6a0c46a7b"
+          ],
+          "rr": 0.0,
+          "stratum": "R"
+        },
+        "A3-32": {
+          "cluster": "codex_rollout-2026-07-12T20-43-23-019f57db-13f5-7ea0-9307-33fb0f8900ad",
+          "error": null,
+          "error_kind": null,
+          "hit": 1,
+          "latency_ms": 357.841124990955,
+          "rank": 1,
+          "ranked": [
+            "codex_rollout-2026-07-12T20-43-23-019f57db-13f5-7ea0-9307-33fb0f8900ad",
+            "agent-a0260a3169d1fdc0a",
+            "4d2b8ba3-46f2-42f5-adc8-4acddf6b80fb",
+            "agent-ad51f425400ec7fd0",
+            "codex_rollout-2026-09-05T18-17-26-01a07293-3bec-70a0-95aa-02d4d2929fc6"
+          ],
+          "rr": 1.0,
+          "stratum": "R"
+        },
+        "A3-33": {
+          "cluster": "codex_rollout-2026-08-24T09-07-52-01a032cf-c40c-7932-b3ab-afe33ec48cc9",
+          "error": null,
+          "error_kind": null,
+          "hit": 1,
+          "latency_ms": 368.1639169808477,
+          "rank": 4,
+          "ranked": [
+            "agent-a0166888df4d2704f",
+            "codex_rollout-2026-08-05T15-56-28-019fd26d-084e-7753-aea2-68998a4aaf57",
+            "codex_rollout-2026-08-23T19-36-21-01a02fe8-cf61-7ae2-ab06-49386594223e",
+            "codex_rollout-2026-08-24T09-07-52-01a032cf-c40c-7932-b3ab-afe33ec48cc9",
+            "agent-ae21d27a8e9b337d2"
+          ],
+          "rr": 0.25,
+          "stratum": "R"
+        },
+        "A3-34": {
+          "cluster": "codex_rollout-2026-08-23T20-40-53-01a03023-e530-7323-8b49-13afd306f2e2",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 326.89870800822973,
+          "rank": null,
+          "ranked": [
+            "agent-ae11528865ea4bb85",
+            "agent-aed37a28de2b175f8",
+            "agent-a056ba0a16edd0ec2",
+            "codex_rollout-2026-08-04T14-38-01-019fccfe-d920-71e3-b337-4fde010dcbb7",
+            "agent-abeed2a4d28359b02"
+          ],
+          "rr": 0.0,
+          "stratum": "R"
+        },
+        "A3-36": {
+          "cluster": "codex_rollout-2026-09-05T18-17-19-01a07293-1e21-79d1-85f0-41e4c3f91e49",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 328.9380830246955,
+          "rank": null,
+          "ranked": [
+            "agent-a01d1f46474573662",
+            "agent-a6d5a6ff23fed4627",
+            "agent-abeed2a4d28359b02",
+            "agent-aed37a28de2b175f8",
+            "codex_rollout-2026-08-23T19-36-21-01a02fe8-cf61-7ae2-ab06-49386594223e"
+          ],
+          "rr": 0.0,
+          "stratum": "R"
+        },
+        "A3-4": {
+          "cluster": "kiro_8CwPYnqKO",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 325.48466697335243,
+          "rank": null,
+          "ranked": [
+            "agent-abeed2a4d28359b02",
+            "codex_rollout-2026-08-04T22-47-02-019fcebe-8e4e-7800-84d4-c7bb607ab511",
+            "agent-a96bc55b8e58e5b76",
+            "agent-a74b3d9a0a27f2808",
+            "kiro_380d405a-ca15-43b7-8150-c1801b9706ef"
+          ],
+          "rr": 0.0,
+          "stratum": "P"
+        },
+        "A3-40": {
+          "cluster": "codex_rollout-2026-06-13T22-02-15-019ec2ca-dc02-7f92-8743-7b750860db90",
+          "error": null,
+          "error_kind": null,
+          "hit": 1,
+          "latency_ms": 316.4653331041336,
+          "rank": 2,
+          "ranked": [
+            "agent-aed37a28de2b175f8",
+            "codex_rollout-2026-06-13T22-02-15-019ec2ca-dc02-7f92-8743-7b750860db90",
+            "kiro_4519c765-bb57-468c-a76e-7fb08e2baad4",
+            "kiro_0ddb7962-053d-4ccf-a2ce-42c92043abba",
+            "kiro_d44f4329-3a02-4999-bdb3-92d224a4cccf"
+          ],
+          "rr": 0.5,
+          "stratum": "R"
+        },
+        "A3-41": {
+          "cluster": "grok_019f4b90-b772-7f00-99fd-a3696982bfe9",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 357.16941696591675,
+          "rank": null,
+          "ranked": [
+            "b818c97b-2a8c-4f52-b5b0-bbe179256425",
+            "codex_rollout-2026-09-05T11-27-16-01a0711b-b4ec-7d43-b55d-471c11376dcf",
+            "codex_rollout-2026-09-05T12-49-58-01a07167-6df1-7e21-acca-34ddb0064453",
+            "kiro_6a947b3a-b21f-4be7-a62e-f249c3088fbf",
+            "codex_rollout-2026-08-20T19-26-40-01a0206c-db0a-7ae3-a7b8-16abcb6aee52"
+          ],
+          "rr": 0.0,
+          "stratum": "R"
+        },
+        "A3-5": {
+          "cluster": "codex_rollout-2026-07-05T12-13-20-019f31fb-98e1-7162-b255-82c8abb65025",
+          "error": null,
+          "error_kind": null,
+          "hit": 0,
+          "latency_ms": 331.4378340728581,
+          "rank": null,
+          "ranked": [
+            "codex_rollout-2026-06-27T01-44-04-019f0688-9bd4-7930-b375-62f82e560dce",
+            "codex_rollout-2026-08-04T22-47-02-019fcebe-8e4e-7800-84d4-c7bb607ab511",
+            "codex_rollout-2026-09-04T09-58-03-01a06ba3-acea-7772-b1aa-dedc1c3e9079",
+            "kiro_6c9a18c9-9ba8-4dbe-b23c-1cb31c83617b",
+            "agent-a8e5328dc9db9bba7"
+          ],
+          "rr": 0.0,
+          "stratum": "P"
+        }
+      }
+    }
+  },
+  "comparisons": {},
+  "created_utc": "2026-09-15T11:40:48+00:00",
+  "db": {
+    "fingerprint": "be96843859a237fe92f14bb5d3a20e06e238c6d898179ce8b01102772cfa0008",
+    "path": "/Users/ataylor/.local/share/studyloop/eval-clones/bakeoff-bge-20260915/sessions.db",
+    "size_bytes": 891744256,
+    "visibility": {
+      "admitted_sources": [
+        "claude_code",
+        "codex",
+        "grok",
+        "kiro_cli",
+        "opencode",
+        "pi",
+        "study_mentor"
+      ],
+      "total_sessions": 2173,
+      "visible_sessions": 2173
+    }
+  },
+  "git_commit": "ff84414379336823d68ff465e313aacd901ccbe5",
+  "gold": {
+    "clusters": 57,
+    "known_unwinnable": [
+      "A1-13",
+      "A1-70",
+      "A1-71"
+    ],
+    "n": 91,
+    "path": "/Users/ataylor/code/personal/tools/studyloop/docs/architecture/session-memory/receipts/gold-v2-dev.json",
+    "set": "DEV",
+    "sha256": "5632cd2b02a77dbd95ded3fae3aa32fa1599cd43929f43e44aa132343c3c6098",
+    "strata": {
+      "K": 33,
+      "P": 29,
+      "R": 29
+    },
+    "version": "v2"
+  },
+  "metrics_sha256": "08bcf4053acfc91b75500fe4b41b103bd4ff5bf34852c23ab0f7d59816be9597",
+  "schema": "studyloop.retrieval-eval/v1"
+}

@@ -512,6 +512,13 @@ class TestFailureAndDisabled:
 
 
 class TestQuerySideWiring:
+    @pytest.fixture(autouse=True)
+    def _pin_torch_backend(self, monkeypatch: pytest.MonkeyPatch):
+        """These tests exercise indicator WIRING with torch fakes; under the
+        ``auto`` default (Gate P flip) bge would concretise to onnx and the
+        fakes would never fire, so the backend is pinned explicitly."""
+        monkeypatch.setenv(query_encoders.BACKEND_ENV, "torch")
+
     def test_retrieval_encoder_records_a_load_duration(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:

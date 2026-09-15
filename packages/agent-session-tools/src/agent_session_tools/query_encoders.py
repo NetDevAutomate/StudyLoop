@@ -41,7 +41,8 @@ from .embedding_store import Encoder
 
 BACKEND_TORCH = "torch"
 BACKEND_ONNX = "onnx"
-BACKENDS = (BACKEND_TORCH, BACKEND_ONNX)
+BACKEND_AUTO = "auto"
+BACKENDS = (BACKEND_TORCH, BACKEND_ONNX, BACKEND_AUTO)
 BACKEND_ENV = "STUDYLOOP_QUERY_ENCODER"
 """Per-process override of the configured backend; mirrors ``retrieval.MODE_ENV``."""
 
@@ -91,8 +92,13 @@ PhaseListener = Callable[[PhaseEvent], None]
 def resolve_backend(requested: str | None = None) -> str:
     """Which backend answers a query encoder request: argument, else
     ``STUDYLOOP_QUERY_ENCODER``, else ``semantic_search.query_encoder`` in the
-    config, else ``torch``.
+    config, else ``auto``.
 
+    ``auto`` (the default since Gate P passed -- stage5-parity-verdict.json:
+    91/91 identical rankings, cosine 1.0, load 0.2 s vs 2.9 s) is
+    model-agnostic here and concretised per model by :func:`cache_key`: onnx
+    where the model has a pinned artefact, torch otherwise -- so a database
+    pinned to a model without ONNX weights keeps its working torch path.
     An unknown value is a caller error, not a silent fallback -- mirrors
     ``retrieval.resolve_mode``.
     """
@@ -102,14 +108,23 @@ def resolve_backend(requested: str | None = None) -> str:
         try:
             from .config_loader import get_semantic_config
 
-            requested = get_semantic_config().get("query_encoder", BACKEND_TORCH)
-        except Exception:  # config unreadable: torch always works
-            requested = BACKEND_TORCH
+            requested = get_semantic_config().get("query_encoder", BACKEND_AUTO)
+        except Exception:  # config unreadable: auto still resolves per model
+            requested = BACKEND_AUTO
     if requested not in BACKENDS:
         raise ValueError(
             f"unknown query encoder backend {requested!r}; expected one of {BACKENDS}"
         )
     return requested
+
+
+def _concretise(model: str, backend: str) -> str:
+    """Turn ``auto`` into a real backend for this model; pass others through."""
+    if backend != BACKEND_AUTO:
+        return backend
+    from .embeddings import ONNX_ARTIFACTS
+
+    return BACKEND_ONNX if model in ONNX_ARTIFACTS else BACKEND_TORCH
 
 
 def _default_revision(model: str, backend: str) -> str:
@@ -192,7 +207,7 @@ def cache_key(
     expensive availability probe, a phase-hook listener keying its own state)
     to ask "which encoder would this resolve to?" without constructing one.
     """
-    resolved_backend = resolve_backend(backend)
+    resolved_backend = _concretise(model, resolve_backend(backend))
     resolved_revision = revision or _default_revision(model, resolved_backend)
     return (model, resolved_backend, resolved_revision)
 
@@ -252,6 +267,7 @@ def reset_cache() -> None:
 
 
 __all__ = [
+    "BACKEND_AUTO",
     "BACKEND_ENV",
     "BACKEND_ONNX",
     "BACKEND_TORCH",

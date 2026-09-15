@@ -176,8 +176,14 @@ class TestOnnxEncoderProtocolConformance:
 
 
 class TestBackendResolution:
-    def test_default_is_torch(self):
-        assert query_encoders.resolve_backend() == query_encoders.BACKEND_TORCH
+    def test_default_is_auto(self):
+        """The signed A2 flip (Gate P PASS, stage5-parity-verdict.json): the
+        default backend is ``auto`` -- onnx where a pinned artefact exists for
+        the model, torch otherwise. Explicit torch/onnx always wins."""
+        assert query_encoders.resolve_backend() == query_encoders.BACKEND_AUTO
+
+    def test_auto_is_accepted_explicitly(self):
+        assert query_encoders.resolve_backend("auto") == query_encoders.BACKEND_AUTO
 
     def test_unknown_backend_is_a_caller_error(self):
         with pytest.raises(ValueError, match="unknown query encoder backend"):
@@ -204,12 +210,33 @@ class TestBackendResolution:
 
 
 class TestFactoryTruthTable:
-    def test_default_backend_is_torch_and_uses_sentence_transformer_encoder(
+    def test_auto_default_uses_torch_for_a_model_without_a_pinned_artefact(
         self, monkeypatch: pytest.MonkeyPatch
     ):
         monkeypatch.setattr(store, "SentenceTransformerEncoder", FakeTorchEncoder)
         encoder = query_encoders.get_query_encoder("some-model")
         assert isinstance(encoder, FakeTorchEncoder)
+
+    def test_auto_default_uses_onnx_for_a_pinned_model(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        class FakeOnnx:
+            def __init__(self, model, *, local_files_only, revision):
+                self.name, self.dim, self.max_tokens = model, 4, 64
+
+            def count_tokens(self, text):
+                return len(text.split())
+
+            def encode(self, texts):
+                return [b"\x00" * 16 for _ in texts]
+
+        monkeypatch.setattr("agent_session_tools.onnx_encoder.OnnxEncoder", FakeOnnx)
+        encoder = query_encoders.get_query_encoder(ONNX_MODEL)
+        assert isinstance(encoder, FakeOnnx)
+
+    def test_cache_key_concretises_auto_per_model(self):
+        assert query_encoders.cache_key(ONNX_MODEL)[1] == query_encoders.BACKEND_ONNX
+        assert query_encoders.cache_key("some-model")[1] == query_encoders.BACKEND_TORCH
 
     def test_onnx_backend_builds_an_onnx_encoder(self, monkeypatch: pytest.MonkeyPatch):
         built: dict[str, Any] = {}
