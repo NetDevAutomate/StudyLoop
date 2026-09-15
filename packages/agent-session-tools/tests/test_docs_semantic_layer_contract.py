@@ -329,3 +329,40 @@ def test_arch_readme_does_not_reference_dead_hybrid_search_symbol() -> None:
             "README.md references the dead `hybrid_search` symbol without the "
             "dated addendum pointing at retrieval.py's real fusion functions"
         )
+
+
+# ---------------------------------------------------------------------------
+# Lane A1 (council D-1/D-2): the mode-by-surface table names every surface
+# retrieval.py actually knows about -- a SET comparison against the real
+# enum, never a copied-prose check (TEST SHAPE ruling A20).
+# ---------------------------------------------------------------------------
+
+
+def _mode_table_surfaces(text: str) -> set[str]:
+    """Every backticked surface slug in the "Surface | Default | ..." table."""
+    lines = text.splitlines()
+    header_ix = next(
+        i for i, line in enumerate(lines) if line.strip().startswith("| Surface")
+    )
+    surfaces: set[str] = set()
+    for line in lines[header_ix + 2 :]:
+        if not line.strip().startswith("|"):
+            break
+        first_cell = line.split("|")[1]
+        match = re.search(r"`([a-z]+)`", first_cell)
+        if match:
+            surfaces.add(match.group(1))
+    return surfaces
+
+
+def test_arch_readme_mode_table_names_every_surface() -> None:
+    text = ARCH_README_MD.read_text(encoding="utf-8")
+    assert _mode_table_surfaces(text) == set(retrieval.SURFACES)
+
+
+def test_arch_readme_states_the_sealed_provisional_note() -> None:
+    """Council D-4/O-2: the mcp/web hybrid default is provisional pending the
+    owner's separate SEALED obligation -- the doc must say so, not just the
+    lane's internal receipts."""
+    text = ARCH_README_MD.read_text(encoding="utf-8")
+    assert "provisional pending SEALED" in text

@@ -69,11 +69,51 @@ they get stricter, not looser.
 exists; schema 48 shipped the mainline embedding substrate (`message_embeddings`,
 chunked/hashed, trigger-swept, with an optional `sqlite-vec` sidecar) and the
 fusion path is `retrieval.py`'s `resolve_mode()` / `search()` / `_fuse()`
-(Reciprocal Rank Fusion, unweighted, off by default). The "0 rows" claim above
-is stale: once `session-maint embed` has run, `message_embeddings` holds tens
-of thousands of rows. See the [Stage 4
+(Reciprocal Rank Fusion, unweighted). Whether a given call runs hybrid or
+lexical is decided **per surface** — see the addendum immediately below. The
+"0 rows" claim above is stale: once `session-maint embed` has run,
+`message_embeddings` holds tens of thousands of rows. See the [Stage 4
 record](receipts/semantic-layer/stage4-record-2026-09-12.md) for the fusion
 design and gate.
+
+**2026-09-15 addendum (lane A1, council D-1/D-2/D-3):** `semantic_search.hybrid`
+is a tri-state config key, not a plain boolean. Its schema default is the
+sentinel `None` ("unset") — `config_loader.load_config()` deep-merges user
+YAML over the schema default, so a boolean default made "the key was never
+set" and "the user explicitly wrote `false`" produce the identical merged
+value, and a per-surface default could never actually take effect (council
+D-1, verified blocking). Resolution order, in `retrieval.resolve_mode()`:
+
+1. An explicit argument to the call (`mode=...`) — always wins.
+2. `STUDYLOOP_RETRIEVAL_MODE` — a per-process override.
+3. `semantic_search.hybrid: true`/`false` in `config.yaml` — honoured on
+   every surface once set, regardless of the surface default below. This is
+   also the upgrade path for a config written before this addendum.
+4. The calling surface's own default (`retrieval.SURFACE_DEFAULTS`), when
+   none of the above applies.
+
+| Surface | Default | Why | Force the other mode |
+|---|---|---|---|
+| `cli` (`session-query search`) | lexical | a one-shot process pays the encoder's cold-load cost per invocation; stays lexical until the fast ONNX query-side load (lane A2) has its own receipts | `hybrid: true` in `config.yaml`, or `STUDYLOOP_RETRIEVAL_MODE=hybrid` |
+| `mcp` (`session_search` tool) | lexical, wired to flip to hybrid pending the Stage 5 sign-off | a long-lived process pre-warms the query encoder once at boot (below) and pays only the ~55 ms/query resident cost (E-A5) | `hybrid: false` in `config.yaml`, or `STUDYLOOP_RETRIEVAL_MODE=lexical` |
+| `web` (the study web server) | lexical, wired to flip to hybrid pending the Stage 5 sign-off | same reasoning as `mcp` | same as `mcp` |
+
+**The `mcp`/`web` hybrid default is provisional pending SEALED.** Stage 4's
+`hybrid` gate (G1/G2, `stage4-preregistration-2026-09-11.md`) was scored once,
+DEV-reported, and the SEALED run remains the owner's separate obligation. This
+lane's flip is gated on a NEW pre-registration measuring the *resident*
+steady state (warm-up excluded and reported separately, p95 wall AND paired
+hybrid−lexical overhead) — see
+`receipts/semantic-layer/stage5-preregistration-2026-09-15.md` — and the
+owner accepts the residual SEALED risk at that sign-off (council D-4/O-2),
+not here.
+
+**Encoder pre-warm.** `mcp`/`web` start a background warm at server boot
+(never at import time, never on first search) through the same
+single-flight factory `retrieval._encoder()` uses, so a search racing the
+warm shares one construction. `retrieval.encoder_warm_status()` reports
+`cold`/`warming`/`warm`/`failed`/`disabled` + model + elapsed; lane A4 renders
+it as a phase indicator.
 
 ## Why each claim is believed — restated at receipt strength
 
