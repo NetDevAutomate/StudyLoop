@@ -23,8 +23,11 @@ ever reaching ``shutil.rmtree`` against the learner's real data.
 
 from __future__ import annotations
 
+import functools
+import os
 import secrets
 import shutil
+import subprocess
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -36,6 +39,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 _SENTINEL_NAME = ".studyloop-acceptance-sentinel"
+_TMUX_SOCKET_SUBDIR = ".tmux-acc"
 
 
 class UnsafeSweepError(RuntimeError):
@@ -49,6 +53,7 @@ class ScratchEnv:
     home: Path
     state_dir: Path
     config_dir: Path
+    tmux_socket_dir: Path
     sentinel_path: Path
     sentinel_token: str
     env: dict[str, str]
@@ -67,6 +72,25 @@ class ScratchEnv:
     def stop_descendants(self) -> None:
         for stopper in self._descendant_stoppers:
             stopper()
+
+
+def _kill_scratch_tmux_server(socket_dir: Path) -> None:
+    """Best-effort: kill any tmux server bound to this scratch run's socket.
+
+    ``TMUX_TMPDIR`` is the standard tmux mechanism for relocating its socket
+    directory — set in the child env below, so every tmux invocation a
+    descendant makes under this scratch env already lands here without any
+    ``-S``/argv change. The common case is "no server was ever started under
+    this socket", which tmux reports as a non-zero exit ("no server running
+    on ...") — not an error worth raising from a teardown path.
+    """
+    subprocess.run(
+        ["tmux", "kill-server"],
+        env={**os.environ, "TMUX_TMPDIR": str(socket_dir)},
+        capture_output=True,
+        timeout=10,
+        check=False,
+    )
 
 
 def create_scratch_environment(
@@ -93,21 +117,38 @@ def create_scratch_environment(
     # prompts the acceptance journeys are not testing.
     (config_dir / "config.yaml").write_text("topics: []\n", encoding="utf-8")
 
+    # Dedicated tmux socket directory per run: a shared tmux server started
+    # under the developer's REAL environment must never be what a live
+    # tmux-driven acceptance lane attaches to. tmux requires its socket
+    # directory to be private (mode 0700), same as the real ~/.tmux/ default.
+    tmux_socket_dir = home / _TMUX_SOCKET_SUBDIR
+    tmux_socket_dir.mkdir(parents=True, exist_ok=True)
+    tmux_socket_dir.chmod(0o700)
+
     token = secrets.token_hex(16)
     sentinel_path = home / _SENTINEL_NAME
     sentinel_path.write_text(token, encoding="utf-8")
 
     caller_env = dict(extra_env) if extra_env else None
     env = build_scratch_child_env(home=home, state_dir=state_dir, caller_env=caller_env)
+    env["TMUX_TMPDIR"] = str(tmux_socket_dir)
 
-    return ScratchEnv(
+    scratch = ScratchEnv(
         home=home,
         state_dir=state_dir,
         config_dir=config_dir,
+        tmux_socket_dir=tmux_socket_dir,
         sentinel_path=sentinel_path,
         sentinel_token=token,
         env=env,
     )
+    # First real caller of register_descendant_stopper (isolation.py had the
+    # hook but nothing registered with it): a tmux server bound to THIS run's
+    # socket must be stopped before the sweeper ever touches the filesystem.
+    scratch.register_descendant_stopper(
+        functools.partial(_kill_scratch_tmux_server, tmux_socket_dir)
+    )
+    return scratch
 
 
 def assert_safe_to_sweep(scratch: ScratchEnv, *, real_home: Path | None = None) -> None:

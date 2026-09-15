@@ -13,6 +13,7 @@ the workspace's "two packages both named tests" pluggy registration conflict.
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -38,6 +39,22 @@ class TestScratchCreation:
         assert scratch.state_dir.is_dir()
         assert scratch.config_dir.is_dir()
         assert (scratch.config_dir / "config.yaml").exists()
+
+    def test_dedicated_tmux_socket_dir_is_under_scratch_home(self, tmp_path: Path) -> None:
+        """A shared tmux server started under the developer's REAL
+        environment must never be what a live tmux-driven acceptance lane
+        attaches to -- each run gets its own socket directory under its own
+        scratch tree, so no run can retain another run's (or the real
+        session's) env."""
+        scratch = create_scratch_environment(tmp_path)
+        assert scratch.tmux_socket_dir.is_relative_to(scratch.home)
+        assert scratch.tmux_socket_dir.is_dir()
+        assert scratch.env["TMUX_TMPDIR"] == str(scratch.tmux_socket_dir)
+
+    def test_two_scratch_environments_get_different_tmux_sockets(self, tmp_path: Path) -> None:
+        first = create_scratch_environment(tmp_path / "a")
+        second = create_scratch_environment(tmp_path / "b")
+        assert first.tmux_socket_dir != second.tmux_socket_dir
 
     def test_sentinel_written_and_recorded(self, tmp_path: Path) -> None:
         scratch = create_scratch_environment(tmp_path)
@@ -112,6 +129,35 @@ class TestSweepGuards:
         with pytest.raises(UnsafeSweepError):
             sweep_scratch(scratch)
         assert scratch.home.exists()
+
+
+class TestTmuxDescendantStopper:
+    """(D-12) the tmux server bound to this run's socket must be killed
+    BEFORE the sweeper ever touches the filesystem -- register_descendant_stopper
+    exists precisely for this, and this is its first real caller."""
+
+    def test_sweep_kills_the_scratch_tmux_server_first(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        calls_log = tmp_path / "tmux-calls.log"
+        fake_bin_dir = tmp_path / "fake-bin"
+        fake_bin_dir.mkdir()
+        fake_tmux = fake_bin_dir / "tmux"
+        fake_tmux.write_text(
+            f'#!/bin/sh\necho "$@ TMUX_TMPDIR=$TMUX_TMPDIR" >> "{calls_log}"\nexit 0\n',
+            encoding="utf-8",
+        )
+        fake_tmux.chmod(0o755)
+        monkeypatch.setenv("PATH", f"{fake_bin_dir}:{os.environ['PATH']}")
+
+        scratch_root = tmp_path / "scratch-root"
+        scratch_root.mkdir()
+        scratch = create_scratch_environment(scratch_root)
+        sweep_scratch(scratch)
+
+        logged = calls_log.read_text(encoding="utf-8")
+        assert "kill-server" in logged
+        assert f"TMUX_TMPDIR={scratch.tmux_socket_dir}" in logged
 
 
 class TestScratchEnvironmentContextManager:
