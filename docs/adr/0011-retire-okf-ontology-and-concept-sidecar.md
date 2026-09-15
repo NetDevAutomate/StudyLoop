@@ -5,9 +5,10 @@
 `docs/architecture/session-memory/README.md` (2026-09-09 record) and the corresponding sections of
 the branch ADR *0011-claim-centric-learning-memory* on `feat/knowledge-proof` (marked RETIRED there;
 its claim-centric learning-memory decision itself stands and will be renumbered when merged).
-[Superseded 2026-09-15: that decision was never merged and will not be — PR #19 is closed and the
-branch tip is archived; see *Disposition after semantic-layer completion* below. The sentence is
-kept as written.]
+[Superseded 2026-09-15: that decision was never merged and will not be. Decision: close PR #19 and
+tag tip `464a8cdc` as `archive/feat-knowledge-proof-2026-09-15`. Execution pending; recorded here
+when command output establishes it. See *Disposition after semantic-layer completion* below. The
+sentence is kept as written.]
 
 ## Context
 
@@ -94,8 +95,8 @@ that no longer hold are marked superseded in place, and this section records wha
 1. **The claim-centric learning-memory decision was not merged.** The header above says the branch
    ADR's "claim-centric learning-memory decision itself stands and will be renumbered when merged".
    It did not merge and will not: `feat/knowledge-proof` was never integrated into `main`, and its
-   pull request is closed (item 4). The sentence is superseded; it stays in the header as the record
-   of what was expected on 2026-09-10.
+   pull request is to be closed (item 4). The sentence is superseded; it stays in the header as the
+   record of what was expected on 2026-09-10.
 
 2. **The semantic layer did not need that store.** The *Decision* section keeps "the evidence tier
    and the learning-memory claims/evidence store on `feat/knowledge-proof` … — the semantic layer's
@@ -103,17 +104,20 @@ that no longer hold are marked superseded in place, and this section records wha
    (`docs/architecture/session-memory/receipts/semantic-layer/`; SEALED outcome recorded at
    `a0272a52`: G2 met, G1 not established, owner keeps the `mcp`/`web` hybrid default). No claim or
    evidence table participates in the shipped `session_search`; the "prerequisites" claim is
-   superseded. It had already been contradicted by the branch's own data: **Stage F measured the
-   fused claims arm at −0.140 recall@5** on DEV, below prose alone (recorded in
+   superseded **for this shipped programme** — shipping and sealing without the store refutes its
+   necessity here, and says nothing about whether claim-centric memory has some other useful role.
+   It had already been contradicted by the branch's own data: **Stage F measured the fused claims
+   arm at −0.140 recall@5** on DEV, below prose alone (recorded in
    `docs/architecture/session-memory/receipts/okf-removal-inventory-2026-09-10.md`, citing branch
    ADR-0011:301, which also records the fused arm "significantly *worse* than prose alone (−0.154,
-   CI95 [−0.252, −0.065]), replicating DEV (−0.140)"). Measured, the store was a cost to recall, not
-   a prerequisite for it.
+   CI95 [−0.252, −0.065]), replicating DEV (−0.140)"). Measured, the tested fused-claims retrieval
+   arm reduced recall relative to prose alone; those receipts compare retrieval configurations, not
+   storage in isolation, so the loss is attributed to that arm and not to the store as such.
 
 3. **The portable lexical hypothesis was separated from the retired architecture and measured on
-   its own.** The one retrieval win the branch produced (F-B0-1, *Context* above) was a planner
-   construction — `plan_prose_query`'s quoted-raw-token `OR` — and owed nothing to the storage or
-   ontology layers this ADR retired. It was ported to `main` as
+   its own.** The historical retrieval improvement cited here (F-B0-1, *Context* above) was a
+   planner construction — `plan_prose_query`'s quoted-raw-token `OR` — and owed nothing to the
+   storage or ontology layers this ADR retired. It was ported to `main` as
    `agent_session_tools.query_planner.prose_or_query` and pre-registered (D-12) in its narrowest
    position, the `OR` *widen* step of the shipped planner:
    `docs/architecture/session-memory/receipts/lexical/preregistration-2026-09-15.md`. The verdict is
@@ -121,12 +125,19 @@ that no longer hold are marked superseded in place, and this section records wha
    **`adopt: false`** — DEV macro recall@5 paired delta −0.0101, CI95 [−0.0500, +0.0278]; clause 1
    (CI95 lower bound > 0) failed, the other three clauses held. The shipped planner is unchanged; the
    helper and its tests stay as measured code. The historical +0.142 (*Context*) was measured against
-   the Stage 1 planner and a different corpus and did not carry.
+   the Stage 1 planner and a different corpus; that lift was not established for the pre-registered
+   narrow widen placement on this DEV corpus against the Stage 2 planner. The two `OR`-only arms the
+   same receipt reports were not the registered hypothesis and are neither adopted nor disproved by
+   it.
 
-4. **Branch disposition.** PR #19 is closed. Its tip `464a8cdc` is tagged
-   `archive/feat-knowledge-proof-2026-09-15`; the branch's primary receipts (Stage F, the claims-layer
-   gate results cited in *Context*) remain reachable via that tag. Nothing from the branch is deleted
-   from history.
+4. **Branch disposition.** Decision: close PR #19 and tag tip `464a8cdc` as
+   `archive/feat-knowledge-proof-2026-09-15`. Execution pending; recorded here when command output
+   establishes it (`gh pr view 19 --json state,closedAt` reporting `CLOSED`, and
+   `git rev-parse 'archive/feat-knowledge-proof-2026-09-15^{commit}'` resolving to `464a8cdc…`).
+   Once tagged, the branch's primary receipts (Stage F, the claims-layer gate results cited in
+   *Context*) stay reachable via that tag. Nothing from the branch is to be deleted from history.
+   *(Reworded 2026-09-15 after council review: an earlier wording stated the closure and the tag as
+   done before either had been executed.)*
 
 5. **No renumbering.** An ADR that was never merged is not renumbered. `0011` on `main` is this
    document; the branch ADR *0011-claim-centric-learning-memory* remains what it is — a record on an
