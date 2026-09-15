@@ -121,3 +121,88 @@ def test_every_web_door_into_active_refuses_with_the_same_body(web: TestClient) 
 
     assert store.list_plan_ids() == ["vague"]
     assert web.get("/api/plans/vague").json()["plan"]["status"] == "draft"
+
+
+# --- Council review 1 (2026-09-15), findings F1 / F1b / F4 ----------------------
+#
+# The spec's requirement is about the RESULTING document: "every Web API path
+# that can leave a study plan in the active state checks the document that
+# would be saved". A PATCH that combines a status transition with field edits
+# is one such path; so is a field-only edit that strips the milestones from a
+# plan that is already active. Both got past the Phase 1 seam because the
+# route composed a seam transition with a second, unguarded save.
+
+READY_PAYLOAD = {
+    "title": "Ready Plan",
+    "plan_id": "ready-plan",
+    "answers": {
+        "why": "Ship analytics queries without help",
+        "success": ["Write a RANK() query unaided"],
+        "topics": ["sql"],
+        "milestones": [{"title": "OVER clause", "concepts": ["window function"]}],
+    },
+}
+
+
+def test_mixed_patch_activation_that_strips_milestones_is_refused_without_write(
+    web: TestClient,
+) -> None:
+    """F1: `{"status": "active", "milestones": []}` must be judged as one resulting document."""
+    assert web.post("/api/plans", json=READY_PAYLOAD).status_code == 201
+    before = store.load_plan_text("ready-plan")
+
+    refused = web.patch("/api/plans/ready-plan", json={"status": "active", "milestones": []})
+    assert refused.status_code == 422, refused.text
+    assert refused.json()["detail"]["ready"] is False
+
+    assert store.load_plan_text("ready-plan") == before
+    shown = web.get("/api/plans/ready-plan").json()
+    assert shown["plan"]["status"] == "draft"
+    assert shown["plan"]["milestone_total"] == 1
+
+
+def test_mixed_patch_activation_that_adds_the_missing_milestones_succeeds(web: TestClient) -> None:
+    """F1 mirror: readiness is judged on the resulting document, so adding what was
+    missing in the same request activates in one write."""
+    unready = {**READY_PAYLOAD, "plan_id": "nearly", "answers": {**READY_PAYLOAD["answers"]}}
+    unready["answers"].pop("milestones")
+    assert web.post("/api/plans", json=unready).status_code == 201
+    assert web.get("/api/plans/nearly").json()["readiness"]["ready"] is False
+
+    activated = web.patch(
+        "/api/plans/nearly",
+        json={"status": "active", "milestones": [{"title": "First", "concepts": ["a"]}]},
+    )
+    assert activated.status_code == 200, activated.text
+    assert activated.json()["plan"]["status"] == "active"
+    assert activated.json()["readiness"]["ready"] is True
+
+
+def test_field_only_patch_cannot_make_an_active_plan_unready(web: TestClient) -> None:
+    """F1b: an already-active plan whose milestones are removed would be active-but-unready."""
+    assert web.post("/api/plans", json=READY_PAYLOAD).status_code == 201
+    assert web.patch("/api/plans/ready-plan", json={"status": "active"}).status_code == 200
+    before = store.load_plan_text("ready-plan")
+
+    refused = web.patch("/api/plans/ready-plan", json={"milestones": []})
+    assert refused.status_code == 422, refused.text
+    assert refused.json()["detail"]["ready"] is False
+
+    assert store.load_plan_text("ready-plan") == before
+    assert web.get("/api/plans/ready-plan").json()["plan"]["milestone_total"] == 1
+
+
+def test_duplicate_id_is_a_conflict_even_when_the_new_document_is_unready_active(
+    web: TestClient,
+) -> None:
+    """F4: the delta spec's "Duplicate id without overwrite" scenario promises 409
+    unconditionally; identity is checked before readiness."""
+    assert web.post("/api/plans", json=READY_PAYLOAD).status_code == 201
+    before = store.load_plan_text("ready-plan")
+
+    clash = web.post(
+        "/api/plans",
+        json={"title": "Ready Plan", "plan_id": "ready-plan", "status": "active", "answers": {}},
+    )
+    assert clash.status_code == 409, clash.text
+    assert store.load_plan_text("ready-plan") == before
