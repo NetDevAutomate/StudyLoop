@@ -33,6 +33,15 @@ experience may change before `1.0.0`.
   its own tmux socket) — one async, cancellable LearnerActor protocol with a
   hard turn/token budget and honest usage reporting; missing credentials are
   a named skip, never a failure.
+- The UAT sign-off tier's recording infrastructure: a durable evidence-bundle
+  writer (private 0700 run dirs, atomic writes, sha256 file inventory,
+  manifest with harness/actor/rubric provenance, resolved from the real
+  environment before scratch substitution), a redacted-summary generator with
+  versioned, hash-pinned redaction rules, a versioned rubric loader with
+  explicit failure conditions, and a strict runner where a sign-off can never
+  pass through skips or an empty selection. The live LLM/browser journeys and
+  the council-graded sign-off itself are follow-on work, tracked in
+  `docs/acceptance-testing.md`.
 - `session-maint fetch-query-encoder` fetches and sha256-verifies the pinned
   ONNX query-encoder artefact (explicit action only — searches and hooks
   never download), and `studyloop doctor` gains a `query_encoder_artefact`
