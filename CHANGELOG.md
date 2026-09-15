@@ -19,6 +19,25 @@ experience may change before `1.0.0`.
   format drives a deterministic scripted learner; the first live lane runs
   Kiro over web ACP. The UAT tier is reserved behind an additional
   `STUDYLOOP_UAT=1`. See `docs/acceptance-testing.md`.
+- The acceptance tier covers every harness over the CLI/tmux path: a
+  parametrised matrix drives the real installed binary (named skip when
+  absent or unauthenticated), a budget-guarded tmux PaneDriver records every
+  turn, and each run writes a per-run evidence bundle (pane transcript, DB
+  delta, harness version/platform/auth mode). Coverage is reported as a
+  harness × surface × transport matrix that separates "test exists (gated)"
+  from recorded clean live runs.
+- The learner side of an acceptance conversation is pluggable
+  (`STUDYLOOP_ACC_ACTOR`): `scripted` (deterministic, CI-safe, default),
+  `gateway` (LiteLLM), `direct` (OpenAI/Anthropic SDK for contributors
+  without the gateway), and `harness` (a second harness plays the learner on
+  its own tmux socket) — one async, cancellable LearnerActor protocol with a
+  hard turn/token budget and honest usage reporting; missing credentials are
+  a named skip, never a failure.
+- `session-maint fetch-query-encoder` fetches and sha256-verifies the pinned
+  ONNX query-encoder artefact (explicit action only — searches and hooks
+  never download), and `studyloop doctor` gains a `query_encoder_artefact`
+  check whose `--fix` runs the fetch. This makes the degradation message's
+  "fetch it once" promise true.
 - A query-encoder construction seam for the semantic layer
   (`semantic_search.query_encoder: torch|onnx`): the query side of a hybrid
   search can now use a pinned fp32 ONNX `bge-small-en-v1.5` (artefact

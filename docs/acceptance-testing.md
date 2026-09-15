@@ -30,19 +30,19 @@ learner's session should — with nothing standing in for the mentor.
 | --- | --- | --- |
 | `STUDYLOOP_ACC` | Must be exactly `1` or every acceptance test skips, naming this variable and this file | unset (tier is off) |
 | `STUDYLOOP_ACC_HARNESS` | Comma list of harnesses to run (`kiro,codex,claude,opencode,pi,grok`) | unset → **all six** |
-| `STUDYLOOP_ACC_ACTOR` | Which learner backend drives the conversation | unset → `scripted` |
+| `STUDYLOOP_ACC_ACTOR` | Which learner backend drives the conversation (see "The learner actors" below) | unset → `scripted` |
+| `LITELLM_API_KEY` | `ACTOR=gateway`: the key for your LiteLLM proxy | unset → `gateway` skips, naming it |
+| `LITELLM_BASE_URL` | `ACTOR=gateway`: your proxy's address | unset → `http://127.0.0.1:4000` |
+| `STUDYLOOP_ACC_GATEWAY_MODEL` | `ACTOR=gateway`: which alias behind the proxy plays the learner | unset → `gateway` skips, naming it |
+| `STUDYLOOP_ACC_DIRECT_PROVIDER` | `ACTOR=direct`: a `provider_profiles` slug (`openai`, `openrouter`, `gemini`, `anthropic`) | unset → `openai` |
+| `STUDYLOOP_ACC_DIRECT_MODEL` | `ACTOR=direct`: a curated model id within that provider | unset → the provider's cheapest curated model |
+| `STUDYLOOP_ACC_HARNESS_ACTOR_CMD` | `ACTOR=harness`: the command that launches the second harness | unset → `harness` skips, naming it |
 | `STUDYLOOP_UAT` | The UAT tier's own, additional opt-in (a later lane) | unset (tier is off) |
 
 An unknown value in `STUDYLOOP_ACC_HARNESS` or `STUDYLOOP_ACC_ACTOR` **fails
 the run**, naming the bad value and the known set — it is a typo you made,
-not something to skip past quietly.
-
-`STUDYLOOP_ACC_ACTOR` currently supports only `scripted` — a deterministic,
-versioned turn script with no LLM on the learner side (see "The scripted
-actor" below). `gateway` (LiteLLM), `direct` (a plain provider SDK) and
-`harness` (a second harness plays the learner) are a later lane's job; the
-env var's shape is reserved now so this lane's tests already assert against
-the final contract.
+not something to skip past quietly. A *missing credential* is the opposite
+case and skips by name: see "Credentials: skip by name, never fail" below.
 
 ## Running it
 
@@ -138,7 +138,101 @@ inspection, never swept "just in case." See
 full create-then-sweep lifecycle never touches a planted file outside the
 scratch tree.
 
-## The scripted actor
+## The learner actors
+
+The learner side of an acceptance conversation is **pluggable**: four
+backends behind one test-side protocol (`tests/acceptance/actors/`). The
+mentor side is **never** simulated in a live acceptance test — hermetic
+plumbing tests that fake the mentor are the one named exception, and they
+say so.
+
+| Actor | What plays the learner | Needs | Cost per run |
+| --- | --- | --- | --- |
+| `scripted` | An ordered, versioned turn script — no LLM at all | Nothing (the CI-safe default) | Free |
+| `gateway` | A model alias behind your local LiteLLM proxy | `LITELLM_API_KEY` + `STUDYLOOP_ACC_GATEWAY_MODEL` | Priced by the alias, capped by the budget guard |
+| `direct` | OpenAI or Anthropic's own API, no proxy in the middle | the provider's own key (e.g. `OPENAI_API_KEY`) | Priced by the model, capped by the budget guard |
+| `harness` | A second coding-harness process, over its own tmux socket | `tmux` + `STUDYLOOP_ACC_HARNESS_ACTOR_CMD` | Whatever that harness's own subscription charges — **not observable from here** |
+
+Every actor returns the same normalized result: a transcript of
+`(learner_message, mentor_reply, usage)` turns plus one explicit
+termination outcome — `completed`, `budget-exhausted`, `cancelled`, or
+`errored`. **A transcript is always captured**, on every outcome including
+the failures: an actor never raises for an expected condition, so partial
+evidence from a run that went wrong is still there to grade.
+
+`CardGenerator` (`studyloop.content.generators`) is deliberately *not*
+reused: it is a flashcard protocol, and a conversation is not a deck. The
+actors follow the same repo idiom — a `runtime_checkable` Protocol plus a
+factory keyed off a config value — with conversation-shaped members.
+
+### Token accounting is honest, never guessed
+
+`usage` reports `None` — not `0` — where a backend genuinely cannot observe
+a count. `ACTOR=harness` gives terminal output, not tokens, so it reports
+unknown for every turn. `ACTOR=scripted` reports `0`, which is the *true*
+figure: there is no model on the learner side to spend anything.
+
+### The budget guard: max turns AND max output tokens
+
+Every LLM-backed actor is capped on both, and the cap is a **hard abort**,
+not a warning. The check happens *before* a turn starts, so a run never pays
+for a turn it then discards; hitting either cap ends the conversation with
+`budget-exhausted` and the transcript so far.
+
+This is load-bearing rather than defensive: an LLM learner has no
+natural-completion signal in this tier — nothing decides "the student seems
+satisfied, stop" — so **the budget guard is what ends a `gateway`/`direct`
+conversation**. A run that ends `budget-exhausted` is the normal case, not a
+failure. Turning the model's own "I'm done" into a stop condition is a
+judgement call left to the lane that owns rubric judging.
+
+An unknown output-token count is never counted against the cap (an unknown
+spend is not assumed to be zero, but it is not treated as a violation
+either) — which means `ACTOR=harness` is effectively capped on turn count
+alone. That is the honest consequence of not being able to see its usage.
+
+### Credentials: skip by name, never fail
+
+A missing key or binary is a **named skip**, never a failure and never a
+prompt: `gateway` without `LITELLM_API_KEY` skips saying exactly that.
+Every backend is asked whether it can run *before* anything constructs it,
+so an absent credential never surfaces as an exception from a constructor.
+
+An unknown `STUDYLOOP_ACC_ACTOR` value is still a loud failure — a typo is
+not a reason to skip.
+
+### `ACTOR=gateway` reads its address from the environment
+
+The gateway backend is not a `provider_profiles` registry row, for the
+reason [`contributing.md`](contributing.md) already gives: a registry row's
+base URL is fixed in code, and a per-machine proxy address needs an
+environment override the registry does not have. So `gateway` reads
+`LITELLM_BASE_URL` (defaulting to the proxy's usual local address) directly.
+Never commit a gateway hostname, port or key.
+
+### `ACTOR=direct` reuses the provider registry's *data*
+
+`direct` resolves its base URL, auth variable and curated model list through
+`provider_profiles` — the vendor endpoints are already curated there — but
+issues a plain chat/messages call rather than the forced-tool-call shape card
+generation uses. Only the two generic HTTP adapters are supported,
+`openai_compat` and `anthropic_compat`; `bedrock` (boto3/SigV4) and `ollama`
+(local, keyless) are out of scope for a backend that exists specifically for
+"I have a vendor API key but no gateway".
+
+### `ACTOR=harness` gets its own tmux socket
+
+A second harness process must never share a tmux server with the mentor's,
+or with one started under your real environment, so this backend requires its
+own socket directory and passes `TMUX_TMPDIR` explicitly on every tmux call —
+it never mutates the test process's own environment.
+
+One practical constraint it now reports clearly rather than failing
+cryptically: a unix socket path is capped at 104 bytes on macOS, and a
+directory under pytest's `tmp_path` exceeds that. Pass a short directory; the
+error names the limit and the fix.
+
+### The scripted actor
 
 `ACTOR=scripted` drives the **mentor** through an ordered, versioned turn
 script rather than a live LLM on the learner side (`tests/acceptance/turn_script.py`).
@@ -191,13 +285,166 @@ that does not include `kiro` (e.g. `just testacc codex`) named-skips it
 before a scratch env or a browser context is ever built, so a run never
 starts a real, billed Kiro session it was not asked to select.
 
-The CLI/tmux path (all six harnesses, not just Kiro-over-web) is a later
-lane's job, tracked as the harness × surface × transport coverage matrix.
-This lane's validators are mechanical (a real session started, real turns
-were answered, the session ended without a crash) rather than DB-row-level
-(topic/struggle rows, `session_search` id-set membership, a written
-wind-down record) — those validators depend on the session-memory schema a
-later lane wires into the acceptance tier's evidence writer.
+The CLI/tmux path (all six harnesses, not just Kiro-over-web) is
+`tests/acceptance/test_harness_matrix_live.py`, described in "The CLI/tmux
+harness matrix" below. This lane's validators are mechanical (a real
+session started, real turns were answered, the session ended without a
+crash) rather than DB-row-level (topic/struggle rows, `session_search`
+id-set membership, a written wind-down record) — those validators depend on
+the session-memory schema and B4's evidence-writer wiring; see "Coverage
+inventory" below for the exact tracked exclusion.
+
+## The CLI/tmux harness matrix (all six harnesses)
+
+`tests/acceptance/test_harness_matrix_live.py` extends the Kiro-over-web
+proof above to every `RELEASE_HARNESSES` member over the CLI/tmux surface —
+`E-B8` is where all six harnesses actually launch, not only Kiro. Coverage
+is published as a **matrix** (harness × surface × transport), never a
+single green check per harness (council D-19): see "Coverage inventory"
+below.
+
+For each harness, `STUDYLOOP_ACC=1 just testacc <harness>` drives
+`studyloop study --agent <harness>` for real, under the same scratch-env +
+tmux-socket isolation the rest of this document describes, then sends
+**three or more** scripted turns (council D-21(2)'s floor), resumes the
+ended session (D-21(2)'s "wind-down → resume"), and ends it again. Order
+matters and is fixed, not alphabetical: `codex` and `claude` first (highest
+real usage), then `kiro` over tmux (its web-ACP coverage above does not
+certify the CLI path), then the three PREVIEW harnesses `opencode`, `pi`,
+`grok` — never a blocker on the CORE three. `HARNESS_ORDER` in the test
+module is a literal re-ordering of `RELEASE_HARNESSES`; the structural
+guard that keeps the two from drifting apart — full order, length, no
+duplicates, not just a set comparison — lives in
+`tests/test_harness_matrix_live_mechanics.py`, **outside** the `acceptance`
+marker, so it runs in every `just test`/CI invocation, not only under
+`STUDYLOOP_ACC=1` (council D-19/D-26: a drift guard gated behind an opt-in
+nobody sets in CI never actually guards anything).
+
+The scratch tmux socket directory (see "Subprocess isolation" above) lives
+under a short `/tmp`-rooted path, **not** under the scratch `HOME`: a
+pytest `tmp_path`-rooted socket dir plus tmux's own `tmux-<uid>/default`
+suffix can exceed AF_UNIX's 104-byte `sun_path` limit, at which point `tmux
+new-session` fails outright ("File name too long") rather than merely
+running slowly — see `tests/test_acceptance_isolation.py`'s regression
+test. Every `TmuxHarness` this lane constructs against a scratch child is
+built as `TmuxHarness(env=scratch_env.env)`, never a bare `TmuxHarness()`:
+the latter addresses THIS test process's own `TMUX_TMPDIR`, not the
+scratch child's, and would silently talk to the wrong (or no) tmux server
+— see `tests/test_harness_matrix_live_mechanics.py`'s
+`TestTmuxHarnessSocketWiring` for the CI-safe positive/negative control.
+
+### Turn delivery and the budget guard
+
+`tests/harness/drive.py`'s `PaneDriver` sends one scripted turn at a time to
+the mentor's tmux pane and waits for a **reply** — not merely for the pane
+to change, which a keystroke echo alone would satisfy — by requiring the
+non-blank line count to grow past what a single echoed prompt line would
+already account for. Every turn is budget-guarded two ways: a per-turn
+timeout and a total max-turns ceiling (grok F9), so a runaway harness (a
+hang, a silent failure, an auth prompt nothing answers) is cut off as
+`TurnBudgetExceededError` rather than hanging the run. On a timeout, the
+pane is still captured and appended to `driver.records` *before* the
+exception is raised — the evidence bundle below is written from the outer
+`finally`, so a run that never gets past the FIRST wait (session state,
+tmux session, or pane children) still produces a bundle, not silence.
+Unit-tested in `tests/test_harness_drive.py` against a scripted `sh`
+"harness" — never a real coding-agent binary — including the
+runaway-harness cutoff case and the timeout-still-records-a-turn case.
+
+### Availability probes (per-harness quirks as fixtures)
+
+Every harness gets a **named skip** when its binary is missing (D-13). Only
+`kiro` has a verified, side-effect-free "authenticated under THIS scratch
+HOME" probe (`kiro-cli whoami`, the same check the web-ACP lane above uses);
+the other five fall back to a presence-only check — see "Coverage
+inventory" for why that is a tracked exclusion rather than a silently
+weaker guarantee. Probes live in a `PROBES` dict keyed by harness name, not
+an `if`/`elif` chain inside the test body, so adding a real probe for a
+sixth harness is a one-line addition, not a body rewrite.
+
+### Evidence (minimal, pending B4)
+
+Every driven run writes a small evidence bundle via
+`tests/acceptance/evidence.py`: a `manifest.json` (run id, harness, actor,
+outcome, turn count, and — council D-21(7) — `platform`/`auth_mode`/
+`harness_version`, each recorded as `null` when unknown rather than simply
+absent) plus a `turns.json` capturing each turn's prompt, pane output, and
+elapsed time — pane text is **evidence attached to the bundle**, never
+itself an assertion target (D-17). The run id carries a random suffix
+(`secrets.token_hex(4)`), not just second-granularity `time.time()`, so two
+runs finishing within the same wall-clock second never collide and mask a
+real failure with a `FileExistsError` from inside the bundle-writer's own
+`finally`. This is deliberately the *narrowest* bundle this lane's own
+validators need, not B4's full schema (durable evidence root resolved
+before scratch substitution, repo sha, rubric hash, file inventory with
+sha256s, …) — the field names (`run_id`/`harness`/`actor`/`outcome`) are
+chosen to match a subset of B4's described schema, so migrating callers to
+B4's real writer is a rename, not a rewrite.
+
+### Coverage inventory
+
+Council D-19: a matrix, **never one green check per harness** — this table
+therefore reports two DIFFERENT things per cell, because "a gated test
+file exists for this harness" and "this harness has a recorded clean live
+run" are not the same claim, and conflating them is exactly what D-19
+forbids. As of this writing, **every** CLI/tmux cell's live-run count is
+`0/O-6` (O-6: the owner's required number of independent clean runs,
+astra proposed 3) — the CLI/tmux path's two structural blockers (a scratch
+tmux socket path past AF_UNIX's `sun_path` limit, and a `TmuxHarness` that
+addressed the wrong tmux server) are now fixed and mechanically verified
+(`tests/test_acceptance_isolation.py`, `tests/test_harness_matrix_live_mechanics.py`),
+but no live run against a real harness binary has been executed under this
+fix. Updating the live-run count is a follow-up action on the owner's
+machine, not a claim this document makes in advance of it.
+
+| Feature | web (ACP): test exists (gated) | web (ACP): recorded clean live run | CLI/tmux: test exists (gated) | CLI/tmux: recorded clean live run |
+| --- | --- | --- | --- | --- |
+| kiro | ✅ `test_kiro_web_acp_lane.py` (mechanical validators) | 0/O-6 | ✅ `test_harness_matrix_live.py` (mechanical validators; verified auth probe) | 0/O-6 |
+| codex | — (not a web-ACP surface) | n/a | ✅ `test_harness_matrix_live.py` (mechanical validators; presence-only probe) | 0/O-6 |
+| claude | — (not a web-ACP surface) | n/a | ✅ `test_harness_matrix_live.py` (mechanical validators; presence-only probe) | 0/O-6 |
+| opencode (PREVIEW) | — | n/a | ✅ `test_harness_matrix_live.py` (mechanical validators; presence-only probe) | 0/O-6 |
+| pi (PREVIEW) | — | n/a | ✅ `test_harness_matrix_live.py` (mechanical validators; presence-only probe) | 0/O-6 |
+| grok (PREVIEW) | — | n/a | ✅ `test_harness_matrix_live.py` (mechanical validators; presence-only probe) | 0/O-6 |
+
+Tracked exclusions (named here, not silently absent, each with the lane
+that owns closing it):
+
+- **D-21(1) "install + doctor + launch green"**: only *launch* is driven
+  by this lane. `studyloop install` has real side effects (installs uv
+  tools / agent definition files onto the machine running the test) and is
+  deliberately NOT invoked by an automated acceptance run; `studyloop
+  doctor`'s read-only checks are not yet wired in either. **Owner: this
+  lane (B2)**, a follow-up, not B4's.
+- **D-21(3) "lexical `session_search` hits a prior turn id"** and
+  **DB-row-level validators generally** (topic/struggle rows,
+  `session_search` id-set membership, a written wind-down record) are not
+  implemented in either lane above. That schema belongs to the
+  session-memory subsystem. **Owner: B4.**
+- **D-21(4) "export writes a valid session artefact"**: no export step
+  exists in either lane. The closest existing CLI surface
+  (`studyloop brain publish`) writes to a configurable second-brain
+  destination, not a lexical "session artefact", and wiring it in was
+  judged too broad a scope-add for a fix round with no live run to verify
+  it against. **Owner: B4** (the evidence-writer/session-artefact schema
+  this depends on is already B4's).
+- **D-21(6) "persona/mode header correct"**: only `mode == "ended"` is
+  asserted. The mentor's *persona* is not recorded anywhere in
+  `session-state.json` (only `mode`, `topic`, `energy`, …) — verifying it
+  would mean asserting on pane text, which D-17 forbids as an assertion
+  target. **Owner: B4** (a DB-row-level persona-hash validator, per
+  `history.sessions.update_persona_hash`, is the right shape once B4's
+  validators land).
+- **Per-harness authenticated-availability probes**: only `kiro` has one.
+  The other five harnesses fall back to binary-presence-only, so a present
+  but unauthenticated binary surfaces as a live-run **failure** (budget
+  cutoff via `TurnBudgetExceededError`), not a named skip, until each gets
+  its own probe. **Owner: this lane (B2)**, a follow-up.
+- **The durable evidence root**: `tests/acceptance/evidence.py` writes
+  under whatever root its caller passes (the test's own `tmp_path`), not
+  B4's durable, pre-scratch-substitution root. **Owner: B4.**
+- **`grok`-over-ACP**: an optional follow-up per this lane's own council
+  amendment, never a blocker on the CORE three or the other two PREVIEW
+  harnesses. **Owner: this lane (B2)**, optional.
 
 ## Rules that keep the tier honest
 
