@@ -92,6 +92,21 @@ repos:
     language: pygrep
     types:
     - text
+  # trufflehog (added 2026-09-15): provider-specific credential detectors on the
+  # staged changes -- AWS/Bedrock, GitHub, OpenAI, Anthropic, Slack, ... -- as
+  # a second, independent layer under detect-secrets' entropy heuristics. The
+  # wrapper consumes trufflehog's JSON and prints detector/file/line only; the
+  # raw match is never echoed, so a caught secret cannot leak via the hook's
+  # own output. Fails on `verified` and `unknown` results alike: an
+  # revoked or fake key still leaks the shape of a real one. Binary via mise.
+  # Full-history sweep: `uv run python scripts/security/trufflehog_redacted.py --history`.
+  - id: trufflehog
+    name: trufflehog (staged changes, redacted output)
+    entry: uv run --group dev python scripts/security/trufflehog_redacted.py
+    language: system
+    pass_filenames: false
+    always_run: true
+    stages: [pre-commit]
   # One hook, the same invocation as `just typecheck`, so the commit-time check
   # and the release gate cannot disagree. The previous two hooks ran pyright on
   # each package's src/ only; a test-only type error (R-51) passed the hook and
