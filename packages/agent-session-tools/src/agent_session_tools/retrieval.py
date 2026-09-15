@@ -932,6 +932,12 @@ def warm_query_encoder(
         )
         start = time.monotonic()
         try:
+            # Matches ``_encoder()``: a courtesy for libraries that read the
+            # env var, ``local_files_only`` is what actually makes "a warm
+            # never downloads" true. Set here too -- a warm bypasses
+            # ``_encoder()`` entirely, so without this line a background warm
+            # on a process that never ran a search first could go online.
+            os.environ.setdefault("HF_HUB_OFFLINE", "1")
             query_encoders.get_query_encoder(
                 resolved_model, local_files_only=True, warmup=True
             )

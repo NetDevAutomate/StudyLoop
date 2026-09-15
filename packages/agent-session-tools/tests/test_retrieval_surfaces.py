@@ -19,6 +19,7 @@ seam -- rather than a real backend.
 
 from __future__ import annotations
 
+import os
 import sqlite3
 import threading
 import time
@@ -441,6 +442,39 @@ class TestEncoderWarmStatus:
         assert len(constructed) == 1, (
             "construction ran more than once under a racing search"
         )
+
+    def test_the_warm_never_goes_online(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A background warm bypasses ``retrieval._encoder()`` entirely, so it
+        needs its own offline guarantee -- mirrors
+        ``TestOfflineLoading`` in test_retrieval_hybrid.py."""
+        _semantic_config_from_yaml(
+            tmp_path,
+            monkeypatch,
+            "semantic_search:\n  hybrid: true\n  model: offline-model\n",
+        )
+        monkeypatch.delenv("HF_HUB_OFFLINE", raising=False)
+        seen: dict[str, object] = {}
+
+        class Fake:
+            def __init__(self, model, *, local_files_only=False):
+                seen["model"], seen["local_files_only"] = model, local_files_only
+
+            def count_tokens(self, text):
+                return len(text.split())
+
+            def encode(self, texts):
+                return [b"\x00" * 16 for _ in texts]
+
+        monkeypatch.setattr(embedding_store, "SentenceTransformerEncoder", Fake)
+
+        thread = retrieval.warm_query_encoder(
+            surface=retrieval.SURFACE_MCP, blocking=True
+        )
+        assert thread is None  # blocking=True never returns a thread
+        assert seen == {"model": "offline-model", "local_files_only": True}
+        assert os.environ.get("HF_HUB_OFFLINE") == "1"
 
 
 class TestRetrievalStatusSchemaContract:
