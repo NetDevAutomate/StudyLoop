@@ -7,8 +7,11 @@ adapters never see a :class:`~studyloop.planning.models.StudyPlan` to mutate.
 
 Phase 1 ships the intents that can make a plan active (decision D-2):
 create-with-status, document import, whole-document replacement and the
-lifecycle transition. Field-level revision, milestone updates, deletion and
-assessment follow in Phase 2.
+lifecycle transition. :class:`RevisePlan` was brought forward from Phase 2 by
+council review 1 (finding F1): a PATCH that combines a status change with
+field edits has to be *one* intent, or the seam judges the old document and
+the route mutates the new one behind its back. Milestone updates, deletion and
+assessment still follow in Phase 2.
 """
 
 from __future__ import annotations
@@ -17,7 +20,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Mapping, Sequence
 
 
 @dataclass(frozen=True)
@@ -67,4 +70,46 @@ class TransitionLifecycle:
     status: str
 
 
-PlanIntent = CreatePlan | ImportDocument | ReplaceDocument | TransitionLifecycle
+@dataclass(frozen=True)
+class LearningRecordSpec:
+    """One learning record to append through :class:`RevisePlan`.
+
+    Appending is idempotent: a record with the same ``title`` and ``body`` as
+    an existing one is not added again, so an agent's retry is always safe.
+    """
+
+    title: str
+    body: str = ""
+    status: str = "active"
+
+
+@dataclass(frozen=True)
+class RevisePlan:
+    """Edit a plan in place — any combination of fields, judged as one document.
+
+    ``None`` means *leave as is*. Everything supplied is applied to one
+    candidate, the candidate is readiness-checked whenever it would be active
+    (whether ``status`` makes it so or the plan already is), and it is saved
+    once. That is what makes ``{"status": "active", "milestones": []}`` a
+    refusal rather than an activation followed by an unguarded edit, and what
+    stops a field-only edit from leaving an active plan unevaluable.
+
+    ``milestones`` replaces the whole list: each item is a mapping with
+    ``title`` and optional ``done``, ``concepts`` and ``notes`` — the shape the
+    Web body already carries. Numeric fields are clamped to their ranges, not
+    refused, as the PATCH route has always done.
+    """
+
+    plan_id: str
+    title: str | None = None
+    topics: Sequence[str] | None = None
+    target_date: str | None = None
+    energy_floor: int | None = None
+    review_cadence_days: int | None = None
+    notes: str | None = None
+    milestones: Sequence[Mapping[str, object]] | None = None
+    learning_record: LearningRecordSpec | None = None
+    status: str | None = None
+
+
+PlanIntent = CreatePlan | ImportDocument | ReplaceDocument | TransitionLifecycle | RevisePlan

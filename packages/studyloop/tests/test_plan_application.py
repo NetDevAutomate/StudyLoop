@@ -30,7 +30,9 @@ from studyloop.planning.errors import (
 from studyloop.planning.intents import (
     CreatePlan,
     ImportDocument,
+    LearningRecordSpec,
     ReplaceDocument,
+    RevisePlan,
     TransitionLifecycle,
 )
 from studyloop.planning.models import Milestone, Mission, StudyPlan
@@ -323,6 +325,193 @@ def test_transition_to_an_unknown_status_raises_invalid_field(app: PlanApplicati
         app.apply(TransitionLifecycle(plan_id="demo", status="banana"))
     with pytest.raises(PlanNotFound):
         app.apply(TransitionLifecycle(plan_id="missing", status="paused"))
+
+
+# ---------------------------------------------------------------------------
+# Revision — council review 1, F1/F1b: a compound edit is ONE intent, judged on
+# the RESULTING document, persisted in ONE write.
+# ---------------------------------------------------------------------------
+
+
+def _count_saves(monkeypatch) -> list[int]:
+    """Wrap ``store.save_plan`` so a test can assert how many writes happened."""
+    calls: list[int] = []
+    real_save = store.save_plan
+
+    def counting_save(plan, **kwargs):
+        calls.append(1)
+        return real_save(plan, **kwargs)
+
+    monkeypatch.setattr(store, "save_plan", counting_save)
+    return calls
+
+
+def test_revise_compound_status_and_fields_is_one_write(app: PlanApplication, monkeypatch) -> None:
+    # An otherwise-ready draft that lacks milestones: activating it alone is
+    # refused, but supplying the milestones in the same revision must be
+    # judged as one resulting document and land in exactly one save.
+    answers = {k: v for k, v in READY_ANSWERS.items() if k != "milestones"}
+    app.apply(CreatePlan(title="Nearly", answers=answers, plan_id="nearly"))
+    assert app.inspect("nearly").readiness.ready is False
+    saves = _count_saves(monkeypatch)
+
+    detail = app.apply(
+        RevisePlan(
+            plan_id="nearly",
+            status="active",
+            title="Nearly There",
+            milestones=({"title": "First", "concepts": ["a"]},),
+        )
+    )
+
+    assert len(saves) == 1, "a compound revision is one write, not a transition plus an edit"
+    assert detail.summary.status == "active"
+    assert detail.summary.title == "Nearly There"
+    assert detail.readiness.ready is True
+    assert [m.title for m in detail.milestones] == ["First"]
+    on_disk = store.load_plan("nearly")
+    assert on_disk.status == "active"
+    assert on_disk.title == "Nearly There"
+
+
+def test_revise_preserves_id_and_created_and_bumps_updated(app: PlanApplication) -> None:
+    store.create_plan(_ready_plan("stable", updated="2026-01-01T00:00:00+00:00"))
+
+    detail = app.apply(RevisePlan(plan_id="stable", title="Stable, renamed", topics=("sql", "dbt")))
+
+    assert detail.summary.plan_id == "stable"
+    assert detail.summary.created == "2026-01-01T00:00:00+00:00"
+    assert detail.summary.updated != "2026-01-01T00:00:00+00:00"
+    assert detail.summary.title == "Stable, renamed"
+    assert detail.summary.topics == ("sql", "dbt")
+    assert store.list_plan_ids() == ["stable"], "a revision never creates a second document"
+    on_disk = store.load_plan("stable")
+    assert on_disk.created == "2026-01-01T00:00:00+00:00"
+    assert on_disk.updated == detail.summary.updated
+
+
+def test_revise_active_plan_that_would_become_unready_raises_plan_not_ready(
+    app: PlanApplication,
+) -> None:
+    store.create_plan(_ready_plan("live", status="active"))
+    before = store.load_plan_text("live")
+
+    # A field-only edit — no status in the intent — that strips every
+    # milestone from a plan that is already active. The resulting document
+    # would be active-but-unready, so it is the same refusal as activation.
+    with pytest.raises(PlanNotReady) as caught:
+        app.apply(RevisePlan(plan_id="live", milestones=()))
+
+    assert caught.value.readiness.ready is False
+    assert caught.value.readiness.plan_id == "live"
+    assert any("milestone" in blocker.lower() for blocker in caught.value.readiness.blockers)
+    assert store.load_plan_text("live") == before, "refused: nothing written"
+    assert app.inspect("live").summary.milestone_total == 1
+
+
+def test_revise_compound_activation_that_strips_milestones_is_refused(
+    app: PlanApplication, monkeypatch
+) -> None:
+    store.create_plan(_ready_plan("ready"))
+    before = store.load_plan_text("ready")
+    saves = _count_saves(monkeypatch)
+
+    with pytest.raises(PlanNotReady):
+        app.apply(RevisePlan(plan_id="ready", status="active", milestones=()))
+
+    assert saves == [], "the refused revision must not have committed the status first"
+    assert store.load_plan_text("ready") == before
+    assert app.inspect("ready").summary.status == "draft"
+
+
+@pytest.mark.parametrize(
+    "intent",
+    [
+        RevisePlan(plan_id="demo", title="   "),
+        RevisePlan(plan_id="demo", status="banana"),
+        RevisePlan(plan_id="demo", energy_floor="high"),  # type: ignore[arg-type]  # boundary
+        RevisePlan(plan_id="demo", review_cadence_days="soon"),  # type: ignore[arg-type]
+        RevisePlan(plan_id="demo", milestones="nope"),  # type: ignore[arg-type]  # boundary
+        RevisePlan(plan_id="demo", topics="sql"),  # type: ignore[arg-type]  # a str is not a list
+        RevisePlan(plan_id="demo", status="active", title=""),  # bad field beside a transition
+    ],
+    ids=[
+        "empty-title",
+        "unknown-status",
+        "energy-floor-not-int",
+        "cadence-not-int",
+        "milestones-not-list",
+        "topics-not-list",
+        "empty-title-with-status",
+    ],
+)
+def test_revise_invalid_field_raises_before_any_write(
+    app: PlanApplication, monkeypatch, intent: RevisePlan
+) -> None:
+    store.create_plan(_ready_plan("demo"))
+    before = store.load_plan_text("demo")
+    saves = _count_saves(monkeypatch)
+
+    with pytest.raises(InvalidField):
+        app.apply(intent)
+
+    assert saves == []
+    assert store.load_plan_text("demo") == before
+    assert app.inspect("demo").summary.status == "draft"
+
+
+def test_revise_unknown_plan_raises_not_found_before_field_validation(
+    app: PlanApplication,
+) -> None:
+    # 404 before 400: the spec's "Unknown plan on a write" scenario.
+    with pytest.raises(PlanNotFound):
+        app.apply(RevisePlan(plan_id="missing", title="   ", status="banana"))
+
+
+def test_revise_clamps_numeric_fields_like_the_legacy_route(app: PlanApplication) -> None:
+    store.create_plan(_ready_plan("demo"))
+    detail = app.apply(RevisePlan(plan_id="demo", energy_floor=99, review_cadence_days=0))
+    assert detail.summary.energy_floor == 10
+    assert detail.summary.review_cadence_days == 1
+
+
+def test_revise_with_no_fields_is_a_touch(app: PlanApplication) -> None:
+    """An empty PATCH body has always been a save that bumps ``updated``; keep it."""
+    store.create_plan(_ready_plan("demo", updated="2026-01-01T00:00:00+00:00"))
+    detail = app.apply(RevisePlan(plan_id="demo"))
+    assert detail.summary.updated != "2026-01-01T00:00:00+00:00"
+    assert detail.summary.title == "Demo"
+
+
+def test_revise_learning_record_appends_once_and_is_idempotent(
+    app: PlanApplication, monkeypatch
+) -> None:
+    store.create_plan(_ready_plan("demo"))
+    saves = _count_saves(monkeypatch)
+    record = LearningRecordSpec(title="Window frames default to RANGE", body="Not ROWS.")
+
+    first = app.apply(RevisePlan(plan_id="demo", learning_record=record))
+    assert [(r.number, r.title, r.body) for r in first.learning_records] == [
+        (1, "Window frames default to RANGE", "Not ROWS.")
+    ]
+    assert len(saves) == 1
+
+    # Same title and body again: no second record, but the revision is still
+    # the one save every revision is (it touches ``updated``).
+    again = app.apply(RevisePlan(plan_id="demo", learning_record=record))
+    assert len(again.learning_records) == 1
+    assert len(saves) == 2
+
+    with pytest.raises(InvalidField):
+        app.apply(RevisePlan(plan_id="demo", learning_record=LearningRecordSpec(title="  ")))
+    with pytest.raises(InvalidField):
+        app.apply(
+            RevisePlan(
+                plan_id="demo",
+                learning_record=LearningRecordSpec(title="Bad", body="## a heading"),
+            )
+        )
+    assert len(saves) == 2, "refused records write nothing"
 
 
 # ---------------------------------------------------------------------------

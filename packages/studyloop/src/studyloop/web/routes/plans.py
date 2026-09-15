@@ -12,13 +12,14 @@ malformed body is rejected instead of corrupting a plan.
 
 Policy lives in :class:`~studyloop.planning.PlanApplication`, not here. Every
 path that can make a plan active — create-with-status, document import,
-whole-document replacement, status transition — goes through ``apply`` and is
-refused by the same readiness gate with the same 422 body. This module only
-maps domain errors to status codes (design §2); it holds no rule of its own.
+whole-document replacement, status transition, and any in-place revision of a
+plan that is or becomes active — goes through ``apply`` and is refused by the
+same readiness gate with the same 422 body. This module only maps domain
+errors to status codes (design §2); it holds no rule of its own.
 
 Still on direct storage imports until Phase 2 moves them onto the seam:
-evaluation (``AssessPlan``), field/milestone PATCH (``RevisePlan``), the
-milestone toggle (``SetMilestone``) and delete (``DeletePlan``).
+evaluation (``AssessPlan``), the milestone toggle (``SetMilestone``) and
+delete (``DeletePlan``).
 """
 
 from __future__ import annotations
@@ -45,11 +46,10 @@ from studyloop.planning import (
     PlanNotFound,
     PlanNotReady,
     ReplaceDocument,
-    TransitionLifecycle,
+    RevisePlan,
     evaluate_and_record,
     evaluate_plan,
     load_plan,
-    save_plan,
 )
 from studyloop.planning.store import (
     InvalidPlanIdError,
@@ -242,53 +242,6 @@ def post_plan(payload: Annotated[dict, Body()]) -> dict:
     return _written(_apply(intent), created=True)
 
 
-def _field_updates(payload: dict) -> dict[str, Any]:
-    """Validate the in-place field edits Phase 2 will move onto ``RevisePlan``.
-
-    Validation happens *before* any write so a bad field never lands after a
-    status change has already been saved — the same all-or-nothing the single
-    ``save_plan`` used to give.
-    """
-    updates: dict[str, Any] = {}
-    if "title" in payload:
-        title = str(payload["title"]).strip()
-        if not title:
-            raise HTTPException(status_code=400, detail="title cannot be empty")
-        updates["title"] = title
-    if "topics" in payload:
-        updates["topics"] = [str(t).strip() for t in payload["topics"] if str(t).strip()]
-    if "target_date" in payload:
-        updates["target_date"] = str(payload["target_date"]).strip()
-    if "notes" in payload:
-        updates["notes"] = str(payload["notes"])
-    for field_name, lo, hi in (("energy_floor", 1, 10), ("review_cadence_days", 1, 90)):
-        if field_name in payload:
-            try:
-                value = int(payload[field_name])
-            except (TypeError, ValueError) as exc:
-                raise HTTPException(
-                    status_code=400, detail=f"{field_name} must be an integer"
-                ) from exc
-            updates[field_name] = max(lo, min(hi, value))
-    if "milestones" in payload:
-        from studyloop.planning.models import Milestone
-
-        items = payload["milestones"]
-        if not isinstance(items, list):
-            raise HTTPException(status_code=400, detail="milestones must be a list")
-        updates["milestones"] = [
-            Milestone(
-                title=str(item.get("title", "")).strip() or "Untitled milestone",
-                done=bool(item.get("done", False)),
-                concepts=[str(c).strip() for c in (item.get("concepts") or []) if str(c).strip()],
-                notes=str(item.get("notes", "")).strip(),
-            )
-            for item in items
-            if isinstance(item, dict)
-        ]
-    return updates
-
-
 @router.patch("/plans/{plan_id}")
 def patch_plan(plan_id: str, payload: Annotated[dict, Body()]) -> dict:
     """Update plan fields in place.
@@ -296,45 +249,59 @@ def patch_plan(plan_id: str, payload: Annotated[dict, Body()]) -> dict:
     Accepts ``status``, ``title``, ``topics``, ``target_date``,
     ``energy_floor``, ``review_cadence_days``, ``notes``, ``milestones``
     (full replacement), and ``markdown`` (whole-document replacement).
+
+    The non-Markdown body is *one* ``RevisePlan``: the seam loads the plan
+    once, applies every supplied field, judges the resulting document — so
+    ``{"status": "active", "milestones": []}`` is refused, and a field-only
+    edit cannot leave an active plan unevaluable — and saves once. The route
+    translates the body; it validates and writes nothing itself.
     """
     if "markdown" in payload:
         replaced = _apply(ReplaceDocument(plan_id=plan_id, markdown=str(payload["markdown"])))
         return _written(replaced, updated=True)
 
-    # Existence first (404 before any 400), then validate every field edit,
-    # then transition, then edit: nothing is written if any part of the body
-    # is unusable — the all-or-nothing the single ``save_plan`` used to give.
-    detail = _inspect(plan_id)
-    updates = _field_updates(payload)
-
-    if "status" in payload:
-        detail = _apply(TransitionLifecycle(plan_id=plan_id, status=str(payload["status"])))
-
-    if updates or "status" not in payload:
-        # Field edits, or an empty body — which is still a save, as it always
-        # was (it touches ``updated``). Phase 2 moves this onto ``RevisePlan``.
-        plan = _load_or_404(plan_id)
-        for name, value in updates.items():
-            setattr(plan, name, value)
-        save_plan(plan)
-        detail = PlanDetail.from_plan(plan)
-
-    return _written(detail, updated=True)
+    # ``None`` is "leave as is" for the seam, and a key that is absent from the
+    # body is exactly that. (A key explicitly set to ``null`` reads the same.)
+    revision = RevisePlan(
+        plan_id=plan_id,
+        title=payload.get("title"),
+        topics=payload.get("topics"),
+        target_date=payload.get("target_date"),
+        energy_floor=payload.get("energy_floor"),
+        review_cadence_days=payload.get("review_cadence_days"),
+        notes=payload.get("notes"),
+        milestones=payload.get("milestones"),
+        status=payload.get("status"),
+    )
+    return _written(_apply(revision), updated=True)
 
 
 @router.post("/plans/{plan_id}/milestones/{index}/toggle")
 def toggle_milestone(plan_id: str, index: int) -> dict:
-    """Flip one milestone's done state — the checkbox in the plan view."""
-    plan = _load_or_404(plan_id)
-    if index < 0 or index >= len(plan.milestones):
+    """Flip one milestone's done state — the checkbox in the plan view.
+
+    Expressed as a full-list ``RevisePlan`` until Phase 2 ships the idempotent
+    ``SetMilestone`` intent, so the write goes through the seam's gate rather
+    than a route-side store write.
+    """
+    detail = _inspect(plan_id)
+    if index < 0 or index >= len(detail.milestones):
         raise HTTPException(status_code=404, detail=f"no milestone at index {index}")
-    plan.milestones[index].done = not plan.milestones[index].done
-    save_plan(plan)
+    milestones = [
+        {
+            "title": milestone.title,
+            "done": (not milestone.done) if milestone.index == index else milestone.done,
+            "concepts": list(milestone.concepts),
+            "notes": milestone.notes,
+        }
+        for milestone in detail.milestones
+    ]
+    updated = _apply(RevisePlan(plan_id=plan_id, milestones=milestones))
     return {
         "updated": True,
         "index": index,
-        "done": plan.milestones[index].done,
-        "plan": plan.summary(),
+        "done": updated.milestones[index].done,
+        "plan": updated.summary.to_json_dict(),
     }
 
 

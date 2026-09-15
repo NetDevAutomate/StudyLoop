@@ -40,8 +40,10 @@ from .index import checkpoint_history, indexed_plans, reindex_all
 from .intents import (
     CreatePlan,
     ImportDocument,
+    LearningRecordSpec,
     PlanIntent,
     ReplaceDocument,
+    RevisePlan,
     TransitionLifecycle,
 )
 from .markdown import (
@@ -117,6 +119,7 @@ __all__ = [
     "InvalidPlanId",
     "InvalidPlanIdError",
     "LearningRecord",
+    "LearningRecordSpec",
     "LearningRecordView",
     "Milestone",
     "MilestoneView",
@@ -139,6 +142,7 @@ __all__ = [
     "ReplaceDocument",
     "Resource",
     "ResourceView",
+    "RevisePlan",
     "StudyPlan",
     "TmuxBackend",
     "TransitionLifecycle",

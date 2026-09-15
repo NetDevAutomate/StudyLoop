@@ -33,7 +33,8 @@ constructor takes no path.
 from __future__ import annotations
 
 import logging
-from collections.abc import Mapping
+import re
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, assert_never
 
 from . import authoring, index, store
@@ -41,12 +42,14 @@ from .errors import InvalidField, InvalidPlanId, PlanConflict, PlanNotFound, Pla
 from .intents import (
     CreatePlan,
     ImportDocument,
+    LearningRecordSpec,
     PlanIntent,
     ReplaceDocument,
+    RevisePlan,
     TransitionLifecycle,
 )
 from .markdown import parse_plan
-from .models import PLAN_STATUSES
+from .models import PLAN_STATUSES, LearningRecord, Milestone
 from .views import (
     CheckpointHistoryView,
     PlanDetail,
@@ -60,6 +63,17 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+#: ``(field, lowest, highest)`` for the two numeric plan fields. Out-of-range
+#: values are clamped, not refused — the PATCH route has always done that.
+_CLAMPED_FIELDS: tuple[tuple[str, int, int], ...] = (
+    ("energy_floor", 1, 10),
+    ("review_cadence_days", 1, 90),
+)
+
+#: An H1-H3 line inside a learning record body would be re-parsed as a new
+#: section or record on the next load and silently restructure the document.
+_HEADING_LINE_RE = re.compile(r"\A#{1,3}\s")
+
 
 def _normalise_status(value: str) -> str:
     status = (value or "").strip().lower()
@@ -67,6 +81,79 @@ def _normalise_status(value: str) -> str:
         msg = f"status must be one of {PLAN_STATUSES}"
         raise InvalidField(msg)
     return status
+
+
+def _string_list(value: object, *, field: str) -> list[str]:
+    """A JSON array of strings, stripped and emptied of blanks; never a bare ``str``."""
+    if isinstance(value, str) or not isinstance(value, Sequence):
+        msg = f"{field} must be a list"
+        raise InvalidField(msg)
+    return [str(item).strip() for item in value if str(item).strip()]
+
+
+def _clamped_int(value: object, *, field: str, lo: int, hi: int) -> int:
+    try:
+        number = int(value)  # type: ignore[call-overload]  # boundary: untyped body value
+    except (TypeError, ValueError) as exc:
+        msg = f"{field} must be an integer"
+        raise InvalidField(msg) from exc
+    return max(lo, min(hi, number))
+
+
+def _milestones_from(items: object) -> list[Milestone]:
+    """Build the full replacement milestone list from Web-shaped mappings."""
+    if isinstance(items, str) or not isinstance(items, Sequence):
+        msg = "milestones must be a list"
+        raise InvalidField(msg)
+    milestones: list[Milestone] = []
+    for item in items:
+        if not isinstance(item, Mapping):
+            continue
+        concepts = item.get("concepts") or []
+        if isinstance(concepts, str):
+            concepts = [concepts]
+        milestones.append(
+            Milestone(
+                title=str(item.get("title", "")).strip() or "Untitled milestone",
+                done=bool(item.get("done", False)),
+                concepts=_string_list(concepts, field="concepts"),
+                notes=str(item.get("notes", "")).strip(),
+            )
+        )
+    return milestones
+
+
+def _append_learning_record(plan: StudyPlan, spec: LearningRecordSpec) -> None:
+    """Append ``spec`` to ``plan`` unless an identical record already exists.
+
+    The same rules as :func:`studyloop.planning.store.record_learning` — the
+    legacy writer the CLI and MCP still use until Phase 2 moves them onto
+    ``RevisePlan`` — applied to the candidate in memory so the revision stays
+    one save. Raises :class:`InvalidField` for an empty title or a body whose
+    H1-H3 lines would restructure the document on the next parse.
+    """
+    title = spec.title.strip()
+    if not title:
+        msg = "a learning record needs a title"
+        raise InvalidField(msg)
+    body = spec.body.strip()
+    for line in body.splitlines():
+        if _HEADING_LINE_RE.match(line.strip()):
+            msg = (
+                "a learning record body cannot contain #, ## or ### headings "
+                f"(found {line.strip()!r}); use #### or deeper, or plain prose"
+            )
+            raise InvalidField(msg)
+    if any(r.title == title and r.body == body for r in plan.learning_records):
+        return
+    plan.learning_records.append(
+        LearningRecord(
+            number=max((r.number for r in plan.learning_records), default=0) + 1,
+            title=title,
+            body=body,
+            status=spec.status.strip() or "active",
+        )
+    )
 
 
 class PlanApplication:
@@ -134,6 +221,8 @@ class PlanApplication:
             return self._replace(intent)
         if isinstance(intent, TransitionLifecycle):
             return self._transition(intent)
+        if isinstance(intent, RevisePlan):
+            return self._revise(intent)
         assert_never(intent)
 
     def _create(self, intent: CreatePlan) -> PlanDetail:
@@ -177,13 +266,55 @@ class PlanApplication:
         return PlanDetail.from_plan(replacement)
 
     def _transition(self, intent: TransitionLifecycle) -> PlanDetail:
-        plan = self._load(intent.plan_id)
-        status = _normalise_status(intent.status)
-        if status == "active":
-            self._assert_can_be_active(plan)
-        plan.status = status
-        store.save_plan(plan)
-        return PlanDetail.from_plan(plan)
+        # A status change is the one-field case of a revision: same load, same
+        # resulting-document gate, same single save.
+        return self._revise(RevisePlan(plan_id=intent.plan_id, status=intent.status))
+
+    def _revise(self, intent: RevisePlan) -> PlanDetail:
+        """Load once, apply every supplied field, gate the result, save once.
+
+        Order matters and is part of the contract: the plan must exist before
+        any field is judged (404 before 400 on the Web); every field is
+        validated before any is applied, so a bad value beside a good status
+        change writes nothing; and the readiness gate sees the document as it
+        *would be saved* — whichever fields put it there.
+        """
+        candidate = self._load(intent.plan_id)  # private to this call: it is the candidate
+
+        status = None if intent.status is None else _normalise_status(str(intent.status))
+        updates: dict[str, object] = {}
+        if intent.title is not None:
+            title = str(intent.title).strip()
+            if not title:
+                msg = "title cannot be empty"
+                raise InvalidField(msg)
+            updates["title"] = title
+        if intent.topics is not None:
+            updates["topics"] = _string_list(intent.topics, field="topics")
+        if intent.target_date is not None:
+            updates["target_date"] = str(intent.target_date).strip()
+        if intent.notes is not None:
+            updates["notes"] = str(intent.notes)
+        for field, lo, hi in _CLAMPED_FIELDS:
+            value = getattr(intent, field)
+            if value is not None:
+                updates[field] = _clamped_int(value, field=field, lo=lo, hi=hi)
+        if intent.milestones is not None:
+            updates["milestones"] = _milestones_from(intent.milestones)
+
+        for field, value in updates.items():
+            setattr(candidate, field, value)
+        if intent.learning_record is not None:
+            _append_learning_record(candidate, intent.learning_record)
+        if status is not None:
+            candidate.status = status
+
+        # The gate judges the resulting document: a plan that is being
+        # activated, or one that already is and has just been edited.
+        if candidate.status == "active":
+            self._assert_can_be_active(candidate)
+        store.save_plan(candidate)  # preserves plan_id + created; bumps updated
+        return PlanDetail.from_plan(candidate)
 
     # ------------------------------------------------------------------
     # Internals
