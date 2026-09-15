@@ -566,3 +566,36 @@ class TestConcurrency:
             thread.join(timeout=5)
         assert [event.phase for event in indicator.events][-1] is LoadPhase.READY
         assert _rendered(stream)
+
+
+class TestNoImportTimeCost:
+    """Council D-10: the machine-independent half of "the load did not go silent".
+
+    A wall-clock assertion in CI measures the runner, not the product, so the
+    regression that IS worth gating is the lazy-import contract -- and this
+    module is a new way to break it, because it imports ``query_encoders`` at
+    module scope. A CLI entry point that reaches for the indicator must not pay
+    for a runtime it may never load.
+    """
+
+    def test_importing_the_indicator_pulls_no_ml_runtime(self) -> None:
+        import subprocess
+
+        script = (
+            "import sys; "
+            "import agent_session_tools.load_indicator; "
+            "assert 'torch' not in sys.modules, 'torch imported at import time'; "
+            "assert 'onnxruntime' not in sys.modules, 'onnxruntime imported at import time'; "
+            "assert 'sentence_transformers' not in sys.modules, "
+            "'sentence_transformers imported at import time'; "
+            "print('OK')"
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", script],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert result.stdout.strip() == "OK"
