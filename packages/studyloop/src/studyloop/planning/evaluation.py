@@ -451,15 +451,23 @@ def evaluate_and_record(
 
     The DB write and the Markdown write are independent: either can fail
     without losing the other, and the evaluation is always returned.
+
+    ``record_checkpoint`` reports failure two ways — it swallows its own
+    errors and returns ``False`` (no database, INSERT failed), and it can still
+    raise from an import or connection fault.  Both must land in ``warnings``:
+    a caller reading an empty warning list is entitled to believe the
+    checkpoint is durably recorded.
     """
     evaluation = evaluate_plan(plan, phase, study_id=study_id)
 
     try:
         from .index import record_checkpoint
 
-        record_checkpoint(evaluation, study_id=study_id)
+        saved = record_checkpoint(evaluation, study_id=study_id)
     except Exception:
         logger.debug("checkpoint DB write failed", exc_info=True)
+        saved = False
+    if not saved:
         evaluation.warnings.append("checkpoint not saved to the database")
 
     if append_to_plan:
