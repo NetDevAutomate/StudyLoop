@@ -218,6 +218,21 @@ def test_duplicate_id_is_a_conflict_even_when_the_new_document_is_unready_active
     assert store.load_plan_text("ready-plan") == before
 
 
+def test_bad_field_beside_a_status_change_writes_nothing(web: TestClient) -> None:
+    """A compound body is one intent: a refused field means the transition it
+    arrived with is not committed either (the old route validated fields first
+    but still split the write in two)."""
+    assert web.post("/api/plans", json=READY_PAYLOAD).status_code == 201
+    before = store.load_plan_text("ready-plan")
+
+    refused = web.patch("/api/plans/ready-plan", json={"status": "active", "title": "   "})
+    assert refused.status_code == 400, refused.text
+    assert refused.json()["detail"] == "title cannot be empty"
+
+    assert store.load_plan_text("ready-plan") == before
+    assert web.get("/api/plans/ready-plan").json()["plan"]["status"] == "draft"
+
+
 # --- Council review 1, F3: the CLI maps every seam refusal, on every command ------
 #
 # Click's ``--status`` Choice already refuses an unknown filter, so the seam
