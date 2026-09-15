@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass
 
 # Pinned verbatim from SessionWeaver v0.2.0. Keep this string form so changes
@@ -16,6 +17,12 @@ STOP = frozenset(
 
 _TERM = re.compile(r"[a-zA-Z0-9_./-]+")
 
+# Unicode general categories dropped from a raw token before it is quoted:
+# control characters (Cc) and surrogates (Cs). Everything else -- punctuation,
+# symbols, other scripts -- is left for the FTS5 tokenizer, which is what makes
+# the quoted form parse-safe without a whitelist of characters.
+_UNSAFE_CATEGORIES = frozenset({"Cc", "Cs"})
+
 
 def _terms(question: str) -> tuple[str, ...]:
     return tuple(
@@ -28,6 +35,47 @@ def _terms(question: str) -> tuple[str, ...]:
 def _quote_term(term: str) -> str:
     """Wrap one extracted token as an FTS5 double-quoted phrase."""
     return f'"{term}"'
+
+
+def prose_tokens(question: str) -> tuple[str, ...]:
+    """Every whitespace-separated token of ``question`` that carries an alphanumeric.
+
+    The §5 candidate's tokenisation (council D-12), ported from the archived
+    ``feat/knowledge-proof`` branch's ``plan_prose_query``: no stop list, no
+    length filter, case preserved. Control and surrogate characters are
+    stripped from each token first; a token left with no alphanumeric at all
+    (``---``, ``???``) is dropped because FTS5 could match nothing in it.
+    """
+    tokens: list[str] = []
+    for raw in question.split():
+        token = "".join(
+            char for char in raw if unicodedata.category(char) not in _UNSAFE_CATEGORIES
+        )
+        if any(char.isalnum() for char in token):
+            tokens.append(token)
+    return tuple(tokens)
+
+
+def _quote_prose_token(token: str) -> str:
+    """Quote a raw token as one FTS5 string; an embedded ``"`` is doubled, per FTS5."""
+    return '"' + token.replace('"', '""') + '"'
+
+
+def prose_or_query(question: str) -> str:
+    """The §5 candidate widen string: every raw token quoted and joined with ``OR``.
+
+    Every *nonempty* string this returns is well-formed FTS5: each token is a
+    double-quoted string with embedded quotes doubled, so operators, column
+    filters, prefixes and punctuation inside it are plain text for the
+    tokenizer, and the query grammar cannot be broken by what the learner
+    typed. Two things are outside that guarantee and belong to the caller:
+    the return is ``""`` when no token survives, and an empty ``MATCH`` is a
+    syntax error, so the caller must treat ``""`` as "nothing to search"
+    rather than run it; and the backend's own limits (query length, term
+    count) are not ruled out here -- the S.1 tests establish parse-safety for
+    the inputs they name, not for every possible input.
+    """
+    return " OR ".join(_quote_prose_token(token) for token in prose_tokens(question))
 
 
 @dataclass(frozen=True)

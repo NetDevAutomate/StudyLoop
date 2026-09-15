@@ -13,6 +13,14 @@
   from the shipped planner while stage 1 still shipped; the live planner has
   since changed by design, so an equality test against it would now fail for
   the right reason and prove nothing.
+
+A second, orthogonal axis (§5 stream, council D-12) is the **planner
+variant**: which natural-language planner the retrieval service runs behind
+the same tool. ``mcp:and_then_prose_or`` is the real ``session_search`` with
+one planner function substituted for the duration of the call, after
+``plan_query`` has classified the string, so the explicit door is identical
+across variants. Variants are in-process by construction (a substituted
+function), so the subprocess CLI arm and the frozen control refuse one.
 """
 
 from __future__ import annotations
@@ -27,19 +35,160 @@ import sqlite3
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import contextmanager, suppress
+from contextlib import contextmanager, nullcontext, suppress
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+
+from agent_session_tools import retrieval
+from agent_session_tools.query_planner import (
+    _quote_term,
+    _terms,
+    prose_or_query,
+    prose_tokens,
+)
+from agent_session_tools.retrieval import QueryPlan, _phrase_terms
 
 from .seam import ArmError, classify_failure, collapse_to_sessions
 
 if TYPE_CHECKING:
-    from collections.abc import Coroutine, Iterator, Sequence
+    from collections.abc import Callable, Coroutine, Iterator, Sequence
 
     from .seam import Hit, Query
 
 #: Message-row limit the shipped tool applies *before* sessions are collapsed.
 DEFAULT_ROWS = 10
+
+
+# --------------------------------------------------------------------------- planner variants (§5)
+# The shipped natural-language planner, captured at import. The variants below
+# replace ``retrieval.plan_natural_language`` for the duration of one tool call,
+# so the candidate must build on THIS reference, never on the module attribute
+# it is temporarily standing in for.
+_SHIPPED_PLAN_NATURAL_LANGUAGE = retrieval.plan_natural_language
+
+PLANNER_SHIPPED = "shipped"
+PLANNER_OR_FIRST_FILTERED = "or_first_filtered"
+PLANNER_AND_FIRST_UNFILTERED = "and_first_unfiltered"
+PLANNER_OR_ONLY_UNFILTERED = "or_only_unfiltered"
+PLANNER_AND_THEN_PROSE_OR = "and_then_prose_or"
+
+_NO_CONTENT_TERMS_NOTE = (
+    "the query has no content terms once stop words and tokens shorter "
+    "than three characters are removed; nothing was searched"
+)
+_NO_RAW_TOKENS_NOTE = (
+    "the query has no token carrying an alphanumeric character; nothing was searched"
+)
+
+
+def _empty_plan(note: str) -> QueryPlan:
+    return QueryPlan(explicit=False, terms=(), queries=(), note=note)
+
+
+def _filtered(query: str) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """The shipped planner's terms and their quoted forms: phrases, then ``_terms``."""
+    phrases, remainder = _phrase_terms(query.strip())
+    terms = (*phrases, *_terms(remainder))
+    quoted = tuple(t if t.startswith('"') else _quote_term(t) for t in terms)
+    return terms, quoted
+
+
+def _unfiltered(query: str) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """The candidate's tokenisation: every raw token, quoted the FTS5 way."""
+    tokens = prose_tokens(query)
+    return tokens, tuple('"' + t.replace('"', '""') + '"' for t in tokens)
+
+
+def _and_then_or(
+    terms: tuple[str, ...], quoted: tuple[str, ...], note: str
+) -> QueryPlan:
+    if not terms:
+        return _empty_plan(note)
+    and_query, or_query = " AND ".join(quoted), " OR ".join(quoted)
+    queries = (and_query,) if and_query == or_query else (and_query, or_query)
+    return QueryPlan(explicit=False, terms=terms, queries=queries)
+
+
+def plan_or_first_filtered(query: str) -> QueryPlan:
+    """Arm 2: the shipped OR form alone -- filtered terms, no AND pass first."""
+    terms, quoted = _filtered(query)
+    if not terms:
+        return _empty_plan(_NO_CONTENT_TERMS_NOTE)
+    return QueryPlan(explicit=False, terms=terms, queries=(" OR ".join(quoted),))
+
+
+def plan_and_first_unfiltered(query: str) -> QueryPlan:
+    """Arm 3: AND of every raw token, widened to OR of the same -- no stop list."""
+    terms, quoted = _unfiltered(query)
+    return _and_then_or(terms, quoted, _NO_RAW_TOKENS_NOTE)
+
+
+def plan_or_only_unfiltered(query: str) -> QueryPlan:
+    """Arm 4: the archived branch's ``plan_prose_query`` exactly as it stood."""
+    terms, _quoted = _unfiltered(query)
+    if not terms:
+        return _empty_plan(_NO_RAW_TOKENS_NOTE)
+    return QueryPlan(explicit=False, terms=terms, queries=(prose_or_query(query),))
+
+
+def plan_and_then_prose_or(query: str) -> QueryPlan:
+    """Arm 5, the candidate: the shipped AND arm, then the prose-OR as the widen.
+
+    Everything but the widen string is the shipped plan: its terms (STOP set,
+    ``len > 2``), its no-content-terms return (the widen is never reached
+    without an AND arm in front of it) and its de-duplication when the two
+    strings coincide.
+    """
+    shipped = _SHIPPED_PLAN_NATURAL_LANGUAGE(query)
+    if not shipped.terms:
+        return shipped
+    and_query = shipped.queries[0]
+    widen = prose_or_query(query)
+    queries = (and_query,) if not widen or widen == and_query else (and_query, widen)
+    return QueryPlan(
+        explicit=False, terms=shipped.terms, queries=queries, note=shipped.note
+    )
+
+
+#: Planner name -> the function that stands in for ``retrieval.plan_natural_language``
+#: (``None`` = the shipped planner, nothing substituted).
+PLANNERS: dict[str, Callable[[str], QueryPlan] | None] = {
+    PLANNER_SHIPPED: None,
+    PLANNER_OR_FIRST_FILTERED: plan_or_first_filtered,
+    PLANNER_AND_FIRST_UNFILTERED: plan_and_first_unfiltered,
+    PLANNER_OR_ONLY_UNFILTERED: plan_or_only_unfiltered,
+    PLANNER_AND_THEN_PROSE_OR: plan_and_then_prose_or,
+}
+
+#: Where the substitution lands: the one entry into natural-language planning.
+_PLANNER_ENTRY = "agent_session_tools.retrieval.plan_natural_language"
+
+
+def _planner_context(planner: str) -> Any:
+    """A context that runs the service under ``planner``; a no-op for the shipped one."""
+    variant = PLANNERS[planner]
+    if variant is None:
+        return nullcontext()
+    from unittest.mock import patch
+
+    return patch(_PLANNER_ENTRY, variant)
+
+
+def _validate_planner(planner: str) -> str:
+    if planner not in PLANNERS:
+        raise ValueError(f"unknown planner {planner!r}; known: {', '.join(PLANNERS)}")
+    return planner
+
+
+def _arm_name(transport: str, planner: str) -> str:
+    """``mcp`` for the shipped planner, ``mcp:<planner>`` for a variant."""
+    return transport if planner == PLANNER_SHIPPED else f"{transport}:{planner}"
+
+
+def split_arm_name(name: str) -> tuple[str, str]:
+    """``"mcp:and_then_prose_or"`` -> ``("mcp", "and_then_prose_or")``; bare -> shipped."""
+    transport, _, planner = name.partition(":")
+    return transport, planner or PLANNER_SHIPPED
 
 
 def _repo_root() -> Path:
@@ -182,6 +331,11 @@ class McpArm:
     through the real agent interface honest. Against the pre-Stage-2 tool the
     argument is absent, the flag is ``False``, and the ruler filters the
     returned hits instead.
+
+    ``planner`` selects a natural-language planner variant (:data:`PLANNERS`)
+    substituted into the service for the duration of each call; the shipped
+    planner is the default and substitutes nothing. The arm's ``name`` carries
+    the variant (``mcp:and_then_prose_or``) so receipts and comparisons do.
     """
 
     name = "mcp"
@@ -191,9 +345,16 @@ class McpArm:
     #: Which retrieval mode this arm pins through ``STUDYLOOP_RETRIEVAL_MODE``.
     mode = "lexical"
 
-    def __init__(self, db_path: Path | str, rows: int = DEFAULT_ROWS) -> None:
+    def __init__(
+        self,
+        db_path: Path | str,
+        rows: int = DEFAULT_ROWS,
+        planner: str = PLANNER_SHIPPED,
+    ) -> None:
         self.db_path = Path(db_path).expanduser()
         self.rows = rows
+        self.planner = _validate_planner(planner)
+        self.name = _arm_name(type(self).name, self.planner)
         self.tool_arguments = _tool_argument_names("session_search")
         self.supports_exclusion = self.EXCLUDE_ARG in self.tool_arguments
         #: ``retrieval_status`` from the most recent call, or ``None``.
@@ -217,6 +378,7 @@ class McpArm:
                 return_value=self.db_path,
             ),
             _quiet_errors(),
+            _planner_context(self.planner),
         ):
             with patch.dict(os.environ, {"STUDYLOOP_RETRIEVAL_MODE": self.mode}):
                 result = _run(mcp_server.mcp.call_tool("session_search", arguments))
@@ -248,6 +410,7 @@ class McpArm:
             "arm": self.name,
             "interface": "fastmcp call_tool(session_search)",
             "mode": self.mode,
+            "planner": self.planner,
             "rows": self.rows,
             "db_path": str(self.db_path),
             "git_commit": _git_head(),
@@ -514,24 +677,50 @@ ARMS = {
     FrozenShippedArm.name: FrozenShippedArm,
 }
 
+#: The transport arms a planner variant can be applied to: in-process, through
+#: the retrieval service. The CLI is a subprocess and the frozen replica is a
+#: control that must not move, so neither takes one.
+PLANNER_TRANSPORTS = frozenset({McpArm.name, HybridMcpArm.name})
+
 
 def build_arm(name: str, db_path: Path | str, rows: int = DEFAULT_ROWS) -> Any:
-    """Construct one arm by name."""
+    """Construct one arm by name; ``<transport>:<planner>`` selects a planner variant."""
+    transport, planner = split_arm_name(name)
     try:
-        factory = ARMS[name]
+        factory = ARMS[transport]
     except KeyError:
         raise ValueError(
-            f"unknown arm {name!r}; known: {', '.join(sorted(ARMS))}"
+            f"unknown arm {transport!r}; known: {', '.join(sorted(ARMS))}"
         ) from None
-    return factory(db_path, rows)
+    _validate_planner(planner)
+    if planner == PLANNER_SHIPPED:
+        return factory(db_path, rows)
+    if transport not in PLANNER_TRANSPORTS:
+        raise ValueError(
+            f"arm {transport!r} cannot take a planner variant; planner variants run "
+            f"in-process through the retrieval service ({', '.join(sorted(PLANNER_TRANSPORTS))})"
+        )
+    return factory(db_path, rows, planner=planner)
 
 
 __all__ = [
     "ARMS",
     "DEFAULT_ROWS",
+    "PLANNERS",
+    "PLANNER_AND_FIRST_UNFILTERED",
+    "PLANNER_AND_THEN_PROSE_OR",
+    "PLANNER_OR_FIRST_FILTERED",
+    "PLANNER_OR_ONLY_UNFILTERED",
+    "PLANNER_SHIPPED",
+    "PLANNER_TRANSPORTS",
     "CliArm",
     "FrozenShippedArm",
     "McpArm",
     "build_arm",
     "frozen_session_search_queries",
+    "plan_and_first_unfiltered",
+    "plan_and_then_prose_or",
+    "plan_or_first_filtered",
+    "plan_or_only_unfiltered",
+    "split_arm_name",
 ]

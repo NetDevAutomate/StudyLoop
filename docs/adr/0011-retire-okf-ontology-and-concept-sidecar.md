@@ -1,10 +1,14 @@
 # ADR-0011: Retire the OKF import, the tier-1 ontology and the concept sidecar
 
-**Status:** Accepted · **Date:** 2026-09-10 · **Deciders:** Andy Taylor (owner)
+**Status:** Accepted · **Date:** 2026-09-10 · **Amended:** 2026-09-15 · **Deciders:** Andy Taylor (owner)
 **Supersedes:** the IN-FLIGHT ontology and concept-sidecar claims in
 `docs/architecture/session-memory/README.md` (2026-09-09 record) and the corresponding sections of
 the branch ADR *0011-claim-centric-learning-memory* on `feat/knowledge-proof` (marked RETIRED there;
 its claim-centric learning-memory decision itself stands and will be renumbered when merged).
+[Superseded 2026-09-15: that decision was never merged and will not be. Decision: close PR #19 and
+tag tip `464a8cdc` as `archive/feat-knowledge-proof-2026-09-15`. Execution pending; recorded here
+when command output establishes it. See *Disposition after semantic-layer completion* below. The
+sentence is kept as written.]
 
 ## Context
 
@@ -50,6 +54,8 @@ What is **kept**, because it is not OKF and the data supports it:
   `get_concept_context`) — a first-party concept store with its own contract, unrelated to the sidecar;
 - the **evidence tier** and the **learning-memory** claims/evidence store on `feat/knowledge-proof`
   (ADR *claim-centric learning memory*) — the semantic layer's prerequisites;
+  [Superseded 2026-09-15: the semantic-layer programme sealed without this store; see the
+  disposition section below. The bullet is kept as written.]
 - every **receipt** and evidence file that documents the experiment and this decision (immutable
   history, marked RETIRED where it describes the removed layers).
 
@@ -78,3 +84,61 @@ What is **kept**, because it is not OKF and the data supports it:
 - **Leave the code on branches "in case".** Rejected: unmerged branches rot, and the owner's failure
   mode is open tasks that never close. Tips are tagged `archive/*-2026-09-10` before deletion, so
   nothing is lost.
+
+## Disposition after semantic-layer completion (2026-09-15)
+
+Written under council decision D-13
+(`docs/architecture/plan-integration/council/arbitration-plan-round1-2026-09-15.md`): this ADR is
+amended, not rewritten. Everything above is preserved as written on 2026-09-10; the two statements
+that no longer hold are marked superseded in place, and this section records what actually happened.
+
+1. **The claim-centric learning-memory decision was not merged.** The header above says the branch
+   ADR's "claim-centric learning-memory decision itself stands and will be renumbered when merged".
+   It did not merge and will not: `feat/knowledge-proof` was never integrated into `main`, and its
+   pull request is to be closed (item 4). The sentence is superseded; it stays in the header as the
+   record of what was expected on 2026-09-10.
+
+2. **The semantic layer did not need that store.** The *Decision* section keeps "the evidence tier
+   and the learning-memory claims/evidence store on `feat/knowledge-proof` … — the semantic layer's
+   prerequisites". The semantic-layer programme on `main` **sealed on 2026-09-15** without it
+   (`docs/architecture/session-memory/receipts/semantic-layer/`; SEALED outcome recorded at
+   `a0272a52`: G2 met, G1 not established, owner keeps the `mcp`/`web` hybrid default). No claim or
+   evidence table participates in the shipped `session_search`; the "prerequisites" claim is
+   superseded **for this shipped programme** — shipping and sealing without the store refutes its
+   necessity here, and says nothing about whether claim-centric memory has some other useful role.
+   It had already been contradicted by the branch's own data: **Stage F measured the fused claims
+   arm at −0.140 recall@5** on DEV, below prose alone (recorded in
+   `docs/architecture/session-memory/receipts/okf-removal-inventory-2026-09-10.md`, citing branch
+   ADR-0011:301, which also records the fused arm "significantly *worse* than prose alone (−0.154,
+   CI95 [−0.252, −0.065]), replicating DEV (−0.140)"). Measured, the tested fused-claims retrieval
+   arm reduced recall relative to prose alone; those receipts compare retrieval configurations, not
+   storage in isolation, so the loss is attributed to that arm and not to the store as such.
+
+3. **The portable lexical hypothesis was separated from the retired architecture and measured on
+   its own.** The historical retrieval improvement cited here (F-B0-1, *Context* above) was a
+   planner construction — `plan_prose_query`'s quoted-raw-token `OR` — and owed nothing to the
+   storage or ontology layers this ADR retired. It was ported to `main` as
+   `agent_session_tools.query_planner.prose_or_query` and pre-registered (D-12) in its narrowest
+   position, the `OR` *widen* step of the shipped planner:
+   `docs/architecture/session-memory/receipts/lexical/preregistration-2026-09-15.md`. The verdict is
+   `docs/architecture/session-memory/receipts/lexical/or-fallback-dev-2026-09-15.md`:
+   **`adopt: false`** — DEV macro recall@5 paired delta −0.0101, CI95 [−0.0500, +0.0278]; clause 1
+   (CI95 lower bound > 0) failed, the other three clauses held. The shipped planner is unchanged; the
+   helper and its tests stay as measured code. The historical +0.142 (*Context*) was measured against
+   the Stage 1 planner and a different corpus; that lift was not established for the pre-registered
+   narrow widen placement on this DEV corpus against the Stage 2 planner. The two `OR`-only arms the
+   same receipt reports were not the registered hypothesis and are neither adopted nor disproved by
+   it.
+
+4. **Branch disposition.** Decision: close PR #19 and tag tip `464a8cdc` as
+   `archive/feat-knowledge-proof-2026-09-15`. Execution pending; recorded here when command output
+   establishes it (`gh pr view 19 --json state,closedAt` reporting `CLOSED`, and
+   `git rev-parse 'archive/feat-knowledge-proof-2026-09-15^{commit}'` resolving to `464a8cdc…`).
+   Once tagged, the branch's primary receipts (Stage F, the claims-layer gate results cited in
+   *Context*) stay reachable via that tag. Nothing from the branch is to be deleted from history.
+   *(Reworded 2026-09-15 after council review: an earlier wording stated the closure and the tag as
+   done before either had been executed.)*
+
+5. **No renumbering.** An ADR that was never merged is not renumbered. `0011` on `main` is this
+   document; the branch ADR *0011-claim-centric-learning-memory* remains what it is — a record on an
+   archived branch, cited above by its branch line numbers.

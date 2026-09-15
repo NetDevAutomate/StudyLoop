@@ -6,6 +6,9 @@ Every number in this file is computed by hand in the test body, so a change in
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
 
 from agent_session_tools.eval import MIN_LIFT, NON_INFERIORITY_MARGIN, RESAMPLES, SEED
@@ -19,6 +22,9 @@ from agent_session_tools.eval.metrics import (
     macro_average,
     mrr_at_k,
     non_inferiority,
+    paired_cluster_bootstrap,
+    precision_at_k,
+    precision_values,
     recall_at_k,
 )
 
@@ -215,3 +221,221 @@ class TestNonInferiority:
         assert result["stratum"] == "P"
         assert result["clusters"] == 2
         assert result["point"] == 0.0
+
+
+# --------------------------------------------------------------------------- §5 additions
+# precision@K (guardrail) and the value-based paired bootstrap the recall
+# bootstrap now delegates to. The delegation is pinned against a COMMITTED
+# receipt: the interval recorded at Stage 2 must be reproduced bit for bit from
+# that receipt's own per-item rows, or the ruler has moved.
+
+_STAGE2_RECEIPT = (
+    Path(__file__).resolve().parents[3]
+    / "docs/architecture/session-memory/receipts/semantic-layer/stage2-gold-v2.json"
+)
+_GOLD_DEV = (
+    Path(__file__).resolve().parents[3]
+    / "docs/architecture/session-memory/receipts/gold-v2-dev.json"
+)
+
+
+def _ranked_items() -> tuple[dict[str, ItemScore], list[dict]]:
+    """Four items with ranked lists; gold ids chosen so precision is hand-computable."""
+    per_item = {
+        "k1": ItemScore("K", "c1", 1, 1.0, 1, ranked=("g1", "x", "y", "z", "w")),
+        "k2": ItemScore("K", "c1", 1, 0.5, 2, ranked=("x", "g2a", "g2b")),
+        "p1": ItemScore("P", "c2", 0, 0.0, None, ranked=("x", "y")),
+        "r1": ItemScore(
+            "R", "c3", 0, 0.0, None, ranked=()
+        ),  # a crash or an empty answer
+    }
+    items = [
+        {"id": "k1", "cluster": "c1", "stratum": "K", "gold_session_ids": ["g1"]},
+        {
+            "id": "k2",
+            "cluster": "c1",
+            "stratum": "K",
+            "gold_session_ids": ["g2a", "g2b"],
+        },
+        {"id": "p1", "cluster": "c2", "stratum": "P", "gold_session_ids": ["g3"]},
+        {"id": "r1", "cluster": "c3", "stratum": "R", "gold_session_ids": ["g4"]},
+    ]
+    return per_item, items
+
+
+class TestPrecisionAtK:
+    def test_per_item_precision_divides_by_k_not_by_what_came_back(self):
+        per_item, items = _ranked_items()
+        assert precision_values(per_item, items, 5) == {
+            "k1": 1 / 5,
+            "k2": 2 / 5,  # both gold sessions inside the first five
+            "p1": 0.0,
+            "r1": 0.0,  # nothing returned is precision 0, never undefined
+        }
+
+    def test_only_the_first_k_ranks_count(self):
+        per_item, items = _ranked_items()
+        assert precision_values(per_item, items, 1) == {
+            "k1": 1.0,
+            "k2": 0.0,
+            "p1": 0.0,
+            "r1": 0.0,
+        }
+
+    def test_macro_precision_averages_strata_not_items(self):
+        per_item, items = _ranked_items()
+        result = precision_at_k(per_item, items, 5)
+        assert result["by_stratum"] == pytest.approx({"K": 0.3, "P": 0.0, "R": 0.0})
+        assert result["macro"] == pytest.approx(0.1)
+
+    def test_empty_input_is_zero_not_a_crash(self):
+        assert precision_at_k({}, [], 5) == {"by_stratum": {}, "macro": 0.0}
+
+    def test_precision_fixed_denominator_for_short_and_empty_results(self):
+        """Guardrail 2 as registered: the denominator is ``k``, never the list length.
+
+        An AND arm that returns one session to find one gold and a widen that
+        returns five to find one are scored on the same denominator; a short
+        or empty list is a low precision, not a high one and not undefined.
+        """
+        items = [
+            {
+                "id": "q",
+                "cluster": "c",
+                "stratum": "K",
+                "gold_session_ids": ["g1", "g2"],
+            }
+        ]
+
+        def precision(ranked: tuple[str, ...], k: int) -> float:
+            score = ItemScore("K", "c", 1, 1.0, 1, ranked=ranked)
+            return precision_values({"q": score}, items, k)["q"]
+
+        assert precision(("g1",), 5) == 1 / 5  # one back, one gold: 1/5, not 1/1
+        assert precision(("g1", "g2"), 5) == 2 / 5  # two back, both gold: not 2/2
+        assert precision(("g1", "x"), 3) == 1 / 3
+        assert precision((), 5) == 0.0  # nothing back is 0.0, never undefined
+        assert precision(("x",), 5) == 0.0
+        # The same list under a smaller k: the denominator follows k, not the list.
+        assert precision(("g1", "g2"), 2) == 1.0
+        assert precision(("g1", "g2"), 1) == 1.0
+
+    def test_crashed_item_has_zero_precision_and_mrr(self):
+        """A crash is a miss on every metric: hit 0, rr 0.0, precision 0.0, in the denominator.
+
+        Driven through :func:`eval.gold.score_arm`, the path a real crash takes,
+        so the per-item row a crash produces is the one scored here rather than
+        one written by hand.
+        """
+        from agent_session_tools.eval.gold import score_arm
+        from agent_session_tools.eval.seam import ArmError, Hit, Query
+
+        class Arm:
+            name = "stub"
+            supports_exclusion = False
+
+            def search(self, query: Query, k: int) -> list[Hit]:
+                if "crash" in query.text:
+                    raise ArmError("backtick", 'fts5: syntax error near "`"')
+                return [Hit("g-answered", ("m-1",), None, "stub")]
+
+            def describe(self) -> dict[str, object]:
+                return {"arm": self.name}
+
+        items = [
+            {
+                "id": "ok",
+                "question": "answered",
+                "stratum": "K",
+                "cluster": "c1",
+                "gold_session_ids": ["g-answered"],
+            },
+            {
+                "id": "boom",
+                "question": "this one will crash",
+                "stratum": "K",
+                "cluster": "c2",
+                "gold_session_ids": ["g-crashed"],
+            },
+        ]
+        result = score_arm(Arm(), items, k=5)
+        crashed = result.per_item["boom"]
+        assert crashed.error_kind == "backtick"
+        assert (crashed.hit, crashed.rr, crashed.rank, crashed.ranked) == (
+            0,
+            0.0,
+            None,
+            (),
+        )
+        assert precision_values(result.per_item, items, 5) == {"ok": 1 / 5, "boom": 0.0}
+        # Both items are in every denominator: K is 1/2 on recall, MRR and precision.
+        assert result.crashes == 1
+        assert result.errors_by_kind == {"backtick": 1}
+        assert result.recall["by_stratum"] == {"K": 0.5}
+        assert result.mrr["by_stratum"] == {"K": 0.5}
+        assert result.precision["by_stratum"] == pytest.approx({"K": 0.1})
+        assert result.metrics()["n"] == 2
+
+
+class TestPairedClusterBootstrap:
+    def test_it_is_the_recall_bootstrap_when_fed_hits(self):
+        a, b, items = _mixed_clusters()
+        hits_a = {i: float(s.hit) for i, s in a.items()}
+        hits_b = {i: float(s.hit) for i, s in b.items()}
+        values = paired_cluster_bootstrap(hits_a, hits_b, items, resamples=500)
+        recall = cluster_bootstrap(a, b, items, resamples=500)
+        assert values["point"] == recall["point"]
+        assert values["ci95"] == recall["ci95"]
+        assert values["clusters"] == recall["clusters"] == 15
+
+    def test_lower_above_zero_is_strict_and_distinct_from_established(self):
+        a, b, items = _paired([1, 0, 0, 0], ["K", "P", "R", "R"])
+        values = paired_cluster_bootstrap(
+            {i: float(s.hit) for i, s in a.items()},
+            {i: float(s.hit) for i, s in b.items()},
+            items,
+            resamples=200,
+        )
+        # Resampling four one-item clusters can leave K out entirely: the
+        # lower bound is exactly zero, which is NOT strictly above zero.
+        assert values["ci95"][0] == 0.0
+        assert values["lower_above_zero"] is False
+        assert "established" not in values
+
+    def test_no_clusters_is_zero_not_a_crash(self):
+        values = paired_cluster_bootstrap({}, {}, [], resamples=10)
+        assert values["point"] == 0.0
+        assert values["ci95"] == [0.0, 0.0]
+        assert values["clusters"] == 0
+
+    @pytest.mark.skipif(
+        not (_STAGE2_RECEIPT.exists() and _GOLD_DEV.exists()),
+        reason="committed receipts not present in this checkout",
+    )
+    def test_it_reproduces_the_committed_stage2_intervals_bit_for_bit(self):
+        """The bootstrap arithmetic is pinned to a receipt in the repository.
+
+        Stage 2's ``mcp_vs_frozen`` interval (paired +0.052, CI95 [+0.011,
+        +0.100]) is recomputed here from that receipt's own per-item rows with
+        the frozen seed and resample count. Any drift in the draw order, the
+        percentile arithmetic or the macro-over-strata fold shows up as an
+        unequal float.
+        """
+        receipt = json.loads(_STAGE2_RECEIPT.read_text())
+        gold = json.loads(_GOLD_DEV.read_text())["items"]
+
+        def scores(arm: str) -> dict[str, ItemScore]:
+            return {
+                item_id: ItemScore(
+                    row["stratum"], row["cluster"], row["hit"], row["rr"]
+                )
+                for item_id, row in receipt["arms"][arm]["per_item"].items()
+            }
+
+        for pair in ("mcp_vs_frozen", "frozen_vs_mcp"):
+            a, b = pair.split("_vs_")
+            fresh = cluster_bootstrap(scores(a), scores(b), gold)
+            recorded = receipt["comparisons"][pair]
+            assert fresh["point"] == recorded["point"], pair
+            assert fresh["ci95"] == recorded["ci95"], pair
+            assert fresh["established"] == recorded["established"], pair

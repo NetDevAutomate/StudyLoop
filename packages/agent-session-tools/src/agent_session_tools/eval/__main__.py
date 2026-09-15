@@ -15,6 +15,14 @@ scoring one:
     python -m agent_session_tools.eval stage5-latency \
         --db ~/.local/share/studyloop/eval-clones/bakeoff-bge-20260915/sessions.db \
         --out receipt.json
+
+``lexical-verdict`` (§5 stream, council D-12) judges a gold receipt that carries
+the planner-variant arms (``--arms mcp,mcp:and_then_prose_or,...``) by the
+pre-registered clauses in :mod:`.lexical` and writes the committed form:
+
+    python -m agent_session_tools.eval lexical-verdict \
+        --receipt raw.json --candidate mcp:and_then_prose_or --control mcp \
+        --out docs/architecture/session-memory/receipts/lexical/or-fallback-dev-2026-09-15.json
 """
 
 from __future__ import annotations
@@ -26,10 +34,15 @@ from pathlib import Path
 from typing import Any
 
 from . import K, SEED
-from .arms import ARMS, DEFAULT_ROWS, build_arm
+from .arms import ARMS, DEFAULT_ROWS, PLANNERS, build_arm
 from .census import census_receipt, collect_questions, run_census
 from .gold import load_gold, score_arm
-from .metrics import cluster_bootstrap, non_inferiority
+from .metrics import (
+    cluster_bootstrap,
+    non_inferiority,
+    paired_cluster_bootstrap,
+    precision_values,
+)
 from .receipt import build_receipt, write_receipt
 
 
@@ -49,7 +62,11 @@ def _parser() -> argparse.ArgumentParser:
     gold.add_argument(
         "--arms",
         default="mcp,frozen",
-        help=f"comma-separated arm names ({', '.join(sorted(ARMS))})",
+        help=(
+            f"comma-separated arm names ({', '.join(sorted(ARMS))}); "
+            f"<arm>:<planner> selects a planner variant ({', '.join(PLANNERS)}) "
+            "on an in-process arm"
+        ),
     )
     gold.add_argument(
         "--rows",
@@ -99,26 +116,50 @@ def _parser() -> argparse.ArgumentParser:
             help="Gate L: resident-state latency for the mcp/web default flip",
         )
     )
+
+    # §5 stream: the adopt/reject verdict, computed from a gold receipt by the
+    # frozen clauses in ``eval/lexical.py`` and written as the committed form.
+    from .lexical import DEFAULT_CANDIDATE, DEFAULT_CONTROL
+
+    verdict = sub.add_parser(
+        "lexical-verdict",
+        help="§5: judge the prose-OR widen candidate from a gold receipt (D-12 clauses)",
+    )
+    verdict.add_argument("--receipt", required=True, help="raw gold receipt to judge")
+    verdict.add_argument(
+        "--candidate", default=DEFAULT_CANDIDATE, help="candidate arm name"
+    )
+    verdict.add_argument("--control", default=DEFAULT_CONTROL, help="control arm name")
+    verdict.add_argument("--k", type=int, default=K, help=f"rank cut-off (default {K})")
+    verdict.add_argument(
+        "--out", required=True, help="committed receipt to write (digests prefixed)"
+    )
     return parser
 
 
 def _format_comparison(pair: str, stats: dict) -> str:
-    """One console line per comparison, speaking BOTH receipt shapes.
+    """One console line per comparison, speaking EVERY receipt shape.
 
-    Delta comparisons carry a ``ci95`` pair; the K non-inferiority entry
-    carries ``ci95_upper``/``upper_at_least_zero`` instead (Stage 4 addendum,
-    astra 5 / kimi 1). The 2026-09-15 SEALED run proved the printer must
-    never assume one shape: it crashed AFTER the receipt was written, on the
-    first two-arm run that reached the K entry.
+    Delta comparisons carry a ``ci95`` pair and either ``established`` (the
+    recall lift rule) or ``lower_above_zero`` (the §5 value bootstraps); the K
+    non-inferiority entry carries ``ci95_upper``/``upper_at_least_zero``
+    instead (Stage 4 addendum, astra 5 / kimi 1). The 2026-09-15 SEALED run
+    proved the printer must never assume one shape: it crashed AFTER the
+    receipt was written, on the first two-arm run that reached the K entry.
     """
     if "ci95" in stats:
         low, high = stats["ci95"]
+        verdict = (
+            f"established={stats['established']}"
+            if "established" in stats
+            else f"lower_above_zero={stats['lower_above_zero']}"
+        )
         return (
-            f"{pair:>16}  delta macro {stats['point']:+.4f}"
-            f"  CI95 [{low:+.4f}, {high:+.4f}]  established={stats['established']}"
+            f"{pair:>48}  delta macro {stats['point']:+.4f}"
+            f"  CI95 [{low:+.4f}, {high:+.4f}]  {verdict}"
         )
     return (
-        f"{pair:>16}  delta {stats.get('stratum', '?')} {stats['point']:+.4f}"
+        f"{pair:>48}  delta {stats.get('stratum', '?')} {stats['point']:+.4f}"
         f"  CI95 upper {stats['ci95_upper']:+.4f}"
         f"  upper_at_least_zero={stats['upper_at_least_zero']}"
     )
@@ -149,6 +190,19 @@ def _run_gold(args: argparse.Namespace) -> int:
         comparisons[f"{a}_vs_{b}_K"] = non_inferiority(
             results[a].per_item, results[b].per_item, items, margin=0.0, stratum="K"
         )
+        # §5 guardrails (pre-registration 2026-09-15): precision@K and MRR@K
+        # paired the same way, so a widen step that buys recall with junk
+        # rows is visible as a precision interval, not a footnote.
+        comparisons[f"{a}_vs_{b}_precision"] = paired_cluster_bootstrap(
+            precision_values(results[a].per_item, items, args.k),
+            precision_values(results[b].per_item, items, args.k),
+            items,
+        )
+        comparisons[f"{a}_vs_{b}_mrr"] = paired_cluster_bootstrap(
+            {i: s.rr for i, s in results[a].per_item.items()},
+            {i: s.rr for i, s in results[b].per_item.items()},
+            items,
+        )
 
     from .arms import _git_head
 
@@ -168,7 +222,8 @@ def _run_gold(args: argparse.Namespace) -> int:
             ", ".join(f"{k}={n}" for k, n in result.errors_by_kind.items()) or "none"
         )
         print(
-            f"{name:>8}  macro recall@{args.k} {recall['macro']:.4f}  {strata}"
+            f"{name:>24}  macro recall@{args.k} {recall['macro']:.4f}  {strata}"
+            f"  P@{args.k} {result.precision['macro']:.4f}"
             f"  MRR {result.mrr['macro']:.4f}"
             f"  crashes {result.crashes}/{gold.n} ({kinds})"
             f"  p50 {result.latency_ms['p50']:.1f} ms  p95 {result.latency_ms['p95']:.1f} ms"
@@ -211,6 +266,22 @@ def _run_census(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_lexical_verdict(args: argparse.Namespace) -> int:
+    import json
+
+    from .lexical import derive_receipt, format_verdict, judge
+
+    raw_path = Path(args.receipt).expanduser()
+    raw_bytes = raw_path.read_bytes()
+    raw = json.loads(raw_bytes)
+    verdict = judge(raw, candidate=args.candidate, control=args.control, k=args.k)
+    derived = derive_receipt(raw, raw_bytes, verdict, raw_path=str(raw_path))
+    out = write_receipt(args.out, derived)
+    print(format_verdict(verdict))
+    print(f"receipt -> {out}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     if args.ruler == "gold":
@@ -221,6 +292,8 @@ def main(argv: list[str] | None = None) -> int:
         from .stage5_latency import run_parent
 
         return run_parent(args)
+    if args.ruler == "lexical-verdict":
+        return _run_lexical_verdict(args)
     return 2
 
 
