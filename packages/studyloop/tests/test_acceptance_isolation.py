@@ -14,6 +14,8 @@ the workspace's "two packages both named tests" pluggy registration conflict.
 from __future__ import annotations
 
 import os
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -40,16 +42,59 @@ class TestScratchCreation:
         assert scratch.config_dir.is_dir()
         assert (scratch.config_dir / "config.yaml").exists()
 
-    def test_dedicated_tmux_socket_dir_is_under_scratch_home(self, tmp_path: Path) -> None:
+    def test_dedicated_tmux_socket_dir_is_deliberately_outside_scratch_home(
+        self, tmp_path: Path
+    ) -> None:
         """A shared tmux server started under the developer's REAL
         environment must never be what a live tmux-driven acceptance lane
-        attaches to -- each run gets its own socket directory under its own
-        scratch tree, so no run can retain another run's (or the real
-        session's) env."""
+        attaches to -- each run gets its own socket directory, so no run can
+        retain another run's (or the real session's) env.
+
+        Deliberately NOT under `scratch.home`, unlike the rest of the
+        scratch tree: `home` is rooted at pytest's `tmp_path`, which can be
+        arbitrarily deep, and appending tmux's own `tmux-<uid>/default`
+        suffix to a deep path blows past AF_UNIX's 104-byte `sun_path` limit
+        (see `test_tmux_socket_path_stays_under_the_unix_socket_limit`
+        below) -- so the socket dir lives under a short, unrelated `/tmp`
+        root instead."""
         scratch = create_scratch_environment(tmp_path)
-        assert scratch.tmux_socket_dir.is_relative_to(scratch.home)
+        assert not scratch.tmux_socket_dir.is_relative_to(scratch.home)
+        assert scratch.tmux_socket_dir.is_relative_to(Path("/tmp"))
         assert scratch.tmux_socket_dir.is_dir()
         assert scratch.env["TMUX_TMPDIR"] == str(scratch.tmux_socket_dir)
+
+    def test_tmux_socket_path_stays_under_the_unix_socket_limit_even_for_a_deep_tmp_path(
+        self, tmp_path: Path
+    ) -> None:
+        """Regression (review finding, B2 fix round 1): a realistic pytest
+        `tmp_path` -- `.../pytest-of-<user>/pytest-<n>/<long test id>/` -- is
+        already ~80+ chars deep before this module adds anything. Rooting
+        the tmux socket dir under such a path and then appending tmux's own
+        `tmux-<uid>/default` suffix produced a MEASURED 149-char path, past
+        macOS's 104-byte `sun_path` limit, so `tmux new-session` could never
+        start a server there at all ("File name too long"), not merely run
+        slowly."""
+        deep = tmp_path
+        for part in ("pytest-of-ataylor", "pytest-999", "test_cli_tmux_lane_complet0"):
+            deep = deep / part
+        deep.mkdir(parents=True)
+
+        scratch = create_scratch_environment(deep)
+
+        candidate = scratch.tmux_socket_dir / f"tmux-{os.getuid()}" / "default"
+        assert len(str(candidate)) < 104, (
+            f"{candidate} is {len(str(candidate))} chars -- past AF_UNIX's 104-byte sun_path limit"
+        )
+
+    def test_sweep_removes_the_tmux_socket_dir_even_though_it_is_outside_home(
+        self, tmp_path: Path
+    ) -> None:
+        scratch = create_scratch_environment(tmp_path)
+        socket_dir = scratch.tmux_socket_dir
+
+        sweep_scratch(scratch)
+
+        assert not socket_dir.exists()
 
     def test_two_scratch_environments_get_different_tmux_sockets(self, tmp_path: Path) -> None:
         first = create_scratch_environment(tmp_path / "a")
@@ -189,3 +234,45 @@ class TestScratchEnvironmentContextManager:
 
         assert canary.read_text(encoding="utf-8") == "untouched"
         assert not scratch.home.exists()
+
+
+@pytest.mark.skipif(not shutil.which("tmux"), reason="tmux not installed")
+class TestScratchTmuxSocketDirIsUsable:
+    """The positive control the path-length regression test above cannot
+    provide by itself: proves a real `tmux` server can actually bind and
+    accept a session under the scratch socket dir, not merely that its path
+    is short enough in principle."""
+
+    def test_a_real_tmux_session_starts_under_the_scratch_socket_dir(self, tmp_path: Path) -> None:
+        scratch = create_scratch_environment(tmp_path)
+        session_name = f"sl-acc-socket-smoke-{os.getpid()}"
+        env = {**os.environ, "TMUX_TMPDIR": str(scratch.tmux_socket_dir)}
+        try:
+            created = subprocess.run(
+                ["tmux", "new-session", "-d", "-s", session_name, "sleep", "30"],
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            assert created.returncode == 0, (
+                f"tmux new-session failed under the scratch socket dir: {created.stderr}"
+            )
+
+            found = subprocess.run(
+                ["tmux", "has-session", "-t", session_name],
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            assert found.returncode == 0, "session started under the scratch socket must be found"
+        finally:
+            subprocess.run(
+                ["tmux", "kill-server"],
+                env=env,
+                capture_output=True,
+                timeout=10,
+                check=False,
+            )
+            sweep_scratch(scratch)
