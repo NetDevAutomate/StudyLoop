@@ -379,8 +379,12 @@ real failure with a `FileExistsError` from inside the bundle-writer's own
 validators need, not B4's full schema (durable evidence root resolved
 before scratch substitution, repo sha, rubric hash, file inventory with
 sha256s, …) — the field names (`run_id`/`harness`/`actor`/`outcome`) are
-chosen to match a subset of B4's described schema, so migrating callers to
-B4's real writer is a rename, not a rewrite.
+chosen to be CLOSE to a subset of B4's described schema, but B4's landed
+writer names the corresponding fields `actor_backend`/`actor_model`/nested
+`counts` rather than this module's flat `actor`/`outcome`/`turn_count`, so
+migrating callers to B4's real writer is a small field-mapping change, not
+a pure rename — see "Coverage inventory" below for the exact mapping and
+its owner.
 
 ### Coverage inventory
 

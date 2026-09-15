@@ -161,7 +161,29 @@ def _assert_within_run_dir(run_dir: Path, relative: str) -> Path:
     return dest
 
 
-def _atomic_write_bytes(dest: Path, content: bytes) -> None:
+def _tighten_created_dirs(leaf_dir: Path, run_dir: Path) -> None:
+    """Force every directory between ``run_dir`` and ``leaf_dir`` to ``_RUN_DIR_MODE``.
+
+    ``run_dir`` itself is excluded (``write_bundle`` already chmods it before
+    any file is written) but every directory `mkdir(parents=True)` may have
+    just created underneath it -- e.g. ``traces/`` for a nested
+    ``traces/trace-1.zip`` -- is tightened too, for defense-in-depth
+    consistency with the 'created private' guarantee (D-14): the run dir's
+    own 0o700 already blocks traversal by anyone but the owner regardless of
+    a nested subdirectory's mode, but a subdirectory left at the process
+    umask (e.g. 0o755) is still an inconsistency worth closing.
+    """
+    resolved_run_dir = run_dir.resolve()
+    current = leaf_dir.resolve()
+    while current != resolved_run_dir:
+        current.chmod(_RUN_DIR_MODE)
+        parent = current.parent
+        if parent == current:
+            break
+        current = parent
+
+
+def _atomic_write_bytes(dest: Path, content: bytes, *, run_dir: Path) -> None:
     """Write ``content`` to ``dest`` atomically (D-14: 'exported atomically').
 
     Writes to a temp file in the SAME directory as ``dest`` (so the final
@@ -171,8 +193,13 @@ def _atomic_write_bytes(dest: Path, content: bytes) -> None:
     (either absent, or still holding whatever content it had before) and
     never a half-written file at its final path. The temp file itself is
     cleaned up on any failure so no stray artefact survives.
+
+    Any directory newly created to hold ``dest`` (e.g. ``traces/`` for
+    ``traces/trace-1.zip``) is tightened to ``_RUN_DIR_MODE`` as well --
+    see :func:`_tighten_created_dirs``.
     """
     dest.parent.mkdir(parents=True, exist_ok=True)
+    _tighten_created_dirs(dest.parent, run_dir)
     fd, tmp_name = tempfile.mkstemp(dir=dest.parent, prefix=f".{dest.name}.", suffix=".tmp")
     try:
         with os.fdopen(fd, "wb") as handle:
@@ -218,7 +245,7 @@ def write_bundle(
     run_dir.chmod(_RUN_DIR_MODE)
     for relative, content in (files or {}).items():
         dest = _assert_within_run_dir(run_dir, relative)
-        _atomic_write_bytes(dest, content)
+        _atomic_write_bytes(dest, content, run_dir=run_dir)
 
     inventory = build_file_inventory(run_dir)
     manifest: dict[str, object] = {
@@ -242,7 +269,7 @@ def write_bundle(
     }
     manifest_path = run_dir / _MANIFEST_NAME
     rendered = json.dumps(manifest, indent=2, sort_keys=True) + "\n"
-    _atomic_write_bytes(manifest_path, rendered.encode("utf-8"))
+    _atomic_write_bytes(manifest_path, rendered.encode("utf-8"), run_dir=run_dir)
     return manifest_path
 
 

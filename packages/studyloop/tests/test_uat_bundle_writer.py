@@ -171,6 +171,30 @@ class TestRunDirIsCreatedPrivate:
         mode = stat.S_IMODE(run_dir.stat().st_mode)
         assert mode == 0o700, f"expected run dir mode 0o700, got {oct(mode)}"
 
+    def test_nested_subdirectories_created_for_a_named_file_are_also_0700(
+        self, tmp_path: Path
+    ) -> None:
+        """Defense-in-depth for the 'created private' guarantee (D-14).
+
+        The run dir itself is already forced to 0o700, which blocks
+        traversal into any nested subdirectory regardless of that
+        subdirectory's own mode -- but a nested dir created under a
+        permissive umask (e.g. ``022``) for a file like
+        ``traces/trace-1.zip`` should not be left world/group-readable in
+        its own right, for consistency with the tree-wide privacy claim.
+        """
+        if os.name == "nt":
+            pytest.skip("POSIX permission bits only")
+        run_dir = tmp_path / "nested-run"
+        old_umask = os.umask(0o022)
+        try:
+            write_bundle(run_dir, _fields(), files={"traces/trace-1.zip": b"not-a-real-zip"})
+        finally:
+            os.umask(old_umask)
+        nested_dir = run_dir / "traces"
+        mode = stat.S_IMODE(nested_dir.stat().st_mode)
+        assert mode == 0o700, f"expected nested dir mode 0o700, got {oct(mode)}"
+
 
 class TestAtomicWrites:
     """D-14: the bundle is 'exported atomically before teardown'.

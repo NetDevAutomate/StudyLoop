@@ -16,8 +16,13 @@ count, and -- council D-21(7) -- the harness version, platform, and auth
 mode (each optional, recorded as ``null`` when unknown, never simply
 absent). The shape is deliberately close to a SUBSET of B4's described
 schema (same field names: ``run_id``, ``harness``, ``actor``, ``outcome``)
-so that swapping this module out for a call into B4's real writer is a
-rename, not a rewrite.
+so that swapping this module out for a call into B4's real writer stays
+CLOSE to a rename. It is not a pure rename, though: B4's landed writer
+(``tests/acceptance/uat/bundle.py``) names the corresponding fields
+``actor_backend``/``actor_model``/nested ``counts`` rather than this
+module's flat ``actor``/``outcome``/``turn_count``, so the eventual swap is
+a small field-mapping change (see docs/acceptance-testing.md's "Coverage
+inventory" tracked-exclusions list for the exact mapping and its owner).
 
 LEFT OUT (tracked, not silently skipped): the DURABLE evidence root (its
 own env var, default ``~/.local/share/studyloop/uat/<run-id>/``, resolved
