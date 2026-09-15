@@ -52,20 +52,33 @@ Branch: `fix/plan-integration-bugs` (RED at `3a4f6b01`). §5 stream: `feat/lexic
 - [ ] ⚖ **Council review 1** (`openai.gpt-6-astra`, `grok-4.6`, `qwen3-coder`): diff `3a4f6b01..HEAD`,
       test output, T1.6 spec text. Findings addressed or dispositioned in
       `docs/architecture/plan-integration/council/review-1-*.md` before Phase 2 starts.
+- [x] ⚖ **Council review 1 corrections (F1–F6)** — `705ba58b`…`182c82f9` (one commit per finding: F1/F1b
+      `705ba58b`, F4 `5326b663`, F3 `b761141b`, F2 `dc7de0be`, F5 `f812500b`, F6 `182c82f9`). F1 (🔴) brought
+      `RevisePlan` forward from Phase 2: a compound `PATCH` is one intent, judged on the resulting document,
+      persisted in one write; the route holds no store write (`rg 'readiness\(|save_plan'` → 0). F4: identity
+      and conflict before readiness on every create door. F3: `inspect` translates the late `load_plan_text`
+      store error; CLI `_fail_for` maps all six domain errors and `plan list` goes through it. F2:
+      `PlanningBrief` deep-freezes in `__post_init__` and refuses non-JSON leaves. F5: import identity is
+      explicit id > frontmatter id > unique title slug; `_load` pins the storage id so no write path files a
+      second document under a frontmatter id. F6: `tests/test_plan_recording_failures.py` on an isolated
+      checkpoint DB; the history test seeds its own DB. Delta specs (web-ui, cli-surface) and
+      `docs/study-plans.md` "Activation" updated to the bounded wording (GPT Astra §3).
 
 ## Phase 2 — #9 mutations, assess, guidance, guard (D-3, D-6) · owner: agent A (after Phase 1) · files: as Phase 1 plus `tests/test_architecture_plan_seam.py`
 
 - [ ] **T2.1** RED: `test_set_milestone_done_is_idempotent`, `test_set_unknown_milestone_raises_invalid_milestone`,
       `test_delete_without_confirm_raises_invalid_field`, `test_delete_retains_checkpoint_history`,
-      `test_revise_preserves_id_and_created_and_bumps_updated`,
       `test_assess_preview_writes_neither_sink`, `test_assess_db_failure_reports_failed_sink_and_returns_evaluation`,
       `test_assess_document_failure_reported_independently`, `test_malformed_plan_browse_matches_store_list`,
       `test_active_guidance_one_per_active_plan_with_match_keys_and_urgency`.
-- [ ] **T2.2** Implement `RevisePlan`, `SetMilestone`, `DeletePlan`, `AssessPlan`/`assess`,
-      `get_active_guidance`. Migrate remaining CLI (`new|interview|evaluate|milestone`) and Web
-      (`POST evaluate`, `PATCH` fields/milestones, toggle → `SetMilestone`, `DELETE`) paths. Migrate
+      (`test_revise_preserves_id_and_created_and_bumps_updated` landed with the review-1 corrections.)
+- [ ] **T2.2** Implement `SetMilestone`, `DeletePlan`, `AssessPlan`/`assess`, `get_active_guidance`
+      (`RevisePlan` already shipped in the review-1 corrections, including `learning_record`; the Web field/
+      milestone `PATCH` is already on it, and the toggle is a full-list `RevisePlan` to be replaced by
+      `SetMilestone`). Migrate remaining CLI (`new|interview|evaluate|milestone`) and Web
+      (`POST evaluate`, toggle → `SetMilestone`, `DELETE`) paths. Migrate
       `mcp/tools.py:record_plan_learning` to `RevisePlan(learning_record=…)` — the only `tools.py` edit in
-      this phase.
+      this phase — and then fold `store.record_learning`'s validation into the seam's one copy.
 - [ ] **T2.3** Architecture guard `tests/test_architecture_plan_seam.py` per design §6, including the
       planted-violation test. DoD: passes on the real tree; the planted copy fails.
 - [ ] **T2.4** Specs/docs deltas for mutation, idempotent milestone set, confirmed delete, partial
