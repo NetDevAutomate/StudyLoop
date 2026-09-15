@@ -406,3 +406,80 @@ def test_the_stage4_successor_refuses_to_reuse_the_146ms_number() -> None:
     which was measured with a cold per-invocation load in the cli-hybrid arm."""
     successor = STAGE4_RECORD_MD.read_text(encoding="utf-8").split("## Successor", 1)[1]
     assert "146 ms" in successor and "not reusable" in successor
+
+
+# ---------------------------------------------------------------------------
+# Lane A4 (council D-8/D-10): the load indicator's honesty rules are the
+# documented contract, so the doc is checked against the code's own symbols --
+# the phase enum, the surface enum, the env var and the wording constants.
+# ---------------------------------------------------------------------------
+
+
+def _indicator_section(text: str) -> str:
+    """The lane A4 addendum only -- so a phase name mentioned elsewhere in the
+    README cannot make this section look complete when it is not."""
+    body = text.split("what the load indicator", 1)[1]
+    return body.split("## Why each claim is believed", 1)[0]
+
+
+def _backticked_slugs(text: str) -> set[str]:
+    return set(re.findall(r"`([a-z_]+)`", text))
+
+
+def test_arch_readme_names_every_load_phase() -> None:
+    """A phase the code can emit but the doc never explains is a phase a
+    learner meets for the first time while already waiting."""
+    from agent_session_tools.query_encoders import LoadPhase
+
+    section = _indicator_section(ARCH_README_MD.read_text(encoding="utf-8"))
+    assert {phase.value for phase in LoadPhase} <= _backticked_slugs(section)
+
+
+def test_arch_readme_covers_every_surface_in_the_indicator_table() -> None:
+    section = _indicator_section(ARCH_README_MD.read_text(encoding="utf-8"))
+    assert set(retrieval.SURFACES) <= _backticked_slugs(section)
+
+
+def test_arch_readme_documents_the_indicator_env_var() -> None:
+    from agent_session_tools import load_indicator
+
+    section = _indicator_section(ARCH_README_MD.read_text(encoding="utf-8"))
+    assert load_indicator.INDICATOR_ENV in section
+
+
+def test_arch_readme_states_the_no_percentage_rule() -> None:
+    """E-A9: the owner rejected fake progress. The reason has to be written
+    down, or the next contributor adds the bar back as an improvement."""
+    section = _indicator_section(ARCH_README_MD.read_text(encoding="utf-8"))
+    assert "no percentage bar" in section
+    assert "completion fraction" in section
+
+
+def test_arch_readme_uses_the_last_load_wording_and_refuses_usually() -> None:
+    """grok F7: one persisted sample is not a distribution."""
+    section = _indicator_section(ARCH_README_MD.read_text(encoding="utf-8"))
+    assert "last load: 2.9s" in section
+    assert 'never "usually' in section
+
+
+def test_arch_readme_quotes_the_real_first_run_wording() -> None:
+    from agent_session_tools import load_indicator
+
+    section = _indicator_section(ARCH_README_MD.read_text(encoding="utf-8"))
+    assert load_indicator.FIRST_RUN_PHRASE in section
+
+
+def test_arch_readme_names_the_record_file_and_its_key() -> None:
+    """kimi F05: the key is what stops a stale duration being quoted."""
+    from agent_session_tools import load_indicator
+
+    section = _indicator_section(ARCH_README_MD.read_text(encoding="utf-8"))
+    assert load_indicator.DURATIONS_RELPATH in section
+    assert "hardware fingerprint" in section
+    assert "get_state_dir()" in section
+
+
+def test_arch_readme_says_suppression_is_not_a_readiness_signal() -> None:
+    section = _indicator_section(ARCH_README_MD.read_text(encoding="utf-8"))
+    assert "courtesy" in section
+    assert "never" in section.split("courtesy", 1)[1]

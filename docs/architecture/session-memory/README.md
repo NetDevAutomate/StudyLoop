@@ -115,6 +115,47 @@ warm shares one construction. `retrieval.encoder_warm_status()` reports
 `cold`/`warming`/`warm`/`failed`/`disabled` + model + elapsed; lane A4 renders
 it as a phase indicator.
 
+**2026-09-15 addendum (lane A4, council D-8/D-10): what the load indicator
+means.** When a load makes you wait, the tooling says which PHASE it is in —
+`runtime_import` (importing the backend), `weights` (constructing the encoder,
+which is the slow one), `warmup` (a throwaway encode), then `ready`, or
+`failed`/`disabled` — plus the elapsed time, ticking. Both encoders emit the
+same `query_encoders.LoadPhase` vocabulary: the query-side factory and the
+corpus-side `embedding_store._load_encoder()`.
+
+**There is no percentage bar, and there never will be.** Nothing in a model
+load reports its own completion fraction, so any percentage would be a number
+the tool made up. A bar that fills at an invented rate is worse than silence:
+it teaches you to distrust every other number the tool shows you.
+
+**Where "last load" comes from.** `load_indicator` persists the duration of
+each completed load under `get_state_dir()`
+(`encoder-load-durations.json`), keyed by `(model, backend, revision)` *and* a
+coarse hardware fingerprint, with the last cold and last warm load stored
+separately. The next load quotes that one measurement — `last load: 2.9s` —
+never "usually ~2.9s", because one sample is not a distribution. A key with no
+sample says `first load on this machine may take a few seconds`, and a key whose
+only sample is of the other kind names that kind (`last cold load: 2.9s`)
+instead of passing it off as comparable. Cold versus warm is decided by
+recency (a load within `WARM_WINDOW_SECONDS` of the previous one is warm): a
+documented heuristic for choosing which measured number applies, not a
+prediction. That record is also the load-duration receipt the acceptance tier
+regression-checks; CI checks the machine-independent lazy-import contract
+instead, because a wall clock in CI measures the runner.
+
+Where each surface renders it:
+
+| Surface | How it appears | Suppressed when |
+|---|---|---|
+| `cli` | a line on **stderr**, first drawn at 300 ms and updated on a timer while a phase blocks: `loading semantic model (bge-small-en-v1.5): weights ... 1.2s (last load: 2.9s)` | stderr is not a TTY, unless `STUDYLOOP_LOAD_INDICATOR=1` forces it (`=0` forces it off) |
+| `mcp` | nothing on the protocol stream — stdout carries JSON-RPC and stderr is a log; the duration is still recorded | always, in practice (a server's stderr is not a TTY) |
+| `web` | the `#encoder-warm-chip` status chip, polling `GET /api/retrieval/health` (the exact fields of `retrieval.EncoderWarmStatus`) | the warm is `cold` or `warm` — the chip speaks up for `warming`/`failed`/`disabled` |
+
+**Suppression off a TTY is a courtesy, not a readiness signal.** Silence means
+"this stream is a pipe or a log", never "nothing is loading". A caller that
+needs to know sets `STUDYLOOP_LOAD_INDICATOR=1`, or reads
+`retrieval.encoder_warm_status()` / the web endpoint.
+
 ## Why each claim is believed — restated at receipt strength
 
 | Claim | Evidence | Label |
