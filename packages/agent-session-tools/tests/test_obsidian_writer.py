@@ -650,7 +650,13 @@ class TestGetObsidianConfig:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.timeout(180)
 class TestCliObsidianFlags:
+    # Each test drives a full CLI export whose context-capture savepoints
+    # force FTS5 flush + crisis-merge on the scratch DB -- measured at
+    # ~46 s/test on macOS 27.0 (26A5416b, 2026-09-15), up from under the
+    # 60 s default before that OS update (fsync latency). The right diet is
+    # a smaller fixture corpus; until then the class gets honest headroom.
     """Tests for the session-export CLI obsidian-related flags."""
 
     def _make_db(self, tmp_path: Path) -> Path:
