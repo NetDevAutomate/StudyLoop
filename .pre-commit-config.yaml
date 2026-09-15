@@ -39,7 +39,7 @@ repos:
     exclude: |
       (?x)^(
         packages/studyloop/tests/acceptance/uat/data/.*_registry\.json|
-        docs/architecture/plan-integration/council/.*/manifest\.json
+        docs/architecture/plan-integration/council/.*/manifest.*\.json
       )$
 - repo: https://github.com/PyCQA/bandit
   rev: 1.8.3

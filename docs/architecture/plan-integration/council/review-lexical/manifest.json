@@ -1,0 +1,47 @@
+{
+  "run_at": "2026-09-15T21:34:53+00:00",
+  "brief": "docs/architecture/plan-integration/council/brief-review-lexical-2026-09-15.md",
+  "brief_sha256": "c5e059ea38d7503b4158f76c3dc559f772b210f68e4dc54a28626df45fd8856d",
+  "system_sha256": "424aba7a4b2b6f33bd57da2076857a206e3683bc8af9aca5d3007f3314c3099c",
+  "seats": [
+    {
+      "model": "openai.gpt-6-astra",
+      "ok": true,
+      "reasoning_chars": 0,
+      "finish_reason": "stop",
+      "elapsed_s": 76.7,
+      "usage": {
+        "prompt_tokens": 16463,
+        "completion_tokens": 4000,
+        "total_tokens": 20463
+      },
+      "error": null
+    },
+    {
+      "model": "grok-4.6",
+      "ok": true,
+      "reasoning_chars": 0,
+      "finish_reason": "stop",
+      "elapsed_s": 330.1,
+      "usage": {
+        "prompt_tokens": 17633,
+        "completion_tokens": 12623,
+        "total_tokens": 30256
+      },
+      "error": null
+    },
+    {
+      "model": "deepseek-r1",
+      "ok": true,
+      "reasoning_chars": 2056,
+      "finish_reason": "stop",
+      "elapsed_s": 19.3,
+      "usage": {
+        "prompt_tokens": 17245,
+        "completion_tokens": 1106,
+        "total_tokens": 18351
+      },
+      "error": null
+    }
+  ]
+}
