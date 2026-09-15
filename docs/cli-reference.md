@@ -233,7 +233,7 @@ agent/harness files.
 | `1` | Warnings or failures reported; `--fix` resolves only checks marked auto-fixable — unresolved failures print their own manual remediation |
 | `2` | Core failure — a fundamental component is broken (e.g. wrong Python version) |
 
-**Check categories:** `core` (Python, packages, config, tmux), `database` (review DB, sessions DB, `embeddings_alignment`), `config` (Obsidian vault + `.obsidian/` marker, Obsidian export config, review dirs, pandoc, `active_topic_limit`, `unknown_config_keys`, and — when configured — `second_brain`), `deps` (optional packages), `agents` (AI tool definitions), `voice` (local Kokoro model files, `afplay`, and Kokoro-server reachability when configured), `harness` (session-export wiring, `exporter_schema`, `export_freshness`). There is no `updates` category yet — it would only ever report "no release found" until studyloop is actually published somewhere.
+**Check categories:** `core` (Python, packages, config, tmux), `database` (review DB, sessions DB, `embeddings_alignment`), `config` (Obsidian vault + `.obsidian/` marker, Obsidian export config, review dirs, pandoc, `active_topic_limit`, `unknown_config_keys`, and — when configured — `second_brain`), `deps` (optional packages, `query_encoder_artefact` -- the pinned ONNX artefact `session-maint fetch-query-encoder` fetches), `agents` (AI tool definitions), `voice` (local Kokoro model files, `afplay`, and Kokoro-server reachability when configured), `harness` (session-export wiring, `exporter_schema`, `export_freshness`). There is no `updates` category yet — it would only ever report "no release found" until studyloop is actually published somewhere.
 
 ### Spaced Repetition Intervals
 
