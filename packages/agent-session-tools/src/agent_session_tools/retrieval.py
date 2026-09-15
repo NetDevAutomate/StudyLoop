@@ -500,13 +500,26 @@ def _encoder(model: str) -> Any:
     (lane A2, council D-2) -- this function is just the one call site every
     caller in this module goes through, so a backend switch never needs a
     second edit here.
+
+    It is also where the load stops being silent (lane A4, council D-8): the
+    factory's phase hook drives a timer-driven stderr indicator, so a search
+    that has to wait for the encoder says which phase it is in and how long it
+    has been there. A cached encoder emits no phases, so a warm search prints
+    nothing; the indicator writes to stderr only, so a ``--json`` consumer's
+    stdout is byte-identical either way.
     """
-    from agent_session_tools import query_encoders
+    from agent_session_tools import load_indicator, query_encoders
 
     # local_files_only is what makes "a search never downloads" true; the
     # environment variable is only a courtesy for libraries that read it.
     os.environ.setdefault("HF_HUB_OFFLINE", "1")
-    return query_encoders.get_query_encoder(model, local_files_only=True)
+    with load_indicator.PhaseIndicator() as indicator:
+        # No key argument on purpose: the factory resolves the key (and reports
+        # an unpinned artefact) -- resolving it here too would raise the
+        # indicator's copy of that error instead of the factory's.
+        return query_encoders.get_query_encoder(
+            model, local_files_only=True, on_phase=indicator.on_phase
+        )
 
 
 def _semantic_ranking(
@@ -922,7 +935,7 @@ def warm_query_encoder(
         )
         return None
 
-    from agent_session_tools import query_encoders
+    from agent_session_tools import load_indicator, query_encoders
     from agent_session_tools.config_loader import get_semantic_config
 
     resolved_model = model or get_semantic_config().get("model")
@@ -947,9 +960,19 @@ def warm_query_encoder(
             # ``_encoder()`` entirely, so without this line a background warm
             # on a process that never ran a search first could go online.
             os.environ.setdefault("HF_HUB_OFFLINE", "1")
-            query_encoders.get_query_encoder(
-                resolved_model, local_files_only=True, warmup=True
-            )
+            # render=False: a boot-time background warm has no waiting learner
+            # to inform, and a server's stderr is a log. The DURATION is still
+            # recorded (council D-10) -- it is the same receipt a later
+            # foreground load reads its "last load" from, and the web chip
+            # (lane A4) renders this warm's live state from
+            # ``encoder_warm_status()`` instead.
+            with load_indicator.PhaseIndicator(render=False) as indicator:
+                query_encoders.get_query_encoder(
+                    resolved_model,
+                    local_files_only=True,
+                    warmup=True,
+                    on_phase=indicator.on_phase,
+                )
         except Exception as exc:
             _set_warm_status(
                 EncoderWarmStatus(
