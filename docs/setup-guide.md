@@ -531,7 +531,10 @@ semantic_search:
   model: all-mpnet-base-v2    # embedding model
   min_content_length: 50
   auto_embed: true
-  hybrid: false  # true enables RRF fusion once vectors exist; STUDYLOOP_RETRIEVAL_MODE overrides
+  hybrid: false  # explicit true/false always wins on every surface; omit the
+                 # key entirely to take the calling surface's own default --
+                 # see the mode-by-surface table in
+                 # docs/architecture/session-memory/README.md
 ```
 
 Embed the backlog with `session-maint embed` (`--model`, `--budget-seconds`,

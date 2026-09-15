@@ -206,3 +206,31 @@ configured model into an empty table and the shipped default is `all-mpnet-base-
 for Stage 5: every hook names the pinned absolute path; exporters must not swallow a schema
 refusal. The Stage 5 item "drop the migration-7 tables (owner-gated)" is moot: migration 48
 dropped them when it ran.
+
+## Successor — Stage 5 (added 2026-09-15, lane A1)
+
+Stage 4's own rule is that reversing off-by-default is **a new pre-registration, not
+an edit of this record**. Lane A1 builds the mechanism only: `semantic_search.hybrid`
+becomes tri-state (sentinel `None` = unset) and `retrieval.resolve_mode()` gains a
+per-surface default (`retrieval.SURFACE_DEFAULTS`, `cli`/`mcp`/`web`) — see the
+2026-09-15 addendum in [../../README.md](../../README.md) for the mode table and the
+"provisional pending SEALED" note.
+
+The flip of `mcp`/`web` to hybrid is a SINGLE commit at the tip of that lane's
+branch, held by the coordinator until:
+
+- **[stage5-preregistration-2026-09-15.md](stage5-preregistration-2026-09-15.md)** —
+  owner-signed, coordinator-authored, NOT written by lane A1. It must measure the
+  **resident steady state** (council D-3): warm-up excluded and reported separately,
+  p95 wall clock **and** the paired hybrid−lexical overhead, with the estimator, reps
+  and machine load cells named *before* the run. The 146 ms figure from this record's
+  gate table is **not reusable** — it was measured with a cold per-invocation load in
+  the `cli-hybrid` arm and does not describe a resident process.
+- **G1/G2 on SEALED** remain the owner's separate obligation from this record
+  ("What the owner does for G1", above). Landing the flip before SEALED closes is a
+  documented residual risk the owner accepts at pre-registration sign-off (council
+  D-4/O-2), not something this record or lane A1 resolves.
+
+The "CLI needs a resident encoder or a smaller runtime" item under *Reported, not
+gated* is lane A2's ONNX query-side encoder; `cli` stays lexical by default until its
+receipts land.

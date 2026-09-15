@@ -108,3 +108,46 @@ class TestLifespanOrdering:
             "schema prep must precede start_reaper so a slow init_db cannot "
             "overlap a reaper tick on a half-built database"
         )
+
+
+class TestLifespanWarmsTheQueryEncoder:
+    """Lane A1 (council D-3): the web surface pre-warms at boot, not first search."""
+
+    def test_lifespan_calls_warm_query_encoder_with_the_web_surface(self, temp_db: Path) -> None:
+        import inspect
+
+        from studyloop.web import app as app_module
+
+        source = inspect.getsource(app_module._lifespan)
+        assert "retrieval.warm_query_encoder(surface=retrieval.SURFACE_WEB)" in source
+
+    @pytest.mark.asyncio
+    async def test_boot_actually_calls_it(
+        self, temp_db: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Not just present in source -- actually reached, with the right surface."""
+        from fastapi import FastAPI
+
+        from agent_session_tools import retrieval
+        from studyloop.web import app as app_module
+        from studyloop.web.routes.session import _grace
+
+        seen: dict[str, object] = {}
+
+        def spy(*, surface, model=None, blocking=False):
+            seen["surface"] = surface
+            return None
+
+        monkeypatch.setattr(retrieval, "warm_query_encoder", spy)
+        monkeypatch.setattr(_grace, "start_reaper", lambda **_kwargs: None)
+
+        async def _noop_shutdown() -> None:
+            return None
+
+        monkeypatch.setattr(_grace, "shutdown", _noop_shutdown)
+
+        app = FastAPI()
+        async with app_module._lifespan(app):
+            pass
+
+        assert seen.get("surface") == retrieval.SURFACE_WEB

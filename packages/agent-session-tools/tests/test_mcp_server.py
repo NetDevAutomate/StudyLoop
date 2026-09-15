@@ -347,6 +347,27 @@ class TestServerCreation:
             assert exc_info.value.code == 1
 
 
+class TestMainWarmsTheQueryEncoder:
+    """Lane A1 (council D-3): the MCP surface pre-warms at boot, not first search."""
+
+    def test_main_calls_warm_query_encoder_with_the_mcp_surface_before_running(self):
+        from agent_session_tools import mcp_server, retrieval
+
+        seen: dict[str, object] = {}
+
+        def spy(*, surface, model=None, blocking=False):
+            seen["surface"] = surface
+            return None
+
+        with (
+            patch.object(retrieval, "warm_query_encoder", spy),
+            patch.object(mcp_server.mcp, "run", lambda: None),
+        ):
+            mcp_server.main()
+
+        assert seen.get("surface") == retrieval.SURFACE_MCP
+
+
 class TestSessionClean:
     def test_clean_dry_run_reports_findings(self, mock_db_path):
         tools = _get_tools()

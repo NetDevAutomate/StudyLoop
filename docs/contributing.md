@@ -158,6 +158,7 @@ The suite is layered by what each layer can prove and what it needs from the mac
 | Browser (e2e) | `just e2e` (`pytest -m e2e`) | The Web UI journeys against a real server with fake agents | Playwright Chromium; one run per machine |
 | Live | `pytest -m live_kiro`, `pytest -m live_provider` | A real Kiro child, a real LLM provider | Credentials and quota; opt-in only |
 | Live, second brain | `just live-obsidian`, `just live-xtiles <url> <probe>` | That a projection really lands in a vault and is really removed again; that what an assistant wrote is visible in xTiles' own interface | A throwaway Obsidian vault; a captured xTiles session (`just xtiles-auth`). Opt-in, and refused rather than skipped when the safety scope is missing |
+| Acceptance | `just testacc [harness] [actor] [tests]` (`pytest -m acceptance`) | A real harness driven through the real product surface (web ACP first; CLI/tmux lands in a later lane), with a deterministic scripted learner, against a disposable scratch env | `STUDYLOOP_ACC=1`; opt-in, never runs in CI. See [Acceptance Testing](acceptance-testing.md) |
 
 **Rules that keep the suite honest.**
 

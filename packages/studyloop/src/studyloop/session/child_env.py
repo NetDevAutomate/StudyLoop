@@ -23,11 +23,21 @@ from __future__ import annotations
 
 import os
 import re
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 #: Keys never passed to a child regardless of shape.
 #:
 #: STUDYLOOP_TEST_AGENT_CMD is the test harness's escape hatch for substituting a
 #: fake agent; a real child inheriting it could re-enter the harness path.
+#: STUDYLOOP_TEST_ACP_CMD is the same escape hatch for the ACP transport: it
+#: overrides the ACP argv entirely (web/routes/session/_transport.py) and
+#: bypasses the binary-presence check (web/routes/session/_start.py). A stale
+#: export left in a developer's shell would otherwise let an agent child --
+#: acceptance-test or production -- re-enter the stub-agent path instead of
+#: spawning the real mentor binary the caller asked for.
 #: STUDYLOOP_CONFIG would point the child at the parent's config, including its
 #: configured paths.
 #: DATABASE_URL is named explicitly because its SHAPE is innocent while its VALUE
@@ -37,6 +47,7 @@ import re
 CHILD_ENV_DENY: frozenset[str] = frozenset(
     {
         "STUDYLOOP_TEST_AGENT_CMD",
+        "STUDYLOOP_TEST_ACP_CMD",
         "STUDYLOOP_CONFIG",
         "DATABASE_URL",
     }
@@ -135,4 +146,44 @@ def build_child_env(caller_env: dict[str, str] | None = None) -> dict[str, str]:
         if any(word in squashed for word in CHILD_ENV_DENY_SQUASHED):
             continue
         clean[key] = value
+    return clean
+
+
+#: XDG base-directory variables, overridden rather than merely deleted, so a
+#: harness binary that reads them DIRECTLY (instead of deriving a path from
+#: HOME) still lands under the scratch tree instead of falling through to
+#: whatever the real user's XDG dirs happen to be.
+_XDG_SCRATCH_SUBDIRS: dict[str, str] = {
+    "XDG_CONFIG_HOME": ".config",
+    "XDG_DATA_HOME": ".local/share",
+    "XDG_CACHE_HOME": ".cache",
+    "XDG_STATE_HOME": ".local/state",
+}
+
+
+def build_scratch_child_env(
+    *,
+    home: Path,
+    state_dir: Path,
+    caller_env: dict[str, str] | None = None,
+) -> dict[str, str]:
+    """Sanitized env for an ACCEPTANCE-TEST child: scratch HOME, no XDG leakage.
+
+    Acceptance tests drive the product through a subprocess with a scratch
+    HOME rather than an in-process monkeypatch, because ``CONFIG_DIR`` binds
+    ``Path.home()`` AT IMPORT TIME (``settings.py:25``, council D-11) — a
+    monkeypatch after the module has already been imported leaves the real
+    config dir live. This builds on :func:`build_child_env`'s credential
+    scrubbing and additionally points ``HOME``, ``STUDYLOOP_STATE_DIR`` and
+    every XDG base-directory variable at the scratch tree, so a harness
+    binary that reads ``XDG_*`` directly still cannot see the real user's
+    directories. See docs/acceptance-testing.md.
+    """
+    clean = build_child_env(caller_env)
+    for key in [k for k in clean if k.startswith("XDG_")]:
+        del clean[key]
+    clean["HOME"] = str(home)
+    clean["STUDYLOOP_STATE_DIR"] = str(state_dir)
+    for var, subdir in _XDG_SCRATCH_SUBDIRS.items():
+        clean[var] = str(home / subdir)
     return clean

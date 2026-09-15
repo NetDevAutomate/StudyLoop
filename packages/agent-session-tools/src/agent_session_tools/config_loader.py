@@ -90,12 +90,24 @@ DEFAULT_CONFIG = {
         # up on a large backlog; the backlog shrinks across runs either way.
         "auto_embed_budget_seconds": 20,
         # Fuse the semantic arm into session_search / session-query (Stage 4,
-        # receipts/semantic-layer/stage4-record-2026-09-12.md). Off by default
-        # because the pre-registered latency gate (p95 <= 146 ms) measured
-        # 150-157 ms on the bake-off clone; every recall gate was met. Setting it
-        # true, or STUDYLOOP_RETRIEVAL_MODE=hybrid, turns it on for a database
-        # that has been embedded (`session-maint embed`).
-        "hybrid": False,
+        # receipts/semantic-layer/stage4-record-2026-09-12.md). Tri-state
+        # (lane A1, council D-1): the schema default is the sentinel `None`
+        # ("unset"), never a boolean -- `load_config()` deep-merges user YAML
+        # over this dict (config_loader.py `_deep_merge`), so a boolean
+        # default made "the key was never set" and "the user wrote `false`"
+        # produce the identical merged value, and a per-surface default
+        # (retrieval.SURFACE_DEFAULTS) could never actually engage. `None`
+        # means "let retrieval.resolve_mode()'s surface default decide";
+        # `true`/`false` in config.yaml always wins, on every surface,
+        # regardless of the surface default. STUDYLOOP_RETRIEVAL_MODE
+        # overrides both.
+        "hybrid": None,
+        # Which encoder answers the QUERY side of a search (lane A2,
+        # council D-2): "torch" (sentence-transformers, unchanged) or "onnx"
+        # (the fast fp32 path). Corpus embeddings are always torch-built
+        # regardless of this value (council QA2.2). An unknown value is a
+        # caller error -- see query_encoders.resolve_backend.
+        "query_encoder": "torch",
     },
     "obsidian": {
         # Feature gate — default OFF; set to true to enable vault export
@@ -423,8 +435,10 @@ def get_semantic_config(config: dict[str, Any] | None = None) -> dict[str, Any]:
     Returns:
         Dict with model, min_content_length, auto_embed,
         auto_embed_budget_seconds (the wall-clock ceiling for the embed step
-        ``session-export`` runs after a successful export) and hybrid (the
-        RRF-fusion on/off gate; see ``retrieval.resolve_mode``).
+        ``session-export`` runs after a successful export), hybrid (the
+        RRF-fusion on/off gate; see ``retrieval.resolve_mode``) and
+        query_encoder (the QUERY-side backend, "torch" or "onnx"; see
+        ``query_encoders.resolve_backend``).
     """
     if config is None:
         config = load_config()

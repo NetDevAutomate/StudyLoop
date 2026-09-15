@@ -32,6 +32,10 @@ SESSION_MEMORY_MD = DOCS_DIR / "session-memory.md"
 SETUP_GUIDE_MD = DOCS_DIR / "setup-guide.md"
 CLI_REFERENCE_MD = DOCS_DIR / "cli-reference.md"
 ARCH_README_MD = DOCS_DIR / "architecture" / "session-memory" / "README.md"
+SEMANTIC_RECEIPTS_DIR = (
+    DOCS_DIR / "architecture" / "session-memory" / "receipts" / "semantic-layer"
+)
+STAGE4_RECORD_MD = SEMANTIC_RECEIPTS_DIR / "stage4-record-2026-09-12.md"
 
 #: This file's own repo-relative path -- it legitimately names every forbidden
 #: token it checks for (in comments, identifiers and the grep patterns
@@ -329,3 +333,167 @@ def test_arch_readme_does_not_reference_dead_hybrid_search_symbol() -> None:
             "README.md references the dead `hybrid_search` symbol without the "
             "dated addendum pointing at retrieval.py's real fusion functions"
         )
+
+
+# ---------------------------------------------------------------------------
+# Lane A1 (council D-1/D-2): the mode-by-surface table names every surface
+# retrieval.py actually knows about -- a SET comparison against the real
+# enum, never a copied-prose check (TEST SHAPE ruling A20).
+# ---------------------------------------------------------------------------
+
+
+def _mode_table_surfaces(text: str) -> set[str]:
+    """Every backticked surface slug in the "Surface | Default | ..." table."""
+    lines = text.splitlines()
+    header_ix = next(
+        i for i, line in enumerate(lines) if line.strip().startswith("| Surface")
+    )
+    surfaces: set[str] = set()
+    for line in lines[header_ix + 2 :]:
+        if not line.strip().startswith("|"):
+            break
+        first_cell = line.split("|")[1]
+        match = re.search(r"`([a-z]+)`", first_cell)
+        if match:
+            surfaces.add(match.group(1))
+    return surfaces
+
+
+def test_arch_readme_mode_table_names_every_surface() -> None:
+    text = ARCH_README_MD.read_text(encoding="utf-8")
+    assert _mode_table_surfaces(text) == set(retrieval.SURFACES)
+
+
+def test_arch_readme_states_the_sealed_provisional_note() -> None:
+    """Council D-4/O-2: the mcp/web hybrid default is provisional pending the
+    owner's separate SEALED obligation -- the doc must say so, not just the
+    lane's internal receipts."""
+    text = ARCH_README_MD.read_text(encoding="utf-8")
+    assert "provisional pending SEALED" in text
+
+
+def _stage5_preregistration_names(text: str) -> set[str]:
+    """Every ``stage5-preregistration-*.md`` filename a document names."""
+    return set(re.findall(r"stage5-preregistration-[\w-]+\.md", text))
+
+
+def test_stage4_record_has_a_successor_section_naming_the_stage5_preregistration() -> (
+    None
+):
+    """Stage 4's own rule: reversing off-by-default is a NEW pre-registration,
+    not an edit of that record (E-A6). The record must therefore point forward
+    to the document that gates the flip, so a reader of the Stage 4 gate cannot
+    miss that a successor supersedes its default."""
+    text = STAGE4_RECORD_MD.read_text(encoding="utf-8")
+    assert "## Successor" in text
+    assert _stage5_preregistration_names(text), (
+        "the successor section names no stage5-preregistration receipt"
+    )
+
+
+def test_the_readme_and_the_stage4_successor_cite_the_same_preregistration() -> None:
+    """Cross-document consistency: two docs naming DIFFERENT pre-registration
+    files means one of them is stale, and the gate a reader checks depends on
+    which one they opened."""
+    readme = _stage5_preregistration_names(ARCH_README_MD.read_text(encoding="utf-8"))
+    stage4 = _stage5_preregistration_names(STAGE4_RECORD_MD.read_text(encoding="utf-8"))
+    assert readme and stage4
+    assert readme == stage4
+
+
+def test_the_stage4_successor_refuses_to_reuse_the_146ms_number() -> None:
+    """Council D-3: the resident-state gate must never reuse the 146 ms figure,
+    which was measured with a cold per-invocation load in the cli-hybrid arm."""
+    successor = STAGE4_RECORD_MD.read_text(encoding="utf-8").split("## Successor", 1)[1]
+    assert "146 ms" in successor and "not reusable" in successor
+
+
+# ---------------------------------------------------------------------------
+# Lane A4 (council D-8/D-10): the load indicator's honesty rules are the
+# documented contract, so the doc is checked against the code's own symbols --
+# the phase enum, the surface enum, the env var and the wording constants.
+# ---------------------------------------------------------------------------
+
+
+def _indicator_section(text: str) -> str:
+    """The lane A4 addendum only -- so a phase name mentioned elsewhere in the
+    README cannot make this section look complete when it is not."""
+    body = text.split("what the load indicator", 1)[1]
+    return body.split("## Why each claim is believed", 1)[0]
+
+
+def _backticked_slugs(text: str) -> set[str]:
+    return set(re.findall(r"`([a-z_]+)`", text))
+
+
+def test_arch_readme_names_every_load_phase() -> None:
+    """A phase the code can emit but the doc never explains is a phase a
+    learner meets for the first time while already waiting."""
+    from agent_session_tools.query_encoders import LoadPhase
+
+    section = _indicator_section(ARCH_README_MD.read_text(encoding="utf-8"))
+    assert {phase.value for phase in LoadPhase} <= _backticked_slugs(section)
+
+
+def test_arch_readme_covers_every_surface_in_the_indicator_table() -> None:
+    section = _indicator_section(ARCH_README_MD.read_text(encoding="utf-8"))
+    assert set(retrieval.SURFACES) <= _backticked_slugs(section)
+
+
+def test_arch_readme_documents_the_indicator_env_var() -> None:
+    from agent_session_tools import load_indicator
+
+    section = _indicator_section(ARCH_README_MD.read_text(encoding="utf-8"))
+    assert load_indicator.INDICATOR_ENV in section
+
+
+def test_arch_readme_states_the_no_percentage_rule() -> None:
+    """E-A9: the owner rejected fake progress. The reason has to be written
+    down, or the next contributor adds the bar back as an improvement."""
+    section = _indicator_section(ARCH_README_MD.read_text(encoding="utf-8"))
+    assert "no percentage bar" in section
+    assert "completion fraction" in section
+
+
+def test_arch_readme_uses_the_last_load_wording_and_refuses_usually(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """grok F7: one persisted sample is not a distribution.
+
+    The rendered phrase is derived from ``last_load_phrase`` itself (nit
+    finding #6, fix round 1) rather than copied as prose: a change to that
+    f-string now fails THIS test instead of silently drifting from the doc.
+    """
+    from agent_session_tools import load_indicator
+
+    monkeypatch.setenv(load_indicator.STATE_DIR_ENV, str(tmp_path))
+    key = ("bge-small-en-v1.5", "torch", "unpinned")
+    load_indicator.record_load(key, 2.9, kind=load_indicator.KIND_COLD)
+    phrase = load_indicator.last_load_phrase(key, load_indicator.KIND_COLD)
+
+    section = _indicator_section(ARCH_README_MD.read_text(encoding="utf-8"))
+    assert phrase in section
+    assert 'never "usually' in section
+
+
+def test_arch_readme_quotes_the_real_first_run_wording() -> None:
+    from agent_session_tools import load_indicator
+
+    section = _indicator_section(ARCH_README_MD.read_text(encoding="utf-8"))
+    assert load_indicator.FIRST_RUN_PHRASE in section
+
+
+def test_arch_readme_names_the_record_file_and_its_key() -> None:
+    """kimi F05: the key is what stops a stale duration being quoted."""
+    from agent_session_tools import load_indicator
+
+    section = _indicator_section(ARCH_README_MD.read_text(encoding="utf-8"))
+    assert load_indicator.DURATIONS_RELPATH in section
+    assert "hardware fingerprint" in section
+    assert "get_state_dir()" in section
+
+
+def test_arch_readme_says_suppression_is_not_a_readiness_signal() -> None:
+    section = _indicator_section(ARCH_README_MD.read_text(encoding="utf-8"))
+    assert "courtesy" in section
+    assert "never" in section.split("courtesy", 1)[1]

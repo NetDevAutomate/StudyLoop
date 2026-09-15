@@ -36,11 +36,20 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     Schema preparation runs FIRST. It is not that the reaper does DDL — its first
     tick sleeps before doing anything and reads only session state — but a slow
     first ``init_db`` should not overlap a tick against a half-built database.
+
+    The query-encoder warm (lane A1, council D-3) starts here too: a
+    background thread, so a cold or disabled warm never delays serving the
+    first request. It reports through
+    ``agent_session_tools.retrieval.encoder_warm_status()`` — a disabled or
+    failed warm is a status to render (lane A4), never a reason this
+    coroutine should raise.
     """
+    from agent_session_tools import retrieval
     from studyloop.web._schema_init import prepare_schema
     from studyloop.web.routes.session import _grace
 
     prepare_schema()
+    retrieval.warm_query_encoder(surface=retrieval.SURFACE_WEB)
     _grace.start_reaper()
     try:
         yield
@@ -260,6 +269,7 @@ def create_app(
         session,
         tts,
     )
+    from studyloop.web.routes import retrieval as retrieval_routes
 
     app.include_router(courses.router, prefix="/api")
     app.include_router(cards.router, prefix="/api")
@@ -285,6 +295,9 @@ def create_app(
     app.include_router(plans.router, prefix="/api")
     app.include_router(second_brain.router, prefix="/api")
     app.include_router(tts.router, prefix="/api")
+    # The encoder-warm status chip reads this (lane A4): the boot warm takes
+    # seconds and was previously invisible to a learner searching in that window.
+    app.include_router(retrieval_routes.router, prefix="/api")
 
     try:
         from studyloop.web.routes.session._options import warm_session_options_index

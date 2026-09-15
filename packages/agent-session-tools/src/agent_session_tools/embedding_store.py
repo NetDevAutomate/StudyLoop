@@ -55,6 +55,8 @@ from .embedding_alignment import (
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from collections.abc import Callable, Iterable, Sequence
 
+    from .query_encoders import PhaseListener
+
 logger = logging.getLogger(__name__)
 
 #: The install line every degradation path prints (D-8).
@@ -404,20 +406,55 @@ def _resolve_pin(model: str | None, encoder: Encoder | None) -> tuple[str, int]:
     return name, int(get_model_config(name)["dimensions"])
 
 
-def _load_encoder(model: str) -> Encoder:
+def _load_encoder(model: str, *, on_phase: PhaseListener | None = None) -> Encoder:
     """Load the real model. Only the extension is gated here.
 
     A cold Hugging Face cache is a *fetch*, not an error: ``session-maint
     embed`` is the interactive path allowed to warm it. The export hook is the
     path that must not (D-7), so it checks :func:`availability` ``.ready``
     before ever calling :func:`embed`.
+
+    This is the CORPUS side, and it blocks for the same few seconds the query
+    side does -- so it reports through the same phase vocabulary (council D-8:
+    one enum shared by both encoders, not two dialects a reader has to
+    reconcile). ``on_phase`` is an extra listener for a caller that wants the
+    events itself; the timer-driven stderr indicator is always attached, and
+    prints nothing at all when the load is fast or stderr is not a TTY.
     """
+    from agent_session_tools.load_indicator import PhaseIndicator
+    from agent_session_tools.query_encoders import (
+        BACKEND_TORCH,
+        LoadPhase,
+        PhaseEvent,
+    )
+
     availability_now = availability(model)
     if not availability_now.extension_ok:
         raise RuntimeError(
             availability_now.reason or f"semantic layer unavailable; {INSTALL_HINT}"
         )
-    return SentenceTransformerEncoder(model)
+    # The corpus side is torch-only and not revision-pinned (council QA2.2), so
+    # its record key is the same shape as the query side's with torch's
+    # placeholder revision -- one namespace, no collision between the two.
+    key = (model, BACKEND_TORCH, "unpinned")
+    with PhaseIndicator(key) as indicator:
+
+        def emit(phase: LoadPhase, detail: str = "") -> None:
+            indicator.phase(phase, detail)
+            if on_phase is not None:
+                on_phase(
+                    PhaseEvent(phase=phase, key=key, at=time.monotonic(), detail=detail)
+                )
+
+        try:
+            emit(LoadPhase.RUNTIME_IMPORT)
+            emit(LoadPhase.WEIGHTS)
+            encoder = SentenceTransformerEncoder(model)
+        except Exception as exc:
+            emit(LoadPhase.FAILED, f"{type(exc).__name__}: {exc}")
+            raise
+        emit(LoadPhase.READY)
+        return encoder
 
 
 def embed(
