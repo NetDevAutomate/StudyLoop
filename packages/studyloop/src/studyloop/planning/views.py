@@ -25,13 +25,27 @@ if TYPE_CHECKING:
     from .models import Checkpoint, LearningRecord, Milestone, Mission, Resource, StudyPlan
 
 
+#: The leaf types an evidence seed may carry — JSON scalars. Anything else
+#: (a model, a bytearray, an arbitrary object) is refused rather than stored
+#: as a mutable leaf a frozen view would then be lying about.
+_SEED_SCALARS = (str, int, float, bool, type(None))
+
+
 def _freeze(value: object) -> object:
-    """Recursively turn dicts into read-only mappings and sequences into tuples."""
+    """Recursively turn dicts into read-only mappings and sequences into tuples.
+
+    Copies as it goes, so the caller's containers are never aliased, and
+    raises ``TypeError`` for a leaf that is not a JSON scalar: a frozen view
+    must not hold a mutable object it cannot vouch for.
+    """
     if isinstance(value, Mapping):
         return MappingProxyType({str(key): _freeze(item) for key, item in value.items()})
     if isinstance(value, list | tuple | set | frozenset):
         return tuple(_freeze(item) for item in value)
-    return value
+    if isinstance(value, _SEED_SCALARS):
+        return value
+    msg = f"evidence seed values must be JSON-like; got {type(value).__name__}"
+    raise TypeError(msg)
 
 
 def _thaw(value: object) -> object:
@@ -396,13 +410,27 @@ class PlanningBrief:
 
     ``evidence_seed`` is what the databases already suggest the learner should
     plan for — data about the learner, never instructions to the agent (D-10).
-    It is deep-frozen on construction and thawed into fresh lists and dicts by
-    :meth:`to_json_dict`.
+    It is deep-frozen and defensively copied *on construction* — by
+    ``__post_init__``, so the generated constructor gives the same guarantee
+    as :meth:`build` — and thawed into fresh lists and dicts by
+    :meth:`to_json_dict`. A seed holding anything but JSON-like values is a
+    ``TypeError``.
     """
 
     interview: tuple[InterviewItemView, ...]
     evidence_seed: Mapping[str, object]
     existing_plans: tuple[PlanSummary, ...]
+
+    def __post_init__(self) -> None:
+        frozen_seed = _freeze(self.evidence_seed)
+        if not isinstance(frozen_seed, Mapping):
+            msg = "evidence seed must be a mapping"
+            raise TypeError(msg)
+        # ``frozen=True`` blocks ordinary assignment; this is the sanctioned
+        # way for a frozen dataclass to normalise its own fields.
+        object.__setattr__(self, "evidence_seed", frozen_seed)
+        object.__setattr__(self, "interview", tuple(self.interview))
+        object.__setattr__(self, "existing_plans", tuple(self.existing_plans))
 
     @classmethod
     def build(
@@ -412,13 +440,10 @@ class PlanningBrief:
         seed: Mapping[str, object],
         existing_plans: Iterable[PlanSummary],
     ) -> PlanningBrief:
-        frozen_seed = _freeze(seed)
-        if not isinstance(frozen_seed, Mapping):  # pragma: no cover - _freeze(Mapping) is a Mapping
-            msg = "evidence seed must be a mapping"
-            raise TypeError(msg)
+        """Convenience factory from the authoring module's plain dicts."""
         return cls(
             interview=tuple(InterviewItemView.from_spec(item) for item in interview),
-            evidence_seed=frozen_seed,
+            evidence_seed=seed,
             existing_plans=tuple(existing_plans),
         )
 

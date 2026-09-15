@@ -626,6 +626,81 @@ def test_prepare_planning_returns_interview_seed_and_summaries(
     json.dumps(payload)  # nothing un-serialisable leaked through
 
 
+# --- Council review 1, F2: immutability is a property of the view, not of one factory ---
+
+
+def test_planning_brief_direct_constructor_defensively_freezes_seed() -> None:
+    from types import MappingProxyType
+
+    from studyloop.planning.views import PlanningBrief
+
+    seed: dict[str, object] = {"notes": ["before"], "configured_topics": ["sql"]}
+    brief = PlanningBrief(interview=(), evidence_seed=seed, existing_plans=())
+
+    # The caller's mapping is copied, not aliased: later edits do not reach in.
+    seed["notes"] = ["replaced"]
+    seed["configured_topics"].append("python")  # type: ignore[attr-defined]  # caller's own list
+    assert brief.evidence_seed["notes"] == ("before",)
+    assert brief.evidence_seed["configured_topics"] == ("sql",)
+    assert isinstance(brief.evidence_seed, MappingProxyType)
+    with pytest.raises(TypeError):
+        brief.evidence_seed["notes"] = ()  # type: ignore[index]  # read-only mapping
+
+
+def test_planning_brief_nested_seed_mutation_cannot_change_view() -> None:
+    from studyloop.planning.views import PlanningBrief
+
+    inner_row = {"topic": "joins", "tags": ["a"]}
+    seed: dict[str, object] = {"struggling_topics": [inner_row], "by_key": {"x": {"y": [1]}}}
+    brief = PlanningBrief(interview=(), evidence_seed=seed, existing_plans=())
+    snapshot = brief.to_json_dict()["seed"]
+
+    inner_row["topic"] = "mutated"
+    inner_row["tags"].append("b")  # type: ignore[attr-defined]
+    seed["by_key"]["x"]["y"].append(2)  # type: ignore[index]
+
+    assert brief.to_json_dict()["seed"] == snapshot
+    nested = brief.evidence_seed["by_key"]["x"]  # type: ignore[index]
+    assert nested["y"] == (1,)
+    with pytest.raises(TypeError):
+        nested["y"] = (2,)
+    with pytest.raises(AttributeError):
+        brief.evidence_seed["struggling_topics"][0]["tags"].append("c")  # type: ignore[index]
+
+
+def test_planning_brief_json_calls_do_not_share_nested_containers() -> None:
+    from studyloop.planning.views import PlanningBrief
+
+    brief = PlanningBrief(
+        interview=(),
+        evidence_seed={"struggling_topics": [{"topic": "joins", "tags": ["a"]}]},
+        existing_plans=(),
+    )
+    first = brief.to_json_dict()
+    second = brief.to_json_dict()
+    assert first == second
+    assert first["seed"] is not second["seed"]
+    assert first["seed"]["struggling_topics"] is not second["seed"]["struggling_topics"]
+    assert first["seed"]["struggling_topics"][0] is not second["seed"]["struggling_topics"][0]
+
+    first["seed"]["struggling_topics"][0]["tags"].append("leaked")
+    assert brief.to_json_dict() == second
+
+
+@pytest.mark.parametrize(
+    "leaf",
+    [object(), bytearray(b"x"), StudyPlan(plan_id="p", title="P")],
+    ids=["object", "bytearray", "model"],
+)
+def test_planning_brief_rejects_unsupported_mutable_seed_leaf(leaf: object) -> None:
+    from studyloop.planning.views import PlanningBrief
+
+    with pytest.raises(TypeError, match="evidence seed"):
+        PlanningBrief(interview=(), evidence_seed={"rows": [leaf]}, existing_plans=())
+    with pytest.raises(TypeError, match="evidence seed"):
+        PlanningBrief(interview=(), evidence_seed=["not", "a", "mapping"], existing_plans=())  # type: ignore[arg-type]
+
+
 # ---------------------------------------------------------------------------
 # Views: frozen, tuple-only, and serialising to the existing key sets (D-3)
 # ---------------------------------------------------------------------------
