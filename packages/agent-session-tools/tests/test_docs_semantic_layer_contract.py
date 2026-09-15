@@ -32,6 +32,10 @@ SESSION_MEMORY_MD = DOCS_DIR / "session-memory.md"
 SETUP_GUIDE_MD = DOCS_DIR / "setup-guide.md"
 CLI_REFERENCE_MD = DOCS_DIR / "cli-reference.md"
 ARCH_README_MD = DOCS_DIR / "architecture" / "session-memory" / "README.md"
+SEMANTIC_RECEIPTS_DIR = (
+    DOCS_DIR / "architecture" / "session-memory" / "receipts" / "semantic-layer"
+)
+STAGE4_RECORD_MD = SEMANTIC_RECEIPTS_DIR / "stage4-record-2026-09-12.md"
 
 #: This file's own repo-relative path -- it legitimately names every forbidden
 #: token it checks for (in comments, identifiers and the grep patterns
@@ -366,3 +370,39 @@ def test_arch_readme_states_the_sealed_provisional_note() -> None:
     lane's internal receipts."""
     text = ARCH_README_MD.read_text(encoding="utf-8")
     assert "provisional pending SEALED" in text
+
+
+def _stage5_preregistration_names(text: str) -> set[str]:
+    """Every ``stage5-preregistration-*.md`` filename a document names."""
+    return set(re.findall(r"stage5-preregistration-[\w-]+\.md", text))
+
+
+def test_stage4_record_has_a_successor_section_naming_the_stage5_preregistration() -> (
+    None
+):
+    """Stage 4's own rule: reversing off-by-default is a NEW pre-registration,
+    not an edit of that record (E-A6). The record must therefore point forward
+    to the document that gates the flip, so a reader of the Stage 4 gate cannot
+    miss that a successor supersedes its default."""
+    text = STAGE4_RECORD_MD.read_text(encoding="utf-8")
+    assert "## Successor" in text
+    assert _stage5_preregistration_names(text), (
+        "the successor section names no stage5-preregistration receipt"
+    )
+
+
+def test_the_readme_and_the_stage4_successor_cite_the_same_preregistration() -> None:
+    """Cross-document consistency: two docs naming DIFFERENT pre-registration
+    files means one of them is stale, and the gate a reader checks depends on
+    which one they opened."""
+    readme = _stage5_preregistration_names(ARCH_README_MD.read_text(encoding="utf-8"))
+    stage4 = _stage5_preregistration_names(STAGE4_RECORD_MD.read_text(encoding="utf-8"))
+    assert readme and stage4
+    assert readme == stage4
+
+
+def test_the_stage4_successor_refuses_to_reuse_the_146ms_number() -> None:
+    """Council D-3: the resident-state gate must never reuse the 146 ms figure,
+    which was measured with a cold per-invocation load in the cli-hybrid arm."""
+    successor = STAGE4_RECORD_MD.read_text(encoding="utf-8").split("## Successor", 1)[1]
+    assert "146 ms" in successor and "not reusable" in successor
