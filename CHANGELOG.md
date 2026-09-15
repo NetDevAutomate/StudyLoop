@@ -7,7 +7,13 @@ experience may change before `1.0.0`.
 
 ## [Unreleased]
 
-_Nothing yet._
+### Removed
+
+- The forbidden-token test that failed the suite whenever "KiroCrew" appeared
+  in a tracked file. It pinned the 0.3.0-era removal of the KiroCrew
+  integration and made the removal impossible to even mention in docs or this
+  changelog; the removal has shipped and the guard is retired (owner decision,
+  2026-09-15).
 
 ## [0.4.0] - 2026-09-14
 

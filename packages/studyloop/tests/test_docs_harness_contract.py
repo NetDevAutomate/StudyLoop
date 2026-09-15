@@ -297,24 +297,6 @@ def test_pi_harness_integration_has_no_stale_line_number_citations() -> None:
     assert not offenders, f"stale doctor/harness.py line citation(s): {offenders}"
 
 
-def test_no_kirocrew_token_anywhere_tracked() -> None:
-    """(f) FORBIDDEN-TOKEN LOCK (A18): 'kirocrew' must never reappear."""
-    import subprocess
-
-    result = subprocess.run(
-        ["git", "grep", "-i", "-l", "-E", "kirocrew|kiro[-_ ]?crew"],
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
-    )
-    hits = [
-        line
-        for line in result.stdout.splitlines()
-        if line != "packages/studyloop/tests/test_docs_harness_contract.py"
-    ]
-    assert not hits, f"forbidden token 'kirocrew' reappeared in: {hits}"
-
-
 def test_release_harnesses_still_has_no_gemini() -> None:
     """Sanity guard alongside the roster checks above."""
     assert "gemini" not in RELEASE_HARNESSES
