@@ -1,0 +1,10 @@
+schema: spec-driven
+created: 2026-09-15
+
+deferred: >-
+  In flight, not part of the current release. Phases 0-1 landed on
+  fix/plan-integration-bugs (Bug B fix; PlanApplication seam closing Bug A;
+  CLI/Web list/inspect/activate/create/replace through the seam). Phases 2-6
+  (remaining intents, plan-aware now, nine MCP tools, planning purpose, Web
+  architect journey, release reconciliation) are tracked in tasks.md with a
+  council review gate between phases. Archive when Phase 6 (#15) closes.
