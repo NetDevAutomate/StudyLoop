@@ -33,7 +33,14 @@ repos:
     # by design -- exactly what a "Hex High Entropy String" detector is
     # built to flag, and exactly what it should ignore here: there is no
     # secret to leak, only a pinned digest of a committed, public file.
-    exclude: packages/studyloop/tests/acceptance/uat/data/.*_registry\.json$
+    # Council manifests (docs/architecture/plan-integration/council/*/manifest.json)
+    # carry the brief and system-prompt sha256 so a seat receipt can be tied to
+    # the exact text it answered -- again a digest of a committed file, not a key.
+    exclude: |
+      (?x)^(
+        packages/studyloop/tests/acceptance/uat/data/.*_registry\.json|
+        docs/architecture/plan-integration/council/.*/manifest\.json
+      )$
 - repo: https://github.com/PyCQA/bandit
   rev: 1.8.3
   hooks:

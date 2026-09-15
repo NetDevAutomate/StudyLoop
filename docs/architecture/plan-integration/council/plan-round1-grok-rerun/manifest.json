@@ -1,0 +1,21 @@
+{
+  "run_at": "2026-09-15T19:57:45+00:00",
+  "brief": "docs/architecture/plan-integration/council/brief-plan-2026-09-15.md",
+  "brief_sha256": "8866a972e30bcfb0c6bf8e748a23385fc1befa3029c463914bceae7be8e010e8",
+  "system_sha256": "424aba7a4b2b6f33bd57da2076857a206e3683bc8af9aca5d3007f3314c3099c",
+  "seats": [
+    {
+      "model": "grok-4.6",
+      "ok": true,
+      "reasoning_chars": 0,
+      "finish_reason": "stop",
+      "elapsed_s": 148.6,
+      "usage": {
+        "prompt_tokens": 6253,
+        "completion_tokens": 19176,
+        "total_tokens": 25429
+      },
+      "error": null
+    }
+  ]
+}
