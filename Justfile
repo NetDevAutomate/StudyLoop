@@ -123,6 +123,18 @@ testacc HARNESS="" ACTOR="scripted" TESTS="packages/studyloop/tests/acceptance/"
         uv run --group dev pytest -m acceptance \
         --ignore=packages/studyloop/tests/acceptance/uat {{TESTS}}
 
+# The UAT (sign-off) tier's OWN, additional opt-in on top of acceptance
+# (council D-13): STUDYLOOP_UAT=1, set here, in ADDITION to STUDYLOOP_ACC=1 --
+# `tests/acceptance/uat/conftest.py`'s gate requires both. Same positional-arg
+# footgun as `testacc` applies (see docs/acceptance-testing.md); the mechanism
+# tests this tier's modules ship (manifest schema, redaction, rubric loader,
+# strict-runner semantics) are UNGATED and run under plain `just test` --
+# this recipe only reaches the live-ish journey smoke test(s) under
+# tests/acceptance/uat/ itself.
+testuat HARNESS="" ACTOR="scripted" TESTS="packages/studyloop/tests/acceptance/uat/":
+    STUDYLOOP_ACC=1 STUDYLOOP_UAT=1 STUDYLOOP_ACC_HARNESS="{{HARNESS}}" STUDYLOOP_ACC_ACTOR="{{ACTOR}}" \
+        uv run --group dev pytest -m 'acceptance and uat' {{TESTS}}
+
 lint:
     uv run --group dev ruff check .
     uv run --group dev ruff format --check .
