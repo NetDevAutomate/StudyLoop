@@ -73,6 +73,18 @@ class EchoMentor:
         return f"mentor said: {message}"
 
 
+class MultiLineMentor:
+    """A mentor whose reply spans more than one line -- any normal
+    LLM/tutor answer, and exactly the case the module docstring's
+    "long lines wrapping" note does NOT cover: this is about tmux echoing
+    an embedded newline in ``send-keys`` text as SEPARATE pane lines, not
+    about a single long line wrapping."""
+
+    async def send(self, message: str) -> str:
+        assert message  # never empty; the reply itself is what matters here
+        return "line one\nline two"
+
+
 class TestFromEnv:
     def test_missing_command_names_the_env_var(
         self, monkeypatch: pytest.MonkeyPatch, socket_dir: Path
@@ -271,6 +283,52 @@ class TestConverseLoop:
         ]
         assert send_keys_calls == ["mentor said: learner turn 1", "mentor said: learner turn 2"]
         assert all(t.usage == TokenUsage.unknown() for t in result.transcript)
+        await actor.aclose()
+
+    async def test_multiline_mentor_reply_is_not_misread_as_a_learner_turn(
+        self, monkeypatch: pytest.MonkeyPatch, socket_dir: Path
+    ) -> None:
+        """Verified against real tmux 3.7b: sending text containing an
+        embedded literal newline plus ``Enter`` echoes back as MULTIPLE
+        separate pane lines, not one. A multi-line ``mentor_reply`` must
+        have every one of its lines queued for echo-suppression, or the
+        mentor's own echoed words are misread as new learner turns.
+        """
+        pane: list[str] = ["learner turn 1"]
+        script_replies = [DONE_SENTINEL]
+        pane_height = 24
+
+        def fake_tmux(*args, socket_dir):
+            cmd = args[0]
+            if cmd == "new-session":
+                return _ok()
+            if cmd == "send-keys":
+                text = args[3]
+                # Real tmux: an embedded literal newline in `text` is
+                # echoed back as separate pane lines, never one.
+                pane.extend(text.splitlines())
+                if script_replies:
+                    pane.append(script_replies.pop(0))
+                return _ok()
+            if cmd == "capture-pane":
+                padded = pane + [""] * (pane_height - len(pane))
+                return _ok("\n".join(padded))
+            if cmd == "kill-session":
+                return _ok()
+            raise AssertionError(f"unexpected tmux command: {cmd}")
+
+        monkeypatch.setattr("acceptance.actors.harness._tmux", fake_tmux)
+        actor = HarnessActor(
+            command=("sh",),
+            socket_dir=socket_dir,
+            reply_timeout=2.0,
+            budget=BudgetGuard(max_turns=10),
+        )
+
+        result = await actor.converse(MultiLineMentor())
+
+        assert result.outcome is TerminationOutcome.COMPLETED
+        assert [t.learner_message for t in result.transcript] == ["learner turn 1"]
         await actor.aclose()
 
     async def test_stops_at_max_turns_when_no_sentinel_ever_arrives(

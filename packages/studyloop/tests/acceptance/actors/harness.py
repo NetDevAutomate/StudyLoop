@@ -200,11 +200,17 @@ class HarnessActor:
         )
         if result.returncode != 0:
             raise HarnessActorError(f"tmux send-keys failed: {result.stderr.strip()}")
-        # A tmux pane echoes what send-keys typed into it, so this exact
-        # text will come back out of capture-pane. Queue it so the reader
-        # skips it instead of handing the mentor's own words back to the
-        # mentor as the learner's next turn.
-        self._pending_echo.append(text.strip())
+        # A tmux pane echoes what send-keys typed into it, so this text
+        # will come back out of capture-pane -- but a literal embedded
+        # newline in `text` is treated as its own Enter keystroke by
+        # send-keys, so tmux echoes each line SEPARATELY (verified against
+        # real tmux 3.7b), not as one multi-line entry. Queue one
+        # pending-echo entry per resulting line (mirroring how _capture()
+        # observes it via splitlines()) so the reader skips every echoed
+        # fragment instead of handing the mentor's own words back to the
+        # mentor as new learner turns.
+        for line in text.splitlines() or [text]:
+            self._pending_echo.append(line.strip())
 
     def _capture(self) -> list[str]:
         result = _tmux("capture-pane", "-p", "-t", self.session_name, socket_dir=self.socket_dir)

@@ -87,3 +87,16 @@ class TestNeverRaises:
         guard.record_turn(output_tokens=None)
         assert guard.turns_taken == 2
         assert not guard.has_budget_for_next_turn()
+
+    def test_negative_output_tokens_never_decreases_cumulative_spend(self) -> None:
+        """A malformed provider response (e.g. `usage.output_tokens = -50`)
+        must never reduce the running total -- that would let the
+        cumulative cap be evaded indefinitely, defeating the hard-abort
+        guarantee. Negative spend is clamped to zero, not subtracted."""
+        guard = BudgetGuard(max_turns=100, max_output_tokens=100)
+        guard.record_turn(output_tokens=90)
+        guard.record_turn(output_tokens=-50)
+        assert guard.output_tokens_spent == 90
+        guard.record_turn(output_tokens=10)
+        assert guard.output_tokens_spent == 100
+        assert not guard.has_budget_for_next_turn()

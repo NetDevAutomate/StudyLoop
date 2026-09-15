@@ -61,10 +61,17 @@ class BudgetGuard:
         )
 
     def record_turn(self, output_tokens: int | None) -> None:
-        """Record one FULLY completed turn's spend. Never raises."""
+        """Record one FULLY completed turn's spend. Never raises.
+
+        A negative ``output_tokens`` (a malformed provider response) is
+        clamped to zero rather than subtracted -- letting it through would
+        decrease the running total and could defeat the cumulative cap
+        indefinitely, breaking the hard-abort guarantee this class exists
+        to provide.
+        """
         self._turns_taken += 1
         if output_tokens is not None:
-            self._output_tokens_spent += output_tokens
+            self._output_tokens_spent += max(output_tokens, 0)
 
     @property
     def turns_taken(self) -> int:
