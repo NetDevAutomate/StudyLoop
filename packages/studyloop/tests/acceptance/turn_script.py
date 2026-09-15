@@ -10,6 +10,14 @@ per-turn field is a loud :class:`TurnScriptError`, not a silently-ignored
 key — a typo'd field name in a hand-written script must fail the run that
 defines it, not the first run that happens to need the field it meant to
 set.
+
+``expect_contains``/``expect_not_contains`` are RESERVED: the fields are
+parsed (so they round-trip and a future executor's shape is already
+settled), but nothing in this lane evaluates them yet, so a non-empty value
+is rejected loudly rather than silently accepted — the exact
+strict-unknown-field failure mode this loader otherwise guards against,
+arriving through a field that IS known. A later lane that wires an executor
+through the field should remove this guard alongside adding one.
 """
 
 from __future__ import annotations
@@ -87,6 +95,13 @@ def load_turn_script(data: dict) -> TurnScript:
             raise TurnScriptError(f"unknown field(s) on turns[{index}]: {sorted(unknown_turn)}")
         if "prompt" not in raw_turn or not isinstance(raw_turn["prompt"], str):
             raise TurnScriptError(f"turns[{index}] is missing a string 'prompt'")
+        for reserved_field in ("expect_contains", "expect_not_contains"):
+            if raw_turn.get(reserved_field):
+                raise TurnScriptError(
+                    f"turns[{index}]: '{reserved_field}' is reserved -- no executor "
+                    "evaluates it yet (see docs/acceptance-testing.md); leave it "
+                    "unset until one does"
+                )
         turns.append(
             Turn(
                 prompt=raw_turn["prompt"],

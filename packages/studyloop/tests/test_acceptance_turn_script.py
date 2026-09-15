@@ -30,19 +30,29 @@ class TestLoadTurnScript:
                 "version": 1,
                 "turns": [
                     {"prompt": "What is a decorator?"},
-                    {
-                        "prompt": "And a closure?",
-                        "expect_contains": ["closure"],
-                        "expect_not_contains": ["I don't know"],
-                    },
+                    {"prompt": "And a closure?"},
                 ],
             }
         )
         assert script.version == SUPPORTED_VERSION
         assert len(script.turns) == 2
         assert script.turns[0].prompt == "What is a decorator?"
-        assert script.turns[1].expect_contains == ("closure",)
-        assert script.turns[1].expect_not_contains == ("I don't know",)
+        assert script.turns[1].prompt == "And a closure?"
+
+    def test_rejects_expect_contains_until_an_executor_honours_it(self) -> None:
+        """(minor finding) expect_contains/expect_not_contains are known,
+        parsed fields with NOTHING evaluating them anywhere in the tree.
+        Silently accepting a non-empty value would defeat the loader's own
+        strict-unknown-field rule through a field that IS known -- reserve
+        it loudly instead until an executor honours it."""
+        with pytest.raises(TurnScriptError, match="expect_contains"):
+            load_turn_script({"version": 1, "turns": [{"prompt": "hi", "expect_contains": ["x"]}]})
+
+    def test_rejects_expect_not_contains_until_an_executor_honours_it(self) -> None:
+        with pytest.raises(TurnScriptError, match="expect_not_contains"):
+            load_turn_script(
+                {"version": 1, "turns": [{"prompt": "hi", "expect_not_contains": ["x"]}]}
+            )
 
     def test_rejects_missing_version(self) -> None:
         with pytest.raises(TurnScriptError, match="version"):
