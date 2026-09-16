@@ -286,15 +286,15 @@ def test_active_guidance_names_readiness_blockers_on_unready_active_plan(
 
     assert [g.plan.plan_id for g in guidance.plans] == ["healthy", "husk"]
     healthy, husk = guidance.plans
-    assert husk.readiness.ready is False  # pyright: ignore[reportAttributeAccessIssue]
-    assert husk.readiness.plan_id == "husk"  # pyright: ignore[reportAttributeAccessIssue]
-    blockers = husk.readiness.blockers  # pyright: ignore[reportAttributeAccessIssue]
+    assert husk.readiness.ready is False
+    assert husk.readiness.plan_id == "husk"
+    blockers = husk.readiness.blockers
     assert isinstance(blockers, tuple) and blockers, "the blockers are on the entry"
     assert any("why" in blocker.lower() for blocker in blockers)
     assert any("success" in blocker.lower() for blocker in blockers)
     assert husk.warnings == (), "readiness is not a worked-around defect; it is its own field"
-    assert healthy.readiness.ready is True  # pyright: ignore[reportAttributeAccessIssue]
-    assert healthy.readiness.blockers == ()  # pyright: ignore[reportAttributeAccessIssue]
+    assert healthy.readiness.ready is True
+    assert healthy.readiness.blockers == ()
     assert sorted(loads) == ["healthy", "husk"], "one parse per document, no extra store read"
 
     payload = guidance.to_json_dict()
@@ -302,7 +302,7 @@ def test_active_guidance_names_readiness_blockers_on_unready_active_plan(
         "plan_id": "husk",
         "ready": False,
         "blockers": list(blockers),
-        "nudges": list(husk.readiness.nudges),  # pyright: ignore[reportAttributeAccessIssue]
+        "nudges": list(husk.readiness.nudges),
     }
     assert payload["plans"][0]["readiness"]["ready"] is True
     json.dumps(payload)

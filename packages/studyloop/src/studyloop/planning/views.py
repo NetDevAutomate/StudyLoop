@@ -690,9 +690,18 @@ class ActivePlanGuidance:
     unchecked one. ``completion_action`` replaces a study candidate when every
     milestone is ticked (design §3 step 9). ``warnings`` name defects in this
     document that the guidance worked around rather than raised.
+
+    ``readiness`` is the same :class:`ReadinessView` every write is judged by.
+    An active plan that fails it (a hand-edited or pre-gate document with no
+    mission) is still active and still listed — the ranker decides, not this
+    read — but every ``SetMilestone``, ``RevisePlan`` or recorded assessment on
+    it will be ``PlanNotReady`` until it is paused or repaired, and the ranker
+    must be able to see that here rather than by a second ``inspect`` per plan
+    (council review 2).
     """
 
     plan: PlanSummary
+    readiness: ReadinessView
     next_milestone: MilestoneView | None
     match_keys: frozenset[str]
     target_urgency: TargetUrgency
@@ -749,6 +758,7 @@ class ActivePlanGuidance:
 
         return cls(
             plan=PlanSummary.from_plan(plan),
+            readiness=ReadinessView.from_plan(plan),
             next_milestone=next_view,
             match_keys=frozenset(keys),
             target_urgency=urgency,
@@ -760,6 +770,7 @@ class ActivePlanGuidance:
     def to_json_dict(self) -> dict[str, Any]:
         return {
             "plan": self.plan.to_json_dict(),
+            "readiness": self.readiness.to_json_dict(),
             "next_milestone": (
                 None if self.next_milestone is None else self.next_milestone.to_json_dict()
             ),

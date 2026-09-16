@@ -184,7 +184,12 @@ not gated.
 ### Requirement: Active-plan guidance is a deterministic read (not yet consumed)
 `get_active_guidance(*, today=None)` SHALL return a frozen `ActiveGuidance`
 holding one `ActivePlanGuidance` per plan whose status is `active`, ordered by
-`plan_id`, with: the `PlanSummary`; `next_milestone` (the first unchecked
+`plan_id`, with: the `PlanSummary`; the plan's `ReadinessView` (`readiness`) —
+the same view every write is judged by, so an active-but-unready document (a
+hand edit or pre-gate import with no mission) is still listed but its entry
+says that every `SetMilestone`, `RevisePlan` or recorded assessment on it will
+be `PlanNotReady` until it is paused or repaired, with no second `inspect` per
+plan; `next_milestone` (the first unchecked
 milestone, or `None`); `match_keys`, a `frozenset` of `normalise_match_key`
 over the topics and every milestone's concepts (casefold, punctuation replaced
 by spaces, whitespace collapsed — matching is equality on the key, never a
@@ -234,6 +239,14 @@ and the Today card are unchanged by this phase, and `docs/study-plans.md`'s
   None`, `completion_action == None`, `target_urgency == "undated"` and
   warnings naming the milestones and the date; the collection's `warnings`
   name the unreadable file
+
+#### Scenario: An unready active plan is listed with its blockers
+- **WHEN** an active document has topics and milestones but no mission `why`
+  and no success criteria, beside a ready active plan
+- **THEN** both appear in `.plans`; the husk's `readiness.ready` is `false`
+  and its `readiness.blockers` name the missing why and success criteria; the
+  ready plan's `readiness.ready` is `true`; `load_plan` ran once per document;
+  and `to_json_dict()` carries the `readiness` block per entry
 
 ### Requirement: Adapters reach study plans only through the seam
 No module under `studyloop/cli`, `studyloop/web/routes` or `studyloop/mcp`
