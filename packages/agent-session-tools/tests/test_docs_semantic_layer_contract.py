@@ -255,8 +255,13 @@ _OKF_ONTOLOG_ALLOWLIST = frozenset(
 def test_okf_ontolog_tokens_only_in_adr0011_allowlist() -> None:
     import subprocess
 
+    # Word-anchored: ``\bokf`` so that an identifier such as ``TestGrokFolderTrust``
+    # (gr·okF·older) is not read as the retired OKF import. ``ontolog`` keeps its
+    # prefix form so ``ontology``/``ontological`` still count. Regression from the
+    # 2026-09-16 harness-tier work, where exactly that class name tripped the
+    # case-insensitive substring grep.
     result = subprocess.run(
-        ["git", "grep", "-i", "-l", "-E", "okf|ontolog", "--", "packages/"],
+        ["git", "grep", "-i", "-l", "-P", r"\bokf|\bontolog", "--", "packages/"],
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,
