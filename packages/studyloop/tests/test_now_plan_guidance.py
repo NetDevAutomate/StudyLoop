@@ -803,3 +803,40 @@ def test_recap_names_energy_deferral(monkeypatch) -> None:
     assert result.next_action == 'studyloop progress "decorators" -t "python" -c learning'
     assert "Frames" in result.plan_context
     assert "energy" in result.plan_context
+
+
+def test_cli_recap_rich_panel_shows_engine_plan_context(monkeypatch) -> None:
+    """Council review 3, F8 (GPT 🟡): the spec names the daily recap among the renderers
+    that show plan relevance; ``--json`` and the spoken form did, the Rich panel did
+    not. It prints the engine's ``plan_context`` — escaped, shown, never re-ranked."""
+    from click.testing import CliRunner
+
+    from studyloop.cli import cli
+
+    _plan(
+        "sql-windows",
+        title="SQL [/bold] Windows",
+        milestones=[Milestone(title="Frames", concepts=["window frame"])],
+    )
+    _patch_collectors(monkeypatch)
+
+    result = CliRunner().invoke(cli, ["recap", "today"])
+
+    assert result.exit_code == 0, result.output or repr(result.exception)
+    assert "Plan:" in result.output
+    assert "SQL [/bold] Windows" in result.output
+    assert "Frames" in result.output
+
+
+def test_cli_recap_rich_panel_without_plans_prints_no_plan_line(monkeypatch) -> None:
+    from click.testing import CliRunner
+
+    from studyloop.cli import cli
+
+    _patch_collectors(monkeypatch)
+
+    result = CliRunner().invoke(cli, ["recap", "today"])
+
+    assert result.exit_code == 0, result.output or repr(result.exception)
+    assert "Plan:" not in result.output
+    assert "Next:" in result.output
