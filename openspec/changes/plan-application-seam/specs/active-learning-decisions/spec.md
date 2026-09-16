@@ -181,7 +181,7 @@ not gated.
 - **THEN** `document_write == "failed"`, `db_write == "saved"`, the log holds
   the row, and the document is unchanged
 
-### Requirement: Active-plan guidance is a deterministic read (not yet consumed)
+### Requirement: Active-plan guidance is a deterministic read
 `get_active_guidance(*, today=None)` SHALL return a frozen `ActiveGuidance`
 holding one `ActivePlanGuidance` per plan whose status is `active`, ordered by
 `plan_id`, with: the `PlanSummary`; the plan's `ReadinessView` (`readiness`) —
@@ -209,10 +209,8 @@ one effective date for the whole payload — for frozen-clock callers and
 defaults to the UTC
 date.
 
-This view exists so that the `now` decision engine (issue #10, Phase 3) has
-one plan-static read to consume. **Nothing consumes it yet**: `studyloop now`
-and the Today card are unchanged by this phase, and `docs/study-plans.md`'s
-"does not do yet" list stays as it is until #10 ships.
+This view is the one plan-static read the `now` decision engine consumes
+(issue #10, next requirement).
 
 #### Scenario: One entry per active plan, ordered, others skipped
 - **WHEN** plans `zeta` (active), `alpha` (active), `mid` (active) and one
@@ -263,6 +261,120 @@ and the Today card are unchanged by this phase, and `docs/study-plans.md`'s
   and its `readiness.blockers` name the missing why and success criteria; the
   ready plan's `readiness.ready` is `true`; `load_plan` ran once per document;
   and `to_json_dict()` carries the `readiness` block per entry
+
+### Requirement: The now engine is plan-aware with tested ranking rules
+`studyloop.learning.decision.build_now_plan` SHALL remain the only ranker of
+study actions and SHALL consume active plans through exactly one call to
+`PlanApplication().get_active_guidance(today=…)`, where `today` is the date
+of the same instant `generated_at` records. It SHALL apply these rules, in
+this order (design §3, D-5):
+
+1. Candidates are collected as before; a failure to read plans at all SHALL
+   degrade to a `warnings` entry, never a failed recommendation.
+2. The energy capability is `low|medium|high → 3|6|10`. For an active plan
+   whose `energy_floor` exceeds it, the next milestone SHALL be listed in
+   `energy_deferred` and SHALL NOT become a candidate; plan-related due recall
+   and struggle repair stay eligible and plan-related.
+3. A candidate is plan-related when `normalise_match_key` of its concept,
+   topic or course **equals** one of the plan's `match_keys`; no substring
+   test. It names the plan's next milestone when the key equals one of that
+   milestone's concepts; a topic or finished-milestone match carries
+   `milestone_index = None`.
+4. Scoring is today's scoring plus one bounded bias for plan-related
+   candidates: within one urgency class plan-related beats unrelated, and a
+   globally more-urgent unrelated candidate still wins — a bias, not a filter.
+5. When no collected candidate represents an eligible (ready, energy-permitted)
+   plan's next milestone, one `conversation` candidate SHALL be synthesised
+   for it (source `study_plan:<plan_id>:<index>`, concept = the milestone's
+   first concept or its title, topic = the plan's first topic), scored below
+   every due and repair class. A learner with an active plan and no evidence
+   is therefore sent to the plan, and `starter` is `false`.
+6. After de-duplication every matching `PlanRef(plan_id, milestone_index)`
+   SHALL be attached to each ranked action, ordered by target urgency
+   (`overdue`, `soon`, `later`, `undated`) → most recent `updated` → `plan_id`,
+   keeping the most specific milestone per plan.
+7. When primary + alternates hold no plan-backed action and an eligible one
+   whose estimate fits the requested time exists further down, it SHALL
+   replace the last alternate only; the primary is never re-ranked by plans.
+8. A fully-checked active plan SHALL appear in `completion_actions` and SHALL
+   be neither matched nor synthesised. An active-but-unready plan SHALL be
+   listed and matched but never synthesised, with a warning naming its
+   blockers.
+
+`NowPlan` gains `active_plans` (ordered as rule 6), `energy_deferred`,
+`completion_actions` and `warnings`; `LearningRecommendation` gains
+`plan_refs: tuple[PlanRef, ...] = ()`. `to_json_dict()` SHALL omit each of
+these when empty, so a learner with no active plan receives the pre-#10
+payload **byte for byte** — pinned by `tests/golden/now_plan_no_active.json`,
+captured before any of this shipped. Renderers (`studyloop now`, `GET
+/api/now`, the Today card, the daily recap) SHALL show plan relevance and
+energy deferral from these fields and SHALL NOT re-rank. Ranking tests prove
+ranking compliance, not learner benefit (D-16); a five-scenario human rubric
+receipt accompanies the change.
+
+#### Scenario: No active plan is byte-identical to the golden
+- **WHEN** no active plan exists (an empty plans directory, or only a draft)
+  and `build_now_plan()` runs with a frozen clock in an empty world
+- **THEN** the serialised `to_json_dict()` equals
+  `tests/golden/now_plan_no_active.json` byte for byte, and no
+  `active_plans`, `energy_deferred`, `completion_actions`, `warnings` or
+  `plan_refs` key is present
+
+#### Scenario: Matching due concept outranks unrelated of the same urgency
+- **WHEN** an active plan's milestone names `window function` and two due
+  items are two points apart, `decorators` (unrelated) ahead
+- **THEN** `window function` is primary with `plan_refs == (PlanRef(plan, 0),)`
+  and `decorators` is the first alternate with no refs
+
+#### Scenario: A more-urgent unrelated item still wins
+- **WHEN** the only collected candidate is an unrelated due item and the
+  plan's next milestone is unrepresented
+- **THEN** the due item is primary and the synthesised milestone
+  (`study_plan:<id>:0`) is an alternate with a lower score
+
+#### Scenario: Energy below the floor defers the milestone, keeps repair
+- **WHEN** energy is `low` (3/10), the plan's `energy_floor` is 5, its next
+  milestone is `Frames` and a struggle repair on a finished milestone's
+  concept is collected
+- **THEN** the repair is primary with `PlanRef(plan, None)`,
+  `energy_deferred` names `(plan, 1, 5, 3)`, and no `study_plan:` candidate
+  exists; at `medium` energy nothing is deferred and the milestone is
+  synthesised
+
+#### Scenario: No substring matching
+- **WHEN** a milestone titled `Window functions deep dive` has no concepts
+  and candidates `window functions deep dive tutorial`, `window` and
+  `joins`/`SQL` are collected
+- **THEN** only `joins` is plan-related (`PlanRef(plan, None)` via the topic
+  `sql`, casefolded); the other two carry no refs
+
+#### Scenario: Every matching plan is referenced, in order
+- **WHEN** six active plans (overdue, soon, later, three undated with
+  distinct and tied `updated`) all name the primary's concept
+- **THEN** `plan_refs` lists all six ordered overdue → soon → later → undated
+  by latest `updated` then `plan_id`, and `active_plans` is in the same order
+
+#### Scenario: A plan-backed action is preserved when energy allows
+- **WHEN** four unrelated due items outrank everything and the plan's
+  `energy_floor` is 5
+- **THEN** at `medium` energy the synthesised milestone replaces the second
+  alternate (the primary and first alternate are unchanged); at `low` energy
+  the alternates are the unrelated items and `energy_deferred` names the
+  milestone
+
+#### Scenario: Fully-checked plan emits a completion action
+- **WHEN** an active plan's every milestone is done and an unrelated due item
+  is collected
+- **THEN** `completion_actions` names the plan, the due item is primary with
+  no refs, no `study_plan:` candidate exists, and the plan's `active_plans`
+  entry has `next_milestone_index == None`
+
+#### Scenario: Renderers show, never re-rank
+- **WHEN** `studyloop now --energy low`, `GET /api/now?energy=low` and the
+  daily recap run against the energy-deferral fixture
+- **THEN** each names the primary the engine chose, the plan it advances, and
+  the deferred milestone; with no plan the CLI panel prints no plan lines,
+  `GET /api/now` equals the golden, and the recap's `plan_context` is absent
 
 ### Requirement: Adapters reach study plans only through the seam
 No module under `studyloop/cli`, `studyloop/web/routes` or `studyloop/mcp`

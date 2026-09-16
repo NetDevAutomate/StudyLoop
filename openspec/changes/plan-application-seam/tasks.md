@@ -160,20 +160,47 @@ Branch: `fix/plan-integration-bugs` (RED at `3a4f6b01`). §5 stream: `feat/lexic
 ## Phase 3 — parallel: #10 ∥ #11 ∥ #13a (D-5, D-7, D-8, D-10)
 
 ### #10 Now guidance · owner: agent B · files: `learning/decision.py`, `cli/_now.py`, `web/routes/now.py`, `learning/recap.py` (render only), tests, golden
-- [ ] **T3.1** Capture golden `tests/golden/now_plan_no_active.json` on the pre-#10 tree with frozen clock and
-      an isolated empty DB. Commit alone.
-- [ ] **T3.2** RED `tests/test_now_plan_guidance.py`: `test_no_active_plans_json_byte_identical_to_golden`,
+- [x] **T3.1** (`848f413b`) Capture golden `tests/golden/now_plan_no_active.json` on the pre-#10 tree with frozen clock and
+      an isolated empty DB. Commit alone. **As landed:** captured from the unmodified engine at `0a20a796` (empty
+      sessions DB, empty plans dir, empty content roots, no topics/focus, clock `2026-09-16T09:30:00+00:00`);
+      sha256 `ec451ce8857c8a72e398e3054e3c060cd3b5b13ecb29e29cba3822dc192503c0`; the byte-equality test in
+      `tests/test_now_plan_guidance.py` passed on that tree before any #10 change.
+- [x] **T3.2** (`6e5af8c1`, seen 9 failed / 1 passed on `848f413b`: seven `ImportError: PlanRef`, one
+      `AttributeError: completion_actions`, one JSON-key assertion; the golden test passed) RED
+      `tests/test_now_plan_guidance.py`: `test_no_active_plans_json_byte_identical_to_golden`,
       `test_matching_due_concept_outranks_unrelated_same_urgency`,
       `test_unrelated_more_urgent_due_outranks_new_milestone`, `test_one_action_keeps_every_matching_plan_ref_ordered`,
       `test_milestone_without_concepts_does_not_substring_match`, `test_energy_below_floor_defers_new_milestone_keeps_repair`,
       `test_fully_checked_active_plan_emits_completion_not_candidate`,
       `test_synthesizes_milestone_when_no_candidate_represents_it`,
       `test_preserves_one_plan_backed_action_when_energy_allows`,
-      `test_additive_keys_present_only_when_active_plans_exist`.
-- [ ] **T3.3** Implement per design §3. DoD: T3.2 green; `test_learning_decision.py`, `test_web_now.py`,
-      `test_recap_mastery_voice.py` unchanged and green.
-- [ ] **T3.4** Human rubric receipt (D-16): five frozen scenarios scored "would I do the primary?", committed
-      as `docs/architecture/plan-integration/receipts/now-rubric-2026-09-*.md`.
+      `test_additive_keys_present_only_when_active_plans_exist`. Renderer RED `d2013380` (CLI panel, recap
+      `plan_context`, Today-card helpers in `tests/js/today-panel-plan.test.js` 0/6; the two `/api/now`
+      end-to-end tests passed already and are kept as the wire-contract proof).
+- [x] **T3.3** (engine `0f1b3d08`; renderers `df33690b`) Implement per design §3. DoD: T3.2 green; `test_learning_decision.py`, `test_web_now.py`,
+      `test_recap_mastery_voice.py` unchanged and green. **As landed:** `build_now_plan` reads guidance once through
+      `PlanApplication().get_active_guidance(today=now.date())` (one clock with `generated_at`); `ENERGY_CAPABILITY`
+      3|6|10; `PLAN_RELATED_BIAS = 12` inside today's scoring; synthesised milestone candidate (`conversation`, source
+      `study_plan:<id>:<k>`, base 48 + overdue 6 / soon 3) so a plan with no evidence is the primary and
+      `starter` is false; refs attached after `_dedupe` in urgency → `updated` desc → id order with the most specific
+      milestone per plan; rule-8 swap of the last alternate only; fully-checked plans → `completion_actions`, neither
+      matched nor synthesised; an unready active plan (review-2 G1) is matched but never synthesised, with a warning
+      naming its blockers; unreadable plans → a warning, never a failure. `NowPlan.active_plans` is a compact
+      `ActivePlanSummary` (not `PlanSummary`) so renderers get title, urgency, floor, eligibility and next-milestone
+      index without the full summary. Renderers: CLI `Plan:` line + deferral/completion/warning lines + Plan column
+      (only when plans exist); recap `plan_context` (omitted when empty; `cli/_recap.py`'s rich panel is outside #10's
+      ownership and does not print it yet — `--json` and the spoken form do); Today card `planLabel` /
+      `deferredNotes` / `completionNotes` with a notes block that is deliberately not a `.today-card` (the browser
+      smoke test addresses the single action card by that class). `web/routes/now.py` needed no edit. Protected files
+      `git diff 0a20a796 -- tests/test_learning_decision.py tests/test_web_now.py tests/test_recap_mastery_voice.py`
+      → 0 lines.
+- [x] **T3.4** Human rubric receipt (D-16): five frozen scenarios scored "would I do the primary?", committed
+      as `docs/architecture/plan-integration/receipts/now-rubric-2026-09-16.md`. **As landed:** the five scenarios were
+      run unattended and the emitted primary + rule-cited rationale recorded per row; the owner-verdict column is
+      **PENDING** — no human was present and none was faked. Delta spec: the guidance requirement loses "(not yet
+      consumed)" and a new requirement "The now engine is plan-aware with tested ranking rules" carries nine
+      scenarios. `docs/study-plans.md`: the now/Today "does not do yet" bullet removed; the learner-facing paragraph
+      on plan-aware guidance is T6.1's.
 - [ ] **T3.5** (last, after #11 and #12 have landed in `tools.py`) `get_next_action(..., interleave="off")`.
 
 ### #11 six MCP tools · owner: agent C · files: `mcp/tools.py` (append only), `tests/test_mcp_plan_tools.py`, mcp-server spec
