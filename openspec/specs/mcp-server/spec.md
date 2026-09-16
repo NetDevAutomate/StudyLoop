@@ -4,7 +4,8 @@ Expose StudyLoop's study/review state to any MCP-compatible client (desktop
 apps, other agent CLIs) as a set of stdio tools, independent of the browser
 UI. Backed by `FastMCP` (`mcp[cli]` SDK) with lifespan-managed DB/settings
 access. This is one of two MCP servers in the repo; `session-db-mcp`
-(cross-agent session memory, 7 tools, documented in `docs/mcp.md`) is
+(cross-agent session memory, documented in `agents/mcp/README.md` and
+`docs/session-memory.md`) is
 separate and out of scope for this capability.
 ## Requirements
 ### Requirement: studyloop-mcp registers a fixed set of study tools
@@ -130,4 +131,3 @@ stating what works via MCP today versus what still requires the browser
 - **THEN** they find the studyloop-mcp tool list, both apps' registration
   snippets, and an explicit list of what desktop chat cannot do (no
   surprise gaps discovered only by trying)
-

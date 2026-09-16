@@ -149,7 +149,9 @@ npm install -g @anthropic/mcp-google-calendar
 
 Requires a Google Cloud project with Calendar API enabled. See [setup guide](https://github.com/galacoder/mcp-google-calendar#setup).
 
-## studyloop-mcp (Session DB Tools)
+<a id="studyloop-mcp-session-db-tools"></a>
+
+## studyloop-mcp (Study tools)
 
 The `studyloop-mcp` server exposes 32 MCP tools: courses and review cards, the study backlog and
 progress signals, lesson browsing, the live session, the `now` recommendation, and the learner's
@@ -157,7 +159,8 @@ study plans (nine lifecycle tools plus `record_plan_learning`, every one through
 application layer the CLI and Web UI use — see `docs/agent-install.md`, "Study-plan tools over
 MCP", for the refusal kinds and the readiness gate). It's registered as a Python entry point and runs
 via stdio. The table below is pinned to the production registry by
-`tests/test_docs_plan_integration_contract.py`.
+`tests/test_docs_plan_integration_contract.py`. (This section was headed "Session DB Tools" until
+2026-09-16; the old anchor above is kept so external links still land here.)
 
 **Start manually (for testing):**
 ```bash
@@ -207,7 +210,7 @@ server NAME is `studyloop`; `studyloop-mcp` is the console-script COMMAND, never
 | `get_study_plan` | One plan in full — mission, milestones, records, readiness; optional Markdown and checkpoint history |
 | `get_planning_interview` | The interview questions, an evidence seed and the existing plans — the architect's brief |
 | `create_study_plan` | Draft a plan from interview answers; a taken id is a conflict, never a replacement |
-| `update_study_plan` | Revise fields, topics, milestones and status as one document, saved once |
+| `update_study_plan` | Revise title, topics, dates, energy floor, cadence, notes, milestones and status as one document, saved once — not the mission, which is edited in the Markdown |
 | `set_study_plan_status` | Move a plan between `draft`, `active`, `paused`, `complete`, `abandoned`; activation is readiness-gated |
 | `set_study_plan_milestone` | Set one milestone done or not done — set, not toggle, so a retry is safe |
 | `evaluate_study_plan` | A `start`/`mid`/`end` checkpoint against real evidence; preview by default, `record=true` reports each write |

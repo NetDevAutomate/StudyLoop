@@ -277,6 +277,18 @@ def build_checks(repo_root: Path) -> list[Check]:
                 "integration",
             ),
         ),
+        # The same two modules in the other file order: pytest collects in the
+        # order given, and the #15 DoD is about ORDERING regressions, so one
+        # order proves one order (council review 5, GPT F10).
+        Check(
+            "integration-combined-reverse",
+            _pytest(
+                f"{TESTS}/test_plan_journey_combined.py",
+                f"{TESTS}/test_mcp_stdio_smoke.py",
+                "-m",
+                "integration",
+            ),
+        ),
         Check(
             "browser-journey-e2e",
             _pytest(f"{TESTS}/test_web_plan_architect_journey.py", "-m", "e2e"),

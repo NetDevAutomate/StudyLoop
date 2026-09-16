@@ -13,22 +13,22 @@ inferred from an `inspect` taken before the revision, so a retry with the same
 title and body reports `created: false` with the original `number`, and so
 does a record another writer filed just before the mutation ran. Every seam
 refusal SHALL be a `ToolError` mapped by the same `_plan_tool_error` helper the
-nine plan tools of design §4 use (Phase 4, #12 — before the fold the tool mapped
-inline, without a kind prefix): `PlanNotReady` SHALL render as `not_ready:
+nine plan lifecycle tools use (before this fold the tool mapped inline, without
+a kind prefix): `PlanNotReady` SHALL render as `not_ready:
 plan is not ready to activate: <blocker>; <blocker>…` (with the already-active
 "pause it or repair" suffix when the plan was active) so the agent can tell
-the learner what to repair (design §2, "ToolError containing blockers");
+the learner what to repair (the plan-application-seam design, §2: "ToolError
+containing blockers");
 `PlanNotFound`, `InvalidPlanId` and `InvalidField` (the store's title/heading
 rule) SHALL render as `not_found: …`, `invalid_id: …` and `invalid: …`
 followed by their message, with the domain error chained as `__cause__`. The
 success shape is unchanged by the fold.
 
-This was the **only** change to `mcp/tools.py` in Phase 2. The six read/write
-plan tools of design §4 are registered in Phase 3 (#11, the requirement
-below); the three of Phase 4 (`set_study_plan_milestone`, `evaluate_study_plan`,
-`delete_study_plan`) are registered in #12 (the last requirement in this
-file). The stdio smoke test pins the exact production inventory (32 unique
-names), the nine plan tools and the core names (D-9, council review 3 F13).
+The six read/write plan tools are the requirement "Study-plan discovery and
+authoring tools"; the three progression tools (`set_study_plan_milestone`,
+`evaluate_study_plan`, `delete_study_plan`) are "Study-plan progression and
+deletion tools". The stdio smoke test pins the exact production inventory (32
+unique names), the nine plan tools and the core names.
 
 #### Scenario: One revision through the seam
 - **WHEN** `record_plan_learning("decorators", "MCP insight", body="prose")`
@@ -172,7 +172,7 @@ has not met. The `ToolError` SHALL chain the domain error as its cause.
 
 ### Requirement: Study-plan progression and deletion tools
 `register_tools(mcp)` SHALL register three further study-plan tools in the
-production inventory — completing the nine of design §4 — each a thin adapter
+production inventory — completing the nine plan lifecycle tools — each a thin adapter
 that makes exactly one `studyloop.planning.PlanApplication` call, imports no
 storage, index, authoring or evaluation module (D-6), and maps every seam
 refusal through the same `<kind>: <message>` `ToolError` mapping as the six
@@ -313,3 +313,56 @@ transport.
   `create_study_plan`, `update_study_plan`, `set_study_plan_status`,
   `set_study_plan_milestone`, `evaluate_study_plan`, `delete_study_plan`,
   `record_plan_learning` and the core tools
+
+
+### Requirement: The studyloop-mcp inventory is published where the harness registration is
+The full `studyloop-mcp` tool list SHALL be published in `agents/mcp/README.md`
+under "studyloop-mcp (Study tools)" — the same page that carries every
+harness's registration snippet (Claude Code `mcp.json`, Kiro `study-mentor.json`,
+Codex `~/.codex/config.toml`, OpenCode, Grok Build `~/.grok/config.toml`) — as
+one table equal to the production registry, with the count stated in prose.
+Both SHALL be pinned to the registry by
+`tests/test_docs_plan_integration_contract.py`, so a tool added to or removed
+from `mcp/tools.py` fails a test rather than leaving a stale page. The
+learner-facing reach of the study-plan tools per harness (which harness
+definitions attach the server; the Kiro/Claude CLI fallback) SHALL be stated
+in `docs/agent-install.md`, "Study-plan tools over MCP". No other page SHALL
+carry a second copy of the inventory or a tool count.
+
+#### Scenario: A new contributor reads the inventory
+- **WHEN** someone reads `agents/mcp/README.md` to decide what an agent can do
+  through `studyloop-mcp`
+- **THEN** they find every registered tool in one table (32 rows), the stated
+  count, and the registration snippet for their harness — and the contract
+  test fails if the table or the count ever disagrees with `register_tools`
+
+## MODIFIED Requirements
+
+### Requirement: studyloop-mcp registers a fixed set of study tools
+The system SHALL register exactly 32 tools via `register_tools(mcp)`
+(`mcp/tools.py`), each under its own name: the 23 study, review, lifecycle
+and course-explorer tools — `list_courses`, `get_study_context`,
+`record_study_progress`, `generate_flashcards`, `generate_quiz`,
+`get_chapter_text`, `get_study_backlog`, `get_topic_suggestions`,
+`get_study_history`, `list_session_options`, `end_session`,
+`record_topic_progress`, `log_topic`, `get_due_cards`, `log_review_outcome`,
+`get_next_action`, `get_active_topics`, `log_struggle`, `get_lesson_tree`,
+`read_lesson`, `search_lessons`, `get_concept_context`,
+`record_plan_learning` — plus the nine study-plan lifecycle tools of the two
+study-plan requirements in this specification, exactly
+`studyloop.mcp.inventory.PLAN_TOOL_NAMES`. The published inventory is the
+table in `agents/mcp/README.md` (see "The studyloop-mcp inventory is
+published where the harness registration is").
+
+#### Scenario: Client lists available tools
+- **WHEN** an MCP client connects to the `studyloop-mcp` stdio server and
+  requests its tool list
+- **THEN** exactly these 32 tools are returned, each once, matching the table
+  in `agents/mcp/README.md`; the full stdio handshake + tools/list +
+  tools/call round-trip is locked by `tests/test_mcp_stdio_smoke.py`
+  (integration-marked), which pins the count, the nine plan tools and the
+  core names
+
+## REMOVED Requirements
+
+### Requirement: docs/mcp.md documents studyloop-mcp and desktop registration

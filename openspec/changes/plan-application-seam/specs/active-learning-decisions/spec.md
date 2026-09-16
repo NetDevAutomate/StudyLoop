@@ -139,7 +139,8 @@ return a frozen `AssessmentResult` carrying a `PlanEvaluationView` (whose
 `markdown` is the rendered checkpoint block), `db_write` and `document_write`
 each in `not_requested | saved | failed`, and the evaluation's `warnings`.
 `record=False` SHALL call `evaluate_plan` and write to neither sink;
-`record=True` SHALL call the Phase-0 `evaluate_and_record` — the seam adds no
+`record=True` SHALL call the existing `evaluate_and_record` (the Bug-B fix's
+single checkpoint writer) — the seam adds no
 second checkpoint writer — and read its two recording warnings back into the
 sink fields. A failed sink SHALL be a reported outcome on the result, never an
 exception (no `PartialRecording`), because the evaluation succeeded.
@@ -187,8 +188,11 @@ holding one `ActivePlanGuidance` per plan whose status is `active`, ordered by
 `plan_id`, with: the `PlanSummary`; the plan's `ReadinessView` (`readiness`) —
 the same view every write is judged by, so an active-but-unready document (a
 hand edit or pre-gate import with no mission) is still listed but its entry
-says that every `SetMilestone`, `RevisePlan` or recorded assessment on it will
-be `PlanNotReady` until it is paused or repaired, with no second `inspect` per
+says that every `SetMilestone`, `RevisePlan` or document-appending recorded
+assessment on it will be `PlanNotReady` until it is paused or repaired (a
+preview, or a recording with `append_to_plan=False`, touches no document and
+is not gated — see "Assessment reports each recording sink independently"),
+with no second `inspect` per
 plan; `next_milestone` (the first unchecked
 milestone, or `None`); `match_keys`, a sorted, de-duplicated `tuple` of
 `normalise_match_key`
@@ -210,7 +214,7 @@ defaults to the UTC
 date.
 
 This view is the one plan-static read the `now` decision engine consumes
-(issue #10, next requirement).
+(see "The now engine is plan-aware with tested ranking rules").
 
 #### Scenario: One entry per active plan, ordered, others skipped
 - **WHEN** plans `zeta` (active), `alpha` (active), `mid` (active) and one
@@ -267,7 +271,8 @@ This view is the one plan-static read the `now` decision engine consumes
 study actions and SHALL consume active plans through exactly one call to
 `PlanApplication().get_active_guidance(today=…)`, where `today` is the date
 of the same instant `generated_at` records. It SHALL apply these rules, in
-this order (design §3, D-5):
+this order (the plan-application-seam design, §3; decision D-5 of its
+council plan):
 
 1. Candidates are collected as before; a failure to read plans at all SHALL
    degrade to a `warnings` entry, never a failed recommendation, and SHALL be
@@ -440,8 +445,8 @@ on the revision candidate, translating its `ValueError` to `InvalidField`.
 A revision whose only content is a learning record that already exists SHALL
 write nothing (no save, bytes and `updated` untouched — the guarantee the
 store's `record_learning` always gave); a duplicate record beside another
-field change SHALL still be one save, and an empty revision remains the
-Phase-1 "touch".
+field change SHALL still be one save, and an empty revision remains a
+"touch" (one save, `updated` bumped, nothing else changed).
 
 #### Scenario: The seam follows the store's rule
 - **WHEN** `store.append_learning_record` is replaced by a function that

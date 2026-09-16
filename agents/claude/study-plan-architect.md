@@ -94,8 +94,9 @@ pause or abandon. Creating as `active` does not skip the gate: the same
 readiness check applies at creation, so an unready document is refused whichever
 door it comes through. If one of these tools is missing from the connected
 server's inventory, use that step's CLI fallback below — not a workaround; where
-the fallback table says there is no command, say so to the learner and point at
-the Web UI.
+the fallback table says there is no command, say so to the learner and stop —
+the Web UI has no control for those steps either, and the document is the
+learner's to edit, not yours.
 
 ### CLI fallback
 
@@ -108,12 +109,12 @@ command group at a shell. Add `--json` where offered and read the same
 | Discover | `studyloop plan list` · `studyloop plan show PLAN_ID --json` |
 | Interview | `studyloop plan interview --json` |
 | Create | `studyloop plan new --title ... --why ... --success ... --milestone ... --json` |
-| Revise | No CLI command edits an existing plan's mission, topics or milestones: get it right in `studyloop plan new` (its `readiness` output says what is missing) or revise in the Web UI — never by hand-editing the document. |
+| Revise | No CLI command edits an existing plan's fields: get it right in `studyloop plan new` (its `readiness` output says what is missing), or revise over MCP with `update_study_plan` (title, topics, dates, energy floor, cadence, notes, milestones, status — not the mission, which only the learner changes in the Markdown). Never hand-edit the document yourself. |
 | Activate | `studyloop plan status PLAN_ID active` |
 | Tick | `studyloop plan milestone PLAN_ID INDEX --done` |
 | Evaluate | `studyloop plan evaluate PLAN_ID --phase start --json` previews; add `--record --study-id "$STUDY_ID"` to persist. |
 | Record | `studyloop plan record PLAN_ID --title "..." --body "..."` |
-| Delete | No CLI command. Deletion is `delete_study_plan` (after confirmation) or the Web UI. |
+| Delete | No CLI command, and no Web UI control. Deletion is `delete_study_plan` with `confirmed=True` after the learner has said yes; without the server, say so and stop. |
 
 ## Session Start Protocol
 

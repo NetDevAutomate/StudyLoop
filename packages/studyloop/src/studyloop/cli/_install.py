@@ -14,7 +14,7 @@ from studyloop.installers import (
     install_workspace_tools,
     require_repo_root,
 )
-from studyloop.mcp.inventory import PLAN_TOOL_NAMES
+from studyloop.mcp.inventory import LEARNING_RECORD_TOOL, PLAN_TOOL_NAMES
 from studyloop.planning.boundaries import NOT_AUTOMATIC
 
 
@@ -90,20 +90,24 @@ def _plan_capability_lines() -> list[str]:
     """What the installed definitions can do with study plans — and what stays manual.
 
     Built from the two constants the public docs are pinned to
-    (``studyloop.mcp.inventory.PLAN_TOOL_NAMES``,
+    (``studyloop.mcp.inventory.PLAN_TOOL_NAMES`` + ``LEARNING_RECORD_TOOL``,
     ``studyloop.planning.boundaries.NOT_AUTOMATIC``), so this text cannot claim
-    a tool the server lacks or an automation the product does not have. Which
-    harness definitions attach the ``studyloop`` server is a per-harness fact
-    the doc section named here states; the installer does not restate it.
+    a tool the server lacks or an automation the product does not have. The
+    nine are *lifecycle* tools; ``record_plan_learning`` is the tenth plan-named
+    tool and is named separately, as the docs count it. Which harness
+    definitions attach the ``studyloop`` server is a per-harness fact the doc
+    section named here states; the installer says so and does not restate it.
     """
     tools = ", ".join(PLAN_TOOL_NAMES)
-    *first, last = NOT_AUTOMATIC[:-1]
+    *first, last = NOT_AUTOMATIC
     boundary = ", ".join(first) + f", or {last}"
     return [
         "",
         f"[bold]Study plans:[/bold] the [cyan]studyloop[/cyan] MCP server exposes "
-        f"{len(PLAN_TOOL_NAMES)} plan tools ({tools}) to any agent process it is registered "
-        "with; the Web UI's [bold]Plan with architect[/bold] starts a planning-purpose session.",
+        f"{len(PLAN_TOOL_NAMES)} plan lifecycle tools ({tools}) plus "
+        f"{LEARNING_RECORD_TOOL} to any agent process it is registered with — whether "
+        "a given harness definition registers that server is per-harness; the Web UI's "
+        "[bold]Plan with architect[/bold] starts a planning-purpose session.",
         f"  An active plan gives plan-aware guidance with tested ranking rules; "
         f"it does not {boundary}.",
         '  See docs/agent-install.md, "Study-plan tools over MCP".',

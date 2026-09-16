@@ -83,10 +83,15 @@ may be active.
 
 Instead of filling in the form yourself, be interviewed. The
 `study-plan-architect` persona runs the mission-first interview described
-above, then evaluates the plan against real study evidence at the start,
-middle, and end of every session run against it. It ships to every harness —
-see [Connect your AI coding tool](agent-install.md) for the native start
-command on your harness. The launcher-driven form works everywhere:
+above, and it is instructed to check the plan against real study evidence at
+explicit start, mid, and end checkpoints during a session you ask it to work
+on. Those checkpoints run when you or the architect ask for them: StudyLoop
+never fires them from session events and never binds the conversation to a
+plan (see [Deliberately not automatic](#deliberately-not-automatic)). The
+persona definitions ship to every harness — see
+[Connect your AI coding tool](agent-install.md) for the native start command
+on yours; which harness definitions also attach the `studyloop` MCP server is
+a per-harness fact, stated there. The launcher-driven form works everywhere:
 
 ```bash
 studyloop plan architect
@@ -103,14 +108,22 @@ appears in the list when the interview creates it. If a session is already
 running, the console offers to reattach to it or end it first, exactly as a
 normal start does.
 
-Whichever door starts it, the architect works from a planning brief — the
-interview questions, an evidence seed from your study history, and the plans
-that already exist — and creates, revises, activates, and evaluates plans
-through the same plan tools an MCP-connected agent uses (see
+The planning brief — the interview questions, an evidence seed from your
+study history, and the plans that already exist — is built into the persona
+on the Web door (`purpose=planning`). An architect started from a shell or
+from a harness gathers the same material itself: over MCP with
+`get_planning_interview`, or with `studyloop plan interview`, which prints the
+questions and the seed and starts no agent. From there the architect creates,
+activates, and evaluates plans through the same plan tools an MCP-connected
+agent uses (see
 [Study-plan tools over MCP](agent-install.md#study-plan-tools-over-mcp)),
 falling back to `studyloop plan …` at a shell when its harness has no
-`studyloop` server. Activation is readiness-gated on every one of those
-paths, and deleting a plan needs your explicit confirmation. The
+`studyloop` server. Two operations have no CLI command — revising an existing
+plan's fields and deleting a plan — so an architect without the server says
+so instead of improvising: both need an MCP-connected session
+(`update_study_plan`, `delete_study_plan`) or the Web API; the Web UI itself
+offers neither control, and a plan's mission changes only by editing its
+Markdown. Activation is readiness-gated on every one of those paths. The
 `record_plan_learning` tool the second-brain wind-down calls before any
 projection (see [second-brain.md](second-brain.md)) is part of the same set.
 
@@ -138,21 +151,65 @@ studyloop plan status PLAN_ID active
 Run `studyloop plan interview` to print the questions an agent-led planning
 conversation should work through. It does not itself start an agent.
 
+## Recording, retries, and deletion
+
+A few behaviours are the same on every door and worth knowing before you
+script against plans or ask an agent to:
+
+- **A recorded checkpoint reports each write.** Recording writes to two
+  places: the checkpoint log in the session database and the plan document.
+  When one of those writes fails the evaluation is still returned — it
+  succeeded — and the result says which write did not land. Over MCP that is
+  `db_write`, `document_write` and `recording_complete: false` with the reason
+  in `warnings`; at the terminal `studyloop plan evaluate … --record` prints
+  `Checkpoint recorded.` only when both writes saved, otherwise `Checkpoint
+  partially recorded — database: …, document: …` (or `Checkpoint not
+  recorded` when neither landed), still exiting 0; the Web UI shows the same
+  three outcomes after **Record checkpoint**. A preview is "not recorded";
+  "partially recorded" is a different thing and is never rounded up.
+- **Milestone flags are retry-safe; omitting them toggles.** `studyloop plan
+  milestone PLAN_ID 0 --done` (or `--undone`) sets the state you asked for,
+  so running it twice is safe. Without a flag the command reads the current
+  state and sets its opposite — a toggle, which a blind retry undoes. The MCP
+  `set_study_plan_milestone(plan_id, index, done)` is always a set. The Web
+  checkbox uses a toggle request, fine for a click and not safe to replay; a
+  caller that needs replay safety states the desired state (`PATCH` with
+  `milestones`, or the CLI flags).
+- **A hand-edited active plan that is no longer complete is paused or
+  repaired before it is written to.** Reads and previews still work; a
+  milestone, a revision or a recorded checkpoint that appends to the document
+  is refused with the blockers named until you pause the plan
+  (`studyloop plan status PLAN_ID paused`) or repair the missing parts.
+- **Deletion is explicit on every door, and history is kept.** The Web UI has
+  no delete control; its API's `DELETE /api/plans/{id}` treats the request
+  itself as the confirmation. Over MCP `delete_study_plan` is refused unless
+  `confirmed=true`, and the architect persona asks you first. The CLI has no
+  delete command. Deleting a plan removes the document and keeps its
+  checkpoint history in the session database.
+
 ## Plan-aware now
 
 An active plan changes what StudyLoop recommends. `studyloop now`, the Web
 **Today** card, the daily `recap`, and the MCP `get_next_action` tool all read
 one recommendation result, and that result considers every active plan: the
 action that advances a plan's next milestone is named with the plan and the
-milestone it serves, a plan with no other evidence still gets its next
-milestone suggested, and a plan whose energy floor is above your current
-energy has that milestone deferred with a reason rather than dropped. This is
-plan-aware guidance with tested ranking rules — a bias, not a filter: an
-overdue review or a fresh struggle on an unrelated topic can still outrank new
-milestone work, and with no active plan the recommendation is exactly what it
-was before plans existed. The ranking rules are tested; whether the primary is
-the action *you* would take is a separate judgement, recorded per scenario in
-the project's rubric receipt rather than claimed here.
+milestone it serves; a **ready** plan whose next milestone is within your
+current energy gets that milestone suggested even when no other evidence
+points at it; and a plan whose energy floor is above your current energy has
+that milestone deferred with a reason rather than dropped. An active plan that
+is **not ready** — a hand edit removed its mission or its milestones — is
+listed with a warning naming what to repair; it still biases related work,
+but no milestone is suggested for it until it is paused or repaired. A plan
+whose milestones are all checked appears as a completion action instead of
+new work. This is plan-aware guidance with tested ranking rules — a bias, not
+a filter: an overdue review or a fresh struggle on an unrelated topic can
+still outrank new milestone work. With no active plan the recommendation is
+unchanged; a plan that cannot be read adds a warning and nothing else. The
+ranking rules are tested; whether the primary is the action *you* would take
+is a separate judgement. Five frozen scenarios and the engine's primaries are
+in the project's rubric receipt
+(`docs/architecture/plan-integration/receipts/now-rubric-2026-09-16.md`),
+whose owner-verdict column is still pending.
 
 ## Deliberately not automatic
 
@@ -162,7 +219,8 @@ A plan biases guidance and gives agents a full set of lifecycle tools. It does
 - **bind a live study session to a plan** — starting a study session never
   selects a plan and never stores a plan id on the session; the planning
   session the architect runs in is labelled `planning`, and that label is all
-  it persists.
+  it persists. A planning session takes the same single session slot as any
+  other session: one live session at a time, and no second session authority.
 - **run checkpoints from session events** — start, mid, and end evaluations
   happen when you (or the architect) ask for them; a preview writes nothing,
   and only an explicit record is kept.
@@ -172,8 +230,15 @@ A plan biases guidance and gives agents a full set of lifecycle tools. It does
   deterministically; none is a hidden singleton.
 - **turn a plan into a filter** — off-plan study is never blocked, and urgent
   reviews or struggles can outrank plan work.
-- **structure the manual form's brain dump** — the free text is saved as
-  context; the architect interview is the door for an agent-led decomposition.
+- **schedule recurring planning sessions** — a planning session starts only
+  when you ask for one, from the Web control or the launcher; nothing
+  re-opens the interview on a timer or books the next one.
+
+Two related limits are facts about a door rather than automations StudyLoop
+refuses: the manual form's free-text brain dump is saved as context and never
+decomposed into the structured fields (the architect interview is the door for
+an agent-led decomposition), and the Web **Plan with architect** control
+carries an optional subject, not that brain dump.
 
 These boundaries are stated here so that a plan never appears more connected
 than it is. See the [roadmap](roadmap.md) for the intended continuity work.

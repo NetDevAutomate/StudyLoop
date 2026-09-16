@@ -44,15 +44,17 @@ unchanged: `list --json` emits the `StudyPlan.summary()` key set per plan;
   and no `Traceback`
 
 
-### Requirement: The CLI maps every seam refusal to one line and exit 1
+### Requirement: The CLI maps every seam refusal through one shared mapping and exit 1
 Every `studyloop plan` command that reads or writes through `PlanApplication`
 SHALL catch `PlanError` and map it in one place (`_fail_for`): `PlanNotFound`
 → `No study plan with id '<id>'. Try: studyloop plan list`; `PlanNotReady` →
 `Cannot activate '<id>' — the plan is incomplete.` followed by the blockers
-and nudges; `PlanConflict` → `A study plan with id '<id>' already exists.
+and nudges (several lines — this is the one mapping that prints more than
+one); `PlanConflict` → `A study plan with id '<id>' already exists.
 Choose another id.`; `InvalidPlanId` → `Invalid plan id '<id>': <reason>`;
 `InvalidField` → `Invalid value: <reason>`; `InvalidMilestone` → `No such
-milestone on '<id>': <reason>`. When the refused `PlanNotReady` carries
+milestone on '<id>': <reason>`, where `<reason>` is the seam's own text (`No
+milestone at index <i> (plan has <n>)`). When the refused `PlanNotReady` carries
 `already_active` (the stored plan was active and incomplete before the write —
 a `record`, `milestone` or `evaluate --record` on a hand-edited document), the
 mapping SHALL add a line telling the learner to pause the plan
@@ -106,7 +108,9 @@ from-milestone` and `brain publish`'s plan selection — SHALL read through
 `SetMilestone`. With a flag the state is set as asked, so running the same
 command twice is safe; without a flag the current state is read through the
 seam and its opposite is set. A negative index SHALL be refused exactly like
-one past the end (`No milestone at index -1 …`, exit `1`, document unchanged).
+one past the end — the seam's `InvalidMilestone` through the shared mapping
+(`No such milestone on '<id>': No milestone at index -1 (plan has <n>)`),
+exit `1`, document unchanged.
 
 #### Scenario: Set twice stays set, no flag toggles
 - **WHEN** `plan milestone <id> 0 --done` is run twice and then `plan

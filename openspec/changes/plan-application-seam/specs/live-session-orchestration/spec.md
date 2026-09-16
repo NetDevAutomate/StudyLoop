@@ -16,9 +16,15 @@ SHALL NOT create a plan and SHALL NOT store a plan id anywhere; the architect
 creates plans through the plan tools during the session. The only planning
 fact the live-session state carries is `purpose`, written on every start
 (never inherited through the state file's read-merge-write), and
-`GET /api/session/state` SHALL expose it for the reconnect label, defaulting to
-`focus` when the state predates the key or the overlay branch rebuilt the
-payload. If the planning brief cannot be built, the start SHALL refuse with a
+`GET /api/session/state` SHALL expose it for the reconnect label with one
+precedence on every path it answers from — the live-slot overlay and the
+file-only path a CLI-started session takes: an explicitly persisted
+`purpose` wins; otherwise a state whose persisted `mode` is the planning
+persona's (`persona_mode_for("planning")`, the mode `studyloop plan
+architect` writes without a `purpose` key) reports `planning`; anything else
+— a state that predates the key, or an overlay that rebuilt the payload —
+reports `focus`. The topic string SHALL never determine the purpose. If the
+planning brief cannot be built, the start SHALL refuse with a
 structured error (`error`, `purpose`, `repair`; HTTP 500) and leave the
 single-session slot free — no reservation, no live slot, no study row. Both
 transports (`pty` and `acp`) SHALL follow this requirement identically.
@@ -55,6 +61,13 @@ transports (`pty` and `acp`) SHALL follow this requirement identically.
 - **THEN** the session state's `purpose` is `planning` and
   `GET /api/session/state` reports `purpose == "planning"` alongside the live
   session's id and topic
+
+#### Scenario: A CLI-started architect is labelled from its persisted mode
+- **WHEN** the state file was written by `studyloop plan architect` (`mode ==
+  "plan-architect"`, no `purpose` key) and `GET /api/session/state` is called
+- **THEN** the body reports `purpose == "planning"`; a file with `mode ==
+  "focus"` and topic `Study plan` reports `focus`; a file carrying `purpose ==
+  "focus"` beside `mode == "plan-architect"` reports `focus`
 
 #### Scenario: Brief failure releases the session claim
 - **WHEN** `PlanApplication.prepare_planning` raises during a `planning` start

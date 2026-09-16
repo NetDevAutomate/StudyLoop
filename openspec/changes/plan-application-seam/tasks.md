@@ -194,18 +194,19 @@ Branch: `fix/plan-integration-bugs` (RED at `3a4f6b01`). §5 stream: `feat/lexic
       smoke test addresses the single action card by that class). `web/routes/now.py` needed no edit. Protected files
       `git diff 0a20a796 -- tests/test_learning_decision.py tests/test_web_now.py tests/test_recap_mastery_voice.py`
       → 0 lines.
-- [x] **T3.4** (engineering deliverable landed `c27a34d5`; **the owner verdict is an owner action, not an agent task** —
-      recorded as open item 2 of `receipts/issue-closeout-draft-2026-09-16.md`; ticked at archive so the change can close, with the
-      `PENDING` column left honest in the receipt) Human rubric receipt (D-16): five frozen scenarios scored "would I do the primary?", committed
-      as `docs/architecture/plan-integration/receipts/now-rubric-2026-09-16.md`. **Receipt landed, scoring
-      outstanding** (re-opened by council review 3, F6: a scored rubric is the DoD; an unscored one is not
-      "done"). **As landed:** the five scenarios were
-      run unattended and the emitted primary + rule-cited rationale recorded per row; the owner-verdict column is
-      **PENDING** — no human was present and none was faked. Owner action: replace `PENDING` with yes/no + one
-      line per row; a `no` on rows 1–4 is a council finding, not an agent edit. Delta spec: the guidance requirement loses "(not yet
-      consumed)" and a new requirement "The now engine is plan-aware with tested ranking rules" carries nine
+- [x] **T3.4a** (engineering, `c27a34d5`) Human rubric receipt (D-16), the engineering half: five frozen scenarios
+      run unattended; the emitted primary + rule-cited rationale committed per row as
+      `docs/architecture/plan-integration/receipts/now-rubric-2026-09-16.md`. The owner-verdict column is
+      **PENDING** — no human was present and none was faked. Delta spec: the guidance requirement loses "(not yet
+      consumed)" and a new requirement "The now engine is plan-aware with tested ranking rules" carries twelve
       scenarios. `docs/study-plans.md`: the now/Today "does not do yet" bullet removed; the learner-facing paragraph
-      on plan-aware guidance is T6.1's.
+      on plan-aware guidance is T6.1's, and it says the verdicts are pending (council review 5).
+- [ ] **T3.4b** (owner; blocks calling #10's D-16 DoD done) Score the rubric: replace each `PENDING` with yes/no +
+      one line, record the tree sha evaluated, re-read row 3 against `64dc09f7`. A `no` on rows 1–4 is a council
+      finding, not an agent edit. Re-opened by council review 3 (F6) and held open by review 5 (GPT F1, Grok F4,
+      kimi): a scored rubric is the DoD; an unscored one is not "done", and the checkbox must not say otherwise.
+      When scored, update the status sentence in `docs/study-plans.md` "Plan-aware now" — the contract test
+      `test_study_plans_doc_uses_the_bounded_release_language` fails until it moves with the receipt.
 - [x] **T3.5** (RED `4f7a5e60` 9 failed / 1 passed → GREEN `c30330a0`; parity-test follow-through `65bde13c`)
       `get_next_action(..., interleave="off")`: a plain string validated against `get_args(InterleaveMode)` with the
       existing `ToolError` wording, cast and forwarded to `build_now_plan`; `@consistent_read` kept; only that function

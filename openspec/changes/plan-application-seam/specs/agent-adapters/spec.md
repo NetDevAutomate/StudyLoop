@@ -35,8 +35,8 @@ SHALL be byte-identical to the pre-`brief` output, so no existing session's
 The canonical study-plan-architect persona (`agents/shared/personas/plan-architect.md`,
 the body every harness projection carries verbatim after its own header) SHALL
 carry one tooling section that introduces the plan tools over MCP **before** the
-CLI fallback. The MCP subsection SHALL name the nine plan lifecycle tools of
-design §4 — `list_study_plans`, `get_study_plan`, `get_planning_interview`,
+CLI fallback. The MCP subsection SHALL name the nine plan lifecycle tools (the
+plan-application-seam design, §4) — `list_study_plans`, `get_study_plan`, `get_planning_interview`,
 `create_study_plan`, `update_study_plan`, `set_study_plan_status`,
 `set_study_plan_milestone`, `evaluate_study_plan`, `delete_study_plan` — in
 lifecycle order (discover → interview → create as `draft` → revise → activate →
@@ -51,12 +51,15 @@ the `studyloop plan` command for every lifecycle step that has one
 `record`) and SHALL say plainly which steps the CLI cannot perform (revising an
 existing plan's fields; deletion) rather than inventing a command. A tool
 missing from the connected server's inventory SHALL route to that step's CLI
-fallback. The interview protocol (one question per turn) SHALL be unchanged,
+fallback where one exists; for the two steps with no CLI command (revising an
+existing plan's fields, deletion) the persona SHALL have the architect say so
+to the learner and stop, never improvise a shell edit of the document. The
+interview protocol (one question per turn) SHALL be unchanged,
 and the `focus` persona SHALL be byte-identical before and after this change.
 
 #### Scenario: Planning persona names the nine tools before the fallback
 - **WHEN** `build_canonical_persona(persona_mode_for("planning"), "Study plan", 5, brief="- item")` is rendered
-- **THEN** the result names all nine design-§4 tool names inside the MCP
+- **THEN** the result names all nine lifecycle tool names inside the MCP
   subsection, the MCP subsection precedes the `CLI fallback` subsection and
   closes before it, no `studyloop plan` recipe appears inside the MCP
   subsection, and the `CLI fallback` subsection names `studyloop plan
