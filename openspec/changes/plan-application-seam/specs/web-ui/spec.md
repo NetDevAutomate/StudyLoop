@@ -115,3 +115,76 @@ readiness blocks carry the `authoring.readiness()` key set.
 - **THEN** the response is `400` and `GET /api/plans/{id}` still reports
   `status == "draft"` — the transition is not committed before the field is
   refused
+
+
+### Requirement: The milestone checkbox is an idempotent set
+`POST /api/plans/{id}/milestones/{index}/toggle` SHALL read the milestone's
+current state through the seam and apply one `SetMilestone(plan_id, index,
+done=<opposite>)` intent — never a route-side write and never the full-list
+`RevisePlan` substitute the review-1 corrections used in the interim. The
+seam's `SetMilestone` is a *set*, not a toggle: applying the same intent twice
+leaves the same document, so a retried request cannot flip a box twice. An
+index the plan does not have — past the end **or negative** — SHALL be the
+seam's `InvalidMilestone`, mapped to `404`, with the document byte-identical
+afterwards. The response body SHALL keep its pre-seam keys: `{"updated": true,
+"index": <i>, "done": <bool>, "plan": <summary>}`.
+
+#### Scenario: Toggle flips and flips back
+- **WHEN** the toggle is posted twice for milestone `0` of a two-milestone plan
+- **THEN** the first response has `done == true` and `plan.milestone_done ==
+  1`; the second has `done == false`; each request applied exactly one
+  `SetMilestone` whose `done` was the opposite of the state it read
+
+#### Scenario: Out-of-range and negative indices
+- **WHEN** the toggle is posted for index `42` or `-1`
+- **THEN** the response is `404` and `GET /api/plans/{id}/markdown` is
+  unchanged
+
+### Requirement: Delete is confirmed by the verb and retains checkpoint history
+`DELETE /api/plans/{id}` SHALL apply `DeletePlan(plan_id, confirmed=True)` —
+the HTTP verb is the confirmation this route contract has always had — and
+return `200` with `{"deleted": true, "plan_id": "<id>"}`. The canonical
+document and its derived index row are removed; the durable checkpoint log
+(`study_plan_checkpoints`) is retained. An unknown id SHALL be `404` and a
+malformed id `400`, both before anything is removed.
+
+#### Scenario: Delete removes the document and keeps the log
+- **WHEN** a plan with one recorded checkpoint is deleted
+- **THEN** the response is `200` with `deleted == true`; `GET /api/plans/{id}`
+  is `404`; a second `DELETE` is `404`; the checkpoint log for that id still
+  holds the row; the derived index no longer lists the plan
+
+### Requirement: Checkpoint recording reports each sink
+`POST /api/plans/{id}/evaluate` SHALL call `PlanApplication.assess` with
+`record=True` and return `201` with `recorded`, `db_write`, `document_write`,
+`evaluation` and `markdown`. `db_write` and `document_write` are each
+`"not_requested"`, `"saved"` or `"failed"`; `recorded` SHALL be `true` only
+when no requested sink failed. A failed sink is a reported outcome, not an
+error response: the evaluation succeeded and the client is entitled to it, so
+the status stays `201`. `GET /api/plans/{id}/evaluate` SHALL be
+`assess(record=False)` and write to neither sink. The route SHALL hold no
+phase check of its own: an unknown phase on `POST` is the seam's
+`InvalidField` → `400`, judged after the plan is found (`404` first).
+
+#### Scenario: Both sinks saved
+- **WHEN** `POST /api/plans/{id}/evaluate` is called with `{"phase": "start"}`
+  and both writes succeed
+- **THEN** the body has `recorded == true`, `db_write == "saved"`,
+  `document_write == "saved"`
+
+#### Scenario: Database write fails
+- **WHEN** the checkpoint log write returns `False` or raises during
+  `POST /api/plans/{id}/evaluate`
+- **THEN** the response is still `201`; `recorded == false`, `db_write ==
+  "failed"`, `document_write == "saved"`; `evaluation.warnings` contains
+  `checkpoint not saved to the database`; and the plan document carries the
+  checkpoint row
+
+#### Scenario: Document sink not requested
+- **WHEN** the body has `"append_to_plan": false`
+- **THEN** `document_write == "not_requested"`, `recorded == true`, the
+  document has no new checkpoint and the log has the row
+
+#### Scenario: Preview writes nothing
+- **WHEN** `GET /api/plans/{id}/evaluate?phase=end` is called
+- **THEN** neither the checkpoint log nor the document gains a row
