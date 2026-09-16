@@ -212,7 +212,18 @@ to any connected agent. Every tool
 goes through the same plan application layer the CLI and Web UI use, so the
 readiness gate, the lifecycle statuses and the "the Markdown document is the
 source of truth" rule are identical on every surface. An agent that cannot
-reach the MCP server can do the same work with `studyloop plan …` at a shell.
+reach the MCP server can do most of this work with `studyloop plan …` at a
+shell; two operations have no CLI command — revising an existing plan's
+mission, topics or milestones, and deleting a plan — and need the Web UI or an
+MCP-connected session. Whether the tools are reachable depends on the agent
+process having the `studyloop` server registered, not on the persona: today the
+harness-launched architect definitions for Kiro CLI
+(`agents/kiro/study-plan-architect.json`, no `mcpServers`) and Claude Code
+(`agents/claude/study-plan-architect.md`, `tools: Read, Write, Grep, Bash`) do
+not attach it, so an architect started from those two harnesses takes the CLI
+fallback the persona describes; wiring them is tracked as Phase 6, T6.1 of the
+plan-integration change. A Web-launched architect (`purpose=planning`) carries
+the same persona and uses whichever servers its agent process is connected to.
 
 | Tool | Purpose |
 |---|---|

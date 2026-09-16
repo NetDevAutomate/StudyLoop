@@ -176,13 +176,16 @@ production inventory — completing the nine of design §4 — each a thin adapt
 that makes exactly one `studyloop.planning.PlanApplication` call, imports no
 storage, index, authoring or evaluation module (D-6), and maps every seam
 refusal through the same `<kind>: <message>` `ToolError` mapping as the six
-above (the domain error chained as `__cause__`):
+above (the domain error chained as `__cause__` — an in-process requirement on
+the adapter, checked by the delegation tests; the stdio transport carries the
+prefixed refusal text only, since JSON-RPC does not serialise an exception
+chain):
 
 | Tool | Seam call |
 |---|---|
 | `set_study_plan_milestone(plan_id, index, done)` | `apply(SetMilestone(plan_id, index, done))` → `PlanDetail.to_json_dict()` |
 | `evaluate_study_plan(plan_id, phase, study_id="", record=False)` | `assess(AssessPlan(plan_id, phase, study_id, record))` → `AssessmentResult.to_json_dict()` |
-| `delete_study_plan(plan_id, confirmed=False)` | `apply(DeletePlan(plan_id, confirmed))` → `DeleteResult.to_json_dict()` (`{"deleted": true, "plan_id"}`) |
+| `delete_study_plan(plan_id, confirmed=False)` | `apply(DeletePlan(plan_id, confirmed))` → `DeleteResult.to_json_dict()` (`{"deleted": true, "plan_id": "<id>"}`) |
 
 `set_study_plan_milestone` SHALL take `done` as a required boolean with no
 default and forward it as given — set, not toggle: the tool SHALL make no

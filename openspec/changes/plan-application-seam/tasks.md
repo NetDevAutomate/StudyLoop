@@ -356,7 +356,7 @@ Branch: `fix/plan-integration-bugs` (RED at `3a4f6b01`). §5 stream: `feat/lexic
       `agents/opencode/study-plan-architect.md` (body after frontmatter), `agents/kiro/study-plan-architect/persona.md`
       (byte copy); `agents/manifest.json` two hashes moved (dates only where the hash moved, as `edc65322`);
       `.secrets.baseline` refreshed for those two digests. Delta spec: `agent-adapters` "Architect persona prefers
-      the MCP plan tools" (4 scenarios); `openspec validate` valid. **Not changed (owner item):** Kiro's
+      the MCP plan tools" (3 scenarios — the report said 4; corrected by review 4); `openspec validate` valid. **Not changed (owner item):** Kiro's
       `study-plan-architect.json` is pinned to carry no `mcpServers` (`tools: ["@builtin"]`) and Claude's frontmatter
       lists `Read, Write, Grep, Bash` — in those two harnesses the architect takes the CLI fallback until the header
       question is decided (Phase 6 / T6.1 territory).

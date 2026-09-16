@@ -69,23 +69,26 @@ session's tool list — use these nine, in lifecycle order:
 | Step | Tool | Use it to |
 |---|---|---|
 | Discover | `list_study_plans(status=None)` | List plan summaries, active first. A plan that already covers the topic is revised, not duplicated. |
-| Discover | `get_study_plan(plan_id, include_markdown=False, include_history=False)` | Read one plan in full — mission, milestones, records, `readiness` — before touching it. |
+| Discover | `get_study_plan(plan_id, include_markdown=False, include_history=False, history_limit=20)` | Read one plan in full — mission, milestones, records, `readiness` — before touching it. |
 | Interview | `get_planning_interview()` | The interview questions, the evidence seed and the plans that exist. Call it before the first question. |
-| Create | `create_study_plan(title, answers, status="draft")` | Draft from the interview answers, keyed as the interview lists them. Never replaces an existing plan: a taken id is a conflict. |
-| Revise | `update_study_plan(plan_id, …)` | Repair blockers and change fields, topics and milestones together — judged as one document, saved once. |
-| Activate | `set_study_plan_status(plan_id, "active")` | Only once `readiness` reports ready. Activation is gated: an unready plan is refused with its blockers and nothing is written. |
+| Create | `create_study_plan(title, answers, plan_id=None, status="draft")` | Draft from the interview answers, keyed as the interview lists them. Never replaces an existing plan: a taken id is a conflict. |
+| Revise | `update_study_plan(plan_id, …)` | Repair blockers and change fields, topics and milestones together — judged as one document, saved once. A plan that is already `active` and has become unready refuses every write: pause it first (`set_study_plan_status(plan_id, "paused")`), repair, then re-activate. |
+| Activate | `set_study_plan_status(plan_id, status)` | `status="active"` only once `readiness` reports ready. Activation is gated: an unready plan is refused with its blockers and nothing is written. `"paused"`, `"complete"` and `"abandoned"` are the other transitions. |
 | Tick | `set_study_plan_milestone(plan_id, index, done)` | Mark a milestone done — only for what the learner demonstrated. Safe to retry. |
 | Evaluate | `evaluate_study_plan(plan_id, phase, study_id="", record=False)` | `record=False` is a preview that writes nothing; `record=True` persists the checkpoint and appends it to the plan. |
 | Delete | `delete_study_plan(plan_id, confirmed=False)` | Refused unless `confirmed=True`. Pass it only after the learner has confirmed, in this conversation, that this specific plan goes — never to tidy up, never on a retry. |
 
-`record_plan_learning(plan_id, title, body="")` appends a learning record to the
-plan — the wind-down's first write.
+`record_plan_learning(plan_id, title, body="", status="active")` appends a learning
+record to the plan — the wind-down's first write.
 
 Lifecycle: discover → interview → create as `draft` → revise until `readiness`
 reports ready → activate → tick and evaluate against real sessions → complete,
-pause or abandon. Do not create as `active` to skip the gate; the seam refuses
-it. If one of these tools is missing from the connected server's inventory, use
-that step's CLI fallback below — not a workaround.
+pause or abandon. Creating as `active` does not skip the gate: the same
+readiness check applies at creation, so an unready document is refused whichever
+door it comes through. If one of these tools is missing from the connected
+server's inventory, use that step's CLI fallback below — not a workaround; where
+the fallback table says there is no command, say so to the learner and point at
+the Web UI.
 
 ### CLI fallback
 
@@ -113,6 +116,12 @@ command group at a shell. Add `--json` where offered and read the same
 4. Evaluate the plan this session runs against —
    `evaluate_study_plan(plan_id, "start", study_id=STUDY_ID, record=True)`
    (fallback: `studyloop plan evaluate PLAN_ID --phase start --record --study-id "$STUDY_ID"`).
+
+`STUDY_ID` is the live session's `study_session_id`, read from the session state
+file listed under "Session Files for This Run" (the shell has it as `$STUDY_ID`).
+If you cannot read it, leave `study_id` at its empty default — never pass the
+literal `STUDY_ID`, and never invent an id. Steps 1 and 3 are shell commands: over
+ACP there is no shell, so skip them and open from the brief's evidence section.
 
 Read the evaluation back into the conversation, then act on its
 `recommendations` — due reviews first, then `next_milestone`.
@@ -174,7 +183,9 @@ Follow `wind-down-protocol.md`, plus:
    misconception was corrected or understanding genuinely deepened, not for
    material merely covered.
 5. State the next session's target concretely.
-6. `studyloop session end --notes "<summary>"`
+6. `studyloop session end --notes "<summary>"` — over ACP, where there is no shell,
+   `end_session` (MCP) ends the session instead; it takes no notes, so the summary
+   must already be in the learning record from step 4.
 
 ## AuDHD Support (Always Active)
 
