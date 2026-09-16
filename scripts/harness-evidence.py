@@ -437,6 +437,22 @@ def _launch_session(
             details["agent_process_in_pane"] = _wait(
                 lambda: tmux.pane_has_children(main_pane), timeout=20
             )
+            # A full-screen TUI (grok with seven MCP servers, opencode) can take
+            # longer than a fixed settle to draw; a prompt typed into a blank
+            # pane is dropped. Wait for the first rendered lines, then settle.
+            details["tui_rendered"] = _wait(
+                lambda: (
+                    len(
+                        [
+                            ln
+                            for ln in tmux.capture_pane(main_pane, lines=60).splitlines()
+                            if ln.strip()
+                        ]
+                    )
+                    >= 3
+                ),
+                timeout=45,
+            )
             time.sleep(settle_seconds)
             details["pane_after_settle"] = redact(tmux.capture_pane(main_pane, lines=40))
             if typed_prompt and details.get("agent_process_in_pane"):
@@ -515,29 +531,36 @@ def _count_sources(db: Path) -> dict[str, int]:
         conn.close()
 
 
-def _rows_for_session(db: Path, session_dir: str) -> list[dict[str, Any]]:
-    """Sessions rows whose recorded project path is the study session's own dir.
+def _rows_for_this_run(db: Path, harness: str, session_dir: str) -> list[dict[str, Any]]:
+    """Sessions rows produced by THIS driver run, by the cwd every exporter records.
 
-    Every harness runs with the session dir as cwd, and every exporter records
-    that cwd (``project_path``); matching on it separates the transcript THIS
-    run produced from everything else a real harness home already holds.
+    Every harness runs with the StudyLoop session dir as its cwd and every
+    exporter records that cwd as ``project_path``. The driver's scratch roots
+    carry run-unique prefixes (``sl-ev-<harness>-`` for its own sessions,
+    ``sl-lane-<harness>-`` for the pytest lane's), so matching on those
+    separates tonight's transcripts from everything else a real harness home
+    already holds -- including the lane session, whose transcript is the one
+    a harness most reliably flushes (three prompts, then ``--end``).
     """
     import sqlite3
 
-    if not db.exists() or not session_dir:
+    if not db.exists():
         return []
     conn = sqlite3.connect(db)
     conn.row_factory = sqlite3.Row
     try:
         cols = {r[1] for r in conn.execute("PRAGMA table_info(sessions)")}
-        path_col = "project_path" if "project_path" in cols else None
-        if path_col is None:
+        if "project_path" not in cols:
             return []
+        patterns = [f"%sl-ev-{harness}-%", f"%sl-lane-{harness}-%"]
+        if session_dir:
+            patterns.append(f"%{Path(session_dir).name}%")
+        where = " OR ".join("project_path LIKE ?" for _ in patterns)
         rows = conn.execute(
-            f"SELECT id, source, {path_col} AS project_path, created_at, "
-            f"(SELECT COUNT(*) FROM messages m WHERE m.session_id = sessions.id) AS messages "
-            f"FROM sessions WHERE {path_col} LIKE ?",
-            (f"%{Path(session_dir).name}%",),
+            "SELECT id, source, project_path, created_at, "
+            "(SELECT COUNT(*) FROM messages m WHERE m.session_id = sessions.id) AS messages "
+            f"FROM sessions WHERE {where}",
+            patterns,
         ).fetchall()
         return [dict(r) for r in rows]
     finally:
@@ -571,22 +594,23 @@ def item3_export(harness: str, scratch: ScratchEnv, env: dict[str, str]) -> Item
     commands.append(export.as_dict())
     counts = _count_sources(db)
     session_dir = str(launch_details.get("state_after_launch", {}).get("session_dir") or "")
-    this_session = _rows_for_session(db, session_dir) if session_dir else []
+    this_session = _rows_for_this_run(db, harness, session_dir)
     details: dict[str, Any] = {
         "launch": launch_details,
         "scratch_harness_dirs_after_session": transcripts,
         "export_db": str(db),
         "rows_by_source": counts,
         "session_dir": session_dir,
-        "rows_for_this_session": this_session,
+        "rows_for_this_run": this_session,
     }
     if export.exit_code == 0 and counts.get(harness, 0) > 0 and this_session:
         return ItemResult(
             item="3-export",
             verdict="PASS",
             decisive=(
-                f"live transcript exported: {len(this_session)} sessions row(s) for THIS "
-                f"session with source={harness!r}; rows by source={counts}"
+                f"live transcript exported: {len(this_session)} sessions row(s) from THIS "
+                f"run with source={harness!r} "
+                f"({sum(r['messages'] for r in this_session)} messages); rows by source={counts}"
             ),
             commands=commands,
             details=details,
@@ -876,8 +900,6 @@ def main(argv: list[str] | None = None) -> int:
             items.append(item1_install_and_doctor(harness, scratch, env))
         if "5" in wanted:
             items.append(item5_plan_architect(harness, live_scratch, live_env))
-        if "3" in wanted:
-            items.append(item3_export(harness, live_scratch, live_env))
         if "2" in wanted or "4" in wanted:
             lane_env = dict(os.environ)
             if args.path_prepend:
@@ -887,6 +909,10 @@ def main(argv: list[str] | None = None) -> int:
                     harness, receipts_dir, lane_env, actor=args.actor, real_auth=args.real_auth
                 )
             )
+        # Export LAST so the lane's transcript (the one a harness most reliably
+        # flushes) is already on disk when the exporter runs.
+        if "3" in wanted:
+            items.append(item3_export(harness, live_scratch, live_env))
     finally:
         if not args.keep_scratch:
             sweep_scratch(scratch)

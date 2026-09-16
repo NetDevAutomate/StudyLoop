@@ -771,6 +771,14 @@ def _isolate_session_start_harness_writes(
     monkeypatch.setattr(
         _orchestrator, "_claude_settings_path", lambda: home / ".claude" / "settings.json"
     )
+    # Grok Build's adapter pre-trusts every session dir in $GROK_HOME/
+    # trusted_folders.toml (2026-09-16); the installer and exporter resolve the
+    # same variable. Point it at the throwaway home so no unit test can reach
+    # the developer's real ~/.grok. `_REAL_GROK_HOME` above is bound at import,
+    # before this per-test override, so the guard still watches the REAL file.
+    grok_home = home / ".grok"
+    grok_home.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv("GROK_HOME", str(grok_home))
     kiro_agents = home / ".kiro" / "agents"
     for module_name in ("studyloop.adapters.kiro", "studyloop.agent_launcher"):
         module = importlib.import_module(module_name)
@@ -808,6 +816,10 @@ _REAL_HARNESS_FILES: tuple[Path, ...] = (
     _REAL_GROK_HOME / "hooks/studyloop.json",
     _REAL_GROK_HOME / "rules/session-db.md",
     _REAL_GROK_HOME / "config.toml",
+    # The grok adapter pre-trusts every session dir here (2026-09-16); a unit
+    # test that reaches _grok_setup with GROK_HOME unset would otherwise add
+    # tmp_path entries to the developer's real Grok trust list, silently.
+    _REAL_GROK_HOME / "trusted_folders.toml",
 )
 
 
