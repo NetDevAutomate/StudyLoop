@@ -190,10 +190,12 @@ hand edit or pre-gate import with no mission) is still listed but its entry
 says that every `SetMilestone`, `RevisePlan` or recorded assessment on it will
 be `PlanNotReady` until it is paused or repaired, with no second `inspect` per
 plan; `next_milestone` (the first unchecked
-milestone, or `None`); `match_keys`, a `frozenset` of `normalise_match_key`
+milestone, or `None`); `match_keys`, a sorted, de-duplicated `tuple` of
+`normalise_match_key`
 over the topics and every milestone's concepts (casefold, punctuation replaced
 by spaces, whitespace collapsed — matching is equality on the key, never a
-substring test); `target_urgency` in `overdue` (days until target `< 0`),
+substring test; a tuple, not a `frozenset`, because D-3 binds every view to
+tuples and a consumer that wants a set builds one); `target_urgency` in `overdue` (days until target `< 0`),
 `soon` (`0..7`), `later` (`> 7`) or `undated`; `energy_floor`; a
 `completion_action` string only when the plan has milestones and every one is
 done; and per-plan `warnings` for defects worked around (no milestones, a
@@ -217,9 +219,9 @@ and the Today card are unchanged by this phase, and `docs/study-plans.md`'s
 - **WHEN** an active plan has topics `["SQL", "Data-Engineering"]` and
   milestones with concepts `["Window-Function"]` (done) and `["RANK vs
   DENSE_RANK", "dense rank"]`, `["window frame"]`
-- **THEN** `match_keys == {"sql", "data engineering", "window function",
-  "rank vs dense rank", "dense rank", "window frame"}` and `next_milestone`
-  is index `1`
+- **THEN** `match_keys == ("data engineering", "dense rank", "rank vs dense
+  rank", "sql", "window frame", "window function")` — sorted, de-duplicated —
+  and `next_milestone` is index `1`
 
 #### Scenario: Urgency buckets
 - **WHEN** the target date is 30 or 1 day(s) ago, today, 1, 7, 8 or 90 days

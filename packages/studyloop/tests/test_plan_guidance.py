@@ -120,17 +120,16 @@ def test_active_guidance_one_per_active_plan_with_match_keys_and_urgency(
     # Topics and every milestone's concepts — done or not — casefolded with
     # punctuation stripped, so a candidate topic "data-engineering" or a due
     # concept "Window Function" matches by equality, never by substring.
-    assert sql.match_keys == frozenset(
-        {
-            "sql",
-            "data engineering",
-            "window function",
-            "rank vs dense rank",
-            "dense rank",
-            "window frame",
-        }
+    # Sorted, de-duplicated tuple (D-3: frozen views with tuples).
+    assert sql.match_keys == (
+        "data engineering",
+        "dense rank",
+        "rank vs dense rank",
+        "sql",
+        "window frame",
+        "window function",
     )
-    assert isinstance(sql.match_keys, frozenset)
+    assert isinstance(sql.match_keys, tuple)
     assert sql.target_urgency == "later"
     assert sql.energy_floor == 6
     assert sql.completion_action is None
@@ -139,7 +138,7 @@ def test_active_guidance_one_per_active_plan_with_match_keys_and_urgency(
     glue = guidance.plans[0]
     assert glue.target_urgency == "overdue"
     assert glue.energy_floor == 3
-    assert glue.match_keys == frozenset({"glue", "window function"})
+    assert glue.match_keys == ("glue", "window function")
     assert glue.next_milestone is not None and glue.next_milestone.index == 0
 
 
@@ -212,7 +211,7 @@ def test_active_guidance_completion_action_when_all_done(app: PlanApplication) -
     assert finished.next_milestone is None
     assert finished.completion_action is not None
     assert "Finished" in finished.completion_action
-    assert finished.match_keys == frozenset({"sql", "a", "b"})
+    assert finished.match_keys == ("a", "b", "sql")
     assert in_flight.completion_action is None
     assert in_flight.next_milestone is not None
 

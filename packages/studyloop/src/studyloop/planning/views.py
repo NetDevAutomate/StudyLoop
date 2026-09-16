@@ -91,11 +91,11 @@ def normalise_match_key(text: str) -> str:
 
     Casefold, replace punctuation (and ``_``) with spaces, collapse runs of
     whitespace, strip. ``"Data-Engineering"`` and ``"data engineering"`` are
-    the same key; ``"RANK()"`` is ``"rank"``. The ``now`` ranker applies this
-    same function to its candidates, so plan matching is *equality on the
-    key* and never a substring test (design §3 step 4) — ``"rank"`` does not
-    match ``"frank"``. Unicode is NFKC-normalised first so a full-width or
-    composed form does not defeat the equality.
+    the same key; ``"RANK()"`` is ``"rank"``. The ``now`` ranker (#10, Phase 3)
+    will apply this same function to its candidates, so plan matching is
+    *equality on the key* and never a substring test (design §3 step 4) —
+    ``"rank"`` does not match ``"frank"``. Unicode is NFKC-normalised first so
+    a full-width or composed form does not defeat the equality.
     """
     folded = unicodedata.normalize("NFKC", text).casefold()
     spaced = _NON_WORD_RE.sub(" ", folded)
@@ -694,7 +694,9 @@ class ActivePlanGuidance:
     Plan-static: computed from the document alone, no session-history scan.
     ``match_keys`` are :func:`normalise_match_key` over the topics and every
     milestone's concepts, done or not — a due review on a finished milestone's
-    concept is still plan-related repair. ``next_milestone`` is the first
+    concept is still plan-related repair — de-duplicated and sorted into a
+    tuple (D-3: views are frozen dataclasses *with tuples*; a consumer that
+    wants a set builds one). ``next_milestone`` is the first
     unchecked one. ``completion_action`` replaces a study candidate when every
     milestone is ticked (design §3 step 9). ``warnings`` name defects in this
     document that the guidance worked around rather than raised.
@@ -711,7 +713,7 @@ class ActivePlanGuidance:
     plan: PlanSummary
     readiness: ReadinessView
     next_milestone: MilestoneView | None
-    match_keys: frozenset[str]
+    match_keys: tuple[str, ...]
     target_urgency: TargetUrgency
     energy_floor: int
     completion_action: str | None
@@ -776,7 +778,7 @@ class ActivePlanGuidance:
             plan=PlanSummary.from_plan(plan, today=effective_today),
             readiness=ReadinessView.from_plan(plan),
             next_milestone=next_view,
-            match_keys=frozenset(keys),
+            match_keys=tuple(sorted(keys)),
             target_urgency=urgency,
             energy_floor=plan.energy_floor,
             completion_action=completion,
@@ -790,7 +792,7 @@ class ActivePlanGuidance:
             "next_milestone": (
                 None if self.next_milestone is None else self.next_milestone.to_json_dict()
             ),
-            "match_keys": sorted(self.match_keys),
+            "match_keys": list(self.match_keys),
             "target_urgency": self.target_urgency,
             "energy_floor": self.energy_floor,
             "completion_action": self.completion_action,
