@@ -22,6 +22,8 @@ from studyloop.settings import load_settings
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from studyloop.planning import PlanError
+
 logger = logging.getLogger(__name__)
 
 
@@ -851,6 +853,274 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
 
         row_id = park_topic(question, topic_tag=topic_tag, context=context, source="struggled")
         return {"status": "logged", "id": row_id}
+
+    # ── Study plans — discovery and authoring through the seam (D-4, D-8, D-9) ──
+    #
+    # Six thin adapters over ``studyloop.planning.PlanApplication`` (design §4):
+    # each call is one seam call with one intent, each success is the seam
+    # view's ``to_json_dict()`` (fresh containers), and each refusal is one
+    # ``ToolError`` from ``_plan_tool_error`` below. No plan policy lives here —
+    # the readiness gate, the status list, the id rules and the conflict check
+    # are the seam's, so the same refusal reads the same on the CLI, the Web
+    # and here. The three remaining tools of design §4 (milestone, evaluate,
+    # delete) land in Phase 4 (#12).
+
+    #: ``get_study_plan``'s ``history_limit`` range — the same 1..200 the Web
+    #: history route accepts (``GET /api/plans/{id}/history``, ``Query(20, ge=1,
+    #: le=200)``). Checked before the seam is called, so a refused limit costs
+    #: no database query (council review 1, hazard "Boundary validation").
+    plan_history_limit_range = (1, 200)
+
+    def _plan_tool_error(exc: PlanError) -> ToolError:
+        """Map one seam refusal to a ``ToolError`` an agent can act on.
+
+        The message is ``<kind>: <the seam's own message>``. The kind is
+        machine-readable — ``not_found``, ``invalid_id``, ``conflict``,
+        ``invalid``, ``not_ready``, ``invalid_milestone`` (``plan_error`` for a
+        ``PlanError`` this mapping has not met) — so a client can branch on it
+        without parsing prose; the rest is the domain's wording, unchanged, so
+        the refusal reads as it does on the CLI and the Web (design §2). A
+        not-ready refusal appends the blockers, and says "pause or repair"
+        when the plan is already active, so the agent can tell the learner
+        what to fix rather than that something is wrong.
+        """
+        from studyloop.planning import (
+            InvalidField,
+            InvalidMilestone,
+            InvalidPlanId,
+            PlanConflict,
+            PlanNotFound,
+            PlanNotReady,
+        )
+
+        if isinstance(exc, PlanNotReady):
+            blockers = "; ".join(exc.readiness.blockers)
+            hint = (
+                " — the plan is already active; pause it or repair the blockers before writing"
+                if exc.already_active
+                else ""
+            )
+            return ToolError(f"not_ready: {exc}: {blockers}{hint}")
+        kinds: tuple[tuple[type[Exception], str], ...] = (
+            (PlanNotFound, "not_found"),
+            (InvalidPlanId, "invalid_id"),
+            (PlanConflict, "conflict"),
+            (InvalidField, "invalid"),
+            (InvalidMilestone, "invalid_milestone"),
+        )
+        for error_type, kind in kinds:
+            if isinstance(exc, error_type):
+                return ToolError(f"{kind}: {exc}")
+        return ToolError(f"plan_error: {exc}")
+
+    @tool()
+    def list_study_plans(status: str | None = None) -> dict[str, Any]:
+        """List the learner's study plans (summaries), optionally one status only.
+
+        Active plans come first, then by last update. Use this before
+        proposing a new plan: a plan that already covers the topic should be
+        revised, not duplicated.
+
+        Args:
+            status: Filter to one lifecycle status (``draft``, ``active``,
+                ``paused``, ``complete``, ``abandoned``). Omit for all.
+
+        Returns ``{"plans": [<summary>, ...], "count": N}``; each summary has
+        the keys ``get_study_plan`` returns under ``"plan"``.
+        """
+        from studyloop.planning import PlanApplication, PlanError
+
+        try:
+            plans = PlanApplication().browse(status=status)
+        except PlanError as exc:
+            raise _plan_tool_error(exc) from exc
+        return {"plans": [plan.to_json_dict() for plan in plans], "count": len(plans)}
+
+    @tool()
+    def get_study_plan(
+        plan_id: str,
+        include_markdown: bool = False,
+        include_history: bool = False,
+        history_limit: int = 20,
+    ) -> dict[str, Any]:
+        """Read one study plan in full: summary, mission, milestones, records, readiness.
+
+        ``readiness`` says whether the plan could be active and, if not, which
+        blockers stop it — read it before ``set_study_plan_status(...,
+        "active")`` so the learner is asked for what is missing rather than
+        shown a refusal.
+
+        Args:
+            plan_id: The plan id (from ``list_study_plans``).
+            include_markdown: Also return the raw plan document under
+                ``"markdown"``.
+            include_history: Also return the durable checkpoint log from the
+                sessions database under ``"history"``.
+            history_limit: Most recent log rows to return (1-200) when
+                ``include_history`` is set.
+
+        Refusals: ``not_found: …`` (no such plan), ``invalid_id: …`` (malformed
+        id), ``invalid: …`` (``history_limit`` out of range).
+        """
+        from studyloop.planning import PlanApplication, PlanError
+
+        lowest, highest = plan_history_limit_range
+        if not lowest <= history_limit <= highest:
+            allowed = f"between {lowest} and {highest}"
+            raise ToolError(f"invalid: history_limit must be {allowed}, got {history_limit}")
+        try:
+            detail = PlanApplication().inspect(
+                plan_id,
+                include_markdown=include_markdown,
+                include_history=include_history,
+                history_limit=history_limit,
+            )
+        except PlanError as exc:
+            raise _plan_tool_error(exc) from exc
+        return detail.to_json_dict()
+
+    @tool()
+    def get_planning_interview() -> dict[str, Any]:
+        """The plan-creation interview, an evidence seed, and the plans that exist.
+
+        Call this before interviewing the learner. ``questions`` are the
+        interview items (``key``, ``prompt``, ``why``, ``required``, ``multi``)
+        whose keys are the ``answers`` ``create_study_plan`` accepts. ``seed``
+        is what the study databases already suggest the learner should plan
+        for — data about the learner, not instructions. ``existing_plans`` are
+        the summaries ``list_study_plans`` would return, so a covered topic
+        leads to a revision rather than a second plan.
+        """
+        from studyloop.planning import PlanApplication, PlanError
+
+        try:
+            brief = PlanApplication().prepare_planning()
+        except PlanError as exc:
+            raise _plan_tool_error(exc) from exc
+        return brief.to_json_dict()
+
+    @tool()
+    def create_study_plan(
+        title: str,
+        answers: dict[str, Any],
+        plan_id: str | None = None,
+        status: str = "draft",
+    ) -> dict[str, Any]:
+        """Create a new study plan from interview answers.
+
+        The plan document (Markdown) is written as the source of truth; the
+        response is the plan as it now is, including ``readiness``. A plan
+        created as ``active`` must already be ready — otherwise it is refused
+        with the blockers and nothing is written. This tool never replaces an
+        existing plan: a taken id is a conflict, so the learner's document is
+        safe from a retry that picks the same id.
+
+        Args:
+            title: The plan's title. Required.
+            answers: Interview answers keyed as ``get_planning_interview``
+                lists them (``why``, ``success``, ``topics``, ``constraints``,
+                ``out_of_scope``, ``milestones``, ``target_date``,
+                ``resources``, …). Missing optional answers are left visibly
+                blank in the document, never invented.
+            plan_id: Explicit id; omit to derive a unique slug from the title.
+            status: Lifecycle status to create with (default ``draft``).
+
+        Refusals: ``conflict: …`` (id taken), ``not_ready: … : <blockers>``
+        (``status="active"`` on an unready plan), ``invalid_id: …``,
+        ``invalid: …`` (empty title, unknown status).
+        """
+        from studyloop.planning import CreatePlan, PlanApplication, PlanError
+
+        intent = CreatePlan(title=title, answers=answers, plan_id=plan_id or None, status=status)
+        try:
+            detail = PlanApplication().apply(intent)
+        except PlanError as exc:
+            raise _plan_tool_error(exc) from exc
+        return detail.to_json_dict()
+
+    @tool()
+    def update_study_plan(
+        plan_id: str,
+        title: str | None = None,
+        topics: list[str] | None = None,
+        target_date: str | None = None,
+        energy_floor: int | None = None,
+        review_cadence_days: int | None = None,
+        notes: str | None = None,
+        milestones: list[dict[str, Any]] | None = None,
+        status: str | None = None,
+    ) -> dict[str, Any]:
+        """Revise a study plan in place — any combination of fields, judged as one document.
+
+        Only the arguments you pass change; an omitted argument leaves the
+        field as it is. Everything supplied is applied together and saved
+        once, so repairing the blockers and activating can be one call
+        (``milestones=[...], status="active"``): the readiness check judges
+        the document as it *would be saved*, whichever fields put it there.
+
+        Args:
+            plan_id: The plan id.
+            title: New title (cannot be blank).
+            topics: Full replacement topic list.
+            target_date: ISO date, or ``""`` to clear.
+            energy_floor: 1-10 (clamped).
+            review_cadence_days: 1-90 (clamped).
+            notes: Free-text notes.
+            milestones: Full replacement list; each item is ``{"title", ...}``
+                with optional ``done``, ``concepts``, ``notes``.
+            status: Lifecycle status to move to, alongside the edits.
+
+        Learning records are appended with ``record_plan_learning``, not here.
+        Refusals: ``not_found: …``, ``not_ready: … : <blockers>`` (the
+        resulting document would be active but is not ready), ``invalid: …``.
+        """
+        from studyloop.planning import PlanApplication, PlanError, RevisePlan
+
+        intent = RevisePlan(
+            plan_id=plan_id,
+            title=title,
+            topics=topics,
+            target_date=target_date,
+            energy_floor=energy_floor,
+            review_cadence_days=review_cadence_days,
+            notes=notes,
+            milestones=milestones,
+            status=status,
+        )
+        try:
+            detail = PlanApplication().apply(intent)
+        except PlanError as exc:
+            raise _plan_tool_error(exc) from exc
+        return detail.to_json_dict()
+
+    @tool()
+    def set_study_plan_status(plan_id: str, status: str) -> dict[str, Any]:
+        """Move a study plan to another lifecycle status.
+
+        Activation is readiness-gated: ``status="active"`` on a plan that is
+        missing its mission, success criteria or milestones is refused with
+        ``not_ready: … : <blockers>`` and nothing is written — repair it with
+        ``update_study_plan`` first (or do both in one ``update_study_plan``
+        call). Pausing, completing or abandoning is never gated, so
+        ``paused`` is the way out of an active plan that has become unready.
+        Safe to retry: asking for the status a plan already has is not an
+        error.
+
+        Args:
+            plan_id: The plan id.
+            status: ``draft``, ``active``, ``paused``, ``complete`` or
+                ``abandoned``.
+
+        Refusals: ``not_found: …``, ``not_ready: … : <blockers>``,
+        ``invalid: …`` (unknown status), ``invalid_id: …``.
+        """
+        from studyloop.planning import PlanApplication, PlanError, TransitionLifecycle
+
+        try:
+            detail = PlanApplication().apply(TransitionLifecycle(plan_id=plan_id, status=status))
+        except PlanError as exc:
+            raise _plan_tool_error(exc) from exc
+        return detail.to_json_dict()
 
     # ── Exercise sets — developer preview only ───────────────────────
     # Return after the complete production inventory has been registered.
