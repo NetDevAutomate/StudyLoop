@@ -305,6 +305,14 @@ class PlanApplication:
             raise InvalidField(msg)
         study_id = (intent.study_id or "").strip()
 
+        # Appending the checkpoint re-saves the plan document. That is a write
+        # of the resulting document like any other, so an active plan that is
+        # unready is refused here — before either sink is touched — exactly as
+        # SetMilestone and RevisePlan refuse it (review 2, F2). A preview or a
+        # database-only recording persists no document and is not gated.
+        if intent.record and intent.append_to_plan and plan.status == "active":
+            self._assert_can_be_active(plan, already_active=True)
+
         if not intent.record:
             result = evaluation.evaluate_plan(plan, phase, study_id=study_id)
             return AssessmentResult(
@@ -378,7 +386,7 @@ class PlanApplication:
         replacement.plan_id = current.plan_id
         replacement.created = current.created
         if replacement.status == "active":
-            self._assert_can_be_active(replacement)
+            self._assert_can_be_active(replacement, already_active=current.status == "active")
         store.save_plan(replacement)
         return PlanDetail.from_plan(replacement)
 
@@ -397,6 +405,7 @@ class PlanApplication:
         *would be saved* — whichever fields put it there.
         """
         candidate = self._load(intent.plan_id)  # private to this call: it is the candidate
+        was_active = candidate.status == "active"
 
         status = None if intent.status is None else _normalise_status(str(intent.status))
         updates: dict[str, object] = {}
@@ -430,7 +439,7 @@ class PlanApplication:
         # The gate judges the resulting document: a plan that is being
         # activated, or one that already is and has just been edited.
         if candidate.status == "active":
-            self._assert_can_be_active(candidate)
+            self._assert_can_be_active(candidate, already_active=was_active)
         # A revision that carried only a learning record which already existed
         # changes nothing and writes nothing (review 2, F1): the file's bytes
         # and ``updated`` stay put, as the store's ``record_learning`` always
@@ -464,7 +473,7 @@ class PlanApplication:
         milestone = candidate.milestones[intent.index]
         wanted = bool(intent.done)
         if candidate.status == "active":
-            self._assert_can_be_active(candidate)
+            self._assert_can_be_active(candidate, already_active=True)
         if milestone.done != wanted:
             milestone.done = wanted
             store.save_plan(candidate)
@@ -525,11 +534,16 @@ class PlanApplication:
         return PlanDetail.from_plan(plan)
 
     @staticmethod
-    def _assert_can_be_active(plan: StudyPlan) -> None:
-        """The single readiness gate: every path into ``active`` ends here."""
+    def _assert_can_be_active(plan: StudyPlan, *, already_active: bool = False) -> None:
+        """The single readiness gate: every path into — or through — ``active`` ends here.
+
+        ``already_active`` says the stored document was active before this
+        write, so the refusal can tell the learner to pause or repair rather
+        than "activate" something that already is.
+        """
         view = ReadinessView.from_plan(plan)
         if not view.ready:
-            raise PlanNotReady(view)
+            raise PlanNotReady(view, already_active=already_active)
 
     @staticmethod
     def _load(plan_id: str) -> StudyPlan:

@@ -145,7 +145,12 @@ sink fields. A failed sink SHALL be a reported outcome on the result, never an
 exception (no `PartialRecording`), because the evaluation succeeded.
 `recording_complete` is `True` when no requested sink failed — vacuously true
 for a preview. The plan SHALL be found before the phase is judged (`PlanNotFound`
-before `InvalidField`).
+before `InvalidField`). Because appending the checkpoint re-saves the plan
+document, `record=True, append_to_plan=True` on an *active* plan SHALL run the
+same readiness gate every other write runs — before either sink is touched —
+and raise `PlanNotReady` (with `already_active=True`) for an active-but-unready
+document; a preview or a database-only recording persists no document and is
+not gated.
 
 #### Scenario: Preview writes neither sink
 - **WHEN** `assess(AssessPlan(id, "mid", record=False))` is called
@@ -163,6 +168,13 @@ before `InvalidField`).
 - **THEN** `db_write == "failed"`, `document_write == "saved"`,
   `recording_complete` is `False`, `warnings` contains `checkpoint not saved
   to the database`, and the evaluation carries a valid verdict
+
+#### Scenario: Recording onto an unready active document is refused first
+- **WHEN** `assess(AssessPlan(id, "start"))` is called for a hand-edited active
+  plan with no mission
+- **THEN** `PlanNotReady` is raised before the checkpoint log is written, the
+  document is byte-identical, and the same call with `record=False` or
+  `append_to_plan=False` succeeds
 
 #### Scenario: Document failure reported independently
 - **WHEN** the document save raises

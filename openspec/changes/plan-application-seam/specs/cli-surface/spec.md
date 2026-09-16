@@ -52,8 +52,12 @@ SHALL catch `PlanError` and map it in one place (`_fail_for`): `PlanNotFound`
 and nudges; `PlanConflict` → `A study plan with id '<id>' already exists.
 Choose another id.`; `InvalidPlanId` → `Invalid plan id '<id>': <reason>`;
 `InvalidField` → `Invalid value: <reason>`; `InvalidMilestone` → `No such
-milestone on '<id>': <reason>`. Every mapping SHALL exit `1` and print no
-traceback. `studyloop plan list` SHALL route a `browse` refusal through the
+milestone on '<id>': <reason>`. When the refused `PlanNotReady` carries
+`already_active` (the stored plan was active and incomplete before the write —
+a `record`, `milestone` or `evaluate --record` on a hand-edited document), the
+mapping SHALL add a line telling the learner to pause the plan
+(`studyloop plan status <id> paused`) or repair the blockers, then retry.
+Every mapping SHALL exit `1` and print no traceback. `studyloop plan list` SHALL route a `browse` refusal through the
 same mapping.
 
 #### Scenario: A refusal reaching plan list is a message, not a traceback

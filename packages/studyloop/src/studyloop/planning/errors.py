@@ -50,11 +50,18 @@ class PlanNotReady(PlanError):
     Carries the :class:`~studyloop.planning.views.ReadinessView` so an adapter
     can show *what* blocks activation, not just that something does. Raised
     before any write, on every path that could make a plan active.
+
+    ``already_active`` distinguishes "you asked to activate an incomplete
+    plan" from "this plan is already active and incomplete, and the write
+    would re-save it that way" (a hand-edited or pre-gate document). The
+    refusal is the same; what the learner should do next is not — pause the
+    plan or repair the blockers, rather than fill in an activation form.
     """
 
-    def __init__(self, readiness: ReadinessView) -> None:
+    def __init__(self, readiness: ReadinessView, *, already_active: bool = False) -> None:
         super().__init__("plan is not ready to activate")
         self.readiness = readiness
+        self.already_active = already_active
 
 
 class InvalidMilestone(PlanError):

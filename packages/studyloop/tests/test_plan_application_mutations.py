@@ -494,7 +494,7 @@ def test_recording_to_unready_active_document_refuses_before_either_sink(
         app.assess(AssessPlan(plan_id="husk", phase="start"))
 
     assert caught.value.readiness.ready is False
-    assert caught.value.already_active is True  # pyright: ignore[reportAttributeAccessIssue]  # RED: review-2 F2
+    assert caught.value.already_active is True
     assert store.load_plan_text("husk") == before
     assert _database_checkpoints("husk") == []
 
@@ -534,7 +534,7 @@ def test_revise_learning_record_on_unready_active_is_refused(
     with pytest.raises(PlanNotReady) as caught:
         app.apply(RevisePlan(plan_id="husk", learning_record=LearningRecordSpec(title="Insight")))
 
-    assert caught.value.already_active is True  # pyright: ignore[reportAttributeAccessIssue]  # RED: review-2 F2
+    assert caught.value.already_active is True
     assert saves == []
     assert store.load_plan_text("husk") == before
 
@@ -543,10 +543,10 @@ def test_not_ready_on_activation_is_not_flagged_already_active(app: PlanApplicat
     app.apply(CreatePlan(title="Vague", answers={}))
     with pytest.raises(PlanNotReady) as via_transition:
         app.apply(TransitionLifecycle(plan_id="vague", status="active"))
-    assert via_transition.value.already_active is False  # pyright: ignore[reportAttributeAccessIssue]  # RED: review-2 F2
+    assert via_transition.value.already_active is False
     with pytest.raises(PlanNotReady) as via_create:
         app.apply(CreatePlan(title="Vague two", answers={}, status="active"))
-    assert via_create.value.already_active is False  # pyright: ignore[reportAttributeAccessIssue]  # RED: review-2 F2
+    assert via_create.value.already_active is False
 
 
 def test_assess_unknown_plan_and_bad_phase(app: PlanApplication) -> None:

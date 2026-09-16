@@ -73,7 +73,7 @@ def _fail_for(exc: PlanError, plan_id: str) -> NoReturn:
     if isinstance(exc, PlanNotFound):
         _fail(f"No study plan with id {plan_id!r}. Try: studyloop plan list")
     if isinstance(exc, PlanNotReady):
-        _refuse_activation(exc.readiness)
+        _refuse_activation(exc.readiness, already_active=exc.already_active)
     if isinstance(exc, PlanConflict):
         _fail(f"A study plan with id {plan_id!r} already exists. Choose another id.")
     if isinstance(exc, InvalidPlanId):
@@ -119,10 +119,22 @@ def _print_readiness(check: ReadinessView) -> None:
         console.print(f"  [dim]• {item}[/dim]")
 
 
-def _refuse_activation(check: ReadinessView) -> NoReturn:
-    """The one way every command says no to activating an incomplete plan."""
+def _refuse_activation(check: ReadinessView, *, already_active: bool = False) -> NoReturn:
+    """The one way every command says no to activating an incomplete plan.
+
+    When the plan is *already* active (a hand-edited or pre-gate document),
+    "activate" is the wrong verb for what the learner tried to do — record,
+    tick a milestone, log a checkpoint — so the refusal also says what to do
+    next: pause the plan or repair the blockers (council review 2).
+    """
     console.print(f"[red]Cannot activate {check.plan_id!r} — the plan is incomplete.[/red]")
     _print_readiness(check)
+    if already_active:
+        console.print(
+            f"[yellow]This plan is already active but incomplete, so it cannot be written to "
+            f"as it stands. Pause it (studyloop plan status {check.plan_id} paused) or repair "
+            "the blockers above, then retry.[/yellow]"
+        )
     raise SystemExit(1)
 
 

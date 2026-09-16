@@ -188,3 +188,10 @@ phase check of its own: an unknown phase on `POST` is the seam's
 #### Scenario: Preview writes nothing
 - **WHEN** `GET /api/plans/{id}/evaluate?phase=end` is called
 - **THEN** neither the checkpoint log nor the document gains a row
+
+#### Scenario: Recording onto an unready active document
+- **WHEN** `POST /api/plans/{id}/evaluate` is called for a hand-edited active
+  plan with no mission
+- **THEN** the response is the seam's `422` readiness refusal, the document is
+  byte-identical, the checkpoint log has no row, and `GET
+  /api/plans/{id}/evaluate` (preview) is still `200`
