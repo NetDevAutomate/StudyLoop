@@ -1,0 +1,24 @@
+{
+  "energy": "medium",
+  "time_minutes": 25,
+  "modality": "recall",
+  "interleave": "off",
+  "generated_at": "2026-09-16T09:30:00+00:00",
+  "starter": true,
+  "interleave_ratio": {},
+  "primary": {
+    "concept": "one tiny recall loop",
+    "topic": "python",
+    "reason": "No learning evidence found yet; start by creating one small retrieval signal",
+    "action_type": "recall",
+    "estimated_minutes": 10,
+    "source": "starter",
+    "evidence_command": "studyloop progress \"one tiny recall loop\" -t \"python\" -c learning",
+    "score": 28,
+    "course": "python",
+    "metadata": {
+      "display_name": "Python"
+    }
+  },
+  "alternates": []
+}
