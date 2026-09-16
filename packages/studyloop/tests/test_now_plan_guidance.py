@@ -20,9 +20,6 @@ the store into the isolated plans directory and read back through
 ``PlanApplication().get_active_guidance()``.
 """
 
-# RED phase only: the names these tests reach for do not exist yet. Removed in GREEN.
-# pyright: reportAttributeAccessIssue=false
-
 from __future__ import annotations
 
 import json
@@ -33,7 +30,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from studyloop.learning import decision
-from studyloop.learning.decision import _Candidate, build_now_plan
+from studyloop.learning.decision import PlanRef, _Candidate, build_now_plan
 from studyloop.planning import store
 from studyloop.planning.models import Milestone, Mission, StudyPlan
 
@@ -194,8 +191,6 @@ def test_no_active_plans_json_byte_identical_to_golden() -> None:
 
 def test_matching_due_concept_outranks_unrelated_same_urgency(monkeypatch) -> None:
     """Rule 5: within one urgency class, plan-related beats unrelated."""
-    from studyloop.learning.decision import PlanRef
-
     _plan("sql-windows")
     unrelated = _candidate("decorators", topic="python", score=102)
     matching = _candidate("window function", topic="sql", score=100)
@@ -211,8 +206,6 @@ def test_matching_due_concept_outranks_unrelated_same_urgency(monkeypatch) -> No
 
 def test_unrelated_more_urgent_due_outranks_new_milestone(monkeypatch) -> None:
     """Rule 5 is a bias, not a filter: a globally more-urgent unrelated due item wins."""
-    from studyloop.learning.decision import PlanRef
-
     _plan("sql-windows")
     _patch_collectors(monkeypatch, _candidate("decorators", topic="python", score=100))
 
@@ -229,8 +222,6 @@ def test_unrelated_more_urgent_due_outranks_new_milestone(monkeypatch) -> None:
 
 def test_one_action_keeps_every_matching_plan_ref_ordered(monkeypatch) -> None:
     """Rule 7: every matching ref is kept, ordered urgency → latest update → plan id."""
-    from studyloop.learning.decision import PlanRef
-
     _plan("later-plan", target_date=LATER, updated="2026-09-14T00:00:00+00:00")
     _plan("undated-c", updated="2026-09-10T00:00:00+00:00")
     _plan("undated-a", updated="2026-09-12T00:00:00+00:00")
@@ -248,8 +239,6 @@ def test_one_action_keeps_every_matching_plan_ref_ordered(monkeypatch) -> None:
 
 def test_milestone_without_concepts_does_not_substring_match(monkeypatch) -> None:
     """Rule 4: equality on the normalised key — never a substring test."""
-    from studyloop.learning.decision import PlanRef
-
     _plan(
         "sql-windows",
         topics=["sql"],
@@ -272,8 +261,6 @@ def test_milestone_without_concepts_does_not_substring_match(monkeypatch) -> Non
 
 def test_energy_below_floor_defers_new_milestone_keeps_repair(monkeypatch) -> None:
     """Rule 3: below the floor new-milestone work is deferred; plan-related repair stays."""
-    from studyloop.learning.decision import PlanRef
-
     _plan(
         "sql-windows",
         energy_floor=5,
@@ -324,8 +311,6 @@ def test_fully_checked_active_plan_emits_completion_not_candidate(monkeypatch) -
 
 def test_synthesizes_milestone_when_no_candidate_represents_it(monkeypatch) -> None:
     """Rule 6: an unrepresented eligible next milestone becomes a candidate."""
-    from studyloop.learning.decision import PlanRef
-
     _plan(
         "sql-windows",
         title="SQL Windows",
@@ -350,8 +335,6 @@ def test_synthesizes_milestone_when_no_candidate_represents_it(monkeypatch) -> N
 
 def test_preserves_one_plan_backed_action_when_energy_allows(monkeypatch) -> None:
     """Rule 8: ≥ 1 eligible plan-backed action in primary + alternates when energy permits."""
-    from studyloop.learning.decision import PlanRef
-
     _plan(
         "sql-windows", energy_floor=5, milestones=[Milestone("Frames", concepts=["window frame"])]
     )
