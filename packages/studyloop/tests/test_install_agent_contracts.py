@@ -578,6 +578,12 @@ def test_prose_definitions_carry_the_identical_instruction(relative: str) -> Non
 
 
 def test_kiro_allowlist_and_servers_match_the_instruction() -> None:
+    """The mentor's session-start instruction names five MCP tools; its
+    allowlist must trust them in the spelling the Kiro CLI honours,
+    ``@<server>/<tool>``. The file carried ``mcp_<server>_<tool>`` names,
+    which kiro-cli 2.21.4 ignores in an agent config (probe receipt
+    ``docs/architecture/plan-integration/receipts/kiro-agent-tools-probe-2026-09-16.md``,
+    probe B: the ``mcp_`` entry stayed "not trusted")."""
     definition = json.loads(
         (_repo_root() / "agents/kiro/study-mentor.json").read_text(encoding="utf-8")
     )
@@ -586,11 +592,11 @@ def test_kiro_allowlist_and_servers_match_the_instruction() -> None:
     assert servers["studyloop"]["command"] == "studyloop-mcp"
     allowed = set(definition["allowedTools"])
     for tool in (
-        "mcp_session-db_session_search",
-        "mcp_session-db_session_context",
-        "mcp_session-db_session_hotspots",  # the session-weaver skill instructs it
-        "mcp_session-db_memory_search",
-        "mcp_studyloop_get_concept_context",
+        "@session-db/session_search",
+        "@session-db/session_context",
+        "@session-db/session_hotspots",  # the session-weaver skill instructs it
+        "@session-db/memory_search",
+        "@studyloop/get_concept_context",
     ):
         assert tool in allowed, f"Kiro instructs {tool} but its allowlist refuses it"
 
@@ -624,10 +630,20 @@ def test_plan_architect_native_definitions_are_in_the_tool_link_tables() -> None
     assert "agents/kiro/study-plan-architect" in sources["kiro"]
 
 
-def test_install_agents_places_the_plan_architect_definitions(tmp_path: Path, monkeypatch) -> None:
+def test_installed_kiro_architect_resolves_its_prompt_and_servers(
+    tmp_path: Path, monkeypatch
+) -> None:
     """With ``_HOME`` sandboxed, ``install agents`` places the study-plan-
-    architect files for claude/opencode/kiro, and Kiro's carries the same
-    session-export stop hook study-mentor.json does, with no mcpServers."""
+    architect files for claude/opencode/kiro; Kiro's carries the same
+    session-export stop hook study-mentor.json does and, once installed,
+    its prompt resolves and its ``mcpServers`` names ``studyloop``.
+
+    This test replaced ``test_install_agents_places_the_plan_architect_definitions``,
+    whose last assertion was ``"mcpServers" not in definition`` (sealed at
+    ``d96fb9ba``, pinned as the disclosed Kiro/Claude boundary by council
+    review 4). The owner took the permission decision on 2026-09-16 — D-A:
+    "none of the harnesses should fall back to the CLI with full
+    permissions" — so the pin is flipped deliberately, not lost."""
     repo_root = _repo_root()
     detected = ["claude", "opencode", "kiro"]
 
@@ -698,7 +714,10 @@ def test_install_agents_places_the_plan_architect_definitions(tmp_path: Path, mo
     assert definition["prompt"] == "file://study-plan-architect/persona.md"
     resolved_prompt = kiro_json.resolve().parent / "study-plan-architect" / "persona.md"
     assert resolved_prompt.is_file(), "the prompt file:// resource does not resolve once linked"
-    assert "mcpServers" not in definition, "study-plan-architect.json must carry no mcpServers"
+    # D-A (owner, 2026-09-16): the harness-launched architect attaches the
+    # plan tools' server. Before that decision this line read
+    # `assert "mcpServers" not in definition`.
+    assert definition["mcpServers"]["studyloop"]["command"] == "studyloop-mcp"
     hooks = definition["hooks"]["stop"]
     assert any(hook["command"] == installers.export_hook_command("--kiro-only") for hook in hooks)
 
@@ -779,3 +798,100 @@ def test_every_kiro_agent_file_resource_resolves_once_installed(
         if not ((kiro_home / "agents" / rel).is_file() or (kiro_home / rel).is_file()):
             unresolved.append(resource)
     assert not unresolved, f"{agent}.json resources do not resolve after install: {unresolved}"
+
+
+# ---------------------------------------------------------------------------
+# L8 -- D-A (owner, 2026-09-16): the harness-launched architects carry the
+# plan tools. "None of the harnesses should fall back to the CLI with full
+# permissions." The grant is least-privilege: exactly the nine lifecycle tools
+# plus record_plan_learning, nothing else from the studyloop server, in the
+# spelling each harness honours (Kiro probe receipt:
+# docs/architecture/plan-integration/receipts/kiro-agent-tools-probe-2026-09-16.md).
+# ---------------------------------------------------------------------------
+
+
+def _plan_tool_names() -> tuple[str, ...]:
+    """The ten names, from the registry's own constants — never a third hand copy."""
+    from studyloop.mcp.inventory import LEARNING_RECORD_TOOL, PLAN_TOOL_NAMES
+
+    return (*PLAN_TOOL_NAMES, LEARNING_RECORD_TOOL)
+
+
+def _frontmatter_tools(path: Path) -> list[str]:
+    """The comma-separated ``tools:`` allow-list of a Claude subagent file."""
+    text = path.read_text(encoding="utf-8")
+    assert text.startswith("---\n"), f"{path} has no frontmatter"
+    frontmatter = text[4 : text.index("\n---", 4)]
+    for line in frontmatter.splitlines():
+        if line.startswith("tools:"):
+            return [item.strip() for item in line.removeprefix("tools:").split(",") if item.strip()]
+    raise AssertionError(f"{path} frontmatter has no tools: line")
+
+
+def test_kiro_architect_carries_the_studyloop_server_and_exactly_the_plan_tools() -> None:
+    """Kiro reads visibility from ``tools`` (``@builtin`` alone hides every
+    MCP tool, server declared or not) and trust from ``allowedTools`` in the
+    ``@<server>/<tool>`` spelling. The architect must see the studyloop and
+    session-db servers and be trusted for exactly the ten plan tools: no bare
+    ``@studyloop`` (that trusts the whole server), no ``mcp_`` spelling (inert)."""
+    definition = json.loads(
+        (_repo_root() / "agents/kiro/study-plan-architect.json").read_text(encoding="utf-8")
+    )
+    servers = definition["mcpServers"]
+    assert servers["studyloop"]["command"] == "studyloop-mcp"
+    assert servers["session-db"]["command"] == "session-db-mcp"
+
+    tools = set(definition["tools"])
+    assert {"@builtin", "@studyloop", "@session-db"} <= tools, tools
+
+    allowed = list(definition["allowedTools"])
+    studyloop_grants = {entry for entry in allowed if entry.startswith("@studyloop")}
+    expected = {f"@studyloop/{name}" for name in _plan_tool_names()}
+    assert studyloop_grants == expected, (
+        f"missing: {sorted(expected - studyloop_grants)}; "
+        f"extra from the studyloop server: {sorted(studyloop_grants - expected)}"
+    )
+    assert "@studyloop" not in allowed, "a bare @studyloop trusts every tool of the server"
+    assert not [entry for entry in allowed if entry.startswith("mcp_")], (
+        "mcp_<server>_<tool> is not honoured by kiro-cli in an agent config (probe receipt)"
+    )
+    assert len(allowed) == len(set(allowed)), "duplicate allowedTools entries"
+
+
+def test_claude_architect_allowlists_exactly_the_plan_tools() -> None:
+    """Claude Code's ``tools:`` frontmatter is an allow-list; MCP tools are
+    ``mcp__<server>__<tool>`` and a built-ins-only list excludes them all
+    (the boundary the install doc disclosed until D-A). The architect's list
+    carries exactly the ten plan tools and no other MCP tool."""
+    tools = _frontmatter_tools(_repo_root() / "agents/claude/study-plan-architect.md")
+    mcp_grants = {entry for entry in tools if entry.startswith("mcp__")}
+    expected = {f"mcp__studyloop__{name}" for name in _plan_tool_names()}
+    assert mcp_grants == expected, (
+        f"missing: {sorted(expected - mcp_grants)}; extra: {sorted(mcp_grants - expected)}"
+    )
+    assert "mcp__studyloop" not in tools and "mcp__studyloop__*" not in tools, (
+        "a server-level grant trusts every tool of the server"
+    )
+    assert len(tools) == len(set(tools)), "duplicate tools entries"
+
+
+def test_kiro_mentor_grants_use_the_spelling_the_cli_honours() -> None:
+    """The mentor is the file D-A says to mirror, and the probe showed its
+    grants were inert: no ``@studyloop`` in ``tools`` (its studyloop tools were
+    invisible) and every MCP grant in the ``mcp_<server>_<tool>`` spelling
+    (never trusted). Every grant must name a server the file declares."""
+    definition = json.loads(
+        (_repo_root() / "agents/kiro/study-mentor.json").read_text(encoding="utf-8")
+    )
+    servers = set(definition["mcpServers"])
+    assert "@studyloop" in definition["tools"], "the mentor's studyloop tools are invisible"
+    allowed = list(definition["allowedTools"])
+    assert not [entry for entry in allowed if entry.startswith("mcp_")], (
+        "mcp_<server>_<tool> is not honoured by kiro-cli in an agent config (probe receipt)"
+    )
+    mcp_grants = [entry for entry in allowed if entry.startswith("@")]
+    assert mcp_grants, "the mentor grants no MCP tool at all"
+    for entry in mcp_grants:
+        server, _, tool = entry.removeprefix("@").partition("/")
+        assert server in servers, f"{entry} names a server the mentor does not declare"
+        assert tool, f"{entry} trusts a whole server; grant tools one by one"
