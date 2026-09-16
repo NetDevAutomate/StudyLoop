@@ -36,10 +36,12 @@ from studyloop.planning.errors import (
 )
 from studyloop.planning.intents import (
     AssessPlan,
+    CreatePlan,
     DeletePlan,
     LearningRecordSpec,
     RevisePlan,
     SetMilestone,
+    TransitionLifecycle,
 )
 from studyloop.planning.models import Milestone, Mission, StudyPlan
 from studyloop.planning.views import (
@@ -459,6 +461,92 @@ def test_assess_append_to_plan_false_leaves_document_sink_not_requested(
     assert result.recording_complete is True
     assert _document_checkpoints("demo") == []
     assert _database_checkpoints("demo") == ["start"]
+
+
+def _husk(isolated_plans_dir, plan_id: str = "husk") -> None:
+    """An active document with milestones and topics but no mission: readable,
+    active, unready — the shape a hand edit or a pre-gate import can leave."""
+    store.plans_dir()
+    (isolated_plans_dir / f"{plan_id}.md").write_text(
+        f"---\nid: {plan_id}\ntitle: Husk\nstatus: active\ntopics: [sql]\n---\n\n"
+        "# Husk\n\n## Milestones\n\n- [ ] **Step** `(concepts: x)`\n",
+        encoding="utf-8",
+    )
+
+
+def test_recording_to_unready_active_document_refuses_before_either_sink(
+    app: PlanApplication, isolated_plans_dir, monkeypatch
+) -> None:
+    """Council review 2, GPT F2: ``evaluate_and_record`` re-saves the active
+    document with a checkpoint row. On an active husk that is the same
+    active-but-unready re-save ``SetMilestone`` and ``RevisePlan`` refuse, so
+    ``assess(record=True, append_to_plan=True)`` must refuse it too — before
+    the database sink, not after."""
+    _husk(isolated_plans_dir)
+    before = store.load_plan_text("husk")
+
+    def must_not_be_called(evaluation, *, study_id=""):
+        raise AssertionError("refused before the database sink")
+
+    monkeypatch.setattr(index_module, "record_checkpoint", must_not_be_called)
+
+    with pytest.raises(PlanNotReady) as caught:
+        app.assess(AssessPlan(plan_id="husk", phase="start"))
+
+    assert caught.value.readiness.ready is False
+    assert caught.value.already_active is True  # pyright: ignore[reportAttributeAccessIssue]  # RED: review-2 F2
+    assert store.load_plan_text("husk") == before
+    assert _database_checkpoints("husk") == []
+
+
+def test_preview_of_unready_active_plan_is_allowed(
+    app: PlanApplication, isolated_plans_dir
+) -> None:
+    _husk(isolated_plans_dir)
+    result = app.assess(AssessPlan(plan_id="husk", phase="mid", record=False))
+    assert result.evaluation.plan_id == "husk"
+    assert result.db_write == result.document_write == "not_requested"
+
+
+def test_database_only_assessment_of_unready_active_plan_is_allowed(
+    app: PlanApplication, isolated_plans_dir
+) -> None:
+    """No resulting plan document is persisted, so the gate has nothing to judge."""
+    _husk(isolated_plans_dir)
+    before = store.load_plan_text("husk")
+    result = app.assess(AssessPlan(plan_id="husk", phase="end", append_to_plan=False))
+    assert result.db_write == "saved"
+    assert result.document_write == "not_requested"
+    assert _database_checkpoints("husk") == ["end"]
+    assert store.load_plan_text("husk") == before
+
+
+def test_revise_learning_record_on_unready_active_is_refused(
+    app: PlanApplication, isolated_plans_dir, monkeypatch
+) -> None:
+    """Council review 2 (Grok 🔵): the product decision in deviation 12 pinned
+    for the learning-record path, on a real document rather than a mocked
+    exception — byte-identical document, ``PlanNotReady``, zero saves."""
+    _husk(isolated_plans_dir)
+    before = store.load_plan_text("husk")
+    saves = _count_saves(monkeypatch)
+
+    with pytest.raises(PlanNotReady) as caught:
+        app.apply(RevisePlan(plan_id="husk", learning_record=LearningRecordSpec(title="Insight")))
+
+    assert caught.value.already_active is True  # pyright: ignore[reportAttributeAccessIssue]  # RED: review-2 F2
+    assert saves == []
+    assert store.load_plan_text("husk") == before
+
+
+def test_not_ready_on_activation_is_not_flagged_already_active(app: PlanApplication) -> None:
+    app.apply(CreatePlan(title="Vague", answers={}))
+    with pytest.raises(PlanNotReady) as via_transition:
+        app.apply(TransitionLifecycle(plan_id="vague", status="active"))
+    assert via_transition.value.already_active is False  # pyright: ignore[reportAttributeAccessIssue]  # RED: review-2 F2
+    with pytest.raises(PlanNotReady) as via_create:
+        app.apply(CreatePlan(title="Vague two", answers={}, status="active"))
+    assert via_create.value.already_active is False  # pyright: ignore[reportAttributeAccessIssue]  # RED: review-2 F2
 
 
 def test_assess_unknown_plan_and_bad_phase(app: PlanApplication) -> None:

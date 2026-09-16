@@ -249,6 +249,39 @@ def test_evaluate_preview_is_record_false(runner, monkeypatch) -> None:
     assert store.load_plan("glue-etl").checkpoints == []
 
 
+def test_evaluate_record_on_unready_active_plan_is_refused_with_a_repair_hint(
+    runner, isolated_plans_dir
+) -> None:
+    """Council review 2, GPT F2 + the legacy-document ruling: the refusal keeps
+    the frozen "Cannot activate" line but tells a learner whose plan is
+    *already* active what to do — pause it or repair the blockers."""
+    store.plans_dir()
+    (isolated_plans_dir / "husk.md").write_text(
+        "---\nid: husk\ntitle: Husk\nstatus: active\ntopics: [sql]\n---\n\n"
+        "# Husk\n\n## Milestones\n\n- [ ] **Step** `(concepts: x)`\n",
+        encoding="utf-8",
+    )
+    before = store.load_plan_text("husk")
+
+    result = runner.invoke(cli, ["plan", "evaluate", "husk", "--record"])
+
+    assert result.exit_code == 1, result.output
+    clean = _ANSI.sub("", result.output)
+    assert "Cannot activate 'husk'" in clean
+    assert "already active" in clean
+    assert "studyloop plan status husk paused" in clean
+    assert "Traceback" not in clean
+    assert store.load_plan_text("husk") == before
+    assert index_module.checkpoint_history("husk") == []
+
+
+def test_activation_refusal_carries_no_already_active_hint(runner) -> None:
+    runner.invoke(cli, ["plan", "new", "--title", "Vague"])
+    result = runner.invoke(cli, ["plan", "status", "vague", "active"])
+    assert result.exit_code == 1
+    assert "already active" not in _ANSI.sub("", result.output)
+
+
 # --- plan milestone ---
 
 

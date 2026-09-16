@@ -28,6 +28,7 @@ from studyloop.web.app import create_app
 @pytest.fixture(autouse=True)
 def isolated_plans_dir(tmp_path, monkeypatch):
     monkeypatch.setenv(store.PLANS_DIR_ENV, str(tmp_path / "study-plans"))
+    return tmp_path / "study-plans"
 
 
 @pytest.fixture(autouse=True)
@@ -114,6 +115,30 @@ def test_preview_is_a_seam_assessment_that_writes_nothing(client: TestClient, mo
     assert body["evaluation"]["phase"] == "end"
     assert client.get(f"/api/plans/{plan_id}").json()["checkpoints"] == []
     assert client.get(f"/api/plans/{plan_id}/history").json()["checkpoints"] == []
+
+
+def test_record_on_unready_active_document_is_422_with_nothing_in_either_sink(
+    client: TestClient, isolated_plans_dir
+) -> None:
+    """Council review 2, GPT F2: recording appends to and re-saves the active
+    document, so an active-but-unready husk gets the same 422 every other
+    write gives, before the database sink is touched."""
+    store.plans_dir()
+    (isolated_plans_dir / "husk.md").write_text(
+        "---\nid: husk\ntitle: Husk\nstatus: active\ntopics: [sql]\n---\n\n"
+        "# Husk\n\n## Milestones\n\n- [ ] **Step** `(concepts: x)`\n",
+        encoding="utf-8",
+    )
+    before = client.get("/api/plans/husk/markdown").text
+
+    refused = client.post("/api/plans/husk/evaluate", json={"phase": "start"})
+
+    assert refused.status_code == 422, refused.text
+    assert refused.json()["detail"]["ready"] is False
+    assert client.get("/api/plans/husk/markdown").text == before
+    assert client.get("/api/plans/husk/history").json()["checkpoints"] == []
+    # Preview is still allowed: it persists no document.
+    assert client.get("/api/plans/husk/evaluate", params={"phase": "start"}).status_code == 200
 
 
 def test_record_unknown_phase_is_the_seams_400_after_the_404(client: TestClient) -> None:
