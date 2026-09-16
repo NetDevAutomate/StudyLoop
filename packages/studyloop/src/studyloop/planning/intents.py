@@ -20,11 +20,14 @@ the plan as it now is.
 
 from __future__ import annotations
 
+import copy
+from collections.abc import Mapping
 from dataclasses import dataclass, field
+from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, Sequence
+    from collections.abc import Sequence
 
 
 @dataclass(frozen=True)
@@ -35,6 +38,15 @@ class CreatePlan:
     the Web and CLI surfaces, whose request shapes already accept it; the MCP
     ``create_study_plan`` tool never exposes it (D-4) — an agent must not be
     able to replace a learner's plan by picking the same id.
+
+    ``answers`` is a *snapshot*: the mapping is deep-copied at construction
+    and exposed read-only, so the document the seam judges is the one the
+    intent described when it was built, whatever the caller does to its own
+    dict afterwards and however late the intent is applied (review-2 hazard
+    "live mapping", closed by council review 3, F5). Values keep their JSON
+    types — lists stay lists, dicts stay dicts — because the authoring layer
+    reads them by type. A non-mapping is left as given so the seam's own
+    boundary check still refuses it with ``InvalidField``.
     """
 
     title: str
@@ -42,6 +54,11 @@ class CreatePlan:
     plan_id: str | None = None
     status: str = "draft"
     overwrite: bool = False
+
+    def __post_init__(self) -> None:
+        if isinstance(self.answers, Mapping):
+            snapshot = MappingProxyType(copy.deepcopy(dict(self.answers)))
+            object.__setattr__(self, "answers", snapshot)
 
 
 @dataclass(frozen=True)
