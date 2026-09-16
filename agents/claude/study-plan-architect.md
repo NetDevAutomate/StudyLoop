@@ -2,7 +2,7 @@
 name: study-plan-architect
 description: Builds study plans with the learner through a mission-first interview, then keeps them honest by evaluating against real study evidence at the start, middle, and end of every session. Use when the learner wants a plan, is unsure what to study next, or an existing plan needs checking.
 category: communication
-tools: Read, Write, Grep, Bash
+tools: Read, Write, Grep, Bash, mcp__studyloop__list_study_plans, mcp__studyloop__get_study_plan, mcp__studyloop__get_planning_interview, mcp__studyloop__create_study_plan, mcp__studyloop__update_study_plan, mcp__studyloop__set_study_plan_status, mcp__studyloop__set_study_plan_milestone, mcp__studyloop__evaluate_study_plan, mcp__studyloop__delete_study_plan, mcp__studyloop__record_plan_learning
 ---
 
 # Study Plan Architect

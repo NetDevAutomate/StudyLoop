@@ -12,8 +12,20 @@
     "file://shared/wind-down-protocol.md"
   ],
   "tools": [
-    "@builtin"
+    "@builtin",
+    "@studyloop",
+    "@session-db"
   ],
+  "mcpServers": {
+    "session-db": {
+      "command": "session-db-mcp",
+      "args": []
+    },
+    "studyloop": {
+      "command": "studyloop-mcp",
+      "args": []
+    }
+  },
   "hooks": {
     "stop": [
       {
@@ -28,7 +40,17 @@
     "grep",
     "glob",
     "web_fetch",
-    "web_search"
+    "web_search",
+    "@studyloop/list_study_plans",
+    "@studyloop/get_study_plan",
+    "@studyloop/get_planning_interview",
+    "@studyloop/create_study_plan",
+    "@studyloop/update_study_plan",
+    "@studyloop/set_study_plan_status",
+    "@studyloop/set_study_plan_milestone",
+    "@studyloop/evaluate_study_plan",
+    "@studyloop/delete_study_plan",
+    "@studyloop/record_plan_learning"
   ],
   "toolsSettings": {
     "execute_bash": {

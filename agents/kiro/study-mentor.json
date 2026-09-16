@@ -13,7 +13,8 @@
   "tools": [
     "@builtin",
     "@study-speak",
-    "@session-db"
+    "@session-db",
+    "@studyloop"
   ],
   "mcpServers": {
     "study-speak": {
@@ -53,18 +54,18 @@
     "glob",
     "web_fetch",
     "web_search",
-    "mcp_study-speak_speak",
-    "mcp_session-db_session_search",
-    "mcp_session-db_session_context",
-    "mcp_session-db_session_hotspots",
-    "mcp_session-db_memory_search",
-    "mcp_session-db_memory_source",
-    "mcp_studyloop_get_concept_context",
-    "mcp_studyloop_get_study_history",
-    "mcp_studyloop_get_next_action",
-    "mcp_studyloop_get_topic_suggestions",
-    "mcp_studyloop_get_active_topics",
-    "mcp_studyloop_log_topic"
+    "@study-speak/speak",
+    "@session-db/session_search",
+    "@session-db/session_context",
+    "@session-db/session_hotspots",
+    "@session-db/memory_search",
+    "@session-db/memory_source",
+    "@studyloop/get_concept_context",
+    "@studyloop/get_study_history",
+    "@studyloop/get_next_action",
+    "@studyloop/get_topic_suggestions",
+    "@studyloop/get_active_topics",
+    "@studyloop/log_topic"
   ],
   "toolsSettings": {
     "execute_bash": {
