@@ -353,6 +353,64 @@ def test_preserves_one_plan_backed_action_when_energy_allows(monkeypatch) -> Non
     assert [d.milestone_index for d in low.energy_deferred] == [0]
 
 
+def test_unready_active_plan_is_matched_never_synthesised_and_names_no_milestone(
+    monkeypatch,
+) -> None:
+    """Review-2 G1 / deviation 12 (council review 3, F1): an active-but-unready plan is
+    listed and matched — bias and a plan-related ref — but the ranker never names its
+    next milestone, because the seam would refuse to tick it (``PlanNotReady``)."""
+    husk = StudyPlan(
+        plan_id="husk",
+        title="Husk",
+        status="active",
+        created="2026-08-01T00:00:00+00:00",
+        updated="2026-09-01T00:00:00+00:00",
+        topics=["sql"],
+        milestones=[Milestone(title="Frames", concepts=["window frame"])],
+    )
+    store.create_plan(husk)  # no mission, no success criteria: every blocker fires
+    _patch_collectors(
+        monkeypatch,
+        _candidate("decorators", topic="python", score=100),
+        _candidate("window frame", topic="sql", score=100),
+    )
+
+    plan = build_now_plan()
+
+    assert plan.primary.concept == "window frame", "matched: the bias still applies"
+    assert plan.primary.plan_refs == (PlanRef("husk", None),), "never the unwritable milestone"
+    assert not any(rec.source.startswith("study_plan:") for rec in _all(plan))
+    entry = plan.active_plans[0]
+    assert (entry.plan_id, entry.ready, entry.eligible) == ("husk", False, False)
+    assert len(plan.warnings) == 1
+    assert "husk" in plan.warnings[0]
+    assert "pause or repair" in plan.warnings[0]
+    for blocker in ("Mission", "success"):
+        assert blocker in plan.warnings[0]
+
+
+def test_energy_deferred_plan_ref_carries_no_milestone_index(monkeypatch) -> None:
+    """Council review 3, F1: one payload must not say both "this action advances milestone
+    1" and "milestone 1 is deferred for energy". Below the floor a match on the next
+    milestone's concept is plan-related repair (``None``); at eligible energy it names it."""
+    _plan(
+        "sql-windows", energy_floor=5, milestones=[Milestone("Frames", concepts=["window frame"])]
+    )
+    _patch_collectors(monkeypatch, _candidate("window frame", topic="sql", score=100))
+
+    low = build_now_plan(energy="low")
+
+    assert low.primary.concept == "window frame"
+    assert low.primary.plan_refs == (PlanRef("sql-windows", None),)
+    assert [d.milestone_index for d in low.energy_deferred] == [0]
+    assert not any(rec.source.startswith("study_plan:") for rec in _all(low))
+
+    medium = build_now_plan(energy="medium")
+
+    assert medium.primary.plan_refs == (PlanRef("sql-windows", 0),)
+    assert medium.energy_deferred == ()
+
+
 def test_additive_keys_present_only_when_active_plans_exist(monkeypatch) -> None:
     """D-5: additive keys and ``plan_refs`` appear only when non-empty."""
     golden = json.loads(GOLDEN.read_text(encoding="utf-8"))
