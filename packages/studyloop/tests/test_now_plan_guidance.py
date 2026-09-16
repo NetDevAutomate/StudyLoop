@@ -476,6 +476,57 @@ def test_cli_now_renders_plan_relevance_and_energy_deferral(monkeypatch) -> None
     assert payload["active_plans"][0]["title"] == "SQL Windows"
 
 
+def _hostile_world(monkeypatch) -> bytes:
+    """One active plan whose title, topic and milestone text carry Rich markup, brackets,
+    shell punctuation and HTML — the hostile-content fixture review 2 required. Returns
+    the document's bytes so a caller can prove the read paths performed no write."""
+    _plan(
+        "hostile",
+        title="Plan [/bold]",
+        topics=["<script>alert(1)</script>"],
+        # No parentheses in the concept: the concepts regex stopping at the first ``)``
+        # is the tracked parser bug (review-2 deviation 13), not this fixture's subject.
+        milestones=[Milestone(title="Frames [/red]", concepts=['window "frame"; rm -rf ~'])],
+    )
+    _patch_collectors(monkeypatch)
+    return store.plan_path("hostile").read_bytes()
+
+
+def test_hostile_plan_text_does_not_break_now_emit(monkeypatch) -> None:
+    """Review-2 rule for #10: plan text is data. The engine must rank it, serialise it and
+    write nothing back (council review 3, F4 / Grok 🟡)."""
+    before = _hostile_world(monkeypatch)
+
+    plan = build_now_plan()
+
+    assert plan.primary.source == "study_plan:hostile:0"
+    assert plan.primary.concept == 'window "frame"; rm -rf ~'
+    assert plan.primary.topic == "<script>alert(1)</script>"
+    round_trip = json.loads(json.dumps(plan.to_json_dict(), ensure_ascii=False))
+    assert round_trip["primary"]["plan_refs"] == [{"plan_id": "hostile", "milestone_index": 0}]
+    assert round_trip["active_plans"][0]["title"] == "Plan [/bold]"
+    assert store.plan_path("hostile").read_bytes() == before, "ranking performs no write"
+
+
+def test_cli_now_renders_hostile_plan_text_literally(monkeypatch) -> None:
+    """Council review 3, F4 (GPT 🟡 / Grok 🟡, reproduced as a crash): a plan title holding
+    ``[/bold]`` reached Rich as markup and ``studyloop now`` died with ``MarkupError``.
+    Plan-derived text is escaped, so it renders literally and the command exits 0."""
+    from click.testing import CliRunner
+
+    from studyloop.cli import cli
+
+    before = _hostile_world(monkeypatch)
+
+    result = CliRunner().invoke(cli, ["now"])
+
+    assert result.exit_code == 0, result.output or repr(result.exception)
+    assert "Plan [/bold]" in result.output
+    assert "Frames [/red]" in result.output
+    assert "<script>alert(1)</script>" in result.output
+    assert store.plan_path("hostile").read_bytes() == before, "rendering performs no write"
+
+
 def test_cli_now_without_plans_prints_no_plan_lines(monkeypatch) -> None:
     from click.testing import CliRunner
 
