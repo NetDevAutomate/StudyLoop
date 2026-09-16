@@ -222,16 +222,20 @@ reach the MCP server can do the same work with `studyloop plan …` at a shell.
 | `create_study_plan(title, answers, plan_id=None, status="draft")` | Draft a new plan from interview answers; never replaces an existing plan (a taken id is a conflict). |
 | `update_study_plan(plan_id, …)` | Revise fields, topics, milestones and status together, judged as one document and saved once. |
 | `set_study_plan_status(plan_id, status)` | Move a plan between `draft`, `active`, `paused`, `complete`, `abandoned`; activation is readiness-gated. |
+| `set_study_plan_milestone(plan_id, index, done)` | Mark one milestone complete (`done=true`) or reopen it (`false`) — set, not toggle, so a retry is safe. |
+| `evaluate_study_plan(plan_id, phase, study_id="", record=False)` | Evaluate the plan at a `start`/`mid`/`end` checkpoint against real study evidence. The default is a preview that writes nothing; `record=true` appends the checkpoint to the log and the document and reports each write (`db_write`, `document_write`, `recording_complete`). |
+| `delete_study_plan(plan_id, confirmed=False)` | Delete the plan document — irreversible, so it is refused unless `confirmed=true`. The plan's checkpoint history is kept. |
 | `record_plan_learning(plan_id, title, body="", status="active")` | Append a learning record to the plan — the wind-down's first write. |
 
 A refused call is a tool error whose message starts with a machine-readable
 kind — `not_found:`, `invalid_id:`, `conflict:`, `invalid:`,
 `invalid_milestone:`, `not_ready:`, or `plan_error:` for a refusal the
 mapping has not met — followed by the plan layer's own message. A `not_ready:` refusal names every blocker, so the agent can ask the
-learner for what is missing instead of reporting that something is wrong.
-Milestone completion, checkpoint evaluation and deletion over MCP are not
-available yet; use `studyloop plan milestone`, `studyloop plan evaluate` and
-the Web UI for those.
+learner for what is missing instead of reporting that something is wrong; on
+a plan that is already active it adds "pause it or repair the blockers before
+writing". A recorded evaluation whose database or document write failed is
+not an error: the response says which write failed (`recording_complete:
+false` with the reason in `warnings`) and still carries the evaluation.
 
 ## Data integrity
 

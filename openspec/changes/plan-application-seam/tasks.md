@@ -295,15 +295,44 @@ Branch: `fix/plan-integration-bugs` (RED at `3a4f6b01`). §5 stream: `feat/lexic
 
 ## Phase 4 — parallel: #12 ∥ #13b
 
-- [ ] **T4.1** (#12, agent C) RED: stdio inventory asserts the nine names; `set_study_plan_milestone` retry
-      idempotent; `evaluate_study_plan` preview writes nothing, record reports sinks; `delete_study_plan`
-      without `confirmed=True` refused. Implement three tools. DoD: `test_full_handshake_list_tools_and_call`
-      asserts exactly **32** unique names (23 at `0a20a796` + the nine plan tools less `record_plan_learning`,
-      already among the 23 — the design's "35" was arithmetic on a stale inventory, review 3) **and** that the
-      nine design-§4 names plus `CORE_TOOLS` are present; fold `record_plan_learning`'s inline `PlanNotReady`
-      mapping into `_plan_tool_error` in the same `tools.py` commit, with its prefixes, blockers and chained
-      cause pinned first; extend `forbid_store` with the authoring/evaluation entry points before
-      `evaluate_study_plan` lands.
+- [x] **T4.1** (#12, agent C; RED `1a56b858` 59 failed / 59 passed on `test_mcp_plan_tools.py`, stdio handshake
+      "expected exactly 32 tools, got 29" → GREEN `b1e11e78`) RED: stdio inventory asserts the nine names;
+      `set_study_plan_milestone` retry idempotent; `evaluate_study_plan` preview writes nothing, record reports sinks;
+      `delete_study_plan` without `confirmed=True` refused. Implement three tools. DoD met:
+      `test_full_handshake_list_tools_and_call` asserts exactly **32** unique names (`len(listed) == len(set)`),
+      the nine design-§4 names, `record_plan_learning` and `CORE_TOOLS` over the real transport (`-m integration`
+      2 passed); the in-process twin `test_production_inventory_is_thirty_two_with_the_nine_plan_tools` pins the same.
+      **As landed** (`mcp/tools.py`, appended after `set_study_plan_status`): `set_study_plan_milestone(plan_id,
+      index, done)` → `apply(SetMilestone)`, `done` a required boolean with no default, forwarded as given (no read,
+      no toggle); `evaluate_study_plan(plan_id, phase, study_id="", record=False)` → `assess`, never `apply`, the
+      `AssessmentResult` view returned with `db_write`/`document_write` as the seam reports them (a preview is
+      `not_requested` on both and byte-identical document + empty `checkpoint_history`; a failed sink is
+      `recording_complete: false` + the seam's warning, not a raise), `append_to_plan` not exposed;
+      `delete_study_plan(plan_id, confirmed=False)` → `apply(DeletePlan)`, the boolean default kept in the schema
+      (not required, no `const`/`enum`), the seam's `InvalidField` → `invalid: deleting '<id>' requires
+      confirmed=True`, checkpoint history retained after a confirmed delete. **Fold:** `record_plan_learning`'s
+      inline `PlanNotReady`/`PlanError` mapping replaced by `_plan_tool_error` in the same commit, after pinning
+      (`test_record_plan_learning_*`: `not_ready:` prefix + blockers + pause-or-repair hint, `not_found:` /
+      `invalid_id:` / `invalid:` / `conflict:` / `invalid_milestone:` / `plan_error:`, `__cause__` chained, success
+      shape unchanged). This is an **intentional wording change, reported as such**: its refusals gain the kind
+      prefix the other eight already carried and `docs/agent-install.md` already promised for every plan tool; the
+      pre-fold tests (`test_plan_record.py::TestMcpTool`, `test_mcp_plan_record_seam.py`) match by substring and
+      pass unchanged (the delta spec's `record_plan_learning` requirement text updated to the prefixed form).
+      `forbid_store` extended first with `authoring.draft_plan/interview_spec/seed_from_history`,
+      `evaluation.evaluate_plan/evaluate_and_record` and `index.record_checkpoint`. Delta spec: mcp-server
+      requirement "Study-plan progression and deletion tools" (ten scenarios); `docs/agent-install.md` MCP list
+      names the nine + `record_plan_learning`, drops "not available yet", documents the already-active hint and the
+      failed-sink response. **Deviations, each reported:** (a) the `tools.py` section comment ("Six thin adapters …
+      land in Phase 4") was reworded to nine — a stale comment, not code; (b) `_plan_tool_error` stays defined
+      after `log_struggle` (no move — "append only"); `record_plan_learning` above it binds the closure late and
+      resolves it at call time; (c) `RevisePlan.milestones`/`topics` snapshot recipe (review-3 F5 follow-on) not
+      applied — `intents.py` is outside #12's file set and was not touched. **Gates at `b1e11e78`+docs:** `pytest
+      packages/studyloop/tests -k "mcp or plan"` 875 passed exit 0; `pytest packages/studyloop/tests -x` **4949
+      passed / 4 skipped exit 0** (6m05s); `just lint` clean; `just typecheck` 0 errors; guard
+      `test_architecture_plan_seam.py` 30 passed; `test_mcp_stdio_smoke.py -m integration` 2 passed; `openspec
+      validate plan-application-seam` valid (`--specs --all` 25 passed); `mkdocs build --strict` clean;
+      `git diff 0a20a796 -- mcp/tools.py` → 10 deleted lines, all of them the folded inline mapping and the section
+      comment. Inventory 29 → **32**.
 - [ ] **T4.2** (#13b, agent D) `agents/shared/personas/plan-architect.md`: prefer the nine MCP tools, CLI
       fallback. DoD: persona test asserts the tool names appear in the rendered persona when `purpose=planning`.
 
