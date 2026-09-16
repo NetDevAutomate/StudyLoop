@@ -18,6 +18,7 @@ import re
 import unicodedata
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -156,7 +157,14 @@ class PlanSummary:
     checkpoint_count: int
 
     @classmethod
-    def from_plan(cls, plan: StudyPlan) -> PlanSummary:
+    def from_plan(cls, plan: StudyPlan, *, today: date | None = None) -> PlanSummary:
+        """The summary; ``today`` pins ``days_until_target`` for frozen-clock callers.
+
+        Defaults to the wall clock, exactly as :meth:`StudyPlan.summary` does,
+        so every existing caller is unchanged. :meth:`ActivePlanGuidance.from_plan`
+        passes its own effective date so the nested summary and the urgency
+        bucket beside it are computed from one clock (council review 2).
+        """
         nxt = plan.next_milestone()
         return cls(
             plan_id=plan.plan_id,
@@ -173,7 +181,7 @@ class PlanSummary:
             progress_pct=plan.progress_pct,
             next_milestone=nxt.title if nxt else "",
             mission_why=plan.mission.why,
-            days_until_target=plan.days_until_target(),
+            days_until_target=plan.days_until_target(today),
             learning_record_count=len(plan.learning_records),
             checkpoint_count=len(plan.checkpoints),
         )
@@ -711,6 +719,14 @@ class ActivePlanGuidance:
 
     @classmethod
     def from_plan(cls, plan: StudyPlan, *, today: date | None = None) -> ActivePlanGuidance:
+        """Build the entry; ``today`` is the one effective date for the whole payload.
+
+        ``target_urgency`` and the nested summary's ``days_until_target`` are
+        both computed from it (council review 2, GPT F6): a frozen-clock read
+        must not say "soon" beside a day count taken from the wall clock.
+        ``None`` means the wall clock, resolved once here so both agree.
+        """
+        effective_today = today or datetime.now(UTC).date()
         warnings: list[str] = []
         keys = {normalise_match_key(topic) for topic in plan.topics}
         for milestone in plan.milestones:
@@ -733,7 +749,7 @@ class ActivePlanGuidance:
                 f"active plan {plan.plan_id!r} names no topics or concepts — nothing can match it"
             )
 
-        days = plan.days_until_target(today)
+        days = plan.days_until_target(effective_today)
         if plan.target_date and days is None:
             warnings.append(
                 f"target_date {plan.target_date!r} on {plan.plan_id!r} is not a date; "
@@ -757,7 +773,7 @@ class ActivePlanGuidance:
             )
 
         return cls(
-            plan=PlanSummary.from_plan(plan),
+            plan=PlanSummary.from_plan(plan, today=effective_today),
             readiness=ReadinessView.from_plan(plan),
             next_milestone=next_view,
             match_keys=frozenset(keys),

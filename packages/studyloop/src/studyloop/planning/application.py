@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Mapping, Sequence
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, assert_never, overload
 
 from . import authoring, evaluation, index, store
@@ -221,14 +222,17 @@ class PlanApplication:
 
         Plan-static and cheap — the documents are parsed once and no session
         history is read — so the ``now`` ranker (design §3, D-5) can call it
-        on every request. ``today`` pins the target-date urgency for tests and
-        frozen-clock callers; it defaults to the real UTC date.
+        on every request. ``today`` pins the target-date urgency *and* the
+        nested summary's day count for tests and frozen-clock callers; it
+        defaults to the real UTC date, resolved once here so every entry in
+        one call shares one clock (council review 2, GPT F6).
 
         A document the store could not parse is named in the collection's
         ``warnings`` rather than silently absent, and a parseable-but-odd
         active plan (no milestones, a target date that is not a date) is
         represented with per-plan warnings rather than raised on.
         """
+        effective_today = today or datetime.now(UTC).date()
         parsed = store.list_plans()
         seen = {plan.plan_id for plan in parsed}
         warnings = tuple(
@@ -237,7 +241,7 @@ class PlanApplication:
             if plan_id not in seen
         )
         plans = tuple(
-            ActivePlanGuidance.from_plan(plan, today=today)
+            ActivePlanGuidance.from_plan(plan, today=effective_today)
             for plan in sorted(parsed, key=lambda plan: plan.plan_id)
             if plan.status == "active"
         )
