@@ -88,6 +88,32 @@ def test_harness_order_is_exactly_release_harnesses_reordered() -> None:
     )
 
 
+class TestLaneTimeoutBudget:
+    """The suite's 60 s pytest-timeout must not fire before the lane's own budget.
+
+    Found 2026-09-16 on the first grok run: grok sat on its device-code
+    sign-in screen, PaneDriver was still inside ITS 90 s per-turn wait, and
+    pytest-timeout killed the test at 60 s -- so the lane's documented
+    budget-exhausted outcome (``TurnBudgetExceededError`` -> bundle outcome
+    ``budget-exhausted``) was unreachable for every harness. The lane's
+    module-level timeout has to cover three full turns plus every fixed wait
+    (session state 15 s, tmux 15 s, pane children 20 s, end 15 s, resume
+    30 s + 15 s + 15 s), with headroom.
+    """
+
+    def test_module_timeout_exceeds_the_worst_case_turn_budget(self) -> None:
+        import acceptance.test_harness_matrix_live as lane
+
+        timeouts = [m for m in lane.pytestmark if m.name == "timeout"]
+        assert timeouts, "the lane module must carry an explicit pytest.mark.timeout"
+        module_timeout = timeouts[0].args[0]
+        worst_case = lane._MAX_TURNS * lane._PER_TURN_TIMEOUT + (15 + 15 + 20 + 15 + 30 + 15 + 15)
+        assert module_timeout > worst_case * 1.2, (
+            f"lane timeout {module_timeout}s does not clear its own worst case {worst_case}s "
+            "with 20% headroom"
+        )
+
+
 class TestAuthModeRecording:
     """The bundle's ``auth_mode`` must say which world the harness actually saw.
 

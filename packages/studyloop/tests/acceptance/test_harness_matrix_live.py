@@ -79,6 +79,13 @@ if TYPE_CHECKING:
 pytestmark = [
     pytest.mark.acceptance,
     pytest.mark.skipif(not shutil.which("tmux"), reason="tmux not installed"),
+    # The suite-wide pytest-timeout is 60 s (pyproject.toml), which is LESS
+    # than one of this lane's 90 s per-turn budgets: on the first grok run
+    # (2026-09-16) pytest-timeout killed the test while PaneDriver was still
+    # waiting, so the documented budget-exhausted outcome was unreachable.
+    # Three turns + every fixed wait is ~400 s worst case; pinned with
+    # headroom by test_harness_matrix_live_mechanics.TestLaneTimeoutBudget.
+    pytest.mark.timeout(600),
 ]
 
 #: Literal re-order of RELEASE_HARNESSES -- see the module docstring's ORDER

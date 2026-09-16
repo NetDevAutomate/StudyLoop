@@ -336,6 +336,42 @@ def _wait(pred, *, timeout: float, interval: float = 0.25) -> bool:
     return False
 
 
+def _wait_for_pane_quiescence(
+    tmux: TmuxHarness,
+    pane: str,
+    *,
+    max_seconds: float = 150.0,
+    poll: float = 3.0,
+    min_seconds: float = 30.0,
+    stable_polls: int = 3,
+) -> tuple[bool, float]:
+    """Wait until the pane stops changing (a reply finished) or the budget runs out.
+
+    Returns (quiescent, seconds_waited). ``stable_polls`` consecutive identical
+    captures, after the first change and never before ``min_seconds`` have
+    passed, count as quiet. The floor exists because a full-screen TUI
+    (OpenCode) can sit visually still for several seconds while its model
+    call is in flight -- the 2026-09-16 opencode run ended its session on a
+    6 s lull and the assistant row it left behind had no content at all.
+    """
+    started = time.monotonic()
+    previous = tmux.capture_pane(pane, lines=60)
+    changed_once = False
+    stable = 0
+    while time.monotonic() - started < max_seconds:
+        time.sleep(poll)
+        current = tmux.capture_pane(pane, lines=60)
+        if current != previous:
+            changed_once = True
+            stable = 0
+        elif changed_once:
+            stable += 1
+            if stable >= stable_polls and time.monotonic() - started >= min_seconds:
+                return True, round(time.monotonic() - started, 1)
+        previous = current
+    return False, round(time.monotonic() - started, 1)
+
+
 def _launch_session(
     harness: str,
     env: dict[str, str],
@@ -405,8 +441,12 @@ def _launch_session(
             details["pane_after_settle"] = redact(tmux.capture_pane(main_pane, lines=40))
             if typed_prompt and details.get("agent_process_in_pane"):
                 tmux.send_keys(main_pane, typed_prompt, enter=True)
-                time.sleep(settle_seconds)
-                details["pane_after_prompt"] = redact(tmux.capture_pane(main_pane, lines=40))
+                quiet_for, waited = _wait_for_pane_quiescence(tmux, main_pane)
+                details["reply_wait_seconds"] = waited
+                details["pane_quiescent"] = quiet_for
+                details["pane_after_prompt"] = redact(tmux.capture_pane(main_pane, lines=60))
+                # Give the harness a moment to flush its transcript before --end.
+                time.sleep(3.0)
         persona_file = state.get("persona_file")
         if persona_file and Path(persona_file).exists():
             text = Path(persona_file).read_text(encoding="utf-8", errors="replace")
