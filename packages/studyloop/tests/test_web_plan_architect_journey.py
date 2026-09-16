@@ -112,6 +112,17 @@ def web_server(world: dict[str, Path]):
             "STUDYLOOP_TEST_AGENT_CMD": agent_cmd,
             "STUDYLOOP_PLANS_DIR": str(world["plans"]),
             "STUDYLOOP_SESSION_DIR": str(world["sessions"]),
+            # The web app warms the semantic query encoder on a background
+            # thread at boot (lane A1). In this isolated HOME there is no
+            # model, so the warm constructs one from scratch (torch import,
+            # "Creating a new one with mean pooling") and holds the GIL long
+            # enough that one POST /api/session/start in this module misses
+            # its 20 s cap when the machine is busy — reproduced 5/5 module
+            # runs at load ≈ 7.5 (a different test each time, always the
+            # start POST), 3/3 green with the warm off. Nothing here searches
+            # sessions, so the lexical mode is the honest isolation, not a
+            # shortcut: the journey under test is the plan door, not retrieval.
+            "STUDYLOOP_RETRIEVAL_MODE": "lexical",
         },
     )
     try:
