@@ -217,9 +217,38 @@ def test_active_guidance_target_urgency_buckets(
 
 def test_active_guidance_defaults_to_the_real_today(app: PlanApplication) -> None:
     real_today = datetime.now(UTC).date()
-    _active("dated", target_date=(real_today + timedelta(days=60)).isoformat())
+    _active("dated", target_date=(real_today + timedelta(days=3)).isoformat())
     (only,) = _guidance(app, today=None).plans
-    assert only.target_urgency == "later"
+    # Three days out is "soon" only when the effective date is today's, and the
+    # nested summary must agree with the bucket it sits beside.
+    assert only.target_urgency == "soon"
+    assert only.plan.days_until_target == 3
+
+
+FAR_TODAY = date(2031, 1, 1)  # far from the wall clock: agreement cannot be a coincidence
+
+
+@pytest.mark.parametrize(
+    ("offset", "expected"),
+    [(-1, "overdue"), (0, "soon"), (7, "soon"), (8, "later")],
+    ids=["yesterday", "today", "week", "eight-days"],
+)
+def test_guidance_summary_days_and_urgency_use_one_effective_date(
+    app: PlanApplication, offset: int, expected: str
+) -> None:
+    """Council review 2, GPT Astra F6 / Grok 🔵: ``target_urgency`` was computed
+    from the supplied ``today`` while the nested ``PlanSummary.days_until_target``
+    read the wall clock, so one entry could say "soon" beside a day count of
+    -400. A frozen-clock read has one clock: the whole payload is a function of
+    the documents and the supplied date alone."""
+    _active("dated", target_date=(FAR_TODAY + timedelta(days=offset)).isoformat())
+
+    (only,) = _guidance(app, today=FAR_TODAY).plans
+
+    assert only.target_urgency == expected
+    assert only.plan.days_until_target == offset
+    assert only.to_json_dict()["plan"]["days_until_target"] == offset
+    assert _guidance(app, today=FAR_TODAY) == _guidance(app, today=FAR_TODAY)
 
 
 def test_active_guidance_warns_on_malformed_documents(
