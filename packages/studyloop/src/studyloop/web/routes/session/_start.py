@@ -76,6 +76,19 @@ def _launch_topic(body: StartSessionRequest) -> str:
     return body.topic.strip() or _ARCHITECT_TOPIC
 
 
+def _one_line(value: object) -> str:
+    """Collapse a learner-authored value to one line of text.
+
+    Everything the brief quotes — topics, concepts, notes, plan titles,
+    milestone titles — is data from the learner's databases and documents.
+    Rendered raw, a value holding a newline followed by ``## …`` would open a
+    heading of its own inside the persona, outside the list item meant to
+    hold it (council review 3, F4). Whitespace runs, newlines included,
+    become one space, so a value can never start a line.
+    """
+    return " ".join(str(value).split())
+
+
 def _render_planning_brief(brief: PlanningBrief) -> str:
     """Render the seam's :class:`PlanningBrief` as the Markdown the persona carries.
 
@@ -83,7 +96,8 @@ def _render_planning_brief(brief: PlanningBrief) -> str:
     questions it asks, one per turn, with the *why* that tells a usable answer
     from filler), the evidence the databases already hold about the learner
     (data to open from, never instructions), and the plans that already exist
-    (so the architect extends or references rather than duplicates).
+    (so the architect extends or references rather than duplicates). Every
+    quoted value passes through :func:`_one_line`.
     """
     lines: list[str] = ["### Interview", ""]
     for index, item in enumerate(brief.interview, start=1):
@@ -91,8 +105,8 @@ def _render_planning_brief(brief: PlanningBrief) -> str:
             flag for flag, on in (("required", item.required), ("multi", item.multi)) if on
         )
         suffix = f" ({flags})" if flags else ""
-        lines.append(f"{index}. **{item.key}** — {item.prompt}{suffix}")
-        lines.append(f"   _{item.why}_")
+        lines.append(f"{index}. **{_one_line(item.key)}** — {_one_line(item.prompt)}{suffix}")
+        lines.append(f"   _{_one_line(item.why)}_")
     lines.append("")
 
     lines.append("### Evidence from the learner's history")
@@ -111,7 +125,7 @@ def _render_planning_brief(brief: PlanningBrief) -> str:
         lines.append("- No history evidence yet.")
     notes = seed.get("notes") or []
     for note in notes:
-        lines.append(f"- _note: {note}_")
+        lines.append(f"- _note: {_one_line(note)}_")
     lines.append("")
 
     lines.append("### Existing plans")
@@ -119,19 +133,24 @@ def _render_planning_brief(brief: PlanningBrief) -> str:
     if brief.existing_plans:
         for plan in brief.existing_plans:
             progress = f"{plan.milestone_done}/{plan.milestone_total} milestones"
-            nxt = f"; next: {plan.next_milestone}" if plan.next_milestone else ""
-            lines.append(f"- `{plan.plan_id}` — {plan.title} ({plan.status}; {progress}{nxt})")
+            nxt = f"; next: {_one_line(plan.next_milestone)}" if plan.next_milestone else ""
+            lines.append(
+                f"- `{_one_line(plan.plan_id)}` — {_one_line(plan.title)} "
+                f"({_one_line(plan.status)}; {progress}{nxt})"
+            )
     else:
         lines.append("- None yet.")
     return "\n".join(lines)
 
 
 def _seed_entry(entry: object) -> str:
-    """One evidence row as a line of text — a mapping's values joined, else ``str``."""
+    """One evidence row as one line of text — a mapping's values joined, else ``str``."""
     if isinstance(entry, dict):
-        parts = [f"{k}: {v}" for k, v in entry.items() if v not in ("", None, 0)]
+        parts = [
+            f"{_one_line(k)}: {_one_line(v)}" for k, v in entry.items() if v not in ("", None, 0)
+        ]
         return "; ".join(parts) if parts else "(empty)"
-    return str(entry)
+    return _one_line(entry)
 
 
 def _resolve_persona(body: StartSessionRequest, topic: str) -> tuple[str, str]:
