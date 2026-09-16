@@ -263,7 +263,11 @@ class TestGetNextAction:
         ) as mock_build:
             result = tool(energy="high", time_minutes=15, modality="hands-on")
 
-        mock_build.assert_called_once_with(energy="high", time_minutes=15, modality="hands-on")
+        # ``interleave`` is forwarded since T3.5 (council review 3, D-8): the
+        # default "off" reaches the engine explicitly, as the CLI and Web pass it.
+        mock_build.assert_called_once_with(
+            energy="high", time_minutes=15, modality="hands-on", interleave="off"
+        )
         assert result == {"primary": {"concept": "closures"}}
 
     def test_rejects_invalid_energy(self) -> None:
