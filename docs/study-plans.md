@@ -17,11 +17,11 @@ Plans are optional. Study Session, review, and Today all work without one.
 5. Create the plan, read it back, and change anything that does not sound like
    your own goal.
 
-!!! important "The current form is manual"
+!!! important "The form is manual; the interview is the other door"
     The free-text brain dump is saved as context, but the Web UI does not
-    currently ask an agent to decompose it into the structured fields. An
-    agent-led planning interview exists as repository work, but it is not an
-    integrated Web UI path yet.
+    ask an agent to decompose it into the structured fields. For an agent-led
+    interview instead, choose **Plan with architect** beside **New plan** —
+    see [Build a plan with the study-plan-architect](#build-a-plan-with-the-study-plan-architect).
 
 ## Keep the plan small enough to use
 
@@ -94,6 +94,15 @@ studyloop plan architect
 studyloop study --mode plan-architect --agent claude
 ```
 
+In the Web UI, **Plan with architect** on the **Study Plans** view (beside
+**New plan**, with an optional subject) starts the same interview as a
+*planning* session in the Study Session console, using the agent and transport
+the start picker has selected. The console is labelled as a planning session,
+and the label survives a page reload. The click creates nothing: the plan
+appears in the list when the interview creates it. If a session is already
+running, the console offers to reattach to it or end it first, exactly as a
+normal start does.
+
 ## Use plans from the terminal
 
 ```bash
@@ -120,8 +129,8 @@ conversation should work through. It does not itself start an agent.
 
 ## What a plan does not do yet
 
-- The Web UI does not launch a planning agent or automatically structure the
-  brain dump.
+- The Web UI does not automatically structure the brain dump into the
+  plan's fields; the manual form and the architect interview are the two doors.
 - `record_plan_learning` (`mcp/tools.py:129`) is the one plan-write MCP tool —
   it appends a learning record to a plan, and is what the second-brain
   wind-down flow calls before any second-brain projection (see

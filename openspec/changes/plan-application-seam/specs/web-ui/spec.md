@@ -209,3 +209,96 @@ phase check of its own: an unknown phase on `POST` is the seam's
 - **THEN** the response is the seam's `422` readiness refusal, the document is
   byte-identical, the checkpoint log has no row, and `GET
   /api/plans/{id}/evaluate` (preview) is still `200`
+
+
+### Requirement: Plan with architect journey
+The Study Plans view SHALL offer a **Plan with architect** control beside
+**New plan** (button name `Plan with architect`, `data-testid="plan-architect"`)
+with an optional subject field (`data-testid="plan-architect-subject"`, labelled
+for assistive technology) and a live status region
+(`data-testid="plan-architect-status"`, `role="status"`, `aria-live="polite"`).
+One activation SHALL cause exactly one `POST /api/session/start` carrying
+`purpose: "planning"`, `topic: <the subject, trimmed, or "">` (never omitted;
+the server resolves `""` to the fixed label `Study plan`), `origin: "study"`
+and the start picker's own `energy`, `agent` and `transport`. The Plans view
+SHALL NOT post, open a WebSocket, mount a terminal or listen for the console's
+`study-session-start` event: it dispatches one `plan-architect-request` window
+event and the Study Session view's session timer — the one owner of the start
+POST, the 409 handling and the `study-session-start` event the live console
+mounts on — starts the session and navigates the learner to the existing
+console (`#study-session`), then reports the outcome back with exactly one
+`plan-architect-result` event. A second activation while a launch is in flight
+SHALL be a no-op. The Study Session view's `init()` SHALL register its window
+listeners once even when called twice (Alpine auto-init plus `x-init`).
+
+The live console SHALL carry a purpose label (`data-testid="console-purpose-label"`,
+`role="status"`, `aria-live="polite"`) that is rendered only for a planning
+session, read from `purpose` on the `201` body on a fresh start and from `GET
+/api/session/state` on load-time adoption; a focus console SHALL render as
+before. `GET /api/session/state` SHALL report `purpose` for every session it
+describes — on the live-slot overlay and on the file-only path a CLI session
+takes — with an explicit persisted `purpose` winning, a file whose persisted
+`mode` is the planning persona's (`persona_mode_for("planning")`) reporting
+`planning`, and anything else `focus`; the topic string SHALL never be
+consulted. The launch SHALL create no plan and store no plan id (D-11). A
+launch refused with the existing `409` conflict shape (`error`,
+`study_session_id`, `topic`, `agent`, `detached`, `reattach_url`) SHALL land
+the learner on the picker's recovery block with the reattach lever, not on a
+second console. The manual **New plan** path SHALL be unchanged.
+
+#### Scenario: One click, one POST, the existing console
+- **WHEN** the learner types `SQL window functions` into the subject field and
+  activates **Plan with architect**
+- **THEN** exactly one `POST /api/session/start` is made with `purpose ==
+  "planning"`, `topic == "SQL window functions"`, `origin == "study"`; the
+  response is `201` with `purpose == "planning"` and a `ws_url`; the page
+  navigates to `#study-session`; exactly one `study-session-start` event with
+  `purpose == "planning"` is dispatched; exactly one WebSocket to the `ws_url`
+  opens; exactly one console is visible and nothing is mounted in the Plans view
+
+#### Scenario: No subject
+- **WHEN** the subject field is empty and **Plan with architect** is activated
+- **THEN** the request carries `topic == ""` and the `201` body's `topic` is
+  `Study plan`
+
+#### Scenario: Label survives a reload
+- **WHEN** a planning session is live and the page is reloaded
+- **THEN** the console re-adopts the session from `GET /api/session/state`,
+  whose body has `purpose == "planning"`, and exactly one visible
+  `console-purpose-label` reads as a planning session, before and after the
+  reload
+
+#### Scenario: CLI-started architect is labelled from its persisted mode
+- **WHEN** the session state file was written by `studyloop plan architect`
+  (`mode == "plan-architect"`, no `purpose` key) and `GET /api/session/state`
+  is called
+- **THEN** the body has `purpose == "planning"`; a file with `mode == "focus"`
+  and `topic == "Study plan"` reports `focus`; a file carrying `purpose ==
+  "focus"` beside `mode == "plan-architect"` reports `focus`
+
+#### Scenario: The brief's structure, never its wording
+- **WHEN** the fake PTY agent receives the persona of a Web-launched planning
+  session
+- **THEN** it contains, in order, `## Planning brief`, `### Interview`,
+  `### Evidence from the learner's history`, `### Existing plans` and the
+  architect body's `## Tooling` section, with `**Mode:** plan-architect` and no
+  `Resuming Previous Session` section
+
+#### Scenario: Nothing is created by the launch
+- **WHEN** **Plan with architect** is activated
+- **THEN** `GET /api/plans` is unchanged, the plans directory holds no new
+  document, and the session state carries no `plan_id`
+
+#### Scenario: Conflict is the existing shape with a reattach lever
+- **WHEN** a session is live and `POST /api/session/start` is called again with
+  `purpose: "planning"`
+- **THEN** the response is `409` with `error`, `study_session_id`, `topic`,
+  `agent`, `detached` and `reattach_url == <the live session's ws_url>`; and a
+  Plans-view launch that meets that `409` shows the picker's `.picker-error`
+  with the body's `error` and the `Reattach to this session` control, with no
+  terminal mounted
+
+#### Scenario: Manual New plan is unchanged
+- **WHEN** the learner uses **New plan**, fills the form and creates the plan
+- **THEN** the reader shows the plan, `GET /api/plans` counts one more, and no
+  session was started

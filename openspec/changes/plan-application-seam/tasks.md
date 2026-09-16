@@ -386,10 +386,51 @@ Branch: `fix/plan-integration-bugs` (RED at `3a4f6b01`). §5 stream: `feat/lexic
 
 ## Phase 5 — #14 Web architect journey · owner: agent D
 
-- [ ] **T5.1** RED browser journey next to the existing web session browser tests: one "Plan with architect"
-      click → console labelled planning; brief structure present (not wording); refresh keeps label; manual
-      New Plan still works; one WebSocket; no plan row created; structured conflict error.
-- [ ] **T5.2** Implement the Plans-view affordance + labels. DoD: T5.1 green; `just test-web` green.
+- [x] **T5.1** (RED `b820c4b3`: browser 7 failed / 1 passed on `cf78be40`; node 13 failed / 0 passed; TestClient
+      2 failed / 1 passed) RED browser journey next to the existing web session browser tests: one "Plan with
+      architect" click → console labelled planning; brief structure present (not wording); refresh keeps label;
+      manual New Plan still works; one WebSocket; no plan row created; structured conflict error.
+      **As landed:** `tests/test_web_plan_architect_journey.py` (Playwright, `pytestmark = e2e`, the shared
+      `_playwright_helpers` server + `STUDYLOOP_TEST_AGENT_CMD` fake agent — the same seam `test_web_agent_matrix.py`
+      uses; the fake agent copies its persona file into a directory the test owns so the brief's *structure* is
+      read from what the architect was actually handed) — `test_plan_with_architect_action_posts_purpose_planning_and_navigates_to_console`,
+      `test_plan_with_architect_without_a_subject_lets_the_server_name_it_study_plan`,
+      `test_console_is_labelled_planning_and_label_survives_reconnect`, `test_brief_structure_present_not_wording`,
+      `test_manual_new_plan_form_still_works` (passed RED: the pin), `test_one_console_one_websocket`,
+      `test_conflict_returns_structured_error_and_offers_reattach`, `test_starting_the_architect_creates_no_plan`;
+      `tests/js/plan-architect-launch.test.js` (14: the Plans view dispatches one request and never posts/opens a
+      socket/listens for the console's event; sessionTimer answers with one POST, one `study-session-start`, one nav,
+      one result, keeps its 409 handling; liveAgentConsole labels/clears/adopts purpose; the Start-button path
+      unchanged; `init()` twice still one listener); `test_session_start_purpose.py::TestReconnectLabelFromPersistedMode`
+      (3: a CLI-started architect's `mode=plan-architect` file reports `purpose=planning`; `mode=focus` + topic
+      "Study plan" stays `focus`; an explicit `purpose` wins). Run: `just e2e packages/studyloop/tests/test_web_plan_architect_journey.py`.
+- [x] **T5.2** (GREEN `7ad39941`) Implement the Plans-view affordance + labels. DoD: T5.1 green; `just test-web` green.
+      **As landed:** `index.html` — `Plan with architect` button (`data-testid="plan-architect"`, disabled +
+      `aria-busy` while launching, `aria-describedby` hint) beside `New plan`, an optional subject input with a
+      screen-reader label (`plan-architect-subject`), a `role="status" aria-live="polite"` status region
+      (`plan-architect-status`), the empty state naming both doors; console toolbars (xterm and ACP) gain a purpose
+      pill (`console-purpose-label`, `role="status"`) shown only for a planning session. `plans-panel.js` —
+      `startArchitect()` dispatches one `plan-architect-request` `{purpose, topic}` (trimmed subject or `""`), a
+      second click in flight is a no-op, `plan-architect-result` resets the state and reports the outcome; the view
+      never posts, opens a socket or listens for `study-session-start`. `session-timer.js` — `purpose` field;
+      `startPlanning(detail)` navigates to `study-session` and goes through `startSession({purpose: "planning"})`,
+      the ONE start path (409/503/network handling reused), then dispatches one `plan-architect-result`;
+      `startSession` states `purpose` on the wire (focus by default), allows `topic ""` only for planning, skips the
+      3-topic park-first rule for planning, refuses without an agent with the picker's hint, returns a boolean; the
+      event detail and the reattach path carry `purpose`; the topic shown is the server's. `live-agent-console.js`
+      — `purpose` from the start event / `/api/session/state`, `purposeLabel`, reset on `stop()`. `_dashboard.py` —
+      `GET /api/session/state` reports `purpose` on both paths (the file-only CLI path returned early before the
+      `setdefault`, so a CLI-started architect had **no** `purpose` key), deriving it from the persisted persona
+      `mode` through `persona_mode_for` — the review-4 decision; never from the topic. **Found and fixed:** the Study
+      Session view ran `init()` twice per load (Alpine auto-init + `x-init="init()"`), registering every window
+      listener twice — two POSTs and a 409 per click once a listener starts a session; registration is now
+      idempotent (pinned). Delta spec: web-ui "Plan with architect journey" (8 scenarios). `docs/study-plans.md`:
+      the "does not do yet" bullet loses its Web-launch claim (the brain-dump half, still true, stays), the manual-form
+      admonition points at the architect door, the architect section gains the Web paragraph. Gates at `7ad39941`:
+      browser journey 8 passed ×3 runs; neighbouring browser suites 94 passed; `node --test` 129; `just test-web`
+      140; `-k "web or session or plan"` 1818 passed exit 0; `just lint` clean; `just typecheck` 0; `openspec
+      validate` valid (`--specs --all` 25); `mkdocs --strict` clean; coverage gate 16 passed; full suite `-x` **4990 passed /
+      4 skipped exit 0** (6m00s; the port-uniqueness gate caught the journey's first port, fixed at `abc7f372`).
 
 ## Phase 6 — #15 reconcile and verify
 
