@@ -173,7 +173,7 @@ class _Spy:
         self.result = result
         self.calls: list[tuple[tuple[Any, ...], dict[str, Any]]] = []
 
-    def __call__(self, _self: PlanApplication, *args: Any, **kwargs: Any) -> object:
+    def __call__(self, *args: Any, **kwargs: Any) -> object:
         self.calls.append((args, kwargs))
         if isinstance(self.result, BaseException):
             raise self.result
@@ -181,8 +181,13 @@ class _Spy:
 
 
 def _fake(monkeypatch, method: str, result: object) -> _Spy:
+    """Replace one ``PlanApplication`` method with a spy (bound like a method)."""
     spy = _Spy(result)
-    monkeypatch.setattr(PlanApplication, method, spy)
+
+    def bound(_self: PlanApplication, *args: Any, **kwargs: Any) -> object:
+        return spy(*args, **kwargs)
+
+    monkeypatch.setattr(PlanApplication, method, bound)
     return spy
 
 
