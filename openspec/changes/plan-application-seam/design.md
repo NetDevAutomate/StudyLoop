@@ -144,7 +144,9 @@ NowPlan.warnings: tuple[str, ...] = ()
 | `delete_study_plan(plan_id, confirmed=False)` | `apply(DeletePlan)` |
 
 Writers to `mcp/tools.py` are serialised: #11 → #12 → #10's `interleave` commit. The stdio smoke test's
-inventory assertion moves 26 → 35 in #12.
+inventory assertion is retargeted in #12 to the real count: the production registry had **23** tools at
+`0a20a796` (D-9's "26 → 35" counted from a stale inventory), 29 after #11, and **32** once #12's three land —
+`record_plan_learning` is among the original 23 (council review 3).
 
 ## 5. `planning` purpose (D-10, D-11)
 

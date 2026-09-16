@@ -136,7 +136,7 @@ def list_plans(*, status: str = "") -> list[StudyPlan]:
         if status and plan.status != status:
             continue
         out.append(plan)
-    # Active plans first, then most recently updated.
+    # Active plans first, then by ``updated`` ascending (the oldest edit first).
     out.sort(key=lambda p: (p.status != "active", p.updated), reverse=False)
     return out
 

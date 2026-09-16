@@ -81,7 +81,10 @@ unchanged (an omitted `update_study_plan` field SHALL reach the seam as `None`,
 
 The `create_study_plan` schema SHALL NOT expose `overwrite` (D-4); an agent
 cannot replace an existing plan by picking its id, and a taken id is a
-conflict. `update_study_plan` SHALL NOT expose `learning_record`:
+conflict. One argument is normalised rather than forwarded unchanged: an
+empty `plan_id` string is treated as omitted, so the seam allocates the
+unique title slug instead of refusing `""` as a malformed id (council review
+3). `update_study_plan` SHALL NOT expose `learning_record`:
 `record_plan_learning` remains the one record writer (D-9).
 
 `get_study_plan` SHALL refuse a `history_limit` outside `1..200` — the range

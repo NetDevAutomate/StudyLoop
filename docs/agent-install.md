@@ -226,8 +226,8 @@ reach the MCP server can do the same work with `studyloop plan …` at a shell.
 
 A refused call is a tool error whose message starts with a machine-readable
 kind — `not_found:`, `invalid_id:`, `conflict:`, `invalid:`,
-`invalid_milestone:` or `not_ready:` — followed by the plan layer's own
-message. A `not_ready:` refusal names every blocker, so the agent can ask the
+`invalid_milestone:`, `not_ready:`, or `plan_error:` for a refusal the
+mapping has not met — followed by the plan layer's own message. A `not_ready:` refusal names every blocker, so the agent can ask the
 learner for what is missing instead of reporting that something is wrong.
 Milestone completion, checkpoint evaluation and deletion over MCP are not
 available yet; use `studyloop plan milestone`, `studyloop plan evaluate` and

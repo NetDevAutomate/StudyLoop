@@ -194,10 +194,13 @@ Branch: `fix/plan-integration-bugs` (RED at `3a4f6b01`). §5 stream: `feat/lexic
       smoke test addresses the single action card by that class). `web/routes/now.py` needed no edit. Protected files
       `git diff 0a20a796 -- tests/test_learning_decision.py tests/test_web_now.py tests/test_recap_mastery_voice.py`
       → 0 lines.
-- [x] **T3.4** Human rubric receipt (D-16): five frozen scenarios scored "would I do the primary?", committed
-      as `docs/architecture/plan-integration/receipts/now-rubric-2026-09-16.md`. **As landed:** the five scenarios were
+- [ ] **T3.4** Human rubric receipt (D-16): five frozen scenarios scored "would I do the primary?", committed
+      as `docs/architecture/plan-integration/receipts/now-rubric-2026-09-16.md`. **Receipt landed, scoring
+      outstanding** (re-opened by council review 3, F6: a scored rubric is the DoD; an unscored one is not
+      "done"). **As landed:** the five scenarios were
       run unattended and the emitted primary + rule-cited rationale recorded per row; the owner-verdict column is
-      **PENDING** — no human was present and none was faked. Delta spec: the guidance requirement loses "(not yet
+      **PENDING** — no human was present and none was faked. Owner action: replace `PENDING` with yes/no + one
+      line per row; a `no` on rows 1–4 is a council finding, not an agent edit. Delta spec: the guidance requirement loses "(not yet
       consumed)" and a new requirement "The now engine is plan-aware with tested ranking rules" carries nine
       scenarios. `docs/study-plans.md`: the now/Today "does not do yet" bullet removed; the learner-facing paragraph
       on plan-aware guidance is T6.1's.
@@ -277,7 +280,12 @@ Branch: `fix/plan-integration-bugs` (RED at `3a4f6b01`). §5 stream: `feat/lexic
 - [ ] **T4.1** (#12, agent C) RED: stdio inventory asserts the nine names; `set_study_plan_milestone` retry
       idempotent; `evaluate_study_plan` preview writes nothing, record reports sinks; `delete_study_plan`
       without `confirmed=True` refused. Implement three tools. DoD: `test_full_handshake_list_tools_and_call`
-      lists 35.
+      asserts exactly **32** unique names (23 at `0a20a796` + the nine plan tools less `record_plan_learning`,
+      already among the 23 — the design's "35" was arithmetic on a stale inventory, review 3) **and** that the
+      nine design-§4 names plus `CORE_TOOLS` are present; fold `record_plan_learning`'s inline `PlanNotReady`
+      mapping into `_plan_tool_error` in the same `tools.py` commit, with its prefixes, blockers and chained
+      cause pinned first; extend `forbid_store` with the authoring/evaluation entry points before
+      `evaluate_study_plan` lands.
 - [ ] **T4.2** (#13b, agent D) `agents/shared/personas/plan-architect.md`: prefer the nine MCP tools, CLI
       fallback. DoD: persona test asserts the tool names appear in the rendered persona when `purpose=planning`.
 

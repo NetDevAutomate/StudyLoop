@@ -917,9 +917,10 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
     def list_study_plans(status: str | None = None) -> dict[str, Any]:
         """List the learner's study plans (summaries), optionally one status only.
 
-        Active plans come first, then by last update. Use this before
-        proposing a new plan: a plan that already covers the topic should be
-        revised, not duplicated.
+        Active plans come first; within a group the least recently updated
+        plan is listed first (``updated`` ascending), which is the order the
+        CLI and the Web list use. Use this before proposing a new plan: a plan
+        that already covers the topic should be revised, not duplicated.
 
         Args:
             status: Filter to one lifecycle status (``draft``, ``active``,

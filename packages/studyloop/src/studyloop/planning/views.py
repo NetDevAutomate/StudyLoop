@@ -93,9 +93,9 @@ def normalise_match_key(text: str) -> str:
 
     Casefold, replace punctuation (and ``_``) with spaces, collapse runs of
     whitespace, strip. ``"Data-Engineering"`` and ``"data engineering"`` are
-    the same key; ``"RANK()"`` is ``"rank"``. The ``now`` ranker (#10, Phase 3)
-    will apply this same function to its candidates, so plan matching is
-    *equality on the key* and never a substring test (design §3 step 4) —
+    the same key; ``"RANK()"`` is ``"rank"``. The ``now`` ranker (#10) applies
+    this same function to its candidates, so plan matching is *equality on
+    the key* and never a substring test (design §3 step 4) —
     ``"rank"`` does not match ``"frank"``. Unicode is NFKC-normalised first so
     a full-width or composed form does not defeat the equality.
     """

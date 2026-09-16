@@ -270,7 +270,9 @@ of the same instant `generated_at` records. It SHALL apply these rules, in
 this order (design §3, D-5):
 
 1. Candidates are collected as before; a failure to read plans at all SHALL
-   degrade to a `warnings` entry, never a failed recommendation.
+   degrade to a `warnings` entry, never a failed recommendation, and SHALL be
+   logged with its traceback on `studyloop.learning.decision` so a
+   programming error cannot hide behind the learner-facing warning.
 2. The energy capability is `low|medium|high → 3|6|10`. For an active plan
    whose `energy_floor` exceeds it, the next milestone SHALL be listed in
    `energy_deferred` and SHALL NOT become a candidate; plan-related due recall
@@ -312,8 +314,10 @@ this order (design §3, D-5):
 these when empty, so a learner with no active plan receives the pre-#10
 payload **byte for byte** — pinned by `tests/golden/now_plan_no_active.json`,
 captured before any of this shipped. Renderers (`studyloop now`, `GET
-/api/now`, the Today card, the daily recap) SHALL show plan relevance and
-energy deferral from these fields and SHALL NOT re-rank. Ranking tests prove
+/api/now`, the Today card, the daily recap in its JSON, spoken and Rich-panel
+forms) SHALL show plan relevance, energy deferral and the engine's warnings
+from these fields, SHALL escape learner-authored text before any markup
+(Rich or HTML), and SHALL NOT re-rank. Ranking tests prove
 ranking compliance, not learner benefit (D-16); a five-scenario human rubric
 receipt accompanies the change.
 
@@ -395,6 +399,14 @@ receipt accompanies the change.
 - **THEN** each names the primary the engine chose, the plan it advances, and
   the deferred milestone; with no plan the CLI panel prints no plan lines,
   `GET /api/now` equals the golden, and the recap's `plan_context` is absent
+  from its JSON, its spoken text and the `recap today` panel
+
+#### Scenario: Learner-authored text is data to every renderer
+- **WHEN** an active plan's title, topic or milestone text contains Rich
+  markup, HTML or shell punctuation (`Plan [/bold]`, `<script>…`, `"; rm -rf ~`)
+- **THEN** `build_now_plan` ranks and serialises it unchanged and writes
+  nothing to the document; `studyloop now` exits 0 and shows the text
+  literally; the Today card renders it through `x-text`
 
 ### Requirement: Adapters reach study plans only through the seam
 No module under `studyloop/cli`, `studyloop/web/routes` or `studyloop/mcp`
