@@ -251,6 +251,63 @@ def test_active_guidance_warns_on_malformed_documents(
     assert guidance.plans[0].warnings == ()
 
 
+def _husk(isolated_plans_dir, plan_id: str = "husk") -> None:
+    """An *active* document with topics and milestones but no mission — readable,
+    active, unready: the shape a hand edit or a pre-gate import leaves, and the
+    one every write refuses since deviation 12 (pause or repair first)."""
+    store.plans_dir()
+    (isolated_plans_dir / f"{plan_id}.md").write_text(
+        f"---\nid: {plan_id}\ntitle: Husk\nstatus: active\ntopics: [sql]\n---\n\n"
+        "# Husk\n\n## Milestones\n\n- [ ] **Step** `(concepts: window function)`\n",
+        encoding="utf-8",
+    )
+
+
+def test_active_guidance_names_readiness_blockers_on_unready_active_plan(
+    app: PlanApplication, isolated_plans_dir, monkeypatch
+) -> None:
+    """Council review 2 (Grok 🟡): deviation 12 made active-but-unready a live
+    state that no write can touch, so the ranker must be able to see it on the
+    entry itself. The husk is *active* — it stays in ``.plans`` (the ranker
+    decides, not the read) — but its ``readiness`` names the blockers, with no
+    second ``inspect`` per plan: one parse per document, as D-5 promises."""
+    _husk(isolated_plans_dir)
+    _active("healthy")
+    loads: list[str] = []
+    real_load = store.load_plan
+
+    def counting_load(plan_id: str):
+        loads.append(plan_id)
+        return real_load(plan_id)
+
+    monkeypatch.setattr(store, "load_plan", counting_load)
+
+    guidance = _guidance(app)
+
+    assert [g.plan.plan_id for g in guidance.plans] == ["healthy", "husk"]
+    healthy, husk = guidance.plans
+    assert husk.readiness.ready is False  # pyright: ignore[reportAttributeAccessIssue]
+    assert husk.readiness.plan_id == "husk"  # pyright: ignore[reportAttributeAccessIssue]
+    blockers = husk.readiness.blockers  # pyright: ignore[reportAttributeAccessIssue]
+    assert isinstance(blockers, tuple) and blockers, "the blockers are on the entry"
+    assert any("why" in blocker.lower() for blocker in blockers)
+    assert any("success" in blocker.lower() for blocker in blockers)
+    assert husk.warnings == (), "readiness is not a worked-around defect; it is its own field"
+    assert healthy.readiness.ready is True  # pyright: ignore[reportAttributeAccessIssue]
+    assert healthy.readiness.blockers == ()  # pyright: ignore[reportAttributeAccessIssue]
+    assert sorted(loads) == ["healthy", "husk"], "one parse per document, no extra store read"
+
+    payload = guidance.to_json_dict()
+    assert payload["plans"][1]["readiness"] == {
+        "plan_id": "husk",
+        "ready": False,
+        "blockers": list(blockers),
+        "nudges": list(husk.readiness.nudges),  # pyright: ignore[reportAttributeAccessIssue]
+    }
+    assert payload["plans"][0]["readiness"]["ready"] is True
+    json.dumps(payload)
+
+
 def test_active_guidance_views_are_frozen_and_json_fresh(app: PlanApplication) -> None:
     _active("demo", target_date=(TODAY + timedelta(days=3)).isoformat())
     guidance = _guidance(app)
