@@ -227,25 +227,35 @@ class PlanApplication:
         defaults to the real UTC date, resolved once here so every entry in
         one call shares one clock (council review 2, GPT F6).
 
-        A document the store could not parse is named in the collection's
+        A document that cannot be read or parsed is named in the collection's
         ``warnings`` rather than silently absent, and a parseable-but-odd
         active plan (no milestones, a target date that is not a date) is
         represented with per-plan warnings rather than raised on.
+
+        Identity is the *storage* id: every document is enumerated by
+        filename and loaded through :meth:`_load`, which pins the model to it,
+        so a hand-edited frontmatter ``id`` can neither rename an entry (to an
+        id ``inspect`` would not resolve to this document), duplicate another
+        plan's id, nor produce a false "could not be parsed" for a readable
+        file (council review 2, GPT F5; review-1 F5 for the write paths).
+        ``list_plan_ids`` is sorted, so entries and warnings come out in one
+        deterministic order and nothing is compared across two scans.
         """
         effective_today = today or datetime.now(UTC).date()
-        parsed = store.list_plans()
-        seen = {plan.plan_id for plan in parsed}
-        warnings = tuple(
-            f"study plan {plan_id!r} could not be parsed and is not represented"
-            for plan_id in store.list_plan_ids()
-            if plan_id not in seen
-        )
-        plans = tuple(
-            ActivePlanGuidance.from_plan(plan, today=effective_today)
-            for plan in sorted(parsed, key=lambda plan: plan.plan_id)
-            if plan.status == "active"
-        )
-        return ActiveGuidance(plans=plans, warnings=warnings)
+        plans: list[ActivePlanGuidance] = []
+        warnings: list[str] = []
+        for plan_id in store.list_plan_ids():
+            try:
+                plan = self._load(plan_id)
+            except Exception:  # one bad document must not hide the others (as list_plans)
+                logger.warning("Skipping unreadable study plan: %s", plan_id, exc_info=True)
+                warnings.append(
+                    f"study plan {plan_id!r} could not be parsed and is not represented"
+                )
+                continue
+            if plan.status == "active":
+                plans.append(ActivePlanGuidance.from_plan(plan, today=effective_today))
+        return ActiveGuidance(plans=tuple(plans), warnings=tuple(warnings))
 
     def reindex(self) -> int:
         """Rebuild the derived SQLite index from the documents. Returns rows written.

@@ -199,9 +199,14 @@ tuples and a consumer that wants a set builds one); `target_urgency` in `overdue
 `soon` (`0..7`), `later` (`> 7`) or `undated`; `energy_floor`; a
 `completion_action` string only when the plan has milestones and every one is
 done; and per-plan `warnings` for defects worked around (no milestones, a
-target date that is not a date). Documents the store could not parse SHALL be
-named in the collection's `warnings`. Non-active plans are skipped. `today`
-pins the urgency computation for frozen-clock callers and defaults to the UTC
+target date that is not a date). Every document SHALL be enumerated by its
+storage id and loaded through the identity-pinning seam path, so an entry's
+id is the file's, never an untrusted frontmatter `id`; documents that cannot
+be read or parsed SHALL be named in the collection's `warnings`, in id order.
+Non-active plans are skipped. `today`
+pins the urgency computation and the nested summary's `days_until_target` —
+one effective date for the whole payload — for frozen-clock callers and
+defaults to the UTC
 date.
 
 This view exists so that the `now` decision engine (issue #10, Phase 3) has
@@ -241,6 +246,15 @@ and the Today card are unchanged by this phase, and `docs/study-plans.md`'s
   None`, `completion_action == None`, `target_urgency == "undated"` and
   warnings naming the milestones and the date; the collection's `warnings`
   name the unreadable file
+
+#### Scenario: Identity is the file, not the frontmatter
+- **WHEN** `alpha.md` carries frontmatter `id: beta` beside a real `beta.md`,
+  and two unreadable files sit beside a healthy plan
+- **THEN** the entries are `alpha`, `beta` (and `healthy`) with unique ids and
+  their own titles — never two `beta` entries; `readiness.plan_id` matches
+  the entry id; the collection's `warnings` name exactly the unreadable files
+  in id order and never the readable mismatched one; `inspect(<entry id>)`
+  resolves to the same document
 
 #### Scenario: An unready active plan is listed with its blockers
 - **WHEN** an active document has topics and milestones but no mission `why`
