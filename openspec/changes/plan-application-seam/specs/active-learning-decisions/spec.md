@@ -267,17 +267,23 @@ and the Today card are unchanged by this phase, and `docs/study-plans.md`'s
 ### Requirement: Adapters reach study plans only through the seam
 No module under `studyloop/cli`, `studyloop/web/routes` or `studyloop/mcp`
 SHALL import `studyloop.planning.store`, `.index`, `.authoring` or
-`.evaluation` (directly, relatively, as a whole-package handle, or by name
-through `from studyloop.planning import …` for the names those modules
-contribute). `tests/test_architecture_plan_seam.py` SHALL enforce this by
-parsing every adapter module, SHALL reject a planted bypass in a temp copy of
-an adapter, and SHALL check its explicit name list against what
+`.evaluation` (directly, relatively, as a whole-package handle, by wildcard
+`from studyloop.planning import *`, by a literal string naming a forbidden
+module or the whole package, by name through `from studyloop.planning import …`
+for the names those modules contribute, or transitively through one of the
+four allowed seam modules — `from studyloop.planning.application import
+store`). `tests/test_architecture_plan_seam.py` SHALL enforce this by
+parsing every adapter module, SHALL reject each planted bypass in a temp copy
+of an adapter, and SHALL check its explicit name list against what
 `studyloop.planning` actually re-exports from the four modules.
 
 #### Scenario: Planted bypass is rejected
-- **WHEN** `from studyloop.planning.store import save_plan` is appended to a
-  copy of `web/routes/plans.py` and the checker runs on the copy
-- **THEN** the checker reports a violation; on the real tree it reports none
+- **WHEN** `from studyloop.planning.store import save_plan`, `from
+  studyloop.planning import *`, `importlib.import_module("studyloop.planning")`
+  or `from studyloop.planning.application import store` is appended to a copy
+  of `web/routes/plans.py` and the checker runs on the copy
+- **THEN** the checker reports a violation for each; on the real tree it
+  reports none
 
 ### Requirement: The learning-record rule has one copy
 Learning-record validation (non-empty title; no H1–H3 lines in the body) and

@@ -14,8 +14,13 @@ index, authoring or evaluation layer directly:
   package namespace — ``save_plan``, ``load_plan``, ``evaluate_and_record``,
   ``readiness``… — or one of the submodules themselves;
 * ``import studyloop.planning`` / ``from studyloop import planning`` — a
-  whole-package handle defeats the name check;
-* a string constant naming a forbidden module (``importlib.import_module``).
+  whole-package handle defeats the name check — and ``from studyloop.planning
+  import *``, which brings in every re-exported storage name at once;
+* ``from studyloop.planning.application import store`` (or ``views`` →
+  ``readiness``, …): the four allowed seam modules import the storage layer to
+  do their job, and an adapter may not reach it *through* them;
+* a string constant naming a forbidden module or the whole package
+  (``importlib.import_module``).
 
 Allowed: ``studyloop.planning.application|views|intents|errors``, and from
 ``studyloop.planning`` itself the re-exported view/intent/error names,
@@ -178,20 +183,35 @@ def _check_module(path: Path, *, module_name: str | None = None) -> list[Violati
                 flag(node, f"imports from {target!r} directly; go through PlanApplication")
             elif target == "studyloop.planning":
                 for alias in node.names:
-                    if alias.name in FORBIDDEN_PACKAGE_NAMES:
+                    if alias.name == "*":
+                        flag(
+                            node,
+                            "a wildcard import of the package brings in every store/index/"
+                            "authoring/evaluation name it re-exports; import the seam names",
+                        )
+                    elif alias.name in FORBIDDEN_PACKAGE_NAMES:
                         flag(
                             node,
                             f"{alias.name!r} is a store/index/authoring/evaluation name "
                             "re-exported by the package; go through PlanApplication",
                         )
+            elif target in ALLOWED_MODULES:
+                # The seam modules import the storage layer to do their job; an
+                # adapter may not reach it *through* them (review 2, F8).
+                for alias in node.names:
+                    if alias.name in FORBIDDEN_PACKAGE_NAMES:
+                        flag(
+                            node,
+                            f"{alias.name!r} is a storage module or name reached through "
+                            f"{target!r}; go through PlanApplication",
+                        )
             elif target == "studyloop" and any(a.name == "planning" for a in node.names):
                 flag(node, "a whole-package handle reaches every storage module")
-        elif (
-            isinstance(node, ast.Constant)
-            and isinstance(node.value, str)
-            and _is_forbidden_module(node.value)
-        ):
-            flag(node, f"names {node.value!r} as a string (dynamic import)")
+        elif isinstance(node, ast.Constant) and isinstance(node.value, str):
+            if _is_forbidden_module(node.value):
+                flag(node, f"names {node.value!r} as a string (dynamic import)")
+            elif node.value == "studyloop.planning":
+                flag(node, "names the whole package as a string (dynamic import)")
     return out
 
 
