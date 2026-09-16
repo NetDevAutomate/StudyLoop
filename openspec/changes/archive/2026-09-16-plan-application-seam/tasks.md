@@ -201,7 +201,11 @@ Branch: `fix/plan-integration-bugs` (RED at `3a4f6b01`). §5 stream: `feat/lexic
       consumed)" and a new requirement "The now engine is plan-aware with tested ranking rules" carries twelve
       scenarios. `docs/study-plans.md`: the now/Today "does not do yet" bullet removed; the learner-facing paragraph
       on plan-aware guidance is T6.1's, and it says the verdicts are pending (council review 5).
-- [ ] **T3.4b** (owner; blocks calling #10's D-16 DoD done) Score the rubric: replace each `PENDING` with yes/no +
+- [x] **T3.4b** (scored by the owner 2026-09-16 in an interactive walkthrough — receipt header "owner verdicts
+      RECORDED": rows 1, 2, 5 and row 4's primary **yes**; row 3 **no** and row 4's completion action **no as
+      phrased**, both council findings carried as items 5 and 4 of `openspec/changes/plan-integration-followons/`;
+      the `docs/study-plans.md` status sentence and its contract pin moved with the receipt in the same commit)
+      (owner; blocks calling #10's D-16 DoD done) Score the rubric: replace each `PENDING` with yes/no +
       one line, record the tree sha evaluated, re-read row 3 against `64dc09f7`. A `no` on rows 1–4 is a council
       finding, not an agent edit. Re-opened by council review 3 (F6) and held open by review 5 (GPT F1, Grok F4,
       kimi): a scored rubric is the DoD; an unscored one is not "done", and the checkbox must not say otherwise.

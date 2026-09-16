@@ -219,16 +219,20 @@ def test_study_plans_doc_uses_the_bounded_release_language() -> None:
     assert "plan-aware guidance with tested ranking rules" in text
     assert "better learning" not in text.lower()
     assert "learn faster" not in text.lower()
-    # Review 5 (GPT F3 / Grok F1): the rubric's verdicts are PENDING; the page
-    # must say so rather than report a judgement that has not happened.
+    # Review 5 (GPT F3 / Grok F1) pinned the page to say the verdicts were
+    # PENDING while they were. The owner scored the rubric on 2026-09-16
+    # (receipt header: "owner verdicts RECORDED"), so the page now reports the
+    # outcome — accepted rows and the two findings — and must not fall back to
+    # "pending", nor round the two `no` verdicts up.
     now_section = _prose(_section(_read("docs/study-plans.md"), "Plan-aware now"))
     assert "recorded per scenario" not in now_section
-    assert "pending" in now_section.lower()
+    assert "pending" not in now_section.lower()
+    assert "scored" in now_section.lower()
+    assert "were not" in now_section, "the two `no` verdicts must be stated, not rounded up"
     receipt = _read("docs/architecture/plan-integration/receipts/now-rubric-2026-09-16.md")
-    if "PENDING" not in receipt:
-        raise AssertionError(
-            "the rubric has been scored — update the 'Plan-aware now' status sentence and this pin"
-        )
+    assert "owner verdicts RECORDED" in receipt, (
+        "the rubric receipt no longer says it is scored — move the page's status sentence with it"
+    )
 
 
 def test_study_plans_doc_plan_aware_now_states_eligibility_and_optional_fields() -> None:

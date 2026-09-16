@@ -209,7 +209,11 @@ ranking rules are tested; whether the primary is the action *you* would take
 is a separate judgement. Five frozen scenarios and the engine's primaries are
 in the project's rubric receipt
 (`docs/architecture/plan-integration/receipts/now-rubric-2026-09-16.md`),
-whose owner-verdict column is still pending.
+scored by the maintainer on 2026-09-16: the matching-due, urgent-unrelated
+and no-plan scenarios and the fully-checked plan's primary were accepted; the
+energy-deferred scenario (hands-on repair of a live struggle on a low-energy
+day) and the completion action's wording were not, and are follow-on work
+rather than edits to the ranking.
 
 ## Deliberately not automatic
 
