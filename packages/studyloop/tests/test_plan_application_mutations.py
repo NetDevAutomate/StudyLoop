@@ -364,6 +364,25 @@ def test_delete_unknown_plan_raises_not_found_and_traversal_id_is_invalid(
         app.apply(DeletePlan(plan_id="../escape", confirmed=True))
 
 
+def test_delete_vanished_after_load_raises_not_found(app: PlanApplication, monkeypatch) -> None:
+    """Council review 2 (GPT): the explicit race branch — the document existed
+    at the load and was gone by the unlink. The store reports ``False``; the
+    seam turns that into ``PlanNotFound``, never a ``DeleteResult`` that
+    claims a deletion it did not perform."""
+    _plan("demo")
+    real_delete = store.delete_plan
+
+    def vanished(plan_id: str) -> bool:
+        real_delete(plan_id)  # someone else removed it first
+        return real_delete(plan_id)  # …so our own unlink finds nothing
+
+    monkeypatch.setattr(store, "delete_plan", vanished)
+
+    with pytest.raises(PlanNotFound):
+        app.apply(DeletePlan(plan_id="demo", confirmed=True))
+    assert "demo" not in store.list_plan_ids()
+
+
 # ---------------------------------------------------------------------------
 # AssessPlan / assess
 # ---------------------------------------------------------------------------
@@ -675,6 +694,81 @@ def test_assessment_result_is_frozen_and_matches_the_legacy_evaluation_dict(
     first["recommendations"].append("leaked")
     assert result.evaluation.to_json_dict() == second
     json.dumps(first, default=str)
+
+
+# Council review 2, GPT Astra F10: the freeze is tested where it is lenient
+# and where it is nested, not only on the top-level lists.
+
+
+def test_evaluation_view_detaches_nested_rows_and_warnings() -> None:
+    """Mutating the source evaluation *after* the view was built, or mutating a
+    nested row inside the returned JSON, must not reach the view."""
+    from studyloop.planning.evaluation import PlanEvaluation
+    from studyloop.planning.views import PlanEvaluationView
+
+    source = PlanEvaluation(
+        plan_id="demo",
+        plan_title="Demo",
+        phase="start",
+        due_reviews=[{"concept": "window function", "tags": ["sql", "frames"]}],
+        warnings=["one"],
+    )
+    view = PlanEvaluationView.from_evaluation(source)
+
+    source.warnings.append("two")
+    source.due_reviews[0]["concept"] = "mutated"
+    source.due_reviews[0]["tags"].append("mutated")
+    source.due_reviews.append({"concept": "added"})
+
+    assert view.warnings == ("one",)
+    assert len(view.due_reviews) == 1
+    assert view.due_reviews[0]["concept"] == "window function"
+    assert view.due_reviews[0]["tags"] == ("sql", "frames")
+    with pytest.raises(TypeError):
+        view.due_reviews[0]["concept"] = "x"  # type: ignore[index]  # read-only mapping
+
+    payload = view.to_json_dict()
+    payload["due_reviews"][0]["concept"] = "leaked"
+    payload["due_reviews"][0]["tags"].append("leaked")
+    assert view.to_json_dict()["due_reviews"] == [
+        {"concept": "window function", "tags": ["sql", "frames"]}
+    ]
+
+
+def test_lenient_row_leaf_is_immutable_and_json_serializable() -> None:
+    """A database driver may hand back a ``date`` — or, in principle, any object
+    with an ``isoformat`` — inside a row. The lenient freeze must render it to
+    an immutable JSON scalar (a string), never store the object or whatever a
+    stray ``isoformat()`` returns, so ``json.dumps`` works without
+    ``default=str`` and the view holds nothing it cannot vouch for."""
+    from datetime import date
+
+    from studyloop.planning.evaluation import PlanEvaluation
+    from studyloop.planning.views import PlanEvaluationView
+
+    class OddIsoformat:
+        def isoformat(self):
+            return ["not", "a", "string"]
+
+    class Plain:
+        def __str__(self) -> str:
+            return "plain-object"
+
+    source = PlanEvaluation(
+        plan_id="demo",
+        plan_title="Demo",
+        phase="start",
+        due_reviews=[{"due": date(2026, 9, 16), "odd": OddIsoformat(), "plain": Plain()}],
+    )
+
+    row = PlanEvaluationView.from_evaluation(source).due_reviews[0]
+
+    assert row["due"] == "2026-09-16"
+    assert isinstance(row["odd"], str)
+    assert row["plain"] == "plain-object"
+    for leaf in row.values():
+        assert isinstance(leaf, str), "every lenient leaf is an immutable JSON scalar"
+    json.dumps(PlanEvaluationView.from_evaluation(source).to_json_dict())  # no default=str
 
 
 # ---------------------------------------------------------------------------
