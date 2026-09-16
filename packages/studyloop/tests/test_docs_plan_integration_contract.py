@@ -105,6 +105,27 @@ def test_agent_install_doc_table_is_the_nine_then_record_plan_learning() -> None
     assert _table_tool_names(section) == [*PLAN_TOOL_NAMES, LEARNING_RECORD_TOOL]
 
 
+def test_agent_install_doc_does_not_promise_mission_revision_over_mcp() -> None:
+    """Review 5 (GPT F4): `update_study_plan` exposes no mission field; the
+    doc's 'no CLI command' sentence must not list the mission among what MCP
+    revises, and the table row must name what the tool does revise — every
+    schema property except the identifier."""
+    from studyloop.mcp.server import mcp
+
+    schema = set(mcp._tool_manager._tools["update_study_plan"].parameters["properties"])
+    assert "mission" not in schema and "why" not in schema and "success" not in schema
+    section = _prose(_section(_read("docs/agent-install.md"), "Study-plan tools over MCP"))
+    sentence = re.search(r"[^.]*no CLI command[^.]*\.", section)
+    assert sentence, "the install doc no longer states which operations have no CLI command"
+    assert "mission" not in sentence.group(0).lower()
+    row = re.search(r"\| `update_study_plan\(plan_id, …\)` \|([^|]*)\|", section)
+    assert row, "no update_study_plan row"
+    for prop in sorted(schema - {"plan_id"}):
+        word = prop.replace("_", " ").split(" ")[0]
+        assert word in row.group(1).lower(), f"update_study_plan row does not mention {prop!r}"
+    assert "mission" in row.group(1).lower() and "not" in row.group(1).lower()
+
+
 def test_agent_install_doc_names_the_planning_purpose_and_no_stale_phase_reference() -> None:
     """The install doc names the Web door (``purpose=planning``) and states the
     Kiro/Claude harness boundary as an owner decision, not as "tracked as
@@ -124,7 +145,7 @@ def test_agent_install_doc_names_the_planning_purpose_and_no_stale_phase_referen
 
 def test_mcp_readme_lists_the_whole_production_inventory() -> None:
     registered = _registry()
-    section = _section(_read("agents/mcp/README.md"), "studyloop-mcp (Session DB Tools)")
+    section = _section(_read("agents/mcp/README.md"), "studyloop-mcp (Study tools)")
     listed = _table_tool_names(section)
     assert len(listed) == len(set(listed)), f"duplicate rows: {listed}"
     assert set(listed) == registered, (
@@ -134,7 +155,7 @@ def test_mcp_readme_lists_the_whole_production_inventory() -> None:
 
 
 def test_mcp_readme_states_the_registry_count() -> None:
-    section = _section(_read("agents/mcp/README.md"), "studyloop-mcp (Session DB Tools)")
+    section = _section(_read("agents/mcp/README.md"), "studyloop-mcp (Study tools)")
     match = re.search(r"exposes (\d+) MCP tools", section)
     assert match, "the README no longer states how many tools the server exposes"
     assert int(match.group(1)) == len(_registry())
@@ -161,10 +182,23 @@ def test_study_plans_doc_boundary_list_is_the_constant_in_order() -> None:
 
 
 def test_not_automatic_constant_is_well_formed() -> None:
-    assert len(NOT_AUTOMATIC) >= 4, "issue #7 names at least four automatic boundaries"
+    """Six automation boundaries from issue #7's out-of-scope list — and only
+    automation boundaries (review 5, GPT F7 / Grok F6: the manual form's brain
+    dump is an input-path fact, stated beside the list, not in it)."""
+    assert len(NOT_AUTOMATIC) == 6
     assert len(set(NOT_AUTOMATIC)) == len(NOT_AUTOMATIC)
     for phrase in NOT_AUTOMATIC:
         assert phrase == phrase.strip() and phrase and phrase[0].islower(), phrase
+        assert "brain dump" not in phrase
+    assert any("schedule" in phrase for phrase in NOT_AUTOMATIC), (
+        "#7: no autonomous recurring planning sessions"
+    )
+
+
+def test_study_plans_doc_states_the_brain_dump_limit_beside_the_boundary_list() -> None:
+    section = _prose(_section(_read("docs/study-plans.md"), "Deliberately not automatic"))
+    assert "brain dump" in section
+    assert "same single session slot" in section or "same session slot" in section
 
 
 def test_study_plans_doc_has_no_stale_gap_claims() -> None:
@@ -185,6 +219,46 @@ def test_study_plans_doc_uses_the_bounded_release_language() -> None:
     assert "plan-aware guidance with tested ranking rules" in text
     assert "better learning" not in text.lower()
     assert "learn faster" not in text.lower()
+    # Review 5 (GPT F3 / Grok F1): the rubric's verdicts are PENDING; the page
+    # must say so rather than report a judgement that has not happened.
+    now_section = _prose(_section(_read("docs/study-plans.md"), "Plan-aware now"))
+    assert "recorded per scenario" not in now_section
+    assert "pending" in now_section.lower()
+    receipt = _read("docs/architecture/plan-integration/receipts/now-rubric-2026-09-16.md")
+    if "PENDING" not in receipt:
+        raise AssertionError(
+            "the rubric has been scored — update the 'Plan-aware now' status sentence and this pin"
+        )
+
+
+def test_study_plans_doc_plan_aware_now_states_eligibility_and_optional_fields() -> None:
+    """Review 5 (GPT F5): synthesis needs a READY plan whose next milestone is
+    within the energy capability; an unready active plan is a warning and
+    repair target; a fully checked plan is a completion action; the no-plan
+    output is unchanged (not 'exactly what it was' in every failure case)."""
+    section = _prose(_section(_read("docs/study-plans.md"), "Plan-aware now"))
+    for phrase in ("ready", "energy", "not ready", "completion", "unchanged"):
+        assert phrase in section, f"'Plan-aware now' lacks the qualification {phrase!r}"
+    assert "exactly what it was" not in section
+
+
+def test_architect_section_claims_the_brief_only_where_it_is_built() -> None:
+    """Review 5 (GPT F2 / Grok F2-F3): the planning brief is injected on the
+    Web door (`purpose=planning`); a CLI-started architect gathers the same
+    material through `get_planning_interview` / `studyloop plan interview`;
+    checkpoints are never fired from session events; the two operations with
+    no CLI command are named."""
+    section = _prose(
+        _section(_read("docs/study-plans.md"), "Build a plan with the study-plan-architect")
+    )
+    lowered = section.lower()
+    assert "whichever door" not in lowered
+    assert "session run against" not in lowered
+    assert "web" in lowered and "planning brief" in lowered
+    assert "get_planning_interview" in section and "studyloop plan interview" in section
+    assert "session events" in lowered
+    assert "no cli command" in lowered.replace("-", " ")
+    assert "revis" in lowered and "delet" in lowered
 
 
 def test_study_plans_doc_plan_aware_now_section_names_every_consumer() -> None:
@@ -192,6 +266,18 @@ def test_study_plans_doc_plan_aware_now_section_names_every_consumer() -> None:
     section = _prose(_section(_read("docs/study-plans.md"), "Plan-aware now"))
     for surface in ("studyloop now", "Today", "recap", "get_next_action"):
         assert surface in section, f"'Plan-aware now' does not name {surface!r}"
+
+
+def test_study_plans_doc_states_recording_retry_and_deletion_semantics() -> None:
+    """Review 5 (GPT F9): learner-visible behaviours the specs bind and the
+    guide did not state — a recorded checkpoint reports each write; the CLI
+    milestone flags are retry-safe while omitting them toggles; a hand-edited
+    active plan that is no longer complete is paused or repaired before it is
+    written to; Web deletes on the explicit action, MCP needs confirmed=true."""
+    section = _prose(_section(_read("docs/study-plans.md"), "Recording, retries, and deletion"))
+    lowered = section.lower()
+    for phrase in ("each write", "--done", "--undone", "toggle", "pause", "confirmed=true"):
+        assert phrase in lowered, f"missing {phrase!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -260,7 +346,9 @@ def _invoke_install_agents(runner: CliRunner, tmp_path: Path, *extra: str) -> st
             cli, ["install", "agents", "--repo-root", str(tmp_path), "--tool", "kiro", *extra]
         )
     assert result.exit_code == 0, result.output
-    return result.output
+    # Rich wraps the console at 80 columns under CliRunner; a phrase may straddle
+    # a line break where a space belongs.
+    return re.sub(r"\s+", " ", result.output)
 
 
 def test_installer_output_names_the_nine_tools_and_the_planning_purpose(
@@ -271,6 +359,11 @@ def test_installer_output_names_the_nine_tools_and_the_planning_purpose(
         assert name in output, f"installer output does not name {name}"
     assert "planning" in output
     assert "docs/agent-install.md" in output
+    # Review 5 (GPT F6 / Grok F7): nine LIFECYCLE tools plus record_plan_learning
+    # (ten plan-named tools), reachable per harness — not by the install itself.
+    assert "lifecycle" in output
+    assert LEARNING_RECORD_TOOL in output
+    assert "per-harness" in output or "per harness" in output
 
 
 def test_installer_output_states_the_boundary_with_the_constant(
@@ -281,7 +374,7 @@ def test_installer_output_states_the_boundary_with_the_constant(
     Notes: stale installer language claiming an active plan already changes
     Now had to be corrected — the fix is to derive it)."""
     output = _invoke_install_agents(runner, tmp_path)
-    for phrase in NOT_AUTOMATIC[:4]:
+    for phrase in NOT_AUTOMATIC:
         assert phrase in output, f"installer output does not state the boundary {phrase!r}"
 
 
