@@ -526,6 +526,37 @@ test('recordCheckpoint: status is published only after the document is re-read',
   assert.equal(plansStore.recording, false);
 });
 
+test('recordCheckpoint: a partial recording is reported, never shown as a clean "Recorded"', async () => {
+  /* Phase 2 of the plan seam: the server reports each sink. A failed database
+     write still returns 201 with the evaluation (the evaluation succeeded), and
+     the UI must relay the failure instead of the pre-seam unconditional
+     "Recorded" -- Bug B (issue #7) was exactly that lie, one layer down. */
+  server({
+    'POST /api/plans/p1/evaluate': () =>
+      json(201, {
+        recorded: false,
+        db_write: 'failed',
+        document_write: 'saved',
+        evaluation: { ...EVALUATION, warnings: ['checkpoint not saved to the database'] },
+        markdown: '',
+      }),
+    'GET /api/plans': () => json(200, { plans: [summary()], count: 1 }),
+    'GET /api/plans/p1': () =>
+      json(200, detail({ checkpoints: [{ phase: 'start', verdict: 'on-track' }] })),
+  });
+  plansStore.selected = summary();
+  plansStore.pendingPhase = 'start';
+
+  await plansStore.recordCheckpoint();
+
+  assert.equal(plansStore.error, '', 'a partial recording is a status, not an error banner');
+  assert.doesNotMatch(plansStore.recordStatus, /^Recorded start checkpoint/);
+  assert.match(plansStore.recordStatus.toLowerCase(), /partial/);
+  assert.match(plansStore.recordStatus, /database: failed/);
+  assert.match(plansStore.recordStatus, /document: saved/);
+  assert.equal(plansStore.recording, false);
+});
+
 test('recordCheckpoint: records the phase the learner clicked, not a stale one', async () => {
   /* Phase 5 leaves the panel showing 'end'; phase 6 clicks start and records
      immediately. Without the synchronous pendingPhase the wrong checkpoint
