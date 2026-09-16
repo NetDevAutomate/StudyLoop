@@ -53,6 +53,7 @@ import contextlib
 import hashlib
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -151,7 +152,13 @@ def world() -> Generator[dict[str, Path], None, None]:
     for key, path in dirs.items():
         if key != "db":
             path.mkdir(parents=True, exist_ok=True)
-    yield dirs
+    try:
+        yield dirs
+    finally:
+        # The durable evidence lives in the tier's private bundle, not here;
+        # ``mkdtemp`` leaves this world behind unless we remove it (review 5,
+        # GPT F13: "no temporary artifacts remain" needs a cleanup step).
+        shutil.rmtree(root, ignore_errors=True)
 
 
 def _shared_env(world: dict[str, Path]) -> dict[str, str]:

@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import shutil
 import sys
 import tempfile
 import urllib.request
@@ -93,7 +94,12 @@ def world() -> Generator[dict[str, Path], None, None]:
     }
     for path in dirs.values():
         path.mkdir(parents=True, exist_ok=True)
-    yield dirs
+    try:
+        yield dirs
+    finally:
+        # ``mkdtemp`` is not ``tmp_path``: nothing removes it for us. Thirty-nine
+        # of these were found in $TMPDIR while closing #15 (review 5, GPT F13).
+        shutil.rmtree(root, ignore_errors=True)
 
 
 @pytest.fixture(scope="module")
