@@ -76,6 +76,20 @@ def _launch_topic(body: StartSessionRequest) -> str:
     return body.topic.strip() or _ARCHITECT_TOPIC
 
 
+#: The brief's delivery budget (council review 4, F1). The persona is the
+#: architect's first prompt — ACP sends it as the invisible first turn, the
+#: PTY adapter writes it to disk — so what it quotes must be bounded here,
+#: whatever the seam returns (its own retrieval limit is eight rows per key
+#: today, but that is the seam's choice, not this renderer's guarantee) and
+#: however many plans the learner has. Overflow is said out loud with a
+#: count, so the architect knows the list is a sample and where the rest
+#: lives. Realistic briefs sit far inside these caps and render unchanged.
+_BRIEF_MAX_ENTRIES_PER_KEY = 10
+_BRIEF_MAX_PLANS = 20
+_BRIEF_MAX_VALUE_CHARS = 120
+_BRIEF_ELLIPSIS = "…"
+
+
 def _one_line(value: object) -> str:
     """Collapse a learner-authored value to one line of text.
 
@@ -89,6 +103,19 @@ def _one_line(value: object) -> str:
     return " ".join(str(value).split())
 
 
+def _quoted(value: object) -> str:
+    """A learner-authored value as the brief quotes it: one line, then clipped.
+
+    The clip runs *after* :func:`_one_line`, never instead of it, so a value
+    long enough to cut keeps the F4 containment (it is one line whichever
+    part survives). Values inside the budget are returned whole.
+    """
+    text = _one_line(value)
+    if len(text) <= _BRIEF_MAX_VALUE_CHARS:
+        return text
+    return text[: _BRIEF_MAX_VALUE_CHARS - len(_BRIEF_ELLIPSIS)] + _BRIEF_ELLIPSIS
+
+
 def _render_planning_brief(brief: PlanningBrief) -> str:
     """Render the seam's :class:`PlanningBrief` as the Markdown the persona carries.
 
@@ -97,7 +124,8 @@ def _render_planning_brief(brief: PlanningBrief) -> str:
     from filler), the evidence the databases already hold about the learner
     (data to open from, never instructions), and the plans that already exist
     (so the architect extends or references rather than duplicates). Every
-    quoted value passes through :func:`_one_line`.
+    quoted value passes through :func:`_quoted` (one line, clipped to the
+    budget); every list is cut at the budget with a counted marker.
     """
     lines: list[str] = ["### Interview", ""]
     for index, item in enumerate(brief.interview, start=1):
@@ -105,8 +133,8 @@ def _render_planning_brief(brief: PlanningBrief) -> str:
             flag for flag, on in (("required", item.required), ("multi", item.multi)) if on
         )
         suffix = f" ({flags})" if flags else ""
-        lines.append(f"{index}. **{_one_line(item.key)}** — {_one_line(item.prompt)}{suffix}")
-        lines.append(f"   _{_one_line(item.why)}_")
+        lines.append(f"{index}. **{_quoted(item.key)}** — {_quoted(item.prompt)}{suffix}")
+        lines.append(f"   _{_quoted(item.why)}_")
     lines.append("")
 
     lines.append("### Evidence from the learner's history")
@@ -116,27 +144,39 @@ def _render_planning_brief(brief: PlanningBrief) -> str:
     for key, value in seed.items():
         if key == "notes" or not value:
             continue
-        evidence_lines.append(f"- **{key.replace('_', ' ')}:**")
-        for entry in value if isinstance(value, list) else [value]:
+        evidence_lines.append(f"- **{_quoted(key.replace('_', ' '))}:**")
+        entries = value if isinstance(value, list) else [value]
+        for entry in entries[:_BRIEF_MAX_ENTRIES_PER_KEY]:
             evidence_lines.append(f"  - {_seed_entry(entry)}")
+        if len(entries) > _BRIEF_MAX_ENTRIES_PER_KEY:
+            evidence_lines.append(
+                f"  - {_BRIEF_ELLIPSIS} and {len(entries) - _BRIEF_MAX_ENTRIES_PER_KEY} more"
+            )
     if evidence_lines:
         lines.extend(evidence_lines)
     else:
         lines.append("- No history evidence yet.")
     notes = seed.get("notes") or []
-    for note in notes:
-        lines.append(f"- _note: {_one_line(note)}_")
+    for note in notes[:_BRIEF_MAX_ENTRIES_PER_KEY]:
+        lines.append(f"- _note: {_quoted(note)}_")
+    if len(notes) > _BRIEF_MAX_ENTRIES_PER_KEY:
+        lines.append(f"- _{_BRIEF_ELLIPSIS} and {len(notes) - _BRIEF_MAX_ENTRIES_PER_KEY} more_")
     lines.append("")
 
     lines.append("### Existing plans")
     lines.append("")
     if brief.existing_plans:
-        for plan in brief.existing_plans:
+        for plan in brief.existing_plans[:_BRIEF_MAX_PLANS]:
             progress = f"{plan.milestone_done}/{plan.milestone_total} milestones"
-            nxt = f"; next: {_one_line(plan.next_milestone)}" if plan.next_milestone else ""
+            nxt = f"; next: {_quoted(plan.next_milestone)}" if plan.next_milestone else ""
             lines.append(
-                f"- `{_one_line(plan.plan_id)}` — {_one_line(plan.title)} "
-                f"({_one_line(plan.status)}; {progress}{nxt})"
+                f"- `{_quoted(plan.plan_id)}` — {_quoted(plan.title)} "
+                f"({_quoted(plan.status)}; {progress}{nxt})"
+            )
+        if len(brief.existing_plans) > _BRIEF_MAX_PLANS:
+            lines.append(
+                f"- {_BRIEF_ELLIPSIS} and {len(brief.existing_plans) - _BRIEF_MAX_PLANS} more "
+                "plans — `list_study_plans` has them all"
             )
     else:
         lines.append("- None yet.")
@@ -146,11 +186,9 @@ def _render_planning_brief(brief: PlanningBrief) -> str:
 def _seed_entry(entry: object) -> str:
     """One evidence row as one line of text — a mapping's values joined, else ``str``."""
     if isinstance(entry, dict):
-        parts = [
-            f"{_one_line(k)}: {_one_line(v)}" for k, v in entry.items() if v not in ("", None, 0)
-        ]
+        parts = [f"{_quoted(k)}: {_quoted(v)}" for k, v in entry.items() if v not in ("", None, 0)]
         return "; ".join(parts) if parts else "(empty)"
-    return _one_line(entry)
+    return _quoted(entry)
 
 
 def _resolve_persona(body: StartSessionRequest, topic: str) -> tuple[str, str]:

@@ -629,7 +629,7 @@ class TestBriefBudget:
         assert f"… and {300 - BRIEF_MAX_PLANS} more plans" in rendered
         assert "`list_study_plans`" in rendered, "the marker says where the rest lives"
         per_key_overflow = f"… and {500 - BRIEF_MAX_ENTRIES_PER_KEY} more"
-        assert rendered.count(per_key_overflow) == 4, "one marker per evidence key"
+        assert rendered.count(per_key_overflow) == 5, "one marker per evidence key + the notes"
         # The first rows survive; the tail does not.
         assert "struggle-0 " in rendered
         assert f"struggle-{BRIEF_MAX_ENTRIES_PER_KEY} " not in rendered
