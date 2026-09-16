@@ -2,7 +2,7 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "Study plans: adapters → PlanApplication seam → storage",
+    "title": "Study plans through one seam",
     "output": "plan-integration.html",
     "quality_profile": "showcase",
     "views": [
@@ -15,7 +15,7 @@
           "mcp",
           "seam"
         ],
-        "note": "CLI, Web routes and the MCP tool reach study plans only through PlanApplication (D-2, D-6)."
+        "note": "CLI, Web routes and the nine MCP plan tools reach study plans only through PlanApplication (D-2, D-6)."
       },
       {
         "id": "seam-internals",
@@ -31,12 +31,23 @@
       },
       {
         "id": "now-consumer",
-        "label": "Plan-aware now (Phase 3)",
+        "label": "Plan-aware now (#10)",
         "focus": [
           "now",
           "seam"
         ],
-        "note": "get_active_guidance() is the one plan-static read the now ranker will consume in #10; nothing consumes it yet."
+        "note": "One get_active_guidance(today=) read per recommendation; a bounded bias, never a filter; four surfaces render one result (D-5, D-16)."
+      },
+      {
+        "id": "purpose-path",
+        "label": "Planning purpose (#13, #14)",
+        "focus": [
+          "web",
+          "architect",
+          "mcp",
+          "seam"
+        ],
+        "note": "purpose=planning \u2192 the seam's brief \u2192 the architect persona. The click creates no plan; MCP tools when the harness attaches the server."
       }
     ]
   },
@@ -45,9 +56,9 @@
       "id": "cli",
       "type": "frontend",
       "label": "CLI",
-      "sublabel": "studyloop plan …",
+      "sublabel": "studyloop plan \u2026 \u00b7 studyloop now",
       "pos": [
-        80,
+        40,
         30
       ],
       "size": [
@@ -59,35 +70,51 @@
       "id": "web",
       "type": "frontend",
       "label": "Web routes",
-      "sublabel": "/api/plans",
+      "sublabel": "/api/plans \u00b7 /api/session/start",
       "pos": [
-        400,
+        270,
         30
       ],
       "size": [
-        180,
+        200,
         64
       ]
     },
     {
-      "id": "mcp",
-      "type": "frontend",
-      "label": "MCP tool",
-      "sublabel": "record_plan_learning",
+      "id": "architect",
+      "type": "external",
+      "label": "architect session",
+      "sublabel": "plan-architect persona + brief \u00b7 PTY | ACP",
       "pos": [
-        720,
+        560,
         30
       ],
       "size": [
-        180,
+        230,
         64
-      ]
+      ],
+      "tag": "purpose=planning"
+    },
+    {
+      "id": "mcp",
+      "type": "frontend",
+      "label": "MCP plan tools",
+      "sublabel": "nine plan tools + record_plan_learning",
+      "pos": [
+        880,
+        30
+      ],
+      "size": [
+        210,
+        64
+      ],
+      "tag": "32-tool inventory"
     },
     {
       "id": "seam",
       "type": "backend",
       "label": "PlanApplication",
-      "sublabel": "browse · inspect · prepare_planning · get_active_guidance · apply · assess",
+      "sublabel": "browse \u00b7 inspect \u00b7 prepare_planning \u00b7 get_active_guidance \u00b7 apply \u00b7 assess",
       "pos": [
         270,
         182
@@ -102,22 +129,22 @@
       "id": "now",
       "type": "backend",
       "label": "now engine",
-      "sublabel": "learning/decision.py",
+      "sublabel": "build_now_plan \u00b7 four surfaces, one result",
       "pos": [
-        860,
-        190
+        880,
+        182
       ],
       "size": [
-        200,
+        210,
         64
       ],
-      "tag": "Phase 3 (#10)"
+      "tag": "plan-aware (#10)"
     },
     {
       "id": "authoring",
       "type": "backend",
       "label": "authoring.py",
-      "sublabel": "draft · readiness · interview · seed",
+      "sublabel": "draft \u00b7 readiness \u00b7 interview \u00b7 seed",
       "pos": [
         60,
         340
@@ -159,7 +186,7 @@
       "id": "index",
       "type": "backend",
       "label": "index.py",
-      "sublabel": "derived index · checkpoint log",
+      "sublabel": "derived index \u00b7 checkpoint log",
       "pos": [
         900,
         340
@@ -187,7 +214,7 @@
       "id": "sessionsdb",
       "type": "database",
       "label": "sessions.db",
-      "sublabel": "study_plans · study_plan_checkpoints",
+      "sublabel": "study_plans \u00b7 study_plan_checkpoints",
       "pos": [
         900,
         480
@@ -201,7 +228,7 @@
   "boundaries": [
     {
       "kind": "security-group",
-      "label": "Architecture guard (D-6): adapters import only application / views / intents / errors",
+      "label": "Architecture guard (D-6): adapters import only application / views / intents / errors / boundaries",
       "wraps": [
         "cli",
         "web",
@@ -210,7 +237,7 @@
     },
     {
       "kind": "region",
-      "label": "studyloop.planning — internal to the seam",
+      "label": "studyloop.planning \u2014 internal to the seam",
       "wraps": [
         "authoring",
         "store",
@@ -224,39 +251,75 @@
       "id": "cli-seam",
       "from": "cli",
       "to": "seam",
-      "label": "browse · inspect · apply · assess",
+      "label": "browse \u00b7 inspect \u00b7 apply \u00b7 assess",
       "variant": "emphasis",
       "fromSide": "bottom",
-      "toSide": "top"
+      "toSide": "top",
+      "labelAt": [
+        180,
+        126
+      ]
     },
     {
       "id": "web-seam",
       "from": "web",
       "to": "seam",
-      "label": "prepare_planning · apply · assess",
+      "label": "browse \u00b7 inspect \u00b7 apply \u00b7 assess",
       "variant": "emphasis",
       "fromSide": "bottom",
       "toSide": "top",
-      "labelDy": 40
+      "labelAt": [
+        370,
+        116
+      ]
+    },
+    {
+      "id": "web-architect",
+      "from": "web",
+      "to": "architect",
+      "label": "purpose=planning: prepare_planning \u2192 brief",
+      "fromSide": "right",
+      "toSide": "left",
+      "labelAt": [
+        515,
+        108
+      ]
+    },
+    {
+      "id": "architect-mcp",
+      "from": "architect",
+      "to": "mcp",
+      "label": "plan tools when the harness attaches the server",
+      "variant": "dashed",
+      "fromSide": "right",
+      "toSide": "left",
+      "labelAt": [
+        835,
+        108
+      ]
     },
     {
       "id": "mcp-seam",
       "from": "mcp",
       "to": "seam",
-      "label": "apply(RevisePlan)",
+      "label": "browse \u00b7 inspect \u00b7 prepare_planning \u00b7 apply \u00b7 assess",
       "variant": "emphasis",
       "fromSide": "bottom",
-      "toSide": "top"
+      "toSide": "top",
+      "labelSegment": 1
     },
     {
       "id": "now-seam",
       "from": "now",
       "to": "seam",
-      "label": "get_active_guidance() — not yet wired",
-      "variant": "dashed",
+      "label": "get_active_guidance(today=)",
+      "variant": "emphasis",
       "fromSide": "left",
       "toSide": "right",
-      "labelDy": -34
+      "labelAt": [
+        795,
+        260
+      ]
     },
     {
       "id": "seam-authoring",
@@ -270,7 +333,7 @@
       "id": "seam-store",
       "from": "seam",
       "to": "store",
-      "label": "load · save · delete",
+      "label": "load \u00b7 save \u00b7 delete",
       "variant": "emphasis",
       "fromSide": "bottom",
       "toSide": "top",
@@ -280,7 +343,7 @@
       "id": "seam-evaluation",
       "from": "seam",
       "to": "evaluation",
-      "label": "evaluate_plan · evaluate_and_record",
+      "label": "evaluate_plan \u00b7 evaluate_and_record",
       "fromSide": "bottom",
       "toSide": "top",
       "labelSegment": 1
@@ -289,7 +352,7 @@
       "id": "seam-index",
       "from": "seam",
       "to": "index",
-      "label": "checkpoint_history · reindex",
+      "label": "checkpoint_history \u00b7 reindex",
       "fromSide": "bottom",
       "toSide": "top",
       "labelSegment": 1,
@@ -311,13 +374,14 @@
       "to": "index",
       "label": "record_checkpoint",
       "fromSide": "right",
-      "toSide": "left"
+      "toSide": "left",
+      "labelDy": -14
     },
     {
       "id": "index-db",
       "from": "index",
       "to": "sessionsdb",
-      "label": "upsert · append",
+      "label": "upsert \u00b7 append",
       "fromSide": "bottom",
       "toSide": "top",
       "labelDy": 24
@@ -326,29 +390,29 @@
   "cards": [
     {
       "dot": "cyan",
-      "title": "The seam's six operations",
+      "title": "Six seam operations",
       "items": [
-        "browse · inspect · prepare_planning → frozen views",
-        "get_active_guidance() → ActiveGuidance (Phase 3 consumer)",
-        "apply → PlanDetail | DeleteResult · assess → AssessmentResult"
+        "browse \u00b7 inspect \u00b7 prepare_planning \u2192 frozen views",
+        "get_active_guidance(today=) \u2192 one per active plan",
+        "apply \u2192 PlanDetail | DeleteResult \u00b7 assess \u2192 result"
       ]
     },
     {
       "dot": "emerald",
-      "title": "Intents (closed union)",
+      "title": "Nine MCP plan tools",
       "items": [
-        "Create · Import · Replace · Transition · Revise",
-        "SetMilestone (idempotent) · DeletePlan (confirmed)",
-        "AssessPlan goes to assess(), not apply()"
+        "list \u00b7 get \u00b7 get_planning_interview \u00b7 create \u00b7 update",
+        "set_status is readiness-gated \u00b7 set_milestone is a set",
+        "evaluate: preview | record \u00b7 delete: confirmed=true"
       ]
     },
     {
       "dot": "rose",
-      "title": "Invariants",
+      "title": "Plan-aware now, not automatic",
       "items": [
-        "One readiness gate before any write, on every door",
-        "Markdown authoritative; index best-effort; sinks reported",
-        "Adapters cannot import store/index/authoring/evaluation"
+        "a bounded bias, never a filter; no plan \u2192 the golden",
+        "no live-session binding, no plan id on session state",
+        "no session-driven checkpoints or milestones; no single-active rule"
       ]
     }
   ]
