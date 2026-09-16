@@ -9,8 +9,9 @@ The core release harnesses are:
 - **Kiro CLI** — the reference experience used in StudyLoop demos
 - **Codex**
 - **Claude Code**
+- **pi** — core since 2026-09-16, when all five release-evidence items passed on a real install (`docs/architecture/plan-integration/receipts/harness-evidence-2026-09-16.md`)
 
-StudyLoop also includes complete integrations for **OpenCode**, **pi**, and **Grok Build**. They are shown as preview harnesses until their live release checks pass on the target environment.
+StudyLoop also includes complete integrations for **OpenCode** and **Grok Build**. They are shown as preview harnesses until their live release checks pass on the target environment; the same receipt records exactly which check each one is still missing.
 
 Gemini CLI and Antigravity are not mentor harnesses in this pre-release.
 Their presence on your computer will not make StudyLoop advertise or select them.

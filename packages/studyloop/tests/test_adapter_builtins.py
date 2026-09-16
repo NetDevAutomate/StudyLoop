@@ -8,7 +8,9 @@ from unittest.mock import patch
 
 import pytest
 
-BUILTIN_ADAPTERS = ["kiro", "codex", "claude", "opencode", "pi", "grok"]
+# Registry order is RELEASE_HARNESSES order (core tier first): pi moved into
+# the core tier on 2026-09-16, ahead of the preview pair.
+BUILTIN_ADAPTERS = ["kiro", "codex", "claude", "pi", "opencode", "grok"]
 
 
 class TestBuiltinAdapters:

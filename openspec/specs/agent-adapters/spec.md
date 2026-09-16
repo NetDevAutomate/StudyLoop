@@ -73,9 +73,9 @@ built-ins, winning on name collision.
 to those whose `binary` is resolvable via `shutil.which`. Priority
 order: (1) if `STUDYLOOP_AGENT` env var is set and its binary is on
 PATH, return only that agent; (2) otherwise walk `agents.priority`
-from `AgentsConfig` (default: claude, kiro, gemini, opencode, codex,
-grok, ollama, lmstudio), then append any registry entries not in the
-priority list. `get_default_agent()` returns the first element or
+from `AgentsConfig` (default: `harnesses.RELEASE_HARNESSES` in order —
+kiro, codex, claude, pi, opencode, grok), then append any registry
+entries not in the priority list. `get_default_agent()` returns the first element or
 `None`.
 
 #### Scenario: STUDYLOOP_AGENT=kiro with kiro-cli on PATH
@@ -179,8 +179,9 @@ absolute. The `--uninstall` flag removes only symlinks that point back
 to the source. A shared `agents/shared` → `~/.agents/shared` link is
 always created. The CLI surface is `studyloop install agents`
 (`cli/_install.py`), accepting `--tool` (repeatable, constrained to
-`_AGENT_CHOICES`: kiro, claude, gemini, opencode, codex, grok, amp,
-pi, omp) and `--uninstall`.
+`_AGENT_CHOICES` = `harnesses.RELEASE_HARNESSES`: kiro, codex, claude,
+pi, opencode, grok — the core tier is kiro, codex, claude and pi; opencode
+and grok are preview) and `--uninstall`.
 
 #### Scenario: Fresh install on a machine with Claude and Kiro
 - **WHEN** `studyloop install agents` runs with `~/.kiro` and

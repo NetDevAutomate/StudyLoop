@@ -20,7 +20,8 @@ class TestAgentRegistry:
     def test_release_agents_registered(self):
         from studyloop.agent_launcher import AGENTS
 
-        assert tuple(AGENTS) == ("kiro", "codex", "claude", "opencode", "pi", "grok")
+        # RELEASE_HARNESSES order: core tier first (pi core since 2026-09-16).
+        assert tuple(AGENTS) == ("kiro", "codex", "claude", "pi", "opencode", "grok")
 
     def test_adapters_have_required_fields(self):
         from studyloop.agent_launcher import AGENTS

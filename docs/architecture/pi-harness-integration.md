@@ -6,15 +6,15 @@
 > [What changed since the previous version](#what-changed-since-the-previous-version).
 
 **TL;DR:** pi is a JSONL-on-disk coding agent and one of StudyLoop's six supported
-harnesses (preview tier). Its sessions live as one `.jsonl` file per session under
+harnesses (core tier since 2026-09-16). Its sessions live as one `.jsonl` file per session under
 `~/.pi/agent/sessions/`; `PiFamilyExporter` walks that tree and upserts into
 `sessions.db`; the installer links pi's `AGENTS.md` **and** a native
 `session_shutdown` extension that runs `session-export --pi-only` at session end,
 with the steering mandate in `~/.pi/agent/session-db.md` as the belt-and-braces
 second path; `studyloop doctor` checks both.
 
-Supported harnesses are exactly Kiro CLI, Codex, Claude Code (core) and OpenCode,
-pi, Grok Build (preview) — `packages/studyloop/src/studyloop/harnesses.py`. No
+Supported harnesses are exactly Kiro CLI, Codex, Claude Code, pi (core) and OpenCode,
+Grok Build (preview) — `packages/studyloop/src/studyloop/harnesses.py`. No
 pi-family fork is a supported harness: there is one pi exporter, one pi installer
 target and one `pi` session source, and nothing else in the pi family exists
 anywhere in the tree.
@@ -31,7 +31,7 @@ anywhere in the tree.
 | Session format | JSONL v3 — one JSON object per line |
 | Session-end API | **Yes** — extensions receive `session_shutdown` (`agents/pi/extensions/studyloop-session-export.ts:6-8`) |
 | Detection | `shutil.which("pi")` **or** `~/.pi` is a directory (`installers.py:484`) |
-| Harness tier | preview (`harnesses.py`: `PREVIEW_HARNESSES = ("opencode", "pi", "grok")`) |
+| Harness tier | core since 2026-09-16 (`harnesses.py`: `CORE_HARNESSES = ("kiro", "codex", "claude", "pi")`; evidence: `docs/architecture/plan-integration/receipts/harness-evidence-2026-09-16.md`) |
 | Session source label | `pi` (`harnesses.py`: `SESSION_SOURCE_BY_HARNESS["pi"] = "pi"`) |
 
 The `<cwd-slug>` directory name encodes the session's working directory with `/`
@@ -54,7 +54,7 @@ C4Context
 
   System(studyloop, "StudyLoop", "Local-first study toolkit. Session orchestration, review, spaced repetition, struggle detection.")
 
-  System_Ext(pi_cli, "pi CLI", "Preview harness. Stores JSONL sessions under ~/.pi/agent/sessions/")
+  System_Ext(pi_cli, "pi CLI", "Core harness. Stores JSONL sessions under ~/.pi/agent/sessions/")
   System_Ext(other_agents, "Other supported harnesses", "Kiro CLI, Codex, Claude Code, OpenCode, Grok Build")
 
   Rel(learner, studyloop, "studyloop study / session-export / studyloop doctor")

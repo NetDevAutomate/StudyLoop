@@ -358,8 +358,8 @@ tmux-socket isolation the rest of this document describes, then sends
 ended session (D-21(2)'s "wind-down → resume"), and ends it again. Order
 matters and is fixed, not alphabetical: `codex` and `claude` first (highest
 real usage), then `kiro` over tmux (its web-ACP coverage above does not
-certify the CLI path), then the three PREVIEW harnesses `opencode`, `pi`,
-`grok` — never a blocker on the CORE three. `HARNESS_ORDER` in the test
+certify the CLI path) and `pi` (core since 2026-09-16), then the PREVIEW
+harnesses `opencode` and `grok` — never a blocker on the CORE four. `HARNESS_ORDER` in the test
 module is a literal re-ordering of `RELEASE_HARNESSES`; the structural
 guard that keeps the two from drifting apart — full order, length, no
 duplicates, not just a set comparison — lives in
@@ -454,9 +454,9 @@ machine, not a claim this document makes in advance of it.
 | kiro | ✅ `test_kiro_web_acp_lane.py` (mechanical validators) | 0/O-6 | ✅ `test_harness_matrix_live.py` (mechanical validators; verified auth probe) | 0/O-6 |
 | codex | — (not a web-ACP surface) | n/a | ✅ `test_harness_matrix_live.py` (mechanical validators; presence-only probe) | 0/O-6 |
 | claude | — (not a web-ACP surface) | n/a | ✅ `test_harness_matrix_live.py` (mechanical validators; presence-only probe) | 0/O-6 |
-| opencode (PREVIEW) | — | n/a | ✅ `test_harness_matrix_live.py` (mechanical validators; presence-only probe) | 0/O-6 |
-| pi (PREVIEW) | — | n/a | ✅ `test_harness_matrix_live.py` (mechanical validators; presence-only probe) | 0/O-6 |
-| grok (PREVIEW) | — | n/a | ✅ `test_harness_matrix_live.py` (mechanical validators; presence-only probe) | 0/O-6 |
+| pi | — | n/a | ✅ `test_harness_matrix_live.py` (mechanical validators; presence-only probe) | 1/O-6 real-auth (`receipts/harness-evidence-2026-09-16`) |
+| opencode (PREVIEW) | — | n/a | ✅ `test_harness_matrix_live.py` (mechanical validators; presence-only probe) | 1 mechanical pass, no model reply (provider limit; see receipt) |
+| grok (PREVIEW) | — | n/a | ✅ `test_harness_matrix_live.py` (mechanical validators; presence-only probe) | 1/O-6 real-auth (`receipts/harness-evidence-2026-09-16`) |
 
 Tracked exclusions (named here, not silently absent, each with the lane
 that owns closing it):

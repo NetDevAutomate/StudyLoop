@@ -10,9 +10,9 @@ never one green check per harness (council D-19) -- see
 docs/acceptance-testing.md's coverage inventory for the tracked exclusions.
 
 ORDER (this lane's brief, council amendment): codex + claude first (E-03
-usage), then kiro over tmux (CORE -- its web-ACP coverage in B1 does not
-certify the CLI path), then the three PREVIEW harnesses opencode/pi/grok,
-never a blocker. ``HARNESS_ORDER`` is a literal re-ordering of
+usage), then the rest of CORE over tmux (kiro -- its web-ACP coverage in B1
+does not certify the CLI path -- and pi, core since 2026-09-16), then the
+PREVIEW harnesses opencode/grok, never a blocker. ``HARNESS_ORDER`` is a literal re-ordering of
 ``RELEASE_HARNESSES``, not a hand-maintained separate list -- the structural
 guard that keeps the two from drifting apart lives in
 ``tests/test_harness_matrix_live_mechanics.py`` (an UNGATED module, not
@@ -94,7 +94,7 @@ pytestmark = [
 #: test_harness_order_is_exactly_release_harnesses_reordered (an UNGATED
 #: module -- see that file's module docstring for why this guard must not
 #: live behind the acceptance marker).
-HARNESS_ORDER: tuple[str, ...] = ("codex", "claude", "kiro", "opencode", "pi", "grok")
+HARNESS_ORDER: tuple[str, ...] = ("codex", "claude", "kiro", "pi", "opencode", "grok")
 
 #: D-21(2) requires "start -> >=3 scripted turns -> ...". Three free-form
 #: turns, not scripted around any particular expected reply (D-17: pane

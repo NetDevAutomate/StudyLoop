@@ -27,8 +27,8 @@ TOOL_AGENTS: dict[str, tuple[str, str]] = {
     "kiro": ("kiro-cli", "~/.kiro/agents/study-mentor.json"),
     "codex": ("codex", "{repo_root}/AGENTS.md"),
     "claude": ("claude", "~/.claude/agents/socratic-mentor.md"),
-    "opencode": ("opencode", "~/.config/opencode/agents/study-mentor.md"),
     "pi": ("pi", "~/.pi/agent/AGENTS.md"),
+    "opencode": ("opencode", "~/.config/opencode/agents/study-mentor.md"),
     # Deliberately the same repo-root AGENTS.md that Codex reads: Grok Build
     # discovers the AGENTS.md instruction-file family from the repository root
     # down to the working directory, so a second copy would only drift.

@@ -55,9 +55,16 @@ def _ensure_grok_trust(directory: Path) -> None:
         return
     path = home / TRUSTED_FOLDERS_FILE
     key = str(directory)
-    existing = ""
-    if path.exists():
+    # Read first and treat "not there" as empty -- never exists()-then-read
+    # (repo rule R-06/R-08: a TOCTOU pair against a file another thread may
+    # unlink; test_no_exists_then_read_race.py pins it).
+    try:
         existing = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        existing = ""
+    except OSError:
+        return  # unreadable: not ours to repair; Grok will re-ask, the safe failure
+    if existing:
         try:
             folders = tomllib.loads(existing).get("folders", {})
         except tomllib.TOMLDecodeError:

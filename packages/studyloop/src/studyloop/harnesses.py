@@ -20,8 +20,13 @@ class Harness:
     core: bool
 
 
-CORE_HARNESSES = ("kiro", "codex", "claude")
-PREVIEW_HARNESSES = ("opencode", "pi", "grok")
+#: pi joined the core tier on 2026-09-16 with all five of issue #21's evidence
+#: items green on a real install (docs/architecture/plan-integration/receipts/
+#: harness-evidence-2026-09-16.md). OpenCode and Grok Build stay preview until
+#: their own receipts are green -- the reasons are named in that receipt.
+CORE_HARNESSES = ("kiro", "codex", "claude", "pi")
+PREVIEW_HARNESSES = ("opencode", "grok")
+#: The release SET is unchanged by a tier move; only the core/preview split is.
 RELEASE_HARNESSES = (*CORE_HARNESSES, *PREVIEW_HARNESSES)
 
 SESSION_SOURCE_BY_HARNESS: dict[str, str] = {
@@ -38,7 +43,7 @@ HARNESSES: dict[str, Harness] = {
     "codex": Harness("codex", "Codex", "codex", True),
     "claude": Harness("claude", "Claude Code", "claude", True),
     "opencode": Harness("opencode", "OpenCode", "opencode", False),
-    "pi": Harness("pi", "pi", "pi", False),
+    "pi": Harness("pi", "pi", "pi", True),
     # "Grok Build" is the product's own name for the `grok` binary (its user
     # guide and TUI header both use it); "Grok"/"Grok Builder" are not.
     "grok": Harness("grok", "Grok Build", "grok", False),
