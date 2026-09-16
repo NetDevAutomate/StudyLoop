@@ -583,7 +583,7 @@ def test_agents_default_priority_matches_release_harnesses():
     # Derived, not a literal: the default IS the release contract in contract
     # order, so re-admitting or dropping a harness cannot leave this stale.
     assert s.agents.priority == list(RELEASE_HARNESSES)
-    assert s.agents.priority == ["kiro", "codex", "claude", "opencode", "pi", "grok"]
+    assert s.agents.priority == ["kiro", "codex", "claude", "pi", "opencode", "grok"]
 
 
 def test_custom_agents_parsed(tmp_path):

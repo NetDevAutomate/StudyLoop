@@ -11,8 +11,10 @@ def test_initial_prerelease_harness_scope_is_explicit() -> None:
         SESSION_SOURCE_BY_HARNESS,
     )
 
-    assert CORE_HARNESSES == ("kiro", "codex", "claude")
-    assert PREVIEW_HARNESSES == ("opencode", "pi", "grok")
+    # pi promoted 2026-09-16 (issue #21 evidence receipt); opencode and grok
+    # stay preview with the reasons named in that receipt.
+    assert CORE_HARNESSES == ("kiro", "codex", "claude", "pi")
+    assert PREVIEW_HARNESSES == ("opencode", "grok")
     assert (*CORE_HARNESSES, *PREVIEW_HARNESSES) == RELEASE_HARNESSES
     assert "gemini" not in RELEASE_HARNESSES
     assert "grok" in RELEASE_HARNESSES

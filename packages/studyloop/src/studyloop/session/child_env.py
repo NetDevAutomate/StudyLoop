@@ -160,6 +160,12 @@ _XDG_SCRATCH_SUBDIRS: dict[str, str] = {
     "XDG_STATE_HOME": ".local/state",
 }
 
+#: Non-``STUDYLOOP_*`` names that still point a child past the scratch HOME:
+#: ``SESSION_CONTEXT_SCOPE`` is the context-memory scope override the unit
+#: suite sets, and a scratch child must resolve its scope from the scratch
+#: config the way production does.
+_SCRATCH_ONLY_DENY: frozenset[str] = frozenset({"SESSION_CONTEXT_SCOPE"})
+
 
 def build_scratch_child_env(
     *,
@@ -181,6 +187,15 @@ def build_scratch_child_env(
     """
     clean = build_child_env(caller_env)
     for key in [k for k in clean if k.startswith("XDG_")]:
+        del clean[key]
+    # Every inherited STUDYLOOP_* pointer (and the test-only scope override)
+    # is by definition a path PAST the scratch HOME -- a developer shell's or
+    # the unit suite's throwaway dirs. The root test conftest sets
+    # STUDYLOOP_SESSION_DIR / STUDYLOOP_DB / SESSION_CONTEXT_SCOPE in the pytest
+    # process; before this scrub a live acceptance child wrote its
+    # session-state.json into the SUITE's session dir while the lane waited
+    # for it under the scratch config dir (found 2026-09-16, issue #21).
+    for key in [k for k in clean if k.startswith("STUDYLOOP_") or k in _SCRATCH_ONLY_DENY]:
         del clean[key]
     clean["HOME"] = str(home)
     clean["STUDYLOOP_STATE_DIR"] = str(state_dir)

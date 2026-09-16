@@ -8,7 +8,9 @@ from unittest.mock import patch
 
 import pytest
 
-BUILTIN_ADAPTERS = ["kiro", "codex", "claude", "opencode", "pi", "grok"]
+# Registry order is RELEASE_HARNESSES order (core tier first): pi moved into
+# the core tier on 2026-09-16, ahead of the preview pair.
+BUILTIN_ADAPTERS = ["kiro", "codex", "claude", "pi", "opencode", "grok"]
 
 
 class TestBuiltinAdapters:
@@ -115,6 +117,99 @@ class TestGrokAdapter:
 
         cmd = _grok_launch(Path("/tmp/AGENTS.md"), resume=True)
         assert cmd.endswith("grok --resume")
+
+
+class TestGrokFolderTrust:
+    """Grok Build asks "Do you trust the contents of this directory?" for a
+    fresh session dir -- a modal y/n that swallows every typed prompt. Seen
+    on the first real-auth live run (2026-09-16): both scripted turns timed
+    out on that dialog. Grok persists the answer in
+    ``$GROK_HOME/trusted_folders.toml`` (``[folders."<path>"] trusted = true``),
+    so setup pre-trusts the session dir the same way ``_ensure_claude_trust``
+    does for Claude Code -- in Grok's own file, never by weakening any of
+    its other permissions.
+    """
+
+    @pytest.fixture()
+    def grok_home(self, tmp_path, monkeypatch):
+        home = tmp_path / "grok-home"
+        home.mkdir()
+        monkeypatch.setenv("GROK_HOME", str(home))
+        # The pre-write is opt-in (council review 2026-09-16): every test in
+        # this class except the opt-out one runs with it enabled.
+        monkeypatch.setenv("STUDYLOOP_GROK_TRUST_SESSION_DIR", "1")
+        return home
+
+    def test_without_the_opt_in_nothing_is_written(self, tmp_path, grok_home, monkeypatch):
+        """Default behaviour: Grok asks its own trust question; StudyLoop
+        never silently edits the learner's Grok security state."""
+        from studyloop.adapters.grok import _grok_setup
+
+        monkeypatch.delenv("STUDYLOOP_GROK_TRUST_SESSION_DIR")
+        session_dir = tmp_path / "sessions" / "study-topic-abcd1234"
+        session_dir.mkdir(parents=True)
+        path = _grok_setup("# Grok Persona", session_dir)
+        assert path.exists()
+        assert not (grok_home / "trusted_folders.toml").exists()
+
+    def _trusted(self, grok_home: Path) -> dict:
+        import tomllib
+
+        path = grok_home / "trusted_folders.toml"
+        return tomllib.loads(path.read_text(encoding="utf-8"))["folders"] if path.exists() else {}
+
+    def test_setup_pre_trusts_the_session_dir_and_its_parent(self, tmp_path, grok_home):
+        from studyloop.adapters.grok import _grok_setup
+
+        session_dir = tmp_path / "sessions" / "study-topic-abcd1234"
+        session_dir.mkdir(parents=True)
+        _grok_setup("# Grok Persona", session_dir)
+        folders = self._trusted(grok_home)
+        assert folders[str(session_dir)]["trusted"] is True
+        assert folders[str(session_dir.parent)]["trusted"] is True
+        assert isinstance(folders[str(session_dir)]["decided_at"], int)
+
+    def test_existing_entries_and_other_tables_survive(self, tmp_path, grok_home):
+        import tomllib
+
+        from studyloop.adapters.grok import _grok_setup
+
+        existing = (
+            '[folders."/Users/learner/code/project"]\n'
+            "trusted = true\n"
+            "decided_at = 1700000000\n"
+            "\n"
+            "[other]\n"
+            'note = "keep me"\n'
+        )
+        (grok_home / "trusted_folders.toml").write_text(existing, encoding="utf-8")
+        session_dir = tmp_path / "sessions" / "study-topic-abcd1234"
+        session_dir.mkdir(parents=True)
+        _grok_setup("# Grok Persona", session_dir)
+        data = tomllib.loads((grok_home / "trusted_folders.toml").read_text(encoding="utf-8"))
+        assert data["folders"]["/Users/learner/code/project"]["decided_at"] == 1700000000
+        assert data["other"]["note"] == "keep me"
+        assert data["folders"][str(session_dir)]["trusted"] is True
+
+    def test_setup_is_idempotent(self, tmp_path, grok_home):
+        from studyloop.adapters.grok import _grok_setup
+
+        session_dir = tmp_path / "sessions" / "study-topic-abcd1234"
+        session_dir.mkdir(parents=True)
+        _grok_setup("# Grok Persona", session_dir)
+        first = (grok_home / "trusted_folders.toml").read_text(encoding="utf-8")
+        _grok_setup("# Grok Persona", session_dir)
+        assert (grok_home / "trusted_folders.toml").read_text(encoding="utf-8") == first
+
+    def test_no_grok_home_means_no_trust_file_is_invented(self, tmp_path, monkeypatch):
+        """A machine without Grok Build installed must not grow a ~/.grok."""
+        from studyloop.adapters.grok import _grok_setup
+
+        monkeypatch.setenv("GROK_HOME", str(tmp_path / "absent"))
+        session_dir = tmp_path / "sessions" / "study-topic-abcd1234"
+        session_dir.mkdir(parents=True)
+        _grok_setup("# Grok Persona", session_dir)
+        assert not (tmp_path / "absent").exists()
 
 
 class TestKiroAdapter:

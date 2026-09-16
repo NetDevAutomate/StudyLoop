@@ -10,9 +10,9 @@ never one green check per harness (council D-19) -- see
 docs/acceptance-testing.md's coverage inventory for the tracked exclusions.
 
 ORDER (this lane's brief, council amendment): codex + claude first (E-03
-usage), then kiro over tmux (CORE -- its web-ACP coverage in B1 does not
-certify the CLI path), then the three PREVIEW harnesses opencode/pi/grok,
-never a blocker. ``HARNESS_ORDER`` is a literal re-ordering of
+usage), then the rest of CORE over tmux (kiro -- its web-ACP coverage in B1
+does not certify the CLI path -- and pi, core since 2026-09-16), then the
+PREVIEW harnesses opencode/grok, never a blocker. ``HARNESS_ORDER`` is a literal re-ordering of
 ``RELEASE_HARNESSES``, not a hand-maintained separate list -- the structural
 guard that keeps the two from drifting apart lives in
 ``tests/test_harness_matrix_live_mechanics.py`` (an UNGATED module, not
@@ -79,6 +79,13 @@ if TYPE_CHECKING:
 pytestmark = [
     pytest.mark.acceptance,
     pytest.mark.skipif(not shutil.which("tmux"), reason="tmux not installed"),
+    # The suite-wide pytest-timeout is 60 s (pyproject.toml), which is LESS
+    # than one of this lane's 90 s per-turn budgets: on the first grok run
+    # (2026-09-16) pytest-timeout killed the test while PaneDriver was still
+    # waiting, so the documented budget-exhausted outcome was unreachable.
+    # Three turns + every fixed wait is ~400 s worst case; pinned with
+    # headroom by test_harness_matrix_live_mechanics.TestLaneTimeoutBudget.
+    pytest.mark.timeout(600),
 ]
 
 #: Literal re-order of RELEASE_HARNESSES -- see the module docstring's ORDER
@@ -87,7 +94,7 @@ pytestmark = [
 #: test_harness_order_is_exactly_release_harnesses_reordered (an UNGATED
 #: module -- see that file's module docstring for why this guard must not
 #: live behind the acceptance marker).
-HARNESS_ORDER: tuple[str, ...] = ("codex", "claude", "kiro", "opencode", "pi", "grok")
+HARNESS_ORDER: tuple[str, ...] = ("codex", "claude", "kiro", "pi", "opencode", "grok")
 
 #: D-21(2) requires "start -> >=3 scripted turns -> ...". Three free-form
 #: turns, not scripted around any particular expected reply (D-17: pane
@@ -148,6 +155,20 @@ PROBES: dict[str, Callable[[str, Mapping[str, str]], tuple[bool, str]]] = {
     "pi": _presence_only_probe,
     "grok": _presence_only_probe,
 }
+
+
+def auth_mode_for(harness_name: str, scratch: ScratchEnv) -> str:
+    """The ``auth_mode`` the evidence bundle records (council D-21(7)).
+
+    ``real-auth`` when the scratch was built with the opt-in real-harness-auth
+    mode (the harness saw its own credentials -- the only mode in which a
+    recorded reply can be a model's); ``verified`` for kiro's whoami probe
+    under a scrubbed scratch; ``presence-only`` otherwise, which the coverage
+    inventory tracks as an exclusion.
+    """
+    if scratch.real_harness_auth:
+        return "real-auth"
+    return "verified" if harness_name == "kiro" else "presence-only"
 
 
 def harness_available(name: str, env: Mapping[str, str]) -> tuple[bool, str]:
@@ -297,7 +318,7 @@ class TestHarnessMatrixLive:
                 actor="scripted",
                 outcome=outcome,
                 platform=platform.platform(),
-                auth_mode="verified" if harness_name == "kiro" else "presence-only",
+                auth_mode=auth_mode_for(harness_name, scratch_env),
                 turns=[
                     {"prompt": r.prompt, "pane_output": r.pane_output, "elapsed": r.elapsed}
                     for r in (driver.records if driver is not None else [])

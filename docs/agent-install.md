@@ -9,8 +9,9 @@ The core release harnesses are:
 - **Kiro CLI** — the reference experience used in StudyLoop demos
 - **Codex**
 - **Claude Code**
+- **pi** — core since 2026-09-16, when all five release-evidence items passed on a real install (`docs/architecture/plan-integration/receipts/harness-evidence-2026-09-16.md`)
 
-StudyLoop also includes complete integrations for **OpenCode**, **pi**, and **Grok Build**. They are shown as preview harnesses until their live release checks pass on the target environment.
+StudyLoop also includes complete integrations for **OpenCode** and **Grok Build**. They are shown as preview harnesses until their live release checks pass on the target environment; the same receipt records exactly which check each one is still missing.
 
 Gemini CLI and Antigravity are not mentor harnesses in this pre-release.
 Their presence on your computer will not make StudyLoop advertise or select them.
@@ -142,6 +143,14 @@ Grok Build is xAI's terminal coding agent (binary `grok`). It reads the repo-roo
 Because it is the same file, it carries the same self-gated xTiles line as Codex's. Grok Build also discovers the shared `~/.agents/skills/` hub natively (its skill discovery scans `.agents/skills/` at every tier), so the `studyloop-session-memory` skill reaches it with no Grok-specific link.
 
 Grok Build has no named-agent feature: `studyloop study --mode plan-architect --agent grok` launches the study-plan-architect persona the same way.
+
+Grok Build asks "Do you trust the contents of this directory?" for every fresh
+session directory and swallows anything else typed until it is answered. In an
+interactive session, answer `y`. For unattended sessions (the acceptance lane),
+set `STUDYLOOP_GROK_TRUST_SESSION_DIR=1` and StudyLoop pre-trusts the session
+directory (and its parent) in `$GROK_HOME/trusted_folders.toml` — Grok's own
+trust file, nothing else. This is opt-in on purpose: it edits your Grok
+security state, so it never happens silently (council review, 2026-09-16).
 
 If `grok` is not on your PATH yet:
 

@@ -31,6 +31,7 @@ learner's session should — with nothing standing in for the mentor.
 | `STUDYLOOP_ACC` | Must be exactly `1` or every acceptance test skips, naming this variable and this file | unset (tier is off) |
 | `STUDYLOOP_ACC_HARNESS` | Comma list of harnesses to run (`kiro,codex,claude,opencode,pi,grok`) | unset → **all six** |
 | `STUDYLOOP_ACC_ACTOR` | Which learner backend drives the conversation (see "The learner actors" below) | unset → `scripted` |
+| `STUDYLOOP_ACC_REAL_AUTH` | Exactly `1`: the harness keeps your **real** home and credentials while every StudyLoop pointer stays scratch (see "Real harness auth" below) | unset → scrubbed scratch HOME, no credentials |
 | `LITELLM_API_KEY` | `ACTOR=gateway`: the key for your LiteLLM proxy | unset → `gateway` skips, naming it |
 | `LITELLM_BASE_URL` | `ACTOR=gateway`: your proxy's address | unset → `http://127.0.0.1:4000` |
 | `STUDYLOOP_ACC_GATEWAY_MODEL` | `ACTOR=gateway`: which alias behind the proxy plays the learner | unset → `gateway` skips, naming it |
@@ -117,6 +118,55 @@ built with a sanitized environment *before* that subprocess ever imports
   environment. `create_scratch_environment` registers a `tmux kill-server`
   descendant stopper scoped to that socket, run before the sweeper ever
   touches the filesystem.
+- The scratch child sees **no inherited `STUDYLOOP_*` pointer** except the
+  `STUDYLOOP_STATE_DIR` the builder sets itself, and no `SESSION_CONTEXT_SCOPE`.
+  Found by the first live run (2026-09-16): the unit suite's root conftest
+  sets `STUDYLOOP_SESSION_DIR`/`STUDYLOOP_DB`/`SESSION_CONTEXT_SCOPE` in the
+  pytest process, and a child that inherited them wrote `session-state.json`
+  into the *suite's* throwaway dir while the lane waited for it under the
+  scratch config dir — every harness timed out before its binary was looked at.
+- The seeded `config.yaml` carries `memory.default_scope: unclassified`
+  alongside `topics: []`. Same first live run: the context-memory scope policy
+  never infers a scope, so a scratch without one is a fresh install on which
+  `studyloop study` exits 2 ("No context scope configured") before any harness
+  launches.
+
+### Real harness auth (opt-in, `STUDYLOOP_ACC_REAL_AUTH=1`)
+
+The scrubbed scratch HOME hands the harness binary **no credentials at all**:
+`pi` printed "No API key found" for all three scripted turns on the first live
+run while the lane still passed mechanically (a real session started, three
+prompts produced pane changes, the session ended and resumed cleanly). That
+proves the launch plumbing and nothing about the model path — and no harness
+whose credentials live under its home (all six) can ever do better there.
+
+`STUDYLOOP_ACC_REAL_AUTH=1` is how a developer certifies a harness's real
+model path **on their own machine**: `isolation.build_real_harness_auth_env`
+keeps `HOME`, `XDG_*` and every provider credential the shell exported — the
+same environment `studyloop study` gets in a real terminal (the CLI/tmux
+production path inherits the shell env unscrubbed, `session/orchestrator.py`),
+so this is production-faithful, not a relaxation of a production control —
+while **every StudyLoop pointer is still scratch**: `STUDYLOOP_CONFIG` (the
+seeded config, incl. its scope), `STUDYLOOP_SESSION_DIR` (session-state.json,
+the one-session authority), `STUDYLOOP_STATE_DIR`, `STUDYLOOP_DB`, and the
+run's own `TMUX_TMPDIR`. The evidence bundle records `auth_mode: real-auth`
+so a reader can tell such a run from a `presence-only` one without opening
+`turns.json`.
+
+What it costs and touches, said plainly: the harness **will** bill its
+configured provider for the scripted turns, and it **will** write its own
+transcripts into its real directories (`~/.pi/agent/sessions`,
+`~/.local/share/opencode/storage`, `~/.grok/sessions`), exactly as any real
+session does. The guarded sweeper never touches those; it only ever removes
+the scratch tree. Never the default, never set by any `just` recipe, never
+appropriate in CI.
+
+`scripts/harness-evidence.py <harness> --real-auth …` is the recorded,
+re-runnable form used for issue #21's per-harness evidence receipts; item 1
+(install into a scratch HOME) always runs in the scrubbed mode regardless.
+For `grok` it also sets `STUDYLOOP_GROK_TRUST_SESSION_DIR=1` — an unattended
+session cannot answer Grok's directory-trust dialog — and the entries that
+pre-write adds to the real `trusted_folders.toml` are removed after the run.
 
 ## The guarded sweeper
 
@@ -311,8 +361,8 @@ tmux-socket isolation the rest of this document describes, then sends
 ended session (D-21(2)'s "wind-down → resume"), and ends it again. Order
 matters and is fixed, not alphabetical: `codex` and `claude` first (highest
 real usage), then `kiro` over tmux (its web-ACP coverage above does not
-certify the CLI path), then the three PREVIEW harnesses `opencode`, `pi`,
-`grok` — never a blocker on the CORE three. `HARNESS_ORDER` in the test
+certify the CLI path) and `pi` (core since 2026-09-16), then the PREVIEW
+harnesses `opencode` and `grok` — never a blocker on the CORE four. `HARNESS_ORDER` in the test
 module is a literal re-ordering of `RELEASE_HARNESSES`; the structural
 guard that keeps the two from drifting apart — full order, length, no
 duplicates, not just a set comparison — lives in
@@ -407,9 +457,9 @@ machine, not a claim this document makes in advance of it.
 | kiro | ✅ `test_kiro_web_acp_lane.py` (mechanical validators) | 0/O-6 | ✅ `test_harness_matrix_live.py` (mechanical validators; verified auth probe) | 0/O-6 |
 | codex | — (not a web-ACP surface) | n/a | ✅ `test_harness_matrix_live.py` (mechanical validators; presence-only probe) | 0/O-6 |
 | claude | — (not a web-ACP surface) | n/a | ✅ `test_harness_matrix_live.py` (mechanical validators; presence-only probe) | 0/O-6 |
-| opencode (PREVIEW) | — | n/a | ✅ `test_harness_matrix_live.py` (mechanical validators; presence-only probe) | 0/O-6 |
-| pi (PREVIEW) | — | n/a | ✅ `test_harness_matrix_live.py` (mechanical validators; presence-only probe) | 0/O-6 |
-| grok (PREVIEW) | — | n/a | ✅ `test_harness_matrix_live.py` (mechanical validators; presence-only probe) | 0/O-6 |
+| pi | — | n/a | ✅ `test_harness_matrix_live.py` (mechanical validators; presence-only probe) | 1/O-6 real-auth (`receipts/harness-evidence-2026-09-16`) |
+| opencode (PREVIEW) | — | n/a | ✅ `test_harness_matrix_live.py` (mechanical validators; presence-only probe) | 1 mechanical pass, no model reply (provider limit; see receipt) |
+| grok (PREVIEW) | — | n/a | ✅ `test_harness_matrix_live.py` (mechanical validators; presence-only probe) | 1/O-6 real-auth (`receipts/harness-evidence-2026-09-16`) |
 
 Tracked exclusions (named here, not silently absent, each with the lane
 that owns closing it):

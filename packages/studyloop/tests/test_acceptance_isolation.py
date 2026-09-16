@@ -42,6 +42,96 @@ class TestScratchCreation:
         assert scratch.config_dir.is_dir()
         assert (scratch.config_dir / "config.yaml").exists()
 
+    def test_seeded_config_carries_a_default_context_scope(self, tmp_path: Path) -> None:
+        """A scratch is a fresh install, and a fresh install cannot start a session.
+
+        The context-memory scope policy (``agent_session_tools.context.scope``)
+        refuses to infer a scope: with no ``memory.default_scope`` and no
+        project root, ``studyloop study`` exits 2 ("No context scope
+        configured") BEFORE any harness is launched -- found 2026-09-16 by the
+        first live harness-evidence run, where every harness failed identically
+        at this gate. The seeded config therefore has to carry a scope, or the
+        live lane can never reach the harness it is meant to certify.
+        """
+        import yaml
+
+        from agent_session_tools.context.scope import ScopePolicy
+
+        scratch = create_scratch_environment(tmp_path)
+        config = yaml.safe_load((scratch.config_dir / "config.yaml").read_text())
+        assert config["memory"]["default_scope"] == "unclassified"
+        # The same object the product builds from this file must resolve a
+        # scope without consulting a project root, cwd, or an env override.
+        policy = ScopePolicy.from_config(config)
+        assert policy.default_scope is not None
+        assert policy.default_scope.value == "unclassified"
+
+
+class TestRealHarnessAuthMode:
+    """``real_harness_auth=True``: the harness keeps its REAL home, StudyLoop does not.
+
+    The default scratch mode hands the harness binary an empty HOME with no
+    credentials, so no harness can ever answer a prompt there -- the first
+    live harness-evidence run (2026-09-16) saw pi print "No API key found"
+    for all three scripted turns while the lane still passed mechanically.
+    This opt-in mode is how a developer certifies a harness on THEIR machine:
+    the harness sees its own config and credentials exactly as `studyloop
+    study` in a real terminal would, while every StudyLoop pointer (config,
+    session dir, state dir, sessions DB, tmux socket) still lands in the
+    scratch tree that the guarded sweeper owns.
+    """
+
+    def test_harness_home_is_real_but_every_studyloop_pointer_is_scratch(
+        self, tmp_path: Path
+    ) -> None:
+        real_home = "/Users/real-learner"
+        fake_token = "not-a-real-token-value"  # pragma: allowlist secret
+        caller_env = {
+            "HOME": real_home,
+            "PATH": "/usr/bin:/bin",
+            "XDG_CONFIG_HOME": f"{real_home}/.config",
+            "STUDYLOOP_SESSION_DIR": "/tmp/pytest-of-someone/suite-session-dir0",
+            "STUDYLOOP_DB": "/tmp/pytest-of-someone/state/sessions.db",
+            "SESSION_CONTEXT_SCOPE": "unclassified",
+            "AWS_BEARER_TOKEN_BEDROCK": fake_token,
+        }
+        scratch = create_scratch_environment(tmp_path, extra_env=caller_env, real_harness_auth=True)
+        env = scratch.env
+        # The harness's world is untouched...
+        assert env["HOME"] == real_home
+        assert env["XDG_CONFIG_HOME"] == f"{real_home}/.config"
+        # ...including the credential its provider reads, which the CLI
+        # production path (tmux inherits the shell env) would also pass on.
+        assert env["AWS_BEARER_TOKEN_BEDROCK"] == fake_token
+        # ...while StudyLoop's own state is the scratch tree, never the suite's
+        # leaked pointers and never the real ~/.config/studyloop.
+        assert env["STUDYLOOP_SESSION_DIR"] == str(scratch.config_dir)
+        assert env["STUDYLOOP_CONFIG"] == str(scratch.config_dir / "config.yaml")
+        assert env["STUDYLOOP_STATE_DIR"] == str(scratch.state_dir)
+        assert env["STUDYLOOP_DB"] == str(scratch.config_dir / "sessions.db")
+        assert env["TMUX_TMPDIR"] == str(scratch.tmux_socket_dir)
+        assert "SESSION_CONTEXT_SCOPE" not in env
+        assert scratch.real_harness_auth is True
+        sweep_scratch(scratch)
+
+    def test_default_mode_is_unchanged_and_records_itself(self, tmp_path: Path) -> None:
+        scratch = create_scratch_environment(tmp_path)
+        assert scratch.real_harness_auth is False
+        assert scratch.env["HOME"] == str(scratch.home)
+        assert "STUDYLOOP_CONFIG" not in scratch.env
+        sweep_scratch(scratch)
+
+    def test_sweep_still_never_touches_the_real_home(self, tmp_path: Path) -> None:
+        scratch = create_scratch_environment(
+            tmp_path, extra_env={"HOME": str(tmp_path / "pretend-real")}, real_harness_auth=True
+        )
+        (tmp_path / "pretend-real").mkdir()
+        marker = tmp_path / "pretend-real" / "keep-me"
+        marker.write_text("real data")
+        sweep_scratch(scratch)
+        assert marker.exists()
+        assert not scratch.home.exists()
+
     def test_dedicated_tmux_socket_dir_is_deliberately_outside_scratch_home(
         self, tmp_path: Path
     ) -> None:

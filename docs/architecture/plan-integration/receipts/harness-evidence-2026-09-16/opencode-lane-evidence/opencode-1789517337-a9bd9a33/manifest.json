@@ -1,0 +1,10 @@
+{
+  "run_id": "opencode-1789517337-a9bd9a33",
+  "harness": "opencode",
+  "actor": "scripted",
+  "outcome": "completed",
+  "turn_count": 3,
+  "platform": "macOS-27.0-arm64-arm-64bit",
+  "auth_mode": "presence-only",
+  "harness_version": null
+}

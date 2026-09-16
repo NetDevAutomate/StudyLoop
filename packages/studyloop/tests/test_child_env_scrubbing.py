@@ -297,6 +297,42 @@ class TestScratchChildEnv:
         )
         assert "STUDYLOOP_TEST_ACP_CMD" not in env
 
+    def test_parent_studyloop_pointers_never_reach_the_scratch_child(self, tmp_path) -> None:
+        """Every inherited ``STUDYLOOP_*`` pointer is a leak past the scratch HOME.
+
+        Found 2026-09-16 by the first live harness-evidence run: the unit
+        suite's root conftest sets ``STUDYLOOP_SESSION_DIR`` (autouse),
+        ``STUDYLOOP_DB`` and ``SESSION_CONTEXT_SCOPE`` in the pytest process,
+        and the acceptance lane built its scratch env from that process's
+        ``os.environ`` -- so ``studyloop study`` in the child wrote
+        ``session-state.json`` into the SUITE's throwaway session dir, the lane
+        waited for it under the scratch config dir, and every harness timed
+        out before its binary was even looked at. The scratch HOME is the
+        isolation boundary: the only ``STUDYLOOP_*`` variable a child may see
+        is the one this builder sets itself.
+        """
+        home = tmp_path / "home"
+        state_dir = home / ".local" / "share" / "studyloop"
+        env = build_scratch_child_env(
+            home=home,
+            state_dir=state_dir,
+            caller_env={
+                "STUDYLOOP_SESSION_DIR": "/tmp/pytest-of-someone/suite-session-dir0",
+                "STUDYLOOP_DB": "/tmp/pytest-of-someone/state/sessions.db",
+                "STUDYLOOP_STATE_DIR": "/tmp/pytest-of-someone/state",
+                "STUDYLOOP_ACC": "1",
+                "STUDYLOOP_ACC_HARNESS": "pi",
+                "SESSION_CONTEXT_SCOPE": "unclassified",
+                "PATH": "/usr/bin:/bin",
+            },
+        )
+        assert {k for k in env if k.startswith("STUDYLOOP_")} == {"STUDYLOOP_STATE_DIR"}
+        assert env["STUDYLOOP_STATE_DIR"] == str(state_dir)
+        # The child must resolve its context scope from the SCRATCH config the
+        # same way production does, not from a test-only override.
+        assert "SESSION_CONTEXT_SCOPE" not in env
+        assert env["PATH"] == "/usr/bin:/bin"
+
 
 class TestEveryTransportUsesIt:
     """Structural: a transport must not hand its child a raw environment."""

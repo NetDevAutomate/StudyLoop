@@ -29,8 +29,8 @@ fallback, so MCP absence cannot silently disable retrieval.
 
 ### Requirement: Every release harness has a native automatic export hook
 
-The installer SHALL provide a real lifecycle hook for Kiro, Codex, Claude Code,
-OpenCode and pi. The hooks SHALL run the matching `session-export
+The installer SHALL provide a real lifecycle hook for every release harness —
+Kiro, Codex, Claude Code and pi (core) and OpenCode and Grok Build (preview). The hooks SHALL run the matching `session-export
 --<harness>-only` command best-effort and SHALL NOT block session close. Prompt
 or steering mandates MAY reinforce export but SHALL NOT count as automatic
 hooks.
@@ -39,7 +39,8 @@ hooks.
 - **WHEN** `studyloop install agents` detects any release harness
 - **THEN** that harness receives its verified hook strategy: Kiro custom-agent
   `stop`, Codex global `SessionEnd`, Claude Code global `Stop`, OpenCode global
-  plugin `session.idle`, or pi global extension `session_shutdown`
+  plugin `session.idle`, pi global extension `session_shutdown`, or Grok Build
+  global `SessionEnd` (`$GROK_HOME/hooks/studyloop.json`)
 
 #### Scenario: Existing user hook configuration is present
 - **WHEN** Claude or Codex already has unrelated hook groups

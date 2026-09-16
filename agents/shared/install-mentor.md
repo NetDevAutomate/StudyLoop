@@ -26,8 +26,8 @@ which pip3 2>/dev/null      # Fallback package manager
 which kiro-cli 2>/dev/null  # Kiro CLI (core)
 which codex 2>/dev/null     # Codex (core)
 which claude 2>/dev/null    # Claude Code (core)
+which pi 2>/dev/null        # pi (core)
 which opencode 2>/dev/null  # OpenCode (preview)
-which pi 2>/dev/null        # pi (preview)
 which grok 2>/dev/null      # Grok Build (preview)
 ls ~/.config/studyloop/config.yaml 2>/dev/null && echo "config exists" || echo "config missing"
 ```

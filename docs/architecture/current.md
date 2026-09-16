@@ -28,7 +28,7 @@ flowchart TB
       Claude["Claude Code<br/>(PTY only)"]
       Codex["Codex CLI<br/>(PTY only)"]
       OpenCode["OpenCode<br/>(PTY only, preview)"]
-      Pi["pi<br/>(PTY only, preview)"]
+      Pi["pi<br/>(PTY only)"]
       Grok["Grok Build<br/>(supports ACP, preview)"]
     end
 

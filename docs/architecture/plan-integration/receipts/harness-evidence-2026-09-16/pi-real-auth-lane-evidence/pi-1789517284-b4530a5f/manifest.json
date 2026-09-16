@@ -1,0 +1,10 @@
+{
+  "run_id": "pi-1789517284-b4530a5f",
+  "harness": "pi",
+  "actor": "scripted",
+  "outcome": "completed",
+  "turn_count": 3,
+  "platform": "macOS-27.0-arm64-arm-64bit",
+  "auth_mode": "real-auth",
+  "harness_version": null
+}

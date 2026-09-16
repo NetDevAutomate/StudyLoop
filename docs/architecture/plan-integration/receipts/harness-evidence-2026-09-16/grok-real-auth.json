@@ -1,0 +1,248 @@
+{
+  "meta": {
+    "harness": "grok",
+    "recorded_at": "2026-09-16T00:30:52+00:00",
+    "platform": "macOS-27.0-arm64-arm-64bit",
+    "repo_sha": "f0edce6a",
+    "dirty": true,
+    "scratch_root": "/tmp/sl-ev-grok-0_l_9ity",
+    "binary_resolved": "/Users/ataylor/.local/bin/grok",
+    "binary_version": "grok 1.0.30 (04b7ffed98c6)",
+    "path_prepend": [
+      "/Users/ataylor/.local/share/mise/installs/tmux/latest",
+      "/opt/homebrew/bin"
+    ],
+    "grok_home_pinned": "/tmp/sl-ev-grok-0_l_9ity/home/.grok",
+    "real_auth_for_live_items": true,
+    "swept": true
+  },
+  "items": [
+    {
+      "item": "2+4-live-lane",
+      "verdict": "PASS",
+      "decisive": "pytest exit 0: 1 passed, 5 deselected in 20.48s; bundle outcome(s)=['completed']; turn audit=[{'turns': 3, 'turns_with_no_model_marker': 0, 'turns_over_1s': 1, 'real_model_reply_plausible': False}]",
+      "commands": [
+        {
+          "argv": [
+            "/Users/ataylor/code/personal/tools/studyloop-wt/harness-tier/.venv/bin/python3",
+            "-m",
+            "pytest",
+            "-m",
+            "acceptance",
+            "packages/studyloop/tests/acceptance/test_harness_matrix_live.py",
+            "-k",
+            "[grok]",
+            "-q",
+            "-rA",
+            "-p",
+            "no:cacheprovider",
+            "--basetemp=/tmp/sl-lane-grok-tihya5ya"
+          ],
+          "exit_code": 0,
+          "stdout": ".                                                                        [100%]\n==================================== PASSES ====================================\n=========================== short test summary info ============================\nPASSED packages/studyloop/tests/acceptance/test_harness_matrix_live.py::TestHarnessMatrixLive::test_cli_tmux_lane_completes_a_full_scripted_lifecycle[grok]\n1 passed, 5 deselected in 20.48s\n",
+          "stderr": "",
+          "seconds": 20.84,
+          "note": ""
+        }
+      ],
+      "details": {
+        "bundles": [
+          {
+            "run_dir": "grok-real-auth-lane-evidence/grok-1789518678-b3e92703",
+            "manifest": {
+              "run_id": "grok-1789518678-b3e92703",
+              "harness": "grok",
+              "actor": "scripted",
+              "outcome": "completed",
+              "turn_count": 3,
+              "platform": "macOS-27.0-arm64-arm-64bit",
+              "auth_mode": "real-auth",
+              "harness_version": null
+            }
+          }
+        ],
+        "turn_audit": [
+          {
+            "turns": 3,
+            "turns_with_no_model_marker": 0,
+            "turns_over_1s": 1,
+            "real_model_reply_plausible": false
+          }
+        ],
+        "real_auth": true,
+        "actor_requested": "gateway",
+        "note": "The matrix lane drives the LEARNER side with its own 3 scripted prompts and records actor='scripted' in its bundle regardless of STUDYLOOP_ACC_ACTOR; the actor value is validated by the gate but does not add gateway spend to this lane."
+      }
+    },
+    {
+      "item": "3-export",
+      "verdict": "PASS",
+      "decisive": "live transcript exported: 2 sessions row(s) from THIS run with source='grok' (4 messages); rows by source={'grok': 8}",
+      "commands": [
+        {
+          "argv": [
+            "/Users/ataylor/code/personal/tools/studyloop-wt/harness-tier/.venv/bin/python3",
+            "-m",
+            "studyloop.cli",
+            "study",
+            "Export Evidence: grok",
+            "--energy",
+            "5",
+            "--agent",
+            "grok"
+          ],
+          "exit_code": 1,
+          "stdout": "",
+          "stderr": "open terminal failed: not a terminal\n",
+          "seconds": 2.63,
+          "note": ""
+        },
+        {
+          "argv": [
+            "/Users/ataylor/code/personal/tools/studyloop-wt/harness-tier/.venv/bin/python3",
+            "-m",
+            "studyloop.cli",
+            "study",
+            "--end"
+          ],
+          "exit_code": 0,
+          "stdout": "Session ended: Export Evidence: grok\n  tmux session closed.\n",
+          "stderr": "",
+          "seconds": 0.15,
+          "note": ""
+        },
+        {
+          "argv": [
+            "/Users/ataylor/code/personal/tools/studyloop-wt/harness-tier/.venv/bin/python3",
+            "-m",
+            "agent_session_tools.export_sessions",
+            "--grok-only",
+            "-o",
+            "/tmp/sl-ev-grok-real-i9_6_axd/home/evidence-sessions.db"
+          ],
+          "exit_code": 0,
+          "stdout": "Exporting to: /tmp/sl-ev-grok-real-i9_6_axd/home/evidence-sessions.db\nApplied 48 database migration(s)\n\nExport results:\n  added:   8\n  updated: 0\n  skipped: 0 (unchanged since last export)\n  empty:   2 (no supported conversation or native records)\n\nDatabase stats:\n  grok: 8 sessions, 97 messages\nsemantic index not built: sqlite-vec is not installed; install: uv tool install 'agent-session-tools[semantic]'; run session-maint embed\n",
+          "stderr": "",
+          "seconds": 0.56,
+          "note": ""
+        }
+      ],
+      "details": {
+        "launch": {
+          "state_file_appeared": true,
+          "state_after_launch": {
+            "session_dir": "/tmp/sl-ev-grok-real-i9_6_axd/home/.config/studyloop/sessions/study-export-evidence-grok-69ca4791",
+            "mode": "study",
+            "topic": "Export Evidence: grok",
+            "agent": "grok",
+            "tmux_session": "study-export-evidence-grok-69ca4791",
+            "tmux_main_pane": "%0",
+            "persona_file": "/tmp/sl-ev-grok-real-i9_6_axd/home/.config/studyloop/sessions/study-export-evidence-grok-69ca4791/AGENTS.md",
+            "persona_hash": "493a1f…",
+            "session_mode": null,
+            "energy": 5
+          },
+          "tmux_session_exists": true,
+          "agent_process_in_pane": true,
+          "tui_rendered": true,
+          "pane_after_settle": "\n  /private/tmp/sl-ev-grok-real-i9_6_axd/home/.config/stu\u2026\n\n\n\n       Do you trust the contents of this directory?\n/private/tmp/sl-ev-grok-real-i9_6_axd/home/.config/studyloo\n\n Grok Build may run or modify contents in this directory,\n                  posing security risks.\n\n               Yes, proceed                 y\n               No, quit                     n\n\n\n\n\n\n\n\n\n\n                              Grok Build  1.0.30 [stable]\n\n",
+          "reply_wait_seconds": 30.1,
+          "pane_quiescent": true,
+          "pane_after_prompt": "",
+          "tmux_session_gone_after_end": true,
+          "final_mode": "ended"
+        },
+        "scratch_harness_dirs_after_session": {
+          "(real harness home: not listed)": []
+        },
+        "export_db": "/tmp/sl-ev-grok-real-i9_6_axd/home/evidence-sessions.db",
+        "rows_by_source": {
+          "grok": 8
+        },
+        "session_dir": "/tmp/sl-ev-grok-real-i9_6_axd/home/.config/studyloop/sessions/study-export-evidence-grok-69ca4791",
+        "rows_for_this_run": [
+          {
+            "id": "grok_01a0a79d-5553-7b53-8b14-9c1e9a26108d",
+            "source": "grok",
+            "project_path": "/private/tmp/sl-lane-grok-4ucwi8ov/test_cli_tmux_lane_completes_a0/home/.config/studyloop/sessions/study-harness-matrix-live--28e3935b",
+            "created_at": "2026-09-16T00:28:21.218004Z",
+            "messages": 2
+          },
+          {
+            "id": "grok_01a0a79f-d120-7d51-b536-e6b64bad5c4f",
+            "source": "grok",
+            "project_path": "/private/tmp/sl-lane-grok-tihya5ya/test_cli_tmux_lane_completes_a0/home/.config/studyloop/sessions/study-harness-matrix-live--8e73ee0c",
+            "created_at": "2026-09-16T00:31:03.980961Z",
+            "messages": 2
+          }
+        ]
+      }
+    },
+    {
+      "item": "5-plan-architect",
+      "verdict": "PASS",
+      "decisive": "persona_file=/tmp/sl-ev-grok-real-i9_6_axd/home/.config/studyloop/sessions/study-plan-architect-evide-cd789f61/AGENTS.md plan-architect=True agent_in_pane=True final_mode=ended",
+      "commands": [
+        {
+          "argv": [
+            "/Users/ataylor/code/personal/tools/studyloop-wt/harness-tier/.venv/bin/python3",
+            "-m",
+            "studyloop.cli",
+            "study",
+            "Plan Architect Evidence: grok",
+            "--energy",
+            "5",
+            "--agent",
+            "grok",
+            "--mode",
+            "plan-architect"
+          ],
+          "exit_code": 1,
+          "stdout": "",
+          "stderr": "open terminal failed: not a terminal\n",
+          "seconds": 2.71,
+          "note": ""
+        },
+        {
+          "argv": [
+            "/Users/ataylor/code/personal/tools/studyloop-wt/harness-tier/.venv/bin/python3",
+            "-m",
+            "studyloop.cli",
+            "study",
+            "--end"
+          ],
+          "exit_code": 0,
+          "stdout": "Session ended: Plan Architect Evidence: grok\n  tmux session closed.\n",
+          "stderr": "",
+          "seconds": 0.14,
+          "note": ""
+        }
+      ],
+      "details": {
+        "state_file_appeared": true,
+        "state_after_launch": {
+          "session_dir": "/tmp/sl-ev-grok-real-i9_6_axd/home/.config/studyloop/sessions/study-plan-architect-evide-cd789f61",
+          "mode": "plan-architect",
+          "topic": "Plan Architect Evidence: grok",
+          "agent": "grok",
+          "tmux_session": "study-plan-architect-evide-cd789f61",
+          "tmux_main_pane": "%0",
+          "persona_file": "/tmp/sl-ev-grok-real-i9_6_axd/home/.config/studyloop/sessions/study-plan-architect-evide-cd789f61/AGENTS.md",
+          "persona_hash": "37726c…",
+          "session_mode": null,
+          "energy": 5
+        },
+        "tmux_session_exists": true,
+        "agent_process_in_pane": true,
+        "tui_rendered": true,
+        "pane_after_settle": "\n  /private/tmp/sl-ev-grok-real-i9_6_axd/home/.config/stu\u2026\n\n\n\n       Do you trust the contents of this directory?\n/private/tmp/sl-ev-grok-real-i9_6_axd/home/.config/studyloo\n\n Grok Build may run or modify contents in this directory,\n                  posing security risks.\n\n               Yes, proceed                 y\n               No, quit                     n\n\n\n\n\n\n\n\n\n\n                              Grok Build  1.0.30 [stable]\n\n",
+        "persona_file": "/tmp/sl-ev-grok-real-i9_6_axd/home/.config/studyloop/sessions/study-plan-architect-evide-cd789f61/AGENTS.md",
+        "persona_first_lines": "# Study Session Context\n\n**Topic:** Plan Architect Evidence: grok",
+        "persona_mentions_plan_architect": true,
+        "persona_bytes": 7246,
+        "tmux_session_gone_after_end": true,
+        "final_mode": "ended"
+      }
+    }
+  ]
+}
