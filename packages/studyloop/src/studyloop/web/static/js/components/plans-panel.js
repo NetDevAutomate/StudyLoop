@@ -352,6 +352,20 @@ export const plansStore = {
   recording: false,
   activating: false,
   togglingIndex: -1,
+
+  /* ---- "Plan with architect" (#14, design §5) ----
+     The Plans view only ASKS for a planning session. It dispatches one
+     `plan-architect-request` window event and the Study Session view's
+     sessionTimer — the one owner of POST /api/session/start, the 409 handling
+     and the `study-session-start` event the console mounts on — does the rest,
+     exactly as it does for the Start button. Nothing here posts, opens a
+     socket or listens for the console's event: one console, one WebSocket.
+     `architectSubject` is the learner's optional subject; empty means the
+     server names the session "Study plan" (never inferred here). */
+  architectSubject: '',
+  architectLaunching: false,
+  architectStatus: '',
+  _architectHooked: false,
   /* A REAL completion flag, not a proxy signal: `items: []` is already truthy
      before init runs and `loading` flips before the data is applied, so
      neither can be used to answer "is the store ready?". */
@@ -390,7 +404,57 @@ export const plansStore = {
     /* Alpine calls this for us at alpine:init (same as the nav store). Loading
        here — rather than on first paint of the panel — is what makes a full
        browser reload reconstruct the list from persistence. */
+    this._hookArchitectResult();
     await this.load();
+  },
+
+  /**
+   * Listen once for the outcome of a launch this view asked for.
+   *
+   * sessionTimer answers every `plan-architect-request` with exactly one
+   * `plan-architect-result` (`{ok, error}`), whether the start succeeded, was
+   * refused (409/503) or never reached the server. Registered BEFORE any
+   * await, for the same reason as `onRendered` — a listener added after the
+   * work that emits its event has already lost it. Idempotent: the store is a
+   * module singleton and init() may be called more than once.
+   */
+  _hookArchitectResult() {
+    if (this._architectHooked) return;
+    if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') return;
+    window.addEventListener('plan-architect-result', (event) => {
+      const detail = (event && event.detail) || {};
+      this.architectLaunching = false;
+      this.architectStatus = detail.ok
+        ? 'Planning session started — the architect is in the Study Session console.'
+        : `Could not start the architect: ${detail.error || 'the session did not start.'}`;
+    });
+    this._architectHooked = true;
+  },
+
+  /**
+   * Ask for a planning session with the study-plan architect.
+   *
+   * One click → one request event. The subject travels as `topic` (trimmed,
+   * possibly empty — the server resolves "" to the fixed label "Study plan");
+   * `purpose: "planning"` is what selects the architect persona and the brief
+   * (design §5). A second click while one launch is in flight is a no-op, so
+   * the learner cannot fire two starts from one impatient double-click.
+   */
+  startArchitect() {
+    if (this.architectLaunching) return;
+    this._hookArchitectResult();
+    const topic = String(this.architectSubject || '').trim();
+    this.architectLaunching = true;
+    this.architectStatus = 'Starting the study-plan architect…';
+    this.error = '';
+    if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') {
+      this.architectLaunching = false;
+      this.architectStatus = 'Could not start the architect: no session view is listening.';
+      return;
+    }
+    window.dispatchEvent(
+      new CustomEvent('plan-architect-request', { detail: { purpose: 'planning', topic } }),
+    );
   },
 
   /** Load the plan list. Safe to call repeatedly. */
@@ -1104,12 +1168,30 @@ export function plansPanel() {
       this._plans().error = value == null ? '' : String(value);
     },
 
+    /* "Plan with architect" — the subject is an x-model target, so it needs a
+       setter; the two status fields are read-only in the markup. */
+    get architectSubject() {
+      return this._plans().architectSubject;
+    },
+    set architectSubject(value) {
+      this._plans().architectSubject = value == null ? '' : String(value);
+    },
+    get architectLaunching() {
+      return this._plans().architectLaunching;
+    },
+    get architectStatus() {
+      return this._plans().architectStatus;
+    },
+
     /* ---- actions, forwarded ---- */
     async load() {
       await this._plans().load();
     },
     async refresh() {
       await this._plans().refresh();
+    },
+    startArchitect() {
+      this._plans().startArchitect();
     },
     async select(planOrId) {
       await this._plans().select(planOrId);

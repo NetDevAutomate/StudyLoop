@@ -2460,6 +2460,14 @@
                  x-show="terminalMode === 'xterm'" x-cloak>
               <div class="agent-console-toolbar">
                 <span class="agent-console-title">Agent Terminal</span>
+                <!-- Purpose label (#14, design §5 / D-11): the server's word on
+                     what this session is FOR, from the 201 body on a fresh start
+                     and from /api/session/state after a reload. Empty for a
+                     focus session, so today's toolbar is unchanged. -->
+                <span class="agent-console-purpose" data-testid="console-purpose-label"
+                      role="status" aria-live="polite"
+                      x-show="purpose === 'planning'" x-cloak
+                      x-text="purposeLabel"></span>
                 <span class="agent-console-state">
                   <span class="agent-status-dot"
                         :class="'agent-status-dot-' + statusDot"></span>
@@ -2486,6 +2494,10 @@
                  x-show="terminalMode === 'acp-chat'" x-cloak>
               <div class="agent-console-toolbar">
                 <span class="agent-console-title">Agent Chat</span>
+                <span class="agent-console-purpose" data-testid="console-purpose-label"
+                      role="status" aria-live="polite"
+                      x-show="purpose === 'planning'" x-cloak
+                      x-text="purposeLabel"></span>
                 <span class="agent-console-state">
                   <span class="agent-status-dot"
                         :class="'agent-status-dot-' + statusDot"></span>
@@ -2707,13 +2719,49 @@
                x-show="error" x-text="error"></div>
 
           <!-- ---------------- Create ---------------- -->
-          <div class="plans-toolbar">
+          <!-- Two doors to a plan, side by side. "New plan" is the manual form
+               below. "Plan with architect" (#14, design §5) starts a
+               PLANNING-purpose session in the Study Session console, where the
+               study-plan architect interviews the learner and creates the plan
+               through the plan tools. This view only asks — the click
+               dispatches one plan-architect-request; sessionTimer owns the
+               POST, the 409 handling and the one study-session-start the
+               console mounts on, so no second console or socket exists. The
+               launch creates nothing (D-11): the list is unchanged until the
+               interview creates a plan. The subject is optional; blank means
+               the server names the session "Study plan". -->
+          <div class="plans-toolbar" data-testid="plan-create-toolbar">
             <button class="toggle-btn" type="button" data-testid="plan-new"
                     @click="startCreate()">New plan</button>
             <button class="link-btn" type="button" x-show="creating"
                     @click="cancelCreate()">Cancel</button>
             <span class="mastery-copy-status" x-show="loading">Loading…</span>
+            <span class="plans-toolbar-divider" aria-hidden="true"></span>
+            <label class="plan-architect-subject-field">
+              <span class="visually-hidden">Subject for the architect (optional)</span>
+              <input type="text" class="picker-input plan-architect-subject"
+                     data-testid="plan-architect-subject"
+                     x-model="architectSubject"
+                     :disabled="architectLaunching"
+                     placeholder="Subject (optional)"
+                     autocomplete="off" spellcheck="false"
+                     @keydown.enter.prevent="startArchitect()">
+            </label>
+            <button class="toggle-btn plan-architect-btn" type="button"
+                    data-testid="plan-architect"
+                    :disabled="architectLaunching"
+                    :aria-busy="architectLaunching ? 'true' : 'false'"
+                    aria-describedby="plan-architect-hint"
+                    @click="startArchitect()">Plan with architect</button>
+            <span class="plan-architect-status" data-testid="plan-architect-status"
+                  role="status" aria-live="polite" x-text="architectStatus"></span>
           </div>
+          <p id="plan-architect-hint" class="plan-architect-hint text-muted">
+            <strong>Plan with architect</strong> starts a planning session in the
+            Study Session console: the study-plan architect interviews you from
+            your own study history and creates the plan with you. Nothing is
+            created until the interview does it.
+          </p>
 
           <section class="plan-create" data-testid="plan-create-form" x-show="creating">
             <h3 class="plan-create-heading">Start from where you actually are</h3>
@@ -2797,7 +2845,9 @@
               A plan is one thing you are trying to become able to do, broken into
               milestones you can tick off. Start with <strong>New plan</strong> and
               describe the situation in your own words — you do not have to know the
-              steps yet, that is what the plan is for.
+              steps yet, that is what the plan is for. Or choose
+              <strong>Plan with architect</strong> and let the architect interview
+              you for it.
             </p>
           </div>
 

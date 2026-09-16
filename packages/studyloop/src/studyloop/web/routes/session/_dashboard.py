@@ -52,6 +52,13 @@ async def get_session_state() -> dict:
         release = _grace.last_release()
         if release is not None:
             state["last_release"] = release
+        # A CLI session (`studyloop study`, `studyloop plan architect`) never
+        # holds the in-process slot, so it returns here — and before #14 this
+        # early return skipped the purpose default below entirely: the file
+        # was echoed verbatim, with no `purpose` key at all. Apply the same
+        # rule on this path, for a file that describes a session.
+        if state.get("study_session_id"):
+            state["purpose"] = _purpose_of(state, _DEFAULT_PURPOSE)
         return state
 
     session_id = current.study_session_id
@@ -84,9 +91,32 @@ async def get_session_state() -> dict:
     # What the session is for ('focus' | 'planning'), persisted by _start.py so a
     # reconnecting client can label a planning console as one (design §5,
     # D-11). Same reasoning as origin: the overlay branch rebuilds the dict and
-    # a CLI-started file predates the key, so default rather than omit.
-    state.setdefault("purpose", _DEFAULT_PURPOSE)
+    # a CLI-started file predates the key, so default rather than omit — and
+    # derive it from the persisted persona mode when the writer never wrote it.
+    state["purpose"] = _purpose_of(state, _DEFAULT_PURPOSE)
     return state
+
+
+def _purpose_of(state: dict, default: str) -> str:
+    """The session's purpose, from the state file or from its persisted persona mode.
+
+    ``_start.py`` always writes ``purpose``; the CLI writer (``session/start.py``)
+    never has, but it does persist ``mode`` — the persona mode
+    (``"plan-architect"`` for ``studyloop plan architect``). That mode is the
+    same fact ``persona_mode_for`` maps a purpose *to*, so reading it back
+    through the one resolver is a lookup, not a guess: a file whose mode is the
+    planning persona's is a planning session. The topic string is never
+    consulted — ``"Study plan"`` on a focus session proves nothing (review-3
+    hazard, review-4 arbitration). An explicit ``purpose`` always wins.
+    """
+    explicit = state.get("purpose")
+    if isinstance(explicit, str) and explicit:
+        return explicit
+    from studyloop.agent_launcher import persona_mode_for
+
+    if state.get("mode") == persona_mode_for("planning"):
+        return "planning"
+    return default
 
 
 @router.get("/session/last")

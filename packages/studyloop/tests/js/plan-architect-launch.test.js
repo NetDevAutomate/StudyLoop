@@ -102,6 +102,8 @@ beforeEach(() => {
       return undefined;
     },
   };
+  /* In a browser `window.Alpine` IS `globalThis.Alpine`; mirror that on the fake. */
+  win.Alpine = globalThis.Alpine;
   globalThis.fetch = async (url, opts = {}) => {
     const path = String(url);
     if (path.endsWith('/api/session/options')) return jsonResponse(200, null);
@@ -123,10 +125,13 @@ beforeEach(() => {
     }
     throw new Error(`unexpected fetch ${path}`);
   };
-  /* Reset the module singleton's launch state between tests. */
+  /* Reset the module singleton's launch state between tests. The result
+     listener is re-hooked because each test gets a fresh fake window (in a
+     browser the window never changes, so the hook is one-shot there). */
   plansStore.architectSubject = '';
   plansStore.architectLaunching = false;
   plansStore.architectStatus = '';
+  plansStore._architectHooked = false;
 });
 
 afterEach(() => {
@@ -287,6 +292,25 @@ test('sessionTimer reports the outcome back to the Plans view once per launch', 
 
   assert.equal(results.length, 1);
   assert.equal(results[0].ok, true);
+});
+
+test('init() twice (Alpine auto-init + x-init="init()") still means one listener, one POST per click', async () => {
+  /* The page runs init() twice per load — Alpine calls it for an x-data object
+     that defines one AND the markup says x-init="init()". Two listeners meant
+     two POSTs per click and a 409 for the second, found by the browser
+     journey. Listener registration is idempotent. */
+  const timer = await readyTimer();
+  await timer.init();
+  timer.agent = 'claude';
+  const starts = startEvents();
+
+  win.dispatchEvent(new CustomEvent('plan-architect-request', { detail: { purpose: 'planning', topic: '' } }));
+  await settle();
+
+  assert.equal(win.listeners['plan-architect-request'], 1);
+  assert.equal(win.listeners['today-resume'], 1);
+  assert.equal(posts.length, 1, 'one click, one POST — whatever init() was called');
+  assert.equal(starts.length, 1);
 });
 
 test('a 409 on a planning launch keeps the existing conflict handling and reports failure', async () => {

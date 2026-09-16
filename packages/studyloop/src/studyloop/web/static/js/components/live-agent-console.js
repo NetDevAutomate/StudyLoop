@@ -58,6 +58,12 @@ export function liveAgentConsole(origin = 'study') {
       status: 'Waiting',
       statusDot: 'idle',         /* 'idle' | 'live' | 'error' */
       statusMessage: '',
+      /* What the mounted session is FOR (#14, design §5): 'focus' or
+         'planning'. Read from the study-session-start detail on a fresh start
+         and from /api/session/state on load-time adoption, so a planning
+         console is labelled as one on first paint AND after a reload. Never
+         inferred from the topic — the server persists purpose (D-11). */
+      purpose: 'focus',
       showJumpToBottom: false,
       acpInput: '',              /* bound to ACP input field */
       acpSending: false,         /* disables submit while a turn is in flight */
@@ -70,6 +76,12 @@ export function liveAgentConsole(origin = 'study') {
       pendingPermission: null,    /* {toolCallId, options} | null — U6 */
       personaSetupInFlight: false, /* true during the invisible persona turn —
                                        drives the "Setting up your mentor…" status */
+
+      /* The label the toolbar shows for a planning session; empty for a focus
+         session so today's console renders byte-for-byte as before. */
+      get purposeLabel() {
+        return this.purpose === 'planning' ? 'Planning session — study-plan architect' : '';
+      },
 
       /* ---- non-reactive internals (intentionally plain properties) */
       _term: null,
@@ -131,6 +143,10 @@ export function liveAgentConsole(origin = 'study') {
         this.start({
           topic: state.topic || '',
           origin,
+          /* The endpoint defaults a missing purpose to 'focus' and derives a
+             CLI-started architect's from its persisted persona mode, so the
+             label after a reload is the server's word, not this console's. */
+          purpose: state.purpose || 'focus',
           agent: state.agent || null,
           resolvedAgent: state.agent || null,
           studySessionId: state.study_session_id,
@@ -144,6 +160,7 @@ export function liveAgentConsole(origin = 'study') {
 
       start(detail) {
         this.stop();
+        this.purpose = detail.purpose === 'planning' ? 'planning' : 'focus';
         const transport = detail.transport || 'pty';
         this.transport = transport;
         if (transport === 'acp' && detail.wsUrl) {
@@ -160,6 +177,7 @@ export function liveAgentConsole(origin = 'study') {
       },
 
       stop() {
+        this.purpose = 'focus';
         try {
           if (this._ws && this._ws.readyState === WebSocket.OPEN) {
             this._ws.send(JSON.stringify({ type: 'stop' }));

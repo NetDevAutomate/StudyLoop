@@ -100,6 +100,13 @@ export function sessionTimer() {
       studyOptions: { topics: [], vendors: [], courses: [], lessons: [] },
       starting: false,
       startError: '',
+      /* What the live session is FOR: 'focus' (today's study session) or
+         'planning' (the study-plan architect, #14 / design §5). Set from the
+         201 body on a start and from /api/session/state on a restore; it
+         travels on the study-session-start event so the console can label a
+         planning session as one. Per-start, never sticky: a focus start after
+         a planning session resets it. */
+      purpose: 'focus',
 
       /* Recovery state for a live session this view does not own — or for one
          that 409'd our own Start. `sessionActive` means "a session exists AND
@@ -126,10 +133,11 @@ export function sessionTimer() {
         return 'Low energy';
       },
 
-      async init() {
-        // Today-panel resume handoff. init() runs ONCE at page load (x-init),
-        // while the resume click happens LATER on the Today tab — so this is
-        // an event, not a sessionStorage read at init time.
+      /* The window events this view answers. Called once from init(). */
+      _registerWindowListeners() {
+        // Today-panel resume handoff. init() runs at page load, while the
+        // resume click happens LATER on the Today tab — so this is an event,
+        // not a sessionStorage read at init time.
         window.addEventListener('today-resume', (e) => {
           this.topicInput = e.detail.topic || '';
           this.selectedTopic = '';
@@ -138,6 +146,31 @@ export function sessionTimer() {
             this.energy = bands[e.detail.energy] || 5;
           }
         });
+
+        // Plans-view hand-off (#14, design §5). The Plans view ASKS for a
+        // planning session with one `plan-architect-request`; this view — the
+        // one owner of POST /api/session/start, the 409 handling and the
+        // study-session-start event the console mounts on — starts it, so a
+        // planning launch cannot drift from a focus launch and no second
+        // console or socket is ever opened. Same event-not-storage shape as
+        // today-resume above, for the same reason.
+        window.addEventListener('plan-architect-request', (e) => {
+          this.startPlanning((e && e.detail) || {});
+        });
+      },
+
+      async init() {
+        // Alpine calls init() itself for an x-data object that defines one, and
+        // the markup ALSO says x-init="init()", so this runs twice per page
+        // load. That was harmless while the listeners below only set picker
+        // fields; it is not once one of them starts a session — two listeners
+        // meant two POSTs per click and a 409 for the second (found by the #14
+        // browser journey). Register the window listeners exactly once; the
+        // fetches below are idempotent and may run again.
+        if (!this._listenersRegistered) {
+          this._listenersRegistered = true;
+          this._registerWindowListeners();
+        }
 
         const optionsPromise = fetch('/api/session/options')
           .then((res) => res.ok ? res.json() : null)
@@ -176,6 +209,11 @@ export function sessionTimer() {
           if (live && origin === OWN_ORIGIN) {
             this.energy = state.energy || 5;
             this.topic = state.topic || 'Study Session';
+            /* The server defaults an absent purpose to 'focus' exactly as it
+               does origin, so mirror that here rather than inventing a third
+               value; a persisted 'planning' is what labels a re-adopted
+               architect console after a reload. */
+            this.purpose = state.purpose === 'planning' ? 'planning' : 'focus';
             this.startTime = state.start_time
               ? new Date(state.start_time)
               : (state.started_at ? new Date(state.started_at) : new Date());
@@ -200,14 +238,51 @@ export function sessionTimer() {
         }
       },
 
-      async startSession() {
+      /* Start the study-plan architect (a `planning`-purpose session) on the
+         Plans view's behalf. Navigates to this view first so the learner sees
+         the same spinner / console / recovery block a Start-button launch
+         shows, then goes through startSession() — the one start path — and
+         reports the outcome back with exactly one plan-architect-result. */
+      async startPlanning(detail = {}) {
+        const nav = window.Alpine && typeof window.Alpine.store === 'function'
+          ? window.Alpine.store('nav') : null;
+        if (nav && typeof nav.go === 'function') nav.go('study-session');
+        /* The learner's subject, or '' — the server resolves '' to the fixed
+           label "Study plan" (design §5); this view never invents it. */
+        this.topicInput = String(detail.topic || '').trim();
+        this.selectedTopic = '';
+        this.selectedOption = null;
+        this.targetKind = 'topic';
+        const ok = await this.startSession({ purpose: 'planning' });
+        window.dispatchEvent(new CustomEvent('plan-architect-result', {
+          detail: { ok, error: ok ? '' : (this.startError || 'the session did not start') },
+        }));
+        return ok;
+      },
+
+      /* Start a session. `options.purpose` is 'focus' (default — the Start
+         button) or 'planning' (startPlanning). Returns true when the server
+         accepted the start and the console has been told to mount. */
+      async startSession(options = {}) {
+        const purpose = options.purpose === 'planning' ? 'planning' : 'focus';
         const topic = this.resolvedTopic().trim();
-        if (!topic) return;
+        /* A focus session needs a subject. A planning session does not: the
+           architect interviews for one, and the server names the session
+           "Study plan" when none was given — so '' is a valid topic here. */
+        if (!topic && purpose !== 'planning') return false;
+        if (!this.agent) {
+          /* The Start button is disabled without an agent; a Plans-view launch
+             has no such guard, so refuse here with the picker's own hint. */
+          this.startError = 'Select an agent to continue.';
+          return false;
+        }
 
         // Park-first friction (AuDHD 3-topic rule): starting a NEW topic
         // while MAX_ACTIVE_TOPICS are already live requires parking one
         // first. In-page overlay — native dialogs are banned by spec.
-        if (!this._parkFirstChecked) {
+        // A planning session is not a study topic — the architect is about
+        // to decide what the topics should be — so the rule does not apply.
+        if (!this._parkFirstChecked && purpose !== 'planning') {
           try {
             const bl = await fetch('/api/backlog').then((r) => r.ok ? r.json() : null);
             if (bl && bl.active_count >= bl.max_active) {
@@ -216,7 +291,7 @@ export function sessionTimer() {
               if (!isActive) {
                 this.parkFirstTopics = bl.active;
                 this.confirmingParkFirst = true;
-                return;
+                return false;
               }
             }
           } catch { /* backlog unavailable — don't block starting */ }
@@ -239,6 +314,10 @@ export function sessionTimer() {
                  'study', but the Body Double twin sends its own origin
                  explicitly and ownership is now load-bearing on both sides. */
               origin: OWN_ORIGIN,
+              /* Likewise stated: 'focus' is the server's default, but the
+                 planning launch depends on this field and a reader of the
+                 request should not have to know the default to read it. */
+              purpose,
             }),
           });
           /* Parse defensively: a 500 with an HTML/plain body must NOT masquerade
@@ -277,7 +356,7 @@ export function sessionTimer() {
                  now, not one round-trip later. Staleness is handled by the
                  epoch guard inside, not by ordering. */
               if (this.conflictIsOwn) this._syncConflictOrigin(data.study_session_id);
-              return;
+              return false;
             }
             /* §1.5b returns structured 503 with install_hint; surface it verbatim.
                For a non-JSON error body, fall back to the HTTP status + snippet. */
@@ -290,15 +369,18 @@ export function sessionTimer() {
               this.startError = `Server error (HTTP ${res.status})` + (snippet ? `: ${snippet}` : '');
             }
             this.starting = false;
-            return;
+            return false;
           }
           startedSession = data;
         } catch {
           this.startError = 'Network error — could not reach the server';
           this.starting = false;
-          return;
+          return false;
         }
-        this.topic = topic;
+        /* The server's own topic: for a planning start with no subject it is
+           the fixed label "Study plan", which this view never invents. */
+        this.topic = startedSession.topic || topic;
+        this.purpose = startedSession.purpose === 'planning' ? 'planning' : purpose;
         this.startTime = new Date();
         this.sessionActive = true;
         /* We own the slot now, so any conflict block from a previous refusal is
@@ -311,10 +393,12 @@ export function sessionTimer() {
         this.$nextTick(() => {
           window.dispatchEvent(new CustomEvent('study-session-start', {
             detail: {
-              topic,
+              topic: this.topic,
               // Which view started this: the two origin-scoped consoles each
               // ignore the other's events (ADR-0002).
               origin: 'study',
+              // What it is for: the console labels a planning session as one.
+              purpose: this.purpose,
               energy: this.energy,
               targetKind: this.targetKind,
               targetPath: this.selectedOption?.path || null,
@@ -327,6 +411,7 @@ export function sessionTimer() {
             }
           }));
         });
+        return true;
       },
 
       endSession() {
@@ -398,6 +483,7 @@ export function sessionTimer() {
         this.confirmingEnd = false;
         window.dispatchEvent(new CustomEvent('study-session-stop', { detail: { origin: 'study' } }));
         this.sessionActive = false;
+        this.purpose = 'focus';
         clearInterval(this.interval);
         this.topic = 'Session ended';
         this.topicInput = '';
@@ -444,6 +530,10 @@ export function sessionTimer() {
         this._conflictEpoch += 1;
         this.topic = session.topic || 'Study Session';
         this.energy = session.energy || this.energy;
+        /* The 409 body carries no purpose; _syncConflictOrigin upgrades the
+           payload from /api/session/state, which does. Absent means focus,
+           the server's own default. */
+        this.purpose = session.purpose === 'planning' ? 'planning' : 'focus';
         this.startTime = session.start_time ? new Date(session.start_time) : new Date();
         this.sessionActive = true;
         this.starting = false;
@@ -457,6 +547,7 @@ export function sessionTimer() {
               topic: this.topic,
               // Origin-scoped: the Body Double console ignores this (ADR-0002).
               origin: OWN_ORIGIN,
+              purpose: this.purpose,
               energy: this.energy,
               targetKind: this.targetKind,
               targetPath: null,
@@ -509,6 +600,7 @@ export function sessionTimer() {
           energy: src.energy || null,
           start_time: src.start_time || src.started_at || null,
           transport: src.transport || null,
+          purpose: src.purpose || null,
           detached: !!src.detached,
           reattach_url: src.reattach_url || null,
         };

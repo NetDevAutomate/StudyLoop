@@ -171,9 +171,13 @@ def _end_any_active_session(page: Page) -> None:
 
 
 def _goto_plans(page: Page) -> None:
-    page.goto(f"{BASE}/#study-plans")
+    # A hash-only goto on an already-loaded page is a same-document navigation
+    # (the nav store reads the hash at init only), so load the root, then
+    # switch views through the store exactly as the sidebar button does.
+    page.goto(f"{BASE}/")
     page.wait_for_load_state("domcontentloaded")
     page.wait_for_function("() => !!window.Alpine", timeout=5000)
+    page.evaluate("() => window.Alpine.store('nav').go('study-plans')")
     # The plans store's OWN completion flag, not a proxy signal.
     page.wait_for_function(
         "() => window.Alpine.store('plans') && window.Alpine.store('plans').initDone === true",
@@ -264,14 +268,19 @@ def _click_plan_with_architect(page: Page, subject: str = "") -> dict:
     if subject:
         page.locator('[data-testid="plan-architect-subject"]').fill(subject)
     button = page.get_by_role("button", name="Plan with architect")
-    button.click()
+
+    def _is_start(response) -> bool:  # type: ignore[no-untyped-def]
+        return response.request.method == "POST" and response.url.endswith("/api/session/start")
+
+    with page.expect_response(_is_start, timeout=20000):
+        button.click()
     page.wait_for_function(
         "() => window.location.hash === '#study-session'"
         " || !!document.querySelector('.picker-error')",
         timeout=10000,
     )
-    # Let the response listener drain.
-    page.wait_for_timeout(300)
+    # A second POST, if the click ever made one, would land in this window.
+    page.wait_for_timeout(600)
     page.remove_listener("response", _on_response)
     assert len(posts) == 1, f"expected exactly one POST /api/session/start, saw {posts}"
     return posts[0]
