@@ -120,8 +120,6 @@ conversation should work through. It does not itself start an agent.
 
 ## What a plan does not do yet
 
-- An active plan does not currently bias the recommendation from `studyloop now`
-  or the Today card.
 - The Web UI does not launch a planning agent or automatically structure the
   brain dump.
 - `record_plan_learning` (`mcp/tools.py:129`) is the one plan-write MCP tool —

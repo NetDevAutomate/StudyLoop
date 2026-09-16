@@ -1,0 +1,158 @@
+/**
+ * Today panel — plan relevance rendering (issue #10, design §3).
+ *
+ * The Today card shows WHICH active plan an action advances, which next
+ * milestones the current energy deferred, and what to do about a plan whose
+ * every milestone is checked. It never re-ranks: the labels are derived from
+ * the payload `/api/now` already ranked (`primary.plan_refs`, `active_plans`,
+ * `energy_deferred`, `completion_actions`), and a payload without those keys —
+ * the pre-#10 shape a learner with no active plan still gets — renders no
+ * plan text at all.
+ *
+ * Same `node --test` seam as today-panel.test.js: the factory is a plain
+ * object, so the helpers can be exercised with fixture payloads and no DOM.
+ */
+// Run with:  node --test 'packages/studyloop/tests/js/**/*.test.js'
+
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+
+import { todayPanel } from
+  '../../src/studyloop/web/static/js/components/today-panel.js';
+
+/* A ranked payload with one plan-related primary, one deferred milestone. */
+const PLAN_PAYLOAD = {
+  energy: 'low',
+  starter: false,
+  primary: {
+    concept: 'window function',
+    action_type: 'hands-on',
+    estimated_minutes: 20,
+    reason: 'Recorded as struggling',
+    plan_refs: [{ plan_id: 'sql-windows', milestone_index: null }],
+  },
+  alternates: [
+    {
+      concept: 'window frame',
+      action_type: 'conversation',
+      estimated_minutes: 20,
+      reason: 'Next milestone 2/2 of plan \u2018SQL Windows\u2019: Frames',
+      plan_refs: [{ plan_id: 'sql-windows', milestone_index: 1 }],
+    },
+    { concept: 'decorators', action_type: 'recall', estimated_minutes: 10, reason: 'due' },
+  ],
+  active_plans: [
+    {
+      plan_id: 'sql-windows',
+      title: 'SQL Windows',
+      target_urgency: 'undated',
+      days_until_target: null,
+      energy_floor: 5,
+      eligible: false,
+      next_milestone: 'Frames',
+      next_milestone_index: 1,
+      milestone_done: 1,
+      milestone_total: 2,
+      ready: true,
+    },
+  ],
+  energy_deferred: [
+    {
+      plan_id: 'sql-windows',
+      plan_title: 'SQL Windows',
+      milestone_index: 1,
+      title: 'Frames',
+      energy_floor: 5,
+      energy_capability: 3,
+      reason: 'low energy carries 3/10; \u2018SQL Windows\u2019 asks for at least 5/10',
+    },
+  ],
+};
+
+/* The pre-#10 payload shape: no plan keys anywhere. */
+const NO_PLAN_PAYLOAD = {
+  energy: 'medium',
+  starter: false,
+  primary: { concept: 'decorators', action_type: 'recall', estimated_minutes: 10, reason: 'due' },
+  alternates: [],
+};
+
+test('planLabel: names the plan an action advances, with its milestone when one is referenced', () => {
+  const panel = todayPanel();
+  panel.plan = PLAN_PAYLOAD;
+
+  assert.equal(panel.planLabel(PLAN_PAYLOAD.primary), 'SQL Windows');
+  assert.equal(panel.planLabel(PLAN_PAYLOAD.alternates[0]), 'SQL Windows \u00b7 milestone 2: Frames');
+  assert.equal(panel.planLabel(PLAN_PAYLOAD.alternates[1]), '', 'an unrelated action has no plan label');
+});
+
+test('planLabel: keeps every referenced plan, in the order the engine ranked them', () => {
+  const panel = todayPanel();
+  panel.plan = {
+    ...PLAN_PAYLOAD,
+    active_plans: [
+      { ...PLAN_PAYLOAD.active_plans[0], plan_id: 'soon-plan', title: 'Soon Plan', next_milestone_index: 0, next_milestone: 'Start' },
+      PLAN_PAYLOAD.active_plans[0],
+    ],
+  };
+  const rec = {
+    concept: 'window frame',
+    plan_refs: [
+      { plan_id: 'soon-plan', milestone_index: 0 },
+      { plan_id: 'sql-windows', milestone_index: null },
+    ],
+  };
+
+  assert.equal(panel.planLabel(rec), 'Soon Plan \u00b7 milestone 1: Start; SQL Windows');
+});
+
+test('deferredNotes: one readable line per energy-deferred milestone', () => {
+  const panel = todayPanel();
+  panel.plan = PLAN_PAYLOAD;
+
+  assert.deepEqual(panel.deferredNotes(), [
+    'SQL Windows \u2014 \u201cFrames\u201d waits for more energy (needs 5/10, low energy carries 3/10)',
+  ]);
+});
+
+test('completionNotes: the engine\u2019s completion actions, verbatim', () => {
+  const panel = todayPanel();
+  panel.plan = {
+    ...NO_PLAN_PAYLOAD,
+    active_plans: [{ plan_id: 'done', title: 'Done', next_milestone: '', next_milestone_index: null }],
+    completion_actions: [
+      { plan_id: 'done', plan_title: 'Done', action: "Every milestone of 'Done' is checked off \u2014 close the plan." },
+    ],
+  };
+
+  assert.deepEqual(panel.completionNotes(), [
+    "Every milestone of 'Done' is checked off \u2014 close the plan.",
+  ]);
+  assert.equal(panel.hasPlanContext, true);
+});
+
+test('a payload without plan keys renders no plan text, before and after init-like assignment', () => {
+  const panel = todayPanel();
+
+  assert.equal(panel.planLabel(null), '');
+  assert.deepEqual(panel.deferredNotes(), []);
+  assert.deepEqual(panel.completionNotes(), []);
+  assert.equal(panel.hasPlanContext, false);
+
+  panel.plan = NO_PLAN_PAYLOAD;
+
+  assert.equal(panel.planLabel(NO_PLAN_PAYLOAD.primary), '');
+  assert.deepEqual(panel.deferredNotes(), []);
+  assert.deepEqual(panel.completionNotes(), []);
+  assert.equal(panel.hasPlanContext, false);
+});
+
+test('a plan_ref whose plan is missing from active_plans falls back to the id, never throws', () => {
+  const panel = todayPanel();
+  panel.plan = { ...NO_PLAN_PAYLOAD, active_plans: [] };
+
+  assert.equal(
+    panel.planLabel({ concept: 'x', plan_refs: [{ plan_id: 'ghost', milestone_index: 0 }] }),
+    'ghost',
+  );
+});
