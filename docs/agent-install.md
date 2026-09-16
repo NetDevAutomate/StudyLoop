@@ -144,6 +144,14 @@ Because it is the same file, it carries the same self-gated xTiles line as Codex
 
 Grok Build has no named-agent feature: `studyloop study --mode plan-architect --agent grok` launches the study-plan-architect persona the same way.
 
+Grok Build asks "Do you trust the contents of this directory?" for every fresh
+session directory and swallows anything else typed until it is answered. In an
+interactive session, answer `y`. For unattended sessions (the acceptance lane),
+set `STUDYLOOP_GROK_TRUST_SESSION_DIR=1` and StudyLoop pre-trusts the session
+directory (and its parent) in `$GROK_HOME/trusted_folders.toml` — Grok's own
+trust file, nothing else. This is opt-in on purpose: it edits your Grok
+security state, so it never happens silently (council review, 2026-09-16).
+
 If `grok` is not on your PATH yet:
 
 ```bash

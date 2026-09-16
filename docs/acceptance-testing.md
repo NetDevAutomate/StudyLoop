@@ -164,6 +164,9 @@ appropriate in CI.
 `scripts/harness-evidence.py <harness> --real-auth …` is the recorded,
 re-runnable form used for issue #21's per-harness evidence receipts; item 1
 (install into a scratch HOME) always runs in the scrubbed mode regardless.
+For `grok` it also sets `STUDYLOOP_GROK_TRUST_SESSION_DIR=1` — an unattended
+session cannot answer Grok's directory-trust dialog — and the entries that
+pre-write adds to the real `trusted_folders.toml` are removed after the run.
 
 ## The guarded sweeper
 

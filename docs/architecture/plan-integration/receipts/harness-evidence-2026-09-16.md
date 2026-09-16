@@ -6,8 +6,8 @@ below is command output captured by `scripts/harness-evidence.py` into the
 per-harness JSON/Markdown receipts in `harness-evidence-2026-09-16/`
 (redacted at capture time: the VALUE of every credential-shaped environment
 variable is replaced by `<redacted:NAME>` before a byte is written). Secret
-scan of the whole receipt directory before commit: `AWS_BEARER_TOKEN` 0 hits,
-`ghp_` 0 hits, and a value-level scan of all six secret names known to the run
+scan of the whole receipt directory before commit: the Bedrock token's variable name 0 hits,
+the GitHub-token prefix 0 hits, and a value-level scan of all six secret names known to the run
 (Bedrock token, GitHub token, LiteLLM keys, Grafana password): 0 hits.
 
 Credential handling, as instructed: the Bedrock token and the LiteLLM key were
@@ -86,7 +86,7 @@ Why not promoted tonight: issue #21's definition of done says `grok` remains
 preview; the owner's overnight brief re-scoped Grok in. With one green run,
 one caveat (no completed reply captured) and a second, shared one (below —
 Bedrock bearer-token auth is env-only and the **web** PTY/ACP transports scrub
-`AWS_BEARER_TOKEN_BEDROCK` by design, so only the CLI/tmux path can work with
+the Bedrock bearer-token variable by design (`child_env.py`), so only the CLI/tmux path can work with
 this machine's Grok config), the tier flip for Grok is left to the council
 review the DoD already requires. Everything needed to flip it is in this
 receipt.
@@ -122,3 +122,44 @@ statement of the split): `docs/agent-install.md`, `CONTRIBUTING.md`,
 `docs/architecture/current.md`, `docs/architecture/pi-harness-integration.md`,
 `docs/acceptance-testing.md`, `openspec/specs/agent-adapters/spec.md`,
 `openspec/specs/harness-session-memory/spec.md`.
+
+## Council review and arbitration
+
+Record: `docs/architecture/plan-integration/council/harness-tier-review-2026-09-16.md`
+(seats `openai.gpt-6-astra`, `grok-4.6`, `claude-opus-5`; no tools; each saw
+this receipt and the branch's commit list).
+
+| Question | astra | grok-4.6 | opus-5 |
+| --- | --- | --- | --- |
+| pi → core | ACCEPT-WITH-CONDITIONS | ACCEPT | ACCEPT-WITH-CONDITIONS |
+| OpenCode stays preview | sound | sound | sound |
+| Grok | HOLD | HOLD | HOLD |
+| Gate/revert first | `f0edce6a` Grok trust pre-write | (cut off at its token budget) | `f0edce6a` Grok trust pre-write |
+| Merge | after gating `f0edce6a` + a completed-reply pi check | — | after gating `f0edce6a` + pi 0.73.1 re-run with a programmatic completed-reply assertion |
+
+Arbitration (applied in the same branch, not deferred):
+
+- **Grok trust pre-write gated** (unanimous concern): it is now opt-in via
+  `STUDYLOOP_GROK_TRUST_SESSION_DIR=1`; by default `_grok_setup` writes only the
+  persona and Grok asks its own question. The evidence driver sets the opt-in
+  for grok runs and the run cleaned its entries from the owner's real file.
+  Self-cleaning on `--end` is the next step, not done tonight.
+- **Grok stays preview** — the seats agree with the receipt's own decision and
+  sharpen the reason: no *completed* assistant reply was captured, the same
+  class of gap that keeps OpenCode preview; the web PTY/ACP transports scrub
+  env-only Bedrock credentials, so "core" would advertise transport parity Grok
+  cannot deliver on this configuration.
+- **pi promotion stands**, as ACCEPT / ACCEPT-WITH-CONDITIONS. The conditions
+  the seats name — a programmatic completed-reply assertion instead of a pane
+  read, and a re-run on pi 0.73.1 (the mise/npm build; the Homebrew 0.65.0 is
+  what `pi` resolves to on this machine) — are recorded here as the owner's
+  pre-merge checklist. The reply evidence tonight is the item-3 pane and the
+  exported assistant message, which the receipt reproduces; the lane's own
+  `PaneDriver` reply heuristic (prompt echo counts as a reply) is the flaw all
+  three seats want fixed, and it is the reason the lane's `turns.json` alone
+  proves less than the table implies for every harness.
+- Not changed on the seats' other notes (recorded for the owner): the
+  `STUDYLOOP_*` scrub is a denylist by prefix (opus-5 prefers an allowlist of
+  the four pointers); 90 pre-existing stale trust entries remain in
+  `~/.claude/settings.json` (only tonight's five were removed); OpenCode's
+  exporter fix must land with a live-schema test, not another fixture.

@@ -29,6 +29,17 @@ from studyloop.adapters._protocol import AgentAdapter
 
 TRUSTED_FOLDERS_FILE = "trusted_folders.toml"
 
+#: Explicit opt-in for the trust pre-write. Council review of the 2026-09-16
+#: evidence (docs/architecture/plan-integration/council/harness-tier-review-
+#: 2026-09-16.md) asked, unanimously, that a write into the learner's real
+#: Grok security state never happen silently: with this unset, setup writes
+#: only the persona and Grok asks its own "trust this directory?" question.
+TRUST_OPT_IN_ENV = "STUDYLOOP_GROK_TRUST_SESSION_DIR"
+
+
+def trust_pre_write_enabled() -> bool:
+    return os.environ.get(TRUST_OPT_IN_ENV, "").strip() == "1"
+
 
 def _grok_home() -> Path:
     """``$GROK_HOME`` when set, else ``~/.grok`` -- the rule the installer and
@@ -50,6 +61,8 @@ def _ensure_grok_trust(directory: Path) -> None:
     trusted is left alone, and a machine with no Grok home at all is left
     without one -- pre-trusting is for a Grok that exists.
     """
+    if not trust_pre_write_enabled():
+        return
     home = _grok_home()
     if not home.is_dir():
         return
@@ -81,9 +94,10 @@ def _ensure_grok_trust(directory: Path) -> None:
 
 
 def _grok_setup(canonical_content: str, session_dir: Path) -> Path:
-    """Write AGENTS.md to the session dir for Grok Build auto-discovery, and
-    pre-trust the session dir (and its parent, for future sessions) so the
-    trust dialog never blocks an automated session."""
+    """Write AGENTS.md to the session dir for Grok Build auto-discovery and,
+    only with ``STUDYLOOP_GROK_TRUST_SESSION_DIR=1``, pre-trust the session
+    dir (and its parent, for future sessions) so the trust dialog never
+    blocks an automated session."""
     persona_path = session_dir / "AGENTS.md"
     persona_path.write_text(canonical_content, encoding="utf-8")
     _ensure_grok_trust(session_dir.parent)

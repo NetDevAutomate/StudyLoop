@@ -135,7 +135,22 @@ class TestGrokFolderTrust:
         home = tmp_path / "grok-home"
         home.mkdir()
         monkeypatch.setenv("GROK_HOME", str(home))
+        # The pre-write is opt-in (council review 2026-09-16): every test in
+        # this class except the opt-out one runs with it enabled.
+        monkeypatch.setenv("STUDYLOOP_GROK_TRUST_SESSION_DIR", "1")
         return home
+
+    def test_without_the_opt_in_nothing_is_written(self, tmp_path, grok_home, monkeypatch):
+        """Default behaviour: Grok asks its own trust question; StudyLoop
+        never silently edits the learner's Grok security state."""
+        from studyloop.adapters.grok import _grok_setup
+
+        monkeypatch.delenv("STUDYLOOP_GROK_TRUST_SESSION_DIR")
+        session_dir = tmp_path / "sessions" / "study-topic-abcd1234"
+        session_dir.mkdir(parents=True)
+        path = _grok_setup("# Grok Persona", session_dir)
+        assert path.exists()
+        assert not (grok_home / "trusted_folders.toml").exists()
 
     def _trusted(self, grok_home: Path) -> dict:
         import tomllib

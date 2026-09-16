@@ -211,6 +211,11 @@ def build_scratch(
         env["PATH"] = os.pathsep.join([*path_prepend, env.get("PATH", "")])
     if harness == "grok" and not real_auth:
         env["GROK_HOME"] = str(scratch.home / ".grok")
+    if harness == "grok":
+        # Opt in to the adapter's trust pre-write: an unattended session cannot
+        # answer Grok's "trust this directory?" dialog (council 2026-09-16:
+        # explicit, never silent). The evidence run cleans the entries after.
+        env["STUDYLOOP_GROK_TRUST_SESSION_DIR"] = "1"
     # The evidence run's own opt-in knobs are never credentials; a harness
     # under test must see the same PATH the recorder resolved its binary on.
     env.setdefault("TERM", "xterm-256color")
@@ -921,6 +926,8 @@ def main(argv: list[str] | None = None) -> int:
             lane_env = dict(os.environ)
             if args.path_prepend:
                 lane_env["PATH"] = os.pathsep.join([*args.path_prepend, lane_env.get("PATH", "")])
+            if harness == "grok":
+                lane_env["STUDYLOOP_GROK_TRUST_SESSION_DIR"] = "1"
             items.append(
                 item24_live_lane(
                     harness, receipts_dir, lane_env, actor=args.actor, real_auth=args.real_auth
