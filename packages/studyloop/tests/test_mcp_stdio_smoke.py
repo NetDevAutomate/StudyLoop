@@ -25,6 +25,26 @@ pytestmark = pytest.mark.integration
 
 CORE_TOOLS = {"list_courses", "get_study_backlog", "end_session"}
 
+#: The nine study-plan tools of design §4 (D-8/D-9): six from #11, three from #12.
+PLAN_TOOLS = {
+    "list_study_plans",
+    "get_study_plan",
+    "get_planning_interview",
+    "create_study_plan",
+    "update_study_plan",
+    "set_study_plan_status",
+    "set_study_plan_milestone",
+    "evaluate_study_plan",
+    "delete_study_plan",
+}
+
+#: The exact production inventory: 23 at ``0a20a796`` plus the nine plan tools
+#: less ``record_plan_learning``, which was already among the 23 (council
+#: review 3, F13 — the design's "26 → 35" was arithmetic on a stale count).
+#: Exact, not a lower bound: an accidental registration is a failure here, and
+#: the name assertions stop an unrelated addition masking a missing tool.
+PRODUCTION_TOOL_COUNT = 32
+
 
 @pytest.fixture
 def isolated_config(tmp_path):
@@ -52,9 +72,15 @@ async def test_full_handshake_list_tools_and_call(isolated_config):
         assert init_result.serverInfo.name == "studyloop"
 
         tools_result = await session.list_tools()
-        names = {t.name for t in tools_result.tools}
-        assert len(names) >= 21, f"expected >=21 tools, got {len(names)}: {names}"
+        listed = [t.name for t in tools_result.tools]
+        names = set(listed)
+        assert len(listed) == len(names), f"duplicate tool names advertised: {sorted(listed)}"
+        assert len(names) == PRODUCTION_TOOL_COUNT, (
+            f"expected exactly {PRODUCTION_TOOL_COUNT} tools, got {len(names)}: {sorted(names)}"
+        )
         assert names >= CORE_TOOLS, f"missing core tools: {CORE_TOOLS - names}"
+        assert names >= PLAN_TOOLS, f"missing plan tools: {PLAN_TOOLS - names}"
+        assert "record_plan_learning" in names
 
         call_result = await session.call_tool("list_courses", {})
         assert not call_result.isError
