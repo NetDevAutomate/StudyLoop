@@ -1437,3 +1437,75 @@ def test_delete_missing_plan_is_not_found_before_confirmation_is_judged() -> Non
         _tool("delete_study_plan")("ghost", confirmed=True)
     with pytest.raises(ToolError, match=r"^invalid_id: "):
         _tool("delete_study_plan")("../escape", confirmed=True)
+
+
+# ---------------------------------------------------------------------------
+# Council review 4, F4 (GPT 🔵): writer tripwires beside the byte-equality proofs
+# ---------------------------------------------------------------------------
+#
+# Byte-identical document contents prove the *state* did not change; they do
+# not prove the writer was never invoked (a rewrite of identical bytes would
+# pass). An empty checkpoint log after a preview is weaker than existing rows
+# surviving one. These pins close both gaps on the real seam, and add the
+# document-sink failure the earlier partial-failure test did not exercise.
+
+
+def test_milestone_retry_does_not_call_save_plan(monkeypatch) -> None:
+    """Scenario 1's "rewrites nothing", proven at the writer: after the first
+    set, ``store.save_plan`` is replaced by a tripwire, and the identical retry
+    returns the same view without ever reaching it."""
+    plan_id = _ready_plan_on_disk()
+    first = _tool("set_study_plan_milestone")(plan_id, 0, True)
+
+    def _tripwire(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("a retried identical set reached store.save_plan")
+
+    monkeypatch.setattr(store, "save_plan", _tripwire)
+
+    second = _tool("set_study_plan_milestone")(plan_id, 0, True)
+
+    assert second == first
+
+
+def test_evaluate_preview_preserves_existing_checkpoint_rows() -> None:
+    """Scenario 3, strengthened: a preview after a recorded checkpoint leaves
+    the recorded row — and the document's Checkpoints table — exactly as
+    they were, not merely "still empty"."""
+    plan_id = _ready_plan_on_disk()
+    _tool("set_study_plan_status")(plan_id, "active")
+    _tool("evaluate_study_plan")(plan_id, "start", study_id="sess-1", record=True)
+    rows_before = [dict(row) for row in plan_index.checkpoint_history(plan_id)]
+    document_before = store.load_plan_text(plan_id)
+    assert [row["phase"] for row in rows_before] == ["start"]
+
+    payload = _tool("evaluate_study_plan")(plan_id, "mid")
+
+    assert payload["db_write"] == payload["document_write"] == "not_requested"
+    assert [dict(row) for row in plan_index.checkpoint_history(plan_id)] == rows_before
+    assert store.load_plan_text(plan_id) == document_before
+
+
+def test_evaluate_document_failure_reports_saved_database_and_failed_document(
+    monkeypatch,
+) -> None:
+    """The mirror of scenario 5: the log takes the checkpoint, the document
+    write raises; the tool returns ``db_write: saved``, ``document_write:
+    failed``, ``recording_complete: false`` and the seam's document warning
+    — the checkpoint row exists, the document is byte-identical."""
+    plan_id = _ready_plan_on_disk()
+    _tool("set_study_plan_status")(plan_id, "active")
+    document_before = store.load_plan_text(plan_id)
+
+    def _disk_full(*_args: object, **_kwargs: object) -> None:
+        raise OSError("disk full")
+
+    monkeypatch.setattr(store, "save_plan", _disk_full)
+
+    payload = _tool("evaluate_study_plan")(plan_id, "start", record=True)
+
+    assert payload["db_write"] == "saved"
+    assert payload["document_write"] == "failed"
+    assert payload["recording_complete"] is False
+    assert DOCUMENT_WARNING in payload["warnings"]
+    assert _database_checkpoints(plan_id) == ["start"]
+    assert store.load_plan_text(plan_id) == document_before
