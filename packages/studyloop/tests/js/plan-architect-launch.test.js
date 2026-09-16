@@ -129,6 +129,7 @@ beforeEach(() => {
      listener is re-hooked because each test gets a fresh fake window (in a
      browser the window never changes, so the hook is one-shot there). */
   plansStore.architectSubject = '';
+  plansStore.architectBrainDump = '';
   plansStore.architectLaunching = false;
   plansStore.architectStatus = '';
   plansStore._architectHooked = false;
@@ -181,7 +182,7 @@ test('startArchitect dispatches exactly one plan-architect-request with purpose 
   plansStore.startArchitect();
 
   assert.equal(seen.length, 1);
-  assert.deepEqual(seen[0], { purpose: 'planning', topic: 'SQL window functions' });
+  assert.deepEqual(seen[0], { purpose: 'planning', topic: 'SQL window functions', brainDump: '' });
   assert.equal(plansStore.architectLaunching, true);
   assert.ok(plansStore.architectStatus.length > 0, 'the status region says what is happening');
 });
@@ -191,7 +192,22 @@ test('startArchitect with no subject sends an empty topic — the server names i
 
   plansStore.startArchitect();
 
-  assert.deepEqual(seen[0], { purpose: 'planning', topic: '' });
+  assert.deepEqual(seen[0], { purpose: 'planning', topic: '', brainDump: '' });
+});
+
+test('startArchitect carries the learner\'s brain dump in the request detail, trimmed, never in the topic (#14, D-B)', () => {
+  const seen = requestEvents();
+  plansStore.architectSubject = 'SQL';
+  plansStore.architectBrainDump = '  I keep guessing at window frames.\n\nTried the docs twice.  ';
+
+  plansStore.startArchitect();
+
+  assert.equal(seen.length, 1);
+  assert.deepEqual(seen[0], {
+    purpose: 'planning',
+    topic: 'SQL',
+    brainDump: 'I keep guessing at window frames.\n\nTried the docs twice.',
+  });
 });
 
 test('the Plans view never posts, never opens a socket and never listens for the console event', async () => {
@@ -249,6 +265,38 @@ test('sessionTimer answers plan-architect-request with one POST carrying purpose
   assert.equal(starts[0].wsUrl, '/api/session/ws?study_session_id=study-42');
   assert.equal(timer.sessionActive, true);
   assert.equal(timer.purpose, 'planning');
+});
+
+test('sessionTimer forwards the brain dump to the server as brain_dump, and omits the key when blank', async () => {
+  await readyTimer();
+
+  win.dispatchEvent(new CustomEvent('plan-architect-request', {
+    detail: { purpose: 'planning', topic: '', brainDump: 'Stuck on frames.' },
+  }));
+  await settle();
+  assert.equal(posts.length, 1);
+  assert.equal(posts[0].brain_dump, 'Stuck on frames.');
+  assert.equal(posts[0].topic, '', 'the dump never becomes the topic');
+  assert.equal(posts[0].purpose, 'planning');
+
+  posts.length = 0;
+  const timer = await readyTimer();
+  await timer.confirmEndSession().catch(() => {});
+  win.dispatchEvent(new CustomEvent('plan-architect-request', { detail: { purpose: 'planning', topic: 'SQL' } }));
+  await settle();
+  assert.equal(posts.length, 1);
+  assert.equal(Object.prototype.hasOwnProperty.call(posts[0], 'brain_dump'), false,
+    'a blank dump is not sent — the server treats a missing key and null alike');
+});
+
+test('a focus start never carries a brain dump, even if the Plans view left one behind', async () => {
+  const timer = await readyTimer();
+  plansStore.architectBrainDump = 'left behind';
+  timer.topicInput = 'Python';
+  await timer.startSession();
+  assert.equal(posts.length, 1);
+  assert.equal(posts[0].purpose, 'focus');
+  assert.equal(Object.prototype.hasOwnProperty.call(posts[0], 'brain_dump'), false);
 });
 
 test('an empty subject is posted as topic "" for a planning launch (the focus path still refuses a blank topic)', async () => {

@@ -517,3 +517,81 @@ def test_starting_the_architect_creates_no_plan(page: Page, world: dict[str, Pat
     assert sorted(p.name for p in world["plans"].glob("*.md")) == files_before
     state = _session_state(page)
     assert "plan_id" not in state, "no plan id is stored on the session (D-11)"
+
+
+# ---------------------------------------------------------------------------
+# #14 follow-ons (owner decision D-B): the brain dump travels; abandoning a
+# launch mid-flight leaves nothing behind.
+# ---------------------------------------------------------------------------
+
+_BRAIN_DUMP = "I keep guessing at window frames.\n\nTried the docs twice; stuck on ROWS vs RANGE."
+
+
+def test_brain_dump_reaches_the_architect_persona(page: Page, world: dict[str, Path]) -> None:
+    """The door's optional brain dump is sent as ``brain_dump`` beside the
+    subject and arrives in the persona as the brief's own contained section —
+    never as the topic, never on the session state."""
+    seen_before = set(world["personas"].iterdir())
+    _goto_plans(page)
+    page.locator('[data-testid="plan-architect-braindump"]').fill(_BRAIN_DUMP)
+
+    post = _click_plan_with_architect(page)
+    assert post["status"] == 201
+    assert post["body"]["brain_dump"] == _BRAIN_DUMP
+    assert post["body"]["topic"] == ""
+    assert post["response"]["topic"] == "Study plan"
+    _wait_for_console(page)
+
+    new_files = sorted(set(world["personas"].iterdir()) - seen_before)
+    assert len(new_files) == 1, new_files
+    persona = new_files[0].read_text(encoding="utf-8")
+    assert "### Learner's brain dump" in persona
+    assert "> I keep guessing at window frames." in persona
+    assert "**Topic:** Study plan" in persona
+    state = _session_state(page)
+    assert "brain_dump" not in state
+    assert "window frames" not in json.dumps(state)
+
+
+def test_abandoning_a_launch_mid_flight_leaves_no_session_and_no_plan(
+    page: Page, world: dict[str, Path]
+) -> None:
+    """The learner clicks, then ends the session before answering anything.
+    Navigating away is *not* the abandon path — a closed socket detaches
+    with a grace period by design (a ⌘R must not kill a live session) — so
+    the abandon is the console's End control, fired as soon as the launch
+    has been accepted. Afterwards: no live slot, the plan list and the plans
+    directory unchanged, at most one WebSocket ever opened, and nothing left
+    mounted or labelled."""
+    _goto_plans(page)
+    plans_before = _plans(page)
+    files_before = sorted(p.name for p in world["plans"].glob("*.md"))
+    _instrument_starts(page)
+
+    post = _click_plan_with_architect(page)
+    assert post["status"] == 201
+    study_id = post["response"]["study_session_id"]
+
+    # End immediately: the ■ control, then the in-page confirm (no native
+    # dialog — spec). Both are the existing end-session path.
+    page.locator(".status-btn.end-btn:visible").first.click()
+    page.locator(".end-confirm-dialog").wait_for(state="visible", timeout=5000)
+    page.locator(".end-confirm-dialog").get_by_role("button", name="End session").click()
+    page.wait_for_function(
+        "async () => { const r = await fetch('/api/session/state', {cache: 'no-store'});"
+        " const s = await r.json(); return !s.study_session_id; }",
+        timeout=15000,
+    )
+
+    state = _session_state(page)
+    assert not state.get("study_session_id"), state
+    assert state.get("purpose") in (None, "focus"), "no planning label survives the abandon"
+    assert _plans(page) == plans_before, "the abandoned interview created no plan"
+    assert sorted(p.name for p in world["plans"].glob("*.md")) == files_before
+    probe = _probe(page)
+    ws_urls = [u for u in probe["sockets"] if "/api/session/ws" in u]
+    assert len(ws_urls) <= 1, ws_urls
+    assert probe["startEvents"] == 1, "one launch, one start event, even when abandoned"
+    assert _visible_purpose_labels(page) == []
+    # The slot is free: the abandoned session's id is not what a reconnect would find.
+    assert state.get("last_release", {}).get("study_session_id", study_id) == study_id

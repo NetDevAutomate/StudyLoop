@@ -13,9 +13,9 @@ do not move.
 
 ## Item 1 — Kiro/Claude MCP grants (D-A) · files: `agents/kiro/study-plan-architect.json`, `agents/kiro/study-mentor.json`, `agents/claude/study-plan-architect.md` (frontmatter only), `agents/manifest.json`, `.secrets.baseline`, `tests/test_install_agent_contracts.py`, `tests/test_plan_architect_persona.py`, `docs/agent-install.md`, `agents/mcp/README.md`, spec delta `agent-adapters`
 
-- [ ] **T1.0** Probe receipt `receipts/kiro-agent-tools-probe-2026-09-16.md` (visibility = `tools`, trust =
+- [x] **T1.0** (`222db4a3`) Probe receipt `receipts/kiro-agent-tools-probe-2026-09-16.md` (visibility = `tools`, trust =
       `allowedTools` in `@server/tool`; `mcp_server_tool` inert on kiro-cli 2.21.4). DoD: committed with this change.
-- [ ] **T1.1** RED `tests/test_install_agent_contracts.py`:
+- [x] **T1.1** (RED `b620a7c8`: 5 failed / 30 passed) RED `tests/test_install_agent_contracts.py`:
       `test_kiro_architect_carries_the_studyloop_server_and_exactly_the_plan_tools` (mcpServers has `studyloop`
       → `studyloop-mcp` and `session-db` → `session-db-mcp`; `tools` ⊇ {`@builtin`, `@studyloop`, `@session-db`};
       the `@studyloop/…` entries of `allowedTools` == exactly `PLAN_TOOL_NAMES` + `LEARNING_RECORD_TOOL`; no bare
@@ -25,13 +25,13 @@ do not move.
       definition` assertion at :701 — docstring cites D-A), `test_kiro_mentor_grants_use_the_spelling_the_cli_honours`
       (mentor: `@studyloop` in `tools`; no `mcp_` entry in `allowedTools`; the twelve as `@server/tool`).
       DoD: the four fail on `1565234a`; committed `test(agents): RED …` (pyright: no missing-import suppression needed).
-- [ ] **T1.2** GREEN: edit the three definitions; regenerate `agents/manifest.json`
+- [x] **T1.2** (GREEN `f5c2057d` mentor fix, `8a80c7d5` grants; targeted run 297 passed) GREEN: edit the three definitions; regenerate `agents/manifest.json`
       (`uv run python scripts/update-agent-manifest.py`, then revert `updated` on entries whose hash did not move —
       the repo's convention); refresh `.secrets.baseline` if hashes moved (`detect-secrets==1.5.0`); update
       `test_kiro_allowlist_and_servers_match_the_instruction` to the working spelling; persona projections stay
       byte-identical (frontmatter is stripped before comparison).
       DoD: `uv run --group dev pytest packages/studyloop/tests -q -p no:cacheprovider -k "install_agent or architect or persona"` exit 0.
-- [ ] **T1.3** Docs: `docs/agent-install.md` boundary paragraph → the granted state (keeps `purpose=planning`, both
+- [x] **T1.3** (`fb48a8ba`; `just lint` clean, `just typecheck` 0 errors, full suite 5079 passed / 4 skipped exit 0 in 397 s, `mkdocs --strict` clean, `openspec validate plan-integration-followons` valid) Docs: `docs/agent-install.md` boundary paragraph → the granted state (keeps `purpose=planning`, both
       filenames, no "T6.1"/"Phase 6"; names the `@server/tool` vs `mcp_server_tool` difference); update
       `test_install_docs_disclose_architect_fallback_limits` to pin the granted wording (Kiro, Claude, the ten,
       "prompt" for session-db); `agents/mcp/README.md` `~/.grok/config.toml` → `$GROK_HOME/config.toml` (default
