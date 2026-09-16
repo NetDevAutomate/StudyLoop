@@ -24,6 +24,18 @@ class StartSessionRequest(BaseModel):
             "focused on the safe path."
         ),
     )
+    purpose: Literal["focus", "planning"] = Field(
+        default="focus",
+        description=(
+            "What the session is for: 'focus' (default) is today's study "
+            "session; 'planning' launches the study-plan architect with a "
+            "planning brief as its own persona section. For 'planning' a blank "
+            "topic resolves to the fixed label 'Study plan'. Only the purpose is "
+            "persisted on the session state; no plan is created and no plan id "
+            "is stored (design §5, D-10/D-11). Any other value is rejected with "
+            "422."
+        ),
+    )
 
 
 _AGENT_INSTALL_HINTS: dict[str, str] = {

@@ -211,10 +211,7 @@ def _persona_for(client: TestClient, personas: list[str], **body: object) -> str
 
 class TestResolver:
     def test_persona_mode_for_maps_planning_to_plan_architect_and_else_to_focus(self) -> None:
-        # RED (T3.8): the resolver does not exist yet; suppression removed in GREEN.
-        from studyloop.agent_launcher import (
-            persona_mode_for,  # pyright: ignore[reportAttributeAccessIssue]
-        )
+        from studyloop.agent_launcher import persona_mode_for
 
         assert persona_mode_for("planning") == "plan-architect"
         assert persona_mode_for("focus") == "focus"
@@ -222,12 +219,8 @@ class TestResolver:
     def test_brief_renders_its_own_section_not_a_resume(self) -> None:
         from studyloop.agent_launcher import build_canonical_persona
 
-        # RED (T3.8): ``brief=`` does not exist yet; suppression removed in GREEN.
         content = build_canonical_persona(
-            "plan-architect",
-            "Study plan",
-            5,
-            brief="- interview item one",  # pyright: ignore[reportCallIssue]
+            "plan-architect", "Study plan", 5, brief="- interview item one"
         )
 
         assert "## Planning brief" in content
@@ -410,7 +403,7 @@ class TestPlanningPurpose:
         import studyloop.agent_launcher as launcher
 
         calls: list[str] = []
-        real = launcher.persona_mode_for  # pyright: ignore[reportAttributeAccessIssue]  # RED (T3.8)
+        real = launcher.persona_mode_for
 
         def _spy(purpose: str) -> str:
             calls.append(purpose)

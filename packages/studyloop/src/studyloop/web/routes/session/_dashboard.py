@@ -39,7 +39,7 @@ async def get_session_state() -> dict:
     """
     from studyloop.session import active as session_active
     from studyloop.web.routes.session import _grace
-    from studyloop.web.routes.session._start import _DEFAULT_ORIGIN
+    from studyloop.web.routes.session._start import _DEFAULT_ORIGIN, _DEFAULT_PURPOSE
 
     state = _get_full_state()
     current = await session_active.current()
@@ -81,6 +81,11 @@ async def get_session_state() -> dict:
     # adopt the session. Default to the documented default rather than omitting
     # the key, so callers never have to special-case its absence.
     state.setdefault("origin", _DEFAULT_ORIGIN)
+    # What the session is for ('focus' | 'planning'), persisted by _start.py so a
+    # reconnecting client can label a planning console as one (design §5,
+    # D-11). Same reasoning as origin: the overlay branch rebuilds the dict and
+    # a CLI-started file predates the key, so default rather than omit.
+    state.setdefault("purpose", _DEFAULT_PURPOSE)
     return state
 
 
