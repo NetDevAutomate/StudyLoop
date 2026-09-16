@@ -54,7 +54,9 @@ if TYPE_CHECKING:
 
 pytestmark = [pytest.mark.e2e, pytest.mark.timeout(180)]
 
-WEB_PORT = 18596
+# Unique fixed port — enforced by tests/test_port_uniqueness.py; 18611 is the
+# developer's live server.
+WEB_PORT = 18626
 BASE = f"http://127.0.0.1:{WEB_PORT}"
 
 #: The persona section headings whose *presence and order* the journey asserts
