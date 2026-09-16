@@ -360,6 +360,29 @@ Branch: `fix/plan-integration-bugs` (RED at `3a4f6b01`). §5 stream: `feat/lexic
       `study-plan-architect.json` is pinned to carry no `mcpServers` (`tools: ["@builtin"]`) and Claude's frontmatter
       lists `Read, Write, Grep, Bash` — in those two harnesses the architect takes the CLI fallback until the header
       question is decided (Phase 6 / T6.1 territory).
+- [x] ⚖ **Council review 4** (code seats `openai.gpt-6-astra` ACCEPT-WITH-CORRECTIONS, `grok-4.6` ACCEPT,
+      `qwen3-coder` ACCEPT; brief `e6d3b7d7`, receipts `council/review4/`) — arbitration
+      `docs/architecture/plan-integration/council/review-4-arbitration-2026-09-16.md`, **GATE: ACCEPT**. Every
+      🔴/🟡 reproduced by probe before acceptance; one RED + one GREEN commit per finding group: F1 the planning
+      brief's delivery budget in `_render_planning_brief` — reproduced unbounded on all three axes (300 plans →
+      40 KB; worst probe 15.6 MB), now ≤ 10 rows per evidence key, ≤ 20 plans, ≤ 120 chars per value with counted
+      `… and N more` markers, byte-identical within the budget, plus the brief-travels-once pins on both transports
+      (`f30ee11b`/`8f9b6011`); F4a/F4b/F5/F6 test-quality pins — exact nine-in-registry (`_LANDING_WITH_12`
+      retired), the in-process inventory twin asserting `CORE_TOOLS` and own-name registration, the unbounded
+      repo-root walk bounded (probed: 100 000 iterations at `/`), the 23+9 arithmetic (`5e085f0a`); F4c writer
+      tripwires beside the byte-equality proofs (`aa463738`); F2/F3/F8–F11 the persona's runtime claims made true
+      — table signatures pinned against the registered schemas, `STUDY_ID` provenance and the empty default, the
+      ACP `end_session` path, pause-before-repair on an active husk, the active-create gate wording, the install
+      doc's parity overclaim and the Kiro/Claude boundary disclosed with T6.1 as owner, the spec's delete shorthand
+      and `__cause__` transport note, this T4.2 line's "4 scenarios" → 3 (`5ff48211`/`cf78be40`). Rejected: qwen's
+      two misread 🟡 (`markdown` is top-level; `_section` is correct), moving `_plan_tool_error` (append-only),
+      GPT's byte budget numbers (shape adopted, per-list caps chosen), F7 D-6 wording (design §6 allows the facade).
+      **Decided for Phase 5:** a CLI-started architect's reconnect label derives `purpose` from the persisted
+      persona `mode` through `persona_mode_for`, never from the topic; the Kiro/Claude header question is T6.1's
+      (a permission-model decision), a documented boundary, not a Phase-4 defect. Gate at `cf78be40`: guard 30;
+      inventory 32 (stdio 2 passed); JS 115; `just lint`, `just typecheck` 0; `openspec validate` valid (`--specs
+      --all` 25); `mkdocs --strict` clean; protected files `git diff 3a4f6b01` / `0a20a796` → 0 lines; golden sha
+      unchanged; full suite `-x` **4987 passed / 4 skipped exit 0** (6m01s).
 
 ## Phase 5 — #14 Web architect journey · owner: agent D
 
@@ -375,7 +398,7 @@ Branch: `fix/plan-integration-bugs` (RED at `3a4f6b01`). §5 stream: `feat/lexic
 - [ ] **T6.2** `scripts/verify/plan_integration.py` per design §8; receipt committed.
 - [ ] **T6.3** Combined journey test: planning-purpose web session + MCP plan tool call in one run; no
       nested-event-loop error.
-- [ ] ⚖ **Council review 4** (docs seats). Then close #7–#15 with evidence comments.
+- [ ] ⚖ **Council review 5** (docs seats; review 4 was the Phase-4 code review). Then close #7–#15 with evidence comments.
 
 ## §5 stream — `feat/lexical-or-fallback` (D-12, D-13) · owner: agent E · files: `agent-session-tools` only, ADR-0011
 
