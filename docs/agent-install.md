@@ -204,6 +204,35 @@ has no evidence that it supports Claude Code hooks or writes Claude Code's
 session store, so StudyLoop does not claim or fake support for it. Doctor
 reports only evidence-backed coding-harness integrations.
 
+## Study-plan tools over MCP
+
+The `studyloop` MCP server (the `studyloop-mcp` command; per-harness
+registration is in `agents/mcp/README.md`) exposes the learner's study plans
+to any connected agent. Every tool
+goes through the same plan application layer the CLI and Web UI use, so the
+readiness gate, the lifecycle statuses and the "the Markdown document is the
+source of truth" rule are identical on every surface. An agent that cannot
+reach the MCP server can do the same work with `studyloop plan …` at a shell.
+
+| Tool | Purpose |
+|---|---|
+| `list_study_plans(status=None)` | List plan summaries, active first; filter to one lifecycle status. |
+| `get_study_plan(plan_id, include_markdown=False, include_history=False, history_limit=20)` | Read one plan in full — mission, milestones, records, readiness — optionally with its Markdown and the checkpoint log (1–200 rows). |
+| `get_planning_interview()` | The interview questions, an evidence seed from the study databases, and the plans that already exist — call before interviewing. |
+| `create_study_plan(title, answers, plan_id=None, status="draft")` | Draft a new plan from interview answers; never replaces an existing plan (a taken id is a conflict). |
+| `update_study_plan(plan_id, …)` | Revise fields, topics, milestones and status together, judged as one document and saved once. |
+| `set_study_plan_status(plan_id, status)` | Move a plan between `draft`, `active`, `paused`, `complete`, `abandoned`; activation is readiness-gated. |
+| `record_plan_learning(plan_id, title, body="", status="active")` | Append a learning record to the plan — the wind-down's first write. |
+
+A refused call is a tool error whose message starts with a machine-readable
+kind — `not_found:`, `invalid_id:`, `conflict:`, `invalid:`,
+`invalid_milestone:` or `not_ready:` — followed by the plan layer's own
+message. A `not_ready:` refusal names every blocker, so the agent can ask the
+learner for what is missing instead of reporting that something is wrong.
+Milestone completion, checkpoint evaluation and deletion over MCP are not
+available yet; use `studyloop plan milestone`, `studyloop plan evaluate` and
+the Web UI for those.
+
 ## Data integrity
 
 Agent installation never seeds study progress. Session export records genuine harness sessions, and struggle extraction requires an explicitly configured live model. If the live extractor cannot authenticate or returns invalid data, it fails without writing partial progress.

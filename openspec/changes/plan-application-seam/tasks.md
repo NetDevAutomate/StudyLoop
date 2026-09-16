@@ -204,11 +204,46 @@ Branch: `fix/plan-integration-bugs` (RED at `3a4f6b01`). §5 stream: `feat/lexic
 - [ ] **T3.5** (last, after #11 and #12 have landed in `tools.py`) `get_next_action(..., interleave="off")`.
 
 ### #11 six MCP tools · owner: agent C · files: `mcp/tools.py` (append only), `tests/test_mcp_plan_tools.py`, mcp-server spec
-- [ ] **T3.6** RED `tests/test_mcp_plan_tools.py`: schema present for six; each delegates to a monkeypatched
-      `PlanApplication`; `PlanNotReady` → ToolError containing blockers; duplicate create → conflict;
-      `set_study_plan_status` retry idempotent; `overwrite` absent from `create_study_plan` schema.
-- [ ] **T3.7** Implement. DoD: T3.6 green; `test_mcp_stdio_smoke.py` **unchanged** (still 26) — inventory
-      moves in #12.
+- [x] **T3.6** (`484db041`, RED: 58 failed, every one `KeyError: Tool '<name>' not registered` against the
+      23-tool inventory at `0a20a796`; spy-binding harness fix `eb28a1fb`) RED `tests/test_mcp_plan_tools.py`:
+      schema present for six with the design §4 signatures; each delegates to a monkeypatched `PlanApplication`
+      with the store and index forbidden underneath (`forbid_store`); `PlanNotReady` → ToolError
+      `not_ready: plan is not ready to activate: <blockers>` (plus "pause or repair" when already active);
+      duplicate create → `conflict:`; every subclass → one prefixed ToolError with the domain error chained;
+      `set_study_plan_status` retry idempotent (same intent twice, same view, no error); `overwrite` absent
+      from `create_study_plan`'s schema and description (D-4); `learning_record` absent from
+      `update_study_plan` (D-9); `get_study_plan(history_limit)` outside 1..200 → `invalid:` with no seam
+      call; every response is the view's `to_json_dict()` in fresh containers; real-seam journeys on an
+      isolated plans dir + `STUDYLOOP_DB` (discover → inspect → create → revise → activate; refused
+      activation writes nothing; duplicate create preserves the document).
+- [x] **T3.7** (`5a03b094`) Implement. Six thin adapters appended after `log_struggle`, inside the production
+      inventory: one seam call each (`browse` / `inspect` / `prepare_planning` / `CreatePlan` / `RevisePlan`
+      / `TransitionLifecycle`), one mapping helper `_plan_tool_error` (`not_found` / `invalid_id` /
+      `conflict` / `invalid` / `not_ready` / `invalid_milestone`, `plan_error` as the safety net); no plan
+      policy in the adapter. `record_plan_learning` untouched (its inline mapping is a fold candidate for
+      #12, the next `tools.py` writer). DoD: T3.6 green (58 passed); `test_mcp_stdio_smoke.py` **unchanged**
+      and passing — it pins `>= 21` plus the core names, not an exact count, so the inventory moving 23 → 29
+      (the file said 26; the production registry at `0a20a796` had 23) needs no edit here; retarget in #12.
+      **Deviations, each reported:** (a) `history_limit` is bounded in the adapter to the Web route's
+      `Query(ge=1, le=200)` range — the seam does not bound it and `application.py` is not in #11's file
+      set; a seam-level bound would be the single copy (review-1 hazard "Boundary validation").
+      (b) `update_study_plan` exposes `status` beside the field edits so repair-and-activate is one
+      `RevisePlan` judged once (the F1 contract), while `set_study_plan_status` remains the dedicated
+      transition tool; `learning_record` is deliberately not exposed. (c) The "freeze `CreatePlan.answers`"
+      hazard lives in `intents.py`, outside #11's ownership; over MCP the `answers` object is decoded per
+      call and retained by no one, so no snapshot is taken in the adapter. Delta spec: mcp-server requirement
+      "Study-plan discovery and authoring tools" (seven scenarios); `docs/agent-install.md` gains "Study-plan
+      tools over MCP" (the six plus `record_plan_learning`, one-line purposes, the refusal kinds);
+      `docs/study-plans.md` "does not do yet" untouched (T6.1). **Gates at `bd919d51`+tasks:** `pytest
+      packages/studyloop/tests -k "mcp or plan"` 756 passed exit 0; `pytest packages/studyloop/tests -x` 4826
+      passed / 4 skipped exit 0 (5m36s); `just lint` clean; `just typecheck` 0 errors; guard 30 passed;
+      `test_mcp_stdio_smoke.py -m integration` 2 passed; `openspec validate plan-application-seam` valid
+      (`--specs --all` 25 passed); `mkdocs build --strict` clean; `git diff 0a20a796 -- mcp/tools.py` → 0
+      deleted lines. Workspace-wide `pytest -q` (both packages): 6941 passed, 16 skipped, **1 failed** —
+      `agent-session-tools/tests/test_eval_arms.py::TestPlannerIsolation::test_planner_patch_restored_after_tool_error`,
+      order-dependent under the root config (it calls `monkeypatch.undo()` mid-test, which also undoes the
+      autouse `STUDYLOOP_CONFIG` fixtures); passes alone and in the package-local run; outside #11's ownership,
+      reported for the owner.
 
 ### #13a purpose + resolver · owner: agent D · files: `web/routes/session/_models.py`, `_start.py` (+ ACP path), `agent_launcher.py`, `tests/test_session_start_purpose.py`
 - [ ] **T3.8** RED: `test_planning_purpose_selects_plan_architect_persona_with_brief_section`,
