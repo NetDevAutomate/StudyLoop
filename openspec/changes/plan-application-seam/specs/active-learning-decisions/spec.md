@@ -277,9 +277,13 @@ this order (design §3, D-5):
    and struggle repair stay eligible and plan-related.
 3. A candidate is plan-related when `normalise_match_key` of its concept,
    topic or course **equals** one of the plan's `match_keys`; no substring
-   test. It names the plan's next milestone when the key equals one of that
-   milestone's concepts; a topic or finished-milestone match carries
-   `milestone_index = None`.
+   test. It names the plan's next milestone (`milestone_index`) only when the
+   key equals one of that milestone's concepts **and** the plan is eligible —
+   ready and within the energy capability; a topic or finished-milestone
+   match, or any match on an energy-deferred or active-but-unready plan,
+   carries `milestone_index = None` (plan-related repair), so a payload never
+   names a milestone it also reports as deferred or that the seam would
+   refuse to tick.
 4. Scoring is today's scoring plus one bounded bias for plan-related
    candidates: within one urgency class plan-related beats unrelated, and a
    globally more-urgent unrelated candidate still wins — a bias, not a filter.
@@ -298,8 +302,9 @@ this order (design §3, D-5):
    replace the last alternate only; the primary is never re-ranked by plans.
 8. A fully-checked active plan SHALL appear in `completion_actions` and SHALL
    be neither matched nor synthesised. An active-but-unready plan SHALL be
-   listed and matched but never synthesised, with a warning naming its
-   blockers.
+   listed and matched (bias and a `milestone_index = None` reference) but
+   never synthesised and never named as a milestone, with a warning naming
+   its blockers.
 
 `NowPlan` gains `active_plans` (ordered as rule 6), `energy_deferred`,
 `completion_actions` and `warnings`; `LearningRecommendation` gains
@@ -340,6 +345,21 @@ receipt accompanies the change.
   `energy_deferred` names `(plan, 1, 5, 3)`, and no `study_plan:` candidate
   exists; at `medium` energy nothing is deferred and the milestone is
   synthesised
+
+#### Scenario: A deferred milestone is never named by a reference
+- **WHEN** energy is `low`, the plan's `energy_floor` is 5 and the only
+  collected candidate's concept equals the next milestone's concept
+- **THEN** the candidate is primary with `PlanRef(plan, None)` while
+  `energy_deferred` names that milestone; at `medium` energy the same
+  candidate carries `PlanRef(plan, 0)` and nothing is deferred
+
+#### Scenario: An unready active plan is matched but never named
+- **WHEN** an active plan has no mission and no success criteria (unready)
+  and a collected candidate equals its next milestone's concept
+- **THEN** the candidate is primary with `PlanRef(plan, None)`, no
+  `study_plan:` candidate exists, the plan's `active_plans` entry has
+  `ready == False` and `eligible == False`, and one warning names the plan,
+  its blockers and "pause or repair"
 
 #### Scenario: No substring matching
 - **WHEN** a milestone titled `Window functions deep dive` has no concepts

@@ -843,8 +843,18 @@ class _PlanContext:
         return synthesised
 
     def attach_refs(self, candidate: _Candidate) -> _Candidate:
-        """Rule 7: every matching plan, most specific milestone per plan, in plan order."""
+        """Rule 7: every matching plan, most specific milestone per plan, in plan order.
+
+        The next milestone is named only for an *eligible* plan — ready and
+        within the energy capability, i.e. one in ``synthesise``. For a plan
+        whose milestone is energy-deferred (rule 3) or whose document is
+        active-but-unready (review-2 G1: the seam would refuse to tick it), a
+        match on that milestone's concept is plan-related repair, ``None`` —
+        so one payload never says "advances milestone 2" beside "milestone 2
+        is deferred" or beside the blockers (council review 3, F1).
+        """
         keys = _candidate_keys(candidate)
+        eligible = {plan.plan.plan_id for plan in self.synthesise}
         refs: dict[str, int | None] = {
             ref.plan_id: ref.milestone_index for ref in candidate.plan_refs
         }
@@ -854,7 +864,9 @@ class _PlanContext:
                 continue
             index = (
                 plan.next_milestone.index
-                if plan.next_milestone is not None and keys & _milestone_concept_keys(plan)
+                if plan_id in eligible
+                and plan.next_milestone is not None
+                and keys & _milestone_concept_keys(plan)
                 else None
             )
             if refs.get(plan_id) is None:
@@ -914,10 +926,13 @@ def _milestone_candidate(
 def _guarantee_plan_backed(ranked: list[_Candidate], time_minutes: int) -> list[_Candidate]:
     """Rule 8: ≥ 1 plan-backed action among primary + alternates when time permits.
 
-    Never re-ranks the primary: the best-ranked eligible plan-backed candidate
-    that fits the time window replaces the *last* alternate only. Deferred
-    milestones were never synthesised, so every plan-backed candidate here is
-    eligible on energy.
+    Never re-ranks the primary: the best-ranked plan-backed candidate that
+    fits the time window replaces the *last* alternate only. "Plan-backed"
+    is any candidate carrying a ``PlanRef`` — a synthesised or represented
+    next milestone of an eligible plan, or plan-related repair
+    (``milestone_index=None``) on a deferred or unready one; rule 3 keeps that
+    repair eligible below the energy floor, and deferred milestones are never
+    synthesised, so nothing here advertises work the energy cannot carry.
     """
     if len(ranked) <= 3 or any(candidate.plan_refs for candidate in ranked[:3]):
         return ranked
