@@ -437,39 +437,65 @@ Branch: `fix/plan-integration-bugs` (RED at `3a4f6b01`). §5 stream: `feat/lexic
 
 ## Phase 6 — #15 reconcile and verify
 
-- [x] **T6.1** (RED `87afdcd4` → GREEN `bdc559d5`; specs promoted at archive) `docs/study-plans.md`: "What a plan does
+- [x] **T6.1** (RED `87afdcd4` → GREEN `bdc559d5`; council-5 corrections RED `f0d01d95`/`2911da1d` → GREEN `e151885c`; specs promoted by the archive that moves this file) `docs/study-plans.md`: "What a plan does
       not do yet" (still claiming broader plan management "remains CLI-only", citing `mcp/tools.py:129`) → **"Plan-aware
       now"** in D-16's bounded language and **"Deliberately not automatic"** — six bullets whose bold lead phrases ARE
       `studyloop.planning.boundaries.NOT_AUTOMATIC` (no live-session binding, no session-driven checkpoints or milestone
-      completion, no single-active rule, never a filter, the brain dump stays manual); the architect section names the
-      tools it works through and the CLI fallback. `docs/agent-install.md`: the Kiro/Claude harness boundary stated as the
+      completion, no single-active rule, never a filter, no scheduled recurring planning sessions — the brain dump's
+      manual-only handling is a door fact stated in prose beside the list, council review 5); the architect section
+      claims the planning brief only on the Web door, names `get_planning_interview` / `studyloop plan interview` for a
+      CLI-started architect, says checkpoints never fire from session events, and names the two operations with no CLI
+      command — which need an MCP-connected session or the Web API, because the Web UI has no revise-fields or delete
+      control (found in review 5's reproduction; the persona's fallback table said "the Web UI" too and was corrected,
+      projections + manifest regenerated). "Plan-aware now" states eligibility (a READY plan within the energy
+      capability), the unready-plan warning, completion actions, "unchanged" not "exactly what it was", and that the
+      D-16 rubric's owner verdicts are **pending** (the pin fails the day they are scored). New "Recording, retries, and
+      deletion" section. `docs/agent-install.md`: `update_study_plan` revises every schema field except the mission
+      (which changes only in the Markdown); the Kiro/Claude harness boundary stated as the
       maintainer's permission decision (recorded in the close-out draft), no longer "tracked as Phase 6, T6.1".
-      `agents/mcp/README.md`: "10 MCP tools" → the real 32, the table == the registry. `README.md`, `docs/index.md`,
+      `agents/mcp/README.md`: "10 MCP tools" → the real 32, the table == the registry; heading "(Session DB Tools)" →
+      "(Study tools)" with the legacy anchor kept. `README.md`, `docs/index.md`,
       `docs/web-ui-guide.md`, `docs/cli-reference.md`, `docs/roadmap.md`: every "not integrated yet" / "do not yet
       influence" claim about the closed gap replaced. **Installer:** `studyloop install agents` prints the nine plan
-      tools, the planning-purpose door and the boundary sentence, all derived from `studyloop.mcp.inventory.PLAN_TOOL_NAMES`
+      lifecycle tools plus `record_plan_learning`, reachability as per-harness, the planning-purpose door and the boundary
+      sentence (all six phrases), all derived from `studyloop.mcp.inventory.PLAN_TOOL_NAMES` / `LEARNING_RECORD_TOOL`
       (importable without the `mcp` extra) and `NOT_AUTOMATIC`; uninstall prints no capability claims. **Contract:**
-      `tests/test_docs_plan_integration_contract.py` (20) grounds `PLAN_TOOL_NAMES` in the production FastMCP registry
+      `tests/test_docs_plan_integration_contract.py` (25) grounds `PLAN_TOOL_NAMES` in the production FastMCP registry
       (exactly the plan-named tools), pins the install-doc table (nine then `record_plan_learning`, lifecycle order),
       the README table and count, the boundary bullets (== the constant, in order), the installer output, D-16's
-      language and a stale-claim sweep over six public pages. **Specs (c):** the six delta specs are promoted into
+      language and a stale-claim sweep over six public pages. **Specs (c):** the six delta specs — after review 5's
+      corrections (`e151885c`: the reconnect-purpose precedence stated once in `live-session-orchestration` as `web-ui`
+      and `_dashboard.py` have it; the fallback, guidance and CLI-mapping sentences qualified; every chronology phrase
+      rewritten; `mcp-server` MODIFIES the stale 21-tool requirement to the 32, REMOVES the `docs/mcp.md` requirement
+      whose file exists on neither this branch nor `main`, and ADDS the inventory-publication requirement) — are
+      promoted into
       `openspec/specs/{active-learning-decisions,agent-adapters,cli-surface,live-session-orchestration,mcp-server,web-ui}`
-      by `openspec archive plan-application-seam` (the CLI's own merge, no hand-merging); `.openspec.yaml` loses
-      `deferred:`; `openspec validate --specs --all` 25 passed; `check-release-consistency.py --release --pre-tag`
-      validates the new archive. **Not done here, by design (owner decision):** granting the Kiro/Claude
+      by `openspec archive plan-application-seam` (the CLI's own merge, no hand-merging) in the commit that moves this
+      file into `openspec/changes/archive/2026-09-16-plan-application-seam/`; `.openspec.yaml` loses `deferred:`;
+      `openspec validate --specs --all` and `check-release-consistency.py --release --pre-tag` are re-run on the archived
+      tree and reported in the close-out. **Not done here, by design (owner decision):** granting the Kiro/Claude
       harness-launched architects the `studyloop` server — review 4 ruled it a permission-model change for a human.
-- [x] **T6.2** (RED `b02bd63a` → GREEN `1129b83e`; parser fix `e605a835`) `scripts/verify/plan_integration.py` per design
-      §8: 28 required checks — ruff check/format, pyright, the Bug A doors (4 node ids) and Bug B (2), the guard, the
+- [x] **T6.2** (RED `b02bd63a` → GREEN `1129b83e`; parser fix `e605a835`; both-orders check RED `2911da1d` → GREEN
+      `e151885c`) `scripts/verify/plan_integration.py` per design
+      §8: 29 required checks — ruff check/format, pyright, the Bug A doors (4 node ids) and Bug B (2), the guard, the
       golden's sha256 and byte-identity node, the real stdio inventory (`-m integration`) and its in-process twin (32
       unique names, the nine, `record_plan_learning`, `CORE_TOOLS`, names recorded), the seventeen plan suites, the docs
       contract, the ten protected files (`git diff --quiet` vs `3a4f6b01` / `0a20a796`), six `rg` invariants (three
       "used by" expecting exit 0, three "zero" expecting rg's exit 1), the combined journey alone and in the
-      `-m integration` run with the stdio smoke, the #14 browser module under `-m e2e`, `node --test`, `openspec
+      `-m integration` run with the stdio smoke **in both file orders** (review 5, GPT F10), the #14 browser module
+      under `-m e2e`, `node --test`, `openspec
       validate --specs --all`, `mkdocs --strict`, and both packages' full suites. A check that cannot start is a
       FAILURE (exit_code null + error), never N/A; an unexpected success fails too. Unit-tested with an injected runner
-      (`tests/test_verify_plan_integration_script.py`, 21). First real run at `3159efe0`: **28/28 ok, exit 0** — but
-      empty node counts for `-q` output (the parser required `====` bars), so that receipt was discarded, the parser
-      fixed, and the receipt re-run on the final tree: `receipts/verify-<sha>.json` (committed beside this file).
+      (`tests/test_verify_plan_integration_script.py`, 22). First real run at `3159efe0`: **28/28 ok, exit 0** — but
+      empty node counts for `-q` output (the parser required `====` bars), so that receipt was discarded and the parser
+      fixed. **Real runs on the reconciled tree:** `receipts/verify-fff69c65.json` — **ok=false, 27/29**, kept as
+      evidence (`69740be5`): `browser-journey-e2e` lost one of eight tests to a 20 s start-POST timeout caused by the
+      web app's background query-encoder warm under machine load ≈ 7.5 (A/B: warm on 5/5 module runs fail, warm off
+      3/3 pass; the fixture now runs the isolated server with `STUDYLOOP_RETRIEVAL_MODE=lexical`), and
+      `full-suite-studyloop` was 5042 passed / 0 failed but exit 1 because the C8/R-49d guard saw another agent's
+      `log_topic` append to the REAL `~/.config/studyloop/session-topics.md` mid-run (not a test leak). Then
+      `receipts/verify-69740be5.json` on the fixed tree — its result is recorded in the close-out and in the commit that
+      adds it (never edited by hand).
 - [x] **T6.3** (`f51d5118`; UAT `a69867bf`, redacted summary `3159efe0`) **Combined journey**
       `tests/test_plan_journey_combined.py` (3, `integration`): one isolated scope shared by both transports —
       `POST /api/session/start {purpose: planning, topic: ""}` through TestClient with the fake agent → 201,
@@ -505,17 +531,23 @@ Branch: `fix/plan-integration-bugs` (RED at `3a4f6b01`). §5 stream: `feat/lexic
       pending` by contract — perceptual review by the implementing agent from the 1440×900 light capture: balanced,
       no edge through an unrelated node, labels clear (three converging edges on the seam's top placed with `labelAt`).
       The `.html` and `.visual-check.*` sidecars stay gitignored and regenerate from the spec.
-- [x] **T6.5** (`fd10789e`) Close-out **draft**, not posted:
+- [x] **T6.5** (`fd10789e`; refreshed after review 5 and the archive — the final shas, receipt result, archive path and
+      the review-5 row corrections; still a DRAFT, nothing posted) Close-out **draft**, not posted:
       `receipts/issue-closeout-draft-2026-09-16.md` — one section per issue #8–#15 and the parent #7, every acceptance
       criterion mapped to a test node id / receipt / commit / promoted spec with an honest status ("partly" for #13's
       MCP-with-CLI-fallback, "mostly" for #14's brief — a subject travels, the brain dump does not; "in-process only" for
       #12's partial-recording refusal over stdio; the D-16 verdict PENDING for #10), the five #7 requirements not fully
       verified named plainly, a proposed PR #20 description, and the thirteen owner decisions still open in one place.
-- [ ] ⚖ **Council review 5** (docs seats `openai.gpt-6-astra`, `grok-4.6`, `kimi-k2-thinking`; brief
-      `council/brief-review5-2026-09-16.md`, receipts `council/review5/`) on the reconciled docs, the promoted
-      specs, the installer text, the verify registry, the UAT summary and the close-out draft; arbitration
-      `council/review-5-arbitration-2026-09-16.md`. Then (owner, in the morning) close #7–#15 with the evidence comments
-      the draft holds.
+- [x] ⚖ **Council review 5** (ran 2026-09-16 08:24Z; docs seats `openai.gpt-6-astra` **REJECT**, `grok-4.6`
+      ACCEPT-WITH-CORRECTIONS, `kimi-k2-thinking` ACCEPT-WITH-CORRECTIONS; brief `council/brief-review5-2026-09-16.md`
+      (`a955ff0a`), receipts `council/review5/` + arbitration `council/review-5-arbitration-2026-09-16.md` (`fff69c65`),
+      **GATE: ACCEPT** after the sixteen finding groups landed — RED `f0d01d95`/`2911da1d`, GREEN `e151885c`, evidence
+      test `e67f1767`, e2e isolation `69740be5`) on the reconciled docs, the delta specs, the installer text, the verify
+      registry, the UAT summary and the close-out draft. Rejected with reasons: a hand-added field in the generated UAT
+      receipt, a dated-checkbox test over this file, a link into the mkdocs-excluded `docs/architecture/`. Nothing
+      contradicted a recorded decision. Carried into the archive open: **T3.4b** (the owner's D-16 verdicts). Then
+      (owner, in the morning) decide items 1–3 of the close-out and post it — `Related:` becomes `Closes` per issue only
+      as each is satisfied or re-scoped.
 
 ## §5 stream — `feat/lexical-or-fallback` (D-12, D-13) · owner: agent E · files: `agent-session-tools` only, ADR-0011 · merged to `main` 2026-09-15
 
