@@ -304,8 +304,33 @@ Branch: `fix/plan-integration-bugs` (RED at `3a4f6b01`). §5 stream: `feat/lexic
       mapping into `_plan_tool_error` in the same `tools.py` commit, with its prefixes, blockers and chained
       cause pinned first; extend `forbid_store` with the authoring/evaluation entry points before
       `evaluate_study_plan` lands.
-- [ ] **T4.2** (#13b, agent D) `agents/shared/personas/plan-architect.md`: prefer the nine MCP tools, CLI
-      fallback. DoD: persona test asserts the tool names appear in the rendered persona when `purpose=planning`.
+- [x] **T4.2** (#13b, agent D; RED `60b14927` 3 failed / 6 pins passed on `205819c7`, GREEN `6ba76757`)
+      `agents/shared/personas/plan-architect.md`: prefer the nine MCP tools, CLI fallback. DoD: persona test
+      asserts the tool names appear in the rendered persona when `purpose=planning`.
+      **As landed:** new `tests/test_plan_architect_persona.py` —
+      `test_plan_architect_persona_names_the_nine_mcp_tools_when_purpose_is_planning` (renders
+      `build_canonical_persona(persona_mode_for("planning"), …, brief=…)`; all nine design-§4 names; a `CLI fallback`
+      section naming `studyloop plan interview|list|show|new|status|milestone|evaluate|record` and no
+      `studyloop plan delete`, which does not exist), `test_plan_architect_persona_prefers_mcp_over_cli_ordering`
+      (MCP subsection precedes and closes before the fallback; the nine are introduced inside it; no CLI recipe
+      inside it), `test_mcp_section_states_the_lifecycle_guards` (readiness-gated activation, `confirmed=True`
+      deletion, `record=False` preview vs `record=True`), `test_the_nine_are_the_registry_plus_exactly_what_12_lands`
+      (the constant is grounded in `mcp._tool_manager._tools`: six registered, the unregistered set ⊆ #12's three —
+      holds before and after that merge), `test_focus_persona_unchanged` (sha256 pin at `205819c7`, fixed session
+      paths), `test_projected_personas_match_canonical` ×3 and
+      `test_manifest_hashes_regenerate_byte_identically_for_the_architect_projections` (generator's own `hash_file`).
+      Persona: one `## Tooling: prefer the plan tools, fall back to the shell` section — `### Plan tools over MCP
+      (preferred)` table (nine tools in lifecycle order + `record_plan_learning`; lifecycle line; "missing from the
+      inventory → that step's CLI fallback") then `### CLI fallback` table, honest that the CLI has no edit and no
+      delete command; Session Start / Creating / End-of-Session protocols name the MCP call with the CLI in
+      parentheses; interview text intact. Projections: `agents/claude/study-plan-architect.md`,
+      `agents/opencode/study-plan-architect.md` (body after frontmatter), `agents/kiro/study-plan-architect/persona.md`
+      (byte copy); `agents/manifest.json` two hashes moved (dates only where the hash moved, as `edc65322`);
+      `.secrets.baseline` refreshed for those two digests. Delta spec: `agent-adapters` "Architect persona prefers
+      the MCP plan tools" (4 scenarios); `openspec validate` valid. **Not changed (owner item):** Kiro's
+      `study-plan-architect.json` is pinned to carry no `mcpServers` (`tools: ["@builtin"]`) and Claude's frontmatter
+      lists `Read, Write, Grep, Bash` — in those two harnesses the architect takes the CLI fallback until the header
+      question is decided (Phase 6 / T6.1 territory).
 
 ## Phase 5 — #14 Web architect journey · owner: agent D
 
