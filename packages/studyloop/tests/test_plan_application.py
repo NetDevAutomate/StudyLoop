@@ -709,11 +709,12 @@ def test_revise_learning_record_appends_once_and_is_idempotent(
     ]
     assert len(saves) == 1
 
-    # Same title and body again: no second record, but the revision is still
-    # the one save every revision is (it touches ``updated``).
+    # Same title and body again: no second record and — council review 2, GPT
+    # F1 — no second write either: a duplicate record alone leaves the file's
+    # bytes and ``updated`` untouched, as the store's ``record_learning`` did.
     again = app.apply(RevisePlan(plan_id="demo", learning_record=record))
     assert len(again.learning_records) == 1
-    assert len(saves) == 2
+    assert len(saves) == 1
 
     with pytest.raises(InvalidField):
         app.apply(RevisePlan(plan_id="demo", learning_record=LearningRecordSpec(title="  ")))
@@ -724,7 +725,7 @@ def test_revise_learning_record_appends_once_and_is_idempotent(
                 learning_record=LearningRecordSpec(title="Bad", body="## a heading"),
             )
         )
-    assert len(saves) == 2, "refused records write nothing"
+    assert len(saves) == 1, "refused records write nothing"
 
 
 # ---------------------------------------------------------------------------

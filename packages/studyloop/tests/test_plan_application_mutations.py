@@ -123,13 +123,15 @@ def test_set_milestone_done_is_idempotent(app: PlanApplication, monkeypatch) -> 
     assert first.summary.progress_pct == 50
     assert len(saves) == 1, "a milestone set is one write"
 
-    # Setting the same state again is a no-op on the document's meaning: the
-    # milestone is still done, nothing else moved, and a retry is always safe.
+    # Setting the same state again is a no-op: the milestone is still done,
+    # nothing else moved, and a retry is always safe (and, per review 2 F1,
+    # writes nothing — pinned separately below).
     again = app.apply(SetMilestone(plan_id="demo", index=0, done=True))
     assert again.milestones[0].done is True
     assert again.summary.milestone_done == 1
     assert [m.done for m in again.milestones] == [m.done for m in first.milestones]
     assert store.load_plan("demo").milestones[0].done is True
+    assert len(saves) == 1, "the retry did not write"
 
     # And it can be undone explicitly — set, not toggled.
     undone = app.apply(SetMilestone(plan_id="demo", index=0, done=False))
@@ -198,6 +200,92 @@ def test_set_milestone_on_unready_active_document_is_refused(
     assert caught.value.readiness.ready is False
     assert saves == []
     assert store.load_plan_text("hand-edited") == before
+
+
+def test_repeated_set_milestone_writes_nothing_and_keeps_bytes_and_updated(
+    app: PlanApplication, monkeypatch
+) -> None:
+    """Council review 2, GPT F1: idempotent means the *document* is the same,
+    not merely the milestone flag. A retried set must not re-save — a save
+    bumps ``updated``, which reorders ``browse`` and rewrites the file for
+    nothing. The clock is advanced past the timestamp's resolution so a save
+    could not hide behind same-second equality."""
+    _plan("demo")
+    saves = _count_saves(monkeypatch)
+    app.apply(SetMilestone(plan_id="demo", index=0, done=True))
+    assert len(saves) == 1
+    before = store.load_plan_text("demo")
+    monkeypatch.setattr(store, "utc_now_iso", lambda: "2099-01-01T00:00:00+00:00")
+
+    again = app.apply(SetMilestone(plan_id="demo", index=0, done=True))
+
+    assert len(saves) == 1, "an identical retry writes nothing"
+    assert store.load_plan_text("demo") == before
+    assert again.milestones[0].done is True
+    assert again.summary.updated != "2099-01-01T00:00:00+00:00"
+
+
+def test_noop_set_on_unready_active_plan_is_still_refused(
+    app: PlanApplication, isolated_plans_dir, monkeypatch
+) -> None:
+    """Policy before the no-op short-circuit: an active husk is refused even
+    when the requested state is the one it already has."""
+    store.plans_dir()
+    (isolated_plans_dir / "husk.md").write_text(
+        "---\nid: husk\ntitle: Husk\nstatus: active\n---\n\n"
+        "# Husk\n\n## Milestones\n\n- [x] **Step** `(concepts: x)`\n",
+        encoding="utf-8",
+    )
+    saves = _count_saves(monkeypatch)
+    with pytest.raises(PlanNotReady):
+        app.apply(SetMilestone(plan_id="husk", index=0, done=True))
+    assert saves == []
+
+
+def test_duplicate_learning_record_only_revision_writes_nothing(
+    app: PlanApplication, monkeypatch
+) -> None:
+    """Council review 2, GPT F1: the store's ``record_learning`` left the file's
+    bytes untouched on a duplicate; the CLI/MCP paths moved onto ``RevisePlan``
+    and must keep that guarantee, or "already recorded (no change)" is a lie
+    and a retried wind-down reorders the plan list through ``updated``."""
+    _plan("demo")
+    spec = LearningRecordSpec(title="Once", body="only")
+    saves = _count_saves(monkeypatch)
+    app.apply(RevisePlan(plan_id="demo", learning_record=spec))
+    assert len(saves) == 1
+    before = store.load_plan_text("demo")
+    monkeypatch.setattr(store, "utc_now_iso", lambda: "2099-01-01T00:00:00+00:00")
+
+    again = app.apply(RevisePlan(plan_id="demo", learning_record=spec))
+
+    assert len(saves) == 1, "a duplicate record alone is not a write"
+    assert store.load_plan_text("demo") == before
+    assert len(again.learning_records) == 1
+
+
+def test_duplicate_record_beside_a_field_change_saves_once(
+    app: PlanApplication, monkeypatch
+) -> None:
+    _plan("demo")
+    spec = LearningRecordSpec(title="Once", body="only")
+    app.apply(RevisePlan(plan_id="demo", learning_record=spec))
+    saves = _count_saves(monkeypatch)
+
+    detail = app.apply(RevisePlan(plan_id="demo", learning_record=spec, title="Renamed"))
+
+    assert len(saves) == 1
+    assert detail.summary.title == "Renamed"
+    assert len(detail.learning_records) == 1
+
+
+def test_empty_revision_is_still_a_touch(app: PlanApplication, monkeypatch) -> None:
+    """The Phase-1 contract stands: an empty PATCH body has always been a save
+    that bumps ``updated``. Only a duplicate-record-only revision is exempt."""
+    _plan("demo")
+    saves = _count_saves(monkeypatch)
+    app.apply(RevisePlan(plan_id="demo"))
+    assert len(saves) == 1
 
 
 def test_set_milestone_preserves_id_created_and_other_fields(app: PlanApplication) -> None:
