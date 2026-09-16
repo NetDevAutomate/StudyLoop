@@ -647,30 +647,68 @@ def test_learning_record_validation_is_the_stores_single_copy(
     assert app.inspect("demo").learning_records == ()
 
 
-def test_plan_detail_finds_the_learning_record_a_spec_would_match(app: PlanApplication) -> None:
-    """Adapters that report ``created`` need to know whether a record already
-    existed before they applied the revision; the view answers with the same
-    stripped title-and-body identity the store's idempotency rule uses."""
+def test_record_created_reflects_append_outcome_not_prior_inspection(
+    app: PlanApplication,
+) -> None:
+    """Council review 2, GPT Astra F4 / Grok 🔵: the adapters inferred
+    ``created`` by inspecting before the revision and matching after it — two
+    reads, a window for another writer, and a second copy of the identity
+    rule. The mutation itself knows what it did: the store's
+    ``append_learning_record`` returns ``(record, created)`` and the seam
+    hands that back on the ``PlanDetail`` it already returns."""
     _plan("demo")
     spec = LearningRecordSpec(title="  Window frames default to RANGE ", body=" Not ROWS. ")
 
-    before = app.inspect("demo")
-    assert before.learning_record_matching(spec) is None
-
-    after = app.apply(RevisePlan(plan_id="demo", learning_record=spec))
-    found = after.learning_record_matching(spec)
-    assert found is not None
-    assert (found.number, found.title, found.body) == (
+    first = app.apply(RevisePlan(plan_id="demo", learning_record=spec))
+    outcome = first.learning_record_outcome  # pyright: ignore[reportAttributeAccessIssue]
+    assert outcome is not None
+    assert outcome.created is True
+    assert (outcome.record.number, outcome.record.title, outcome.record.body) == (
         1,
         "Window frames default to RANGE",
         "Not ROWS.",
     )
-    assert (
-        after.learning_record_matching(
-            LearningRecordSpec(title="Window frames default to RANGE", body="Different body")
-        )
-        is None
+    assert outcome.record == first.learning_records[0]
+
+    again = app.apply(RevisePlan(plan_id="demo", learning_record=spec))
+    outcome = again.learning_record_outcome  # pyright: ignore[reportAttributeAccessIssue]
+    assert outcome is not None
+    assert outcome.created is False
+    assert outcome.record.number == 1
+
+    plain = app.apply(RevisePlan(plan_id="demo", notes="no record here"))
+    assert plain.learning_record_outcome is None  # pyright: ignore[reportAttributeAccessIssue]
+    assert app.inspect("demo").learning_record_outcome is None  # pyright: ignore[reportAttributeAccessIssue]
+
+    # Operation-local metadata, not part of the GET body shape (D-3).
+    assert "learning_record_outcome" not in first.to_json_dict()
+    assert first.to_json_dict().keys() == plain.to_json_dict().keys()
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        outcome.created = True  # type: ignore[misc]
+
+
+def test_duplicate_identity_is_decided_by_one_helper(app: PlanApplication, monkeypatch) -> None:
+    """``created`` is the store's verdict, relayed — not a second title/body
+    comparison anywhere in the seam or the adapters. Make the store's helper
+    call a brand-new record a duplicate and the outcome says so."""
+    _plan("demo")
+    from studyloop.planning.models import LearningRecord
+
+    def store_says_duplicate(plan, title, *, body="", status="active"):
+        existing = LearningRecord(number=7, title=title.strip(), body=body.strip(), status=status)
+        return existing, False
+
+    monkeypatch.setattr(store, "append_learning_record", store_says_duplicate)
+
+    detail = app.apply(
+        RevisePlan(plan_id="demo", learning_record=LearningRecordSpec(title="Brand new"))
     )
+
+    outcome = detail.learning_record_outcome  # pyright: ignore[reportAttributeAccessIssue]
+    assert outcome is not None
+    assert outcome.created is False
+    assert outcome.record.number == 7
+    assert not hasattr(detail, "learning_record_matching"), "the second identity copy is gone"
 
 
 # ---------------------------------------------------------------------------

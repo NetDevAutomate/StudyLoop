@@ -344,6 +344,41 @@ def test_record_is_revise_plan_with_a_learning_record(runner, monkeypatch) -> No
     assert len(store.load_plan("glue-etl").learning_records) == 1
 
 
+def test_record_created_is_the_mutations_outcome_not_a_prior_read(runner, monkeypatch) -> None:
+    """Council review 2, GPT Astra F4: ``created`` was inferred from an
+    ``inspect`` taken *before* the revision. Another writer landing the same
+    record in that window made the no-op report ``created: true``. Model the
+    writer at the seam boundary — the record is filed just before the
+    mutation runs — and the command must say false, from the mutation's own
+    outcome, with no preliminary read of its own."""
+    runner.invoke(cli, ["plan", "new", "--title", "Glue ETL", *READY])
+    real_apply = PlanApplication.apply
+    inspections: list[str] = []
+    real_inspect = PlanApplication.inspect
+
+    def racing_apply(self, intent):
+        store.record_learning("glue-etl", "Insight", body="prose")  # the other writer
+        return real_apply(self, intent)
+
+    def spying_inspect(self, plan_id, **kwargs):
+        inspections.append(plan_id)
+        return real_inspect(self, plan_id, **kwargs)
+
+    monkeypatch.setattr(PlanApplication, "apply", racing_apply)
+    monkeypatch.setattr(PlanApplication, "inspect", spying_inspect)
+
+    result = runner.invoke(
+        cli, ["plan", "record", "glue-etl", "--title", "Insight", "--body", "prose", "--json"]
+    )
+
+    assert result.exit_code == 0, result.output
+    payload = json.loads(result.output)
+    assert payload["created"] is False, "the record existed when the mutation ran"
+    assert payload["number"] == 1
+    assert inspections == [], "one seam mutation decides persistence and `created`"
+    assert len(store.load_plan("glue-etl").learning_records) == 1
+
+
 def test_record_empty_title_is_the_seams_invalid_value(runner) -> None:
     runner.invoke(cli, ["plan", "new", "--title", "Glue ETL", *READY])
     result = runner.invoke(cli, ["plan", "record", "glue-etl", "--title", "   "])

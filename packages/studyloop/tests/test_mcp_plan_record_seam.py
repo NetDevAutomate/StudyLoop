@@ -34,6 +34,13 @@ def isolated_plans_dir(tmp_path, monkeypatch):
     monkeypatch.setenv(store.PLANS_DIR_ENV, str(tmp_path / "study-plans"))
 
 
+@pytest.fixture(autouse=True)
+def isolated_checkpoint_db(tmp_path, monkeypatch):
+    """``store.create_plan`` refreshes the derived index in the sessions
+    database; keep that off any developer database (council review 2, F10)."""
+    monkeypatch.setenv("STUDYLOOP_DB", str(tmp_path / "sessions.db"))
+
+
 def _tool():
     from studyloop.mcp.server import mcp
 
@@ -98,6 +105,36 @@ def test_retry_reports_created_false_through_the_seam(monkeypatch) -> None:
     assert len(seen) == 1, "a retry is still one seam call, not a store call"
     assert payload["created"] is False
     assert payload["number"] == 1
+    assert len(store.load_plan("decorators").learning_records) == 1
+
+
+def test_created_is_the_mutations_outcome_not_a_prior_read(monkeypatch) -> None:
+    """Council review 2, GPT Astra F4: the tool inspected, then applied, and
+    reported ``created`` from the first read. A writer landing the same record
+    between the two made a no-op report ``created: true``. With the writer
+    modelled at the seam boundary the tool must say false — from the
+    mutation's own outcome — and make no preliminary read."""
+    _seed()
+    real_apply = PlanApplication.apply
+    inspections: list[str] = []
+    real_inspect = PlanApplication.inspect
+
+    def racing_apply(self, intent):
+        store.record_learning("decorators", "Again", body="same")  # the other writer
+        return real_apply(self, intent)
+
+    def spying_inspect(self, plan_id, **kwargs):
+        inspections.append(plan_id)
+        return real_inspect(self, plan_id, **kwargs)
+
+    monkeypatch.setattr(PlanApplication, "apply", racing_apply)
+    monkeypatch.setattr(PlanApplication, "inspect", spying_inspect)
+
+    payload = _tool()("decorators", "Again", body="same")
+
+    assert payload["created"] is False, "the record existed when the mutation ran"
+    assert payload["number"] == 1
+    assert inspections == [], "one seam mutation decides persistence and `created`"
     assert len(store.load_plan("decorators").learning_records) == 1
 
 
