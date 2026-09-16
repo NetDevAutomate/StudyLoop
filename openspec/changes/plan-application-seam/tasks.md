@@ -204,7 +204,13 @@ Branch: `fix/plan-integration-bugs` (RED at `3a4f6b01`). §5 stream: `feat/lexic
       consumed)" and a new requirement "The now engine is plan-aware with tested ranking rules" carries nine
       scenarios. `docs/study-plans.md`: the now/Today "does not do yet" bullet removed; the learner-facing paragraph
       on plan-aware guidance is T6.1's.
-- [ ] **T3.5** (last, after #11 and #12 have landed in `tools.py`) `get_next_action(..., interleave="off")`.
+- [x] **T3.5** (RED `4f7a5e60` 9 failed / 1 passed → GREEN `c30330a0`; parity-test follow-through `65bde13c`)
+      `get_next_action(..., interleave="off")`: a plain string validated against `get_args(InterleaveMode)` with the
+      existing `ToolError` wording, cast and forwarded to `build_now_plan`; `@consistent_read` kept; only that function
+      moved, inventory still 29. Tests in the new `tests/test_mcp_next_action.py` (10): schema default, adaptive
+      forwarded once with `INTERLEAVE_RATIOS[energy]`, invalid values refused with zero engine calls, default == the
+      no-plan golden. Landed by council review 3 ahead of #12 (D-8 order note in the arbitration: #12 rebases onto it
+      and must not touch `get_next_action`).
 
 ### #11 six MCP tools · owner: agent C · files: `mcp/tools.py` (append only), `tests/test_mcp_plan_tools.py`, mcp-server spec
 - [x] **T3.6** (`484db041`, RED: 58 failed, every one `KeyError: Tool '<name>' not registered` against the
@@ -273,7 +279,19 @@ Branch: `fix/plan-integration-bugs` (RED at `3a4f6b01`). §5 stream: `feat/lexic
       gains `purpose`. Delta specs: `live-session-orchestration` ("Session purpose"), `agent-adapters` ("Persona
       resolution by purpose"); `openspec validate` valid, `--specs --all` 25 passed. Gates: `-k "session or launcher or
       purpose or persona"` 651 passed; `just lint` clean; `just typecheck` 0 errors.
-- [ ] ⚖ **Council review 3** across the three streams before Phase 4.
+- [x] ⚖ **Council review 3** (code seats `openai.gpt-6-astra` ACCEPT-WITH-CORRECTIONS, `grok-4.6`
+      ACCEPT-WITH-CORRECTIONS, `qwen3-coder` ACCEPT; brief `03ffd5d1`, receipts `council/review3/`) — arbitration
+      `docs/architecture/plan-integration/council/review-3-arbitration-2026-09-16.md`, **GATE: ACCEPT**. Every 🔴/🟡
+      reproduced by probe before acceptance; one RED + one GREEN commit per finding group: F1 refs on deferred/unready
+      plans carry `None` (`05d5d73d`/`64dc09f7`); F4 Rich escape in `studyloop now` — reproduced as a MarkupError crash
+      (`2eae3261`/`aafc3eb1`) and one-lined planning-brief values (`68ef8831`/`1a32492d`); F5 `CreatePlan.answers`
+      snapshot (`0adc65e3`/`3880e302`); F7 brief-failure test on both transports (`ecbeba41`); F3 seven rule pins + F9
+      logged guidance failure (`1dd97f59`/`5ba6be0d`); F8 `recap today` panel prints `plan_context`
+      (`7302b883`/`e3859443`); F10 Today card shows warnings (`ac34c63e`/`014d69e3`); F6/F11/F12/F13 docs and spec
+      corrections incl. inventory 23→32 and T3.4 re-opened (`c27a34d5`). Rejected: GPT F2 urgency-class redesign
+      (pinned as calibration instead), qwen's four 🔴 (misreadings), 503 for a brief failure. Gate at `65bde13c`: full
+      suite 4890 passed / 4 skipped exit 0; JS 115; `just lint`, `just typecheck` 0; `openspec validate` valid
+      (`--specs --all` 25); protected files `git diff 3a4f6b01` / `0a20a796` → 0 lines; golden sha unchanged; guard 30.
 
 ## Phase 4 — parallel: #12 ∥ #13b
 

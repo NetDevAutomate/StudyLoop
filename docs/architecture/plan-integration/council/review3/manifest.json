@@ -1,0 +1,47 @@
+{
+  "run_at": "2026-09-16T03:34:33+00:00",
+  "brief": "docs/architecture/plan-integration/council/brief-review3-2026-09-16.md",
+  "brief_sha256": "6726455f4fca836aa99a1ea75a3c6d852718af777b84b4266480a9f4374b2bc5",
+  "system_sha256": "424aba7a4b2b6f33bd57da2076857a206e3683bc8af9aca5d3007f3314c3099c",
+  "seats": [
+    {
+      "model": "openai.gpt-6-astra",
+      "ok": true,
+      "reasoning_chars": 0,
+      "finish_reason": "stop",
+      "elapsed_s": 154.4,
+      "usage": {
+        "prompt_tokens": 51962,
+        "completion_tokens": 6648,
+        "total_tokens": 58610
+      },
+      "error": null
+    },
+    {
+      "model": "grok-4.6",
+      "ok": true,
+      "reasoning_chars": 0,
+      "finish_reason": "stop",
+      "elapsed_s": 235.5,
+      "usage": {
+        "prompt_tokens": 56326,
+        "completion_tokens": 21537,
+        "total_tokens": 77863
+      },
+      "error": null
+    },
+    {
+      "model": "qwen3-coder",
+      "ok": true,
+      "reasoning_chars": 0,
+      "finish_reason": "stop",
+      "elapsed_s": 38.0,
+      "usage": {
+        "prompt_tokens": 52831,
+        "completion_tokens": 2508,
+        "total_tokens": 55339
+      },
+      "error": null
+    }
+  ]
+}
