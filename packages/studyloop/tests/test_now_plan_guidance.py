@@ -371,3 +371,149 @@ def test_additive_keys_present_only_when_active_plans_exist(monkeypatch) -> None
     assert with_plan["active_plans"][0]["plan_id"] == "sql-windows"
     for absent in ("energy_deferred", "completion_actions", "warnings"):
         assert absent not in with_plan
+
+
+# ---------------------------------------------------------------------------
+# Renderers show plan relevance and energy deferral — and never re-rank
+# ---------------------------------------------------------------------------
+
+
+def _deferral_world(monkeypatch) -> None:
+    """One active plan whose next milestone is beyond low energy, plus plan-related repair."""
+    _plan(
+        "sql-windows",
+        title="SQL Windows",
+        energy_floor=5,
+        milestones=[
+            Milestone(title="Window basics", done=True, concepts=["window function"]),
+            Milestone(title="Frames", concepts=["window frame"]),
+        ],
+    )
+    _patch_collectors(
+        monkeypatch,
+        _candidate("window function", topic="sql", action_type="hands-on", score=82),
+    )
+
+
+def test_cli_now_renders_plan_relevance_and_energy_deferral(monkeypatch) -> None:
+    from click.testing import CliRunner
+
+    from studyloop.cli import cli
+
+    _deferral_world(monkeypatch)
+
+    rich = CliRunner().invoke(cli, ["now", "--energy", "low"])
+    as_json = CliRunner().invoke(cli, ["now", "--energy", "low", "--json"])
+
+    assert rich.exit_code == 0, rich.output
+    assert "window function" in rich.output  # the primary is unchanged
+    assert "SQL Windows" in rich.output  # …and its plan relevance is shown
+    assert "Deferred" in rich.output
+    assert "Frames" in rich.output
+    assert as_json.exit_code == 0, as_json.output
+    payload = json.loads(as_json.output)
+    assert payload["primary"]["concept"] == "window function"
+    assert payload["primary"]["plan_refs"] == [{"plan_id": "sql-windows", "milestone_index": None}]
+    assert payload["energy_deferred"][0]["milestone_index"] == 1
+    assert payload["active_plans"][0]["title"] == "SQL Windows"
+
+
+def test_cli_now_without_plans_prints_no_plan_lines(monkeypatch) -> None:
+    from click.testing import CliRunner
+
+    from studyloop.cli import cli
+
+    _patch_collectors(monkeypatch, _candidate("decorators", topic="python", score=100))
+
+    rich = CliRunner().invoke(cli, ["now"])
+
+    assert rich.exit_code == 0, rich.output
+    assert "decorators" in rich.output
+    for absent in ("Plan", "Deferred", "milestone"):
+        assert absent not in rich.output
+
+
+def test_api_now_carries_plan_guidance_end_to_end(monkeypatch) -> None:
+    pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient  # pyright: ignore[reportMissingImports]
+
+    from studyloop.web.app import create_app
+
+    _deferral_world(monkeypatch)
+    client = TestClient(create_app(study_dirs=[]))
+
+    resp = client.get("/api/now?energy=low")
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["primary"]["concept"] == "window function"
+    assert data["primary"]["plan_refs"] == [{"plan_id": "sql-windows", "milestone_index": None}]
+    assert [item["plan_id"] for item in data["active_plans"]] == ["sql-windows"]
+    assert data["energy_deferred"][0]["title"] == "Frames"
+    assert "completion_actions" not in data
+    assert "warnings" not in data
+
+
+def test_api_now_without_plans_matches_golden_shape(monkeypatch) -> None:
+    pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient  # pyright: ignore[reportMissingImports]
+
+    from studyloop.web.app import create_app
+
+    client = TestClient(create_app(study_dirs=[]))
+
+    resp = client.get("/api/now")
+
+    assert resp.status_code == 200
+    assert resp.json() == json.loads(GOLDEN.read_text(encoding="utf-8"))
+
+
+def test_recap_shows_plan_context_without_reranking(monkeypatch) -> None:
+    from studyloop.learning import recap
+
+    _plan(
+        "sql-windows",
+        title="SQL Windows",
+        milestones=[Milestone(title="Frames", concepts=["window frame"])],
+    )
+    _patch_collectors(monkeypatch)
+
+    result = recap.build_daily_recap()
+
+    # The next action is still the engine's primary — the synthesised milestone.
+    assert result.next_action == 'studyloop progress "window frame" -t "sql" -c learning'
+    assert "SQL Windows" in result.plan_context  # pyright: ignore[reportAttributeAccessIssue]  # RED
+    assert "Frames" in result.plan_context  # pyright: ignore[reportAttributeAccessIssue]  # RED
+    assert result.to_json_dict()["plan_context"] == result.plan_context  # pyright: ignore[reportAttributeAccessIssue]  # RED
+    assert "Plan:" in result.speakable_text()
+
+
+def test_recap_without_plans_has_no_plan_context(monkeypatch) -> None:
+    from studyloop.learning import recap
+
+    _patch_collectors(monkeypatch)
+
+    result = recap.build_daily_recap()
+
+    assert result.plan_context == ""  # pyright: ignore[reportAttributeAccessIssue]  # RED
+    assert "plan_context" not in result.to_json_dict()
+    assert "Plan:" not in result.speakable_text()
+    assert result.speakable_text().endswith(f"Next action: {result.next_action}.")
+
+
+def test_recap_names_energy_deferral(monkeypatch) -> None:
+    from studyloop.learning import recap
+
+    _plan(
+        "sql-windows",
+        title="SQL Windows",
+        energy_floor=8,  # beyond the recap's default medium energy (6/10)
+        milestones=[Milestone(title="Frames", concepts=["window frame"])],
+    )
+    _patch_collectors(monkeypatch, _candidate("decorators", topic="python", score=100))
+
+    result = recap.build_daily_recap()
+
+    assert result.next_action == 'studyloop progress "decorators" -t "python" -c learning'
+    assert "Frames" in result.plan_context  # pyright: ignore[reportAttributeAccessIssue]  # RED
+    assert "energy" in result.plan_context  # pyright: ignore[reportAttributeAccessIssue]  # RED
