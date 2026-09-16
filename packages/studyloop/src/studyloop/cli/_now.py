@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 
 import click
+from rich.markup import escape
 from rich.panel import Panel
 from rich.table import Table
 
@@ -38,18 +39,22 @@ def _plan_line(rec, plans: dict) -> str:
 
 
 def _render_plan(plan) -> None:
+    # Every learner-authored string — concepts, reasons, plan titles, milestone
+    # titles, warnings — is escaped before it meets Rich markup: a plan titled
+    # "SQL [/bold] Windows" is text to show, not a closing tag to parse
+    # (council review 3, F4: it used to raise MarkupError and exit 1).
     primary = plan.primary
     plans = _active_plans(plan)
     plan_line = _plan_line(primary, plans)
     body = (
-        f"[bold]{primary.concept}[/bold]\n"
-        f"Topic: [cyan]{primary.topic}[/cyan]\n"
-        f"Action: [yellow]{primary.action_type}[/yellow] for about "
+        f"[bold]{escape(primary.concept)}[/bold]\n"
+        f"Topic: [cyan]{escape(primary.topic)}[/cyan]\n"
+        f"Action: [yellow]{escape(primary.action_type)}[/yellow] for about "
         f"{primary.estimated_minutes} min\n"
-        f"Why: {primary.reason}\n"
-        f"Source: [dim]{primary.source}[/dim]\n"
-        + (f"Plan: [magenta]{plan_line}[/magenta]\n" if plan_line else "")
-        + f"\n[bold]Record evidence:[/bold]\n{primary.evidence_command}"
+        f"Why: {escape(primary.reason)}\n"
+        f"Source: [dim]{escape(primary.source)}[/dim]\n"
+        + (f"Plan: [magenta]{escape(plan_line)}[/magenta]\n" if plan_line else "")
+        + f"\n[bold]Record evidence:[/bold]\n{escape(primary.evidence_command)}"
     )
     console.print(Panel(body, title="Study Now", border_style="cyan"))
 
@@ -59,15 +64,15 @@ def _render_plan(plan) -> None:
 
     for deferred in getattr(plan, "energy_deferred", ()):
         console.print(
-            f"[yellow]Deferred for energy:[/yellow] {deferred.plan_title} — "
-            f"milestone {deferred.milestone_index + 1} “{deferred.title}” needs "
+            f"[yellow]Deferred for energy:[/yellow] {escape(deferred.plan_title)} — "
+            f"milestone {deferred.milestone_index + 1} “{escape(deferred.title)}” needs "
             f"energy {deferred.energy_floor}/10; {plan.energy} energy carries "
             f"{deferred.energy_capability}/10. Plan-related review and repair stay available."
         )
     for completion in getattr(plan, "completion_actions", ()):
-        console.print(f"[green]Plan complete:[/green] {completion.action}")
+        console.print(f"[green]Plan complete:[/green] {escape(completion.action)}")
     for warning in getattr(plan, "warnings", ()):
-        console.print(f"[dim]Plan warning: {warning}[/dim]")
+        console.print(f"[dim]Plan warning: {escape(warning)}[/dim]")
 
     if plan.alternates:
         table = Table(title="Alternates")
@@ -78,9 +83,14 @@ def _render_plan(plan) -> None:
         if plans:
             table.add_column("Plan", style="magenta")
         for item in plan.alternates:
-            row = [item.concept, item.topic, item.action_type, item.reason]
+            row = [
+                escape(item.concept),
+                escape(item.topic),
+                escape(item.action_type),
+                escape(item.reason),
+            ]
             if plans:
-                row.append(_plan_line(item, plans))
+                row.append(escape(_plan_line(item, plans)))
             table.add_row(*row)
         console.print(table)
 
