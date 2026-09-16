@@ -1096,7 +1096,7 @@
                cannot carry, and plans whose every milestone is checked.
                Not a `.today-card` on purpose: the browser smoke test addresses
                the single action card by that class. -->
-          <div x-show="!loading && plan && (deferredNotes().length > 0 || completionNotes().length > 0)"
+          <div x-show="!loading && plan && (deferredNotes().length > 0 || completionNotes().length > 0 || warningNotes().length > 0)"
                class="today-plan-notes">
             <p class="today-parked-label">Your plans</p>
             <template x-for="(note, i) in deferredNotes()" :key="'d' + i">
@@ -1104,6 +1104,9 @@
             </template>
             <template x-for="(note, i) in completionNotes()" :key="'c' + i">
               <p class="today-meta">Plan complete: <span x-text="note"></span></p>
+            </template>
+            <template x-for="(note, i) in warningNotes()" :key="'w' + i">
+              <p class="today-meta">Plan warning: <span x-text="note"></span></p>
             </template>
           </div>
 

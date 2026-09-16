@@ -167,11 +167,19 @@ export function todayPanel() {
       return actions.map((a) => a.action);
     },
 
+    /* The engine's warnings, verbatim: an active plan that is not ready (its
+       blockers, "pause or repair"), a document that could not be read. Data
+       the CLI and the JSON already show; the card shows it too. */
+    warningNotes() {
+      return ((this.plan && this.plan.warnings) || []).map((w) => String(w));
+    },
+
     get hasPlanContext() {
       return (
         this.planLabel(this.plan && this.plan.primary) !== ''
         || this.deferredNotes().length > 0
         || this.completionNotes().length > 0
+        || this.warningNotes().length > 0
       );
     },
 
