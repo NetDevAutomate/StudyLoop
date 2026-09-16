@@ -279,12 +279,16 @@ delete one — those are the Web API and the MCP tools — and the mission chang
    `test_eval_arms.py::TestPlannerIsolation::test_planner_patch_restored_after_tool_error`, order-dependent
    under the root config (passes alone and in the package-local run; owner of `agent-session-tools`) — or
    formally accept the package-scoped verification boundary the receipt uses.
-7. **`feat/clean-start`** — 7 commits not on origin; its tip equals the local tag
-   `archive/feat-clean-start-2026-09-15` (also not on origin). Push the tag and delete, or discard.
+7. **`feat/clean-start` — deleted locally at the end of Phase 6** (owner's steering: clean up leftover
+   branches). Nothing was lost: its tip `daf46c81` (7 commits not on origin) is exactly the commit the
+   local annotated tag `archive/feat-clean-start-2026-09-15` points at, so `-D` destroyed no work;
+   restore with `git branch feat/clean-start archive/feat-clean-start-2026-09-15`. Still to decide: push
+   the tag, or discard it.
 8. **`feat/harness-tier-promotion`** — 10 unmerged commits (issue #21, 56 files, last commit 02:08 today),
-   not on origin, checked out clean in the worktree `../studyloop-wt/harness-tier`. Merge, push, or
-   discard: `git worktree remove ../studyloop-wt/harness-tier && git branch -D feat/harness-tier-promotion`.
-   Not touched unattended: deleting it destroys work.
+   not on origin, checked out clean in the worktree `../studyloop-wt/harness-tier`. **Not touched:** no
+   tag holds its tip, so removing the worktree and the branch would destroy work — the one cleanup the
+   git rules keep ask-first. Merge, push, or discard:
+   `git worktree remove ../studyloop-wt/harness-tier && git branch -D feat/harness-tier-promotion`.
 9. **`or_first_filtered`** (review 1, §5 stream) — a fresh registration with a new gold set, or close as
    "exploratory, not pursued".
 10. **Repository ruleset for branch deletion** — the "Default" ruleset blocks deletion on all branches,
