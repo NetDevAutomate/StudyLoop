@@ -486,6 +486,7 @@ on the `testacc` recipe above.
 | `tests/acceptance/uat/rubric.py` | The versioned, hash-pinned sign-off rubric loader (`data/rubric_v1.md`, markdown+YAML frontmatter): criteria, scale anchors, cited evidence per criterion, and an explicit `reject_if` list. |
 | `tests/acceptance/uat/strict_runner.py` | The strict sign-off semantics (council D-13): zero cells selected is a FAIL, any REQUIRED cell recorded as skipped (or simply missing) is a FAIL — a sign-off can never pass through skips. |
 | `tests/acceptance/uat/test_journey_smoke.py` | A CI-safe mechanics smoke test: the hermetic server (E-B2) + a scripted turn sequence + the bundle writer, composed end to end, with the mentor played by the repo's existing ACP stub (`tests/_stub_acp_agent.py`) — no real harness binary, no LLM, no network. |
+| `tests/acceptance/uat/test_plan_journeys.py` | The three study-plan doors as required sign-off cells under the strict runner, against one hermetic world shared by every process: `architect_launch` (the real Plans view's **Plan with architect** in a real browser → one planning-purpose start → the labelled console, the label surviving a reload, the brief's structure in the persona the stub agent received, no plan created), `mcp_lifecycle` (the real `studyloop-mcp` server over stdio, the nine tools listed, create → activate → record a checkpoint → set a milestone → history, then the same plan read back through the web server) and `now_with_active_plan` (the Today card's "Advances plan" line and `/api/now`'s `plan_refs` naming the plan). Writes the full bundle to the durable root plus a redacted summary; grades no rubric (a stub agent holds no conversation) and says so in its arbitration note. |
 
 ### Hash-pinning, the same shape twice
 
@@ -550,7 +551,11 @@ round can land test-first. Named here, not silently absent:
   plus embedding/hybrid-retrieval checks and fault journeys) are not
   implemented. `test_journey_smoke.py` proves the MECHANICS three
   pieces above compose; it is not a sign-off run, grades no rubric, and
-  uses a scripted stub mentor rather than a real coding harness.
+  uses a scripted stub mentor rather than a real coding harness. The
+  study-plan journeys in `test_plan_journeys.py` are a real strict
+  sign-off over three cells, but with the same stub agent: they prove the
+  product surfaces (browser, stdio MCP, the now engine) and the shared
+  store, not an architect's interview.
 - **Council grading** (each seat receiving a bundle summary + rubric and
   returning cited per-criterion scores, hash-pinned seat identities, an
   `ARBITRATION` file) is not implemented — the rubric loader and
