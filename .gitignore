@@ -522,6 +522,16 @@ docs/architecture/session-memory/*
 # Receipts (adapter-scope decisions, measurement records) are small Markdown/JSON
 # and must be tracked; same negation as feat/knowledge-proof so the branches merge.
 !docs/architecture/session-memory/receipts/
+# Un-ignored 2026-09-15 — plan-integration programme record (issues #7–#15): council
+# briefs, seat receipts, arbitration, verification receipts and the archify spec.
+# Same shape as session-memory above: small Markdown/JSON only; any delivered
+# HTML stays ignored and regenerates from the spec via `archify deliver`.
+!docs/architecture/plan-integration/
+docs/architecture/plan-integration/*
+!docs/architecture/plan-integration/council/
+!docs/architecture/plan-integration/receipts/
+!docs/architecture/plan-integration/*.architecture.json
+!docs/architecture/plan-integration/*.md
 
 # Demo recordings (large, local-only)
 demos/

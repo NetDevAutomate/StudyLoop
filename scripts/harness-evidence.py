@@ -114,11 +114,21 @@ _GENERIC_SECRET_PAT = re.compile(
 )
 
 
+_PERSONA_HASH_PAT = re.compile(r'("persona_hash": ")([0-9a-f]{6})[0-9a-f]{10}(")')
+
+
 def redact(text: str) -> str:
-    """Replace every known secret value (and common token shapes) in ``text``."""
+    """Replace every known secret value (and common token shapes) in ``text``.
+
+    Also shortens the 16-hex ``persona_hash`` to a 6-char prefix: it is a
+    sha256 prefix of the persona text, not a secret, but the repo's
+    detect-secrets hook (HexHighEntropyString) flags it, and a receipt should
+    be committable without anyone whitelisting anything.
+    """
     for value, name in _SECRETS:
         if value in text:
             text = text.replace(value, f"<redacted:{name}>")
+    text = _PERSONA_HASH_PAT.sub(r"\1\2…\3", text)
     return _GENERIC_SECRET_PAT.sub("<redacted:token-shaped>", text)
 
 
@@ -732,7 +742,14 @@ def item24_live_lane(
                 (dest / f.name).write_text(
                     redact(f.read_text(encoding="utf-8", errors="replace")), encoding="utf-8"
                 )
-        bundles.append({"run_dir": str(dest), "manifest": json.loads(manifest.read_text())})
+        bundles.append(
+            {
+                # Relative to the receipts dir: the absolute path is a long
+                # base64-charset string the detect-secrets hook misreads.
+                "run_dir": str(dest.relative_to(receipts_dir)),
+                "manifest": json.loads(manifest.read_text()),
+            }
+        )
     shutil.rmtree(basetemp, ignore_errors=True)
     summary = ""
     for line in reversed(rec.stdout.splitlines()):
@@ -746,7 +763,7 @@ def item24_live_lane(
     else:
         verdict = "FAIL"
     outcomes = [b["manifest"].get("outcome") for b in bundles]
-    reply_audit = [_audit_turns(Path(b["run_dir"]) / "turns.json") for b in bundles]
+    reply_audit = [_audit_turns(receipts_dir / b["run_dir"] / "turns.json") for b in bundles]
     decisive = (
         f"pytest exit {rec.exit_code}: {summary or '(no summary line)'}; "
         f"bundle outcome(s)={outcomes}; turn audit={reply_audit}"

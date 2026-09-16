@@ -1,0 +1,10 @@
+{
+  "run_id": "grok-1789517990-43ef4f70",
+  "harness": "grok",
+  "actor": "scripted",
+  "outcome": "errored",
+  "turn_count": 2,
+  "platform": "macOS-27.0-arm64-arm-64bit",
+  "auth_mode": "presence-only",
+  "harness_version": null
+}

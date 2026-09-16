@@ -1,0 +1,283 @@
+{
+  "meta": {
+    "harness": "grok",
+    "recorded_at": "2026-09-16T00:18:44+00:00",
+    "platform": "macOS-27.0-arm64-arm-64bit",
+    "repo_sha": "fe7534d6",
+    "dirty": true,
+    "scratch_root": "/tmp/sl-ev-grok-bm3c5sqs",
+    "binary_resolved": "/Users/ataylor/.local/bin/grok",
+    "binary_version": "grok 1.0.30 (04b7ffed98c6)",
+    "path_prepend": [
+      "/Users/ataylor/.local/share/mise/installs/tmux/latest",
+      "/opt/homebrew/bin"
+    ],
+    "grok_home_pinned": "/tmp/sl-ev-grok-bm3c5sqs/home/.grok",
+    "real_auth_for_live_items": false,
+    "swept": true
+  },
+  "items": [
+    {
+      "item": "1-install-doctor",
+      "verdict": "PASS",
+      "decisive": "install exit 0; 38 entries now under scratch harness dirs",
+      "commands": [
+        {
+          "argv": [
+            "/Users/ataylor/code/personal/tools/studyloop-wt/harness-tier/.venv/bin/python3",
+            "-m",
+            "studyloop.cli",
+            "install",
+            "agents",
+            "--repo-root",
+            "/Users/ataylor/code/personal/tools/studyloop-wt/harness-tier",
+            "--tool",
+            "grok"
+          ],
+          "exit_code": 0,
+          "stdout": "Updated agent definitions.\n  shared: 3\n  grok: 4\n",
+          "stderr": "",
+          "seconds": 0.36,
+          "note": ""
+        },
+        {
+          "argv": [
+            "/Users/ataylor/code/personal/tools/studyloop-wt/harness-tier/.venv/bin/python3",
+            "-m",
+            "studyloop.cli",
+            "doctor",
+            "--json"
+          ],
+          "exit_code": 1,
+          "stdout": "<58 checks; parsed>",
+          "stderr": "",
+          "seconds": 1.28,
+          "note": ""
+        }
+      ],
+      "details": {
+        "scratch_harness_dirs_after_install": {
+          ".grok": [
+            "F active_sessions.json",
+            "F active_sessions.lock",
+            "F config.toml",
+            "D docs",
+            "D docs/user-guide",
+            "F docs/user-guide/01-getting-started.md",
+            "F docs/user-guide/02-authentication.md",
+            "F docs/user-guide/03-keyboard-shortcuts.md",
+            "F docs/user-guide/04-slash-commands.md",
+            "F docs/user-guide/05-configuration.md",
+            "F docs/user-guide/06-theming.md",
+            "F docs/user-guide/07-mcp-servers.md",
+            "F docs/user-guide/08-skills.md",
+            "F docs/user-guide/09-plugins.md",
+            "F docs/user-guide/10-hooks.md",
+            "F docs/user-guide/11-custom-models.md",
+            "F docs/user-guide/12-project-rules.md",
+            "F docs/user-guide/13-memory.md",
+            "F docs/user-guide/14-headless-mode.md",
+            "F docs/user-guide/15-agent-mode.md",
+            "F docs/user-guide/16-subagents.md",
+            "F docs/user-guide/17-sessions.md",
+            "F docs/user-guide/18-sandbox.md",
+            "F docs/user-guide/19-plan-mode.md",
+            "F docs/user-guide/20-background-tasks.md",
+            "F docs/user-guide/21-terminal-support.md",
+            "F docs/user-guide/22-permissions-and-safety.md",
+            "F docs/user-guide/23-dashboard.md",
+            "F docs/user-guide/24-monitoring-usage.md",
+            "F docs/user-guide/25-status-line.md",
+            "F docs/user-guide/26-config-reference.md",
+            "F docs/user-guide/27-grok-clone.md",
+            "D hooks",
+            "F hooks/studyloop.json",
+            "D logs",
+            "F logs/unified.jsonl",
+            "D rules",
+            "F rules/session-db.md"
+          ]
+        },
+        "doctor_parsed": true,
+        "doctor_status_totals": {
+          "pass": 31,
+          "warn": 21,
+          "info": 5,
+          "fail": 1
+        },
+        "doctor_checks_naming_harness": [
+          {
+            "category": "agents",
+            "name": "agent_grok",
+            "status": "info",
+            "message": "No manifest entry for grok",
+            "fix_hint": "",
+            "fix_auto": false
+          },
+          {
+            "category": "agents",
+            "name": "smoke_grok",
+            "status": "pass",
+            "message": "grok responds (grok 1.0.30 (04b7ffed98c6))",
+            "fix_hint": "",
+            "fix_auto": false
+          },
+          {
+            "category": "agents",
+            "name": "mcp_grok",
+            "status": "pass",
+            "message": "grok has session-db and studyloop MCP servers registered via /tmp/sl-ev-grok-bm3c5sqs/home/.grok/config.toml",
+            "fix_hint": "",
+            "fix_auto": false
+          },
+          {
+            "category": "harness",
+            "name": "session_memory_skill_grok",
+            "status": "pass",
+            "message": "grok: session-memory query skill installed",
+            "fix_hint": "",
+            "fix_auto": false
+          },
+          {
+            "category": "harness",
+            "name": "export_mandate_grok",
+            "status": "pass",
+            "message": "grok: session-export mandate present in session-db.md",
+            "fix_hint": "",
+            "fix_auto": false
+          },
+          {
+            "category": "harness",
+            "name": "session_export_hook_grok",
+            "status": "pass",
+            "message": "grok: automatic SessionEnd export hook installed",
+            "fix_hint": "",
+            "fix_auto": false
+          }
+        ]
+      }
+    },
+    {
+      "item": "2+4-live-lane",
+      "verdict": "FAIL",
+      "decisive": "pytest exit 1: 1 failed, 5 deselected in 60.26s (0:01:00); bundle outcome(s)=['errored']; turn audit=[{'turns': 2, 'turns_with_no_model_marker': 0, 'turns_over_1s': 0, 'real_model_reply_plausible': False}]",
+      "commands": [
+        {
+          "argv": [
+            "/Users/ataylor/code/personal/tools/studyloop-wt/harness-tier/.venv/bin/python3",
+            "-m",
+            "pytest",
+            "-m",
+            "acceptance",
+            "packages/studyloop/tests/acceptance/test_harness_matrix_live.py",
+            "-k",
+            "[grok]",
+            "-q",
+            "-rA",
+            "-p",
+            "no:cacheprovider",
+            "--basetemp=/tmp/sl-lane-grok-4gwngsxw"
+          ],
+          "exit_code": 1,
+          "stdout": "F                                                                        [100%]\n=================================== FAILURES ===================================\n_ TestHarnessMatrixLive.test_cli_tmux_lane_completes_a_full_scripted_lifecycle[grok] _\npackages/studyloop/tests/acceptance/test_harness_matrix_live.py:281: in test_cli_tmux_lane_completes_a_full_scripted_lifecycle\n    driver.send_turn(turn.prompt)\npackages/studyloop/tests/harness/drive.py:100: in send_turn\n    self.tmux.wait_for(\npackages/studyloop/tests/harness/tmux.py:63: in wait_for\n    time.sleep(interval)\nE   Failed: Timeout (>60.0s) from pytest-timeout.\n=========================== short test summary info ============================\nFAILED packages/studyloop/tests/acceptance/test_harness_matrix_live.py::TestHarnessMatrixLive::test_cli_tmux_lane_completes_a_full_scripted_lifecycle[grok]\n1 failed, 5 deselected in 60.26s (0:01:00)\n",
+          "stderr": "",
+          "seconds": 60.58,
+          "note": ""
+        }
+      ],
+      "details": {
+        "bundles": [
+          {
+            "run_dir": "grok-lane-evidence/grok-1789517990-43ef4f70",
+            "manifest": {
+              "run_id": "grok-1789517990-43ef4f70",
+              "harness": "grok",
+              "actor": "scripted",
+              "outcome": "errored",
+              "turn_count": 2,
+              "platform": "macOS-27.0-arm64-arm-64bit",
+              "auth_mode": "presence-only",
+              "harness_version": null
+            }
+          }
+        ],
+        "turn_audit": [
+          {
+            "turns": 2,
+            "turns_with_no_model_marker": 0,
+            "turns_over_1s": 0,
+            "real_model_reply_plausible": false
+          }
+        ],
+        "real_auth": false,
+        "actor_requested": "gateway",
+        "note": "The matrix lane drives the LEARNER side with its own 3 scripted prompts and records actor='scripted' in its bundle regardless of STUDYLOOP_ACC_ACTOR; the actor value is validated by the gate but does not add gateway spend to this lane."
+      }
+    },
+    {
+      "item": "5-plan-architect",
+      "verdict": "PASS",
+      "decisive": "persona_file=/tmp/sl-ev-grok-bm3c5sqs/home/.config/studyloop/sessions/study-plan-architect-evide-1e28449c/AGENTS.md plan-architect=True agent_in_pane=True final_mode=ended",
+      "commands": [
+        {
+          "argv": [
+            "/Users/ataylor/code/personal/tools/studyloop-wt/harness-tier/.venv/bin/python3",
+            "-m",
+            "studyloop.cli",
+            "study",
+            "Plan Architect Evidence: grok",
+            "--energy",
+            "5",
+            "--agent",
+            "grok",
+            "--mode",
+            "plan-architect"
+          ],
+          "exit_code": 1,
+          "stdout": "",
+          "stderr": "open terminal failed: not a terminal\n",
+          "seconds": 0.28,
+          "note": ""
+        },
+        {
+          "argv": [
+            "/Users/ataylor/code/personal/tools/studyloop-wt/harness-tier/.venv/bin/python3",
+            "-m",
+            "studyloop.cli",
+            "study",
+            "--end"
+          ],
+          "exit_code": 0,
+          "stdout": "Session ended: Plan Architect Evidence: grok\n  tmux session closed.\n",
+          "stderr": "",
+          "seconds": 0.14,
+          "note": ""
+        }
+      ],
+      "details": {
+        "state_file_appeared": true,
+        "state_after_launch": {
+          "session_dir": "/tmp/sl-ev-grok-bm3c5sqs/home/.config/studyloop/sessions/study-plan-architect-evide-1e28449c",
+          "mode": "plan-architect",
+          "topic": "Plan Architect Evidence: grok",
+          "agent": "grok",
+          "tmux_session": "study-plan-architect-evide-1e28449c",
+          "tmux_main_pane": "%0",
+          "persona_file": "/tmp/sl-ev-grok-bm3c5sqs/home/.config/studyloop/sessions/study-plan-architect-evide-1e28449c/AGENTS.md",
+          "persona_hash": "52f8d0…",
+          "session_mode": null,
+          "energy": 5
+        },
+        "tmux_session_exists": true,
+        "agent_process_in_pane": true,
+        "pane_after_settle": "\n  /private/tmp/sl-ev-grok-bm3c5sqs/home/.config/studyloo\u2026\n\n\n\n\n         Approve in your browser to finish signing\n                            in.\n\n                         S38J-6ZXB\n\n          Make sure your browser shows this code.\n\n          If it doesn't open, click here to copy.\n\n\n\n          Copying not working? Click here to show\n                         full URL.\n\n\n                       ctrl+q  quit\n\n\n",
+        "persona_file": "/tmp/sl-ev-grok-bm3c5sqs/home/.config/studyloop/sessions/study-plan-architect-evide-1e28449c/AGENTS.md",
+        "persona_first_lines": "# Study Session Context\n\n**Topic:** Plan Architect Evidence: grok",
+        "persona_mentions_plan_architect": true,
+        "persona_bytes": 7231,
+        "tmux_session_gone_after_end": true,
+        "final_mode": "ended"
+      }
+    }
+  ]
+}
