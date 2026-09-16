@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import logging
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from fastapi import Request  # noqa: TC002 - FastAPI needs Request at runtime for injection.
 from fastapi.responses import JSONResponse
@@ -27,6 +28,9 @@ from studyloop.web.services.session_start import (
     session_dir_name,
 )
 
+if TYPE_CHECKING:
+    from studyloop.planning.views import PlanningBrief
+
 logger = logging.getLogger(__name__)
 
 # Which view started the session: the Study Session picker ('study', the
@@ -36,6 +40,148 @@ logger = logging.getLogger(__name__)
 # view's start (see body-double-own-agent-picker, ADR-0002).
 _ALLOWED_ORIGINS: frozenset[str] = frozenset({"study", "body-double"})
 _DEFAULT_ORIGIN = "study"
+
+# What the session is FOR (design §5, D-10/D-11): 'focus' is today's study
+# session; 'planning' launches the study-plan architect. Validated
+# structurally by StartSessionRequest; persisted on the session state (the
+# only planning fact that is — no plan id) and echoed by GET /api/session/state
+# so a reconnecting client can label the console.
+_DEFAULT_PURPOSE = "focus"
+# The architect's topic when the learner supplied no subject — the same fixed
+# label `studyloop plan architect` pins (776a9dc0), so the two launch doors
+# name the session identically.
+_ARCHITECT_TOPIC = "Study plan"
+
+
+class PlanningBriefError(Exception):
+    """The planning brief could not be built, so an architect must not launch.
+
+    Wraps whatever the planning seam raised. A planning session without its
+    brief would interview from a blank page — exactly what D-10 exists to
+    prevent — so the start refuses with a structured error instead of
+    launching a degraded architect.
+    """
+
+
+def _launch_topic(body: StartSessionRequest) -> str:
+    """The topic this start runs under.
+
+    A focus session's topic is the learner's, verbatim. An architect launch
+    uses the learner's subject when they gave one, else the fixed label
+    :data:`_ARCHITECT_TOPIC` — never an overloaded carrier for the brief
+    (D-10).
+    """
+    if body.purpose != "planning":
+        return body.topic
+    return body.topic.strip() or _ARCHITECT_TOPIC
+
+
+def _render_planning_brief(brief: PlanningBrief) -> str:
+    """Render the seam's :class:`PlanningBrief` as the Markdown the persona carries.
+
+    Three parts, in the order the architect needs them: the interview (the
+    questions it asks, one per turn, with the *why* that tells a usable answer
+    from filler), the evidence the databases already hold about the learner
+    (data to open from, never instructions), and the plans that already exist
+    (so the architect extends or references rather than duplicates).
+    """
+    lines: list[str] = ["### Interview", ""]
+    for index, item in enumerate(brief.interview, start=1):
+        flags = ", ".join(
+            flag for flag, on in (("required", item.required), ("multi", item.multi)) if on
+        )
+        suffix = f" ({flags})" if flags else ""
+        lines.append(f"{index}. **{item.key}** — {item.prompt}{suffix}")
+        lines.append(f"   _{item.why}_")
+    lines.append("")
+
+    lines.append("### Evidence from the learner's history")
+    lines.append("")
+    seed = brief.to_json_dict()["seed"]
+    evidence_lines: list[str] = []
+    for key, value in seed.items():
+        if key == "notes" or not value:
+            continue
+        evidence_lines.append(f"- **{key.replace('_', ' ')}:**")
+        for entry in value if isinstance(value, list) else [value]:
+            evidence_lines.append(f"  - {_seed_entry(entry)}")
+    if evidence_lines:
+        lines.extend(evidence_lines)
+    else:
+        lines.append("- No history evidence yet.")
+    notes = seed.get("notes") or []
+    for note in notes:
+        lines.append(f"- _note: {note}_")
+    lines.append("")
+
+    lines.append("### Existing plans")
+    lines.append("")
+    if brief.existing_plans:
+        for plan in brief.existing_plans:
+            progress = f"{plan.milestone_done}/{plan.milestone_total} milestones"
+            nxt = f"; next: {plan.next_milestone}" if plan.next_milestone else ""
+            lines.append(f"- `{plan.plan_id}` — {plan.title} ({plan.status}; {progress}{nxt})")
+    else:
+        lines.append("- None yet.")
+    return "\n".join(lines)
+
+
+def _seed_entry(entry: object) -> str:
+    """One evidence row as a line of text — a mapping's values joined, else ``str``."""
+    if isinstance(entry, dict):
+        parts = [f"{k}: {v}" for k, v in entry.items() if v not in ("", None, 0)]
+        return "; ".join(parts) if parts else "(empty)"
+    return str(entry)
+
+
+def _resolve_persona(body: StartSessionRequest, topic: str) -> tuple[str, str]:
+    """The canonical persona and its 16-char hash for this start.
+
+    The ONE place both transports resolve the mode (design §5): the purpose
+    goes through :func:`studyloop.agent_launcher.persona_mode_for`, and a
+    planning start carries the seam's brief as the persona's own "Planning
+    brief" section — not ``previous_notes`` (D-10). Raises
+    :class:`PlanningBriefError` when the brief cannot be built.
+    """
+    from studyloop.agent_launcher import build_canonical_persona, persona_mode_for
+
+    mode = persona_mode_for(body.purpose)
+    brief: str | None = None
+    if body.purpose == "planning":
+        # Routes may import the seam's application and views (D-6), and
+        # nothing else from studyloop.planning.
+        from studyloop.planning.application import PlanApplication
+
+        try:
+            brief = _render_planning_brief(PlanApplication().prepare_planning())
+        except Exception as exc:
+            raise PlanningBriefError(str(exc)) from exc
+    canonical = build_canonical_persona(mode, topic, body.energy, brief=brief)
+    return canonical, hashlib.sha256(canonical.encode()).hexdigest()[:16]
+
+
+def _brief_unavailable_response(body: StartSessionRequest) -> JSONResponse:
+    """The 500 shared by both start paths when the planning brief cannot be built.
+
+    Structured (an ``error`` the UI can show, the ``purpose`` it belongs to, a
+    ``repair``) rather than a bare server error, and returned from inside the
+    claim's ``try`` so the ``finally`` frees the reserved slot: a refused
+    planning start must leave the next start unblocked.
+    """
+    return JSONResponse(
+        {
+            "error": (
+                "Failed to build the planning brief — the study-plan architect "
+                "cannot start without it."
+            ),
+            "purpose": body.purpose,
+            "repair": (
+                "Check that the plans directory is readable (`studyloop plan list`) "
+                "and try again, or start a focus session instead."
+            ),
+        },
+        status_code=500,
+    )
 
 
 def _active_session_topic(session_id: str) -> str | None:
@@ -245,10 +391,14 @@ async def _start_pty_session(
        cross-process file claim, or atomically RESERVE the slot
        (``_session_conflict()``, R-01/C1).
     2. Resolve agent + check binary. 503 with ``install_hint`` on miss.
-    3. Persona + DB record creation (shared with legacy).
-    4. ``await active.acquire(config, factory)`` — atomic under asyncio.Lock.
-    5. Write IPC session_state only after the transport starts, then return
-       201 with ``ws_url`` for the client to open.
+    3. Resolve the persona through the one resolver (``_resolve_persona``:
+       ``persona_mode_for(body.purpose)``, plus the planning brief for
+       ``purpose=planning``). 500 with a structured error if the brief cannot
+       be built -- before any DB record exists (design §5).
+    4. DB record creation, session dir, persona file (shared with legacy).
+    5. ``await active.acquire(config, factory)`` — atomic under asyncio.Lock.
+    6. Write IPC session_state (with ``purpose``) only after the transport
+       starts, then return 201 with ``ws_url`` for the client to open.
 
     C1 (council): everything from step 2 onward runs with the slot already
     reserved (step 1's ``_session_conflict`` call claims it, not just
@@ -264,12 +414,13 @@ async def _start_pty_session(
     from studyloop.session import active as session_active
     from studyloop.session.transport import SessionAlreadyActiveError, SessionConfig
 
+    topic = _launch_topic(body)
     reservation = {
         "study_session_id": f"pending-{uuid.uuid4().hex[:12]}",
         "mode": "starting",
         "transport": "pty",
         "pid": os.getpid(),
-        "topic": body.topic,
+        "topic": topic,
         "started_at": datetime.now(UTC).isoformat(),
     }
     conflict = await _session_conflict(reservation)
@@ -311,6 +462,15 @@ async def _start_pty_session(
                 status_code=503,
             )
 
+        # --- Persona (one resolver for PTY and ACP; brief for planning) ---
+        # Built before the DB record so a planning start whose brief cannot be
+        # produced refuses with nothing to roll back but the reservation.
+        try:
+            canonical, persona_hash = _resolve_persona(body, topic)
+        except PlanningBriefError:
+            logger.exception("PTY start failed: planning brief unavailable")
+            return _brief_unavailable_response(body)
+
         # --- Topic resolution (optional) ---
         topic_config = None
         try:
@@ -319,7 +479,7 @@ async def _start_pty_session(
 
             settings = load_settings()
             if settings.topics:
-                result = resolve_topic(body.topic, settings.topics)
+                result = resolve_topic(topic, settings.topics)
                 topic_config = result.resolved or (result.matches[0] if result.matches else None)
         except Exception:
             pass
@@ -330,7 +490,7 @@ async def _start_pty_session(
 
         energy_label = energy_to_label(body.energy)
         study_id = start_study_session(
-            body.topic,
+            topic,
             energy_label,
             topic_slug=topic_config.slug if topic_config else None,
         )
@@ -340,15 +500,12 @@ async def _start_pty_session(
                 status_code=500,
             )
 
-        # --- Session dir + persona (no tmux) ---
-        session_dir = SESSION_DIR / "sessions" / session_dir_name(body.topic, study_id)
+        # --- Session dir + persona file (no tmux) ---
+        session_dir = SESSION_DIR / "sessions" / session_dir_name(topic, study_id)
 
-        from studyloop.agent_launcher import build_canonical_persona
         from studyloop.session.orchestrator import setup_session_dir
 
-        setup_session_dir(session_dir, body.topic)
-        canonical = build_canonical_persona("focus", body.topic, body.energy)
-        persona_hash = hashlib.sha256(canonical.encode()).hexdigest()[:16]
+        setup_session_dir(session_dir, topic)
 
         from studyloop.history.sessions import update_persona_hash
 
@@ -406,7 +563,7 @@ async def _start_pty_session(
             _ensure_session_dir()
             pty_state = build_session_state_payload(
                 study_id=study_id,
-                topic=body.topic,
+                topic=topic,
                 energy=body.energy,
                 energy_label=energy_label,
                 agent=agent,
@@ -427,6 +584,11 @@ async def _start_pty_session(
             # build_session_state_payload (owned by another stage) so it flows
             # through write_session_state → read_session_state → /api/session/state.
             pty_state["origin"] = origin
+            # purpose is the only planning fact the session state carries
+            # (D-11): enough for the reconnect label, never a plan id. Always
+            # written, so a stale value can never be inherited through the
+            # read-merge-write.
+            pty_state["purpose"] = body.purpose
             write_session_state(pty_state)
             TOPICS_FILE.touch(mode=0o600, exist_ok=True)
             PARKING_FILE.touch(mode=0o600, exist_ok=True)
@@ -450,10 +612,11 @@ async def _start_pty_session(
     return JSONResponse(
         {
             "study_session_id": study_id,
-            "topic": body.topic,
+            "topic": topic,
             "energy": body.energy,
             "agent": agent,
             "transport": "pty",
+            "purpose": body.purpose,
             "ws_url": f"/api/session/ws?study_session_id={study_id}",
         },
         status_code=201,
@@ -467,18 +630,21 @@ async def _start_acp_session(
 
     Mirrors ``_start_pty_session`` but drops tmux and PTY-specific
     adapter steps. Persona and MCP files are NOT written here — ACP
-    agents receive context via ``session/prompt``, not argv; a future
-    refinement may inject the persona as the first prompt, but for
-    §2.2 we let the frontend send it.
+    agents receive context via ``session/prompt``, not argv; the persona
+    is returned inline (``persona_text``) for the frontend to send as the
+    first prompt.
 
     1. Reject if a session is already active -- in-process singleton OR a live
        cross-process file claim, or atomically RESERVE the slot
        (``_session_conflict()``, R-01/C1).
     2. Resolve agent + check binary. 503 with ``install_hint`` on miss.
-    3. DB record creation (no tmux metadata, no persona file).
-    4. ``await active.acquire(config, factory)`` — atomic under asyncio.Lock.
-    5. Write IPC session_state only after the transport starts, then return
-       201 with ``ws_url`` for the client to open.
+    3. Resolve the persona through the SAME resolver the PTY path uses
+       (``_resolve_persona``); 500 with a structured error if the planning
+       brief cannot be built (design §5).
+    4. DB record creation (no tmux metadata, no persona file).
+    5. ``await active.acquire(config, factory)`` — atomic under asyncio.Lock.
+    6. Write IPC session_state (with ``purpose``) only after the transport
+       starts, then return 201 with ``ws_url`` for the client to open.
 
     C1 (council): see ``_start_pty_session``'s identical structure and
     docstring note -- ``claim_finalized`` tracks whether the reservation
@@ -493,12 +659,13 @@ async def _start_acp_session(
     from studyloop.session import active as session_active
     from studyloop.session.transport import SessionAlreadyActiveError, SessionConfig
 
+    topic = _launch_topic(body)
     reservation = {
         "study_session_id": f"pending-{uuid.uuid4().hex[:12]}",
         "mode": "starting",
         "transport": "acp",
         "pid": os.getpid(),
-        "topic": body.topic,
+        "topic": topic,
         "started_at": datetime.now(UTC).isoformat(),
     }
     conflict = await _session_conflict(reservation)
@@ -564,6 +731,18 @@ async def _start_acp_session(
                 status_code=503,
             )
 
+        # --- Persona (one resolver for PTY and ACP; brief for planning) ---
+        # Built here and returned inline in the response so the browser can
+        # ship it as the first invisible session/prompt on WS open. No persona
+        # file is written to disk: ACP agents receive context via
+        # session/prompt, not via argv/env, so a file would just be dead
+        # weight. Before the DB record for the same reason as the PTY path.
+        try:
+            persona_text, persona_hash = _resolve_persona(body, topic)
+        except PlanningBriefError:
+            logger.exception("ACP start failed: planning brief unavailable")
+            return _brief_unavailable_response(body)
+
         # --- Topic resolution (optional, same as PTY) ---
         topic_config = None
         try:
@@ -572,7 +751,7 @@ async def _start_acp_session(
 
             settings = load_settings()
             if settings.topics:
-                result = resolve_topic(body.topic, settings.topics)
+                result = resolve_topic(topic, settings.topics)
                 topic_config = result.resolved or (result.matches[0] if result.matches else None)
         except Exception:
             pass
@@ -583,7 +762,7 @@ async def _start_acp_session(
 
         energy_label = energy_to_label(body.energy)
         study_id = start_study_session(
-            body.topic,
+            topic,
             energy_label,
             topic_slug=topic_config.slug if topic_config else None,
         )
@@ -594,21 +773,11 @@ async def _start_acp_session(
             )
 
         # --- Session dir (for cwd — no persona/MCP file written) ---
-        session_dir = (
-            SESSION_DIR / "sessions" / session_dir_name(body.topic, study_id, prefix="acp")
-        )
+        session_dir = SESSION_DIR / "sessions" / session_dir_name(topic, study_id, prefix="acp")
 
-        from studyloop.agent_launcher import build_canonical_persona
         from studyloop.session.orchestrator import setup_session_dir
 
-        setup_session_dir(session_dir, body.topic)
-
-        # Persona is built here and returned inline in the response so the
-        # browser can ship it as the first invisible session/prompt on WS open.
-        # No persona file is written to disk: ACP agents receive context via
-        # session/prompt, not via argv/env, so a file would just be dead weight.
-        persona_text = build_canonical_persona("focus", body.topic, body.energy)
-        persona_hash = hashlib.sha256(persona_text.encode()).hexdigest()[:16]
+        setup_session_dir(session_dir, topic)
 
         from studyloop.history.sessions import update_persona_hash
 
@@ -662,7 +831,7 @@ async def _start_acp_session(
             _ensure_session_dir()
             acp_state = build_session_state_payload(
                 study_id=study_id,
-                topic=body.topic,
+                topic=topic,
                 energy=body.energy,
                 energy_label=energy_label,
                 agent=agent,
@@ -673,8 +842,10 @@ async def _start_acp_session(
                 # C4 (council): see the PTY path's identical comment.
                 child_pid=getattr(active_session.transport, "pid", None),
             )
-            # See PTY path: origin merged here, not in build_session_state_payload.
+            # See PTY path: origin and purpose merged here, not in
+            # build_session_state_payload.
             acp_state["origin"] = origin
+            acp_state["purpose"] = body.purpose
             write_session_state(acp_state)
             TOPICS_FILE.touch(mode=0o600, exist_ok=True)
             PARKING_FILE.touch(mode=0o600, exist_ok=True)
@@ -699,10 +870,11 @@ async def _start_acp_session(
     return JSONResponse(
         {
             "study_session_id": study_id,
-            "topic": body.topic,
+            "topic": topic,
             "energy": body.energy,
             "agent": agent,
             "transport": "acp",
+            "purpose": body.purpose,
             "ws_url": f"/api/session/ws?study_session_id={study_id}",
             # persona_text is shipped inline so the browser can send it as
             # the first invisible session/prompt frame after WS open. ACP
