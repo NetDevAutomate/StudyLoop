@@ -305,16 +305,19 @@ def build_checks(repo_root: Path) -> list[Check]:
 # Running and recording
 # --------------------------------------------------------------------------
 
-_SUMMARY_LINE = re.compile(r"=+ (?P<body>.*?) in [\d.]+s")
-_COUNT = re.compile(
-    r"(\d+) (passed|failed|skipped|deselected|errors?|warnings?|xfailed|xpassed|rerun)"
+_COUNT_WORDS = "passed|failed|skipped|deselected|errors?|warnings?|xfailed|xpassed|rerun"
+#: The summary line, with (``=== 4 passed in 1.2s ===``) or without (``4 passed in
+#: 1.2s`` — what ``-q`` prints under the studyloop package's own config) bars.
+_SUMMARY_LINE = re.compile(
+    rf"^(?:=+ )?(?P<body>(?:\d+ (?:{_COUNT_WORDS})(?:, )?)+|no tests ran) in [\d.]+s"
 )
+_COUNT = re.compile(rf"(\d+) ({_COUNT_WORDS})")
 
 
 def parse_pytest_counts(output: str) -> dict[str, int]:
     """Node counts from pytest's final summary line (``N passed, M skipped in …``)."""
     for line in reversed(output.splitlines()):
-        match = _SUMMARY_LINE.search(line)
+        match = _SUMMARY_LINE.search(line.strip())
         if match:
             counts: dict[str, int] = {}
             for number, word in _COUNT.findall(match.group("body")):

@@ -153,6 +153,26 @@ class TestPytestCounts:
         output = f"....\n=========== {tail} ===========\n"
         assert script.parse_pytest_counts(output) == expected
 
+    @pytest.mark.parametrize(
+        ("tail", "expected"),
+        [
+            ("4990 passed, 4 skipped in 376.3s (0:06:16)", {"passed": 4990, "skipped": 4}),
+            ("30 passed in 0.46s", {"passed": 30}),
+            ("2 passed, 1 deselected in 1.4s", {"passed": 2, "deselected": 1}),
+        ],
+    )
+    def test_parse_pytest_counts_bare_quiet_form(
+        self, script, tail: str, expected: dict[str, int]
+    ) -> None:
+        """``pytest -q`` under the studyloop package config prints the summary
+        line WITHOUT the ``====`` bars; the first real run recorded empty counts
+        for every studyloop suite because of it."""
+        output = f"..............                                         [100%]\n{tail}\n"
+        assert script.parse_pytest_counts(output) == expected
+
+    def test_a_progress_line_is_not_mistaken_for_a_summary(self, script) -> None:
+        assert script.parse_pytest_counts("....... [100%]\nsome log line in 3s\n") == {}
+
 
 def _fake_runner(
     outcomes: dict[str, tuple[int | None, str]],
