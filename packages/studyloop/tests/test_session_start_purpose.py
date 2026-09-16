@@ -691,3 +691,60 @@ class TestBriefBudget:
         assert "Resuming Previous Session" not in persona
         topic_line = next(line for line in persona.splitlines() if line.startswith("**Topic:**"))
         assert topic_line == "**Topic:** Study plan", "the brief is not folded into the topic"
+
+
+# ---------------------------------------------------------------------------
+# #14 / review-4 decision: the reconnect label for a CLI-started architect
+# ---------------------------------------------------------------------------
+
+
+class TestReconnectLabelFromPersistedMode:
+    """``studyloop plan architect`` writes no ``purpose`` to the session state,
+    but it does persist the persona ``mode`` (``"plan-architect"``). The
+    dashboard derives the missing ``purpose`` from that persisted mode through
+    the one resolver — never from the topic string (review-3 hazard, review-4
+    arbitration). A Web-started session always carries ``purpose`` and is
+    untouched by the derivation."""
+
+    @staticmethod
+    def _write_state(**fields: object) -> None:
+        from studyloop.session_state import write_session_state
+
+        payload: dict[str, object] = {
+            "study_session_id": "cli-architect-1",
+            "topic": "Study plan",
+            "energy": 5,
+            "energy_label": "medium",
+            "timer_mode": "pomodoro",
+            "started_at": "2026-09-16T09:00:00+00:00",
+            "paused_at": None,
+            "total_paused_seconds": 0,
+        }
+        payload.update(fields)
+        write_session_state(payload)
+
+    def test_cli_started_architect_state_reports_purpose_planning_from_its_mode(
+        self, client: TestClient
+    ) -> None:
+        self._write_state(mode="plan-architect")
+
+        state = client.get("/api/session/state").json()
+
+        assert state["study_session_id"] == "cli-architect-1"
+        assert state["purpose"] == "planning"
+
+    def test_focus_topic_study_plan_is_not_relabelled_planning(self, client: TestClient) -> None:
+        """The topic label ``"Study plan"`` on a focus session proves nothing —
+        the label comes from the persisted mode, not the topic."""
+        self._write_state(mode="focus", topic="Study plan")
+
+        state = client.get("/api/session/state").json()
+
+        assert state["purpose"] == "focus"
+
+    def test_persisted_purpose_wins_over_mode(self, client: TestClient) -> None:
+        """A Web-started file carries ``purpose`` explicitly; the derivation is
+        only for a file that predates or never wrote the key."""
+        self._write_state(mode="plan-architect", purpose="focus")
+
+        assert client.get("/api/session/state").json()["purpose"] == "focus"
