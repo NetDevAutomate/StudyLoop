@@ -278,6 +278,79 @@ def test_guidance_summary_days_and_urgency_use_one_effective_date(
     assert _guidance(app, today=FAR_TODAY) == _guidance(app, today=FAR_TODAY)
 
 
+def _document(plan_id: str, title: str, *, frontmatter_id: str | None = None) -> str:
+    """A ready active document whose frontmatter ``id`` may disagree with its file."""
+    return (
+        f"---\nid: {frontmatter_id or plan_id}\ntitle: {title}\nstatus: active\n"
+        f"topics: [sql]\n---\n\n# {title}\n\n## Mission\n\n### Why\n\nBecause.\n\n"
+        "### Success\n\n- Do a thing\n\n## Milestones\n\n- [ ] **Step** `(concepts: x)`\n"
+    )
+
+
+def test_guidance_pins_frontmatter_mismatch_to_filename(
+    app: PlanApplication, isolated_plans_dir
+) -> None:
+    """Council review 2, GPT Astra F5: the parser lets a document's frontmatter
+    ``id`` win over the filename, and ``_load`` repairs that for every other
+    read and write ("the id is the file", review-1 F5). Guidance bypassed the
+    repair by consuming ``store.list_plans()``, so ``alpha.md`` saying
+    ``id: beta`` produced an entry named ``beta`` — an id ``inspect`` would not
+    resolve to this document — and a false "alpha could not be parsed"."""
+    store.plans_dir()
+    (isolated_plans_dir / "alpha.md").write_text(
+        _document("alpha", "Alpha File", frontmatter_id="beta"), encoding="utf-8"
+    )
+
+    guidance = _guidance(app)
+
+    (only,) = guidance.plans
+    assert only.plan.plan_id == "alpha", "storage identity, not untrusted frontmatter"
+    assert only.readiness.plan_id == "alpha"
+    assert guidance.warnings == (), "an id mismatch is not a parse failure"
+    assert app.inspect(only.plan.plan_id).summary.title == "Alpha File"
+
+
+def test_guidance_keeps_distinct_files_with_duplicate_frontmatter_ids(
+    app: PlanApplication, isolated_plans_dir
+) -> None:
+    store.plans_dir()
+    (isolated_plans_dir / "alpha.md").write_text(
+        _document("alpha", "Alpha File", frontmatter_id="beta"), encoding="utf-8"
+    )
+    (isolated_plans_dir / "beta.md").write_text(_document("beta", "Beta File"), encoding="utf-8")
+
+    guidance = _guidance(app)
+
+    assert [g.plan.plan_id for g in guidance.plans] == ["alpha", "beta"]
+    assert [g.plan.title for g in guidance.plans] == ["Alpha File", "Beta File"]
+    assert len({g.plan.plan_id for g in guidance.plans}) == 2, "unique canonical ids"
+    assert guidance.warnings == ()
+
+
+def test_guidance_warnings_identify_actual_unreadable_files(
+    app: PlanApplication, isolated_plans_dir
+) -> None:
+    """Exactly the files that could not be read are named — not a readable
+    document whose frontmatter disagrees with its filename — in a
+    deterministic order, and one bad file never hides a healthy plan."""
+    store.plans_dir()
+    (isolated_plans_dir / "alpha.md").write_text(
+        _document("alpha", "Alpha File", frontmatter_id="beta"), encoding="utf-8"
+    )
+    (isolated_plans_dir / "zz-broken.md").write_bytes(b"\xff\xfe not a text file")
+    (isolated_plans_dir / "aa-broken.md").write_bytes(b"\xff\xfe not a text file either")
+    _active("healthy")
+
+    guidance = _guidance(app)
+
+    assert [g.plan.plan_id for g in guidance.plans] == ["alpha", "healthy"]
+    assert len(guidance.warnings) == 2
+    assert "'aa-broken'" in guidance.warnings[0]
+    assert "'zz-broken'" in guidance.warnings[1]
+    assert not any("alpha" in warning for warning in guidance.warnings)
+    assert guidance == _guidance(app), "entry and warning order are deterministic"
+
+
 def test_active_guidance_warns_on_malformed_documents(
     app: PlanApplication, isolated_plans_dir
 ) -> None:
