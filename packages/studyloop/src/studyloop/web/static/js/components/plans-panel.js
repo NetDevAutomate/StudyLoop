@@ -42,7 +42,7 @@
  *                                learning_records, resources, checkpoints,
  *                                readiness}
  *   GET    /api/plans/{id}/evaluate?phase=…          {evaluation, markdown}
- *   POST   /api/plans/{id}/evaluate  201             {recorded, evaluation, …}
+ *   POST   /api/plans/{id}/evaluate  201             {recorded, db_write, document_write, evaluation, …}
  *   POST   /api/plans                201             {created, plan, readiness}
  *   PATCH  /api/plans/{id}           422 on refusal  detail={message, blockers…}
  *   POST   /api/plans/{id}/milestones/{i}/toggle     {updated, index, done, plan}
@@ -705,9 +705,19 @@ export const plansStore = {
       await this._fetchDetail(planId, epoch);
       if (epoch !== this._epoch) return;
       const verdict = this.evaluation?.verdict || '';
-      this.recordStatus = verdict
-        ? `Recorded ${phase} checkpoint \u2014 ${verdict}`
-        : `Recorded ${phase} checkpoint`;
+      if (data.recorded === false) {
+        /* The server reports each sink (Phase 2 seam); a failed database
+           write still returns the evaluation, so this is a status the
+           learner must see, not an error banner that hides the verdict. */
+        this.recordStatus =
+          `Partially recorded ${phase} checkpoint \u2014 ` +
+          `database: ${data.db_write ?? 'unknown'}, document: ${data.document_write ?? 'unknown'}` +
+          (verdict ? ` (${verdict})` : '');
+      } else {
+        this.recordStatus = verdict
+          ? `Recorded ${phase} checkpoint \u2014 ${verdict}`
+          : `Recorded ${phase} checkpoint`;
+      }
     } catch (e) {
       if (epoch === this._epoch) this.error = `Network error: ${e.message ?? e}`;
     } finally {
