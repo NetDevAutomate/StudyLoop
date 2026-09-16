@@ -74,8 +74,18 @@ def _ensure_claude_trust(directory: Path) -> None:
 def setup_session_dir(
     session_dir: Path,
     topic: str,
+    *,
+    agent: str | None = None,
 ) -> Path:
     """Create session directory with CLAUDE.md and studyloop wrapper.
+
+    ``agent`` names the harness the session will launch. Claude Code's
+    trust-list pre-write below only serves a Claude session; for any other
+    named harness it is skipped, so a pi/OpenCode/Grok Build session never
+    edits the learner's real ``~/.claude/settings.json`` (found 2026-09-16 by
+    the real-harness-auth acceptance run's real-home write guard). ``None``
+    -- callers that do not yet say -- keeps the historical unconditional
+    pre-trust.
 
     Returns the path to the studyloop wrapper script.
     """
@@ -97,8 +107,9 @@ def setup_session_dir(
     # Trust is stored in ~/.claude/settings.json under projects[path].hasTrustDialogAccepted.
     # Trust both the parent (for future sessions) AND the specific session dir
     # (Claude Code may not walk up the tree for all trust checks).
-    _ensure_claude_trust(session_dir.parent)
-    _ensure_claude_trust(session_dir)
+    if agent is None or agent == "claude":
+        _ensure_claude_trust(session_dir.parent)
+        _ensure_claude_trust(session_dir)
 
     # Create a studyloop wrapper in the session directory that uses the
     # correct Python (the one running this process). Without this, any

@@ -419,7 +419,7 @@ def start_session(
     # --- Build commands and orchestrate tmux ---
 
     try:
-        setup_session_dir(session_dir, topic)
+        setup_session_dir(session_dir, topic, agent=agent)
 
         backlog_notes = _build_backlog_notes(topic)
         if backlog_notes:
