@@ -117,13 +117,19 @@ readiness blocks carry the `authoring.readiness()` key set.
   refused
 
 
-### Requirement: The milestone checkbox is an idempotent set
+### Requirement: The milestone checkbox is one SetMilestone; the toggle request is not replay-safe
 `POST /api/plans/{id}/milestones/{index}/toggle` SHALL read the milestone's
 current state through the seam and apply one `SetMilestone(plan_id, index,
 done=<opposite>)` intent — never a route-side write and never the full-list
 `RevisePlan` substitute the review-1 corrections used in the interim. The
 seam's `SetMilestone` is a *set*, not a toggle: applying the same intent twice
-leaves the same document, so a retried request cannot flip a box twice. An
+leaves the same document. The legacy no-body toggle *request* is
+read-invert-write and therefore **not** retry-idempotent: replaying it flips
+the box again, and two concurrent toggles can collapse into one update — the
+contract this checkbox has always had, acceptable for a checkbox, and no claim
+of replay safety SHALL be made for it (council review 2, F3). A caller that
+needs replay safety SHALL state the desired state (`PATCH` with `milestones`,
+or the CLI's `--done`/`--undone`). An
 index the plan does not have — past the end **or negative** — SHALL be the
 seam's `InvalidMilestone`, mapped to `404`, with the document byte-identical
 afterwards. The response body SHALL keep its pre-seam keys: `{"updated": true,
@@ -132,8 +138,9 @@ afterwards. The response body SHALL keep its pre-seam keys: `{"updated": true,
 #### Scenario: Toggle flips and flips back
 - **WHEN** the toggle is posted twice for milestone `0` of a two-milestone plan
 - **THEN** the first response has `done == true` and `plan.milestone_done ==
-  1`; the second has `done == false`; each request applied exactly one
-  `SetMilestone` whose `done` was the opposite of the state it read
+  1`; the second has `done == false` and `plan.milestone_done == 0`; each
+  request applied exactly one `SetMilestone` whose `done` was the opposite of
+  the state it read — a replayed request is not a no-op
 
 #### Scenario: Out-of-range and negative indices
 - **WHEN** the toggle is posted for index `42` or `-1`

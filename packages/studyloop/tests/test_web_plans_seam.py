@@ -6,8 +6,10 @@ delegate to ``PlanApplication``:
 
 * ``POST /plans/{id}/evaluate`` reports each recording sink and an honest
   ``recorded`` — Bug B (issue #7) was a bare ``true`` over a failed write;
-* the milestone checkbox is an idempotent ``SetMilestone`` behind the route,
-  so a retried request cannot flip a box twice;
+* the milestone checkbox is one idempotent ``SetMilestone`` behind the route —
+  but the legacy no-body toggle *request* is read-invert-write, so replaying
+  it flips the box twice (council review 2, F3: the earlier "a retried request
+  cannot flip a box twice" claim was false and is withdrawn);
 * ``DELETE`` is a confirmed ``DeletePlan``: the document and its index row go,
   the durable checkpoint log stays.
 """
@@ -147,10 +149,16 @@ def test_record_unknown_phase_is_the_seams_400_after_the_404(client: TestClient)
     assert client.post(f"/api/plans/{plan_id}/evaluate", json={"phase": "nope"}).status_code == 400
 
 
-# --- toggle: an idempotent set behind the checkbox ---
+# --- toggle: one SetMilestone behind the checkbox; the request itself is not replay-safe ---
 
 
-def test_toggle_is_a_set_milestone_behind_the_route(client: TestClient, monkeypatch) -> None:
+def test_legacy_toggle_repeated_requests_flip_twice(client: TestClient, monkeypatch) -> None:
+    """Each request applies exactly one ``SetMilestone`` whose ``done`` is the
+    opposite of the state it read. That is what makes the *intent* idempotent
+    and the *request* not: the same POST twice flips the box and flips it back
+    — the legacy toggle contract, pinned here so nobody claims replay safety
+    for it again (council review 2, F3). Replay safety needs a desired-state
+    request (``PATCH`` ``milestones`` / CLI ``--done``), not this route."""
     plan_id = _create(client)
     seen: list[object] = []
     real_apply = PlanApplication.apply
@@ -169,8 +177,10 @@ def test_toggle_is_a_set_milestone_behind_the_route(client: TestClient, monkeypa
     assert (intent.plan_id, intent.index, intent.done) == (plan_id, 1, True)  # type: ignore[attr-defined]
 
     second = client.post(f"/api/plans/{plan_id}/milestones/1/toggle").json()
-    assert second["done"] is False
+    assert second["done"] is False, "a replayed toggle flips again — it is not retry-safe"
+    assert second["plan"]["milestone_done"] == 0
     assert seen[1].done is False  # type: ignore[attr-defined]
+    assert len(seen) == 2, "one SetMilestone per request, no route-side write"
 
 
 @pytest.mark.parametrize("index", [42, -1])

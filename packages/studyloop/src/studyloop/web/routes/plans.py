@@ -15,8 +15,10 @@ path that can make a plan active — create-with-status, document import,
 whole-document replacement, status transition, and any in-place revision of a
 plan that is or becomes active — goes through ``apply`` and is refused by the
 same readiness gate with the same 422 body. Evaluation goes through ``assess``
-and reports both recording sinks; the milestone checkbox is an idempotent
-``SetMilestone``; ``DELETE`` is a confirmed ``DeletePlan`` — the HTTP verb is
+and reports both recording sinks; the milestone checkbox toggle is a read
+followed by one idempotent ``SetMilestone`` of the opposite state (the intent
+is retry-safe; the legacy no-body toggle request is not — see
+``toggle_milestone``); ``DELETE`` is a confirmed ``DeletePlan`` — the HTTP verb is
 the confirmation this route contract has always had. This module only maps
 domain errors to status codes (design §2) and translates bodies; it holds no
 rule of its own and imports no storage module (D-6).
@@ -280,9 +282,14 @@ def toggle_milestone(plan_id: str, index: int) -> dict:
     """Flip one milestone's done state — the checkbox in the plan view.
 
     The route reads the current state and asks the seam to *set* its
-    opposite: ``SetMilestone`` is idempotent, so a retried request cannot
-    flip the box twice, and the index check is the seam's — an index the plan
-    does not have is ``InvalidMilestone`` (404), never a route-side rule.
+    opposite. The seam's ``SetMilestone`` is idempotent; this legacy no-body
+    toggle is **not**: it is read-invert-write, so replaying the same HTTP
+    request flips the box again, and two concurrent toggles can collapse into
+    one (council review 2, F3). That is the contract this checkbox has always
+    had and is acceptable for a checkbox; a caller that needs replay safety
+    must state the desired state (``PATCH`` with ``milestones``, or the CLI's
+    ``--done``/``--undone``). The index check is the seam's — an index the
+    plan does not have is ``InvalidMilestone`` (404), never a route-side rule.
     """
     current = _inspect(plan_id)
     already_done = any(m.index == index and m.done for m in current.milestones)
