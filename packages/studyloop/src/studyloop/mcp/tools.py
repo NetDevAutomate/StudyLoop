@@ -151,24 +151,21 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
             LearningRecordSpec,
             PlanApplication,
             PlanError,
-            PlanNotReady,
             RevisePlan,
         )
 
         # One RevisePlan through the seam: the store's single learning-record
         # rule and the resulting-document gate both apply, and every refusal is
-        # a domain error mapped here — a not-ready plan names its blockers so
-        # the agent can tell the learner what to fix (design §2). `created` is
-        # the mutation's own outcome, never inferred from a read taken before
-        # it (council review 2, F4).
+        # a domain error mapped by the shared `_plan_tool_error` below (T4.1
+        # fold) — a not-ready plan names its blockers, prefixed `not_ready:`
+        # like the other eight plan tools, so the agent can tell the learner
+        # what to fix (design §2). `created` is the mutation's own outcome,
+        # never inferred from a read taken before it (council review 2, F4).
         spec = LearningRecordSpec(title=title, body=body, status=status)
         try:
             detail = PlanApplication().apply(RevisePlan(plan_id=plan_id, learning_record=spec))
-        except PlanNotReady as exc:
-            blockers = "; ".join(exc.readiness.blockers)
-            raise ToolError(f"{exc}: {blockers}") from exc
         except PlanError as exc:
-            raise ToolError(str(exc)) from exc
+            raise _plan_tool_error(exc) from exc
         outcome = detail.learning_record_outcome
         if outcome is None:  # pragma: no cover - a revision carrying a record always reports one
             raise ToolError(f"learning record {spec.title!r} was not persisted on {plan_id!r}")
@@ -867,16 +864,18 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
         row_id = park_topic(question, topic_tag=topic_tag, context=context, source="struggled")
         return {"status": "logged", "id": row_id}
 
-    # ── Study plans — discovery and authoring through the seam (D-4, D-8, D-9) ──
+    # ── Study plans — discovery, authoring and progression through the seam (D-4, D-8, D-9) ──
     #
-    # Six thin adapters over ``studyloop.planning.PlanApplication`` (design §4):
+    # Nine thin adapters over ``studyloop.planning.PlanApplication`` (design §4):
     # each call is one seam call with one intent, each success is the seam
     # view's ``to_json_dict()`` (fresh containers), and each refusal is one
     # ``ToolError`` from ``_plan_tool_error`` below. No plan policy lives here —
-    # the readiness gate, the status list, the id rules and the conflict check
-    # are the seam's, so the same refusal reads the same on the CLI, the Web
-    # and here. The three remaining tools of design §4 (milestone, evaluate,
-    # delete) land in Phase 4 (#12).
+    # the readiness gate, the status list, the id rules, the conflict check,
+    # the milestone range and the delete confirmation are the seam's, so the
+    # same refusal reads the same on the CLI, the Web and here. Six landed in
+    # Phase 3 (#11); the three progression tools (milestone, evaluate, delete)
+    # in Phase 4 (#12). ``record_plan_learning`` above maps its refusals through
+    # the same helper.
 
     #: ``get_study_plan``'s ``history_limit`` range — the same 1..200 the Web
     #: history route accepts (``GET /api/plans/{id}/history``, ``Query(20, ge=1,
@@ -1135,6 +1134,105 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
         except PlanError as exc:
             raise _plan_tool_error(exc) from exc
         return detail.to_json_dict()
+
+    @tool()
+    def set_study_plan_milestone(plan_id: str, index: int, done: bool) -> dict[str, Any]:
+        """Set one milestone's completion state — set, not toggle, so a retry is safe.
+
+        ``done`` is the state asked for: asking for the state the milestone
+        already has changes nothing and is not an error, so a retried call
+        returns the same plan. The tool reads nothing first and computes no
+        opposite. Like every write, the resulting document is readiness-gated
+        when the plan is active: an active plan that has become unready is
+        refused with ``not_ready: … — the plan is already active; pause it or
+        repair the blockers before writing`` and nothing is written.
+
+        Args:
+            plan_id: The plan id (from ``list_study_plans``).
+            index: The milestone's 0-based position, as ``get_study_plan``
+                lists it under ``milestones[].index``.
+            done: ``true`` to mark it complete, ``false`` to reopen it.
+
+        Refusals: ``not_found: …``, ``invalid_id: …``, ``invalid_milestone: …``
+        (no milestone at that index — past the end or negative),
+        ``not_ready: … : <blockers>`` (active but unready).
+        """
+        from studyloop.planning import PlanApplication, PlanError, SetMilestone
+
+        try:
+            detail = PlanApplication().apply(SetMilestone(plan_id=plan_id, index=index, done=done))
+        except PlanError as exc:
+            raise _plan_tool_error(exc) from exc
+        return detail.to_json_dict()
+
+    @tool()
+    def evaluate_study_plan(
+        plan_id: str, phase: str, study_id: str = "", record: bool = False
+    ) -> dict[str, Any]:
+        """Evaluate a study plan at a session checkpoint; optionally record the checkpoint.
+
+        By default this is a **preview**: the evaluation is computed against
+        the learner's study evidence and returned, and nothing is written
+        anywhere — both ``db_write`` and ``document_write`` read
+        ``not_requested``. With ``record=true`` the checkpoint is appended to
+        the durable log in the sessions database and to the plan document's
+        own Checkpoints table; each write is reported on its own
+        (``saved`` / ``failed``), and ``recording_complete`` is ``true`` only
+        when every requested write landed. A failed write is an outcome in the
+        response with its reason in ``warnings``, never an error — the
+        evaluation itself succeeded and the agent is entitled to it. Recording
+        on an active plan that is unready is refused before either write.
+
+        ``markdown`` is the evaluation block to paste into the conversation.
+
+        Args:
+            plan_id: The plan id.
+            phase: Which session checkpoint this is — ``start``, ``mid`` or
+                ``end``.
+            study_id: Session id to attribute the checkpoint to (optional).
+            record: ``false`` (default) previews; ``true`` records to both
+                sinks.
+
+        Refusals: ``not_found: …``, ``invalid_id: …``, ``invalid: …`` (unknown
+        phase), ``not_ready: … : <blockers>`` (``record=true`` on an active
+        plan that is unready).
+        """
+        from studyloop.planning import AssessPlan, PlanApplication, PlanError
+
+        intent = AssessPlan(plan_id=plan_id, phase=phase, study_id=study_id, record=record)
+        try:
+            result = PlanApplication().assess(intent)
+        except PlanError as exc:
+            raise _plan_tool_error(exc) from exc
+        return result.to_json_dict()
+
+    @tool()
+    def delete_study_plan(plan_id: str, confirmed: bool = False) -> dict[str, Any]:
+        """Delete a study plan's document. Irreversible; requires ``confirmed=true``.
+
+        Deletion is the one write that cannot be undone, so the caller has to
+        say so: without ``confirmed=true`` the call is refused with
+        ``invalid: deleting '<id>' requires confirmed=True`` and the plan is
+        untouched. Ask the learner before passing it. The plan's checkpoint
+        history in the sessions database is deliberately kept — it is evidence
+        about the learner's sessions, not about the file — and stays readable
+        there after the document is gone.
+
+        Args:
+            plan_id: The plan id.
+            confirmed: Must be ``true`` for the deletion to happen.
+
+        Returns ``{"deleted": true, "plan_id": <id>}``. Refusals:
+        ``not_found: …`` (judged before the confirmation), ``invalid_id: …``,
+        ``invalid: …`` (not confirmed).
+        """
+        from studyloop.planning import DeletePlan, PlanApplication, PlanError
+
+        try:
+            result = PlanApplication().apply(DeletePlan(plan_id=plan_id, confirmed=confirmed))
+        except PlanError as exc:
+            raise _plan_tool_error(exc) from exc
+        return result.to_json_dict()
 
     # ── Exercise sets — developer preview only ───────────────────────
     # Return after the complete production inventory has been registered.
