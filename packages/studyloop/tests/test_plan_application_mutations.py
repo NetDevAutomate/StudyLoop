@@ -660,7 +660,7 @@ def test_record_created_reflects_append_outcome_not_prior_inspection(
     spec = LearningRecordSpec(title="  Window frames default to RANGE ", body=" Not ROWS. ")
 
     first = app.apply(RevisePlan(plan_id="demo", learning_record=spec))
-    outcome = first.learning_record_outcome  # pyright: ignore[reportAttributeAccessIssue]
+    outcome = first.learning_record_outcome
     assert outcome is not None
     assert outcome.created is True
     assert (outcome.record.number, outcome.record.title, outcome.record.body) == (
@@ -671,14 +671,14 @@ def test_record_created_reflects_append_outcome_not_prior_inspection(
     assert outcome.record == first.learning_records[0]
 
     again = app.apply(RevisePlan(plan_id="demo", learning_record=spec))
-    outcome = again.learning_record_outcome  # pyright: ignore[reportAttributeAccessIssue]
+    outcome = again.learning_record_outcome
     assert outcome is not None
     assert outcome.created is False
     assert outcome.record.number == 1
 
     plain = app.apply(RevisePlan(plan_id="demo", notes="no record here"))
-    assert plain.learning_record_outcome is None  # pyright: ignore[reportAttributeAccessIssue]
-    assert app.inspect("demo").learning_record_outcome is None  # pyright: ignore[reportAttributeAccessIssue]
+    assert plain.learning_record_outcome is None
+    assert app.inspect("demo").learning_record_outcome is None
 
     # Operation-local metadata, not part of the GET body shape (D-3).
     assert "learning_record_outcome" not in first.to_json_dict()
@@ -704,7 +704,7 @@ def test_duplicate_identity_is_decided_by_one_helper(app: PlanApplication, monke
         RevisePlan(plan_id="demo", learning_record=LearningRecordSpec(title="Brand new"))
     )
 
-    outcome = detail.learning_record_outcome  # pyright: ignore[reportAttributeAccessIssue]
+    outcome = detail.learning_record_outcome
     assert outcome is not None
     assert outcome.created is False
     assert outcome.record.number == 7

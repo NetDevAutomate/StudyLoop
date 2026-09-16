@@ -5,11 +5,14 @@ The `record_plan_learning(plan_id, title, body="", status="active")` tool
 SHALL apply one `RevisePlan(plan_id, learning_record=LearningRecordSpec(title,
 body, status))` through `studyloop.planning.PlanApplication` and SHALL import
 no storage module (`studyloop.planning.store` or the store's `record_learning`
-/ error family). Its response SHALL keep the pre-seam keys `{"plan_id",
-"number", "title", "status", "created"}`; `created` SHALL be derived from
-`PlanDetail.learning_record_matching` before and after the revision, so a
-retry with the same title and body reports `created: false` with the original
-`number`. Every seam refusal SHALL be a `ToolError`: `PlanNotReady` SHALL
+/ error family) and make no preliminary read. Its response SHALL keep the
+pre-seam keys `{"plan_id", "number", "title", "status", "created"}`; `created`
+SHALL be the mutation's own outcome — `PlanDetail.learning_record_outcome`,
+the store's `append_learning_record` verdict relayed by the seam — never
+inferred from an `inspect` taken before the revision, so a retry with the same
+title and body reports `created: false` with the original `number`, and so
+does a record another writer filed just before the mutation ran. Every seam
+refusal SHALL be a `ToolError`: `PlanNotReady` SHALL
 render as `plan is not ready to activate: <blocker>; <blocker>…` so the agent
 can tell the learner what to repair (design §2, "ToolError containing
 blockers"); `PlanNotFound`, `InvalidPlanId` and `InvalidField` (the store's
@@ -33,6 +36,12 @@ unchanged at this phase.
 - **WHEN** the same call is repeated
 - **THEN** one `RevisePlan` is applied, the response has `created: false` and
   `number: 1`, and the plan still holds one record
+
+#### Scenario: A record filed by another writer just before the mutation
+- **WHEN** the same record is written through the store immediately before
+  the tool's `RevisePlan` runs
+- **THEN** the response has `created: false` and `number: 1`, the tool made no
+  `inspect` call, and the plan holds one record
 
 #### Scenario: Not-ready refusal names the blockers
 - **WHEN** the seam raises `PlanNotReady` for the revision (the plan is active

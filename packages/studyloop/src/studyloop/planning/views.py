@@ -28,7 +28,6 @@ if TYPE_CHECKING:
     from datetime import date
 
     from .evaluation import PlanEvaluation
-    from .intents import LearningRecordSpec
     from .models import Checkpoint, LearningRecord, Milestone, Mission, Resource, StudyPlan
 
 
@@ -393,6 +392,22 @@ class InterviewItemView:
 
 
 @dataclass(frozen=True)
+class LearningRecordOutcome:
+    """What a ``RevisePlan(learning_record=…)`` did with its record.
+
+    ``created`` is the store's own verdict from
+    :func:`studyloop.planning.store.append_learning_record` — the one copy of
+    the identity rule — relayed by the mutation that ran it, so an adapter
+    reporting ``created`` never infers it from a read taken before the write
+    (council review 2, GPT F4). ``record`` is the record as it now stands:
+    the new one, or the existing one the spec duplicated.
+    """
+
+    record: LearningRecordView
+    created: bool
+
+
+@dataclass(frozen=True)
 class PlanDetail:
     """One plan in full.
 
@@ -401,6 +416,11 @@ class PlanDetail:
     the database log are the two parts that cost something to fetch, and most
     callers want neither. ``checkpoints`` — the document's own table — is
     always present because it is already parsed.
+
+    ``learning_record_outcome`` is operation-local metadata: set only on the
+    detail a ``RevisePlan`` carrying a learning record returns, ``None`` on
+    every other detail, and deliberately absent from :meth:`to_json_dict`,
+    whose keys are the ``GET /api/plans/{id}`` body (D-3).
     """
 
     summary: PlanSummary
@@ -412,6 +432,7 @@ class PlanDetail:
     readiness: ReadinessView
     markdown: str | None = None
     history: tuple[CheckpointHistoryView, ...] | None = None
+    learning_record_outcome: LearningRecordOutcome | None = None
 
     @classmethod
     def from_plan(
@@ -420,6 +441,7 @@ class PlanDetail:
         *,
         markdown: str | None = None,
         history: Iterable[CheckpointHistoryView] | None = None,
+        learning_record_outcome: LearningRecordOutcome | None = None,
     ) -> PlanDetail:
         return cls(
             summary=PlanSummary.from_plan(plan),
@@ -438,6 +460,7 @@ class PlanDetail:
             readiness=ReadinessView.from_plan(plan),
             markdown=markdown,
             history=None if history is None else tuple(history),
+            learning_record_outcome=learning_record_outcome,
         )
 
     def to_json_dict(self) -> dict[str, Any]:
@@ -454,21 +477,6 @@ class PlanDetail:
         if self.history is not None:
             payload["history"] = [entry.to_json_dict() for entry in self.history]
         return payload
-
-    def learning_record_matching(self, spec: LearningRecordSpec) -> LearningRecordView | None:
-        """The record ``spec`` would be a duplicate of, or ``None``.
-
-        Identity is the store's idempotency rule — same title and body after
-        the whitespace trim the parser applies
-        (:func:`studyloop.planning.store.append_learning_record`). An adapter
-        that reports ``created`` asks this before and after the revision
-        instead of carrying its own copy of that rule.
-        """
-        title, body = spec.title.strip(), spec.body.strip()
-        for record in self.learning_records:
-            if record.title == title and record.body == body:
-                return record
-        return None
 
 
 @dataclass(frozen=True)

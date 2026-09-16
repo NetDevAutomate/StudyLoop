@@ -133,10 +133,13 @@ the evaluation dict unchanged.
 
 ### Requirement: Learning records are one revision through the seam
 `studyloop plan record <id> --title T [--body B]` SHALL apply one
-`RevisePlan(learning_record=LearningRecordSpec(...))`. `created` in the
-`--json` output SHALL be derived by asking `PlanDetail.learning_record_matching`
-before and after the revision — the command carries no copy of the store's
-identity rule — and a retry with the same title and body SHALL report
+`RevisePlan(learning_record=LearningRecordSpec(...))` and no preliminary read.
+`created` in the `--json` output SHALL be the mutation's own outcome —
+`PlanDetail.learning_record_outcome.created`, the store's
+`append_learning_record` verdict relayed by the seam — never inferred from an
+`inspect` taken before the revision (a record another writer files in that
+window must be reported `created: false`), and the command carries no copy of
+the store's identity rule. A retry with the same title and body SHALL report
 `created: false` with the original `number`. An empty title SHALL be the
 seam's `Invalid value: …` refusal, exit `1`.
 
@@ -144,3 +147,9 @@ seam's `Invalid value: …` refusal, exit `1`.
 - **WHEN** `plan record <id> --title Insight --body prose --json` is run twice
 - **THEN** both exit `0`; the first reports `created: true, number: 1`; the
   second reports `created: false, number: 1`; the plan holds one record
+
+#### Scenario: A record filed by another writer just before the mutation
+- **WHEN** the same record is written through the store immediately before
+  the command's `RevisePlan` runs
+- **THEN** the command exits `0` with `created: false, number: 1`, made no
+  `inspect` call, and the plan holds one record

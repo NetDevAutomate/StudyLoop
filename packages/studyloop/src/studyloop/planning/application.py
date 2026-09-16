@@ -68,6 +68,8 @@ from .views import (
     AssessmentResult,
     CheckpointHistoryView,
     DeleteResult,
+    LearningRecordOutcome,
+    LearningRecordView,
     PlanDetail,
     PlanEvaluationView,
     PlanningBrief,
@@ -79,7 +81,7 @@ from .views import (
 if TYPE_CHECKING:
     from datetime import date
 
-    from .models import StudyPlan
+    from .models import LearningRecord, StudyPlan
 
 logger = logging.getLogger(__name__)
 
@@ -151,23 +153,23 @@ def _milestones_from(items: object) -> list[Milestone]:
     return milestones
 
 
-def _append_learning_record(plan: StudyPlan, spec: LearningRecordSpec) -> bool:
+def _append_learning_record(
+    plan: StudyPlan, spec: LearningRecordSpec
+) -> tuple[LearningRecord, bool]:
     """Apply the store's learning-record rule to the revision candidate.
 
     One copy of the rule — :func:`studyloop.planning.store.append_learning_record`
     — reached from here and from the store's own ``record_learning``. Applied
     to the candidate in memory so the record lands in the revision's single
     save; the store's ``ValueError`` (empty title, H1-H3 lines in the body)
-    becomes the seam's :class:`InvalidField`. Returns the store's ``created``
-    so the revision can tell a new record from a duplicate.
+    becomes the seam's :class:`InvalidField`. Returns the store's
+    ``(record, created)`` so the revision can tell a new record from a
+    duplicate and hand that outcome back to the caller (review 2, F4).
     """
     try:
-        _record, created = store.append_learning_record(
-            plan, spec.title, body=spec.body, status=spec.status
-        )
+        return store.append_learning_record(plan, spec.title, body=spec.body, status=spec.status)
     except ValueError as exc:
         raise InvalidField(str(exc)) from exc
-    return created
 
 
 class PlanApplication:
@@ -444,9 +446,12 @@ class PlanApplication:
 
         for field, value in updates.items():
             setattr(candidate, field, value)
-        record_created = False
+        outcome: LearningRecordOutcome | None = None
         if intent.learning_record is not None:
-            record_created = _append_learning_record(candidate, intent.learning_record)
+            record, created = _append_learning_record(candidate, intent.learning_record)
+            outcome = LearningRecordOutcome(
+                record=LearningRecordView.from_record(record), created=created
+            )
         if status is not None:
             candidate.status = status
 
@@ -459,14 +464,14 @@ class PlanApplication:
         # and ``updated`` stay put, as the store's ``record_learning`` always
         # promised. An empty revision is still the Phase-1 "touch".
         duplicate_record_only = (
-            intent.learning_record is not None
-            and not record_created
-            and not updates
-            and status is None
+            outcome is not None and not outcome.created and not updates and status is None
         )
         if not duplicate_record_only:
             store.save_plan(candidate)  # preserves plan_id + created; bumps updated
-        return PlanDetail.from_plan(candidate)
+        # The outcome rides the detail the caller already gets, so ``created``
+        # is decided by the mutation that ran — never by an adapter's read
+        # taken before it (review 2, F4).
+        return PlanDetail.from_plan(candidate, learning_record_outcome=outcome)
 
     def _set_milestone(self, intent: SetMilestone) -> PlanDetail:
         """Set one milestone's state on the loaded candidate; one gate, at most one save.

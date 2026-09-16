@@ -435,19 +435,20 @@ def plan_record(
     appends through the store's single learning-record rule, and re-renders
     the whole file, so the on-disk shape stays the renderer's business
     (ADR-0010). Re-running with the same title and body adds nothing, which
-    makes it safe for an agent to retry; ``created`` says which happened.
+    makes it safe for an agent to retry; ``created`` says which happened —
+    and it is the mutation's own outcome, not a read taken before it, so a
+    record another writer filed in between is reported honestly (review 2).
     """
     if body and body_file:
         _fail("Pass --body or --body-file, not both.")
     if body_file:
         body = Path(body_file).read_text(encoding="utf-8")
     spec = LearningRecordSpec(title=title, body=body, status=status)
-    before = _inspect(plan_id)  # maps not-found/invalid-id to the friendly failure
     detail = _apply(RevisePlan(plan_id=plan_id, learning_record=spec))
-    record = detail.learning_record_matching(spec)
-    if record is None:  # pragma: no cover - the seam just appended or matched it
+    outcome = detail.learning_record_outcome
+    if outcome is None:  # pragma: no cover - a revision carrying a record always reports one
         _fail(f"Learning record {spec.title!r} was not persisted on {plan_id!r}.")
-    created = before.learning_record_matching(spec) is None
+    record, created = outcome.record, outcome.created
     if as_json:
         click.echo(
             json.dumps(
