@@ -117,6 +117,64 @@ export function todayPanel() {
       Alpine.store('nav').go(this._viewFor(rec.action_type));
     },
 
+    /* ---- Plan relevance (issue #10) — rendering of what /api/now ranked. ----
+       The engine attaches `plan_refs` to an action and lists `active_plans`,
+       `energy_deferred` and `completion_actions` beside it, each key present
+       only when non-empty. These helpers turn that into text; none of them
+       changes which action is primary. A payload without the keys — the shape
+       a learner with no active plan gets — yields empty strings and lists. */
+
+    _activePlan(planId) {
+      const plans = (this.plan && this.plan.active_plans) || [];
+      return plans.find((p) => p.plan_id === planId) || null;
+    },
+
+    /* "SQL Windows · milestone 2: Frames; Other Plan" — every referenced plan,
+       in the engine's order; the milestone is named when the ref points at
+       the plan's next milestone. A ref to a plan the payload does not list
+       falls back to its id rather than throwing mid-render. */
+    planLabel(rec) {
+      const refs = (rec && rec.plan_refs) || [];
+      return refs
+        .map((ref) => {
+          const plan = this._activePlan(ref.plan_id);
+          let label = plan ? plan.title : ref.plan_id;
+          if (
+            ref.milestone_index != null &&
+            plan &&
+            plan.next_milestone_index === ref.milestone_index &&
+            plan.next_milestone
+          ) {
+            label += ` \u00b7 milestone ${ref.milestone_index + 1}: ${plan.next_milestone}`;
+          }
+          return label;
+        })
+        .join('; ');
+    },
+
+    deferredNotes() {
+      const deferred = (this.plan && this.plan.energy_deferred) || [];
+      const energy = (this.plan && this.plan.energy) || 'current';
+      return deferred.map(
+        (d) =>
+          `${d.plan_title} \u2014 \u201c${d.title}\u201d waits for more energy `
+          + `(needs ${d.energy_floor}/10, ${energy} energy carries ${d.energy_capability}/10)`,
+      );
+    },
+
+    completionNotes() {
+      const actions = (this.plan && this.plan.completion_actions) || [];
+      return actions.map((a) => a.action);
+    },
+
+    get hasPlanContext() {
+      return (
+        this.planLabel(this.plan && this.plan.primary) !== ''
+        || this.deferredNotes().length > 0
+        || this.completionNotes().length > 0
+      );
+    },
+
     pickUpParked(p) {
       window.dispatchEvent(new CustomEvent('today-resume', {
         detail: { topic: p.question, energy: null },

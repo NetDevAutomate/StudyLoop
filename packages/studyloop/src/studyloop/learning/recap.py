@@ -12,17 +12,62 @@ class DailyRecap:
     due_item: str
     next_action: str
     has_data: bool
+    #: How the next action relates to the learner's active study plans, and
+    #: which plan milestones today's energy deferred — rendering of what the
+    #: decision engine already ranked, never a second ranking. Empty when no
+    #: plan is active, and then absent from :meth:`to_json_dict` and
+    #: :meth:`speakable_text` so a plan-less recap is what it always was.
+    plan_context: str = ""
 
     def to_json_dict(self) -> dict:
-        return asdict(self)
+        data = asdict(self)
+        if not self.plan_context:
+            del data["plan_context"]
+        return data
 
     def speakable_text(self) -> str:
-        return (
+        text = (
             f"Win: {self.win}. "
             f"Repair target: {self.repair_target}. "
             f"Due item: {self.due_item}. "
             f"Next action: {self.next_action}."
         )
+        if self.plan_context:
+            text += f" Plan: {self.plan_context}"
+        return text
+
+
+def _plan_context(plan) -> str:
+    """Describe the engine's plan guidance for the recap — show, do not re-rank.
+
+    Reads the additive ``NowPlan`` fields defensively so a plan object from
+    an older caller or a test double without them renders an empty context.
+    """
+    plans = {entry.plan_id: entry for entry in getattr(plan, "active_plans", ())}
+    sentences: list[str] = []
+
+    advances: list[str] = []
+    for ref in getattr(getattr(plan, "primary", None), "plan_refs", ()):
+        entry = plans.get(ref.plan_id)
+        label = entry.title if entry is not None else ref.plan_id
+        if ref.milestone_index is not None:
+            label += f" (milestone {ref.milestone_index + 1}"
+            if entry is not None and entry.next_milestone_index == ref.milestone_index:
+                label += f", {entry.next_milestone}"
+            label += ")"
+        advances.append(label)
+    if advances:
+        sentences.append(f"The next action advances {'; '.join(advances)}.")
+
+    for deferred in getattr(plan, "energy_deferred", ()):
+        sentences.append(
+            f"Milestone {deferred.milestone_index + 1} of {deferred.plan_title}, "
+            f"{deferred.title}, waits for more energy: it needs {deferred.energy_floor} of 10 "
+            f"and today's energy carries {deferred.energy_capability}."
+        )
+    for completion in getattr(plan, "completion_actions", ()):
+        sentences.append(completion.action)
+    return " ".join(sentences)
 
 
 def build_daily_recap() -> DailyRecap:
@@ -64,4 +109,5 @@ def build_daily_recap() -> DailyRecap:
         due_item=due_item,
         next_action=plan.primary.evidence_command,
         has_data=has_data,
+        plan_context=_plan_context(plan),
     )

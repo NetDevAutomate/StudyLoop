@@ -1084,7 +1084,27 @@
               · <span x-text="plan?.primary?.action_type"></span>
             </p>
             <p class="today-reason">Why: <span x-text="plan?.primary?.reason"></span></p>
+            <!-- Plan relevance (#10): which active plan this action advances.
+                 Rendered from the engine's plan_refs; nothing here re-ranks. -->
+            <p class="today-meta today-plan" x-show="planLabel(plan?.primary)">
+              Advances plan: <span x-text="planLabel(plan?.primary)"></span>
+            </p>
             <button class="toggle-btn today-start-btn" @click="startPrimary()">Start →</button>
+          </div>
+
+          <!-- Plan guidance the ranker set aside: milestones today's energy
+               cannot carry, and plans whose every milestone is checked.
+               Not a `.today-card` on purpose: the browser smoke test addresses
+               the single action card by that class. -->
+          <div x-show="!loading && plan && (deferredNotes().length > 0 || completionNotes().length > 0)"
+               class="today-plan-notes">
+            <p class="today-parked-label">Your plans</p>
+            <template x-for="(note, i) in deferredNotes()" :key="'d' + i">
+              <p class="today-meta">Deferred for energy: <span x-text="note"></span></p>
+            </template>
+            <template x-for="(note, i) in completionNotes()" :key="'c' + i">
+              <p class="today-meta">Plan complete: <span x-text="note"></span></p>
+            </template>
           </div>
 
           <!-- Alternates, collapsed by default -->
@@ -1098,7 +1118,7 @@
               <template x-for="(alt, i) in (plan?.alternates || [])" :key="i">
                 <li class="today-alt-item">
                   <button class="today-alt-btn" @click="startAction(alt)">
-                    <span x-text="alt.concept"></span>
+                    <span x-text="alt.concept + (planLabel(alt) ? ' — plan: ' + planLabel(alt) : '')"></span>
                     <span class="today-alt-meta" x-text="'~' + alt.estimated_minutes + ' min · ' + alt.action_type"></span>
                   </button>
                 </li>

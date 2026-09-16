@@ -482,9 +482,9 @@ def test_recap_shows_plan_context_without_reranking(monkeypatch) -> None:
 
     # The next action is still the engine's primary — the synthesised milestone.
     assert result.next_action == 'studyloop progress "window frame" -t "sql" -c learning'
-    assert "SQL Windows" in result.plan_context  # pyright: ignore[reportAttributeAccessIssue]  # RED
-    assert "Frames" in result.plan_context  # pyright: ignore[reportAttributeAccessIssue]  # RED
-    assert result.to_json_dict()["plan_context"] == result.plan_context  # pyright: ignore[reportAttributeAccessIssue]  # RED
+    assert "SQL Windows" in result.plan_context
+    assert "Frames" in result.plan_context
+    assert result.to_json_dict()["plan_context"] == result.plan_context
     assert "Plan:" in result.speakable_text()
 
 
@@ -495,7 +495,7 @@ def test_recap_without_plans_has_no_plan_context(monkeypatch) -> None:
 
     result = recap.build_daily_recap()
 
-    assert result.plan_context == ""  # pyright: ignore[reportAttributeAccessIssue]  # RED
+    assert result.plan_context == ""
     assert "plan_context" not in result.to_json_dict()
     assert "Plan:" not in result.speakable_text()
     assert result.speakable_text().endswith(f"Next action: {result.next_action}.")
@@ -515,5 +515,5 @@ def test_recap_names_energy_deferral(monkeypatch) -> None:
     result = recap.build_daily_recap()
 
     assert result.next_action == 'studyloop progress "decorators" -t "python" -c learning'
-    assert "Frames" in result.plan_context  # pyright: ignore[reportAttributeAccessIssue]  # RED
-    assert "energy" in result.plan_context  # pyright: ignore[reportAttributeAccessIssue]  # RED
+    assert "Frames" in result.plan_context
+    assert "energy" in result.plan_context

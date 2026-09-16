@@ -13,16 +13,43 @@ from studyloop.learning import EnergyLevel, InterleaveMode, Modality, build_now_
 from studyloop.learning.voice import speak_text
 
 
+def _active_plans(plan) -> dict:
+    """``plan_id → ActivePlanSummary`` for every active plan the engine listed."""
+    return {entry.plan_id: entry for entry in getattr(plan, "active_plans", ())}
+
+
+def _plan_line(rec, plans: dict) -> str:
+    """One line naming every plan an action advances, in the engine's order.
+
+    Rendering only: the refs and their order come from the ranker; a
+    milestone is named when the ref points at one.
+    """
+    parts: list[str] = []
+    for ref in getattr(rec, "plan_refs", ()):
+        entry = plans.get(ref.plan_id)
+        label = entry.title if entry is not None else ref.plan_id
+        if ref.milestone_index is not None:
+            label += f" (milestone {ref.milestone_index + 1}"
+            if entry is not None and entry.next_milestone_index == ref.milestone_index:
+                label += f": {entry.next_milestone}"
+            label += ")"
+        parts.append(label)
+    return "; ".join(parts)
+
+
 def _render_plan(plan) -> None:
     primary = plan.primary
+    plans = _active_plans(plan)
+    plan_line = _plan_line(primary, plans)
     body = (
         f"[bold]{primary.concept}[/bold]\n"
         f"Topic: [cyan]{primary.topic}[/cyan]\n"
         f"Action: [yellow]{primary.action_type}[/yellow] for about "
         f"{primary.estimated_minutes} min\n"
         f"Why: {primary.reason}\n"
-        f"Source: [dim]{primary.source}[/dim]\n\n"
-        f"[bold]Record evidence:[/bold]\n{primary.evidence_command}"
+        f"Source: [dim]{primary.source}[/dim]\n"
+        + (f"Plan: [magenta]{plan_line}[/magenta]\n" if plan_line else "")
+        + f"\n[bold]Record evidence:[/bold]\n{primary.evidence_command}"
     )
     console.print(Panel(body, title="Study Now", border_style="cyan"))
 
@@ -30,14 +57,31 @@ def _render_plan(plan) -> None:
         ratio = " | ".join(f"{name}: {pct}%" for name, pct in plan.interleave_ratio.items())
         console.print(f"[dim]Adaptive interleave mix: {ratio}[/dim]")
 
+    for deferred in getattr(plan, "energy_deferred", ()):
+        console.print(
+            f"[yellow]Deferred for energy:[/yellow] {deferred.plan_title} — "
+            f"milestone {deferred.milestone_index + 1} “{deferred.title}” needs "
+            f"energy {deferred.energy_floor}/10; {plan.energy} energy carries "
+            f"{deferred.energy_capability}/10. Plan-related review and repair stay available."
+        )
+    for completion in getattr(plan, "completion_actions", ()):
+        console.print(f"[green]Plan complete:[/green] {completion.action}")
+    for warning in getattr(plan, "warnings", ()):
+        console.print(f"[dim]Plan warning: {warning}[/dim]")
+
     if plan.alternates:
         table = Table(title="Alternates")
         table.add_column("Concept", style="bold")
         table.add_column("Topic", style="cyan")
         table.add_column("Action")
         table.add_column("Why")
+        if plans:
+            table.add_column("Plan", style="magenta")
         for item in plan.alternates:
-            table.add_row(item.concept, item.topic, item.action_type, item.reason)
+            row = [item.concept, item.topic, item.action_type, item.reason]
+            if plans:
+                row.append(_plan_line(item, plans))
+            table.add_row(*row)
         console.print(table)
 
 
@@ -84,10 +128,12 @@ def now(
         _render_plan(plan)
 
     if speak:
+        plan_line = _plan_line(plan.primary, _active_plans(plan))
         spoken = (
             f"Study {plan.primary.concept}. "
             f"Use {plan.primary.action_type} for about {plan.primary.estimated_minutes} minutes. "
             f"{plan.primary.reason}."
+            + (f" This advances your plan {plan_line}." if plan_line else "")
         )
         if not speak_text(spoken):
             console.print(
