@@ -141,7 +141,21 @@ Branch: `fix/plan-integration-bugs` (RED at `3a4f6b01`). §5 stream: `feat/lexic
       boundary → `PlanApplication` (six operations named on the node and in a card) → `authoring` (readiness
       on the resulting document) / `store` (atomic Markdown write → `study-plans/*.md`) / `evaluation` →
       `index` → `sessions.db`; `now engine` dashed to `get_active_guidance()`, labelled "not yet wired".
-- [ ] ⚖ **Council review 2** (code seats) before Phase 3.
+- [x] ⚖ **Council review 2** (code seats `openai.gpt-6-astra` ACCEPT-WITH-CORRECTIONS, `grok-4.6`
+      ACCEPT-WITH-CORRECTIONS, `qwen3-coder` ACCEPT; receipts `council/review2/`) — arbitration
+      `docs/architecture/plan-integration/council/review-2-arbitration-2026-09-16.md`, **GATE: ACCEPT**. Every 🔴/🟡
+      reproduced by hand before acceptance; one RED + one GREEN commit per finding group: F1 no-op writes
+      (`18fb4f0f`/`979956d4`), F2 `assess()` gates the active document (`1381da2e`/`71d24023`), G1
+      `ActivePlanGuidance.readiness: ReadinessView` — Grok's headline, the Phase-3 prerequisite (`b671f69e`/`3b23111a`),
+      G2 one effective date through `PlanSummary.from_plan(today=)` (`5eef77a0`/`9a066ac0`), G3 `match_keys` sorted
+      tuple per D-3 (`cdc4ab39`/`534e9595`), G4 guidance by storage id through `_load` (`68be59aa`/`2707d05f`), G5
+      `PlanDetail.learning_record_outcome` replaces the two-read `created` and the `learning_record_matching` helper
+      named in T2.2 above (`6bd2654c`/`e62487b3`), G6 toggle retry-safety claim withdrawn (`de745650`), G7 guard catches
+      wildcard / whole-package string / transitive bypasses (`181ef517`/`59ab1e23`), G8 both-sinks-failed is "not
+      recorded" (`2877ed77`/`def5c561`), G9 lenient row leaves are strings + delete-race pin (`a2923315`/`b65c6718`).
+      Rejected: qwen's deviation-12 carve-out (2-of-3 seats keep the gate; pause-or-repair is the recovery path).
+      Gate at `b65c6718`: full suite 4769 passed / 4 skipped exit 0; JS 107; `just lint`, `just typecheck` 0;
+      `openspec validate` valid; protected files `git diff 3a4f6b01` → 0 lines. Owner decision recorded: deviation 12.
 
 ## Phase 3 — parallel: #10 ∥ #11 ∥ #13a (D-5, D-7, D-8, D-10)
 
