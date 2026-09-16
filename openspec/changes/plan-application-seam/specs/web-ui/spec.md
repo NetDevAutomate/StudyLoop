@@ -192,6 +192,13 @@ phase check of its own: an unknown phase on `POST` is the seam's
 - **THEN** `document_write == "not_requested"`, `recorded == true`, the
   document has no new checkpoint and the log has the row
 
+#### Scenario: Both sinks fail
+- **WHEN** both writes fail during `POST /api/plans/{id}/evaluate`
+- **THEN** the response is still `201` with `recorded == false`, `db_write ==
+  "failed"`, `document_write == "failed"`; the plans panel shows `Not recorded
+  <phase> checkpoint — database: failed, document: failed`, never "Partially
+  recorded" — "partially" is shown only when at least one sink saved
+
 #### Scenario: Preview writes nothing
 - **WHEN** `GET /api/plans/{id}/evaluate?phase=end` is called
 - **THEN** neither the checkpoint log nor the document gains a row

@@ -485,7 +485,7 @@ def test_assess_database_exception_still_attempts_document(
     assert result.db_write == "failed"
     assert result.document_write == "saved"
     assert result.recording_complete is False
-    assert result.any_sink_saved is True  # pyright: ignore[reportAttributeAccessIssue]
+    assert result.any_sink_saved is True
     assert _document_checkpoints("demo") == ["start"]
     assert _database_checkpoints("demo") == []
 
@@ -510,7 +510,7 @@ def test_assess_both_sinks_failed_returns_evaluation_and_two_failures(
     assert isinstance(result, AssessmentResult)
     assert (result.db_write, result.document_write) == ("failed", "failed")
     assert result.recording_complete is False
-    assert result.any_sink_saved is False  # pyright: ignore[reportAttributeAccessIssue]
+    assert result.any_sink_saved is False
     assert DB_WARNING in result.warnings
     assert DOCUMENT_WARNING in result.warnings
     assert result.evaluation.phase == "mid"
@@ -526,7 +526,7 @@ def test_assess_database_failure_document_not_requested(app: PlanApplication, mo
 
     assert (result.db_write, result.document_write) == ("failed", "not_requested")
     assert result.recording_complete is False
-    assert result.any_sink_saved is False  # pyright: ignore[reportAttributeAccessIssue]
+    assert result.any_sink_saved is False
     assert DOCUMENT_WARNING not in result.warnings
     assert _document_checkpoints("demo") == []
     assert _database_checkpoints("demo") == []
@@ -539,7 +539,7 @@ def test_assess_preview_saved_nowhere_but_is_complete(app: PlanApplication) -> N
     _plan("demo")
     result = app.assess(AssessPlan(plan_id="demo", phase="start", record=False))
     assert result.recording_complete is True
-    assert result.any_sink_saved is False  # pyright: ignore[reportAttributeAccessIssue]
+    assert result.any_sink_saved is False
 
 
 def _husk(isolated_plans_dir, plan_id: str = "husk") -> None:

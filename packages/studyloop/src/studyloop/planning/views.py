@@ -684,6 +684,18 @@ class AssessmentResult:
         """
         return "failed" not in (self.db_write, self.document_write)
 
+    @property
+    def any_sink_saved(self) -> bool:
+        """``True`` when at least one sink took the checkpoint.
+
+        With ``recording_complete`` this gives an adapter the three honest
+        headlines: complete → "recorded"; incomplete but something saved →
+        "partially recorded"; nothing saved → "not recorded" — never "partial"
+        for a checkpoint that landed nowhere (council review 2, F9). False for a
+        preview, which saved nothing on purpose.
+        """
+        return "saved" in (self.db_write, self.document_write)
+
     def to_json_dict(self) -> dict[str, Any]:
         return {
             "evaluation": self.evaluation.to_json_dict(),

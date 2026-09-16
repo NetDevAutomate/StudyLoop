@@ -708,9 +708,13 @@ export const plansStore = {
       if (data.recorded === false) {
         /* The server reports each sink (Phase 2 seam); a failed database
            write still returns the evaluation, so this is a status the
-           learner must see, not an error banner that hides the verdict. */
+           learner must see, not an error banner that hides the verdict.
+           When neither sink took it, say so: "partially" is only honest
+           when something was saved (council review 2, F9). */
+        const anySaved = data.db_write === 'saved' || data.document_write === 'saved';
+        const headline = anySaved ? 'Partially recorded' : 'Not recorded';
         this.recordStatus =
-          `Partially recorded ${phase} checkpoint \u2014 ` +
+          `${headline} ${phase} checkpoint \u2014 ` +
           `database: ${data.db_write ?? 'unknown'}, document: ${data.document_write ?? 'unknown'}` +
           (verdict ? ` (${verdict})` : '');
       } else {

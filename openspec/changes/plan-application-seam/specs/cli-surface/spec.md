@@ -115,14 +115,16 @@ one past the end (`No milestone at index -1 …`, exit `1`, document unchanged).
   intents were `SetMilestone(done=True)`, `SetMilestone(done=True)`,
   `SetMilestone(done=False)`
 
-### Requirement: Recorded checkpoints report a complete or partial recording
+### Requirement: Recorded checkpoints report a complete, partial or absent recording
 `studyloop plan evaluate <id> --record` SHALL call `assess(record=True)`,
 print the evaluation Markdown, and then print `Checkpoint recorded.` only when
 every requested sink was saved. When a sink failed the command SHALL exit `0`
-— the evaluation succeeded — and print `Checkpoint partially recorded —
-database: <state>, document: <state>` naming each sink. Without `--record` the
-command is `assess(record=False)` and writes nothing; `--json` keeps emitting
-the evaluation dict unchanged.
+— the evaluation succeeded — and name each sink: `Checkpoint partially
+recorded — database: <state>, document: <state>` when at least one sink
+saved, and `Checkpoint not recorded — database: failed, document: <state>`
+when none did ("partially" is only honest when something landed). Without
+`--record` the command is `assess(record=False)` and writes nothing; `--json`
+keeps emitting the evaluation dict unchanged.
 
 #### Scenario: Database sink fails
 - **WHEN** the checkpoint log write returns `False` during `plan evaluate <id>
@@ -130,6 +132,13 @@ the evaluation dict unchanged.
 - **THEN** the exit code is `0`, the output contains `partially recorded`,
   `database: failed` and `document: saved`, and the plan document carries
   the checkpoint
+
+#### Scenario: Both sinks fail
+- **WHEN** the checkpoint log write returns `False` and the document save
+  raises during `plan evaluate <id> --record`
+- **THEN** the exit code is `0`, the output contains `Checkpoint not recorded`,
+  `database: failed` and `document: failed`, never `partially recorded`, and
+  the plan document carries no checkpoint
 
 ### Requirement: Learning records are one revision through the seam
 `studyloop plan record <id> --title T [--body B]` SHALL apply one

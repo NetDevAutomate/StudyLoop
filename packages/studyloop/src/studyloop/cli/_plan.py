@@ -352,7 +352,8 @@ def plan_evaluate(plan_id: str, phase: str, record: bool, study_id: str, as_json
 
     With ``--record`` the checkpoint goes to the durable log and to the plan
     document; each write is reported on its own, so a failed database write
-    is named rather than hidden behind "recorded".
+    is named rather than hidden behind "recorded" — and a checkpoint that
+    landed nowhere is "not recorded", never "partially" (review 2, F9).
     """
     result = _assess(AssessPlan(plan_id=plan_id, phase=phase, study_id=study_id, record=record))
     if as_json:
@@ -364,8 +365,9 @@ def plan_evaluate(plan_id: str, phase: str, record: bool, study_id: str, as_json
     if result.recording_complete:
         console.print("[green]Checkpoint recorded.[/green]")
     else:
+        headline = "partially recorded" if result.any_sink_saved else "not recorded"
         console.print(
-            "[yellow]Checkpoint partially recorded — "
+            f"[yellow]Checkpoint {headline} — "
             f"database: {result.db_write}, document: {result.document_write}[/yellow]"
         )
 
