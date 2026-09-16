@@ -252,3 +252,142 @@ def test_manifest_hashes_regenerate_byte_identically_for_the_architect_projectio
         if manifest.get(rel, {}).get("hash") != generator.hash_file(_AGENTS / rel)
     }
     assert not stale, f"re-run scripts/update-agent-manifest.py: {stale}"
+
+
+# ---------------------------------------------------------------------------
+# Council review 4 (GPT F2/F3, Grok 🔵, qwen 🔵): the persona's runtime claims
+# ---------------------------------------------------------------------------
+
+_SESSION_START_RE = re.compile(r"^## Session Start Protocol$", re.MULTILINE)
+_END_OF_SESSION_RE = re.compile(r"^## End-of-Session Protocol$", re.MULTILINE)
+_TOOL_ROW_RE = re.compile(r"^\| [^|]+ \| `(?P<name>[a-z_]+)\((?P<args>[^)]*)\)` \|", re.MULTILINE)
+
+
+def _table_parameter_names(args: str) -> tuple[set[str], bool]:
+    """The parameter names a table row's signature shows, and whether it
+    abbreviates with an ellipsis (``…``) — top-level commas only, so a default
+    such as ``status="draft"`` or ``answers`` stays one parameter."""
+    names: set[str] = set()
+    elided = False
+    depth = 0
+    current = ""
+    for char in args + ",":
+        if char in "([{":
+            depth += 1
+        elif char in ")]}":
+            depth -= 1
+        if char == "," and depth == 0:
+            token = current.strip()
+            current = ""
+            if not token:
+                continue
+            if token == "…":
+                elided = True
+                continue
+            names.add(token.split("=", 1)[0].strip())
+        else:
+            current += char
+    return names, elided
+
+
+def test_mcp_table_signatures_match_the_registered_schemas() -> None:
+    """Every signature the MCP table shows is the registered tool's own
+    parameter list (review 4, Grok 🔵: the table had drifted — ``plan_id``,
+    ``history_limit`` and ``status`` were missing from three rows). A row may
+    abbreviate with ``…`` only as a strict subset; otherwise the names are
+    exactly the schema's, so an agent reading the table calls what exists."""
+    from studyloop.mcp.server import mcp
+
+    _, mcp_section = _section(_planning_persona(), _MCP_HEADING_RE)
+    rows = {m.group("name"): m.group("args") for m in _TOOL_ROW_RE.finditer(mcp_section)}
+    assert set(rows) == set(PLAN_MCP_TOOLS), set(rows) ^ set(PLAN_MCP_TOOLS)
+
+    registry = mcp._tool_manager._tools
+    # ``record_plan_learning`` is introduced in prose under the table with the
+    # same backtick-signature form; hold it to the same rule.
+    prose = re.search(r"`record_plan_learning\(([^)]*)\)`", mcp_section)
+    assert prose is not None, "record_plan_learning is not introduced with its signature"
+    rows["record_plan_learning"] = prose.group(1)
+
+    for name, args in rows.items():
+        schema_params = set(registry[name].parameters["properties"])
+        shown, elided = _table_parameter_names(args)
+        if elided:
+            assert shown < schema_params, f"{name}: {shown - schema_params} are not parameters"
+        else:
+            assert shown == schema_params, (
+                f"{name}: table shows {sorted(shown)}, schema has {sorted(schema_params)}"
+            )
+
+
+def test_session_protocol_says_where_study_id_comes_from_and_the_empty_default() -> None:
+    """``study_id=STUDY_ID`` is not self-explanatory to an agent in a Web PTY
+    or ACP console (review 4, GPT F2 / Grok / qwen): the protocol must say the
+    value is the live session's ``study_session_id`` from the session state
+    file the persona already lists, and that when it cannot be read the
+    argument stays at its empty default — never the literal placeholder."""
+    _, section = _section(_planning_persona(), _SESSION_START_RE)
+    lowered = section.lower()
+
+    assert "study_session_id" in section, "the protocol does not say where STUDY_ID comes from"
+    assert "study_id" in section
+    assert "empty" in lowered or 'study_id=""' in section, "no rule for when it cannot be read"
+    assert "literal" in lowered, "the placeholder itself must be ruled out"
+
+
+def test_wind_down_names_the_acp_path_for_ending_the_session() -> None:
+    """Step 6 is a shell command; an ACP architect has no shell. The protocol
+    must name ``end_session`` (the registered MCP tool) for that case and be
+    honest that it carries no notes (review 4, qwen 🔵 / Grok 🔵)."""
+    from studyloop.mcp.server import mcp
+
+    assert "end_session" in mcp._tool_manager._tools
+    _, section = _section(_planning_persona(), _END_OF_SESSION_RE)
+
+    assert "`end_session`" in section, "no MCP path for ending the session over ACP"
+    assert "studyloop session end" in section, "the shell path must stay for PTY sessions"
+    assert "notes" in section.lower()
+
+
+def test_revise_row_says_pause_before_repairing_an_active_plan() -> None:
+    """The F1 contract: every write to an active-but-unready document is
+    refused, so repairing one means pausing it first. The Revise row must say
+    so, or the architect hammers ``update_study_plan`` on a husk (review 4,
+    Grok 🔵)."""
+    _, mcp_section = _section(_planning_persona(), _MCP_HEADING_RE)
+    revise_row = next(
+        line
+        for line in mcp_section.splitlines()
+        if line.startswith("| Revise | `update_study_plan")
+    )
+    assert "pause" in revise_row.lower(), revise_row
+
+
+def test_lifecycle_paragraph_does_not_overclaim_the_active_create_refusal() -> None:
+    """ "Do not create as active to skip the gate; the seam refuses it" taught a
+    blanket ban the seam does not enforce — a *ready* document may be created
+    active. The paragraph must say the gate applies at creation too (review
+    4, GPT §3)."""
+    _, mcp_section = _section(_planning_persona(), _MCP_HEADING_RE)
+    lowered = " ".join(mcp_section.lower().split())  # the Markdown is hard-wrapped
+
+    assert "skip the gate" in lowered or "same readiness" in lowered
+    assert "the seam refuses it" not in lowered
+
+
+def test_install_docs_disclose_architect_fallback_limits() -> None:
+    """``docs/agent-install.md`` said an agent without MCP "can do the same
+    work" at a shell, while the persona is honest that the CLI cannot revise
+    an existing plan's fields or delete a plan; and it did not say that the
+    harness-launched Kiro/Claude architect definitions do not attach the
+    server (review 4, GPT F3 / Grok)."""
+    doc = (_REPO_ROOT / "docs/agent-install.md").read_text(encoding="utf-8")
+    start = doc.index("## Study-plan tools over MCP")
+    end = doc.index("\n## ", start + 1)
+    section = doc[start:end]
+    lowered = section.lower()
+
+    assert "the same work" not in lowered, "parity overclaim"
+    assert "revis" in lowered and "delet" in lowered and "no cli" in lowered.replace("-", " ")
+    assert "kiro" in lowered and "claude" in lowered, "the harness boundary is not disclosed"
+    assert "t6.1" in lowered, "the owner item is not named"
