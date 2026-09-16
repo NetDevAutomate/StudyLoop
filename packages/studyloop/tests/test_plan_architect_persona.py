@@ -378,9 +378,12 @@ def test_lifecycle_paragraph_does_not_overclaim_the_active_create_refusal() -> N
 def test_install_docs_disclose_architect_fallback_limits() -> None:
     """``docs/agent-install.md`` said an agent without MCP "can do the same
     work" at a shell, while the persona is honest that the CLI cannot revise
-    an existing plan's fields or delete a plan; and it did not say that the
-    harness-launched Kiro/Claude architect definitions do not attach the
-    server (review 4, GPT F3 / Grok)."""
+    an existing plan's fields or delete a plan (review 4, GPT F3 / Grok). It
+    then disclosed that the harness-launched Kiro/Claude architects did not
+    attach the server. The owner granted them the plan tools on 2026-09-16
+    (D-A), so the section now states the granted shape for both harnesses —
+    the ten tools, the Kiro visibility/trust arrays and their spelling — and
+    no longer points at an open item that has been decided."""
     doc = (_REPO_ROOT / "docs/agent-install.md").read_text(encoding="utf-8")
     start = doc.index("## Study-plan tools over MCP")
     end = doc.index("\n## ", start + 1)
@@ -389,12 +392,20 @@ def test_install_docs_disclose_architect_fallback_limits() -> None:
 
     assert "the same work" not in lowered, "parity overclaim"
     assert "revis" in lowered and "delet" in lowered and "no cli" in lowered.replace("-", " ")
-    assert "kiro" in lowered and "claude" in lowered, "the harness boundary is not disclosed"
-    # Review 4 pinned the owner item as "T6.1"; T6.1 closed the phase without
-    # taking the permission decision, so the doc now names where it is recorded
-    # instead of the phase that has passed (test_docs_plan_integration_contract
-    # forbids the stale phase reference).
-    assert "open item" in lowered and "close-out" in lowered, "the owner item is not named"
+    assert "kiro" in lowered and "claude" in lowered, "the harness grant is not disclosed"
+    for phrase in (
+        "`@studyloop/<tool>`",  # Kiro trust spelling
+        "`mcp__studyloop__<tool>`",  # Claude allow-list spelling
+        "`mcpservers`",
+        "`allowedtools`",
+        "d-a",
+    ):
+        assert phrase in lowered, f"the granted shape is not stated: {phrase}"
+    assert "nothing else on the `studyloop` server is trusted" in lowered, "least privilege"
+    assert "not the learner's authorisation" in lowered, "tool permission ≠ user authorisation"
+    assert "open item" not in lowered and "stay cli-limited" not in lowered, (
+        "the decision has been taken; the doc must not describe it as open"
+    )
 
 
 def test_fallback_table_does_not_point_at_web_ui_controls_that_do_not_exist() -> None:

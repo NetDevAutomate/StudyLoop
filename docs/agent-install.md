@@ -231,18 +231,29 @@ plan's mission — its *why* and success criteria — is not a field any revisio
 tool carries: it changes by editing the Markdown document, the source of
 truth, directly or through the Web API's whole-document `PATCH` with
 `markdown`, which is readiness-checked on save. Whether the tools are reachable depends on the agent
-process having the `studyloop` server registered, not on the persona: today the
-harness-launched architect definitions for Kiro CLI
-(`agents/kiro/study-plan-architect.json`, no `mcpServers`) and Claude Code
-(`agents/claude/study-plan-architect.md`, `tools: Read, Write, Grep, Bash`) do
-not attach it, so an architect started from those two harnesses takes the CLI
-fallback the persona describes. That is a deliberate permission boundary, not
-an omission: granting a harness-launched agent authoring, lifecycle and a
-destructive tool changes its permission model, and the decision to do so is
-the maintainer's, recorded as an open item in the plan-integration close-out;
-the two definitions stay CLI-limited until it is taken. A Web-launched
-architect (`purpose=planning`) carries the same persona and uses whichever
-servers its agent process is connected to.
+process having the `studyloop` server registered *and* the harness letting
+the agent see and use it, not on the persona. The harness-launched architect
+definitions attach it: Kiro CLI's `agents/kiro/study-plan-architect.json`
+declares the `studyloop` and `session-db` servers under `mcpServers`, lists
+`@studyloop` and `@session-db` in `tools` (Kiro's visibility array — an
+agent whose `tools` is `@builtin` alone sees no MCP tool, server or not) and
+trusts exactly the ten tools above as `@studyloop/<tool>` in `allowedTools`;
+the `session-db` tools stay visible but prompt. Claude Code's
+`agents/claude/study-plan-architect.md` names the same ten in its frontmatter
+`tools:` allow-list as `mcp__studyloop__<tool>`. That is the least-privilege
+grant the maintainer decided on 2026-09-16 (plan-integration follow-on
+decision D-A: no harness-launched architect falls back to the shell with
+full permissions): nothing else on the `studyloop` server is trusted, and
+the learner's confirmation before `delete_study_plan` remains a persona rule
+— a tool permission is not the learner's authorisation. One spelling
+detail matters for Kiro: `@server/tool` is the form an agent config honours;
+`mcp_server_tool` belongs to `mcp.json`'s `autoApprove` and is ignored in an
+agent file. OpenCode, Codex and Grok Build register the server globally
+(`studyloop install agents` writes it into each harness's own MCP
+configuration), so their architects reach the tools without a per-agent
+grant; pi has no MCP client and takes the CLI fallback the persona describes
+by design. A Web-launched architect (`purpose=planning`) carries the same
+persona and uses whichever servers its agent process is connected to.
 
 | Tool | Purpose |
 |---|---|

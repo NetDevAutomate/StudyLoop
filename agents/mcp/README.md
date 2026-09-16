@@ -36,8 +36,8 @@ uv tool install "./packages/agent-session-tools[tts]" --force
 
 === "Grok Build"
 
-    Grok Build reads MCP servers from `~/.grok/config.toml`, not a repo-owned
-    `mcp.json`. Register with the CLI:
+    Grok Build reads MCP servers from `$GROK_HOME/config.toml` (default
+    `~/.grok/config.toml`), not a repo-owned `mcp.json`. Register with the CLI:
     ```bash
     grok mcp add speaker -- uvx --from "mcp[cli]" mcp run /path/to/studyloop/agents/mcp/study-speak-server.py
     ```
@@ -254,7 +254,8 @@ running each harness without the StudyLoop installer:
   args = []
   ```
 - Grok Build — registered with the CLI (never hand-write
-  `~/.grok/config.toml`; `grok mcp list` reads it back):
+  `$GROK_HOME/config.toml`, default `~/.grok/config.toml`; `grok mcp list`
+  reads it back):
   ```bash
   grok mcp add --scope user --transport stdio session-db session-db-mcp
   grok mcp add --scope user --transport stdio studyloop studyloop-mcp
