@@ -1,0 +1,19 @@
+{
+  "actor_backend": "scripted",
+  "actor_model": null,
+  "arbitration_note": "Mechanics sign-off only: the three plan journeys passed through the real web UI, the real stdio MCP server and the real now engine with a fake (stub) agent. No mentor conversation took place, so no rubric criterion was graded and no council seat was consulted; the rubric version and hash are recorded so a graded run can cite the same document.",
+  "date": "2026-09-16T07:43:06+00:00",
+  "harness": "fake-agent",
+  "harness_version": null,
+  "journeys": {
+    "architect_launch": "passed",
+    "mcp_lifecycle": "passed",
+    "now_with_active_plan": "passed"
+  },
+  "per_criterion_scores": {},
+  "private_bundle_digest": "sha256:bdab3a536290c57a22eb95c00844ad64edc39eebf729dd5d34fea7905e9d0f48",
+  "repo_sha": "a69867bf",
+  "rubric_hash": "4dfdc757e4ee0e6011ea52a9662531eea64cc6ff941714c92f33d76c11223c34",
+  "rubric_version": 1,
+  "run_id": "uat-plan-journeys-20260916-074306-a69867bf"
+}
