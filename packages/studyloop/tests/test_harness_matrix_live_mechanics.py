@@ -39,11 +39,13 @@ _tests_dir = Path(__file__).parent
 if str(_tests_dir) not in sys.path:
     sys.path.insert(0, str(_tests_dir))
 
+from acceptance.isolation import create_scratch_environment, sweep_scratch  # noqa: E402
 from acceptance.test_harness_matrix_live import (  # noqa: E402
     HARNESS_ORDER,
     PROBES,
     _kiro_probe,
     _presence_only_probe,
+    auth_mode_for,
     harness_available,
 )
 from harness.tmux import TmuxHarness  # noqa: E402
@@ -84,6 +86,37 @@ def test_harness_order_is_exactly_release_harnesses_reordered() -> None:
     assert list(HARNESS_ORDER[core_end:]) == list(PREVIEW_HARNESSES), (
         "every PREVIEW_HARNESSES member must come last, in PREVIEW_HARNESSES's own order"
     )
+
+
+class TestAuthModeRecording:
+    """The bundle's ``auth_mode`` must say which world the harness actually saw.
+
+    A ``presence-only`` run can pass mechanically while the harness prints
+    "No API key found" for every turn (pi, 2026-09-16); a reader of the
+    evidence must be able to tell that run from one where the harness held
+    its real credentials, without opening turns.json.
+    """
+
+    @pytest.mark.parametrize("harness_name", RELEASE_HARNESSES)
+    def test_real_auth_scratch_records_real_auth_for_every_harness(
+        self, harness_name: str, tmp_path: Path
+    ) -> None:
+        scratch = create_scratch_environment(
+            tmp_path, extra_env={"HOME": str(tmp_path), "PATH": "/usr/bin"}, real_harness_auth=True
+        )
+        try:
+            assert auth_mode_for(harness_name, scratch) == "real-auth"
+        finally:
+            sweep_scratch(scratch)
+
+    def test_scrubbed_scratch_keeps_the_original_split(self, tmp_path: Path) -> None:
+        scratch = create_scratch_environment(tmp_path)
+        try:
+            assert auth_mode_for("kiro", scratch) == "verified"
+            for name in PREVIEW_HARNESSES:
+                assert auth_mode_for(name, scratch) == "presence-only"
+        finally:
+            sweep_scratch(scratch)
 
 
 class TestAvailabilityPredicateMechanics:

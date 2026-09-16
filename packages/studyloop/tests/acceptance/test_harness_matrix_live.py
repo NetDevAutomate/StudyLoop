@@ -150,6 +150,20 @@ PROBES: dict[str, Callable[[str, Mapping[str, str]], tuple[bool, str]]] = {
 }
 
 
+def auth_mode_for(harness_name: str, scratch: ScratchEnv) -> str:
+    """The ``auth_mode`` the evidence bundle records (council D-21(7)).
+
+    ``real-auth`` when the scratch was built with the opt-in real-harness-auth
+    mode (the harness saw its own credentials -- the only mode in which a
+    recorded reply can be a model's); ``verified`` for kiro's whoami probe
+    under a scrubbed scratch; ``presence-only`` otherwise, which the coverage
+    inventory tracks as an exclusion.
+    """
+    if scratch.real_harness_auth:
+        return "real-auth"
+    return "verified" if harness_name == "kiro" else "presence-only"
+
+
 def harness_available(name: str, env: Mapping[str, str]) -> tuple[bool, str]:
     """Named-skip predicate (D-13): report WHICH binary/step is missing.
 
@@ -297,7 +311,7 @@ class TestHarnessMatrixLive:
                 actor="scripted",
                 outcome=outcome,
                 platform=platform.platform(),
-                auth_mode="verified" if harness_name == "kiro" else "presence-only",
+                auth_mode=auth_mode_for(harness_name, scratch_env),
                 turns=[
                     {"prompt": r.prompt, "pane_output": r.pane_output, "elapsed": r.elapsed}
                     for r in (driver.records if driver is not None else [])

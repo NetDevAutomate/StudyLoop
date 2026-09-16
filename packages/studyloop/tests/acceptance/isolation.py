@@ -60,6 +60,13 @@ _UNIX_SOCKET_PATH_LIMIT = 104
 _TMUX_SOCKET_TMP_ROOT = "/tmp"
 _TMUX_SOCKET_TMP_PREFIX = "sl-acc-"
 
+#: Dropped from a real-harness-auth env on top of every STUDYLOOP_* name: the
+#: suite's context-scope override (the scratch config carries the scope) and
+#: the shell=True agent-command hatches a real-binary lane must never honour.
+_REAL_AUTH_DENY: frozenset[str] = frozenset(
+    {"SESSION_CONTEXT_SCOPE", "STUDYLOOP_TEST_AGENT_CMD", "STUDYLOOP_TEST_ACP_CMD"}
+)
+
 
 class UnsafeSweepError(RuntimeError):
     """Raised when a sweep guard trips. Sweeping never proceeds after this."""
@@ -82,6 +89,10 @@ class ScratchEnv:
     sentinel_path: Path
     sentinel_token: str
     env: dict[str, str]
+    #: True when ``env`` keeps the caller's real HOME for the HARNESS (opt-in,
+    #: see :func:`build_real_harness_auth_env`); StudyLoop's own pointers are
+    #: scratch in both modes.
+    real_harness_auth: bool = False
     _descendant_stoppers: list[Callable[[], None]] = field(default_factory=list, repr=False)
 
     def register_descendant_stopper(self, stopper: Callable[[], None]) -> None:
@@ -147,10 +158,57 @@ def _assert_safe_to_remove_tmux_socket_dir(socket_dir: Path) -> None:
         )
 
 
+def build_real_harness_auth_env(
+    *,
+    state_dir: Path,
+    config_dir: Path,
+    caller_env: dict[str, str] | None = None,
+) -> dict[str, str]:
+    """Child env for the OPT-IN real-harness-auth mode (``STUDYLOOP_ACC_REAL_AUTH=1``).
+
+    The default scratch mode hands the harness an empty HOME: no harness can
+    authenticate there, so a live lane can only ever prove the launch
+    mechanics -- the first live harness-evidence run (2026-09-16) recorded pi
+    answering every scripted turn with "No API key found" while the lane
+    still passed. Certifying a harness's real model path on a developer's
+    machine needs the harness to see its OWN config and credentials, exactly
+    as ``studyloop study`` in a real terminal does (the CLI/tmux production
+    path inherits the shell environment unscrubbed -- ``session/orchestrator``
+    -- so this mode is production-faithful, not a relaxation of a production
+    control).
+
+    What stays real: ``HOME``, ``XDG_*``, and every provider credential the
+    shell exported. What is scratch, always: every StudyLoop pointer --
+    ``STUDYLOOP_CONFIG`` (the seeded config, incl. its context scope),
+    ``STUDYLOOP_SESSION_DIR`` (session-state.json, the one-session authority),
+    ``STUDYLOOP_STATE_DIR``, ``STUDYLOOP_DB`` (the sessions DB the run writes)
+    -- plus ``TMUX_TMPDIR`` set by the caller. Inherited ``STUDYLOOP_*``
+    pointers and the suite's ``SESSION_CONTEXT_SCOPE`` override are dropped
+    for the same reason ``build_scratch_child_env`` drops them: each one
+    points past the scratch. The test-only agent-command hatches are dropped
+    too -- a real-auth lane must drive the real binary (council D-16).
+
+    The harness WILL write its own transcripts into its real directories,
+    the same as any real session; the guarded sweeper never touches them.
+    """
+    source = os.environ if caller_env is None else caller_env
+    env = {
+        k: v
+        for k, v in source.items()
+        if not k.startswith("STUDYLOOP_") and k not in _REAL_AUTH_DENY
+    }
+    env["STUDYLOOP_CONFIG"] = str(config_dir / "config.yaml")
+    env["STUDYLOOP_SESSION_DIR"] = str(config_dir)
+    env["STUDYLOOP_STATE_DIR"] = str(state_dir)
+    env["STUDYLOOP_DB"] = str(config_dir / "sessions.db")
+    return env
+
+
 def create_scratch_environment(
     tmp_path: Path,
     *,
     extra_env: dict[str, str] | None = None,
+    real_harness_auth: bool = False,
 ) -> ScratchEnv:
     """Build a fresh scratch HOME + state dir + seeded config + sanitized env.
 
@@ -158,6 +216,11 @@ def create_scratch_environment(
     throwaway directory — this function trusts its caller to already be
     isolated from the real filesystem; it does not itself consult
     ``Path.home()``.
+
+    ``real_harness_auth=True`` selects :func:`build_real_harness_auth_env`
+    instead of the default scrubbed scratch env: the harness keeps the
+    caller's real HOME and credentials, StudyLoop's pointers stay scratch.
+    Opt-in only -- the ``scratch_env`` fixture reads ``STUDYLOOP_ACC_REAL_AUTH``.
     """
     home = tmp_path / "home"
     home.mkdir(parents=True, exist_ok=True)
@@ -201,7 +264,12 @@ def create_scratch_environment(
     sentinel_path.write_text(token, encoding="utf-8")
 
     caller_env = dict(extra_env) if extra_env else None
-    env = build_scratch_child_env(home=home, state_dir=state_dir, caller_env=caller_env)
+    if real_harness_auth:
+        env = build_real_harness_auth_env(
+            state_dir=state_dir, config_dir=config_dir, caller_env=caller_env
+        )
+    else:
+        env = build_scratch_child_env(home=home, state_dir=state_dir, caller_env=caller_env)
     env["TMUX_TMPDIR"] = str(tmux_socket_dir)
 
     scratch = ScratchEnv(
@@ -212,6 +280,7 @@ def create_scratch_environment(
         sentinel_path=sentinel_path,
         sentinel_token=token,
         env=env,
+        real_harness_auth=real_harness_auth,
     )
     # First real caller of register_descendant_stopper (isolation.py had the
     # hook but nothing registered with it): a tmux server bound to THIS run's

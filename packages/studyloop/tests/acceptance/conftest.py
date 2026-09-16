@@ -36,6 +36,10 @@ KNOWN_ACTORS = _FACTORY_KNOWN_ACTORS
 _ACC_ENV = "STUDYLOOP_ACC"
 _HARNESS_ENV = "STUDYLOOP_ACC_HARNESS"
 _ACTOR_ENV = "STUDYLOOP_ACC_ACTOR"
+#: Opt-in: the harness keeps the developer's REAL home and credentials while
+#: every StudyLoop pointer stays scratch (isolation.build_real_harness_auth_env).
+#: Never the default -- see docs/acceptance-testing.md "Real harness auth".
+_REAL_AUTH_ENV = "STUDYLOOP_ACC_REAL_AUTH"
 
 
 def selected_harnesses() -> tuple[str, ...]:
@@ -49,6 +53,12 @@ def selected_harnesses() -> tuple[str, ...]:
 def selected_actor() -> str:
     """Parse ``STUDYLOOP_ACC_ACTOR`` — default ``scripted``, the CI-safe actor."""
     return os.environ.get(_ACTOR_ENV, "scripted").strip() or "scripted"
+
+
+def real_harness_auth_selected() -> bool:
+    """``STUDYLOOP_ACC_REAL_AUTH=1`` -- anything else (unset, empty, "0") is the
+    default scrubbed scratch mode."""
+    return os.environ.get(_REAL_AUTH_ENV, "").strip() == "1"
 
 
 def require_harness(harness: str) -> None:
@@ -93,7 +103,7 @@ def scratch_env(tmp_path: Path) -> Generator[ScratchEnv, None, None]:
     Swept in teardown even when the test body fails — the guard runs on
     every exit path, never only the happy one.
     """
-    scratch = create_scratch_environment(tmp_path)
+    scratch = create_scratch_environment(tmp_path, real_harness_auth=real_harness_auth_selected())
     try:
         yield scratch
     finally:
