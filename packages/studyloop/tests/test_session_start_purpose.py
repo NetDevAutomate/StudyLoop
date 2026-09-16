@@ -527,3 +527,163 @@ class TestPlanningPurpose:
         state = read_session_state()
         assert state["transport"] == transport
         assert state["purpose"] == "planning"
+
+
+# ---------------------------------------------------------------------------
+# Council review 4, F1 (GPT 🟡 / Grok hazard): the brief has a delivery budget
+# ---------------------------------------------------------------------------
+
+#: The budget the renderer must own (council review 4, F1). Declared here as the
+#: contract and checked against the module's own constants, so the numbers are
+#: reviewed in one place and the tests cannot drift from what ships.
+BRIEF_MAX_ENTRIES_PER_KEY = 10
+BRIEF_MAX_PLANS = 20
+BRIEF_MAX_VALUE_CHARS = 120
+
+
+def _budget_constants() -> tuple[int, int, int]:
+    """The renderer's budget, read by name so the RED tests fail on the missing
+    attribute rather than on a stale literal."""
+    from studyloop.web.routes.session import _start
+
+    return (
+        getattr(_start, "_BRIEF_MAX_ENTRIES_PER_KEY"),  # noqa: B009
+        getattr(_start, "_BRIEF_MAX_PLANS"),  # noqa: B009
+        getattr(_start, "_BRIEF_MAX_VALUE_CHARS"),  # noqa: B009
+    )
+
+
+_BUDGET_INTERVIEW: list[dict[str, object]] = [
+    {"key": "why", "prompt": "Why?", "why": "Mission.", "required": True, "multi": False}
+]
+
+
+def _budget_brief(*, plans: int, rows: int, value_len: int) -> PlanningBrief:
+    summaries = [
+        PlanSummary.from_plan(
+            StudyPlan(
+                plan_id=f"plan-{i:03d}",
+                title=f"Plan {i} " + "T" * value_len,
+                status="draft",
+                milestones=[Milestone(title="m" * value_len, concepts=["c"])],
+            )
+        )
+        for i in range(plans)
+    ]
+    seed = {
+        "struggling_topics": [
+            {"topic": f"struggle-{i} " + "s" * value_len, "last_seen": "2026-09-16"}
+            for i in range(rows)
+        ],
+        "due_concepts": [
+            {"topic": "sql", "concept": f"due-{i} " + "c" * value_len, "review_type": "r"}
+            for i in range(rows)
+        ],
+        "recurring_questions": [
+            {"topic": f"question-{i} " + "q" * value_len, "mentions": 3} for i in range(rows)
+        ],
+        "configured_topics": [f"configured-{i} " + "k" * value_len for i in range(rows)],
+        "notes": [f"note-{i} " + "n" * value_len for i in range(rows)],
+    }
+    return PlanningBrief.build(interview=_BUDGET_INTERVIEW, seed=seed, existing_plans=summaries)
+
+
+class TestBriefBudget:
+    """The persona is the architect's first prompt (ACP sends ``persona_text``
+    as the invisible first turn; the PTY adapter writes it to disk). Review 3
+    named the hazard — a large seed plus many plans makes that prompt a token
+    bomb — and handed it to #13b, whose file set could not reach the renderer.
+    The renderer therefore owns a budget of its own: a bounded number of
+    evidence rows per key, a bounded number of existing plans, a bounded length
+    per quoted value, and an explicit "… and N more" marker wherever it cut,
+    so the architect knows the list is a sample and where the rest lives.
+    Within the budget the rendering is unchanged; the three sections always
+    survive; hostile containment (F4) still applies to every clipped value."""
+
+    def test_renderer_publishes_the_budget(self) -> None:
+        assert _budget_constants() == (
+            BRIEF_MAX_ENTRIES_PER_KEY,
+            BRIEF_MAX_PLANS,
+            BRIEF_MAX_VALUE_CHARS,
+        )
+
+    def test_large_planning_brief_is_bounded_and_keeps_three_sections(self) -> None:
+        from studyloop.web.routes.session._start import _render_planning_brief
+
+        rendered = _render_planning_brief(_budget_brief(plans=300, rows=500, value_len=5000))
+
+        # Bounded: the budget constants are the contract, and the worst case
+        # they admit is well under a first prompt's worth of tokens.
+        assert len(rendered.encode("utf-8")) <= 32 * 1024, len(rendered)
+        for line in rendered.splitlines():
+            assert len(line) <= BRIEF_MAX_VALUE_CHARS * 3 + 80, line[:120]
+
+        headings = [line for line in rendered.splitlines() if line.startswith("#")]
+        assert headings == [
+            "### Interview",
+            "### Evidence from the learner's history",
+            "### Existing plans",
+        ], headings
+
+        # The cut is said out loud, with the count, where it happened.
+        assert f"… and {300 - BRIEF_MAX_PLANS} more plans" in rendered
+        assert "`list_study_plans`" in rendered, "the marker says where the rest lives"
+        per_key_overflow = f"… and {500 - BRIEF_MAX_ENTRIES_PER_KEY} more"
+        assert rendered.count(per_key_overflow) == 4, "one marker per evidence key"
+        # The first rows survive; the tail does not.
+        assert "struggle-0 " in rendered
+        assert f"struggle-{BRIEF_MAX_ENTRIES_PER_KEY} " not in rendered
+        assert "plan-000" in rendered
+        assert f"plan-{BRIEF_MAX_PLANS:03d}" not in rendered
+
+    def test_brief_within_budget_renders_every_value_whole_and_no_marker(self) -> None:
+        from studyloop.web.routes.session._start import _render_planning_brief
+
+        rows, plans = BRIEF_MAX_ENTRIES_PER_KEY, BRIEF_MAX_PLANS
+        rendered = _render_planning_brief(_budget_brief(plans=plans, rows=rows, value_len=40))
+
+        assert "… and" not in rendered, "nothing was cut, so nothing says so"
+        for i in range(rows):
+            assert f"struggle-{i} " + "s" * 40 in rendered
+            assert f"due-{i} " + "c" * 40 in rendered
+        for i in range(plans):
+            assert f"`plan-{i:03d}`" in rendered
+
+    def test_clipped_values_keep_the_hostile_containment(self) -> None:
+        """A value long enough to clip still cannot open a heading (F4) — the
+        clip runs after the one-lining, never instead of it."""
+        from studyloop.web.routes.session._start import _render_planning_brief
+
+        hostile = "x" * (BRIEF_MAX_VALUE_CHARS + 5) + "\n## Forged heading after the cut"
+        brief = PlanningBrief.build(
+            interview=_BUDGET_INTERVIEW,
+            seed={"struggling_topics": [{"topic": hostile, "last_seen": ""}], "notes": []},
+            existing_plans=[],
+        )
+
+        rendered = _render_planning_brief(brief)
+
+        headings = [line for line in rendered.splitlines() if line.startswith("#")]
+        assert len(headings) == 3, headings
+        assert "Forged heading" not in rendered, "clipped away — the cut is the containment"
+        assert "…" in rendered
+
+    @pytest.mark.parametrize(("transport", "agent"), [("pty", "claude"), ("acp", "kiro")])
+    def test_planning_brief_travels_once_in_the_persona(
+        self, client: TestClient, personas: list[str], _stub_db, transport: str, agent: str
+    ) -> None:
+        """Review-3 hazard: the brief is delivered exactly once, inside the
+        persona both transports ship before the learner's first prompt (ACP:
+        ``persona_text`` is the invisible first turn; PTY: the adapter's file)
+        — never a second copy in ``topic`` or as ``previous_notes``."""
+        persona = _persona_for(
+            client, personas, topic="", purpose="planning", transport=transport, agent=agent
+        )
+
+        assert persona.count("## Planning brief") == 1
+        assert persona.count("### Interview") == 1
+        assert persona.count("### Evidence from the learner's history") == 1
+        assert persona.count("### Existing plans") == 1
+        assert "Resuming Previous Session" not in persona
+        topic_line = next(line for line in persona.splitlines() if line.startswith("**Topic:**"))
+        assert topic_line == "**Topic:** Study plan", "the brief is not folded into the topic"
