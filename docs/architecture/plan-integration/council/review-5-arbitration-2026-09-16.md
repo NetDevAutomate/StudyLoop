@@ -106,6 +106,24 @@ plan-application-seam` and `--specs --all` (25) passed on it.
    without leaving the specs unsynchronized; the archive is done with the warning acknowledged and this file, the
    close-out and the archived `tasks.md` all say so.
 
+### Addendum (after the receipt and the archive)
+
+- **GPT F13 was more right than the F12 row records.** Both `world` fixtures (the #14 browser module and the UAT
+  plan-journeys module) were `tempfile.mkdtemp` with no cleanup step; thirty-nine of their directories had
+  accumulated in `$TMPDIR`. Both now remove their world in a `finally` (a module run leaves the count unchanged) and
+  the thirty-nine were removed by hand, with the e2e server logs. Recorded in the close-out's final section.
+- **The first real receipt failed for two environmental reasons and is kept** (`receipts/verify-fff69c65.json`,
+  27/29; `69740be5`): the browser module lost one test to a 20 s start-POST timeout caused by the web app's
+  background query-encoder warm under machine load ≈ 7.5 (A/B: 5/5 module runs fail with the warm on, 3/3 pass
+  with `STUDYLOOP_RETRIEVAL_MODE=lexical` in the fixture's isolated child — now the fixture's setting), and the
+  studyloop full suite was 5042 passed / 0 failed with exit 1 because the C8/R-49d guard saw another agent's
+  `log_topic` write to the real `~/.config/studyloop/session-topics.md` mid-run. The re-run on the fixed tree is
+  `receipts/verify-69740be5.json`, **29/29, exit 0** (`8c4ece48`). The warm's ability to stall request handling is
+  listed for the owner as a product follow-on; it is not a plan-integration defect.
+- **Archived at `7f836f50`:** `openspec archive plan-application-seam --yes`, +28 / ~1 / −1 requirements into the six
+  normative specs; `openspec validate --specs --all` 24 passed; `just release-consistency-shipped` passes. T3.4b
+  travelled into the archive open, as this arbitration said it would.
+
 ## Gate decision
 
 **Phase 6 (#15) with the review-5 corrections F1–F16 is ACCEPTED for archive and for the owner's close-out, with one
