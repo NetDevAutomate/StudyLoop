@@ -150,19 +150,23 @@ def _milestones_from(items: object) -> list[Milestone]:
     return milestones
 
 
-def _append_learning_record(plan: StudyPlan, spec: LearningRecordSpec) -> None:
+def _append_learning_record(plan: StudyPlan, spec: LearningRecordSpec) -> bool:
     """Apply the store's learning-record rule to the revision candidate.
 
     One copy of the rule — :func:`studyloop.planning.store.append_learning_record`
     — reached from here and from the store's own ``record_learning``. Applied
     to the candidate in memory so the record lands in the revision's single
     save; the store's ``ValueError`` (empty title, H1-H3 lines in the body)
-    becomes the seam's :class:`InvalidField`.
+    becomes the seam's :class:`InvalidField`. Returns the store's ``created``
+    so the revision can tell a new record from a duplicate.
     """
     try:
-        store.append_learning_record(plan, spec.title, body=spec.body, status=spec.status)
+        _record, created = store.append_learning_record(
+            plan, spec.title, body=spec.body, status=spec.status
+        )
     except ValueError as exc:
         raise InvalidField(str(exc)) from exc
+    return created
 
 
 class PlanApplication:
@@ -417,8 +421,9 @@ class PlanApplication:
 
         for field, value in updates.items():
             setattr(candidate, field, value)
+        record_created = False
         if intent.learning_record is not None:
-            _append_learning_record(candidate, intent.learning_record)
+            record_created = _append_learning_record(candidate, intent.learning_record)
         if status is not None:
             candidate.status = status
 
@@ -426,26 +431,43 @@ class PlanApplication:
         # activated, or one that already is and has just been edited.
         if candidate.status == "active":
             self._assert_can_be_active(candidate)
-        store.save_plan(candidate)  # preserves plan_id + created; bumps updated
+        # A revision that carried only a learning record which already existed
+        # changes nothing and writes nothing (review 2, F1): the file's bytes
+        # and ``updated`` stay put, as the store's ``record_learning`` always
+        # promised. An empty revision is still the Phase-1 "touch".
+        duplicate_record_only = (
+            intent.learning_record is not None
+            and not record_created
+            and not updates
+            and status is None
+        )
+        if not duplicate_record_only:
+            store.save_plan(candidate)  # preserves plan_id + created; bumps updated
         return PlanDetail.from_plan(candidate)
 
     def _set_milestone(self, intent: SetMilestone) -> PlanDetail:
-        """Set one milestone's state on the loaded candidate; one gate, one save.
+        """Set one milestone's state on the loaded candidate; one gate, at most one save.
 
         Set, not toggle: applying the same intent twice leaves the same
-        document, so a retried call is safe. A negative index is refused
-        rather than read as Python's "from the end" — a milestone index is a
-        position in the plan, not a list trick.
+        document — a retry that asks for the state the milestone already has
+        writes nothing, so ``updated`` and the file's bytes are untouched
+        (review 2, F1). The gate still runs first: policy before the
+        short-circuit. A negative index is refused rather than read as
+        Python's "from the end" — a milestone index is a position in the
+        plan, not a list trick.
         """
         candidate = self._load(intent.plan_id)
         total = len(candidate.milestones)
         if not 0 <= intent.index < total:
             msg = f"No milestone at index {intent.index} (plan has {total})"
             raise InvalidMilestone(msg)
-        candidate.milestones[intent.index].done = bool(intent.done)
+        milestone = candidate.milestones[intent.index]
+        wanted = bool(intent.done)
         if candidate.status == "active":
             self._assert_can_be_active(candidate)
-        store.save_plan(candidate)
+        if milestone.done != wanted:
+            milestone.done = wanted
+            store.save_plan(candidate)
         return PlanDetail.from_plan(candidate)
 
     def _delete(self, intent: DeletePlan) -> DeleteResult:

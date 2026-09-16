@@ -89,16 +89,19 @@ SHALL honour the answer. A successful database write SHALL add no warning.
 `apply(SetMilestone(plan_id, index, done))` SHALL set — not toggle — one
 milestone's `done` state on a loaded candidate, judge the resulting document
 with the same readiness gate every write uses when the plan is active, and
-save once. Applying the same intent twice SHALL leave the same document.
+save once when the state changed. Applying the same intent twice SHALL leave
+the same document *byte for byte*: a retry that asks for the state the
+milestone already has writes nothing and leaves `updated` untouched (the
+gate still runs first).
 `index` is a 0-based position: an index past the end **or negative** SHALL
 raise `InvalidMilestone` before any write. A plan that does not exist SHALL
 raise `PlanNotFound` before the index is judged.
 
 #### Scenario: Set is idempotent
 - **WHEN** `SetMilestone(plan_id, 0, done=True)` is applied twice
-- **THEN** each application saves exactly once, the milestone is done after
-  both, `milestone_done` is unchanged by the second, and
-  `SetMilestone(plan_id, 0, done=False)` undoes it
+- **THEN** the first application saves exactly once and the second saves
+  nothing (document bytes and `updated` unchanged), the milestone is done
+  after both, and `SetMilestone(plan_id, 0, done=False)` undoes it
 
 #### Scenario: Negative index
 - **WHEN** `SetMilestone(plan_id, -1, done=True)` is applied
@@ -243,9 +246,11 @@ applied to an in-memory plan. The store's `record_learning` SHALL wrap it
 (load → append → save only when created, so a duplicate leaves the file's
 bytes untouched) and the seam's `RevisePlan(learning_record=…)` SHALL call it
 on the revision candidate, translating its `ValueError` to `InvalidField`.
-`PlanDetail.learning_record_matching(spec)` SHALL answer whether a spec would
-be a duplicate, using the same stripped title-and-body identity, so adapters
-can report `created` without a copy of the rule.
+A revision whose only content is a learning record that already exists SHALL
+write nothing (no save, bytes and `updated` untouched — the guarantee the
+store's `record_learning` always gave); a duplicate record beside another
+field change SHALL still be one save, and an empty revision remains the
+Phase-1 "touch".
 
 #### Scenario: The seam follows the store's rule
 - **WHEN** `store.append_learning_record` is replaced by a function that
