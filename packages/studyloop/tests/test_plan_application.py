@@ -882,3 +882,41 @@ def test_views_are_immutable_and_json_fresh(app: PlanApplication) -> None:
     assert detail.to_json_dict() == second
 
     json.dumps(first)
+
+
+# ---------------------------------------------------------------------------
+# #8: "Markdown remains authoritative and index refresh remains best-effort and
+# recoverable" — the close-out cited the module and ``reindex()``; council
+# review 5 (GPT F12) asked for the test that actually shows a failed index
+# refresh leaving the document saved and ``reindex()`` recovering the row.
+# ---------------------------------------------------------------------------
+
+
+def test_failed_index_refresh_keeps_the_document_and_reindex_recovers_the_row(
+    app: PlanApplication, monkeypatch
+) -> None:
+    from studyloop.planning import index
+
+    working_refresh = index.index_plan
+
+    def _refresh_fails(plan: StudyPlan) -> bool:
+        raise RuntimeError("index database unavailable")
+
+    # The refresh the store runs after every save is broken for this write.
+    monkeypatch.setattr(index, "index_plan", _refresh_fails)
+    detail = app.apply(CreatePlan(title="Index Outage", answers=READY_ANSWERS, plan_id="outage"))
+
+    # The Markdown document is the source of truth: the save succeeded, the
+    # seam reads it back, and the derived index simply lacks the row.
+    assert detail.summary.plan_id == "outage"
+    assert store.plan_path("outage").is_file()
+    assert app.inspect("outage").summary.title == "Index Outage"
+    assert [row["plan_id"] for row in index.indexed_plans()] == []
+
+    # Recovery is the seam's ``reindex()`` (``studyloop plan reindex``), once
+    # the refresh works again — no document is touched.
+    monkeypatch.setattr(index, "index_plan", working_refresh)
+    before = store.plan_path("outage").read_bytes()
+    assert app.reindex() >= 1
+    assert [row["plan_id"] for row in index.indexed_plans()] == ["outage"]
+    assert store.plan_path("outage").read_bytes() == before
