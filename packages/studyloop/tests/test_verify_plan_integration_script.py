@@ -73,6 +73,7 @@ REQUIRED_CHECK_NAMES = {
     "rg-no-focus-literal-under-session-routes",
     "combined-journey",
     "integration-combined",
+    "integration-combined-reverse",
     "browser-journey-e2e",
     "js-unit",
     "openspec-validate",
@@ -104,6 +105,25 @@ class TestRegistry:
         optional flag to hide behind."""
         for check in script.build_checks(REPO_ROOT):
             assert check.required is True, check.name
+
+    def test_combined_run_is_verified_in_both_orders(self, script) -> None:
+        """#15 DoD: "the combined integration run has no nested-event-loop
+        ordering regression". One order proves one order (council review 5,
+        GPT F10): the registry runs the stdio smoke + the combined journey in
+        BOTH file orders, as two checks over the same two modules, so the
+        receipt can say "both orders" and mean it."""
+        by_name = {check.name: check for check in script.build_checks(REPO_ROOT)}
+        forward = by_name["integration-combined"].command
+        reverse = by_name["integration-combined-reverse"].command
+        assert not callable(forward) and not callable(reverse)
+        modules = [part for part in forward if part.endswith(".py")]
+        assert len(modules) == 2, forward
+        assert [part for part in reverse if part.endswith(".py")] == list(reversed(modules))
+        assert "-m" in forward and "integration" in forward
+        assert "-m" in reverse and "integration" in reverse
+        assert [part for part in forward if not part.endswith(".py")] == [
+            part for part in reverse if not part.endswith(".py")
+        ]
 
     def test_zero_hit_rg_invariants_expect_exit_one(self, script) -> None:
         """``rg`` exits 1 when nothing matches, which is the desired state for

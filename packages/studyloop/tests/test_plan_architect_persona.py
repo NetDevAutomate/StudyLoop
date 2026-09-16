@@ -395,3 +395,33 @@ def test_install_docs_disclose_architect_fallback_limits() -> None:
     # instead of the phase that has passed (test_docs_plan_integration_contract
     # forbids the stale phase reference).
     assert "open item" in lowered and "close-out" in lowered, "the owner item is not named"
+
+
+def test_fallback_table_does_not_point_at_web_ui_controls_that_do_not_exist() -> None:
+    """The Web UI's Study Plans view creates plans, activates them, ticks
+    milestones and previews or records checkpoints — it has no control that
+    revises an existing plan's fields and none that deletes a plan; those are
+    the Web *API*'s ``PATCH``/``DELETE`` and the MCP tools. The persona told
+    the architect to "point at the Web UI" for exactly those two steps (found
+    while closing council review 5's docs findings). The two rows and the
+    no-command sentence must instead tell the architect to say so and stop,
+    and name the MCP tool where one exists."""
+    content = _planning_persona()
+    _, cli_section = _section(content, _CLI_HEADING_RE)
+    rows = {
+        line.split("|")[1].strip(): line
+        for line in cli_section.splitlines()
+        if line.startswith("| ")
+    }
+    for step in ("Revise", "Delete"):
+        assert step in rows, f"the fallback table has no {step} row"
+        lowered_row = rows[step].lower()
+        for door in ("revise in the web ui", "or the web ui", "in the web ui"):
+            assert door not in lowered_row, rows[step]
+    assert "`update_study_plan`" in rows["Revise"]
+    assert "`delete_study_plan`" in rows["Delete"]
+    assert "no web ui control" in rows["Delete"].lower()
+    _, mcp_section = _section(content, _MCP_HEADING_RE)
+    lowered = " ".join(mcp_section.lower().split())
+    assert "say so to the learner" in lowered
+    assert "point at the web ui" not in lowered
