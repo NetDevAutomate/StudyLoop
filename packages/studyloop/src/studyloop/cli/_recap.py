@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 import click
+from rich.markup import escape
 from rich.panel import Panel
 
 from studyloop.cli._shared import console
@@ -46,20 +47,19 @@ def recap_today(speak: bool, audio_file: Path | None, json_output: bool) -> None
     if json_output:
         click.echo(json.dumps(recap.to_json_dict(), indent=2))
     else:
-        console.print(
-            Panel(
-                "\n".join(
-                    [
-                        f"[bold green]Win:[/bold green] {recap.win}",
-                        f"[bold yellow]Repair:[/bold yellow] {recap.repair_target}",
-                        f"[bold cyan]Due:[/bold cyan] {recap.due_item}",
-                        f"[bold]Next:[/bold] {recap.next_action}",
-                    ]
-                ),
-                title="Today",
-                border_style="cyan",
-            )
-        )
+        lines = [
+            f"[bold green]Win:[/bold green] {escape(recap.win)}",
+            f"[bold yellow]Repair:[/bold yellow] {escape(recap.repair_target)}",
+            f"[bold cyan]Due:[/bold cyan] {escape(recap.due_item)}",
+            f"[bold]Next:[/bold] {escape(recap.next_action)}",
+        ]
+        # The engine's plan context, shown as the JSON and spoken forms already
+        # show it — rendering only, never a second ranking (council review 3, F8).
+        # Read defensively: test doubles of the recap predate the field.
+        plan_context = getattr(recap, "plan_context", "")
+        if plan_context:
+            lines.append(f"[bold magenta]Plan:[/bold magenta] {escape(plan_context)}")
+        console.print(Panel("\n".join(lines), title="Today", border_style="cyan"))
     if speak:
         speak_result = speak_text_result(recap.speakable_text())
         if not speak_result.ok:
