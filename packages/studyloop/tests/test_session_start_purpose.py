@@ -50,9 +50,13 @@ from conftest import StubTransport  # noqa: E402  # pyright: ignore[reportAttrib
 # The persona file the ``plan-architect`` mode renders — the test reads the
 # canonical body from the checkout so the assertion is about the mode being
 # selected, not about any particular sentence in the persona.
-_REPO_ROOT = Path(__file__).resolve()
-while not (_REPO_ROOT / "agents/manifest.json").exists():
-    _REPO_ROOT = _REPO_ROOT.parent
+# A bounded walk over the parents (review 4, F5): the unbounded form never
+# terminated outside a checkout, because ``Path("/").parent`` is ``Path("/")``.
+_REPO_ROOT = next(
+    candidate
+    for candidate in (Path(__file__).resolve(), *Path(__file__).resolve().parents)
+    if (candidate / "agents/manifest.json").exists()
+)
 _ARCHITECT_PERSONA = (_REPO_ROOT / "agents/shared/personas/plan-architect.md").read_text(
     encoding="utf-8"
 )

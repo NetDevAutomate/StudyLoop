@@ -38,9 +38,11 @@ PLAN_TOOLS = {
     "delete_study_plan",
 }
 
-#: The exact production inventory: 23 at ``0a20a796`` plus the nine plan tools
-#: less ``record_plan_learning``, which was already among the 23 (council
-#: review 3, F13 — the design's "26 → 35" was arithmetic on a stale count).
+#: The exact production inventory: 23 original tools at ``0a20a796`` —
+#: ``record_plan_learning`` among them — plus the nine plan tools = 32
+#: (council review 3, F13 — the design's "26 → 35" was arithmetic on a stale
+#: count; review 4, F6 — an earlier form of this comment said "plus nine less
+#: one", which is 31).
 #: Exact, not a lower bound: an accidental registration is a failure here, and
 #: the name assertions stop an unrelated addition masking a missing tool.
 PRODUCTION_TOOL_COUNT = 32

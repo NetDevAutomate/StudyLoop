@@ -158,7 +158,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
         # rule and the resulting-document gate both apply, and every refusal is
         # a domain error mapped by the shared `_plan_tool_error` below (T4.1
         # fold) — a not-ready plan names its blockers, prefixed `not_ready:`
-        # like the other eight plan tools, so the agent can tell the learner
+        # like the nine plan tools of design §4, so the agent can tell the learner
         # what to fix (design §2). `created` is the mutation's own outcome,
         # never inferred from a read taken before it (council review 2, F4).
         spec = LearningRecordSpec(title=title, body=body, status=status)

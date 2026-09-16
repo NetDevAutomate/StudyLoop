@@ -32,9 +32,23 @@ import pytest
 from studyloop import session_state
 from studyloop.agent_launcher import build_canonical_persona, persona_mode_for
 
-_REPO_ROOT = Path(__file__).resolve()
-while not (_REPO_ROOT / "agents/manifest.json").exists():
-    _REPO_ROOT = _REPO_ROOT.parent
+
+def _find_repo_root(start: Path) -> Path:
+    """The checkout that holds ``agents/manifest.json``, searched upwards from ``start``.
+
+    A bounded walk over ``start.parents`` (review 4, F5): the previous
+    ``while not …: root = root.parent`` never terminated outside a checkout,
+    because ``Path("/").parent`` is ``Path("/")``. Outside one this raises a
+    named error instead of hanging collection.
+    """
+    for candidate in (start, *start.parents):
+        if (candidate / "agents/manifest.json").exists():
+            return candidate
+    msg = f"no agents/manifest.json in {start} or any parent — run from the studyloop checkout"
+    raise FileNotFoundError(msg)
+
+
+_REPO_ROOT = _find_repo_root(Path(__file__).resolve())
 _AGENTS = _REPO_ROOT / "agents"
 _CANONICAL = _AGENTS / "shared/personas/plan-architect.md"
 _MANIFEST_GENERATOR = _REPO_ROOT / "scripts/update-agent-manifest.py"
@@ -50,12 +64,6 @@ PLAN_MCP_TOOLS: tuple[str, ...] = (
     "set_study_plan_milestone",
     "evaluate_study_plan",
     "delete_study_plan",
-)
-
-# #12 (T4.1) registers these three; the persona names them ahead of that landing
-# so the two Phase-4 branches merge without a second persona edit.
-_LANDING_WITH_12: frozenset[str] = frozenset(
-    {"set_study_plan_milestone", "evaluate_study_plan", "delete_study_plan"}
 )
 
 # The CLI fallback must cover every lifecycle step that HAS a CLI command.
@@ -169,16 +177,27 @@ def test_mcp_section_states_the_lifecycle_guards() -> None:
     assert "record=true" in lowered.replace(" ", "")
 
 
-def test_the_nine_are_the_registry_plus_exactly_what_12_lands() -> None:
-    """Ground the test's own constant in the real registry: six of the nine are
-    registered today, and the ones that are not are exactly the three #12 adds.
-    Holds before and after #12 merges."""
+def test_all_nine_persona_tools_are_registered_after_phase_four() -> None:
+    """Ground the persona's constant in the real registry: every tool the
+    architect is told to prefer exists in the production inventory. Until the
+    #12 merge this test tolerated the three not-yet-landed names
+    (``_LANDING_WITH_12``); with both Phase-4 branches merged that tolerance
+    would let one of them silently disappear (review 4, F4/qwen/Grok), so the
+    set is now exact."""
     from studyloop.mcp.server import mcp
 
     registered = set(mcp._tool_manager._tools)
-    unregistered = {name for name in PLAN_MCP_TOOLS if name not in registered}
-    assert unregistered <= _LANDING_WITH_12, f"unexpected unregistered names: {unregistered}"
+    missing = [name for name in PLAN_MCP_TOOLS if name not in registered]
+    assert not missing, f"the persona names tools the registry lacks: {missing}"
     assert "record_plan_learning" in registered
+
+
+def test_find_agent_repo_root_fails_when_marker_is_absent(tmp_path: Path) -> None:
+    """The walk terminates outside a checkout (review 4, F5) — it does not spin
+    at the filesystem root."""
+    with pytest.raises(FileNotFoundError, match=r"agents/manifest\.json"):
+        _find_repo_root(tmp_path / "nested" / "deeper")
+    assert _find_repo_root(Path(__file__).resolve()) == _REPO_ROOT
 
 
 # ---------------------------------------------------------------------------

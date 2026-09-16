@@ -93,10 +93,15 @@ PHASE_FOUR_TOOLS = (
 
 NINE_TOOLS: tuple[str, ...] = SIX_TOOLS + PHASE_FOUR_TOOLS
 
-#: 23 at ``0a20a796`` + the nine plan tools less ``record_plan_learning``, which
-#: is already among the 23 (council review 3, F13 — the design's "35" was
-#: arithmetic on a stale inventory).
+#: 23 original tools at ``0a20a796`` — ``record_plan_learning`` among them —
+#: plus the nine design-§4 plan tools = 32 (council review 3, F13: the design's
+#: "35" was arithmetic on a stale inventory; review 4, F6: the earlier comment
+#: here said "plus nine less one", which is 31).
 PRODUCTION_TOOL_COUNT = 32
+
+#: The core names the stdio smoke test also pins; asserted here too so the
+#: in-process twin is a real twin (review 4, F4).
+CORE_TOOLS = {"list_courses", "get_study_backlog", "end_session"}
 
 DB_WARNING = "checkpoint not saved to the database"
 DOCUMENT_WARNING = "checkpoint not appended to the plan document"
@@ -889,12 +894,20 @@ def test_phase_four_schemas_carry_the_design_signatures() -> None:
 
 
 def test_production_inventory_is_thirty_two_with_the_nine_plan_tools() -> None:
-    """The in-process twin of the stdio pin (T4.1): exactly 32 unique names,
-    all nine design-§4 plan tools, ``record_plan_learning`` still among them."""
-    names = set(_registry())
-    assert len(_registry()) == PRODUCTION_TOOL_COUNT, sorted(names)
+    """The in-process twin of the stdio pin (T4.1): exactly 32 names, each
+    tool registered under its own name (a duplicate registration would
+    overwrite its key silently, so the dict's size alone cannot show one),
+    all nine design-§4 plan tools, ``record_plan_learning`` and the core
+    names (review 4, F4)."""
+    registry = _registry()
+    names = set(registry)
+    assert len(registry) == PRODUCTION_TOOL_COUNT, sorted(names)
+    assert sorted(tool.name for tool in registry.values()) == sorted(names), (
+        "a tool is registered under a key that is not its own name"
+    )
     assert names >= set(NINE_TOOLS), set(NINE_TOOLS) - names
     assert "record_plan_learning" in names
+    assert names >= CORE_TOOLS, CORE_TOOLS - names
 
 
 # ---------------------------------------------------------------------------

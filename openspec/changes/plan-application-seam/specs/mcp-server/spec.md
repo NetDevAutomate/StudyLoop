@@ -13,7 +13,7 @@ inferred from an `inspect` taken before the revision, so a retry with the same
 title and body reports `created: false` with the original `number`, and so
 does a record another writer filed just before the mutation ran. Every seam
 refusal SHALL be a `ToolError` mapped by the same `_plan_tool_error` helper the
-other eight plan tools use (Phase 4, #12 — before the fold the tool mapped
+nine plan tools of design §4 use (Phase 4, #12 — before the fold the tool mapped
 inline, without a kind prefix): `PlanNotReady` SHALL render as `not_ready:
 plan is not ready to activate: <blocker>; <blocker>…` (with the already-active
 "pause it or repair" suffix when the plan was active) so the agent can tell
