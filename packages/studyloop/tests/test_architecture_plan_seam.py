@@ -245,6 +245,12 @@ def test_adapters_import_plans_only_through_the_seam() -> None:
         "from studyloop import planning",
         'store_module = __import__("studyloop.planning.store")',
         "def later():\n    from studyloop.planning import create_plan\n    return create_plan",
+        "from studyloop.planning import *",
+        "from ...planning import *",
+        'planning = importlib.import_module("studyloop.planning")',
+        "from studyloop.planning.application import store",
+        "from studyloop.planning.views import readiness",
+        "from ...planning.application import evaluation as ev",
     ],
     ids=[
         "store-module",
@@ -261,6 +267,13 @@ def test_adapters_import_plans_only_through_the_seam() -> None:
         "from-studyloop-import-planning",
         "dynamic-string",
         "nested-in-function",
+        # council review 2, GPT F8: the four bypasses the guard missed
+        "wildcard-from-package",
+        "relative-wildcard",
+        "dynamic-whole-package-string",
+        "transitive-via-allowed-module",
+        "transitive-name-via-views",
+        "relative-transitive-as",
     ],
 )
 def test_planted_violation_is_rejected(tmp_path, planted: str) -> None:
