@@ -71,7 +71,11 @@ PROTECTED_EARLY = (
     "packages/studyloop/tests/test_cli_plan.py",
     "packages/studyloop/tests/test_planning_evaluation.py",
 )
-PROTECTED_LATE_BASE = "0a20a796"
+# Moved 0a20a796 -> 1f304a5f on 2026-09-16: the harness-tier merge (issue #21,
+# pi promoted to core on 5/5 evidence) legitimately changed ONE line of
+# test_agent_launcher.py -- the release-order tuple pin. The guard caught it
+# (verify-33e70f29.json, 28/29) and the diff was read before the base moved.
+PROTECTED_LATE_BASE = "1f304a5f"
 PROTECTED_LATE = (
     "packages/studyloop/tests/test_learning_decision.py",
     "packages/studyloop/tests/test_web_now.py",
@@ -236,7 +240,7 @@ def build_checks(repo_root: Path) -> list[Check]:
             ["git", "diff", "--quiet", PROTECTED_EARLY_BASE, "--", *PROTECTED_EARLY],
         ),
         Check(
-            "protected-files-0a20a796",
+            "protected-files-late-base",
             ["git", "diff", "--quiet", PROTECTED_LATE_BASE, "--", *PROTECTED_LATE],
         ),
         # --- the rg invariants (design §8) -----------------------------------

@@ -64,7 +64,7 @@ REQUIRED_CHECK_NAMES = {
     "plan-suites",
     "docs-contract",
     "protected-files-3a4f6b01",
-    "protected-files-0a20a796",
+    "protected-files-late-base",
     "rg-plan-application-cli",
     "rg-plan-application-web-routes",
     "rg-plan-application-mcp",
@@ -145,9 +145,13 @@ class TestRegistry:
     def test_protected_file_checks_name_the_ten_files_against_their_bases(self, script) -> None:
         by_name = {check.name: check for check in script.build_checks(REPO_ROOT)}
         early = by_name["protected-files-3a4f6b01"].command
-        late = by_name["protected-files-0a20a796"].command
+        late = by_name["protected-files-late-base"].command
         assert not callable(early) and not callable(late)
-        assert "3a4f6b01" in early and "0a20a796" in late
+        assert "3a4f6b01" in early and script.PROTECTED_LATE_BASE in late
+        # The late base is a moving pin by design: it advances only when a
+        # protected file legitimately changes and the diff has been read
+        # (recorded next to the constant). It must never regress to the seam base.
+        assert script.PROTECTED_LATE_BASE != "3a4f6b01"
         early_files = [part for part in early if part.endswith(".py")]
         late_files = [part for part in late if part.endswith(".py")]
         assert len(early_files) == 3 and len(late_files) == 7
