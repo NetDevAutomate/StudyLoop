@@ -183,14 +183,31 @@ Branch: `fix/plan-integration-bugs` (RED at `3a4f6b01`). §5 stream: `feat/lexic
 - [ ] **T3.7** Implement. DoD: T3.6 green; `test_mcp_stdio_smoke.py` **unchanged** (still 26) — inventory
       moves in #12.
 
-### #13a purpose + resolver · owner: agent D · files: `web/routes/session/_models.py`, `_start.py` (+ ACP path), `agent_launcher.py`, `tests/test_session_start_purpose.py`
-- [ ] **T3.8** RED: `test_planning_purpose_selects_plan_architect_persona_with_brief_section`,
+### #13a purpose + resolver · owner: agent D · files: `web/routes/session/_models.py`, `_start.py` (+ ACP path), `_dashboard.py` (reconnect default), `agent_launcher.py`, `tests/test_session_start_purpose.py`
+- [x] **T3.8** (`0c4d9160`, 11 failed / 1 pin passed on `0a20a796`) RED:
+      `test_planning_purpose_selects_plan_architect_persona_with_brief_section`,
       `test_default_purpose_is_focus_and_unchanged`, `test_planning_launch_creates_no_plan_and_no_plan_id`,
       `test_purpose_persisted_for_reconnect_label`, `test_brief_failure_releases_session_claim`,
-      `test_pty_and_acp_use_one_resolver` (fake agent, no paid calls).
-- [ ] **T3.9** Implement per design §5 (`brief=` keyword, `persona_mode_for`, purpose on state). DoD: T3.8
-      green; `test_web_session_start_pty.py`, `test_web_session_start_acp.py`, `test_web_session_ws.py` green
-      and unchanged; `rg -n 'build_canonical_persona\("focus"' packages/studyloop/src/studyloop/web` → 0.
+      `test_pty_and_acp_use_one_resolver` (fake agent, no paid calls) — plus pins
+      `test_planning_purpose_keeps_a_user_supplied_subject_as_the_topic`, `test_unknown_purpose_is_rejected_structurally`
+      and `TestResolver` (resolver mapping; `brief=` renders its own section; no brief → no section). Fake agent:
+      StubTransport factories, binary preflight bypassed through the `STUDYLOOP_TEST_*_CMD` hatch accessor.
+- [x] **T3.9** (`4fc51250`) Implement per design §5 (`brief=` keyword, `persona_mode_for`, purpose on state). DoD: T3.8
+      green (12 passed); `test_web_session_start_pty.py`, `test_web_session_start_acp.py`, `test_web_session_ws.py`,
+      `test_agent_launcher.py` green and unchanged (91); `rg -n 'build_canonical_persona\("focus"' packages/studyloop/src/studyloop/web` → 0.
+      **As landed:** `StartSessionRequest.purpose: Literal["focus", "planning"] = "focus"` (the only model change;
+      `topic` stays required — a blank topic on `planning` resolves to `"Study plan"`, the label `776a9dc0` pins);
+      `agent_launcher.persona_mode_for(purpose: str) -> str` and `build_canonical_persona(mode, topic, energy, *,
+      previous_notes=None, brief=None)`, byte-identical output when `brief` is `None`. `_start.py`: one
+      `_resolve_persona(body, topic)` both transports call — resolver → optional brief → persona + hash — and the
+      `PlanningBrief → Markdown` renderer lives in the route (routes may import `planning.application|views`, D-6
+      guard 30 passed). The persona is now built **before** the DB record, so a brief failure returns a structured
+      500 (`error`/`purpose`/`repair`) from inside the claim's `try` with nothing to roll back but the reservation.
+      `purpose` is always written to the state payload (never inherited through the read-merge-write) and
+      `GET /api/session/state` echoes it (`setdefault("purpose", "focus")`, the `origin` pattern); the `201` body
+      gains `purpose`. Delta specs: `live-session-orchestration` ("Session purpose"), `agent-adapters` ("Persona
+      resolution by purpose"); `openspec validate` valid, `--specs --all` 25 passed. Gates: `-k "session or launcher or
+      purpose or persona"` 651 passed; `just lint` clean; `just typecheck` 0 errors.
 - [ ] ⚖ **Council review 3** across the three streams before Phase 4.
 
 ## Phase 4 — parallel: #12 ∥ #13b
