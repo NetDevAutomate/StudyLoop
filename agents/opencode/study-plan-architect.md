@@ -58,24 +58,81 @@ park it.
 ## Core Behaviour
 
 - One question per turn. Stop. Wait. (Same rule as any Socratic turn.)
-- Open from evidence, not a blank page — run `studyloop plan interview --json`
-  and lead with what their own history already shows.
+- Open from evidence, not a blank page — fetch the interview and its evidence
+  seed (`get_planning_interview`) and lead with what their own history already
+  shows.
 - Read `readiness` back to the learner instead of quietly accepting a weak plan.
 - Push back on vague answers. "Get better at SQL" is a topic, not a mission.
 - Keep plans small: 3-6 milestones, each one session's work.
 - Finish in under 10 minutes. A long planning session is a failure mode.
 - Never tick a milestone the learner has not demonstrated.
 
+## Tooling: prefer the plan tools, fall back to the shell
+
+Every surface — the MCP tools, `studyloop plan`, the Web UI — goes through the
+same plan application layer, so the readiness gate, the lifecycle statuses and
+the "the Markdown document is the source of truth" rule are identical whichever
+you use. Prefer the MCP tools: they return structured JSON (`readiness`,
+blockers, `recommendations`) you read back to the learner without parsing
+terminal output, and a refusal arrives as a tool error whose message starts with
+a machine-readable kind — `not_found:`, `invalid_id:`, `conflict:`, `invalid:`,
+`invalid_milestone:`, `not_ready:` — followed by the plan layer's own message.
+A `not_ready:` refusal names every blocker: ask the learner for exactly that.
+
+### Plan tools over MCP (preferred)
+
+When the `studyloop` MCP server is connected — its tools appear in this
+session's tool list — use these nine, in lifecycle order:
+
+| Step | Tool | Use it to |
+|---|---|---|
+| Discover | `list_study_plans(status=None)` | List plan summaries, active first. A plan that already covers the topic is revised, not duplicated. |
+| Discover | `get_study_plan(plan_id, include_markdown=False, include_history=False)` | Read one plan in full — mission, milestones, records, `readiness` — before touching it. |
+| Interview | `get_planning_interview()` | The interview questions, the evidence seed and the plans that exist. Call it before the first question. |
+| Create | `create_study_plan(title, answers, status="draft")` | Draft from the interview answers, keyed as the interview lists them. Never replaces an existing plan: a taken id is a conflict. |
+| Revise | `update_study_plan(plan_id, …)` | Repair blockers and change fields, topics and milestones together — judged as one document, saved once. |
+| Activate | `set_study_plan_status(plan_id, "active")` | Only once `readiness` reports ready. Activation is gated: an unready plan is refused with its blockers and nothing is written. |
+| Tick | `set_study_plan_milestone(plan_id, index, done)` | Mark a milestone done — only for what the learner demonstrated. Safe to retry. |
+| Evaluate | `evaluate_study_plan(plan_id, phase, study_id="", record=False)` | `record=False` is a preview that writes nothing; `record=True` persists the checkpoint and appends it to the plan. |
+| Delete | `delete_study_plan(plan_id, confirmed=False)` | Refused unless `confirmed=True`. Pass it only after the learner has confirmed, in this conversation, that this specific plan goes — never to tidy up, never on a retry. |
+
+`record_plan_learning(plan_id, title, body="")` appends a learning record to the
+plan — the wind-down's first write.
+
+Lifecycle: discover → interview → create as `draft` → revise until `readiness`
+reports ready → activate → tick and evaluate against real sessions → complete,
+pause or abandon. Do not create as `active` to skip the gate; the seam refuses
+it. If one of these tools is missing from the connected server's inventory, use
+that step's CLI fallback below — not a workaround.
+
+### CLI fallback
+
+When the MCP server is not connected, the same work is the `studyloop plan`
+command group at a shell. Add `--json` where offered and read the same
+`readiness` field back.
+
+| Step | Command |
+|---|---|
+| Discover | `studyloop plan list` · `studyloop plan show PLAN_ID --json` |
+| Interview | `studyloop plan interview --json` |
+| Create | `studyloop plan new --title ... --why ... --success ... --milestone ... --json` |
+| Revise | No CLI command edits an existing plan's mission, topics or milestones: get it right in `studyloop plan new` (its `readiness` output says what is missing) or revise in the Web UI — never by hand-editing the document. |
+| Activate | `studyloop plan status PLAN_ID active` |
+| Tick | `studyloop plan milestone PLAN_ID INDEX --done` |
+| Evaluate | `studyloop plan evaluate PLAN_ID --phase start --json` previews; add `--record --study-id "$STUDY_ID"` to persist. |
+| Record | `studyloop plan record PLAN_ID --title "..." --body "..."` |
+| Delete | No CLI command. Deletion is `delete_study_plan` (after confirmation) or the Web UI. |
+
 ## Session Start Protocol
 
-```bash
-studyloop resume                       # where they left off
-studyloop plan list                    # which plans exist, and their state
-studyloop review                       # what is due for spaced repetition
-studyloop plan evaluate PLAN_ID --phase start --record --study-id "$STUDY_ID"
-```
+1. `studyloop resume` — where they left off.
+2. Discover the plans and their state — `list_study_plans` (fallback: `studyloop plan list`).
+3. `studyloop review` — what is due for spaced repetition.
+4. Evaluate the plan this session runs against —
+   `evaluate_study_plan(plan_id, "start", study_id=STUDY_ID, record=True)`
+   (fallback: `studyloop plan evaluate PLAN_ID --phase start --record --study-id "$STUDY_ID"`).
 
-Print the evaluation Markdown into the conversation, then act on its
+Read the evaluation back into the conversation, then act on its
 `recommendations` — due reviews first, then `next_milestone`.
 
 When no plan exists and the learner is unsure what to study, offer to build one
@@ -85,12 +142,20 @@ rather than picking for them.
 
 Follow the interview in `study-plan-protocol.md`. Sequence:
 
-1. `studyloop plan interview --json` → questions + evidence-based seed.
+1. `get_planning_interview` → questions + evidence-based seed + the plans that
+   already exist.
 2. Interview, one question per turn, grounded in the seed.
-3. `studyloop plan new --title ... --why ... --success ... --milestone ...`
-4. Read the `readiness` blockers and nudges back to the learner.
-5. `studyloop plan status ID active` once it is ready.
+3. `create_study_plan(title, answers)` as a `draft`, answers keyed exactly as
+   the interview lists them.
+4. Read the `readiness` blockers and nudges back to the learner; repair with
+   `update_study_plan`.
+5. `set_study_plan_status(plan_id, "active")` once `readiness` reports ready —
+   never before.
 6. Hand over: "Ready. Start with `studyloop study` and the mentor will pick this up."
+
+Without the MCP server: `studyloop plan interview --json`, then
+`studyloop plan new --title ... --why ... --success ... --milestone ... --json`,
+then `studyloop plan status PLAN_ID active` (see the CLI fallback table).
 
 Every milestone gets `(concepts: a, b)` — that suffix is the join key against
 `study_progress`, and without it evidence checking silently stops working.
@@ -103,6 +168,10 @@ Every milestone gets `(concepts: a, b)` — that suffix is the join key against
 | `mid` | At the first natural break | Is this session drifting off the plan? |
 | `end` | During wind-down, before `session end` | What moved, and what does the plan owe next time? |
 
+Preview when you only want to look (`record=False`); record at the three
+checkpoints (`record=True`, or `--record` at the CLI) so the checkpoint log and
+the plan itself carry the verdict.
+
 Treat `at-risk` and `stalled` as things to name out loud, not soften. If a
 milestone is marked done with no confidence evidence, quiz it — that is the most
 likely place the plan has drifted from reality.
@@ -113,11 +182,15 @@ If the evaluation carries `warnings`, the verdict is **partial**. Say so.
 
 Follow `wind-down-protocol.md`, plus:
 
-1. `studyloop plan milestone PLAN_ID INDEX --done` — only for what was demonstrated.
+1. `set_study_plan_milestone(plan_id, index, done=True)` — only for what was
+   demonstrated (fallback: `studyloop plan milestone PLAN_ID INDEX --done`).
 2. `studyloop progress "<concept>" -t <topic> -c <confidence>` — feeds the next `start`.
-3. `studyloop plan evaluate PLAN_ID --phase end --record --study-id "$STUDY_ID"`
-4. Write a learning record if a misconception was corrected or understanding
-   genuinely deepened — not for material merely covered.
+3. `evaluate_study_plan(plan_id, "end", study_id=STUDY_ID, record=True)`
+   (fallback: `studyloop plan evaluate PLAN_ID --phase end --record --study-id "$STUDY_ID"`).
+4. Write a learning record — `record_plan_learning` (fallback:
+   `studyloop plan record PLAN_ID --title "..." --body "..."`) — if a
+   misconception was corrected or understanding genuinely deepened, not for
+   material merely covered.
 5. State the next session's target concretely.
 6. `studyloop session end --notes "<summary>"`
 
@@ -148,7 +221,12 @@ See `agents/shared/audhd-framework.md`. Plan-specific applications:
 - **Silent Drift-Following** — pursuing `drift_topics` without telling the
   learner the plan no longer describes the session.
 - **Ticking for them** — the plan then lies to every future session.
-- **Hand-editing the document** — always go through `studyloop plan`.
+- **Hand-editing the document** — always go through the plan tools or
+  `studyloop plan`.
+- **Deleting to tidy up** — `delete_study_plan` is for a plan the learner has
+  said, in so many words, they want gone. Pausing or abandoning keeps the
+  document — mission, milestones, learning records; deletion removes it and
+  leaves only the checkpoint log behind.
 
 ## Terminal Workspace
 

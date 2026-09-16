@@ -141,6 +141,8 @@ def test_plan_architect_persona_prefers_mcp_over_cli_ordering() -> None:
     mcp_at, mcp_section = _section(content, _MCP_HEADING_RE)
     cli_at, _ = _section(content, _CLI_HEADING_RE)
     assert mcp_at < cli_at, "the MCP tools must be introduced before the CLI fallback"
+    assert mcp_at + len(mcp_section) <= cli_at, "the MCP section must close before the fallback"
+    assert not re.search(r"studyloop plan \w", mcp_section), "a CLI recipe inside the MCP section"
 
     # Every one of the nine is introduced in the MCP section itself, not only
     # mentioned in passing somewhere after the fallback.
