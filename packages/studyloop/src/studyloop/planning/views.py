@@ -61,7 +61,10 @@ def _freeze_rows(value: object) -> object:
     default=str)`` and the CLI prints it the same way, so a non-JSON leaf
     (a ``date`` from a driver, say) is rendered — ``isoformat()`` when it has
     one, else ``str()`` — rather than refused. Refusing would turn a
-    successful evaluation into a crash over one column's type.
+    successful evaluation into a crash over one column's type. Whatever the
+    rendering returns is coerced to ``str``: the leaf a frozen view holds is
+    always an immutable JSON scalar, never an object it cannot vouch for
+    (council review 2, F10).
     """
     if isinstance(value, Mapping):
         return MappingProxyType({str(key): _freeze_rows(item) for key, item in value.items()})
@@ -70,7 +73,7 @@ def _freeze_rows(value: object) -> object:
     if isinstance(value, _SEED_SCALARS):
         return value
     render = getattr(value, "isoformat", None)
-    return render() if callable(render) else str(value)
+    return str(render()) if callable(render) else str(value)
 
 
 def _thaw(value: object) -> object:
