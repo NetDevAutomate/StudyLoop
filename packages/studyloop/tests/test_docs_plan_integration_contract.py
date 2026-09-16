@@ -32,13 +32,8 @@ from unittest.mock import patch
 import pytest
 from click.testing import CliRunner
 
-from studyloop.mcp.inventory import (  # pyright: ignore[reportMissingImports]  # RED: lands in GREEN
-    LEARNING_RECORD_TOOL,
-    PLAN_TOOL_NAMES,
-)
-from studyloop.planning.boundaries import (  # pyright: ignore[reportMissingImports]  # RED: lands in GREEN
-    NOT_AUTOMATIC,
-)
+from studyloop.mcp.inventory import LEARNING_RECORD_TOOL, PLAN_TOOL_NAMES
+from studyloop.planning.boundaries import NOT_AUTOMATIC
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -60,6 +55,12 @@ def _section(text: str, heading: str) -> str:
     )
     assert match, f"no '## {heading}' section found"
     return match.group(1)
+
+
+def _prose(text: str) -> str:
+    """Markdown soft-wraps lines, so a phrase can straddle a newline where a
+    space belongs; collapse whitespace before any phrase-membership check."""
+    return re.sub(r"\s+", " ", text)
 
 
 def _table_tool_names(section: str) -> list[str]:
@@ -109,7 +110,7 @@ def test_agent_install_doc_names_the_planning_purpose_and_no_stale_phase_referen
     Kiro/Claude harness boundary as an owner decision, not as "tracked as
     Phase 6, T6.1" — T6.1 is the phase that closes here."""
     text = _read("docs/agent-install.md")
-    section = _section(text, "Study-plan tools over MCP")
+    section = _prose(_section(text, "Study-plan tools over MCP"))
     assert "purpose=planning" in section
     assert "study-plan-architect.json" in section and "study-plan-architect.md" in section
     assert "T6.1" not in text, "the install doc still points at the phase that just closed"
@@ -180,7 +181,7 @@ def test_study_plans_doc_uses_the_bounded_release_language() -> None:
     """D-16: ranking tests prove ranking compliance, not learning. The doc
     says "plan-aware guidance with tested ranking rules" and never promises
     "better learning"."""
-    text = _read("docs/study-plans.md")
+    text = _prose(_read("docs/study-plans.md"))
     assert "plan-aware guidance with tested ranking rules" in text
     assert "better learning" not in text.lower()
     assert "learn faster" not in text.lower()
@@ -188,9 +189,51 @@ def test_study_plans_doc_uses_the_bounded_release_language() -> None:
 
 def test_study_plans_doc_plan_aware_now_section_names_every_consumer() -> None:
     """The four surfaces that consume the one recommendation result (#10)."""
-    section = _section(_read("docs/study-plans.md"), "Plan-aware now")
+    section = _prose(_section(_read("docs/study-plans.md"), "Plan-aware now"))
     for surface in ("studyloop now", "Today", "recap", "get_next_action"):
         assert surface in section, f"'Plan-aware now' does not name {surface!r}"
+
+
+# ---------------------------------------------------------------------------
+# The other public pages that described the pre-#7 gap
+# ---------------------------------------------------------------------------
+
+#: Public pages found during T6.1 still saying the gap #7 closed was open.
+_PUBLIC_PLAN_PAGES = (
+    "README.md",
+    "docs/index.md",
+    "docs/web-ui-guide.md",
+    "docs/study-plans.md",
+    "docs/cli-reference.md",
+    "docs/roadmap.md",
+)
+
+#: Each pattern is a claim that was true before the change and is false now.
+_STALE_GAP_CLAIMS = (
+    r"planning interview is not integrated",
+    r"do not yet influence",
+    r"does not (?:yet )?(?:bias|influence|change) .{0,40}(?:now|Today|recommendation)",
+    r"remains CLI-only",
+    r"not available yet",
+)
+
+
+@pytest.mark.parametrize("rel_path", _PUBLIC_PLAN_PAGES)
+def test_public_pages_no_longer_describe_the_closed_gap(rel_path: str) -> None:
+    text = _prose(_read(rel_path))
+    offenders = [
+        pattern for pattern in _STALE_GAP_CLAIMS if re.search(pattern, text, re.IGNORECASE)
+    ]
+    assert not offenders, f"{rel_path} still carries a pre-#7 gap claim: {offenders}"
+
+
+def test_web_ui_guide_today_and_plans_sections_state_the_shipped_behaviour() -> None:
+    guide = _read("docs/web-ui-guide.md")
+    today = _prose(_section(guide, "Today"))
+    assert "plan-aware guidance with tested ranking rules" in today
+    plans = _prose(_section(guide, "Study Plans"))
+    assert "Plan with architect" in plans
+    assert "creates no plan" in plans
 
 
 # ---------------------------------------------------------------------------

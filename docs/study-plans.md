@@ -103,6 +103,17 @@ appears in the list when the interview creates it. If a session is already
 running, the console offers to reattach to it or end it first, exactly as a
 normal start does.
 
+Whichever door starts it, the architect works from a planning brief — the
+interview questions, an evidence seed from your study history, and the plans
+that already exist — and creates, revises, activates, and evaluates plans
+through the same plan tools an MCP-connected agent uses (see
+[Study-plan tools over MCP](agent-install.md#study-plan-tools-over-mcp)),
+falling back to `studyloop plan …` at a shell when its harness has no
+`studyloop` server. Activation is readiness-gated on every one of those
+paths, and deleting a plan needs your explicit confirmation. The
+`record_plan_learning` tool the second-brain wind-down calls before any
+projection (see [second-brain.md](second-brain.md)) is part of the same set.
+
 ## Use plans from the terminal
 
 ```bash
@@ -127,18 +138,45 @@ studyloop plan status PLAN_ID active
 Run `studyloop plan interview` to print the questions an agent-led planning
 conversation should work through. It does not itself start an agent.
 
-## What a plan does not do yet
+## Plan-aware now
 
-- The Web UI does not automatically structure the brain dump into the
-  plan's fields; the manual form and the architect interview are the two doors.
-- `record_plan_learning` (`mcp/tools.py:129`) is the one plan-write MCP tool —
-  it appends a learning record to a plan, and is what the second-brain
-  wind-down flow calls before any second-brain projection (see
-  [second-brain.md](second-brain.md)). Broader plan management (list, show,
-  new, evaluate, milestone, status) remains CLI-only.
+An active plan changes what StudyLoop recommends. `studyloop now`, the Web
+**Today** card, the daily `recap`, and the MCP `get_next_action` tool all read
+one recommendation result, and that result considers every active plan: the
+action that advances a plan's next milestone is named with the plan and the
+milestone it serves, a plan with no other evidence still gets its next
+milestone suggested, and a plan whose energy floor is above your current
+energy has that milestone deferred with a reason rather than dropped. This is
+plan-aware guidance with tested ranking rules — a bias, not a filter: an
+overdue review or a fresh struggle on an unrelated topic can still outrank new
+milestone work, and with no active plan the recommendation is exactly what it
+was before plans existed. The ranking rules are tested; whether the primary is
+the action *you* would take is a separate judgement, recorded per scenario in
+the project's rubric receipt rather than claimed here.
 
-These gaps are stated here so that a plan never appears more connected than it
-is. See the [roadmap](roadmap.md) for the intended continuity work.
+## Deliberately not automatic
+
+A plan biases guidance and gives agents a full set of lifecycle tools. It does
+**not** run the session. By design, StudyLoop does not:
+
+- **bind a live study session to a plan** — starting a study session never
+  selects a plan and never stores a plan id on the session; the planning
+  session the architect runs in is labelled `planning`, and that label is all
+  it persists.
+- **run checkpoints from session events** — start, mid, and end evaluations
+  happen when you (or the architect) ask for them; a preview writes nothing,
+  and only an explicit record is kept.
+- **complete milestones from study evidence** — a milestone is checked off by
+  you or by the architect, never inferred from a session.
+- **enforce one active plan** — every active plan is considered,
+  deterministically; none is a hidden singleton.
+- **turn a plan into a filter** — off-plan study is never blocked, and urgent
+  reviews or struggles can outrank plan work.
+- **structure the manual form's brain dump** — the free text is saved as
+  context; the architect interview is the door for an agent-led decomposition.
+
+These boundaries are stated here so that a plan never appears more connected
+than it is. See the [roadmap](roadmap.md) for the intended continuity work.
 
 ## Where plans live
 

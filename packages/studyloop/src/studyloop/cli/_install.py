@@ -14,6 +14,8 @@ from studyloop.installers import (
     install_workspace_tools,
     require_repo_root,
 )
+from studyloop.mcp.inventory import PLAN_TOOL_NAMES
+from studyloop.planning.boundaries import NOT_AUTOMATIC
 
 
 @click.group(name="install")
@@ -79,3 +81,30 @@ def install_agents(repo_root: Path | None, tools: tuple[str, ...], uninstall: bo
     console.print(f"[green]{action_word} agent definitions.[/green]")
     for line in lines:
         console.print(f"  {line}")
+    if not uninstall:
+        for line in _plan_capability_lines():
+            console.print(line)
+
+
+def _plan_capability_lines() -> list[str]:
+    """What the installed definitions can do with study plans — and what stays manual.
+
+    Built from the two constants the public docs are pinned to
+    (``studyloop.mcp.inventory.PLAN_TOOL_NAMES``,
+    ``studyloop.planning.boundaries.NOT_AUTOMATIC``), so this text cannot claim
+    a tool the server lacks or an automation the product does not have. Which
+    harness definitions attach the ``studyloop`` server is a per-harness fact
+    the doc section named here states; the installer does not restate it.
+    """
+    tools = ", ".join(PLAN_TOOL_NAMES)
+    *first, last = NOT_AUTOMATIC[:-1]
+    boundary = ", ".join(first) + f", or {last}"
+    return [
+        "",
+        f"[bold]Study plans:[/bold] the [cyan]studyloop[/cyan] MCP server exposes "
+        f"{len(PLAN_TOOL_NAMES)} plan tools ({tools}) to any agent process it is registered "
+        "with; the Web UI's [bold]Plan with architect[/bold] starts a planning-purpose session.",
+        f"  An active plan gives plan-aware guidance with tested ranking rules; "
+        f"it does not {boundary}.",
+        '  See docs/agent-install.md, "Study-plan tools over MCP".',
+    ]

@@ -66,6 +66,9 @@ ALLOWED_MODULES = (
     "studyloop.planning.views",
     "studyloop.planning.intents",
     "studyloop.planning.errors",
+    # Constants only (the public "deliberately not automatic" boundary the
+    # installer prints, #15 T6.1): no plan is read or written through it.
+    "studyloop.planning.boundaries",
 )
 
 #: Names ``studyloop.planning`` re-exports from the four forbidden modules. An

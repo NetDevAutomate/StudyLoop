@@ -62,7 +62,12 @@ energy you have, recent continuity, due reviews, and weak concepts. Treat it as 
 starting suggestion, not an instruction. If the action is wrong, choose a smaller
 one or move to Study Session directly.
 
-Active study plans do not yet influence this recommendation.
+An active study plan biases this recommendation — plan-aware guidance with
+tested ranking rules, not a filter: the card names the plan and milestone an
+action advances, a milestone above your current energy is shown as deferred
+with a reason, and an overdue review or fresh struggle can still outrank new
+milestone work. With no active plan the card is unchanged. See
+[Study Plans](study-plans.md#plan-aware-now).
 
 ## Flashcards and quizzes
 
@@ -80,10 +85,12 @@ review screens will have anything to show.
 
 The Study Plans view lists plan status and milestone progress, opens the Markdown
 plan as a readable document, and lets you preview or record checkpoints. **New
-plan** begins with a free-text description, followed by manual structured fields.
-
-The current Web UI does not send that brain dump to an agent for decomposition.
-See [Study Plans](study-plans.md) for the full, current workflow.
+plan** begins with a free-text description, followed by manual structured fields;
+the form does not send that brain dump to an agent for decomposition.
+**Plan with architect**, beside it, starts the study-plan-architect interview
+as a *planning* session in the Study Session console (labelled as such, and
+the label survives a reload); the click itself creates no plan. See
+[Study Plans](study-plans.md) for the full, current workflow.
 
 ## Courses, Mastery, Parking Lot, and Notes
 

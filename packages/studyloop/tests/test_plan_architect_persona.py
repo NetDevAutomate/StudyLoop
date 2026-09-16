@@ -390,4 +390,8 @@ def test_install_docs_disclose_architect_fallback_limits() -> None:
     assert "the same work" not in lowered, "parity overclaim"
     assert "revis" in lowered and "delet" in lowered and "no cli" in lowered.replace("-", " ")
     assert "kiro" in lowered and "claude" in lowered, "the harness boundary is not disclosed"
-    assert "t6.1" in lowered, "the owner item is not named"
+    # Review 4 pinned the owner item as "T6.1"; T6.1 closed the phase without
+    # taking the permission decision, so the doc now names where it is recorded
+    # instead of the phase that has passed (test_docs_plan_integration_contract
+    # forbids the stale phase reference).
+    assert "open item" in lowered and "close-out" in lowered, "the owner item is not named"

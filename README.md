@@ -107,8 +107,9 @@ clear:
 - the Web UI needs the local StudyLoop server and does not work offline;
 - voice uses a configured Kokoro-compatible server, then falls back to operating
   system voices when available;
-- study plans can be created in the Web UI or CLI, but the current Web UI form is
-  manual—an agent-led planning interview is not integrated there yet;
+- study plans can be created in the Web UI form, the CLI, or through the agent-led
+  architect interview (Web UI, CLI, or MCP); an active plan biases the next-action
+  recommendation but is never bound to a live study session;
 - practice-task generation and verification are currently CLI workflows.
 
 Those limits are tracked openly in the [roadmap](docs/roadmap.md). If one blocks

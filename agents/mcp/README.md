@@ -151,7 +151,13 @@ Requires a Google Cloud project with Calendar API enabled. See [setup guide](htt
 
 ## studyloop-mcp (Session DB Tools)
 
-The `studyloop-mcp` server exposes 10 MCP tools for courses, backlog, and progress tracking. It's registered as a Python entry point and runs via stdio.
+The `studyloop-mcp` server exposes 32 MCP tools: courses and review cards, the study backlog and
+progress signals, lesson browsing, the live session, the `now` recommendation, and the learner's
+study plans (nine lifecycle tools plus `record_plan_learning`, every one through the same plan
+application layer the CLI and Web UI use — see `docs/agent-install.md`, "Study-plan tools over
+MCP", for the refusal kinds and the readiness gate). It's registered as a Python entry point and runs
+via stdio. The table below is pinned to the production registry by
+`tests/test_docs_plan_integration_contract.py`.
 
 **Start manually (for testing):**
 ```bash
@@ -181,14 +187,32 @@ server NAME is `studyloop`; `studyloop-mcp` is the console-script COMMAND, never
 | `generate_flashcards` | Save agent-generated flashcards |
 | `generate_quiz` | Save agent-generated quiz questions |
 | `record_study_progress` | Record a card review result |
+| `get_due_cards` | Cards due for spaced-repetition review, one course or all |
+| `log_review_outcome` | Record the outcome of reviewing one card (with response time) |
 | `get_study_backlog` | List pending backlog topics |
 | `get_topic_suggestions` | Ranked topic suggestions (algorithmic scoring) |
 | `get_study_history` | Search past sessions for a topic |
 | `record_topic_progress` | Update priority or resolve a backlog topic |
-| `get_concept_context` | Concept dependency edges for a topic, with per-edge provenance and `coverage` — the prerequisite structure a mentor sequences from |
-| `get_next_action` | The same "what now?" recommendation the web `/api/now` endpoint gives |
 | `get_active_topics` | The AuDHD three-topic active set vs the remaining backlog |
 | `log_topic` | Record a learning / struggling / insight signal mid-session |
+| `log_struggle` | Record a topic the learner struggled with, for later study |
+| `get_concept_context` | Concept dependency edges for a topic, with per-edge provenance and `coverage` — the prerequisite structure a mentor sequences from |
+| `get_next_action` | The same "what now?" recommendation the web `/api/now` endpoint gives — plan-aware when a plan is active |
+| `get_lesson_tree` | Browse the course-material tree: providers → courses → lessons |
+| `read_lesson` | The raw Markdown of one lesson |
+| `search_lessons` | Full-text search over lesson bodies |
+| `list_session_options` | The selectable study targets the web start picker offers |
+| `end_session` | End the currently-active study session (idempotent) |
+| `list_study_plans` | Study-plan summaries, active first; filter to one status |
+| `get_study_plan` | One plan in full — mission, milestones, records, readiness; optional Markdown and checkpoint history |
+| `get_planning_interview` | The interview questions, an evidence seed and the existing plans — the architect's brief |
+| `create_study_plan` | Draft a plan from interview answers; a taken id is a conflict, never a replacement |
+| `update_study_plan` | Revise fields, topics, milestones and status as one document, saved once |
+| `set_study_plan_status` | Move a plan between `draft`, `active`, `paused`, `complete`, `abandoned`; activation is readiness-gated |
+| `set_study_plan_milestone` | Set one milestone done or not done — set, not toggle, so a retry is safe |
+| `evaluate_study_plan` | A `start`/`mid`/`end` checkpoint against real evidence; preview by default, `record=true` reports each write |
+| `delete_study_plan` | Delete the plan document — refused unless `confirmed=true`; checkpoint history is kept |
+| `record_plan_learning` | Append a learning record to a plan — the wind-down's first write |
 
 ## session-db (Session Memory Tools)
 

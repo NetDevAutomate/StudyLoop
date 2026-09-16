@@ -55,8 +55,10 @@ the local server, and cloud-backed agents still need their provider.
 - Use a laptop or tablet for the Web UI. Phone layouts are not supported.
 - Keep `studyloop web` running while using the browser app; there is no offline
   service worker.
-- Create study plans through the current Web UI form or CLI. An agent-led
-  planning interview is not integrated into the Web UI yet.
+- Create study plans through the Web UI form, the CLI, or the agent-led
+  architect interview (**Plan with architect** in the Web UI, `studyloop plan
+  architect` at a shell, or the plan tools over MCP). A live study session is
+  not bound to a plan.
 - Use the CLI for practice-task generation and verification.
 
 See the [public roadmap](roadmap.md) for what is ready, what is being refined,

@@ -257,6 +257,8 @@ studyloop now --speak
 
 Default ranking is due review first, then struggling or low teach-back score, then active-course continuity, then modality match. Low energy suppresses hard context switching.
 
+With an active study plan the same engine is plan-aware (see [Study Plans](study-plans.md#plan-aware-now)): plan-related work gets a bounded bias within its urgency class, an eligible next milestone is suggested when no gathered candidate represents it, and a milestone above your current energy is deferred with a reason. The panel names the plan and milestone an action advances; `--json` gains `active_plans`, `energy_deferred`, `completion_actions` and per-action `plan_refs` only when a plan is active, so the no-plan output is unchanged.
+
 `studyloop chat-note` turns one markdown/text note into a compact Socratic context pack. V1 prints or speaks the mentor prompt; it does not run a separate chat backend.
 
 ```bash

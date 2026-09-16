@@ -39,9 +39,12 @@ reliability release, and no database replacement is required for that release.
 The next product improvements are:
 
 - a simpler installation and upgrade path than a source checkout;
-- a guided planning conversation that turns a learner's own words into a useful
-  plan without silently inventing goals or evidence;
-- stronger continuity between active plans, Today, review, and the next session;
+- continuity from an active plan into the *next session*: the plan already
+  biases `studyloop now` and Today with tested ranking rules and the architect
+  interview runs from the CLI, the Web UI and over MCP, but a live study
+  session is still not bound to a plan and checkpoints and milestones are
+  never inferred from session events (see the Study Plans guide, "Deliberately
+  not automatic");
 - clearer in-product explanations when an agent, voice backend, or optional
   integration is unavailable;
 - broader manual accessibility testing and more contributor-friendly UI evidence.

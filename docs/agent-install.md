@@ -221,9 +221,13 @@ harness-launched architect definitions for Kiro CLI
 (`agents/kiro/study-plan-architect.json`, no `mcpServers`) and Claude Code
 (`agents/claude/study-plan-architect.md`, `tools: Read, Write, Grep, Bash`) do
 not attach it, so an architect started from those two harnesses takes the CLI
-fallback the persona describes; wiring them is tracked as Phase 6, T6.1 of the
-plan-integration change. A Web-launched architect (`purpose=planning`) carries
-the same persona and uses whichever servers its agent process is connected to.
+fallback the persona describes. That is a deliberate permission boundary, not
+an omission: granting a harness-launched agent authoring, lifecycle and a
+destructive tool changes its permission model, and the decision to do so is
+the maintainer's, recorded as an open item in the plan-integration close-out;
+the two definitions stay CLI-limited until it is taken. A Web-launched
+architect (`purpose=planning`) carries the same persona and uses whichever
+servers its agent process is connected to.
 
 | Tool | Purpose |
 |---|---|
