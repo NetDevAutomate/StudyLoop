@@ -2762,6 +2762,25 @@
             your own study history and creates the plan with you. Nothing is
             created until the interview does it.
           </p>
+          <!-- The optional brain dump for the architect door (#14, D-B): the
+               same free text the manual form asks for, handed to the architect
+               as the brief's own section — its words are evidence to open the
+               interview from, never decomposed by StudyLoop, never the topic,
+               never stored on the session. Travels in the plan-architect-request
+               detail; sessionTimer posts it as `brain_dump`. -->
+          <label class="plan-architect-braindump-field">
+            <span class="plan-field-label">Brain dump for the architect (optional)</span>
+            <span class="plan-field-hint">
+              Where you are, what you have tried, where you get stuck — as
+              typed. The architect reads it before asking the first question.
+            </span>
+            <textarea class="plan-braindump plan-architect-braindump" rows="4"
+                      data-testid="plan-architect-braindump"
+                      x-model="architectBrainDump"
+                      :disabled="architectLaunching"
+                      maxlength="4000"
+                      placeholder="No structure needed."></textarea>
+          </label>
 
           <section class="plan-create" data-testid="plan-create-form" x-show="creating">
             <h3 class="plan-create-heading">Start from where you actually are</h3>

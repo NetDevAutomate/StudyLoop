@@ -146,18 +146,22 @@ the one reconnect precedence `web-ui` and `_dashboard.py` have — review-5 F8),
 |---|---|---|
 | The Plans view exposes a clear Plan with architect action | yes | `T: test_web_plan_architect_journey.py::test_plan_with_architect_action_posts_purpose_planning_and_navigates_to_console` (Playwright, real server, fake agent; `C: 7ad39941`) |
 | Successful launch navigates to the existing live console and labels planning purpose correctly | yes | `::test_console_is_labelled_planning_and_label_survives_reconnect`; UAT `architect_launch` label "Planning session — study-plan architect" |
-| The architect receives interview questions, evidence seeds, existing-plan summaries, and optional brain dump | **mostly — the brain dump is unimplemented** | `::test_brief_structure_present_not_wording` (the three brief sections in the persona the fake agent received). **The optional brain dump is not carried:** the Plans-view door takes an optional *subject* (the topic), not the free-text brain dump; the brain dump stays with the manual form. This is an unimplemented acceptance input, not an unverified one; `docs/study-plans.md` states it beside the boundary list |
+| The architect receives interview questions, evidence seeds, existing-plan summaries, and optional brain dump | yes (follow-on item 2, D-B) | `::test_brief_structure_present_not_wording` (the three brief sections in the persona the fake agent received); `::test_brain_dump_reaches_the_architect_persona` (browser: the textarea's text is posted as `brain_dump`, arrives in the persona as `### Learner's brain dump`, quoted line by line, never the topic, absent from `GET /api/session/state`); `T: test_session_start_purpose.py::TestBrainDump` (10: contained section, paragraphs kept, clipped with a marker, absent from topic/state on both transports, over-limit 422, focus start ignores it, blank renders no section); `tests/js/plan-architect-launch.test.js` (18: the detail carries `brainDump`, the POST carries `brain_dump` only when non-blank, never on a focus start). **Follow-on on 2026-09-16 — the earlier row said the brain dump was unimplemented; the manual form's dump is still never decomposed by StudyLoop** (`docs/study-plans.md` beside the boundary list) |
 | Refresh and reconnect preserve planning-purpose context | yes | the visible label after reload: `::test_console_is_labelled_planning_and_label_survives_reconnect` (dedicated browser test); the persisted purpose after reload: UAT `architect_launch`, which asserts `GET /api/session/state.purpose` post-reload — not the visible label (review-5 F11) |
 | The manual create/edit/checkpoint interface remains fully functional | yes for create and checkpoints; edit is not a Web UI control | `::test_manual_new_plan_form_still_works` (browser: the manual form creates a plan); `T: test_web_plans.py` (25, byte-identical to `3a4f6b01`) for the routes. The Web UI's plan view offers create, activate, milestone checkboxes and preview/record checkpoints; **it has no edit-fields control** — field revision is the Web API's `PATCH` and the MCP `update_study_plan` (found in review 5's reproduction; the docs and persona were corrected). No browser test covers the checkpoint buttons; they are covered at the route level |
 | Exactly one addressed console and WebSocket handle the planning session | yes | `::test_one_console_one_websocket`; `tests/js/plan-architect-launch.test.js` (14: one POST, one `study-session-start`, `init()` twice still one listener — the double-listener bug found and fixed in `C: 7ad39941`) |
 
-DoD: browser tests cover launch, fallback, conflict, reconnect and structured errors; **cancellation is
-not covered** — "a second click in flight is a no-op" (JS) and the existing end-session path are not an
-abandonment mid-flight, and no browser test abandons the launch. Accessibility: `aria-busy`,
-`aria-describedby`, `role="status" aria-live="polite"` status region, screen-reader label on the subject
-input (`C: 7ad39941`; not audited with a screen reader). **The one-question-at-a-time protocol is not
-proven by a live agent:** every journey uses the fake agent, so the protocol is asserted only as persona
-text. `S: web-ui` "Plan with architect journey" (8 scenarios).
+DoD: browser tests cover launch, fallback, conflict, reconnect, structured errors and — since the
+follow-on of 2026-09-16 — **cancellation**: `::test_abandoning_a_launch_mid_flight_leaves_no_session_and_no_plan`
+ends the session through the console's End control as soon as the `201` lands and asserts no live slot, no
+plan, no label, one start event, at most one WebSocket (navigating away is not the abandon: a closed socket
+detaches with a grace period by design). Accessibility: `aria-busy`, `aria-describedby`, `role="status"
+aria-live="polite"` status region, screen-reader label on the subject input, a visible label on the
+brain-dump textarea (`C: 7ad39941`, follow-on item 2; not audited with a screen reader). **The
+one-question-at-a-time protocol is persona-text-verified by owner decision D-B (2026-09-16):** every
+journey uses the fake agent, which proves delivery of the brief, not model adherence; the owner accepted
+persona-text compliance as the CI level for this criterion and the web-ui spec says so. `S: web-ui` "Plan
+with architect journey" (10 scenarios after the follow-on delta).
 
 ## #15 — Plan integration 8: Reconcile release contract and verify
 

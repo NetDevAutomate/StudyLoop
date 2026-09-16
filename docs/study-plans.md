@@ -100,17 +100,24 @@ studyloop study --mode plan-architect --agent claude
 ```
 
 In the Web UI, **Plan with architect** on the **Study Plans** view (beside
-**New plan**, with an optional subject) starts the same interview as a
-*planning* session in the Study Session console, using the agent and transport
-the start picker has selected. The console is labelled as a planning session,
-and the label survives a page reload. The click creates nothing: the plan
-appears in the list when the interview creates it. If a session is already
-running, the console offers to reattach to it or end it first, exactly as a
-normal start does.
+**New plan**, with an optional subject and an optional brain dump) starts the
+same interview as a *planning* session in the Study Session console, using the
+agent and transport the start picker has selected. The console is labelled as
+a planning session, and the label survives a page reload. The click creates
+nothing: the plan appears in the list when the interview creates it. If a
+session is already running, the console offers to reattach to it or end it
+first, exactly as a normal start does; ending the session before you have
+answered anything leaves no plan and frees the slot.
 
 The planning brief — the interview questions, an evidence seed from your
-study history, and the plans that already exist — is built into the persona
-on the Web door (`purpose=planning`). An architect started from a shell or
+study history, the plans that already exist and, when you typed one, your
+brain dump as its own quoted section — is built into the persona on the Web
+door (`purpose=planning`). The brain dump reaches the architect exactly as
+written (up to 4000 characters), as evidence to open the interview from; it
+is never the session's topic, is not decomposed by StudyLoop, and is not
+stored on the session — it travels once, inside the persona. The architect's
+one-question-at-a-time protocol is persona text: the browser tests prove the
+brief is delivered, not how a live model behaves with it. An architect started from a shell or
 from a harness gathers the same material itself: over MCP with
 `get_planning_interview`, or with `studyloop plan interview`, which prints the
 questions and the seed and starts no agent. From there the architect creates,
@@ -238,11 +245,12 @@ A plan biases guidance and gives agents a full set of lifecycle tools. It does
   when you ask for one, from the Web control or the launcher; nothing
   re-opens the interview on a timer or books the next one.
 
-Two related limits are facts about a door rather than automations StudyLoop
+One related limit is a fact about a door rather than an automation StudyLoop
 refuses: the manual form's free-text brain dump is saved as context and never
-decomposed into the structured fields (the architect interview is the door for
-an agent-led decomposition), and the Web **Plan with architect** control
-carries an optional subject, not that brain dump.
+decomposed into the structured fields. The architect interview is the door for
+an agent-led decomposition, and the Web **Plan with architect** control carries
+its own optional brain dump to the architect as evidence — StudyLoop itself
+still decomposes nothing.
 
 These boundaries are stated here so that a plan never appears more connected
 than it is. See the [roadmap](roadmap.md) for the intended continuity work.

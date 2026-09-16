@@ -6,6 +6,14 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+#: The Web door's budget for the learner's free-text brain dump (#14, owner
+#: decision D-B). It rides inside the planning brief — the architect's first
+#: prompt — so it is bounded here, structurally, before the handler runs: a
+#: few paragraphs fit, a pasted document does not. Pinned by
+#: ``tests/test_session_start_purpose.py`` (read by name, never a copied
+#: literal).
+BRAIN_DUMP_MAX_CHARS = 4000
+
 
 class StartSessionRequest(BaseModel):
     """Request body for POST /api/session/start."""
@@ -34,6 +42,20 @@ class StartSessionRequest(BaseModel):
             "persisted on the session state; no plan is created and no plan id "
             "is stored (design §5, D-10/D-11). Any other value is rejected with "
             "422."
+        ),
+    )
+    brain_dump: str | None = Field(
+        default=None,
+        max_length=BRAIN_DUMP_MAX_CHARS,
+        description=(
+            "The learner's own words about where they are and where they want "
+            "to get to — the same free text the manual plan form calls the "
+            "brain dump. Meaningful only for purpose='planning': it is rendered "
+            "into the planning brief as its own contained section (data the "
+            "architect opens from, never instructions), is never the topic, and "
+            "is never written to the session state — it travels once, inside "
+            "the persona. Ignored on a focus start. Longer than "
+            f"{BRAIN_DUMP_MAX_CHARS} characters is rejected with 422."
         ),
     )
 

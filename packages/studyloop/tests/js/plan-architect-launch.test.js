@@ -267,7 +267,7 @@ test('sessionTimer answers plan-architect-request with one POST carrying purpose
   assert.equal(timer.purpose, 'planning');
 });
 
-test('sessionTimer forwards the brain dump to the server as brain_dump, and omits the key when blank', async () => {
+test('sessionTimer forwards the brain dump to the server as brain_dump, never as the topic', async () => {
   await readyTimer();
 
   win.dispatchEvent(new CustomEvent('plan-architect-request', {
@@ -278,15 +278,15 @@ test('sessionTimer forwards the brain dump to the server as brain_dump, and omit
   assert.equal(posts[0].brain_dump, 'Stuck on frames.');
   assert.equal(posts[0].topic, '', 'the dump never becomes the topic');
   assert.equal(posts[0].purpose, 'planning');
+});
 
-  posts.length = 0;
-  const timer = await readyTimer();
-  await timer.confirmEndSession().catch(() => {});
+test('a launch without a brain dump omits the key — the server treats a missing key and null alike', async () => {
+  await readyTimer();
+
   win.dispatchEvent(new CustomEvent('plan-architect-request', { detail: { purpose: 'planning', topic: 'SQL' } }));
   await settle();
   assert.equal(posts.length, 1);
-  assert.equal(Object.prototype.hasOwnProperty.call(posts[0], 'brain_dump'), false,
-    'a blank dump is not sent — the server treats a missing key and null alike');
+  assert.equal(Object.prototype.hasOwnProperty.call(posts[0], 'brain_dump'), false);
 });
 
 test('a focus start never carries a brain dump, even if the Plans view left one behind', async () => {

@@ -361,8 +361,13 @@ export const plansStore = {
      exactly as it does for the Start button. Nothing here posts, opens a
      socket or listens for the console's event: one console, one WebSocket.
      `architectSubject` is the learner's optional subject; empty means the
-     server names the session "Study plan" (never inferred here). */
+     server names the session "Study plan" (never inferred here).
+     `architectBrainDump` is the learner's optional free text for the
+     architect (#14, D-B): carried in the request detail, posted by
+     sessionTimer as `brain_dump`, rendered by the server into the brief as
+     its own section — never the topic, never stored on the session. */
   architectSubject: '',
+  architectBrainDump: '',
   architectLaunching: false,
   architectStatus: '',
   _architectHooked: false,
@@ -444,6 +449,7 @@ export const plansStore = {
     if (this.architectLaunching) return;
     this._hookArchitectResult();
     const topic = String(this.architectSubject || '').trim();
+    const brainDump = String(this.architectBrainDump || '').trim();
     this.architectLaunching = true;
     this.architectStatus = 'Starting the study-plan architect…';
     this.error = '';
@@ -453,7 +459,9 @@ export const plansStore = {
       return;
     }
     window.dispatchEvent(
-      new CustomEvent('plan-architect-request', { detail: { purpose: 'planning', topic } }),
+      new CustomEvent('plan-architect-request', {
+        detail: { purpose: 'planning', topic, brainDump },
+      }),
     );
   },
 
@@ -1175,6 +1183,12 @@ export function plansPanel() {
     },
     set architectSubject(value) {
       this._plans().architectSubject = value == null ? '' : String(value);
+    },
+    get architectBrainDump() {
+      return this._plans().architectBrainDump;
+    },
+    set architectBrainDump(value) {
+      this._plans().architectBrainDump = value == null ? '' : String(value);
     },
     get architectLaunching() {
       return this._plans().architectLaunching;

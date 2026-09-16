@@ -5320,6 +5320,19 @@ body[data-palette="everforest"] {
   margin: -6px 0 16px;
 }
 
+/* The architect door's optional brain dump (#14, D-B): a compact sibling of
+   the manual form's textarea, below the toolbar row, so the door stays one
+   click and the dump stays optional. */
+.plan-architect-braindump-field {
+  display: block;
+  margin: -6px 0 18px;
+}
+
+.plan-architect-braindump {
+  min-height: 4.5em;
+  font-size: 0.85rem;
+}
+
 /* The console's purpose label: a pill next to the title, only for a planning
    session (x-show), so a focus console renders exactly as before. */
 .agent-console-purpose {

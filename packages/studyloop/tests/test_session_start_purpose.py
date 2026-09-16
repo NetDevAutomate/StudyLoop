@@ -781,8 +781,8 @@ def _brief_section(persona: str, heading: str) -> str:
     """The text of one ``###`` section inside the persona's planning brief."""
     start = persona.index(heading)
     rest = persona[start + len(heading) :]
-    end = min(i for i in (rest.find("\n### "), rest.find("\n## "), rest.find("\n---")) if i >= 0)
-    return rest[:end]
+    ends = [i for i in (rest.find("\n### "), rest.find("\n## "), rest.find("\n---")) if i >= 0]
+    return rest[: min(ends)] if ends else rest
 
 
 class TestBrainDump:
@@ -813,7 +813,7 @@ class TestBrainDump:
 
         rendered = _render_planning_brief(
             brief,
-            brain_dump=_HOSTILE_DUMP,  # pyright: ignore[reportCallIssue]  # RED; GREEN removes
+            brain_dump=_HOSTILE_DUMP,
         )
         headings = [line for line in rendered.splitlines() if line.startswith("#")]
         assert headings == [
@@ -839,7 +839,7 @@ class TestBrainDump:
 
         rendered = _render_planning_brief(
             PlanApplication().prepare_planning(),
-            brain_dump=_DUMP,  # pyright: ignore[reportCallIssue]  # RED; GREEN removes
+            brain_dump=_DUMP,
         )
         section = _brief_section(rendered, "### Learner's brain dump")
         quoted = [line for line in section.splitlines() if line.startswith(">")]
@@ -853,7 +853,7 @@ class TestBrainDump:
         long_dump = "word " * (BRAIN_DUMP_MAX_CHARS // 5 + 50)
         rendered = _render_planning_brief(
             PlanApplication().prepare_planning(),
-            brain_dump=long_dump,  # pyright: ignore[reportCallIssue]  # RED; GREEN removes
+            brain_dump=long_dump,
         )
         section = _brief_section(rendered, "### Learner's brain dump")
         assert len(section) <= BRAIN_DUMP_MAX_CHARS + 200, len(section)

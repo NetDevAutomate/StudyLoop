@@ -253,7 +253,10 @@ export function sessionTimer() {
         this.selectedTopic = '';
         this.selectedOption = null;
         this.targetKind = 'topic';
-        const ok = await this.startSession({ purpose: 'planning' });
+        /* The learner's brain dump, or '' — forwarded once, into this POST
+           only; the server renders it into the brief and never stores it. */
+        const brainDump = String(detail.brainDump || '').trim();
+        const ok = await this.startSession({ purpose: 'planning', brainDump });
         window.dispatchEvent(new CustomEvent('plan-architect-result', {
           detail: { ok, error: ok ? '' : (this.startError || 'the session did not start') },
         }));
@@ -261,10 +264,12 @@ export function sessionTimer() {
       },
 
       /* Start a session. `options.purpose` is 'focus' (default — the Start
-         button) or 'planning' (startPlanning). Returns true when the server
-         accepted the start and the console has been told to mount. */
+         button) or 'planning' (startPlanning); `options.brainDump` rides with
+         a planning start only. Returns true when the server accepted the
+         start and the console has been told to mount. */
       async startSession(options = {}) {
         const purpose = options.purpose === 'planning' ? 'planning' : 'focus';
+        const brainDump = purpose === 'planning' ? String(options.brainDump || '').trim() : '';
         const topic = this.resolvedTopic().trim();
         /* A focus session needs a subject. A planning session does not: the
            architect interviews for one, and the server names the session
@@ -318,6 +323,9 @@ export function sessionTimer() {
                  planning launch depends on this field and a reader of the
                  request should not have to know the default to read it. */
               purpose,
+              /* Only when the learner wrote one: a blank dump is no key at
+                 all, so the server's "no dump" and "empty dump" are one case. */
+              ...(brainDump ? { brain_dump: brainDump } : {}),
             }),
           });
           /* Parse defensively: a 500 with an HTML/plain body must NOT masquerade
