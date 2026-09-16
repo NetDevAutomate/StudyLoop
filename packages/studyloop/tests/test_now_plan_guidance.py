@@ -11,7 +11,17 @@ Everything the engine reads is isolated here — an empty sessions database, an
 empty plans directory, empty content roots, a config with no topics and no
 focus — and the engine's clock is frozen, so the emit is a function of the
 fixtures alone and the golden holds on any machine.
+
+The ranking tests prove *ranking compliance* with the nine ordered rules of
+design §3 — not learner benefit, which is a separate, later measurement
+(D-16). Candidates are injected through the same collector monkeypatches
+``test_learning_decision.py`` uses; plans are real documents written through
+the store into the isolated plans directory and read back through
+``PlanApplication().get_active_guidance()``.
 """
+
+# RED phase only: the names these tests reach for do not exist yet. Removed in GREEN.
+# pyright: reportAttributeAccessIssue=false
 
 from __future__ import annotations
 
@@ -23,8 +33,9 @@ from typing import TYPE_CHECKING
 import pytest
 
 from studyloop.learning import decision
-from studyloop.learning.decision import build_now_plan
+from studyloop.learning.decision import _Candidate, build_now_plan
 from studyloop.planning import store
+from studyloop.planning.models import Milestone, Mission, StudyPlan
 
 if TYPE_CHECKING:
     from studyloop.learning.decision import NowPlan
@@ -34,6 +45,10 @@ GOLDEN = Path(__file__).parent / "golden" / "now_plan_no_active.json"
 #: One frozen instant for ``generated_at`` and for every date derived from it.
 FROZEN_NOW = datetime(2026, 9, 16, 9, 30, tzinfo=UTC)
 TODAY = FROZEN_NOW.date()
+
+OVERDUE = "2026-09-10"  # six days before TODAY
+SOON = "2026-09-18"  # two days after TODAY
+LATER = "2026-10-30"  # well past the seven-day "soon" window
 
 
 class _FrozenDatetime(datetime):
@@ -82,6 +97,85 @@ def serialise(plan: NowPlan) -> bytes:
 
 
 # ---------------------------------------------------------------------------
+# Fixture helpers
+# ---------------------------------------------------------------------------
+
+
+def _candidate(
+    concept: str,
+    *,
+    topic: str = "python",
+    course: str | None = None,
+    action_type: str = "recall",
+    score: float = 50,
+) -> _Candidate:
+    return _Candidate(
+        concept=concept,
+        topic=topic,
+        course=course,
+        reason=f"reason for {concept}",
+        action_type=action_type,  # type: ignore[arg-type]
+        estimated_minutes=10,
+        source=f"test:{concept}",
+        evidence_command=f'studyloop progress "{concept}" -t "{topic}" -c learning',
+        score=score,
+    )
+
+
+def _patch_collectors(monkeypatch: pytest.MonkeyPatch, *candidates: _Candidate) -> None:
+    """Silence every collector; inject ``candidates`` as due-progress items."""
+    for name in (
+        "_due_card_candidates",
+        "_due_progress_candidates",
+        "_struggle_candidates",
+        "_continuity_candidates",
+        "_practice_candidates",
+        "_transfer_candidates",
+    ):
+        monkeypatch.setattr(decision, name, lambda time_minutes: [])
+    if candidates:
+        monkeypatch.setattr(
+            decision, "_due_progress_candidates", lambda time_minutes: list(candidates)
+        )
+
+
+def _plan(
+    plan_id: str,
+    *,
+    title: str | None = None,
+    topics: list[str] | None = None,
+    milestones: list[Milestone] | None = None,
+    target_date: str = "",
+    energy_floor: int = 3,
+    updated: str = "2026-09-01T00:00:00+00:00",
+    status: str = "active",
+) -> StudyPlan:
+    """Write a ready plan document into the isolated plans directory."""
+    plan = StudyPlan(
+        plan_id=plan_id,
+        title=title or plan_id.replace("-", " ").title(),
+        status=status,
+        created="2026-08-01T00:00:00+00:00",
+        updated=updated,
+        topics=topics if topics is not None else ["sql"],
+        energy_floor=energy_floor,
+        target_date=target_date,
+        mission=Mission(why="Because", success=["Do a thing"]),
+        milestones=(
+            milestones
+            if milestones is not None
+            else [Milestone(title="Window basics", concepts=["window function"])]
+        ),
+    )
+    store.create_plan(plan)
+    return plan
+
+
+def _all(plan: NowPlan):
+    return [plan.primary, *plan.alternates]
+
+
+# ---------------------------------------------------------------------------
 # T3.1 — the golden: no active plans → the pre-#10 emit, byte for byte
 # ---------------------------------------------------------------------------
 
@@ -91,3 +185,206 @@ def test_no_active_plans_json_byte_identical_to_golden() -> None:
 
     assert plan.starter is True, "an empty world must still yield the starter recommendation"
     assert serialise(plan) == GOLDEN.read_bytes()
+
+
+# ---------------------------------------------------------------------------
+# T3.2 — the nine ordered rules of design §3
+# ---------------------------------------------------------------------------
+
+
+def test_matching_due_concept_outranks_unrelated_same_urgency(monkeypatch) -> None:
+    """Rule 5: within one urgency class, plan-related beats unrelated."""
+    from studyloop.learning.decision import PlanRef
+
+    _plan("sql-windows")
+    unrelated = _candidate("decorators", topic="python", score=102)
+    matching = _candidate("window function", topic="sql", score=100)
+    _patch_collectors(monkeypatch, unrelated, matching)
+
+    plan = build_now_plan()
+
+    assert plan.primary.concept == "window function"
+    assert plan.primary.plan_refs == (PlanRef("sql-windows", 0),)
+    assert plan.alternates[0].concept == "decorators"
+    assert plan.alternates[0].plan_refs == ()
+
+
+def test_unrelated_more_urgent_due_outranks_new_milestone(monkeypatch) -> None:
+    """Rule 5 is a bias, not a filter: a globally more-urgent unrelated due item wins."""
+    from studyloop.learning.decision import PlanRef
+
+    _plan("sql-windows")
+    _patch_collectors(monkeypatch, _candidate("decorators", topic="python", score=100))
+
+    plan = build_now_plan()
+
+    assert plan.primary.concept == "decorators"
+    assert plan.primary.plan_refs == ()
+    synthesised = [r for r in plan.alternates if r.source == "study_plan:sql-windows:0"]
+    assert len(synthesised) == 1
+    assert synthesised[0].concept == "window function"
+    assert synthesised[0].plan_refs == (PlanRef("sql-windows", 0),)
+    assert synthesised[0].score < plan.primary.score
+
+
+def test_one_action_keeps_every_matching_plan_ref_ordered(monkeypatch) -> None:
+    """Rule 7: every matching ref is kept, ordered urgency → latest update → plan id."""
+    from studyloop.learning.decision import PlanRef
+
+    _plan("later-plan", target_date=LATER, updated="2026-09-14T00:00:00+00:00")
+    _plan("undated-c", updated="2026-09-10T00:00:00+00:00")
+    _plan("undated-a", updated="2026-09-12T00:00:00+00:00")
+    _plan("undated-b", updated="2026-09-10T00:00:00+00:00")
+    _plan("soon-plan", target_date=SOON, updated="2026-08-01T00:00:00+00:00")
+    _plan("overdue-plan", target_date=OVERDUE, updated="2026-07-01T00:00:00+00:00")
+    _patch_collectors(monkeypatch, _candidate("window function", topic="sql", score=100))
+
+    plan = build_now_plan()
+
+    expected = ["overdue-plan", "soon-plan", "later-plan", "undated-a", "undated-b", "undated-c"]
+    assert plan.primary.plan_refs == tuple(PlanRef(plan_id, 0) for plan_id in expected)
+    assert [entry.plan_id for entry in plan.active_plans] == expected
+
+
+def test_milestone_without_concepts_does_not_substring_match(monkeypatch) -> None:
+    """Rule 4: equality on the normalised key — never a substring test."""
+    from studyloop.learning.decision import PlanRef
+
+    _plan(
+        "sql-windows",
+        topics=["sql"],
+        milestones=[Milestone(title="Window functions deep dive")],
+    )
+    superstring = _candidate("window functions deep dive tutorial", topic="python", score=100)
+    substring = _candidate("window", topic="python", score=99)
+    topic_match = _candidate("joins", topic="SQL", score=98)
+    _patch_collectors(monkeypatch, superstring, substring, topic_match)
+
+    plan = build_now_plan()
+
+    by_concept = {rec.concept: rec for rec in _all(plan)}
+    assert by_concept["window functions deep dive tutorial"].plan_refs == ()
+    assert by_concept["window"].plan_refs == ()
+    # A topic match is plan-related but names no milestone.
+    assert by_concept["joins"].plan_refs == (PlanRef("sql-windows", None),)
+    assert plan.primary.concept == "joins"
+
+
+def test_energy_below_floor_defers_new_milestone_keeps_repair(monkeypatch) -> None:
+    """Rule 3: below the floor new-milestone work is deferred; plan-related repair stays."""
+    from studyloop.learning.decision import PlanRef
+
+    _plan(
+        "sql-windows",
+        energy_floor=5,
+        milestones=[
+            Milestone(title="Window basics", done=True, concepts=["window function"]),
+            Milestone(title="Frames", concepts=["window frame"]),
+        ],
+    )
+    repair = _candidate("window function", topic="sql", action_type="hands-on", score=82)
+    _patch_collectors(monkeypatch, repair)
+
+    low = build_now_plan(energy="low")
+
+    assert low.primary.concept == "window function"
+    assert low.primary.plan_refs == (PlanRef("sql-windows", None),)
+    assert [
+        (d.plan_id, d.milestone_index, d.energy_floor, d.energy_capability)
+        for d in low.energy_deferred
+    ] == [("sql-windows", 1, 5, 3)]
+    assert not any(rec.source.startswith("study_plan:") for rec in _all(low))
+
+    medium = build_now_plan(energy="medium")
+
+    assert medium.energy_deferred == ()
+    assert any(rec.source == "study_plan:sql-windows:1" for rec in medium.alternates)
+
+
+def test_fully_checked_active_plan_emits_completion_not_candidate(monkeypatch) -> None:
+    """Rule 9: a fully-checked plan yields a completion action, never a study candidate."""
+    _plan(
+        "done-plan",
+        title="Done Plan",
+        milestones=[
+            Milestone(title="A", done=True, concepts=["alpha"]),
+            Milestone(title="B", done=True, concepts=["beta"]),
+        ],
+    )
+    _patch_collectors(monkeypatch, _candidate("decorators", topic="python", score=100))
+
+    plan = build_now_plan()
+
+    assert [action.plan_id for action in plan.completion_actions] == ["done-plan"]
+    assert "Done Plan" in plan.completion_actions[0].action
+    assert not any(rec.source.startswith("study_plan:") for rec in _all(plan))
+    assert plan.active_plans[0].plan_id == "done-plan"
+    assert plan.active_plans[0].next_milestone_index is None
+
+
+def test_synthesizes_milestone_when_no_candidate_represents_it(monkeypatch) -> None:
+    """Rule 6: an unrepresented eligible next milestone becomes a candidate."""
+    from studyloop.learning.decision import PlanRef
+
+    _plan(
+        "sql-windows",
+        title="SQL Windows",
+        milestones=[Milestone(title="Frames", concepts=["window frame", "rows between"])],
+    )
+    _patch_collectors(monkeypatch)
+
+    plan = build_now_plan()
+
+    assert plan.starter is False
+    assert plan.primary.concept == "window frame"
+    assert plan.primary.topic == "sql"
+    assert plan.primary.action_type == "conversation"
+    assert plan.primary.source == "study_plan:sql-windows:0"
+    assert plan.primary.plan_refs == (PlanRef("sql-windows", 0),)
+    assert "SQL Windows" in plan.primary.reason
+    assert "Frames" in plan.primary.reason
+    assert plan.primary.evidence_command == (
+        'studyloop progress "window frame" -t "sql" -c learning'
+    )
+
+
+def test_preserves_one_plan_backed_action_when_energy_allows(monkeypatch) -> None:
+    """Rule 8: ≥ 1 eligible plan-backed action in primary + alternates when energy permits."""
+    from studyloop.learning.decision import PlanRef
+
+    _plan(
+        "sql-windows", energy_floor=5, milestones=[Milestone("Frames", concepts=["window frame"])]
+    )
+    unrelated = [_candidate(f"due {i}", topic="python", score=140 - 2 * i) for i in range(4)]
+    _patch_collectors(monkeypatch, *unrelated)
+
+    medium = build_now_plan(energy="medium")
+
+    assert medium.primary.concept == "due 0"
+    assert [rec.concept for rec in medium.alternates] == ["due 1", "window frame"]
+    assert medium.alternates[1].plan_refs == (PlanRef("sql-windows", 0),)
+
+    low = build_now_plan(energy="low")
+
+    assert [rec.concept for rec in _all(low)] == ["due 0", "due 1", "due 2"]
+    assert [d.milestone_index for d in low.energy_deferred] == [0]
+
+
+def test_additive_keys_present_only_when_active_plans_exist(monkeypatch) -> None:
+    """D-5: additive keys and ``plan_refs`` appear only when non-empty."""
+    golden = json.loads(GOLDEN.read_text(encoding="utf-8"))
+    _plan("draft-plan", status="draft")
+    _patch_collectors(monkeypatch)
+
+    # A non-active plan changes nothing — byte for byte.
+    assert serialise(build_now_plan()) == GOLDEN.read_bytes()
+
+    _plan("sql-windows", milestones=[Milestone("Frames", concepts=["window frame"])])
+    with_plan = build_now_plan().to_json_dict()
+
+    assert list(with_plan) == [*golden, "active_plans"]
+    assert list(with_plan["primary"]) == [*golden["primary"], "plan_refs"]
+    assert with_plan["primary"]["plan_refs"] == [{"plan_id": "sql-windows", "milestone_index": 0}]
+    assert with_plan["active_plans"][0]["plan_id"] == "sql-windows"
+    for absent in ("energy_deferred", "completion_actions", "warnings"):
+        assert absent not in with_plan
