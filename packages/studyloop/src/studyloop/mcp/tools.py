@@ -709,6 +709,7 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
         energy: str = "medium",
         time_minutes: int = 25,
         modality: str = "recall",
+        interleave: str = "off",
     ) -> dict[str, Any]:
         """Get the recommended next study action ("what should I do now?").
 
@@ -719,10 +720,18 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
             energy: "low", "medium", or "high".
             time_minutes: Minutes available for this study action.
             modality: "recall", "conversation", "hands-on", "visual", or "audio".
+            interleave: "off" (default) or "adaptive" — the same mix
+                ``studyloop now --interleave`` offers; the response then
+                carries a non-empty ``interleave_ratio``.
         """
         from typing import cast, get_args
 
-        from studyloop.learning.decision import EnergyLevel, Modality, build_now_plan
+        from studyloop.learning.decision import (
+            EnergyLevel,
+            InterleaveMode,
+            Modality,
+            build_now_plan,
+        )
 
         # MCP clients send plain strings; validate against the engine's
         # Literal types before forwarding so a typo ("LOW", "recal") fails
@@ -733,11 +742,15 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
         valid_modality = get_args(Modality)
         if modality not in valid_modality:
             raise ToolError(f"Invalid modality {modality!r}: choose one of {valid_modality}")
+        valid_interleave = get_args(InterleaveMode)
+        if interleave not in valid_interleave:
+            raise ToolError(f"Invalid interleave {interleave!r}: choose one of {valid_interleave}")
 
         plan = build_now_plan(
             energy=cast("EnergyLevel", energy),
             time_minutes=time_minutes,
             modality=cast("Modality", modality),
+            interleave=cast("InterleaveMode", interleave),
         )
         return plan.to_json_dict()
 
