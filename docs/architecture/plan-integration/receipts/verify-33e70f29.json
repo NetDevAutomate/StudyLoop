@@ -1,0 +1,748 @@
+{
+  "artefact": "plan-integration verification receipt (D-15, design \u00a78)",
+  "run_at": "2026-09-16T11:43:51+00:00",
+  "tree": {
+    "sha": "33e70f29",
+    "full_sha": "33e70f29fd8881cedee78bc3a92853134ca5cde3",
+    "branch": "fix/plan-integration-bugs",
+    "dirty": false
+  },
+  "python": "3.12.8",
+  "ok": false,
+  "summary": {
+    "total": 29,
+    "passed": 28,
+    "failed": 1
+  },
+  "failed_checks": [
+    "protected-files-0a20a796"
+  ],
+  "checks": [
+    {
+      "name": "ruff-check",
+      "command": [
+        "uv",
+        "run",
+        "--group",
+        "dev",
+        "ruff",
+        "check",
+        "."
+      ],
+      "expected_exit": 0,
+      "exit_code": 0,
+      "ok": true,
+      "required": true,
+      "duration_s": 0.0,
+      "counts": {},
+      "measured": null,
+      "error": null,
+      "output_tail": []
+    },
+    {
+      "name": "ruff-format",
+      "command": [
+        "uv",
+        "run",
+        "--group",
+        "dev",
+        "ruff",
+        "format",
+        "--check",
+        "."
+      ],
+      "expected_exit": 0,
+      "exit_code": 0,
+      "ok": true,
+      "required": true,
+      "duration_s": 0.0,
+      "counts": {},
+      "measured": null,
+      "error": null,
+      "output_tail": []
+    },
+    {
+      "name": "pyright",
+      "command": [
+        "uv",
+        "run",
+        "--group",
+        "dev",
+        "pyright"
+      ],
+      "expected_exit": 0,
+      "exit_code": 0,
+      "ok": true,
+      "required": true,
+      "duration_s": 10.3,
+      "counts": {},
+      "measured": null,
+      "error": null,
+      "output_tail": []
+    },
+    {
+      "name": "bug-a-readiness-gated-doors",
+      "command": [
+        "uv",
+        "run",
+        "--group",
+        "dev",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "packages/studyloop/tests/test_web_plans.py::test_create_refuses_an_active_status_on_an_unready_plan",
+        "packages/studyloop/tests/test_web_plans.py::test_markdown_replacement_refuses_an_unready_active_document",
+        "packages/studyloop/tests/test_plan_application.py::test_create_transition_replace_refusal_payload_is_identical",
+        "packages/studyloop/tests/test_plan_surface_parity.py::test_activation_refusal_is_identical_via_cli_and_web"
+      ],
+      "expected_exit": 0,
+      "exit_code": 0,
+      "ok": true,
+      "required": true,
+      "duration_s": 1.0,
+      "counts": {
+        "passed": 4
+      },
+      "measured": null,
+      "error": null,
+      "output_tail": []
+    },
+    {
+      "name": "bug-b-partial-recording-reported",
+      "command": [
+        "uv",
+        "run",
+        "--group",
+        "dev",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "packages/studyloop/tests/test_planning_evaluation.py::test_failed_checkpoint_db_write_is_reported_as_a_warning",
+        "packages/studyloop/tests/test_planning_evaluation.py::test_successful_checkpoint_db_write_adds_no_warning"
+      ],
+      "expected_exit": 0,
+      "exit_code": 0,
+      "ok": true,
+      "required": true,
+      "duration_s": 0.7,
+      "counts": {
+        "passed": 2
+      },
+      "measured": null,
+      "error": null,
+      "output_tail": []
+    },
+    {
+      "name": "architecture-guard",
+      "command": [
+        "uv",
+        "run",
+        "--group",
+        "dev",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "packages/studyloop/tests/test_architecture_plan_seam.py"
+      ],
+      "expected_exit": 0,
+      "exit_code": 0,
+      "ok": true,
+      "required": true,
+      "duration_s": 0.8,
+      "counts": {
+        "passed": 30
+      },
+      "measured": null,
+      "error": null,
+      "output_tail": []
+    },
+    {
+      "name": "golden-no-active-sha",
+      "command": "python:check_golden_sha",
+      "expected_exit": 0,
+      "exit_code": 0,
+      "ok": true,
+      "required": true,
+      "duration_s": 0.0,
+      "counts": {},
+      "measured": {
+        "expected": "ec451ce8857c8a72e398e3054e3c060cd3b5b13ecb29e29cba3822dc192503c0",
+        "path": "packages/studyloop/tests/golden/now_plan_no_active.json",
+        "sha256": "ec451ce8857c8a72e398e3054e3c060cd3b5b13ecb29e29cba3822dc192503c0"
+      },
+      "error": null,
+      "output_tail": []
+    },
+    {
+      "name": "golden-no-active-byte-identity",
+      "command": [
+        "uv",
+        "run",
+        "--group",
+        "dev",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "packages/studyloop/tests/test_now_plan_guidance.py::test_no_active_plans_json_byte_identical_to_golden"
+      ],
+      "expected_exit": 0,
+      "exit_code": 0,
+      "ok": true,
+      "required": true,
+      "duration_s": 0.7,
+      "counts": {
+        "passed": 1
+      },
+      "measured": null,
+      "error": null,
+      "output_tail": []
+    },
+    {
+      "name": "stdio-inventory",
+      "command": [
+        "uv",
+        "run",
+        "--group",
+        "dev",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "packages/studyloop/tests/test_mcp_stdio_smoke.py",
+        "-m",
+        "integration"
+      ],
+      "expected_exit": 0,
+      "exit_code": 0,
+      "ok": true,
+      "required": true,
+      "duration_s": 1.3,
+      "counts": {
+        "passed": 2
+      },
+      "measured": null,
+      "error": null,
+      "output_tail": []
+    },
+    {
+      "name": "inventory-in-process",
+      "command": "python:check_inventory_in_process",
+      "expected_exit": 0,
+      "exit_code": 0,
+      "ok": true,
+      "required": true,
+      "duration_s": 0.2,
+      "counts": {},
+      "measured": {
+        "count": 32,
+        "expected_count": 32,
+        "names": [
+          "create_study_plan",
+          "delete_study_plan",
+          "end_session",
+          "evaluate_study_plan",
+          "generate_flashcards",
+          "generate_quiz",
+          "get_active_topics",
+          "get_chapter_text",
+          "get_concept_context",
+          "get_due_cards",
+          "get_lesson_tree",
+          "get_next_action",
+          "get_planning_interview",
+          "get_study_backlog",
+          "get_study_context",
+          "get_study_history",
+          "get_study_plan",
+          "get_topic_suggestions",
+          "list_courses",
+          "list_session_options",
+          "list_study_plans",
+          "log_review_outcome",
+          "log_struggle",
+          "log_topic",
+          "read_lesson",
+          "record_plan_learning",
+          "record_study_progress",
+          "record_topic_progress",
+          "search_lessons",
+          "set_study_plan_milestone",
+          "set_study_plan_status",
+          "update_study_plan"
+        ],
+        "plan_tools": [
+          "list_study_plans",
+          "get_study_plan",
+          "get_planning_interview",
+          "create_study_plan",
+          "update_study_plan",
+          "set_study_plan_status",
+          "set_study_plan_milestone",
+          "evaluate_study_plan",
+          "delete_study_plan"
+        ],
+        "problems": []
+      },
+      "error": null,
+      "output_tail": []
+    },
+    {
+      "name": "plan-suites",
+      "command": [
+        "uv",
+        "run",
+        "--group",
+        "dev",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "packages/studyloop/tests/test_plan_application.py",
+        "packages/studyloop/tests/test_plan_application_mutations.py",
+        "packages/studyloop/tests/test_plan_guidance.py",
+        "packages/studyloop/tests/test_plan_intent_snapshots.py",
+        "packages/studyloop/tests/test_plan_surface_parity.py",
+        "packages/studyloop/tests/test_plan_record.py",
+        "packages/studyloop/tests/test_plan_recording_failures.py",
+        "packages/studyloop/tests/test_web_plans.py",
+        "packages/studyloop/tests/test_web_plans_seam.py",
+        "packages/studyloop/tests/test_cli_plan.py",
+        "packages/studyloop/tests/test_cli_plan_seam.py",
+        "packages/studyloop/tests/test_mcp_plan_tools.py",
+        "packages/studyloop/tests/test_mcp_plan_record_seam.py",
+        "packages/studyloop/tests/test_mcp_next_action.py",
+        "packages/studyloop/tests/test_now_plan_guidance.py",
+        "packages/studyloop/tests/test_session_start_purpose.py",
+        "packages/studyloop/tests/test_plan_architect_persona.py"
+      ],
+      "expected_exit": 0,
+      "exit_code": 0,
+      "ok": true,
+      "required": true,
+      "duration_s": 24.2,
+      "counts": {
+        "passed": 464
+      },
+      "measured": null,
+      "error": null,
+      "output_tail": []
+    },
+    {
+      "name": "docs-contract",
+      "command": [
+        "uv",
+        "run",
+        "--group",
+        "dev",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "packages/studyloop/tests/test_docs_plan_integration_contract.py"
+      ],
+      "expected_exit": 0,
+      "exit_code": 0,
+      "ok": true,
+      "required": true,
+      "duration_s": 0.9,
+      "counts": {
+        "passed": 25
+      },
+      "measured": null,
+      "error": null,
+      "output_tail": []
+    },
+    {
+      "name": "protected-files-3a4f6b01",
+      "command": [
+        "git",
+        "diff",
+        "--quiet",
+        "3a4f6b01",
+        "--",
+        "packages/studyloop/tests/test_web_plans.py",
+        "packages/studyloop/tests/test_cli_plan.py",
+        "packages/studyloop/tests/test_planning_evaluation.py"
+      ],
+      "expected_exit": 0,
+      "exit_code": 0,
+      "ok": true,
+      "required": true,
+      "duration_s": 0.0,
+      "counts": {},
+      "measured": null,
+      "error": null,
+      "output_tail": []
+    },
+    {
+      "name": "protected-files-0a20a796",
+      "command": [
+        "git",
+        "diff",
+        "--quiet",
+        "0a20a796",
+        "--",
+        "packages/studyloop/tests/test_learning_decision.py",
+        "packages/studyloop/tests/test_web_now.py",
+        "packages/studyloop/tests/test_recap_mastery_voice.py",
+        "packages/studyloop/tests/test_web_session_start_pty.py",
+        "packages/studyloop/tests/test_web_session_start_acp.py",
+        "packages/studyloop/tests/test_web_session_ws.py",
+        "packages/studyloop/tests/test_agent_launcher.py"
+      ],
+      "expected_exit": 0,
+      "exit_code": 1,
+      "ok": false,
+      "required": true,
+      "duration_s": 0.0,
+      "counts": {},
+      "measured": null,
+      "error": null,
+      "output_tail": []
+    },
+    {
+      "name": "rg-plan-application-cli",
+      "command": [
+        "rg",
+        "-n",
+        "PlanApplication",
+        "packages/studyloop/src/studyloop/cli"
+      ],
+      "expected_exit": 0,
+      "exit_code": 0,
+      "ok": true,
+      "required": true,
+      "duration_s": 0.0,
+      "counts": {},
+      "measured": null,
+      "error": null,
+      "output_tail": []
+    },
+    {
+      "name": "rg-plan-application-web-routes",
+      "command": [
+        "rg",
+        "-n",
+        "PlanApplication",
+        "packages/studyloop/src/studyloop/web/routes"
+      ],
+      "expected_exit": 0,
+      "exit_code": 0,
+      "ok": true,
+      "required": true,
+      "duration_s": 0.0,
+      "counts": {},
+      "measured": null,
+      "error": null,
+      "output_tail": []
+    },
+    {
+      "name": "rg-plan-application-mcp",
+      "command": [
+        "rg",
+        "-n",
+        "PlanApplication",
+        "packages/studyloop/src/studyloop/mcp"
+      ],
+      "expected_exit": 0,
+      "exit_code": 0,
+      "ok": true,
+      "required": true,
+      "duration_s": 0.0,
+      "counts": {},
+      "measured": null,
+      "error": null,
+      "output_tail": []
+    },
+    {
+      "name": "rg-no-adapter-storage-imports",
+      "command": [
+        "rg",
+        "-n",
+        "studyloop\\.planning\\.(store|index|authoring|evaluation)\\b",
+        "packages/studyloop/src/studyloop/cli",
+        "packages/studyloop/src/studyloop/web/routes",
+        "packages/studyloop/src/studyloop/mcp"
+      ],
+      "expected_exit": 1,
+      "exit_code": 1,
+      "ok": true,
+      "required": true,
+      "duration_s": 0.0,
+      "counts": {},
+      "measured": null,
+      "error": null,
+      "output_tail": []
+    },
+    {
+      "name": "rg-no-adapter-storage-imports-from-package",
+      "command": [
+        "rg",
+        "-n",
+        "from studyloop\\.planning import .*\\b(store|index|authoring|evaluation)\\b",
+        "packages/studyloop/src/studyloop/cli",
+        "packages/studyloop/src/studyloop/web/routes",
+        "packages/studyloop/src/studyloop/mcp"
+      ],
+      "expected_exit": 1,
+      "exit_code": 1,
+      "ok": true,
+      "required": true,
+      "duration_s": 0.0,
+      "counts": {},
+      "measured": null,
+      "error": null,
+      "output_tail": []
+    },
+    {
+      "name": "rg-no-focus-literal-under-session-routes",
+      "command": [
+        "rg",
+        "-n",
+        "build_canonical_persona\\(\"focus\"",
+        "packages/studyloop/src/studyloop/web/routes/session"
+      ],
+      "expected_exit": 1,
+      "exit_code": 1,
+      "ok": true,
+      "required": true,
+      "duration_s": 0.0,
+      "counts": {},
+      "measured": null,
+      "error": null,
+      "output_tail": []
+    },
+    {
+      "name": "combined-journey",
+      "command": [
+        "uv",
+        "run",
+        "--group",
+        "dev",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "packages/studyloop/tests/test_plan_journey_combined.py",
+        "-m",
+        "integration"
+      ],
+      "expected_exit": 0,
+      "exit_code": 0,
+      "ok": true,
+      "required": true,
+      "duration_s": 1.3,
+      "counts": {
+        "passed": 3
+      },
+      "measured": null,
+      "error": null,
+      "output_tail": []
+    },
+    {
+      "name": "integration-combined",
+      "command": [
+        "uv",
+        "run",
+        "--group",
+        "dev",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "packages/studyloop/tests/test_mcp_stdio_smoke.py",
+        "packages/studyloop/tests/test_plan_journey_combined.py",
+        "-m",
+        "integration"
+      ],
+      "expected_exit": 0,
+      "exit_code": 0,
+      "ok": true,
+      "required": true,
+      "duration_s": 2.4,
+      "counts": {
+        "passed": 5
+      },
+      "measured": null,
+      "error": null,
+      "output_tail": []
+    },
+    {
+      "name": "integration-combined-reverse",
+      "command": [
+        "uv",
+        "run",
+        "--group",
+        "dev",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "packages/studyloop/tests/test_plan_journey_combined.py",
+        "packages/studyloop/tests/test_mcp_stdio_smoke.py",
+        "-m",
+        "integration"
+      ],
+      "expected_exit": 0,
+      "exit_code": 0,
+      "ok": true,
+      "required": true,
+      "duration_s": 2.0,
+      "counts": {
+        "passed": 5
+      },
+      "measured": null,
+      "error": null,
+      "output_tail": []
+    },
+    {
+      "name": "browser-journey-e2e",
+      "command": [
+        "uv",
+        "run",
+        "--group",
+        "dev",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "packages/studyloop/tests/test_web_plan_architect_journey.py",
+        "-m",
+        "e2e"
+      ],
+      "expected_exit": 0,
+      "exit_code": 0,
+      "ok": true,
+      "required": true,
+      "duration_s": 11.5,
+      "counts": {
+        "passed": 8
+      },
+      "measured": null,
+      "error": null,
+      "output_tail": []
+    },
+    {
+      "name": "js-unit",
+      "command": [
+        "node",
+        "--test",
+        "packages/studyloop/tests/js/chunk-text.test.js",
+        "packages/studyloop/tests/js/generate-panel.test.js",
+        "packages/studyloop/tests/js/plan-architect-launch.test.js",
+        "packages/studyloop/tests/js/plans-panel.test.js",
+        "packages/studyloop/tests/js/session-timer.test.js",
+        "packages/studyloop/tests/js/settings-panel.test.js",
+        "packages/studyloop/tests/js/text-entry.test.js",
+        "packages/studyloop/tests/js/today-panel-plan.test.js",
+        "packages/studyloop/tests/js/today-panel.test.js"
+      ],
+      "expected_exit": 0,
+      "exit_code": 0,
+      "ok": true,
+      "required": true,
+      "duration_s": 15.1,
+      "counts": {},
+      "measured": null,
+      "error": null,
+      "output_tail": []
+    },
+    {
+      "name": "openspec-validate",
+      "command": [
+        "openspec",
+        "validate",
+        "--specs",
+        "--all",
+        "--no-interactive"
+      ],
+      "expected_exit": 0,
+      "exit_code": 0,
+      "ok": true,
+      "required": true,
+      "duration_s": 0.5,
+      "counts": {},
+      "measured": null,
+      "error": null,
+      "output_tail": []
+    },
+    {
+      "name": "mkdocs-strict",
+      "command": [
+        "uv",
+        "run",
+        "--extra",
+        "docs",
+        "mkdocs",
+        "build",
+        "--strict",
+        "-q"
+      ],
+      "expected_exit": 0,
+      "exit_code": 0,
+      "ok": true,
+      "required": true,
+      "duration_s": 0.6,
+      "counts": {},
+      "measured": null,
+      "error": null,
+      "output_tail": []
+    },
+    {
+      "name": "full-suite-studyloop",
+      "command": [
+        "uv",
+        "run",
+        "--group",
+        "dev",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "packages/studyloop/tests"
+      ],
+      "expected_exit": 0,
+      "exit_code": 0,
+      "ok": true,
+      "required": true,
+      "duration_s": 373.7,
+      "counts": {
+        "passed": 5076,
+        "skipped": 4,
+        "deselected": 800
+      },
+      "measured": null,
+      "error": null,
+      "output_tail": []
+    },
+    {
+      "name": "full-suite-agent-session-tools",
+      "command": [
+        "uv",
+        "run",
+        "--group",
+        "dev",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "packages/agent-session-tools/tests"
+      ],
+      "expected_exit": 0,
+      "exit_code": 0,
+      "ok": true,
+      "required": true,
+      "duration_s": 519.1,
+      "counts": {
+        "passed": 2146
+      },
+      "measured": null,
+      "error": null,
+      "output_tail": []
+    }
+  ]
+}
