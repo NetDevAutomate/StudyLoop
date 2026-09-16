@@ -42,7 +42,7 @@ do not move.
 
 ## Item 2 — #14 brain-dump handoff + abandon-mid-flight (D-B) · files: `web/routes/session/{_models,_start}.py`, `web/static/index.html`, `web/static/js/components/{plans-panel,session-timer}.js`, `tests/test_session_start_purpose.py`, `tests/test_web_plan_architect_journey.py`, `tests/js/plan-architect-launch.test.js`, `docs/study-plans.md`, spec deltas `web-ui`, `live-session-orchestration`
 
-- [ ] **T2.1** RED `tests/test_session_start_purpose.py`:
+- [x] **T2.1** (RED `71a74894`: TestBrainDump 8 failed / 2 guards; JS 4 failed / 13; browser brain-dump test RED, abandon test green on the existing End path) RED `tests/test_session_start_purpose.py`:
       `test_brain_dump_travels_in_the_brief_as_its_own_section_and_is_one_lined` (section `### Learner's brain
       dump` present only with a dump; every dump line rendered as `> …`; a hostile `## …` line cannot open a
       heading), `test_brain_dump_is_absent_from_topic_and_from_session_state` (topic is `Study plan`; text absent
@@ -53,7 +53,7 @@ do not move.
       `tests/test_web_plan_architect_journey.py::test_abandoning_a_launch_mid_flight_leaves_no_session_and_no_plan`
       and `::test_brain_dump_reaches_the_architect_persona`.
       DoD: RED committed; the two JS `deepEqual` pins updated in the same commit.
-- [ ] **T2.2** GREEN: model field (`max_length`), renderer section + containment, UI textarea + wiring, docs
+- [x] **T2.2** (GREEN `9a132aea`: purpose tests 35 passed; JS 133/133 clean exit; browser journey 10 passed `-m e2e`; docs contract 25; full suite 5089 passed / 4 skipped exit 0 in 413 s; lint + pyright clean) GREEN: model field (`max_length`), renderer section + containment, UI textarea + wiring, docs
       paragraph (docs/study-plans.md 102–110 and 237–241: the door carries the brain dump to the architect as
       evidence; still never decomposed by StudyLoop), spec deltas (`web-ui` "Plan with architect journey"
       MODIFIED: the POST body's `brain_dump`, the fourth brief section, the abandon scenario, persona-text
