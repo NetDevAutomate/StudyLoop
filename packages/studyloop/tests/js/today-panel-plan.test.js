@@ -156,3 +156,32 @@ test('a plan_ref whose plan is missing from active_plans falls back to the id, n
     'ghost',
   );
 });
+
+
+/* Council review 3 (Grok 🔵): the engine's `warnings` — an unready plan's
+   blockers, an unreadable document — were visible on the CLI and in the JSON
+   but not on the Today card. They are rendered verbatim, as data. */
+test('warningNotes: the engine\u2019s warnings, verbatim, and they count as plan context', () => {
+  const panel = todayPanel();
+  panel.plan = {
+    ...NO_PLAN_PAYLOAD,
+    active_plans: [{ plan_id: 'husk', title: 'Husk', next_milestone: 'Frames', next_milestone_index: 0, ready: false }],
+    warnings: ["active plan 'husk' is not ready (Mission 'why' is empty) \u2014 pause or repair it"],
+  };
+
+  assert.deepEqual(panel.warningNotes(), [
+    "active plan 'husk' is not ready (Mission 'why' is empty) \u2014 pause or repair it",
+  ]);
+  assert.equal(panel.hasPlanContext, true);
+});
+
+test('warningNotes: absent key renders no warning text', () => {
+  const panel = todayPanel();
+
+  assert.deepEqual(panel.warningNotes(), []);
+
+  panel.plan = NO_PLAN_PAYLOAD;
+
+  assert.deepEqual(panel.warningNotes(), []);
+  assert.equal(panel.hasPlanContext, false);
+});
