@@ -66,25 +66,81 @@ Branch: `fix/plan-integration-bugs` (RED at `3a4f6b01`). §5 stream: `feat/lexic
 
 ## Phase 2 — #9 mutations, assess, guidance, guard (D-3, D-6) · owner: agent A (after Phase 1) · files: as Phase 1 plus `tests/test_architecture_plan_seam.py`
 
-- [ ] **T2.1** RED: `test_set_milestone_done_is_idempotent`, `test_set_unknown_milestone_raises_invalid_milestone`,
+- [x] **T2.1** (`9285260a`, seen failing at collection on `a4862301`: `ImportError` for the seven planned
+      symbols) RED: `test_set_milestone_done_is_idempotent`, `test_set_unknown_milestone_raises_invalid_milestone`,
       `test_delete_without_confirm_raises_invalid_field`, `test_delete_retains_checkpoint_history`,
       `test_assess_preview_writes_neither_sink`, `test_assess_db_failure_reports_failed_sink_and_returns_evaluation`,
       `test_assess_document_failure_reported_independently`, `test_malformed_plan_browse_matches_store_list`,
-      `test_active_guidance_one_per_active_plan_with_match_keys_and_urgency`.
+      `test_active_guidance_one_per_active_plan_with_match_keys_and_urgency`, plus
+      `test_set_milestone_negative_index_raises`, `test_delete_returns_delete_result_and_document_gone`,
+      `test_assess_record_true_reports_both_sinks_saved`, `test_active_guidance_orders_by_plan_id_and_skips_non_active`,
+      `test_active_guidance_completion_action_when_all_done`, `test_active_guidance_target_urgency_buckets` (8 cases)
+      in `tests/test_plan_application_mutations.py` and `tests/test_plan_guidance.py` (45 tests). Adapter REDs:
+      `tests/test_web_plans_seam.py` (`ccfe1d17`, 6 failed / 4 passed on `fed155c1`), `tests/test_cli_plan_seam.py`
+      (`8fed6129`, 14 failed / 2 passed on `da0026f9`), `tests/test_mcp_plan_record_seam.py` (`95d74a84`, 3 failed /
+      3 passed on `6251e930`). Line-level pyright suppressions on the RED import/access lines only; all removed in GREEN.
       (`test_revise_preserves_id_and_created_and_bumps_updated` landed with the review-1 corrections.)
-- [ ] **T2.2** Implement `SetMilestone`, `DeletePlan`, `AssessPlan`/`assess`, `get_active_guidance`
+- [x] **T2.2** (seam `fed155c1`; web `da0026f9`; cli `6251e930`; mcp `45ea1fce`) Implement `SetMilestone`,
+      `DeletePlan`, `AssessPlan`/`assess`, `get_active_guidance`
       (`RevisePlan` already shipped in the review-1 corrections, including `learning_record`; the Web field/
       milestone `PATCH` is already on it, and the toggle is a full-list `RevisePlan` to be replaced by
       `SetMilestone`). Migrate remaining CLI (`new|interview|evaluate|milestone`) and Web
       (`POST evaluate`, toggle → `SetMilestone`, `DELETE`) paths. Migrate
       `mcp/tools.py:record_plan_learning` to `RevisePlan(learning_record=…)` — the only `tools.py` edit in
       this phase — and then fold `store.record_learning`'s validation into the seam's one copy.
-- [ ] **T2.3** Architecture guard `tests/test_architecture_plan_seam.py` per design §6, including the
-      planted-violation test. DoD: passes on the real tree; the planted copy fails.
-- [ ] **T2.4** Specs/docs deltas for mutation, idempotent milestone set, confirmed delete, partial
-      recording. DoD: `just lint && just typecheck`; `pytest packages/studyloop/tests -q` exit 0.
-- [ ] **T2.5** Archify: author `docs/architecture/plan-integration/plan-integration.architecture.json`,
+      **As landed:** `apply` returns `DeleteResult` for `DeletePlan` (typed via `@overload`; `PlanDetailIntent`
+      is the rest of the union); `AssessPlan` is not in `PlanIntent` — it goes to `assess()`; `AssessmentResult`
+      carries `PlanEvaluationView` (`to_json_dict() == PlanEvaluation.to_dict()`, plus the rendered `markdown`)
+      and `db_write` / `document_write` read back from the two Bug-B warning strings — no second checkpoint
+      writer, no `PartialRecording`. The learning-record rule's single copy is the **store's**
+      (`store.append_learning_record`, pure, on an in-memory plan; `record_learning` wraps it; the seam calls
+      it and translates `ValueError` → `InvalidField`) because the store cannot import the seam; the seam's
+      duplicate is deleted. `PlanDetail.learning_record_matching(spec)` lets CLI/MCP report `created` without
+      a copy of the identity rule. Also migrated: `cli/_exercise.py from-milestone` (→ `inspect`) and
+      `cli/_brain.py _selected_plan_ids` (→ `browse`), which the guard would otherwise fail. Deviations from
+      design §1, each reported: `PlanApplication.reindex()` (so `plan reindex` needs no index import, D-6);
+      `get_active_guidance(*, today=None)` keyword for frozen-clock callers; Web `POST evaluate` body gains
+      `db_write` / `document_write` and an honest `recorded` (additive keys, still `201`); CLI `evaluate
+      --record` prints the failed sink instead of an unconditional "Checkpoint recorded."; `InvalidMilestone`
+      message is `No milestone at index N (plan has M)` so the CLI's pre-seam wording survives `_fail_for`.
+      **Owner's eye:** `tests/test_plan_record.py`'s `_seed` fixture now builds a *ready* active plan
+      (assertions byte-identical, `git diff 3a4f6b01 -- tests/test_plan_record.py | grep assert` → 0): the old
+      fixture made an active plan with no success criteria or milestones directly through the store, and
+      the record paths now run the resulting-document gate (F1b), so a legacy/hand-edited active-but-unready
+      plan has `plan record` / `plan milestone` / `record_plan_learning` refused with the blockers until it is
+      paused or repaired. That is the decided invariant applied consistently — flagged for council review 2,
+      not changed unilaterally. Parser finding, out of scope: a concept literally containing `)` (e.g.
+      `RANK()`) does not round-trip through the milestone concepts regex.
+- [x] **T2.3** (`5693e35c`) Architecture guard `tests/test_architecture_plan_seam.py` per design §6, including the
+      planted-violation test. DoD: passes on the real tree; the planted copy fails. **As landed:** 24 tests —
+      0 violations over 67 adapter modules; 14 planted bypasses each rejected (module, `import … as`, package
+      name, submodule name, mixed, relative, whole-package, dynamic string, nested-in-function); 8 allowed forms
+      not flagged; the explicit forbidden-name list is checked against what `studyloop.planning` actually
+      re-exports from the four modules. RED evidence: the same checker over the `a4862301` adapters → 21
+      violations. `rg` invariant from the brief → 0 hits. `plans_dir` is the one store re-export allowed
+      (location resolver, no read/write; `plan path`).
+- [x] **T2.4** (`dcb11771`; gates at `5693e35c`: full suite 4730 passed / 4 skipped exit 0 in 5m24s, plan-filtered
+      exit 0, `just lint` 0, `just typecheck` 0, `openspec validate plan-application-seam` valid, `--specs --all`
+      25 passed) Specs/docs deltas for mutation, idempotent milestone set, confirmed delete, partial
+      recording. DoD: `just lint && just typecheck`; `pytest packages/studyloop/tests -q` exit 0. New delta
+      `specs/mcp-server/spec.md`; the guidance view is spec'd as **not yet consumed**; `docs/study-plans.md`
+      "does not do yet" list untouched (still true until #10).
+- [x] **T2.5** Archify: author `docs/architecture/plan-integration/plan-integration.architecture.json`,
       `validate --quality showcase`, `deliver`, `visual-check`; record the delivery receipt here.
+      **Receipt** (archify skill 2.17, `node ~/.kiro/skills/archify/bin/archify.mjs`):
+      `validate architecture … --quality showcase` → ok, 9/9 artifact checks, composition `showcase` pass,
+      0 errors / 0 warnings. `deliver architecture … plan-integration.html --quality showcase` → **ok: true**;
+      specification sha256 `173a4bb0d2356aa3e827151a450c83252347bf5a30edadb14e278696701a95ae` (7558 bytes);
+      artifact sha256 `20546d4981181eb4000a2afd908b2eb5988a2d46784b4a9b507bda9d59e81ea7` (720967 bytes);
+      validation `checksPassed 9/9`, `compositionStatus pass`. `visual-check plan-integration.html` → exit 0,
+      `status: pass`, containment ok at 1440×900, 1600×1000, 1920×1080, 2048×1320 (scrollHeight == innerHeight
+      at each), light + dark captures written; `visualReview: pending` by contract — perceptual review done by
+      the implementing agent from the 1440×900 light capture: balanced, no edge through an unrelated node,
+      labels clear after one `labelDx` nudge on `seam-index`. The `.html` and `.visual-check.*` sidecars are
+      gitignored and regenerate from the spec. Diagram: CLI / Web routes / MCP tool inside the D-6 guard
+      boundary → `PlanApplication` (six operations named on the node and in a card) → `authoring` (readiness
+      on the resulting document) / `store` (atomic Markdown write → `study-plans/*.md`) / `evaluation` →
+      `index` → `sessions.db`; `now engine` dashed to `get_active_guidance()`, labelled "not yet wired".
 - [ ] ⚖ **Council review 2** (code seats) before Phase 3.
 
 ## Phase 3 — parallel: #10 ∥ #11 ∥ #13a (D-5, D-7, D-8, D-10)

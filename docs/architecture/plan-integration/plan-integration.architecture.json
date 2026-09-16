@@ -1,0 +1,355 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Study plans: adapters → PlanApplication seam → storage",
+    "output": "plan-integration.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "adapters",
+        "label": "Adapters through the seam",
+        "focus": [
+          "cli",
+          "web",
+          "mcp",
+          "seam"
+        ],
+        "note": "CLI, Web routes and the MCP tool reach study plans only through PlanApplication (D-2, D-6)."
+      },
+      {
+        "id": "seam-internals",
+        "label": "What the seam owns",
+        "focus": [
+          "seam",
+          "authoring",
+          "store",
+          "evaluation",
+          "index"
+        ],
+        "note": "The readiness gate, the atomic document write, the checkpoint writer and the derived index are internal to the seam."
+      },
+      {
+        "id": "now-consumer",
+        "label": "Plan-aware now (Phase 3)",
+        "focus": [
+          "now",
+          "seam"
+        ],
+        "note": "get_active_guidance() is the one plan-static read the now ranker will consume in #10; nothing consumes it yet."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "cli",
+      "type": "frontend",
+      "label": "CLI",
+      "sublabel": "studyloop plan …",
+      "pos": [
+        80,
+        30
+      ],
+      "size": [
+        180,
+        64
+      ]
+    },
+    {
+      "id": "web",
+      "type": "frontend",
+      "label": "Web routes",
+      "sublabel": "/api/plans",
+      "pos": [
+        400,
+        30
+      ],
+      "size": [
+        180,
+        64
+      ]
+    },
+    {
+      "id": "mcp",
+      "type": "frontend",
+      "label": "MCP tool",
+      "sublabel": "record_plan_learning",
+      "pos": [
+        720,
+        30
+      ],
+      "size": [
+        180,
+        64
+      ]
+    },
+    {
+      "id": "seam",
+      "type": "backend",
+      "label": "PlanApplication",
+      "sublabel": "browse · inspect · prepare_planning · get_active_guidance · apply · assess",
+      "pos": [
+        270,
+        182
+      ],
+      "size": [
+        440,
+        80
+      ],
+      "tag": "one readiness gate"
+    },
+    {
+      "id": "now",
+      "type": "backend",
+      "label": "now engine",
+      "sublabel": "learning/decision.py",
+      "pos": [
+        860,
+        190
+      ],
+      "size": [
+        200,
+        64
+      ],
+      "tag": "Phase 3 (#10)"
+    },
+    {
+      "id": "authoring",
+      "type": "backend",
+      "label": "authoring.py",
+      "sublabel": "draft · readiness · interview · seed",
+      "pos": [
+        60,
+        340
+      ],
+      "size": [
+        190,
+        64
+      ]
+    },
+    {
+      "id": "store",
+      "type": "backend",
+      "label": "store.py",
+      "sublabel": "atomic Markdown write",
+      "pos": [
+        340,
+        340
+      ],
+      "size": [
+        190,
+        64
+      ]
+    },
+    {
+      "id": "evaluation",
+      "type": "backend",
+      "label": "evaluation.py",
+      "sublabel": "evaluate_and_record",
+      "pos": [
+        620,
+        340
+      ],
+      "size": [
+        190,
+        64
+      ]
+    },
+    {
+      "id": "index",
+      "type": "backend",
+      "label": "index.py",
+      "sublabel": "derived index · checkpoint log",
+      "pos": [
+        900,
+        340
+      ],
+      "size": [
+        190,
+        64
+      ]
+    },
+    {
+      "id": "docs",
+      "type": "database",
+      "label": "study-plans/*.md",
+      "sublabel": "source of truth",
+      "pos": [
+        340,
+        480
+      ],
+      "size": [
+        190,
+        60
+      ]
+    },
+    {
+      "id": "sessionsdb",
+      "type": "database",
+      "label": "sessions.db",
+      "sublabel": "study_plans · study_plan_checkpoints",
+      "pos": [
+        900,
+        480
+      ],
+      "size": [
+        190,
+        60
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "security-group",
+      "label": "Architecture guard (D-6): adapters import only application / views / intents / errors",
+      "wraps": [
+        "cli",
+        "web",
+        "mcp"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "studyloop.planning — internal to the seam",
+      "wraps": [
+        "authoring",
+        "store",
+        "evaluation",
+        "index"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "cli-seam",
+      "from": "cli",
+      "to": "seam",
+      "label": "browse · inspect · apply · assess",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "web-seam",
+      "from": "web",
+      "to": "seam",
+      "label": "prepare_planning · apply · assess",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 40
+    },
+    {
+      "id": "mcp-seam",
+      "from": "mcp",
+      "to": "seam",
+      "label": "apply(RevisePlan)",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "now-seam",
+      "from": "now",
+      "to": "seam",
+      "label": "get_active_guidance() — not yet wired",
+      "variant": "dashed",
+      "fromSide": "left",
+      "toSide": "right",
+      "labelDy": -34
+    },
+    {
+      "id": "seam-authoring",
+      "from": "seam",
+      "to": "authoring",
+      "label": "readiness() on the resulting document",
+      "fromSide": "left",
+      "toSide": "top"
+    },
+    {
+      "id": "seam-store",
+      "from": "seam",
+      "to": "store",
+      "label": "load · save · delete",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 40
+    },
+    {
+      "id": "seam-evaluation",
+      "from": "seam",
+      "to": "evaluation",
+      "label": "evaluate_plan · evaluate_and_record",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelSegment": 1
+    },
+    {
+      "id": "seam-index",
+      "from": "seam",
+      "to": "index",
+      "label": "checkpoint_history · reindex",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelSegment": 1,
+      "labelDx": 150
+    },
+    {
+      "id": "store-docs",
+      "from": "store",
+      "to": "docs",
+      "label": "<id>.md, tmp + rename",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    },
+    {
+      "id": "evaluation-index",
+      "from": "evaluation",
+      "to": "index",
+      "label": "record_checkpoint",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "index-db",
+      "from": "index",
+      "to": "sessionsdb",
+      "label": "upsert · append",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "The seam's six operations",
+      "items": [
+        "browse · inspect · prepare_planning → frozen views",
+        "get_active_guidance() → ActiveGuidance (Phase 3 consumer)",
+        "apply → PlanDetail | DeleteResult · assess → AssessmentResult"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Intents (closed union)",
+      "items": [
+        "Create · Import · Replace · Transition · Revise",
+        "SetMilestone (idempotent) · DeletePlan (confirmed)",
+        "AssessPlan goes to assess(), not apply()"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Invariants",
+      "items": [
+        "One readiness gate before any write, on every door",
+        "Markdown authoritative; index best-effort; sinks reported",
+        "Adapters cannot import store/index/authoring/evaluation"
+      ]
+    }
+  ]
+}
