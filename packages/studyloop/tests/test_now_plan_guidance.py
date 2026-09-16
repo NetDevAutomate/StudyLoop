@@ -432,6 +432,183 @@ def test_additive_keys_present_only_when_active_plans_exist(monkeypatch) -> None
 
 
 # ---------------------------------------------------------------------------
+# Council review 3 — rule pins the ten tests above did not carry (GPT F3, Grok 🔵)
+# ---------------------------------------------------------------------------
+
+
+def test_guidance_read_once_with_no_checkpoint_history_calls(monkeypatch) -> None:
+    """Rule 1: one plan-static read per ``build_now_plan``; zero checkpoint-history
+    reads and no session scan on the plans' account."""
+    from studyloop.planning import index as plan_index
+    from studyloop.planning.application import PlanApplication
+
+    _plan("sql-windows", milestones=[Milestone("Frames", concepts=["window frame"])])
+    _plan("later-plan", target_date=LATER)
+    _patch_collectors(monkeypatch, _candidate("decorators", topic="python", score=100))
+    reads: list[dict] = []
+    real = PlanApplication.get_active_guidance
+
+    def counted(self, **kwargs):
+        reads.append(kwargs)
+        return real(self, **kwargs)
+
+    monkeypatch.setattr(PlanApplication, "get_active_guidance", counted)
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("the ranker read the checkpoint history")
+
+    monkeypatch.setattr(plan_index, "checkpoint_history", forbidden)
+
+    plan = build_now_plan()
+
+    assert reads == [{"today": TODAY}], "exactly one read, on the engine's own date"
+    assert [entry.plan_id for entry in plan.active_plans] == ["later-plan", "sql-windows"]
+
+
+def test_course_and_punctuated_concept_match_by_normalized_equality(monkeypatch) -> None:
+    """Rule 4: the seam's ``normalise_match_key`` on both sides — a course equals a
+    topic through punctuation and case; a concept equals a milestone concept the
+    same way; nothing else about the strings matters."""
+    _plan(
+        "de-plan",
+        topics=["Data-Engineering"],
+        milestones=[Milestone("Windows", concepts=["Window Function"])],
+    )
+    by_course = _candidate("joins", topic="warehouse", course="data engineering", score=100)
+    by_concept = _candidate("window_function", topic="warehouse", score=99)
+    near_miss = _candidate("window functions", topic="warehouse", score=98)
+    _patch_collectors(monkeypatch, by_course, by_concept, near_miss)
+
+    plan = build_now_plan()
+
+    refs = {rec.concept: rec.plan_refs for rec in _all(plan)}
+    assert refs["joins"] == (PlanRef("de-plan", None),)
+    assert refs["window_function"] == (PlanRef("de-plan", 0),)
+    assert refs["window functions"] == ()
+
+
+def test_completion_plan_does_not_bias_matching_due_work(monkeypatch) -> None:
+    """Rule 9: a fully-checked plan is a completion action only — its topics neither
+    bias nor reference a due item that happens to share them."""
+    _plan(
+        "done-plan",
+        topics=["sql"],
+        milestones=[Milestone(title="A", done=True, concepts=["alpha"])],
+    )
+    _patch_collectors(
+        monkeypatch,
+        _candidate("joins", topic="sql", score=100),
+        _candidate("decorators", topic="python", score=101),
+    )
+
+    plan = build_now_plan()
+
+    assert plan.primary.concept == "decorators", "no bias reached the completed plan's topic"
+    assert all(rec.plan_refs == () for rec in _all(plan))
+    assert [action.plan_id for action in plan.completion_actions] == ["done-plan"]
+
+
+def test_plan_backed_guarantee_respects_time_limit(monkeypatch) -> None:
+    """Rule 8 swaps in a plan-backed candidate only when its estimate fits the
+    requested time; the primary and the first alternate are never touched."""
+    _plan("sql-windows", milestones=[Milestone("Frames", concepts=["window frame"])])
+    unrelated = [_candidate(f"due {i}", topic="python", score=140 - 2 * i) for i in range(4)]
+    long_repair = _Candidate(
+        concept="window frame",
+        topic="sql",
+        course=None,
+        reason="a long plan-related task",
+        action_type="hands-on",
+        estimated_minutes=60,
+        source="test:long",
+        evidence_command="x",
+        score=50,
+    )
+    _patch_collectors(monkeypatch, *unrelated, long_repair)
+
+    plan = build_now_plan(time_minutes=25)
+
+    assert [rec.concept for rec in _all(plan)] == ["due 0", "due 1", "due 2"]
+    assert plan.primary.plan_refs == ()
+
+
+def test_weak_due_still_beats_overdue_synthesised_milestone(monkeypatch) -> None:
+    """Rule 5 is a bias, not a filter, at a narrow gap too: a modest due item
+    (base 55) stays ahead of an overdue plan's synthesised milestone
+    (48 + 6 + 12 = 66), so a later scoring tweak cannot silently turn the
+    bias into a filter (Grok 🔵)."""
+    _plan("overdue-plan", target_date=OVERDUE)
+    _patch_collectors(monkeypatch, _candidate("decorators", topic="python", score=55))
+
+    plan = build_now_plan()
+
+    assert plan.primary.concept == "decorators"
+    assert plan.alternates[0].source == "study_plan:overdue-plan:0"
+    assert plan.alternates[0].score < plan.primary.score
+
+
+def test_plan_related_continuity_does_not_outrank_unrelated_repair(monkeypatch) -> None:
+    """The bias (12) is calibrated to today's bands: it is no larger than the gap
+    between continuity (58) and a non-struggling repair (70), so plan-related
+    continuity can tie but never pass unrelated repair (GPT F2, pinned as the
+    invariant the constant must keep)."""
+    _plan("sql-windows", topics=["sql"])
+    repair = _candidate("decorators", topic="python", action_type="teachback", score=70)
+    continuity = _candidate("joins", topic="sql", action_type="conversation", score=58)
+    _patch_collectors(monkeypatch, repair, continuity)
+
+    plan = build_now_plan()
+
+    by_concept = {rec.concept: rec for rec in _all(plan)}
+    assert by_concept["joins"].plan_refs == (PlanRef("sql-windows", None),)
+    assert by_concept["joins"].score <= by_concept["decorators"].score
+
+
+def test_synthesised_candidate_without_topics_uses_study_label(monkeypatch) -> None:
+    """A ready plan with no topics (a nudge, not a blocker) synthesises under the
+    fallback topic ``study`` — pinned so the fallback is a decision, not an
+    accident (Grok 🔵; whether readiness should require topics is #12's call)."""
+    _plan("no-topics", topics=[], milestones=[Milestone("Frames", concepts=["window frame"])])
+    _patch_collectors(monkeypatch)
+
+    plan = build_now_plan()
+
+    assert plan.primary.source == "study_plan:no-topics:0"
+    assert plan.primary.topic == "study"
+    assert plan.primary.evidence_command == (
+        'studyloop progress "window frame" -t "study" -c learning'
+    )
+
+
+def test_guidance_failure_warns_and_logs_without_failing_now(monkeypatch, caplog) -> None:
+    """Rule 1's failure mode: an exception from the guidance read degrades to one
+    warning and the recommendation still comes — and the exception is logged
+    with its traceback, so a programming error cannot hide behind the
+    learner-facing warning (GPT F9 🔵, Grok 🔵)."""
+    import logging
+
+    from studyloop.planning.application import PlanApplication
+
+    def boom(self, **kwargs):
+        raise RuntimeError("plans directory unreadable")
+
+    monkeypatch.setattr(PlanApplication, "get_active_guidance", boom)
+    _patch_collectors(monkeypatch, _candidate("decorators", topic="python", score=100))
+
+    with caplog.at_level(logging.WARNING, logger="studyloop.learning.decision"):
+        plan = build_now_plan()
+
+    assert plan.primary.concept == "decorators"
+    assert plan.warnings == ("study plans could not be read; recommending without them",)
+    assert plan.active_plans == ()
+    records = [r for r in caplog.records if r.name == "studyloop.learning.decision"]
+    assert len(records) == 1
+    assert records[0].levelno == logging.WARNING
+    assert records[0].exc_info is not None
+    assert "plans directory unreadable" in caplog.text
+
+
+# ---------------------------------------------------------------------------
 # Renderers show plan relevance and energy deferral — and never re-rank
 # ---------------------------------------------------------------------------
 
