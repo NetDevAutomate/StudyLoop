@@ -463,6 +463,85 @@ def test_assess_append_to_plan_false_leaves_document_sink_not_requested(
     assert _database_checkpoints("demo") == ["start"]
 
 
+# Council review 2, GPT Astra F9: the rest of the sink failure matrix, pinned
+# on the contract rather than assumed from the two exact warning strings.
+
+
+def test_assess_database_exception_still_attempts_document(
+    app: PlanApplication, monkeypatch
+) -> None:
+    """``record_checkpoint`` can *raise* (import or connection fault) as well as
+    return ``False``; either way the document sink is still attempted."""
+    _plan("demo")
+
+    def explode(evaluation, *, study_id=""):
+        msg = "database is locked"
+        raise RuntimeError(msg)
+
+    monkeypatch.setattr(index_module, "record_checkpoint", explode)
+
+    result = app.assess(AssessPlan(plan_id="demo", phase="start"))
+
+    assert result.db_write == "failed"
+    assert result.document_write == "saved"
+    assert result.recording_complete is False
+    assert result.any_sink_saved is True  # pyright: ignore[reportAttributeAccessIssue]
+    assert _document_checkpoints("demo") == ["start"]
+    assert _database_checkpoints("demo") == []
+
+
+def test_assess_both_sinks_failed_returns_evaluation_and_two_failures(
+    app: PlanApplication, monkeypatch
+) -> None:
+    """Both writes fail: the evaluation is still returned (D-1), each sink says
+    ``failed``, and the result says nothing was saved anywhere — which is what
+    an adapter must render as "not recorded", never "partially recorded"."""
+    _plan("demo")
+    monkeypatch.setattr(index_module, "record_checkpoint", lambda evaluation, *, study_id="": False)
+
+    def refuse_write(plan, **kwargs):
+        msg = "read-only file system"
+        raise OSError(msg)
+
+    monkeypatch.setattr(store, "save_plan", refuse_write)
+
+    result = app.assess(AssessPlan(plan_id="demo", phase="mid"))
+
+    assert isinstance(result, AssessmentResult)
+    assert (result.db_write, result.document_write) == ("failed", "failed")
+    assert result.recording_complete is False
+    assert result.any_sink_saved is False  # pyright: ignore[reportAttributeAccessIssue]
+    assert DB_WARNING in result.warnings
+    assert DOCUMENT_WARNING in result.warnings
+    assert result.evaluation.phase == "mid"
+    assert _document_checkpoints("demo") == []
+    assert _database_checkpoints("demo") == []
+
+
+def test_assess_database_failure_document_not_requested(app: PlanApplication, monkeypatch) -> None:
+    _plan("demo")
+    monkeypatch.setattr(index_module, "record_checkpoint", lambda evaluation, *, study_id="": False)
+
+    result = app.assess(AssessPlan(plan_id="demo", phase="end", append_to_plan=False))
+
+    assert (result.db_write, result.document_write) == ("failed", "not_requested")
+    assert result.recording_complete is False
+    assert result.any_sink_saved is False  # pyright: ignore[reportAttributeAccessIssue]
+    assert DOCUMENT_WARNING not in result.warnings
+    assert _document_checkpoints("demo") == []
+    assert _database_checkpoints("demo") == []
+
+
+def test_assess_preview_saved_nowhere_but_is_complete(app: PlanApplication) -> None:
+    """A preview asks for nothing, so nothing is missing (``recording_complete``)
+    and nothing was saved (``any_sink_saved``) — both true at once, and it is the
+    adapter's job to check ``record`` before saying "recorded"."""
+    _plan("demo")
+    result = app.assess(AssessPlan(plan_id="demo", phase="start", record=False))
+    assert result.recording_complete is True
+    assert result.any_sink_saved is False  # pyright: ignore[reportAttributeAccessIssue]
+
+
 def _husk(isolated_plans_dir, plan_id: str = "husk") -> None:
     """An active document with milestones and topics but no mission: readable,
     active, unready — the shape a hand edit or a pre-gate import can leave."""

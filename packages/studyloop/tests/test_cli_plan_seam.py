@@ -229,6 +229,33 @@ def test_evaluate_record_names_the_sink_that_failed(runner, monkeypatch) -> None
     assert [c.phase for c in store.load_plan("glue-etl").checkpoints] == ["start"]
 
 
+def test_evaluate_record_with_both_sinks_failed_is_not_called_partial(runner, monkeypatch) -> None:
+    """Council review 2, GPT Astra F9: when neither sink saved, "partially
+    recorded" is a lie of the same shape Bug B was. The evaluation still
+    succeeded (exit 0) and both sinks are named, but the headline is "not
+    recorded"."""
+    runner.invoke(cli, ["plan", "new", "--title", "Glue ETL", *READY])
+    monkeypatch.setattr(index_module, "record_checkpoint", lambda evaluation, *, study_id="": False)
+
+    def refuse_write(plan, **kwargs):
+        msg = "read-only file system"
+        raise OSError(msg)
+
+    monkeypatch.setattr(store, "save_plan", refuse_write)
+
+    result = runner.invoke(cli, ["plan", "evaluate", "glue-etl", "--record"])
+
+    assert result.exit_code == 0, result.output
+    clean = _ANSI.sub("", result.output)
+    assert "Plan checkpoint" in clean
+    assert "Checkpoint not recorded" in clean
+    assert "partially recorded" not in clean
+    assert "Checkpoint recorded." not in clean
+    assert "database: failed" in clean
+    assert "document: failed" in clean
+    assert store.load_plan("glue-etl").checkpoints == []
+
+
 def test_evaluate_preview_is_record_false(runner, monkeypatch) -> None:
     runner.invoke(cli, ["plan", "new", "--title", "Glue ETL", *READY])
     calls: list[object] = []

@@ -557,6 +557,43 @@ test('recordCheckpoint: a partial recording is reported, never shown as a clean 
   assert.equal(plansStore.recording, false);
 });
 
+test('recordCheckpoint: both sinks failed is "not recorded", never "partially recorded"', async () => {
+  /* Council review 2, GPT Astra F9: when neither the database nor the document
+     took the checkpoint, "partially recorded" is a lie of the same shape Bug B
+     was. The evaluation still succeeded (201), so this stays a status line,
+     but its headline must say nothing was recorded. */
+  server({
+    'POST /api/plans/p1/evaluate': () =>
+      json(201, {
+        recorded: false,
+        db_write: 'failed',
+        document_write: 'failed',
+        evaluation: {
+          ...EVALUATION,
+          warnings: [
+            'checkpoint not saved to the database',
+            'checkpoint not appended to the plan document',
+          ],
+        },
+        markdown: '',
+      }),
+    'GET /api/plans': () => json(200, { plans: [summary()], count: 1 }),
+    'GET /api/plans/p1': () => json(200, detail()),
+  });
+  plansStore.selected = summary();
+  plansStore.pendingPhase = 'start';
+
+  await plansStore.recordCheckpoint();
+
+  assert.equal(plansStore.error, '', 'a failed recording is a status, not an error banner');
+  assert.doesNotMatch(plansStore.recordStatus, /^Recorded/);
+  assert.doesNotMatch(plansStore.recordStatus.toLowerCase(), /partial/);
+  assert.match(plansStore.recordStatus, /^Not recorded/);
+  assert.match(plansStore.recordStatus, /database: failed/);
+  assert.match(plansStore.recordStatus, /document: failed/);
+  assert.equal(plansStore.recording, false);
+});
+
 test('recordCheckpoint: records the phase the learner clicked, not a stale one', async () => {
   /* Phase 5 leaves the panel showing 'end'; phase 6 clicks start and records
      immediately. Without the synchronous pendingPhase the wrong checkpoint
