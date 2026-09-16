@@ -415,12 +415,23 @@ class TestPlanningPurpose:
         assert state["topic"] == "Study plan"
         assert "plan_id" not in state
 
+    @pytest.mark.parametrize(
+        ("transport", "agent"),
+        [("pty", "claude"), ("acp", "kiro")],
+    )
     def test_brief_failure_releases_session_claim(
-        self, client: TestClient, personas: list[str], monkeypatch
+        self,
+        client: TestClient,
+        personas: list[str],
+        monkeypatch,
+        transport: str,
+        agent: str,
     ) -> None:
         """If the brief cannot be built, the learner gets a structured error and
         the single-session slot is free again — no reservation, no live slot,
-        no orphaned DB row."""
+        no study row — on BOTH transports (council review 3, F7: the PTY-only
+        form asserted ``start.call_count == abort.call_count``, true at (0, 0)
+        and at (5, 5) alike)."""
 
         def _boom(self):
             raise RuntimeError("plans directory unreadable")
@@ -431,21 +442,23 @@ class TestPlanningPurpose:
             patch("studyloop.history.start_study_session") as mock_start,
             patch("studyloop.history.abort_study_session") as mock_abort,
         ):
-            resp = _start(client, topic="", purpose="planning")
+            resp = _start(client, topic="", purpose="planning", transport=transport, agent=agent)
 
         assert resp.status_code == 500, resp.text
         body = resp.json()
-        assert "error" in body
+        assert set(body) == {"error", "purpose", "repair"}
         assert "brief" in body["error"].lower()
-        assert body.get("purpose") == "planning"
+        assert body["purpose"] == "planning"
 
         from studyloop.session_state import read_session_state
 
         assert read_session_state() == {}, "the reservation must be cleared"
         assert run_async(active.current()) is None
-        # The brief is built before the DB record exists, so there is nothing to
-        # abort — and nothing was left behind either way.
-        assert mock_start.call_count == mock_abort.call_count
+        # The brief is built before the DB record exists: no study row was
+        # created, so there was nothing to abort — and no persona was shipped.
+        mock_start.assert_not_called()
+        mock_abort.assert_not_called()
+        assert personas == []
 
         # And the slot really is free: a focus start now succeeds.
         with (
@@ -454,6 +467,25 @@ class TestPlanningPurpose:
         ):
             again = _start(client, topic="Python")
         assert again.status_code == 201, again.text
+
+    def test_focus_start_overwrites_stale_planning_purpose(
+        self, client: TestClient, personas: list[str], _stub_db
+    ) -> None:
+        """``purpose`` is written on every start, never inherited through the state
+        file's read-merge-write: a focus start after a planning one reads back
+        ``focus`` (council review 3, F7)."""
+        from studyloop.session_state import read_session_state
+
+        first = _start(client, topic="", purpose="planning")
+        assert first.status_code == 201, first.text
+        assert read_session_state()["purpose"] == "planning"
+        run_async(active.release())
+
+        second = _start(client, topic="Python")
+
+        assert second.status_code == 201, second.text
+        assert second.json()["purpose"] == "focus"
+        assert read_session_state()["purpose"] == "focus"
 
     @pytest.mark.parametrize(
         ("transport", "agent"),
