@@ -14,6 +14,7 @@ existed: every additive field is omitted when empty
 from __future__ import annotations
 
 import dataclasses
+import logging
 import sqlite3
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
@@ -25,6 +26,8 @@ if TYPE_CHECKING:
     from datetime import date
 
     from studyloop.planning.views import ActiveGuidance, ActivePlanGuidance, MilestoneView
+
+logger = logging.getLogger(__name__)
 
 EnergyLevel = Literal["low", "medium", "high"]
 Modality = Literal["recall", "conversation", "hands-on", "visual", "audio"]
@@ -679,12 +682,19 @@ def _candidate_keys(candidate: _Candidate) -> frozenset[str]:
 
 
 def _load_guidance(today: date) -> ActiveGuidance | None:
-    """One plan-static read through the seam; ``None`` when plans cannot be read at all."""
+    """One plan-static read through the seam; ``None`` when plans cannot be read at all.
+
+    The recommendation must never fail because of the plans (spec rule 1), so
+    every exception degrades to the one learner-facing warning the caller
+    emits — but it is logged with its traceback first, so a programming error
+    in the seam cannot hide behind "could not be read" (council review 3, F9).
+    """
     try:
         from studyloop.planning.application import PlanApplication
 
         return PlanApplication().get_active_guidance(today=today)
     except Exception:
+        logger.warning("study plans could not be read; recommending without them", exc_info=True)
         return None
 
 
