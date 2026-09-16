@@ -167,6 +167,34 @@ def test_active_guidance_empty_when_nothing_is_active(app: PlanApplication) -> N
     assert guidance.to_json_dict() == {"plans": [], "warnings": []}
 
 
+def test_guidance_match_keys_are_sorted_unique_tuples(app: PlanApplication) -> None:
+    """Council review 2, GPT Astra F7: D-3 binds the views to frozen dataclasses
+    *with tuples*; a ``frozenset`` is immutable but not tuple-only, and the
+    delta spec cannot override the decision. Keys are de-duplicated and sorted,
+    so two documents that name the same things in a different order give an
+    equal, deterministic view — and a consumer needing a set builds one."""
+    _active(
+        "ordered",
+        topics=["SQL", "Window-Function", "sql"],
+        milestones=[
+            Milestone(title="B", concepts=["window function", "RANK()"]),
+            Milestone(title="A", done=True, concepts=["rank", "SQL"]),
+        ],
+    )
+    _active(
+        "shuffled",
+        topics=["rank", "sql"],
+        milestones=[Milestone(title="Z", concepts=["Window Function", "Sql", "RANK"])],
+    )
+
+    ordered, shuffled = _guidance(app).plans
+
+    assert type(ordered.match_keys) is tuple
+    assert ordered.match_keys == ("rank", "sql", "window function")
+    assert shuffled.match_keys == ordered.match_keys, "order and case of input do not matter"
+    assert ordered.to_json_dict()["match_keys"] == ["rank", "sql", "window function"]
+
+
 def test_active_guidance_completion_action_when_all_done(app: PlanApplication) -> None:
     _active(
         "finished",
