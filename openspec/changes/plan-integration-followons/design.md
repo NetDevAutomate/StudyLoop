@@ -158,6 +158,28 @@ among what MCP revises and the row names every schema property.
   no-plan golden is unchanged.
 - **Persona:** an "Extend or close" subsection: read the evidence back; propose; ask "anything you are not
   comfortable with?"; change status only when the learner agrees.
+- **Pinned by the RED (`14c8938b`, 2026-09-17):** the `### Closing review` section's first four `- ` lines are
+  `Due reviews on plan concepts: N`, `Struggles on plan concepts: N`, `Unverified milestones: N`,
+  `Proposal: extend|close`, followed by the evidence lines — readable off the top, as the repair section's
+  blockers are. The intro says `CLOSING REVIEW`, does not say "build a study plan", and says the status changes
+  "only when the learner agrees". The composed sentence differs from the pre-change either-way sentence and
+  names the proposal. The refusal is `'<id>' still has N open milestone(s)` (exit 1, no launch).
+- **Decided by the owner (2026-09-17), pinned by the RED:** the completion review counts only due rows that
+  name a concept. `spaced_repetition_due` appends a `New topic -- start fresh` row (`concept: None`,
+  `evidence: configured_topic`) for every plan topic with no progress rows — the scheduler's cold-start hint
+  for "what should I review now", not a lapsed review. The evaluator already ignores it at concept level (a
+  `None` concept never matches a milestone concept, so it contributes nothing to `unverified_milestones`), and
+  counting it would tell a learner who has just ticked every milestone to "start fresh" — the
+  incompleteness-after-success framing D-G exists to avoid. `unverified_milestones` remains the honest carrier
+  of "done without evidence". `plan evaluate` keeps the row (phase `start` wants it); the exclusion is the
+  completion review's, one definition beside `PlanEvaluationView` in `planning/views.py`, consumed by both the
+  engine's `CompletionAction` and the `plan close` brief. Measured cost of the preview on the live 877 MB
+  database: ~320 ms per fully-checked plan per `build_now_plan` (five readers), a transient state by design.
+- **Open for GREEN (not pinned):** what `proposal` holds when the assessment fails. `Literal["extend", "close"]`
+  has no honest value for "not assessed" — `extend` asserts outstanding work without evidence, `close` asserts
+  a clean slate without evidence. Default unless vetoed: `proposal: Literal["extend", "close"] | None`, `None`
+  on failure with the counts `0` and `evidence` empty; the `warnings` entry explains; renderers print the plain
+  sentence when `proposal is None`. One nullable field carries the state; the three counts keep their type.
 
 ## 5. Item 5 — per-item energy demand and the body-doubling floor (D-F) — designed here, reviewed separately
 

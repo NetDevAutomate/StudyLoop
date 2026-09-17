@@ -116,7 +116,13 @@ writer, through the existing gate, closes that. Kept out of item 3 so item 3's f
 
 ## Item 4 — `plan close <id>` (D-G) · files: `learning/decision.py`, `cli/{_plan,_now}.py`, `learning/recap.py`, `web/static/js/components/today-panel.js`, `web/static/index.html`, persona (+ projections + manifest), tests, `docs/study-plans.md`, spec delta `active-learning-decisions`, `cli-surface`
 
-- [ ] **T4.1** RED `tests/test_now_plan_guidance.py`:
+- [x] **T4.1** (RED `14c8938b`: 7 failed / 57 passed across the two files, each on the intended reason — missing
+      `CompletionAction` attributes, `assess` never called, no warning, no `close` command; ruff + pyright
+      clean; hooks first time; golden sha unchanged. Seventh test, added on the owner's 2026-09-17 decision:
+      `test_completion_review_does_not_count_new_topic_rows_as_due`; the seam launch test's due fixture carries
+      a new-topic row beside the real one and still asserts a count of 1. Landed name of the first test drops
+      one redundant word: `…_proposes_extend_when_concepts_are_due` — no def line in the repo exceeds 100
+      chars.) RED `tests/test_now_plan_guidance.py`:
       `test_completion_action_carries_the_end_assessment_and_proposes_extend_when_plan_concepts_are_due`,
       `test_completion_action_proposes_close_when_the_assessment_is_clean`, `test_completion_never_changes_status`
       (document bytes and status unchanged after `build_now_plan`; no checkpoint row written),
