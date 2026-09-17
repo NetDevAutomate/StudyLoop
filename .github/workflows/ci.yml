@@ -158,7 +158,14 @@ jobs:
     # defects were hiding in there: a 500 from a file-deletion race in session
     # teardown, and a 200ms sleep racing a 187ms CSS fade.
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # Budget, measured not guessed: main's last green e2e (run 34160855304,
+    # 2026-09-07) ran 515 tests in 14m23s inside a 25-minute ceiling; the
+    # plan-integration branch runs 567 in 21m42s (run 35216220593) and was
+    # killed by that same ceiling at 25m16s with the test matrix green (run
+    # 35217712505, 2026-09-17). Forty minutes is ~1.6x the measured run --
+    # still a real guard against a hung browser, no longer a coin flip on
+    # runner speed. Revisit when the suite next grows by a tenth.
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
