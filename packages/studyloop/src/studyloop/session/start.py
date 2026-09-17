@@ -244,8 +244,15 @@ def start_session(
     resume_session_name: str | None = None,
     resume_session_dir: str | None = None,
     previous_notes: str | None = None,
+    brief: str | None = None,
+    brief_intro: str | None = None,
 ) -> None:
     """Start a new study session with tmux environment.
+
+    ``brief`` / ``brief_intro`` are the planning-brief section and the sentence
+    that frames it (see :func:`~studyloop.agent_launcher.build_canonical_persona`);
+    ``plan repair`` (item 3) is the first CLI caller to pass them, the Web door
+    already passes ``brief`` on its own path.
 
     Raises:
         SessionStartError: When startup cannot proceed (tmux missing, no agent,
@@ -436,7 +443,14 @@ def start_session(
 
         # Build persona + MCP config via adapter pattern
         adapter = AGENTS[agent]
-        canonical = build_canonical_persona(mode, topic, energy, previous_notes=previous_notes)
+        canonical = build_canonical_persona(
+            mode,
+            topic,
+            energy,
+            previous_notes=previous_notes,
+            brief=brief,
+            brief_intro=brief_intro,
+        )
 
         # Track persona version for effectiveness analysis
         import hashlib

@@ -14,6 +14,7 @@ from __future__ import annotations
 from .application import PlanApplication
 from .authoring import (
     INTERVIEW,
+    READINESS_GATE_DATE,
     InterviewQuestion,
     draft_plan,
     interview_spec,
@@ -107,6 +108,7 @@ from .views import (
     PlanSummary,
     ReadinessView,
     ResourceView,
+    husk_provenance,
     normalise_match_key,
 )
 
@@ -116,6 +118,7 @@ __all__ = [
     "MISSION_SUBSECTION_HEADINGS",
     "PLAN_SECTION_HEADINGS",
     "PLAN_STATUSES",
+    "READINESS_GATE_DATE",
     "ActiveGuidance",
     "ActivePlanGuidance",
     "AssessPlan",
@@ -174,6 +177,7 @@ __all__ = [
     "draft_plan",
     "evaluate_and_record",
     "evaluate_plan",
+    "husk_provenance",
     "indexed_plans",
     "interview_spec",
     "list_plan_ids",

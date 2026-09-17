@@ -230,6 +230,8 @@ def study(
     password: str,
     resume: bool,
     end_session: bool,
+    brief: str | None = None,
+    brief_intro: str | None = None,
 ) -> None:
     """Start a study session with full tmux environment.
 
@@ -242,6 +244,12 @@ def study(
         studyloop study --resume
 
         studyloop study --end
+
+    ``brief`` and ``brief_intro`` are deliberately *not* click options: they are
+    plain keywords a sibling command threads through ``ctx.invoke(study, …)``
+    (``plan repair``, item 3; ``plan close``, item 4) so a plan-shaped session
+    reaches the agent through this one launch chain and no user-facing flag
+    exists to hand-roll a brief.
     """
     if end_session:
         _handle_end(ctx)
@@ -285,6 +293,8 @@ def study(
         lan=lan,
         password=password,
         topic_config=topic_config,
+        brief=brief,
+        brief_intro=brief_intro,
     )
 
 
@@ -303,6 +313,8 @@ def _handle_start(
     resume_session_name: str | None = None,
     resume_session_dir: str | None = None,
     previous_notes: str | None = None,
+    brief: str | None = None,
+    brief_intro: str | None = None,
 ) -> None:
     """Thin CLI wrapper: delegates to session.start.start_session.
 
@@ -324,6 +336,8 @@ def _handle_start(
             resume_session_name=resume_session_name,
             resume_session_dir=resume_session_dir,
             previous_notes=previous_notes,
+            brief=brief,
+            brief_intro=brief_intro,
         )
     except SessionStartError as exc:
         console.print(exc.message)

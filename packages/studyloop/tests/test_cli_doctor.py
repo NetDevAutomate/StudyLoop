@@ -205,9 +205,7 @@ class TestStudyPlansCheck:
         self.plans_dir = store.plans_dir()
 
     def test_doctor_names_each_active_but_unready_plan_with_its_blockers(self) -> None:
-        from studyloop.cli._doctor import (
-            check_study_plans,  # pyright: ignore[reportAttributeAccessIssue]
-        )
+        from studyloop.cli._doctor import check_study_plans
         from studyloop.planning import CreatePlan, PlanApplication
 
         app = PlanApplication()
@@ -255,9 +253,7 @@ class TestStudyPlansCheck:
         assert "vague-draft" not in joined  # a draft is unready by nature, not a husk
 
     def test_all_active_plans_ready_is_one_pass_row(self) -> None:
-        from studyloop.cli._doctor import (
-            check_study_plans,  # pyright: ignore[reportAttributeAccessIssue]
-        )
+        from studyloop.cli._doctor import check_study_plans
         from studyloop.planning import CreatePlan, PlanApplication
 
         PlanApplication().apply(
@@ -282,9 +278,7 @@ class TestStudyPlansCheck:
         assert "ready" in results[0].message
 
     def test_no_plans_at_all_is_info_not_a_warning(self) -> None:
-        from studyloop.cli._doctor import (
-            check_study_plans,  # pyright: ignore[reportAttributeAccessIssue]
-        )
+        from studyloop.cli._doctor import check_study_plans
 
         results = check_study_plans()
 

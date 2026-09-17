@@ -198,7 +198,14 @@ class StudyPlan:
         return (target - (today or datetime.now(UTC).date())).days
 
     def summary(self) -> dict:
-        """Compact dict for list views and API payloads."""
+        """Compact dict for list views and API payloads.
+
+        ``ready`` is :func:`authoring.readiness`'s verdict (imported locally:
+        ``authoring`` imports this module). It travels on the summary so a list
+        can flag an active-but-unready plan without a second call per row.
+        """
+        from .authoring import readiness
+
         nxt = self.next_milestone()
         return {
             "plan_id": self.plan_id,
@@ -218,4 +225,5 @@ class StudyPlan:
             "days_until_target": self.days_until_target(),
             "learning_record_count": len(self.learning_records),
             "checkpoint_count": len(self.checkpoints),
+            "ready": bool(readiness(self)["ready"]),
         }

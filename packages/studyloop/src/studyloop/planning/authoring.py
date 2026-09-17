@@ -301,3 +301,11 @@ def readiness(plan: StudyPlan) -> dict:
         "blockers": blockers,
         "nudges": nudges,
     }
+
+
+#: The date the readiness gate began refusing writes to an active-but-unready
+#: plan (deviation 12). A husk created before it is simply older than the rule;
+#: one created after it could be a hand edit or an import, and the seam cannot
+#: tell those apart — so it never claims to. The sentence that says which is
+#: :func:`studyloop.planning.views.husk_provenance`; this is the policy date.
+READINESS_GATE_DATE = "2026-09-15"

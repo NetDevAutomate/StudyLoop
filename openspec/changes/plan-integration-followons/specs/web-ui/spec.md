@@ -95,3 +95,29 @@ model behaves with it, and the docs say so.
 #### Scenario: Manual New plan is unchanged
 - **WHEN** the learner uses **New plan**, fills the form and submits
 - **THEN** the plan is created and listed and no session is started
+
+## ADDED Requirements
+
+### Requirement: Plan list rows carry readiness and the sidebar marks a husk
+Every row of `GET /api/plans` SHALL be `PlanSummary.to_json_dict()` and SHALL
+carry `ready` — the same verdict the readiness gate judges every write by —
+as its eighteenth key, so a client can tell an active-but-unready plan (a
+"husk", item 3 / D-C) from the list alone, with no per-row round-trip. The
+Plans sidebar SHALL render one mark (`data-testid="sidebar-plan-husk"`, the
+glyph `!`, `role="img"` with an `aria-label` and a `title` naming the
+condition and both exits) inside `.sidebar-plan-meta` for a row whose
+`status` is `active` and whose `ready` is `false`, and SHALL render it for no
+other row. The mark is computed from the row's own `ready`; the sidebar
+SHALL make no further request to decide it. Colour SHALL come from the theme's
+own tokens and SHALL not be the only carrier of the information.
+
+#### Scenario: List payload carries ready
+- **WHEN** `GET /api/plans` is served for one ready active plan and one active
+  document with no mission
+- **THEN** every row has 18 keys, the ready plan's row has `ready: true`, the
+  husk's row has `ready: false`, and `?status=active` returns both
+
+#### Scenario: Sidebar marks the husk and only the husk
+- **WHEN** the Plans sidebar renders those rows
+- **THEN** exactly one `sidebar-plan-husk` mark is present, on the husk's row,
+  and the ready plan's row has none

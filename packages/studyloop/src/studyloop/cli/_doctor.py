@@ -69,6 +69,84 @@ def check_unknown_config_keys() -> list[CheckResult]:
     ]
 
 
+def check_study_plans() -> list[CheckResult]:
+    """Name each active-but-unready study plan (a "husk") with its blockers and both ways out.
+
+    Item 3 (D-C, deviation 12 kept): the readiness gate refuses every write to
+    an active plan that is not ready, and until now nothing told the learner
+    such a plan existed before they tripped over the refusal. One ``warn``
+    row per husk — id, title, the exact blockers ``ReadinessView`` reports,
+    and an honest provenance sentence shared with the ``plan repair`` brief —
+    with ``fix_auto=False``: the repair is a conversation with the architect,
+    not a script. Zero husks among active plans is one ``pass`` row; no plans
+    at all is ``info``, not a warning. Lives here beside
+    ``check_unknown_config_keys`` and joins the same ``config`` category: the
+    health spec enumerates categories verbatim and gains none here.
+    """
+    try:
+        from studyloop.planning import PlanApplication, husk_provenance
+
+        app = PlanApplication()
+        active = app.browse(status="active")
+        husks = app.husks()
+    except Exception as exc:  # a broken plans dir is a report, not a crash of doctor
+        return [
+            CheckResult(
+                "config",
+                "study_plans",
+                "warn",
+                f"Study plans could not be read: {exc}",
+                "Run `studyloop plan list` to see the underlying error.",
+                False,
+            )
+        ]
+
+    if not active:
+        return [
+            CheckResult(
+                "config",
+                "study_plans",
+                "info",
+                "No active study plan. Nothing for the readiness gate to judge.",
+                "Create one with `studyloop plan architect` when you want a plan to steer "
+                "`studyloop now`.",
+                False,
+            )
+        ]
+
+    if not husks:
+        n = len(active)
+        return [
+            CheckResult(
+                "config",
+                "study_plans",
+                "pass",
+                f"{n} active plan{'s' if n != 1 else ''}, all ready — every write the gate "
+                "judges will pass.",
+                "",
+                False,
+            )
+        ]
+
+    rows: list[CheckResult] = []
+    for husk in husks:
+        plan_id = husk.summary.plan_id
+        blockers = "; ".join(husk.readiness.blockers)
+        provenance = husk_provenance(husk.summary.created)
+        rows.append(
+            CheckResult(
+                "config",
+                "study_plans",
+                "warn",
+                f"Active plan '{plan_id}' ({husk.summary.title}) is not ready and refuses "
+                f"every write until paused or repaired. Blockers: {blockers} {provenance}",
+                f"studyloop plan repair {plan_id}  (or: studyloop plan status {plan_id} paused)",
+                False,
+            )
+        )
+    return rows
+
+
 def _get_registry():
     """Build and return a fully-loaded CheckerRegistry."""
     from studyloop.doctor import CheckerRegistry
@@ -114,6 +192,7 @@ def _get_registry():
         check_review_directories,
         check_pandoc,
         check_unknown_config_keys,
+        check_study_plans,
     ]
     # Obsidian is an OPT-IN integration, so its checks are registered only when
     # the config actually mentions it. A user who never had Obsidian should not

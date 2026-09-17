@@ -182,11 +182,26 @@ script against plans or ask an agent to:
   checkbox uses a toggle request, fine for a click and not safe to replay; a
   caller that needs replay safety states the desired state (`PATCH` with
   `milestones`, or the CLI flags).
-- **A hand-edited active plan that is no longer complete is paused or
-  repaired before it is written to.** Reads and previews still work; a
-  milestone, a revision or a recorded checkpoint that appends to the document
-  is refused with the blockers named until you pause the plan
-  (`studyloop plan status PLAN_ID paused`) or repair the missing parts.
+- **An active plan that is no longer complete is paused or repaired before
+  it is written to.** Reads and previews still work; a milestone, a revision
+  or a recorded checkpoint that appends to the document is refused with the
+  blockers named until you pause the plan (`studyloop plan status PLAN_ID
+  paused`) or repair the missing parts. You do not have to trip over the
+  refusal to find such a plan: `studyloop doctor` names each one with its
+  blockers, `studyloop plan list` marks it `!` after its status (`--husks`
+  lists only those; every `--json` row carries `ready`), the Web sidebar
+  shows the same mark, and `GET /api/plans` rows carry `ready`. Repair is a
+  conversation: `studyloop plan repair PLAN_ID` launches the architect with
+  the blockers as the first section of its brief and the plan as it stands,
+  and writes nothing itself. Two honest limits: the architect can add
+  milestones over MCP (`update_study_plan`), but no tool writes the mission,
+  so a missing mission or missing success criteria is fixed by editing the
+  document's `## Mission` section (in the Web UI or by hand) — the architect
+  dictates the lines; and while the plan is active, a write that leaves any
+  blocker standing is still refused, so either everything is repaired in one
+  write or the plan is paused first and re-activated once ready. The brief
+  says how the plan got that way only when the seam knows (a document that
+  predates the gate); otherwise it says it cannot tell.
 - **Deletion is explicit on every door, and history is kept.** The Web UI has
   no delete control; its API's `DELETE /api/plans/{id}` treats the request
   itself as the confirmation. Over MCP `delete_study_plan` is refused unless

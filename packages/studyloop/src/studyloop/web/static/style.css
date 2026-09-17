@@ -4391,6 +4391,20 @@ body[data-palette="everforest"] {
   font-variant-numeric: tabular-nums;
 }
 
+/* Item 3 (D-C): an active plan that is not ready. The mark is a glyph with an
+   aria-label, not colour alone, so it reads on every theme and to a screen reader. */
+.sidebar-plan-husk {
+  display: inline-block;
+  min-width: 1.1em;
+  padding: 0 0.3em;
+  border-radius: 3px;
+  font-weight: 700;
+  line-height: 1.3;
+  text-align: center;
+  color: var(--yellow);
+  background: color-mix(in srgb, var(--yellow) 18%, transparent);
+}
+
 .sidebar-plan-bar,
 .plan-progress-bar {
   display: block;

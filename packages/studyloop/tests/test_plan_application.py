@@ -969,7 +969,7 @@ def test_husks_lists_only_active_unready_plans(app: PlanApplication, isolated_pl
     _write_husk(isolated_plans_dir, "a-husk", "A Husk")
     before = _documents(isolated_plans_dir)
 
-    husks = app.husks()  # pyright: ignore[reportAttributeAccessIssue]
+    husks = app.husks()
 
     assert isinstance(husks, tuple)
     assert [h.summary.plan_id for h in husks] == ["a-husk", "b-husk"]
@@ -978,7 +978,7 @@ def test_husks_lists_only_active_unready_plans(app: PlanApplication, isolated_pl
         assert husk.summary.status == "active"
         assert husk.readiness.ready is False
         assert husk.readiness.blockers  # the reason it is a husk travels with it
-        assert husk.summary.ready is False  # pyright: ignore[reportAttributeAccessIssue]
+        assert husk.summary.ready is False
     assert _documents(isolated_plans_dir) == before
 
 
@@ -987,7 +987,7 @@ def test_husks_is_empty_when_every_active_plan_is_ready(app: PlanApplication) ->
     app.apply(CreatePlan(title="Ready Active", status="active", answers=READY_ANSWERS))
     app.apply(CreatePlan(title="Vague Draft"))
 
-    assert app.husks() == ()  # pyright: ignore[reportAttributeAccessIssue]
+    assert app.husks() == ()
 
 
 def test_plan_summary_carries_ready_as_its_eighteenth_key() -> None:
@@ -998,8 +998,8 @@ def test_plan_summary_carries_ready_as_its_eighteenth_key() -> None:
     contract grew by one key on both sides, deliberately (design §3)."""
     ready, vague = _ready_plan("ready-one"), StudyPlan(plan_id="vague", title="Vague")
 
-    assert PlanSummary.from_plan(ready).ready is True  # pyright: ignore[reportAttributeAccessIssue]
-    assert PlanSummary.from_plan(vague).ready is False  # pyright: ignore[reportAttributeAccessIssue]
+    assert PlanSummary.from_plan(ready).ready is True
+    assert PlanSummary.from_plan(vague).ready is False
     for plan in (ready, vague):
         payload = PlanSummary.from_plan(plan).to_json_dict()
         assert len(payload) == 18, sorted(payload)

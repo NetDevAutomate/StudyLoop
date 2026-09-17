@@ -359,6 +359,14 @@
                 <span class="sidebar-plan-meta">
                   <span class="plan-status" :class="'plan-status-' + (plan.status || 'draft')"
                         x-text="plan.status"></span>
+                  <!-- Item 3 (D-C): an active plan that is not ready refuses every write
+                       until repaired or paused. Marked from the list row's own `ready`
+                       key (the 18th summary key) so no per-row round-trip is needed. -->
+                  <span class="sidebar-plan-husk" data-testid="sidebar-plan-husk"
+                        x-show="plan.status === 'active' && plan.ready === false"
+                        role="img"
+                        aria-label="Not ready: this active plan refuses writes until repaired or paused"
+                        title="Not ready: this active plan refuses writes until repaired or paused">!</span>
                   <span class="sidebar-plan-count"
                         x-text="(plan.milestone_done ?? 0) + '/' + (plan.milestone_total ?? 0)"></span>
                 </span>

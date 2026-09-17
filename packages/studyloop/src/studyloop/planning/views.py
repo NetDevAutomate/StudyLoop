@@ -18,15 +18,13 @@ import re
 import unicodedata
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Literal
 
-from .authoring import readiness
+from .authoring import READINESS_GATE_DATE, readiness
 
 if TYPE_CHECKING:
-    from datetime import date
-
     from .evaluation import PlanEvaluation
     from .models import Checkpoint, LearningRecord, Milestone, Mission, Resource, StudyPlan
 
@@ -136,9 +134,42 @@ class ReadinessView:
         }
 
 
+def husk_provenance(created: str) -> str:
+    """One honest sentence on how an active-but-unready plan got that way (item 3).
+
+    ``created`` is the plan's ISO timestamp — ``PlanSummary.created`` and
+    ``StudyPlan.created`` are the same string. A view, not a policy: the
+    policy is :data:`~studyloop.planning.authoring.READINESS_GATE_DATE`, and
+    this is the sentence ``doctor``'s husk row and the ``plan repair`` brief
+    both print, so the two surfaces never disagree. Only a value that parses
+    as an ISO date and falls before the gate date earns the definite sentence;
+    anything else — including an unparseable date — gets the one that admits
+    the seam does not know. Never says "hand edit": an import looks identical.
+    """
+    prefix = (created or "").strip()[:10]
+    predates = False
+    if len(prefix) == 10:
+        try:
+            predates = date.fromisoformat(prefix) < date.fromisoformat(READINESS_GATE_DATE)
+        except ValueError:
+            predates = False
+    if predates:
+        return (
+            f"This plan predates the readiness gate ({READINESS_GATE_DATE}) "
+            "and was never judged by it."
+        )
+    return "This plan is active and incomplete; the seam cannot tell how it got that way."
+
+
 @dataclass(frozen=True)
 class PlanSummary:
-    """Compact plan view — the :meth:`StudyPlan.summary` keys, exactly."""
+    """Compact plan view — the :meth:`StudyPlan.summary` keys, exactly.
+
+    ``ready`` is the verdict every write is judged by (:class:`ReadinessView`),
+    carried on the summary so ``plan list --json`` and ``GET /api/plans`` can
+    flag an active-but-unready plan (a "husk", item 3) without a second call
+    per row. It is the eighteenth key on both sides of the D-3 pin.
+    """
 
     plan_id: str
     title: str
@@ -157,6 +188,7 @@ class PlanSummary:
     days_until_target: int | None
     learning_record_count: int
     checkpoint_count: int
+    ready: bool
 
     @classmethod
     def from_plan(cls, plan: StudyPlan, *, today: date | None = None) -> PlanSummary:
@@ -186,6 +218,7 @@ class PlanSummary:
             days_until_target=plan.days_until_target(today),
             learning_record_count=len(plan.learning_records),
             checkpoint_count=len(plan.checkpoints),
+            ready=bool(readiness(plan)["ready"]),
         )
 
     def to_json_dict(self) -> dict[str, Any]:
@@ -207,6 +240,7 @@ class PlanSummary:
             "days_until_target": self.days_until_target,
             "learning_record_count": self.learning_record_count,
             "checkpoint_count": self.checkpoint_count,
+            "ready": self.ready,
         }
 
 

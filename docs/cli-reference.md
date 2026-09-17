@@ -83,7 +83,8 @@ studyloop extract-struggles --incremental --harness kiro --model MODEL_ID
 studyloop plan interview                  # Interview questions + evidence-based seed suggestions
 studyloop plan new --title TITLE [--why WHY] [--topic T] [--success S] [--milestone M]
 studyloop plan new --title TITLE --activate  # Activate on create (refused if incomplete)
-studyloop plan list [--status draft|active|paused|complete|abandoned] [--json]
+studyloop plan list [--status draft|active|paused|complete|abandoned] [--husks] [--json]  # `!` after the status marks an active plan that is not ready; --json rows carry `ready`
+studyloop plan repair PLAN_ID [--agent A]  # Launch the architect on an active-but-unready plan with its blockers in the brief (writes nothing itself)
 studyloop plan show PLAN_ID [--markdown] [--json]
 studyloop plan status PLAN_ID active      # Change lifecycle state
 studyloop plan milestone PLAN_ID INDEX [--done|--undone]  # Toggle or set a milestone
@@ -389,6 +390,7 @@ studyloop plan record PLAN_ID --title T [--body B|--body-file F] [--status S] [-
                                           # Append a learning record (wind-down's "record first" step)
 studyloop plan reindex                    # Rebuild the DB index from the documents
 studyloop plan architect [--agent claude]  # Launch the study-plan-architect (studyloop study --mode plan-architect)
+studyloop plan repair PLAN_ID              # Same launch chain, briefed with the blockers of an active plan that is not ready
 ```
 
 Omitted answers are left **explicitly blank** in the document rather than invented, and `readiness` reports what is still missing. Activation (`--activate`, or `plan status … active`) is **refused** while a plan lacks a mission, success criteria, or milestones — an unevaluable plan must not look active.

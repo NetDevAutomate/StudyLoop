@@ -132,8 +132,8 @@ def _refuse_activation(check: ReadinessView, *, already_active: bool = False) ->
     if already_active:
         console.print(
             f"[yellow]This plan is already active but incomplete, so it cannot be written to "
-            f"as it stands. Pause it (studyloop plan status {check.plan_id} paused) or repair "
-            "the blockers above, then retry.[/yellow]"
+            f"as it stands. Repair it with the architect (studyloop plan repair {check.plan_id}) "
+            f"or pause it (studyloop plan status {check.plan_id} paused), then retry.[/yellow]"
         )
     raise SystemExit(1)
 
@@ -150,18 +150,40 @@ def plan_group() -> None:
     default=None,
     help="Only show plans in this state.",
 )
+@click.option(
+    "--husks",
+    "husks_only",
+    is_flag=True,
+    help="Only active plans that are not ready (they refuse every write until repaired or paused).",
+)
 @click.option("--json", "as_json", is_flag=True, help="Machine-readable output.")
-def plan_list(status: str | None, as_json: bool) -> None:
-    """List study plans."""
+def plan_list(status: str | None, husks_only: bool, as_json: bool) -> None:
+    """List study plans.
+
+    An active plan that is not ready — a "husk" — is marked ``!`` after its
+    status: the readiness gate refuses every write to it until it is repaired
+    (``studyloop plan repair <id>``) or paused. Every ``--json`` row carries
+    ``ready`` so an agent needs no second call to tell.
+    """
     try:
-        plans = PlanApplication().browse(status=status)
+        if husks_only:
+            plans = tuple(h.summary for h in PlanApplication().husks())
+            if status and status != "active":
+                plans = ()  # a husk is active by definition; any other status matches none
+        else:
+            plans = PlanApplication().browse(status=status)
     except PlanError as exc:
         _fail_for(exc, status or "")
     if as_json:
         click.echo(json.dumps([p.to_json_dict() for p in plans], indent=2))
         return
     if not plans:
-        console.print("[dim]No study plans yet. Create one: studyloop plan new --title ...[/dim]")
+        if husks_only:
+            console.print("[dim]No active plan is blocked. Every active plan is ready.[/dim]")
+        else:
+            console.print(
+                "[dim]No study plans yet. Create one: studyloop plan new --title ...[/dim]"
+            )
         return
 
     table = Table(title="Study Plans")
@@ -171,14 +193,20 @@ def plan_list(status: str | None, as_json: bool) -> None:
     table.add_column("Progress")
     table.add_column("Next", style="dim")
     for plan in plans:
+        is_husk = plan.status == "active" and not plan.ready
         table.add_row(
             plan.plan_id,
             plan.title,
-            plan.status,
+            f"{plan.status} [red]![/red]" if is_husk else plan.status,
             f"{plan.milestone_done}/{plan.milestone_total} ({plan.progress_pct}%)",
             plan.next_milestone or "—",
         )
     console.print(table)
+    if any(p.status == "active" and not p.ready for p in plans):
+        console.print(
+            "[yellow]! = active but not ready: refuses every write until repaired "
+            "(studyloop plan repair <id>) or paused.[/yellow]"
+        )
 
 
 @plan_group.command("show")
@@ -505,6 +533,99 @@ def plan_architect(ctx: click.Context, agent: str | None) -> None:
         password="",
         resume=False,
         end_session=False,
+    )
+
+
+#: The sentence that frames a repair brief in place of the planning one.
+REPAIR_BRIEF_INTRO = (
+    "This is a PLAN REPAIR session: the plan below is active but incomplete — "
+    "ask the learner only for what is missing, then repair it."
+)
+
+
+def _render_repair_brief(detail: PlanDetail) -> str:
+    """The brief ``plan repair`` hands the architect: blockers first, then the plan as it stands.
+
+    The first section lists exactly ``readiness.blockers`` as ``- `` lines and
+    nothing else, so the agent (and the test) can read "what is missing" off
+    the top without parsing prose. The provenance sentence is the same one
+    ``doctor`` prints — one definition, two surfaces.
+    """
+    from studyloop.planning import husk_provenance
+
+    s = detail.summary
+    blockers = "\n".join(f"- {item}" for item in detail.readiness.blockers)
+    topics = ", ".join(s.topics) if s.topics else "(none)"
+    return (
+        "### Repair: what this plan is missing\n\n"
+        f"{blockers}\n\n"
+        "### The plan as it stands\n\n"
+        f"- Title: {s.title}\n"
+        f"- Id: {s.plan_id}\n"
+        f"- Status: {s.status}\n"
+        f"- Topics: {topics}\n"
+        f"- Milestones: {s.milestone_done}/{s.milestone_total} done\n"
+        f"- Created: {s.created}\n\n"
+        f"{husk_provenance(s.created)}\n"
+    )
+
+
+@plan_group.command("repair")
+@click.argument("plan_id")
+@click.option(
+    "--agent",
+    "-a",
+    help="AI agent to launch (auto-detects if omitted).",
+)
+@click.pass_context
+def plan_repair(ctx: click.Context, plan_id: str, agent: str | None) -> None:
+    """Repair an active plan the readiness gate refuses to write to, with the architect.
+
+    An active plan that is not ready (a "husk": no mission, no success
+    criteria or no milestones) refuses every write until it is repaired or
+    paused. This launches the study-plan-architect — the same ``studyloop
+    study --mode plan-architect`` chain as ``plan architect``, never a second
+    path — with a brief that lists exactly what is missing and the plan as it
+    stands. The command itself writes nothing: the document changes only when
+    the architect and the learner repair it through the seam.
+
+    A ready plan has nothing to repair (exit 0). A plan that is not active is
+    not blocked by anything — finish it with ``studyloop plan architect``.
+    """
+    detail = _inspect(plan_id)
+    s = detail.summary
+    if detail.readiness.ready:
+        console.print(f"[green]Nothing to repair on {s.plan_id!r} — the plan is ready.[/green]")
+        return
+    if s.status != "active":
+        console.print(
+            f"[dim]{s.plan_id!r} is {s.status}, so nothing blocks it — a plan is only refused "
+            "writes while it is active and incomplete. Finish it with "
+            "`studyloop plan architect`.[/dim]"
+        )
+        _print_readiness(detail.readiness)
+        return
+
+    from studyloop.cli._study import study
+
+    console.print(
+        f"[yellow]{s.plan_id!r} ({s.title}) is active but not ready. "
+        "Launching the architect to repair it.[/yellow]"
+    )
+    ctx.invoke(
+        study,
+        topic=s.title,
+        agent=agent,
+        mode="plan-architect",
+        timer=None,
+        energy=5,
+        web=False,
+        lan=False,
+        password="",
+        resume=False,
+        end_session=False,
+        brief=_render_repair_brief(detail),
+        brief_intro=REPAIR_BRIEF_INTRO,
     )
 
 

@@ -259,6 +259,38 @@ class PlanApplication:
                 plans.append(ActivePlanGuidance.from_plan(plan, today=effective_today))
         return ActiveGuidance(plans=tuple(plans), warnings=tuple(warnings))
 
+    def husks(self) -> tuple[PlanDetail, ...]:
+        """The active plans the readiness gate would refuse to write to (item 3, D-C).
+
+        A "husk" is a document that is ``active`` *and* not ready — the shape
+        deviation 12 keeps refusing until it is paused or repaired. The seam
+        never creates one (every entry into ``active`` runs the gate), so a
+        husk only ever arrives from outside it: a pre-gate document or a hand
+        edit. Until now nothing told the learner one existed before they hit
+        the refusal; this is the read ``doctor``, ``plan list --husks`` and
+        ``plan repair`` share.
+
+        Read-only — nothing is written by looking. Identity is the storage id
+        (loaded through :meth:`_load`, as :meth:`get_active_guidance` does),
+        so the ``plan repair <id>`` hint built from a husk always resolves to
+        the file that produced it. Order is :meth:`browse`'s for active plans:
+        ascending ``updated``, ties in id order. A draft with no mission is
+        unready by nature and is not a husk; a paused incomplete plan is what
+        the gate asked for and is not one either. An unreadable document is
+        logged and skipped, as every listing does.
+        """
+        found: list[StudyPlan] = []
+        for plan_id in store.list_plan_ids():
+            try:
+                plan = self._load(plan_id)
+            except Exception:  # one bad document must not hide the others (as list_plans)
+                logger.warning("Skipping unreadable study plan: %s", plan_id, exc_info=True)
+                continue
+            if plan.status == "active" and not ReadinessView.from_plan(plan).ready:
+                found.append(plan)
+        found.sort(key=lambda p: p.updated)  # stable: id order (list_plan_ids) breaks ties
+        return tuple(PlanDetail.from_plan(plan) for plan in found)
+
     def reindex(self) -> int:
         """Rebuild the derived SQLite index from the documents. Returns rows written.
 

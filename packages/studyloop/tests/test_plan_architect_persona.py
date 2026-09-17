@@ -458,7 +458,7 @@ def test_brief_intro_default_keeps_the_planning_sentence_byte_for_byte() -> None
         "Study plan",
         5,
         brief="- item",
-        brief_intro=None,  # pyright: ignore[reportCallIssue]
+        brief_intro=None,
     )
 
     assert with_default == with_none
@@ -479,7 +479,7 @@ def test_brief_intro_replaces_the_planning_sentence_and_keeps_the_data_framing()
         "Husk",
         5,
         brief="### Repair: what this plan is missing\n\n- Mission 'why' is empty",
-        brief_intro=intro,  # pyright: ignore[reportCallIssue]
+        brief_intro=intro,
     )
 
     assert intro in content
@@ -496,7 +496,7 @@ def test_brief_intro_without_a_brief_renders_nothing() -> None:
         "plan-architect",
         "Husk",
         5,
-        brief_intro="This is a PLAN REPAIR session.",  # pyright: ignore[reportCallIssue]
+        brief_intro="This is a PLAN REPAIR session.",
     )
 
     assert intro_only == plain
