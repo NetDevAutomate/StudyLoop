@@ -436,3 +436,67 @@ test('liveAgentConsole adopts purpose from /api/session/state on reload', async 
   assert.equal(con.lastDetail.reattached, true);
   assert.match(con.purposeLabel, /planning/i);
 });
+
+/* ---------------------------------------------------------------- *
+ * The cold-server race (CI e2e, PR #20 runs 35214968238 / 35216220593):
+ * startPlanning() navigated to the console, then startSession() returned
+ * false before any fetch because `this.agent` was still unset -- init()'s
+ * /api/session/options had not resolved yet. The learner saw the console
+ * with "Select an agent to continue." and no session; the journey saw a
+ * navigated page and no POST. A planning launch must wait for the picker's
+ * own options before deciding there is no agent.
+ * ---------------------------------------------------------------- */
+
+test('startPlanning made before the options resolve waits for the agent and still POSTs once', async () => {
+  let releaseOptions;
+  const optionsGate = new Promise((resolve) => { releaseOptions = resolve; });
+  const baseFetch = globalThis.fetch;
+  globalThis.fetch = async (url, opts) => {
+    if (String(url).endsWith('/api/session/options')) {
+      await optionsGate;
+      return jsonResponse(200, {
+        agents: [{ value: 'claude', label: 'Claude', available: true }],
+        topics: [], terminal_engine: {},
+      });
+    }
+    return baseFetch(url, opts);
+  };
+  const timer = sessionTimer();
+  timers.push(timer);
+  timer.$nextTick = (cb) => cb();
+  const initDone = timer.init(); // options still in flight: no agent yet
+  const seen = startEvents();
+
+  const launch = timer.startPlanning({ topic: 'SQL window functions' });
+  await settle();
+  assert.equal(posts.length, 0, 'nothing to POST until the picker knows its agent');
+  assert.equal(timer.startError, '', 'must not refuse while the options are still loading');
+
+  releaseOptions();
+  await initDone;
+  const ok = await launch;
+
+  assert.equal(ok, true);
+  assert.equal(posts.length, 1, 'exactly one POST once the agent is known');
+  assert.equal(posts[0].purpose, 'planning');
+  assert.equal(posts[0].agent, 'claude');
+  assert.equal(seen.length, 1);
+  assert.deepEqual(navCalls, ['study-session']);
+});
+
+test('startPlanning with no agent available after the options resolve still refuses by name', async () => {
+  const baseFetch = globalThis.fetch;
+  globalThis.fetch = async (url, opts) => (String(url).endsWith('/api/session/options')
+    ? jsonResponse(200, { agents: [{ value: 'claude', label: 'Claude', available: false }], topics: [] })
+    : baseFetch(url, opts));
+  const timer = sessionTimer();
+  timers.push(timer);
+  timer.$nextTick = (cb) => cb();
+  await timer.init();
+
+  const ok = await timer.startPlanning({ topic: 'SQL window functions' });
+
+  assert.equal(ok, false);
+  assert.equal(posts.length, 0);
+  assert.match(timer.startError, /select an agent/i);
+});

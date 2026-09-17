@@ -178,6 +178,13 @@ export function sessionTimer() {
         const statePromise = fetch('/api/session/state')
           .then((res) => res.ok ? res.json() : {})
           .catch(() => ({}));
+        /* A launch that arrives before the options have resolved (a Plans-view
+           "Plan with architect" click on a cold server) awaits this before it
+           judges whether an agent exists -- otherwise it refuses with "Select an
+           agent" against a picker that simply has not learned its agents yet.
+           Resolves either way; the fetch's own catch above makes it never reject. */
+        let markOptionsSettled;
+        this._optionsReady = new Promise((resolve) => { markOptionsSettled = resolve; });
 
         try {
           const options = await optionsPromise;
@@ -197,7 +204,9 @@ export function sessionTimer() {
             const firstAvailable = (this.studyOptions.agents || []).find((a) => a.available);
             if (firstAvailable) this.agent = firstAvailable.value;
           }
-        } catch { /* enhanced picker unavailable — free-text still works */ }
+        } catch { /* enhanced picker unavailable — free-text still works */ } finally {
+          markOptionsSettled();
+        }
 
         try {
           const state = await statePromise;
@@ -275,6 +284,14 @@ export function sessionTimer() {
            architect interviews for one, and the server names the session
            "Study plan" when none was given — so '' is a valid topic here. */
         if (!topic && purpose !== 'planning') return false;
+        /* A planning launch can arrive from the Plans view before init()'s
+           options fetch has resolved; the agent is not missing, it is not yet
+           known. Wait for the picker's own settlement before deciding.
+           (init() sets _optionsReady on every run; a timer whose init never
+           ran has nothing to wait for and falls through to the check.) */
+        if (purpose === 'planning' && !this.agent && this._optionsReady) {
+          await this._optionsReady;
+        }
         if (!this.agent) {
           /* The Start button is disabled without an agent; a Plans-view launch
              has no such guard, so refuse here with the picker's own hint. */

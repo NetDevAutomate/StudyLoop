@@ -595,3 +595,58 @@ def test_abandoning_a_launch_mid_flight_leaves_no_session_and_no_plan(
     assert _visible_purpose_labels(page) == []
     # The slot is free: the abandoned session's id is not what a reconnect would find.
     assert state.get("last_release", {}).get("study_session_id", study_id) == study_id
+
+
+# ---------------------------------------------------------------------------
+# The cold-server race (PR #20 CI runs 35214968238 / 35216220593, e2e job)
+# ---------------------------------------------------------------------------
+
+
+def test_click_that_beats_the_options_fetch_still_starts_exactly_once(page: Page) -> None:
+    """On a cold server the first "Plan with architect" click arrived before the
+    picker's ``/api/session/options`` had resolved. ``startPlanning()`` had
+    already navigated to the console, then ``startSession()`` returned before
+    any fetch with "Select an agent to continue." — the agent was not missing,
+    it was not yet known. The learner saw the console and no session; the
+    journey saw a navigated page and no POST, and the first test of this
+    module failed on both CI runs while the nine warm ones passed.
+
+    The options request is HELD here (no ``continue_``) so the click provably
+    beats it, then released: the launch must wait, not refuse, and then make
+    exactly one POST that the server answers 201."""
+    held: list = []
+    page.route("**/api/session/options", lambda route: held.append(route))
+    posts: list[dict] = []
+
+    def _on_response(response) -> None:  # type: ignore[no-untyped-def]
+        request = response.request
+        if request.method == "POST" and request.url.endswith("/api/session/start"):
+            posts.append({"status": response.status, "body": json.loads(request.post_data or "{}")})
+
+    page.on("response", _on_response)
+    _goto_plans(page)
+    _instrument_starts(page)
+    assert held, "the options request was never issued, so nothing is being raced"
+    page.locator('[data-testid="plan-architect-subject"]').fill("SQL window functions")
+
+    page.get_by_role("button", name="Plan with architect").click()
+    page.wait_for_timeout(800)
+    assert posts == [], "no agent is known yet, so no POST may have been made"
+    status = page.locator('[data-testid="plan-architect-status"]').inner_text()
+    assert "select an agent" not in status.lower(), (
+        f"refused before the options resolved: {status!r}"
+    )
+
+    def _is_start(response) -> bool:  # type: ignore[no-untyped-def]
+        return response.request.method == "POST" and response.url.endswith("/api/session/start")
+
+    with page.expect_response(_is_start, timeout=20000):
+        for route in held:
+            route.continue_()
+
+    page.wait_for_timeout(600)
+    page.remove_listener("response", _on_response)
+    assert [p["status"] for p in posts] == [201], posts
+    assert posts[0]["body"]["purpose"] == "planning"
+    assert posts[0]["body"]["topic"] == "SQL window functions"
+    _wait_for_console(page)
