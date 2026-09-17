@@ -920,3 +920,88 @@ def test_failed_index_refresh_keeps_the_document_and_reindex_recovers_the_row(
     assert app.reindex() >= 1
     assert [row["plan_id"] for row in index.indexed_plans()] == ["outage"]
     assert store.plan_path("outage").read_bytes() == before
+
+
+# ---------------------------------------------------------------------------
+# Item 3 (D-C): husk discovery is a read on the seam, and ``ready`` is a summary key
+# ---------------------------------------------------------------------------
+
+
+def _write_husk(plans_dir, plan_id: str, title: str) -> None:
+    """The seam refuses to *create* an active-but-unready plan on every entry
+    path (the tests above). A husk therefore only ever arrives from outside
+    the seam — a hand edit or a pre-gate document — so the fixture is a raw
+    file, not an intent."""
+    (plans_dir / f"{plan_id}.md").write_text(
+        f"---\nid: {plan_id}\ntitle: {title}\nstatus: active\ntopics: [sql]\n---\n\n"
+        f"# {title}\n\n## Milestones\n\n- [ ] **Step** `(concepts: x)`\n",
+        encoding="utf-8",
+    )
+
+
+def _documents(plans_dir) -> dict[str, str]:
+    return {p.name: p.read_text(encoding="utf-8") for p in plans_dir.glob("*.md")}
+
+
+def test_husks_lists_only_active_unready_plans(app: PlanApplication, isolated_plans_dir) -> None:
+    """``husks()`` is a read-only view over the active plans the gate would
+    refuse to write to: active *and* not ready. A draft with no mission is
+    unready by nature and is not a husk; a ready active plan is not a husk;
+    a paused incomplete plan is exactly what the gate asked for and is not a
+    husk either. Order is ``browse``'s. Nothing is written by looking."""
+    store.plans_dir()
+    app.apply(
+        CreatePlan(
+            title="Ready Active", plan_id="ready-active", status="active", answers=READY_ANSWERS
+        )
+    )
+    app.apply(CreatePlan(title="Vague Draft", plan_id="vague-draft"))
+    app.apply(
+        ImportDocument(
+            markdown=(
+                "---\nid: paused-husk\ntitle: Paused Husk\nstatus: paused\ntopics: [sql]\n---\n\n"
+                "# Paused Husk\n\n## Milestones\n\n- [ ] **Step** `(concepts: x)`\n"
+            ),
+            plan_id="paused-husk",
+        )
+    )
+    _write_husk(isolated_plans_dir, "b-husk", "B Husk")
+    _write_husk(isolated_plans_dir, "a-husk", "A Husk")
+    before = _documents(isolated_plans_dir)
+
+    husks = app.husks()  # pyright: ignore[reportAttributeAccessIssue]
+
+    assert isinstance(husks, tuple)
+    assert [h.summary.plan_id for h in husks] == ["a-husk", "b-husk"]
+    for husk in husks:
+        assert isinstance(husk, PlanDetail)
+        assert husk.summary.status == "active"
+        assert husk.readiness.ready is False
+        assert husk.readiness.blockers  # the reason it is a husk travels with it
+        assert husk.summary.ready is False  # pyright: ignore[reportAttributeAccessIssue]
+    assert _documents(isolated_plans_dir) == before
+
+
+def test_husks_is_empty_when_every_active_plan_is_ready(app: PlanApplication) -> None:
+    store.plans_dir()
+    app.apply(CreatePlan(title="Ready Active", status="active", answers=READY_ANSWERS))
+    app.apply(CreatePlan(title="Vague Draft"))
+
+    assert app.husks() == ()  # pyright: ignore[reportAttributeAccessIssue]
+
+
+def test_plan_summary_carries_ready_as_its_eighteenth_key() -> None:
+    """``ready`` on the summary is the *same* verdict every write is judged by
+    (``ReadinessView``), so ``plan list --json`` and ``GET /api/plans`` can
+    flag a husk without a second call per row. The legacy-dict pin above
+    (D-3) still holds because ``StudyPlan.summary()`` gains the key too — the
+    contract grew by one key on both sides, deliberately (design §3)."""
+    ready, vague = _ready_plan("ready-one"), StudyPlan(plan_id="vague", title="Vague")
+
+    assert PlanSummary.from_plan(ready).ready is True  # pyright: ignore[reportAttributeAccessIssue]
+    assert PlanSummary.from_plan(vague).ready is False  # pyright: ignore[reportAttributeAccessIssue]
+    for plan in (ready, vague):
+        payload = PlanSummary.from_plan(plan).to_json_dict()
+        assert len(payload) == 18, sorted(payload)
+        assert payload["ready"] == ReadinessView.from_plan(plan).ready
+        assert plan.summary()["ready"] == payload["ready"]

@@ -478,3 +478,225 @@ def test_brain_selected_plan_ids_browse_through_the_seam(runner, monkeypatch) ->
         "draft-one",
     ]
     assert calls == ["active", None]
+
+
+# ---------------------------------------------------------------------------
+# Item 3 (D-C, deviation 12 kept): husk discovery and ``plan repair <id>``
+# ---------------------------------------------------------------------------
+
+_HUSK_BLOCKERS = (
+    "Mission 'why' is empty — interview the learner first.",
+    "No observable success criteria.",
+)
+
+
+def _write_husk(plans_dir, plan_id: str, title: str, *, created: str = "") -> None:
+    """An active document with no mission: the shape the gate refuses to write
+    to. The seam never produces one, so the fixture is a raw file."""
+    created_line = f"created: {created}\n" if created else ""
+    (plans_dir / f"{plan_id}.md").write_text(
+        f"---\nid: {plan_id}\ntitle: {title}\nstatus: active\ntopics: [sql]\n{created_line}---\n\n"
+        f"# {title}\n\n## Milestones\n\n- [ ] **Step** `(concepts: x)`\n",
+        encoding="utf-8",
+    )
+
+
+def _documents(plans_dir) -> dict[str, str]:
+    return {p.name: p.read_text(encoding="utf-8") for p in plans_dir.glob("*.md")}
+
+
+def _repair_section(brief: str) -> list[str]:
+    """The ``- `` lines directly under the brief's first section."""
+    lines = brief.splitlines()
+    assert lines[0] == "### Repair: what this plan is missing", brief
+    items: list[str] = []
+    for line in lines[1:]:
+        if line.startswith("### ") or line.startswith("## "):
+            break
+        if line.startswith("- "):
+            items.append(line[2:])
+    return items
+
+
+def test_plan_list_marks_husks(runner, isolated_plans_dir) -> None:
+    """Discovery on the everyday surface: the Rich table carries a ``!`` after
+    the status of an active-but-unready plan and nothing after any other
+    status; ``--husks`` filters to them; every ``--json`` row carries
+    ``ready`` (the 18th summary key) so an agent needs no second call."""
+    store.plans_dir()
+    runner.invoke(cli, ["plan", "new", "--title", "Glue ETL", *READY, "--activate"])
+    runner.invoke(cli, ["plan", "new", "--title", "Vague"])
+    _write_husk(isolated_plans_dir, "husk", "Husk")
+
+    table = _ANSI.sub("", runner.invoke(cli, ["plan", "list"]).output)
+    # Rich body rows: `│ id │ title │ status │ progress │ next │` — read the Status cell by id.
+    status_by_id = {
+        cells[0]: cells[2]
+        for cells in (
+            [cell.strip() for cell in line.strip().strip("│").split("│")]
+            for line in table.splitlines()
+            if line.startswith("│")
+        )
+    }
+    assert set(status_by_id) == {"husk", "glue-etl", "vague"}, table
+    assert re.fullmatch(r"active\s*!", status_by_id["husk"]), status_by_id
+    assert status_by_id["glue-etl"] == "active", status_by_id
+    assert status_by_id["vague"] == "draft", status_by_id
+
+    payload = json.loads(runner.invoke(cli, ["plan", "list", "--json"]).output)
+    ready_by_id = {row["plan_id"]: row["ready"] for row in payload}
+    assert ready_by_id == {"husk": False, "glue-etl": True, "vague": False}
+    assert all(len(row) == 18 for row in payload), sorted(payload[0])
+
+    only_husks = runner.invoke(cli, ["plan", "list", "--husks"])
+    assert only_husks.exit_code == 0, only_husks.output
+    clean = _ANSI.sub("", only_husks.output)
+    assert "husk" in clean
+    assert "glue-etl" not in clean
+    assert "vague" not in clean
+
+    husks_json = json.loads(runner.invoke(cli, ["plan", "list", "--husks", "--json"]).output)
+    assert [row["plan_id"] for row in husks_json] == ["husk"]
+    assert husks_json[0]["ready"] is False
+
+
+def _launch_patches(tmp_path, captured: dict, calls: list):
+    """The launch-capture pattern of ``test_cli_plan.py::test_architect_delegates_…``:
+    the real ``study`` command runs up to the one launch chain, whose entry
+    ``start_session`` is replaced so the test reads what would have been
+    launched instead of launching it."""
+    from unittest.mock import MagicMock, patch
+
+    def _fake_start_session(topic, agent, mode, timer, energy, web, **kwargs):
+        calls.append(topic)
+        captured.update(topic=topic, mode=mode, agent=agent, **kwargs)
+
+    def _tmux(args, **kwargs):
+        if "-V" in args:
+            return MagicMock(returncode=0, stdout="tmux 3.4\n", stderr="")
+        if "has-session" in args:
+            return MagicMock(returncode=1, stdout="", stderr="")
+        return MagicMock(returncode=0, stdout="%0\n", stderr="")
+
+    return (
+        patch("studyloop.tmux.shutil.which", return_value="/usr/bin/tmux"),
+        patch("studyloop.tmux.subprocess.run", side_effect=_tmux),
+        patch("studyloop.agent_launcher.shutil.which", return_value="/usr/bin/claude"),
+        patch("studyloop.session_state.read_session_state", return_value={}),
+        patch("studyloop.session_state.STATE_FILE", tmp_path / "state.json"),
+        patch("studyloop.session_state.SESSION_DIR", tmp_path),
+        patch("studyloop.session_state.TOPICS_FILE", tmp_path / "topics.md"),
+        patch("studyloop.session_state.PARKING_FILE", tmp_path / "parking.md"),
+        patch("studyloop.history.start_study_session", return_value="abc12345"),
+        patch("studyloop.session.start.start_session", side_effect=_fake_start_session),
+    )
+
+
+def test_plan_repair_launches_the_architect_with_the_blockers_in_the_brief_and_creates_nothing(
+    runner, isolated_plans_dir, tmp_path, monkeypatch
+) -> None:
+    """D-C guided repair: ``plan repair <id>`` on a husk is the architect
+    launch — the same ``study --mode plan-architect`` chain as ``plan
+    architect``, never a second path — with a brief whose first section
+    lists exactly ``readiness.blockers`` and then the plan as it stands, and
+    an honest provenance line. The command itself writes nothing: the
+    document, the plans directory and the checkpoint log are untouched."""
+    from contextlib import ExitStack
+
+    store.plans_dir()
+    _write_husk(isolated_plans_dir, "husk", "Husk", created="2026-09-01T00:00:00+00:00")
+    before = _documents(isolated_plans_dir)
+    blockers = ReadinessView.from_plan(store.load_plan("husk")).blockers
+    assert blockers == _HUSK_BLOCKERS  # the fixture is what this test thinks it is
+
+    captured: dict = {}
+    calls: list = []
+    with ExitStack() as stack:
+        for p in _launch_patches(tmp_path, captured, calls):
+            stack.enter_context(p)
+        monkeypatch.setenv("TMUX", "/tmp/tmux")
+        result = runner.invoke(cli, ["plan", "repair", "husk"])
+
+    assert result.exit_code == 0, result.output
+    assert calls == ["Husk"], calls  # one launch, topic = the plan's title
+    assert captured["mode"] == "plan-architect"
+
+    brief = captured["brief"]
+    assert _repair_section(brief) == list(blockers)
+    assert "Husk" in brief
+    assert "active" in brief
+    assert "sql" in brief
+    assert "0/1" in brief  # milestones done/total, as the plan stands
+    assert "predates the readiness gate" in brief
+
+    intro = captured["brief_intro"]
+    assert "PLAN REPAIR" in intro
+    assert "build a study plan" not in intro
+    assert "ask the learner only for what is missing" in intro
+
+    assert _documents(isolated_plans_dir) == before
+    assert index_module.checkpoint_history("husk") == []
+
+
+def test_plan_repair_brief_is_honest_when_provenance_is_unknown(
+    runner, isolated_plans_dir, tmp_path, monkeypatch
+) -> None:
+    """A husk created after the gate's date could be a hand edit or an import;
+    the seam cannot tell, so the brief says so instead of guessing."""
+    from contextlib import ExitStack
+
+    store.plans_dir()
+    _write_husk(isolated_plans_dir, "husk", "Husk")  # created: now
+
+    captured: dict = {}
+    with ExitStack() as stack:
+        for p in _launch_patches(tmp_path, captured, []):
+            stack.enter_context(p)
+        monkeypatch.setenv("TMUX", "/tmp/tmux")
+        result = runner.invoke(cli, ["plan", "repair", "husk"])
+
+    assert result.exit_code == 0, result.output
+    brief = captured["brief"]
+    assert "cannot tell how it got that way" in brief
+    assert "predates the readiness gate" not in brief
+    assert "hand edit" not in brief
+
+
+def test_plan_repair_on_a_ready_plan_says_nothing_to_repair(runner, tmp_path, monkeypatch) -> None:
+    from contextlib import ExitStack
+
+    runner.invoke(cli, ["plan", "new", "--title", "Glue ETL", *READY, "--activate"])
+
+    calls: list = []
+    with ExitStack() as stack:
+        for p in _launch_patches(tmp_path, {}, calls):
+            stack.enter_context(p)
+        monkeypatch.setenv("TMUX", "/tmp/tmux")
+        result = runner.invoke(cli, ["plan", "repair", "glue-etl"])
+
+    assert result.exit_code == 0, result.output
+    assert "Nothing to repair on 'glue-etl'" in _ANSI.sub("", result.output)
+    assert calls == []  # no launch
+
+
+def test_plan_repair_unknown_id_is_the_seams_not_found(runner) -> None:
+    result = runner.invoke(cli, ["plan", "repair", "nope"])
+
+    assert result.exit_code == 1, result.output
+    clean = _ANSI.sub("", result.output)
+    assert "nope" in clean
+    assert "Traceback" not in clean
+
+
+def test_husk_refusal_names_both_pause_and_repair(runner, isolated_plans_dir) -> None:
+    """The refusal a husk write meets (council review 2) now has a second exit:
+    it names ``plan repair <id>`` beside ``plan status <id> paused``."""
+    store.plans_dir()
+    _write_husk(isolated_plans_dir, "husk", "Husk")
+
+    result = runner.invoke(cli, ["plan", "evaluate", "husk", "--record"])
+
+    assert result.exit_code == 1, result.output
+    clean = _ANSI.sub("", result.output)
+    assert "studyloop plan status husk paused" in clean
+    assert "studyloop plan repair husk" in clean

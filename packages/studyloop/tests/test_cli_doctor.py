@@ -162,3 +162,142 @@ class TestUnknownConfigKeysCheck:
         monkeypatch.setenv("STUDYLOOP_CONFIG", str(tmp_path / "does-not-exist.yaml"))
 
         assert check_unknown_config_keys() == []
+
+
+# ---------------------------------------------------------------------------
+# Item 3 (D-C, deviation 12 kept): husk discovery
+# ---------------------------------------------------------------------------
+
+_HUSK_BLOCKERS = (
+    "Mission 'why' is empty — interview the learner first.",
+    "No observable success criteria.",
+)
+
+
+def _write_husk(plans_dir, plan_id: str, title: str, *, created: str = "") -> None:
+    """An *active* document with no mission — the shape the readiness gate
+    refuses to write to. Only a hand edit or a pre-gate import produces one;
+    the seam never will, which is exactly why the fixture is a raw file."""
+    created_line = f"created: {created}\n" if created else ""
+    (plans_dir / f"{plan_id}.md").write_text(
+        f"---\nid: {plan_id}\ntitle: {title}\nstatus: active\ntopics: [sql]\n{created_line}---\n\n"
+        f"# {title}\n\n## Milestones\n\n- [ ] **Step** `(concepts: x)`\n",
+        encoding="utf-8",
+    )
+
+
+class TestStudyPlansCheck:
+    """D-C: a legacy active-but-unready document (a "husk") refuses every
+    write until it is paused or repaired, and until now nothing told the
+    learner it existed before they tripped over the refusal. ``doctor`` names
+    each husk with its blockers, an honest provenance hint, and both ways out
+    — one ``warn`` row per husk, ``fix_auto=False`` (the repair is a
+    conversation, not a script). Lives in ``cli/_doctor.py`` beside
+    ``check_unknown_config_keys`` and joins the same ``config`` category: the
+    health spec enumerates categories verbatim and gains none here."""
+
+    @pytest.fixture(autouse=True)
+    def _isolated_plans(self, tmp_path, monkeypatch):
+        from studyloop.planning import store
+
+        monkeypatch.setenv(store.PLANS_DIR_ENV, str(tmp_path / "study-plans"))
+        monkeypatch.setenv("STUDYLOOP_DB", str(tmp_path / "sessions.db"))
+        self.plans_dir = store.plans_dir()
+
+    def test_doctor_names_each_active_but_unready_plan_with_its_blockers(self) -> None:
+        from studyloop.cli._doctor import (
+            check_study_plans,  # pyright: ignore[reportAttributeAccessIssue]
+        )
+        from studyloop.planning import CreatePlan, PlanApplication
+
+        app = PlanApplication()
+        app.apply(
+            CreatePlan(
+                title="Ready Active",
+                plan_id="ready-active",
+                status="active",
+                answers={
+                    "why": "Own the nightly pipeline",
+                    "success": ["Deploy unaided"],
+                    "topics": ["data-engineering"],
+                    "milestones": [{"title": "Job anatomy", "concepts": ["glue job"]}],
+                },
+            )
+        )
+        app.apply(CreatePlan(title="Vague Draft", plan_id="vague-draft"))  # unready, not active
+        _write_husk(self.plans_dir, "old-husk", "Old Husk", created="2026-09-01T00:00:00+00:00")
+        _write_husk(self.plans_dir, "new-husk", "New Husk")  # created now: after the gate
+
+        results = check_study_plans()
+
+        assert [r.status for r in results] == ["warn", "warn"], results
+        assert all(r.category == "config" for r in results)
+        assert all(r.name == "study_plans" for r in results)
+        assert all(r.fix_auto is False for r in results)
+        by_id = {("old-husk" if "old-husk" in r.message else "new-husk"): r for r in results}
+        assert set(by_id) == {"old-husk", "new-husk"}
+
+        old = by_id["old-husk"]
+        assert "Old Husk" in old.message
+        for blocker in _HUSK_BLOCKERS:
+            assert blocker in old.message
+        assert "predates the readiness gate" in old.message
+        assert "studyloop plan repair old-husk" in old.fix_hint
+        assert "studyloop plan status old-husk paused" in old.fix_hint
+
+        new = by_id["new-husk"]
+        assert "cannot tell how it got that way" in new.message
+        assert "hand edit" not in new.message  # never claimed: an import looks the same
+        assert "studyloop plan repair new-husk" in new.fix_hint
+
+        joined = " ".join(r.message for r in results)
+        assert "ready-active" not in joined
+        assert "vague-draft" not in joined  # a draft is unready by nature, not a husk
+
+    def test_all_active_plans_ready_is_one_pass_row(self) -> None:
+        from studyloop.cli._doctor import (
+            check_study_plans,  # pyright: ignore[reportAttributeAccessIssue]
+        )
+        from studyloop.planning import CreatePlan, PlanApplication
+
+        PlanApplication().apply(
+            CreatePlan(
+                title="Ready Active",
+                status="active",
+                answers={
+                    "why": "Own the nightly pipeline",
+                    "success": ["Deploy unaided"],
+                    "topics": ["data-engineering"],
+                    "milestones": [{"title": "Job anatomy", "concepts": ["glue job"]}],
+                },
+            )
+        )
+
+        results = check_study_plans()
+
+        assert len(results) == 1
+        assert results[0].status == "pass"
+        assert results[0].category == "config"
+        assert "1 active plan" in results[0].message
+        assert "ready" in results[0].message
+
+    def test_no_plans_at_all_is_info_not_a_warning(self) -> None:
+        from studyloop.cli._doctor import (
+            check_study_plans,  # pyright: ignore[reportAttributeAccessIssue]
+        )
+
+        results = check_study_plans()
+
+        assert len(results) == 1
+        assert results[0].status == "info"
+        assert results[0].category == "config"
+
+    def test_study_plans_check_is_registered_under_config(self) -> None:
+        """The registry is what ``studyloop doctor`` runs; a checker that is
+        defined but never registered is a test that passes and a doctor that
+        stays silent."""
+        from studyloop.cli._doctor import _get_registry
+
+        registered = {(category, fn.__name__) for category, fn in _get_registry()._checkers}
+
+        assert ("config", "check_study_plans") in registered

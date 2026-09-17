@@ -227,3 +227,30 @@ def test_delete_malformed_id_is_the_seams_400(client: TestClient) -> None:
     # A space fails the store's id grammar; the seam raises InvalidPlanId and the
     # route maps it — the same 400 every other route gives a malformed id.
     assert client.delete("/api/plans/not%20an%20id").status_code == 400
+
+
+# --- item 3 (D-C): the list payload flags a husk without a second call per row ---
+
+
+def test_plan_list_payload_carries_ready(client: TestClient, isolated_plans_dir) -> None:
+    """``GET /api/plans`` rows are ``PlanSummary.to_json_dict()``; with item 3
+    that is 18 keys, ``ready`` being the same verdict every write is judged
+    by. The Plans sidebar marks a husk from this key alone."""
+    ready_id = _create(client)
+    store.plans_dir()
+    (isolated_plans_dir / "husk.md").write_text(
+        "---\nid: husk\ntitle: Husk\nstatus: active\ntopics: [sql]\n---\n\n"
+        "# Husk\n\n## Milestones\n\n- [ ] **Step** `(concepts: x)`\n",
+        encoding="utf-8",
+    )
+
+    rows = client.get("/api/plans").json()["plans"]
+
+    by_id = {row["plan_id"]: row for row in rows}
+    assert set(by_id) == {ready_id, "husk"}
+    assert by_id[ready_id]["ready"] is True
+    assert by_id["husk"]["ready"] is False
+    assert all(len(row) == 18 for row in rows), sorted(rows[0])
+
+    active_only = client.get("/api/plans", params={"status": "active"}).json()["plans"]
+    assert [(row["plan_id"], row["ready"]) for row in active_only] == [("husk", False)]
