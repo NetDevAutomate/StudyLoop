@@ -65,7 +65,9 @@ do not move.
 
 ## Item 3 — Husk discovery + `plan repair <id>` (D-C) · files: `planning/{application,views}.py`, `cli/{_plan,_doctor,_study}.py`, `session/start.py`, `agent_launcher.py`, `doctor/*`, `web/routes/plans.py`, `web/static/{index.html,js/components/plans-panel.js}`, `agents/shared/personas/plan-architect.md` (+ projections + manifest), tests, `docs/study-plans.md`, spec deltas `cli-surface`, `web-ui`, `health-and-diagnostics`
 
-- [ ] **T3.1** RED: `tests/test_cli_doctor.py::test_doctor_names_each_active_but_unready_plan_with_its_blockers`;
+- [x] **T3.1** (RED `20546465`: 17 failed / 120 passed across the five files, each on the intended missing symbol /
+      unknown command / missing key; ruff + pyright clean; also pins `build_canonical_persona(brief_intro=)` in
+      `tests/test_plan_architect_persona.py` and the doctor pass/info/registration rows) RED: `tests/test_cli_doctor.py::test_doctor_names_each_active_but_unready_plan_with_its_blockers`;
       `tests/test_cli_plan_seam.py::test_plan_list_marks_husks` (marker, `--husks`, `--json` `ready`);
       `::test_plan_repair_launches_the_architect_with_the_blockers_in_the_brief_and_creates_nothing` (fake
       `start_session`; brief section `### Repair: what this plan is missing` lists exactly `readiness.blockers`;
