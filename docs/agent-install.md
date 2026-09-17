@@ -224,13 +224,15 @@ source of truth" rule are identical on every surface. An agent that cannot
 reach the MCP server can do most of this work with `studyloop plan …` at a
 shell; two operations have no CLI command — revising an existing plan's
 fields (title, topics, target date, energy floor, review cadence, notes,
-milestones, status), and deleting a plan — and need an MCP-connected session
+milestones, status, and the mission: why, success criteria, constraints, out
+of scope), and deleting a plan — and need an MCP-connected session
 (`update_study_plan`, `delete_study_plan`) or the Web API (`PATCH` and
 `DELETE /api/plans/{id}`; the Web UI itself offers neither control). The
-plan's mission — its *why* and success criteria — is not a field any revision
-tool carries: it changes by editing the Markdown document, the source of
-truth, directly or through the Web API's whole-document `PATCH` with
-`markdown`, which is readiness-checked on save. Whether the tools are reachable depends on the agent
+mission joined the revision fields on 2026-09-17 (item 3b), so the architect
+can repair every blocker the readiness gate names — a missing mission, missing
+success criteria or missing milestones — with `update_study_plan`; a
+whole-document `PATCH` with `markdown` remains the other door, and both are
+readiness-checked on save. Whether the tools are reachable depends on the agent
 process having the `studyloop` server registered *and* the harness letting
 the agent see and use it, not on the persona. The harness-launched architect
 definitions attach it: Kiro CLI's `agents/kiro/study-plan-architect.json`
@@ -261,7 +263,7 @@ persona and uses whichever servers its agent process is connected to.
 | `get_study_plan(plan_id, include_markdown=False, include_history=False, history_limit=20)` | Read one plan in full — mission, milestones, records, readiness — optionally with its Markdown and the checkpoint log (1–200 rows). |
 | `get_planning_interview()` | The interview questions, an evidence seed from the study databases, and the plans that already exist — call before interviewing. |
 | `create_study_plan(title, answers, plan_id=None, status="draft")` | Draft a new plan from interview answers; never replaces an existing plan (a taken id is a conflict). |
-| `update_study_plan(plan_id, …)` | Revise the title, topics, target date, energy floor, review cadence, notes, milestones (the whole list) and status together, judged as one document and saved once. The mission — *why* and success criteria — is not among its fields: that changes only by editing the Markdown document. |
+| `update_study_plan(plan_id, …)` | Revise the title, topics, target date, energy floor, review cadence, notes, milestones (the whole list), status, and the mission — why, success criteria, constraints, out of scope — together, judged as one document and saved once. On an active plan that is not ready, a write that leaves any blocker standing is refused and nothing is saved. |
 | `set_study_plan_status(plan_id, status)` | Move a plan between `draft`, `active`, `paused`, `complete`, `abandoned`; activation is readiness-gated. |
 | `set_study_plan_milestone(plan_id, index, done)` | Mark one milestone complete (`done=true`) or reopen it (`false`) — set, not toggle, so a retry is safe. |
 | `evaluate_study_plan(plan_id, phase, study_id="", record=False)` | Evaluate the plan at a `start`/`mid`/`end` checkpoint against real study evidence. The default is a preview that writes nothing; `record=true` appends the checkpoint to the log and the document and reports each write (`db_write`, `document_write`, `recording_complete`). |

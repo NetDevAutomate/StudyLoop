@@ -119,6 +119,13 @@ class RevisePlan:
     ``title`` and optional ``done``, ``concepts`` and ``notes`` — the shape the
     Web body already carries. Numeric fields are clamped to their ranges, not
     refused, as the PATCH route has always done.
+
+    ``why``, ``success``, ``constraints`` and ``out_of_scope`` are the mission
+    (item 3b): the list fields replace the whole list like ``topics``, and a
+    bare string where a list belongs is refused, not split. They exist so the
+    architect can repair every blocker class :func:`~studyloop.planning.authoring.readiness`
+    knows through the tool it already holds — before them the only mission
+    writer was a whole-document replacement.
     """
 
     plan_id: str
@@ -131,6 +138,10 @@ class RevisePlan:
     milestones: Sequence[Mapping[str, object]] | None = None
     learning_record: LearningRecordSpec | None = None
     status: str | None = None
+    why: str | None = None
+    success: Sequence[str] | None = None
+    constraints: Sequence[str] | None = None
+    out_of_scope: Sequence[str] | None = None
 
 
 @dataclass(frozen=True)

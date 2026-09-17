@@ -1062,6 +1062,10 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
         notes: str | None = None,
         milestones: list[dict[str, Any]] | None = None,
         status: str | None = None,
+        why: str | None = None,
+        success: list[str] | None = None,
+        constraints: list[str] | None = None,
+        out_of_scope: list[str] | None = None,
     ) -> dict[str, Any]:
         """Revise a study plan in place — any combination of fields, judged as one document.
 
@@ -1070,6 +1074,13 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
         once, so repairing the blockers and activating can be one call
         (``milestones=[...], status="active"``): the readiness check judges
         the document as it *would be saved*, whichever fields put it there.
+
+        The mission is revisable here too (``why``, ``success``,
+        ``constraints``, ``out_of_scope``), so every blocker ``readiness``
+        can name — mission, success criteria, milestones — is repaired with
+        this one tool. On a plan that is already ``active`` and not ready, a
+        write that leaves any blocker standing is refused and nothing is
+        saved: clear every blocker in one call, or pause the plan first.
 
         Args:
             plan_id: The plan id.
@@ -1082,10 +1093,15 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
             milestones: Full replacement list; each item is ``{"title", ...}``
                 with optional ``done``, ``concepts``, ``notes``.
             status: Lifecycle status to move to, alongside the edits.
+            why: The mission — what changes once this is learned.
+            success: Full replacement list of observable success criteria.
+            constraints: Full replacement list of constraints.
+            out_of_scope: Full replacement list of excluded topics.
 
         Learning records are appended with ``record_plan_learning``, not here.
         Refusals: ``not_found: …``, ``not_ready: … : <blockers>`` (the
-        resulting document would be active but is not ready), ``invalid: …``.
+        resulting document would be active but is not ready), ``invalid: …``
+        (including a bare string where a list belongs).
         """
         from studyloop.planning import PlanApplication, PlanError, RevisePlan
 
@@ -1099,6 +1115,10 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
             notes=notes,
             milestones=milestones,
             status=status,
+            why=why,
+            success=success,
+            constraints=constraints,
+            out_of_scope=out_of_scope,
         )
         try:
             detail = PlanApplication().apply(intent)

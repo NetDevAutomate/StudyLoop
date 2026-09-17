@@ -359,6 +359,11 @@ def test_schemas_carry_the_design_signatures() -> None:
         "notes",
         "milestones",
         "status",
+        # item 3b (design §3b): the mission is revisable with the same tool
+        "why",
+        "success",
+        "constraints",
+        "out_of_scope",
     }
     assert update["required"] == ["plan_id"]
 
@@ -593,10 +598,10 @@ def test_update_study_plan_passes_mission_fields_to_revise_plan(monkeypatch, for
     assert len(apply.calls) == 1
     assert isinstance(intent, RevisePlan)
     assert intent.plan_id == "decorators"
-    assert intent.why == "Own the nightly pipeline"  # pyright: ignore[reportAttributeAccessIssue]
-    assert intent.success == ["Deploy unaided"]  # pyright: ignore[reportAttributeAccessIssue]
-    assert intent.constraints == ["Evenings only"]  # pyright: ignore[reportAttributeAccessIssue]
-    assert intent.out_of_scope == ["Spark"]  # pyright: ignore[reportAttributeAccessIssue]
+    assert intent.why == "Own the nightly pipeline"
+    assert intent.success == ["Deploy unaided"]
+    assert intent.constraints == ["Evenings only"]
+    assert intent.out_of_scope == ["Spark"]
     for untouched in ("title", "topics", "milestones", "status", "learning_record"):
         assert getattr(intent, untouched) is None, untouched
     assert payload == detail.to_json_dict()

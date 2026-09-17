@@ -475,9 +475,21 @@ class PlanApplication:
                 updates[field] = _clamped_int(value, field=field, lo=lo, hi=hi)
         if intent.milestones is not None:
             updates["milestones"] = _milestones_from(intent.milestones)
+        # The mission (item 3b): validated here with every other field so a bad
+        # list beside a good status change still writes nothing, applied below
+        # to the candidate's Mission so the gate judges the resulting document.
+        mission_updates: dict[str, object] = {}
+        if intent.why is not None:
+            mission_updates["why"] = str(intent.why).strip()
+        for field in ("success", "constraints", "out_of_scope"):
+            value = getattr(intent, field)
+            if value is not None:
+                mission_updates[field] = _string_list(value, field=field)
 
         for field, value in updates.items():
             setattr(candidate, field, value)
+        for field, value in mission_updates.items():
+            setattr(candidate.mission, field, value)
         outcome: LearningRecordOutcome | None = None
         if intent.learning_record is not None:
             record, created = _append_learning_record(candidate, intent.learning_record)
@@ -496,7 +508,11 @@ class PlanApplication:
         # and ``updated`` stay put, as the store's ``record_learning`` always
         # promised. An empty revision is still the Phase-1 "touch".
         duplicate_record_only = (
-            outcome is not None and not outcome.created and not updates and status is None
+            outcome is not None
+            and not outcome.created
+            and not updates
+            and not mission_updates
+            and status is None
         )
         if not duplicate_record_only:
             store.save_plan(candidate)  # preserves plan_id + created; bumps updated

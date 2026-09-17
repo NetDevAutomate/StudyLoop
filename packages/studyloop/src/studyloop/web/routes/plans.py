@@ -249,7 +249,9 @@ def patch_plan(plan_id: str, payload: Annotated[dict, Body()]) -> dict:
 
     Accepts ``status``, ``title``, ``topics``, ``target_date``,
     ``energy_floor``, ``review_cadence_days``, ``notes``, ``milestones``
-    (full replacement), and ``markdown`` (whole-document replacement).
+    (full replacement), the mission — ``why``, ``success``, ``constraints``,
+    ``out_of_scope`` (item 3b; the lists are full replacements) — and
+    ``markdown`` (whole-document replacement).
 
     The non-Markdown body is *one* ``RevisePlan``: the seam loads the plan
     once, applies every supplied field, judges the resulting document — so
@@ -273,6 +275,10 @@ def patch_plan(plan_id: str, payload: Annotated[dict, Body()]) -> dict:
         notes=payload.get("notes"),
         milestones=payload.get("milestones"),
         status=payload.get("status"),
+        why=payload.get("why"),
+        success=payload.get("success"),
+        constraints=payload.get("constraints"),
+        out_of_scope=payload.get("out_of_scope"),
     )
     return _written(_apply(revision), updated=True)
 

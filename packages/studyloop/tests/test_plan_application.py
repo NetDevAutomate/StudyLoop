@@ -1032,8 +1032,8 @@ def test_revise_sets_mission_fields_through_the_one_gate(app: PlanApplication, m
     detail = app.apply(
         RevisePlan(
             plan_id="vague",
-            why="Own the nightly pipeline",  # pyright: ignore[reportCallIssue]
-            success=["Deploy unaided", "  Explain the DAG  ", ""],  # pyright: ignore[reportCallIssue]
+            why="Own the nightly pipeline",
+            success=["Deploy unaided", "  Explain the DAG  ", ""],
         )
     )
 
@@ -1060,8 +1060,8 @@ def test_revise_mission_none_leaves_as_is_and_a_list_replaces_the_whole_list(
     detail = app.apply(
         RevisePlan(
             plan_id="keep",
-            constraints=["Evenings only"],  # pyright: ignore[reportCallIssue]
-            out_of_scope=["Spark"],  # pyright: ignore[reportCallIssue]
+            constraints=["Evenings only"],
+            out_of_scope=["Spark"],
         )
     )
 
@@ -1070,7 +1070,7 @@ def test_revise_mission_none_leaves_as_is_and_a_list_replaces_the_whole_list(
     assert detail.mission.constraints == ("Evenings only",)
     assert detail.mission.out_of_scope == ("Spark",)
 
-    emptied = app.apply(RevisePlan(plan_id="keep", success=[]))  # pyright: ignore[reportCallIssue]
+    emptied = app.apply(RevisePlan(plan_id="keep", success=[]))
 
     assert emptied.mission.success == ()
     assert emptied.readiness.ready is False  # a draft: unready is allowed, nothing is refused
@@ -1091,7 +1091,7 @@ def test_revise_partial_mission_on_a_husk_is_refused_and_one_call_repairs_it(
     saves = _count_saves(monkeypatch)
 
     with pytest.raises(PlanNotReady) as caught:
-        app.apply(RevisePlan(plan_id="husk", why="Own the nightly pipeline"))  # pyright: ignore[reportCallIssue]
+        app.apply(RevisePlan(plan_id="husk", why="Own the nightly pipeline"))
 
     assert caught.value.already_active is True
     assert caught.value.readiness.blockers == ("No observable success criteria.",)
@@ -1102,8 +1102,8 @@ def test_revise_partial_mission_on_a_husk_is_refused_and_one_call_repairs_it(
     detail = app.apply(
         RevisePlan(
             plan_id="husk",
-            why="Own the nightly pipeline",  # pyright: ignore[reportCallIssue]
-            success=["Deploy unaided"],  # pyright: ignore[reportCallIssue]
+            why="Own the nightly pipeline",
+            success=["Deploy unaided"],
         )
     )
 

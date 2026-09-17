@@ -121,3 +121,32 @@ own tokens and SHALL not be the only carrier of the information.
 - **WHEN** the Plans sidebar renders those rows
 - **THEN** exactly one `sidebar-plan-husk` mark is present, on the husk's row,
   and the ready plan's row has none
+
+### Requirement: PATCH carries the mission to the one RevisePlan
+`PATCH /api/plans/{id}` SHALL accept `why`, `success`, `constraints` and
+`out_of_scope` beside the fields it already carries (item 3b, design §3b), and
+SHALL translate them onto the same single `RevisePlan` — the route validates
+and writes nothing itself. An absent key is `None` ("leave as is"); a
+supplied list replaces the whole list. The seam's refusals map as they always
+have: a bare string where a list belongs is the seam's `InvalidField` → `400`
+naming the field; a write whose resulting document would be active but not
+ready is `422` with the `readiness` body and nothing written. The `PATCH`
+response is the write receipt (`updated`, `plan`, `readiness`); the mission is
+read back from `GET /api/plans/{id}`. With this the Web UI's whole-document
+`PATCH markdown` is no longer the only mission writer.
+
+#### Scenario: Partial mission on a husk is 422; the whole mission lands and the row flips to ready
+- **WHEN** `PATCH /api/plans/husk` is sent `{"why": "…"}` on an active plan
+  with no mission, and then `{"why": "…", "success": ["…"], "constraints":
+  ["…"], "out_of_scope": ["…"]}`
+- **THEN** the first is `422` with `detail.ready == false` and
+  `detail.blockers == ["No observable success criteria."]` and the document
+  is unchanged; the second is `200` with `plan.status == "active"`,
+  `plan.ready == true` and `readiness.blockers == []`, `GET /api/plans/husk`
+  returns the four mission values, and the `GET /api/plans` row for `husk`
+  has `ready: true`
+
+#### Scenario: A string where a list belongs is the seam's 400
+- **WHEN** `PATCH /api/plans/{id}` is sent `{"success": "one string"}`
+- **THEN** the response is `400` naming `success` and the document is
+  unchanged

@@ -302,10 +302,14 @@ def test_patch_mission_fields_travel_to_the_seam_and_repair_a_husk_in_one_call(
     body = whole.json()
     assert body["plan"]["status"] == "active"
     assert body["plan"]["ready"] is True
-    assert body["mission"]["why"] == "Own the nightly pipeline"
-    assert body["mission"]["success"] == ["Deploy unaided"]
-    assert body["mission"]["constraints"] == ["Evenings only"]
-    assert body["mission"]["out_of_scope"] == ["Spark"]
+    assert body["readiness"]["blockers"] == []
+    # The PATCH body is the write receipt (plan + readiness); the mission is
+    # read back the way the Plans view reads it.
+    mission = client.get("/api/plans/husk").json()["mission"]
+    assert mission["why"] == "Own the nightly pipeline"
+    assert mission["success"] == ["Deploy unaided"]
+    assert mission["constraints"] == ["Evenings only"]
+    assert mission["out_of_scope"] == ["Spark"]
     listed = {row["plan_id"]: row for row in client.get("/api/plans").json()["plans"]}
     assert listed["husk"]["ready"] is True
 

@@ -105,25 +105,32 @@ def test_agent_install_doc_table_is_the_nine_then_record_plan_learning() -> None
     assert _table_tool_names(section) == [*PLAN_TOOL_NAMES, LEARNING_RECORD_TOOL]
 
 
-def test_agent_install_doc_does_not_promise_mission_revision_over_mcp() -> None:
-    """Review 5 (GPT F4): `update_study_plan` exposes no mission field; the
-    doc's 'no CLI command' sentence must not list the mission among what MCP
-    revises, and the table row must name what the tool does revise — every
-    schema property except the identifier."""
+def test_agent_install_doc_promises_exactly_what_update_study_plan_revises() -> None:
+    """Review 5 (GPT F4) pinned the opposite: `update_study_plan` exposed no
+    mission field, so the doc had to keep the mission out of what MCP revises.
+    Item 3b (design §3b) added `why`, `success`, `constraints` and
+    `out_of_scope` to the tool, so the pin flips with the schema it is
+    grounded in: the 'no CLI command' sentence now names the mission among
+    what MCP revises, and the table row names every schema property except
+    the identifier — and no longer says the mission is *not* among them."""
     from studyloop.mcp.server import mcp
 
     schema = set(mcp._tool_manager._tools["update_study_plan"].parameters["properties"])
-    assert "mission" not in schema and "why" not in schema and "success" not in schema
+    assert {"why", "success", "constraints", "out_of_scope"} <= schema
     section = _prose(_section(_read("docs/agent-install.md"), "Study-plan tools over MCP"))
     sentence = re.search(r"[^.]*no CLI command[^.]*\.", section)
     assert sentence, "the install doc no longer states which operations have no CLI command"
-    assert "mission" not in sentence.group(0).lower()
+    assert "mission" in sentence.group(0).lower()
     row = re.search(r"\| `update_study_plan\(plan_id, …\)` \|([^|]*)\|", section)
     assert row, "no update_study_plan row"
+    cell = row.group(1).lower()
     for prop in sorted(schema - {"plan_id"}):
         word = prop.replace("_", " ").split(" ")[0]
-        assert word in row.group(1).lower(), f"update_study_plan row does not mention {prop!r}"
-    assert "mission" in row.group(1).lower() and "not" in row.group(1).lower()
+        assert word in cell, f"update_study_plan row does not mention {prop!r}"
+    assert "mission" in cell
+    assert not re.search(r"mission[^.]*\bnot\b[^.]*fields", cell), (
+        "the row still says the mission is not among the tool's fields"
+    )
 
 
 def test_agent_install_doc_names_the_planning_purpose_and_no_stale_phase_reference() -> None:

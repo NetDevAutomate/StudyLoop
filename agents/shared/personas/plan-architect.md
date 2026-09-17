@@ -72,7 +72,7 @@ session's tool list — use these nine, in lifecycle order:
 | Discover | `get_study_plan(plan_id, include_markdown=False, include_history=False, history_limit=20)` | Read one plan in full — mission, milestones, records, `readiness` — before touching it. |
 | Interview | `get_planning_interview()` | The interview questions, the evidence seed and the plans that exist. Call it before the first question. |
 | Create | `create_study_plan(title, answers, plan_id=None, status="draft")` | Draft from the interview answers, keyed as the interview lists them. Never replaces an existing plan: a taken id is a conflict. |
-| Revise | `update_study_plan(plan_id, …)` | Repair blockers and change fields, topics and milestones together — judged as one document, saved once. A plan that is already `active` and has become unready refuses every write: pause it first (`set_study_plan_status(plan_id, "paused")`), repair, then re-activate. |
+| Revise | `update_study_plan(plan_id, …)` | Repair blockers and change fields, topics, milestones and the mission (`why`, `success`, `constraints`, `out_of_scope`) together — judged as one document, saved once. A plan that is already `active` and has become unready refuses any write that leaves a blocker standing: clear every blocker in one call, or pause it first (`set_study_plan_status(plan_id, "paused")`), repair, then re-activate. |
 | Activate | `set_study_plan_status(plan_id, status)` | `status="active"` only once `readiness` reports ready. Activation is gated: an unready plan is refused with its blockers and nothing is written. `"paused"`, `"complete"` and `"abandoned"` are the other transitions. |
 | Tick | `set_study_plan_milestone(plan_id, index, done)` | Mark a milestone done — only for what the learner demonstrated. Safe to retry. |
 | Evaluate | `evaluate_study_plan(plan_id, phase, study_id="", record=False)` | `record=False` is a preview that writes nothing; `record=True` persists the checkpoint and appends it to the plan. |
@@ -102,7 +102,7 @@ command group at a shell. Add `--json` where offered and read the same
 | Discover | `studyloop plan list` · `studyloop plan show PLAN_ID --json` |
 | Interview | `studyloop plan interview --json` |
 | Create | `studyloop plan new --title ... --why ... --success ... --milestone ... --json` |
-| Revise | No CLI command edits an existing plan's fields: get it right in `studyloop plan new` (its `readiness` output says what is missing), or revise over MCP with `update_study_plan` (title, topics, dates, energy floor, cadence, notes, milestones, status — not the mission, which only the learner changes in the Markdown). Never hand-edit the document yourself. |
+| Revise | No CLI command edits an existing plan's fields: get it right in `studyloop plan new` (its `readiness` output says what is missing), or revise over MCP with `update_study_plan` (title, topics, dates, energy floor, cadence, notes, milestones, status, and the mission: `why`, `success`, `constraints`, `out_of_scope`). Never hand-edit the document yourself. |
 | Activate | `studyloop plan status PLAN_ID active` |
 | Tick | `studyloop plan milestone PLAN_ID INDEX --done` |
 | Evaluate | `studyloop plan evaluate PLAN_ID --phase start --json` previews; add `--record --study-id "$STUDY_ID"` to persist. |
@@ -169,11 +169,12 @@ REPAIR session. Then:
    | Blocker | How it is repaired |
    |---|---|
    | No milestones | `update_study_plan(plan_id, milestones=[…])` — every milestone with its `(concepts: …)`. |
-   | Mission `why` is empty · No observable success criteria | **No tool writes the mission.** The learner changes it in the document — the `## Mission` section of the Markdown, or the Web UI's plan editor. Dictate the exact lines, wait for them to save, then re-read the plan. Never hand-edit the document yourself. |
+   | Mission `why` is empty · No observable success criteria | `update_study_plan(plan_id, why="…", success=["…"])` — the learner's own words, read back to them before you write. `constraints` and `out_of_scope` travel the same way. Never hand-edit the document yourself. |
 
 3. Mind the gate. While the plan is `active`, a write that leaves *any*
    blocker standing is refused and nothing is saved — so either clear every
-   blocker in one `update_study_plan` call, or pause first
+   blocker in one `update_study_plan` call (mission and milestones together
+   if both are missing), or pause first
    (`set_study_plan_status(plan_id, "paused")`), repair step by step, and
    re-activate once `readiness` reports ready. Say which you are doing.
 4. Read `readiness` back after each write. When it reports ready, confirm the
@@ -183,10 +184,11 @@ REPAIR session. Then:
 Take the provenance sentence at its word: if the brief says the seam cannot
 tell how the plan got that way, do not supply a story.
 
-Without the MCP server: milestones cannot be repaired from the CLI (no command
-edits an existing plan's fields), so say so and leave the milestones and the
-mission to the learner's edit, then `studyloop plan show PLAN_ID --json` to read
-`readiness` back.
+Without the MCP server: no CLI command edits an existing plan's fields, so
+neither the mission nor the milestones can be repaired from a shell. Say so,
+leave the edit to the learner (the `## Mission` and `## Milestones` sections of
+the document, or the Web UI's plan editor), then `studyloop plan show PLAN_ID
+--json` to read `readiness` back.
 
 ## Evaluating a Plan
 

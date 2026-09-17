@@ -129,8 +129,10 @@ falling back to `studyloop plan …` at a shell when its harness has no
 plan's fields and deleting a plan — so an architect without the server says
 so instead of improvising: both need an MCP-connected session
 (`update_study_plan`, `delete_study_plan`) or the Web API; the Web UI itself
-offers neither control, and a plan's mission changes only by editing its
-Markdown. Activation is readiness-gated on every one of those paths. The
+offers neither control. A plan's mission — why, success criteria, constraints,
+out of scope — is revisable on those same two doors (`update_study_plan`, and
+`PATCH /api/plans/{id}` with the matching keys), or by editing its Markdown.
+Activation is readiness-gated on every one of those paths. The
 `record_plan_learning` tool the second-brain wind-down calls before any
 projection (see [second-brain.md](second-brain.md)) is part of the same set.
 
@@ -193,15 +195,14 @@ script against plans or ask an agent to:
   shows the same mark, and `GET /api/plans` rows carry `ready`. Repair is a
   conversation: `studyloop plan repair PLAN_ID` launches the architect with
   the blockers as the first section of its brief and the plan as it stands,
-  and writes nothing itself. Two honest limits: the architect can add
-  milestones over MCP (`update_study_plan`), but no tool writes the mission,
-  so a missing mission or missing success criteria is fixed by editing the
-  document's `## Mission` section (in the Web UI or by hand) — the architect
-  dictates the lines; and while the plan is active, a write that leaves any
-  blocker standing is still refused, so either everything is repaired in one
-  write or the plan is paused first and re-activated once ready. The brief
-  says how the plan got that way only when the seam knows (a document that
-  predates the gate); otherwise it says it cannot tell.
+  and writes nothing itself; the architect then repairs every blocker class
+  the gate names — mission, success criteria, milestones — with
+  `update_study_plan` (or you can, with `PATCH /api/plans/{id}`). One honest
+  limit: while the plan is active, a write that leaves any blocker standing
+  is still refused, so either everything is repaired in one write or the plan
+  is paused first and re-activated once ready. The brief says how the plan
+  got that way only when the seam knows (a document that predates the gate);
+  otherwise it says it cannot tell.
 - **Deletion is explicit on every door, and history is kept.** The Web UI has
   no delete control; its API's `DELETE /api/plans/{id}` treats the request
   itself as the confirmation. Over MCP `delete_study_plan` is refused unless
