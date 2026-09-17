@@ -75,10 +75,34 @@ do not move.
       `::test_husk_refusal_names_both_pause_and_repair`; `tests/test_plan_application.py::test_husks_lists_only_active_unready_plans`;
       `tests/test_web_plans_seam.py::test_plan_list_payload_carries_ready`.
       DoD: RED committed (pyright suppressions only where a symbol does not yet exist).
-- [ ] **T3.2** GREEN: `PlanSummary.ready`; `PlanApplication.husks()`; `check_study_plans` doctor checker; `plan list`
+- [x] **T3.2** (GREEN `b6af366a`: 17 RED → green; six-file targeted run 167 passed; full suite 31 failed / 7211
+      passed / 4 skipped / 14 errors in 1009 s, and `comm` over sorted failure ids against a clean `6f05be5b`
+      control worktree run in parallel gave item3 − control = ∅ and control − item3 = exactly the 17 REDs, so the
+      45 shared ids are the recorded sandbox-environmental class (journeys world guards, acceptance isolation,
+      harness matrix live mechanics, brain CLI, one agent-session-tools eval arm); `just lint` clean, `just
+      typecheck` 0 errors, `mkdocs build --strict` clean, `openspec validate` valid; hooks passed first time)
+      GREEN: `PlanSummary.ready`; `PlanApplication.husks()`; `check_study_plans` doctor checker; `plan list`
       marker/`--husks`; `plan repair`; `brief=` threaded through `study → _handle_start → start_session →
       build_canonical_persona` with the wrapper sentence parameterised; refusal text; sidebar marker in the Plans
       view; persona "Repairing a plan" subsection (projections + manifest regenerated); docs; spec deltas.
+      DoD: full suite; `tests/test_architecture_plan_seam.py` green; `just lint && just typecheck`.
+
+## Item 3b — mission writer for `update_study_plan` (design §3b; filed 2026-09-17, **unbuilt**) · files: `planning/{intents,application}.py`, `mcp/` plan tools, `web/routes/plans.py`, persona repair table (+ projections + manifest), tests, `docs/study-plans.md`, spec deltas `mcp-server`, `web-ui`
+
+Why: `readiness()` has three blocker classes but `RevisePlan` has no mission fields, so the architect
+`plan repair` launches cannot itself repair the commonest husk (no mission) — it dictates the edit. One
+writer, through the existing gate, closes that. Kept out of item 3 so item 3's finish stayed countable.
+
+- [ ] **T3b.0** Owner decision: does the CLI gain a matching `plan revise --why/--success`, or stay
+      MCP/Web-only (the persona's CLI fallback row currently says no CLI command edits a plan's fields, on purpose)?
+- [ ] **T3b.1** RED `tests/test_plan_application.py::test_revise_sets_mission_fields_through_the_one_gate`
+      (why + success on a draft → readiness flips; on an active husk a partial mission write is refused and
+      nothing is saved; a write clearing every blocker in one call is saved once);
+      `tests/test_mcp_plan_tools.py` (or its equivalent): `update_study_plan(why=…, success=[…])` reaches
+      `RevisePlan`; `tests/test_web_plans_seam.py`: `PATCH /api/plans/{id}` with `why`/`success`.
+      DoD: RED committed.
+- [ ] **T3b.2** GREEN: `RevisePlan.why/success` (+ `constraints`, `out_of_scope`), `_revise` applies them before
+      the gate; MCP + Web expose them; persona repair table drops "no tool writes the mission"; docs; spec deltas.
       DoD: full suite; `tests/test_architecture_plan_seam.py` green; `just lint && just typecheck`.
 
 ## Item 4 — `plan close <id>` (D-G) · files: `learning/decision.py`, `cli/{_plan,_now}.py`, `learning/recap.py`, `web/static/js/components/today-panel.js`, `web/static/index.html`, persona (+ projections + manifest), tests, `docs/study-plans.md`, spec delta `active-learning-decisions`, `cli-surface`

@@ -101,6 +101,35 @@ stands: the gate refuses every write until the plan is paused or repaired.
   blocker is repaired by the learner in the Markdown or by `update_study_plan` where a field exists; never
   hand-edit.
 
+Decisions taken at GREEN (2026-09-17, owner present — Andy asked "after `plan repair <id>` what happens to the
+husk doc?" and chose this shape):
+
+- **`plan repair` on a plan that is not active** (an unready draft, or a paused incomplete plan): exit 0, no
+  launch, "`'<id>' is <status>, so nothing blocks it` … finish it with `studyloop plan architect`", then the
+  readiness block. A draft is unready by nature and is not a husk; a paused incomplete plan is what the gate
+  asked for.
+- **`husk_provenance(created)` lives in `views.py`**, not `authoring.py`: it is a sentence about a verdict (a
+  view), the gate *date* is the policy and stays in `authoring` as `READINESS_GATE_DATE`. This is what lets
+  `cli/_plan.py` import it through the package without an architecture-guard exception — the guard's covering
+  test flagged the authoring placement, correctly.
+
+### 3b. Mission writer for `update_study_plan` (filed, **unbuilt**)
+
+Found while answering the question above: `readiness()` has three blocker classes (mission `why`, `success`
+criteria, `milestones`), but `RevisePlan` — what `update_study_plan` maps to — has **no mission fields**, and
+the only write that can set a mission is `ReplaceDocument`, whose sole caller is the Web `PATCH markdown`
+route. So the architect `plan repair` launches can repair a missing-milestones husk over MCP but can only
+*dictate* the fix for the husk fixture itself (no mission): the learner edits the document. Item 3 ships with
+the persona saying exactly that; it does not hide the gap.
+
+Proposed 3b, its own RED (not widened into item 3, so item 3's finish stayed countable): `RevisePlan` gains
+`why: str | None` and `success: Sequence[str] | None` (and, for symmetry, `constraints` and `out_of_scope`),
+applied by `_revise` before the one gate like every other field; `update_study_plan` and `PATCH /api/plans/{id}`
+expose them; the persona's repair table loses its "no tool writes the mission" row. Readiness-gated as today:
+an active husk is repaired in one call that clears every blocker, or paused first. Owner decision pending on
+whether the CLI (`plan new` already has `--why`/`--success`) gains a matching `plan revise`, or stays as is
+(the persona's CLI fallback row says "no CLI command edits an existing plan's fields", deliberately).
+
 ## 4. `plan close <id>` — evidence-based, consensual completion (D-G)
 
 - **Payload:** `CompletionAction` gains `due_reviews: int`, `struggles: int`, `unverified_milestones: int`,
