@@ -1005,3 +1005,132 @@ def test_plan_summary_carries_ready_as_its_eighteenth_key() -> None:
         assert len(payload) == 18, sorted(payload)
         assert payload["ready"] == ReadinessView.from_plan(plan).ready
         assert plan.summary()["ready"] == payload["ready"]
+
+
+# ---------------------------------------------------------------------------
+# Item 3b: the mission is revisable through the one gate
+# ---------------------------------------------------------------------------
+
+
+def test_revise_sets_mission_fields_through_the_one_gate(app: PlanApplication, monkeypatch) -> None:
+    """``RevisePlan`` gains ``why`` / ``success`` / ``constraints`` /
+    ``out_of_scope`` (design §3b) so the architect can repair every blocker
+    class ``readiness()`` knows over MCP — until now the only mission writer
+    was the Web ``PATCH markdown`` route. Same contract as every other field:
+    applied to the one candidate, judged as one document, saved once. A
+    mission repair on a draft flips readiness and does not activate."""
+    app.apply(
+        CreatePlan(
+            title="Vague",
+            plan_id="vague",
+            answers={"topics": ["sql"], "milestones": [{"title": "Step", "concepts": ["x"]}]},
+        )
+    )
+    assert app.inspect("vague").readiness.ready is False
+    saves = _count_saves(monkeypatch)
+
+    detail = app.apply(
+        RevisePlan(
+            plan_id="vague",
+            why="Own the nightly pipeline",  # pyright: ignore[reportCallIssue]
+            success=["Deploy unaided", "  Explain the DAG  ", ""],  # pyright: ignore[reportCallIssue]
+        )
+    )
+
+    assert len(saves) == 1
+    assert detail.mission.why == "Own the nightly pipeline"
+    assert detail.mission.success == (
+        "Deploy unaided",
+        "Explain the DAG",
+    )  # stripped, blanks dropped
+    assert detail.readiness.ready is True
+    assert detail.summary.status == "draft", "a mission repair is not an activation"
+    on_disk = store.load_plan("vague")
+    assert on_disk.mission.why == "Own the nightly pipeline"
+    assert on_disk.mission.success == ["Deploy unaided", "Explain the DAG"]
+
+
+def test_revise_mission_none_leaves_as_is_and_a_list_replaces_the_whole_list(
+    app: PlanApplication,
+) -> None:
+    """``None`` is "leave as is" for the mission exactly as for ``topics``;
+    a supplied list is a whole-list replacement, so ``[]`` empties it."""
+    store.create_plan(_ready_plan("keep"))  # why="Because", success=["Do a thing"]
+
+    detail = app.apply(
+        RevisePlan(
+            plan_id="keep",
+            constraints=["Evenings only"],  # pyright: ignore[reportCallIssue]
+            out_of_scope=["Spark"],  # pyright: ignore[reportCallIssue]
+        )
+    )
+
+    assert detail.mission.why == "Because"
+    assert detail.mission.success == ("Do a thing",)
+    assert detail.mission.constraints == ("Evenings only",)
+    assert detail.mission.out_of_scope == ("Spark",)
+
+    emptied = app.apply(RevisePlan(plan_id="keep", success=[]))  # pyright: ignore[reportCallIssue]
+
+    assert emptied.mission.success == ()
+    assert emptied.readiness.ready is False  # a draft: unready is allowed, nothing is refused
+    assert emptied.summary.status == "draft"
+
+
+def test_revise_partial_mission_on_a_husk_is_refused_and_one_call_repairs_it(
+    app: PlanApplication, isolated_plans_dir, monkeypatch
+) -> None:
+    """The husk fixture's two blockers are both mission blockers. Supplying
+    only ``why`` leaves ``success`` standing, so the gate refuses it with the
+    one remaining blocker and nothing is written; supplying both clears every
+    blocker, so it is saved once, stays active, and is no longer a husk. This
+    is what turns ``plan repair`` from dictation into repair (design §3b)."""
+    store.plans_dir()
+    _write_husk(isolated_plans_dir, "husk", "Husk")
+    before = _documents(isolated_plans_dir)
+    saves = _count_saves(monkeypatch)
+
+    with pytest.raises(PlanNotReady) as caught:
+        app.apply(RevisePlan(plan_id="husk", why="Own the nightly pipeline"))  # pyright: ignore[reportCallIssue]
+
+    assert caught.value.already_active is True
+    assert caught.value.readiness.blockers == ("No observable success criteria.",)
+    assert saves == [], "refused: nothing written"
+    assert _documents(isolated_plans_dir) == before
+    assert [h.summary.plan_id for h in app.husks()] == ["husk"]
+
+    detail = app.apply(
+        RevisePlan(
+            plan_id="husk",
+            why="Own the nightly pipeline",  # pyright: ignore[reportCallIssue]
+            success=["Deploy unaided"],  # pyright: ignore[reportCallIssue]
+        )
+    )
+
+    assert len(saves) == 1, "one call, one write"
+    assert detail.summary.status == "active"
+    assert detail.readiness.ready is True
+    assert detail.summary.ready is True
+    assert app.husks() == ()
+    on_disk = store.load_plan("husk")
+    assert on_disk.status == "active"
+    assert on_disk.mission.why == "Own the nightly pipeline"
+
+
+@pytest.mark.parametrize("field", ["success", "constraints", "out_of_scope"])
+def test_revise_mission_list_given_a_bare_string_is_invalid_before_any_write(
+    app: PlanApplication, monkeypatch, field: str
+) -> None:
+    """A mission list given as one string is the same refusal ``topics`` gets —
+    ``InvalidField``, before any write — never split into characters or
+    wrapped into a one-item list. (Built in the body, not a parametrize, so a
+    missing field fails this test alone rather than the file's collection.)"""
+    store.create_plan(_ready_plan("demo"))
+    before = store.load_plan_text("demo")
+    saves = _count_saves(monkeypatch)
+
+    with pytest.raises(InvalidField):
+        app.apply(RevisePlan(plan_id="demo", **{field: "one string"}))  # type: ignore[arg-type]
+
+    assert saves == []
+    assert store.load_plan_text("demo") == before

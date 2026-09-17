@@ -564,8 +564,42 @@ def test_update_study_plan_omitted_fields_are_none_not_blank(monkeypatch, forbid
         "milestones",
         "status",
         "learning_record",
+        # item 3b: the mission fields follow the same rule
+        "why",
+        "success",
+        "constraints",
+        "out_of_scope",
     ):
         assert getattr(intent, field) is None, field
+
+
+def test_update_study_plan_passes_mission_fields_to_revise_plan(monkeypatch, forbid_store) -> None:
+    """Item 3b: the architect repairs a mission blocker over MCP with the tool
+    it already holds. The four mission fields ride the same ``RevisePlan`` as
+    every other field — one intent, one apply — so a husk is repaired in one
+    call that the seam judges as one document (design §3b)."""
+    detail = PlanDetail.from_plan(_ready_plan())
+    apply = _fake(monkeypatch, "apply", detail)
+
+    payload = _tool("update_study_plan")(
+        "decorators",
+        why="Own the nightly pipeline",
+        success=["Deploy unaided"],
+        constraints=["Evenings only"],
+        out_of_scope=["Spark"],
+    )
+
+    ((intent,), _kwargs) = apply.calls[0]
+    assert len(apply.calls) == 1
+    assert isinstance(intent, RevisePlan)
+    assert intent.plan_id == "decorators"
+    assert intent.why == "Own the nightly pipeline"  # pyright: ignore[reportAttributeAccessIssue]
+    assert intent.success == ["Deploy unaided"]  # pyright: ignore[reportAttributeAccessIssue]
+    assert intent.constraints == ["Evenings only"]  # pyright: ignore[reportAttributeAccessIssue]
+    assert intent.out_of_scope == ["Spark"]  # pyright: ignore[reportAttributeAccessIssue]
+    for untouched in ("title", "topics", "milestones", "status", "learning_record"):
+        assert getattr(intent, untouched) is None, untouched
+    assert payload == detail.to_json_dict()
 
 
 def test_set_study_plan_status_applies_one_transition(monkeypatch, forbid_store) -> None:

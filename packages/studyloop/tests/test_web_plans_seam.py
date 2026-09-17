@@ -254,3 +254,70 @@ def test_plan_list_payload_carries_ready(client: TestClient, isolated_plans_dir)
 
     active_only = client.get("/api/plans", params={"status": "active"}).json()["plans"]
     assert [(row["plan_id"], row["ready"]) for row in active_only] == [("husk", False)]
+
+
+# --- item 3b: PATCH carries the mission fields to the one RevisePlan ---
+
+
+def _write_husk(plans_dir, plan_id: str, title: str) -> None:
+    (plans_dir / f"{plan_id}.md").write_text(
+        f"---\nid: {plan_id}\ntitle: {title}\nstatus: active\ntopics: [sql]\n---\n\n"
+        f"# {title}\n\n## Milestones\n\n- [ ] **Step** `(concepts: x)`\n",
+        encoding="utf-8",
+    )
+
+
+def test_patch_mission_fields_travel_to_the_seam_and_repair_a_husk_in_one_call(
+    client: TestClient, isolated_plans_dir
+) -> None:
+    """Item 3b: ``PATCH /api/plans/{id}`` accepts ``why``, ``success``,
+    ``constraints`` and ``out_of_scope`` beside the fields it already carried
+    — the same one ``RevisePlan`` — so the Web UI's plan editor is no longer
+    the only door to a mission. A partial mission write on an active husk is
+    the seam's 422 with the remaining blocker and nothing written; both
+    mission fields in one body clear every blocker and land once."""
+    store.plans_dir()
+    _write_husk(isolated_plans_dir, "husk", "Husk")
+    before = (isolated_plans_dir / "husk.md").read_text(encoding="utf-8")
+
+    partial = client.patch("/api/plans/husk", json={"why": "Own the nightly pipeline"})
+
+    assert partial.status_code == 422, partial.text
+    detail = partial.json()["detail"]
+    assert detail["ready"] is False
+    assert detail["blockers"] == ["No observable success criteria."]
+    assert (isolated_plans_dir / "husk.md").read_text(encoding="utf-8") == before
+
+    whole = client.patch(
+        "/api/plans/husk",
+        json={
+            "why": "Own the nightly pipeline",
+            "success": ["Deploy unaided"],
+            "constraints": ["Evenings only"],
+            "out_of_scope": ["Spark"],
+        },
+    )
+
+    assert whole.status_code == 200, whole.text
+    body = whole.json()
+    assert body["plan"]["status"] == "active"
+    assert body["plan"]["ready"] is True
+    assert body["mission"]["why"] == "Own the nightly pipeline"
+    assert body["mission"]["success"] == ["Deploy unaided"]
+    assert body["mission"]["constraints"] == ["Evenings only"]
+    assert body["mission"]["out_of_scope"] == ["Spark"]
+    listed = {row["plan_id"]: row for row in client.get("/api/plans").json()["plans"]}
+    assert listed["husk"]["ready"] is True
+
+
+def test_patch_mission_list_given_a_string_is_the_seams_400(
+    client: TestClient, isolated_plans_dir
+) -> None:
+    plan_id = _create(client)
+    before = (isolated_plans_dir / f"{plan_id}.md").read_text(encoding="utf-8")
+
+    response = client.patch(f"/api/plans/{plan_id}", json={"success": "one string"})
+
+    assert response.status_code == 400, response.text
+    assert "success" in response.json()["detail"]
+    assert (isolated_plans_dir / f"{plan_id}.md").read_text(encoding="utf-8") == before
