@@ -54,7 +54,7 @@ if str(_tests_dir) not in sys.path:
 
 from _playwright_helpers import start_web_server  # noqa: E402
 
-from acceptance.conftest import require_harness  # noqa: E402
+from acceptance.conftest import not_selected_marker, require_harness  # noqa: E402
 from acceptance.turn_script import load_turn_script  # noqa: E402
 
 if TYPE_CHECKING:
@@ -64,7 +64,11 @@ if TYPE_CHECKING:
 
     from acceptance.isolation import ScratchEnv
 
-pytestmark = [pytest.mark.acceptance]
+# The selection skip is a MARKER, not only a fixture: markers are evaluated
+# before any fixture of any scope, so an unselected run never launches the
+# session-scoped Playwright browser this lane declares (see
+# ``not_selected_marker``'s docstring for the failure this prevents).
+pytestmark = [pytest.mark.acceptance, not_selected_marker("kiro")]
 
 WEB_PORT = 18599  # distinct from every fixed port the e2e/live suites use
 
@@ -223,10 +227,13 @@ def _acp_auth_context(browser: Browser) -> Generator[BrowserContext, None, None]
 class TestKiroWebAcpLane:
     @pytest.fixture(autouse=True)
     def _require_kiro_harness_selected(self) -> None:
-        """Named-skip BEFORE ``scratch_env``/``_acp_auth_context`` build
-        anything (autouse fixtures run first within their scope), so
-        ``STUDYLOOP_ACC_HARNESS=codex`` never starts a real, billed Kiro
-        session it was not asked to select."""
+        """Second line behind the module's ``not_selected_marker("kiro")``.
+
+        This autouse fixture is function-scoped, and pytest builds higher
+        scopes first — so on its own it could not stop the session-scoped
+        Playwright ``browser`` (behind ``_acp_auth_context``) from launching
+        before the skip. The marker gives that guarantee; this stays so a
+        per-test selection change still skips by name."""
         require_harness("kiro")
 
     def test_scripted_learner_completes_a_full_lifecycle(

@@ -79,6 +79,37 @@ def require_harness(harness: str) -> None:
         pytest.skip(f"{harness} not selected via {_HARNESS_ENV} (selected: {', '.join(selected)})")
 
 
+def not_selected_marker(harness: str) -> pytest.MarkDecorator:
+    """A collection-time ``skipif`` for a harness lane module — the guarantee
+    :func:`require_harness` cannot give.
+
+    Markers are evaluated in ``pytest_runtest_setup`` **before any fixture of
+    any scope** is built. A function-scoped autouse fixture calling
+    :func:`require_harness` is not: pytest sets up higher-scoped fixtures
+    first, so a lane test that declares pytest-playwright's *session*-scoped
+    ``browser`` (through a ``BrowserContext`` fixture) launches Chromium
+    before the class's skip ever runs. On a runner with no browsers installed
+    (the CI ``test`` job; only the e2e jobs run ``playwright install``) that
+    is a fixture error where a named skip was promised, and
+    ``test_acceptance_selection.py::test_kiro_lane_named_skips_when_harness_not_selected``
+    failed on exactly that (CI runs 35214968238 / 35216220593, 2026-09-17).
+    Use as ``pytestmark = not_selected_marker("kiro")`` at module top; keep
+    :func:`require_harness` too for a lane whose selection is per-test.
+
+    Validation outranks selection: an *unknown* ``STUDYLOOP_ACC_HARNESS``
+    value must reach ``_acceptance_gate`` and fail loudly, so the marker only
+    skips when the selection is valid and simply does not name this harness.
+    (``test_acceptance_selection.py::TestUnknownValuesFailLoudly`` drives two
+    tests in this very module and asserts the failure.)
+    """
+    selected = selected_harnesses()
+    valid = not (set(selected) - set(RELEASE_HARNESSES))
+    return pytest.mark.skipif(
+        valid and harness not in selected,
+        reason=f"{harness} not selected via {_HARNESS_ENV} (selected: {', '.join(selected)})",
+    )
+
+
 @pytest.fixture(autouse=True)
 def _acceptance_gate() -> None:
     if os.environ.get(_ACC_ENV) != "1":
