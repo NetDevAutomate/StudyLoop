@@ -205,6 +205,12 @@ def test_settings_highlights_the_selected_provider_and_mutes_the_other(
         assert cards.count() == 2, "one card per provider, Obsidian and xTiles"
         active = section.locator(".brain-card.brain-active")
         muted = section.locator(".brain-card.brain-muted")
+        # The active class arrives with refreshBrain()'s /api/second-brain/
+        # launch-target response; until then every card is deliberately muted
+        # (settings-panel.js brainCardState). Wait for the state the assertions
+        # are about rather than reading the loading state as the answer — a
+        # bare count() here failed once in CI (run 35220795456) with 0 active.
+        active.first.wait_for(state="attached", timeout=15000)
         assert active.count() == 1 and "xTiles" in active.inner_text()
         assert muted.count() == 1 and "Obsidian" in muted.inner_text()
         assert "studyloop brain enable obsidian" in muted.inner_text()
