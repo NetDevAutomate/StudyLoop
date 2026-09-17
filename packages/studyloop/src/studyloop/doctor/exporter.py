@@ -90,6 +90,27 @@ def check_exporter_schema(exporter: Path | None = None, db_path: Path | None = N
     exporter = exporter or pinned_exporter_path()
     db_path = db_path or _db_path()
     if not exporter.exists() or not os.access(exporter, os.X_OK):
+        # Two different situations share a missing exporter. With a session
+        # database present, hooks are (or were) capturing history and now every
+        # run fails silently -- the incident this check was born of: ``fail``.
+        # With no database, nothing has ever been captured and nothing is being
+        # lost -- a fresh install, or a machine that never ran ``install
+        # tools`` -- so this is the same ``warn`` the "session-export: not
+        # found on PATH" row gives. Reporting ``fail`` here broke the release
+        # ``install-smoke`` (a wheel in a fresh venv) on every run since the
+        # check landed on 2026-09-12.
+        if not db_path.exists():
+            return CheckResult(
+                category="harness",
+                name="exporter_schema",
+                status="warn",
+                message=(
+                    f"pinned exporter {exporter} is not installed and no session database "
+                    "exists yet; nothing is captured until `studyloop install tools` runs"
+                ),
+                fix_hint="studyloop install tools",
+                fix_auto=True,
+            )
         return CheckResult(
             category="harness",
             name="exporter_schema",

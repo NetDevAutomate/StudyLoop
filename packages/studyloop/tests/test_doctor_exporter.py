@@ -256,6 +256,21 @@ class TestExporterSchema:
         result = exporter.check_exporter_schema(tmp_path / "absent", db)
         assert result.status == "fail" and "install tools" in result.fix_hint
 
+    def test_a_missing_pinned_exporter_on_a_fresh_install_is_a_warning(
+        self, tmp_path: Path
+    ) -> None:
+        """No session database means nothing is being captured yet, so nothing is
+        being lost: the incident this check was born of (hooks silently failing
+        against real history) cannot be happening. ``fail`` here broke the
+        release ``install-smoke`` on every fresh machine since 2026-09-12; the
+        honest verdict is the same ``warn`` + ``studyloop install tools`` the
+        ``session-export: not found on PATH`` row gives."""
+        result = exporter.check_exporter_schema(tmp_path / "absent", tmp_path / "no-such.db")
+        assert result.status == "warn", result.message
+        assert "install tools" in result.fix_hint and result.fix_auto is True
+        assert "not installed" in result.message.lower()
+        assert "every export hook fails" not in result.message
+
     def test_an_unreadable_version_is_a_warning_not_a_crash(self, tmp_path: Path) -> None:
         exp = _fake_exporter(tmp_path / "session-export", None)
         db = _db(tmp_path / "sessions.db", 48, None)
