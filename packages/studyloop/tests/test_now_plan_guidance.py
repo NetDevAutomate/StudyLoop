@@ -840,3 +840,215 @@ def test_cli_recap_rich_panel_without_plans_prints_no_plan_line(monkeypatch) -> 
     assert result.exit_code == 0, result.output or repr(result.exception)
     assert "Plan:" not in result.output
     assert "Next:" in result.output
+
+
+# ---------------------------------------------------------------------------
+# Item 4 (D-G) — evidence-based, consensual completion: rule 9's completion
+# action carries the end assessment and proposes; it never changes a status.
+# ---------------------------------------------------------------------------
+
+
+def _pre_change_sentence(title: str) -> str:
+    """The completion sentence rule 9 emitted before D-G (``planning/views.py``)."""
+    return (
+        f"Every milestone of {title!r} is checked off — close the plan "
+        "or extend it with a follow-on mission."
+    )
+
+
+def _plant_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    due: list[dict] | None = None,
+    struggles: list[dict] | None = None,
+    mentions: list[dict] | None = None,
+) -> None:
+    """Point the end assessment's history readers at fixture rows.
+
+    ``planning/evaluation.py`` resolves them on the ``studyloop.history``
+    package at call time, so the package attribute is the real seam: the
+    evaluation's own relevance filter and ``has_evidence`` logic stay live,
+    and nothing here depends on a sessions database.
+    """
+    from studyloop import history
+
+    monkeypatch.setattr(
+        history, "spaced_repetition_due", lambda topic_keywords_map: list(due or [])
+    )
+    monkeypatch.setattr(
+        history.progress, "get_struggling_topics", lambda days=30: list(struggles or [])
+    )
+    monkeypatch.setattr(history, "topic_frequency", lambda keywords, days=90: list(mentions or []))
+    monkeypatch.setattr(history, "last_studied", lambda keywords: None)
+    monkeypatch.setattr(history, "struggle_topics", lambda days=14, min_sessions=2: [])
+
+
+_DONE = [
+    Milestone(title="A", done=True, concepts=["alpha"]),
+    Milestone(title="B", done=True, concepts=["beta"]),
+]
+
+
+def test_completion_action_carries_the_end_assessment_and_proposes_extend_when_concepts_are_due(
+    monkeypatch,
+) -> None:
+    """D-G: the completion action carries the end assessment — counts of due
+    reviews, struggles and unverified milestones on the plan's own concepts —
+    and proposes ``extend`` while any count is above zero. One due review on
+    a plan concept is outstanding work: the engine proposes extending, the
+    evidence names the concept, and the sentence is composed from the
+    proposal rather than the old either-way wording."""
+    _plan("done-plan", title="Done Plan", topics=["sql"], milestones=_DONE)
+    _plant_evidence(
+        monkeypatch,
+        due=[
+            {
+                "topic": "sql",
+                "concept": "alpha",
+                "confidence": "learning",
+                "last_studied": "2026-09-07",
+                "days_ago": 9,
+                "review_type": "overdue",
+            }
+        ],
+        mentions=[{"snippet": "worked through beta with a window frame"}],
+    )
+    _patch_collectors(monkeypatch, _candidate("decorators", topic="python", score=100))
+
+    plan = build_now_plan()
+
+    [action] = plan.completion_actions
+    assert action.plan_id == "done-plan"
+    assert (action.due_reviews, action.struggles, action.unverified_milestones) == (1, 0, 0)  # pyright: ignore[reportAttributeAccessIssue]
+    assert action.proposal == "extend"  # pyright: ignore[reportAttributeAccessIssue]
+    assert any("alpha" in line for line in action.evidence), action.evidence  # pyright: ignore[reportAttributeAccessIssue]
+    assert "Done Plan" in action.action
+    assert "extend" in action.action.lower()
+    assert action.action != _pre_change_sentence("Done Plan")
+
+    row = plan.to_json_dict()["completion_actions"][0]
+    assert {"due_reviews", "struggles", "unverified_milestones", "proposal", "evidence"} <= set(row)
+    assert (row["proposal"], row["due_reviews"]) == ("extend", 1)
+    assert plan.primary.concept == "decorators"  # rule 9 still yields no study candidate
+
+
+def test_completion_action_proposes_close_when_the_assessment_is_clean(monkeypatch) -> None:
+    """Nothing due, nothing struggling, every checked milestone backed by
+    evidence: the engine proposes ``close`` — and only proposes (see
+    :func:`test_completion_never_changes_status`)."""
+    _plan("done-plan", title="Done Plan", topics=["sql"], milestones=_DONE)
+    _plant_evidence(
+        monkeypatch,
+        mentions=[{"snippet": "explained alpha and beta in the teach-back"}],
+    )
+    _patch_collectors(monkeypatch, _candidate("decorators", topic="python", score=100))
+
+    plan = build_now_plan()
+
+    [action] = plan.completion_actions
+    assert (action.due_reviews, action.struggles, action.unverified_milestones) == (0, 0, 0)  # pyright: ignore[reportAttributeAccessIssue]
+    assert action.proposal == "close"  # pyright: ignore[reportAttributeAccessIssue]
+    assert action.evidence == ()  # pyright: ignore[reportAttributeAccessIssue]
+    assert "Done Plan" in action.action
+    assert "close" in action.action.lower()
+    assert action.action != _pre_change_sentence("Done Plan")
+    assert plan.to_json_dict()["completion_actions"][0]["proposal"] == "close"
+
+
+def test_completion_review_does_not_count_new_topic_rows_as_due(monkeypatch) -> None:
+    """The scheduler's cold-start hint — a ``New topic -- start fresh`` row for
+    a plan topic with no progress rows, ``concept: None`` — is not a lapsed
+    review. The completion review counts only rows that name a concept, so a
+    finished plan whose concepts are backed by session evidence reads
+    ``close``, not "extend — 1 due review: start fresh". The evaluator keeps
+    the row (``plan evaluate --phase start`` wants it); this is the completion
+    review's count, not the evaluator's."""
+    _plan("done-plan", title="Done Plan", topics=["sql"], milestones=_DONE)
+    _plant_evidence(
+        monkeypatch,
+        due=[
+            {
+                "topic": "sql",
+                "concept": None,
+                "confidence": None,
+                "last_studied": None,
+                "days_ago": None,
+                "review_type": "New topic -- start fresh",
+                "evidence": "configured_topic",
+            }
+        ],
+        mentions=[{"snippet": "explained alpha and beta in the teach-back"}],
+    )
+    _patch_collectors(monkeypatch, _candidate("decorators", topic="python", score=100))
+
+    plan = build_now_plan()
+
+    [action] = plan.completion_actions
+    assert (action.due_reviews, action.struggles, action.unverified_milestones) == (0, 0, 0)  # pyright: ignore[reportAttributeAccessIssue]
+    assert action.proposal == "close"  # pyright: ignore[reportAttributeAccessIssue]
+    assert action.evidence == ()  # pyright: ignore[reportAttributeAccessIssue]
+
+
+def test_completion_never_changes_status(monkeypatch) -> None:
+    """#7 / ``NOT_AUTOMATIC``: the assessment is the preview path — exactly one
+    ``assess`` per fully-checked plan with ``phase="end"`` and
+    ``record=False`` — so the document's bytes and status are unchanged after
+    ``build_now_plan``, no checkpoint row is written and the recording writer
+    is never called. ``set_study_plan_status`` stays the only door to
+    ``complete``."""
+    from studyloop.planning import AssessPlan
+    from studyloop.planning import evaluation as evaluation_module
+    from studyloop.planning import index as plan_index
+    from studyloop.planning.application import PlanApplication
+
+    _plan("done-plan", title="Done Plan", milestones=_DONE)
+    path = store.plan_path("done-plan")
+    before = path.read_bytes()
+    _plant_evidence(monkeypatch)
+    _patch_collectors(monkeypatch, _candidate("decorators", topic="python", score=100))
+
+    intents: list[AssessPlan] = []
+    real_assess = PlanApplication.assess
+
+    def counted(self, intent):
+        intents.append(intent)
+        return real_assess(self, intent)
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("the ranker recorded a checkpoint")
+
+    monkeypatch.setattr(PlanApplication, "assess", counted)
+    monkeypatch.setattr(evaluation_module, "evaluate_and_record", forbidden)
+    monkeypatch.setattr(plan_index, "record_checkpoint", forbidden)
+
+    plan = build_now_plan()
+
+    assert [action.plan_id for action in plan.completion_actions] == ["done-plan"]
+    assert [(i.plan_id, i.phase, i.record) for i in intents] == [("done-plan", "end", False)]
+    assert path.read_bytes() == before
+    assert store.load_plan("done-plan").status == "active"
+    assert plan_index.checkpoint_history("done-plan") == []
+
+
+def test_completion_assessment_failure_keeps_the_sentence_and_warns(monkeypatch) -> None:
+    """A failed assessment is a warning, never a failed ``now``: the completion
+    action still appears with the pre-change sentence, and ``warnings`` names
+    the plan so the learner knows the counts are missing rather than zero."""
+    from studyloop.planning.application import PlanApplication
+
+    _plan("done-plan", title="Done Plan", milestones=_DONE)
+    _patch_collectors(monkeypatch, _candidate("decorators", topic="python", score=100))
+
+    def boom(self, intent):
+        raise RuntimeError("sessions.db is locked")
+
+    monkeypatch.setattr(PlanApplication, "assess", boom)
+
+    plan = build_now_plan()
+
+    [action] = plan.completion_actions
+    assert action.action == _pre_change_sentence("Done Plan")
+    assert any(
+        "done-plan" in warning and "assess" in warning.lower() for warning in plan.warnings
+    ), plan.warnings
+    assert plan.primary.concept == "decorators"

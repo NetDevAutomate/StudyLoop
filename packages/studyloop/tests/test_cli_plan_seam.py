@@ -700,3 +700,135 @@ def test_husk_refusal_names_both_pause_and_repair(runner, isolated_plans_dir) ->
     clean = _ANSI.sub("", result.output)
     assert "studyloop plan status husk paused" in clean
     assert "studyloop plan repair husk" in clean
+
+
+# ---------------------------------------------------------------------------
+# Item 4 (D-G) — `plan close <id>`: the closing review is a launch, not a write
+# ---------------------------------------------------------------------------
+
+
+def _closing_section(brief: str) -> list[str]:
+    """The ``- `` lines directly under the brief's first section."""
+    lines = brief.splitlines()
+    assert lines[0] == "### Closing review", brief
+    items: list[str] = []
+    for line in lines[1:]:
+        if line.startswith("### ") or line.startswith("## "):
+            break
+        if line.startswith("- "):
+            items.append(line[2:])
+    return items
+
+
+def _plant_end_evidence(monkeypatch, *, due: list[dict], mentions: list[dict]) -> None:
+    """Fixture rows for the end assessment's history readers (the same seam
+    ``test_now_plan_guidance.py`` uses): no sessions database is involved."""
+    from studyloop import history
+
+    monkeypatch.setattr(history, "spaced_repetition_due", lambda topic_keywords_map: list(due))
+    monkeypatch.setattr(history.progress, "get_struggling_topics", lambda days=30: [])
+    monkeypatch.setattr(history, "topic_frequency", lambda keywords, days=90: list(mentions))
+    monkeypatch.setattr(history, "last_studied", lambda keywords: None)
+    monkeypatch.setattr(history, "struggle_topics", lambda days=14, min_sessions=2: [])
+
+
+def test_plan_close_launches_the_architect_with_the_assessment_in_the_brief(
+    runner, isolated_plans_dir, tmp_path, monkeypatch
+) -> None:
+    """D-G: ``plan close <id>`` on a fully-checked plan is the architect launch —
+    the one ``study --mode plan-architect`` chain, sibling of ``plan repair`` —
+    with a brief whose first section is the closing review: the three counts,
+    the proposal and the evidence lines, readable off the top. The assessment
+    is the preview: the command writes nothing — document, status and
+    checkpoint log are untouched — because the learner, not the engine,
+    decides whether the plan is complete. The due fixture carries a
+    scheduler "new topic" row (``concept: None``) beside the real due row:
+    the brief's count is the completion review's — one, not two."""
+    from contextlib import ExitStack
+
+    store.plans_dir()
+    runner.invoke(cli, ["plan", "new", "--title", "Glue ETL", *READY, "--activate"])
+    runner.invoke(cli, ["plan", "milestone", "glue-etl", "0", "--done"])
+    runner.invoke(cli, ["plan", "milestone", "glue-etl", "1", "--done"])
+    assert store.load_plan("glue-etl").milestone_done == 2  # the fixture is fully checked
+    before = _documents(isolated_plans_dir)
+    _plant_end_evidence(
+        monkeypatch,
+        due=[
+            {
+                "topic": "data-engineering",
+                "concept": "glue job",
+                "confidence": "learning",
+                "last_studied": "2026-09-07",
+                "days_ago": 9,
+                "review_type": "overdue",
+            },
+            {
+                "topic": "data-engineering",
+                "concept": None,
+                "confidence": None,
+                "last_studied": None,
+                "days_ago": None,
+                "review_type": "New topic -- start fresh",
+                "evidence": "configured_topic",
+            },
+        ],
+        mentions=[{"snippet": "walked through a dynamicframe transform"}],
+    )
+
+    captured: dict = {}
+    calls: list = []
+    with ExitStack() as stack:
+        for p in _launch_patches(tmp_path, captured, calls):
+            stack.enter_context(p)
+        monkeypatch.setenv("TMUX", "/tmp/tmux")
+        result = runner.invoke(cli, ["plan", "close", "glue-etl"])
+
+    assert result.exit_code == 0, result.output
+    assert calls == ["Glue ETL"], calls  # one launch, topic = the plan's title
+    assert captured["mode"] == "plan-architect"
+
+    items = _closing_section(captured["brief"])
+    assert items[:4] == [
+        "Due reviews on plan concepts: 1",
+        "Struggles on plan concepts: 0",
+        "Unverified milestones: 0",
+        "Proposal: extend",
+    ], items
+    assert any("glue job" in item for item in items[4:]), items  # the evidence names the concept
+    assert "2/2" in captured["brief"]  # milestones done/total, as the plan stands
+
+    intro = captured["brief_intro"]
+    assert "CLOSING REVIEW" in intro
+    assert "build a study plan" not in intro
+    assert "only when the learner agrees" in intro
+
+    assert _documents(isolated_plans_dir) == before
+    assert store.load_plan("glue-etl").status == "active"
+    assert index_module.checkpoint_history("glue-etl") == []
+
+
+def test_plan_close_on_an_unfinished_plan_refuses(
+    runner, isolated_plans_dir, tmp_path, monkeypatch
+) -> None:
+    """A plan with open milestones has nothing to close: exit 1, the count of
+    open milestones in the message, no launch, nothing written."""
+    from contextlib import ExitStack
+
+    store.plans_dir()
+    runner.invoke(cli, ["plan", "new", "--title", "Glue ETL", *READY, "--activate"])
+    before = _documents(isolated_plans_dir)
+
+    calls: list = []
+    with ExitStack() as stack:
+        for p in _launch_patches(tmp_path, {}, calls):
+            stack.enter_context(p)
+        monkeypatch.setenv("TMUX", "/tmp/tmux")
+        result = runner.invoke(cli, ["plan", "close", "glue-etl"])
+
+    assert result.exit_code == 1, result.output
+    clean = _ANSI.sub("", result.output)
+    assert "'glue-etl' still has 2 open milestone(s)" in clean
+    assert "Traceback" not in clean
+    assert calls == []  # no launch
+    assert _documents(isolated_plans_dir) == before
