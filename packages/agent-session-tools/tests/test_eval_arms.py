@@ -665,7 +665,16 @@ class TestPlannerIsolation:
 
     def test_planner_patch_restored_after_tool_error(self, eval_db, monkeypatch):
         """A transport failure inside the patched call restores the module attribute
-        and the environment, so the next arm -- shipped included -- plans as itself."""
+        and the environment, so the next arm -- shipped included -- plans as itself.
+
+        The failing transport is patched inside its own ``MonkeyPatch.context()``
+        rather than undone with ``monkeypatch.undo()``: ``undo()`` reverts every
+        patch on the fixture, including the autouse ``STUDYLOOP_CONFIG`` that
+        makes this module hermetic, so the follow-up arm then read whichever
+        scope the *machine* had -- passing on a developer box, failing with
+        ``scope_unconfigured`` under a fresh HOME (CI, and the full-suite home
+        guard). The test is about the arm's own restoration, not the fixture's.
+        """
         before = retrieval.plan_natural_language
         mode_before = os.environ.get("STUDYLOOP_RETRIEVAL_MODE")
         arm = McpArm(eval_db, rows=10, planner="and_then_prose_or")
@@ -674,14 +683,14 @@ class TestPlannerIsolation:
             coro.close()  # the coroutine is never awaited; do not warn about it
             raise RuntimeError("tool transport failed")
 
-        monkeypatch.setattr(arms_module, "_run", explode)
-        with pytest.raises(ArmError) as raised:
-            arm.search(Query(text=PLANTED), 5)
+        with monkeypatch.context() as transport:
+            transport.setattr(arms_module, "_run", explode)
+            with pytest.raises(ArmError) as raised:
+                arm.search(Query(text=PLANTED), 5)
         assert raised.value.kind == "other"
         assert "tool transport failed" in str(raised.value)
         assert retrieval.plan_natural_language is before
         assert os.environ.get("STUDYLOOP_RETRIEVAL_MODE") == mode_before
-        monkeypatch.undo()
 
         shipped = McpArm(eval_db, rows=10)
         assert _ids(shipped, f"is {PLANTED} a quokkasaurus") == ["s-alpha"]
