@@ -87,22 +87,31 @@ do not move.
       view; persona "Repairing a plan" subsection (projections + manifest regenerated); docs; spec deltas.
       DoD: full suite; `tests/test_architecture_plan_seam.py` green; `just lint && just typecheck`.
 
-## Item 3b — mission writer for `update_study_plan` (design §3b; filed 2026-09-17, **unbuilt**) · files: `planning/{intents,application}.py`, `mcp/` plan tools, `web/routes/plans.py`, persona repair table (+ projections + manifest), tests, `docs/study-plans.md`, spec deltas `mcp-server`, `web-ui`
+## Item 3b — mission writer for `update_study_plan` (design §3b; filed and **built** 2026-09-17) · files: `planning/{intents,application}.py`, `mcp/tools.py`, `web/routes/plans.py`, persona (+ projections + manifest), tests, `docs/{study-plans,agent-install}.md`, spec deltas `mcp-server`, `web-ui`
 
-Why: `readiness()` has three blocker classes but `RevisePlan` has no mission fields, so the architect
-`plan repair` launches cannot itself repair the commonest husk (no mission) — it dictates the edit. One
+Why: `readiness()` has three blocker classes but `RevisePlan` had no mission fields, so the architect
+`plan repair` launches could not itself repair the commonest husk (no mission) — it dictated the edit. One
 writer, through the existing gate, closes that. Kept out of item 3 so item 3's finish stayed countable.
 
-- [ ] **T3b.0** Owner decision: does the CLI gain a matching `plan revise --why/--success`, or stay
-      MCP/Web-only (the persona's CLI fallback row currently says no CLI command edits a plan's fields, on purpose)?
-- [ ] **T3b.1** RED `tests/test_plan_application.py::test_revise_sets_mission_fields_through_the_one_gate`
-      (why + success on a draft → readiness flips; on an active husk a partial mission write is refused and
-      nothing is saved; a write clearing every blocker in one call is saved once);
-      `tests/test_mcp_plan_tools.py` (or its equivalent): `update_study_plan(why=…, success=[…])` reaches
-      `RevisePlan`; `tests/test_web_plans_seam.py`: `PATCH /api/plans/{id}` with `why`/`success`.
-      DoD: RED committed.
-- [ ] **T3b.2** GREEN: `RevisePlan.why/success` (+ `constraints`, `out_of_scope`), `_revise` applies them before
-      the gate; MCP + Web expose them; persona repair table drops "no tool writes the mission"; docs; spec deltas.
+- [x] **T3b.0** (owner, 2026-09-17: "Do 3b first, MCP and Web only") No CLI `plan revise`; the persona's CLI
+      fallback row keeps saying no CLI command edits an existing plan's fields.
+- [x] **T3b.1** (RED `35d890ef`: 10 failed / 195 passed across `test_plan_application.py` (mission fields on a
+      draft flip readiness without activating; `None` leaves as is / list replaces whole; partial mission on a
+      husk refused with the one remaining blocker and nothing written, both fields in one call saved once and
+      the husk gone; bare string for a list field `InvalidField` before any write — built in the body so a
+      missing field fails one test, not collection), `test_mcp_plan_tools.py` (four fields reach `RevisePlan`;
+      omitted → `None`), `test_web_plans_seam.py` (PATCH partial → 422 with the remaining blocker; whole → 200,
+      list row `ready`; string for a list → 400). Each failure the intended missing field / unexpected kwarg /
+      silently-dropped body key.) DoD: RED committed.
+- [x] **T3b.2** (GREEN `653e825b`: 10 RED → green; twelve-file run 478 passed; full suite 31 failed / 7219
+      passed / 4 skipped / 14 errors in 1023 s, `comm` against a clean `35d890ef` control run in parallel:
+      item3b − control = ∅, control − item3b = exactly the 10 REDs, the 45 shared ids byte-identical to the
+      item-3 environmental set; `just lint` clean, `just typecheck` 0 errors, `mkdocs build --strict` clean,
+      `openspec validate` valid; hooks first time. Contract changes recorded at their pins: schema +4
+      properties; the review-5 agent-install pin flipped with its schema premise and was renamed.)
+      GREEN: `RevisePlan.why/success/constraints/out_of_scope`, `_revise` applies them before the gate (and the
+      duplicate-record short-circuit sees them); MCP + Web expose them; persona repair table drops "no tool
+      writes the mission"; docs; spec deltas.
       DoD: full suite; `tests/test_architecture_plan_seam.py` green; `just lint && just typecheck`.
 
 ## Item 4 — `plan close <id>` (D-G) · files: `learning/decision.py`, `cli/{_plan,_now}.py`, `learning/recap.py`, `web/static/js/components/today-panel.js`, `web/static/index.html`, persona (+ projections + manifest), tests, `docs/study-plans.md`, spec delta `active-learning-decisions`, `cli-surface`

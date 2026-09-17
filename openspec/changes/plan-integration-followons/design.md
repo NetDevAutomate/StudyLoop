@@ -113,22 +113,31 @@ husk doc?" and chose this shape):
   `cli/_plan.py` import it through the package without an architecture-guard exception — the guard's covering
   test flagged the authoring placement, correctly.
 
-### 3b. Mission writer for `update_study_plan` (filed, **unbuilt**)
+### 3b. Mission writer for `update_study_plan` (filed and **built** 2026-09-17)
 
 Found while answering the question above: `readiness()` has three blocker classes (mission `why`, `success`
-criteria, `milestones`), but `RevisePlan` — what `update_study_plan` maps to — has **no mission fields**, and
-the only write that can set a mission is `ReplaceDocument`, whose sole caller is the Web `PATCH markdown`
-route. So the architect `plan repair` launches can repair a missing-milestones husk over MCP but can only
-*dictate* the fix for the husk fixture itself (no mission): the learner edits the document. Item 3 ships with
-the persona saying exactly that; it does not hide the gap.
+criteria, `milestones`), but `RevisePlan` — what `update_study_plan` maps to — had **no mission fields**, and
+the only write that could set a mission was `ReplaceDocument`, whose sole caller is the Web `PATCH markdown`
+route. So the architect `plan repair` launched could repair a missing-milestones husk over MCP but could only
+*dictate* the fix for the husk fixture itself (no mission). Item 3 shipped with the persona saying exactly that.
 
-Proposed 3b, its own RED (not widened into item 3, so item 3's finish stayed countable): `RevisePlan` gains
-`why: str | None` and `success: Sequence[str] | None` (and, for symmetry, `constraints` and `out_of_scope`),
-applied by `_revise` before the one gate like every other field; `update_study_plan` and `PATCH /api/plans/{id}`
-expose them; the persona's repair table loses its "no tool writes the mission" row. Readiness-gated as today:
-an active husk is repaired in one call that clears every blocker, or paused first. Owner decision pending on
-whether the CLI (`plan new` already has `--why`/`--success`) gains a matching `plan revise`, or stays as is
-(the persona's CLI fallback row says "no CLI command edits an existing plan's fields", deliberately).
+Built as its own RED/GREEN (`35d890ef` → `653e825b`), not widened into item 3, so item 3's finish stayed
+countable. `RevisePlan` gained `why: str | None`, `success`, `constraints`, `out_of_scope: Sequence[str] |
+None`, applied by `_revise` to the candidate's `Mission` after every field is validated and before the one
+gate — `None` leaves as is, a list replaces the whole list stripped of blanks, a bare string where a list
+belongs is `InvalidField` before any write (the same rule as `topics`); the duplicate-record short-circuit sees
+mission updates too. `update_study_plan` and `PATCH /api/plans/{id}` expose them on the same intent. The
+persona's repair table lost its "no tool writes the mission" row; the two Revise rows lost "not the mission";
+the gate paragraph gained the one-call alternative beside the pause path.
+
+**Owner decision (T3b.0, 2026-09-17):** MCP and Web only — no CLI `plan revise`. The persona's CLI fallback
+row keeps saying no CLI command edits an existing plan's fields, on purpose.
+
+Two pins flipped with the design, deliberately and at their source: `test_schemas_carry_the_design_signatures`
+(the `update_study_plan` property set grows by four), and review 5's
+`test_agent_install_doc_does_not_promise_mission_revision_over_mcp`, whose premise was `"why" not in schema` —
+renamed `…_promises_exactly_what_update_study_plan_revises` and inverted: the install doc now lists the mission
+among what MCP revises and the row names every schema property.
 
 ## 4. `plan close <id>` — evidence-based, consensual completion (D-G)
 
