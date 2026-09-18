@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: The completion action is a closing review, never a verdict
-Rule 8's completion action for a fully-checked active plan (item 4 / D-G)
+Rule 9's completion action for a fully-checked active plan (item 4 / D-G)
 SHALL be composed from the plan's **end assessment**, read through the preview
 path — `PlanApplication().assess(AssessPlan(plan_id, phase="end",
 record=False))` — exactly once per fully-checked plan per `build_now_plan`. The

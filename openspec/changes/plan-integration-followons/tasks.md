@@ -154,15 +154,38 @@ writer, through the existing gate, closes that. Kept out of item 3 so item 3's f
 
 ## ⚖ Council review 6 — items 1–4
 
-- [ ] **T6.1** Brief `council/brief-review6-2026-09-16.md` (shape of `brief-review4-…`): decisions, the probe
+- [x] **T6.1** (`d0251fd1`: brief `council/brief-review6-2026-09-18.md` — dated the day it was written, not the
+      change's authoring date — 6,082 lines, range `1565234a..9d10fee6`, every diff grouped by item, the seven
+      outside-the-items commits classified, ten deliverables; seats run 09:59:01Z, all three `finish_reason=stop`,
+      no re-run: GPT ACCEPT-WITH-CORRECTIONS 2🔴/5🟡, Grok ACCEPT 0/0/5🔵, qwen ACCEPT 1🔴/1🟡-already-addressed.)
+      Brief `council/brief-review6-2026-09-16.md` (shape of `brief-review4-…`): decisions, the probe
       receipt, diff summary `1565234a..HEAD`, test output, spec deltas, the rubric row 4b.
       `uv run --group dev python scripts/council/run_council.py --brief <brief> --system scripts/council/system-seat.md
       --out docs/architecture/plan-integration/council/review6 --seat openai.gpt-6-astra --seat grok-4.6 --seat qwen3-coder
       --max-tokens 40000 --timeout 1700`. Re-run any seat with empty content or `finish_reason=length` alone
       (keep `*.run1.json`).
-- [ ] **T6.2** Reproduce every 🔴/🟡 by probe or RED test before accepting; arbitration
-      `council/review-6-arbitration-2026-09-16.md` ends `GATE: ACCEPT|FAIL`; corrections one commit per finding.
-- [ ] **T6.3** `scripts/verify/plan_integration.py --out docs/architecture/plan-integration/receipts/verify-<sha>.json`
+- [x] **T6.2** (arbitration `council/review-6-arbitration-2026-09-18.md`, `GATE: ACCEPT`. Seven corrections, each
+      RED-before-GREEN in its own commit: `f937b1b5` F1 partial assessment never proposes a clean close
+      (`CompletionReview.partial`, `PARTIAL_READ_MARKER`, persona, spec); `97efcc4a` F3a the options wait is bounded
+      (`optionsWaitMs` 8 s, JS 137); `0887b1fb` F4 honest provenance/doctor wording + `survey_husks()` names
+      unreadable documents; `13b5d121` F5 Claude server path from `installers._mcp_config_path`, mentor activation,
+      re-probe note; `6d01d919` F6 Today card one block per plan, label "Closing review" (JS 139); `88aa6610` F2
+      `planning.one_line` shared by the CLI briefs and the Web door; `8d825a52` F7 six branch/exit tests,
+      mutation-proved. Refuted with a named test: qwen's empty-agent claim. Carried to the owner (arbitration §"Still
+      open"): the abandonment contract (F3b), `plan close` on checked non-active plans, the `session-db` prompt probe.
+      Two cheap pins deferred: `test_plan_repair_nonactive_unready_is_noop_with_pointer`,
+      `test_duplicate_learning_record_with_mission_revision_still_saves_once`.) Reproduce every 🔴/🟡 by probe or
+      RED test before accepting; arbitration `council/review-6-arbitration-2026-09-16.md` ends `GATE: ACCEPT|FAIL`;
+      corrections one commit per finding.
+- [x] **T6.3** (`receipts/verify-d0251fd1.json`, tree clean, 31 checks — 29 + `architect-grants` (in-process,
+      inventory-derived, `problems=[]`) + `repair-close-refusals` (4 node ids), registered RED `3844c3e0` → GREEN
+      `b9773007`: **30/31 ok**; the one red is `full-suite-studyloop`, 30 failed / 5108 passed / 14 errors, and its
+      new `failed_nodes` field on the receipt lists exactly the 44 sandbox-environmental ids named in
+      `receipts/full-suite-control-item4-2026-09-18.md` (run − named = ∅, named − run = ∅, checked from the
+      receipt alone — the reason `failed_nodes` was added: the earlier 12-line `output_tail` could not name them).
+      `plan-suites` 518 (was 503 at `9d10fee6`), `browser-journey-e2e` 11, `full-suite-agent-session-tools` 2146.
+      Nothing skipped. CI on the pushed branch is the run that sees those 44 green.)
+      `scripts/verify/plan_integration.py --out docs/architecture/plan-integration/receipts/verify-<sha>.json`
       → all registered checks ok (29 + the new ones; never skip).
 
 ## Item 5 — energy demand + body-doubling floor (D-F) · own round
