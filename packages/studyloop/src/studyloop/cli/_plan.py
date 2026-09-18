@@ -669,6 +669,16 @@ def _render_closing_brief(detail: PlanDetail, review: CompletionReview) -> str:
         f"Proposal: {proposal}",
         *(one_line(line) for line in review.evidence),
     ]
+    if detail.summary.status != "active":
+        # Owner decision 2026-09-18 (council review 6, open item 2): a learner
+        # who has checked every milestone of a plan that is no longer active may
+        # close it or delete it — the architect asks which, never assumes.
+        lines.append(
+            f"Status: {detail.summary.status} — not active; ask the learner whether to close "
+            'it (set_study_plan_status(plan_id, "complete")) or delete it '
+            "(delete_study_plan(plan_id, confirmed=True), only after they say so in this "
+            "conversation)"
+        )
     return (
         "### Closing review\n\n"
         + "\n".join(f"- {line}" for line in lines)
@@ -699,7 +709,10 @@ def plan_close(ctx: click.Context, plan_id: str, agent: str | None) -> None:
     only when the learner agrees in that session (``set_study_plan_status``).
 
     A plan with open milestones has nothing to close yet (exit 1, naming how
-    many are open); a plan that is already ``complete`` is left alone.
+    many are open); a plan that is already ``complete`` is left alone. A
+    fully-checked ``draft``, ``paused`` or ``abandoned`` plan is reviewed too
+    (owner decision 2026-09-18): the brief names its status and the architect
+    asks the learner whether to close it or delete it.
     """
     detail = _inspect(plan_id)
     s = detail.summary
@@ -724,16 +737,18 @@ def plan_close(ctx: click.Context, plan_id: str, agent: str | None) -> None:
 
     from studyloop.cli._study import study
 
+    standing = "" if s.status == "active" else f" (the plan is {s.status}, not active)"
     if review.partial:
         console.print(
-            f"[yellow]{s.plan_id!r} ({s.title}) has every milestone checked, but the closing "
-            "review is partial — a reader was unavailable, so it does not propose. Launching "
-            "the architect to walk what was read with you.[/yellow]"
+            f"[yellow]{s.plan_id!r} ({s.title}) has every milestone checked{standing}, but the "
+            "closing review is partial — a reader was unavailable, so it does not propose. "
+            "Launching the architect to walk what was read with you.[/yellow]"
         )
     else:
         console.print(
-            f"[green]{s.plan_id!r} ({s.title}) has every milestone checked; the closing review "
-            f"proposes: {review.proposal}. Launching the architect to decide with you.[/green]"
+            f"[green]{s.plan_id!r} ({s.title}) has every milestone checked{standing}; the closing "
+            f"review proposes: {review.proposal}. Launching the architect to decide with "
+            "you.[/green]"
         )
     ctx.invoke(
         study,

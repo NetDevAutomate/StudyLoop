@@ -80,8 +80,15 @@ not-found through `_fail_for`, exit `1`); SHALL exit `1` with `'<id>' still
 has N open milestone(s)` and no launch while any milestone is open; SHALL
 exit `1` with a pointer to `studyloop plan architect` for a plan with no
 milestones; SHALL exit `0` with no launch for a plan that is already
-`complete`; and for a fully-checked plan SHALL run the end assessment as a
-**preview** (`AssessPlan(phase="end", record=False)`) and launch once. The
+`complete`; and for a fully-checked plan of any other status SHALL run the end
+assessment as a **preview** (`AssessPlan(phase="end", record=False)`) and
+launch once. A fully-checked `draft`, `paused` or `abandoned` plan is reviewed
+like an active one (owner decision 2026-09-18, council review 6 open item 2):
+the learner may close it or delete it, and the architect asks which — the
+brief's closing section SHALL end with a `Status: <status> — not active; ask
+the learner whether to close it (…) or delete it (…)` line naming both doors,
+`set_study_plan_status(plan_id, "complete")` and `delete_study_plan(plan_id,
+confirmed=True)`, and the status line SHALL name the status. The
 command itself SHALL write nothing: the document, the plans directory, the
 plan's status and the checkpoint log are unchanged after it returns; the
 status moves to `complete` only when the learner agrees in the launched
@@ -89,14 +96,17 @@ session and the architect calls `set_study_plan_status`.
 
 The brief's first section SHALL be `### Closing review`, whose first four
 `- ` lines are `Due reviews on plan concepts: N`, `Struggles on plan
-concepts: N`, `Unverified milestones: N` and `Proposal: extend|close`,
-followed by one `- ` evidence line per counted item — the same
+concepts: N`, `Unverified milestones: N` and `Proposal: extend|close` — or
+`Proposal: unassessed — the review is partial` when a reader was unavailable
+(council review 6 F1) — followed by one `- ` evidence line per counted item
+and one `Not read: …` line per unavailable reader — the same
 `CompletionReview` the `now` engine puts on its completion action, so the two
-never disagree on a count (new-topic rows excluded) — then the plan as it
-stands (title, id, status, topics, milestones done/total, created), and a
-`### Data gaps` section only when the evaluation reported a reader
-unavailable. The `brief_intro` SHALL say `CLOSING REVIEW` and `only when the
-learner agrees`, and SHALL NOT say `build a study plan`.
+never disagree on a count (new-topic rows excluded) — then, for a non-active
+plan, the `Status:` line above, then the plan as it stands (title, id, status,
+topics, milestones done/total, created), every learner-authored value one
+line (`planning.one_line`, council review 6 F2). The `brief_intro` SHALL say
+`CLOSING REVIEW` and `only when the learner agrees`, and SHALL NOT say `build a
+study plan`.
 
 #### Scenario: plan close on a fully-checked plan launches once with the review first and writes nothing
 - **WHEN** `plan close glue-etl` is run on an active plan whose two milestones
@@ -110,6 +120,14 @@ learner agrees`, and SHALL NOT say `build a study plan`.
   `CLOSING REVIEW` and `only when the learner agrees` and not `build a study
   plan`; the plans directory, the plan's `active` status and the checkpoint
   history are unchanged
+
+#### Scenario: plan close on a fully-checked non-active plan launches and names both doors
+- **WHEN** `plan close glue-etl` is run on a plan whose two milestones are both
+  done and whose status is `abandoned`, `paused` or `draft`
+- **THEN** exactly one launch is made; the status line names the status; the
+  `### Closing review` section's last line begins `Status: <status>` and names
+  `set_study_plan_status`, `delete_study_plan` and asking the learner; the
+  plans directory and the plan's status are unchanged
 
 #### Scenario: plan close on an unfinished plan refuses without launching
 - **WHEN** `plan close glue-etl` is run on an active plan with two open

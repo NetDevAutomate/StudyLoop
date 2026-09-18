@@ -85,7 +85,7 @@ studyloop plan new --title TITLE [--why WHY] [--topic T] [--success S] [--milest
 studyloop plan new --title TITLE --activate  # Activate on create (refused if incomplete)
 studyloop plan list [--status draft|active|paused|complete|abandoned] [--husks] [--json]  # `!` after the status marks an active plan that is not ready; --json rows carry `ready`
 studyloop plan repair PLAN_ID [--agent A]  # Launch the architect on an active-but-unready plan with its blockers in the brief (writes nothing itself)
-studyloop plan close PLAN_ID [--agent A]   # Launch the architect on a fully-checked plan with the closing review in the brief; status changes only when you agree
+studyloop plan close PLAN_ID [--agent A]   # Launch the architect on a fully-checked plan with the closing review in the brief; status changes only when you agree (a paused/abandoned/draft plan: close or delete, your call)
 studyloop plan show PLAN_ID [--markdown] [--json]
 studyloop plan status PLAN_ID active      # Change lifecycle state
 studyloop plan milestone PLAN_ID INDEX [--done|--undone]  # Toggle or set a milestone

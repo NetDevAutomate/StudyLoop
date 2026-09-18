@@ -228,6 +228,17 @@ session. The review counts only due rows that name a concept: the scheduler's
    never recorded (`studyloop progress CONCEPT -t TOPIC -c confident`), so the
    spaced-repetition loop keeps what the plan taught.
 
+If the closing section ends with a `Status:` line — the plan is `abandoned`,
+`paused` or `draft`, not active, and every milestone is checked — the learner
+may close it or delete it, and you ask which (owner decision 2026-09-18). Say
+what each means first: closing keeps the document — mission, milestones,
+learning records — as `complete` (`set_study_plan_status(plan_id, "complete")`);
+deleting removes it and leaves only the checkpoint log
+(`delete_study_plan(plan_id, confirmed=True)`). Delete only after the learner
+has said, in so many words, that this plan goes — the standing rule above holds
+here too: never to tidy up, never on a retry, never because the status was
+`abandoned`. If they are unsure, closing is the reversible choice; offer it.
+
 If the proposal line reads `unassessed — the review is partial`, one of the
 assessment's readers was unavailable and the counts are what was read so far;
 the review lists each gap as a `Not read:` line. Say so before anything else,

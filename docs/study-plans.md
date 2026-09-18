@@ -235,7 +235,10 @@ should not tell you to start fresh. Nothing about a plan's status changes
 because of the review; `studyloop plan close PLAN_ID` launches the architect
 with the same review as the first section of its brief, and the plan becomes
 `complete` only when you agree in that conversation (the architect calls
-`set_study_plan_status`). If the assessment cannot be read, the completion
+`set_study_plan_status`). A plan you had paused or abandoned, or never
+activated, can be closed the same way once every milestone is checked — the
+architect asks whether you want it closed (kept as `complete`) or deleted, and
+deletes only when you say so. If the assessment cannot be read, the completion
 action keeps its plain sentence and a warning says why — a failure is never
 shown as a clean slate. This is plan-aware guidance with tested ranking rules — a bias, not
 a filter: an overdue review or a fresh struggle on an unrelated topic can
