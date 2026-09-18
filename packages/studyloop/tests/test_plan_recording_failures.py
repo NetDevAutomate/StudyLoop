@@ -15,6 +15,7 @@ database happens to contain. Council review 1, finding F6.
 from __future__ import annotations
 
 import pytest
+from _sessions_db_template import seed_sessions_db
 
 from studyloop.planning import evaluation as evaluation_module
 from studyloop.planning import index as index_module
@@ -33,8 +34,8 @@ def isolated_plans_dir(tmp_path, monkeypatch):
 
 @pytest.fixture(autouse=True)
 def isolated_checkpoint_db(tmp_path, monkeypatch):
-    """A fresh sessions database per test; the schema is created on first connect."""
-    monkeypatch.setenv("STUDYLOOP_DB", str(tmp_path / "sessions.db"))
+    """A fresh sessions database per test, seeded from the migrated template."""
+    seed_sessions_db(tmp_path / "sessions.db", monkeypatch)
     return tmp_path / "sessions.db"
 
 

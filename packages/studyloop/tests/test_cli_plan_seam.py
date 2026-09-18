@@ -25,6 +25,7 @@ import json
 import re
 
 import pytest
+from _sessions_db_template import seed_sessions_db
 from click.testing import CliRunner
 
 from studyloop.cli import cli
@@ -51,7 +52,7 @@ def isolated_plans_dir(tmp_path, monkeypatch):
 
 @pytest.fixture(autouse=True)
 def isolated_checkpoint_db(tmp_path, monkeypatch):
-    monkeypatch.setenv("STUDYLOOP_DB", str(tmp_path / "sessions.db"))
+    seed_sessions_db(tmp_path / "sessions.db", monkeypatch)
 
 
 @pytest.fixture

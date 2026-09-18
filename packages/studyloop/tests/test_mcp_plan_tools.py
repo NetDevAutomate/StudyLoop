@@ -42,6 +42,7 @@ import pytest
 
 pytest.importorskip("mcp")
 
+from _sessions_db_template import seed_sessions_db
 from mcp.server.fastmcp.exceptions import ToolError
 
 from studyloop.planning import (
@@ -121,7 +122,7 @@ def isolated_plans_dir(tmp_path, monkeypatch):
 def isolated_checkpoint_db(tmp_path, monkeypatch):
     """``store.create_plan`` refreshes the derived index in the sessions
     database; keep that off any developer database (council review 2, F10)."""
-    monkeypatch.setenv("STUDYLOOP_DB", str(tmp_path / "sessions.db"))
+    seed_sessions_db(tmp_path / "sessions.db", monkeypatch)
 
 
 @pytest.fixture

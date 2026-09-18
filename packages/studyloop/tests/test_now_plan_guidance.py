@@ -28,6 +28,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+from _sessions_db_template import seed_sessions_db
 
 from studyloop.learning import decision
 from studyloop.learning.decision import PlanRef, _Candidate, build_now_plan
@@ -76,7 +77,7 @@ def isolate_now_world(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         encoding="utf-8",
     )
     monkeypatch.setenv("STUDYLOOP_CONFIG", str(config))
-    monkeypatch.setenv("STUDYLOOP_DB", str(tmp_path / "sessions.db"))
+    seed_sessions_db(tmp_path / "sessions.db", monkeypatch)
     monkeypatch.setenv("STUDYLOOP_STATE_DIR", str(tmp_path / "state"))
     monkeypatch.setenv(store.PLANS_DIR_ENV, str(tmp_path / "study-plans"))
     monkeypatch.setattr(decision, "datetime", _FrozenDatetime)

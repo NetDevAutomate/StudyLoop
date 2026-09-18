@@ -46,6 +46,7 @@ from _helpers import run_async
 pytest.importorskip("fastapi")
 pytest.importorskip("mcp")
 
+from _sessions_db_template import seed_sessions_db
 from fastapi.testclient import TestClient  # pyright: ignore[reportMissingImports]
 
 from studyloop.planning import store
@@ -111,7 +112,7 @@ def plans_dir(tmp_path, monkeypatch) -> Path:
     """One plans directory for BOTH the Web routes and the MCP tools — the
     point of the journey is that they see the same documents."""
     monkeypatch.setenv(store.PLANS_DIR_ENV, str(tmp_path / "study-plans"))
-    monkeypatch.setenv("STUDYLOOP_DB", str(tmp_path / "sessions.db"))
+    seed_sessions_db(tmp_path / "sessions.db", monkeypatch)
     return tmp_path / "study-plans"
 
 

@@ -17,6 +17,7 @@ import dataclasses
 import json
 
 import pytest
+from _sessions_db_template import seed_sessions_db
 
 from studyloop.planning import store
 from studyloop.planning.application import PlanApplication
@@ -49,7 +50,7 @@ def isolated_plans_dir(tmp_path, monkeypatch):
 def isolated_checkpoint_db(tmp_path, monkeypatch):
     """A fresh checkpoint database per test, so "no history" is a fact about
     this test rather than about what the suite's shared database holds (F6)."""
-    monkeypatch.setenv("STUDYLOOP_DB", str(tmp_path / "sessions.db"))
+    seed_sessions_db(tmp_path / "sessions.db", monkeypatch)
     return tmp_path / "sessions.db"
 
 

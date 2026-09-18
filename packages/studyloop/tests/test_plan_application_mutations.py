@@ -23,6 +23,7 @@ import dataclasses
 import json
 
 import pytest
+from _sessions_db_template import seed_sessions_db
 
 from studyloop.planning import index as index_module
 from studyloop.planning import store
@@ -63,7 +64,7 @@ def isolated_plans_dir(tmp_path, monkeypatch):
 @pytest.fixture(autouse=True)
 def isolated_checkpoint_db(tmp_path, monkeypatch):
     """A fresh checkpoint database per test (council review 1, F6)."""
-    monkeypatch.setenv("STUDYLOOP_DB", str(tmp_path / "sessions.db"))
+    seed_sessions_db(tmp_path / "sessions.db", monkeypatch)
     return tmp_path / "sessions.db"
 
 

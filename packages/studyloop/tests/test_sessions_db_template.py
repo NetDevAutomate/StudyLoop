@@ -24,11 +24,8 @@ import re
 import sqlite3
 from pathlib import Path
 
-import _sessions_db_template as template_module  # pyright: ignore[reportMissingImports]
-from _sessions_db_template import (  # pyright: ignore[reportMissingImports]
-    seed_sessions_db,
-    template_path,
-)
+import _sessions_db_template as template_module
+from _sessions_db_template import seed_sessions_db, template_path
 
 
 def _schema(db: Path) -> set[tuple[str, str, str]]:

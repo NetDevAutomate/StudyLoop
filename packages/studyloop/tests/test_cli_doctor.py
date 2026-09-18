@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 import click
 import pytest
+from _sessions_db_template import seed_sessions_db
 from click.testing import CliRunner
 
 from studyloop.doctor.models import CheckResult
@@ -201,7 +202,7 @@ class TestStudyPlansCheck:
         from studyloop.planning import store
 
         monkeypatch.setenv(store.PLANS_DIR_ENV, str(tmp_path / "study-plans"))
-        monkeypatch.setenv("STUDYLOOP_DB", str(tmp_path / "sessions.db"))
+        seed_sessions_db(tmp_path / "sessions.db", monkeypatch)
         self.plans_dir = store.plans_dir()
 
     def test_doctor_names_each_active_but_unready_plan_with_its_blockers(self) -> None:

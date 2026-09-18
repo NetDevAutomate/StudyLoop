@@ -21,6 +21,7 @@ import json
 from datetime import UTC, date, datetime, timedelta
 
 import pytest
+from _sessions_db_template import seed_sessions_db
 
 from studyloop.planning import store
 from studyloop.planning.application import PlanApplication
@@ -44,7 +45,7 @@ def isolated_plans_dir(tmp_path, monkeypatch):
 
 @pytest.fixture(autouse=True)
 def isolated_checkpoint_db(tmp_path, monkeypatch):
-    monkeypatch.setenv("STUDYLOOP_DB", str(tmp_path / "sessions.db"))
+    seed_sessions_db(tmp_path / "sessions.db", monkeypatch)
 
 
 @pytest.fixture

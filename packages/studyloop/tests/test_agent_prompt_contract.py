@@ -19,6 +19,7 @@ from pathlib import Path
 import click
 import pytest
 import typer
+from _sessions_db_template import seed_sessions_db
 from typer.testing import CliRunner
 
 runner = CliRunner()
@@ -455,7 +456,7 @@ def test_bridge_add_persists_to_the_database_not_config_yaml(tmp_path, monkeypat
     )
     before = config_path.read_bytes()
     monkeypatch.setenv("STUDYLOOP_CONFIG", str(config_path))
-    monkeypatch.setenv("STUDYLOOP_DB", str(tmp_path / "sessions.db"))
+    seed_sessions_db(tmp_path / "sessions.db", monkeypatch)
 
     result = click_runner.invoke(
         cli,

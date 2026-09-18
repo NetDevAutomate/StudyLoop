@@ -18,6 +18,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 import pytest
+from _sessions_db_template import seed_sessions_db
 
 from studyloop.planning import CreatePlan, PlanApplication, store
 
@@ -25,7 +26,7 @@ from studyloop.planning import CreatePlan, PlanApplication, store
 @pytest.fixture(autouse=True)
 def isolated_world(tmp_path, monkeypatch):
     monkeypatch.setenv(store.PLANS_DIR_ENV, str(tmp_path / "study-plans"))
-    monkeypatch.setenv("STUDYLOOP_DB", str(tmp_path / "sessions.db"))
+    seed_sessions_db(tmp_path / "sessions.db", monkeypatch)
 
 
 def _answers() -> dict[str, object]:

@@ -20,6 +20,7 @@ import pytest
 
 pytest.importorskip("fastapi")
 
+from _sessions_db_template import seed_sessions_db
 from fastapi.testclient import TestClient
 
 from studyloop.planning import PlanApplication, store
@@ -35,7 +36,7 @@ def isolated_plans_dir(tmp_path, monkeypatch):
 
 @pytest.fixture(autouse=True)
 def isolated_checkpoint_db(tmp_path, monkeypatch):
-    monkeypatch.setenv("STUDYLOOP_DB", str(tmp_path / "sessions.db"))
+    seed_sessions_db(tmp_path / "sessions.db", monkeypatch)
 
 
 @pytest.fixture
