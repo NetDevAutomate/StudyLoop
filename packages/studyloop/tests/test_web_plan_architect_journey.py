@@ -592,6 +592,16 @@ def test_abandoning_a_launch_mid_flight_leaves_no_session_and_no_plan(
     ws_urls = [u for u in probe["sockets"] if "/api/session/ws" in u]
     assert len(ws_urls) <= 1, ws_urls
     assert probe["startEvents"] == 1, "one launch, one start event, even when abandoned"
+    # The label is cleared by the console's stop() on the study-session-stop
+    # event — a different async path from the /api/session/state poll above —
+    # so wait for that state rather than reading the DOM one frame early (CI
+    # run 35341660469 attempt 2 read a visible label with empty text).
+    page.wait_for_function(
+        """() => [...document.querySelectorAll('[data-testid="console-purpose-label"]')]
+             .every((el) => el.offsetParent === null
+                            || window.getComputedStyle(el).display === 'none')""",
+        timeout=10000,
+    )
     assert _visible_purpose_labels(page) == []
     # The slot is free: the abandoned session's id is not what a reconnect would find.
     assert state.get("last_release", {}).get("study_session_id", study_id) == study_id
