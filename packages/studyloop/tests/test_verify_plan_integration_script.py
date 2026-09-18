@@ -170,16 +170,25 @@ class TestRegistry:
         check fail on every fresh checkout (2026-09-18: ``3a4f6b01`` survived the
         history consolidation as a dangling object here and nowhere else). Both
         bases must be ancestors of the local ``main`` -- the property a rewritten
-        SHA loses."""
+        SHA loses.
+
+        Judged only where it can be: CI's ``actions/checkout`` is a depth-1
+        clone of the PR ref with no ``main``, where neither base is even an
+        object (run 35380095596 failed the 3.12 and 3.13 matrix on exactly
+        this). There the test skips and says why, rather than reporting a
+        failure the checkout cannot distinguish from the real one."""
         import subprocess
 
+        def git(*args: str) -> subprocess.CompletedProcess[str]:
+            return subprocess.run(["git", *args], cwd=REPO_ROOT, capture_output=True, text=True)
+
+        if git("rev-parse", "--is-shallow-repository").stdout.strip() == "true":
+            pytest.skip("shallow checkout: the bases' reachability cannot be judged here")
+        if git("rev-parse", "--verify", "-q", "main^{commit}").returncode != 0:
+            pytest.skip("no local `main` ref: the bases' reachability cannot be judged here")
+
         for base in (script.PROTECTED_EARLY_BASE, script.PROTECTED_LATE_BASE):
-            result = subprocess.run(
-                ["git", "merge-base", "--is-ancestor", base, "main"],
-                cwd=REPO_ROOT,
-                capture_output=True,
-                text=True,
-            )
+            result = git("merge-base", "--is-ancestor", base, "main")
             assert result.returncode == 0, f"{base} is not an ancestor of main: {result.stderr}"
 
     def test_architect_grants_check_derives_the_ten_names_from_the_inventory(self, script) -> None:
