@@ -192,8 +192,13 @@ writer, through the existing gate, closes that. Kept out of item 3 so item 3's f
 
 ## Item 5 — energy demand + body-doubling floor (D-F) · own round
 
-- [ ] **T5.1** Design §5 reviewed against the code (`_struggle_candidates`, `_score_candidates`, rule 3) — amend if
-      the code contradicts it.
+- [x] **T5.1** Design §5 reviewed against the code (`_struggle_candidates`, `_score_candidates`, rule 3) — amend if
+      the code contradicts it. (2026-09-18: three amendments recorded under §5 — the demand classes are the struggle
+      collector's own (`struggling` fresh/old, weak teach-back, `learning`; no "recovered" row exists); a deferred
+      repair needs its own `DeferredRepair` in a new additive `energy_deferred_repairs` key because `DeferredMilestone`
+      and its three renderers are milestone-shaped; the body-double door is `studyloop study … --mode co-study` /
+      the Body Double view's session start, not the read-only `body_double.py` focus route, so the candidate sets
+      its `evidence_command` explicitly. T5.2's RED names hold; a sixth test pins the new key's rendering.)
 - [ ] **T5.2** RED `tests/test_now_plan_guidance.py`: `test_live_struggle_repair_defers_at_low_energy_like_new_work`,
       `test_recovered_repair_stays_eligible_at_low_energy`, `test_body_double_candidate_is_synthesised_when_nothing_plan_related_fits`,
       `test_body_double_is_a_proposal_not_a_filter`, `test_body_double_never_appears_without_an_active_plan`,

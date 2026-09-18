@@ -238,6 +238,36 @@ among what MCP revises and the row names every schema property.
 - **Rubric row 3b** (owner scores): scenario 3's fixture at low energy now yields the deferred repair named in
   `energy_deferred` and a body-double primary (or the due recall if one exists).
 
+**T5.1 review against the code (2026-09-18, tree `7208eb67`) — three amendments, each from reading
+`learning/decision.py`, not the text above:**
+
+1. **Demand classes are the struggle collector's classes.** `_struggle_candidates` emits a row only when
+   `confidence in ("struggling", "learning")` or `last_teachback_score < 14`; "recovered / gentle review" is not a
+   row it produces. So: `struggling` with `last_seen` ≤ 14 days → `high`; `struggling` older than 14 days, or any
+   row whose only signal is a weak teach-back → `medium`; `learning` → `low`. Demand is derived once, in the
+   collector, and carried in the candidate's `metadata` beside `confidence` so the scorer and the renderers read
+   one value. Required capability `high → 6`, `medium → 4`, `low → 0` stands (the `low` class is what "repair is
+   cheaper than encoding" was always about).
+2. **`energy_deferred` is milestone-shaped and cannot carry a repair as it is.** `DeferredMilestone` has a
+   mandatory `milestone_index`, and all three renderers (`cli/_now.py`, `learning/recap.py`,
+   `today-panel.js::deferredNotes`) print `milestone {index + 1} "{title}" needs energy {floor}/10`. A deferred
+   repair gets its own frozen `DeferredRepair` (`plan_id`/`plan_title` when plan-related, else `None`, `concept`,
+   `topic`, `confidence`, `energy_demand`, `required_capability`, `energy_capability`, `reason` naming the
+   struggle), carried in a **new additive key `energy_deferred_repairs`** — not folded into `energy_deferred`,
+   whose consumers would print "milestone None". Same "readable off the top" rule as the closing review's
+   evidence lines: each renderer gains one line per deferred repair.
+3. **The body-double door is a session start, not `web/routes/body_double.py`.** That route is the read-only focus
+   reader (`GET /api/body-double/focus`). The session door is `studyloop study "<topic>" --mode co-study` on the
+   CLI and a session start from the Body Double view (origin `body-double`) on the Web. `_evidence_command` has
+   no branch for a `conversation` candidate and would fall through to `studyloop progress … -c learning`, which is
+   a write, not a door — so the body-double candidate carries `evidence_command = 'studyloop study "<plan title>"
+   --mode co-study'` set explicitly, and `_evidence_command` is not asked to guess. `source="body_double"`,
+   `action_type="conversation"`, base score below `MILESTONE_BASE_SCORE` (48) so any real candidate outranks it.
+
+Rule 3's *deferral* of repair is the change; rule 3's *eligibility* of plan-related due recall is untouched. The
+no-plan golden stays byte-identical because a body-double candidate requires an active plan and the golden world
+has none; `INTERLEAVE_RATIOS["low"]` unchanged.
+
 ## 6. Verification
 
 `scripts/verify/plan_integration.py` gains registered checks for: the two architect grants (the ten names in
