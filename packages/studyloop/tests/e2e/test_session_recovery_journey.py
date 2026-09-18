@@ -347,7 +347,43 @@ class TestStudyPickerRecovery:
               d.agent = 'codex';
             }"""
         )
-        page.locator("[data-testid='study-start-session']").click()
+        # Twice on CI this click has timed out with "element is not visible"
+        # (runs 35341660469 and 35380095596) after the settled wait above passed,
+        # and neither run produced evidence of WHY the picker was hidden: the
+        # timeout fires before this test's own _diag hook, so the artifact held
+        # nothing for it. Every adopt path in the timer was read against the
+        # second failure and none explains it without a click. Capture the
+        # state at the click so a third occurrence names the mechanism instead
+        # of the symptom -- the fix must rest on that, not on a guess.
+        try:
+            page.locator("[data-testid='study-start-session']").click()
+        except Exception:  # pragma: no cover - diagnostics only
+            state = page.evaluate(
+                """() => {
+                  const root = document.querySelector('[x-data="sessionTimer()"]');
+                  const d = root && window.Alpine.$data(root);
+                  const picker = document.querySelector('.study-start-picker');
+                  const button = document.querySelector("[data-testid='study-start-session']");
+                  return {
+                    view: window.Alpine.store('nav').current,
+                    sessionActive: d && d.sessionActive,
+                    starting: d && d.starting,
+                    topic: d && d.topic,
+                    agent: d && d.agent,
+                    resolvedTopic: d && d.resolvedTopic(),
+                    conflict: d && d.conflictSession ? d.conflictSession.study_session_id : null,
+                    pickerDisplay: picker && getComputedStyle(picker).display,
+                    buttonDisabled: button && button.disabled,
+                    url: location.href,
+                  };
+                }"""
+            )
+            RESULTS.mkdir(parents=True, exist_ok=True)
+            (RESULTS / "session-recovery-409-click-timeout.json").write_text(
+                json.dumps(state, indent=2), encoding="utf-8"
+            )
+            _diag(page, "409-click-timeout")
+            raise
 
         error = page.locator(".study-start-picker .picker-error")
         try:
