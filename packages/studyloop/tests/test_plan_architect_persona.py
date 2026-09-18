@@ -349,6 +349,27 @@ def test_wind_down_names_the_acp_path_for_ending_the_session() -> None:
     assert "notes" in section.lower()
 
 
+def test_closing_section_asks_close_or_delete_for_a_checked_non_active_plan() -> None:
+    """Owner decision 2026-09-18 (council review 6, open item 2): a fully-checked
+    ``abandoned``, ``paused`` or ``draft`` plan may be closed or deleted, and the
+    architect asks the learner which. The closing section must name the three
+    statuses, both doors (``set_study_plan_status`` to ``complete``;
+    ``delete_study_plan`` with ``confirmed=True``), and keep deletion behind the
+    learner's explicit word — the persona's standing deletion rule."""
+    _, closing = _section(_planning_persona(), re.compile(r"^## Closing a Plan", re.MULTILINE))
+    lowered = closing.lower()
+    for status in ("abandoned", "paused", "draft"):
+        assert f"`{status}`" in closing, f"the closing section does not name {status!r}"
+    assert "ask" in lowered and "delete" in lowered
+    assert 'set_study_plan_status(plan_id, "complete")' in closing
+    assert "delete_study_plan" in closing and "confirmed=true" in lowered
+    assert (
+        "in so many words" in lowered
+        or "said, in so many words" in lowered
+        or ("explicitly" in lowered)
+    ), "deletion must stay behind the learner's explicit word"
+
+
 def test_revise_row_says_pause_before_repairing_an_active_plan() -> None:
     """The F1 contract: every write to an active-but-unready document is
     refused, so repairing one means pausing it first. The Revise row must say

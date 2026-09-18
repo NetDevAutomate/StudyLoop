@@ -1009,3 +1009,59 @@ def test_plan_close_unknown_id_is_the_seams_not_found(runner) -> None:
     clean = _ANSI.sub("", result.output)
     assert "nope" in clean
     assert "Traceback" not in clean
+
+
+@pytest.mark.parametrize("status", ["abandoned", "paused", "draft"])
+def test_plan_close_on_a_checked_non_active_plan_launches_and_names_both_doors(
+    runner, isolated_plans_dir, tmp_path, monkeypatch, status: str
+) -> None:
+    """Owner decision 2026-09-18 (council review 6, open item 2): a learner who
+    has checked every milestone of an ``abandoned``, ``paused`` or ``draft``
+    plan may close it *or delete it* — the architect asks which. ``plan
+    close`` launches as for an active plan; the closing section's last line
+    names the status and both doors (``set_study_plan_status … complete`` /
+    ``delete_study_plan … confirmed=True``) so the agent asks rather than
+    assumes; the command itself still writes nothing and changes no status."""
+    from contextlib import ExitStack
+
+    store.plans_dir()
+    runner.invoke(cli, ["plan", "new", "--title", "Glue ETL", *READY, "--activate"])
+    runner.invoke(cli, ["plan", "milestone", "glue-etl", "0", "--done"])
+    runner.invoke(cli, ["plan", "milestone", "glue-etl", "1", "--done"])
+    runner.invoke(cli, ["plan", "status", "glue-etl", status])
+    assert store.load_plan("glue-etl").status == status
+    before = _documents(isolated_plans_dir)
+    _plant_end_evidence(
+        monkeypatch,
+        due=[],
+        mentions=[{"snippet": "walked through the glue job anatomy and a dynamicframe transform"}],
+    )
+
+    captured: dict = {}
+    calls: list = []
+    with ExitStack() as stack:
+        for p in _launch_patches(tmp_path, captured, calls):
+            stack.enter_context(p)
+        monkeypatch.setenv("TMUX", "/tmp/tmux")
+        result = runner.invoke(cli, ["plan", "close", "glue-etl"])
+
+    assert result.exit_code == 0, result.output
+    assert calls == ["Glue ETL"], calls
+    clean = _ANSI.sub("", result.output)
+    assert status in clean  # the status line names the state the plan is in
+
+    items = _closing_section(captured["brief"])
+    assert items[:4] == [
+        "Due reviews on plan concepts: 0",
+        "Struggles on plan concepts: 0",
+        "Unverified milestones: 0",
+        "Proposal: close",
+    ], items
+    door = items[-1]
+    assert door.startswith(f"Status: {status}"), items
+    assert "close" in door and "delete" in door
+    assert "set_study_plan_status" in door and "delete_study_plan" in door
+    assert "ask" in door.lower()
+
+    assert _documents(isolated_plans_dir) == before
+    assert store.load_plan("glue-etl").status == status
