@@ -258,6 +258,22 @@ def _visible_purpose_labels(page: Page) -> list[str]:
     )
 
 
+def _wait_for_planning_label(page: Page) -> list[str]:
+    """One visible purpose label, once Alpine has rendered it.
+
+    ``_wait_for_console`` returns the frame the console's ``connected`` flips;
+    the label's ``x-show`` is applied on the next one, so a bare DOM read there
+    lost under load (CI runs 35341660469, 35347509248 — one frame early, four
+    different tests). Wait for the rendered state the assertions are about."""
+    page.wait_for_function(
+        """() => [...document.querySelectorAll('[data-testid="console-purpose-label"]')]
+             .filter((el) => el.offsetParent !== null
+                             && window.getComputedStyle(el).display !== 'none').length === 1""",
+        timeout=10000,
+    )
+    return _visible_purpose_labels(page)
+
+
 def _session_state(page: Page) -> dict:
     return page.evaluate(
         "async () => (await fetch('/api/session/state', {cache: 'no-store'})).json()"
@@ -355,7 +371,7 @@ def test_console_is_labelled_planning_and_label_survives_reconnect(page: Page) -
     _click_plan_with_architect(page)
     _wait_for_console(page)
 
-    labels = _visible_purpose_labels(page)
+    labels = _wait_for_planning_label(page)
     assert len(labels) == 1, labels
     assert "planning" in labels[0].lower(), labels
 
@@ -367,7 +383,7 @@ def test_console_is_labelled_planning_and_label_survives_reconnect(page: Page) -
     page.wait_for_load_state("domcontentloaded")
     page.wait_for_function("() => !!window.Alpine", timeout=5000)
     _wait_for_console(page)
-    labels_after = _visible_purpose_labels(page)
+    labels_after = _wait_for_planning_label(page)
     assert len(labels_after) == 1, labels_after
     assert "planning" in labels_after[0].lower(), labels_after
 
@@ -732,7 +748,7 @@ def test_leaving_before_the_launch_lands_leaves_a_session_like_any_other(
     # 3. Coming back shows it: the console reattaches to the live session.
     page.evaluate("() => window.Alpine.store('nav').go('study-session')")
     _wait_for_console(page)
-    labels = _visible_purpose_labels(page)
+    labels = _wait_for_planning_label(page)
     assert len(labels) == 1 and "planning" in labels[0].lower(), labels
     assert _session_state(page)["study_session_id"] == study_id, "the same session, not a second"
     assert _probe(page)["startEvents"] == 1, "one launch, one start event"
