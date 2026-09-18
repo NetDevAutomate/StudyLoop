@@ -282,6 +282,30 @@ def test_duplicate_record_beside_a_field_change_saves_once(
     assert len(detail.learning_records) == 1
 
 
+def test_duplicate_learning_record_with_mission_revision_still_saves_once(
+    app: PlanApplication, monkeypatch
+) -> None:
+    """Council review 6, F8 (deferred pin): item 3b made the mission revisable
+    through ``RevisePlan``. The duplicate-record short-circuit must see a
+    mission edit as a change — ``not mission_updates`` is its own clause — or
+    a wind-down that re-sends yesterday's record beside a sharpened ``why``
+    would drop the ``why`` and report "already recorded (no change)". One
+    save, the mission applied, the record still single."""
+    _plan("demo")
+    spec = LearningRecordSpec(title="Once", body="only")
+    app.apply(RevisePlan(plan_id="demo", learning_record=spec))
+    saves = _count_saves(monkeypatch)
+
+    detail = app.apply(
+        RevisePlan(plan_id="demo", learning_record=spec, why="Own the nightly pipeline unaided")
+    )
+
+    assert len(saves) == 1, "a duplicate record beside a mission edit is one write, not zero"
+    assert detail.mission.why == "Own the nightly pipeline unaided"
+    assert len(detail.learning_records) == 1
+    assert store.load_plan("demo").mission.why == "Own the nightly pipeline unaided"
+
+
 def test_empty_revision_is_still_a_touch(app: PlanApplication, monkeypatch) -> None:
     """The Phase-1 contract stands: an empty PATCH body has always been a save
     that bumps ``updated``. Only a duplicate-record-only revision is exempt."""

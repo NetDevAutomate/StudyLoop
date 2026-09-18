@@ -680,6 +680,39 @@ def test_plan_repair_on_a_ready_plan_says_nothing_to_repair(runner, tmp_path, mo
     assert calls == []  # no launch
 
 
+def test_plan_repair_nonactive_unready_is_noop_with_pointer(
+    runner, isolated_plans_dir, tmp_path, monkeypatch
+) -> None:
+    """Council review 6, F8 (deferred pin): a plan that is not active is not a
+    husk — nothing refuses its writes — so ``plan repair`` on an unready draft
+    has nothing to unblock. It exits 0, says why, points at ``plan architect``
+    to finish the plan, prints the readiness so the learner sees what is
+    missing, launches nothing and writes nothing. The other branch — active
+    and unready — is the launch; this pin keeps the two from being confused."""
+    from contextlib import ExitStack
+
+    runner.invoke(cli, ["plan", "new", "--title", "Vague Draft"])  # draft, unready
+    assert store.load_plan("vague-draft").status == "draft"
+    assert not ReadinessView.from_plan(store.load_plan("vague-draft")).ready
+    before = _documents(isolated_plans_dir)
+
+    calls: list = []
+    with ExitStack() as stack:
+        for p in _launch_patches(tmp_path, {}, calls):
+            stack.enter_context(p)
+        monkeypatch.setenv("TMUX", "/tmp/tmux")
+        result = runner.invoke(cli, ["plan", "repair", "vague-draft"])
+
+    assert result.exit_code == 0, result.output
+    clean = _ANSI.sub("", result.output)
+    assert "'vague-draft' is draft, so nothing blocks it" in clean
+    assert "studyloop plan architect" in clean
+    assert "Nothing to repair" not in clean  # that sentence is the ready plan's, not this one's
+    assert calls == []  # no launch
+    assert _documents(isolated_plans_dir) == before  # no write
+    assert store.load_plan("vague-draft").status == "draft"
+
+
 def test_plan_repair_unknown_id_is_the_seams_not_found(runner) -> None:
     result = runner.invoke(cli, ["plan", "repair", "nope"])
 
