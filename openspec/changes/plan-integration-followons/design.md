@@ -3,7 +3,11 @@
 Decisions are cited as D-A…D-J from `docs/architecture/plan-integration/HANDOFF-2026-09-16.md` §2 (owner,
 2026-09-16) and as D-n from the archived arbitration. Where this document and a decision disagree, the decision
 wins and this document is wrong. The seam (`planning/{application,views,intents,errors}.py`) is unchanged in
-shape: every item below reads through it and adds **no new writer**.
+shape: every item below reads through it and adds **no new writer**. **Standing rule (owner, 2026-09-18):** nothing
+in this programme is kiro-cli specific — every process, steering rule, probe/receipt, doctor or verify check and
+persona rule is stated and verified for all six supported harnesses (kiro-cli, Claude Code, Codex, OpenCode, pi,
+Grok Build); a fact measured on one harness (the Kiro grant-spelling probe) is evidence about that harness, and any
+decision built on it names the equivalent for each other harness or says why it does not apply there.
 
 ## 1. Harness grants for the architect (D-A)
 
@@ -194,6 +198,14 @@ among what MCP revises and the row names every schema property.
   `NOT_AUTOMATIC` constant from issue #7's out-of-scope list (`test_not_automatic_constant_is_well_formed`
   asserts exactly six); the consensual close is therefore stated in the prose beside the list, as the
   brain-dump limit is, rather than as a seventh boundary.
+- **Owner decision (2026-09-18, council review 6 open item 2; `dfc75d6e` RED → `983aa723` GREEN):** a
+  fully-checked `draft`, `paused` or `abandoned` plan is reviewed like an active one, and the learner may **close
+  or delete** it — the architect asks which. The closing brief's last line is `Status: <status> — not active; ask
+  the learner whether to close it (set_study_plan_status(plan_id, "complete")) or delete it
+  (delete_study_plan(plan_id, confirmed=True), only after they say so in this conversation)`; the persona says
+  what each door means (closing keeps the document as `complete`; deleting leaves only the checkpoint log), keeps
+  deletion behind the learner's explicit word (never because the status was `abandoned`), and offers closing as
+  the reversible choice — the seam accepts `complete → active` (checked). `plan close` itself still writes nothing.
 
 ## 5. Item 5 — per-item energy demand and the body-doubling floor (D-F) — designed here, reviewed separately
 

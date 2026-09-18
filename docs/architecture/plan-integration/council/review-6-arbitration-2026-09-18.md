@@ -117,10 +117,27 @@ correction here (GPT 4-i, agreed).
    grace period and End releases it (today's behaviour, made explicit); (c) record (b) as the supported scope and
    pre-attachment cancellation as an acknowledged unmet requirement. Then design §2 and the web-ui delta say the
    same thing and the barrier-based tests GPT names are written.
-2. **`plan close` on a checked `draft`/`paused`/`abandoned` plan** launches a review today (D-G did not restrict it to
-   `active`). Grok would refuse `abandoned`; GPT would document and pin it. Decide; one test either way.
-3. **`session-db` in Kiro's `tools` with nothing trusted** — the "visible, prompts" reading is an expectation. A probe on
-   the installed CLI (invoke `session_search` from the architect and observe the prompt) turns it into a receipt.
+2. ~~**`plan close` on a checked `draft`/`paused`/`abandoned` plan**~~ — **decided by the owner, 2026-09-18:** such a
+   plan may be closed *or deleted*, and the architect asks the learner which. Landed as `dfc75d6e` (RED, four
+   tests) → `983aa723` (GREEN): the closing brief's last line names the status and both doors
+   (`set_study_plan_status(plan_id, "complete")` / `delete_study_plan(plan_id, confirmed=True)`), the status line
+   names the state, the persona's "Closing a Plan" says what each door means and keeps deletion behind the
+   learner's explicit word (offering closing as the reversible choice — the seam accepts `complete → active`,
+   checked), cli-surface delta and docs updated. The command still writes nothing.
+3. ~~**`session-db` in Kiro's `tools` with nothing trusted — a probe on the installed kiro-cli**~~ — **reframed by the
+   owner, 2026-09-18:** nothing in StudyLoop may be kiro-cli specific; every process and steering rule is stated for
+   all six supported harnesses. So the open question is not "probe kiro-cli" but "what can the harness-launched
+   architect reach, per harness". As it stands (verified on the tree): **Kiro** — `studyloop` visible and the ten
+   trusted; `session-db` visible, trust unmeasured (an expectation, recorded in the probe receipt). **Claude Code**
+   — the ten `mcp__studyloop__*` allow-listed; the server registered in `~/.claude.json` by `install agents`;
+   `session-db` not in the allow-list, so unreachable from the architect. **OpenCode** — both servers registered
+   globally in `opencode.json`; the architect file grants by permission block, not per tool. **Codex, Grok Build,
+   pi** — no named-agent feature: the architect is reached only through StudyLoop's own launch chain
+   (`studyloop study --mode plan-architect --agent <harness>`, the Web door, `plan architect|repair|close`), Codex
+   and Grok with the servers registered globally, pi with no MCP client and the CLI fallback by design. The launch
+   chain itself is harness-neutral: six adapters, one canonical persona, `--agent` threaded through `plan repair`
+   and `plan close`. What remains owner-side is a *per-harness* reachability check on a real install (which tools
+   the architect can call and which prompt), recorded in one receipt with a row per harness — not a Kiro probe.
 4. **Two cheap pins deferred** (F8): `test_plan_repair_nonactive_unready_is_noop_with_pointer` and
    `test_duplicate_learning_record_with_mission_revision_still_saves_once`. Recorded in tasks.md.
 
