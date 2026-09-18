@@ -1089,3 +1089,66 @@ def test_completion_partial_assessment_never_proposes_a_clean_close(monkeypatch)
     assert any("done-plan" in w and "unavailable" in w for w in plan.warnings), plan.warnings
     entry = plan.to_json_dict()["completion_actions"][0]
     assert entry["proposal"] is None and entry["partial"] is True
+
+
+def test_completion_struggle_only_proposes_extend(monkeypatch) -> None:
+    """Council review 6, F7: the struggles count alone must carry ``extend`` —
+    nothing due, every milestone backed, one live struggle on a plan concept."""
+    _plan("done-plan", title="Done Plan", topics=["sql"], milestones=_DONE)
+    _plant_evidence(
+        monkeypatch,
+        struggles=[{"topic": "sql", "concept": "alpha", "sessions": 3}],
+        mentions=[{"snippet": "explained alpha and beta in the teach-back"}],
+    )
+    _patch_collectors(monkeypatch, _candidate("decorators", topic="python", score=100))
+
+    [action] = build_now_plan().completion_actions
+
+    assert (action.due_reviews, action.struggles, action.unverified_milestones) == (0, 1, 0)
+    assert action.proposal == "extend"
+    assert action.evidence == ("Struggle: alpha",)
+    assert "1 struggle" in action.action
+
+
+def test_completion_unverified_milestone_only_proposes_extend(monkeypatch) -> None:
+    """Council review 6, F7: a done milestone whose concepts have no evidence at
+    all is outstanding work — the unverified count alone carries ``extend``."""
+    _plan("done-plan", title="Done Plan", topics=["sql"], milestones=_DONE)
+    _plant_evidence(monkeypatch, mentions=[{"snippet": "explained alpha in the teach-back"}])
+    _patch_collectors(monkeypatch, _candidate("decorators", topic="python", score=100))
+
+    [action] = build_now_plan().completion_actions
+
+    assert (action.due_reviews, action.struggles, action.unverified_milestones) == (0, 0, 1)
+    assert action.proposal == "extend"
+    assert action.evidence == (
+        "Unverified milestone: B — marked done, no evidence on its concepts",
+    )
+
+
+def test_completion_evidence_cap_keeps_the_counts_and_names_the_overflow(monkeypatch) -> None:
+    """Council review 6, F7: the evidence lines are capped at
+    ``COMPLETION_EVIDENCE_CAP`` with one ``… and N more`` line; the counts are
+    never capped by it, so the sentence and the JSON still say how much is
+    outstanding."""
+    from studyloop.planning.views import COMPLETION_EVIDENCE_CAP
+
+    _plan("done-plan", title="Done Plan", topics=["sql"], milestones=_DONE)
+    due = [
+        {"topic": "sql", "concept": f"alpha-{i}", "review_type": "overdue"}
+        for i in range(COMPLETION_EVIDENCE_CAP + 3)
+    ]
+    _plant_evidence(
+        monkeypatch, due=due, mentions=[{"snippet": "explained alpha and beta in the teach-back"}]
+    )
+    _patch_collectors(monkeypatch, _candidate("decorators", topic="python", score=100))
+
+    [action] = build_now_plan().completion_actions
+
+    # The evaluator itself keeps ten due rows; the review counts what it was given.
+    assert action.due_reviews >= COMPLETION_EVIDENCE_CAP + 1
+    assert action.proposal == "extend"
+    assert len(action.evidence) == COMPLETION_EVIDENCE_CAP + 1
+    assert action.evidence[-1].startswith("… and ")
+    assert action.evidence[-1].endswith(" more")
+    assert f"{action.due_reviews} due reviews" in action.action

@@ -934,3 +934,78 @@ def test_repair_and_closing_briefs_contain_multiline_plan_fields(monkeypatch) ->
         "### Closing review",
         "### The plan as it stands",
     ]
+
+
+def test_plan_close_on_a_complete_plan_is_a_noop(
+    runner, isolated_plans_dir, tmp_path, monkeypatch
+) -> None:
+    """Council review 6, F7: an already-``complete`` plan is left alone — exit
+    0, no assessment, no launch, nothing written."""
+    from contextlib import ExitStack
+
+    store.plans_dir()
+    runner.invoke(cli, ["plan", "new", "--title", "Glue ETL", *READY, "--activate"])
+    runner.invoke(cli, ["plan", "milestone", "glue-etl", "0", "--done"])
+    runner.invoke(cli, ["plan", "milestone", "glue-etl", "1", "--done"])
+    runner.invoke(cli, ["plan", "status", "glue-etl", "complete"])
+    assert store.load_plan("glue-etl").status == "complete"
+    before = _documents(isolated_plans_dir)
+
+    calls: list = []
+    with ExitStack() as stack:
+        for p in _launch_patches(tmp_path, {}, calls):
+            stack.enter_context(p)
+        monkeypatch.setenv("TMUX", "/tmp/tmux")
+        result = runner.invoke(cli, ["plan", "close", "glue-etl"])
+
+    assert result.exit_code == 0, result.output
+    assert "already complete" in _ANSI.sub("", result.output)
+    assert calls == []
+    assert _documents(isolated_plans_dir) == before
+
+
+def test_plan_close_with_no_milestones_refuses_without_assessing(
+    runner, isolated_plans_dir, tmp_path, monkeypatch
+) -> None:
+    """Council review 6, F7: zero milestones is "nothing to close" — exit 1
+    naming ``plan architect``, no assessment read, no launch."""
+    from contextlib import ExitStack
+
+    from studyloop.planning.application import PlanApplication
+
+    store.plans_dir()
+    runner.invoke(
+        cli,
+        [
+            *("plan", "new", "--title", "Bare"),
+            *("--why", "Own it", "--success", "Ship", "--topic", "sql"),
+        ],
+    )
+    assert store.load_plan("bare").milestone_total == 0
+
+    def never(self, intent):
+        raise AssertionError("no assessment must be read for a plan with no milestones")
+
+    monkeypatch.setattr(PlanApplication, "assess", never)
+    calls: list = []
+    with ExitStack() as stack:
+        for p in _launch_patches(tmp_path, {}, calls):
+            stack.enter_context(p)
+        result = runner.invoke(cli, ["plan", "close", "bare"])
+
+    assert result.exit_code == 1, result.output
+    clean = _ANSI.sub("", result.output)
+    assert "has no milestones" in clean and "plan architect" in clean
+    assert "Traceback" not in clean
+    assert calls == []
+
+
+def test_plan_close_unknown_id_is_the_seams_not_found(runner) -> None:
+    """Council review 6, F7: an unknown id is the seam's ``not_found`` refusal,
+    named, exit 1, no traceback — as ``plan repair`` gives."""
+    result = runner.invoke(cli, ["plan", "close", "nope"])
+
+    assert result.exit_code == 1, result.output
+    clean = _ANSI.sub("", result.output)
+    assert "nope" in clean
+    assert "Traceback" not in clean
