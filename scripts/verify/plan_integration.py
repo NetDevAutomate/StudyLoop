@@ -7,8 +7,10 @@ inventory and its in-process twin, the plan suites, the docs contract, the ten
 protected files against their two bases, the ``rg`` invariants, the combined
 Web+MCP journey alone and inside the ``-m integration`` run, the #14 browser
 module under ``-m e2e``, the JS unit tests, ``openspec validate`` and ``mkdocs
---strict`` — and writes one JSON receipt with every command, exit status,
-pytest node count and measured value:
+--strict``, and (follow-on programme, design §6) the two architect grants
+derived from the inventory and the ``plan repair`` / ``plan close`` refusal
+texts — and writes one JSON receipt with every command, exit status, pytest
+node count, measured value and, for a red pytest check, every failed node id:
 
     docs/architecture/plan-integration/receipts/verify-<short-sha>.json
 
@@ -168,6 +170,106 @@ def check_inventory_in_process(repo_root: Path) -> tuple[int, dict[str, Any]]:
     }
 
 
+#: The two harness-launched architects that D-A grants the plan tools to, with
+#: the grant spelling each harness honours (probe receipt 2026-09-16, re-run on
+#: kiro-cli 2.22.0 on 2026-09-17): Kiro reads ``allowedTools`` as
+#: ``@<server>/<tool>``; Claude Code's ``tools:`` frontmatter as ``mcp__<server>__<tool>``.
+KIRO_ARCHITECT = "agents/kiro/study-plan-architect.json"
+CLAUDE_ARCHITECT = "agents/claude/study-plan-architect.md"
+
+
+def _claude_frontmatter_tools(text: str) -> list[str]:
+    """The comma-separated ``tools:`` allow-list of a Claude subagent file."""
+    lines = text.splitlines()
+    if not lines or lines[0].strip() != "---":
+        return []
+    for line in lines[1:]:
+        if line.strip() == "---":
+            break
+        if line.startswith("tools:"):
+            return [item.strip() for item in line.removeprefix("tools:").split(",") if item.strip()]
+    return []
+
+
+def check_architect_grants(repo_root: Path) -> tuple[int, dict[str, Any]]:
+    """Design §6 (follow-on item 1, D-A): the Kiro and Claude architect
+    definitions grant exactly the nine plan tools + ``record_plan_learning``
+    from the ``studyloop`` server — derived from the inventory, so a tenth plan
+    tool fails this check until the grants follow — in the spelling each
+    harness honours, and nothing else from that server. Kiro must also make
+    the server *visible* (``@studyloop`` in ``tools``); visibility and trust
+    are two arrays there."""
+    expected = [*PLAN_TOOL_NAMES, LEARNING_RECORD_TOOL]
+    problems: list[str] = []
+
+    kiro_path = repo_root / KIRO_ARCHITECT
+    kiro_granted: list[str] = []
+    kiro_visible = False
+    if not kiro_path.exists():
+        problems.append(f"kiro: {KIRO_ARCHITECT} missing")
+    else:
+        try:
+            definition = json.loads(kiro_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            problems.append(f"kiro: {KIRO_ARCHITECT} is not JSON: {exc}")
+            definition = {}
+        kiro_visible = "@studyloop" in definition.get("tools", [])
+        if not kiro_visible:
+            problems.append("kiro: '@studyloop' absent from tools — the server is invisible")
+        allowed = definition.get("allowedTools", [])
+        kiro_granted = [
+            entry.removeprefix("@studyloop/")
+            for entry in allowed
+            if entry.startswith("@studyloop/")
+        ]
+        if "@studyloop" in allowed:
+            problems.append("kiro: bare '@studyloop' in allowedTools trusts the whole server")
+        inert = [entry for entry in allowed if entry.startswith("mcp_studyloop_")]
+        if inert:
+            problems.append(f"kiro: inert mcp_studyloop_* spelling in allowedTools: {inert}")
+        _compare_grants("kiro", kiro_granted, expected, problems)
+
+    claude_path = repo_root / CLAUDE_ARCHITECT
+    claude_granted: list[str] = []
+    if not claude_path.exists():
+        problems.append(f"claude: {CLAUDE_ARCHITECT} missing")
+    else:
+        tools = _claude_frontmatter_tools(claude_path.read_text(encoding="utf-8"))
+        claude_granted = [
+            entry.removeprefix("mcp__studyloop__")
+            for entry in tools
+            if entry.startswith("mcp__studyloop__")
+        ]
+        other_mcp = [
+            entry
+            for entry in tools
+            if entry.startswith("mcp__") and not entry.startswith("mcp__studyloop__")
+        ]
+        if other_mcp:
+            problems.append(f"claude: MCP tools from another server: {other_mcp}")
+        _compare_grants("claude", claude_granted, expected, problems)
+
+    return (1 if problems else 0), {
+        "expected": expected,
+        "kiro": {"file": KIRO_ARCHITECT, "visible": kiro_visible, "granted": kiro_granted},
+        "claude": {"file": CLAUDE_ARCHITECT, "granted": claude_granted},
+        "problems": problems,
+    }
+
+
+def _compare_grants(
+    harness: str, granted: list[str], expected: list[str], problems: list[str]
+) -> None:
+    missing = [name for name in expected if name not in granted]
+    extra = [name for name in granted if name not in expected]
+    if missing:
+        problems.append(f"{harness}: plan tools not granted: {missing}")
+    if extra:
+        problems.append(f"{harness}: studyloop tools granted beyond the ten: {extra}")
+    if len(granted) != len(set(granted)):
+        problems.append(f"{harness}: duplicate grants: {granted}")
+
+
 def build_checks(repo_root: Path) -> list[Check]:
     """The registry. Order is the order the receipt reports and the run executes."""
     js_tests = sorted(
@@ -210,6 +312,8 @@ def build_checks(repo_root: Path) -> list[Check]:
             _pytest(f"{TESTS}/test_mcp_stdio_smoke.py", "-m", "integration"),
         ),
         Check("inventory-in-process", check_inventory_in_process),
+        # --- the harness grants derived from that inventory (follow-on D-A) ---
+        Check("architect-grants", check_architect_grants),
         # --- the named plan suites (review 4, T6.2 list) ----------------------
         Check(
             "plan-suites",
@@ -234,6 +338,20 @@ def build_checks(repo_root: Path) -> list[Check]:
             ),
         ),
         Check("docs-contract", _pytest(f"{TESTS}/test_docs_plan_integration_contract.py")),
+        # --- the repair / close refusal texts, as the seam tests pin them -----
+        # (follow-on D-C / D-G, design §6): the husk refusal naming both exits,
+        # `plan repair` on a ready plan and on an unknown id, `plan close` on an
+        # unfinished plan. Exactly these node ids, so a reworded refusal that
+        # the seam tests still accept is not silently blessed by a wider run.
+        Check(
+            "repair-close-refusals",
+            _pytest(
+                f"{TESTS}/test_cli_plan_seam.py::test_husk_refusal_names_both_pause_and_repair",
+                f"{TESTS}/test_cli_plan_seam.py::test_plan_repair_on_a_ready_plan_says_nothing_to_repair",
+                f"{TESTS}/test_cli_plan_seam.py::test_plan_repair_unknown_id_is_the_seams_not_found",
+                f"{TESTS}/test_cli_plan_seam.py::test_plan_close_on_an_unfinished_plan_refuses",
+            ),
+        ),
         # --- protected files: byte-identical to their bases -------------------
         Check(
             "protected-files-3a4f6b01",
@@ -373,6 +491,21 @@ def _tail(output: str, lines: int = 12) -> list[str]:
     return [line for line in output.splitlines() if line.strip()][-lines:]
 
 
+#: pytest's short-summary lines (``-r`` is on under the packages' config): the
+#: node id, without the ``- <reason>`` suffix, is what a receipt reader needs
+#: to reconcile a red suite against the named environmental set.
+_FAILED_NODE = re.compile(r"^(?P<outcome>FAILED|ERROR) (?P<node>\S+)")
+
+
+def _failed_nodes(output: str) -> list[str]:
+    nodes: list[str] = []
+    for line in output.splitlines():
+        match = _FAILED_NODE.match(line)
+        if match:
+            nodes.append(f"{match['outcome']} {match['node']}")
+    return nodes
+
+
 def run_and_write(
     checks: Sequence[Check],
     *,
@@ -407,6 +540,7 @@ def run_and_write(
             "measured": measured,
             "error": error,
             "output_tail": [] if ok else _tail(output),
+            "failed_nodes": [] if ok or callable(check.command) else _failed_nodes(output),
         }
         rows.append(row)
         status = " ok " if ok else "FAIL"
