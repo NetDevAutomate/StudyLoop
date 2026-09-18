@@ -185,7 +185,9 @@ among what MCP revises and the row names every schema property.
   returns `None` for the whole review on failure — so "unassessed" is represented once, at the action, not
   twice.
 - **Two more GREEN-time decisions (`82293293`):** (1) the Today card gained `completionEvidence()` and renders
-  the review's evidence lines under the "Plan complete" note, matching CLI `now`'s dim lines — the design said
+  the review's evidence lines under the "Plan complete" note, matching CLI `now`'s dim lines (council review 6 F6
+  corrected both: the card renders one `completionReviews()` block per plan — sentence, then *its* lines, keyed by
+  `plan_id` — and the label on the card and in CLI `now` is "Closing review", since the plan is still `active`) — the design said
   the card prints "the proposal and the counts", which the sentence carries, but the surface most learners read
   should also show what the proposal rests on; a pre-D-G entry without `evidence`, or a failed assessment,
   contributes nothing. (2) `docs/study-plans.md`'s "Deliberately not automatic" list is the pinned six-item

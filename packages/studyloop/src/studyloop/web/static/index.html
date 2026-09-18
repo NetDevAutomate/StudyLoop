@@ -1110,11 +1110,18 @@
             <template x-for="(note, i) in deferredNotes()" :key="'d' + i">
               <p class="today-meta">Deferred for energy: <span x-text="note"></span></p>
             </template>
-            <template x-for="(note, i) in completionNotes()" :key="'c' + i">
-              <p class="today-meta">Plan complete: <span x-text="note"></span></p>
-            </template>
-            <template x-for="(line, i) in completionEvidence()" :key="'e' + i">
-              <p class="today-meta today-plan-evidence">&bull; <span x-text="line"></span></p>
+            <!-- One block per finished plan (council review 6, F6): the closing
+                 review's sentence with ITS OWN evidence lines beneath it, keyed by
+                 plan id, so two finished plans never share one flat list. The label
+                 says what this is — a review — not "complete": the plan's status
+                 is still active until the learner agrees with the architect. -->
+            <template x-for="review in completionReviews()" :key="'c' + review.planId">
+              <div class="today-plan-review" :data-plan-id="review.planId">
+                <p class="today-meta">Closing review: <span x-text="review.sentence"></span></p>
+                <template x-for="(line, i) in review.evidence" :key="'e' + i">
+                  <p class="today-meta today-plan-evidence">&bull; <span x-text="line"></span></p>
+                </template>
+              </div>
             </template>
             <template x-for="(note, i) in warningNotes()" :key="'w' + i">
               <p class="today-meta">Plan warning: <span x-text="note"></span></p>

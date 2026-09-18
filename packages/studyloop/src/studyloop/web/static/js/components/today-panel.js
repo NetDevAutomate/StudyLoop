@@ -162,19 +162,30 @@ export function todayPanel() {
       );
     },
 
-    completionNotes() {
+    /* One block per finished plan (council review 6, F6): the closing review's
+       sentence and ITS evidence lines, keyed by plan_id, in the engine's order.
+       With two finished plans a flat list of lines lost the plan each belonged
+       to; the card renders these blocks instead. A pre-D-G entry without
+       `evidence` has none; a failed assessment (`proposal` null) carries none by
+       construction; a partial one (F1) carries its `Not read:` lines. */
+    completionReviews() {
       const actions = (this.plan && this.plan.completion_actions) || [];
-      return actions.map((a) => a.action);
+      return actions.map((a) => ({
+        planId: String(a.plan_id),
+        sentence: a.action,
+        evidence: (Array.isArray(a.evidence) ? a.evidence : []).map(String),
+      }));
     },
 
-    /* The closing review's evidence (D-G, item 4): one line per counted item
-       across every completion action, in the engine's order — what the
-       proposal in the sentence rests on. A pre-D-G entry without `evidence`
-       contributes nothing, and a failed assessment (`proposal` null) carries
-       none by construction. */
+    completionNotes() {
+      return this.completionReviews().map((r) => r.sentence);
+    },
+
+    /* The closing review's evidence (D-G, item 4), flattened across every
+       completion action in the engine's order — kept for callers that want
+       the lines alone; the card itself renders completionReviews(). */
     completionEvidence() {
-      const actions = (this.plan && this.plan.completion_actions) || [];
-      return actions.flatMap((a) => (Array.isArray(a.evidence) ? a.evidence : []).map(String));
+      return this.completionReviews().flatMap((r) => r.evidence);
     },
 
     /* The engine's warnings, verbatim: an active plan that is not ready (its

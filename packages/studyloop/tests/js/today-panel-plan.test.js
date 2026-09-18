@@ -16,6 +16,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 
 import { todayPanel } from
   '../../src/studyloop/web/static/js/components/today-panel.js';
@@ -161,6 +162,55 @@ test('completionEvidence: the closing review\u2019s lines, in the engine\u2019s 
     'Unverified milestone: B \u2014 marked done, no evidence on its concepts',
   ]);
   assert.equal(panel.completionNotes().length, 3);
+});
+
+/* Council review 6, GPT F6 (🟡): the card printed every sentence, then every
+ * evidence line flattened beneath them, so with two finished plans a line
+ * lost the plan it belonged to. The card renders one block per action —
+ * the sentence and its own lines — keyed by plan_id, in the engine's order.
+ * A partial review (proposal null, council F1) keeps its 'Not read:' lines. */
+test('completionReviews: one block per finished plan, each with its own evidence, in the engine\u2019s order', () => {
+  const panel = todayPanel();
+  panel.plan = {
+    ...NO_PLAN_PAYLOAD,
+    completion_actions: [
+      {
+        plan_id: 'sql', plan_title: 'SQL', action: 'SQL: proposes extending', proposal: 'extend',
+        due_reviews: 1, struggles: 0, unverified_milestones: 0,
+        evidence: ['Due review: window function \u2014 overdue'],
+      },
+      {
+        plan_id: 'py', plan_title: 'Python', action: 'Python: partial', proposal: null, partial: true,
+        due_reviews: 0, struggles: 0, unverified_milestones: 0,
+        evidence: ['Not read: due reviews unavailable \u2014 evaluation is partial'],
+      },
+      { plan_id: 'old', plan_title: 'Old', action: 'plain sentence' },
+    ],
+  };
+
+  assert.deepEqual(panel.completionReviews(), [
+    { planId: 'sql', sentence: 'SQL: proposes extending', evidence: ['Due review: window function \u2014 overdue'] },
+    { planId: 'py', sentence: 'Python: partial', evidence: ['Not read: due reviews unavailable \u2014 evaluation is partial'] },
+    { planId: 'old', sentence: 'plain sentence', evidence: [] },
+  ]);
+  // The flat helpers stay for callers that want them, and agree with the blocks.
+  assert.deepEqual(panel.completionNotes(), panel.completionReviews().map((r) => r.sentence));
+  assert.deepEqual(panel.completionEvidence(), panel.completionReviews().flatMap((r) => r.evidence));
+});
+
+test('the Today card markup renders one keyed block per closing review with its evidence nested inside', () => {
+  const html = fs.readFileSync(
+    new URL('../../src/studyloop/web/static/index.html', import.meta.url), 'utf8',
+  );
+  const start = html.indexOf('class="today-plan-notes"');
+  const end = html.indexOf('</div>', html.indexOf('warningNotes()', start));
+  const block = html.slice(start, end);
+  assert.match(block, /x-for="review in completionReviews\(\)" :key="'c' \+ review\.planId"/);
+  assert.match(block, /class="today-plan-review" :data-plan-id="review\.planId"/);
+  assert.match(block, /Closing review: <span x-text="review\.sentence">/);
+  assert.match(block, /x-for="\(line, i\) in review\.evidence"/, 'evidence is nested in its plan\u2019s block');
+  assert.doesNotMatch(block, /completionEvidence\(\)/, 'no flat evidence loop beside the sentences');
+  assert.doesNotMatch(block, /Plan complete/, 'an active plan is not labelled complete');
 });
 
 test('a payload without plan keys renders no plan text, before and after init-like assignment', () => {

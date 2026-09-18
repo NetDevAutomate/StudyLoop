@@ -70,7 +70,9 @@ def _render_plan(plan) -> None:
             f"{deferred.energy_capability}/10. Plan-related review and repair stay available."
         )
     for completion in getattr(plan, "completion_actions", ()):
-        console.print(f"[green]Plan complete:[/green] {escape(completion.action)}")
+        # "Closing review", not "Plan complete": the status is still active until
+        # the learner agrees with the architect (council review 6, F6).
+        console.print(f"[green]Closing review:[/green] {escape(completion.action)}")
         # The review's evidence, one dim line per counted item (D-G); the
         # sentence above already carries the proposal and the counts.
         for line in getattr(completion, "evidence", ()):
