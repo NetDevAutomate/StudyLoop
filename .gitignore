@@ -530,6 +530,8 @@ docs/architecture/session-memory/*
 docs/architecture/plan-integration/*
 !docs/architecture/plan-integration/council/
 !docs/architecture/plan-integration/receipts/
+# Un-ignored 2026-09-18 — item 6's written proposals (D-D, D-E), Markdown only.
+!docs/architecture/plan-integration/proposals/
 !docs/architecture/plan-integration/*.architecture.json
 !docs/architecture/plan-integration/*.md
 

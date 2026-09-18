@@ -205,8 +205,13 @@ writer, through the existing gate, closes that. Kept out of item 3 so item 3's f
 
 ## Item 6 — proposals (no code)
 
-- [ ] **T6.4** `docs/architecture/plan-integration/proposals/2026-09-16-context-derived-plan-bias.md` (D-D) and
-      `…-overdue-nudge-and-retire.md` (D-E); both become issues at the push step.
+- [x] **T6.4** `docs/architecture/plan-integration/proposals/2026-09-16-context-derived-plan-bias.md` (D-D) and
+      `…-overdue-nudge-and-retire.md` (D-E); both become issues at the push step. (Written 2026-09-18 against
+      `main` `a5b9f903`: each quotes the owner's decision verbatim, states what the engine and store do today from
+      the code (`PLAN_RELATED_BIAS = 12`, `ENERGY_CAPABILITY`, due score `100 + min(days_ago, 30)`,
+      `REVIEW_INTERVALS`, `list_dependencies` prerequisite edges, `resolve_parked_topic` as the only `resolved`
+      path), then the proposal, constraints, out-of-scope and issue acceptance. D-D consumes item 5's energy-demand
+      definition rather than defining a second. The two issues are item 7 step 4.)
 
 ## Item 7 — push step (owner present; HANDOFF §3 item 7)
 
