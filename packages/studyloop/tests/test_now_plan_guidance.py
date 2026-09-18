@@ -1052,3 +1052,40 @@ def test_completion_assessment_failure_keeps_the_sentence_and_warns(monkeypatch)
         "done-plan" in warning and "assess" in warning.lower() for warning in plan.warnings
     ), plan.warnings
     assert plan.primary.concept == "decorators"
+
+
+def test_completion_partial_assessment_never_proposes_a_clean_close(monkeypatch) -> None:
+    """Council review 6, F1 (GPT 🔴, Grok 🔵): a reader that fails inside the
+    evaluation is a *partial* read — ``evaluate_plan`` swallows it into a
+    warning and an empty default — so "nothing due" is not known, only
+    unread. The review must carry that: no ``close``, no "clean", the
+    proposal ``None`` with the counts it did read, and the data gap named on
+    the plan's warnings. A clean slate is a fact about evidence, never about
+    its absence."""
+    from studyloop import history
+
+    _plan("done-plan", title="Done Plan", topics=["sql"], milestones=_DONE)
+    _plant_evidence(
+        monkeypatch,
+        mentions=[{"snippet": "explained alpha and beta in the teach-back"}],
+    )
+
+    def due_reader_down(topic_keywords_map):
+        raise RuntimeError("study_progress is locked")
+
+    monkeypatch.setattr(history, "spaced_repetition_due", due_reader_down)
+    _patch_collectors(monkeypatch, _candidate("decorators", topic="python", score=100))
+
+    plan = build_now_plan()
+
+    [action] = plan.completion_actions
+    assert action.proposal is None
+    assert action.partial is True
+    assert (action.due_reviews, action.struggles, action.unverified_milestones) == (0, 0, 0)
+    assert "clean" not in action.action.lower()
+    assert "closing the plan" not in action.action.lower()
+    assert "partial" in action.action.lower() or "could not" in action.action.lower()
+    assert "studyloop plan close done-plan" in action.action
+    assert any("done-plan" in w and "unavailable" in w for w in plan.warnings), plan.warnings
+    entry = plan.to_json_dict()["completion_actions"][0]
+    assert entry["proposal"] is None and entry["partial"] is True

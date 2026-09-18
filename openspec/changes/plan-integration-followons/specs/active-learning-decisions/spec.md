@@ -26,6 +26,19 @@ concept** (owner decision, 2026-09-17): the scheduler's `New topic -- start
 fresh` row (`concept: None`, `evidence: configured_topic`) is a cold-start hint
 for "what should I review now", not a lapsed review, and SHALL NOT be counted;
 `plan evaluate` keeps the row, the exclusion is the completion review's.
+`CompletionAction` and `CompletionReview` SHALL carry `partial: bool`.
+
+**A partial read SHALL NOT propose** (council review 6, F1). `evaluate_plan`
+turns a reader that fails into a warning ending `unavailable — evaluation is
+partial` (`evaluation.PARTIAL_READ_MARKER`, one definition) and an empty
+default, so a count read while that reader was down is unread, not zero. When
+the evaluation carries such a warning the review SHALL keep the counts it did
+read, set `partial` true, set `proposal` `None` — neither `close` (a clean
+slate is a fact about evidence, not its absence) nor `extend` — and name each
+gap among its evidence lines (`Not read: <reader> unavailable — …`); the
+sentence SHALL say the review is partial and could not propose, never "clean";
+the `plan close` brief's proposal line SHALL read `unassessed — the review is
+partial` and its status line SHALL NOT say the review proposes.
 
 When the assessment fails, the recommendation SHALL NOT fail: the action
 SHALL keep the plan-static sentence with `proposal` `None`, the counts `0` and
@@ -72,3 +85,14 @@ print each evidence line beneath it, and none SHALL re-rank.
 - **THEN** `completion_actions[0].action` equals the pre-change sentence,
   `proposal is None`, `warnings` names the plan and the failure, and the
   primary is still the collected due item
+
+#### Scenario: A partial assessment never proposes a clean close
+- **WHEN** one of the end assessment's history readers raises inside the
+  evaluation and every other reader finds nothing outstanding
+- **THEN** `completion_actions[0]` carries `proposal is None`,
+  `partial is True`, the counts `(0, 0, 0)`, an evidence line beginning
+  `Not read:`, a sentence that says the review is partial and never "clean" or
+  "closing the plan", and `warnings` names the plan and the unavailable reader;
+  `plan close <id>` still launches the architect, its brief's fourth line is
+  `Proposal: unassessed — the review is partial`, the gap is among the first
+  section's lines, and its status line does not say the review proposes

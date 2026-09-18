@@ -202,7 +202,8 @@ A plan whose every milestone is checked is finished work, not yet a finished
 plan. `studyloop now` and the Today card report it as a completion action that
 carries the end assessment on the plan's own concepts — due reviews, struggles,
 and milestones marked done without evidence — and a proposal: `extend` while any
-count is above zero, `close` when all three are zero. `studyloop plan close
+count is above zero, `close` when all three are zero, and **no proposal** when
+the review is partial. `studyloop plan close
 PLAN_ID` launches you with a brief whose first section, **Closing review**,
 lists the three counts, the proposal and one line per counted item, followed by
 the plan as it stands. The brief's opening line says this is a CLOSING REVIEW
@@ -227,8 +228,14 @@ session. The review counts only due rows that name a concept: the scheduler's
    never recorded (`studyloop progress CONCEPT -t TOPIC -c confident`), so the
    spaced-repetition loop keeps what the plan taught.
 
-If the brief carries a **Data gaps** section, the counts are partial. Say so
-before you propose anything.
+If the proposal line reads `unassessed — the review is partial`, one of the
+assessment's readers was unavailable and the counts are what was read so far;
+the review lists each gap as a `Not read:` line. Say so before anything else,
+walk the lines that were read, and do not infer a clean slate from zeros the
+review could not fill: propose nothing yourself until the learner has heard
+what is missing, and prefer re-running the review (`evaluate_study_plan(plan_id,
+"end")`) over closing on a partial one. The same applies when `studyloop now`
+or the Today card shows a completion action with no proposal.
 
 ## Evaluating a Plan
 

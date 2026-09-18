@@ -138,9 +138,12 @@ class CompletionAction:
     on the plan's own concepts and the proposal they imply — read through the
     preview path, ``assess(AssessPlan(phase="end", record=False))``: no write,
     no checkpoint, no status change. ``proposal`` is ``None`` when that
-    assessment failed: the counts are then *unknown*, not zero — ``action``
-    falls back to the plan-static sentence and ``NowPlan.warnings`` says why —
-    so no renderer reads a clean slate or outstanding work into a failure. The
+    assessment failed outright — the counts are then *unknown*, not zero —
+    ``action`` falls back to the plan-static sentence and ``NowPlan.warnings``
+    says why — and also when it was **partial** (``partial=True``, council
+    review 6 F1): a reader was down, the counts are what was read so far, and
+    the sentence says the review could not be completed rather than "clean".
+    No renderer reads a clean slate or outstanding work into a failure. The
     engine proposes; the architect asks; the learner decides;
     ``set_study_plan_status`` is the only door to ``complete``.
     """
@@ -153,6 +156,7 @@ class CompletionAction:
     unverified_milestones: int = 0
     proposal: Literal["extend", "close"] | None = None
     evidence: tuple[str, ...] = ()
+    partial: bool = False
 
     def to_json_dict(self) -> dict:
         data = asdict(self)
@@ -768,16 +772,22 @@ def _completion_sentence(plan_id: str, title: str, review: CompletionReview) -> 
     def plural(count: int, noun: str) -> str:
         return f"{count} {noun}{'' if count == 1 else 's'}"
 
+    counts = (
+        f"{plural(review.due_reviews, 'due review')}, {plural(review.struggles, 'struggle')} and "
+        f"{plural(review.unverified_milestones, 'unverified milestone')} on its concepts"
+    )
+    if review.partial:
+        return (
+            f"Every milestone of {title!r} is checked off, but the closing review is partial — "
+            f"one of its readers was unavailable, so it could not propose; read so far: {counts}. "
+            f"Walk what was read with the architect: studyloop plan close {plan_id}."
+        )
     if review.proposal == "close":
         return (
             f"Every milestone of {title!r} is checked off and the closing review is clean — "
             "it proposes closing the plan. Close it with the architect when you agree: "
             f"studyloop plan close {plan_id}."
         )
-    counts = (
-        f"{plural(review.due_reviews, 'due review')}, {plural(review.struggles, 'struggle')} and "
-        f"{plural(review.unverified_milestones, 'unverified milestone')} on its concepts"
-    )
     return (
         f"Every milestone of {title!r} is checked off, and the closing review proposes "
         f"extending the plan — {counts}. Walk the evidence with the architect: "
@@ -800,6 +810,7 @@ def _completion_action(
         unverified_milestones=review.unverified_milestones,
         proposal=review.proposal,
         evidence=review.evidence,
+        partial=review.partial,
     )
 
 

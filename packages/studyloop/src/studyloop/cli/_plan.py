@@ -645,9 +645,7 @@ CLOSE_BRIEF_INTRO = (
 )
 
 
-def _render_closing_brief(
-    detail: PlanDetail, review: CompletionReview, gaps: tuple[str, ...]
-) -> str:
+def _render_closing_brief(detail: PlanDetail, review: CompletionReview) -> str:
     """The brief ``plan close`` hands the architect: the closing review first, then the plan.
 
     The first section's first four ``- `` lines are the three counts and the
@@ -655,25 +653,25 @@ def _render_closing_brief(
     the top without parsing prose, as the repair brief's blockers are. The
     review is the same :class:`~studyloop.planning.CompletionReview` the
     ``now`` engine puts on its completion action: one definition, two surfaces.
-    A ``### Data gaps`` section appears only when the evaluation reported a
-    reader unavailable, so the agent knows the counts are partial.
+    A partial read (a reader unavailable, council review 6 F1) is that
+    definition's business too: the proposal line reads ``unassessed — the
+    review is partial`` and the review's evidence names each reader that was
+    not read, so the agent knows the counts are what was read so far.
     """
+    proposal = review.proposal or "unassessed — the review is partial"
     lines = [
         f"Due reviews on plan concepts: {review.due_reviews}",
         f"Struggles on plan concepts: {review.struggles}",
         f"Unverified milestones: {review.unverified_milestones}",
-        f"Proposal: {review.proposal}",
+        f"Proposal: {proposal}",
         *review.evidence,
     ]
-    brief = (
+    return (
         "### Closing review\n\n"
         + "\n".join(f"- {line}" for line in lines)
         + "\n\n"
         + _render_plan_as_it_stands(detail.summary)
     )
-    if gaps:
-        brief += "\n### Data gaps\n\n" + "\n".join(f"- {gap}" for gap in gaps) + "\n"
-    return brief
 
 
 @plan_group.command("close")
@@ -723,10 +721,17 @@ def plan_close(ctx: click.Context, plan_id: str, agent: str | None) -> None:
 
     from studyloop.cli._study import study
 
-    console.print(
-        f"[green]{s.plan_id!r} ({s.title}) has every milestone checked; the closing review "
-        f"proposes: {review.proposal}. Launching the architect to decide with you.[/green]"
-    )
+    if review.partial:
+        console.print(
+            f"[yellow]{s.plan_id!r} ({s.title}) has every milestone checked, but the closing "
+            "review is partial — a reader was unavailable, so it does not propose. Launching "
+            "the architect to walk what was read with you.[/yellow]"
+        )
+    else:
+        console.print(
+            f"[green]{s.plan_id!r} ({s.title}) has every milestone checked; the closing review "
+            f"proposes: {review.proposal}. Launching the architect to decide with you.[/green]"
+        )
     ctx.invoke(
         study,
         topic=s.title,
@@ -739,7 +744,7 @@ def plan_close(ctx: click.Context, plan_id: str, agent: str | None) -> None:
         password="",
         resume=False,
         end_session=False,
-        brief=_render_closing_brief(detail, review, result.warnings),
+        brief=_render_closing_brief(detail, review),
         brief_intro=CLOSE_BRIEF_INTRO,
     )
 

@@ -23,6 +23,7 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Literal
 
 from .authoring import READINESS_GATE_DATE, readiness
+from .evaluation import PARTIAL_READ_MARKER
 
 if TYPE_CHECKING:
     from .evaluation import PlanEvaluation
@@ -782,13 +783,24 @@ class CompletionReview:
     (:func:`~studyloop.planning.evaluation.evaluate_plan` keeps ten due rows and
     ten struggle rows): a plan with more outstanding work than that reads as
     ten — still ``extend``.
+
+    **A partial read never proposes** (council review 6, F1). ``evaluate_plan``
+    turns a reader that fails into one warning and an empty default, so a
+    count read while a reader was down is *unread*, not zero. When the
+    evaluation carries such a warning the review keeps the counts it did read,
+    sets ``partial`` and proposes ``None`` — neither ``close`` (a clean slate
+    is a fact about evidence, not about its absence) nor ``extend`` (nothing
+    outstanding was observed) — and names each gap among its evidence lines,
+    so the ``now`` sentence and the ``plan close`` brief both say what was
+    not read. The architect decides what a partial review means.
     """
 
     due_reviews: int
     struggles: int
     unverified_milestones: int
-    proposal: CompletionProposal
+    proposal: CompletionProposal | None
     evidence: tuple[str, ...]
+    partial: bool = False
 
     @classmethod
     def from_evaluation(cls, evaluation: PlanEvaluationView) -> CompletionReview:
@@ -807,13 +819,20 @@ class CompletionReview:
         if len(lines) > COMPLETION_EVIDENCE_CAP:
             more = len(lines) - COMPLETION_EVIDENCE_CAP
             lines = [*lines[:COMPLETION_EVIDENCE_CAP], f"… and {more} more"]
+        gaps = [w for w in evaluation.warnings if PARTIAL_READ_MARKER in w]
+        lines.extend(f"Not read: {gap}" for gap in gaps)
         counts = (len(due), len(evaluation.struggles), len(evaluation.unverified_milestones))
+        # Unread beats zero: a gap yields no proposal at all.
+        proposal: CompletionProposal | None = (
+            None if gaps else ("extend" if any(counts) else "close")
+        )
         return cls(
             due_reviews=counts[0],
             struggles=counts[1],
             unverified_milestones=counts[2],
-            proposal="extend" if any(counts) else "close",
+            proposal=proposal,
             evidence=tuple(lines),
+            partial=bool(gaps),
         )
 
     def to_json_dict(self) -> dict[str, Any]:

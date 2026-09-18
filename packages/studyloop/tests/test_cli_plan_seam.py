@@ -832,3 +832,59 @@ def test_plan_close_on_an_unfinished_plan_refuses(
     assert "Traceback" not in clean
     assert calls == []  # no launch
     assert _documents(isolated_plans_dir) == before
+
+
+def test_plan_close_with_a_partial_assessment_does_not_present_a_clean_proposal(
+    runner, isolated_plans_dir, tmp_path, monkeypatch
+) -> None:
+    """Council review 6, F1: one of the end assessment's readers is down, the
+    rest is clean. ``evaluate_plan`` swallows the failure into a warning and
+    an empty default, so the counts it did read are zero — but "zero due" is
+    unread, not known. The brief must say so in its fixed lines
+    (``Proposal: unassessed — the review is partial``), name the gap in the
+    same first section, and still launch: the architect is the right place to
+    decide what a partial review means. The status line must not say the
+    review "proposes: close"."""
+    from contextlib import ExitStack
+
+    from studyloop import history
+
+    store.plans_dir()
+    runner.invoke(cli, ["plan", "new", "--title", "Glue ETL", *READY, "--activate"])
+    runner.invoke(cli, ["plan", "milestone", "glue-etl", "0", "--done"])
+    runner.invoke(cli, ["plan", "milestone", "glue-etl", "1", "--done"])
+    before = _documents(isolated_plans_dir)
+    _plant_end_evidence(
+        monkeypatch,
+        due=[],
+        mentions=[{"snippet": "walked through the glue job anatomy and a dynamicframe transform"}],
+    )
+
+    def due_reader_down(topic_keywords_map):
+        raise RuntimeError("study_progress is locked")
+
+    monkeypatch.setattr(history, "spaced_repetition_due", due_reader_down)
+
+    captured: dict = {}
+    calls: list = []
+    with ExitStack() as stack:
+        for p in _launch_patches(tmp_path, captured, calls):
+            stack.enter_context(p)
+        monkeypatch.setenv("TMUX", "/tmp/tmux")
+        result = runner.invoke(cli, ["plan", "close", "glue-etl"])
+
+    assert result.exit_code == 0, result.output
+    assert calls == ["Glue ETL"], calls  # the launch still happens: the architect decides
+    clean = _ANSI.sub("", result.output)
+    assert "proposes: close" not in clean
+    assert "partial" in clean.lower()
+
+    items = _closing_section(captured["brief"])
+    assert items[:4] == [
+        "Due reviews on plan concepts: 0",
+        "Struggles on plan concepts: 0",
+        "Unverified milestones: 0",
+        "Proposal: unassessed — the review is partial",
+    ], items
+    assert any("unavailable" in item for item in items[4:]), items  # the gap, in the same section
+    assert _documents(isolated_plans_dir) == before

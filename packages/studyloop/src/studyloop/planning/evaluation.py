@@ -42,6 +42,11 @@ STALE_DAYS = 14
 #: Milestones marked done whose concepts carry no confidence evidence.
 UNVERIFIED_LABEL = "claimed-done-without-evidence"
 
+#: The phrase every reader-failure warning ends with. A consumer that must
+#: tell "unread" from "zero" (the completion review, council review 6 F1)
+#: keys on this, so the wording lives here and nowhere else.
+PARTIAL_READ_MARKER = "unavailable — evaluation is partial"
+
 
 @dataclass
 class ConceptEvidence:
@@ -149,7 +154,7 @@ def _safe(label: str, fn, default, warnings: list[str]):
         return fn()
     except Exception:
         logger.debug("plan evaluation: %s unavailable", label, exc_info=True)
-        warnings.append(f"{label} unavailable — evaluation is partial")
+        warnings.append(f"{label} {PARTIAL_READ_MARKER}")
         return default
 
 
