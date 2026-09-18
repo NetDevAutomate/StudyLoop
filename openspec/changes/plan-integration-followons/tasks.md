@@ -146,7 +146,8 @@ writer, through the existing gate, closes that. Kept out of item 3 so item 3's f
 - [x] **T4.3** (in `82293293`: row **4b** added under row 4 — row 4 untouched — with the re-run primary
       (`decorators` 118, unchanged) and both readings of the completion action as the engine emitted them
       through the RED tests' own fixtures: (a) one due review on plan concept `alpha` → `extend`, evidence
-      `Due review: alpha — overdue`; (b) clean → `close`, evidence empty. Verdict `PENDING` for the owner; the
+      `Due review: alpha — overdue`; (b) clean → `close`, evidence empty. Verdict scored by the owner on
+      2026-09-18: **yes** on both readings — the scenario-4 "no as phrased" finding is closed; the
       receipt's status line and re-run mapping name the two backing tests.) Rubric: add row **4b** to
       `receipts/now-rubric-2026-09-16.md` (do not overwrite row 4) with the
       re-run primary and the proposal; verdict column `PENDING` for the owner.
@@ -174,7 +175,8 @@ writer, through the existing gate, closes that. Kept out of item 3 so item 3's f
       golden byte-identity still green.
 - [ ] **T5.3** GREEN: `energy_demand`, rule 3 extension, `body_double` synthesis, CLI/Today "sit with the plan" line.
 - [ ] ⚖ **T5.4** Council review 7 (`review7`, same seats or `kimi-k2-thinking` third); arbitration; corrections.
-- [ ] **T5.5** Rubric row **3b** for the owner (`PENDING`); the change is archived only after the owner scores 3b and 4b.
+- [ ] **T5.5** Rubric row **3b** for the owner (`PENDING`); the change is archived only after the owner scores 3b
+      (4b was scored **yes / yes** on 2026-09-18, so 3b is the one row still outstanding).
 
 ## Item 6 — proposals (no code)
 

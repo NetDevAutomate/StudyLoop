@@ -251,7 +251,8 @@ energy-deferred scenario (hands-on repair of a live struggle on a low-energy
 day) and the completion action's wording were not. The energy-deferred
 scenario is still follow-on work rather than an edit to the ranking; the
 completion action was reworked into the closing review described above, and
-its re-run row awaits the maintainer's score.
+its re-run row was scored by the maintainer on 2026-09-18 — accepted on both
+readings, the evidence-backed *extend* and the clean *close*.
 
 ## Deliberately not automatic
 
