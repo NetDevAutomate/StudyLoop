@@ -919,9 +919,9 @@ def test_completion_action_carries_the_end_assessment_and_proposes_extend_when_c
 
     [action] = plan.completion_actions
     assert action.plan_id == "done-plan"
-    assert (action.due_reviews, action.struggles, action.unverified_milestones) == (1, 0, 0)  # pyright: ignore[reportAttributeAccessIssue]
-    assert action.proposal == "extend"  # pyright: ignore[reportAttributeAccessIssue]
-    assert any("alpha" in line for line in action.evidence), action.evidence  # pyright: ignore[reportAttributeAccessIssue]
+    assert (action.due_reviews, action.struggles, action.unverified_milestones) == (1, 0, 0)
+    assert action.proposal == "extend"
+    assert any("alpha" in line for line in action.evidence), action.evidence
     assert "Done Plan" in action.action
     assert "extend" in action.action.lower()
     assert action.action != _pre_change_sentence("Done Plan")
@@ -946,9 +946,9 @@ def test_completion_action_proposes_close_when_the_assessment_is_clean(monkeypat
     plan = build_now_plan()
 
     [action] = plan.completion_actions
-    assert (action.due_reviews, action.struggles, action.unverified_milestones) == (0, 0, 0)  # pyright: ignore[reportAttributeAccessIssue]
-    assert action.proposal == "close"  # pyright: ignore[reportAttributeAccessIssue]
-    assert action.evidence == ()  # pyright: ignore[reportAttributeAccessIssue]
+    assert (action.due_reviews, action.struggles, action.unverified_milestones) == (0, 0, 0)
+    assert action.proposal == "close"
+    assert action.evidence == ()
     assert "Done Plan" in action.action
     assert "close" in action.action.lower()
     assert action.action != _pre_change_sentence("Done Plan")
@@ -984,9 +984,9 @@ def test_completion_review_does_not_count_new_topic_rows_as_due(monkeypatch) -> 
     plan = build_now_plan()
 
     [action] = plan.completion_actions
-    assert (action.due_reviews, action.struggles, action.unverified_milestones) == (0, 0, 0)  # pyright: ignore[reportAttributeAccessIssue]
-    assert action.proposal == "close"  # pyright: ignore[reportAttributeAccessIssue]
-    assert action.evidence == ()  # pyright: ignore[reportAttributeAccessIssue]
+    assert (action.due_reviews, action.struggles, action.unverified_milestones) == (0, 0, 0)
+    assert action.proposal == "close"
+    assert action.evidence == ()
 
 
 def test_completion_never_changes_status(monkeypatch) -> None:

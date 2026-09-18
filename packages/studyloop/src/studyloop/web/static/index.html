@@ -1113,6 +1113,9 @@
             <template x-for="(note, i) in completionNotes()" :key="'c' + i">
               <p class="today-meta">Plan complete: <span x-text="note"></span></p>
             </template>
+            <template x-for="(line, i) in completionEvidence()" :key="'e' + i">
+              <p class="today-meta today-plan-evidence">&bull; <span x-text="line"></span></p>
+            </template>
             <template x-for="(note, i) in warningNotes()" :key="'w' + i">
               <p class="today-meta">Plan warning: <span x-text="note"></span></p>
             </template>

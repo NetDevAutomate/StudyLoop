@@ -68,3 +68,49 @@ SHALL name both exits: `studyloop plan repair <id>` and `studyloop plan status
   launch; the second exits `1` naming `nope` with no traceback; the third
   exits `1` and names both `studyloop plan status husk paused` and `studyloop
   plan repair husk`
+
+### Requirement: The plan CLI closes a fully-checked plan through the one launch chain, consensually
+`studyloop plan close <id>` (item 4 / D-G) SHALL be the architect launch and
+never a second path — the sibling of `plan repair`, through the same
+`ctx.invoke(study, …, mode="plan-architect", topic=<the plan's title>,
+brief=…, brief_intro=…)`. It SHALL `_inspect(id)` (unknown id → the seam's
+not-found through `_fail_for`, exit `1`); SHALL exit `1` with `'<id>' still
+has N open milestone(s)` and no launch while any milestone is open; SHALL
+exit `1` with a pointer to `studyloop plan architect` for a plan with no
+milestones; SHALL exit `0` with no launch for a plan that is already
+`complete`; and for a fully-checked plan SHALL run the end assessment as a
+**preview** (`AssessPlan(phase="end", record=False)`) and launch once. The
+command itself SHALL write nothing: the document, the plans directory, the
+plan's status and the checkpoint log are unchanged after it returns; the
+status moves to `complete` only when the learner agrees in the launched
+session and the architect calls `set_study_plan_status`.
+
+The brief's first section SHALL be `### Closing review`, whose first four
+`- ` lines are `Due reviews on plan concepts: N`, `Struggles on plan
+concepts: N`, `Unverified milestones: N` and `Proposal: extend|close`,
+followed by one `- ` evidence line per counted item — the same
+`CompletionReview` the `now` engine puts on its completion action, so the two
+never disagree on a count (new-topic rows excluded) — then the plan as it
+stands (title, id, status, topics, milestones done/total, created), and a
+`### Data gaps` section only when the evaluation reported a reader
+unavailable. The `brief_intro` SHALL say `CLOSING REVIEW` and `only when the
+learner agrees`, and SHALL NOT say `build a study plan`.
+
+#### Scenario: plan close on a fully-checked plan launches once with the review first and writes nothing
+- **WHEN** `plan close glue-etl` is run on an active plan whose two milestones
+  are both done, with the due reader returning one real due row on a plan
+  concept and one `New topic -- start fresh` row (`concept: None`)
+- **THEN** exactly one `start_session` call is made with `mode="plan-architect"`
+  and `topic` equal to the plan's title; the `### Closing review` section's
+  first four lines are `Due reviews on plan concepts: 1`, `Struggles on plan
+  concepts: 0`, `Unverified milestones: 0`, `Proposal: extend`, followed by an
+  evidence line naming the due concept; the brief says `2/2`; the intro says
+  `CLOSING REVIEW` and `only when the learner agrees` and not `build a study
+  plan`; the plans directory, the plan's `active` status and the checkpoint
+  history are unchanged
+
+#### Scenario: plan close on an unfinished plan refuses without launching
+- **WHEN** `plan close glue-etl` is run on an active plan with two open
+  milestones
+- **THEN** it exits `1` with `'glue-etl' still has 2 open milestone(s)`, no
+  traceback, no launch, and the plans directory unchanged

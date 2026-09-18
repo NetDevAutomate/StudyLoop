@@ -131,12 +131,45 @@ test('completionNotes: the engine\u2019s completion actions, verbatim', () => {
   assert.equal(panel.hasPlanContext, true);
 });
 
+test('completionEvidence: the closing review\u2019s lines, in the engine\u2019s order, across actions', () => {
+  const panel = todayPanel();
+  panel.plan = {
+    ...NO_PLAN_PAYLOAD,
+    completion_actions: [
+      {
+        plan_id: 'done',
+        plan_title: 'Done',
+        action: 'closing review proposes extending the plan',
+        due_reviews: 1,
+        struggles: 0,
+        unverified_milestones: 1,
+        proposal: 'extend',
+        evidence: [
+          'Due review: alpha \u2014 overdue',
+          'Unverified milestone: B \u2014 marked done, no evidence on its concepts',
+        ],
+      },
+      // A pre-D-G entry (no evidence key) and a failed assessment (proposal null,
+      // evidence empty) both contribute nothing.
+      { plan_id: 'old', plan_title: 'Old', action: 'plain sentence' },
+      { plan_id: 'unread', plan_title: 'Unread', action: 'plain sentence', proposal: null, evidence: [] },
+    ],
+  };
+
+  assert.deepEqual(panel.completionEvidence(), [
+    'Due review: alpha \u2014 overdue',
+    'Unverified milestone: B \u2014 marked done, no evidence on its concepts',
+  ]);
+  assert.equal(panel.completionNotes().length, 3);
+});
+
 test('a payload without plan keys renders no plan text, before and after init-like assignment', () => {
   const panel = todayPanel();
 
   assert.equal(panel.planLabel(null), '');
   assert.deepEqual(panel.deferredNotes(), []);
   assert.deepEqual(panel.completionNotes(), []);
+  assert.deepEqual(panel.completionEvidence(), []);
   assert.equal(panel.hasPlanContext, false);
 
   panel.plan = NO_PLAN_PAYLOAD;

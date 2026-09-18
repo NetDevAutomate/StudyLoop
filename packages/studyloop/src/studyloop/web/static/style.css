@@ -3814,6 +3814,8 @@ body[data-palette="everforest"] {
 }
 .today-concept { margin: 0 0 6px; font-size: 1.4rem; }
 .today-meta { margin: 0 0 10px; color: var(--text-muted); }
+/* The closing review's evidence lines under a "Plan complete" note (D-G). */
+.today-plan-evidence { margin: -6px 0 6px 16px; font-size: 0.9rem; }
 .today-reason { margin: 0 0 18px; }
 .today-start-btn { font-size: 1.05rem; padding: 10px 22px; }
 .today-resume { margin-bottom: 16px; }

@@ -744,6 +744,88 @@ class AssessmentResult:
         }
 
 
+#: What the completion review proposes: ``extend`` while any of its counts is
+#: above zero, ``close`` when all three are zero. A proposal, never a verdict.
+CompletionProposal = Literal["extend", "close"]
+
+#: Upper bound on the evidence lines a completion review carries — one per
+#: counted item, then a single line saying how many more the counts cover.
+#: Enough to read off the top of a brief or a card; the counts stay exact.
+COMPLETION_EVIDENCE_CAP = 8
+
+
+@dataclass(frozen=True)
+class CompletionReview:
+    """The completion review's reading of an ``end`` assessment (D-G, item 4).
+
+    One definition for the two surfaces that say what to do with an active plan
+    whose every milestone is checked — the ``now`` engine's completion action
+    and the ``plan close`` brief — so they never disagree on a count. Three
+    counts on the plan's own concepts, the proposal they imply, and one
+    evidence line per counted item (capped at :data:`COMPLETION_EVIDENCE_CAP`,
+    then one line saying how many more). Nothing here changes a status, and
+    nothing may because of it: the engine proposes, the architect asks, the
+    learner decides.
+
+    **Due reviews count only rows that name a concept** (owner decision,
+    2026-09-17). :func:`~studyloop.history.spaced_repetition_due` appends a
+    ``New topic -- start fresh`` row (``concept: None``) for every plan topic
+    with no progress rows — the scheduler's cold-start hint for "what should I
+    review now", not a lapsed review. The evaluator keeps it (``plan evaluate
+    --phase start`` wants it) and already ignores it at concept level, where a
+    ``None`` concept never matches a milestone concept; counting it here would
+    tell a learner who has just ticked every milestone to "start fresh".
+    ``unverified_milestones`` remains the honest carrier of "done without
+    evidence".
+
+    The counts are bounded by the evaluation's own row caps
+    (:func:`~studyloop.planning.evaluation.evaluate_plan` keeps ten due rows and
+    ten struggle rows): a plan with more outstanding work than that reads as
+    ten — still ``extend``.
+    """
+
+    due_reviews: int
+    struggles: int
+    unverified_milestones: int
+    proposal: CompletionProposal
+    evidence: tuple[str, ...]
+
+    @classmethod
+    def from_evaluation(cls, evaluation: PlanEvaluationView) -> CompletionReview:
+        due = [row for row in evaluation.due_reviews if row.get("concept")]
+        lines: list[str] = []
+        for row in due:
+            kind = str(row.get("review_type") or "").strip()
+            label = f"Due review: {row['concept']}"
+            lines.append(f"{label} — {kind}" if kind else label)
+        for row in evaluation.struggles:
+            lines.append(f"Struggle: {row.get('concept') or row.get('topic')}")
+        for title in evaluation.unverified_milestones:
+            lines.append(
+                f"Unverified milestone: {title} — marked done, no evidence on its concepts"
+            )
+        if len(lines) > COMPLETION_EVIDENCE_CAP:
+            more = len(lines) - COMPLETION_EVIDENCE_CAP
+            lines = [*lines[:COMPLETION_EVIDENCE_CAP], f"… and {more} more"]
+        counts = (len(due), len(evaluation.struggles), len(evaluation.unverified_milestones))
+        return cls(
+            due_reviews=counts[0],
+            struggles=counts[1],
+            unverified_milestones=counts[2],
+            proposal="extend" if any(counts) else "close",
+            evidence=tuple(lines),
+        )
+
+    def to_json_dict(self) -> dict[str, Any]:
+        return {
+            "due_reviews": self.due_reviews,
+            "struggles": self.struggles,
+            "unverified_milestones": self.unverified_milestones,
+            "proposal": self.proposal,
+            "evidence": list(self.evidence),
+        }
+
+
 @dataclass(frozen=True)
 class ActivePlanGuidance:
     """What the ``now`` ranker needs to know about one active plan (D-5).

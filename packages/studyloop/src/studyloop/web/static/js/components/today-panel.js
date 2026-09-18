@@ -167,6 +167,16 @@ export function todayPanel() {
       return actions.map((a) => a.action);
     },
 
+    /* The closing review's evidence (D-G, item 4): one line per counted item
+       across every completion action, in the engine's order — what the
+       proposal in the sentence rests on. A pre-D-G entry without `evidence`
+       contributes nothing, and a failed assessment (`proposal` null) carries
+       none by construction. */
+    completionEvidence() {
+      const actions = (this.plan && this.plan.completion_actions) || [];
+      return actions.flatMap((a) => (Array.isArray(a.evidence) ? a.evidence : []).map(String));
+    },
+
     /* The engine's warnings, verbatim: an active plan that is not ready (its
        blockers, "pause or repair"), a document that could not be read. Data
        the CLI and the JSON already show; the card shows it too. */

@@ -224,7 +224,20 @@ is **not ready** — a hand edit removed its mission or its milestones — is
 listed with a warning naming what to repair; it still biases related work,
 but no milestone is suggested for it until it is paused or repaired. A plan
 whose milestones are all checked appears as a completion action instead of
-new work. This is plan-aware guidance with tested ranking rules — a bias, not
+new work, and that action is a **closing review**, not a verdict: the engine
+reads the plan's end assessment as a preview — due reviews and struggles on
+the plan's own concepts, and milestones marked done with no evidence behind
+them — and proposes *extend* while any count is above zero, *close* when all
+three are zero, with one evidence line per counted item. The scheduler's
+"new topic — start fresh" rows are not counted as due here: a topic you never
+logged progress on is not a lapsed review, and a plan you have just finished
+should not tell you to start fresh. Nothing about a plan's status changes
+because of the review; `studyloop plan close PLAN_ID` launches the architect
+with the same review as the first section of its brief, and the plan becomes
+`complete` only when you agree in that conversation (the architect calls
+`set_study_plan_status`). If the assessment cannot be read, the completion
+action keeps its plain sentence and a warning says why — a failure is never
+shown as a clean slate. This is plan-aware guidance with tested ranking rules — a bias, not
 a filter: an overdue review or a fresh struggle on an unrelated topic can
 still outrank new milestone work. With no active plan the recommendation is
 unchanged; a plan that cannot be read adds a warning and nothing else. The
@@ -235,8 +248,10 @@ in the project's rubric receipt
 scored by the maintainer on 2026-09-16: the matching-due, urgent-unrelated
 and no-plan scenarios and the fully-checked plan's primary were accepted; the
 energy-deferred scenario (hands-on repair of a live struggle on a low-energy
-day) and the completion action's wording were not, and are follow-on work
-rather than edits to the ranking.
+day) and the completion action's wording were not. The energy-deferred
+scenario is still follow-on work rather than an edit to the ranking; the
+completion action was reworked into the closing review described above, and
+its re-run row awaits the maintainer's score.
 
 ## Deliberately not automatic
 
@@ -266,7 +281,10 @@ refuses: the manual form's free-text brain dump is saved as context and never
 decomposed into the structured fields. The architect interview is the door for
 an agent-led decomposition, and the Web **Plan with architect** control carries
 its own optional brain dump to the architect as evidence — StudyLoop itself
-still decomposes nothing.
+still decomposes nothing. The same holds at the other end of a plan: checking
+off the last milestone never completes it. The plan gets a closing review and
+a proposal, `studyloop plan close` opens the conversation, and the status
+moves to `complete` only when you agree in it.
 
 These boundaries are stated here so that a plan never appears more connected
 than it is. See the [roadmap](roadmap.md) for the intended continuity work.

@@ -71,6 +71,10 @@ def _render_plan(plan) -> None:
         )
     for completion in getattr(plan, "completion_actions", ()):
         console.print(f"[green]Plan complete:[/green] {escape(completion.action)}")
+        # The review's evidence, one dim line per counted item (D-G); the
+        # sentence above already carries the proposal and the counts.
+        for line in getattr(completion, "evidence", ()):
+            console.print(f"  [dim]• {escape(line)}[/dim]")
     for warning in getattr(plan, "warnings", ()):
         console.print(f"[dim]Plan warning: {escape(warning)}[/dim]")
 

@@ -190,6 +190,40 @@ leave the edit to the learner (the `## Mission` and `## Milestones` sections of
 the document, or the Web UI's plan editor), then `studyloop plan show PLAN_ID
 --json` to read `readiness` back.
 
+## Closing a Plan
+
+A plan whose every milestone is checked is finished work, not yet a finished
+plan. `studyloop now` and the Today card report it as a completion action that
+carries the end assessment on the plan's own concepts — due reviews, struggles,
+and milestones marked done without evidence — and a proposal: `extend` while any
+count is above zero, `close` when all three are zero. `studyloop plan close
+PLAN_ID` launches you with a brief whose first section, **Closing review**,
+lists the three counts, the proposal and one line per counted item, followed by
+the plan as it stands. The brief's opening line says this is a CLOSING REVIEW
+session. The review counts only due rows that name a concept: the scheduler's
+"New topic -- start fresh" hint is not outstanding work. Then:
+
+1. Read the evidence back, line by line, before you say what you think. The
+   counts are the databases' view; the learner's view is the one that decides.
+2. Propose — extend or close — and say why in one sentence, from the evidence.
+   Extending means a follow-on mission for what is still due or unverified,
+   never re-opening a ticked milestone; closing means `complete`.
+3. Ask: "Is there anything here you are not comfortable with?" Then wait.
+4. Change the status only when the learner agrees, and only to what they
+   agreed. To close: `set_study_plan_status(plan_id, "complete")` (fallback:
+   `studyloop plan status PLAN_ID complete`). To extend: revise the plan with
+   `update_study_plan` — new milestones on the outstanding work, or a follow-on
+   plan through the interview — and leave it `active`. Never change a status
+   because the proposal said so: the engine proposes, you ask, the learner
+   decides.
+5. Before closing, offer to record what was learned (`record_plan_learning`,
+   the wind-down's first write) and to log confidence on any concept that was
+   never recorded (`studyloop progress CONCEPT -t TOPIC -c confident`), so the
+   spaced-repetition loop keeps what the plan taught.
+
+If the brief carries a **Data gaps** section, the counts are partial. Say so
+before you propose anything.
+
 ## Evaluating a Plan
 
 | Phase | When | Question it answers |

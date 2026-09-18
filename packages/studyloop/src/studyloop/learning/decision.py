@@ -4,7 +4,11 @@ This module is the **only ranker**. Active study plans (design §3, D-5) enter
 it as one plan-static read — ``PlanApplication().get_active_guidance()`` — and
 leave as a *bias* on the existing scores, a synthesised candidate for an
 unrepresented next milestone, and references attached to the ranked actions.
-Renderers show that plan relevance; none of them re-rank.
+The one plan that is not plan-static is a fully-checked one (rule 9): its
+completion action carries the end assessment's completion review, read through
+the preview path (``assess(AssessPlan(phase="end", record=False))``) — one
+call per such plan, no write, no status change (D-G). Renderers show that plan
+relevance; none of them re-rank.
 
 With no active plan the emitted JSON is byte for byte what it was before plans
 existed: every additive field is omitted when empty
@@ -25,7 +29,13 @@ from studyloop.cli._shared import TOPIC_KEYWORDS
 if TYPE_CHECKING:
     from datetime import date
 
-    from studyloop.planning.views import ActiveGuidance, ActivePlanGuidance, MilestoneView
+    from studyloop.planning.views import (
+        ActiveGuidance,
+        ActivePlanGuidance,
+        CompletionReview,
+        MilestoneView,
+        PlanSummary,
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -121,14 +131,33 @@ class DeferredMilestone:
 
 @dataclass(frozen=True)
 class CompletionAction:
-    """What to do about an active plan whose every milestone is checked (rule 9)."""
+    """What to do about an active plan whose every milestone is checked (rule 9).
+
+    ``action`` is the sentence every renderer prints. Since D-G (item 4) it is
+    composed from the end assessment's completion review — the three counts
+    on the plan's own concepts and the proposal they imply — read through the
+    preview path, ``assess(AssessPlan(phase="end", record=False))``: no write,
+    no checkpoint, no status change. ``proposal`` is ``None`` when that
+    assessment failed: the counts are then *unknown*, not zero — ``action``
+    falls back to the plan-static sentence and ``NowPlan.warnings`` says why —
+    so no renderer reads a clean slate or outstanding work into a failure. The
+    engine proposes; the architect asks; the learner decides;
+    ``set_study_plan_status`` is the only door to ``complete``.
+    """
 
     plan_id: str
     plan_title: str
     action: str
+    due_reviews: int = 0
+    struggles: int = 0
+    unverified_milestones: int = 0
+    proposal: Literal["extend", "close"] | None = None
+    evidence: tuple[str, ...] = ()
 
     def to_json_dict(self) -> dict:
-        return asdict(self)
+        data = asdict(self)
+        data["evidence"] = list(self.evidence)
+        return data
 
 
 @dataclass(frozen=True)
@@ -698,6 +727,82 @@ def _load_guidance(today: date) -> ActiveGuidance | None:
         return None
 
 
+def _review_completion(plan_id: str) -> tuple[CompletionReview | None, tuple[str, ...]]:
+    """The end assessment's completion review for one fully-checked plan (rule 9, D-G).
+
+    The preview path — ``AssessPlan(phase="end", record=False)`` — so the
+    document, its status and the checkpoint log are untouched; exactly one
+    call per fully-checked plan per ``build_now_plan``. A failure degrades to
+    ``None`` plus one learner-facing warning naming the plan (the
+    recommendation never fails on a plan), logged with its traceback first so
+    a programming error cannot hide behind it, as :func:`_load_guidance` does.
+    The evaluation's own data-gap warnings travel back prefixed with the plan
+    id: a count read while one of its readers was unavailable is partial, and
+    the learner should know that rather than read it as zero.
+    """
+    try:
+        from studyloop.planning import AssessPlan, CompletionReview
+        from studyloop.planning.application import PlanApplication
+
+        result = PlanApplication().assess(AssessPlan(plan_id=plan_id, phase="end", record=False))
+    except Exception as exc:
+        logger.warning(
+            "active plan %r could not be assessed for completion", plan_id, exc_info=True
+        )
+        return None, (
+            f"active plan {plan_id!r} could not be assessed for completion ({exc}); "
+            "shown without its counts",
+        )
+    gaps = tuple(f"active plan {plan_id!r}: {warning}" for warning in result.warnings)
+    return CompletionReview.from_evaluation(result.evaluation), gaps
+
+
+def _completion_sentence(plan_id: str, title: str, review: CompletionReview) -> str:
+    """The completion action's sentence, composed from the review's proposal (D-G).
+
+    Names the proposal and the three counts, then the one door to acting on
+    it — ``studyloop plan close <id>``, where the architect walks the evidence
+    with the learner. Spoken by the recap as well as printed, so no markup.
+    """
+
+    def plural(count: int, noun: str) -> str:
+        return f"{count} {noun}{'' if count == 1 else 's'}"
+
+    if review.proposal == "close":
+        return (
+            f"Every milestone of {title!r} is checked off and the closing review is clean — "
+            "it proposes closing the plan. Close it with the architect when you agree: "
+            f"studyloop plan close {plan_id}."
+        )
+    counts = (
+        f"{plural(review.due_reviews, 'due review')}, {plural(review.struggles, 'struggle')} and "
+        f"{plural(review.unverified_milestones, 'unverified milestone')} on its concepts"
+    )
+    return (
+        f"Every milestone of {title!r} is checked off, and the closing review proposes "
+        f"extending the plan — {counts}. Walk the evidence with the architect: "
+        f"studyloop plan close {plan_id}."
+    )
+
+
+def _completion_action(
+    summary: PlanSummary, fallback: str, review: CompletionReview | None
+) -> CompletionAction:
+    """Rule 9's entry: the reviewed action, or the plan-static sentence when unassessed."""
+    if review is None:
+        return CompletionAction(plan_id=summary.plan_id, plan_title=summary.title, action=fallback)
+    return CompletionAction(
+        plan_id=summary.plan_id,
+        plan_title=summary.title,
+        action=_completion_sentence(summary.plan_id, summary.title, review),
+        due_reviews=review.due_reviews,
+        struggles=review.struggles,
+        unverified_milestones=review.unverified_milestones,
+        proposal=review.proposal,
+        evidence=review.evidence,
+    )
+
+
 def _milestone_concept_keys(plan: ActivePlanGuidance) -> frozenset[str]:
     if plan.next_milestone is None:
         return frozenset()
@@ -722,7 +827,10 @@ class _PlanContext:
 
     ``matchable`` are the plans that may bias and be referenced by a
     candidate: every active plan except a fully-checked one, whose work is
-    done and which is represented by a completion action instead (rule 9).
+    done and which is represented by a completion action instead (rule 9) —
+    the one entry built from a second seam read, the end assessment's preview
+    (:func:`_review_completion`), so it can propose ``extend`` or ``close``
+    from evidence rather than either way (D-G).
     ``synthesise`` are the plans whose next milestone may become a
     candidate when nothing collected represents it (rule 6): ready, with a
     next milestone, and within the energy capability (rule 3).
@@ -778,13 +886,9 @@ class _PlanContext:
 
             eligible = False
             if plan.completion_action:
-                completions.append(
-                    CompletionAction(
-                        plan_id=summary.plan_id,
-                        plan_title=summary.title,
-                        action=plan.completion_action,
-                    )
-                )
+                review, notes = _review_completion(summary.plan_id)
+                warnings.extend(notes)
+                completions.append(_completion_action(summary, plan.completion_action, review))
             else:
                 matchable.append(plan)
                 keys.update(plan.match_keys)

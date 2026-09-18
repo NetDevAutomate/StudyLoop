@@ -30,6 +30,7 @@ from studyloop.cli._shared import console
 from studyloop.planning import (
     PLAN_STATUSES,
     AssessPlan,
+    CompletionReview,
     CreatePlan,
     InvalidField,
     InvalidMilestone,
@@ -48,7 +49,7 @@ from studyloop.planning import (
 )
 
 if TYPE_CHECKING:
-    from studyloop.planning import AssessmentResult, PlanDetail, PlanDetailIntent
+    from studyloop.planning import AssessmentResult, PlanDetail, PlanDetailIntent, PlanSummary
 
 
 def _fail(message: str) -> NoReturn:
@@ -543,6 +544,20 @@ REPAIR_BRIEF_INTRO = (
 )
 
 
+def _render_plan_as_it_stands(s: PlanSummary) -> str:
+    """The ``### The plan as it stands`` section both launch briefs carry."""
+    topics = ", ".join(s.topics) if s.topics else "(none)"
+    return (
+        "### The plan as it stands\n\n"
+        f"- Title: {s.title}\n"
+        f"- Id: {s.plan_id}\n"
+        f"- Status: {s.status}\n"
+        f"- Topics: {topics}\n"
+        f"- Milestones: {s.milestone_done}/{s.milestone_total} done\n"
+        f"- Created: {s.created}\n"
+    )
+
+
 def _render_repair_brief(detail: PlanDetail) -> str:
     """The brief ``plan repair`` hands the architect: blockers first, then the plan as it stands.
 
@@ -555,17 +570,10 @@ def _render_repair_brief(detail: PlanDetail) -> str:
 
     s = detail.summary
     blockers = "\n".join(f"- {item}" for item in detail.readiness.blockers)
-    topics = ", ".join(s.topics) if s.topics else "(none)"
     return (
         "### Repair: what this plan is missing\n\n"
         f"{blockers}\n\n"
-        "### The plan as it stands\n\n"
-        f"- Title: {s.title}\n"
-        f"- Id: {s.plan_id}\n"
-        f"- Status: {s.status}\n"
-        f"- Topics: {topics}\n"
-        f"- Milestones: {s.milestone_done}/{s.milestone_total} done\n"
-        f"- Created: {s.created}\n\n"
+        f"{_render_plan_as_it_stands(s)}\n"
         f"{husk_provenance(s.created)}\n"
     )
 
@@ -626,6 +634,113 @@ def plan_repair(ctx: click.Context, plan_id: str, agent: str | None) -> None:
         end_session=False,
         brief=_render_repair_brief(detail),
         brief_intro=REPAIR_BRIEF_INTRO,
+    )
+
+
+#: The sentence that frames a closing-review brief in place of the planning one.
+CLOSE_BRIEF_INTRO = (
+    "This is a CLOSING REVIEW session: every milestone of the plan below is checked off — "
+    "read the evidence back to the learner, propose extending or closing, ask what they are "
+    "not comfortable with, and change the plan's status only when the learner agrees."
+)
+
+
+def _render_closing_brief(
+    detail: PlanDetail, review: CompletionReview, gaps: tuple[str, ...]
+) -> str:
+    """The brief ``plan close`` hands the architect: the closing review first, then the plan.
+
+    The first section's first four ``- `` lines are the three counts and the
+    proposal, followed by one evidence line per counted item — readable off
+    the top without parsing prose, as the repair brief's blockers are. The
+    review is the same :class:`~studyloop.planning.CompletionReview` the
+    ``now`` engine puts on its completion action: one definition, two surfaces.
+    A ``### Data gaps`` section appears only when the evaluation reported a
+    reader unavailable, so the agent knows the counts are partial.
+    """
+    lines = [
+        f"Due reviews on plan concepts: {review.due_reviews}",
+        f"Struggles on plan concepts: {review.struggles}",
+        f"Unverified milestones: {review.unverified_milestones}",
+        f"Proposal: {review.proposal}",
+        *review.evidence,
+    ]
+    brief = (
+        "### Closing review\n\n"
+        + "\n".join(f"- {line}" for line in lines)
+        + "\n\n"
+        + _render_plan_as_it_stands(detail.summary)
+    )
+    if gaps:
+        brief += "\n### Data gaps\n\n" + "\n".join(f"- {gap}" for gap in gaps) + "\n"
+    return brief
+
+
+@plan_group.command("close")
+@click.argument("plan_id")
+@click.option(
+    "--agent",
+    "-a",
+    help="AI agent to launch (auto-detects if omitted).",
+)
+@click.pass_context
+def plan_close(ctx: click.Context, plan_id: str, agent: str | None) -> None:
+    """Review a fully-checked plan with the architect and decide: extend it or close it.
+
+    A plan whose every milestone is checked is finished work, not yet a
+    finished plan. This runs the end assessment as a preview — due reviews,
+    struggles and milestones marked done without evidence, counted on the
+    plan's own concepts — and launches the study-plan-architect (the same
+    ``studyloop study --mode plan-architect`` chain as ``plan architect`` and
+    ``plan repair``, never a second path) with those counts, the proposal they
+    imply and the evidence as the first section of its brief. The command
+    itself writes nothing: no checkpoint is recorded, and the status changes
+    only when the learner agrees in that session (``set_study_plan_status``).
+
+    A plan with open milestones has nothing to close yet (exit 1, naming how
+    many are open); a plan that is already ``complete`` is left alone.
+    """
+    detail = _inspect(plan_id)
+    s = detail.summary
+    if s.status == "complete":
+        console.print(f"[dim]{s.plan_id!r} is already complete.[/dim]")
+        return
+    if s.milestone_total == 0:
+        _fail(
+            f"{s.plan_id!r} has no milestones, so there is nothing to close — finish it with "
+            "studyloop plan architect."
+        )
+    open_count = s.milestone_total - s.milestone_done
+    if open_count:
+        _fail(
+            f"{s.plan_id!r} still has {open_count} open milestone(s) — nothing to close yet. "
+            f"Tick each as the learner demonstrates it: "
+            f"studyloop plan milestone {s.plan_id} INDEX --done"
+        )
+
+    result = _assess(AssessPlan(plan_id=s.plan_id, phase="end", record=False))
+    review = CompletionReview.from_evaluation(result.evaluation)
+
+    from studyloop.cli._study import study
+
+    console.print(
+        f"[green]{s.plan_id!r} ({s.title}) has every milestone checked; the closing review "
+        f"proposes: {review.proposal}. Launching the architect to decide with you.[/green]"
+    )
+    ctx.invoke(
+        study,
+        topic=s.title,
+        agent=agent,
+        mode="plan-architect",
+        timer=None,
+        energy=5,
+        web=False,
+        lan=False,
+        password="",
+        resume=False,
+        end_session=False,
+        brief=_render_closing_brief(detail, review, result.warnings),
+        brief_intro=CLOSE_BRIEF_INTRO,
     )
 
 
