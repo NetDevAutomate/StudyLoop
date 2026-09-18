@@ -67,7 +67,13 @@ PRODUCTION_TOOL_COUNT = 32
 CORE_TOOLS = frozenset({"list_courses", "get_study_backlog", "end_session"})
 
 #: Protected test files: byte-identical to their base since the programme began.
-PROTECTED_EARLY_BASE = "3a4f6b01"
+# Moved 3a4f6b01 -> d7f568bf on 2026-09-18: the history consolidation rewrote
+# the programme's early commits, and 3a4f6b01 survived only as an unreachable
+# object in one clone (`git fetch origin 3a4f6b01` finds no such ref), so the
+# check would fail on any fresh checkout. d7f568bf is the same commit ("RED --
+# pin the two plan bugs issue #7 named as must-fix-first") on main; the three
+# protected files are byte-identical between the two (git diff --stat empty).
+PROTECTED_EARLY_BASE = "d7f568bf"
 PROTECTED_EARLY = (
     "packages/studyloop/tests/test_web_plans.py",
     "packages/studyloop/tests/test_cli_plan.py",
@@ -354,7 +360,7 @@ def build_checks(repo_root: Path) -> list[Check]:
         ),
         # --- protected files: byte-identical to their bases -------------------
         Check(
-            "protected-files-3a4f6b01",
+            "protected-files-early-base",
             ["git", "diff", "--quiet", PROTECTED_EARLY_BASE, "--", *PROTECTED_EARLY],
         ),
         Check(

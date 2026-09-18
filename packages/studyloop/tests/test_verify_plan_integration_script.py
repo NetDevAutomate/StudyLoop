@@ -63,7 +63,7 @@ REQUIRED_CHECK_NAMES = {
     "inventory-in-process",
     "plan-suites",
     "docs-contract",
-    "protected-files-3a4f6b01",
+    "protected-files-early-base",
     "protected-files-late-base",
     "rg-plan-application-cli",
     "rg-plan-application-web-routes",
@@ -149,19 +149,38 @@ class TestRegistry:
 
     def test_protected_file_checks_name_the_ten_files_against_their_bases(self, script) -> None:
         by_name = {check.name: check for check in script.build_checks(REPO_ROOT)}
-        early = by_name["protected-files-3a4f6b01"].command
+        early = by_name["protected-files-early-base"].command
         late = by_name["protected-files-late-base"].command
         assert not callable(early) and not callable(late)
-        assert "3a4f6b01" in early and script.PROTECTED_LATE_BASE in late
-        # The late base is a moving pin by design: it advances only when a
+        assert script.PROTECTED_EARLY_BASE in early and script.PROTECTED_LATE_BASE in late
+        # Both bases are moving pins by design: a base advances only when a
         # protected file legitimately changes and the diff has been read
-        # (recorded next to the constant). It must never regress to the seam base.
-        assert script.PROTECTED_LATE_BASE != "3a4f6b01"
+        # (recorded next to the constant), and the check is named by role so
+        # the name never has to move with it. The late base must never regress
+        # to the early one.
+        assert script.PROTECTED_LATE_BASE != script.PROTECTED_EARLY_BASE
         early_files = [part for part in early if part.endswith(".py")]
         late_files = [part for part in late if part.endswith(".py")]
         assert len(early_files) == 3 and len(late_files) == 7
         for rel in (*early_files, *late_files):
             assert (REPO_ROOT / rel).exists(), rel
+
+    def test_protected_file_bases_are_reachable_from_main(self, script) -> None:
+        """A base that exists only as an unreachable object in one clone makes the
+        check fail on every fresh checkout (2026-09-18: ``3a4f6b01`` survived the
+        history consolidation as a dangling object here and nowhere else). Both
+        bases must be ancestors of the local ``main`` -- the property a rewritten
+        SHA loses."""
+        import subprocess
+
+        for base in (script.PROTECTED_EARLY_BASE, script.PROTECTED_LATE_BASE):
+            result = subprocess.run(
+                ["git", "merge-base", "--is-ancestor", base, "main"],
+                cwd=REPO_ROOT,
+                capture_output=True,
+                text=True,
+            )
+            assert result.returncode == 0, f"{base} is not an ancestor of main: {result.stderr}"
 
     def test_architect_grants_check_derives_the_ten_names_from_the_inventory(self, script) -> None:
         """Design §6 (follow-on item 1, D-A): the Kiro and Claude architect
