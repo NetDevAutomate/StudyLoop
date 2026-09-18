@@ -78,6 +78,11 @@ REQUIRED_CHECK_NAMES = {
     "js-unit",
     "openspec-validate",
     "mkdocs-strict",
+    # Follow-on programme, design §6 (items 1 and 3/4): the two architect grants
+    # derived from the inventory, and the `plan repair` / `plan close` refusal
+    # texts as the seam tests pin them.
+    "architect-grants",
+    "repair-close-refusals",
 }
 
 
@@ -157,6 +162,79 @@ class TestRegistry:
         assert len(early_files) == 3 and len(late_files) == 7
         for rel in (*early_files, *late_files):
             assert (REPO_ROOT / rel).exists(), rel
+
+    def test_architect_grants_check_derives_the_ten_names_from_the_inventory(self, script) -> None:
+        """Design §6 (follow-on item 1, D-A): the Kiro and Claude architect
+        definitions carry exactly the nine plan tools + ``record_plan_learning``
+        in the spelling each harness honours (probe receipt 2026-09-16/17).
+        The check is in-process — it reads the two files and the inventory, so a
+        tenth plan tool added to the inventory fails the receipt until the grants
+        follow — and it measures the names it found, so the receipt can be read."""
+        by_name = {check.name: check for check in script.build_checks(REPO_ROOT)}
+        check = by_name["architect-grants"]
+        assert callable(check.command)
+        assert check.command is script.check_architect_grants
+        code, measured = script.check_architect_grants(REPO_ROOT)
+        assert code == 0, measured
+        from studyloop.mcp.inventory import LEARNING_RECORD_TOOL, PLAN_TOOL_NAMES
+
+        expected = [*PLAN_TOOL_NAMES, LEARNING_RECORD_TOOL]
+        assert measured["expected"] == expected
+        assert measured["kiro"]["granted"] == expected
+        assert measured["claude"]["granted"] == expected
+        assert measured["kiro"]["file"] == "agents/kiro/study-plan-architect.json"
+        assert measured["claude"]["file"] == "agents/claude/study-plan-architect.md"
+        assert measured["problems"] == []
+
+    def test_architect_grants_check_fails_when_a_grant_is_missing_or_extra(
+        self, script, tmp_path: Path
+    ) -> None:
+        """The check judges a tree, not the checkout: a copy with one grant
+        removed and one stray studyloop grant added fails, naming both."""
+        import json as _json
+        import shutil
+
+        root = tmp_path / "tree"
+        (root / "agents/kiro").mkdir(parents=True)
+        (root / "agents/claude").mkdir(parents=True)
+        shutil.copy(
+            REPO_ROOT / "agents/claude/study-plan-architect.md",
+            root / "agents/claude/study-plan-architect.md",
+        )
+        kiro = _json.loads((REPO_ROOT / "agents/kiro/study-plan-architect.json").read_text())
+        allowed = [
+            entry for entry in kiro["allowedTools"] if entry != "@studyloop/delete_study_plan"
+        ]
+        allowed.append("@studyloop/get_next_action")
+        kiro["allowedTools"] = allowed
+        (root / "agents/kiro/study-plan-architect.json").write_text(_json.dumps(kiro))
+        code, measured = script.check_architect_grants(root)
+        assert code == 1
+        joined = " ".join(measured["problems"])
+        assert "delete_study_plan" in joined and "get_next_action" in joined
+        assert "kiro" in joined.lower()
+
+    def test_repair_close_refusals_check_names_the_seam_tests_that_pin_the_texts(
+        self, script
+    ) -> None:
+        """Design §6 (items 3/4, D-C/D-G): the refusal texts are pinned by the
+        CLI seam tests, so the check runs exactly those node ids — the husk
+        refusal (both exits named), `plan repair` on a ready plan and on an
+        unknown id, `plan close` on an unfinished plan — and nothing else."""
+        by_name = {check.name: check for check in script.build_checks(REPO_ROOT)}
+        command = by_name["repair-close-refusals"].command
+        assert not callable(command)
+        node_ids = [part for part in command if "::" in part]
+        assert node_ids == [
+            "packages/studyloop/tests/test_cli_plan_seam.py::test_husk_refusal_names_both_pause_and_repair",
+            "packages/studyloop/tests/test_cli_plan_seam.py::test_plan_repair_on_a_ready_plan_says_nothing_to_repair",
+            "packages/studyloop/tests/test_cli_plan_seam.py::test_plan_repair_unknown_id_is_the_seams_not_found",
+            "packages/studyloop/tests/test_cli_plan_seam.py::test_plan_close_on_an_unfinished_plan_refuses",
+        ]
+        source = (REPO_ROOT / "packages/studyloop/tests/test_cli_plan_seam.py").read_text()
+        for node in node_ids:
+            assert f"def {node.split('::')[1]}(" in source, node
+        assert by_name["repair-close-refusals"].expected_exit == 0
 
 
 class TestPytestCounts:
@@ -261,6 +339,45 @@ class TestReceipt:
         assert row["ok"] is False and row["exit_code"] == 1
         assert row["counts"] == {"failed": 1, "passed": 29}
         assert receipt["summary"]["failed"] == 1
+
+    def test_a_failed_pytest_check_names_its_failed_nodes(self, script, tmp_path: Path) -> None:
+        """A red full suite is only auditable if the receipt says WHICH tests
+        failed: the 12-line ``output_tail`` cannot hold 44 ids, so the first
+        real run on ``9d10fee6`` recorded ``ok: false`` with no way to
+        reconcile it against the named environmental set. Every ``FAILED`` /
+        ``ERROR`` short-summary line is kept, in order, on the row."""
+        checks = script.build_checks(REPO_ROOT)
+        out = tmp_path / "verify-2222222.json"
+        output = "\n".join(
+            [
+                "F.E.                                              [100%]",
+                "=================================== ERRORS ===================================",
+                "___ ERROR at setup of test_b ___",
+                "E   RuntimeError: world",
+                "================================== FAILURES ==================================",
+                "___ test_a ___",
+                "E   assert 1 == 2",
+                "=========================== short test summary info ============================",
+                "FAILED packages/studyloop/tests/test_x.py::test_a - assert 1 == 2",
+                "ERROR packages/studyloop/tests/test_y.py::test_b - RuntimeError: world",
+                "1 failed, 2 passed, 1 error in 0.30s",
+            ]
+        )
+        status = script.run_and_write(
+            checks,
+            out=out,
+            runner=_fake_runner({"full-suite-studyloop": (1, output)}),
+            tree={"sha": "2222222", "dirty": False},
+        )
+        assert status == 1
+        receipt = json.loads(out.read_text(encoding="utf-8"))
+        row = next(r for r in receipt["checks"] if r["name"] == "full-suite-studyloop")
+        assert row["failed_nodes"] == [
+            "FAILED packages/studyloop/tests/test_x.py::test_a",
+            "ERROR packages/studyloop/tests/test_y.py::test_b",
+        ]
+        green = next(r for r in receipt["checks"] if r["name"] == "architecture-guard")
+        assert green["failed_nodes"] == []
 
     def test_a_check_that_cannot_run_is_a_failure_not_not_applicable(
         self, script, tmp_path: Path
