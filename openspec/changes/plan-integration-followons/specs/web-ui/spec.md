@@ -24,7 +24,13 @@ the 409 handling and the `study-session-start` event the live console mounts on
 (`#study-session`), then reports the outcome back with exactly one
 `plan-architect-result` event. A second activation while a launch is in flight
 SHALL be a no-op. The Study Session view's `init()` SHALL register its window
-listeners once even when called twice (Alpine auto-init plus `x-init`).
+listeners once even when called twice (Alpine auto-init plus `x-init`). A
+planning launch that arrives before `init()`'s `/api/session/options` fetch has
+settled SHALL wait for it before judging whether an agent exists (a cold server
+is not a missing agent), and that wait SHALL be bounded (`optionsWaitMs`, 8 s):
+past the bound the launch judges the agent as it stands and refuses with the
+picker's own `Select an agent to continue.`; a settlement that arrives later
+SHALL launch nothing on its own (council review 6).
 
 The live console SHALL carry a purpose label (`data-testid="console-purpose-label"`,
 `role="status"`, `aria-live="polite"`) that is rendered only for a planning

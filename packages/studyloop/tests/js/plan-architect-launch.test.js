@@ -500,3 +500,38 @@ test('startPlanning with no agent available after the options resolve still refu
   assert.equal(posts.length, 0);
   assert.match(timer.startError, /select an agent/i);
 });
+
+/* Council review 6 (qwen 🔴, GPT F3, Grok 🔵): the wait above put init()'s
+ * options fetch on the click's critical path with no bound. A request that
+ * never settles (a server that accepts the connection and stalls) left the
+ * learner's click awaiting forever — no POST, no refusal, no message. The
+ * wait is bounded: past `optionsWaitMs` the click falls through to the same
+ * "Select an agent" refusal it would have given on an empty picker, and a
+ * later settlement does not launch anything on its own. */
+test('a planning click does not wait forever for options that never settle', async () => {
+  const baseFetch = globalThis.fetch;
+  globalThis.fetch = async (url, opts) => {
+    if (String(url).endsWith('/api/session/options')) {
+      return new Promise(() => {}); // never settles
+    }
+    return baseFetch(url, opts);
+  };
+  const timer = sessionTimer();
+  timers.push(timer);
+  timer.$nextTick = (cb) => cb();
+  timer.optionsWaitMs = 50; // the production default is seconds; the bound is what is under test
+  timer.init(); // never resolves: the options fetch never settles
+  const seen = startEvents();
+
+  const started = Date.now();
+  const ok = await timer.startPlanning({ topic: 'SQL window functions' });
+  const waited = Date.now() - started;
+
+  assert.equal(ok, false);
+  assert.ok(waited < 2000, `the click must come back within the bound, waited ${waited}ms`);
+  assert.equal(posts.length, 0, 'nothing was POSTed without an agent');
+  assert.match(timer.startError, /select an agent/i);
+  assert.equal(seen.length, 0);
+  await settle();
+  assert.equal(posts.length, 0, 'no deferred launch fires later');
+});

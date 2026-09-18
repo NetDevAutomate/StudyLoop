@@ -100,6 +100,12 @@ export function sessionTimer() {
       studyOptions: { topics: [], vendors: [], courses: [], lessons: [] },
       starting: false,
       startError: '',
+      /* How long a planning launch will wait for init()'s options fetch before
+         judging the agent (council review 6). The fetch is on the click's
+         critical path since 626ea129; a request that never settles must not
+         hold the click forever — past this bound the launch falls through to
+         the same "Select an agent" refusal an empty picker gets. Tests shorten it. */
+      optionsWaitMs: 8000,
       /* What the live session is FOR: 'focus' (today's study session) or
          'planning' (the study-plan architect, #14 / design §5). Set from the
          201 body on a start and from /api/session/state on a restore; it
@@ -290,7 +296,18 @@ export function sessionTimer() {
            (init() sets _optionsReady on every run; a timer whose init never
            ran has nothing to wait for and falls through to the check.) */
         if (purpose === 'planning' && !this.agent && this._optionsReady) {
-          await this._optionsReady;
+          /* Bounded (council review 6): a fetch that never settles must not hold
+             the click. Past the bound the launch judges the agent as it stands;
+             a settlement that arrives later launches nothing on its own. */
+          let bound;
+          const timedOut = new Promise((resolve) => {
+            bound = setTimeout(resolve, this.optionsWaitMs);
+          });
+          try {
+            await Promise.race([this._optionsReady, timedOut]);
+          } finally {
+            clearTimeout(bound);
+          }
         }
         if (!this.agent) {
           /* The Start button is disabled without an agent; a Plans-view launch
