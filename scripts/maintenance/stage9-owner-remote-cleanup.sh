@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 # Stage 9 owner script — the remote half of the 2026-09-10 branch cleanup.
-# Agents cannot push or delete remote refs on this repo (platform policy), so the
-# owner runs this. Every step is idempotent, so re-running after a partial run is
+# The owner runs this because it pushes main and asks before switching a
+# repository ruleset off. (An earlier header said agents cannot delete remote
+# refs by platform policy; that was wrong — the harness allows
+# `git push origin --delete <named-branch>`, proven on 2026-09-17 and
+# 2026-09-18. What refuses the deletion is the "Default" ruleset below, for
+# everyone.) Every step is idempotent, so re-running after a partial run is
 # safe: already-pushed refs report "Everything up-to-date".
 #
 # First run (2026-09-10 23:47): steps 1-2 succeeded; step 3 was rejected for all

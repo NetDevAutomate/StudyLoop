@@ -1,6 +1,22 @@
 # Plan integration (#7–#15) — issue close-out DRAFT · 2026-09-16
 
-**Status: DRAFT, not posted.** Written unattended by the Phase-6 agent for the owner to post in the
+**Status: POSTED 2026-09-18** (was: DRAFT, not posted). The per-issue tables below were posted as
+status comments on #8–#15 after re-verification against `main` at `a5b9f903`: every `T:` node id
+checked against the collected suite, every `C:` sha against `main` — seven pre-consolidation shas
+(`1d071758`, `3a4f6b01`, `705ba58b`, `c16ffa35`, `daf46c81`, `dc7de0be`, `e16340ca`) were rewritten
+at the history consolidation and were replaced in the comments by their `main` equivalents, found by
+exact subject (`38f6f41d`, `d7f568bf`, `e50106af`, `e74c2a63`, `bfe0695c`, `3d9476d5`, `1aed49f2`);
+`test_malformed_plan_browse_matches_store_list` had moved to `test_plan_application_mutations.py`.
+Rows the follow-on programme had overtaken were restated in the comments, not here: #11's mission row
+(revisable since item 3b), #13's "partly" (closed by item 1), #14/#15/#7's brain-dump and cancellation
+gaps (closed by item 2 and the 2026-09-18 abandonment decision), #10's rubric state (rows scored except
+3b). **Closed as completed:** #8, #9, #11, #12, #13, #14. **Open:** #10 (row 3b, item 5), #15 (closes
+with #10), and #7 — which GitHub had auto-closed at PR #20's merge on the body's "Closes the two bugs"
+phrase and which was reopened with the parent mapping so it closes after its children, as §3 item 7
+of the handover intends. PR #20's body was not replaced: the PR is merged. The original draft text
+follows unchanged as the record of what was known on 2026-09-16.
+
+**Original status (2026-09-16): DRAFT, not posted.** Written unattended by the Phase-6 agent for the owner to post in the
 morning, and refreshed after council review 5 (`GATE: ACCEPT`,
 `council/review-5-arbitration-2026-09-16.md`), the verification receipt and the archive. Nothing here has
 been sent to GitHub: no issue closed, no comment left, PR #20 untouched. Every claim below names the

@@ -174,7 +174,9 @@ writer, through the existing gate, closes that. Kept out of item 3 so item 3's f
       mutation-proved. Refuted with a named test: qwen's empty-agent claim. Carried to the owner (arbitration §"Still
       open"): the abandonment contract (F3b), `plan close` on checked non-active plans, the `session-db` prompt probe.
       Two cheap pins deferred: `test_plan_repair_nonactive_unready_is_noop_with_pointer`,
-      `test_duplicate_learning_record_with_mission_revision_still_saves_once`.) Reproduce every 🔴/🟡 by probe or
+      `test_duplicate_learning_record_with_mission_revision_still_saves_once` — **landed 2026-09-18**, each proved
+      discriminating by mutating the branch it guards: the repair pin fails when the non-active branch falls through
+      to the launch, the record pin fails when `not mission_updates` is dropped from the short-circuit.) Reproduce every 🔴/🟡 by probe or
       RED test before accepting; arbitration `council/review-6-arbitration-2026-09-16.md` ends `GATE: ACCEPT|FAIL`;
       corrections one commit per finding.
 - [x] **T6.3** (`receipts/verify-d0251fd1.json`, tree clean, 31 checks — 29 + `architect-grants` (in-process,
@@ -208,4 +210,15 @@ writer, through the existing gate, closes that. Kept out of item 3 so item 3's f
 
 ## Item 7 — push step (owner present; HANDOFF §3 item 7)
 
-- [ ] **T7.1** Not run unattended. Ruleset D-I; tokens D-J.
+- [ ] **T7.1** Not run unattended. Ruleset D-I; tokens D-J. **State 2026-09-18** (HANDOFF §3 item 7's seven
+      steps): (1) pushes — done, owner pushed `main` three times (#20 `46262d23`, #22 `4bba58b6`, #23 `a5b9f903`),
+      each a fast-forward after CI green on the PR; (2) ruleset D-I — done three times (2026-09-17
+      `feat/knowledge-proof` + `fix/plan-integration-bugs`; 2026-09-18 `feat/plan-close` +
+      `fix/seam-test-db-bootstrap`), each a ≤ 6 s window with the GH013 refuse-proof first and the ruleset re-read
+      byte-equal afterwards; single `main` on both sides. (3) closeout comments — done: posted on #8–#15 from the
+      re-verified draft (`receipts/issue-closeout-draft-2026-09-16.md`, status paragraph records the shas rewritten
+      and the rows overtaken); #8, #9, #11, #12, #13, #14 closed as completed; #10 and #15 open (row 3b); #7
+      reopened (auto-closed by PR #20's body) with the parent mapping. PR #20's body left as merged. **Open:**
+      (4) the two item-6 issues (after T6.4) and #21's closing comment or decision; (5) the local tag
+      `archive/feat-clean-start-2026-09-15` — owner: push or discard; (6) the GitHub Support ticket text — owner;
+      (7) revoke both tokens and delete `~/tmp/.env` — owner (D-J).
