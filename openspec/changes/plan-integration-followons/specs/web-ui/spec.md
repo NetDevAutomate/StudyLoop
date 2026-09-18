@@ -52,7 +52,11 @@ the in-page confirmation — never a native dialog): fired as soon as the launch
 has been accepted, it SHALL leave no live slot, no plan document, no
 `plan_id`, no planning label, and at most one WebSocket ever opened.
 Navigating away is **not** the abandon path: a closed socket detaches with a
-grace period by design, so an accidental reload cannot kill a live session.
+grace period by design, so an accidental reload cannot kill a live session —
+and a launch that lands *after* the learner has left the console is a session
+like any other (owner decision 2026-09-18, council review 6 F3b): it exists,
+it created no plan, the console reattaches to it on return, and the End
+control abandons it. There is no cancel for a pending launch.
 
 The architect's one-question-at-a-time protocol is asserted as persona text
 (owner decision D-B): the browser and unit tests prove the brief — including
@@ -93,6 +97,17 @@ model behaves with it, and the docs say so.
 #### Scenario: Abandoning a launch mid-flight leaves no session and no plan
 - **WHEN** the learner activates the control and, as soon as the `201` arrives, uses the console's End control and confirms
 - **THEN** `GET /api/session/state` has no `study_session_id` and no planning purpose, `GET /api/plans` and the plans directory are unchanged, exactly one `study-session-start` fired, at most one WebSocket was opened, and no purpose label is visible
+
+#### Scenario: Leaving before the launch lands leaves a session like any other
+- **WHEN** the learner clicks "Plan with architect", the start POST is held,
+  the learner navigates to the Plans view before it is answered, and the POST
+  is then released with `201`
+- **THEN** `GET /api/session/state` reports that `study_session_id` with
+  `purpose: "planning"` and not `ended` (and still does half a second later),
+  `GET /api/plans` and the plans directory are unchanged, returning to the
+  Study Session view reattaches the console to the same session with one
+  planning label and one `study-session-start` event in total, and the End
+  control releases the slot
 
 #### Scenario: Conflict is the existing shape with a reattach lever
 - **WHEN** a session is already running and the learner activates the control

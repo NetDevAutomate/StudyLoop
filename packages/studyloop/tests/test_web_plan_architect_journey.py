@@ -650,3 +650,89 @@ def test_click_that_beats_the_options_fetch_still_starts_exactly_once(page: Page
     assert posts[0]["body"]["purpose"] == "planning"
     assert posts[0]["body"]["topic"] == "SQL window functions"
     _wait_for_console(page)
+
+
+# ---------------------------------------------------------------------------
+# The abandonment contract (owner decision 2026-09-18, council review 6 F3b:
+# option b) — a requested launch is a session like any other.
+# ---------------------------------------------------------------------------
+
+
+def test_leaving_before_the_launch_lands_leaves_a_session_like_any_other(
+    page: Page, world: dict[str, Path]
+) -> None:
+    """The learner clicks "Plan with architect" and leaves the console before
+    the server has answered. Leaving never destroys (a ⌘R must not kill a live
+    session; the socket detaches with a grace period and the reattach lever
+    names the session) — so the launch that lands after they left is a
+    session like any other: it exists, it created no plan, it is shown again
+    when they come back, and the console's End control is what abandons it.
+    The POST is HELD here (no ``continue_``) until the learner has provably
+    left, so the contract is proved with a barrier, not inferred from a fast
+    End click (council review 6, F3b; GPT / Grok)."""
+    held: list = []
+    page.route(
+        "**/api/session/start",
+        lambda route: held.append(route) if route.request.method == "POST" else route.continue_(),
+    )
+    _goto_plans(page)
+    plans_before = _plans(page)
+    files_before = sorted(p.name for p in world["plans"].glob("*.md"))
+    _instrument_starts(page)
+    page.locator('[data-testid="plan-architect-subject"]').fill("SQL window functions")
+
+    page.get_by_role("button", name="Plan with architect").click()
+    page.wait_for_function("() => window.location.hash === '#study-session'", timeout=10000)
+    page.wait_for_function("() => window.__architectProbe !== undefined", timeout=5000)
+    deadline = 20  # x 100 ms
+    while not held and deadline:
+        page.wait_for_timeout(100)
+        deadline -= 1
+    assert held, "the start POST was never issued, so nothing is being held"
+
+    # The learner leaves before the server has answered.
+    page.evaluate("() => window.Alpine.store('nav').go('study-plans')")
+    page.locator('[data-testid="plan-new"]').wait_for(state="visible", timeout=8000)
+    assert not _session_state(page).get("study_session_id"), "nothing exists yet: the POST is held"
+
+    def _is_start(response) -> bool:  # type: ignore[no-untyped-def]
+        return response.request.method == "POST" and response.url.endswith("/api/session/start")
+
+    with page.expect_response(_is_start, timeout=20000) as landed:
+        for route in held:
+            route.continue_()
+    assert landed.value.status == 201, landed.value.status
+    study_id = landed.value.json()["study_session_id"]
+
+    # 1. The session exists and is a planning session — leaving did not cancel it.
+    page.wait_for_function(
+        "async (id) => { const r = await fetch('/api/session/state', {cache: 'no-store'});"
+        " const s = await r.json(); return s.study_session_id === id && s.mode !== 'ended'; }",
+        arg=study_id,
+        timeout=15000,
+    )
+    page.wait_for_timeout(500)  # a cancel racing the 201 would land here; it must not
+    state = _session_state(page)
+    assert state.get("study_session_id") == study_id, state
+    assert state["purpose"] == "planning"
+    assert state.get("mode") != "ended"
+    # 2. It created no plan.
+    assert _plans(page) == plans_before
+    assert sorted(p.name for p in world["plans"].glob("*.md")) == files_before
+    # 3. Coming back shows it: the console reattaches to the live session.
+    page.evaluate("() => window.Alpine.store('nav').go('study-session')")
+    _wait_for_console(page)
+    labels = _visible_purpose_labels(page)
+    assert len(labels) == 1 and "planning" in labels[0].lower(), labels
+    assert _session_state(page)["study_session_id"] == study_id, "the same session, not a second"
+    assert _probe(page)["startEvents"] == 1, "one launch, one start event"
+    # 4. End is the abandon path, and it releases the slot.
+    page.locator(".status-btn.end-btn:visible").first.click()
+    page.locator(".end-confirm-dialog").wait_for(state="visible", timeout=5000)
+    page.locator(".end-confirm-dialog").get_by_role("button", name="End session").click()
+    page.wait_for_function(
+        "async () => { const r = await fetch('/api/session/state', {cache: 'no-store'});"
+        " const s = await r.json(); return !s.study_session_id; }",
+        timeout=15000,
+    )
+    assert _plans(page) == plans_before

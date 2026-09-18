@@ -69,9 +69,18 @@ class StartSessionRequest:
   travels in the `plan-architect-request` detail; `sessionTimer.startPlanning` forwards it into
   `startSession({purpose, brainDump})` and the POST body as `brain_dump` (omitted when blank). The two JS
   `deepEqual` pins on the detail gain the key.
-- **Abandon mid-flight (browser):** click, then navigate away / press the console's cancel before the console
-  attaches: no live slot (`GET /api/session/state` has no `study_session_id`, or the slot is released by the
-  navigate-away path the app already has), `GET /api/plans` unchanged, at most one WebSocket ever opened.
+- **Abandon mid-flight (browser) — the contract, decided by the owner 2026-09-18 (council review 6 F3b, option
+  b):** a requested launch is a session like any other. Leaving never destroys: navigating away from the console
+  detaches the socket with the existing grace period and the reattach lever names the session (a ⌘R must not kill
+  a live session), and that holds whether the learner leaves before or after the server's `201` lands — a launch
+  that lands after they left exists, created no plan, is shown again when they return, and is abandoned with the
+  console's **End** control (available the moment the launch is accepted). There is no cancel for a pending launch:
+  the window is bounded (the options wait ≤ 8 s, then one POST) and the outcome is visible, so a second meaning for
+  "leave" that depends on sub-second timing was rejected as the less predictable rule. This paragraph originally
+  promised "navigate away / cancel before the console attaches → no live slot"; that promise was wrong and the
+  web-ui spec and the landed tests were right to refuse it. Proved with a barrier
+  (`test_leaving_before_the_launch_lands_leaves_a_session_like_any_other`: the POST is held while the learner
+  leaves, then released) and with the End path (`test_abandoning_a_launch_mid_flight_leaves_no_session_and_no_plan`).
 - Persona-text compliance is the CI level for "one question at a time" (D-B); the web-ui spec says so.
 
 ## 3. Husk discovery and `plan repair <id>` (D-C)

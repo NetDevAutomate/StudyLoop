@@ -112,11 +112,16 @@ correction here (GPT 4-i, agreed).
 
 ## Still open for the owner
 
-1. **Abandonment contract (F3b).** Pick one: (a) a pending planning launch can be cancelled and a late settlement or
-   POST completion cannot launch or retain a session; (b) an attached session detaches on navigation for a stated
-   grace period and End releases it (today's behaviour, made explicit); (c) record (b) as the supported scope and
-   pre-attachment cancellation as an acknowledged unmet requirement. Then design §2 and the web-ui delta say the
-   same thing and the barrier-based tests GPT names are written.
+1. ~~**Abandonment contract (F3b).**~~ — **decided by the owner, 2026-09-18: option (b).** A requested launch is a
+   session like any other: leaving never destroys (detach with grace, reattach lever), End abandons, and there is
+   no cancel for a pending launch — a second meaning for "leave" that depends on sub-second timing was rejected as
+   the less predictable rule; (c) was rejected because it would record a promise that was wrong as debt owed.
+   Landed: design §2 rewritten to the contract (the original "navigate away → no live slot" sentence retracted with
+   the reason), the web-ui delta gains the scenario, and the barrier test
+   `test_leaving_before_the_launch_lands_leaves_a_session_like_any_other` holds the start POST while the learner
+   leaves, releases it, and proves the session exists with no plan, reattaches on return and is released by End.
+   Discrimination proved by mutation: with the client ending any launch that lands after the learner has left
+   (option a), the test fails at the existence assertion (`assert None == '<id>'`); restored byte-identical.
 2. ~~**`plan close` on a checked `draft`/`paused`/`abandoned` plan**~~ — **decided by the owner, 2026-09-18:** such a
    plan may be closed *or deleted*, and the architect asks the learner which. Landed as `dfc75d6e` (RED, four
    tests) → `983aa723` (GREEN): the closing brief's last line names the status and both doors
