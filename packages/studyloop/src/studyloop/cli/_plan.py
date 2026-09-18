@@ -45,6 +45,7 @@ from studyloop.planning import (
     RevisePlan,
     SetMilestone,
     TransitionLifecycle,
+    one_line,
     plans_dir,
 )
 
@@ -546,15 +547,17 @@ REPAIR_BRIEF_INTRO = (
 
 def _render_plan_as_it_stands(s: PlanSummary) -> str:
     """The ``### The plan as it stands`` section both launch briefs carry."""
-    topics = ", ".join(s.topics) if s.topics else "(none)"
+    topics = ", ".join(one_line(t) for t in s.topics) if s.topics else "(none)"
+    # Every learner-authored value is one line (council review 6, F2): a title
+    # holding a newline must not open a heading inside the brief.
     return (
         "### The plan as it stands\n\n"
-        f"- Title: {s.title}\n"
-        f"- Id: {s.plan_id}\n"
+        f"- Title: {one_line(s.title)}\n"
+        f"- Id: {one_line(s.plan_id)}\n"
         f"- Status: {s.status}\n"
         f"- Topics: {topics}\n"
         f"- Milestones: {s.milestone_done}/{s.milestone_total} done\n"
-        f"- Created: {s.created}\n"
+        f"- Created: {one_line(s.created)}\n"
     )
 
 
@@ -664,7 +667,7 @@ def _render_closing_brief(detail: PlanDetail, review: CompletionReview) -> str:
         f"Struggles on plan concepts: {review.struggles}",
         f"Unverified milestones: {review.unverified_milestones}",
         f"Proposal: {proposal}",
-        *review.evidence,
+        *(one_line(line) for line in review.evidence),
     ]
     return (
         "### Closing review\n\n"

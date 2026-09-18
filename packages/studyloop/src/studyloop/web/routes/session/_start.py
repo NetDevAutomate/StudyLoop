@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 from fastapi import Request  # noqa: TC002 - FastAPI needs Request at runtime for injection.
 from fastapi.responses import JSONResponse
 
+from studyloop.planning import one_line
 from studyloop.session_state import (
     PARKING_FILE,
     SESSION_DIR,
@@ -95,16 +96,14 @@ _BRIEF_MAX_BRAIN_DUMP_CHARS = 4000
 
 
 def _one_line(value: object) -> str:
-    """Collapse a learner-authored value to one line of text.
+    """Collapse a learner-authored value to one line of text (council review 3, F4).
 
-    Everything the brief quotes — topics, concepts, notes, plan titles,
-    milestone titles — is data from the learner's databases and documents.
-    Rendered raw, a value holding a newline followed by ``## …`` would open a
-    heading of its own inside the persona, outside the list item meant to
-    hold it (council review 3, F4). Whitespace runs, newlines included,
-    become one space, so a value can never start a line.
+    The definition is the seam's :func:`studyloop.planning.one_line`, shared
+    with the CLI ``plan repair`` / ``plan close`` briefs since council review 6
+    F2, so every adapter's brief is contained the same way; this name stays
+    because the module's renderers and tests address it.
     """
-    return " ".join(str(value).split())
+    return one_line(value)
 
 
 def _quoted(value: object) -> str:

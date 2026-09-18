@@ -113,6 +113,7 @@ from .views import (
     ResourceView,
     husk_provenance,
     normalise_match_key,
+    one_line,
 )
 
 __all__ = [
@@ -191,6 +192,7 @@ __all__ = [
     "load_plan",
     "load_plan_text",
     "normalise_match_key",
+    "one_line",
     "parse_plan",
     "plan_path",
     "plans_dir",

@@ -87,6 +87,22 @@ def _thaw(value: object) -> object:
 _NON_WORD_RE = re.compile(r"[^\w\s]|_", re.UNICODE)
 
 
+def one_line(value: object) -> str:
+    """Collapse a learner-authored value to one line of text.
+
+    Everything a launch brief quotes — plan titles, topics, milestone titles,
+    concepts, notes, evidence lines — is data from the learner's documents and
+    databases. Rendered raw, a value holding a newline followed by ``## …``
+    would open a heading of its own inside the persona, outside the list item
+    meant to hold it (council review 3 F4 for the Web door; council review 6
+    F2 found the CLI ``plan repair`` / ``plan close`` briefs rendering raw).
+    Whitespace runs, newlines included, become one space, so a value can never
+    start a line. One definition on the seam, so every adapter's brief is
+    contained the same way.
+    """
+    return " ".join(str(value).split())
+
+
 def normalise_match_key(text: str) -> str:
     """The key on which a plan topic or concept matches a study candidate.
 
