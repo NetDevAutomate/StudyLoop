@@ -243,6 +243,10 @@ def test_settings_shows_the_destination_command_pattern_when_it_is_missing(
         section.wait_for(state="visible", timeout=15000)
 
         active = section.locator(".brain-card.brain-active")
+        # Same race as the test above (run 35220795456): the active class arrives
+        # with the launch-target response; a bare count() the instant the section
+        # is visible read the loading state as 0 active (run 35341660469, e2e).
+        active.first.wait_for(state="attached", timeout=15000)
         assert active.count() == 1 and "xTiles" in active.inner_text()
         guidance = active.locator(".brain-guidance")
         guidance.wait_for(state="visible", timeout=15000)

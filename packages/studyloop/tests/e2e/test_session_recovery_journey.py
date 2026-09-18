@@ -317,6 +317,20 @@ class TestStudyPickerRecovery:
         """
         _goto(page, clean_session, "study-session")
         page.locator(".study-start-picker").wait_for(state="visible", timeout=10_000)
+        # Tab B must have SETTLED on the picker before tab A's session exists:
+        # init()'s /api/session/state fetch is still in flight when the picker
+        # first renders, and on a loaded runner it landed after _start_session
+        # below, so tab B adopted the live session and its Start button was
+        # hidden — "waiting for element to be visible" for 30 s (CI run
+        # 35341660469, e2e). The timer's own topic is the settled signal.
+        page.wait_for_function(
+            """() => {
+              const root = document.querySelector('[x-data="sessionTimer()"]');
+              const d = root && window.Alpine.$data(root);
+              return !!d && d.topic === 'No active session' && d.sessionActive === false;
+            }""",
+            timeout=10_000,
+        )
 
         session_id = _start_session(clean_session, "Study focus", origin="study")
 
