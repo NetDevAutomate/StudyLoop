@@ -242,15 +242,25 @@ agent whose `tools` is `@builtin` alone sees no MCP tool, server or not) and
 trusts exactly the ten tools above as `@studyloop/<tool>` in `allowedTools`;
 the `session-db` tools stay visible but prompt. Claude Code's
 `agents/claude/study-plan-architect.md` names the same ten in its frontmatter
-`tools:` allow-list as `mcp__studyloop__<tool>`. That is the least-privilege
-grant the maintainer decided on 2026-09-16 (plan-integration follow-on
-decision D-A: no harness-launched architect falls back to the shell with
-full permissions): nothing else on the `studyloop` server is trusted, and
+`tools:` allow-list as `mcp__studyloop__<tool>`; the server itself is
+registered globally for Claude Code by `studyloop install agents`, which
+merges `studyloop` and `session-db` into `~/.claude.json`'s `mcpServers`, so
+that allow-list names tools the agent process can actually reach. That is the
+least-privilege grant the maintainer decided on 2026-09-16 (plan-integration
+follow-on decision D-A: no harness-launched architect falls back to the shell
+with full permissions): nothing else on the `studyloop` server is trusted, and
 the learner's confirmation before `delete_study_plan` remains a persona rule
 — a tool permission is not the learner's authorisation. One spelling
 detail matters for Kiro: `@server/tool` is the form an agent config honours;
 `mcp_server_tool` belongs to `mcp.json`'s `autoApprove` and is ignored in an
-agent file. OpenCode, Codex and Grok Build register the server globally
+agent file. That spelling was established by probing kiro-cli 2.21.4 and
+2.22.0 (`docs/architecture/plan-integration/receipts/kiro-agent-tools-probe-2026-09-16.md`);
+if your kiro-cli is newer, re-run the receipt's two probes before trusting
+the grant. The same correction reached the Kiro `study-mentor` on
+2026-09-16: its twelve MCP grants had used the `mcp_` spelling and were
+inert, so after `studyloop install agents` an existing mentor install starts
+seeing and using the six `studyloop` tools and the six `session-db` tools its
+file always named. OpenCode, Codex and Grok Build register the server globally
 (`studyloop install agents` writes it into each harness's own MCP
 configuration), so their architects reach the tools without a per-agent
 grant; pi has no MCP client and takes the CLI fallback the persona describes

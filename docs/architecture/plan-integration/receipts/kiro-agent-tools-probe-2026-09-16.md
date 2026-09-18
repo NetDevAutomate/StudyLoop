@@ -1,5 +1,12 @@
 # Kiro agent-config probe — how `tools` / `allowedTools` govern MCP tools · 2026-09-16
 
+> **Version-pinned evidence.** Every rule below was observed on kiro-cli **2.21.4** and re-observed on
+> **2.22.0** (§ Re-run). If the installed `kiro-cli --version` is newer than 2.22.0, re-run probes A and B
+> below before trusting the `@server/tool` spelling the architect and mentor grants depend on, and append
+> the result as a dated re-run section. Not probed here: `@session-db` in `tools` with nothing from that
+> server in `allowedTools` — design §1's "visible, prompts" reading of that shape is an expectation, not a
+> measurement (council review 6).
+
 **Why this exists.** Item 1 of the follow-on programme (owner decision D-A) grants the harness-launched
 `study-plan-architect` the `studyloop` MCP server "mirroring `agents/kiro/study-mentor.json`". Before pinning
 that shape in a test, the coordinator checked what the installed Kiro CLI actually honours, because the

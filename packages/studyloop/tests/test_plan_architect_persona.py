@@ -406,6 +406,20 @@ def test_install_docs_disclose_architect_fallback_limits() -> None:
     assert "open item" not in lowered and "stay cli-limited" not in lowered, (
         "the decision has been taken; the doc must not describe it as open"
     )
+    # Council review 6 (GPT F5 / Grok 🔵 c, d, a): the Claude allow-list names
+    # tools; the doc must say where the SERVER is registered for Claude, and
+    # that path must be the installer's own — not a remembered one. Existing
+    # mentor installs gain live tools from the spelling fix; the grant spelling
+    # is pinned to a kiro-cli version and the doc must say when to re-probe.
+    from studyloop import installers
+
+    assert "claude" in installers._MCP_HARNESSES
+    claude_mcp = installers._mcp_config_path("claude")
+    assert f"`~/{claude_mcp.relative_to(installers._HOME)}`" in section, (
+        "the doc must name the file the installer registers the studyloop server in for Claude"
+    )
+    assert "study-mentor" in section and "inert" in lowered, "mentor grant activation"
+    assert "2.22.0" in section and "re-run" in lowered, "the version-pinned probe"
 
 
 def test_fallback_table_does_not_point_at_web_ui_controls_that_do_not_exist() -> None:
