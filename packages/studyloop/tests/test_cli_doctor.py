@@ -276,6 +276,49 @@ class TestStudyPlansCheck:
         assert results[0].category == "config"
         assert "1 active plan" in results[0].message
         assert "ready" in results[0].message
+        # Council review 6, F4: readiness is a verdict on the document as it
+        # stands, not a promise about writes that have not happened yet.
+        assert "will pass" not in results[0].message
+        assert "every write" not in results[0].message
+
+    def test_an_unreadable_plan_document_is_named_not_hidden_behind_all_ready(self) -> None:
+        """Council review 6, F4: ``husks()`` skips a document it cannot load,
+        so ``doctor`` could report "all ready" over a directory holding a file
+        that no listing can read. The learner is told which file, as a
+        ``warn`` row beside the readiness rows — never silently."""
+        from studyloop.cli._doctor import check_study_plans
+        from studyloop.planning import CreatePlan, PlanApplication
+
+        PlanApplication().apply(
+            CreatePlan(
+                title="Ready Active",
+                plan_id="ready-active",
+                status="active",
+                answers={
+                    "why": "Own the nightly pipeline",
+                    "success": ["Deploy unaided"],
+                    "topics": ["data-engineering"],
+                    "milestones": [{"title": "Job anatomy", "concepts": ["glue job"]}],
+                },
+            )
+        )
+        # The parser is lenient with malformed front matter (it yields an
+        # untitled draft), so the unreadable class is a document ``_load``
+        # refuses outright: here, a file that is not UTF-8.
+        (self.plans_dir / "broken.md").write_bytes(b"\xff\xfe\x00not a plan")
+
+        results = check_study_plans()
+
+        statuses = sorted(r.status for r in results)
+        assert statuses == ["pass", "warn"], results
+        unreadable = next(r for r in results if r.status == "warn")
+        assert "broken" in unreadable.message
+        assert "could not be read" in unreadable.message.lower() or "unreadable" in (
+            unreadable.message.lower()
+        )
+        assert unreadable.fix_auto is False
+        healthy = next(r for r in results if r.status == "pass")
+        assert "1 active plan" in healthy.message  # the readable plan is still judged
 
     def test_no_plans_at_all_is_info_not_a_warning(self) -> None:
         from studyloop.cli._doctor import check_study_plans

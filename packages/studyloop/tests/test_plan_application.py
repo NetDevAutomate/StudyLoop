@@ -1117,6 +1117,44 @@ def test_revise_partial_mission_on_a_husk_is_refused_and_one_call_repairs_it(
     assert on_disk.mission.why == "Own the nightly pipeline"
 
 
+@pytest.mark.parametrize(
+    ("created", "predates"),
+    [
+        ("2026-09-01T00:00:00+00:00", True),
+        ("2026-09-14", True),
+        ("2026-09-15", False),  # the gate's own day is not before it
+        ("2026-09-17T09:00:00+00:00", False),
+        ("", False),
+        ("not a date", False),
+    ],
+)
+def test_husk_provenance_states_only_what_the_creation_stamp_establishes(
+    created: str, predates: bool
+) -> None:
+    """Council review 6, F4: a creation stamp before the gate establishes that
+    the *stamp* predates the gate — not that the plan "was never judged by
+    it" (a plan created before the gate can be saved ready after it and hand-
+    edited into a husk later), and never when it became incomplete. The
+    sentence says the first and disclaims the second; the fallback says the
+    seam cannot tell. Neither ever claims a hand edit."""
+    from studyloop.planning.authoring import READINESS_GATE_DATE
+    from studyloop.planning.views import husk_provenance
+
+    sentence = husk_provenance(created)
+
+    assert "never judged" not in sentence
+    assert "hand edit" not in sentence
+    assert "cannot tell when it became incomplete" in sentence or (
+        "cannot tell how it got that way" in sentence
+    )
+    if predates:
+        assert f"predates the readiness gate ({READINESS_GATE_DATE})" in sentence
+        assert "creation stamp" in sentence
+    else:
+        assert "predates the readiness gate" not in sentence
+        assert "cannot tell how it got that way" in sentence
+
+
 @pytest.mark.parametrize("field", ["success", "constraints", "out_of_scope"])
 def test_revise_mission_list_given_a_bare_string_is_invalid_before_any_write(
     app: PlanApplication, monkeypatch, field: str

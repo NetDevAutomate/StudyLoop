@@ -24,8 +24,10 @@ build_canonical_persona`. The brief's first section SHALL be
 `### Repair: what this plan is missing` listing exactly `readiness.blockers`
 as `- ` lines and nothing else, followed by the plan as it stands (title, id,
 status, topics, milestones done/total, created) and one provenance sentence:
-`predates the readiness gate` only when `created` parses as a date before
-`READINESS_GATE_DATE`; otherwise `cannot tell how it got that way`. The
+`creation stamp predates the readiness gate` (and `cannot tell when it became
+incomplete`) only when `created` parses as a date before
+`READINESS_GATE_DATE`; otherwise `cannot tell how it got that way`; never
+`never judged` (council review 6 F4). The
 sentence SHALL never claim a hand edit. The `brief_intro` SHALL say `PLAN
 REPAIR` and `ask the learner only for what is missing`; the default intro
 (`None`) SHALL keep the planning sentence byte-for-byte so the Web door's

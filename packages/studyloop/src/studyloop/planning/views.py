@@ -135,6 +135,20 @@ class ReadinessView:
         }
 
 
+@dataclass(frozen=True)
+class HuskSurvey:
+    """What one pass over the plans directory found: the husks, and the ids of
+    the documents that could not be read at all (council review 6, F4).
+
+    ``unreadable`` exists so a surface that says "all ready" can say so of the
+    documents it read and name the one it could not, rather than let a parse
+    error look like health. Read-only, like everything in this module.
+    """
+
+    husks: tuple[PlanDetail, ...]
+    unreadable: tuple[str, ...]
+
+
 def husk_provenance(created: str) -> str:
     """One honest sentence on how an active-but-unready plan got that way (item 3).
 
@@ -156,8 +170,8 @@ def husk_provenance(created: str) -> str:
             predates = False
     if predates:
         return (
-            f"This plan predates the readiness gate ({READINESS_GATE_DATE}) "
-            "and was never judged by it."
+            f"This plan's creation stamp predates the readiness gate ({READINESS_GATE_DATE}); "
+            "the seam cannot tell when it became incomplete."
         )
     return "This plan is active and incomplete; the seam cannot tell how it got that way."
 

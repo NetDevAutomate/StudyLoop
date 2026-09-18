@@ -79,7 +79,9 @@ def check_study_plans() -> list[CheckResult]:
     and an honest provenance sentence shared with the ``plan repair`` brief —
     with ``fix_auto=False``: the repair is a conversation with the architect,
     not a script. Zero husks among active plans is one ``pass`` row; no plans
-    at all is ``info``, not a warning. Lives here beside
+    at all is ``info``, not a warning. A document that cannot be read at all
+    is its own ``warn`` row naming the file (council review 6, F4): a parse
+    error must not look like health. Lives here beside
     ``check_unknown_config_keys`` and joins the same ``config`` category: the
     health spec enumerates categories verbatim and gains none here.
     """
@@ -88,7 +90,7 @@ def check_study_plans() -> list[CheckResult]:
 
         app = PlanApplication()
         active = app.browse(status="active")
-        husks = app.husks()
+        survey = app.survey_husks()
     except Exception as exc:  # a broken plans dir is a report, not a crash of doctor
         return [
             CheckResult(
@@ -101,8 +103,22 @@ def check_study_plans() -> list[CheckResult]:
             )
         ]
 
+    rows: list[CheckResult] = [
+        CheckResult(
+            "config",
+            "study_plans",
+            "warn",
+            f"Study plan document '{plan_id}' could not be read, so its readiness is unknown.",
+            f"Open the file under `studyloop plan list`'s directory and fix its front matter, "
+            f"or move it out; `studyloop plan show {plan_id}` prints the parse error.",
+            False,
+        )
+        for plan_id in survey.unreadable
+    ]
+
     if not active:
         return [
+            *rows,
             CheckResult(
                 "config",
                 "study_plans",
@@ -111,25 +127,24 @@ def check_study_plans() -> list[CheckResult]:
                 "Create one with `studyloop plan architect` when you want a plan to steer "
                 "`studyloop now`.",
                 False,
-            )
+            ),
         ]
 
-    if not husks:
+    if not survey.husks:
         n = len(active)
         return [
+            *rows,
             CheckResult(
                 "config",
                 "study_plans",
                 "pass",
-                f"{n} active plan{'s' if n != 1 else ''}, all ready — every write the gate "
-                "judges will pass.",
+                f"{n} active plan{'s' if n != 1 else ''}, all ready as they stand.",
                 "",
                 False,
-            )
+            ),
         ]
 
-    rows: list[CheckResult] = []
-    for husk in husks:
+    for husk in survey.husks:
         plan_id = husk.summary.plan_id
         blockers = "; ".join(husk.readiness.blockers)
         provenance = husk_provenance(husk.summary.created)

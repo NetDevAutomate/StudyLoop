@@ -68,6 +68,7 @@ from .views import (
     AssessmentResult,
     CheckpointHistoryView,
     DeleteResult,
+    HuskSurvey,
     LearningRecordOutcome,
     LearningRecordView,
     PlanDetail,
@@ -277,19 +278,36 @@ class PlanApplication:
         ascending ``updated``, ties in id order. A draft with no mission is
         unready by nature and is not a husk; a paused incomplete plan is what
         the gate asked for and is not one either. An unreadable document is
-        logged and skipped, as every listing does.
+        logged and skipped here, as every listing does — :meth:`survey_husks`
+        is the read that also names it (council review 6, F4).
+        """
+        return self.survey_husks().husks
+
+    def survey_husks(self) -> HuskSurvey:
+        """:meth:`husks` plus the ids of the documents that could not be read.
+
+        One pass over the plans directory, two facts: the husks, in
+        :meth:`husks`' order, and every document ``_load`` refused — a parse
+        error, a malformed id — so a caller that reports "all ready" can say
+        so *of the documents it could read* and name the one it could not,
+        instead of hiding it (council review 6, F4). Read-only.
         """
         found: list[StudyPlan] = []
+        unreadable: list[str] = []
         for plan_id in store.list_plan_ids():
             try:
                 plan = self._load(plan_id)
             except Exception:  # one bad document must not hide the others (as list_plans)
                 logger.warning("Skipping unreadable study plan: %s", plan_id, exc_info=True)
+                unreadable.append(plan_id)
                 continue
             if plan.status == "active" and not ReadinessView.from_plan(plan).ready:
                 found.append(plan)
         found.sort(key=lambda p: p.updated)  # stable: id order (list_plan_ids) breaks ties
-        return tuple(PlanDetail.from_plan(plan) for plan in found)
+        return HuskSurvey(
+            husks=tuple(PlanDetail.from_plan(plan) for plan in found),
+            unreadable=tuple(unreadable),
+        )
 
     def reindex(self) -> int:
         """Rebuild the derived SQLite index from the documents. Returns rows written.
