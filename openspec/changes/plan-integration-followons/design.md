@@ -175,11 +175,23 @@ among what MCP revises and the row names every schema property.
   completion review's, one definition beside `PlanEvaluationView` in `planning/views.py`, consumed by both the
   engine's `CompletionAction` and the `plan close` brief. Measured cost of the preview on the live 877 MB
   database: ~320 ms per fully-checked plan per `build_now_plan` (five readers), a transient state by design.
-- **Open for GREEN (not pinned):** what `proposal` holds when the assessment fails. `Literal["extend", "close"]`
-  has no honest value for "not assessed" — `extend` asserts outstanding work without evidence, `close` asserts
-  a clean slate without evidence. Default unless vetoed: `proposal: Literal["extend", "close"] | None`, `None`
-  on failure with the counts `0` and `evidence` empty; the `warnings` entry explains; renderers print the plain
-  sentence when `proposal is None`. One nullable field carries the state; the three counts keep their type.
+- **Decided in GREEN (`82293293`, 2026-09-18; unvetoed):** `proposal` when the assessment fails.
+  `Literal["extend", "close"]` has no honest value for "not assessed" — `extend` asserts outstanding work
+  without evidence, `close` asserts a clean slate without evidence. Shipped as `proposal: Literal["extend",
+  "close"] | None`, `None` on failure with the counts `0` and `evidence` empty; the `warnings` entry explains;
+  renderers print the plain sentence when `proposal is None`. One nullable field carries the state; the three
+  counts keep their type. The `CompletionReview` value object itself stays non-nullable (`proposal:
+  CompletionProposal`): a review exists only when an evaluation did, and the engine's `_review_completion`
+  returns `None` for the whole review on failure — so "unassessed" is represented once, at the action, not
+  twice.
+- **Two more GREEN-time decisions (`82293293`):** (1) the Today card gained `completionEvidence()` and renders
+  the review's evidence lines under the "Plan complete" note, matching CLI `now`'s dim lines — the design said
+  the card prints "the proposal and the counts", which the sentence carries, but the surface most learners read
+  should also show what the proposal rests on; a pre-D-G entry without `evidence`, or a failed assessment,
+  contributes nothing. (2) `docs/study-plans.md`'s "Deliberately not automatic" list is the pinned six-item
+  `NOT_AUTOMATIC` constant from issue #7's out-of-scope list (`test_not_automatic_constant_is_well_formed`
+  asserts exactly six); the consensual close is therefore stated in the prose beside the list, as the
+  brain-dump limit is, rather than as a seventh boundary.
 
 ## 5. Item 5 — per-item energy demand and the body-doubling floor (D-F) — designed here, reviewed separately
 

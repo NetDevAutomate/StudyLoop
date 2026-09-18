@@ -129,10 +129,26 @@ writer, through the existing gate, closes that. Kept out of item 3 so item 3's f
       `test_completion_assessment_failure_keeps_the_sentence_and_warns`; `tests/test_cli_plan_seam.py::test_plan_close_launches_the_architect_with_the_assessment_in_the_brief`,
       `::test_plan_close_on_an_unfinished_plan_refuses`; golden byte-identity test still green.
       DoD: RED committed.
-- [ ] **T4.2** GREEN: `CompletionAction` fields + `_PlanContext.build` preview assessment; renderers (CLI `now`,
+- [x] **T4.2** (GREEN `82293293`: 7 RED → green; two-file run 64 passed; full suite 30 failed / 7233 passed /
+      4 skipped / 14 errors in 952 s, `comm` against a clean `f1c52ce8` control run in parallel: item4 − control
+      = ∅, control − item4 = exactly the 7 REDs, 44 shared environmental ids committed by name in
+      `receipts/full-suite-control-item4-2026-09-18.md` (items 3/3b's 45-id list was never persisted, so the
+      one that differs cannot be named); golden sha `ec451ce8…` unchanged; `just test-js` 136/136 (+1: Today
+      card `completionEvidence()`); `just lint` clean, `just typecheck` 0 errors, `mkdocs build --strict` clean,
+      `openspec validate` valid; hooks first time. One decision taken in GREEN, recorded in design §4: `proposal`
+      is `Literal["extend", "close"] | None`, `None` on a failed assessment. The Today card gained the evidence
+      lines beside the CLI's, so the surface most learners read shows what the proposal rests on. The docs'
+      "Deliberately not automatic" list stayed at the pinned six `NOT_AUTOMATIC` boundaries; the consensual
+      close is stated in the prose beside it, as the brain-dump limit is.)
+      GREEN: `CompletionAction` fields + `_PlanContext.build` preview assessment; renderers (CLI `now`,
       recap, Today `completionNotes`); `plan close`; persona "Extend or close" subsection; docs; spec deltas.
       DoD: full suite; golden sha unchanged; `just test-js`.
-- [ ] **T4.3** Rubric: add row **4b** to `receipts/now-rubric-2026-09-16.md` (do not overwrite row 4) with the
+- [x] **T4.3** (in `82293293`: row **4b** added under row 4 — row 4 untouched — with the re-run primary
+      (`decorators` 118, unchanged) and both readings of the completion action as the engine emitted them
+      through the RED tests' own fixtures: (a) one due review on plan concept `alpha` → `extend`, evidence
+      `Due review: alpha — overdue`; (b) clean → `close`, evidence empty. Verdict `PENDING` for the owner; the
+      receipt's status line and re-run mapping name the two backing tests.) Rubric: add row **4b** to
+      `receipts/now-rubric-2026-09-16.md` (do not overwrite row 4) with the
       re-run primary and the proposal; verdict column `PENDING` for the owner.
 
 ## ⚖ Council review 6 — items 1–4
