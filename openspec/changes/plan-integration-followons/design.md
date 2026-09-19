@@ -273,16 +273,15 @@ has none; `INTERLEAVE_RATIOS["low"]` unchanged.
 1. **The deferral is plan-independent.** A live struggle is a live struggle whether or not a plan names it
    (amendment 2's `plan_id … else None` already said so); the finding was about the learner's day, not the
    plan. The body double, by contrast, *requires* a matchable active plan — it is "sit with the plan".
-   Consequence, stated rather than hidden: D-5's "a learner with no active plan receives the pre-#10 payload
-   byte for byte" now holds for a no-plan learner **with nothing deferred**; a no-plan learner whose live
-   struggle is deferred at low energy gets `energy_deferred_repairs` (and the starter if nothing else was
-   collected) where they used to get the hands-on repair. The golden world defers nothing and is unchanged.
-   The spec delta and both docs say so in those words. **A council question (review 7):** is that the right
-   scope for D-F, or should the repair half be gated on an active plan?
-6. **The body double names ready plans only.** An active-but-unready plan is matched but never synthesised
-   (spec rule 8), and the body double is a synthesis; with only a husk active and nothing plan-related fitting,
-   nothing is proposed to sit with — the warning beside it already says "pause or repair"
-   (`test_body_double_is_never_synthesised_for_an_unready_plan`).
+   Consequence, stated rather than hidden (sharpened by review 7 F3): D-5's "a learner with no active plan
+   receives the pre-#10 payload byte for byte" holds for a no-plan learner **with no struggle candidate and
+   nothing deferred** — the golden world. Two changes are plan-independent: every struggle-collector candidate
+   carries `metadata.energy_demand` at every energy, and repair above the day's capability (a live or older
+   struggle, a weak teach-back, at low energy) is deferred — with the starter if nothing else was collected —
+   where the learner used to get the repair itself. Review 7 put the scope question to three seats: two (astra,
+   grok) keep it plan-independent ("gating it on a plan would leave the original no unfixed for every no-plan
+   learner"), one (qwen) would gate it; arbitrated as **keep**, the contract re-worded to the truth above in the
+   spec delta and both docs, and the no-plan floor put to the owner as row 3b reading (d).
 2. **Rule 8's guaranteed slot below the floor is the body-double proposal.** It carries `plan_refs`, so where
    four unrelated due items outrank everything at low energy the second alternate is now the proposal, not a
    third unrelated item. It advertises no work the energy cannot carry — the property rule 8's docstring
@@ -290,13 +289,30 @@ has none; `INTERLEAVE_RATIOS["low"]` unchanged.
 3. **The starter tells the truth after a deferral.** With no plan and every real candidate deferred, the starter
    stands in; its reason now says the energy deferred the repair work rather than "no learning evidence found
    yet", which would be false. The golden world defers nothing, so its sentence is unchanged.
-4. **Body-double shape.** Base `BODY_DOUBLE_BASE_SCORE = 30` (+12 bias = 42 < practice 48, milestone 48);
-   concept `Sit with <title>` (one plan) / `Sit with your plans`; `plan_refs` for every matchable plan; reason
-   naming each deferred milestone and repair; command `studyloop study "<first title>" --mode co-study`. The
-   Today card starts it in the Body Double view (`viewForAction`); the CLI labels the command "Sit with the plan".
+4. **Body-double shape.** Base `BODY_DOUBLE_BASE_SCORE = 30` — below every real candidate's *base*; after the
+   day's adjustments it sits above a hands-on task the low-energy rule penalises (48 − 14 = 34 < 30 + 12 = 42)
+   and below every due and conversation candidate. Review 7 F2 (two seats 🔴, one 💡) was arbitrated as the
+   energy rule doing what the finding asked, not a filter: the *claim* "any real candidate outranks it" was the
+   defect, corrected in the constant's comment, the spec and here, and pinned by
+   `test_body_double_ordering_after_adjustments_follows_the_energy_rule`; the judgement is row 3b reading (e).
+   Concept `Sit with <title>` (one plan) / `Sit with your plans`; `plan_refs` for every **ready** matchable plan
+   (rule 7 may add a topic-matched husk reference; the proposal names ready plans only); reason naming each
+   deferred milestone and repair; command `studyloop study <title> --mode co-study`, the title quoted as one
+   shell argument (review 7 F1). The Today card starts it in the Body Double view and hands the plan title over
+   (`body-double-request`, review 7 F7); the CLI labels the command "Sit with the plan".
 5. **A deferred repair does not "represent" a milestone** (rule 6 runs after the deferral), so an eligible
    milestone whose only collected representative was a deferred live struggle is synthesised as a conversation —
-   the learner can still talk about it.
+   the learner can still talk about it (`test_deferred_repair_allows_only_eligible_milestone_conversation`).
+6. **The body double names ready plans only.** An active-but-unready plan is matched but never synthesised
+   (spec rule 8), and the body double is a synthesis; with only a husk active and nothing plan-related fitting,
+   nothing is proposed to sit with — the warning beside it already says "pause or repair"
+   (`test_body_double_is_never_synthesised_for_an_unready_plan`).
+7. **`medium` and `high` demand are behaviourally identical today** (nothing in `ENERGY_CAPABILITY` sits between
+   3 and 6): both need at least medium self-reported energy. The class is kept as explanatory state so the
+   payload says *why* (review 7: astra and grok keep it, qwen would collapse it); the spec says so.
+8. **Not taken, recorded as follow-ons:** a same-concept gentle `recall` synthesised for a no-plan learner whose
+   only candidates were deferred (grok 🔵 / qwen 🟡; astra: do not invent an unvalidated lower-demand action) —
+   the owner's row 3b reading (d) decides whether the starter is the floor they want.
 
 Known edge, not solved here: a `struggling` row whose `last_seen` cannot be parsed is read as live (`high`) —
 the cautious side; `_days_since` returns `None` and the demand falls to `high`.

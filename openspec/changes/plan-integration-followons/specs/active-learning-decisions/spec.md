@@ -151,9 +151,13 @@ the body-doubling floor):
    candidate is plan-related** and at least one matchable active plan exists,
    one **body-double** candidate SHALL be synthesised instead of leaving the
    plan to the least-bad task: `source = "body_double"`, `action_type =
-   "conversation"`, base score below the synthesised-milestone base so every
-   real candidate outranks it (a proposal, never a filter), `plan_refs`
-   `(plan_id, None)` for every matchable plan, a reason naming the deferred
+   "conversation"`, base score below every real candidate's base and then
+   scored like any other candidate — so every due and conversation candidate
+   outranks it at every energy while a hands-on task the low-energy rule
+   penalises may not; a proposal, never a filter: nothing is removed from the
+   ranking — `plan_refs` `(plan_id, None)` for every **ready** matchable plan
+   (rule 7 may add a reference to an unready plan whose topic the proposal
+   shares; the proposal itself names ready plans only), a reason naming the deferred
    milestones and repairs it stands in for, and `evidence_command` the
    co-study session door — `studyloop study "<plan title>" --mode co-study` —
    set explicitly, never a progress write. No active plan (a draft is not
@@ -180,12 +184,17 @@ the body-doubling floor):
 `energy_deferred_repairs`, `completion_actions` and `warnings`;
 `LearningRecommendation` gains `plan_refs: tuple[PlanRef, ...] = ()`.
 `to_json_dict()` SHALL omit each of these when empty, so a learner with no
-active plan **and nothing deferred** receives the pre-#10 payload **byte for
-byte** — pinned by `tests/golden/now_plan_no_active.json`, captured before any
-of this shipped. The one plan-independent change is rule 2's repair half: a
-learner with no plan whose live struggle is deferred at low energy receives
-`energy_deferred_repairs` (and the starter, if nothing else was collected)
-where they used to receive the hands-on repair itself.
+active plan, no struggle candidate and nothing deferred receives the pre-#10
+payload **byte for byte** — the golden world, pinned by
+`tests/golden/now_plan_no_active.json`, captured before any of this shipped.
+Exactly two changes are plan-independent (rule 2's repair half): every
+struggle-collector candidate's `metadata` carries `energy_demand` at every
+energy, and repair above the day's capability — a live struggle, an older
+struggle or a weak teach-back at low energy — is deferred into
+`energy_deferred_repairs` (with the starter, if nothing else was collected)
+where the learner used to receive the repair itself. `medium` and `high`
+demand both need at least medium self-reported energy today; the class is
+carried so the payload says why.
 Renderers (`studyloop now`, `GET /api/now`, the Today card, the daily recap in
 its JSON, spoken and Rich-panel forms) SHALL show plan relevance, energy
 deferral — one line per deferred milestone **and** one per deferred repair —
@@ -319,9 +328,10 @@ with row 3b re-run after this requirement's repair half.
   deferred milestone and — for the live-struggle fixture — one line per
   deferred repair with its demand and the day's capability; a body-double
   primary is labelled "Sit with the plan" with its `--mode co-study` door
-  and never "Record evidence"; with no plan the CLI panel prints no plan
-  lines, `GET /api/now` equals the golden, and the recap's `plan_context` is
-  absent from its JSON, its spoken text and the `recap today` panel
+  and never "Record evidence"; with no plan and no struggle candidate the CLI
+  panel prints no plan lines, `GET /api/now` equals the golden, and the
+  recap's `plan_context` is absent from its JSON, its spoken text and the
+  `recap today` panel
 
 #### Scenario: Learner-authored text is data to every renderer
 - **WHEN** an active plan's title, topic or milestone text contains Rich

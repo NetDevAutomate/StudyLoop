@@ -72,10 +72,13 @@ EnergyDemand = Literal["low", "medium", "high"]
 ENERGY_DEMAND_CAPABILITY: dict[EnergyDemand, int] = {"high": 6, "medium": 4, "low": 0}
 LIVE_STRUGGLE_DAYS = 14
 
-#: Base score of the synthesised body-double candidate (design §5): below
-#: ``MILESTONE_BASE_SCORE`` so every real candidate — due, repair, practice,
-#: continuity, a synthesised milestone — outranks it. A proposal, never a
-#: filter; the plan bias then lifts it over nothing but the starter.
+#: Base score of the synthesised body-double candidate (design §5): below every
+#: real candidate's *base* — due (100+), repair (70/82), cards (96+), continuity
+#: (58), transfer (52), practice and a synthesised milestone (48). The day's
+#: adjustments then apply to it as to any candidate, so at low energy it (30 +
+#: 12 bias = 42) sits above a hands-on task that energy penalises (48 - 14 =
+#: 34) and below every due and conversation candidate — the energy rule, not a
+#: filter: nothing is removed from the ranking (council review 7, F2).
 BODY_DOUBLE_BASE_SCORE = 30
 BODY_DOUBLE_SOURCE = "body_double"
 
@@ -1237,7 +1240,8 @@ def _body_double_candidate(
     """Design §5's floor: nothing plan-related fits and an active plan exists → sit with it.
 
     One ``source="body_double"`` conversation candidate, base below every real
-    candidate's (a proposal, not a filter), ``plan_refs`` ``(plan, None)`` for
+    candidate's base and then scored like any other (a proposal, not a filter —
+    see ``BODY_DOUBLE_BASE_SCORE``), ``plan_refs`` ``(plan, None)`` for
     every matchable plan, reason naming what it stands in for, and the co-study
     session door as its command (T5.1 amendment 3): ``_evidence_command`` has
     no branch for it and would answer with a progress *write*, not a door.
