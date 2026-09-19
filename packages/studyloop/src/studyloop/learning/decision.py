@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import dataclasses
 import logging
+import shlex
 import sqlite3
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
@@ -327,18 +328,34 @@ def _action_for_review(review_type: str, confidence: str | None) -> ActionType:
     return "recall"
 
 
+_SHELL_SPECIAL = frozenset('"\\$`!')
+
+
+def _shell_word(text: str) -> str:
+    """One shell argument for a command the engine *offers* the learner to run.
+
+    Plain text keeps the double-quoted form every existing command uses (the
+    golden pins it byte for byte). Text carrying a character the shell reads
+    inside double quotes — ``"``, ``\\``, ``$``, a backtick, ``!`` — is
+    ``shlex.quote``d instead, so a plan title or concept like
+    ``SQL $(rm -rf ~) Windows`` reaches ``studyloop`` as one literal argument
+    (council review 7, F1: the old ``\\"`` replacement was presentation, not
+    quoting, and a pasted command executed the substitution).
+    """
+    if _SHELL_SPECIAL.isdisjoint(text):
+        return f'"{text}"'
+    return shlex.quote(text)
+
+
 def _evidence_command(action_type: ActionType, concept: str, topic: str, source: str) -> str:
-    safe_concept = concept.replace('"', '\\"')
-    safe_topic = topic.replace('"', '\\"')
     if action_type == "teachback":
         return (
-            f'studyloop teachback "{safe_concept}" -t "{safe_topic}" '
+            f"studyloop teachback {_shell_word(concept)} -t {_shell_word(topic)} "
             '--score "3,3,3,3,3" --type structured'
         )
     if action_type == "hands-on" and source.endswith(".json"):
-        safe_source = source.replace('"', '\\"')
-        return f'studyloop practice verify "{safe_source}" --task 1 --notes "what passed?"'
-    return f'studyloop progress "{safe_concept}" -t "{safe_topic}" -c learning'
+        return f'studyloop practice verify {_shell_word(source)} --task 1 --notes "what passed?"'
+    return f"studyloop progress {_shell_word(concept)} -t {_shell_word(topic)} -c learning"
 
 
 def _connect_progress_db():
@@ -1236,7 +1253,6 @@ def _body_double_candidate(
     ] + [f"repair of “{d.concept}”" for d in deferred_repairs]
     deferred_note = f" — deferred: {'; '.join(items)}" if items else ""
     topic = first.topics[0] if first.topics else "study"
-    safe_title = first.title.replace('"', '\\"')
     return _Candidate(
         concept=f"Sit with {first.title}" if len(named) == 1 else "Sit with your plans",
         topic=topic,
@@ -1248,7 +1264,7 @@ def _body_double_candidate(
         action_type="conversation",
         estimated_minutes=_estimate_minutes("conversation", time_minutes, 25),
         source=BODY_DOUBLE_SOURCE,
-        evidence_command=f'studyloop study "{safe_title}" --mode co-study',
+        evidence_command=f"studyloop study {_shell_word(first.title)} --mode co-study",
         score=BODY_DOUBLE_BASE_SCORE,
         metadata={
             "plan_id": first.plan_id,

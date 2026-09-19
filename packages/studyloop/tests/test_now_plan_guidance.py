@@ -1468,3 +1468,58 @@ def test_cli_now_and_recap_render_deferred_repairs_and_the_body_double_door(
 
     assert "Frames" in context
     assert "window function" in context and "6 of 10" in context
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "SQL Windows",
+        'SQL "Windows"',
+        "SQL $(touch pwned) Windows",
+        "SQL `touch pwned` Windows",
+        "SQL $HOME Windows",
+        "back\\slash Windows",
+        "it's Windows",
+    ],
+)
+def test_body_double_command_preserves_title_as_one_literal_shell_argument(
+    monkeypatch, tmp_path: Path, title: str
+) -> None:
+    """Council review 7, F1 (astra 🔴): the command the engine *offers* must reach
+    ``studyloop`` as one literal argument when pasted into a POSIX shell — no
+    expansion, no substitution, no extra command. Proved with a real ``sh`` and a
+    stub ``studyloop`` on PATH that records its argv."""
+    import subprocess
+
+    _plan(
+        "hostile",
+        title=title,
+        energy_floor=5,
+        milestones=[Milestone(title="Frames", concepts=["window frame"])],
+    )
+    _plant_struggles(monkeypatch, _struggle("window frame", days_ago=3))
+
+    low = build_now_plan(energy="low")
+
+    assert low.primary.source == "body_double"
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    argv_file = tmp_path / "argv.txt"
+    stub = bin_dir / "studyloop"
+    stub.write_text(f'#!/bin/sh\nprintf "%s\\n" "$@" > "{argv_file}"\n', encoding="utf-8")
+    stub.chmod(0o755)
+    subprocess.run(
+        ["/bin/sh", "-c", low.primary.evidence_command],
+        check=True,
+        env={"PATH": f"{bin_dir}:/usr/bin:/bin", "HOME": str(tmp_path)},
+        cwd=tmp_path,
+        timeout=10,
+    )
+
+    assert argv_file.read_text(encoding="utf-8").split("\n")[:4] == [
+        "study",
+        title,
+        "--mode",
+        "co-study",
+    ]
+    assert not (tmp_path / "pwned").exists(), "the title's substitution must never run"
