@@ -114,7 +114,26 @@ export function todayPanel() {
     },
 
     startAction(rec) {
-      Alpine.store('nav').go(this.viewForAction(rec));
+      const view = this.viewForAction(rec);
+      if (view === 'body-double') {
+        /* Carry the proposal's context to the Body Double view (council review
+           7, F7): the same event-not-storage handoff `today-resume` uses, so
+           the picker opens on the plan the engine named instead of blank. The
+           view starts nothing on its own; the learner still presses start. */
+        window.dispatchEvent(new CustomEvent('body-double-request', {
+          detail: { activity: this.bodyDoubleActivity(rec), energy: this.plan && this.plan.energy },
+        }));
+      }
+      Alpine.store('nav').go(view);
+    },
+
+    /* What a body-double proposal asks the learner to sit with: the named
+       plan's title, or the proposal's own concept when the payload lists no
+       plan for it. */
+    bodyDoubleActivity(rec) {
+      const planId = rec && rec.metadata && rec.metadata.plan_id;
+      const plan = planId ? this._activePlan(planId) : null;
+      return (plan && plan.title) || (rec && rec.concept) || '';
     },
 
     /* The view an action starts in. A body-double proposal (design §5) is a
@@ -216,6 +235,20 @@ export function todayPanel() {
        the CLI and the JSON already show; the card shows it too. */
     warningNotes() {
       return ((this.plan && this.plan.warnings) || []).map((w) => String(w));
+    },
+
+    /* The notes block's label. "Your plans" once any note involves a plan; a
+       learner with no plan whose live struggle was deferred (design §5
+       decision 1) has no plan to be told about — the block is what today set
+       aside (council review 7, grok). */
+    planNotesLabel() {
+      const plans = (this.plan && this.plan.active_plans) || [];
+      const repairs = (this.plan && this.plan.energy_deferred_repairs) || [];
+      const planInvolved = plans.length > 0
+        || this.deferredNotes().length > 0
+        || this.completionNotes().length > 0
+        || repairs.some((r) => r.plan_id);
+      return planInvolved ? 'Your plans' : 'Set aside today';
     },
 
     get hasPlanContext() {
