@@ -215,7 +215,17 @@ writer, through the existing gate, closes that. Kept out of item 3 so item 3's f
       "Decisions taken at GREEN" 1-5. Module 46/46, JS 144/144, e2e plan journeys 20/20, docs contract 39/39,
       `mkdocs --strict` exit 0, `openspec validate` valid; full suite vs a clean `main` control — see the GREEN
       commit's receipt.)
-- [ ] ⚖ **T5.4** Council review 7 (`review7`, same seats or `kimi-k2-thinking` third); arbitration; corrections.
+- [x] ⚖ **T5.4** Council review 7 (`review7`, same seats or `kimi-k2-thinking` third); arbitration; corrections.
+      (2026-09-19: brief `council/brief-review7-2026-09-19.md` on tree `6d5a2d0e`; seats astra
+      ACCEPT-WITH-CORRECTIONS (2 🔴 / 3 🟡), qwen ACCEPT-WITH-CORRECTIONS (2 🔴), grok ACCEPT (🔵/💡 only; 16k cap
+      cut its Gate). Arbitration `council/review-7-arbitration-2026-09-19.md`: **GATE ACCEPT** for the corrected
+      tree. Landed one commit each: F1 shell quoting of every offered command (`d1935256`, real-`sh` test,
+      stash-proved), F5 no false repair promise (`c1d7f2f2`), F7 Web door hands the plan over (`3347567e`), grok's
+      "Your plans" label (`f814dc36`), F4 five pins + a pre-existing NULL-`last_seen` collector crash they found
+      (`7194b66d`), F2 ordering claim corrected — behaviour kept, judgement to the owner (`02e282e6`), F3/F6
+      contract wording (`bdf4d6c6`). Rejected with reasons: qwen's gate-deferral-on-a-plan (2–1 against, and D-F's
+      own words), collapsing medium/high, a same-concept gentle recall floor (follow-on, decision 8). Row 3b gained
+      readings (d) and (e) for the two places the seats split.)
 - [ ] **T5.5** Rubric row **3b** for the owner (`PENDING`); the change is archived only after the owner scores 3b
       (4b was scored **yes / yes** on 2026-09-18, so 3b is the one row still outstanding). (2026-09-19: row 3b
       written into `receipts/now-rubric-2026-09-16.md` with three readings printed from the real engine — (a) live
