@@ -1523,3 +1523,34 @@ def test_body_double_command_preserves_title_as_one_literal_shell_argument(
         "co-study",
     ]
     assert not (tmp_path / "pwned").exists(), "the title's substitution must never run"
+
+
+def test_cli_milestone_deferral_does_not_promise_live_repair(monkeypatch) -> None:
+    """Council review 7, F5 (astra 🟡): in row 3b's own fixture the milestone line used to end
+    "Plan-related review and repair stay available" one line above the line saying the
+    repair is deferred. Both the engine's reason and the CLI's sentence now promise only
+    what rule 3 still guarantees — due recall and gentle review — asserted as whole
+    sentences, not by the presence of a word."""
+    from click.testing import CliRunner
+
+    from studyloop.cli import cli
+
+    _row3_plan()
+    _plant_struggles(monkeypatch, _struggle("window function", days_ago=3))
+
+    low = build_now_plan(energy="low")
+    rich = CliRunner().invoke(cli, ["now", "--energy", "low"])
+
+    assert rich.exit_code == 0, rich.output
+    flat = " ".join(rich.output.split())
+    assert (
+        "Deferred for energy: SQL Windows — milestone 2 “Frames” needs energy 5/10; "
+        "low energy carries 3/10. Due recall and gentle review stay available."
+    ) in flat
+    assert (
+        "Deferred for energy: SQL Windows — repairing “window function” (struggling) asks for "
+        "6/10; low energy carries 3/10. Due recall and gentle review stay available."
+    ) in flat
+    assert "repair stay available" not in flat
+    assert "repair stay available" not in low.energy_deferred[0].reason
+    assert low.energy_deferred[0].reason.endswith("due recall and gentle review stay available")

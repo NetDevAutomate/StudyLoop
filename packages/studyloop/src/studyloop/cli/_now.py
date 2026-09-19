@@ -70,7 +70,7 @@ def _render_plan(plan) -> None:
             f"[yellow]Deferred for energy:[/yellow] {escape(deferred.plan_title)} — "
             f"milestone {deferred.milestone_index + 1} “{escape(deferred.title)}” needs "
             f"energy {deferred.energy_floor}/10; {plan.energy} energy carries "
-            f"{deferred.energy_capability}/10. Plan-related review and repair stay available."
+            f"{deferred.energy_capability}/10. Due recall and gentle review stay available."
         )
     # One line per deferred repair (design §5, amendment 2): its own key, its
     # own sentence — a repair has no milestone number to print.

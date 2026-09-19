@@ -1031,8 +1031,8 @@ class _PlanContext:
                                 reason=(
                                     f"{energy} energy carries {capability}/10; "
                                     f"{summary.title!r} asks for at least "
-                                    f"{plan.energy_floor}/10 — plan-related review "
-                                    "and repair stay available"
+                                    f"{plan.energy_floor}/10 — due recall and gentle "
+                                    "review stay available"
                                 ),
                             )
                         )
