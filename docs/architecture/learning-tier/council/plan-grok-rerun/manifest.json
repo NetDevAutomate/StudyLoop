@@ -1,0 +1,21 @@
+{
+  "run_at": "2026-09-19T11:59:36+00:00",
+  "brief": "docs/architecture/learning-tier/council/brief-plan-2026-09-19.md",
+  "brief_sha256": "02a9a62e43f085ef432f865f54824ed1a05d79e287d70dfb0ab8c390422ab2cf",
+  "system_sha256": "424aba7a4b2b6f33bd57da2076857a206e3683bc8af9aca5d3007f3314c3099c",
+  "seats": [
+    {
+      "model": "grok-4.6",
+      "ok": true,
+      "reasoning_chars": 0,
+      "finish_reason": "stop",
+      "elapsed_s": 111.4,
+      "usage": {
+        "prompt_tokens": 6003,
+        "completion_tokens": 16319,
+        "total_tokens": 22322
+      },
+      "error": null
+    }
+  ]
+}

@@ -543,6 +543,15 @@ docs/architecture/jev-judge/*
 !docs/architecture/jev-judge/receipts/
 !docs/architecture/jev-judge/*.architecture.json
 !docs/architecture/jev-judge/*.md
+# Un-ignored 2026-09-19 — learning-tier programme record (feed the mentor's writers on all
+# six harnesses, then measure one judgement model on the struggle ruler): council brief,
+# seat reviews, arbitration, pre-registration and stage receipts. Small Markdown/JSON only.
+!docs/architecture/learning-tier/
+docs/architecture/learning-tier/*
+!docs/architecture/learning-tier/council/
+!docs/architecture/learning-tier/receipts/
+!docs/architecture/learning-tier/*.architecture.json
+!docs/architecture/learning-tier/*.md
 
 # Demo recordings (large, local-only)
 demos/

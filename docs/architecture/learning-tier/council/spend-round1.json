@@ -1,0 +1,61 @@
+[
+  {
+    "alias": "grok-4.6",
+    "usage": {
+      "completion_tokens": 24000,
+      "prompt_tokens": 5903,
+      "total_tokens": 29903,
+      "completion_tokens_details": {
+        "accepted_prediction_tokens": 0,
+        "audio_tokens": 0,
+        "reasoning_tokens": 64,
+        "rejected_prediction_tokens": 0
+      },
+      "prompt_tokens_details": {
+        "audio_tokens": 0,
+        "cached_tokens": 0,
+        "cache_write_tokens": 0,
+        "cache_creation_tokens": 0
+      }
+    },
+    "model": "grok-4.6"
+  },
+  {
+    "alias": "openai.gpt-6-astra",
+    "usage": {
+      "completion_tokens": 3099,
+      "prompt_tokens": 5751,
+      "total_tokens": 8850,
+      "completion_tokens_details": {
+        "reasoning_tokens": 287
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "cache_write_tokens": 5749,
+        "cache_creation_tokens": 5749
+      }
+    },
+    "model": "openai.gpt-6-astra"
+  },
+  {
+    "alias": "qwen3-coder",
+    "usage": {
+      "completion_tokens": 998,
+      "prompt_tokens": 5923,
+      "total_tokens": 6921,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "text_tokens": 998
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "text_tokens": 5923,
+        "cache_write_tokens": 0,
+        "cache_creation_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0
+    },
+    "model": "qwen3-coder"
+  }
+]
