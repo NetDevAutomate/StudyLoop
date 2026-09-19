@@ -72,11 +72,22 @@ jobs:
         # (~/.kiro, ~/.claude, ~/.codex, ~/.config/opencode). With a fresh HOME
         # there is no Python 3.12 either, so this also exercises the script's
         # `uv python install` fallback every night.
+        #
+        # The script refuses, by design, when no supported AI tool is present
+        # ("No supported AI tools detected"), and the runner has none: no
+        # harness binary on PATH and nothing in the fresh HOME. So the fixture
+        # plants the four harness markers `detect_available_agent_tools()`
+        # reads without a binary -- ~/.kiro, ~/.claude, ~/.pi, ~/.grok -- and
+        # the install-agents step then exercises all four link sets for real.
+        # (Without this the job failed every night from 2026-09-15, before its
+        # verify steps ever ran; pinned by test_ci_workflow_contract.py.)
         env:
           HOME: ${{ runner.temp }}/home
           UV_TOOL_DIR: ${{ runner.temp }}/tools
           UV_TOOL_BIN_DIR: ${{ runner.temp }}/bin
-        run: mkdir -p "$HOME" && ./scripts/install.sh --non-interactive --no-smoke
+        run: |
+          mkdir -p "$HOME/.kiro" "$HOME/.claude" "$HOME/.pi" "$HOME/.grok"
+          ./scripts/install.sh --non-interactive --no-smoke
 
       - name: Verify installed CLI entry points
         env:
@@ -84,3 +95,17 @@ jobs:
         run: |
           "$UV_TOOL_BIN_DIR/studyloop" --version
           "$UV_TOOL_BIN_DIR/session-export" --help
+
+      - name: Verify installed agent definitions
+        # One artefact per planted harness, each a path `install agents`
+        # writes for that tool (installers.py _TOOL_LINKS / _configure_*).
+        env:
+          HOME: ${{ runner.temp }}/home
+        run: |
+          test -e "$HOME/.kiro/agents/study-mentor.json"
+          test -e "$HOME/.kiro/agents/study-plan-architect.json"
+          test -e "$HOME/.claude/agents/socratic-mentor.md"
+          test -e "$HOME/.claude/agents/study-plan-architect.md"
+          test -e "$HOME/.pi/agent/AGENTS.md"
+          test -e "$HOME/.grok/hooks/studyloop.json"
+          test -e "$HOME/.grok/rules/session-db.md"
