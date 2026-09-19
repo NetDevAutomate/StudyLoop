@@ -365,3 +365,62 @@ test('the Today card markup renders the deferred repairs beside the deferred mil
   const show = html.slice(html.lastIndexOf('x-show=', start), start);
   assert.match(show, /deferredRepairNotes\(\)\.length > 0/, 'the notes block shows for a deferred repair alone');
 });
+
+test('starting a body-double primary hands its plan to the Body Double view, then navigates (review 7, F7)', () => {
+  const events = [];
+  const gone = [];
+  const savedWindow = globalThis.window;
+  const savedAlpine = globalThis.Alpine;
+  const savedEvent = globalThis.CustomEvent;
+  globalThis.window = { dispatchEvent(e) { events.push(e); } };
+  globalThis.CustomEvent = class { constructor(type, init) { this.type = type; this.detail = init && init.detail; } };
+  globalThis.Alpine = { store() { return { go(view) { gone.push(view); } }; } };
+  try {
+    const panel = todayPanel();
+    panel.plan = DEFERRED_REPAIR_PAYLOAD;
+    panel.plan.primary.metadata = { plan_id: 'sql-windows', deferred_milestones: 1, deferred_repairs: 1 };
+
+    panel.startPrimary();
+
+    assert.deepEqual(gone, ['body-double']);
+    assert.equal(events.length, 1);
+    assert.equal(events[0].type, 'body-double-request');
+    assert.deepEqual(events[0].detail, { activity: 'SQL Windows', energy: 'low' });
+
+    events.length = 0; gone.length = 0;
+    panel.startAction(PLAN_PAYLOAD.primary);
+
+    assert.deepEqual(gone, ['study-session']);
+    assert.equal(events.length, 0, 'an ordinary action dispatches nothing');
+  } finally {
+    globalThis.window = savedWindow;
+    globalThis.Alpine = savedAlpine;
+    globalThis.CustomEvent = savedEvent;
+  }
+});
+
+test('bodyDoubleActivity: the named plan\u2019s title, else the proposal\u2019s concept', () => {
+  const panel = todayPanel();
+  panel.plan = DEFERRED_REPAIR_PAYLOAD;
+
+  assert.equal(panel.bodyDoubleActivity({ concept: 'Sit with SQL Windows', metadata: { plan_id: 'sql-windows' } }), 'SQL Windows');
+  assert.equal(panel.bodyDoubleActivity({ concept: 'Sit with your plans', metadata: { plan_id: 'missing' } }), 'Sit with your plans');
+  assert.equal(panel.bodyDoubleActivity(null), '');
+});
+
+test('planNotesLabel: "Your plans" when a plan is involved, "Set aside today" for a no-plan deferred repair (review 7, grok)', () => {
+  const panel = todayPanel();
+  panel.plan = DEFERRED_REPAIR_PAYLOAD;
+  assert.equal(panel.planNotesLabel(), 'Your plans');
+
+  panel.plan = {
+    ...NO_PLAN_PAYLOAD,
+    energy: 'low',
+    energy_deferred_repairs: [
+      { plan_id: null, plan_title: null, concept: 'decorators', topic: 'python', confidence: 'struggling',
+        energy_demand: 'high', required_capability: 6, energy_capability: 3, reason: 'r' },
+    ],
+  };
+  assert.equal(panel.planNotesLabel(), 'Set aside today');
+  assert.equal(panel.hasPlanContext, true);
+});

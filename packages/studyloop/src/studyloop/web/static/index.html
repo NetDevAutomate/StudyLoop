@@ -1106,7 +1106,7 @@
                the single action card by that class. -->
           <div x-show="!loading && plan && (deferredNotes().length > 0 || deferredRepairNotes().length > 0 || completionNotes().length > 0 || warningNotes().length > 0)"
                class="today-plan-notes">
-            <p class="today-parked-label">Your plans</p>
+            <p class="today-parked-label" x-text="planNotesLabel()">Your plans</p>
             <template x-for="(note, i) in deferredNotes()" :key="'d' + i">
               <p class="today-meta">Deferred for energy: <span x-text="note"></span></p>
             </template>
