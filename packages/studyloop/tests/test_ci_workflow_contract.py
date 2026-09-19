@@ -236,3 +236,57 @@ def test_sast_and_pre_commit_bandit_skip_lists_agree() -> None:
     )
 
     assert sast_skipped == precommit_skipped == ci_standards_skipped
+
+
+NIGHTLY_WORKFLOW = WORKFLOW_DIR / "nightly-install.yml"
+
+
+def _nightly_workflow() -> dict[str, Any]:
+    return yaml.safe_load(NIGHTLY_WORKFLOW.read_text(encoding="utf-8"))
+
+
+def test_nightly_installer_job_plants_a_harness_before_running_install_sh() -> None:
+    """The nightly `installer` job (A4, added 2026-09-14) isolates HOME so
+    `studyloop install agents` writes into scratch -- and had never passed:
+    an empty HOME has no harness, `detect_available_agent_tools()` finds
+    nothing, and `install.sh` exits 1 at "Installing agent definitions"
+    exactly as the README says it should when no supported AI tool exists.
+    The job died five nights running before its verify step ever ran.
+
+    The fixture must supply the precondition the script documents: at least
+    one harness marker directory that the detector reads without a binary
+    (`~/.kiro`, `~/.claude`, `~/.pi`, `~/.grok`), created in the isolated
+    HOME by the same step that runs the script. And the job must then check
+    what `install agents` wrote, or the isolation buys nothing.
+    """
+    data = _nightly_workflow()
+    installer = data["jobs"]["installer"]
+    steps = installer["steps"]
+    run_step = next(step for step in steps if step.get("name") == "Run scripts/install.sh")
+
+    assert run_step["env"]["HOME"] == "${{ runner.temp }}/home", (
+        "HOME isolation is the point of the job; it must stay"
+    )
+    run = run_step["run"]
+    assert "./scripts/install.sh --non-interactive --no-smoke" in run
+
+    planted = [
+        marker
+        for marker in ("$HOME/.kiro", "$HOME/.claude", "$HOME/.pi", "$HOME/.grok")
+        if marker in run
+    ]
+    assert planted, (
+        "the installer job runs install.sh in an empty HOME; plant at least one "
+        "directory-detected harness marker first or `install agents` exits 1"
+    )
+    plant_at = min(run.index(marker) for marker in planted)
+    assert plant_at < run.index("./scripts/install.sh"), "plant the marker BEFORE the script runs"
+
+    verify = next(
+        (step for step in steps if step.get("name") == "Verify installed agent definitions"),
+        None,
+    )
+    assert verify is not None, "the job must verify what `install agents` wrote into HOME"
+    assert verify["env"]["HOME"] == "${{ runner.temp }}/home"
+    for planted_marker in planted:
+        assert planted_marker in verify["run"], f"verify step does not look inside {planted_marker}"
