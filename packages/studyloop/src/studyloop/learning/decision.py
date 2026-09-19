@@ -1223,7 +1223,12 @@ def _body_double_candidate(
     """
     if not plans.matchable or any(plans.is_plan_related(c) for c in candidates):
         return None
-    named = [plan.plan for plan in plans.matchable]
+    # An active-but-unready plan is matched but never synthesised (spec rule 8);
+    # the body double is a synthesis, so only ready plans are sat with. The
+    # warning beside it already says "pause or repair".
+    named = [plan.plan for plan in plans.matchable if plan.readiness.ready]
+    if not named:
+        return None
     first = named[0]
     titles = " and ".join(plan.title for plan in named)
     items = [

@@ -1375,6 +1375,42 @@ def test_body_double_is_a_proposal_not_a_filter(monkeypatch) -> None:
     assert "Frames" in low.alternates[0].reason
 
 
+def test_body_double_is_never_synthesised_for_an_unready_plan(monkeypatch) -> None:
+    """An active-but-unready plan is matched but never synthesised (spec rule 8), and the
+    body double is a synthesis: with only a husk active and nothing plan-related fitting,
+    the engine proposes nothing to sit with — the warning already says repair it."""
+    husk = StudyPlan(
+        plan_id="husk",
+        title="Husk",
+        status="active",
+        created="2026-08-01T00:00:00+00:00",
+        updated="2026-09-01T00:00:00+00:00",
+        topics=["sql"],
+        milestones=[Milestone(title="Frames", concepts=["window frame"])],
+    )
+    store.create_plan(husk)  # no mission, no success criteria: unready
+    _plant_struggles(monkeypatch, _struggle("window function", days_ago=3))
+
+    low = build_now_plan(energy="low")
+
+    assert not any(rec.source == "body_double" for rec in _all(low))
+    assert [d.concept for d in low.energy_deferred_repairs] == ["window function"]
+    assert low.starter is True
+    assert any("husk" in w for w in low.warnings)
+
+    # A ready plan beside the husk: the proposal names the ready one only; rule 7
+    # may still attach a `(husk, None)` ref because the topics match.
+    _row3_plan()
+
+    low = build_now_plan(energy="low")
+
+    assert low.primary.source == "body_double"
+    assert low.primary.concept == "Sit with SQL Windows"
+    assert PlanRef("sql-windows", None) in low.primary.plan_refs
+    assert low.primary.evidence_command == 'studyloop study "SQL Windows" --mode co-study'
+    assert "Husk" not in low.primary.reason
+
+
 def test_body_double_never_appears_without_an_active_plan(monkeypatch) -> None:
     """No active plan, no plan to sit with: the deferral still happens (plan-independent,
     ``plan_id`` ``None``), the golden world stays untouched, and a non-active plan is
