@@ -268,3 +268,100 @@ test('warningNotes: absent key renders no warning text', () => {
   assert.deepEqual(panel.warningNotes(), []);
   assert.equal(panel.hasPlanContext, false);
 });
+
+/* Item 5 (D-F): a repair the day's energy cannot carry, in its own additive key
+   (design §5 amendment 2 — `energy_deferred` is milestone-shaped), and the
+   body-double proposal the engine synthesises when nothing plan-related fits. */
+const DEFERRED_REPAIR_PAYLOAD = {
+  ...PLAN_PAYLOAD,
+  primary: {
+    concept: 'Sit with SQL Windows',
+    action_type: 'conversation',
+    estimated_minutes: 25,
+    reason: 'Nothing plan-related fits low energy today',
+    source: 'body_double',
+    evidence_command: 'studyloop study "SQL Windows" --mode co-study',
+    plan_refs: [{ plan_id: 'sql-windows', milestone_index: null }],
+  },
+  energy_deferred_repairs: [
+    {
+      plan_id: 'sql-windows',
+      plan_title: 'SQL Windows',
+      concept: 'window function',
+      topic: 'sql',
+      confidence: 'struggling',
+      energy_demand: 'high',
+      required_capability: 6,
+      energy_capability: 3,
+      reason: 'low energy carries 3/10; repairing a live struggle asks for at least 6/10',
+    },
+  ],
+};
+
+test('deferredRepairNotes: one readable line per energy-deferred repair', () => {
+  const panel = todayPanel();
+  panel.plan = DEFERRED_REPAIR_PAYLOAD;
+
+  assert.deepEqual(panel.deferredRepairNotes(), [
+    'SQL Windows \u2014 repairing \u201cwindow function\u201d (struggling) waits for more energy '
+    + '(asks for 6/10, low energy carries 3/10)',
+  ]);
+});
+
+test('deferredRepairNotes: a repair unrelated to any plan names no plan, and counts as plan context alone', () => {
+  const panel = todayPanel();
+  panel.plan = {
+    ...NO_PLAN_PAYLOAD,
+    energy: 'low',
+    energy_deferred_repairs: [
+      {
+        plan_id: null,
+        plan_title: null,
+        concept: 'decorators',
+        topic: 'python',
+        confidence: 'struggling',
+        energy_demand: 'high',
+        required_capability: 6,
+        energy_capability: 3,
+        reason: 'low energy carries 3/10',
+      },
+    ],
+  };
+
+  assert.deepEqual(panel.deferredRepairNotes(), [
+    'Repairing \u201cdecorators\u201d (struggling) waits for more energy '
+    + '(asks for 6/10, low energy carries 3/10)',
+  ]);
+  assert.equal(panel.hasPlanContext, true);
+});
+
+test('deferredRepairNotes: absent key renders nothing, before and after assignment', () => {
+  const panel = todayPanel();
+
+  assert.deepEqual(panel.deferredRepairNotes(), []);
+
+  panel.plan = PLAN_PAYLOAD;
+
+  assert.deepEqual(panel.deferredRepairNotes(), []);
+});
+
+test('a body-double primary starts in the Body Double view; every other action keeps its view', () => {
+  const panel = todayPanel();
+
+  assert.equal(panel.viewForAction(DEFERRED_REPAIR_PAYLOAD.primary), 'body-double');
+  assert.equal(panel.viewForAction(PLAN_PAYLOAD.primary), 'study-session');
+  assert.equal(panel.viewForAction(NO_PLAN_PAYLOAD.primary), 'flashcards');
+});
+
+test('the Today card markup renders the deferred repairs beside the deferred milestones', () => {
+  const html = fs.readFileSync(
+    new URL('../../src/studyloop/web/static/index.html', import.meta.url), 'utf8',
+  );
+  const start = html.indexOf('class="today-plan-notes"');
+  const end = html.indexOf('</div>', html.indexOf('warningNotes()', start));
+  const block = html.slice(start, end);
+  assert.match(block, /x-for="\(note, i\) in deferredRepairNotes\(\)" :key="'r' \+ i"/);
+  assert.match(block, /Deferred for energy: <span x-text="note">/);
+  const show = html.slice(html.lastIndexOf('x-show=', start), start);
+  assert.match(show, /deferredRepairNotes\(\)\.length > 0/, 'the notes block shows for a deferred repair alone');
+});
