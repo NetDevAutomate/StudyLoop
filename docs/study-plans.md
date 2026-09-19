@@ -252,9 +252,9 @@ action keeps its plain sentence and a warning says why — a failure is never
 shown as a clean slate. This is plan-aware guidance with tested ranking rules — a bias, not
 a filter: an overdue review or a fresh struggle on an unrelated topic can
 still outrank new milestone work. With no active plan the recommendation is
-unchanged — except that a live struggle is deferred at low energy whether or
-not a plan names it; a plan that cannot be read adds a warning and nothing
-else. The
+unchanged — except that repair above the day's energy (a live or older
+struggle, a weak teach-back) is deferred whether or not a plan names it; a
+plan that cannot be read adds a warning and nothing else. The
 ranking rules are tested; whether the primary is the action *you* would take
 is a separate judgement. Five frozen scenarios and the engine's primaries are
 in the project's rubric receipt
