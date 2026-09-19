@@ -534,6 +534,15 @@ docs/architecture/plan-integration/*
 !docs/architecture/plan-integration/proposals/
 !docs/architecture/plan-integration/*.architecture.json
 !docs/architecture/plan-integration/*.md
+# Un-ignored 2026-09-19 — jev-judge programme record (Jev / TypeSafe System One as an
+# optional judgement provider): stage receipts, council briefs and seat reviews.
+# Same shape as plan-integration above: small Markdown/JSON only.
+!docs/architecture/jev-judge/
+docs/architecture/jev-judge/*
+!docs/architecture/jev-judge/council/
+!docs/architecture/jev-judge/receipts/
+!docs/architecture/jev-judge/*.architecture.json
+!docs/architecture/jev-judge/*.md
 
 # Demo recordings (large, local-only)
 demos/

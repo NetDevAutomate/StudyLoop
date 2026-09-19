@@ -1,0 +1,717 @@
+{
+  "sdk": "0.7.0",
+  "python": "3.12.8",
+  "model_requested": "jev-1.13.0",
+  "repeats": 3,
+  "state_chars": 1329,
+  "calls": [
+    {
+      "latency_ms": 1779,
+      "model_answered": "jev-1.13.0",
+      "usage": {
+        "input_tokens": 973,
+        "output_tokens": 107
+      },
+      "answers": {
+        "accuracy": {
+          "score": 2.09,
+          "confidence": 0.52,
+          "probabilities": {
+            "0": 0.02,
+            "1": 0.16,
+            "2": 0.54,
+            "3": 0.28
+          },
+          "legend": {
+            "0": "Significant errors or omissions",
+            "1": "Mostly correct, minor gaps",
+            "2": "Accurate with nuanced detail",
+            "3": "Accurate and anticipates edge cases"
+          }
+        },
+        "own_words": {
+          "score": 2.98,
+          "confidence": 0.98,
+          "probabilities": {
+            "0": 0.0,
+            "1": 0.0,
+            "2": 0.02,
+            "3": 0.98
+          },
+          "legend": {
+            "0": "Verbatim repetition of source material",
+            "1": "Mixed: some own words, some parroted",
+            "2": "Consistently uses own language",
+            "3": "Creates novel analogies or framings"
+          }
+        },
+        "structure": {
+          "score": 2.9,
+          "confidence": 0.9,
+          "probabilities": {
+            "0": 0.0,
+            "1": 0.0,
+            "2": 0.1,
+            "3": 0.9
+          },
+          "legend": {
+            "0": "Disconnected facts, no logical flow",
+            "1": "Some structure but relationships unclear",
+            "2": "Clear logical flow showing cause/effect",
+            "3": "Builds narrative sequenced for the listener"
+          }
+        },
+        "depth": {
+          "score": 2.03,
+          "confidence": 0.96,
+          "probabilities": {
+            "0": 0.0,
+            "1": 0.0,
+            "2": 0.96,
+            "3": 0.04
+          },
+          "legend": {
+            "0": "States WHAT only",
+            "1": "States WHAT and partially HOW",
+            "2": "Explains WHAT, HOW, and WHY",
+            "3": "Addresses WHY, tradeoffs, when NOT to use"
+          }
+        },
+        "transfer": {
+          "score": 2.67,
+          "confidence": 0.67,
+          "probabilities": {
+            "0": 0.0,
+            "1": 0.0,
+            "2": 0.33,
+            "3": 0.67
+          },
+          "legend": {
+            "0": "Cannot apply to new context",
+            "1": "Applies with heavy hints",
+            "2": "Independently applies to related scenario",
+            "3": "Generates novel examples or counter-examples"
+          }
+        },
+        "has_factual_error": {
+          "noul": 0.48
+        },
+        "not_english": {
+          "noul": 0.01
+        }
+      },
+      "raw": {
+        "model": "jev-1.13.0",
+        "usage": {
+          "input_tokens": 973,
+          "output_tokens": 107
+        },
+        "answers": {
+          "accuracy": {
+            "type": "score",
+            "score": 2.09,
+            "confidence": 0.52,
+            "legend": {
+              "0": "Significant errors or omissions",
+              "1": "Mostly correct, minor gaps",
+              "2": "Accurate with nuanced detail",
+              "3": "Accurate and anticipates edge cases"
+            },
+            "probabilities": {
+              "0": 0.02,
+              "1": 0.16,
+              "2": 0.54,
+              "3": 0.28
+            }
+          },
+          "own_words": {
+            "type": "score",
+            "score": 2.98,
+            "confidence": 0.98,
+            "legend": {
+              "0": "Verbatim repetition of source material",
+              "1": "Mixed: some own words, some parroted",
+              "2": "Consistently uses own language",
+              "3": "Creates novel analogies or framings"
+            },
+            "probabilities": {
+              "0": 0.0,
+              "1": 0.0,
+              "2": 0.02,
+              "3": 0.98
+            }
+          },
+          "structure": {
+            "type": "score",
+            "score": 2.9,
+            "confidence": 0.9,
+            "legend": {
+              "0": "Disconnected facts, no logical flow",
+              "1": "Some structure but relationships unclear",
+              "2": "Clear logical flow showing cause/effect",
+              "3": "Builds narrative sequenced for the listener"
+            },
+            "probabilities": {
+              "0": 0.0,
+              "1": 0.0,
+              "2": 0.1,
+              "3": 0.9
+            }
+          },
+          "depth": {
+            "type": "score",
+            "score": 2.03,
+            "confidence": 0.96,
+            "legend": {
+              "0": "States WHAT only",
+              "1": "States WHAT and partially HOW",
+              "2": "Explains WHAT, HOW, and WHY",
+              "3": "Addresses WHY, tradeoffs, when NOT to use"
+            },
+            "probabilities": {
+              "0": 0.0,
+              "1": 0.0,
+              "2": 0.96,
+              "3": 0.04
+            }
+          },
+          "transfer": {
+            "type": "score",
+            "score": 2.67,
+            "confidence": 0.67,
+            "legend": {
+              "0": "Cannot apply to new context",
+              "1": "Applies with heavy hints",
+              "2": "Independently applies to related scenario",
+              "3": "Generates novel examples or counter-examples"
+            },
+            "probabilities": {
+              "0": 0.0,
+              "1": 0.0,
+              "2": 0.33,
+              "3": 0.67
+            }
+          },
+          "has_factual_error": {
+            "type": "noul",
+            "noul": 0.48
+          },
+          "not_english": {
+            "type": "noul",
+            "noul": 0.01
+          }
+        }
+      }
+    },
+    {
+      "latency_ms": 521,
+      "model_answered": "jev-1.13.0",
+      "usage": {
+        "input_tokens": 973,
+        "output_tokens": 107
+      },
+      "answers": {
+        "accuracy": {
+          "score": 2.1,
+          "confidence": 0.52,
+          "probabilities": {
+            "0": 0.01,
+            "1": 0.16,
+            "2": 0.54,
+            "3": 0.29
+          },
+          "legend": {
+            "0": "Significant errors or omissions",
+            "1": "Mostly correct, minor gaps",
+            "2": "Accurate with nuanced detail",
+            "3": "Accurate and anticipates edge cases"
+          }
+        },
+        "own_words": {
+          "score": 2.98,
+          "confidence": 0.98,
+          "probabilities": {
+            "0": 0.0,
+            "1": 0.0,
+            "2": 0.02,
+            "3": 0.98
+          },
+          "legend": {
+            "0": "Verbatim repetition of source material",
+            "1": "Mixed: some own words, some parroted",
+            "2": "Consistently uses own language",
+            "3": "Creates novel analogies or framings"
+          }
+        },
+        "structure": {
+          "score": 2.88,
+          "confidence": 0.88,
+          "probabilities": {
+            "0": 0.0,
+            "1": 0.0,
+            "2": 0.11,
+            "3": 0.89
+          },
+          "legend": {
+            "0": "Disconnected facts, no logical flow",
+            "1": "Some structure but relationships unclear",
+            "2": "Clear logical flow showing cause/effect",
+            "3": "Builds narrative sequenced for the listener"
+          }
+        },
+        "depth": {
+          "score": 2.03,
+          "confidence": 0.96,
+          "probabilities": {
+            "0": 0.0,
+            "1": 0.0,
+            "2": 0.96,
+            "3": 0.04
+          },
+          "legend": {
+            "0": "States WHAT only",
+            "1": "States WHAT and partially HOW",
+            "2": "Explains WHAT, HOW, and WHY",
+            "3": "Addresses WHY, tradeoffs, when NOT to use"
+          }
+        },
+        "transfer": {
+          "score": 2.65,
+          "confidence": 0.65,
+          "probabilities": {
+            "0": 0.0,
+            "1": 0.0,
+            "2": 0.34,
+            "3": 0.66
+          },
+          "legend": {
+            "0": "Cannot apply to new context",
+            "1": "Applies with heavy hints",
+            "2": "Independently applies to related scenario",
+            "3": "Generates novel examples or counter-examples"
+          }
+        },
+        "has_factual_error": {
+          "noul": 0.48
+        },
+        "not_english": {
+          "noul": 0.01
+        }
+      },
+      "raw": {
+        "model": "jev-1.13.0",
+        "usage": {
+          "input_tokens": 973,
+          "output_tokens": 107
+        },
+        "answers": {
+          "accuracy": {
+            "type": "score",
+            "score": 2.1,
+            "confidence": 0.52,
+            "legend": {
+              "0": "Significant errors or omissions",
+              "1": "Mostly correct, minor gaps",
+              "2": "Accurate with nuanced detail",
+              "3": "Accurate and anticipates edge cases"
+            },
+            "probabilities": {
+              "0": 0.01,
+              "1": 0.16,
+              "2": 0.54,
+              "3": 0.29
+            }
+          },
+          "own_words": {
+            "type": "score",
+            "score": 2.98,
+            "confidence": 0.98,
+            "legend": {
+              "0": "Verbatim repetition of source material",
+              "1": "Mixed: some own words, some parroted",
+              "2": "Consistently uses own language",
+              "3": "Creates novel analogies or framings"
+            },
+            "probabilities": {
+              "0": 0.0,
+              "1": 0.0,
+              "2": 0.02,
+              "3": 0.98
+            }
+          },
+          "structure": {
+            "type": "score",
+            "score": 2.88,
+            "confidence": 0.88,
+            "legend": {
+              "0": "Disconnected facts, no logical flow",
+              "1": "Some structure but relationships unclear",
+              "2": "Clear logical flow showing cause/effect",
+              "3": "Builds narrative sequenced for the listener"
+            },
+            "probabilities": {
+              "0": 0.0,
+              "1": 0.0,
+              "2": 0.11,
+              "3": 0.89
+            }
+          },
+          "depth": {
+            "type": "score",
+            "score": 2.03,
+            "confidence": 0.96,
+            "legend": {
+              "0": "States WHAT only",
+              "1": "States WHAT and partially HOW",
+              "2": "Explains WHAT, HOW, and WHY",
+              "3": "Addresses WHY, tradeoffs, when NOT to use"
+            },
+            "probabilities": {
+              "0": 0.0,
+              "1": 0.0,
+              "2": 0.96,
+              "3": 0.04
+            }
+          },
+          "transfer": {
+            "type": "score",
+            "score": 2.65,
+            "confidence": 0.65,
+            "legend": {
+              "0": "Cannot apply to new context",
+              "1": "Applies with heavy hints",
+              "2": "Independently applies to related scenario",
+              "3": "Generates novel examples or counter-examples"
+            },
+            "probabilities": {
+              "0": 0.0,
+              "1": 0.0,
+              "2": 0.34,
+              "3": 0.66
+            }
+          },
+          "has_factual_error": {
+            "type": "noul",
+            "noul": 0.48
+          },
+          "not_english": {
+            "type": "noul",
+            "noul": 0.01
+          }
+        }
+      }
+    },
+    {
+      "latency_ms": 534,
+      "model_answered": "jev-1.13.0",
+      "usage": {
+        "input_tokens": 973,
+        "output_tokens": 107
+      },
+      "answers": {
+        "accuracy": {
+          "score": 2.15,
+          "confidence": 0.54,
+          "probabilities": {
+            "0": 0.01,
+            "1": 0.14,
+            "2": 0.54,
+            "3": 0.31
+          },
+          "legend": {
+            "0": "Significant errors or omissions",
+            "1": "Mostly correct, minor gaps",
+            "2": "Accurate with nuanced detail",
+            "3": "Accurate and anticipates edge cases"
+          }
+        },
+        "own_words": {
+          "score": 2.98,
+          "confidence": 0.98,
+          "probabilities": {
+            "0": 0.0,
+            "1": 0.0,
+            "2": 0.02,
+            "3": 0.98
+          },
+          "legend": {
+            "0": "Verbatim repetition of source material",
+            "1": "Mixed: some own words, some parroted",
+            "2": "Consistently uses own language",
+            "3": "Creates novel analogies or framings"
+          }
+        },
+        "structure": {
+          "score": 2.87,
+          "confidence": 0.87,
+          "probabilities": {
+            "0": 0.0,
+            "1": 0.0,
+            "2": 0.13,
+            "3": 0.87
+          },
+          "legend": {
+            "0": "Disconnected facts, no logical flow",
+            "1": "Some structure but relationships unclear",
+            "2": "Clear logical flow showing cause/effect",
+            "3": "Builds narrative sequenced for the listener"
+          }
+        },
+        "depth": {
+          "score": 2.03,
+          "confidence": 0.97,
+          "probabilities": {
+            "0": 0.0,
+            "1": 0.0,
+            "2": 0.97,
+            "3": 0.03
+          },
+          "legend": {
+            "0": "States WHAT only",
+            "1": "States WHAT and partially HOW",
+            "2": "Explains WHAT, HOW, and WHY",
+            "3": "Addresses WHY, tradeoffs, when NOT to use"
+          }
+        },
+        "transfer": {
+          "score": 2.68,
+          "confidence": 0.68,
+          "probabilities": {
+            "0": 0.0,
+            "1": 0.0,
+            "2": 0.31,
+            "3": 0.6900000000000001
+          },
+          "legend": {
+            "0": "Cannot apply to new context",
+            "1": "Applies with heavy hints",
+            "2": "Independently applies to related scenario",
+            "3": "Generates novel examples or counter-examples"
+          }
+        },
+        "has_factual_error": {
+          "noul": 0.43
+        },
+        "not_english": {
+          "noul": 0.01
+        }
+      },
+      "raw": {
+        "model": "jev-1.13.0",
+        "usage": {
+          "input_tokens": 973,
+          "output_tokens": 107
+        },
+        "answers": {
+          "accuracy": {
+            "type": "score",
+            "score": 2.15,
+            "confidence": 0.54,
+            "legend": {
+              "0": "Significant errors or omissions",
+              "1": "Mostly correct, minor gaps",
+              "2": "Accurate with nuanced detail",
+              "3": "Accurate and anticipates edge cases"
+            },
+            "probabilities": {
+              "0": 0.01,
+              "1": 0.14,
+              "2": 0.54,
+              "3": 0.31
+            }
+          },
+          "own_words": {
+            "type": "score",
+            "score": 2.98,
+            "confidence": 0.98,
+            "legend": {
+              "0": "Verbatim repetition of source material",
+              "1": "Mixed: some own words, some parroted",
+              "2": "Consistently uses own language",
+              "3": "Creates novel analogies or framings"
+            },
+            "probabilities": {
+              "0": 0.0,
+              "1": 0.0,
+              "2": 0.02,
+              "3": 0.98
+            }
+          },
+          "structure": {
+            "type": "score",
+            "score": 2.87,
+            "confidence": 0.87,
+            "legend": {
+              "0": "Disconnected facts, no logical flow",
+              "1": "Some structure but relationships unclear",
+              "2": "Clear logical flow showing cause/effect",
+              "3": "Builds narrative sequenced for the listener"
+            },
+            "probabilities": {
+              "0": 0.0,
+              "1": 0.0,
+              "2": 0.13,
+              "3": 0.87
+            }
+          },
+          "depth": {
+            "type": "score",
+            "score": 2.03,
+            "confidence": 0.97,
+            "legend": {
+              "0": "States WHAT only",
+              "1": "States WHAT and partially HOW",
+              "2": "Explains WHAT, HOW, and WHY",
+              "3": "Addresses WHY, tradeoffs, when NOT to use"
+            },
+            "probabilities": {
+              "0": 0.0,
+              "1": 0.0,
+              "2": 0.97,
+              "3": 0.03
+            }
+          },
+          "transfer": {
+            "type": "score",
+            "score": 2.68,
+            "confidence": 0.68,
+            "legend": {
+              "0": "Cannot apply to new context",
+              "1": "Applies with heavy hints",
+              "2": "Independently applies to related scenario",
+              "3": "Generates novel examples or counter-examples"
+            },
+            "probabilities": {
+              "0": 0.0,
+              "1": 0.0,
+              "2": 0.31,
+              "3": 0.6900000000000001
+            }
+          },
+          "has_factual_error": {
+            "type": "noul",
+            "noul": 0.43
+          },
+          "not_english": {
+            "type": "noul",
+            "noul": 0.01
+          }
+        }
+      }
+    }
+  ],
+  "spread": {
+    "accuracy": {
+      "values": [
+        2.09,
+        2.1,
+        2.15
+      ],
+      "min": 2.09,
+      "max": 2.15,
+      "range": 0.06,
+      "stdev": 0.0262,
+      "confidence": [
+        0.52,
+        0.52,
+        0.54
+      ]
+    },
+    "own_words": {
+      "values": [
+        2.98,
+        2.98,
+        2.98
+      ],
+      "min": 2.98,
+      "max": 2.98,
+      "range": 0.0,
+      "stdev": 0.0,
+      "confidence": [
+        0.98,
+        0.98,
+        0.98
+      ]
+    },
+    "structure": {
+      "values": [
+        2.9,
+        2.88,
+        2.87
+      ],
+      "min": 2.87,
+      "max": 2.9,
+      "range": 0.03,
+      "stdev": 0.0125,
+      "confidence": [
+        0.9,
+        0.88,
+        0.87
+      ]
+    },
+    "depth": {
+      "values": [
+        2.03,
+        2.03,
+        2.03
+      ],
+      "min": 2.03,
+      "max": 2.03,
+      "range": 0.0,
+      "stdev": 0.0,
+      "confidence": [
+        0.96,
+        0.96,
+        0.97
+      ]
+    },
+    "transfer": {
+      "values": [
+        2.67,
+        2.65,
+        2.68
+      ],
+      "min": 2.65,
+      "max": 2.68,
+      "range": 0.03,
+      "stdev": 0.0125,
+      "confidence": [
+        0.67,
+        0.65,
+        0.68
+      ]
+    },
+    "has_factual_error": {
+      "values": [
+        0.48,
+        0.48,
+        0.43
+      ],
+      "min": 0.43,
+      "max": 0.48,
+      "range": 0.05,
+      "stdev": 0.0236,
+      "confidence": [
+        null,
+        null,
+        null
+      ]
+    },
+    "not_english": {
+      "values": [
+        0.01,
+        0.01,
+        0.01
+      ],
+      "min": 0.01,
+      "max": 0.01,
+      "range": 0.0,
+      "stdev": 0.0,
+      "confidence": [
+        null,
+        null,
+        null
+      ]
+    }
+  }
+}
