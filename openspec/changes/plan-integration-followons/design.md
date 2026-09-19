@@ -273,6 +273,16 @@ has none; `INTERLEAVE_RATIOS["low"]` unchanged.
 1. **The deferral is plan-independent.** A live struggle is a live struggle whether or not a plan names it
    (amendment 2's `plan_id … else None` already said so); the finding was about the learner's day, not the
    plan. The body double, by contrast, *requires* a matchable active plan — it is "sit with the plan".
+   Consequence, stated rather than hidden: D-5's "a learner with no active plan receives the pre-#10 payload
+   byte for byte" now holds for a no-plan learner **with nothing deferred**; a no-plan learner whose live
+   struggle is deferred at low energy gets `energy_deferred_repairs` (and the starter if nothing else was
+   collected) where they used to get the hands-on repair. The golden world defers nothing and is unchanged.
+   The spec delta and both docs say so in those words. **A council question (review 7):** is that the right
+   scope for D-F, or should the repair half be gated on an active plan?
+6. **The body double names ready plans only.** An active-but-unready plan is matched but never synthesised
+   (spec rule 8), and the body double is a synthesis; with only a husk active and nothing plan-related fitting,
+   nothing is proposed to sit with — the warning beside it already says "pause or repair"
+   (`test_body_double_is_never_synthesised_for_an_unready_plan`).
 2. **Rule 8's guaranteed slot below the floor is the body-double proposal.** It carries `plan_refs`, so where
    four unrelated due items outrank everything at low energy the second alternate is now the proposal, not a
    third unrelated item. It advertises no work the energy cannot carry — the property rule 8's docstring

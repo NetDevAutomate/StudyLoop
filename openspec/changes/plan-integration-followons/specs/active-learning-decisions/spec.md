@@ -180,8 +180,12 @@ the body-doubling floor):
 `energy_deferred_repairs`, `completion_actions` and `warnings`;
 `LearningRecommendation` gains `plan_refs: tuple[PlanRef, ...] = ()`.
 `to_json_dict()` SHALL omit each of these when empty, so a learner with no
-active plan receives the pre-#10 payload **byte for byte** — pinned by
-`tests/golden/now_plan_no_active.json`, captured before any of this shipped.
+active plan **and nothing deferred** receives the pre-#10 payload **byte for
+byte** — pinned by `tests/golden/now_plan_no_active.json`, captured before any
+of this shipped. The one plan-independent change is rule 2's repair half: a
+learner with no plan whose live struggle is deferred at low energy receives
+`energy_deferred_repairs` (and the starter, if nothing else was collected)
+where they used to receive the hands-on repair itself.
 Renderers (`studyloop now`, `GET /api/now`, the Today card, the daily recap in
 its JSON, spoken and Rich-panel forms) SHALL show plan relevance, energy
 deferral — one line per deferred milestone **and** one per deferred repair —
