@@ -438,7 +438,11 @@ def _struggle_candidates(time_minutes: int) -> list[_Candidate]:
             if row["confidence"] in ("struggling", "learning")
             or (row.get("last_teachback_score") is not None and row["last_teachback_score"] < 14)
         ]
-        rows.sort(key=lambda row: row["last_seen"], reverse=True)
+        # A legacy ``study_progress`` row can carry a NULL ``last_seen``; it sorts
+        # as the oldest rather than raising and losing every struggle candidate
+        # (surfaced by review 7's boundary pin; the demand derivation then reads
+        # it as live, the cautious side).
+        rows.sort(key=lambda row: row.get("last_seen") or "", reverse=True)
         rows.sort(
             key=lambda row: (
                 {"struggling": 0, "learning": 1}.get(row["confidence"], 2),

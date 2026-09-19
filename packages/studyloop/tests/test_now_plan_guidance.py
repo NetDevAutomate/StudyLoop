@@ -1554,3 +1554,196 @@ def test_cli_milestone_deferral_does_not_promise_live_repair(monkeypatch) -> Non
     assert "repair stay available" not in flat
     assert "repair stay available" not in low.energy_deferred[0].reason
     assert low.energy_deferred[0].reason.endswith("due recall and gentle review stay available")
+
+
+# --- Council review 7 — pins the seats asked for -----------------------------------
+
+
+def _unrelated_trio() -> tuple[_Candidate, ...]:
+    """A due recall, a conversation and a hands-on task, none plan-related."""
+    return (
+        _candidate("due", topic="python", action_type="recall", score=100),
+        _candidate("talk", topic="python", action_type="conversation", score=58),
+        _candidate("exercise", topic="python", action_type="hands-on", score=48),
+    )
+
+
+@pytest.mark.parametrize("modality", ["recall", "conversation"])
+def test_body_double_ordering_after_adjustments_follows_the_energy_rule(
+    monkeypatch, modality
+) -> None:
+    """Review 7, F2 (astra 🔴 / qwen 🔴 / grok 💡 — arbitrated): the proposal's *base* is
+    below every real candidate's, and the day's adjustments then apply to it as to any
+    candidate. So a due recall and a conversation outrank it at every modality, while a
+    hands-on task the low-energy rule penalises (48 - 14 = 34) sits beneath it (30 + 12 =
+    42): the energy rule, not a filter — nothing is removed from the ranking, and the
+    primary is never the proposal while any due or conversation candidate exists."""
+    _row3_plan()
+    _plant_struggles(monkeypatch, _struggle("window function", days_ago=3), due=_unrelated_trio())
+
+    low = build_now_plan(energy="low", modality=modality)  # type: ignore[arg-type]
+
+    assert [rec.concept for rec in _all(low)] == ["due", "talk", "Sit with SQL Windows"]
+    assert low.alternates[1].source == "body_double"
+    assert low.primary.score > low.alternates[0].score > low.alternates[1].score
+    real_bases = (decision.MILESTONE_BASE_SCORE, 48, 52, 58, 70, 82, 96, 100)
+    assert all(base > decision.BODY_DOUBLE_BASE_SCORE for base in real_bases)
+
+
+@pytest.mark.parametrize(
+    ("confidence", "energy"),
+    [("learning", "low"), ("struggling", "medium")],
+)
+def test_no_plan_eligible_repair_exposes_demand_without_deferral(
+    monkeypatch, confidence, energy
+) -> None:
+    """Review 7, F3 (astra 🟡): the plan-independent changes are exactly two — every
+    struggle-collector candidate carries ``metadata.energy_demand`` at every energy, and
+    repair above its demand is deferred. An eligible repair with no plan is ranked as
+    before, carries the demand, defers nothing and proposes nothing."""
+    _plant_struggles(monkeypatch, _struggle("decorators", topic="python", confidence=confidence))
+
+    plan = build_now_plan(energy=energy)  # type: ignore[arg-type]
+
+    assert plan.primary.concept == "decorators"
+    assert plan.primary.metadata["energy_demand"] == ("low" if confidence == "learning" else "high")
+    assert plan.energy_deferred_repairs == ()
+    payload = plan.to_json_dict()
+    assert "energy_deferred_repairs" not in payload and "active_plans" not in payload
+    assert not any(rec.source == "body_double" for rec in _all(plan))
+
+
+def test_energy_demand_recency_boundaries_and_unknown_dates(monkeypatch) -> None:
+    """Review 7, F4 / grok 🔵: exactly 14 days is still live (high); 15 is medium; a null
+    or unparseable ``last_seen`` on a struggling row is read as live. (A row with no
+    ``last_seen`` key at all cannot reach the derivation: the collector's own sort reads
+    the key first, and the projection always supplies it.)"""
+    from studyloop.history import observations
+
+    rows = [
+        _struggle("on the day", days_ago=14),
+        _struggle("day after", days_ago=15),
+        {**_struggle("garbled"), "last_seen": "not-a-date"},
+        {**_struggle("missing"), "last_seen": None},
+    ]
+    _plant_struggles(monkeypatch)
+    monkeypatch.setattr(observations, "rows", lambda conn: [dict(r) for r in rows])
+
+    low = build_now_plan(energy="low")
+
+    demand = {d.concept: d.energy_demand for d in low.energy_deferred_repairs}
+    assert demand == {
+        "on the day": "high",
+        "day after": "medium",
+        "garbled": "high",
+        "missing": "high",
+    }
+
+
+def test_energy_demand_confidence_and_teachback_precedence(monkeypatch) -> None:
+    """Review 7, F4: ``learning`` is low demand even with a weak teach-back (eligible at
+    low energy); an old ``struggling`` row with a weak teach-back stays medium."""
+    _plant_struggles(
+        monkeypatch,
+        _struggle("gentle", confidence="learning", days_ago=2, teachback=9),
+        _struggle("stale", days_ago=20, teachback=9),
+    )
+
+    low = build_now_plan(energy="low")
+
+    assert low.primary.concept == "gentle"
+    assert low.primary.metadata["energy_demand"] == "low"
+    assert [(d.concept, d.energy_demand) for d in low.energy_deferred_repairs] == [
+        ("stale", "medium")
+    ]
+
+
+@pytest.mark.parametrize(
+    ("energy", "deferred"),
+    [("low", {"live", "stale"}), ("medium", set()), ("high", set())],
+)
+def test_repair_demand_capability_matrix(monkeypatch, energy, deferred) -> None:
+    """Review 7, F4: low (3) rejects medium and high demand and carries low; medium (6)
+    and high (10) carry every class."""
+    _plant_struggles(
+        monkeypatch,
+        _struggle("live", days_ago=1),
+        _struggle("stale", days_ago=30),
+        _struggle("gentle", confidence="learning"),
+    )
+
+    plan = build_now_plan(energy=energy)  # type: ignore[arg-type]
+
+    assert {d.concept for d in plan.energy_deferred_repairs} == deferred
+    ranked = {rec.concept for rec in _all(plan)}
+    assert "gentle" in ranked
+    assert ranked.isdisjoint(deferred)
+
+
+def test_deferred_repair_allows_only_eligible_milestone_conversation(monkeypatch) -> None:
+    """Review 7, F4 / grok 🔵 (design §5 decision 5): when the deferred live struggle was the
+    only representative of an *eligible* next milestone (floor 3 at low energy), rule 6
+    synthesises that milestone's conversation — not another hands-on repair, and not a
+    body double, since the plan is now represented."""
+    _plan(
+        "sql-windows",
+        title="SQL Windows",
+        energy_floor=3,
+        milestones=[Milestone(title="Frames", concepts=["window frame"])],
+    )
+    _plant_struggles(monkeypatch, _struggle("window frame", days_ago=2))
+
+    low = build_now_plan(energy="low")
+
+    assert low.primary.source == "study_plan:sql-windows:0"
+    assert low.primary.action_type == "conversation"
+    assert low.primary.plan_refs == (PlanRef("sql-windows", 0),)
+    assert [d.concept for d in low.energy_deferred_repairs] == ["window frame"]
+    assert not any(rec.source == "body_double" for rec in _all(low))
+    assert not any(rec.action_type == "hands-on" for rec in _all(low))
+    assert low.energy_deferred == ()
+
+
+def test_body_double_two_ready_plans_has_deterministic_context(monkeypatch) -> None:
+    """Review 7, F4 / grok 🔵: two ready plans, both below the floor, both with live
+    struggles → one proposal, refs in plan order (rule 6: most recent ``updated`` first),
+    both deferred milestones and both repairs named, the door on the first plan."""
+    _plan(
+        "sql-windows",
+        title="SQL Windows",
+        topics=["sql"],
+        energy_floor=5,
+        updated="2026-09-02T00:00:00+00:00",
+        milestones=[Milestone(title="Frames", concepts=["window frame"])],
+    )
+    _plan(
+        "py-decorators",
+        title="Python Decorators",
+        topics=["python"],
+        energy_floor=5,
+        updated="2026-09-01T00:00:00+00:00",
+        milestones=[Milestone(title="Closures", concepts=["closure"])],
+    )
+    _plant_struggles(
+        monkeypatch,
+        _struggle("window function", topic="sql", days_ago=3),
+        _struggle("decorators", topic="python", days_ago=2),
+    )
+
+    low = build_now_plan(energy="low")
+
+    assert [rec.source for rec in _all(low)] == ["body_double"]
+    proposal = low.primary
+    assert proposal.concept == "Sit with your plans"
+    assert proposal.plan_refs == (PlanRef("sql-windows", None), PlanRef("py-decorators", None))
+    assert proposal.evidence_command == 'studyloop study "SQL Windows" --mode co-study'
+    for named in (
+        "Frames",
+        "Closures",
+        "window function",
+        "decorators",
+        "SQL Windows and Python Decorators",
+    ):
+        assert named in proposal.reason
+    assert {d.plan_id for d in low.energy_deferred} == {"sql-windows", "py-decorators"}
+    assert {d.plan_id for d in low.energy_deferred_repairs} == {"sql-windows", "py-decorators"}
