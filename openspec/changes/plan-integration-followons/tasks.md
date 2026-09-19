@@ -228,7 +228,11 @@ writer, through the existing gate, closes that. Kept out of item 3 so item 3's f
       byte-equal afterwards; single `main` on both sides. (3) closeout comments — done: posted on #8–#15 from the
       re-verified draft (`receipts/issue-closeout-draft-2026-09-16.md`, status paragraph records the shas rewritten
       and the rows overtaken); #8, #9, #11, #12, #13, #14 closed as completed; #10 and #15 open (row 3b); #7
-      reopened (auto-closed by PR #20's body) with the parent mapping. PR #20's body left as merged. **Open:**
-      (4) the two item-6 issues (after T6.4) and #21's closing comment or decision; (5) the local tag
+      reopened (auto-closed by PR #20's body) with the parent mapping. PR #20's body left as merged. (4) the two
+      item-6 issues — done 2026-09-19: **#25** (D-D derived plan bias) and **#26** (D-E nudge + retire/snooze), both
+      `ready-for-agent`, bodies drawn from the proposals with every cited test id, symbol and path checked against
+      `main` `a03fc9bd`; #21 given a status comment from the harness receipt and **left open** (its DoD names OpenCode
+      in core; OpenCode stays preview on the `opencode.db` exporter and the no-completed-reply gaps). **Open:**
+      (5) the local tag
       `archive/feat-clean-start-2026-09-15` — owner: push or discard; (6) the GitHub Support ticket text — owner;
       (7) revoke both tokens and delete `~/tmp/.env` — owner (D-J).
