@@ -65,6 +65,13 @@ def _plan_context(plan) -> str:
             f"{deferred.title}, waits for more energy: it needs {deferred.energy_floor} of 10 "
             f"and today's energy carries {deferred.energy_capability}."
         )
+    for repair in getattr(plan, "energy_deferred_repairs", ()):
+        where = f" of {repair.plan_title}" if repair.plan_title else ""
+        sentences.append(
+            f"Repairing {repair.concept}{where} waits for more energy: it asks for "
+            f"{repair.required_capability} of 10 and today's energy carries "
+            f"{repair.energy_capability}."
+        )
     for completion in getattr(plan, "completion_actions", ()):
         sentences.append(completion.action)
     return " ".join(sentences)

@@ -268,6 +268,29 @@ Rule 3's *deferral* of repair is the change; rule 3's *eligibility* of plan-rela
 no-plan golden stays byte-identical because a body-double candidate requires an active plan and the golden world
 has none; `INTERLEAVE_RATIOS["low"]` unchanged.
 
+**Decisions taken at GREEN (2026-09-19), each a test in `test_now_plan_guidance.py`:**
+
+1. **The deferral is plan-independent.** A live struggle is a live struggle whether or not a plan names it
+   (amendment 2's `plan_id … else None` already said so); the finding was about the learner's day, not the
+   plan. The body double, by contrast, *requires* a matchable active plan — it is "sit with the plan".
+2. **Rule 8's guaranteed slot below the floor is the body-double proposal.** It carries `plan_refs`, so where
+   four unrelated due items outrank everything at low energy the second alternate is now the proposal, not a
+   third unrelated item. It advertises no work the energy cannot carry — the property rule 8's docstring
+   protects — and the primary is untouched. `test_preserves_one_plan_backed_action_when_energy_allows` says so.
+3. **The starter tells the truth after a deferral.** With no plan and every real candidate deferred, the starter
+   stands in; its reason now says the energy deferred the repair work rather than "no learning evidence found
+   yet", which would be false. The golden world defers nothing, so its sentence is unchanged.
+4. **Body-double shape.** Base `BODY_DOUBLE_BASE_SCORE = 30` (+12 bias = 42 < practice 48, milestone 48);
+   concept `Sit with <title>` (one plan) / `Sit with your plans`; `plan_refs` for every matchable plan; reason
+   naming each deferred milestone and repair; command `studyloop study "<first title>" --mode co-study`. The
+   Today card starts it in the Body Double view (`viewForAction`); the CLI labels the command "Sit with the plan".
+5. **A deferred repair does not "represent" a milestone** (rule 6 runs after the deferral), so an eligible
+   milestone whose only collected representative was a deferred live struggle is synthesised as a conversation —
+   the learner can still talk about it.
+
+Known edge, not solved here: a `struggling` row whose `last_seen` cannot be parsed is read as live (`high`) —
+the cautious side; `_days_since` returns `None` and the demand falls to `high`.
+
 ## 6. Verification
 
 `scripts/verify/plan_integration.py` gains registered checks for: the two architect grants (the ten names in

@@ -219,7 +219,16 @@ action that advances a plan's next milestone is named with the plan and the
 milestone it serves; a **ready** plan whose next milestone is within your
 current energy gets that milestone suggested even when no other evidence
 points at it; and a plan whose energy floor is above your current energy has
-that milestone deferred with a reason rather than dropped. An active plan that
+that milestone deferred with a reason rather than dropped. Repair has an
+energy demand of its own: on a low-energy day a **live** struggle (recorded
+as struggling within the last two weeks) is deferred like new work — listed,
+not recommended — an older struggle or a weak teach-back needs medium energy,
+and a concept you are still learning is the gentle review that stays
+available at any energy; due reviews are never deferred. When nothing
+plan-related fits the day's energy, the recommendation is to **sit with the
+plan** — a body-double session, no new material, no repair — with the
+deferred items named; a real, unrelated action still outranks that proposal
+when one exists. An active plan that
 is **not ready** — a hand edit removed its mission or its milestones — is
 listed with a warning naming what to repair; it still biases related work,
 but no milestone is suggested for it until it is paused or repaired. A plan

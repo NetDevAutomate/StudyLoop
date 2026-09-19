@@ -53,9 +53,30 @@ INTERLEAVE_RATIOS: dict[EnergyLevel, dict[str, int]] = {
 
 #: Design §3 rule 3 — what each self-reported energy level can carry, on the
 #: 1-10 scale a plan's ``energy_floor`` uses. Below a plan's floor, *new*
-#: milestone work is deferred; plan-related due recall and struggle repair
-#: stay eligible, because repair is cheaper than encoding.
+#: milestone work is deferred; plan-related due recall stays eligible, and so
+#: does struggle repair whose own demand (below) the energy can carry.
 ENERGY_CAPABILITY: dict[EnergyLevel, int] = {"low": 3, "medium": 6, "high": 10}
+
+EnergyDemand = Literal["low", "medium", "high"]
+
+#: Design §5 (item 5, D-F) — the capability a struggle repair asks for, by the
+#: demand class the struggle collector derives from its own row classes: a
+#: ``struggling`` row seen within ``LIVE_STRUGGLE_DAYS`` is ``high`` (a live
+#: struggle; hands-on repair on a low-energy day risks compounding it — rubric
+#: row 3, the owner's one "no"); ``struggling`` older than that, or a row whose
+#: only signal is a weak teach-back, is ``medium``; ``learning`` is ``low`` —
+#: the gentle review "repair is cheaper than encoding" was always about.
+#: Compared with ``ENERGY_CAPABILITY``: ``low`` (3) carries only low demand,
+#: ``medium`` (6) carries every class.
+ENERGY_DEMAND_CAPABILITY: dict[EnergyDemand, int] = {"high": 6, "medium": 4, "low": 0}
+LIVE_STRUGGLE_DAYS = 14
+
+#: Base score of the synthesised body-double candidate (design §5): below
+#: ``MILESTONE_BASE_SCORE`` so every real candidate — due, repair, practice,
+#: continuity, a synthesised milestone — outranks it. A proposal, never a
+#: filter; the plan bias then lifts it over nothing but the starter.
+BODY_DOUBLE_BASE_SCORE = 30
+BODY_DOUBLE_SOURCE = "body_double"
 
 #: Rule 5 — the bias a plan-related candidate receives. Large enough to decide
 #: a near-tie inside one urgency class (two due items a few days apart), small
@@ -122,6 +143,32 @@ class DeferredMilestone:
     milestone_index: int
     title: str
     energy_floor: int
+    energy_capability: int
+    reason: str
+
+    def to_json_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class DeferredRepair:
+    """A struggle repair the current energy cannot carry (rule 3 extended, design §5).
+
+    Its own type, not a :class:`DeferredMilestone`: that one has a mandatory
+    ``milestone_index`` and its three renderers print ``milestone N`` — a repair
+    folded into it would read "milestone None" (T5.1 amendment 2). ``plan_id``
+    and ``plan_title`` are set when the struggle's concept, topic or course
+    matches an active plan, else ``None``: the deferral does not depend on a
+    plan — a live struggle is a live struggle whether or not a plan names it.
+    """
+
+    plan_id: str | None
+    plan_title: str | None
+    concept: str
+    topic: str
+    confidence: str
+    energy_demand: EnergyDemand
+    required_capability: int
     energy_capability: int
     reason: str
 
@@ -203,6 +250,7 @@ class NowPlan:
     starter: bool = False
     active_plans: tuple[ActivePlanSummary, ...] = ()
     energy_deferred: tuple[DeferredMilestone, ...] = ()
+    energy_deferred_repairs: tuple[DeferredRepair, ...] = ()
     completion_actions: tuple[CompletionAction, ...] = ()
     warnings: tuple[str, ...] = ()
 
@@ -224,6 +272,10 @@ class NowPlan:
             data["active_plans"] = [item.to_json_dict() for item in self.active_plans]
         if self.energy_deferred:
             data["energy_deferred"] = [item.to_json_dict() for item in self.energy_deferred]
+        if self.energy_deferred_repairs:
+            data["energy_deferred_repairs"] = [
+                item.to_json_dict() for item in self.energy_deferred_repairs
+            ]
         if self.completion_actions:
             data["completion_actions"] = [item.to_json_dict() for item in self.completion_actions]
         if self.warnings:
@@ -385,6 +437,7 @@ def _struggle_candidates(time_minutes: int) -> list[_Candidate]:
         conn.close()
 
     candidates: list[_Candidate] = []
+    today = datetime.now(UTC).date()
     for row in rows:
         row_keys = set(row.keys())
         concept = str(row["concept"])
@@ -420,10 +473,43 @@ def _struggle_candidates(time_minutes: int) -> list[_Candidate]:
                     "confidence": confidence,
                     "last_teachback_score": teachback_score,
                     "session_count": row["session_count"],
+                    # Design §5: derived once, here, from the collector's own
+                    # classes; the deferral and every renderer read this value.
+                    "energy_demand": _energy_demand(
+                        confidence, row.get("last_seen") if "last_seen" in row_keys else None, today
+                    ),
                 },
             )
         )
     return candidates
+
+
+def _energy_demand(confidence: str | None, last_seen: object, today: date) -> EnergyDemand:
+    """The capability class a repair asks for (design §5, T5.1 amendment 1).
+
+    ``struggling`` seen within :data:`LIVE_STRUGGLE_DAYS` is a live struggle —
+    ``high``; a ``struggling`` row older than that, or one the collector kept
+    only for its weak teach-back, is ``medium``; ``learning`` is ``low``. An
+    unreadable ``last_seen`` on a ``struggling`` row is read as live: the
+    cautious side is the one the finding asks for.
+    """
+    if confidence == "learning":
+        return "low"
+    if confidence != "struggling":
+        return "medium"
+    seen = _days_since(last_seen, today)
+    if seen is None or seen <= LIVE_STRUGGLE_DAYS:
+        return "high"
+    return "medium"
+
+
+def _days_since(stamp: object, today: date) -> int | None:
+    if not isinstance(stamp, str) or not stamp:
+        return None
+    try:
+        return (today - datetime.fromisoformat(stamp).date()).days
+    except ValueError:
+        return None
 
 
 def _due_card_candidates(time_minutes: int) -> list[_Candidate]:
@@ -566,7 +652,7 @@ def _transfer_candidates(time_minutes: int) -> list[_Candidate]:
     return candidates
 
 
-def _starter_candidate(time_minutes: int) -> _Candidate:
+def _starter_candidate(time_minutes: int, *, after_deferral: bool = False) -> _Candidate:
     try:
         from studyloop.topics import get_topics
 
@@ -579,11 +665,20 @@ def _starter_candidate(time_minutes: int) -> _Candidate:
     else:
         topic = "python"
         display = "Python"
+    # "No learning evidence" would be false when evidence exists and today's
+    # energy deferred all of it (design §5); say what happened instead. The
+    # golden world has nothing to defer, so its sentence is unchanged.
+    reason = (
+        "Today's energy deferred the repair work it cannot carry; "
+        "start with one small retrieval signal instead"
+        if after_deferral
+        else "No learning evidence found yet; start by creating one small retrieval signal"
+    )
     return _Candidate(
         concept="one tiny recall loop",
         topic=topic,
         course=topic,
-        reason="No learning evidence found yet; start by creating one small retrieval signal",
+        reason=reason,
         action_type="recall",
         estimated_minutes=_estimate_minutes("recall", time_minutes, 10),
         source="starter",
@@ -967,6 +1062,18 @@ class _PlanContext:
             synthesised.append(_milestone_candidate(plan, milestone, time_minutes))
         return synthesised
 
+    def first_match(self, candidate: _Candidate) -> ActivePlanGuidance | None:
+        """The first matchable plan (plan order) this candidate's keys equal, if any."""
+        keys = _candidate_keys(candidate)
+        for plan in self.matchable:
+            if keys & frozenset(plan.match_keys):
+                return plan
+        return None
+
+    def is_plan_related(self, candidate: _Candidate) -> bool:
+        """Rule 5's test, before scoring: a ref already attached, or a key match."""
+        return bool(candidate.plan_refs) or self.first_match(candidate) is not None
+
     def attach_refs(self, candidate: _Candidate) -> _Candidate:
         """Rule 7: every matching plan, most specific milestone per plan, in plan order.
 
@@ -1048,6 +1155,105 @@ def _milestone_candidate(
     )
 
 
+def _defer_repairs(
+    candidates: list[_Candidate], *, energy: EnergyLevel, plans: _PlanContext
+) -> tuple[list[_Candidate], tuple[DeferredRepair, ...]]:
+    """Rule 3 extended (design §5): repair above its own energy demand is deferred like new work.
+
+    Only a candidate carrying ``energy_demand`` — the struggle collector's — is
+    judged. Due recall is never deferred whatever its confidence says, and a
+    ``learning`` repair (``low`` demand) is always carried. Plan-independent:
+    the entry names the plan when one matches, else ``None``.
+    """
+    capability = ENERGY_CAPABILITY[energy]
+    kept: list[_Candidate] = []
+    deferred: list[DeferredRepair] = []
+    for candidate in candidates:
+        demand = candidate.metadata.get("energy_demand")
+        if demand not in ENERGY_DEMAND_CAPABILITY:
+            kept.append(candidate)
+            continue
+        required = ENERGY_DEMAND_CAPABILITY[demand]
+        if capability >= required:
+            kept.append(candidate)
+            continue
+        plan = plans.first_match(candidate)
+        confidence = str(candidate.metadata.get("confidence") or "struggling")
+        if demand == "high":
+            what = "a live struggle"
+        elif confidence == "struggling":
+            what = "an older struggle"
+        else:
+            what = "a weak teach-back"
+        deferred.append(
+            DeferredRepair(
+                plan_id=plan.plan.plan_id if plan is not None else None,
+                plan_title=plan.plan.title if plan is not None else None,
+                concept=candidate.concept,
+                topic=candidate.topic,
+                confidence=confidence,
+                energy_demand=demand,
+                required_capability=required,
+                energy_capability=capability,
+                reason=(
+                    f"{energy} energy carries {capability}/10; repairing "
+                    f"{candidate.concept!r} ({what}) asks for at least {required}/10 — "
+                    "deferred like new work; due recall and gentle review stay available"
+                ),
+            )
+        )
+    return kept, tuple(deferred)
+
+
+def _body_double_candidate(
+    plans: _PlanContext,
+    candidates: list[_Candidate],
+    deferred_repairs: tuple[DeferredRepair, ...],
+    *,
+    energy: EnergyLevel,
+    time_minutes: int,
+) -> _Candidate | None:
+    """Design §5's floor: nothing plan-related fits and an active plan exists → sit with it.
+
+    One ``source="body_double"`` conversation candidate, base below every real
+    candidate's (a proposal, not a filter), ``plan_refs`` ``(plan, None)`` for
+    every matchable plan, reason naming what it stands in for, and the co-study
+    session door as its command (T5.1 amendment 3): ``_evidence_command`` has
+    no branch for it and would answer with a progress *write*, not a door.
+    """
+    if not plans.matchable or any(plans.is_plan_related(c) for c in candidates):
+        return None
+    named = [plan.plan for plan in plans.matchable]
+    first = named[0]
+    titles = " and ".join(plan.title for plan in named)
+    items = [
+        f"milestone {d.milestone_index + 1} “{d.title}” of {d.plan_title}" for d in plans.deferred
+    ] + [f"repair of “{d.concept}”" for d in deferred_repairs]
+    deferred_note = f" — deferred: {'; '.join(items)}" if items else ""
+    topic = first.topics[0] if first.topics else "study"
+    safe_title = first.title.replace('"', '\\"')
+    return _Candidate(
+        concept=f"Sit with {first.title}" if len(named) == 1 else "Sit with your plans",
+        topic=topic,
+        course=None,
+        reason=(
+            f"Nothing plan-related fits {energy} energy today{deferred_note}. "
+            f"Sit with {titles} instead: a body-double session, no new material, no repair."
+        ),
+        action_type="conversation",
+        estimated_minutes=_estimate_minutes("conversation", time_minutes, 25),
+        source=BODY_DOUBLE_SOURCE,
+        evidence_command=f'studyloop study "{safe_title}" --mode co-study',
+        score=BODY_DOUBLE_BASE_SCORE,
+        metadata={
+            "plan_id": first.plan_id,
+            "deferred_milestones": len(plans.deferred),
+            "deferred_repairs": len(deferred_repairs),
+        },
+        plan_refs=tuple(PlanRef(plan.plan_id, None) for plan in named),
+    )
+
+
 def _guarantee_plan_backed(ranked: list[_Candidate], time_minutes: int) -> list[_Candidate]:
     """Rule 8: ≥ 1 plan-backed action among primary + alternates when time permits.
 
@@ -1084,11 +1290,14 @@ def build_now_plan(
 
     Order of operations is design §3's: guidance is read once (1), candidates
     are collected as before (2), the energy capability decides which next
-    milestones are eligible (3), matching is key equality (4), scoring is
-    today's plus the plan bias (5), an unrepresented eligible milestone is
-    synthesised (6), then de-duplication and reference attachment (7), the
-    plan-backed guarantee (8), with fully-checked plans reported as
-    completion actions rather than candidates (9).
+    milestones are eligible and — since design §5 — which struggle repairs
+    are carried, the rest deferred beside them (3), matching is key equality
+    (4), scoring is today's plus the plan bias (5), an unrepresented eligible
+    milestone is synthesised (6) — and when nothing plan-related fits an
+    active plan, one body-double proposal is (§5) — then de-duplication and
+    reference attachment (7), the plan-backed guarantee (8), with
+    fully-checked plans reported as completion actions rather than
+    candidates (9).
     """
     time_minutes = max(5, min(int(time_minutes), 180))
     now = datetime.now(UTC)
@@ -1103,11 +1312,19 @@ def build_now_plan(
     ]
     if interleave == "adaptive" and energy != "low":
         candidates.extend(_transfer_candidates(time_minutes))
+    # Rule 3 extended: before rule 6 reads what is "represented", so a deferred
+    # repair does not stand in for the milestone it can no longer carry.
+    candidates, deferred_repairs = _defer_repairs(candidates, energy=energy, plans=plans)
     candidates.extend(plans.milestone_candidates(candidates, time_minutes))
+    body_double = _body_double_candidate(
+        plans, candidates, deferred_repairs, energy=energy, time_minutes=time_minutes
+    )
+    if body_double is not None:
+        candidates.append(body_double)
 
     starter = False
     if not candidates:
-        candidates = [_starter_candidate(time_minutes)]
+        candidates = [_starter_candidate(time_minutes, after_deferral=bool(deferred_repairs))]
         starter = True
 
     ranked = _dedupe(
@@ -1137,6 +1354,7 @@ def build_now_plan(
         interleave_ratio=INTERLEAVE_RATIOS[energy] if interleave == "adaptive" else {},
         active_plans=plans.summaries,
         energy_deferred=plans.deferred,
+        energy_deferred_repairs=deferred_repairs,
         completion_actions=plans.completions,
         warnings=plans.warnings,
     )

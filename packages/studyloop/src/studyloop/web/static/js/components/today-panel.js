@@ -114,7 +114,15 @@ export function todayPanel() {
     },
 
     startAction(rec) {
-      Alpine.store('nav').go(this._viewFor(rec.action_type));
+      Alpine.store('nav').go(this.viewForAction(rec));
+    },
+
+    /* The view an action starts in. A body-double proposal (design §5) is a
+       session in the Body Double view, whatever its action_type says; every
+       other action keeps the action_type mapping above. */
+    viewForAction(rec) {
+      if (rec && rec.source === 'body_double') return 'body-double';
+      return this._viewFor(rec && rec.action_type);
     },
 
     /* ---- Plan relevance (issue #10) — rendering of what /api/now ranked. ----
@@ -162,6 +170,21 @@ export function todayPanel() {
       );
     },
 
+    /* One line per struggle repair today's energy cannot carry (design §5,
+       amendment 2): its own key, its own sentence — a repair has no milestone
+       number. A repair unrelated to any plan names none. */
+    deferredRepairNotes() {
+      const repairs = (this.plan && this.plan.energy_deferred_repairs) || [];
+      const energy = (this.plan && this.plan.energy) || 'current';
+      return repairs.map((r) => {
+        const head = r.plan_title
+          ? `${r.plan_title} \u2014 repairing`
+          : 'Repairing';
+        return `${head} \u201c${r.concept}\u201d (${r.confidence}) waits for more energy `
+          + `(asks for ${r.required_capability}/10, ${energy} energy carries ${r.energy_capability}/10)`;
+      });
+    },
+
     /* One block per finished plan (council review 6, F6): the closing review's
        sentence and ITS evidence lines, keyed by plan_id, in the engine's order.
        With two finished plans a flat list of lines lost the plan each belonged
@@ -199,6 +222,7 @@ export function todayPanel() {
       return (
         this.planLabel(this.plan && this.plan.primary) !== ''
         || this.deferredNotes().length > 0
+        || this.deferredRepairNotes().length > 0
         || this.completionNotes().length > 0
         || this.warningNotes().length > 0
       );

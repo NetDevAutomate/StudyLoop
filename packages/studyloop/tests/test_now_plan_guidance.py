@@ -335,7 +335,13 @@ def test_synthesizes_milestone_when_no_candidate_represents_it(monkeypatch) -> N
 
 
 def test_preserves_one_plan_backed_action_when_energy_allows(monkeypatch) -> None:
-    """Rule 8: ≥ 1 eligible plan-backed action in primary + alternates when energy permits."""
+    """Rule 8: ≥ 1 eligible plan-backed action in primary + alternates when energy permits.
+
+    Below the floor the milestone is deferred, never synthesised; since design §5
+    the plan-backed slot rule 8 keeps is then the body-double proposal — sitting
+    with the plan asks for no energy the day cannot carry — and the primary and
+    first alternate stay the real, higher-ranked candidates.
+    """
     _plan(
         "sql-windows", energy_floor=5, milestones=[Milestone("Frames", concepts=["window frame"])]
     )
@@ -350,7 +356,10 @@ def test_preserves_one_plan_backed_action_when_energy_allows(monkeypatch) -> Non
 
     low = build_now_plan(energy="low")
 
-    assert [rec.concept for rec in _all(low)] == ["due 0", "due 1", "due 2"]
+    assert [rec.concept for rec in _all(low)] == ["due 0", "due 1", "Sit with Sql Windows"]
+    assert low.alternates[1].source == "body_double"
+    assert low.alternates[1].plan_refs == (PlanRef("sql-windows", None),)
+    assert not any(rec.source.startswith("study_plan:") for rec in _all(low))
     assert [d.milestone_index for d in low.energy_deferred] == [0]
 
 
@@ -1236,12 +1245,12 @@ def test_live_struggle_repair_defers_at_low_energy_like_new_work(monkeypatch) ->
 
     low = build_now_plan(energy="low")
 
-    deferred = {item.concept: item for item in low.energy_deferred_repairs}  # pyright: ignore[reportAttributeAccessIssue]
+    deferred = {item.concept: item for item in low.energy_deferred_repairs}
     assert set(deferred) == {"window function", "window frame", "decorators", "closures"}
     assert not any(rec.concept in deferred for rec in _all(low)), "deferred repair is not ranked"
 
     live = deferred["window function"]
-    assert isinstance(live, decision.DeferredRepair)  # pyright: ignore[reportAttributeAccessIssue]
+    assert isinstance(live, decision.DeferredRepair)
     assert (live.plan_id, live.plan_title, live.topic, live.confidence) == (
         "sql-windows",
         "SQL Windows",
@@ -1267,15 +1276,14 @@ def test_live_struggle_repair_defers_at_low_energy_like_new_work(monkeypatch) ->
 
     payload = low.to_json_dict()
     assert [entry["concept"] for entry in payload["energy_deferred_repairs"]] == [
-        item.concept
-        for item in low.energy_deferred_repairs  # pyright: ignore[reportAttributeAccessIssue]
+        item.concept for item in low.energy_deferred_repairs
     ]
     assert payload["energy_deferred_repairs"][0]["energy_demand"] in {"high", "medium"}
 
     # Medium energy (6/10) carries every demand class: nothing deferred, key absent.
     medium = build_now_plan(energy="medium")
 
-    assert medium.energy_deferred_repairs == ()  # pyright: ignore[reportAttributeAccessIssue]
+    assert medium.energy_deferred_repairs == ()
     assert "energy_deferred_repairs" not in medium.to_json_dict()
     assert any(rec.concept == "window function" for rec in _all(medium))
 
@@ -1293,7 +1301,7 @@ def test_recovered_repair_stays_eligible_at_low_energy(monkeypatch) -> None:
     assert low.primary.action_type == "teachback"
     assert low.primary.plan_refs == (PlanRef("sql-windows", None),)
     assert low.primary.metadata["energy_demand"] == "low"
-    assert low.energy_deferred_repairs == ()  # pyright: ignore[reportAttributeAccessIssue]
+    assert low.energy_deferred_repairs == ()
     assert not any(rec.source == "body_double" for rec in _all(low))
     assert [d.milestone_index for d in low.energy_deferred] == [1]
 
@@ -1311,7 +1319,7 @@ def test_recovered_repair_stays_eligible_at_low_energy(monkeypatch) -> None:
 
     assert low.primary.concept == "window frame"
     assert low.primary.plan_refs == (PlanRef("sql-windows", None),)
-    assert [d.concept for d in low.energy_deferred_repairs] == ["window function"]  # pyright: ignore[reportAttributeAccessIssue]
+    assert [d.concept for d in low.energy_deferred_repairs] == ["window function"]
     assert not any(rec.source == "body_double" for rec in _all(low))
 
 
@@ -1333,9 +1341,9 @@ def test_body_double_candidate_is_synthesised_when_nothing_plan_related_fits(mon
     assert "Frames" in primary.reason and "window function" in primary.reason
     assert low.starter is False
     assert low.alternates == []
-    assert [d.concept for d in low.energy_deferred_repairs] == ["window function"]  # pyright: ignore[reportAttributeAccessIssue]
+    assert [d.concept for d in low.energy_deferred_repairs] == ["window function"]
     assert [d.milestone_index for d in low.energy_deferred] == [1]
-    assert decision.BODY_DOUBLE_BASE_SCORE < decision.MILESTONE_BASE_SCORE  # pyright: ignore[reportAttributeAccessIssue]
+    assert decision.BODY_DOUBLE_BASE_SCORE < decision.MILESTONE_BASE_SCORE
 
     golden_keys = list(json.loads(GOLDEN.read_text(encoding="utf-8")))
     payload = low.to_json_dict()
@@ -1376,7 +1384,7 @@ def test_body_double_never_appears_without_an_active_plan(monkeypatch) -> None:
     low = build_now_plan(energy="low")
 
     assert not any(rec.source == "body_double" for rec in _all(low))
-    assert [(d.concept, d.plan_id, d.plan_title) for d in low.energy_deferred_repairs] == [  # pyright: ignore[reportAttributeAccessIssue]
+    assert [(d.concept, d.plan_id, d.plan_title) for d in low.energy_deferred_repairs] == [
         ("decorators", None, None)
     ]
     # Every real candidate was deferred: the starter stands in, and says why.

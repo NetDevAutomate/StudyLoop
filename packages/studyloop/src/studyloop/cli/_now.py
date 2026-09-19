@@ -46,6 +46,9 @@ def _render_plan(plan) -> None:
     primary = plan.primary
     plans = _active_plans(plan)
     plan_line = _plan_line(primary, plans)
+    # A body-double primary (design §5) carries the co-study session door, not a
+    # progress write: label it as the door it is.
+    door = "Sit with the plan" if primary.source == "body_double" else "Record evidence"
     body = (
         f"[bold]{escape(primary.concept)}[/bold]\n"
         f"Topic: [cyan]{escape(primary.topic)}[/cyan]\n"
@@ -54,7 +57,7 @@ def _render_plan(plan) -> None:
         f"Why: {escape(primary.reason)}\n"
         f"Source: [dim]{escape(primary.source)}[/dim]\n"
         + (f"Plan: [magenta]{escape(plan_line)}[/magenta]\n" if plan_line else "")
-        + f"\n[bold]Record evidence:[/bold]\n{escape(primary.evidence_command)}"
+        + f"\n[bold]{door}:[/bold]\n{escape(primary.evidence_command)}"
     )
     console.print(Panel(body, title="Study Now", border_style="cyan"))
 
@@ -68,6 +71,16 @@ def _render_plan(plan) -> None:
             f"milestone {deferred.milestone_index + 1} “{escape(deferred.title)}” needs "
             f"energy {deferred.energy_floor}/10; {plan.energy} energy carries "
             f"{deferred.energy_capability}/10. Plan-related review and repair stay available."
+        )
+    # One line per deferred repair (design §5, amendment 2): its own key, its
+    # own sentence — a repair has no milestone number to print.
+    for repair in getattr(plan, "energy_deferred_repairs", ()):
+        where = f"{escape(repair.plan_title)} — " if repair.plan_title else ""
+        console.print(
+            f"[yellow]Deferred for energy:[/yellow] {where}repairing "
+            f"“{escape(repair.concept)}” ({escape(repair.confidence)}) asks for "
+            f"{repair.required_capability}/10; {plan.energy} energy carries "
+            f"{repair.energy_capability}/10. Due recall and gentle review stay available."
         )
     for completion in getattr(plan, "completion_actions", ()):
         # "Closing review", not "Plan complete": the status is still active until
