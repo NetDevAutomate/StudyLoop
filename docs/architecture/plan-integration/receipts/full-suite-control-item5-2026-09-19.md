@@ -34,3 +34,14 @@ unchanged here, byte for byte.
 - `test_docs_plan_integration_contract.py` + `test_ci_workflow_contract.py` 39/39.
 - `mkdocs build --strict` exit 0; `openspec validate plan-integration-followons` valid.
 - ruff check / ruff format --check / pyright: clean on every touched file.
+
+## Re-run after council review 7 (tree `3eb31f2d`, corrections F1–F7 landed)
+
+| Tree | Result |
+| --- | --- |
+| **item 5 final** (`3eb31f2d`) | 30 failed, **5146 passed**, 4 skipped, 804 deselected, 14 errors (6:17) |
+| **control** (`main` `4f8e3e0f`, same worktree as above) | 30 failed, 5120 passed, 4 skipped, 804 deselected, 14 errors (6:13) |
+
+item5 ∖ control = **∅**; control ∖ item5 = **∅**; item5 ∖ committed environmental set = **∅**. The +26 passed are
+the review-7 tests (F1's seven parametrisations, F2's two, F3's two, F4's five plus the capability matrix's three,
+F5, the ready-plans-only test, and the F7/label JS pins run separately: 147/147).

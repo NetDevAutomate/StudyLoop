@@ -85,7 +85,9 @@ named, and stash-proved where a fix could be reverted alone (F1: 3 of 7 titles f
   parametrisations), golden byte-identical; with `test_learning_decision.py` and the docs contract **96 passed**;
   JS **147/147** (+3); `openspec validate` valid;
   `mkdocs --strict` exit 0; ruff / ruff format / pyright clean on every touched file. Full suite and matched
-  control on the final tree: see the receipt named in `tasks.md` T5.4 once it lands (running at arbitration time).
+  control on the final tree `3eb31f2d`: 30 failed / **5146 passed** / 14 errors vs control 30 / 5120 / 14; item5 ∖
+  control = ∅, control ∖ item5 = ∅, item5 ∖ committed environmental set = ∅
+  (`receipts/full-suite-control-item5-2026-09-19.md`, second table).
 
 ### Process findings
 
