@@ -49,6 +49,8 @@ Only score 2 dimensions: Accuracy and Own Words (max 8 points).
 | 6-7 | Good recall in own words | On track |
 | 8 | Strong | Consider accelerating interval |
 
+**Low-energy fallback.** When `studyloop now` offers a micro teach-back on a low-energy day (a concept recorded as `learning`, energy demand `low`), the ask is one sentence and nothing more. If the student cannot produce it — a blank, "I don't know", or the source's own words — move straight to a **guided explanation**: give the explanation in two or three plain sentences with a networking analogy, then ask the student to say back ONE phrase of it in their own words. This is the fallback, not the four-round Stuck ladder in `socratic-engine.md`: at low energy that ladder is the productive struggle the day cannot carry, and a stall there is the confidence damage (RSD) the deferral of live struggles exists to prevent. Do not score the blank as a teach-back — at low energy it measures the day, not the concept. Record the phrase that came back (`studyloop progress "<concept>" -t <topic> -c learning`) and let the structured review at the 7-day mark measure the concept.
+
 ## Detecting Understanding vs Memorisation
 
 ### Red Flags (Surface Learning)
