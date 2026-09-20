@@ -227,6 +227,10 @@ writer, through the existing gate, closes that. Kept out of item 3 so item 3's f
       own words), collapsing medium/high, a same-concept gentle recall floor (follow-on, decision 8). Row 3b gained
       readings (d) and (e) for the two places the seats split.)
 - [ ] **T5.5** Rubric row **3b** for the owner (`PENDING`); the change is archived only after the owner scores 3b
+      — **2026-09-20**: a rubric-3b council (three seats, recommendations to the owner, not verdicts) produced
+      `receipts/rubric-3b-decision-brief-2026-09-20.md`; its two source-verified findings were applied
+      (RED `a0946376` → GREEN `c519bc2a`, design §5 decision 9), the receipt's stale F2 claim corrected, and
+      reading **(f)** (same-concept due recall + live struggle) emitted and added to the row. Verdict still the owner's.
       (4b was scored **yes / yes** on 2026-09-18, so 3b is the one row still outstanding). (2026-09-19: row 3b
       written into `receipts/now-rubric-2026-09-16.md` with three readings printed from the real engine — (a) live
       struggle → body-double primary, (b) plus an unrelated due recall → due recall primary, proposal beneath,
