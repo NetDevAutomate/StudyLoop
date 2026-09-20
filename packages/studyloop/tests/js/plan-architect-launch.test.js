@@ -361,6 +361,51 @@ test('init() twice (Alpine auto-init + x-init="init()") still means one listener
   assert.equal(starts.length, 1);
 });
 
+test('init() twice reads /api/session/state ONCE: a settled picker is not flipped by a late read it never asked for', async () => {
+  /* The same double run, the other fetch. Each init() issued its own
+     /api/session/state read; the picker settled ("No active session") on
+     whichever landed first, and the OTHER read could land after a session had
+     since been started elsewhere -- in a second tab, over plain HTTP -- and
+     adopt it: sessionActive true, topic from the server, no click, no 409.
+     That is the state CI run 35516418191 captured at the Start click in
+     test_409_from_a_second_tab (e2e): the live layout covered the button,
+     then the picker hid. Hold the second read until the session exists and
+     replay it. One read per page load, however many times the page calls
+     init(). */
+  const baseFetch = globalThis.fetch;
+  let stateReads = 0;
+  let releaseSecondRead;
+  const secondReadHeld = new Promise((resolve) => { releaseSecondRead = resolve; });
+  globalThis.fetch = async (url, opts) => {
+    if (!String(url).endsWith('/api/session/state')) return baseFetch(url, opts);
+    stateReads += 1;
+    if (stateReads === 1) return jsonResponse(200, {});
+    await secondReadHeld;
+    return jsonResponse(200, {
+      study_session_id: 'study-A', topic: 'Study focus', energy: 5, agent: 'codex',
+      mode: 'active', origin: 'study', start_time: '2026-09-20T14:30:00Z',
+    });
+  };
+
+  const timer = sessionTimer();
+  timers.push(timer);
+  timer.$nextTick = (cb) => cb();
+  const firstInit = timer.init();
+  const secondInit = timer.init();
+  await firstInit;
+  assert.equal(timer.topic, 'No active session', 'tab B settled on the picker');
+  assert.equal(timer.sessionActive, false);
+
+  releaseSecondRead(); // tab A's session exists from here on
+  await secondInit;
+  await settle();
+
+  assert.equal(stateReads, 1, 'one /api/session/state read per page load');
+  assert.equal(timer.sessionActive, false,
+    'the picker tab B settled on stays a picker; its Start must reach the server and 409');
+  assert.equal(timer.topic, 'No active session');
+});
+
 test('a 409 on a planning launch keeps the existing conflict handling and reports failure', async () => {
   const timer = await readyTimer();
   const results = [];
