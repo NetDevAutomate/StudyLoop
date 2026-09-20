@@ -253,10 +253,21 @@ with row 3b re-run after this requirement's repair half.
   and the live repair is ranked again
 
 #### Scenario: Due recall is never deferred
-- **WHEN** energy is `low`, a due row on a plan concept is collected with
-  `confidence == "struggling"` and a live struggle repair is also collected
-- **THEN** the due row is primary with `PlanRef(plan, None)`, the repair is
+- **WHEN** energy is `low`, a due `recall` item on a plan concept is collected
+  (whatever its metadata says about confidence) and a live struggle repair is
+  also collected
+- **THEN** the due item is primary with `PlanRef(plan, None)`, the repair is
   in `energy_deferred_repairs`, and no `body_double` candidate exists
+
+#### Scenario: A struggling row's due item is the repair, collected twice
+- **WHEN** energy is `low` and one `struggling` row seen 3 days ago on a
+  finished milestone's concept is read by both the due-progress collector
+  (which labels every `struggling` row due — "Guided repair + tiny practice",
+  `hands-on`) and the struggle collector
+- **THEN** both copies are deferred, `energy_deferred_repairs` names the
+  concept once (`high`), the concept is ranked nowhere, and the primary is the
+  `body_double` proposal (the starter when no plan exists); at `medium` energy
+  the due copy is primary as before and the key is absent
 
 #### Scenario: Nothing plan-related fits, so the engine proposes sitting with the plan
 - **WHEN** energy is `low`, the plan's `energy_floor` is 5 (milestone

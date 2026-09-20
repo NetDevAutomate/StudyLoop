@@ -1368,8 +1368,11 @@ def test_recovered_repair_stays_eligible_at_low_energy(monkeypatch) -> None:
     assert not any(rec.source == "body_double" for rec in _all(low))
     assert [d.milestone_index for d in low.energy_deferred] == [1]
 
-    # A due row on a plan concept, even one recorded as struggling, is recall,
-    # not repair: it is never deferred and nothing is synthesised beside it.
+    # A recall-typed due item on a plan concept is never deferred, whatever its
+    # metadata says about confidence, and nothing is synthesised beside it.
+    # (Through the real collector a `struggling` row is never recall — it is the
+    # hands-on "Guided repair" copy, deferred with the repair; see
+    # test_due_copy_of_a_live_struggle_defers_with_the_repair_at_low_energy.)
     import dataclasses
 
     due = dataclasses.replace(

@@ -435,6 +435,22 @@ def _due_progress_candidates(time_minutes: int) -> list[_Candidate]:
                     "confidence": confidence,
                     "days_ago": days_ago,
                     "last_teachback_score": teachback_score,
+                    # A `struggling` row is always due ("Guided repair + tiny
+                    # practice") and its due item is `hands-on`: it is the
+                    # struggle collector's repair, collected a second time from
+                    # the same observations row. It carries the repair's demand
+                    # so rule 3 defers both copies together (rubric row 3b
+                    # reading (f), 2026-09-20); due recall and teach-back rows
+                    # carry none and are never deferred.
+                    **(
+                        {
+                            "energy_demand": _energy_demand(
+                                confidence, item.get("last_studied"), datetime.now(UTC).date()
+                            )
+                        }
+                        if confidence == "struggling"
+                        else {}
+                    ),
                 },
             )
         )
@@ -1209,14 +1225,17 @@ def _defer_repairs(
 ) -> tuple[list[_Candidate], tuple[DeferredRepair, ...]]:
     """Rule 3 extended (design §5): repair above its own energy demand is deferred like new work.
 
-    Only a candidate carrying ``energy_demand`` — the struggle collector's — is
-    judged. Due recall is never deferred whatever its confidence says, and a
+    Only a candidate carrying ``energy_demand`` is judged: the struggle
+    collector's repairs, and the due collector's copy of a ``struggling`` row —
+    the same repair, collected twice, named once. Due recall and teach-back rows
+    carry no demand and are never deferred whatever their confidence says; a
     ``learning`` repair (``low`` demand) is always carried. Plan-independent:
     the entry names the plan when one matches, else ``None``.
     """
     capability = ENERGY_CAPABILITY[energy]
     kept: list[_Candidate] = []
     deferred: list[DeferredRepair] = []
+    named: set[tuple[str, str]] = set()
     for candidate in candidates:
         demand = candidate.metadata.get("energy_demand")
         if demand not in ENERGY_DEMAND_CAPABILITY:
@@ -1226,6 +1245,13 @@ def _defer_repairs(
         if capability >= required:
             kept.append(candidate)
             continue
+        # The same struggling row reaches here twice — the struggle collector's
+        # repair and the due collector's "Guided repair + tiny practice" copy.
+        # Both are deferred; the learner reads one line for the concept.
+        key = (candidate.topic.lower(), candidate.concept.lower())
+        if key in named:
+            continue
+        named.add(key)
         plan = plans.first_match(candidate)
         confidence = str(candidate.metadata.get("confidence") or "struggling")
         if demand == "high":

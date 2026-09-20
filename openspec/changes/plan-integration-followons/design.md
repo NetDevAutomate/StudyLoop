@@ -226,7 +226,9 @@ among what MCP revises and the row names every schema property.
   capability (`high` → 6, `medium` → 4, `low` → 0) compared with `ENERGY_CAPABILITY[energy]`.
 - **Rule 3 extended.** Below capability, *repair* above demand is deferred exactly like new milestone work and
   listed in `energy_deferred` with a reason naming the struggle; recovered repair stays eligible as gentle
-  review. Due recall (`source=study_progress` due rows) is unaffected.
+  review. Due recall and teach-back rows (`source=study_progress`) are unaffected. *(Amended 2026-09-20, see
+  decision 10 below: a `struggling` row's due item is not recall — it is the repair, collected a second time —
+  and carries the demand.)*
 - **Body-doubling floor.** When the eligible plan-related set is empty **and** at least one active plan exists,
   synthesise one candidate: `source="body_double"`, `action_type="conversation"`, low base score (below any
   real candidate), reason naming the deferred items, `plan_refs` for each named plan with `milestone_index
@@ -327,7 +329,24 @@ has none; `INTERLEAVE_RATIOS["low"]` unchanged.
    them by name; it goes to the owner as a note on row 3b. Two seats independently named the missing reading —
    the live struggle that is **also due for recall** on the same concept — so it is emitted from the tree as
    row 3b reading **(f)**: due recall is never deferred, so the recall is primary while the same concept's repair
-   sits in the deferred list; whether that is the collision the owner wants is theirs to say.
+   sits in the deferred list; whether that is the collision the owner wants is theirs to say. *(Superseded by
+   decision 10: emitted against the real collectors, (f) is not a recall/repair collision at all.)*
+10. **The due collector's copy of a live struggle defers with the repair** (owner walkthrough 2026-09-20,
+   found while emitting reading (f) with both real collectors — executed, not inferred). `_due_progress_candidates`
+   and `_struggle_candidates` read the same `observations.rows`; `_review_type_for` labels every `struggling` row
+   due ("Guided repair + tiny practice") and `_action_for_review` makes that due item `hands-on` at
+   100 + days + 35. Only the struggle collector's copy carried `energy_demand`, so at low energy it was deferred
+   while the due copy was kept as "due recall", survived `_dedupe` (higher score), and became the primary: against
+   a real sessions.db, row 3's world emitted the hands-on repair of the live struggle on top with its own deferral
+   line printed beneath it and no body double — the row-3 "no" unfixed. The (a), (d) and (e) behaviours held only
+   with the due collector silenced, which is what `_plant_struggles` does. Fix: the due collector's item for a
+   `struggling` row carries the same `_energy_demand` (derived from `last_studied`), so rule 3 defers both copies
+   together, and `_defer_repairs` names a concept once. Due recall and teach-back rows carry no demand and are
+   never deferred — that invariant is now stated about the rows it was always true of. Pinned by
+   `test_due_copy_of_a_live_struggle_defers_with_the_repair_at_low_energy` (plan world, medium energy unchanged)
+   and `test_due_copy_of_a_live_struggle_defers_with_no_plan_too`, both planting rows for **both** collectors
+   through `_plant_struggles_for_both_collectors`. Consequence for the rubric: readings (a), (d) and (e) are
+   re-emitted through both collectors before their verdicts are read as verdicts on the shipped behaviour.
 
 Known edge, not solved here: a `struggling` row whose `last_seen` cannot be parsed is read as live (`high`) —
 the cautious side; `_days_since` returns `None` and the demand falls to `high`.
