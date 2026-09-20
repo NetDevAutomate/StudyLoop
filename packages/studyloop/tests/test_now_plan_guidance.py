@@ -1356,6 +1356,54 @@ def test_body_double_candidate_is_synthesised_when_nothing_plan_related_fits(mon
     assert payload["primary"]["source"] == "body_double"
 
 
+def test_body_double_reason_leads_with_recorded_progress_and_describes_the_door_truthfully(
+    monkeypatch,
+) -> None:
+    """Rubric-3b council (2026-09-20), applied: the framework's own rule is *never name a
+    struggle without an adjacent strength* — the reason opens with the progress the plan
+    document records (one milestone done here) before it names what is deferred. And the
+    door is described by what the co-study persona guarantees — the learner drives, the
+    companion stays quiet unless asked — not by a promise ("no new material, no repair")
+    that nothing pins."""
+    _row3_plan()
+    _plant_struggles(monkeypatch, _struggle("window function", days_ago=3))
+
+    reason = build_now_plan(energy="low").primary.reason
+
+    assert reason.startswith("1 of 2 milestones of SQL Windows done."), reason
+    assert reason.index("done") < reason.index("window function"), "progress before the struggle"
+    assert "you drive; the companion stays quiet unless you ask" in reason
+    assert "no new material" not in reason and "no repair" not in reason
+
+
+def test_body_double_reason_never_fabricates_progress(monkeypatch) -> None:
+    """No milestone done → no progress sentence at all (never invent a strength)."""
+    _plan(
+        "sql-windows",
+        title="SQL Windows",
+        energy_floor=5,
+        milestones=[Milestone(title="Frames", concepts=["window frame"])],
+    )
+    _plant_struggles(monkeypatch, _struggle("window frame", days_ago=3))
+
+    reason = build_now_plan(energy="low").primary.reason
+
+    assert "milestones of SQL Windows done" not in reason and "0 of" not in reason
+    assert reason.startswith("Nothing plan-related fits low energy today"), reason
+
+
+def test_co_study_persona_pins_the_promise_the_body_double_reason_makes() -> None:
+    """The reason says the companion stays quiet and the learner drives; the persona the
+    door launches must say so too, or the reason is a promise about a door it does not
+    control."""
+    persona = (
+        Path(__file__).resolve().parents[3] / "agents" / "shared" / "personas" / "co-study.md"
+    ).read_text(encoding="utf-8")
+
+    assert "The student drives" in persona
+    assert "Stay quiet by default" in persona
+
+
 def test_body_double_is_a_proposal_not_a_filter(monkeypatch) -> None:
     """An unrelated real candidate still wins; the body-double proposal sits beneath it
     as an alternate, base score below any real candidate's."""
