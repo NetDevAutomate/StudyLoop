@@ -57,6 +57,49 @@ experience may change before `1.0.0`.
   messages past 300 ms ("last load: X s" from per-machine cold/warm records —
   never a percentage bar), and a web encoder-warm status chip fed by
   `GET /api/retrieval/health`.
+- **Study Plans reach the surfaces you decide on.** One `PlanApplication`
+  seam (`studyloop.planning.application`) now carries every plan use case —
+  browse, inspect, prepare planning, active guidance, apply a change, assess —
+  and the CLI, the Web UI and the MCP server all go through it. Two bugs that
+  seam exists because of are closed: activation readiness is judged once on
+  the resulting document for every entry path (create-with-status and
+  whole-document replacement included), and a checkpoint whose database write
+  failed is reported as partial instead of as a clean record.
+- **`studyloop now` is plan-aware.** An active plan biases the recommendation
+  — matching due work and a synthesised next milestone carry explicit plan and
+  milestone references, urgent reviews and fresh struggles can still outrank
+  new milestone work, several active plans are considered deterministically,
+  and a milestone beyond today's energy is deferred with a reason rather than
+  dropped. CLI `now`, Web Today, the recap and MCP `get_next_action` consume
+  one additive result; with no active plan the JSON is byte-identical to the
+  pinned golden. `get_next_action` gains `interleave` parity with the CLI.
+- **Repair carries an energy demand of its own, and a body-doubling floor.**
+  A live struggle (`struggling`, seen within 14 days) asks for 6/10, an older
+  struggle or a weak teach-back for 4/10, a concept still `learning` for none;
+  below the day's capability a repair is deferred like new work into
+  `energy_deferred_repairs` — never ranked — while due recall is never
+  deferred. When nothing plan-related fits the day and an active, ready plan
+  exists, one low-scoring proposal is synthesised: sit with the plan in a
+  body-double session (`studyloop study "<plan>" --mode co-study`), leading
+  with the progress the plan records and naming what is deferred. Every
+  offered command quotes learner-authored text as one shell word.
+- **Plan with the architect from the Web UI.** *Plans → Plan with architect*
+  launches the Study Plan Architect through the ordinary session machinery
+  (one-session authority, reconnect, the same console) with a `planning`
+  purpose; starting a conversation creates no draft. The manual form remains.
+  `studyloop plan repair <id>` opens the architect on an active plan the
+  readiness gate refuses to write, and `studyloop plan close <id>` reviews a
+  fully-checked plan against its evidence and proposes *extend* or *close* —
+  status never changes by itself, and a partial review never proposes a clean
+  close. A fully-checked plan that is not active can be closed or deleted; the
+  architect asks which.
+- **MCP lifecycle parity for Study Plans**: `list_study_plans`,
+  `get_study_plan`, `get_planning_interview`, `create_study_plan`,
+  `update_study_plan`, `set_study_plan_status`, `set_study_plan_milestone`,
+  `evaluate_study_plan` and `delete_study_plan` (confirmation required), thin
+  adapters over the same seam; the mission is revisable through
+  `update_study_plan`. `studyloop doctor` reports a plan document it cannot
+  read by name instead of hiding it behind "all ready".
 
 ### Changed
 
@@ -81,6 +124,31 @@ experience may change before `1.0.0`.
   against the torch encoder passed on the full gold DEV set (91/91 identical
   ranked lists, cosine ≥ 0.999 per query); encoder load falls from ~2.9 s to
   ~0.2 s and a one-shot CLI hybrid search from ~2.9 s to ~0.33 s p50.
+
+### Fixed
+
+- The Study Plan Architect's launch from the Web UI waits at most 8 s for the
+  session picker's options, so a stalled `/api/session/options` cannot hold a
+  click forever; leaving the page before a requested launch lands leaves a
+  session like any other (reattachable, ended with *End*) rather than a
+  half-state.
+- A legacy `study_progress` row with no `last_seen` no longer crashes the
+  struggle collector — and with it `studyloop now` — on the way to a
+  recommendation.
+- The release gate (`scripts/check-release-consistency.py --release`) read a
+  folded `deferred: >-` reason in an openspec change's `.openspec.yaml` as the
+  literal marker `>-`, so it printed no reason and would have accepted an
+  empty one — the unexplained deferral the guard exists to refuse. It now
+  reads the indented text and refuses an empty block.
+
+### Security
+
+- The offered commands in `studyloop now` (`evidence_command`, the body-double
+  door) quote every learner-authored value — plan titles, concepts, topics —
+  as a single shell word. A plan titled `SQL $(touch pwned) Windows` used to
+  run its substitution when the offered line was pasted into a shell.
+- `anyio` 4.12.1 → 4.15.1 for two published advisories (CVE-2026-63374,
+  CVE-2026-64847); both dependency audits are clean again.
 
 ### Removed
 
