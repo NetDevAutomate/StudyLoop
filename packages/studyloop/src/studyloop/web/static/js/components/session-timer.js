@@ -132,6 +132,9 @@ export function sessionTimer() {
          user acts on the conflict, so an /api/session/state response that was
          already in flight cannot overwrite the newer state. */
       _conflictEpoch: 0,
+      /* The one init() run of this page load (see init()). Null until the
+         first call; every later call returns it instead of starting another. */
+      _initPromise: null,
 
       energyBandLabel() {
         if (this.energy >= 7) return 'High energy';
@@ -165,18 +168,27 @@ export function sessionTimer() {
         });
       },
 
-      async init() {
+      init() {
         // Alpine calls init() itself for an x-data object that defines one, and
-        // the markup ALSO says x-init="init()", so this runs twice per page
-        // load. That was harmless while the listeners below only set picker
-        // fields; it is not once one of them starts a session — two listeners
-        // meant two POSTs per click and a 409 for the second (found by the #14
-        // browser journey). Register the window listeners exactly once; the
-        // fetches below are idempotent and may run again.
-        if (!this._listenersRegistered) {
-          this._listenersRegistered = true;
-          this._registerWindowListeners();
-        }
+        // the markup ALSO says x-init="init()", so the page calls this twice per
+        // load. Two listeners were the first cost of that (two POSTs per click
+        // and a 409 for the second, found by the #14 browser journey); the
+        // fetches were believed idempotent and left to run again. They are not:
+        // each run issued its own /api/session/state read, the picker settled
+        // on whichever landed first, and the OTHER read could land after a
+        // session had since been started elsewhere -- a second tab, over plain
+        // HTTP -- and adopt it into a tab that was sitting on the picker: no
+        // click, no 409, Start hidden under the live layout. That is the state
+        // CI run 35516418191 captured at the click (e2e, test_409_from_a_second
+        // _tab, the third such timeout and the first with evidence). So init()
+        // runs ONCE per page load, whoever calls it: later calls get the first
+        // run's promise. The settled picker is then the one and only read.
+        if (!this._initPromise) this._initPromise = this._initOnce();
+        return this._initPromise;
+      },
+
+      async _initOnce() {
+        this._registerWindowListeners();
 
         const optionsPromise = fetch('/api/session/options')
           .then((res) => res.ok ? res.json() : null)
@@ -293,7 +305,7 @@ export function sessionTimer() {
         /* A planning launch can arrive from the Plans view before init()'s
            options fetch has resolved; the agent is not missing, it is not yet
            known. Wait for the picker's own settlement before deciding.
-           (init() sets _optionsReady on every run; a timer whose init never
+           (init()'s one run sets _optionsReady; a timer whose init never
            ran has nothing to wait for and falls through to the check.) */
         if (purpose === 'planning' && !this.agent && this._optionsReady) {
           /* Bounded (council review 6): a fetch that never settles must not hold

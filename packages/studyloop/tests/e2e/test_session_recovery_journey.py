@@ -347,14 +347,19 @@ class TestStudyPickerRecovery:
               d.agent = 'codex';
             }"""
         )
-        # Twice on CI this click has timed out with "element is not visible"
-        # (runs 35341660469 and 35380095596) after the settled wait above passed,
-        # and neither run produced evidence of WHY the picker was hidden: the
-        # timeout fires before this test's own _diag hook, so the artifact held
-        # nothing for it. Every adopt path in the timer was read against the
-        # second failure and none explains it without a click. Capture the
-        # state at the click so a third occurrence names the mechanism instead
-        # of the symptom -- the fix must rest on that, not on a guess.
+        # Three times on CI this click timed out with "element is not visible"
+        # (runs 35341660469, 35380095596, 35516418191) after the settled wait
+        # above passed. The first two left no evidence -- the timeout fired
+        # before this test's _diag hook -- so the capture below was added, and
+        # the third run's artifact named the mechanism: sessionActive true,
+        # topic "Study focus" (tab A's), conflict null, picker display none,
+        # with startSession() never run. The timer's init() ran twice per page
+        # load (Alpine's auto-init plus x-init="init()"), each run issued its own
+        # /api/session/state read, the settled wait observed the first, and the
+        # second landed after _start_session above and adopted tab A's session
+        # into this tab. Fixed at the source -- init() is one run per page load,
+        # so the settled picker IS the only read. The capture stays: a fourth
+        # occurrence would mean a different mechanism, and it must name it.
         try:
             page.locator("[data-testid='study-start-session']").click()
         except Exception:  # pragma: no cover - diagnostics only
