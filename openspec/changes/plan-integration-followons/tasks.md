@@ -226,7 +226,17 @@ writer, through the existing gate, closes that. Kept out of item 3 so item 3's f
       contract wording (`bdf4d6c6`). Rejected with reasons: qwen's gate-deferral-on-a-plan (2–1 against, and D-F's
       own words), collapsing medium/high, a same-concept gentle recall floor (follow-on, decision 8). Row 3b gained
       readings (d) and (e) for the two places the seats split.)
-- [ ] **T5.5** Rubric row **3b** for the owner (`PENDING`); the change is archived only after the owner scores 3b
+- [x] **T5.5** Rubric row **3b** for the owner (`PENDING`); the change is archived only after the owner scores 3b
+      — **SCORED 2026-09-20** (interactive walkthrough): (a)–(e) **yes**, one line each plus three 0.6.0 notes
+      (concrete first move for the sit-with; the low-energy day as a ladder — step-up after a completed floor task,
+      re-offering the deferred repair itself at the top; capability numbers are subjective). (c)'s yes carried a
+      condition met on the branch: micro door for `low` demand, gentle-review wording for a `learning` row
+      (`0760254d`/`f2cb572f`), the protocol's low-energy guided-explanation fallback (`c7cc1b0f`/`214df377`). (f)
+      exposed a real defect — the due-progress collector emitted every live struggle as an undeferred hands-on
+      item, so the scored (a)/(d)/(e) screens were never emitted against a real database — fixed
+      `8f851d3a`/`fb63fb6b` (design §5 decision 10), every reading re-emitted through both collectors, and (c)
+      confirmed by the owner on its both-collectors screen (recall first, teach-back as the step-up). Receipt
+      `291e8691` +1. Archive after PR #28 merges.
       — **2026-09-20**: a rubric-3b council (three seats, recommendations to the owner, not verdicts) produced
       `receipts/rubric-3b-decision-brief-2026-09-20.md`; its two source-verified findings were applied
       (RED `a0946376` → GREEN `c519bc2a`, design §5 decision 9), the receipt's stale F2 claim corrected, and
