@@ -307,3 +307,79 @@ def test_release_note_that_is_still_the_prepare_release_skeleton_fails(tmp_path:
 
     assert result.returncode == 1
     assert "skeleton" in result.stderr.lower() or "release summary" in result.stderr.lower()
+
+
+# ---------------------------------------------------------------------------
+# The openspec-shipped guard: a change with commits since the last tag must be
+# archived or carry an EXPLAINED `deferred:`. `.openspec.yaml` writes the reason
+# as a YAML folded scalar (`deferred: >-` + indented lines), and the guard's
+# line-match read the fold marker `>-` as the reason -- so an empty fold passed
+# and the printed reason was `>-`, defeating the "unexplained deferral is
+# indistinguishable from a forgotten one" rule the guard exists for.
+# ---------------------------------------------------------------------------
+
+
+def _write_changes_fixture(tmp_path: Path, openspec_yaml: str | None) -> None:
+    """A tagged repo, then a post-tag commit touching one openspec change."""
+    _write_release_fixture(tmp_path, "1.2.3", "2026-09-06")
+    init_git_repo_with_tag(tmp_path, tag="v1.2.3", tag_date="2026-09-06")
+    change_dir = tmp_path / "openspec" / "changes" / "some-change"
+    change_dir.mkdir(parents=True)
+    (change_dir / "proposal.md").write_text("# proposal\n", encoding="utf-8")
+    if openspec_yaml is not None:
+        (change_dir / ".openspec.yaml").write_text(openspec_yaml, encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-q", "-m", "touch change"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_release_mode_names_an_undeferred_change_with_commits_since_the_tag(
+    tmp_path: Path,
+) -> None:
+    _write_changes_fixture(tmp_path, openspec_yaml="schema: spec-driven\n")
+
+    result = run_release_check(tmp_path)
+
+    assert result.returncode == 1
+    assert "neither archived nor deferred" in result.stderr
+    assert "some-change" in result.stderr
+
+
+def test_release_mode_accepts_a_folded_deferral_and_prints_its_text_not_the_fold_marker(
+    tmp_path: Path,
+) -> None:
+    _write_changes_fixture(
+        tmp_path,
+        openspec_yaml=(
+            "schema: spec-driven\n\n"
+            "deferred: >-\n"
+            "  Follow-on programme; archived when the owner\n"
+            "  scores the last rubric row.\n"
+        ),
+    )
+
+    result = run_release_check(tmp_path)
+
+    assert result.returncode == 0, result.stderr
+    assert "deferred: Follow-on programme; archived when the owner scores the last rubric row." in (
+        result.stdout
+    )
+    assert "deferred: >-" not in result.stdout
+
+
+def test_release_mode_refuses_an_empty_folded_deferral(tmp_path: Path) -> None:
+    """`deferred: >-` with nothing under it is the forgotten-deferral case."""
+    _write_changes_fixture(
+        tmp_path, openspec_yaml="schema: spec-driven\n\ndeferred: >-\n\ncreated: 2026-09-16\n"
+    )
+
+    result = run_release_check(tmp_path)
+
+    assert result.returncode == 1
+    assert "neither archived nor deferred" in result.stderr
+    assert "some-change" in result.stderr
