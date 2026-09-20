@@ -77,12 +77,23 @@ experience may change before `1.0.0`.
   A live struggle (`struggling`, seen within 14 days) asks for 6/10, an older
   struggle or a weak teach-back for 4/10, a concept still `learning` for none;
   below the day's capability a repair is deferred like new work into
-  `energy_deferred_repairs` — never ranked — while due recall is never
-  deferred. When nothing plan-related fits the day and an active, ready plan
-  exists, one low-scoring proposal is synthesised: sit with the plan in a
-  body-double session (`studyloop study "<plan>" --mode co-study`), leading
-  with the progress the plan records and naming what is deferred. Every
-  offered command quotes learner-authored text as one shell word.
+  `energy_deferred_repairs` — never ranked — while due recall and teach-back
+  reviews are never deferred. The due-review reader emits every `struggling`
+  row as a hands-on "guided repair" as well, so that copy carries the same
+  demand and defers with the repair, named once — without it the repair the
+  learner had just been spared came back as the primary. When nothing
+  plan-related fits the day and an active, ready plan exists, one low-scoring
+  proposal is synthesised: sit with the plan in a body-double session
+  (`studyloop study "<plan>" --mode co-study`), leading with the progress the
+  plan records and naming what is deferred. Every offered command quotes
+  learner-authored text as one shell word.
+- **The low-energy teach-back is the one-sentence kind, with a way out.** A
+  concept still `learning` is offered as a *micro* teach-back
+  (`studyloop teachback … --type micro`) and its reason reads as the gentle
+  review it is, not "repair now"; the teach-back protocol gains a low-energy
+  fallback — when the sentence will not come, the mentor gives a short guided
+  explanation and asks for one phrase back, instead of walking the four-round
+  stuck ladder, and the blank is not scored.
 - **Plan with the architect from the Web UI.** *Plans → Plan with architect*
   launches the Study Plan Architect through the ordinary session machinery
   (one-session authority, reconnect, the same console) with a `planning`
