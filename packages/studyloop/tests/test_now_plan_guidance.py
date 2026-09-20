@@ -1404,6 +1404,21 @@ def test_co_study_persona_pins_the_promise_the_body_double_reason_makes() -> Non
     assert "Stay quiet by default" in persona
 
 
+def test_teach_back_protocol_carries_the_low_energy_guided_explanation_fallback() -> None:
+    """Rubric row 3b reading (c) — owner verdict "yes, with a fallback" (2026-09-20): the
+    micro teach-back is offered at low energy, and if the student cannot produce the one
+    sentence the mentor moves to a guided explanation — not the four-round Stuck ladder
+    first. The door's protocol must say so, or the yes is shipped without its condition."""
+    protocol = (
+        Path(__file__).resolve().parents[3] / "agents" / "shared" / "teach-back-protocol.md"
+    ).read_text(encoding="utf-8")
+
+    micro = protocol.split("### Micro Teach-Back", 1)[1].split("\n## ", 1)[0]
+    assert "Low-energy fallback" in micro
+    assert "guided explanation" in micro
+    assert "not the four-round Stuck ladder" in micro
+
+
 def test_body_double_is_a_proposal_not_a_filter(monkeypatch) -> None:
     """An unrelated real candidate still wins; the body-double proposal sits beneath it
     as an alternate, base score below any real candidate's."""
