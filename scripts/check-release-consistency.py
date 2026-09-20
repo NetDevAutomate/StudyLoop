@@ -132,15 +132,35 @@ def _deferred_reason(change_dir: Path) -> str | None:
     stdlib-only property. A bare ``deferred:`` with no reason does NOT count —
     an unexplained deferral is indistinguishable from a forgotten one, which is
     the state this guard exists to catch.
+
+    The reason is usually written as a YAML block scalar (``deferred: >-`` with
+    the text on the indented lines below). The block indicator is not the
+    reason: the indented continuation is, joined into one line, and an
+    indicator with nothing under it is an unexplained deferral like any other.
     """
     meta = change_dir / ".openspec.yaml"
     if not meta.is_file():
         return None
-    for line in meta.read_text(encoding="utf-8").splitlines():
-        match = re.match(r"\s*deferred:\s*(\S.*)$", line)
-        if match:
-            return match.group(1).strip()
+    lines = meta.read_text(encoding="utf-8").splitlines()
+    for index, line in enumerate(lines):
+        match = re.match(r"\s*deferred:\s*(.*)$", line)
+        if not match:
+            continue
+        value = match.group(1).strip()
+        if value and value not in _YAML_BLOCK_INDICATORS:
+            return value.strip("\"'") or None
+        continuation: list[str] = []
+        for following in lines[index + 1 :]:
+            if not following.strip():
+                continue
+            if not following[0].isspace():
+                break
+            continuation.append(following.strip())
+        return " ".join(continuation) or None
     return None
+
+
+_YAML_BLOCK_INDICATORS = frozenset({">", ">-", ">+", "|", "|-", "|+"})
 
 
 def validate_openspec_changes_shipped(repo_root: Path) -> None:
