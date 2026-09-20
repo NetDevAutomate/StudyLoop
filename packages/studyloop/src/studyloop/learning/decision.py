@@ -350,11 +350,24 @@ def _shell_word(text: str) -> str:
     return shlex.quote(text)
 
 
-def _evidence_command(action_type: ActionType, concept: str, topic: str, source: str) -> str:
+def _evidence_command(
+    action_type: ActionType,
+    concept: str,
+    topic: str,
+    source: str,
+    *,
+    energy_demand: EnergyDemand | None = None,
+) -> str:
     if action_type == "teachback":
+        # The door is the teach-back form the demand class stands on (design §5,
+        # amendment 1; rubric row 3b reading (c)): `low` was justified by the
+        # protocol's micro teach-back — one sentence, two dimensions scored —
+        # so that is what a low-demand door asks for. A weak-teach-back row
+        # (`medium`) re-sits the structured review it fell short on.
+        review_type = "micro" if energy_demand == "low" else "structured"
         return (
             f"studyloop teachback {_shell_word(concept)} -t {_shell_word(topic)} "
-            '--score "3,3,3,3,3" --type structured'
+            f'--score "3,3,3,3,3" --type {review_type}'
         )
     if action_type == "hands-on" and source.endswith(".json"):
         return f'studyloop practice verify {_shell_word(source)} --task 1 --notes "what passed?"'
@@ -479,29 +492,41 @@ def _struggle_candidates(time_minutes: int) -> list[_Candidate]:
             if "source_section" in row_keys and row["source_section"]
             else f"study_progress:{topic}:{concept}"
         )
+        # Design §5: derived once, here, from the collector's own classes; the
+        # deferral, the door and every renderer read this one value.
+        demand = _energy_demand(
+            confidence, row.get("last_seen") if "last_seen" in row_keys else None, today
+        )
+        # A `learning` row is the gentle review that stays eligible at low
+        # energy (design §5), not a repair: on a low-energy screen "repair now"
+        # would contradict the deferred-repair line beside it (rubric row 3b
+        # reading (c)). Its sentence names the one-sentence door it opens.
+        reason = (
+            "Recorded as learning; a gentle review keeps it fresh — one sentence, in your own words"
+            if confidence == "learning"
+            else f"Recorded as {confidence}; repair now while the signal is fresh"
+        )
         candidates.append(
             _Candidate(
                 concept=concept,
                 topic=topic,
                 course=row["source_course"] if "source_course" in row_keys else None,
                 reason=(
-                    f"Recorded as {confidence}; repair now while the signal is fresh"
+                    reason
                     + (f"; last teach-back score {teachback_score}/20" if teachback_score else "")
                 ),
                 action_type=action,
                 estimated_minutes=_estimate_minutes(action, time_minutes, 20),
                 source=str(source),
-                evidence_command=_evidence_command(action, concept, topic, str(source)),
+                evidence_command=_evidence_command(
+                    action, concept, topic, str(source), energy_demand=demand
+                ),
                 score=score,
                 metadata={
                     "confidence": confidence,
                     "last_teachback_score": teachback_score,
                     "session_count": row["session_count"],
-                    # Design §5: derived once, here, from the collector's own
-                    # classes; the deferral and every renderer read this value.
-                    "energy_demand": _energy_demand(
-                        confidence, row.get("last_seen") if "last_seen" in row_keys else None, today
-                    ),
+                    "energy_demand": demand,
                 },
             )
         )
