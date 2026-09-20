@@ -1706,6 +1706,64 @@ def test_energy_demand_confidence_and_teachback_precedence(monkeypatch) -> None:
     ]
 
 
+def test_low_demand_teachback_door_is_the_micro_teach_back(monkeypatch) -> None:
+    """Rubric row 3b reading (c), defect 1 (owner walkthrough 2026-09-20): demand ``low``
+    (0/10) was justified by the protocol's *micro* teach-back — "in one sentence, explain
+    [concept]", two dimensions scored — yet the door named ``--type structured``, the
+    15-minute five-dimension review. The door must be the form the demand class stands
+    on: ``micro`` for ``low``; a weak-teach-back row (``medium``) keeps ``structured``."""
+    _plant_struggles(
+        monkeypatch,
+        _struggle("window function", confidence="learning", days_ago=2),
+        _struggle("weak", topic="python", confidence="confident", days_ago=20, teachback=9),
+    )
+
+    high = build_now_plan(energy="high")
+
+    doors = {rec.concept: rec for rec in _all(high)}
+    gentle, weak = doors["window function"], doors["weak"]
+    assert gentle.action_type == weak.action_type == "teachback"
+    assert gentle.metadata["energy_demand"] == "low"
+    assert weak.metadata["energy_demand"] == "medium"
+    assert gentle.evidence_command == (
+        'studyloop teachback "window function" -t "sql" --score "3,3,3,3,3" --type micro'
+    )
+    assert weak.evidence_command == (
+        'studyloop teachback "weak" -t "python" --score "3,3,3,3,3" --type structured'
+    )
+
+
+def test_learning_row_reason_is_a_gentle_review_not_a_repair(monkeypatch) -> None:
+    """Rubric row 3b reading (c), defect 2 (owner walkthrough 2026-09-20): design §5 calls a
+    ``learning`` row the *gentle review* that stays eligible at low energy, but its reason
+    read "repair now while the signal is fresh" — on a low-energy screen that word
+    contradicts the deferred-repair line printed beside it. The learning row's reason
+    names the gentle review and its one-sentence door; a live struggle's reason is
+    untouched."""
+    _plant_struggles(
+        monkeypatch,
+        _struggle("window function", confidence="learning", days_ago=2, teachback=11),
+        _struggle("decorators", topic="python", days_ago=1),
+    )
+
+    low = build_now_plan(energy="low")
+
+    assert low.primary.concept == "window function"
+    assert low.primary.reason == (
+        "Recorded as learning; a gentle review keeps it fresh — one sentence, in your own "
+        "words; last teach-back score 11/20"
+    )
+    assert "repair" not in low.primary.reason
+    [deferred] = low.energy_deferred_repairs
+    assert deferred.concept == "decorators"
+    assert "repairing 'decorators'" in deferred.reason
+
+    high = build_now_plan(energy="high")
+
+    live = next(rec for rec in _all(high) if rec.concept == "decorators")
+    assert live.reason == "Recorded as struggling; repair now while the signal is fresh"
+
+
 @pytest.mark.parametrize(
     ("energy", "deferred"),
     [("low", {"live", "stale"}), ("medium", set()), ("high", set())],
