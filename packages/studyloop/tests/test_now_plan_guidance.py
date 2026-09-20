@@ -1225,6 +1225,69 @@ def _row3_plan() -> None:
     )
 
 
+def _plant_struggles_for_both_collectors(monkeypatch: pytest.MonkeyPatch, *rows: dict) -> None:
+    """Like ``_plant_struggles`` but the due-progress collector runs for real too.
+
+    Both collectors read the same ``observations.rows``: a ``struggling`` row is
+    *always* due (``_review_type_for`` labels it "Guided repair + tiny practice")
+    and ``_action_for_review`` makes that due item ``hands-on`` — the repair,
+    collected twice. Silencing the due collector, as ``_plant_struggles`` does,
+    hides the second copy.
+    """
+    from studyloop.history import observations
+
+    real_due = decision._due_progress_candidates
+    real_struggle = decision._struggle_candidates
+    _patch_collectors(monkeypatch)
+    monkeypatch.setattr(decision, "_due_progress_candidates", real_due)
+    monkeypatch.setattr(decision, "_struggle_candidates", real_struggle)
+    monkeypatch.setattr(observations, "rows", lambda conn: [dict(row) for row in rows])
+
+
+def test_due_copy_of_a_live_struggle_defers_with_the_repair_at_low_energy(monkeypatch) -> None:
+    """Rubric row 3b reading (f), re-read against the real collectors (owner walkthrough
+    2026-09-20): the due-progress collector emits every ``struggling`` row as an undeferred
+    ``hands-on`` "Guided repair + tiny practice" item — the same observations row the struggle
+    collector defers — so against a real sessions.db the row-3 "no" was still the primary at
+    low energy, with its own deferral printed beneath it, and the body double never appeared.
+    A due row that *is* the repair of a live struggle carries the repair's demand and defers
+    with it, named once; due recall is still never deferred; medium energy is untouched."""
+    _row3_plan()
+    _plant_struggles_for_both_collectors(monkeypatch, _struggle("window function", days_ago=3))
+
+    low = build_now_plan(energy="low")
+
+    assert low.primary.source == "body_double"
+    assert not any(rec.concept == "window function" for rec in _all(low))
+    assert [(d.concept, d.energy_demand) for d in low.energy_deferred_repairs] == [
+        ("window function", "high")
+    ]
+
+    medium = build_now_plan(energy="medium")
+
+    assert medium.primary.concept == "window function"
+    assert medium.primary.action_type == "hands-on"
+    assert medium.primary.source == "study_progress:sql:window function"
+    assert medium.energy_deferred_repairs == ()
+
+
+def test_due_copy_of_a_live_struggle_defers_with_no_plan_too(monkeypatch) -> None:
+    """The no-plan floor (reading (d)) against both real collectors: the starter stands in
+    and the live struggle is named once in the deferred list — not emitted as an undeferred
+    hands-on primary by the due collector."""
+    _plant_struggles_for_both_collectors(
+        monkeypatch, _struggle("decorators", topic="python", days_ago=3)
+    )
+
+    low = build_now_plan(energy="low")
+
+    assert low.primary.source == "starter"
+    assert not any(rec.concept == "decorators" for rec in _all(low))
+    assert [(d.plan_id, d.concept, d.energy_demand) for d in low.energy_deferred_repairs] == [
+        (None, "decorators", "high")
+    ]
+
+
 def test_live_struggle_repair_defers_at_low_energy_like_new_work(monkeypatch) -> None:
     """Rule 3 extended (design §5, amendment 1 + 2): repair carries a demand of its own.
 
