@@ -1260,14 +1260,28 @@ def _body_double_candidate(
         f"milestone {d.milestone_index + 1} “{d.title}” of {d.plan_title}" for d in plans.deferred
     ] + [f"repair of “{d.concept}”" for d in deferred_repairs]
     deferred_note = f" — deferred: {'; '.join(items)}" if items else ""
+    # The framework's naming rule: never name a struggle without an adjacent
+    # strength — so lead with the progress the plan document records, and only
+    # when there is some (a strength is never invented).
+    done = [plan for plan in named if plan.milestone_done]
+    progress_note = (
+        " ".join(
+            f"{plan.milestone_done} of {plan.milestone_total} milestones of {plan.title} done."
+            for plan in done
+        )
+        + " "
+        if done
+        else ""
+    )
     topic = first.topics[0] if first.topics else "study"
     return _Candidate(
         concept=f"Sit with {first.title}" if len(named) == 1 else "Sit with your plans",
         topic=topic,
         course=None,
         reason=(
-            f"Nothing plan-related fits {energy} energy today{deferred_note}. "
-            f"Sit with {titles} instead: a body-double session, no new material, no repair."
+            f"{progress_note}Nothing plan-related fits {energy} energy today{deferred_note}. "
+            f"Sit with {titles} instead: a body-double session — you drive; the companion "
+            "stays quiet unless you ask."
         ),
         action_type="conversation",
         estimated_minutes=_estimate_minutes("conversation", time_minutes, 25),

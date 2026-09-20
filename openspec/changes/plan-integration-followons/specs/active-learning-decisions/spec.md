@@ -157,8 +157,12 @@ the body-doubling floor):
    penalises may not; a proposal, never a filter: nothing is removed from the
    ranking — `plan_refs` `(plan_id, None)` for every **ready** matchable plan
    (rule 7 may add a reference to an unready plan whose topic the proposal
-   shares; the proposal itself names ready plans only), a reason naming the deferred
-   milestones and repairs it stands in for, and `evidence_command` the
+   shares; the proposal itself names ready plans only), a reason that opens with
+   the progress the plan records (`N of M milestones of <plan> done.`, omitted when
+   none is done — never invented) before naming the deferred milestones and
+   repairs it stands in for, and describes the door by what the co-study persona
+   guarantees (the learner drives; the companion stays quiet unless asked), and
+   `evidence_command` the
    co-study session door — `studyloop study "<plan title>" --mode co-study` —
    set explicitly, never a progress write. No active plan (a draft is not
    one) → no body-double candidate; when every real candidate was deferred

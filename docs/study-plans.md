@@ -226,8 +226,9 @@ not recommended — an older struggle or a weak teach-back needs medium energy,
 and a concept you are still learning is the gentle review that stays
 available at any energy; due reviews are never deferred. When nothing
 plan-related fits the day's energy, the recommendation is to **sit with the
-plan** — a body-double session, no new material, no repair — with the
-deferred items named; a real, unrelated action still outranks that proposal
+plan** — a body-double session: you drive, the companion stays quiet unless
+you ask — with the recorded progress named first and the deferred items after
+it; a real, unrelated action still outranks that proposal
 when one exists. An active plan that
 is **not ready** — a hand edit removed its mission or its milestones — is
 listed with a warning naming what to repair; it still biases related work,

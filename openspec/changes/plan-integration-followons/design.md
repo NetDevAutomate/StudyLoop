@@ -313,6 +313,21 @@ has none; `INTERLEAVE_RATIOS["low"]` unchanged.
 8. **Not taken, recorded as follow-ons:** a same-concept gentle `recall` synthesised for a no-plan learner whose
    only candidates were deferred (grok 🔵 / qwen 🟡; astra: do not invent an unvalidated lower-demand action) —
    the owner's row 3b reading (d) decides whether the starter is the floor they want.
+9. **The body-double reason leads with recorded progress and describes its door truthfully** (rubric-3b council,
+   2026-09-20, three seats asked for recommendations to the owner, not verdicts). Applied where the finding held
+   against source: the framework's own naming rule (*never name a struggle without an adjacent strength*) — the
+   reason now opens with `N of M milestones of <plan> done.` from `PlanSummary.milestone_done`, and says nothing
+   when nothing is done (a strength is never invented); and "no new material, no repair" promised a door the
+   engine does not control — the sentence now says what the co-study persona guarantees ("you drive; the
+   companion stays quiet unless you ask"), and a test holds the persona to those words
+   (`test_body_double_reason_leads_with_recorded_progress_and_describes_the_door_truthfully`,
+   `test_body_double_reason_never_fabricates_progress`,
+   `test_co_study_persona_pins_the_promise_the_body_double_reason_makes`). Not applied: gating deferral on a
+   plan (Q1, rejected again by every seat) and suppressing the deferred-item names (astra 🟡) — D-F asks for
+   them by name; it goes to the owner as a note on row 3b. Two seats independently named the missing reading —
+   the live struggle that is **also due for recall** on the same concept — so it is emitted from the tree as
+   row 3b reading **(f)**: due recall is never deferred, so the recall is primary while the same concept's repair
+   sits in the deferred list; whether that is the collision the owner wants is theirs to say.
 
 Known edge, not solved here: a `struggling` row whose `last_seen` cannot be parsed is read as live (`high`) —
 the cautious side; `_days_since` returns `None` and the demand falls to `high`.
