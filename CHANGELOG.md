@@ -151,6 +151,14 @@ experience may change before `1.0.0`.
   literal marker `>-`, so it printed no reason and would have accepted an
   empty one — the unexplained deferral the guard exists to refuse. It now
   reads the indented text and refuses an empty block.
+- The Study Session view's timer ran its `init()` twice per page load (Alpine's
+  own call plus the markup's `x-init`), each run reading `/api/session/state`.
+  A tab sitting on the session picker could adopt a session started in
+  another tab when the slower read landed — Start hidden under the live
+  layout, no 409, no reattach offer. `init()` now runs once per page load;
+  a second tab's Start reaches the server and is offered reattach. Named by
+  the state captured at the click in CI (third occurrence, first with
+  evidence) and pinned by a `node --test` replay of that race.
 
 ### Security
 
