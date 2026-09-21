@@ -1675,12 +1675,15 @@ def test_body_double_carries_one_passive_first_move_on_the_deferred_milestone(
 ) -> None:
     """Row 3's world: the move opens the deferred milestone's material and asks for
     reading only. It rides in the payload as ``metadata["first_move"]`` (additive,
-    body-double only, so the no-plan golden is untouched) and closes the reason as a
-    proposal, not a requirement. When the content index was searched and holds no
-    lesson for the milestone's concepts (rubric 3c (c), owner 2026-09-21), the
-    sentence names the milestone AND says why — the concept no indexed lesson
-    mentions — so it carries information instead of vagueness, and the payload has
-    no ``first_move_lesson_id``. On the owner's own vault this is exactly ``Frames``
+    body-double only, so the no-plan golden is untouched) — and ONLY there (rubric
+    3c (d), owner 2026-09-21): the reason explains the recommendation, the move is
+    an action beside the door, and every renderer reads the field, so the sentence
+    appears once on a 3/10 screen instead of closing the reason and then repeating
+    as its own line. When the content index was searched and holds no lesson for
+    the milestone's concepts (rubric 3c (c), owner 2026-09-21), the sentence names
+    the milestone AND says why — the concept no indexed lesson mentions — so it
+    carries information instead of vagueness, and the payload has no
+    ``first_move_lesson_id``. On the owner's own vault this is exactly ``Frames``
     today."""
     _row3_plan()
     _plant_struggles(monkeypatch, _struggle("window function", days_ago=3))
@@ -1695,7 +1698,10 @@ def test_body_double_carries_one_passive_first_move_on_the_deferred_milestone(
         "Open your Frames material and read for ten minutes, nothing more — "
         "no indexed lesson mentions “window frame” yet."
     )
-    assert primary.reason.endswith(f"A first move, if you want one: {move}"), primary.reason
+    assert primary.reason.endswith("the companion stays quiet unless you ask."), primary.reason
+    assert str(move) not in primary.reason and "first move" not in primary.reason.lower(), (
+        "rubric 3c (d): the move is an action beside the door, not part of the explanation"
+    )
     for forbidden in ("exercise", "practice", "solve", "?"):
         assert forbidden not in move, f"a first move must be passive; found {forbidden!r}"
     assert primary.evidence_command == 'studyloop study "SQL Windows" --mode co-study', (
@@ -1769,7 +1775,8 @@ def test_body_double_first_move_never_names_a_lesson_from_the_title_or_the_topic
 
     monkeypatch.setattr(explorer, "_run_fts_search", real_vault)
 
-    primary = build_now_plan(energy="low").primary
+    low = build_now_plan(energy="low")
+    primary = low.primary
 
     assert asked == ["window frame"], "the deferred milestone's concepts only"
     assert primary.metadata["first_move"] == (
@@ -1777,7 +1784,10 @@ def test_body_double_first_move_never_names_a_lesson_from_the_title_or_the_topic
         "no indexed lesson mentions “window frame” yet."
     )
     assert "first_move_lesson_id" not in primary.metadata
-    assert "PySpark" not in primary.reason and "Bootcamp" not in primary.reason
+    serialised = json.dumps(low.to_json_dict()["primary"], ensure_ascii=False)
+    assert "PySpark" not in serialised and "Bootcamp" not in serialised, (
+        "neither wrong lesson appears anywhere in the recommendation"
+    )
 
 
 def test_body_double_first_move_says_when_the_milestone_names_no_concept(
@@ -1894,7 +1904,9 @@ def test_body_double_first_move_survives_a_broken_content_index(monkeypatch) -> 
 
 def test_cli_now_prints_the_first_move_beneath_the_sit_with_door(monkeypatch) -> None:
     """The CLI shows the move as its own line under the door, after the door, so the
-    learner reads where to sit before what to open — the why-clause included."""
+    learner reads where to sit before what to open — the why-clause included — and
+    that line is the ONLY place the sentence appears on the panel (rubric 3c (d)):
+    the ``Why:`` paragraph explains the recommendation and does not repeat it."""
     from click.testing import CliRunner
 
     from studyloop.cli import cli
@@ -1915,6 +1927,9 @@ def test_cli_now_prints_the_first_move_beneath_the_sit_with_door(monkeypatch) ->
         "First move: Open your Frames material and read for ten minutes, nothing more — "
         "no indexed lesson mentions “window frame” yet." in flat
     ), flat
+    assert flat.count("Open your Frames material") == 1, (
+        "the sentence appears once — beside the door, not also closing the Why: paragraph"
+    )
 
 
 def test_cli_milestone_deferral_does_not_promise_live_repair(monkeypatch) -> None:
