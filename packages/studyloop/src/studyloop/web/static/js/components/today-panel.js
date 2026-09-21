@@ -120,9 +120,13 @@ export function todayPanel() {
            7, F7): the same event-not-storage handoff `today-resume` uses, so
            the picker opens on the plan the engine named instead of blank. The
            view starts nothing on its own; the learner still presses start. */
-        window.dispatchEvent(new CustomEvent('body-double-request', {
-          detail: { activity: this.bodyDoubleActivity(rec), energy: this.plan && this.plan.energy },
-        }));
+        const detail = { activity: this.bodyDoubleActivity(rec), energy: this.plan && this.plan.energy };
+        /* Issue #30: the engine's one passive first move rides along when there is
+           one, so the picker opens on something to open — additive; a payload
+           without it hands over exactly what it did before. */
+        const firstMove = this.firstMoveNote(rec);
+        if (firstMove) detail.firstMove = firstMove;
+        window.dispatchEvent(new CustomEvent('body-double-request', { detail }));
       }
       Alpine.store('nav').go(view);
     },
@@ -134,6 +138,16 @@ export function todayPanel() {
       const planId = rec && rec.metadata && rec.metadata.plan_id;
       const plan = planId ? this._activePlan(planId) : null;
       return (plan && plan.title) || (rec && rec.concept) || '';
+    },
+
+    /* Issue #30: the body-double proposal's one tiny, passive first move on the
+       deferred material, verbatim from the engine (`metadata.first_move`); '' for
+       any other action or a payload that carries none. Nothing here re-derives
+       it — the sentence is the engine's, so the CLI and the card agree. */
+    firstMoveNote(rec) {
+      if (!rec || rec.source !== 'body_double') return '';
+      const move = rec.metadata && rec.metadata.first_move;
+      return move ? String(move) : '';
     },
 
     /* The view an action starts in. A body-double proposal (design §5) is a

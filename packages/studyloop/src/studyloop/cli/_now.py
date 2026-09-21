@@ -58,6 +58,13 @@ def _render_plan(plan) -> None:
         f"Source: [dim]{escape(primary.source)}[/dim]\n"
         + (f"Plan: [magenta]{escape(plan_line)}[/magenta]\n" if plan_line else "")
         + f"\n[bold]{door}:[/bold]\n{escape(primary.evidence_command)}"
+        # Issue #30: the body double's one passive first move, beneath the door —
+        # where to sit, then what to open. Present only when the engine derived one.
+        + (
+            f"\n[bold]First move:[/bold] {escape(str(first_move))}"
+            if (first_move := primary.metadata.get("first_move"))
+            else ""
+        )
     )
     console.print(Panel(body, title="Study Now", border_style="cyan"))
 

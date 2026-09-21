@@ -28,6 +28,7 @@ from typing import TYPE_CHECKING, Literal
 from studyloop.cli._shared import TOPIC_KEYWORDS
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from datetime import date
 
     from studyloop.planning.views import (
@@ -1280,6 +1281,67 @@ def _defer_repairs(
     return kept, tuple(deferred)
 
 
+def _lesson_title_for(concepts: Sequence[str]) -> str | None:
+    """The indexed lesson the deferred milestone's concepts resolve to, or ``None``.
+
+    A refinement of the first move (issue #30), never a dependency of it: read
+    through the explorer's own FTS helpers — the path MCP ``search_lessons``
+    takes — one short query per concept, first hit wins. Any failure (no content
+    base, no index yet, a locked db) answers ``None`` so the move names the
+    milestone instead; ``now`` must answer whether or not the content index does.
+    Imported lazily: the engine does not import the web layer at module load.
+    Tests plant a lesson by replacing this seam.
+    """
+    try:
+        from studyloop.settings import load_settings
+        from studyloop.web.routes.explorer import _fts_db_path, _fts_lock, _run_fts_search
+
+        base = load_settings().content.base_path.expanduser()
+        with _fts_lock:
+            for concept in concepts:
+                query = concept.strip()
+                if len(query) < 2:
+                    continue
+                rows = _run_fts_search(_fts_db_path(), base, query, 1)
+                if rows:
+                    title = str(rows[0].get("title") or "").strip()
+                    if title:
+                        return title
+    except Exception:
+        logger.debug("first move: lesson lookup unavailable, naming the milestone", exc_info=True)
+    return None
+
+
+def _first_move(plan: ActivePlanGuidance, plans: _PlanContext) -> str | None:
+    """Issue #30: one tiny, passive first move on the deferred material.
+
+    The owner's note beside rubric row 3b (a): a sit-with session must not be a
+    blank page — "open the Frames lesson and read it, nothing more". Derived
+    from stored facts only: the plan's deferred next milestone (a body double
+    is synthesised only when every matchable ready plan's next milestone is
+    deferred — an eligible one would have been synthesised as a plan-related
+    candidate and suppressed it — so the milestone is always there to draw on)
+    and, when the content index resolves the milestone's concepts, the lesson
+    the learner can actually open. Reading only, at the capability the day
+    carries: never an exercise, never a Socratic round. ``None`` only when the
+    plan has no deferred milestone, which the invariant above rules out.
+    """
+    summary = plan.plan
+    deferred = next((d for d in plans.deferred if d.plan_id == summary.plan_id), None)
+    if deferred is None:
+        return None
+    concepts = tuple(plan.next_milestone.concepts) if plan.next_milestone is not None else ()
+    lesson: str | None = None
+    if concepts:
+        try:
+            lesson = _lesson_title_for(concepts)
+        except Exception:
+            # The seam guards itself; a replaced seam may not. Same answer either way.
+            lesson = None
+    material = f"“{lesson}”" if lesson else f"the {deferred.title} material"
+    return f"Open {material} and read for ten minutes, nothing more."
+
+
 def _body_double_candidate(
     plans: _PlanContext,
     candidates: list[_Candidate],
@@ -1302,10 +1364,12 @@ def _body_double_candidate(
     # An active-but-unready plan is matched but never synthesised (spec rule 8);
     # the body double is a synthesis, so only ready plans are sat with. The
     # warning beside it already says "pause or repair".
-    named = [plan.plan for plan in plans.matchable if plan.readiness.ready]
+    ready_plans = [plan for plan in plans.matchable if plan.readiness.ready]
+    named = [plan.plan for plan in ready_plans]
     if not named:
         return None
     first = named[0]
+    first_move = _first_move(ready_plans[0], plans)
     titles = " and ".join(plan.title for plan in named)
     items = [
         f"milestone {d.milestone_index + 1} “{d.title}” of {d.plan_title}" for d in plans.deferred
@@ -1333,6 +1397,7 @@ def _body_double_candidate(
             f"{progress_note}Nothing plan-related fits {energy} energy today{deferred_note}. "
             f"Sit with {titles} instead: a body-double session — you drive; the companion "
             "stays quiet unless you ask."
+            + (f" A first move, if you want one: {first_move}" if first_move else "")
         ),
         action_type="conversation",
         estimated_minutes=_estimate_minutes("conversation", time_minutes, 25),
@@ -1343,6 +1408,8 @@ def _body_double_candidate(
             "plan_id": first.plan_id,
             "deferred_milestones": len(plans.deferred),
             "deferred_repairs": len(deferred_repairs),
+            # Issue #30: additive, body-double only — the no-plan golden never sees it.
+            **({"first_move": first_move} if first_move else {}),
         },
         plan_refs=tuple(PlanRef(plan.plan_id, None) for plan in named),
     )

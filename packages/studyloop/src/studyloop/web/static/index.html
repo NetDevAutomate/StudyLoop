@@ -1092,6 +1092,11 @@
               · <span x-text="plan?.primary?.action_type"></span>
             </p>
             <p class="today-reason">Why: <span x-text="plan?.primary?.reason"></span></p>
+            <!-- Issue #30: the body double's one passive first move, its own line
+                 beside the door; hidden for every other action. -->
+            <p class="today-first-move" x-show="firstMoveNote(plan?.primary)">
+              First move, if you want one: <span x-text="firstMoveNote(plan?.primary)"></span>
+            </p>
             <!-- Plan relevance (#10): which active plan this action advances.
                  Rendered from the engine's plan_refs; nothing here re-ranks. -->
             <p class="today-meta today-plan" x-show="planLabel(plan?.primary)">
@@ -1712,6 +1717,9 @@
             <label class="bd-field">What are you working on?
               <input id="bd-activity-input" type="text" x-model="activity"
                      placeholder="e.g. Window functions"></label>
+            <!-- Issue #30: the Today card's sit-with proposal hands over one passive
+                 first move with the plan title; a proposal the learner may ignore. -->
+            <p id="bd-first-move" class="picker-hint" x-show="firstMove" x-text="firstMove"></p>
             <label class="bd-field">Agent
               <select id="bd-agent-select" class="picker-select" x-model="agent">
                 <option value="">Choose an agent…</option>

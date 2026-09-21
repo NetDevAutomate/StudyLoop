@@ -3128,7 +3128,7 @@ function bodyDoubleSession() {
     slots: [], slotsUsed: 0, maxActive: 3, atCapacity: false, parkingLotCount: 0,
     focus: { topics: [], is_set: false, is_stale: false },
     focusCollapsed: false, captureCollapsed: false, captureTab: 'note',
-    activity: '', agent: '', transport: 'pty', energy: 5, agents: [],
+    activity: '', firstMove: '', agent: '', transport: 'pty', energy: 5, agents: [],
     sessionActive: false, liveActivity: '', confirmingEnd: false,
     endError: '', // R-70: set when /api/session/end fails; keeps the dialog open
     starting: false, startError: '',
@@ -3196,6 +3196,10 @@ function bodyDoubleSession() {
       window.addEventListener('body-double-request', (event) => {
         const detail = (event && event.detail) || {};
         if (detail.activity) this.activity = String(detail.activity);
+        /* Issue #30: the proposal's one passive first move, shown beneath the
+           activity so the session does not open on a blank page. Cleared when
+           a hand-off carries none, so a stale move never outlives its plan. */
+        this.firstMove = detail.firstMove ? String(detail.firstMove) : '';
         const bands = { low: 3, medium: 5, high: 8 };
         if (detail.energy && bands[detail.energy]) this.energy = bands[detail.energy];
       });

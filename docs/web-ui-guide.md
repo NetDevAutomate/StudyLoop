@@ -43,6 +43,9 @@ work rather than learning a new concept.
 
 1. Open **Body Double**.
 2. Name the activity in concrete terms, such as “trace one decorator call”.
+   Arriving from the Today card's sit-with proposal fills this in with the
+   plan's title and shows a **first move** beneath it — one passive thing to
+   open and read for ten minutes, if you want one; ignore it freely.
 3. Choose an agent and start the Pomodoro timer if a time box would help.
 4. Start the body-double session.
 5. Use **Focus** for up to three active topics and **Park a thought** for anything

@@ -228,7 +228,12 @@ available at any energy; due reviews are never deferred. When nothing
 plan-related fits the day's energy, the recommendation is to **sit with the
 plan** — a body-double session: you drive, the companion stays quiet unless
 you ask — with the recorded progress named first and the deferred items after
-it; a real, unrelated action still outranks that proposal
+it, then one **first move**, if you want one: open the deferred milestone's
+material (the indexed lesson when one matches its concepts, otherwise the
+milestone by name) and read for ten minutes, nothing more. It is a proposal
+you may ignore — never an exercise, never a question — and the Body Double
+picker shows it beneath the plan title when you arrive from the Today card. A
+real, unrelated action still outranks the sit-with proposal
 when one exists. An active plan that
 is **not ready** — a hand edit removed its mission or its milestones — is
 listed with a warning naming what to repair; it still biases related work,
