@@ -1738,7 +1738,12 @@ def test_body_double_first_move_names_the_lesson_the_content_index_resolves(
 
     def resolve(concepts):
         seen.append(tuple(concepts))
-        return ("ztm/advanced-sql/window-frames", "Window Frames and Ranges", "Advanced Sql")
+        return (
+            "ztm/advanced-sql/window-frames",
+            "Window Frames and Ranges",
+            "Advanced Sql",
+            "window frame",
+        )
 
     monkeypatch.setattr(decision, "_resolve_lesson", resolve)
 
@@ -1905,7 +1910,8 @@ def test_resolve_lesson_asks_one_query_per_concept_in_order_and_returns_the_firs
     monkeypatch,
 ) -> None:
     """The seam itself: one FTS query per concept, in the order given, stopping at
-    the first hit; the hit is ``(lesson_id, title, course)`` with the course the
+    the first hit; the hit is ``(lesson_id, title, course, concept)`` — the concept that
+    matched, not the first asked — with the course the
     hit's own ``course_id`` humanised as the explorer's course list shows it; a
     searched miss is ``None``. A hit without a course or a title is skipped, never
     named — the sentence states its evidence or names nothing (rubric 3c (d2)).
@@ -1936,7 +1942,12 @@ def test_resolve_lesson_asks_one_query_per_concept_in_order_and_returns_the_firs
 
     hit = decision._resolve_lesson(("window frame", "frame clause", "range"))
 
-    assert hit == ("ztm/advanced-sql-4h/frames", "Advanced Sql 4H", "Advanced Sql 4H")
+    assert hit == (
+        "ztm/advanced-sql-4h/frames",
+        "Advanced Sql 4H",
+        "Advanced Sql 4H",
+        "frame clause",
+    ), "the concept that hit, not the first one asked"
     assert asked == ["window frame", "frame clause"], "stops at the first hit"
     assert decision._resolve_lesson(("nothing", "matches")) is None
     assert asked[-2:] == ["nothing", "matches"]
