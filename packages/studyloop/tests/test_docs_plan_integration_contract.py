@@ -432,3 +432,22 @@ def test_web_ui_guide_says_the_named_lesson_opens_beside_the_view() -> None:
         assert "first move" in section, heading
         assert "course explorer" in section, f"{heading}: the guide must say where the lesson opens"
         assert "open" in section, heading
+
+
+def test_web_ui_guide_says_the_move_survives_the_start() -> None:
+    """Rubric 3c (d3): the first move and its Open-the-lesson control stay on screen
+    once the session runs — on the live strip beneath the activity name — as a
+    proposal the learner acts on or ignores; the companion never says it. The guide
+    says so at the step where the learner presses Start."""
+    section = _prose(_section(_read("docs/web-ui-guide.md"), "Body Double")).lower()
+    assert "first move" in section
+    after_start = section.split("start the body-double session", 1)
+    assert len(after_start) == 2, "the guide lost its Start step"
+    tail = after_start[1]
+    assert "activity name" in tail or "session strip" in tail, (
+        "the guide must say where the move lives once the session runs"
+    )
+    assert "open the lesson" in tail, "the guide must say the control stays with the move"
+    assert "companion" in tail and "never" in tail, (
+        "the guide must say the companion never says the move"
+    )

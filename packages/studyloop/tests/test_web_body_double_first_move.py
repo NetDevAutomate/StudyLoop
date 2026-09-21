@@ -143,3 +143,68 @@ def test_today_card_offers_to_open_the_resolved_lesson() -> None:
     assert "openFirstMoveLesson()" in tag
     line = re.search(r'<p[^>]*class="today-first-move"[^>]*>', card)
     assert line and line.start() < match.start(), "the control sits beside the first-move line"
+
+
+# --- Rubric 3c (d3): the move survives the start ------------------------------------
+#
+# Owner 2026-09-21: carry the move and the button into the live session strip.
+# Before this, both lived only in the picker (x-show="!sessionActive && !starting"):
+# pressing Start hid them at exactly the moment the blank page arrived, and unless
+# the lesson had been opened beforehand there was no second chance without ending
+# the session. The live strip now carries the same sentence beneath the activity
+# name, with the Open-the-lesson control beside it when a lesson resolved — a
+# proposal on screen, never something the companion says (the persona's silence
+# rule is untouched), and nothing opens by itself: the learner opens the lesson,
+# or doesn't. The move arrived with the activity in one hand-off, so it leaves
+# with the activity when the session ends — a stale move beneath the next,
+# unrelated activity would be a confidently wrong proposal on the one surface
+# that is now always on screen.
+
+
+def _live_strip(html: str) -> str:
+    """The live section from its sticky strip to the console that follows it."""
+    start = html.index('class="bd-live-strip"')
+    return html[start : html.index("<!-- x-if, NOT x-show: this console", start)]
+
+
+def _method(js: str, name: str) -> str:
+    session = js[js.index("function bodyDoubleSession()") :]
+    start = session.index(f"{name}(")
+    return session[start : session.index("\n    },", start)]
+
+
+def test_body_double_live_strip_carries_the_first_move_beneath_the_activity() -> None:
+    html = _read("index.html")
+    strip = _live_strip(html)
+    match = re.search(r'<p[^>]*id="bd-live-first-move"[^>]*>', strip)
+    assert match, "the live strip has no #bd-live-first-move line"
+    tag = match.group(0)
+    assert 'x-show="firstMove"' in tag, "the line must hide when no move was handed over"
+    line = strip[match.start() : strip.index("</p>", match.start())]
+    assert 'x-text="firstMove"' in line, "the line does not carry the same sentence"
+    assert strip.index('id="bd-live-activity"') < match.start(), (
+        "the move sits beneath the activity name"
+    )
+
+
+def test_body_double_live_strip_offers_to_open_the_resolved_lesson() -> None:
+    html = _read("index.html")
+    strip = _live_strip(html)
+    match = re.search(r'<button[^>]*id="bd-live-first-move-open"[^>]*>', strip)
+    assert match, "the live strip has no #bd-live-first-move-open control"
+    tag = match.group(0)
+    assert 'x-show="firstMoveLessonId"' in tag, "the control must exist only when a lesson resolved"
+    assert "openFirstMoveLesson()" in tag, "the control must reuse the view's one opener"
+    assert strip.index('id="bd-live-first-move"') < match.start(), (
+        "the control sits beside the move"
+    )
+
+
+def test_the_move_leaves_with_the_activity_when_the_session_ends() -> None:
+    """``confirmEnd()`` already clears ``activity``; the first move and its lesson
+    arrived beside it in the same hand-off and go with it."""
+    js = _read("components.js")
+    body = _method(js, "async confirmEnd")
+    assert "this.activity = ''" in body, "precondition: confirmEnd() clears the activity"
+    for field in ("firstMove", "firstMoveLessonId", "firstMoveLessonTitle"):
+        assert re.search(rf"this\.{field}\s*=\s*''", body), f"confirmEnd() does not clear {field}"
