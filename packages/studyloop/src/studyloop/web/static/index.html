@@ -1833,6 +1833,17 @@
                 <button id="bd-end-confirm-yes" type="button" class="bulk-btn" @click="confirmEnd()">Yes, end it</button>
                 <button id="bd-end-cancel" type="button" class="bulk-btn" @click="cancelEnd()">Keep going</button>
               </div>
+              <!-- Rubric 3c (d3): the move survives the start. The picker's copy
+                   hides with the picker; this one wraps to its own row beneath the
+                   activity name (the strip is flex-wrap) for the whole session — a
+                   proposal on screen, never something the companion says. Same
+                   sentence, same opener; nothing opens by itself. -->
+              <p id="bd-live-first-move" class="bd-live-first-move" x-show="firstMove">
+                <span x-text="firstMove"></span>
+                <button id="bd-live-first-move-open" type="button" class="bulk-btn"
+                        x-show="firstMoveLessonId"
+                        @click="openFirstMoveLesson()">Open the lesson</button>
+              </p>
             </div>
             <!-- x-if, NOT x-show: this console must not EXIST in the DOM unless a
                  Body Double session is running. It sits earlier in the document

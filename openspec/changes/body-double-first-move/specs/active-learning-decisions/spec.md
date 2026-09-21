@@ -126,13 +126,30 @@ is defined.
   activity (`#bd-first-move`); a payload without the field renders nothing
   and hands over exactly what it did before
 
+#### Scenario: The move survives the start
+- **WHEN** a Body Double session starts from a hand-off that carried a first
+  move
+- **THEN** the live session strip shows the same sentence beneath the activity
+  name (`#bd-live-first-move`, `x-show="firstMove"`) for the whole session —
+  the picker's copy hides with the picker, so the sentence appears once at a
+  time; when a lesson resolved, `#bd-live-first-move-open` sits beside it and
+  reuses the view's one opener (`openFirstMoveLesson()`); nothing opens by
+  itself at start — the learner presses the control, or doesn't; the
+  companion says nothing about the move (the co-study persona is untouched);
+  a session started without a hand-off shows no line;
+  and `confirmEnd()` clears `firstMove`, `firstMoveLessonId` and
+  `firstMoveLessonTitle` beside the `activity` it already clears — the move
+  arrived with the activity in one hand-off and leaves with it, so the strip
+  never shows a stale move beneath the next, unrelated activity
+
 #### Scenario: "Open X" actually opens X, beside the view
 - **WHEN** the body double is primary and the move names a lesson
   (`first_move_lesson_id` and `first_move_lesson_title` carried)
 - **THEN** the Today card shows an **Open the lesson** control
   (`data-testid="today-open-first-move-lesson"`) beside the first-move line
-  and the Body Double picker shows `#bd-first-move-open` beside the move —
-  each only when a lesson resolved; pressing either dispatches
+  and the Body Double picker shows `#bd-first-move-open` beside the move
+  (and the live strip `#bd-live-first-move-open` once the session runs) —
+  each only when a lesson resolved; pressing any dispatches
   `explorer-open-lesson` `{lessonId, title}` and navigates nowhere; the Course
   Explorer's `openLessonById` opens its aside if closed and opens that lesson
   with the existing reader; the `body-double-request` detail carries

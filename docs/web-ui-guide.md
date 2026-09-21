@@ -50,7 +50,11 @@ work rather than learning a new concept.
    Explorer panel beside the picker, so the session can start with it already
    open next to you.
 3. Choose an agent and start the Pomodoro timer if a time box would help.
-4. Start the body-double session.
+4. Start the body-double session. The first move stays with you: it sits on
+   the session strip beneath the activity name for the whole session, with
+   **Open the lesson** beside it when a lesson was named, so the blank page
+   never arrives without it. It is a proposal on screen — the companion never
+   says it, and nothing opens unless you press the button.
 5. Use **Focus** for up to three active topics and **Park a thought** for anything
    that can wait.
 6. End the session when the work block is complete.

@@ -117,6 +117,30 @@ body-doubling floor). Decisions taken here, each verified against the tree at
    Body Double session — #33's read-along needs that same pane, so it is built
    there, once. Sized as about a third of #30, as estimated.
 
+9. **The move survives the start — on the live strip, beneath the activity
+   name (rubric 3c (d3), owner 2026-09-21: carry the move and the button into
+   the live session strip).** Checked in the markup, not recalled: the first
+   move and its control lived only in the picker (`x-show="!sessionActive &&
+   !starting"`). Pressing Start hid the picker and showed a strip with the
+   activity name and End, then the console — the sentence was gone at exactly
+   the moment the blank page arrived, and unless the lesson had been opened
+   beforehand there was no second chance without ending the session. The
+   view's state already survived the start (nothing cleared the three fields
+   in `startSession()`), so the fix is markup reading state the view holds:
+   `#bd-live-first-move` wraps to its own row of the flex-wrap strip beneath
+   the activity name, same sentence, with `#bd-live-first-move-open` beside it
+   when a lesson resolved, through the view's one opener. It stays a proposal
+   on screen, never something the companion says — the co-study persona is
+   untouched. REJECTED: an auto-open at start; the owner opens the lesson, or
+   doesn't. One consequence built rather than left: `confirmEnd()` now clears
+   the three first-move fields beside the `activity` it already cleared. The
+   move arrived with the activity in one hand-off and leaves with it — now
+   that the strip shows the move for the whole session, a stale one beneath
+   the next, unrelated activity would be a confidently wrong proposal on the
+   one surface that is always on screen, the class of defect (c) removed.
+   Sized as about a tenth of #30, as estimated: one markup block, one CSS rule,
+   one end-path line, one guide sentence, four pins.
+
 ## Read cost
 
 The lookup runs only when a body double is synthesised. Measured 2026-09-21 on

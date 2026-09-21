@@ -3687,6 +3687,14 @@ function bodyDoubleSession() {
       this.conflictSession = null;
       this.startError = '';
       this.activity = '';
+      /* Rubric 3c (d3): the first move arrived beside the activity in the one
+         Today hand-off and leaves with it. Now that the live strip shows the
+         move for the whole session, a stale one beneath the NEXT, unrelated
+         activity would be a confidently wrong proposal on the one surface that
+         is always on screen. */
+      this.firstMove = '';
+      this.firstMoveLessonId = '';
+      this.firstMoveLessonTitle = '';
       this.confirmingEnd = false;
       /* Deliberately NOT clearing the note draft: losing a half-written note
          because the session ended is exactly the kind of loss this view exists

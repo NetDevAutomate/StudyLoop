@@ -5109,6 +5109,23 @@ body[data-palette="everforest"] {
   font-weight: 650;
 }
 
+/* Rubric 3c (d3): the first move's row in the live strip. flex-basis 100% wraps
+   it beneath the activity name and End; the type mirrors the picker's hint so
+   the sentence reads as the same proposal it was before Start. */
+.bd-live-strip > .bd-live-first-move {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
 .bd-end-confirm {
   display: inline-flex;
   flex-wrap: wrap;

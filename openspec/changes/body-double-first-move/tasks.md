@@ -48,6 +48,16 @@ edit; each task has a definition of done a reviewer can tick from output.
       (`#bd-first-move-open`), each only when a lesson resolved; the hand-off carries id + title; both guides;
       design decision 8. DoD: engine + decision 88/88, static pins + docs contract green, JS 153/153, `node
       --check` on both edited scripts, mkdocs `--strict` clean, openspec valid, golden `ec451ce8` unchanged.
+- [x] **T3f** Rubric 3c (d3), owner 2026-09-21: *carry the move and the button into the live session strip*.
+      Checked in the markup: both lived only in the picker (`x-show="!sessionActive && !starting"`), so Start
+      hid the sentence at the moment the blank page arrived. RED `74779bda` → GREEN: `#bd-live-first-move`
+      wraps to its own row of the flex-wrap strip beneath the activity name, same sentence, with
+      `#bd-live-first-move-open` beside it when a lesson resolved through the view's one opener; one CSS rule;
+      `confirmEnd()` clears the three first-move fields beside the `activity` it already cleared (the move
+      arrived with the activity and leaves with it); the guide's Start step; spec scenario *The move survives
+      the start*; design decision 9. Rejected: auto-open at start. DoD: static pins + docs contract 39/39,
+      engine + decision + web-now + golden 89/89, JS 153/153, `node --check` on the edited script, mkdocs
+      `--strict` clean, openspec valid, golden `ec451ce8` unchanged.
 - [ ] ⚖ **T4** Council review (three seats) of the RED and the GREEN; arbitration; one commit per accepted
       finding.
 - [ ] **T5** Rubric row **3c** added to `docs/architecture/plan-integration/receipts/now-rubric-2026-09-16.md`:
