@@ -430,7 +430,8 @@ test('planNotesLabel: "Your plans" when a plan is involved, "Set aside today" fo
    its own line beside the sit-with door and hands it to the Body Double view with
    the plan title, so the session does not open on a blank page. Additive: a
    payload without the field renders nothing and the hand-off detail is unchanged. */
-const FIRST_MOVE = 'Open the Frames material and read for ten minutes, nothing more.';
+const FIRST_MOVE =
+  'Open your Frames material and read for ten minutes, nothing more — no indexed lesson mentions “window frame” yet.';
 
 test('firstMoveNote: the engine\u2019s first move verbatim, nothing when the payload carries none', () => {
   const panel = todayPanel();

@@ -20,9 +20,12 @@ title. Issue #30.
 One derived field and one sentence, from facts the engine already holds:
 
 - `_first_move(plan, plans)` reads the first named plan's deferred next
-  milestone and, when `_lesson_title_for(concepts)` resolves its concepts to an
-  indexed lesson, the lesson's title, and returns `Open <material> and read for
-  ten minutes, nothing more.` — passive by construction.
+  milestone and, when `_resolve_lesson(concepts)` resolves that milestone's own
+  concepts to an indexed lesson, the lesson's title and id, and returns `Open
+  <material> and read for ten minutes, nothing more<why>.` — passive by
+  construction. When no lesson is named the sentence names the milestone and
+  says why (which concept no indexed lesson mentions); it never widens the
+  search to the milestone's title or the plan's topics (design decision 6).
 - The body-double recommendation carries it as `metadata["first_move"]`
   (additive, body-double only; the no-plan golden is untouched) and its reason
   ends `A first move, if you want one: <move>`.

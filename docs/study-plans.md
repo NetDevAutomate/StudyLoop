@@ -228,9 +228,14 @@ available at any energy; due reviews are never deferred. When nothing
 plan-related fits the day's energy, the recommendation is to **sit with the
 plan** — a body-double session: you drive, the companion stays quiet unless
 you ask — with the recorded progress named first and the deferred items after
-it, then one **first move**, if you want one: open the deferred milestone's
-material (the indexed lesson when one matches its concepts, otherwise the
-milestone by name) and read for ten minutes, nothing more. It is a proposal
+it, then one **first move**, if you want one: open the indexed lesson that
+matches the deferred milestone's concepts and read for ten minutes, nothing
+more. When no indexed lesson mentions those concepts, it names the milestone
+instead and says so — *"Open your Frames material and read for ten minutes,
+nothing more — no indexed lesson mentions “window frame” yet"* — so you know
+the gap is in your content or the milestone's concept names, not in you; it
+never guesses a lesson from the milestone's title or the plan's topic, because
+a confident wrong lesson costs a low day more than an honest gap. It is a proposal
 you may ignore — never an exercise, never a question — and the Body Double
 picker shows it beneath the plan title when you arrive from the Today card. A
 real, unrelated action still outranks the sit-with proposal

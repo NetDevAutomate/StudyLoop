@@ -16,6 +16,20 @@ edit; each task has a definition of done a reviewer can tick from output.
       green; golden `ec451ce8` unchanged; JS 21/21; ruff, pyright, mkdocs `--strict` clean.
 - [x] **T3** Read cost of the lesson lookup measured on the live host with the FTS index present, recorded
       in `design.md` (861 ms cold / 45–58 ms warm per concept, body-double path only).
+- [x] **T3b** Rubric 3c (b), owner: *a deliberate lesson should always be the case*. RED `2e1c7ea7`
+      specified a fallback chain (concepts → milestone title → plan topics) with `_resolve_lesson` returning
+      `(lesson_id, title)` and `metadata["first_move_lesson_id"]`. Built, then measured on the owner's real
+      vault before it committed: the chain always names a lesson — the wrong one (`Frames` → a PySpark
+      data-frames lab; `sql` → an SQL bootcamp intro). Superseded by T3c; only `first_move_lesson_id` and
+      the `(lesson_id, title)` seam survive from it.
+- [x] **T3c** Rubric 3c (c), owner 2026-09-21: *name the milestone and say why* — agreed. RED `fdfe1672`
+      (seven tests: the real-vault replay through the real seam; a concept-less milestone is not looked up;
+      every unmatched concept is named; an unreadable index raises out of the seam and the sentence makes no
+      claim about it; the CLI prints the why-clause) → GREEN: `_resolve_lesson(concepts)` searches the
+      deferred milestone's own concepts only; `_first_move` emits one of three honest no-lesson shapes
+      (design decision 6); spec delta, design, `docs/study-plans.md` and the JS fixture say the same.
+      DoD: `test_now_plan_guidance.py` 82/82, JS 150/150, ruff, pyright, mkdocs `--strict` clean, golden
+      `ec451ce8` unchanged.
 - [ ] ⚖ **T4** Council review (three seats) of the RED and the GREEN; arbitration; one commit per accepted
       finding.
 - [ ] **T5** Rubric row **3c** added to `docs/architecture/plan-integration/receipts/now-rubric-2026-09-16.md`:

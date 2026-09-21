@@ -1786,7 +1786,7 @@ def test_body_double_first_move_says_when_the_milestone_names_no_concept(
     """A milestone with no ``concepts`` gives the index nothing to look up: the
     resolver is not asked (asking it with the title is the rejected chain), and the
     sentence says what would fix it — a concept name on the milestone, not a better
-    search. Two named concepts, none matched, are both named in the clause."""
+    search."""
     _plan(
         "sql-windows",
         title="SQL Windows",
@@ -1812,6 +1812,10 @@ def test_body_double_first_move_says_when_the_milestone_names_no_concept(
     )
     assert "first_move_lesson_id" not in primary.metadata
 
+
+def test_body_double_first_move_names_every_unmatched_concept(monkeypatch) -> None:
+    """Two named concepts, none matched: both are named in the why-clause, so the
+    learner sees exactly which words the index lacks."""
     _plan(
         "sql-windows",
         title="SQL Windows",
@@ -1821,6 +1825,7 @@ def test_body_double_first_move_says_when_the_milestone_names_no_concept(
             Milestone(title="Frames", concepts=["window frame", "frame clause"]),
         ],
     )
+    _plant_struggles(monkeypatch, _struggle("window function", days_ago=3))
     monkeypatch.setattr(decision, "_resolve_lesson", lambda concepts: None)
 
     move = str(build_now_plan(energy="low").primary.metadata["first_move"])
@@ -1849,11 +1854,11 @@ def test_resolve_lesson_asks_one_query_per_concept_in_order_and_returns_the_firs
 
     monkeypatch.setattr(explorer, "_run_fts_search", fake_search)
 
-    hit = decision._resolve_lesson(("window frame", "frame clause", "range"))  # pyright: ignore[reportAttributeAccessIssue]
+    hit = decision._resolve_lesson(("window frame", "frame clause", "range"))
 
     assert hit == ("sql/advanced-sql-4h", "Advanced Sql 4H")
     assert asked == ["window frame", "frame clause"], "stops at the first hit"
-    assert decision._resolve_lesson(("nothing", "matches")) is None  # pyright: ignore[reportAttributeAccessIssue]
+    assert decision._resolve_lesson(("nothing", "matches")) is None
     assert asked[-2:] == ["nothing", "matches"]
 
     def unreadable(db_path, base, q, limit):
@@ -1861,7 +1866,7 @@ def test_resolve_lesson_asks_one_query_per_concept_in_order_and_returns_the_firs
 
     monkeypatch.setattr(explorer, "_run_fts_search", unreadable)
     with pytest.raises(RuntimeError):
-        decision._resolve_lesson(("window frame",))  # pyright: ignore[reportAttributeAccessIssue]
+        decision._resolve_lesson(("window frame",))
 
 
 def test_body_double_first_move_survives_a_broken_content_index(monkeypatch) -> None:

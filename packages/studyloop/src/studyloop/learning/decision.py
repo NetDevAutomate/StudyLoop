@@ -1281,38 +1281,44 @@ def _defer_repairs(
     return kept, tuple(deferred)
 
 
-def _lesson_title_for(concepts: Sequence[str]) -> str | None:
-    """The indexed lesson the deferred milestone's concepts resolve to, or ``None``.
+def _resolve_lesson(concepts: Sequence[str]) -> tuple[str, str] | None:
+    """The indexed lesson the first move should name: ``(lesson_id, title)`` or ``None``.
 
-    A refinement of the first move (issue #30), never a dependency of it: read
-    through the explorer's own FTS helpers — the path MCP ``search_lessons``
-    takes — one short query per concept, first hit wins. Any failure (no content
-    base, no index yet, a locked db) answers ``None`` so the move names the
-    milestone instead; ``now`` must answer whether or not the content index does.
-    Imported lazily: the engine does not import the web layer at module load.
-    Tests plant a lesson by replacing this seam.
+    Asks the explorer's own FTS — the path MCP ``search_lessons`` takes — one
+    short query per concept of the deferred milestone, in order, stopping at the
+    first hit. The concepts and nothing else: rubric 3c (c), measured on the
+    owner's real vault 2026-09-21, showed that falling back to the milestone's
+    title or the plan's topics always names a lesson — the wrong one ("Frames"
+    hit a PySpark data-frames lab; "sql" hit an SQL bootcamp introduction). A
+    deliberate-but-wrong lesson on a low-energy day is worse than an honest
+    "nothing matches yet", so the wider steps are not taken.
+
+    ``None`` is a *searched* miss. An index that cannot be consulted (no content
+    base, a locked db) raises instead of answering ``None``, so the caller can
+    tell the two apart and never claims "no indexed lesson mentions X" about an
+    index it did not read. Imported lazily: the engine does not import the web
+    layer at module load. Tests plant a lesson by replacing this seam, or the
+    explorer's search function beneath it.
     """
-    try:
-        from studyloop.settings import load_settings
-        from studyloop.web.routes.explorer import _fts_db_path, _fts_lock, _run_fts_search
+    from studyloop.settings import load_settings
+    from studyloop.web.routes import explorer
 
-        base = load_settings().content.base_path.expanduser()
-        with _fts_lock:
-            for concept in concepts:
-                query = concept.strip()
-                if len(query) < 2:
-                    continue
-                rows = _run_fts_search(_fts_db_path(), base, query, 1)
-                if rows:
-                    title = str(rows[0].get("title") or "").strip()
-                    if title:
-                        return title
-    except Exception:
-        logger.debug("first move: lesson lookup unavailable, naming the milestone", exc_info=True)
+    base = load_settings().content.base_path.expanduser()
+    with explorer._fts_lock:
+        for concept in concepts:
+            q = concept.strip()
+            if len(q) < 2:
+                continue
+            rows = explorer._run_fts_search(explorer._fts_db_path(), base, q, 1)
+            if rows:
+                lesson_id = str(rows[0].get("lesson_id") or "").strip()
+                title = str(rows[0].get("title") or "").strip()
+                if lesson_id and title:
+                    return lesson_id, title
     return None
 
 
-def _first_move(plan: ActivePlanGuidance, plans: _PlanContext) -> str | None:
+def _first_move(plan: ActivePlanGuidance, plans: _PlanContext) -> tuple[str, str | None] | None:
     """Issue #30: one tiny, passive first move on the deferred material.
 
     The owner's note beside rubric row 3b (a): a sit-with session must not be a
@@ -1321,25 +1327,48 @@ def _first_move(plan: ActivePlanGuidance, plans: _PlanContext) -> str | None:
     is synthesised only when every matchable ready plan's next milestone is
     deferred — an eligible one would have been synthesised as a plan-related
     candidate and suppressed it — so the milestone is always there to draw on)
-    and, when the content index resolves the milestone's concepts, the lesson
-    the learner can actually open. Reading only, at the capability the day
-    carries: never an exercise, never a Socratic round. ``None`` only when the
-    plan has no deferred milestone, which the invariant above rules out.
+    and, when the content index resolves the milestone's own concepts, the lesson
+    the learner can actually open (rubric 3c (b): a deliberate lesson whenever the
+    vault holds one). Reading only, at the capability the day carries: never an
+    exercise, never a Socratic round. Returns ``(sentence, lesson_id)``.
+
+    When no lesson is named, the sentence names the milestone AND says why
+    (rubric 3c (c)), so it carries information instead of vagueness and points at
+    the fix — a lesson, or a concept name on the milestone, not a better search:
+
+    * searched, nothing matched — ``… — no indexed lesson mentions “<concept>” yet.``
+    * the milestone names no concept — ``… — this milestone names no concept to
+      look up yet.`` (the index is not asked; asking it with the title is the
+      rejected chain)
+    * the index could not be read — the plain sentence, with no claim about an
+      index that was never consulted; a failed refinement is not a warning.
+
+    ``None`` only when the plan has no deferred milestone, which the invariant
+    above rules out.
     """
     summary = plan.plan
     deferred = next((d for d in plans.deferred if d.plan_id == summary.plan_id), None)
     if deferred is None:
         return None
-    concepts = tuple(plan.next_milestone.concepts) if plan.next_milestone is not None else ()
-    lesson: str | None = None
-    if concepts:
-        try:
-            lesson = _lesson_title_for(concepts)
-        except Exception:
-            # The seam guards itself; a replaced seam may not. Same answer either way.
-            lesson = None
-    material = f"“{lesson}”" if lesson else f"the {deferred.title} material"
-    return f"Open {material} and read for ten minutes, nothing more."
+    concepts: list[str] = []
+    if plan.next_milestone is not None:
+        for concept in plan.next_milestone.concepts:
+            c = concept.strip()
+            if c and c not in concepts:
+                concepts.append(c)
+    stem = f"Open your {deferred.title} material and read for ten minutes, nothing more"
+    if not concepts:
+        return f"{stem} — this milestone names no concept to look up yet.", None
+    try:
+        hit = _resolve_lesson(tuple(concepts))
+    except Exception:
+        logger.debug("first move: lesson index unavailable, naming the milestone", exc_info=True)
+        return f"{stem}.", None
+    if hit is not None:
+        lesson_id, title = hit
+        return f"Open “{title}” and read for ten minutes, nothing more.", lesson_id
+    named = " or ".join(f"“{c}”" for c in concepts)
+    return f"{stem} — no indexed lesson mentions {named} yet.", None
 
 
 def _body_double_candidate(
@@ -1369,7 +1398,7 @@ def _body_double_candidate(
     if not named:
         return None
     first = named[0]
-    first_move = _first_move(ready_plans[0], plans)
+    first_move, first_move_lesson_id = _first_move(ready_plans[0], plans) or (None, None)
     titles = " and ".join(plan.title for plan in named)
     items = [
         f"milestone {d.milestone_index + 1} “{d.title}” of {d.plan_title}" for d in plans.deferred
@@ -1410,6 +1439,9 @@ def _body_double_candidate(
             "deferred_repairs": len(deferred_repairs),
             # Issue #30: additive, body-double only — the no-plan golden never sees it.
             **({"first_move": first_move} if first_move else {}),
+            # Rubric 3c (b): the lesson the move names, so a renderer can open it in
+            # StudyLoop's own frame; absent when the index held nothing relevant.
+            **({"first_move_lesson_id": first_move_lesson_id} if first_move_lesson_id else {}),
         },
         plan_refs=tuple(PlanRef(plan.plan_id, None) for plan in named),
     )

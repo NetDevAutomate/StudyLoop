@@ -4,44 +4,89 @@
 When the `now` engine synthesises the body-double proposal (`source ==
 "body_double"`, design §5's floor), `learning/decision.py::_first_move` SHALL
 derive one first move for it from stored facts only: the first named plan's
-deferred next milestone (`_PlanContext.deferred`) and, when
-`_lesson_title_for(concepts)` resolves that milestone's concepts to a lesson in
-the indexed content (the explorer's FTS, read once per body double), the
-lesson's title. The move SHALL be the sentence `Open <material> and read for
-ten minutes, nothing more.` where `<material>` is `“<lesson title>”` or `the
-<milestone title> material`. It SHALL be passive — reading; never an exercise,
+deferred next milestone (`_PlanContext.deferred`) and the indexed lesson
+`_resolve_lesson(concepts)` returns for **that milestone's own concepts** — one
+FTS query per concept through the explorer's own search, in order, first hit
+wins. The milestone's title and the plan's topics SHALL NOT be searched
+(rubric 3c (c), measured on the owner's vault 2026-09-21: both steps always
+named a lesson, and the wrong one). The move SHALL be the sentence `Open
+<material> and read for ten minutes, nothing more<why>.` where `<material>` is
+`“<lesson title>”` whenever a concept resolved (rubric 3c (b): a deliberate
+lesson whenever the vault holds one) and `your <milestone title> material`
+otherwise, and `<why>` SHALL say why no lesson is named so the sentence carries
+information instead of vagueness and points at the fix — a lesson, or a concept
+name on the milestone, not a better search:
+
+- searched, nothing matched: ` — no indexed lesson mentions “<concept>” yet`,
+  every unmatched concept named, joined by ` or `;
+- the milestone names no concept: ` — this milestone names no concept to look
+  up yet`, and the index SHALL NOT be asked;
+- the index could not be read: empty — no claim about an index that was never
+  consulted.
+
+When a lesson resolved, `metadata["first_move_lesson_id"]` SHALL carry its id
+so a renderer can open it in StudyLoop's own frame; it SHALL be absent
+otherwise. The move SHALL be passive — reading; never an exercise,
 a practice task or a question — because it must be consumable at the
 capability the day carries. It SHALL ride as `metadata["first_move"]` on the
 body-double recommendation only and close its reason as `A first move, if you
 want one: <move>`; it SHALL add no top-level key to the `now` payload, so the
 no-plan golden is byte-identical. The content index is a refinement, never a
-dependency: a lookup that fails or raises SHALL answer the milestone form with
+dependency: a lookup that raises SHALL answer the plain milestone form with
 no warning. A body double always has a deferred milestone to draw on — an
 eligible next milestone would have been synthesised as a plan-related
 candidate and suppressed the body double — so no other source of a first move
 is defined.
 
-#### Scenario: The move names the deferred milestone's material
+#### Scenario: The move names the deferred milestone and says which concept the index lacks
 - **WHEN** rubric row 3's world is ranked at `low` energy (plan floor 5,
-  milestone 2 “Frames” deferred, a live struggle deferred) and the content
-  index resolves nothing
+  milestone 2 “Frames” `[window frame]` deferred, a live struggle deferred) and
+  the content index was searched and resolves nothing
 - **THEN** the primary is the body double, `metadata["first_move"] == "Open
-  the Frames material and read for ten minutes, nothing more."`, the reason
-  ends with `A first move, if you want one: ` followed by that sentence, the
-  `evidence_command` is unchanged, and the payload's top-level keys are the
-  golden's then `active_plans`, `energy_deferred`, `energy_deferred_repairs`
+  your Frames material and read for ten minutes, nothing more — no indexed
+  lesson mentions “window frame” yet."`, the reason ends with `A first move, if
+  you want one: ` followed by that sentence, `metadata` has no
+  `first_move_lesson_id`, the `evidence_command` is unchanged, and the payload's
+  top-level keys are the golden's then `active_plans`, `energy_deferred`,
+  `energy_deferred_repairs`
 
-#### Scenario: The move names the lesson when the index resolves it
-- **WHEN** the same world is ranked and the lesson lookup resolves the
-  milestone's concepts (`("window frame",)`) to “Window Frames and Ranges”
+#### Scenario: The move names the lesson the milestone's concepts resolve, and carries its id
+- **WHEN** the same world is ranked and the resolver returns
+  `("sql/advanced-sql-4h", "Window Frames and Ranges")`
 - **THEN** `metadata["first_move"] == "Open “Window Frames and Ranges” and
-  read for ten minutes, nothing more."` and the lookup was called exactly
-  once, with that milestone's concepts
+  read for ten minutes, nothing more."`, `metadata["first_move_lesson_id"] ==
+  "sql/advanced-sql-4h"`, and the resolver was asked exactly once, with
+  `("window frame",)` — the milestone's own concepts and nothing else
 
-#### Scenario: A broken content index degrades to the milestone, silently
+#### Scenario: The milestone's title and the plan's topics never name a lesson
+- **WHEN** the same world is ranked against a content index shaped like the
+  owner's vault — `Frames` matches a PySpark data-frames lab, `sql` matches an
+  SQL bootcamp introduction, `window frame` matches nothing
+- **THEN** the explorer's search was asked `["window frame"]` only, the move is
+  the milestone sentence with ` — no indexed lesson mentions “window frame”
+  yet.`, no `first_move_lesson_id` is carried, and neither wrong lesson
+  appears in the reason
+
+#### Scenario: A milestone with no concept is not looked up
+- **WHEN** the deferred milestone has no `concepts`
+- **THEN** the resolver is not called and the move is `Open your Frames
+  material and read for ten minutes, nothing more — this milestone names no
+  concept to look up yet.`; with two unmatched concepts the clause reads `— no
+  indexed lesson mentions “window frame” or “frame clause” yet.`
+
+#### Scenario: The resolver asks one query per concept and lets an unreadable index raise
+- **WHEN** the explorer's search answers nothing for `window frame` and one
+  row for `frame clause`
+- **THEN** `_resolve_lesson(("window frame", "frame clause", "range"))` returns
+  that row's `(lesson_id, title)` after exactly two queries in that order; a
+  set of concepts with no hits returns `None`; and a search that raises
+  propagates out of the seam rather than being reported as a miss
+
+#### Scenario: A broken content index degrades to the milestone, silently and without a claim
 - **WHEN** the lesson lookup raises
-- **THEN** the primary is still the body double, the move names the Frames
-  material, and `warnings` carries nothing about the index
+- **THEN** the primary is still the body double, the move is `Open your Frames
+  material and read for ten minutes, nothing more.` with no why-clause and no
+  `first_move_lesson_id`, and `warnings` carries nothing about the index
 
 #### Scenario: Every renderer shows the move beside the door, never instead of it
 - **WHEN** the body double is primary

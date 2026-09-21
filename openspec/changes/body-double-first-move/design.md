@@ -17,16 +17,21 @@ body-doubling floor). Decisions taken here, each verified against the tree at
    move draws on the first named plan's `DeferredMilestone`; the issue's
    "deferred repair only" branch is unreachable and not built.
 
-3. **The lesson lookup is a seam, and a refinement.** `_lesson_title_for` wraps
-   the explorer's FTS (`_run_fts_search`, the `search_lessons` MCP path) with a
-   lazy import so the learning layer does not import the web layer at load;
-   one short query per concept, first title wins; every failure answers `None`.
-   The caller guards it again so a replaced seam that raises degrades the same
-   way. Cost: one FTS round-trip per concept, only on the body-double path
-   (measured below).
+3. **The lesson lookup is a seam, and a refinement — bounded to the milestone's
+   own concepts.** `_resolve_lesson(concepts)` wraps the explorer's FTS
+   (`_run_fts_search`, the `search_lessons` MCP path) with a lazy import so the
+   learning layer does not import the web layer at load; one short query per
+   concept, in order, stopping at the first `(lesson_id, title)`. Rubric 3c (b),
+   owner 2026-09-21: *"A deliberate lesson should always be the case — this
+   stops any decision fatigue and removes that friction."* — so a lesson is named
+   whenever the vault holds one for the milestone's concepts. `None` is a
+   *searched* miss; an index that cannot be consulted raises out of the seam, and
+   the caller (not the seam) catches it, so the two are distinguishable (decision
+   6). Cost: one FTS round-trip per concept until a hit, only on the body-double
+   path (measured below).
 
-4. **Additive carriage.** `metadata["first_move"]`, present only on the body
-   double. The `Recommendation` dataclass is unchanged, so the no-plan golden
+4. **Additive carriage.** `metadata["first_move"]` and, when a lesson resolved,
+   `metadata["first_move_lesson_id"]` — present only on the body double. The `Recommendation` dataclass is unchanged, so the no-plan golden
    (`ec451ce8`) is byte-identical without special-casing; the renderers read the
    field and re-derive nothing, so CLI and card agree by construction.
 
@@ -34,11 +39,33 @@ body-doubling floor). Decisions taken here, each verified against the tree at
    you want one"; the Today card's label repeats it; the Body Double view shows
    the text and says nothing — the co-study persona's silence rule is untouched.
 
+6. **Concepts only; when nothing matches, name the milestone and say why —
+   never widen the search (rubric 3c (c), owner 2026-09-21).** The first
+   answer to (b) was a fallback chain — concepts, then the milestone's title,
+   then the plan's topics — which does always name a lesson. Measured on the
+   owner's real vault, it names the **wrong** one: `window frame` → nothing;
+   `Frames` → *405 Lab Execute PySpark Using Docker Locally* ("frames" as data
+   frames); `sql` → *ZTM Complete SQL Bootcamp — Introduction*; only the sibling
+   milestone's `window function` → *Advanced Sql 4H*, and only because this
+   plan's two milestones live in one lesson — a plan whose milestones span
+   lessons would confidently name the finished one. A deliberate-but-wrong
+   lesson spends a 3/10 day's one action on the wrong material and looks certain
+   doing it (owner's self-check: *"I suspect I would have doubts/concerns before
+   opening which were confirmed after opening it"*). So the title and topic
+   steps are dropped, and the no-lesson sentence carries the information the fix
+   needs — a lesson, or a concept name on the milestone, not a better search —
+   in one of three honest shapes: searched-miss *"— no indexed lesson mentions
+   “window frame” yet"* (every unmatched concept named); no concept on the
+   milestone *"— this milestone names no concept to look up yet"* (the index is
+   not asked — asking it with the title is the rejected chain); index unreadable
+   — the plain sentence, no claim about an index that was never read. On the
+   owner's vault today, `Frames` shows the first shape.
+
 ## Read cost
 
 The lookup runs only when a body double is synthesised. Measured 2026-09-21 on
 the live host (content base `~/Obsidian/Personal/Study`, explorer FTS index
-present) with `decision._lesson_title_for` as shipped: **861 ms cold** — the
+present) through the explorer search the seam calls: **861 ms cold** — the
 explorer's own best-effort index refresh over the vault on the first query of a
 process — then **45–58 ms warm per concept** (`("window function",)` →
 "Advanced Sql 4H", `("decorators",)` → "Decorators 29M", `("window frame",)` →
