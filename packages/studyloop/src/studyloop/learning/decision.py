@@ -1373,31 +1373,117 @@ def _first_move(
     deferred = next((d for d in plans.deferred if d.plan_id == summary.plan_id), None)
     if deferred is None:
         return None
-    concepts: list[str] = []
-    if plan.next_milestone is not None:
-        for concept in plan.next_milestone.concepts:
-            c = concept.strip()
-            if c and c not in concepts:
-                concepts.append(c)
-    stem = f"Open your {deferred.title} material and read for ten minutes, nothing more"
+    concepts = _clean_concepts(plan.next_milestone.concepts if plan.next_milestone else ())
+    return _first_move_sentence(concepts, material=deferred.title, tail="nothing more")
+
+
+def _clean_concepts(concepts: Sequence[str]) -> tuple[str, ...]:
+    """Stripped, de-duplicated, in order — what the resolver is asked."""
+    cleaned: list[str] = []
+    for concept in concepts:
+        c = concept.strip()
+        if c and c not in cleaned:
+            cleaned.append(c)
+    return tuple(cleaned)
+
+
+def _first_move_sentence(
+    concepts: Sequence[str], *, material: str, tail: str
+) -> tuple[str, str | None, str | None]:
+    """One sentence, two moves: the sit-with's (``tail="nothing more"``) and the
+    warm-up's (``tail="then start …"``, rubric 3c (e1)). Same evidence rule for a
+    named lesson, same three honest shapes when none is named; only what the
+    move is FOR differs, and the tail says it. Returns ``(sentence, lesson_id,
+    lesson_title)``; the lead-in ("First move, if you want one:") belongs to the
+    renderers (rubric 3c (d1)), so the sentence carries none.
+    """
+    stem = f"Open your {material} material and read for ten minutes, {tail}"
     if not concepts:
         return f"{stem} — this milestone names no concept to look up yet.", None, None
     try:
         hit = _resolve_lesson(tuple(concepts))
     except Exception:
-        logger.debug("first move: lesson index unavailable, naming the milestone", exc_info=True)
+        logger.debug("first move: lesson index unavailable, naming the material", exc_info=True)
         return f"{stem}.", None, None
     if hit is not None:
         lesson_id, title, course, matched = hit
         kind = "phrase" if " " in matched.strip() else "word"
         return (
             f"Open “{title}” from {course} — the match is the {kind} “{matched}” — "
-            "and read for ten minutes, nothing more.",
+            f"and read for ten minutes, {tail}.",
             lesson_id,
             title,
         )
     named = " or ".join(f"“{c}”" for c in concepts)
     return f"{stem} — no indexed lesson mentions {named} yet.", None, None
+
+
+def _first_move_metadata(
+    sentence: str | None, lesson_id: str | None, lesson_title: str | None
+) -> dict[str, str | int | float | None]:
+    """The move's carriage: ``first_move`` and, when a lesson resolved, its id and
+    title beside it so a renderer opens it in StudyLoop's own frame without parsing
+    the sentence. Empty when there is no move, so a payload adds nothing."""
+    if not sentence:
+        return {}
+    carried: dict[str, str | int | float | None] = {"first_move": sentence}
+    if lesson_id:
+        carried["first_move_lesson_id"] = lesson_id
+        if lesson_title:
+            carried["first_move_lesson_title"] = lesson_title
+    return carried
+
+
+#: The actions a warm-up ramps into (rubric 3c (e1)). Never ``recall``: reading the
+#: lesson before a retrieval test defeats the test (row 3b (b): familiar recall
+#: leads as it is). Never ``visual``/``audio``: those are already passive.
+_WARM_UP_ACTIONS: frozenset[str] = frozenset({"hands-on", "conversation", "teachback"})
+
+
+def _warm_up(primary: _Candidate, plans: _PlanContext) -> tuple[str, str | None, str | None] | None:
+    """Rubric 3c (e1), owner 2026-09-21 ("no, offer the move at medium energy too",
+    taking the steer): a plan-related ACTIVE primary carries one first move on ITS
+    OWN material, worded as a ramp into the task.
+
+    The low-energy move is the sit-with's whole action and ends "nothing more";
+    printed beneath a task the day CAN carry, that sentence would tell the learner
+    two contradictory things and the passive one is the easier to take (the 3b (d)
+    mistake). The warm-up ends "then start …" and lowers the first step of the
+    primary instead of competing with it.
+
+    Scope: the primary only (one move); never the body double (it has its own);
+    never a candidate off every plan (so the no-plan golden is byte-identical);
+    never recall, visual or audio (:data:`_WARM_UP_ACTIONS`). Material, in order
+    of what the primary IS: a repair (``energy_demand`` in its metadata — both
+    collectors mark repairs and nothing else) asks the resolver its own concept
+    and ends "then start the repair"; a plan milestone (a ref naming the eligible
+    next milestone) asks that milestone's own concepts and ends "then start the
+    milestone"; any other plan-related active item asks its concept and ends
+    "then start on “<concept>”". Same evidence sentence, same honest no-lesson
+    shapes as the sit-with move (:func:`_first_move_sentence`).
+    """
+    if primary.source == BODY_DOUBLE_SOURCE or not primary.plan_refs:
+        return None
+    if primary.action_type not in _WARM_UP_ACTIONS:
+        return None
+    concept = primary.concept.strip()
+    if "energy_demand" in primary.metadata:
+        return _first_move_sentence(
+            (concept,), material=f"“{concept}”", tail="then start the repair"
+        )
+    ref = next((r for r in primary.plan_refs if r.milestone_index is not None), None)
+    if ref is not None:
+        plan = next((p for p in plans.matchable if p.plan.plan_id == ref.plan_id), None)
+        milestone = plan.next_milestone if plan is not None else None
+        if milestone is not None and milestone.index == ref.milestone_index:
+            return _first_move_sentence(
+                _clean_concepts(milestone.concepts),
+                material=milestone.title,
+                tail="then start the milestone",
+            )
+    return _first_move_sentence(
+        (concept,), material=f"“{concept}”", tail=f"then start on “{concept}”"
+    )
 
 
 def _body_double_candidate(
@@ -1467,22 +1553,15 @@ def _body_double_candidate(
             "plan_id": first.plan_id,
             "deferred_milestones": len(plans.deferred),
             "deferred_repairs": len(deferred_repairs),
-            # Issue #30: additive, body-double only — the no-plan golden never sees it.
-            # The move lives HERE and nowhere else (rubric 3c (d)): the reason explains
-            # the recommendation, the move is an action beside the door, and every
+            # Issue #30: additive — the no-plan golden never sees it. The move lives in
+            # metadata and nowhere else (rubric 3c (d)): the reason explains the
+            # recommendation, the move is an action beside the door, and every
             # renderer (CLI, Today card, MCP get_next_action) reads this field — so
             # the sentence appears once on a 3/10 screen instead of closing the
-            # reason and then repeating as its own line.
-            **({"first_move": first_move} if first_move else {}),
-            # Rubric 3c (b): the lesson the move names, so a renderer can open it in
-            # StudyLoop's own frame — id and title, so nothing parses the sentence;
-            # absent when the index held nothing relevant.
-            **({"first_move_lesson_id": first_move_lesson_id} if first_move_lesson_id else {}),
-            **(
-                {"first_move_lesson_title": first_move_lesson_title}
-                if first_move_lesson_id and first_move_lesson_title
-                else {}
-            ),
+            # reason and then repeating as its own line. Rubric 3c (b): the lesson
+            # the move names rides beside it as id + title, so nothing parses the
+            # sentence; absent when the index held nothing relevant.
+            **_first_move_metadata(first_move, first_move_lesson_id, first_move_lesson_title),
         },
         plan_refs=tuple(PlanRef(plan.plan_id, None) for plan in named),
     )
@@ -1574,6 +1653,17 @@ def build_now_plan(
         ranked = _guarantee_plan_backed(
             [plans.attach_refs(candidate) for candidate in ranked], time_minutes
         )
+    # Rubric 3c (e1): the primary — and only the primary — of a plan-related
+    # active kind carries one warm-up on its own material. After the guarantee,
+    # so it rides on the recommendation the learner actually sees.
+    warm_up = _warm_up(ranked[0], plans)
+    if warm_up is not None:
+        ranked = [
+            dataclasses.replace(
+                ranked[0], metadata={**ranked[0].metadata, **_first_move_metadata(*warm_up)}
+            ),
+            *ranked[1:],
+        ]
     primary = ranked[0].recommendation()
     alternates = [item.recommendation() for item in ranked[1:3]]
     return NowPlan(

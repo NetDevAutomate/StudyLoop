@@ -243,7 +243,16 @@ a confident wrong lesson costs a low day more than an honest gap. It is a propos
 you may ignore — never an exercise, never a question — and the Body Double
 picker shows it beneath the plan title when you arrive from the Today card. A
 real, unrelated action still outranks the sit-with proposal
-when one exists. An active plan that
+when one exists. When the day *can* carry the work — a plan-related repair,
+milestone or teach-back is the recommendation at medium or high energy — the
+same first move appears as a **warm-up** into it, on that action's own
+material: *"Open “Advanced Sql 4H” from Complete Sql Databases Bootcamp — the
+match is the phrase “window function” — and read for ten minutes, then start
+the repair."* The tail is the difference: the low day's move ends *nothing
+more* because it is the whole action; the warm-up ends *then start …* because
+it lowers the first step of a task you are about to do, and never competes
+with it. Recall never carries one — reading the lesson before a retrieval test
+defeats the test — and an action unrelated to any plan carries none. An active plan that
 is **not ready** — a hand edit removed its mission or its milestones — is
 listed with a warning naming what to repair; it still biases related work,
 but no milestone is suggested for it until it is paused or repaired. A plan

@@ -38,7 +38,7 @@ renderer can open it in StudyLoop's own frame without parsing the sentence;
 both SHALL be absent otherwise. The move SHALL be passive — reading; never an exercise,
 a practice task or a question — because it must be consumable at the
 capability the day carries. It SHALL ride as `metadata["first_move"]` on the
-body-double recommendation only, and ONLY there: the reason SHALL NOT carry
+body-double recommendation, and ONLY in `metadata`: the reason SHALL NOT carry
 the sentence (the reason explains the recommendation; the move is an action,
 rendered by each consumer once, beside the session door — rubric 3c (d)); it
 SHALL add no top-level key to the `now` payload, so the
@@ -46,8 +46,11 @@ no-plan golden is byte-identical. The content index is a refinement, never a
 dependency: a lookup that raises SHALL answer the plain milestone form with
 no warning. A body double always has a deferred milestone to draw on — an
 eligible next milestone would have been synthesised as a plan-related
-candidate and suppressed the body double — so no other source of a first move
-is defined.
+candidate and suppressed the body double. The one other carrier of a first
+move is the warm-up on a plan-related active primary (the requirement below,
+rubric 3c (e1)); the sentence, its evidence rule and its no-lesson shapes are
+one definition, `_first_move_sentence`, differing only in the material named
+and the tail.
 
 #### Scenario: The move names the deferred milestone and says which concept the index lacks
 - **WHEN** rubric row 3's world is ranked at `low` energy (plan floor 5,
@@ -155,3 +158,67 @@ is defined.
   with the existing reader; the `body-double-request` detail carries
   `firstMoveLessonId` and `firstMoveLessonTitle` beside `firstMove`; a move
   that names only the milestone shows no control and hands over no lesson
+
+### Requirement: A plan-related active primary carries one warm-up first move on its own material
+When `build_now_plan` has ranked and applied the plan-backed guarantee, and
+the primary (and only the primary) is plan-related (carries a `PlanRef`), is
+not the body double, and is of an active kind — `action_type` in `hands-on`,
+`conversation`, `teachback` — `learning/decision.py::_warm_up` SHALL derive
+one first move on the primary's own material and carry it as
+`metadata["first_move"]` (with `first_move_lesson_id`/`first_move_lesson_title`
+when a lesson resolved, exactly as on the body double). Rubric 3c (e), owner
+2026-09-21: *no, offer the move at medium energy too*, built as the warm-up
+INTO the primary rather than a passive alternative beside it — the low day's
+move is the whole action and ends `nothing more`; printed beneath a task the
+day can carry, that sentence would contradict the primary and the passive
+option is the easier to take (row 3b (d)). The warm-up therefore SHALL end
+`then start …`, naming what the primary is, in this order of tests:
+
+- a repair (`energy_demand` in the candidate's metadata — both collectors mark
+  repairs and nothing else): the resolver is asked `(concept,)`, the material
+  is `“<concept>”`, the tail `then start the repair`;
+- the plan's next milestone (a `PlanRef` naming an eligible milestone): the
+  resolver is asked that milestone's own concepts, all of them in order, the
+  material is the milestone's title, the tail `then start the milestone`;
+- any other plan-related active item: `(concept,)`, `“<concept>”`, `then start
+  on “<concept>”`.
+
+Recall SHALL never carry a warm-up and the resolver SHALL NOT be asked for
+one — reading the lesson before a retrieval test defeats the test (row 3b (b):
+familiar recall leads as it is); `visual` and `audio` are already passive and
+carry none. A primary off every plan SHALL carry none, so the no-plan golden
+is byte-identical; alternates SHALL carry none (one move). Renderers key on
+`metadata.first_move`, not on the body double, so the CLI `First move:` line
+beneath `Record evidence:`, the Today card's line and its **Open the lesson**
+control follow without change.
+
+#### Scenario: The row-3 repair at medium energy carries a warm-up into itself
+- **WHEN** rubric row 3's world is ranked at `medium` energy (capability 6)
+  with both collectors live, and `_resolve_lesson(("window function",))`
+  returns `("ztm/complete-sql-bootcamp/advanced-sql-4h", "Advanced Sql 4H",
+  "Complete Sql Databases Bootcamp", "window function")`
+- **THEN** the primary is the `window function` repair (hands-on) and its
+  `metadata["first_move"]` is `Open “Advanced Sql 4H” from Complete Sql
+  Databases Bootcamp — the match is the phrase “window function” — and read
+  for ten minutes, then start the repair.`, with the lesson id and title beside
+  it; the resolver was asked exactly once, with `("window function",)`; the
+  reason is the collector's own and carries no move; no body double appears;
+  the payload's top-level keys are the golden's plus `active_plans`
+- **WHEN** the resolver returns `None`
+- **THEN** the move is `Open your “window function” material and read for ten
+  minutes, then start the repair — no indexed lesson mentions “window
+  function” yet.` with no lesson id; an unreadable index gives the plain ramp
+  and no warning; CLI `now --energy medium` prints `First move:` beneath
+  `Record evidence:`, once
+
+#### Scenario: A milestone primary ramps on the milestone's own concepts
+- **WHEN** the plan's eligible next milestone `Frames` `[window frame, frame
+  clause]` is the primary at `medium` (nothing collected represents it)
+- **THEN** the resolver is asked `("window frame", "frame clause")` and the
+  move ends `then start the milestone.`
+
+#### Scenario: No warm-up on recall, off the plan, or without a plan
+- **WHEN** the primary is a plan-related `recall`, or an active item matching
+  no plan, or there is no active plan at all
+- **THEN** `metadata` carries no `first_move`, the resolver is not asked, and
+  the no-plan payload is byte-identical to the golden

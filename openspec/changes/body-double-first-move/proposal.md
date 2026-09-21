@@ -27,8 +27,11 @@ One derived field and one sentence, from facts the engine already holds:
   says why (which concept no indexed lesson mentions); it never widens the
   search to the milestone's title or the plan's topics (design decision 6).
 - The body-double recommendation carries it as `metadata["first_move"]`
-  (additive, body-double only; the no-plan golden is untouched) and its reason
-  ends `A first move, if you want one: <move>`.
+  (additive; the no-plan golden is untouched) and only there — the reason ends
+  at the co-study guarantee (rubric 3c (d1)). Since rubric 3c (e1) the same
+  sentence, built by one definition, also rides on a plan-related **active**
+  primary at any energy as a warm-up on that action's own material, ending
+  `then start …` instead of `nothing more`; never on recall, never off a plan.
 - CLI `now` prints a `First move:` line beneath the door; the Today card
   renders its own line and hands `firstMove` to the Body Double view with the
   plan title; the picker shows it beneath the activity. The door is unchanged.
@@ -46,7 +49,8 @@ One derived field and one sentence, from facts the engine already holds:
   silence rule is untouched, and the move is never turned into questioning
   (PDA sensitivity, `agents/shared/audhd-framework.md`).
 - **A second content read per consumer.** The lookup runs once, inside the
-  engine, only on the body-double path.
+  engine, on the body-double path and (since (e1)) once for a plan-related
+  active primary; a plain `now` with no active plan pays nothing.
 
 ## Rubric
 

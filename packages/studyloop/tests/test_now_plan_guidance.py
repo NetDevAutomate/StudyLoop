@@ -2352,12 +2352,9 @@ def test_a_plan_related_repair_at_medium_energy_carries_a_warm_up_on_its_own_mat
     assert not any(rec.source == "body_double" for rec in _all(medium))
     payload = medium.to_json_dict()
     golden_keys = list(json.loads(GOLDEN.read_text(encoding="utf-8")))
-    assert list(payload) == [
-        *golden_keys,
-        "active_plans",
-        "energy_deferred",
-        "energy_deferred_repairs",
-    ], "the warm-up adds no top-level key"
+    # Nothing is deferred at medium, so the two energy_deferred* keys are absent
+    # (omitted when empty); the plans key is the only addition to the golden's shape.
+    assert list(payload) == [*golden_keys, "active_plans"], "the warm-up adds no top-level key"
 
 
 def test_a_plan_milestone_primary_carries_a_warm_up_on_the_milestone_s_concepts(
@@ -2460,6 +2457,35 @@ def test_no_warm_up_on_recall_or_without_a_plan_or_off_the_plan(monkeypatch) -> 
     unrelated = build_now_plan(energy="medium").primary
     assert unrelated.concept == "decorators" and not unrelated.plan_refs
     assert "first_move" not in unrelated.metadata
+
+
+def test_a_plan_related_active_item_that_is_neither_repair_nor_milestone_ramps_by_concept(
+    monkeypatch,
+) -> None:
+    """The third tail: a plan-related teach-back (or practice) is active but neither a
+    repair (no ``energy_demand``) nor the plan's next milestone, so the ramp names what
+    the card names — "then start on “<concept>”" — and asks the resolver its concept."""
+    _row3_plan()
+    _patch_collectors(
+        monkeypatch,
+        _candidate("window function", topic="sql", action_type="teachback", score=200),
+    )
+    seen: list[tuple[str, ...]] = []
+
+    def resolve(concepts):
+        seen.append(tuple(concepts))
+        return None
+
+    monkeypatch.setattr(decision, "_resolve_lesson", resolve)
+
+    primary = build_now_plan(energy="medium").primary
+
+    assert primary.action_type == "teachback" and primary.plan_refs
+    assert primary.metadata["first_move"] == (
+        "Open your “window function” material and read for ten minutes, then start on "
+        "“window function” — no indexed lesson mentions “window function” yet."
+    )
+    assert seen == [("window function",)]
 
 
 def test_cli_now_prints_the_warm_up_beneath_the_evidence_door_at_medium_energy(

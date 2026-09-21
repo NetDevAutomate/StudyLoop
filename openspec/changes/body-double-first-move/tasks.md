@@ -58,6 +58,19 @@ edit; each task has a definition of done a reviewer can tick from output.
       the start*; design decision 9. Rejected: auto-open at start. DoD: static pins + docs contract 39/39,
       engine + decision + web-now + golden 89/89, JS 153/153, `node --check` on the edited script, mkdocs
       `--strict` clean, openspec valid, golden `ec451ce8` unchanged.
+- [x] **T3g** Rubric 3c (e), owner 2026-09-21: *no, offer the move at medium energy too* — built as (e1) the
+      warm-up INTO the primary, on its own material (owner took the steer over the passive alternative).
+      RED `fa5d76be` (five failing + one guard) → GREEN: `_first_move_sentence` shared by the sit-with move
+      and the warm-up (material + tail differ); `_warm_up` on the primary only — plan-related, not the body
+      double, `action_type` in hands-on/conversation/teachback — with three tails (repair → *then start the
+      repair*; eligible milestone → its concepts, *then start the milestone*; else *then start on
+      “<concept>”*); `_first_move_metadata` shared carriage; never recall (resolver not asked), never off a
+      plan (golden byte-identical); both guides; new spec requirement + three scenarios; proposal corrected;
+      design decision 10; read cost re-measured (161 ms cold / 45 ms warm). RED correction at GREEN: the
+      medium payload has no `energy_deferred*` keys (omitted when empty), so its shape is the golden's plus
+      `active_plans`. DoD: now-guidance + decision + web-now + golden + static pins 105/105, docs contract
+      green, ruff/format/pyright clean, mkdocs `--strict` clean, openspec valid, golden `ec451ce8` unchanged,
+      JS 153/153 (renderers unchanged — they key on `metadata.first_move`).
 - [ ] ⚖ **T4** Council review (three seats) of the RED and the GREEN; arbitration; one commit per accepted
       finding.
 - [ ] **T5** Rubric row **3c** added to `docs/architecture/plan-integration/receipts/now-rubric-2026-09-16.md`:

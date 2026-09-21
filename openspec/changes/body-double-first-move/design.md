@@ -141,14 +141,52 @@ body-doubling floor). Decisions taken here, each verified against the tree at
    Sized as about a tenth of #30, as estimated: one markup block, one CSS rule,
    one end-path line, one guide sentence, four pins.
 
+10. **The move is a property of the recommendation, not of the sit-with — a
+    warm-up on a plan-related active primary (rubric 3c (e), owner 2026-09-21:
+    "no, offer the move at medium energy too", built as (e1) the warm-up INTO
+    the primary, the owner taking that steer over the passive alternative
+    beside it).** The coordinator's steer for (e) was that the move should
+    exist only when the engine has just refused everything else; the owner
+    overruled it — starting is hard at 6/10 too. The build honours the "no"
+    without undoing 3b (d): the low day's move is the whole action and ends
+    *nothing more*; printed beneath a task the day CAN carry, that sentence
+    would tell the learner two contradictory things and the passive one is the
+    easier to take. So the warm-up ends *then start …* and lowers the first
+    step of the primary instead of competing with it, on the primary's OWN
+    material (the medium screen's `window function` repair resolves on the
+    owner's vault to *Advanced Sql 4H* in *Complete Sql Databases Bootcamp* —
+    the lesson where window functions are taught, on topic). One definition,
+    `_first_move_sentence`, builds both moves; only the material name and the
+    tail differ, so (b)'s deliberate lesson, (c)'s honest no-lesson shapes and
+    (d2)'s evidence sentence hold for both without a second implementation.
+    Scope, each with its reason: the primary only (one move, never an
+    alternate); never the body double (it has its own); never off a plan (the
+    no-plan golden `ec451ce8` stays byte-identical, and the additive promise
+    holds); never `recall` — reading the lesson before a retrieval test
+    defeats the test, and row 3b (b) already said familiar recall leads as it
+    is; never `visual`/`audio`, already passive. The tail names what the
+    primary is, tested in this order: a repair (`energy_demand` in metadata —
+    both collectors mark repairs and nothing else) → *then start the repair*;
+    the plan's eligible next milestone → its own concepts, all of them, *then
+    start the milestone*; any other plan-related active item → *then start on
+    “<concept>”*. Applies at any energy, not medium alone — starting, not
+    energy, is what it is for — and the renderers needed no change: CLI, Today
+    card and its Open-the-lesson control key on `metadata.first_move`, not on
+    the body double. Beyond #30's title (the *body double's* first move), named
+    honestly here and in the PR; the lead-in stays with the renderers (d1).
+    Decided rather than asked: the energy scope and the three tails.
+
 ## Read cost
 
-The lookup runs only when a body double is synthesised. Measured 2026-09-21 on
+The lookup runs only when a body double is synthesised or (since (e1)) when the
+primary is a plan-related active item. Measured 2026-09-21 on
 the live host (content base `~/Obsidian/Personal/Study`, explorer FTS index
 present) through the explorer search the seam calls: **861 ms cold** — the
 explorer's own best-effort index refresh over the vault on the first query of a
 process — then **45–58 ms warm per concept** (`("window function",)` →
 "Advanced Sql 4H", `("decorators",)` → "Decorators 29M", `("window frame",)` →
-`None`). Paid once per `now` that synthesises a body double; a plain `now` pays
-nothing. For scale, item 4's completion review costs ~320 ms per fully-checked
-plan on the same host.
+`None`). Re-measured for the warm-up path the same day: `("window function",)`
+**161 ms cold / 45 ms warm**, `("window frame",)` 53 ms, `("decorators",)`
+53 ms. Paid once per `now` whose primary carries a move; a `now` with no
+active plan pays nothing. For scale, item 4's completion review costs ~320 ms
+per fully-checked plan on the same host.

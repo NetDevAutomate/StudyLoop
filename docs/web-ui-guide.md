@@ -87,6 +87,14 @@ lesson (with the course it belongs to and the word the match rests on), an
 card; you stay on Today with the lesson next to it. A move that names only the
 milestone offers no button, because there is nothing indexed to open yet.
 
+When the day can carry the work — the card's action is a plan-related repair,
+milestone or teach-back at medium or high energy — the same first move appears
+as a **warm-up** into it, on that action's own material, and ends *then start
+…* rather than *nothing more*: read the lesson you are about to repair for ten
+minutes, then start. The **Open the lesson** button follows it in the same
+way. Recall never carries a warm-up — reading the lesson before a retrieval
+test defeats the test — and an action unrelated to any plan carries none.
+
 ## Flashcards and quizzes
 
 The review screens use locally generated course material and your StudyLoop
