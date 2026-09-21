@@ -419,3 +419,16 @@ def test_web_ui_guide_body_double_names_the_handed_over_first_move() -> None:
     section = _prose(_section(_read("docs/web-ui-guide.md"), "Body Double")).lower()
     assert "first move" in section
     assert "today" in section, "the guide must say where the move comes from (the Today card)"
+
+
+def test_web_ui_guide_says_the_named_lesson_opens_beside_the_view() -> None:
+    """Rubric 3c (d2): when the move names a lesson, both the Today card and the Body
+    Double picker offer to open it in the Course Explorer panel beside the view, and
+    the guide says so where the learner meets it — without promising a reader inside
+    the live session, which is #33's."""
+    guide = _read("docs/web-ui-guide.md")
+    for heading in ("Today", "Body Double"):
+        section = _prose(_section(guide, heading)).lower()
+        assert "first move" in section, heading
+        assert "course explorer" in section, f"{heading}: the guide must say where the lesson opens"
+        assert "open" in section, heading

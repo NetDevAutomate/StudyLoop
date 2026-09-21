@@ -469,3 +469,84 @@ test('starting a body-double primary hands the first move to the Body Double vie
     globalThis.CustomEvent = savedEvent;
   }
 });
+
+/* Rubric 3c (d2), owner 2026-09-21: "Open X" actually opens X. When the engine
+   resolved a lesson (`metadata.first_move_lesson_id` + `_title`), the card offers
+   a control that opens it in the Course Explorer panel — the aside beside the
+   current view, so the learner stays on Today (or in the Body Double view) with
+   the lesson open next to it. The control exists only when a lesson resolved;
+   the sentence has already stated the lesson's evidence (course, matched word),
+   so what opens is what the learner has judged. */
+const LESSON_MOVE =
+  'Open “Decorators 29M” from The Ultimate Typescript — the match is the word “decorators” — and read for ten minutes, nothing more.';
+const WITH_LESSON = { ...DEFERRED_REPAIR_PAYLOAD.primary,
+  metadata: { plan_id: 'sql-windows', deferred_milestones: 1, deferred_repairs: 1, first_move: LESSON_MOVE,
+    first_move_lesson_id: 'udemy/the-ultimate-typescript/decorators-29m', first_move_lesson_title: 'Decorators 29M' } };
+
+test('firstMoveLesson: the resolved lesson (id + title) from the payload, null when none resolved', () => {
+  const panel = todayPanel();
+  assert.deepEqual(panel.firstMoveLesson(WITH_LESSON),
+    { id: 'udemy/the-ultimate-typescript/decorators-29m', title: 'Decorators 29M' });
+  const noLesson = { ...WITH_LESSON, metadata: { ...WITH_LESSON.metadata } };
+  delete noLesson.metadata.first_move_lesson_id;
+  delete noLesson.metadata.first_move_lesson_title;
+  assert.equal(panel.firstMoveLesson(noLesson), null, 'a milestone-form move offers nothing to open');
+  assert.equal(panel.firstMoveLesson({ ...WITH_LESSON, source: 'study_progress' }), null,
+    'only a body-double proposal carries a first move');
+  assert.equal(panel.firstMoveLesson(null), null);
+});
+
+test('openFirstMoveLesson: asks the Course Explorer to open the lesson beside the view, and does not navigate', () => {
+  const events = [];
+  let navigated = null;
+  const savedWindow = globalThis.window;
+  const savedAlpine = globalThis.Alpine;
+  const savedEvent = globalThis.CustomEvent;
+  globalThis.window = { dispatchEvent(e) { events.push(e); } };
+  globalThis.CustomEvent = class { constructor(type, init) { this.type = type; this.detail = init && init.detail; } };
+  globalThis.Alpine = { store() { return { go(view) { navigated = view; } }; } };
+  try {
+    const panel = todayPanel();
+    panel.plan = { ...DEFERRED_REPAIR_PAYLOAD, primary: WITH_LESSON };
+
+    panel.openFirstMoveLesson();
+
+    assert.equal(events.length, 1);
+    assert.equal(events[0].type, 'explorer-open-lesson');
+    assert.deepEqual(events[0].detail,
+      { lessonId: 'udemy/the-ultimate-typescript/decorators-29m', title: 'Decorators 29M' });
+    assert.equal(navigated, null, 'the learner stays on Today; the lesson opens in the aside');
+
+    panel.plan = { ...DEFERRED_REPAIR_PAYLOAD };
+    panel.openFirstMoveLesson();
+    assert.equal(events.length, 1, 'nothing to open, nothing dispatched');
+  } finally {
+    globalThis.window = savedWindow;
+    globalThis.Alpine = savedAlpine;
+    globalThis.CustomEvent = savedEvent;
+  }
+});
+
+test('starting a body-double primary hands the resolved lesson to the Body Double view beside the move', () => {
+  const events = [];
+  const savedWindow = globalThis.window;
+  const savedAlpine = globalThis.Alpine;
+  const savedEvent = globalThis.CustomEvent;
+  globalThis.window = { dispatchEvent(e) { events.push(e); } };
+  globalThis.CustomEvent = class { constructor(type, init) { this.type = type; this.detail = init && init.detail; } };
+  globalThis.Alpine = { store() { return { go() {} }; } };
+  try {
+    const panel = todayPanel();
+    panel.plan = { ...DEFERRED_REPAIR_PAYLOAD, primary: WITH_LESSON };
+
+    panel.startPrimary();
+
+    assert.equal(events.length, 1);
+    assert.deepEqual(events[0].detail, { activity: 'SQL Windows', energy: 'low', firstMove: LESSON_MOVE,
+      firstMoveLessonId: 'udemy/the-ultimate-typescript/decorators-29m', firstMoveLessonTitle: 'Decorators 29M' });
+  } finally {
+    globalThis.window = savedWindow;
+    globalThis.Alpine = savedAlpine;
+    globalThis.CustomEvent = savedEvent;
+  }
+});
