@@ -226,7 +226,9 @@ among what MCP revises and the row names every schema property.
   capability (`high` → 6, `medium` → 4, `low` → 0) compared with `ENERGY_CAPABILITY[energy]`.
 - **Rule 3 extended.** Below capability, *repair* above demand is deferred exactly like new milestone work and
   listed in `energy_deferred` with a reason naming the struggle; recovered repair stays eligible as gentle
-  review. Due recall (`source=study_progress` due rows) is unaffected.
+  review. Due recall and teach-back rows (`source=study_progress`) are unaffected. *(Amended 2026-09-20, see
+  decision 10 below: a `struggling` row's due item is not recall — it is the repair, collected a second time —
+  and carries the demand.)*
 - **Body-doubling floor.** When the eligible plan-related set is empty **and** at least one active plan exists,
   synthesise one candidate: `source="body_double"`, `action_type="conversation"`, low base score (below any
   real candidate), reason naming the deferred items, `plan_refs` for each named plan with `milestone_index
@@ -267,6 +269,87 @@ among what MCP revises and the row names every schema property.
 Rule 3's *deferral* of repair is the change; rule 3's *eligibility* of plan-related due recall is untouched. The
 no-plan golden stays byte-identical because a body-double candidate requires an active plan and the golden world
 has none; `INTERLEAVE_RATIOS["low"]` unchanged.
+
+**Decisions taken at GREEN (2026-09-19), each a test in `test_now_plan_guidance.py`:**
+
+1. **The deferral is plan-independent.** A live struggle is a live struggle whether or not a plan names it
+   (amendment 2's `plan_id … else None` already said so); the finding was about the learner's day, not the
+   plan. The body double, by contrast, *requires* a matchable active plan — it is "sit with the plan".
+   Consequence, stated rather than hidden (sharpened by review 7 F3): D-5's "a learner with no active plan
+   receives the pre-#10 payload byte for byte" holds for a no-plan learner **with no struggle candidate and
+   nothing deferred** — the golden world. Two changes are plan-independent: every struggle-collector candidate
+   carries `metadata.energy_demand` at every energy, and repair above the day's capability (a live or older
+   struggle, a weak teach-back, at low energy) is deferred — with the starter if nothing else was collected —
+   where the learner used to get the repair itself. Review 7 put the scope question to three seats: two (astra,
+   grok) keep it plan-independent ("gating it on a plan would leave the original no unfixed for every no-plan
+   learner"), one (qwen) would gate it; arbitrated as **keep**, the contract re-worded to the truth above in the
+   spec delta and both docs, and the no-plan floor put to the owner as row 3b reading (d).
+2. **Rule 8's guaranteed slot below the floor is the body-double proposal.** It carries `plan_refs`, so where
+   four unrelated due items outrank everything at low energy the second alternate is now the proposal, not a
+   third unrelated item. It advertises no work the energy cannot carry — the property rule 8's docstring
+   protects — and the primary is untouched. `test_preserves_one_plan_backed_action_when_energy_allows` says so.
+3. **The starter tells the truth after a deferral.** With no plan and every real candidate deferred, the starter
+   stands in; its reason now says the energy deferred the repair work rather than "no learning evidence found
+   yet", which would be false. The golden world defers nothing, so its sentence is unchanged.
+4. **Body-double shape.** Base `BODY_DOUBLE_BASE_SCORE = 30` — below every real candidate's *base*; after the
+   day's adjustments it sits above a hands-on task the low-energy rule penalises (48 − 14 = 34 < 30 + 12 = 42)
+   and below every due and conversation candidate. Review 7 F2 (two seats 🔴, one 💡) was arbitrated as the
+   energy rule doing what the finding asked, not a filter: the *claim* "any real candidate outranks it" was the
+   defect, corrected in the constant's comment, the spec and here, and pinned by
+   `test_body_double_ordering_after_adjustments_follows_the_energy_rule`; the judgement is row 3b reading (e).
+   Concept `Sit with <title>` (one plan) / `Sit with your plans`; `plan_refs` for every **ready** matchable plan
+   (rule 7 may add a topic-matched husk reference; the proposal names ready plans only); reason naming each
+   deferred milestone and repair; command `studyloop study <title> --mode co-study`, the title quoted as one
+   shell argument (review 7 F1). The Today card starts it in the Body Double view and hands the plan title over
+   (`body-double-request`, review 7 F7); the CLI labels the command "Sit with the plan".
+5. **A deferred repair does not "represent" a milestone** (rule 6 runs after the deferral), so an eligible
+   milestone whose only collected representative was a deferred live struggle is synthesised as a conversation —
+   the learner can still talk about it (`test_deferred_repair_allows_only_eligible_milestone_conversation`).
+6. **The body double names ready plans only.** An active-but-unready plan is matched but never synthesised
+   (spec rule 8), and the body double is a synthesis; with only a husk active and nothing plan-related fitting,
+   nothing is proposed to sit with — the warning beside it already says "pause or repair"
+   (`test_body_double_is_never_synthesised_for_an_unready_plan`).
+7. **`medium` and `high` demand are behaviourally identical today** (nothing in `ENERGY_CAPABILITY` sits between
+   3 and 6): both need at least medium self-reported energy. The class is kept as explanatory state so the
+   payload says *why* (review 7: astra and grok keep it, qwen would collapse it); the spec says so.
+8. **Not taken, recorded as follow-ons:** a same-concept gentle `recall` synthesised for a no-plan learner whose
+   only candidates were deferred (grok 🔵 / qwen 🟡; astra: do not invent an unvalidated lower-demand action) —
+   the owner's row 3b reading (d) decides whether the starter is the floor they want.
+9. **The body-double reason leads with recorded progress and describes its door truthfully** (rubric-3b council,
+   2026-09-20, three seats asked for recommendations to the owner, not verdicts). Applied where the finding held
+   against source: the framework's own naming rule (*never name a struggle without an adjacent strength*) — the
+   reason now opens with `N of M milestones of <plan> done.` from `PlanSummary.milestone_done`, and says nothing
+   when nothing is done (a strength is never invented); and "no new material, no repair" promised a door the
+   engine does not control — the sentence now says what the co-study persona guarantees ("you drive; the
+   companion stays quiet unless you ask"), and a test holds the persona to those words
+   (`test_body_double_reason_leads_with_recorded_progress_and_describes_the_door_truthfully`,
+   `test_body_double_reason_never_fabricates_progress`,
+   `test_co_study_persona_pins_the_promise_the_body_double_reason_makes`). Not applied: gating deferral on a
+   plan (Q1, rejected again by every seat) and suppressing the deferred-item names (astra 🟡) — D-F asks for
+   them by name; it goes to the owner as a note on row 3b. Two seats independently named the missing reading —
+   the live struggle that is **also due for recall** on the same concept — so it is emitted from the tree as
+   row 3b reading **(f)**: due recall is never deferred, so the recall is primary while the same concept's repair
+   sits in the deferred list; whether that is the collision the owner wants is theirs to say. *(Superseded by
+   decision 10: emitted against the real collectors, (f) is not a recall/repair collision at all.)*
+10. **The due collector's copy of a live struggle defers with the repair** (owner walkthrough 2026-09-20,
+   found while emitting reading (f) with both real collectors — executed, not inferred). `_due_progress_candidates`
+   and `_struggle_candidates` read the same `observations.rows`; `_review_type_for` labels every `struggling` row
+   due ("Guided repair + tiny practice") and `_action_for_review` makes that due item `hands-on` at
+   100 + days + 35. Only the struggle collector's copy carried `energy_demand`, so at low energy it was deferred
+   while the due copy was kept as "due recall", survived `_dedupe` (higher score), and became the primary: against
+   a real sessions.db, row 3's world emitted the hands-on repair of the live struggle on top with its own deferral
+   line printed beneath it and no body double — the row-3 "no" unfixed. The (a), (d) and (e) behaviours held only
+   with the due collector silenced, which is what `_plant_struggles` does. Fix: the due collector's item for a
+   `struggling` row carries the same `_energy_demand` (derived from `last_studied`), so rule 3 defers both copies
+   together, and `_defer_repairs` names a concept once. Due recall and teach-back rows carry no demand and are
+   never deferred — that invariant is now stated about the rows it was always true of. Pinned by
+   `test_due_copy_of_a_live_struggle_defers_with_the_repair_at_low_energy` (plan world, medium energy unchanged)
+   and `test_due_copy_of_a_live_struggle_defers_with_no_plan_too`, both planting rows for **both** collectors
+   through `_plant_struggles_for_both_collectors`. Consequence for the rubric: readings (a), (d) and (e) are
+   re-emitted through both collectors before their verdicts are read as verdicts on the shipped behaviour.
+
+Known edge, not solved here: a `struggling` row whose `last_seen` cannot be parsed is read as live (`high`) —
+the cautious side; `_days_since` returns `None` and the demand falls to `high`.
 
 ## 6. Verification
 

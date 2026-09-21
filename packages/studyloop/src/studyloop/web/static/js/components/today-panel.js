@@ -114,7 +114,34 @@ export function todayPanel() {
     },
 
     startAction(rec) {
-      Alpine.store('nav').go(this._viewFor(rec.action_type));
+      const view = this.viewForAction(rec);
+      if (view === 'body-double') {
+        /* Carry the proposal's context to the Body Double view (council review
+           7, F7): the same event-not-storage handoff `today-resume` uses, so
+           the picker opens on the plan the engine named instead of blank. The
+           view starts nothing on its own; the learner still presses start. */
+        window.dispatchEvent(new CustomEvent('body-double-request', {
+          detail: { activity: this.bodyDoubleActivity(rec), energy: this.plan && this.plan.energy },
+        }));
+      }
+      Alpine.store('nav').go(view);
+    },
+
+    /* What a body-double proposal asks the learner to sit with: the named
+       plan's title, or the proposal's own concept when the payload lists no
+       plan for it. */
+    bodyDoubleActivity(rec) {
+      const planId = rec && rec.metadata && rec.metadata.plan_id;
+      const plan = planId ? this._activePlan(planId) : null;
+      return (plan && plan.title) || (rec && rec.concept) || '';
+    },
+
+    /* The view an action starts in. A body-double proposal (design §5) is a
+       session in the Body Double view, whatever its action_type says; every
+       other action keeps the action_type mapping above. */
+    viewForAction(rec) {
+      if (rec && rec.source === 'body_double') return 'body-double';
+      return this._viewFor(rec && rec.action_type);
     },
 
     /* ---- Plan relevance (issue #10) — rendering of what /api/now ranked. ----
@@ -162,6 +189,21 @@ export function todayPanel() {
       );
     },
 
+    /* One line per struggle repair today's energy cannot carry (design §5,
+       amendment 2): its own key, its own sentence — a repair has no milestone
+       number. A repair unrelated to any plan names none. */
+    deferredRepairNotes() {
+      const repairs = (this.plan && this.plan.energy_deferred_repairs) || [];
+      const energy = (this.plan && this.plan.energy) || 'current';
+      return repairs.map((r) => {
+        const head = r.plan_title
+          ? `${r.plan_title} \u2014 repairing`
+          : 'Repairing';
+        return `${head} \u201c${r.concept}\u201d (${r.confidence}) waits for more energy `
+          + `(asks for ${r.required_capability}/10, ${energy} energy carries ${r.energy_capability}/10)`;
+      });
+    },
+
     /* One block per finished plan (council review 6, F6): the closing review's
        sentence and ITS evidence lines, keyed by plan_id, in the engine's order.
        With two finished plans a flat list of lines lost the plan each belonged
@@ -195,10 +237,25 @@ export function todayPanel() {
       return ((this.plan && this.plan.warnings) || []).map((w) => String(w));
     },
 
+    /* The notes block's label. "Your plans" once any note involves a plan; a
+       learner with no plan whose live struggle was deferred (design §5
+       decision 1) has no plan to be told about — the block is what today set
+       aside (council review 7, grok). */
+    planNotesLabel() {
+      const plans = (this.plan && this.plan.active_plans) || [];
+      const repairs = (this.plan && this.plan.energy_deferred_repairs) || [];
+      const planInvolved = plans.length > 0
+        || this.deferredNotes().length > 0
+        || this.completionNotes().length > 0
+        || repairs.some((r) => r.plan_id);
+      return planInvolved ? 'Your plans' : 'Set aside today';
+    },
+
     get hasPlanContext() {
       return (
         this.planLabel(this.plan && this.plan.primary) !== ''
         || this.deferredNotes().length > 0
+        || this.deferredRepairNotes().length > 0
         || this.completionNotes().length > 0
         || this.warningNotes().length > 0
       );

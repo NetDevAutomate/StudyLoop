@@ -48,7 +48,7 @@ def test_no_data_returns_starter_recommendation(monkeypatch) -> None:
     monkeypatch.setattr(
         decision,
         "_starter_candidate",
-        lambda time_minutes: _candidate("starter", score=10),
+        lambda time_minutes, after_deferral=False: _candidate("starter", score=10),
     )
 
     plan = build_now_plan()

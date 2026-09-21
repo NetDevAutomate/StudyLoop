@@ -3190,6 +3190,15 @@ function bodyDoubleSession() {
           this.startError = '';
         }
       });
+      /* Today-card handoff for a body-double proposal (council review 7, F7):
+         the engine named a plan to sit with; open on it rather than blank.
+         Event, not storage, for the reason today-resume is. Nothing starts. */
+      window.addEventListener('body-double-request', (event) => {
+        const detail = (event && event.detail) || {};
+        if (detail.activity) this.activity = String(detail.activity);
+        const bands = { low: 3, medium: 5, high: 8 };
+        if (detail.energy && bands[detail.energy]) this.energy = bands[detail.energy];
+      });
       this.focusCollapsed = localStorage.getItem('bd.focus.collapsed') === 'true';
       this.captureCollapsed = localStorage.getItem('bd.capture.collapsed') === 'true';
       await this.refreshFocus();

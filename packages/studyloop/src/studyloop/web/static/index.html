@@ -1104,10 +1104,15 @@
                cannot carry, and plans whose every milestone is checked.
                Not a `.today-card` on purpose: the browser smoke test addresses
                the single action card by that class. -->
-          <div x-show="!loading && plan && (deferredNotes().length > 0 || completionNotes().length > 0 || warningNotes().length > 0)"
+          <div x-show="!loading && plan && (deferredNotes().length > 0 || deferredRepairNotes().length > 0 || completionNotes().length > 0 || warningNotes().length > 0)"
                class="today-plan-notes">
-            <p class="today-parked-label">Your plans</p>
+            <p class="today-parked-label" x-text="planNotesLabel()">Your plans</p>
             <template x-for="(note, i) in deferredNotes()" :key="'d' + i">
+              <p class="today-meta">Deferred for energy: <span x-text="note"></span></p>
+            </template>
+            <!-- Struggle repair today's energy cannot carry (design §5): its own
+                 key and line — a repair has no milestone number to print. -->
+            <template x-for="(note, i) in deferredRepairNotes()" :key="'r' + i">
               <p class="today-meta">Deferred for energy: <span x-text="note"></span></p>
             </template>
             <!-- One block per finished plan (council review 6, F6): the closing

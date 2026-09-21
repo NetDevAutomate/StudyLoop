@@ -199,14 +199,52 @@ writer, through the existing gate, closes that. Kept out of item 3 so item 3's f
       and its three renderers are milestone-shaped; the body-double door is `studyloop study … --mode co-study` /
       the Body Double view's session start, not the read-only `body_double.py` focus route, so the candidate sets
       its `evidence_command` explicitly. T5.2's RED names hold; a sixth test pins the new key's rendering.)
-- [ ] **T5.2** RED `tests/test_now_plan_guidance.py`: `test_live_struggle_repair_defers_at_low_energy_like_new_work`,
+- [x] **T5.2** RED `tests/test_now_plan_guidance.py`: `test_live_struggle_repair_defers_at_low_energy_like_new_work`,
       `test_recovered_repair_stays_eligible_at_low_energy`, `test_body_double_candidate_is_synthesised_when_nothing_plan_related_fits`,
       `test_body_double_is_a_proposal_not_a_filter`, `test_body_double_never_appears_without_an_active_plan`,
-      golden byte-identity still green.
-- [ ] **T5.3** GREEN: `energy_demand`, rule 3 extension, `body_double` synthesis, CLI/Today "sit with the plan" line.
-- [ ] ⚖ **T5.4** Council review 7 (`review7`, same seats or `kimi-k2-thinking` third); arbitration; corrections.
-- [ ] **T5.5** Rubric row **3b** for the owner (`PENDING`); the change is archived only after the owner scores 3b
-      (4b was scored **yes / yes** on 2026-09-18, so 3b is the one row still outstanding).
+      golden byte-identity still green. (2026-09-19, `ef319a7b` on `feat/energy-demand-body-double`: the five plus
+      the sixth, `test_cli_now_and_recap_render_deferred_repairs_and_the_body_double_door`, and five JS pins in
+      `tests/js/today-panel-plan.test.js` (`deferredRepairNotes`, `viewForAction`, markup). The struggle collector
+      runs for real over patched `observations.rows`, since demand is derived in the collector. 6 red / 40 green,
+      JS 5 red / 139 green, each for its missing name.)
+- [x] **T5.3** GREEN: `energy_demand`, rule 3 extension, `body_double` synthesis, CLI/Today "sit with the plan" line.
+      (2026-09-19: `DeferredRepair` + `energy_deferred_repairs`, `ENERGY_DEMAND_CAPABILITY`/`LIVE_STRUGGLE_DAYS`,
+      `_energy_demand` in the collector, `_defer_repairs` before rule 6, `_body_double_candidate` after it,
+      honest starter after a deferral; CLI `now` + recap + Today card lines; MODIFIED requirement in the
+      `active-learning-decisions` delta; docs `study-plans.md` "Plan-aware now" + `cli-reference.md`; design §5
+      "Decisions taken at GREEN" 1-5. Module 46/46, JS 144/144, e2e plan journeys 20/20, docs contract 39/39,
+      `mkdocs --strict` exit 0, `openspec validate` valid; full suite vs a clean `main` control — see the GREEN
+      commit's receipt.)
+- [x] ⚖ **T5.4** Council review 7 (`review7`, same seats or `kimi-k2-thinking` third); arbitration; corrections.
+      (2026-09-19: brief `council/brief-review7-2026-09-19.md` on tree `6d5a2d0e`; seats astra
+      ACCEPT-WITH-CORRECTIONS (2 🔴 / 3 🟡), qwen ACCEPT-WITH-CORRECTIONS (2 🔴), grok ACCEPT (🔵/💡 only; 16k cap
+      cut its Gate). Arbitration `council/review-7-arbitration-2026-09-19.md`: **GATE ACCEPT** for the corrected
+      tree. Landed one commit each: F1 shell quoting of every offered command (`d1935256`, real-`sh` test,
+      stash-proved), F5 no false repair promise (`c1d7f2f2`), F7 Web door hands the plan over (`3347567e`), grok's
+      "Your plans" label (`f814dc36`), F4 five pins + a pre-existing NULL-`last_seen` collector crash they found
+      (`7194b66d`), F2 ordering claim corrected — behaviour kept, judgement to the owner (`02e282e6`), F3/F6
+      contract wording (`bdf4d6c6`). Rejected with reasons: qwen's gate-deferral-on-a-plan (2–1 against, and D-F's
+      own words), collapsing medium/high, a same-concept gentle recall floor (follow-on, decision 8). Row 3b gained
+      readings (d) and (e) for the two places the seats split.)
+- [x] **T5.5** Rubric row **3b** for the owner (`PENDING`); the change is archived only after the owner scores 3b
+      — **SCORED 2026-09-20** (interactive walkthrough): (a)–(e) **yes**, one line each plus three 0.6.0 notes
+      (concrete first move for the sit-with; the low-energy day as a ladder — step-up after a completed floor task,
+      re-offering the deferred repair itself at the top; capability numbers are subjective). (c)'s yes carried a
+      condition met on the branch: micro door for `low` demand, gentle-review wording for a `learning` row
+      (`0760254d`/`f2cb572f`), the protocol's low-energy guided-explanation fallback (`c7cc1b0f`/`214df377`). (f)
+      exposed a real defect — the due-progress collector emitted every live struggle as an undeferred hands-on
+      item, so the scored (a)/(d)/(e) screens were never emitted against a real database — fixed
+      `8f851d3a`/`fb63fb6b` (design §5 decision 10), every reading re-emitted through both collectors, and (c)
+      confirmed by the owner on its both-collectors screen (recall first, teach-back as the step-up). Receipt
+      `291e8691` +1. Archive after PR #28 merges.
+      — **2026-09-20**: a rubric-3b council (three seats, recommendations to the owner, not verdicts) produced
+      `receipts/rubric-3b-decision-brief-2026-09-20.md`; its two source-verified findings were applied
+      (RED `a0946376` → GREEN `c519bc2a`, design §5 decision 9), the receipt's stale F2 claim corrected, and
+      reading **(f)** (same-concept due recall + live struggle) emitted and added to the row. Verdict still the owner's.
+      (4b was scored **yes / yes** on 2026-09-18, so 3b is the one row still outstanding). (2026-09-19: row 3b
+      written into `receipts/now-rubric-2026-09-16.md` with three readings printed from the real engine — (a) live
+      struggle → body-double primary, (b) plus an unrelated due recall → due recall primary, proposal beneath,
+      (c) recovered `learning` → gentle teach-back primary — verdict `PENDING`.)
 
 ## Item 6 — proposals (no code)
 
