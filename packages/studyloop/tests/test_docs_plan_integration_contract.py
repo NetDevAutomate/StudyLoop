@@ -451,3 +451,20 @@ def test_web_ui_guide_says_the_move_survives_the_start() -> None:
     assert "companion" in tail and "never" in tail, (
         "the guide must say the companion never says the move"
     )
+
+
+def test_docs_say_an_active_plan_related_action_carries_a_warm_up_first_move() -> None:
+    """Rubric 3c (e1), owner 2026-09-21 (taking the steer): at medium or high energy a
+    plan-related ACTIVE action — a repair, a milestone, a teach-back — carries one
+    first move too, on its own material, worded as a ramp into the task ("then start
+    …") rather than the low day's cap ("nothing more"); recall never carries one,
+    because reading the lesson before a retrieval test defeats the test. Both guides
+    say so where the learner meets the card."""
+    plans = _prose(_section(_read("docs/study-plans.md"), "Plan-aware now")).lower()
+    today = _prose(_section(_read("docs/web-ui-guide.md"), "Today")).lower()
+    for name, section in (("study-plans", plans), ("web-ui-guide Today", today)):
+        assert "then start" in section, f"{name}: the guide must give the ramp's wording"
+        assert "warm" in section, f"{name}: the guide must say the move is a warm-up"
+        assert "recall" in section and "never" in section, (
+            f"{name}: the guide must say recall never carries one"
+        )

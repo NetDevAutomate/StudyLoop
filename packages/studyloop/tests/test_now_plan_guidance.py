@@ -2294,3 +2294,197 @@ def test_body_double_two_ready_plans_has_deterministic_context(monkeypatch) -> N
         assert named in proposal.reason
     assert {d.plan_id for d in low.energy_deferred} == {"sql-windows", "py-decorators"}
     assert {d.plan_id for d in low.energy_deferred_repairs} == {"sql-windows", "py-decorators"}
+
+
+# ---------------------------------------------------------------------------
+# Rubric 3c (e), owner 2026-09-21: "no, offer the move at medium energy too" —
+# built as (e1) the WARM-UP INTO THE PRIMARY, on the primary's own material
+# (the owner took that steer over the passive alternative beside the primary).
+# The low-energy move is the sit-with's whole action and ends "nothing more";
+# the warm-up lowers the first step of a task the day CAN carry and ends
+# "then start …", so the card never tells the learner two contradictory
+# things. It attaches only to a plan-related ACTIVE primary (hands-on,
+# conversation, teachback): never to recall — reading the lesson before a
+# retrieval test defeats the test (row 3b (b): familiar recall leads as it
+# is) — never to the body double (it has its own move), never in the no-plan
+# world (the golden stays byte-identical).
+# ---------------------------------------------------------------------------
+
+
+def test_a_plan_related_repair_at_medium_energy_carries_a_warm_up_on_its_own_material(
+    monkeypatch,
+) -> None:
+    """Row 3's world at medium (6/10), both collectors live: the primary is the
+    ``window function`` repair. It now carries one first move on ITS OWN material —
+    the resolver is asked the repair's concept and nothing else — worded as a ramp
+    into the repair, with the evidence sentence of (d2) and the lesson id/title beside
+    it so the Today card's Open-the-lesson control follows. The reason is untouched
+    (the move lives in ``metadata.first_move`` only, (d1)); no body double appears."""
+    _row3_plan()
+    _plant_struggles_for_both_collectors(monkeypatch, _struggle("window function", days_ago=3))
+    seen: list[tuple[str, ...]] = []
+
+    def resolve(concepts):
+        seen.append(tuple(concepts))
+        return (
+            "ztm/complete-sql-bootcamp/advanced-sql-4h",
+            "Advanced Sql 4H",
+            "Complete Sql Databases Bootcamp",
+            "window function",
+        )
+
+    monkeypatch.setattr(decision, "_resolve_lesson", resolve)
+
+    medium = build_now_plan(energy="medium")
+
+    primary = medium.primary
+    assert primary.concept == "window function" and primary.action_type == "hands-on"
+    assert primary.metadata["first_move"] == (
+        "Open “Advanced Sql 4H” from Complete Sql Databases Bootcamp — the match is the "
+        "phrase “window function” — and read for ten minutes, then start the repair."
+    )
+    assert primary.metadata["first_move_lesson_id"] == ("ztm/complete-sql-bootcamp/advanced-sql-4h")
+    assert primary.metadata["first_move_lesson_title"] == "Advanced Sql 4H"
+    assert seen == [("window function",)], "the primary's own concept, nothing else"
+    assert primary.reason.startswith("Guided repair + tiny practice"), primary.reason
+    assert "first move" not in primary.reason.lower()
+    assert "Open “Advanced Sql 4H”" not in primary.reason, "(d1): the move is not in the reason"
+    assert not any(rec.source == "body_double" for rec in _all(medium))
+    payload = medium.to_json_dict()
+    golden_keys = list(json.loads(GOLDEN.read_text(encoding="utf-8")))
+    assert list(payload) == [
+        *golden_keys,
+        "active_plans",
+        "energy_deferred",
+        "energy_deferred_repairs",
+    ], "the warm-up adds no top-level key"
+
+
+def test_a_plan_milestone_primary_carries_a_warm_up_on_the_milestone_s_concepts(
+    monkeypatch,
+) -> None:
+    """When the primary is the plan's next milestone (rule 6's synthesised candidate,
+    eligible at medium), the resolver is asked that milestone's own concepts — all of
+    them, in order — and the ramp ends "then start the milestone"."""
+    _plan(
+        "sql-windows",
+        title="SQL Windows",
+        energy_floor=5,
+        milestones=[
+            Milestone(title="Window basics", done=True, concepts=["window function"]),
+            Milestone(title="Frames", concepts=["window frame", "frame clause"]),
+        ],
+    )
+    _patch_collectors(monkeypatch)
+    seen: list[tuple[str, ...]] = []
+
+    def resolve(concepts):
+        seen.append(tuple(concepts))
+        return ("ztm/advanced-sql/window-frames", "Window Frames", "Advanced Sql", "frame clause")
+
+    monkeypatch.setattr(decision, "_resolve_lesson", resolve)
+
+    primary = build_now_plan(energy="medium").primary
+
+    assert primary.source == "study_plan:sql-windows:1"
+    assert primary.metadata["first_move"] == (
+        "Open “Window Frames” from Advanced Sql — the match is the phrase “frame clause” — "
+        "and read for ten minutes, then start the milestone."
+    )
+    assert primary.metadata["first_move_lesson_id"] == "ztm/advanced-sql/window-frames"
+    assert seen == [("window frame", "frame clause")]
+
+
+def test_the_warm_up_names_the_material_and_says_why_when_nothing_is_indexed(
+    monkeypatch,
+) -> None:
+    """(c)'s honesty carries over: with no indexed lesson the ramp names the material
+    (the repair's concept) and says which concept the index lacks; no lesson id, so no
+    Open-the-lesson control. A resolver that cannot read the index gets the plain
+    ramp with no claim about an index never consulted."""
+    _row3_plan()
+    _plant_struggles_for_both_collectors(monkeypatch, _struggle("window function", days_ago=3))
+    monkeypatch.setattr(decision, "_resolve_lesson", lambda concepts: None)
+
+    primary = build_now_plan(energy="medium").primary
+
+    assert primary.metadata["first_move"] == (
+        "Open your “window function” material and read for ten minutes, then start the "
+        "repair — no indexed lesson mentions “window function” yet."
+    )
+    assert "first_move_lesson_id" not in primary.metadata
+
+    def explode(concepts):
+        raise RuntimeError("index unreadable")
+
+    monkeypatch.setattr(decision, "_resolve_lesson", explode)
+
+    primary = build_now_plan(energy="medium").primary
+
+    assert primary.metadata["first_move"] == (
+        "Open your “window function” material and read for ten minutes, then start the repair."
+    )
+    assert not any("index" in w for w in build_now_plan(energy="medium").warnings)
+
+
+def test_no_warm_up_on_recall_or_without_a_plan_or_off_the_plan(monkeypatch) -> None:
+    """The warm-up is a property of a plan-related ACTIVE recommendation and nothing
+    else: a plan-related recall carries none and the resolver is not asked (reading
+    the lesson before a retrieval test defeats the test); an active primary unrelated
+    to any plan carries none; the no-plan world is byte-identical to the golden."""
+
+    def must_not_be_asked(concepts):
+        raise AssertionError(f"resolver asked with {concepts!r}")
+
+    monkeypatch.setattr(decision, "_resolve_lesson", must_not_be_asked)
+
+    # No plan at all: the golden world.
+    _patch_collectors(monkeypatch)
+    plan = build_now_plan(energy="medium")
+    assert "first_move" not in plan.primary.metadata
+    assert serialise(plan) == GOLDEN.read_bytes(), "the no-plan golden is untouched"
+
+    # A plan-related recall as primary.
+    _row3_plan()
+    _patch_collectors(
+        monkeypatch, _candidate("window function", topic="sql", action_type="recall", score=200)
+    )
+    recall = build_now_plan(energy="medium").primary
+    assert recall.action_type == "recall" and recall.plan_refs, "precondition: plan-related recall"
+    assert "first_move" not in recall.metadata
+
+    # An active primary that matches no plan.
+    _patch_collectors(
+        monkeypatch, _candidate("decorators", topic="python", action_type="hands-on", score=200)
+    )
+    unrelated = build_now_plan(energy="medium").primary
+    assert unrelated.concept == "decorators" and not unrelated.plan_refs
+    assert "first_move" not in unrelated.metadata
+
+
+def test_cli_now_prints_the_warm_up_beneath_the_evidence_door_at_medium_energy(
+    monkeypatch,
+) -> None:
+    """At medium the door is ``Record evidence:``; the ``First move:`` line sits beneath
+    it, once, exactly as it sits beneath ``Sit with the plan:`` at low — the CLI keys
+    on ``metadata.first_move``, not on the body double."""
+    from click.testing import CliRunner
+
+    from studyloop.cli import cli
+
+    _row3_plan()
+    _plant_struggles_for_both_collectors(monkeypatch, _struggle("window function", days_ago=3))
+    monkeypatch.setattr(decision, "_resolve_lesson", lambda concepts: None)
+
+    rich = CliRunner().invoke(cli, ["now", "--energy", "medium"])
+
+    assert rich.exit_code == 0, rich.output
+    assert "Record evidence:" in rich.output
+    assert "First move:" in rich.output
+    assert rich.output.index("Record evidence:") < rich.output.index("First move:")
+    flat = " ".join(rich.output.replace("│", " ").split())
+    assert (
+        "First move: Open your “window function” material and read for ten minutes, then "
+        "start the repair — no indexed lesson mentions “window function” yet." in flat
+    ), flat
+    assert flat.count("Open your “window function” material") == 1
