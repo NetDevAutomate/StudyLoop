@@ -1676,19 +1676,25 @@ def test_body_double_carries_one_passive_first_move_on_the_deferred_milestone(
     """Row 3's world: the move opens the deferred milestone's material and asks for
     reading only. It rides in the payload as ``metadata["first_move"]`` (additive,
     body-double only, so the no-plan golden is untouched) and closes the reason as a
-    proposal, not a requirement. Only when the content index holds nothing relevant
-    (rubric 3c (b), owner: a deliberate lesson "should always be the case") does it fall
-    back to naming the milestone, and then it carries no ``first_move_lesson_id``."""
+    proposal, not a requirement. When the content index was searched and holds no
+    lesson for the milestone's concepts (rubric 3c (c), owner 2026-09-21), the
+    sentence names the milestone AND says why — the concept no indexed lesson
+    mentions — so it carries information instead of vagueness, and the payload has
+    no ``first_move_lesson_id``. On the owner's own vault this is exactly ``Frames``
+    today."""
     _row3_plan()
     _plant_struggles(monkeypatch, _struggle("window function", days_ago=3))
-    monkeypatch.setattr(decision, "_resolve_lesson", lambda queries: None)
+    monkeypatch.setattr(decision, "_resolve_lesson", lambda concepts: None)
 
     low = build_now_plan(energy="low")
 
     primary = low.primary
     assert primary.source == "body_double"
     move = primary.metadata["first_move"]
-    assert move == "Open the Frames material and read for ten minutes, nothing more."
+    assert move == (
+        "Open your Frames material and read for ten minutes, nothing more — "
+        "no indexed lesson mentions “window frame” yet."
+    )
     assert primary.reason.endswith(f"A first move, if you want one: {move}"), primary.reason
     for forbidden in ("exercise", "practice", "solve", "?"):
         assert forbidden not in move, f"a first move must be passive; found {forbidden!r}"
@@ -1711,17 +1717,16 @@ def test_body_double_first_move_names_the_lesson_the_content_index_resolves(
     monkeypatch,
 ) -> None:
     """Rubric 3c (b) — owner: a deliberate lesson should always be the case; it stops
-    decision fatigue. The move names the indexed lesson, and the resolver is asked
-    ONCE with the fallback chain in order — the milestone's concepts, then its title,
-    then the plan's topics — so a vault that never uses the concept's exact words
-    still yields a specific lesson. The lesson's id rides beside the sentence so a
-    renderer can open it in StudyLoop's own frame."""
+    decision fatigue. The move names the indexed lesson, and its id rides beside the
+    sentence so a renderer can open it in StudyLoop's own frame. Rubric 3c (c) bounds
+    the search: the resolver is asked ONCE, with the deferred milestone's own concepts
+    and nothing else — never the milestone's title, never the plan's topics."""
     _row3_plan()
     _plant_struggles(monkeypatch, _struggle("window function", days_ago=3))
     seen: list[tuple[str, ...]] = []
 
-    def resolve(queries):
-        seen.append(tuple(queries))
+    def resolve(concepts):
+        seen.append(tuple(concepts))
         return ("sql/advanced-sql-4h", "Window Frames and Ranges")
 
     monkeypatch.setattr(decision, "_resolve_lesson", resolve)
@@ -1732,42 +1737,142 @@ def test_body_double_first_move_names_the_lesson_the_content_index_resolves(
         "Open “Window Frames and Ranges” and read for ten minutes, nothing more."
     )
     assert primary.metadata["first_move_lesson_id"] == "sql/advanced-sql-4h"
-    assert seen == [("window frame", "Frames", "sql")], "concepts, then title, then topics"
+    assert seen == [("window frame",)], "the milestone's own concepts, nothing else"
 
 
-def test_resolve_lesson_tries_each_query_in_order_and_returns_the_first_hit(
+def test_body_double_first_move_never_names_a_lesson_from_the_title_or_the_topic(
     monkeypatch,
 ) -> None:
-    """The seam itself: one FTS query per fallback step, in the order given, stopping
-    at the first hit; the hit is ``(lesson_id, title)``. Faked at the explorer's own
-    search function so no content index is needed."""
+    """Rubric 3c (c), measured on the owner's real vault 2026-09-21: a chain that fell
+    back to the milestone's title and the plan's topic always named a lesson — the
+    WRONG one. ``Frames`` FTS-hit a PySpark data-frames lab; ``sql`` hit an SQL
+    bootcamp introduction; only the sibling milestone's concept found the lesson
+    where window frames are taught, and only because this plan's two milestones
+    share one lesson. A deliberate-but-wrong lesson spends a 3/10 day's one action
+    on the wrong material and looks certain doing it — worse than vagueness. So the
+    explorer's search is asked the deferred milestone's concepts only, and when they
+    match nothing the move names the milestone and says so. Replays that vault at
+    the explorer's own search function, through the real seam."""
+    from studyloop.web.routes import explorer
+
+    _row3_plan()
+    _plant_struggles(monkeypatch, _struggle("window function", days_ago=3))
+    asked: list[str] = []
+
+    def real_vault(db_path, base, q, limit):
+        asked.append(q)
+        return {
+            "Frames": [{"lesson_id": "pyspark/405-lab", "title": "405 Lab Execute PySpark"}],
+            "sql": [{"lesson_id": "sql/ztm-intro", "title": "ZTM Complete SQL Bootcamp"}],
+            "window function": [{"lesson_id": "sql/advanced-sql-4h", "title": "Advanced Sql 4H"}],
+        }.get(q, [])
+
+    monkeypatch.setattr(explorer, "_run_fts_search", real_vault)
+
+    primary = build_now_plan(energy="low").primary
+
+    assert asked == ["window frame"], "the deferred milestone's concepts only"
+    assert primary.metadata["first_move"] == (
+        "Open your Frames material and read for ten minutes, nothing more — "
+        "no indexed lesson mentions “window frame” yet."
+    )
+    assert "first_move_lesson_id" not in primary.metadata
+    assert "PySpark" not in primary.reason and "Bootcamp" not in primary.reason
+
+
+def test_body_double_first_move_says_when_the_milestone_names_no_concept(
+    monkeypatch,
+) -> None:
+    """A milestone with no ``concepts`` gives the index nothing to look up: the
+    resolver is not asked (asking it with the title is the rejected chain), and the
+    sentence says what would fix it — a concept name on the milestone, not a better
+    search. Two named concepts, none matched, are both named in the clause."""
+    _plan(
+        "sql-windows",
+        title="SQL Windows",
+        energy_floor=5,
+        milestones=[
+            Milestone(title="Window basics", done=True, concepts=["window function"]),
+            Milestone(title="Frames"),
+        ],
+    )
+    _plant_struggles(monkeypatch, _struggle("window function", days_ago=3))
+
+    def must_not_be_asked(concepts):
+        raise AssertionError(f"resolver asked with {concepts!r}")
+
+    monkeypatch.setattr(decision, "_resolve_lesson", must_not_be_asked)
+
+    primary = build_now_plan(energy="low").primary
+
+    assert primary.source == "body_double"
+    assert primary.metadata["first_move"] == (
+        "Open your Frames material and read for ten minutes, nothing more — "
+        "this milestone names no concept to look up yet."
+    )
+    assert "first_move_lesson_id" not in primary.metadata
+
+    _plan(
+        "sql-windows",
+        title="SQL Windows",
+        energy_floor=5,
+        milestones=[
+            Milestone(title="Window basics", done=True, concepts=["window function"]),
+            Milestone(title="Frames", concepts=["window frame", "frame clause"]),
+        ],
+    )
+    monkeypatch.setattr(decision, "_resolve_lesson", lambda concepts: None)
+
+    move = str(build_now_plan(energy="low").primary.metadata["first_move"])
+
+    assert move.endswith("— no indexed lesson mentions “window frame” or “frame clause” yet.")
+
+
+def test_resolve_lesson_asks_one_query_per_concept_in_order_and_returns_the_first_hit(
+    monkeypatch,
+) -> None:
+    """The seam itself: one FTS query per concept, in the order given, stopping at
+    the first hit; the hit is ``(lesson_id, title)``; a searched miss is ``None``.
+    An index that cannot be read is NOT a searched miss — the seam lets that raise
+    so the caller can decline to claim "no indexed lesson mentions X" about an
+    index it never read. Faked at the explorer's own search function so no
+    content index is needed."""
     from studyloop.web.routes import explorer
 
     asked: list[str] = []
 
     def fake_search(db_path, base, q, limit):
         asked.append(q)
-        if q == "sql":
+        if q == "frame clause":
             return [{"lesson_id": "sql/advanced-sql-4h", "title": "Advanced Sql 4H"}]
         return []
 
     monkeypatch.setattr(explorer, "_run_fts_search", fake_search)
 
-    hit = decision._resolve_lesson(("window frame", "Frames", "sql"))  # pyright: ignore[reportAttributeAccessIssue]
+    hit = decision._resolve_lesson(("window frame", "frame clause", "range"))  # pyright: ignore[reportAttributeAccessIssue]
 
     assert hit == ("sql/advanced-sql-4h", "Advanced Sql 4H")
-    assert asked == ["window frame", "Frames", "sql"]
+    assert asked == ["window frame", "frame clause"], "stops at the first hit"
     assert decision._resolve_lesson(("nothing", "matches")) is None  # pyright: ignore[reportAttributeAccessIssue]
     assert asked[-2:] == ["nothing", "matches"]
+
+    def unreadable(db_path, base, q, limit):
+        raise RuntimeError("fts index unreadable")
+
+    monkeypatch.setattr(explorer, "_run_fts_search", unreadable)
+    with pytest.raises(RuntimeError):
+        decision._resolve_lesson(("window frame",))  # pyright: ignore[reportAttributeAccessIssue]
 
 
 def test_body_double_first_move_survives_a_broken_content_index(monkeypatch) -> None:
     """The content index is a refinement, never a dependency: when the lookup raises,
-    the move still names the milestone and ``now`` still answers."""
+    the move still names the milestone and ``now`` still answers. It makes NO claim
+    about an index it could not read — "no indexed lesson mentions … yet" is a
+    verified statement or it is not said."""
     _row3_plan()
     _plant_struggles(monkeypatch, _struggle("window function", days_ago=3))
 
-    def explode(queries):
+    def explode(concepts):
         raise RuntimeError("fts index unreadable")
 
     monkeypatch.setattr(decision, "_resolve_lesson", explode)
@@ -1776,29 +1881,35 @@ def test_body_double_first_move_survives_a_broken_content_index(monkeypatch) -> 
 
     assert low.primary.source == "body_double"
     assert low.primary.metadata["first_move"] == (
-        "Open the Frames material and read for ten minutes, nothing more."
+        "Open your Frames material and read for ten minutes, nothing more."
     )
+    assert "first_move_lesson_id" not in low.primary.metadata
     assert not any("fts" in w for w in low.warnings), "a failed refinement is not a warning"
 
 
 def test_cli_now_prints_the_first_move_beneath_the_sit_with_door(monkeypatch) -> None:
     """The CLI shows the move as its own line under the door, after the door, so the
-    learner reads where to sit before what to open."""
+    learner reads where to sit before what to open — the why-clause included."""
     from click.testing import CliRunner
 
     from studyloop.cli import cli
 
     _row3_plan()
     _plant_struggles(monkeypatch, _struggle("window function", days_ago=3))
-    monkeypatch.setattr(decision, "_resolve_lesson", lambda queries: None)
+    monkeypatch.setattr(decision, "_resolve_lesson", lambda concepts: None)
 
     rich = CliRunner().invoke(cli, ["now", "--energy", "low"])
 
     assert rich.exit_code == 0, rich.output
     assert "Sit with the plan:" in rich.output
     assert "First move:" in rich.output
-    assert "Frames material" in rich.output
     assert rich.output.index("Sit with the plan:") < rich.output.index("First move:")
+    # The panel wraps at the terminal width; read it as one line, borders stripped.
+    flat = " ".join(rich.output.replace("│", " ").split())
+    assert (
+        "First move: Open your Frames material and read for ten minutes, nothing more — "
+        "no indexed lesson mentions “window frame” yet." in flat
+    ), flat
 
 
 def test_cli_milestone_deferral_does_not_promise_live_repair(monkeypatch) -> None:
