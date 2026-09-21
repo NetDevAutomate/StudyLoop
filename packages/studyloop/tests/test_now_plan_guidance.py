@@ -1723,27 +1723,85 @@ def test_body_double_first_move_names_the_lesson_the_content_index_resolves(
     monkeypatch,
 ) -> None:
     """Rubric 3c (b) — owner: a deliberate lesson should always be the case; it stops
-    decision fatigue. The move names the indexed lesson, and its id rides beside the
-    sentence so a renderer can open it in StudyLoop's own frame. Rubric 3c (c) bounds
-    the search: the resolver is asked ONCE, with the deferred milestone's own concepts
-    and nothing else — never the milestone's title, never the plan's topics."""
+    decision fatigue. The move names the indexed lesson, and its id and title ride
+    beside the sentence so a renderer can open it in StudyLoop's own frame. Rubric
+    3c (c) bounds the search: the resolver is asked ONCE, with the deferred
+    milestone's own concepts and nothing else — never the milestone's title, never
+    the plan's topics. Rubric 3c (d2), owner 2026-09-21 — *"I would likely still
+    open it in case there was some link being enforced"*: a named lesson carries
+    implied authority, so the sentence states its EVIDENCE — the course the lesson
+    belongs to and the concept the match rests on — and the link can be judged from
+    the sentence instead of by opening the lesson."""
     _row3_plan()
     _plant_struggles(monkeypatch, _struggle("window function", days_ago=3))
     seen: list[tuple[str, ...]] = []
 
     def resolve(concepts):
         seen.append(tuple(concepts))
-        return ("sql/advanced-sql-4h", "Window Frames and Ranges")
+        return ("ztm/advanced-sql/window-frames", "Window Frames and Ranges", "Advanced Sql")
 
     monkeypatch.setattr(decision, "_resolve_lesson", resolve)
 
     primary = build_now_plan(energy="low").primary
 
     assert primary.metadata["first_move"] == (
-        "Open “Window Frames and Ranges” and read for ten minutes, nothing more."
+        "Open “Window Frames and Ranges” from Advanced Sql — the match is the phrase "
+        "“window frame” — and read for ten minutes, nothing more."
     )
-    assert primary.metadata["first_move_lesson_id"] == "sql/advanced-sql-4h"
+    assert primary.metadata["first_move_lesson_id"] == "ztm/advanced-sql/window-frames"
+    assert primary.metadata["first_move_lesson_title"] == "Window Frames and Ranges"
     assert seen == [("window frame",)], "the milestone's own concepts, nothing else"
+
+
+def test_body_double_first_move_shows_the_course_so_a_lexical_match_is_judgeable(
+    monkeypatch,
+) -> None:
+    """Measured on the owner's vault 2026-09-21: a Python plan's milestone concept
+    ``decorators`` FTS-resolves to *Decorators 29M* in *The Ultimate TypeScript* —
+    the match is lexical, not topic-scoped. The owner's own answer to the (c)
+    self-check (*"I would likely still open it in case there was some link that is
+    being enforced"*) means that lesson would be OPENED, not just doubted. So the
+    sentence names the course from the hit's own ``course_id`` — humanised exactly
+    as the explorer's course list shows it — and says the match is the word: the
+    "link" is a word match and nothing more, judgeable at a glance. Replays the
+    vault at the explorer's own search function, through the real seam."""
+    from studyloop.web.routes import explorer
+
+    _plan(
+        "python-patterns",
+        title="Python Patterns",
+        energy_floor=5,
+        milestones=[
+            Milestone(title="Closures", done=True, concepts=["closure"]),
+            Milestone(title="Decorators", concepts=["decorators"]),
+        ],
+    )
+    _plant_struggles(monkeypatch, _struggle("closure", days_ago=3))
+
+    def vault(db_path, base, q, limit):
+        if q == "decorators":
+            return [
+                {
+                    "lesson_id": "udemy/the-ultimate-typescript/decorators-29m",
+                    "course_id": "udemy/the-ultimate-typescript",
+                    "provider": "udemy",
+                    "title": "Decorators 29M",
+                }
+            ]
+        return []
+
+    monkeypatch.setattr(explorer, "_run_fts_search", vault)
+
+    primary = build_now_plan(energy="low").primary
+
+    assert primary.source == "body_double"
+    assert primary.metadata["first_move"] == (
+        "Open “Decorators 29M” from The Ultimate Typescript — the match is the word "
+        "“decorators” — and read for ten minutes, nothing more."
+    )
+    lesson_id = "udemy/the-ultimate-typescript/decorators-29m"
+    assert primary.metadata["first_move_lesson_id"] == lesson_id
+    assert primary.metadata["first_move_lesson_title"] == "Decorators 29M"
 
 
 def test_body_double_first_move_never_names_a_lesson_from_the_title_or_the_topic(
@@ -1847,7 +1905,10 @@ def test_resolve_lesson_asks_one_query_per_concept_in_order_and_returns_the_firs
     monkeypatch,
 ) -> None:
     """The seam itself: one FTS query per concept, in the order given, stopping at
-    the first hit; the hit is ``(lesson_id, title)``; a searched miss is ``None``.
+    the first hit; the hit is ``(lesson_id, title, course)`` with the course the
+    hit's own ``course_id`` humanised as the explorer's course list shows it; a
+    searched miss is ``None``. A hit without a course or a title is skipped, never
+    named — the sentence states its evidence or names nothing (rubric 3c (d2)).
     An index that cannot be read is NOT a searched miss — the seam lets that raise
     so the caller can decline to claim "no indexed lesson mentions X" about an
     index it never read. Faked at the explorer's own search function so no
@@ -1859,17 +1920,27 @@ def test_resolve_lesson_asks_one_query_per_concept_in_order_and_returns_the_firs
     def fake_search(db_path, base, q, limit):
         asked.append(q)
         if q == "frame clause":
-            return [{"lesson_id": "sql/advanced-sql-4h", "title": "Advanced Sql 4H"}]
+            return [
+                {
+                    "lesson_id": "ztm/advanced-sql-4h/frames",
+                    "course_id": "ztm/advanced-sql-4h",
+                    "provider": "ztm",
+                    "title": "Advanced Sql 4H",
+                }
+            ]
+        if q == "orphan":
+            return [{"lesson_id": "x/y/z", "course_id": "", "provider": "x", "title": "Orphan"}]
         return []
 
     monkeypatch.setattr(explorer, "_run_fts_search", fake_search)
 
     hit = decision._resolve_lesson(("window frame", "frame clause", "range"))
 
-    assert hit == ("sql/advanced-sql-4h", "Advanced Sql 4H")
+    assert hit == ("ztm/advanced-sql-4h/frames", "Advanced Sql 4H", "Advanced Sql 4H")
     assert asked == ["window frame", "frame clause"], "stops at the first hit"
     assert decision._resolve_lesson(("nothing", "matches")) is None
     assert asked[-2:] == ["nothing", "matches"]
+    assert decision._resolve_lesson(("orphan",)) is None, "no course, no lesson named"
 
     def unreadable(db_path, base, q, limit):
         raise RuntimeError("fts index unreadable")
