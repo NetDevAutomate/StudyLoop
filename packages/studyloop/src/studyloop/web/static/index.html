@@ -2353,6 +2353,17 @@
               Suggestions are the first three topics from <code>config.yaml</code>.
               You can type any other course material or topic instead.
             </p>
+            <!-- Rubric 3c (e2): the warm-up the Today card's Start handed over
+                 with the topic (today-resume) — a proposal beneath the topic,
+                 hidden when the hand-off carried none. Same opener as the live
+                 line below; nothing opens by itself. -->
+            <p id="study-first-move" class="picker-hint study-first-move" x-show="firstMove">
+              <span class="study-first-move-label">First move, if you want one:</span>
+              <span x-text="firstMove"></span>
+              <button id="study-first-move-open" type="button" class="bulk-btn"
+                      x-show="firstMoveLessonId"
+                      @click="openFirstMoveLesson()">Open the lesson</button>
+            </p>
           </div>
 
           <div class="picker-field" x-show="targetKind === 'vendor' || targetKind === 'course' || targetKind === 'lesson'">
@@ -2733,6 +2744,18 @@
               <span x-show="paused" class="timer-paused-label">Paused</span>
               <span x-show="message && !paused" x-text="message"></span>
             </div>
+          </div>
+          <!-- Rubric 3c (e2): the move survives the start here too. The picker's
+               copy hides with the picker; this line sits beneath the status bar
+               that names the topic, for the whole session — a proposal on
+               screen, never something the mentor says. Cleared with the topic
+               when the session ends. -->
+          <div id="study-live-first-move" class="study-live-first-move" x-show="firstMove">
+            <span class="study-first-move-label">First move:</span>
+            <span x-text="firstMove"></span>
+            <button id="study-live-first-move-open" type="button" class="bulk-btn"
+                    x-show="firstMoveLessonId"
+                    @click="openFirstMoveLesson()">Open the lesson</button>
           </div>
         </div>
       </div>

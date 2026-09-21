@@ -21,7 +21,11 @@ Use Study Session when you want to understand, practise, debug, or teach back a
 specific topic.
 
 1. Open **Study Session** in the sidebar.
-2. Enter one topic.
+2. Enter one topic. Arriving from the Today card's **Start** fills this in with
+   the action the engine named and, when that action carried a **first move**,
+   shows it beneath the topic — one passive thing to open and read for ten
+   minutes before you begin, if you want it; **Open the lesson** opens the
+   named lesson in the Course Explorer panel beside the picker.
 3. Choose an installed agent and set your energy from 1 to 10.
 4. Start the session and answer the mentor in the terminal or chat surface.
 5. Park tangents instead of switching tasks.
@@ -34,7 +38,10 @@ surface. Other installed agents appear in the same picker. Depending on the
 agent, StudyLoop renders either a live terminal or a structured chat surface.
 
 The bottom status bar keeps the timer, topic, energy, wins, parked items, and
-review count visible without interrupting the conversation.
+review count visible without interrupting the conversation. A first move that
+arrived with the topic stays beneath the status bar for the whole session, with
+its **Open the lesson** control — a proposal on screen, never something the
+mentor says — and leaves with the topic when the session ends.
 
 ## Body Double
 
@@ -94,6 +101,9 @@ as a **warm-up** into it, on that action's own material, and ends *then start
 minutes, then start. The **Open the lesson** button follows it in the same
 way. Recall never carries a warm-up — reading the lesson before a retrieval
 test defeats the test — and an action unrelated to any plan carries none.
+Pressing **Start** on a study action hands it to Study Session with its topic,
+the day's energy and the first move already filled in, so the picker never
+opens blank on something the card just named.
 
 ## Flashcards and quizzes
 

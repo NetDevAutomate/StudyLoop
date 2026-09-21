@@ -35,6 +35,10 @@ One derived field and one sentence, from facts the engine already holds:
 - CLI `now` prints a `First move:` line beneath the door; the Today card
   renders its own line and hands `firstMove` to the Body Double view with the
   plan title; the picker shows it beneath the activity. The door is unchanged.
+  Since rubric 3c (e2), **Start** on a study action hands the Study view its
+  topic, energy and move too (over `today-resume`), and the Study picker and
+  live layout show the move — beneath the topic, then beneath the status bar —
+  with the same **Open the lesson** control.
 - `docs/study-plans.md` ("Plan-aware now") and `docs/web-ui-guide.md` ("Body
   Double") describe it in the engine's terms, pinned by the docs contract.
 

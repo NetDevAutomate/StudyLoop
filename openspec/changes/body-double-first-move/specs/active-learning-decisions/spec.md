@@ -187,10 +187,22 @@ Recall SHALL never carry a warm-up and the resolver SHALL NOT be asked for
 one — reading the lesson before a retrieval test defeats the test (row 3b (b):
 familiar recall leads as it is); `visual` and `audio` are already passive and
 carry none. A primary off every plan SHALL carry none, so the no-plan golden
-is byte-identical; alternates SHALL carry none (one move). Renderers key on
-`metadata.first_move`, not on the body double, so the CLI `First move:` line
-beneath `Record evidence:`, the Today card's line and its **Open the lesson**
-control follow without change.
+is byte-identical; alternates SHALL carry none (one move). CLI `now` keys on
+`metadata.first_move` and prints `First move:` beneath `Record evidence:`
+without change. The Today card SHALL read `metadata.first_move` and the lesson
+fields for ANY recommendation that carries them — its `firstMoveNote` and
+`firstMoveLesson` gated on `source == "body_double"` and hid the warm-up
+(rubric 3c (e2), correcting (e1)'s record) — and SHALL render the line and the
+**Open the lesson** control for the warm-up as for the sit-with move. Pressing
+**Start** on a study action SHALL hand the Study view the action's `concept` as
+topic, the day's energy, and the move with its lesson when one rides on it,
+over the existing `today-resume` event; the Study picker SHALL show the move
+beneath the topic (`#study-first-move`, `#study-first-move-open`) and the live
+layout SHALL carry it beneath the status bar for the whole session
+(`#study-live-first-move`, `#study-live-first-move-open`), cleared with the
+topic when the session ends; a planning launch SHALL clear it. A hand-off
+without a move (resume, a parked pick-up, a primary the engine gave none)
+SHALL clear any earlier one.
 
 #### Scenario: The row-3 repair at medium energy carries a warm-up into itself
 - **WHEN** rubric row 3's world is ranked at `medium` energy (capability 6)
@@ -222,3 +234,16 @@ control follow without change.
   no plan, or there is no active plan at all
 - **THEN** `metadata` carries no `first_move`, the resolver is not asked, and
   the no-plan payload is byte-identical to the golden
+
+#### Scenario: The warm-up follows Start into the Study view
+- **WHEN** the Today card's primary is a plan-related repair carrying
+  `first_move`, `first_move_lesson_id` and `first_move_lesson_title`, and the
+  learner presses **Start**
+- **THEN** the card dispatches `today-resume` `{topic: <concept>, energy,
+  firstMove, firstMoveLessonId, firstMoveLessonTitle}` and navigates to
+  `study-session`; the Study picker fills the topic and shows the move beneath
+  it with **Open the lesson**; once the session runs the same move sits
+  beneath the status bar with the control; pressing either dispatches
+  `explorer-open-lesson` `{lessonId, title}`; `confirmEndSession()` clears the
+  move with the topic; a primary without a move hands over `{topic, energy}`
+  only; a flashcards primary hands over nothing and navigates as before

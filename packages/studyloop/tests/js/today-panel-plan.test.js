@@ -391,7 +391,13 @@ test('starting a body-double primary hands its plan to the Body Double view, the
     panel.startAction(PLAN_PAYLOAD.primary);
 
     assert.deepEqual(gone, ['study-session']);
-    assert.equal(events.length, 0, 'an ordinary action dispatches nothing');
+    /* Rubric 3c (e2): an ordinary study action used to dispatch nothing — the
+       picker opened blank and the learner retyped the concept. It now hands
+       its topic and the day's energy over today-resume; no move rides along
+       when the engine put none on it. */
+    assert.equal(events.length, 1);
+    assert.equal(events[0].type, 'today-resume');
+    assert.deepEqual(events[0].detail, { topic: 'window function', energy: 'low' });
   } finally {
     globalThis.window = savedWindow;
     globalThis.Alpine = savedAlpine;

@@ -170,11 +170,42 @@ body-doubling floor). Decisions taken here, each verified against the tree at
     the plan's eligible next milestone → its own concepts, all of them, *then
     start the milestone*; any other plan-related active item → *then start on
     “<concept>”*. Applies at any energy, not medium alone — starting, not
-    energy, is what it is for — and the renderers needed no change: CLI, Today
-    card and its Open-the-lesson control key on `metadata.first_move`, not on
-    the body double. Beyond #30's title (the *body double's* first move), named
+    energy, is what it is for — and the CLI needed no change: it keys on
+    `metadata.first_move`. The Today card did NOT follow without change — see
+    decision 11, which corrects the claim made here at GREEN `dacbea87`.
+    Beyond #30's title (the *body double's* first move), named
     honestly here and in the PR; the lead-in stays with the renderers (d1).
     Decided rather than asked: the energy scope and the three tails.
+
+11. **The warm-up follows Start into the Study view — the (d2)+(d3) shape
+    (owner 2026-09-21: "build it now, the (d2)+(d3) shape on the Study
+    view").** Two defects, both found by reading the code the (e1) warm-up had
+    to travel through — and one of them mine. (i) `startAction()` on the Today
+    card handed the Body Double its activity, energy, move and lesson, but for
+    a study action it only navigated: the Study picker opened blank — not the
+    warm-up, not even the concept — and the learner retyped the topic from
+    memory. Only the resume and parked paths (`today-resume`) ever carried a
+    topic across. (ii) `firstMoveNote()`/`firstMoveLesson()` gated on `source
+    === 'body_double'`, so the Today card did not render the (e1) warm-up at
+    all. Decision 10 said "the renderers needed no change"; that was true of
+    the CLI and false of the card, asserted from a grep of the field names
+    without reading the two method bodies — recorded here and in the receipt
+    rather than amended out of the pushed commit. The build: the gate comes
+    off (the card reads the field wherever the engine put it, never
+    second-guessing the source); Start on a study action hands `{topic:
+    concept, energy, firstMove?, firstMoveLessonId?, firstMoveLessonTitle?}`
+    over the EXISTING `today-resume` event (no new event; the resume and parked
+    hand-offs keep their shape and, carrying no move, clear one left by an
+    earlier Start); the Study view holds the three fields, shows the move
+    beneath the topic in the picker and beneath the status bar for the whole
+    session, opens the lesson through one `openFirstMoveLesson()` into the
+    Course Explorer aside, clears the fields with the topic on end, and clears
+    them on a planning launch (the architect interview is not a repair). The
+    Body Double's own hand-off is unchanged and shares one `_firstMoveDetail`
+    builder. Rejected, as at (d3): auto-opening the lesson at start.
+    `session-timer.js` has a node harness, so this is behaviour-tested (the
+    listener, the opener, the end path, the planning launch), with the markup
+    pinned statically. Sized as about a third of #30, as estimated.
 
 ## Read cost
 

@@ -1961,6 +1961,30 @@ body[data-font="opendyslexic"] .card-content {
   text-overflow: ellipsis;
   max-width: 200px;
 }
+
+/* Rubric 3c (e2): the first move on the Study view. In the picker it is a
+   hint beneath the topic; in the live layout it is a row beneath the status
+   bar (same surface, same border) that stays for the whole session. */
+.study-first-move,
+.study-live-first-move {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+.study-first-move { margin: 6px 0 0; }
+.study-live-first-move {
+  flex-shrink: 0;
+  padding: 6px 16px 8px;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border);
+}
+.study-first-move-label { font-weight: 600; color: var(--text); }
 .status-energy {
   color: var(--text-muted);
   white-space: nowrap;

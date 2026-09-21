@@ -71,6 +71,19 @@ edit; each task has a definition of done a reviewer can tick from output.
       `active_plans`. DoD: now-guidance + decision + web-now + golden + static pins 105/105, docs contract
       green, ruff/format/pyright clean, mkdocs `--strict` clean, openspec valid, golden `ec451ce8` unchanged,
       JS 153/153 (renderers unchanged — they key on `metadata.first_move`).
+      CORRECTION (T3h): that last clause was true of the CLI only; the Today card gated on the body double.
+- [x] **T3h** Rubric 3c (e2), owner 2026-09-21: *build it now, the (d2)+(d3) shape on the Study view*. RED
+      `eb3be21a` (12 failing + one guard) → GREEN: Today `firstMoveNote`/`firstMoveLesson` read the field for any
+      recommendation (the body-double gate hid the (e1) warm-up); `startAction` on a study action hands
+      `{topic, energy, firstMove?, lesson?}` over `today-resume` (it used to hand NOTHING — the picker opened
+      blank); `_firstMoveDetail` shared with the Body Double hand-off; `sessionTimer` holds the three fields,
+      listener sets/clears them per hand-off, `openFirstMoveLesson()`, `confirmEndSession()` clears them with
+      the topic, `startPlanning()` clears them; `#study-first-move`/`-open` beneath the topic,
+      `#study-live-first-move`/`-open` beneath the status bar; CSS; guide (Study Session + Today); spec
+      requirement text corrected + scenario; design decision 11 (and decision 10 corrected in place). DoD:
+      new pins + Body Double pins + docs contract + now-guidance + web-now + golden 134/134, web unit suites
+      reading the markup 144 passed, JS 160/160, `node --check` on both scripts, mkdocs `--strict` clean,
+      openspec valid, golden `ec451ce8` unchanged.
 - [ ] ⚖ **T4** Council review (three seats) of the RED and the GREEN; arbitration; one commit per accepted
       finding.
 - [ ] **T5** Rubric row **3c** added to `docs/architecture/plan-integration/receipts/now-rubric-2026-09-16.md`:

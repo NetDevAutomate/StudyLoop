@@ -259,11 +259,18 @@ function withStubs(run) {
   };
   globalThis.Alpine = globalThis.window.Alpine;
   globalThis.fetch = async () => ({ ok: true, json: async () => ({}) });
+  const restore = () => Object.assign(globalThis, saved);
+  let result;
   try {
-    return run({ listeners, events });
-  } finally {
-    Object.assign(globalThis, saved);
+    result = run({ listeners, events });
+  } catch (err) {
+    restore();
+    throw err;
   }
+  // An async run must keep its stubs until it settles; a sync one restores now.
+  if (result && typeof result.then === 'function') return result.finally(restore);
+  restore();
+  return result;
 }
 
 test('today-resume carries the warm-up and its lesson beside the topic; a hand-off without one clears it', () => {

@@ -89,6 +89,13 @@ export function sessionTimer() {
       selectedCourse: '',
       selectedLesson: '',
       topicInput: '',
+      /* Rubric 3c (e2): the warm-up handed over with the topic by the Today
+         card's Start (today-resume), shown beneath the topic in the picker and
+         beneath the status bar for the whole session; '' when the hand-off
+         carried none. Cleared with the topic when the session ends. */
+      firstMove: '',
+      firstMoveLessonId: '',
+      firstMoveLessonTitle: '',
       selectedOption: null,
       /* sessionType removed (body-double-own-agent-picker §5.2): Body Double
          is its own view with its own factory, so the Study picker has exactly
@@ -154,6 +161,14 @@ export function sessionTimer() {
             const bands = { low: 3, medium: 5, high: 8 };
             this.energy = bands[e.detail.energy] || 5;
           }
+          /* Rubric 3c (e2): the move arrives beside the topic, or not at all.
+             Set from THIS hand-off every time, so a resume or a parked pick-up
+             (which carry no move) clears one left by an earlier Start. */
+          const detail = e.detail || {};
+          this.firstMove = detail.firstMove ? String(detail.firstMove) : '';
+          this.firstMoveLessonId = detail.firstMoveLessonId ? String(detail.firstMoveLessonId) : '';
+          this.firstMoveLessonTitle = detail.firstMoveLessonTitle
+            ? String(detail.firstMoveLessonTitle) : '';
         });
 
         // Plans-view hand-off (#14, design §5). The Plans view ASKS for a
@@ -280,6 +295,11 @@ export function sessionTimer() {
         this.selectedTopic = '';
         this.selectedOption = null;
         this.targetKind = 'topic';
+        /* Rubric 3c (e2): the architect interview is not a repair; a warm-up
+           left by an earlier Today hand-off must not sit beneath it. */
+        this.firstMove = '';
+        this.firstMoveLessonId = '';
+        this.firstMoveLessonTitle = '';
         /* The learner's brain dump, or '' — forwarded once, into this POST
            only; the server renders it into the brief and never stores it. */
         const brainDump = String(detail.brainDump || '').trim();
@@ -542,6 +562,23 @@ export function sessionTimer() {
         this.topic = 'Session ended';
         this.topicInput = '';
         this.selectedTopic = '';
+        /* Rubric 3c (e2): the move arrived beside the topic in one hand-off and
+           leaves with it — the status bar shows it for the whole session, so a
+           stale one beneath the next topic would be a confidently wrong ramp. */
+        this.firstMove = '';
+        this.firstMoveLessonId = '';
+        this.firstMoveLessonTitle = '';
+      },
+
+      /* "Open X" actually opens X (rubric 3c (d2), here for the Study view):
+         asks the Course Explorer aside to open the lesson the move names, beside
+         this view — no navigation, the learner stays put with the lesson next
+         to the picker or the console. Nothing to open, nothing dispatched. */
+      openFirstMoveLesson() {
+        if (!this.firstMoveLessonId) return;
+        window.dispatchEvent(new CustomEvent('explorer-open-lesson', {
+          detail: { lessonId: this.firstMoveLessonId, title: this.firstMoveLessonTitle },
+        }));
       },
 
       /* ---- recovery from a session this view does not own -------------- */

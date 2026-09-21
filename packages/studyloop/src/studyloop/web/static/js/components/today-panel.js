@@ -123,19 +123,39 @@ export function todayPanel() {
         const detail = { activity: this.bodyDoubleActivity(rec), energy: this.plan && this.plan.energy };
         /* Issue #30: the engine's one passive first move rides along when there is
            one, so the picker opens on something to open — additive; a payload
-           without it hands over exactly what it did before. */
-        const firstMove = this.firstMoveNote(rec);
-        if (firstMove) detail.firstMove = firstMove;
-        /* Rubric 3c (d2): the lesson the move names, when the engine resolved
-           one, so the picker can open it beside the view too. */
-        const lesson = this.firstMoveLesson(rec);
-        if (lesson) {
-          detail.firstMoveLessonId = lesson.id;
-          detail.firstMoveLessonTitle = lesson.title;
-        }
+           without it hands over exactly what it did before. Rubric 3c (d2): the
+           lesson the move names, when the engine resolved one, rides beside it. */
+        Object.assign(detail, this._firstMoveDetail(rec));
         window.dispatchEvent(new CustomEvent('body-double-request', { detail }));
+      } else if (view === 'study-session') {
+        /* Rubric 3c (e2): Start used to navigate and hand the Study picker
+           NOTHING — not the (e1) warm-up, not even the concept — so the learner
+           retyped the topic from memory and the sentence the card had just
+           shown was thrown away. Same event the resume and parked paths use
+           (`today-resume`, event-not-storage), so the picker opens on the
+           action the engine named, with its move beside it when there is one.
+           The view starts nothing on its own; the learner still presses Start. */
+        const detail = { topic: rec.concept || '', energy: (this.plan && this.plan.energy) || null };
+        Object.assign(detail, this._firstMoveDetail(rec));
+        window.dispatchEvent(new CustomEvent('today-resume', { detail }));
       }
       Alpine.store('nav').go(view);
+    },
+
+    /* The first move's share of a hand-off: the sentence and, when the engine
+       resolved a lesson, its id and title — additive, so a recommendation
+       without a move hands over exactly what it did before. One definition for
+       both session views. */
+    _firstMoveDetail(rec) {
+      const detail = {};
+      const firstMove = this.firstMoveNote(rec);
+      if (firstMove) detail.firstMove = firstMove;
+      const lesson = this.firstMoveLesson(rec);
+      if (lesson) {
+        detail.firstMoveLessonId = lesson.id;
+        detail.firstMoveLessonTitle = lesson.title;
+      }
+      return detail;
     },
 
     /* What a body-double proposal asks the learner to sit with: the named
@@ -147,23 +167,25 @@ export function todayPanel() {
       return (plan && plan.title) || (rec && rec.concept) || '';
     },
 
-    /* Issue #30: the body-double proposal's one tiny, passive first move on the
-       deferred material, verbatim from the engine (`metadata.first_move`); '' for
-       any other action or a payload that carries none. Nothing here re-derives
-       it — the sentence is the engine's, so the CLI and the card agree. */
+    /* Issue #30: the engine's one tiny, passive first move, verbatim from
+       `metadata.first_move`; '' for a payload that carries none. Nothing here
+       re-derives it — the sentence is the engine's, so the CLI and the card
+       agree. Rubric 3c (e1)/(e2): the engine puts a move on the body-double
+       proposal AND, as a warm-up, on a plan-related active primary, so the card
+       reads the field wherever the engine put it and never second-guesses the
+       source (the body-double gate that used to sit here hid the warm-up). */
     firstMoveNote(rec) {
-      if (!rec || rec.source !== 'body_double') return '';
-      const move = rec.metadata && rec.metadata.first_move;
+      const move = rec && rec.metadata && rec.metadata.first_move;
       return move ? String(move) : '';
     },
 
     /* Rubric 3c (d2): the indexed lesson the first move names, when the engine
        resolved one — `{ id, title }` from `metadata.first_move_lesson_id` and
-       `_title`; null for a milestone-form move, any other action, or no payload.
-       The sentence has already stated the lesson's evidence (its course and the
-       word the match rests on), so what this opens is what the learner judged. */
+       `_title`; null for a milestone-form move or no payload. The sentence has
+       already stated the lesson's evidence (its course and the word the match
+       rests on), so what this opens is what the learner judged. */
     firstMoveLesson(rec) {
-      if (!rec || rec.source !== 'body_double' || !rec.metadata) return null;
+      if (!rec || !rec.metadata) return null;
       const id = rec.metadata.first_move_lesson_id;
       if (!id) return null;
       return { id: String(id), title: String(rec.metadata.first_move_lesson_title || '') };
