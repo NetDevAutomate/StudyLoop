@@ -228,7 +228,8 @@ available at any energy; due reviews are never deferred. When nothing
 plan-related fits the day's energy, the recommendation is to **sit with the
 plan** — a body-double session: you drive, the companion stays quiet unless
 you ask — with the recorded progress named first and the deferred items after
-it, then one **first move**, if you want one: open the indexed lesson that
+it. Beside the session door, once, sits one **first move**, if you want one:
+open the indexed lesson that
 matches the deferred milestone's concepts and read for ten minutes, nothing
 more. When no indexed lesson mentions those concepts, it names the milestone
 instead and says so — *"Open your Frames material and read for ten minutes,

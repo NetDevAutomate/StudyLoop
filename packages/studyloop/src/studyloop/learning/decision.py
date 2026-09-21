@@ -1426,7 +1426,6 @@ def _body_double_candidate(
             f"{progress_note}Nothing plan-related fits {energy} energy today{deferred_note}. "
             f"Sit with {titles} instead: a body-double session — you drive; the companion "
             "stays quiet unless you ask."
-            + (f" A first move, if you want one: {first_move}" if first_move else "")
         ),
         action_type="conversation",
         estimated_minutes=_estimate_minutes("conversation", time_minutes, 25),
@@ -1438,6 +1437,11 @@ def _body_double_candidate(
             "deferred_milestones": len(plans.deferred),
             "deferred_repairs": len(deferred_repairs),
             # Issue #30: additive, body-double only — the no-plan golden never sees it.
+            # The move lives HERE and nowhere else (rubric 3c (d)): the reason explains
+            # the recommendation, the move is an action beside the door, and every
+            # renderer (CLI, Today card, MCP get_next_action) reads this field — so
+            # the sentence appears once on a 3/10 screen instead of closing the
+            # reason and then repeating as its own line.
             **({"first_move": first_move} if first_move else {}),
             # Rubric 3c (b): the lesson the move names, so a renderer can open it in
             # StudyLoop's own frame; absent when the index held nothing relevant.

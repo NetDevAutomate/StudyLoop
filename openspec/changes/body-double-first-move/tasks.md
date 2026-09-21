@@ -30,6 +30,13 @@ edit; each task has a definition of done a reviewer can tick from output.
       (design decision 6); spec delta, design, `docs/study-plans.md` and the JS fixture say the same.
       DoD: `test_now_plan_guidance.py` 82/82, JS 150/150, ruff, pyright, mkdocs `--strict` clean, golden
       `ec451ce8` unchanged.
+- [x] **T3d** Rubric 3c (d1), owner 2026-09-21: *keep the First move line, drop it from the reason*. RED
+      `630cac72` (the reason ends at the co-study guarantee and carries neither the sentence nor the words
+      "first move"; the CLI panel shows the sentence exactly once) → GREEN: the reason tail is removed;
+      `metadata["first_move"]` is the move's only carriage (design decision 5); spec delta and the
+      study-plans guide say the same. DoD: `test_now_plan_guidance.py` + `test_learning_decision.py`
+      green, JS unchanged (the card reads the field, not the reason), golden `ec451ce8` unchanged, row 3c's
+      screen re-emitted through both real collectors with the sentence once.
 - [ ] ⚖ **T4** Council review (three seats) of the RED and the GREEN; arbitration; one commit per accepted
       finding.
 - [ ] **T5** Rubric row **3c** added to `docs/architecture/plan-integration/receipts/now-rubric-2026-09-16.md`:

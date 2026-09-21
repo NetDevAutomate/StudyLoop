@@ -29,8 +29,10 @@ so a renderer can open it in StudyLoop's own frame; it SHALL be absent
 otherwise. The move SHALL be passive — reading; never an exercise,
 a practice task or a question — because it must be consumable at the
 capability the day carries. It SHALL ride as `metadata["first_move"]` on the
-body-double recommendation only and close its reason as `A first move, if you
-want one: <move>`; it SHALL add no top-level key to the `now` payload, so the
+body-double recommendation only, and ONLY there: the reason SHALL NOT carry
+the sentence (the reason explains the recommendation; the move is an action,
+rendered by each consumer once, beside the session door — rubric 3c (d)); it
+SHALL add no top-level key to the `now` payload, so the
 no-plan golden is byte-identical. The content index is a refinement, never a
 dependency: a lookup that raises SHALL answer the plain milestone form with
 no warning. A body double always has a deferred milestone to draw on — an
@@ -44,8 +46,9 @@ is defined.
   the content index was searched and resolves nothing
 - **THEN** the primary is the body double, `metadata["first_move"] == "Open
   your Frames material and read for ten minutes, nothing more — no indexed
-  lesson mentions “window frame” yet."`, the reason ends with `A first move, if
-  you want one: ` followed by that sentence, `metadata` has no
+  lesson mentions “window frame” yet."`, the reason ends with `the companion
+  stays quiet unless you ask.` and contains neither that sentence nor the words
+  `first move`, `metadata` has no
   `first_move_lesson_id`, the `evidence_command` is unchanged, and the payload's
   top-level keys are the golden's then `active_plans`, `energy_deferred`,
   `energy_deferred_repairs`
@@ -65,7 +68,7 @@ is defined.
 - **THEN** the explorer's search was asked `["window frame"]` only, the move is
   the milestone sentence with ` — no indexed lesson mentions “window frame”
   yet.`, no `first_move_lesson_id` is carried, and neither wrong lesson
-  appears in the reason
+  appears anywhere in the serialised recommendation
 
 #### Scenario: A milestone with no concept is not looked up
 - **WHEN** the deferred milestone has no `concepts`
@@ -88,9 +91,11 @@ is defined.
   material and read for ten minutes, nothing more.` with no why-clause and no
   `first_move_lesson_id`, and `warnings` carries nothing about the index
 
-#### Scenario: Every renderer shows the move beside the door, never instead of it
+#### Scenario: Every renderer shows the move beside the door, once, never instead of it
 - **WHEN** the body double is primary
-- **THEN** CLI `now` prints a `First move:` line beneath `Sit with the plan:`;
+- **THEN** CLI `now` prints a `First move:` line beneath `Sit with the plan:`
+  and the sentence appears nowhere else on the panel — the `Why:` paragraph
+  does not repeat it;
   the Today card renders `firstMoveNote(primary)` as its own line and hands
   `firstMove` to the Body Double view in the `body-double-request` detail
   beside `activity` and `energy`; the Body Double picker shows it beneath the

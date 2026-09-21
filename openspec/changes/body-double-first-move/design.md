@@ -35,9 +35,19 @@ body-doubling floor). Decisions taken here, each verified against the tree at
    (`ec451ce8`) is byte-identical without special-casing; the renderers read the
    field and re-derive nothing, so CLI and card agree by construction.
 
-5. **A proposal, not a requirement.** The reason's lead-in is "A first move, if
-   you want one"; the Today card's label repeats it; the Body Double view shows
-   the text and says nothing — the co-study persona's silence rule is untouched.
+5. **A proposal, not a requirement — said once, beside the door.** The lead-in
+   is "A first move, if you want one" (the Today card's label; the CLI's
+   `First move:`); the Body Double view shows the text and says nothing — the
+   co-study persona's silence rule is untouched. The move rides in
+   `metadata["first_move"]` only. The first GREEN also closed the reason with
+   it, so the same twenty-odd words appeared twice on a 3/10 screen — the
+   `Why:` paragraph's tail and the dedicated line two lines below. Rubric 3c
+   (d), owner 2026-09-21: keep the line, drop it from the reason — the reason
+   explains the recommendation, the move is an action and belongs beside the
+   door. Verified before deciding: no consumer reads the reason alone (CLI,
+   Today card and MCP `get_next_action` all carry the payload's metadata), so
+   nothing loses the move; the card's `Why:` shrinks by a line, which on a low
+   day is the point.
 
 6. **Concepts only; when nothing matches, name the milestone and say why —
    never widen the search (rubric 3c (c), owner 2026-09-21).** The first
