@@ -1317,17 +1317,28 @@ def _resolve_lesson(concepts: Sequence[str]) -> tuple[str, str, str, str] | None
     with explorer._fts_lock:
         for concept in concepts:
             q = concept.strip()
-            if len(q) < 2:
+            if len(q) < _MIN_QUERY_CHARS:
+                # The explorer refuses shorter queries. The sentence builder filters
+                # these out BEFORE asking (review 8, F3); this guard only keeps a
+                # direct caller from sending a query the index would reject.
                 continue
-            rows = explorer._run_fts_search(explorer._fts_db_path(), base, q, 1)
-            if rows:
-                lesson_id = str(rows[0].get("lesson_id") or "").strip()
-                title = str(rows[0].get("title") or "").strip()
-                course_id = str(rows[0].get("course_id") or "").strip()
+            # Council review 8: a handful of rows, not one — "a hit lacking its
+            # course or its title is skipped" means the ROW is skipped and the
+            # first well-formed hit beneath it is named, not the whole concept.
+            rows = explorer._run_fts_search(explorer._fts_db_path(), base, q, _FTS_ROWS_PER_CONCEPT)
+            for row in rows:
+                lesson_id = str(row.get("lesson_id") or "").strip()
+                title = str(row.get("title") or "").strip()
+                course_id = str(row.get("course_id") or "").strip()
                 course_dir = course_id.rsplit("/", 1)[-1] if course_id else ""
                 if lesson_id and title and course_dir:
                     return lesson_id, title, explorer._humanise(course_dir), q
     return None
+
+
+#: Rows fetched per concept by the seam: enough to step past a malformed top row,
+#: few enough that one ``now`` never scans a result page.
+_FTS_ROWS_PER_CONCEPT = 3
 
 
 def _first_move(
@@ -1400,8 +1411,18 @@ def _first_move_sentence(
     stem = f"Open your {material} material and read for ten minutes, {tail}"
     if not concepts:
         return f"{stem} — this milestone names no concept to look up yet.", None, None
+    # Council review 8, astra F3: the explorer's search refuses queries under two
+    # characters, so a one-character concept ("C", "R") is UNSEARCHABLE — never a
+    # searched miss. It is named as too short; only searched concepts are named in
+    # a miss, so "no indexed lesson mentions X" is said of searches that ran.
+    searchable = tuple(c for c in concepts if len(c) >= _MIN_QUERY_CHARS)
+    too_short = tuple(c for c in concepts if len(c) < _MIN_QUERY_CHARS)
+    if not searchable:
+        named = " or ".join(f"“{c}”" for c in too_short)
+        verb = "is" if len(too_short) == 1 else "are"
+        return f"{stem} — {named} {verb} too short for the index to look up.", None, None
     try:
-        hit = _resolve_lesson(tuple(concepts))
+        hit = _resolve_lesson(searchable)
     except Exception:
         logger.debug("first move: lesson index unavailable, naming the material", exc_info=True)
         return f"{stem}.", None, None
@@ -1414,8 +1435,13 @@ def _first_move_sentence(
             lesson_id,
             title,
         )
-    named = " or ".join(f"“{c}”" for c in concepts)
+    named = " or ".join(f"“{c}”" for c in searchable)
     return f"{stem} — no indexed lesson mentions {named} yet.", None, None
+
+
+#: The explorer's FTS search refuses shorter queries (``search_lessons``: "min 2
+#: characters"); the seam and the sentence builder agree on this one number.
+_MIN_QUERY_CHARS = 2
 
 
 def _first_move_metadata(

@@ -2552,16 +2552,25 @@ def test_a_concept_too_short_to_search_is_not_reported_as_a_searched_miss(monkey
     )
     assert asked == [], "an unsearchable concept is not sent to the resolver"
 
-    # Mixed: the searchable concept is searched and named in the miss; the short one
-    # is never claimed as searched.
+
+def test_a_miss_names_only_the_concepts_that_were_searched(monkeypatch) -> None:
+    """Mixed concepts: the searchable one is searched and named in the miss; the
+    too-short one is never claimed as searched (review 8, astra F3)."""
     _plan(
-        "systems-c",
+        "systems-c-mixed",
         title="Systems C",
         topics=["c"],
         energy_floor=5,
         milestones=[Milestone(title="Pointers", concepts=["C", "pointer arithmetic"])],
     )
-    asked.clear()
+    _plant_struggles(monkeypatch)
+    asked: list[tuple[str, ...]] = []
+
+    def resolve(concepts):
+        asked.append(tuple(concepts))
+        return None
+
+    monkeypatch.setattr(decision, "_resolve_lesson", resolve)
 
     primary = build_now_plan(energy="low").primary
 

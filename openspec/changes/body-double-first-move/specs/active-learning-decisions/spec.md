@@ -6,11 +6,16 @@ When the `now` engine synthesises the body-double proposal (`source ==
 derive one first move for it from stored facts only: the first named plan's
 deferred next milestone (`_PlanContext.deferred`) and the indexed lesson
 `_resolve_lesson(concepts)` returns for **that milestone's own concepts** — one
-FTS query per concept through the explorer's own search, in order, first hit
-wins, the hit being `(lesson_id, title, course, concept)` — the course the
-hit's own `course_id` humanised exactly as the explorer's course list shows
-it, the concept the one that matched. A hit lacking its course or its title
-SHALL be skipped, never named. The milestone's title and the plan's topics SHALL NOT be searched
+FTS query per concept through the explorer's own search, in order, the first
+**well-formed** hit wins, the hit being `(lesson_id, title, course, concept)` —
+the course the hit's own `course_id` humanised exactly as the explorer's course
+list shows it, the concept the one that matched. A hit lacking its course or
+its title SHALL be skipped as a ROW — the seam fetches a handful of rows per
+concept (`_FTS_ROWS_PER_CONCEPT`, 3) so a malformed top row does not hide a
+well-formed lesson beneath it (council review 8) — and never named. A concept
+shorter than the explorer's minimum query (`_MIN_QUERY_CHARS`, 2) is
+UNSEARCHABLE: it SHALL NOT be sent to the resolver and SHALL NOT be reported as
+a searched miss (council review 8, astra F3). The milestone's title and the plan's topics SHALL NOT be searched
 (rubric 3c (c), measured on the owner's vault 2026-09-21: both steps always
 named a lesson, and the wrong one). When a concept resolved the move SHALL be
 `Open “<lesson title>” from <Course> — the match is the word “<concept>” — and
@@ -26,7 +31,10 @@ information instead of vagueness and points at the fix — a lesson, or a concep
 name on the milestone, not a better search:
 
 - searched, nothing matched: ` — no indexed lesson mentions “<concept>” yet`,
-  every unmatched concept named, joined by ` or `;
+  every unmatched SEARCHED concept named, joined by ` or ` (a too-short concept
+  is not named here — it was not searched);
+- every concept too short to search: ` — “<concept>” is too short for the
+  index to look up` (`are` for several), and the index SHALL NOT be asked;
 - the milestone names no concept: ` — this milestone names no concept to look
   up yet`, and the index SHALL NOT be asked;
 - the index could not be read: empty — no claim about an index that was never
@@ -109,7 +117,9 @@ and the tail.
   that row's `(lesson_id, title, course, "frame clause")` — the concept that
   matched, the course humanised from the row's `course_id` — after exactly two
   queries in that order; a set of concepts with no hits returns `None`; a hit
-  whose row lacks a `course_id` is skipped and returns `None`; and a search
+  whose row lacks a `course_id` is skipped as a row — the well-formed row
+  beneath it is named, and a concept whose only rows are malformed returns
+  `None`; and a search
   that raises propagates out of the seam rather than being reported as a miss
 
 #### Scenario: A broken content index degrades to the milestone, silently and without a claim
