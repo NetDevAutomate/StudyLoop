@@ -37,6 +37,17 @@ edit; each task has a definition of done a reviewer can tick from output.
       study-plans guide say the same. DoD: `test_now_plan_guidance.py` + `test_learning_decision.py`
       green, JS unchanged (the card reads the field, not the reason), golden `ec451ce8` unchanged, row 3c's
       screen re-emitted through both real collectors with the sentence once.
+- [x] **T3e** Rubric 3c (d2), owner 2026-09-21: *build the button, gated behind the evidence sentence*. Owner's
+      refinement of the (c) self-check — *"I would likely still open it in case there was some link that is
+      being enforced"* — made the gate: a named lesson is followed, not merely doubted. Cycle 1, RED `2b85a80b`
+      + `089d09ae` → GREEN `4459ea38`: `_resolve_lesson` returns `(lesson_id, title, course, concept)`, skips a
+      hit lacking its course; the lesson sentence states its evidence (`Open “<lesson>” from <Course> — the
+      match is the word “<concept>” — …`); `first_move_lesson_title` beside the id; design decision 7. Cycle 2,
+      RED `e1576276` → GREEN: `explorer-open-lesson` + `openLessonById` on the Course Explorer; **Open the
+      lesson** on the Today card (`today-open-first-move-lesson`) and the Body Double picker
+      (`#bd-first-move-open`), each only when a lesson resolved; the hand-off carries id + title; both guides;
+      design decision 8. DoD: engine + decision 88/88, static pins + docs contract green, JS 153/153, `node
+      --check` on both edited scripts, mkdocs `--strict` clean, openspec valid, golden `ec451ce8` unchanged.
 - [ ] ⚖ **T4** Council review (three seats) of the RED and the GREEN; arbitration; one commit per accepted
       finding.
 - [ ] **T5** Rubric row **3c** added to `docs/architecture/plan-integration/receipts/now-rubric-2026-09-16.md`:

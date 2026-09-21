@@ -1559,6 +1559,41 @@ function courseExplorer() {
         // Only reflect speaking state while the reader is the active surface.
         self.isReading = (e.detail && e.detail.state === 'speaking');
       });
+      /* Rubric 3c (d2), issue #30: another view asks for a lesson by id — the
+         Today card's or the Body Double picker's "Open the lesson" control for
+         the first move the engine resolved. The aside opens beside whatever
+         view is showing, so the learner does not leave it. */
+      window.addEventListener('explorer-open-lesson', (e) => {
+        const detail = (e && e.detail) || {};
+        self.openLessonById(detail.lessonId, detail.title);
+      });
+    },
+
+    // ------------------------------------------------------------------
+    // Open the aside (if closed) and a lesson by its full id, as a request
+    // from another view. Builds the same minimal lesson object
+    // openSearchResult() builds: id "provider/course/slug", course_id the
+    // first two segments, slug the rest, name the caller's title.
+    // ------------------------------------------------------------------
+    async openLessonById(lessonId, title) {
+      const id = String(lessonId || '').trim();
+      if (!id) return;
+      const store = Alpine.store('explorer');
+      if (!store.open) {
+        store.open = true;
+        const layout = document.querySelector('.app-layout');
+        if (layout) layout.classList.add('explorer-open');
+      }
+      if (!this._treeLoaded) await this._fetchTree();
+      const parts = id.split('/');
+      const courseId = parts.length > 2 ? parts.slice(0, 2).join('/') : '';
+      const slug = courseId ? parts.slice(2).join('/') : id;
+      this.openLesson({
+        id,
+        slug,
+        name: String(title || slug),
+        course_id: courseId,
+      });
     },
 
     // ------------------------------------------------------------------
@@ -3128,7 +3163,8 @@ function bodyDoubleSession() {
     slots: [], slotsUsed: 0, maxActive: 3, atCapacity: false, parkingLotCount: 0,
     focus: { topics: [], is_set: false, is_stale: false },
     focusCollapsed: false, captureCollapsed: false, captureTab: 'note',
-    activity: '', firstMove: '', agent: '', transport: 'pty', energy: 5, agents: [],
+    activity: '', firstMove: '', firstMoveLessonId: '', firstMoveLessonTitle: '',
+    agent: '', transport: 'pty', energy: 5, agents: [],
     sessionActive: false, liveActivity: '', confirmingEnd: false,
     endError: '', // R-70: set when /api/session/end fails; keeps the dialog open
     starting: false, startError: '',
@@ -3200,6 +3236,12 @@ function bodyDoubleSession() {
            activity so the session does not open on a blank page. Cleared when
            a hand-off carries none, so a stale move never outlives its plan. */
         this.firstMove = detail.firstMove ? String(detail.firstMove) : '';
+        /* Rubric 3c (d2): the lesson the move names, when the engine resolved
+           one, so the picker can open it beside the view. Cleared with the
+           move, for the same reason. */
+        this.firstMoveLessonId = detail.firstMoveLessonId ? String(detail.firstMoveLessonId) : '';
+        this.firstMoveLessonTitle = detail.firstMoveLessonTitle
+          ? String(detail.firstMoveLessonTitle) : '';
         const bands = { low: 3, medium: 5, high: 8 };
         if (detail.energy && bands[detail.energy]) this.energy = bands[detail.energy];
       });
@@ -3230,6 +3272,17 @@ function bodyDoubleSession() {
       /* Last line of init() on purpose — the only signal that every await
          above, the conflict probe included, has settled. */
       this._initDone = true;
+    },
+
+    /* Rubric 3c (d2), issue #30: "Open X" actually opens X. Asks the Course
+       Explorer aside to open the lesson the first move names, beside this view —
+       the learner stays on the picker (or in the session) with the lesson next
+       to it. Nothing to open when the engine resolved no lesson. */
+    openFirstMoveLesson() {
+      if (!this.firstMoveLessonId) return;
+      window.dispatchEvent(new CustomEvent('explorer-open-lesson', {
+        detail: { lessonId: this.firstMoveLessonId, title: this.firstMoveLessonTitle },
+      }));
     },
 
     async refreshFocus() {

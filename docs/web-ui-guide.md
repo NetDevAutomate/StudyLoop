@@ -45,7 +45,10 @@ work rather than learning a new concept.
 2. Name the activity in concrete terms, such as “trace one decorator call”.
    Arriving from the Today card's sit-with proposal fills this in with the
    plan's title and shows a **first move** beneath it — one passive thing to
-   open and read for ten minutes, if you want one; ignore it freely.
+   open and read for ten minutes, if you want one; ignore it freely. When the
+   move names an indexed lesson, **Open the lesson** opens it in the Course
+   Explorer panel beside the picker, so the session can start with it already
+   open next to you.
 3. Choose an agent and start the Pomodoro timer if a time box would help.
 4. Start the body-double session.
 5. Use **Focus** for up to three active topics and **Park a thought** for anything
@@ -71,6 +74,14 @@ action advances, a milestone above your current energy is shown as deferred
 with a reason, and an overdue review or fresh struggle can still outrank new
 milestone work. With no active plan the card is unchanged. See
 [Study Plans](study-plans.md#plan-aware-now).
+
+When nothing plan-related fits the day's energy, the card proposes sitting with
+the plan and, beside the door, one **first move** — one passive thing to open
+and read for ten minutes, if you want one. When that move names an indexed
+lesson (with the course it belongs to and the word the match rests on), an
+**Open the lesson** button opens it in the Course Explorer panel beside the
+card; you stay on Today with the lesson next to it. A move that names only the
+milestone offers no button, because there is nothing indexed to open yet.
 
 ## Flashcards and quizzes
 

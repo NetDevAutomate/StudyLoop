@@ -97,6 +97,26 @@ body-doubling floor). Decisions taken here, each verified against the tree at
    the learner legitimately wants; stating the evidence lets the learner decide.
    The control that opens the lesson (decision 8) waits behind this sentence.
 
+8. **"Open X" actually opens X — in the Course Explorer aside, beside the view
+   (rubric 3c (d2), owner 2026-09-21: build the button, gated behind the
+   evidence sentence).** Before this, `first_move_lesson_id` was carried and
+   consumed by nothing: the card said *Open “Decorators 29M”* beside a UI that
+   could have opened it and left the finding to the learner. The Today card and
+   the Body Double picker now offer **Open the lesson** — only when the engine
+   resolved a lesson (row 3's Frames world shows no button, honestly). Both
+   dispatch one window event, `explorer-open-lesson` `{lessonId, title}`, and
+   the Course Explorer's new `openLessonById` opens its aside if closed and
+   calls the existing `openLesson` with the same minimal lesson object
+   `openSearchResult` builds — no second reader, no new fetch path. The aside
+   is the third grid column beside whatever view is showing, so the learner
+   stays on Today (or the picker, or the live session, since the aside
+   persists across navigation) with the lesson next to it — the single pane the
+   owner asked for, from parts that already existed. The hand-off to the Body
+   Double view carries `firstMoveLessonId`/`firstMoveLessonTitle` beside
+   `firstMove`, additive as before. NOT built: a reader pane inside the live
+   Body Double session — #33's read-along needs that same pane, so it is built
+   there, once. Sized as about a third of #30, as estimated.
+
 ## Read cost
 
 The lookup runs only when a body double is synthesised. Measured 2026-09-21 on

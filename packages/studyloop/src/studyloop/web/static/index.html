@@ -1097,6 +1097,15 @@
             <p class="today-first-move" x-show="firstMoveNote(plan?.primary)">
               First move, if you want one: <span x-text="firstMoveNote(plan?.primary)"></span>
             </p>
+            <!-- Rubric 3c (d2): "Open X" actually opens X — the lesson the move names
+                 opens in the Course Explorer beside this card; only when the engine
+                 resolved one (the sentence above has stated its evidence). -->
+            <p class="today-first-move-open" x-show="firstMoveLesson(plan?.primary)">
+              <button type="button" class="bulk-btn"
+                      data-testid="today-open-first-move-lesson"
+                      x-show="firstMoveLesson(plan?.primary)"
+                      @click="openFirstMoveLesson()">Open the lesson</button>
+            </p>
             <!-- Plan relevance (#10): which active plan this action advances.
                  Rendered from the engine's plan_refs; nothing here re-ranks. -->
             <p class="today-meta today-plan" x-show="planLabel(plan?.primary)">
@@ -1720,6 +1729,14 @@
             <!-- Issue #30: the Today card's sit-with proposal hands over one passive
                  first move with the plan title; a proposal the learner may ignore. -->
             <p id="bd-first-move" class="picker-hint" x-show="firstMove" x-text="firstMove"></p>
+            <!-- Rubric 3c (d2): "Open X" actually opens X — the lesson the move names
+                 opens in the Course Explorer beside this picker, so the session can
+                 start with it already open; only when the engine resolved one. -->
+            <p class="picker-hint" x-show="firstMoveLessonId">
+              <button id="bd-first-move-open" type="button" class="bulk-btn"
+                      x-show="firstMoveLessonId"
+                      @click="openFirstMoveLesson()">Open the lesson</button>
+            </p>
             <label class="bd-field">Agent
               <select id="bd-agent-select" class="picker-select" x-model="agent">
                 <option value="">Choose an agent…</option>

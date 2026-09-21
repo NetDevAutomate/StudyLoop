@@ -126,6 +126,13 @@ export function todayPanel() {
            without it hands over exactly what it did before. */
         const firstMove = this.firstMoveNote(rec);
         if (firstMove) detail.firstMove = firstMove;
+        /* Rubric 3c (d2): the lesson the move names, when the engine resolved
+           one, so the picker can open it beside the view too. */
+        const lesson = this.firstMoveLesson(rec);
+        if (lesson) {
+          detail.firstMoveLessonId = lesson.id;
+          detail.firstMoveLessonTitle = lesson.title;
+        }
         window.dispatchEvent(new CustomEvent('body-double-request', { detail }));
       }
       Alpine.store('nav').go(view);
@@ -148,6 +155,29 @@ export function todayPanel() {
       if (!rec || rec.source !== 'body_double') return '';
       const move = rec.metadata && rec.metadata.first_move;
       return move ? String(move) : '';
+    },
+
+    /* Rubric 3c (d2): the indexed lesson the first move names, when the engine
+       resolved one — `{ id, title }` from `metadata.first_move_lesson_id` and
+       `_title`; null for a milestone-form move, any other action, or no payload.
+       The sentence has already stated the lesson's evidence (its course and the
+       word the match rests on), so what this opens is what the learner judged. */
+    firstMoveLesson(rec) {
+      if (!rec || rec.source !== 'body_double' || !rec.metadata) return null;
+      const id = rec.metadata.first_move_lesson_id;
+      if (!id) return null;
+      return { id: String(id), title: String(rec.metadata.first_move_lesson_title || '') };
+    },
+
+    /* "Open X" actually opens X: asks the Course Explorer aside to open the
+       lesson beside this view. No navigation — the learner stays on Today with
+       the lesson open next to it. Nothing to open, nothing dispatched. */
+    openFirstMoveLesson() {
+      const lesson = this.firstMoveLesson(this.plan && this.plan.primary);
+      if (!lesson) return;
+      window.dispatchEvent(new CustomEvent('explorer-open-lesson', {
+        detail: { lessonId: lesson.id, title: lesson.title },
+      }));
     },
 
     /* The view an action starts in. A body-double proposal (design §5) is a

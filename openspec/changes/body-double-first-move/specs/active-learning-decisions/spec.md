@@ -125,3 +125,16 @@ is defined.
   beside `activity` and `energy`; the Body Double picker shows it beneath the
   activity (`#bd-first-move`); a payload without the field renders nothing
   and hands over exactly what it did before
+
+#### Scenario: "Open X" actually opens X, beside the view
+- **WHEN** the body double is primary and the move names a lesson
+  (`first_move_lesson_id` and `first_move_lesson_title` carried)
+- **THEN** the Today card shows an **Open the lesson** control
+  (`data-testid="today-open-first-move-lesson"`) beside the first-move line
+  and the Body Double picker shows `#bd-first-move-open` beside the move —
+  each only when a lesson resolved; pressing either dispatches
+  `explorer-open-lesson` `{lessonId, title}` and navigates nowhere; the Course
+  Explorer's `openLessonById` opens its aside if closed and opens that lesson
+  with the existing reader; the `body-double-request` detail carries
+  `firstMoveLessonId` and `firstMoveLessonTitle` beside `firstMove`; a move
+  that names only the milestone shows no control and hands over no lesson
