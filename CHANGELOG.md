@@ -7,6 +7,10 @@ experience may change before `1.0.0`.
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [0.5.0] - 2026-09-21
+
 ### Added
 
 - An acceptance-test tier modelled on the Terraform provider's `make testacc`:
