@@ -2514,3 +2514,95 @@ def test_cli_now_prints_the_warm_up_beneath_the_evidence_door_at_medium_energy(
         "start the repair — no indexed lesson mentions “window function” yet." in flat
     ), flat
     assert flat.count("Open your “window function” material") == 1
+
+
+# ---------------------------------------------------------------------------
+# Council review 8 (2026-09-21), accepted findings on the engine.
+# ---------------------------------------------------------------------------
+
+
+def test_a_concept_too_short_to_search_is_not_reported_as_a_searched_miss(monkeypatch) -> None:
+    """Review 8, astra F3 (🟡) — the explorer's search refuses queries under two
+    characters, and the seam skipped them silently, so a milestone whose concept is
+    ``C`` or ``R`` was told "no indexed lesson mentions “C” yet" about a search that
+    never ran. ``None`` must stay a SEARCHED miss: unsearchable concepts are named
+    as too short, and only searched concepts are named in a miss."""
+    _plan(
+        "systems-c",
+        title="Systems C",
+        topics=["c"],
+        energy_floor=5,
+        milestones=[Milestone(title="Pointers", concepts=["C"])],
+    )
+    _plant_struggles(monkeypatch)
+    asked: list[tuple[str, ...]] = []
+
+    def resolve(concepts):
+        asked.append(tuple(concepts))
+        return None
+
+    monkeypatch.setattr(decision, "_resolve_lesson", resolve)
+
+    primary = build_now_plan(energy="low").primary
+
+    assert primary.source == "body_double"
+    assert primary.metadata["first_move"] == (
+        "Open your Pointers material and read for ten minutes, nothing more — "
+        "“C” is too short for the index to look up."
+    )
+    assert asked == [], "an unsearchable concept is not sent to the resolver"
+
+    # Mixed: the searchable concept is searched and named in the miss; the short one
+    # is never claimed as searched.
+    _plan(
+        "systems-c",
+        title="Systems C",
+        topics=["c"],
+        energy_floor=5,
+        milestones=[Milestone(title="Pointers", concepts=["C", "pointer arithmetic"])],
+    )
+    asked.clear()
+
+    primary = build_now_plan(energy="low").primary
+
+    assert primary.metadata["first_move"] == (
+        "Open your Pointers material and read for ten minutes, nothing more — "
+        "no indexed lesson mentions “pointer arithmetic” yet."
+    )
+    assert asked == [("pointer arithmetic",)]
+
+
+def test_resolve_lesson_skips_a_malformed_top_row_and_names_the_well_formed_hit_beneath_it(
+    monkeypatch,
+) -> None:
+    """Review 8, grok 🔵 / astra refutation 3 — the seam fetched ONE row per concept
+    and skipped the concept when that row lacked its course or title, so a malformed
+    top row hid a well-formed lesson ranked beneath it. "A hit lacking its course or
+    its title SHALL be skipped" means skip the ROW; the first well-formed hit wins."""
+    from studyloop.web.routes import explorer
+
+    limits: list[int] = []
+
+    def fake_search(db_path, base, q, limit):
+        limits.append(limit)
+        return [
+            {"lesson_id": "x/y/z", "course_id": "", "provider": "x", "title": "Orphan"},
+            {
+                "lesson_id": "ztm/advanced-sql-4h/frames",
+                "course_id": "ztm/advanced-sql-4h",
+                "provider": "ztm",
+                "title": "Advanced Sql 4H",
+            },
+        ]
+
+    monkeypatch.setattr(explorer, "_run_fts_search", fake_search)
+
+    hit = decision._resolve_lesson(("window frame",))
+
+    assert hit == (
+        "ztm/advanced-sql-4h/frames",
+        "Advanced Sql 4H",
+        "Advanced Sql 4H",
+        "window frame",
+    )
+    assert limits and limits[0] >= 2, "more than one row must be fetched for a row to be skipped"
