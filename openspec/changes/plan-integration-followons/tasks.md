@@ -258,7 +258,7 @@ writer, through the existing gate, closes that. Kept out of item 3 so item 3's f
 
 ## Item 7 — push step (owner present; HANDOFF §3 item 7)
 
-- [ ] **T7.1** Not run unattended. Ruleset D-I; tokens D-J. **State 2026-09-18** (HANDOFF §3 item 7's seven
+- [x] **T7.1** Not run unattended. Ruleset D-I; tokens D-J. **State 2026-09-18** (HANDOFF §3 item 7's seven
       steps): (1) pushes — done, owner pushed `main` three times (#20 `46262d23`, #22 `4bba58b6`, #23 `a5b9f903`),
       each a fast-forward after CI green on the PR; (2) ruleset D-I — done three times (2026-09-17
       `feat/knowledge-proof` + `fix/plan-integration-bugs`; 2026-09-18 `feat/plan-close` +
@@ -270,7 +270,21 @@ writer, through the existing gate, closes that. Kept out of item 3 so item 3's f
       item-6 issues — done 2026-09-19: **#25** (D-D derived plan bias) and **#26** (D-E nudge + retire/snooze), both
       `ready-for-agent`, bodies drawn from the proposals with every cited test id, symbol and path checked against
       `main` `a03fc9bd`; #21 given a status comment from the harness receipt and **left open** (its DoD names OpenCode
-      in core; OpenCode stays preview on the `opencode.db` exporter and the no-completed-reply gaps). **Open:**
-      (5) the local tag
-      `archive/feat-clean-start-2026-09-15` — owner: push or discard; (6) the GitHub Support ticket text — owner;
-      (7) revoke both tokens and delete `~/tmp/.env` — owner (D-J).
+      in core; OpenCode stays preview on the `opencode.db` exporter and the no-completed-reply gaps).
+      **Steps 5–7 closed 2026-09-21** (owner walkthrough, each fact re-checked against the live system first; #10,
+      #15 and #7 closed the same morning after the owner pushed `main` to `96806feb`): (5) the tag — **pushed** by
+      the owner (`9ec38e72` on origin). Checked before asking: its tip `daf46c81` is on no branch, only the dotenv fix
+      was ever cherry-picked (`bfe0695c`), and `clean_rebuild.py`, `corpus.py`, their tests and the clean-start
+      cutover receipt exist nowhere else — the tooling that produced the live `sessions.db`; it was the only one of
+      seventeen archive tags not on origin. (6) the Support ticket — the symptom it was written for is **gone**: the
+      repo page's contributors fragment lists only `@claude` and `@NetDevAutomate`, and the contributors API shows
+      the owner alone. `refs/pull/1..6/head` still exist, all six orphaned (unreachable from any branch or tag) and
+      fetchable, their histories carrying 85 commits under the owner's work address that the consolidation removed
+      from every branch. Owner is sending the ticket **reworded to that reason** (delete the cached head refs; the
+      merged PRs stay). (7) the tokens — `~/tmp/.env` **no longer holds them**: rewritten 2026-09-19 into a Fabric
+      configuration (fourteen variables, neither `GITHUB_TOKEN` nor `AWS_BEARER_TOKEN_BEDROCK`), so the "delete
+      `~/tmp/.env`" step would have deleted the wrong file and revoked nothing — **not done, deliberately**. Owner
+      revoked both D-J tokens at source 2026-09-21. Found alongside: `gh` on this machine ran on a classic PAT with
+      `admin:enterprise`, `admin:org`, `delete_repo`, `repo`, `workflow` scopes — every agent shell acted with it;
+      replaced by a browser OAuth login (`repo`, `read:org`, `gist`, `admin:public_key`), verified via
+      `gh auth status`, before the PAT was revoked.

@@ -1,9 +1,2 @@
 schema: spec-driven
 created: 2026-09-16
-
-deferred: >-
-  Follow-on programme to the archived plan-application-seam change (owner
-  decisions D-A..D-J, docs/architecture/plan-integration/HANDOFF-2026-09-16.md).
-  Items 1-4 land under one council review, item 5 under its own review round
-  with a rubric row the owner scores before it ships; the change is archived
-  when item 5's row is scored, not before. Not part of the current release tag.
