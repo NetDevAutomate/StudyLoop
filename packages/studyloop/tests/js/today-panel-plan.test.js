@@ -424,3 +424,47 @@ test('planNotesLabel: "Your plans" when a plan is involved, "Set aside today" fo
   assert.equal(panel.planNotesLabel(), 'Set aside today');
   assert.equal(panel.hasPlanContext, true);
 });
+
+/* Issue #30: the body-double proposal carries one tiny, passive first move on the
+   deferred material (`metadata.first_move`, engine-derived). The card shows it as
+   its own line beside the sit-with door and hands it to the Body Double view with
+   the plan title, so the session does not open on a blank page. Additive: a
+   payload without the field renders nothing and the hand-off detail is unchanged. */
+const FIRST_MOVE = 'Open the Frames material and read for ten minutes, nothing more.';
+
+test('firstMoveNote: the engine\u2019s first move verbatim, nothing when the payload carries none', () => {
+  const panel = todayPanel();
+  const withMove = { ...DEFERRED_REPAIR_PAYLOAD.primary,
+    metadata: { plan_id: 'sql-windows', deferred_milestones: 1, deferred_repairs: 1, first_move: FIRST_MOVE } };
+
+  assert.equal(panel.firstMoveNote(withMove), FIRST_MOVE);
+  assert.equal(panel.firstMoveNote(DEFERRED_REPAIR_PAYLOAD.primary), '');
+  assert.equal(panel.firstMoveNote({ ...withMove, source: 'study_progress' }), '',
+    'only a body-double proposal carries a first move');
+  assert.equal(panel.firstMoveNote(null), '');
+});
+
+test('starting a body-double primary hands the first move to the Body Double view beside the plan', () => {
+  const events = [];
+  const savedWindow = globalThis.window;
+  const savedAlpine = globalThis.Alpine;
+  const savedEvent = globalThis.CustomEvent;
+  globalThis.window = { dispatchEvent(e) { events.push(e); } };
+  globalThis.CustomEvent = class { constructor(type, init) { this.type = type; this.detail = init && init.detail; } };
+  globalThis.Alpine = { store() { return { go() {} }; } };
+  try {
+    const panel = todayPanel();
+    panel.plan = { ...DEFERRED_REPAIR_PAYLOAD,
+      primary: { ...DEFERRED_REPAIR_PAYLOAD.primary,
+        metadata: { plan_id: 'sql-windows', deferred_milestones: 1, deferred_repairs: 1, first_move: FIRST_MOVE } } };
+
+    panel.startPrimary();
+
+    assert.equal(events.length, 1);
+    assert.deepEqual(events[0].detail, { activity: 'SQL Windows', energy: 'low', firstMove: FIRST_MOVE });
+  } finally {
+    globalThis.window = savedWindow;
+    globalThis.Alpine = savedAlpine;
+    globalThis.CustomEvent = savedEvent;
+  }
+});

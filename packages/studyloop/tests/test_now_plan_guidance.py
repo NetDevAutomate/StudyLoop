@@ -1654,6 +1654,118 @@ def test_body_double_command_preserves_title_as_one_literal_shell_argument(
     assert not (tmp_path / "pwned").exists(), "the title's substitution must never run"
 
 
+# --- Issue #30: the body double proposes one tiny, concrete first move ----------------
+#
+# Owner note recorded beside rubric row 3b (a) (2026-09-20): "the sit-with session
+# must not be a blank page — the body double should propose one tiny, concrete first
+# move on the deferred material (e.g. 'open the Frames lesson and read it, nothing
+# more'). A goal-less session is the hardest ADHD start." The move is derived from
+# facts the engine already holds and is PASSIVE — reading, never an exercise, never
+# a Socratic round — because it must be consumable at the capability the day carries.
+#
+# A body double always has a deferred milestone to draw on: it is synthesised only
+# when no plan-related candidate exists, and an eligible next milestone would have
+# been synthesised as one (rule 7), so every matchable ready plan behind a body
+# double has its next milestone in ``energy_deferred``. The issue's "deferred repair
+# only" row is therefore unreachable and is not built (design, issue #30).
+
+
+def test_body_double_carries_one_passive_first_move_on_the_deferred_milestone(
+    monkeypatch,
+) -> None:
+    """Row 3's world: the move opens the deferred milestone's material and asks for
+    reading only. It rides in the payload as ``metadata["first_move"]`` (additive,
+    body-double only, so the no-plan golden is untouched) and closes the reason as a
+    proposal, not a requirement. Without indexed content it names the milestone."""
+    _row3_plan()
+    _plant_struggles(monkeypatch, _struggle("window function", days_ago=3))
+    monkeypatch.setattr(decision, "_lesson_title_for", lambda concepts: None)
+
+    low = build_now_plan(energy="low")
+
+    primary = low.primary
+    assert primary.source == "body_double"
+    move = primary.metadata["first_move"]
+    assert move == "Open the Frames material and read for ten minutes, nothing more."
+    assert primary.reason.endswith(f"A first move, if you want one: {move}"), primary.reason
+    for forbidden in ("exercise", "practice", "solve", "?"):
+        assert forbidden not in move, f"a first move must be passive; found {forbidden!r}"
+    assert primary.evidence_command == 'studyloop study "SQL Windows" --mode co-study', (
+        "the door is unchanged"
+    )
+    payload = low.to_json_dict()
+    assert payload["primary"]["metadata"]["first_move"] == move
+    golden_keys = list(json.loads(GOLDEN.read_text(encoding="utf-8")))
+    assert list(payload) == [
+        *golden_keys,
+        "active_plans",
+        "energy_deferred",
+        "energy_deferred_repairs",
+    ], "the first move adds no top-level key"
+
+
+def test_body_double_first_move_names_the_lesson_when_the_content_index_resolves_it(
+    monkeypatch,
+) -> None:
+    """When the deferred milestone's concepts resolve to a lesson in the indexed
+    content, the move names the lesson — the thing the learner can actually open —
+    and the index is read once, for that milestone's concepts only."""
+    _row3_plan()
+    _plant_struggles(monkeypatch, _struggle("window function", days_ago=3))
+    seen: list[tuple[str, ...]] = []
+
+    def resolve(concepts):
+        seen.append(tuple(concepts))
+        return "Window Frames and Ranges"
+
+    monkeypatch.setattr(decision, "_lesson_title_for", resolve)
+
+    move = build_now_plan(energy="low").primary.metadata["first_move"]
+
+    assert move == "Open “Window Frames and Ranges” and read for ten minutes, nothing more."
+    assert seen == [("window frame",)]
+
+
+def test_body_double_first_move_survives_a_broken_content_index(monkeypatch) -> None:
+    """The content index is a refinement, never a dependency: when the lookup raises,
+    the move still names the milestone and ``now`` still answers."""
+    _row3_plan()
+    _plant_struggles(monkeypatch, _struggle("window function", days_ago=3))
+
+    def explode(concepts):
+        raise RuntimeError("fts index unreadable")
+
+    monkeypatch.setattr(decision, "_lesson_title_for", explode)
+
+    low = build_now_plan(energy="low")
+
+    assert low.primary.source == "body_double"
+    assert low.primary.metadata["first_move"] == (
+        "Open the Frames material and read for ten minutes, nothing more."
+    )
+    assert not any("fts" in w for w in low.warnings), "a failed refinement is not a warning"
+
+
+def test_cli_now_prints_the_first_move_beneath_the_sit_with_door(monkeypatch) -> None:
+    """The CLI shows the move as its own line under the door, after the door, so the
+    learner reads where to sit before what to open."""
+    from click.testing import CliRunner
+
+    from studyloop.cli import cli
+
+    _row3_plan()
+    _plant_struggles(monkeypatch, _struggle("window function", days_ago=3))
+    monkeypatch.setattr(decision, "_lesson_title_for", lambda concepts: None)
+
+    rich = CliRunner().invoke(cli, ["now", "--energy", "low"])
+
+    assert rich.exit_code == 0, rich.output
+    assert "Sit with the plan:" in rich.output
+    assert "First move:" in rich.output
+    assert "Frames material" in rich.output
+    assert rich.output.index("Sit with the plan:") < rich.output.index("First move:")
+
+
 def test_cli_milestone_deferral_does_not_promise_live_repair(monkeypatch) -> None:
     """Council review 7, F5 (astra 🟡): in row 3b's own fixture the milestone line used to end
     "Plan-related review and repair stay available" one line above the line saying the

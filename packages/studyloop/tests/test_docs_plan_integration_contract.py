@@ -394,3 +394,28 @@ def test_uninstall_output_makes_no_capability_claims(runner: CliRunner, tmp_path
     assert "Removed agent definitions" in output
     for name in PLAN_TOOL_NAMES:
         assert name not in output
+
+
+# --- Issue #30: the body double's first move ----------------------------------------
+
+
+def test_study_plans_doc_describes_the_first_move_in_the_engine_terms() -> None:
+    """The sit-with paragraph must say what the engine guarantees and no more: the
+    proposal carries ONE first move on the deferred milestone's material, it is
+    passive (reading), and it is optional — never a task the session enforces."""
+    section = _prose(_section(_read("docs/study-plans.md"), "Plan-aware now")).lower()
+    assert "first move" in section
+    assert "read" in section, "the doc must say the move is reading, i.e. passive"
+    assert "deferred milestone" in section or "material" in section
+    assert "if you want" in section or "optional" in section or "may ignore" in section, (
+        "the doc must present the move as a proposal the learner can ignore"
+    )
+    assert "exercise" not in section.split("first move", 1)[1].split(".", 2)[0], (
+        "the sentence about the first move must not promise an exercise"
+    )
+
+
+def test_web_ui_guide_body_double_names_the_handed_over_first_move() -> None:
+    section = _prose(_section(_read("docs/web-ui-guide.md"), "Body Double")).lower()
+    assert "first move" in section
+    assert "today" in section, "the guide must say where the move comes from (the Today card)"
