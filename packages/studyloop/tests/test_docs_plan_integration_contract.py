@@ -468,3 +468,21 @@ def test_docs_say_an_active_plan_related_action_carries_a_warm_up_first_move() -
         assert "recall" in section and "never" in section, (
             f"{name}: the guide must say recall never carries one"
         )
+
+
+def test_web_ui_guide_says_the_warm_up_follows_start_into_the_study_session() -> None:
+    """Rubric 3c (e2), owner 2026-09-21: Start on the Today card hands the action's
+    topic, energy and first move to the Study picker, and the move stays beside the
+    status bar for the whole session with its Open-the-lesson control. The guide says
+    so where the learner arrives (Study Session) and where they press Start (Today)."""
+    study = _prose(_section(_read("docs/web-ui-guide.md"), "Study Session")).lower()
+    today = _prose(_section(_read("docs/web-ui-guide.md"), "Today")).lower()
+    assert "first move" in study, "Study Session: the guide must name the first move"
+    assert "status bar" in study.split("first move", 1)[1], (
+        "Study Session: the guide must say the move stays beside the status bar"
+    )
+    assert "open the lesson" in study, "Study Session: the control follows the move"
+    assert "today" in study, "Study Session: the guide must say where the move comes from"
+    assert "start" in today and "study session" in today, (
+        "Today: the guide must say Start hands the action to Study Session"
+    )

@@ -440,8 +440,11 @@ test('firstMoveNote: the engine\u2019s first move verbatim, nothing when the pay
 
   assert.equal(panel.firstMoveNote(withMove), FIRST_MOVE);
   assert.equal(panel.firstMoveNote(DEFERRED_REPAIR_PAYLOAD.primary), '');
-  assert.equal(panel.firstMoveNote({ ...withMove, source: 'study_progress' }), '',
-    'only a body-double proposal carries a first move');
+  /* Rubric 3c (e1)/(e2): the engine puts a warm-up on a plan-related ACTIVE
+     primary too, so the card reads the field wherever the engine put it — it
+     never re-derives or second-guesses the source. */
+  assert.equal(panel.firstMoveNote({ ...withMove, source: 'study_progress:sql:window function' }),
+    FIRST_MOVE, 'the card renders the move for any recommendation that carries one');
   assert.equal(panel.firstMoveNote(null), '');
 });
 
@@ -491,8 +494,9 @@ test('firstMoveLesson: the resolved lesson (id + title) from the payload, null w
   delete noLesson.metadata.first_move_lesson_id;
   delete noLesson.metadata.first_move_lesson_title;
   assert.equal(panel.firstMoveLesson(noLesson), null, 'a milestone-form move offers nothing to open');
-  assert.equal(panel.firstMoveLesson({ ...WITH_LESSON, source: 'study_progress' }), null,
-    'only a body-double proposal carries a first move');
+  assert.deepEqual(panel.firstMoveLesson({ ...WITH_LESSON, source: 'study_progress:sql:decorators' }),
+    { id: 'udemy/the-ultimate-typescript/decorators-29m', title: 'Decorators 29M' },
+    'the control follows the move onto a plan-related active primary too (rubric 3c (e2))');
   assert.equal(panel.firstMoveLesson(null), null);
 });
 
@@ -549,4 +553,89 @@ test('starting a body-double primary hands the resolved lesson to the Body Doubl
     globalThis.Alpine = savedAlpine;
     globalThis.CustomEvent = savedEvent;
   }
+});
+
+/* Rubric 3c (e2), owner 2026-09-21 ("build it now, the (d2)+(d3) shape on the
+   Study view"). Before this, Start → on a study action navigated and handed the
+   Study picker NOTHING — not the warm-up, not even the concept — so the learner
+   retyped the topic from memory and the sentence the card had just shown was
+   thrown away. Start now hands the primary over the existing `today-resume`
+   event (the same shape the resume and parked paths use; no new event): topic,
+   energy, and the move with its lesson when the engine put one there. The Study
+   view starts nothing on its own; the learner still presses Start. */
+const WARM_UP =
+  'Open “Advanced Sql 4H” from Complete Sql Databases Bootcamp — the match is the phrase “window function” — and read for ten minutes, then start the repair.';
+const REPAIR_PRIMARY = {
+  concept: 'window function', topic: 'sql', action_type: 'hands-on',
+  source: 'study_progress:sql:window function', reason: 'Guided repair + tiny practice',
+  estimated_minutes: 15, evidence_command: 'studyloop progress "window function" -t "sql" -c learning',
+  score: 108, plan_refs: [{ plan_id: 'sql-windows', milestone_index: null }],
+  metadata: { confidence: 'struggling', energy_demand: 'high', first_move: WARM_UP,
+    first_move_lesson_id: 'ztm/complete-sql-bootcamp/advanced-sql-4h', first_move_lesson_title: 'Advanced Sql 4H' },
+};
+
+function withStubbedWindow(run) {
+  const events = [];
+  const navigated = [];
+  const savedWindow = globalThis.window;
+  const savedAlpine = globalThis.Alpine;
+  const savedEvent = globalThis.CustomEvent;
+  globalThis.window = { dispatchEvent(e) { events.push(e); } };
+  globalThis.CustomEvent = class { constructor(type, init) { this.type = type; this.detail = init && init.detail; } };
+  globalThis.Alpine = { store() { return { go(view) { navigated.push(view); } }; } };
+  try {
+    return run(events, navigated);
+  } finally {
+    globalThis.window = savedWindow;
+    globalThis.Alpine = savedAlpine;
+    globalThis.CustomEvent = savedEvent;
+  }
+}
+
+test('starting a study-session primary hands its topic, energy and warm-up to the Study view', () => {
+  withStubbedWindow((events, navigated) => {
+    const panel = todayPanel();
+    panel.plan = { ...DEFERRED_REPAIR_PAYLOAD, energy: 'medium', primary: REPAIR_PRIMARY,
+      energy_deferred: [], energy_deferred_repairs: [] };
+
+    panel.startPrimary();
+
+    assert.equal(events.length, 1);
+    assert.equal(events[0].type, 'today-resume', 'the resume/parked hand-off, not a new event');
+    assert.deepEqual(events[0].detail, {
+      topic: 'window function', energy: 'medium', firstMove: WARM_UP,
+      firstMoveLessonId: 'ztm/complete-sql-bootcamp/advanced-sql-4h', firstMoveLessonTitle: 'Advanced Sql 4H',
+    });
+    assert.deepEqual(navigated, ['study-session']);
+  });
+});
+
+test('a study-session primary without a move hands its topic and energy only', () => {
+  withStubbedWindow((events, navigated) => {
+    const panel = todayPanel();
+    const { first_move, first_move_lesson_id, first_move_lesson_title, ...bare } = REPAIR_PRIMARY.metadata;
+    panel.plan = { ...DEFERRED_REPAIR_PAYLOAD, energy: 'high',
+      primary: { ...REPAIR_PRIMARY, metadata: bare }, energy_deferred: [], energy_deferred_repairs: [] };
+
+    panel.startPrimary();
+
+    assert.equal(events.length, 1);
+    assert.deepEqual(events[0].detail, { topic: 'window function', energy: 'high' },
+      'the concept was always lost on Start; it is handed over whether or not a move rides with it');
+    assert.deepEqual(navigated, ['study-session']);
+  });
+});
+
+test('starting a flashcards primary still hands nothing and navigates', () => {
+  withStubbedWindow((events, navigated) => {
+    const panel = todayPanel();
+    panel.plan = { ...DEFERRED_REPAIR_PAYLOAD, energy: 'medium',
+      primary: { ...REPAIR_PRIMARY, action_type: 'recall', metadata: {} },
+      energy_deferred: [], energy_deferred_repairs: [] };
+
+    panel.startPrimary();
+
+    assert.equal(events.length, 0, 'the recall views have no topic picker to hand to');
+    assert.deepEqual(navigated, ['flashcards']);
+  });
 });

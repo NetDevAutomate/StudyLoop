@@ -231,3 +231,117 @@ test('togglePause arithmetic: resuming shifts startTime forward by the paused du
   const shifted = new Date(s.startTime.getTime() + pauseDuration);
   assert.equal(shifted.getTime() - start.getTime(), 3000);
 });
+
+/* ---------------------------------------------------------------------------
+ * Rubric 3c (e2), owner 2026-09-21: the warm-up follows Start into the Study
+ * view — the (d2)+(d3) shape. The `today-resume` hand-off carries the move and
+ * its lesson beside the topic; the picker and the live status bar render them;
+ * the view's one opener asks the Course Explorer aside; ending the session
+ * clears the move with the topic it arrived beside. Stubs are saved and
+ * restored around each test — the harness has no window of its own.
+ * ------------------------------------------------------------------------- */
+
+const WARM_UP =
+  'Open “Advanced Sql 4H” from Complete Sql Databases Bootcamp — the match is the phrase “window function” — and read for ten minutes, then start the repair.';
+
+function withStubs(run) {
+  const listeners = {};
+  const events = [];
+  const saved = {
+    window: globalThis.window, fetch: globalThis.fetch,
+    Alpine: globalThis.Alpine, CustomEvent: globalThis.CustomEvent,
+  };
+  globalThis.CustomEvent = class { constructor(type, init) { this.type = type; this.detail = init && init.detail; } };
+  globalThis.window = {
+    addEventListener(type, fn) { listeners[type] = fn; },
+    dispatchEvent(e) { events.push(e); },
+    Alpine: { store() { return { go() {} }; } },
+  };
+  globalThis.Alpine = globalThis.window.Alpine;
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({}) });
+  try {
+    return run({ listeners, events });
+  } finally {
+    Object.assign(globalThis, saved);
+  }
+}
+
+test('today-resume carries the warm-up and its lesson beside the topic; a hand-off without one clears it', () => {
+  withStubs(({ listeners }) => {
+    const s = sessionTimer();
+    assert.equal(s.firstMove, '', 'declared empty, so a bare hand-off shows nothing');
+    s._registerWindowListeners();
+
+    listeners['today-resume']({ detail: {
+      topic: 'window function', energy: 'medium', firstMove: WARM_UP,
+      firstMoveLessonId: 'ztm/complete-sql-bootcamp/advanced-sql-4h', firstMoveLessonTitle: 'Advanced Sql 4H',
+    } });
+
+    assert.equal(s.topicInput, 'window function');
+    assert.equal(s.energy, 5);
+    assert.equal(s.firstMove, WARM_UP);
+    assert.equal(s.firstMoveLessonId, 'ztm/complete-sql-bootcamp/advanced-sql-4h');
+    assert.equal(s.firstMoveLessonTitle, 'Advanced Sql 4H');
+
+    // The resume and parked paths hand over a topic and no move: a stale move
+    // must not outlive the hand-off it came with.
+    listeners['today-resume']({ detail: { topic: 'What is MVCC?', energy: null } });
+
+    assert.equal(s.topicInput, 'What is MVCC?');
+    assert.equal(s.firstMove, '');
+    assert.equal(s.firstMoveLessonId, '');
+    assert.equal(s.firstMoveLessonTitle, '');
+  });
+});
+
+test('openFirstMoveLesson asks the Course Explorer to open the resolved lesson; nothing to open, nothing dispatched', () => {
+  withStubs(({ events }) => {
+    const s = sessionTimer();
+    s.openFirstMoveLesson();
+    assert.equal(events.length, 0);
+
+    s.firstMoveLessonId = 'ztm/complete-sql-bootcamp/advanced-sql-4h';
+    s.firstMoveLessonTitle = 'Advanced Sql 4H';
+    s.openFirstMoveLesson();
+
+    assert.equal(events.length, 1);
+    assert.equal(events[0].type, 'explorer-open-lesson');
+    assert.deepEqual(events[0].detail, { lessonId: 'ztm/complete-sql-bootcamp/advanced-sql-4h', title: 'Advanced Sql 4H' });
+  });
+});
+
+test('ending the session clears the move with the topic it arrived beside', async () => {
+  await withStubs(async () => {
+    const s = sessionTimer();
+    s.sessionActive = true;
+    s.topicInput = 'window function';
+    s.firstMove = WARM_UP;
+    s.firstMoveLessonId = 'ztm/complete-sql-bootcamp/advanced-sql-4h';
+    s.firstMoveLessonTitle = 'Advanced Sql 4H';
+
+    await s.confirmEndSession();
+
+    assert.equal(s.sessionActive, false);
+    assert.equal(s.topicInput, '', 'precondition: the end path clears the topic');
+    assert.equal(s.firstMove, '');
+    assert.equal(s.firstMoveLessonId, '');
+    assert.equal(s.firstMoveLessonTitle, '');
+  });
+});
+
+test('a planning launch carries no warm-up', async () => {
+  await withStubs(async () => {
+    const s = sessionTimer();
+    s.firstMove = WARM_UP;
+    s.firstMoveLessonId = 'ztm/complete-sql-bootcamp/advanced-sql-4h';
+    s.firstMoveLessonTitle = 'Advanced Sql 4H';
+    s.startSession = async () => true; // the one start path, stubbed: this test is about state
+
+    await s.startPlanning({ topic: 'SQL windows', brainDump: '' });
+
+    assert.equal(s.topicInput, 'SQL windows');
+    assert.equal(s.firstMove, '', 'the architect interview is not a repair; no ramp beneath it');
+    assert.equal(s.firstMoveLessonId, '');
+    assert.equal(s.firstMoveLessonTitle, '');
+  });
+});
