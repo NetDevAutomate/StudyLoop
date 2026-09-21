@@ -1676,10 +1676,12 @@ def test_body_double_carries_one_passive_first_move_on_the_deferred_milestone(
     """Row 3's world: the move opens the deferred milestone's material and asks for
     reading only. It rides in the payload as ``metadata["first_move"]`` (additive,
     body-double only, so the no-plan golden is untouched) and closes the reason as a
-    proposal, not a requirement. Without indexed content it names the milestone."""
+    proposal, not a requirement. Only when the content index holds nothing relevant
+    (rubric 3c (b), owner: a deliberate lesson "should always be the case") does it fall
+    back to naming the milestone, and then it carries no ``first_move_lesson_id``."""
     _row3_plan()
     _plant_struggles(monkeypatch, _struggle("window function", days_ago=3))
-    monkeypatch.setattr(decision, "_lesson_title_for", lambda concepts: None)
+    monkeypatch.setattr(decision, "_resolve_lesson", lambda queries: None)
 
     low = build_now_plan(energy="low")
 
@@ -1693,6 +1695,7 @@ def test_body_double_carries_one_passive_first_move_on_the_deferred_milestone(
     assert primary.evidence_command == 'studyloop study "SQL Windows" --mode co-study', (
         "the door is unchanged"
     )
+    assert "first_move_lesson_id" not in primary.metadata, "no lesson resolved, no id"
     payload = low.to_json_dict()
     assert payload["primary"]["metadata"]["first_move"] == move
     golden_keys = list(json.loads(GOLDEN.read_text(encoding="utf-8")))
@@ -1704,26 +1707,58 @@ def test_body_double_carries_one_passive_first_move_on_the_deferred_milestone(
     ], "the first move adds no top-level key"
 
 
-def test_body_double_first_move_names_the_lesson_when_the_content_index_resolves_it(
+def test_body_double_first_move_names_the_lesson_the_content_index_resolves(
     monkeypatch,
 ) -> None:
-    """When the deferred milestone's concepts resolve to a lesson in the indexed
-    content, the move names the lesson — the thing the learner can actually open —
-    and the index is read once, for that milestone's concepts only."""
+    """Rubric 3c (b) — owner: a deliberate lesson should always be the case; it stops
+    decision fatigue. The move names the indexed lesson, and the resolver is asked
+    ONCE with the fallback chain in order — the milestone's concepts, then its title,
+    then the plan's topics — so a vault that never uses the concept's exact words
+    still yields a specific lesson. The lesson's id rides beside the sentence so a
+    renderer can open it in StudyLoop's own frame."""
     _row3_plan()
     _plant_struggles(monkeypatch, _struggle("window function", days_ago=3))
     seen: list[tuple[str, ...]] = []
 
-    def resolve(concepts):
-        seen.append(tuple(concepts))
-        return "Window Frames and Ranges"
+    def resolve(queries):
+        seen.append(tuple(queries))
+        return ("sql/advanced-sql-4h", "Window Frames and Ranges")
 
-    monkeypatch.setattr(decision, "_lesson_title_for", resolve)
+    monkeypatch.setattr(decision, "_resolve_lesson", resolve)
 
-    move = build_now_plan(energy="low").primary.metadata["first_move"]
+    primary = build_now_plan(energy="low").primary
 
-    assert move == "Open “Window Frames and Ranges” and read for ten minutes, nothing more."
-    assert seen == [("window frame",)]
+    assert primary.metadata["first_move"] == (
+        "Open “Window Frames and Ranges” and read for ten minutes, nothing more."
+    )
+    assert primary.metadata["first_move_lesson_id"] == "sql/advanced-sql-4h"
+    assert seen == [("window frame", "Frames", "sql")], "concepts, then title, then topics"
+
+
+def test_resolve_lesson_tries_each_query_in_order_and_returns_the_first_hit(
+    monkeypatch,
+) -> None:
+    """The seam itself: one FTS query per fallback step, in the order given, stopping
+    at the first hit; the hit is ``(lesson_id, title)``. Faked at the explorer's own
+    search function so no content index is needed."""
+    from studyloop.web.routes import explorer
+
+    asked: list[str] = []
+
+    def fake_search(db_path, base, q, limit):
+        asked.append(q)
+        if q == "sql":
+            return [{"lesson_id": "sql/advanced-sql-4h", "title": "Advanced Sql 4H"}]
+        return []
+
+    monkeypatch.setattr(explorer, "_run_fts_search", fake_search)
+
+    hit = decision._resolve_lesson(("window frame", "Frames", "sql"))  # pyright: ignore[reportAttributeAccessIssue]
+
+    assert hit == ("sql/advanced-sql-4h", "Advanced Sql 4H")
+    assert asked == ["window frame", "Frames", "sql"]
+    assert decision._resolve_lesson(("nothing", "matches")) is None  # pyright: ignore[reportAttributeAccessIssue]
+    assert asked[-2:] == ["nothing", "matches"]
 
 
 def test_body_double_first_move_survives_a_broken_content_index(monkeypatch) -> None:
@@ -1732,10 +1767,10 @@ def test_body_double_first_move_survives_a_broken_content_index(monkeypatch) -> 
     _row3_plan()
     _plant_struggles(monkeypatch, _struggle("window function", days_ago=3))
 
-    def explode(concepts):
+    def explode(queries):
         raise RuntimeError("fts index unreadable")
 
-    monkeypatch.setattr(decision, "_lesson_title_for", explode)
+    monkeypatch.setattr(decision, "_resolve_lesson", explode)
 
     low = build_now_plan(energy="low")
 
@@ -1755,7 +1790,7 @@ def test_cli_now_prints_the_first_move_beneath_the_sit_with_door(monkeypatch) ->
 
     _row3_plan()
     _plant_struggles(monkeypatch, _struggle("window function", days_ago=3))
-    monkeypatch.setattr(decision, "_lesson_title_for", lambda concepts: None)
+    monkeypatch.setattr(decision, "_resolve_lesson", lambda queries: None)
 
     rich = CliRunner().invoke(cli, ["now", "--energy", "low"])
 
