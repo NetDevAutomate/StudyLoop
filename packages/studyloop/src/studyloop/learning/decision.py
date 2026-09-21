@@ -1281,9 +1281,12 @@ def _defer_repairs(
     return kept, tuple(deferred)
 
 
-def _resolve_lesson(concepts: Sequence[str]) -> tuple[str, str] | None:
-    """The indexed lesson the first move should name: ``(lesson_id, title)`` or ``None``.
+def _resolve_lesson(concepts: Sequence[str]) -> tuple[str, str, str, str] | None:
+    """The indexed lesson the first move should name, or ``None``.
 
+    Returns ``(lesson_id, title, course, concept)`` — the concept being the one
+    the index matched, not the first one asked, so the sentence can say what the
+    match rests on.
     Asks the explorer's own FTS — the path MCP ``search_lessons`` takes — one
     short query per concept of the deferred milestone, in order, stopping at the
     first hit. The concepts and nothing else: rubric 3c (c), measured on the
@@ -1292,6 +1295,13 @@ def _resolve_lesson(concepts: Sequence[str]) -> tuple[str, str] | None:
     hit a PySpark data-frames lab; "sql" hit an SQL bootcamp introduction). A
     deliberate-but-wrong lesson on a low-energy day is worse than an honest
     "nothing matches yet", so the wider steps are not taken.
+
+    ``course`` is the hit's own ``course_id`` humanised exactly as the explorer's
+    course list shows it (``_humanise`` of the course directory) — the evidence
+    the sentence states beside the lesson (rubric 3c (d2)), so a lexical match
+    into the wrong course reads as one at a glance. A hit that lacks its course
+    or its title is skipped, never named: a lesson is named with its evidence or
+    not at all.
 
     ``None`` is a *searched* miss. An index that cannot be consulted (no content
     base, a locked db) raises instead of answering ``None``, so the caller can
@@ -1313,12 +1323,16 @@ def _resolve_lesson(concepts: Sequence[str]) -> tuple[str, str] | None:
             if rows:
                 lesson_id = str(rows[0].get("lesson_id") or "").strip()
                 title = str(rows[0].get("title") or "").strip()
-                if lesson_id and title:
-                    return lesson_id, title
+                course_id = str(rows[0].get("course_id") or "").strip()
+                course_dir = course_id.rsplit("/", 1)[-1] if course_id else ""
+                if lesson_id and title and course_dir:
+                    return lesson_id, title, explorer._humanise(course_dir), q
     return None
 
 
-def _first_move(plan: ActivePlanGuidance, plans: _PlanContext) -> tuple[str, str | None] | None:
+def _first_move(
+    plan: ActivePlanGuidance, plans: _PlanContext
+) -> tuple[str, str | None, str | None] | None:
     """Issue #30: one tiny, passive first move on the deferred material.
 
     The owner's note beside rubric row 3b (a): a sit-with session must not be a
@@ -1330,7 +1344,16 @@ def _first_move(plan: ActivePlanGuidance, plans: _PlanContext) -> tuple[str, str
     and, when the content index resolves the milestone's own concepts, the lesson
     the learner can actually open (rubric 3c (b): a deliberate lesson whenever the
     vault holds one). Reading only, at the capability the day carries: never an
-    exercise, never a Socratic round. Returns ``(sentence, lesson_id)``.
+    exercise, never a Socratic round. Returns ``(sentence, lesson_id, lesson_title)``.
+
+    A named lesson states its EVIDENCE (rubric 3c (d2), owner 2026-09-21 — "I
+    would likely still open it in case there was some link being enforced"): a
+    named lesson carries implied authority, so a wrong one is followed, not merely
+    doubted. The sentence therefore names the course the lesson belongs to and
+    the concept the match rests on — ``Open “<lesson>” from <Course> — the match
+    is the word “<concept>” — and read for ten minutes, nothing more.`` — so a
+    lexical match into the wrong course (a Python plan's "decorators" resolving
+    to a TypeScript lesson) is judgeable from the sentence, not by opening it.
 
     When no lesson is named, the sentence names the milestone AND says why
     (rubric 3c (c)), so it carries information instead of vagueness and points at
@@ -1358,17 +1381,23 @@ def _first_move(plan: ActivePlanGuidance, plans: _PlanContext) -> tuple[str, str
                 concepts.append(c)
     stem = f"Open your {deferred.title} material and read for ten minutes, nothing more"
     if not concepts:
-        return f"{stem} — this milestone names no concept to look up yet.", None
+        return f"{stem} — this milestone names no concept to look up yet.", None, None
     try:
         hit = _resolve_lesson(tuple(concepts))
     except Exception:
         logger.debug("first move: lesson index unavailable, naming the milestone", exc_info=True)
-        return f"{stem}.", None
+        return f"{stem}.", None, None
     if hit is not None:
-        lesson_id, title = hit
-        return f"Open “{title}” and read for ten minutes, nothing more.", lesson_id
+        lesson_id, title, course, matched = hit
+        kind = "phrase" if " " in matched.strip() else "word"
+        return (
+            f"Open “{title}” from {course} — the match is the {kind} “{matched}” — "
+            "and read for ten minutes, nothing more.",
+            lesson_id,
+            title,
+        )
     named = " or ".join(f"“{c}”" for c in concepts)
-    return f"{stem} — no indexed lesson mentions {named} yet.", None
+    return f"{stem} — no indexed lesson mentions {named} yet.", None, None
 
 
 def _body_double_candidate(
@@ -1398,7 +1427,9 @@ def _body_double_candidate(
     if not named:
         return None
     first = named[0]
-    first_move, first_move_lesson_id = _first_move(ready_plans[0], plans) or (None, None)
+    first_move, first_move_lesson_id, first_move_lesson_title = _first_move(
+        ready_plans[0], plans
+    ) or (None, None, None)
     titles = " and ".join(plan.title for plan in named)
     items = [
         f"milestone {d.milestone_index + 1} “{d.title}” of {d.plan_title}" for d in plans.deferred
@@ -1444,8 +1475,14 @@ def _body_double_candidate(
             # reason and then repeating as its own line.
             **({"first_move": first_move} if first_move else {}),
             # Rubric 3c (b): the lesson the move names, so a renderer can open it in
-            # StudyLoop's own frame; absent when the index held nothing relevant.
+            # StudyLoop's own frame — id and title, so nothing parses the sentence;
+            # absent when the index held nothing relevant.
             **({"first_move_lesson_id": first_move_lesson_id} if first_move_lesson_id else {}),
+            **(
+                {"first_move_lesson_title": first_move_lesson_title}
+                if first_move_lesson_id and first_move_lesson_title
+                else {}
+            ),
         },
         plan_refs=tuple(PlanRef(plan.plan_id, None) for plan in named),
     )

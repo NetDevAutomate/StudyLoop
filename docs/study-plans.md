@@ -231,7 +231,10 @@ you ask — with the recorded progress named first and the deferred items after
 it. Beside the session door, once, sits one **first move**, if you want one:
 open the indexed lesson that
 matches the deferred milestone's concepts and read for ten minutes, nothing
-more. When no indexed lesson mentions those concepts, it names the milestone
+more — named with the course it belongs to and the word the match rests on
+(*"Open “Decorators 29M” from The Ultimate Typescript — the match is the word
+“decorators” — …"*), so a lesson that matched on a word but sits in the wrong
+course reads as wrong at a glance instead of after you open it. When no indexed lesson mentions those concepts, it names the milestone
 instead and says so — *"Open your Frames material and read for ten minutes,
 nothing more — no indexed lesson mentions “window frame” yet"* — so you know
 the gap is in your content or the milestone's concept names, not in you; it

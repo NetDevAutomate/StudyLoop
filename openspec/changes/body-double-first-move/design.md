@@ -71,6 +71,32 @@ body-doubling floor). Decisions taken here, each verified against the tree at
    — the plain sentence, no claim about an index that was never read. On the
    owner's vault today, `Frames` shows the first shape.
 
+7. **A named lesson states its evidence — the course and the matched concept
+   (rubric 3c (d2), owner 2026-09-21).** Re-checking the shipped seam on the
+   owner's vault: a Python plan's `decorators` resolves to *Decorators 29M* in
+   *The Ultimate TypeScript* — the concept match is lexical, not topic-scoped.
+   Asked whether he would have noticed the (c) PySpark lab was wrong before
+   opening it, the owner refined his answer: *"Before opening it — but honestly,
+   I would likely still open it in case there was some link that is being
+   enforced between PySpark and SQL."* A named lesson carries implied authority:
+   the doubt does not stop the open, because the learner assumes the system had
+   a reason for the link. So a wrong lesson is **followed**, not merely doubted,
+   and the sentence must let the link be judged from the sentence, not by
+   opening the lesson. Mechanism, from stored facts only: the FTS hit already
+   carries `course_id`, which the seam had been discarding, and the seam knows
+   which concept hit. The lesson form becomes *Open “Decorators 29M” from The
+   Ultimate Typescript — the match is the word “decorators” — and read for ten
+   minutes, nothing more.* — the course humanised by the explorer's own
+   `_humanise`, exactly as its course list shows it, and "the match is the word"
+   saying plainly that the link is a word match and nothing anyone built. A hit
+   lacking its course or title is skipped: a lesson is named with its evidence
+   or not at all. `first_move_lesson_title` rides beside `first_move_lesson_id`
+   so a renderer opens the lesson by name without parsing the sentence. Topic
+   scoping (hiding a TypeScript lesson from a Python plan) was NOT chosen: the
+   courses carry no topic metadata to scope on, and it would also hide a lesson
+   the learner legitimately wants; stating the evidence lets the learner decide.
+   The control that opens the lesson (decision 8) waits behind this sentence.
+
 ## Read cost
 
 The lookup runs only when a body double is synthesised. Measured 2026-09-21 on
