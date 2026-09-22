@@ -1493,7 +1493,7 @@ def _warm_up(primary: _Candidate, plans: _PlanContext) -> tuple[str, str | None,
     if primary.action_type not in _WARM_UP_ACTIONS:
         return None
     concept = primary.concept.strip()
-    if "energy_demand" in primary.metadata:
+    if concept and "energy_demand" in primary.metadata:
         return _first_move_sentence(
             (concept,), material=f"“{concept}”", tail="then start the repair"
         )
@@ -1507,6 +1507,12 @@ def _warm_up(primary: _Candidate, plans: _PlanContext) -> tuple[str, str | None,
                 material=milestone.title,
                 tail="then start the milestone",
             )
+    if not concept:
+        # Council review 8 (grok 🔵): a candidate is plan-related by its concept,
+        # its topic OR its course, so a blank-concept active item can get here.
+        # The repair and generic tails name and search the concept; with none
+        # there is nothing to name and nothing to search — no warm-up.
+        return None
     return _first_move_sentence(
         (concept,), material=f"“{concept}”", tail=f"then start on “{concept}”"
     )

@@ -193,6 +193,12 @@ option is the easier to take (row 3b (d)). The warm-up therefore SHALL end
 - any other plan-related active item: `(concept,)`, `“<concept>”`, `then start
   on “<concept>”`.
 
+A candidate is plan-related by its concept, its topic OR its course, so an
+active item with a blank concept can be the plan-related primary: the repair
+and generic tails, which name and search the concept, SHALL then carry no
+warm-up and the resolver SHALL NOT be asked (council review 8, grok); the
+milestone tail is unaffected, since it names the milestone's own concepts.
+
 Recall SHALL never carry a warm-up and the resolver SHALL NOT be asked for
 one — reading the lesson before a retrieval test defeats the test (row 3b (b):
 familiar recall leads as it is); `visual` and `audio` are already passive and
