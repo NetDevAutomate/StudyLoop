@@ -25,8 +25,9 @@ Community IDs are remapped onto the previous assignment
 attached to the same community across runs. Without that, re-clustering
 renumbers communities and labels silently describe the wrong nodes.
 
-Curated labels live in ``.graphify-labels.json`` at the repo root — tracked in
-git, so they survive ``graphify uninstall --purge`` wiping ``graphify-out/``.
+Curated labels live in ``.graphify-labels.json`` at the repo root — a local,
+gitignored file (untracked since 2026-09-22); the script runs without it and
+applies no curated labels when it is absent.
 
 Usage::
 
@@ -409,7 +410,7 @@ def previous_assignment(graph: nx.Graph) -> dict[str, int]:
 
 
 def load_curated_labels() -> dict[int, str]:
-    """Load hand-authored community labels from the tracked curated file."""
+    """Load hand-authored community labels from the local curated file, if any."""
     if not CURATED_LABELS.exists():
         return {}
     raw: dict[str, Any] = json.loads(CURATED_LABELS.read_text())
