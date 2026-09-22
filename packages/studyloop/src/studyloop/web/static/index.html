@@ -1092,8 +1092,10 @@
               · <span x-text="plan?.primary?.action_type"></span>
             </p>
             <p class="today-reason">Why: <span x-text="plan?.primary?.reason"></span></p>
-            <!-- Issue #30: the body double's one passive first move, its own line
-                 beside the door; hidden for every other action. -->
+            <!-- Issue #30: one passive first move, its own line beside the door —
+                 the body double's sit-with move, or (rubric 3c (e1)/(e2)) a
+                 plan-related primary's warm-up; shown for whichever recommendation
+                 the engine put it on, hidden when it carries none. -->
             <p class="today-first-move" x-show="firstMoveNote(plan?.primary)">
               First move, if you want one: <span x-text="firstMoveNote(plan?.primary)"></span>
             </p>

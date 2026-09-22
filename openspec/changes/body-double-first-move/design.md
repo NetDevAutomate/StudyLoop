@@ -28,10 +28,15 @@ body-doubling floor). Decisions taken here, each verified against the tree at
    *searched* miss; an index that cannot be consulted raises out of the seam, and
    the caller (not the seam) catches it, so the two are distinguishable (decision
    6). Cost: one FTS round-trip per concept until a hit, only on the body-double
-   path (measured below).
+   path (measured below). *(Amended by decision 10: since (e1) the lookup also
+   runs for a plan-related active primary's warm-up — the "body-double only"
+   claim here is history, not the current invariant; council review 8, astra F4.)*
 
 4. **Additive carriage.** `metadata["first_move"]` and, when a lesson resolved,
-   `metadata["first_move_lesson_id"]` — present only on the body double. The `Recommendation` dataclass is unchanged, so the no-plan golden
+   `metadata["first_move_lesson_id"]` — present only on the body double *(as
+   written at (a); amended by decisions 10–11: since (e1) the same keys ride on a
+   plan-related active primary as its warm-up, and the Today card reads them
+   wherever the engine put them — council review 8, astra F4)*. The `Recommendation` dataclass is unchanged, so the no-plan golden
    (`ec451ce8`) is byte-identical without special-casing; the renderers read the
    field and re-derive nothing, so CLI and card agree by construction.
 
