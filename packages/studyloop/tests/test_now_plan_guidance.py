@@ -2510,6 +2510,29 @@ def test_no_warm_up_when_the_primary_names_no_concept(monkeypatch) -> None:
     assert "first_move_lesson_id" not in primary.metadata
 
 
+def test_a_learning_row_s_warm_up_ends_at_the_review_not_a_repair(monkeypatch) -> None:
+    """Coordinator finding while verifying qwen's recall-exclusion claim (council
+    review 8): every struggle row carries ``energy_demand``, so a ``learning`` row's
+    teach-back took the repair tail — "then start the repair" beneath a reason that
+    says "Recorded as learning; a gentle review keeps it fresh". Row 3b (c) removed
+    exactly that contradiction from the reason; the warm-up must speak the row's own
+    vocabulary: a ``learning`` row is a review, and only ``struggling`` is a repair."""
+    _row3_plan()
+    _plant_struggles(monkeypatch, _struggle("window function", confidence="learning", days_ago=2))
+    monkeypatch.setattr(decision, "_resolve_lesson", lambda concepts: None)
+
+    primary = build_now_plan(energy="medium").primary
+
+    assert primary.action_type == "teachback" and primary.metadata["confidence"] == "learning"
+    assert primary.reason.startswith("Recorded as learning; a gentle review"), primary.reason
+    move = str(primary.metadata["first_move"])
+    assert move == (
+        "Open your “window function” material and read for ten minutes, then start the "
+        "review — no indexed lesson mentions “window function” yet."
+    ), move
+    assert "repair" not in move
+
+
 def test_cli_now_prints_the_warm_up_beneath_the_evidence_door_at_medium_energy(
     monkeypatch,
 ) -> None:
