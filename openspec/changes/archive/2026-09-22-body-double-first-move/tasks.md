@@ -92,11 +92,16 @@ edit; each task has a definition of done a reviewer can tick from output.
       outlives its material — design decision 12), `357ee258` (F4 record), `79761a94`→`193b541d` (blank
       concept), `024373ba`→`f8783a73` (learning row's tail — my own finding). Open for the owner: the
       high-energy ramp (decision 10); separate change: the frozen-clock gap.
-- [ ] **T5** Rubric row **3c** added to `docs/architecture/plan-integration/receipts/now-rubric-2026-09-16.md`:
+- [x] **T5** Rubric row **3c** added to `docs/architecture/plan-integration/receipts/now-rubric-2026-09-16.md`:
       row 3's world emitted from the GREEN tree through both real collectors, the first move shown as
-      emitted; verdict `PENDING` until the owner scores it. The change is archived only after the row is
-      scored **yes**.
-- [ ] **T6** CHANGELOG `[Unreleased]` entry (written, `3e00f2e2`+1); PR #32 open with the whole chain in
-      its body; CI green on `c83ebd75` (15/15), running on the council head; fast-forward `main`; archive
-      this change;
-      ships in 0.5.1.
+      emitted. **Scored by the owner 2026-09-21**, one reading per turn: (a) yes; (b) yes with the
+      deliberate-lesson requirement; (c) name the milestone and say why when no lesson matches;
+      (d1) the sentence once, beside the door; (d2) the evidence sentence, then the button; (d3) the
+      move survives the start; (e) no — the owner took the (e1) steer, a warm-up into the primary on
+      its own material; (e2) the warm-up follows Start into the Study view. Each reading's verdict,
+      self-check answer and re-emitted screen are in the row. The archive condition (scored) is met.
+- [x] **T6** CHANGELOG `[Unreleased]` entry (`865e686a`); PR #32 open with the whole chain in its body;
+      CI 15/15 green on the code head `3e00f2e2` and on `865e686a`; PR mergeable/CLEAN as a pure
+      fast-forward of `main`. This change archived on the branch (this commit); the fast-forward of
+      `main` and its push are the owner's step, after which #30 closes with the merge sha; ships
+      in 0.5.1.
