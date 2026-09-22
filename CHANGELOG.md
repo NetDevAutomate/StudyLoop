@@ -29,6 +29,11 @@ experience may change before `1.0.0`.
   a hand-off during a live session, or rejoining another session never shows
   it under different material. Proposal only — the companion says nothing
   about it. The no-plan payload is byte-identical.
+- A standalone `studyloop-study-notes` Agent Skill with per-lesson Markdown and
+  section-overview templates, source/enrichment attribution, and explicit
+  Obsidian-only, xTiles-only, and linked dual-destination workflows. Installed
+  separately through the skills CLI; see
+  `docs/study-notes-skill.md`.
 
 ## [0.5.0] - 2026-09-21
 
