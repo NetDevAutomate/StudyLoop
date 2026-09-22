@@ -7,7 +7,28 @@ experience may change before `1.0.0`.
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+
+- The `now` engine's recommendation can carry one passive **first move**
+  (issue #30). On a low-energy day, the sit-with proposal names one tiny
+  action on the deferred milestone — *Open “Advanced Sql 4H” from Complete Sql
+  Databases Bootcamp — the match is the phrase “window function” — and read
+  for ten minutes, nothing more* — naming a lesson only when the Course
+  Explorer index matches the milestone's own concepts, and stating the course
+  and the matched concept so a lexical match can be judged from the sentence;
+  when nothing matches it names the milestone and says why (*no indexed lesson
+  mentions “window frame” yet*). A plan-related active primary carries the same
+  move as a warm-up into itself (*… then start the repair* / *the review* /
+  *the milestone*), never on recall. CLI `now` prints `First move:` beneath the
+  door; the Today card shows the line with an **Open the lesson** control that
+  opens the lesson in the Course Explorer beside the current view; Body Double
+  and Study Session carry the move and the control from the picker into the
+  live session, and the Today card's **Start →** now hands the Study picker the
+  action's topic, energy and move (it used to hand it nothing). The move
+  belongs to the material it arrived beside: editing or re-picking the topic,
+  a hand-off during a live session, or rejoining another session never shows
+  it under different material. Proposal only — the companion says nothing
+  about it. The no-plan payload is byte-identical.
 
 ## [0.5.0] - 2026-09-21
 

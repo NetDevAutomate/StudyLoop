@@ -96,5 +96,7 @@ edit; each task has a definition of done a reviewer can tick from output.
       row 3's world emitted from the GREEN tree through both real collectors, the first move shown as
       emitted; verdict `PENDING` until the owner scores it. The change is archived only after the row is
       scored **yes**.
-- [ ] **T6** CHANGELOG `[Unreleased]` entry; PR; CI green; fast-forward `main`; archive this change;
+- [ ] **T6** CHANGELOG `[Unreleased]` entry (written, `3e00f2e2`+1); PR #32 open with the whole chain in
+      its body; CI green on `c83ebd75` (15/15), running on the council head; fast-forward `main`; archive
+      this change;
       ships in 0.5.1.
