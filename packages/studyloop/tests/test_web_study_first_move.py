@@ -69,3 +69,17 @@ def test_study_live_layout_carries_the_first_move_beneath_the_status_bar() -> No
     assert control, "the live layout has no #study-live-first-move-open control"
     assert 'x-show="firstMoveLessonId"' in control.group(0)
     assert "openFirstMoveLesson()" in control.group(0)
+
+
+# --- Council review 8 (2026-09-21): the move never outlives the material it arrived beside --
+
+
+def test_editing_the_topic_or_changing_the_target_kind_clears_the_move() -> None:
+    html = _read("index.html")
+    picker = _study_picker(html)
+    topic = re.search(r'<input[^>]*id="topic-input"[^>]*>', picker)
+    assert topic, "no #topic-input"
+    assert "onTopicEdited()" in topic.group(0), "editing the topic does not clear the move"
+    kind = re.search(r'<select[^>]*id="target-kind-select"[^>]*>', picker)
+    assert kind, "no #target-kind-select"
+    assert "clearFirstMove()" in kind.group(0), "changing the target kind does not clear the move"

@@ -1725,6 +1725,7 @@
           <section class="bd-card bd-start-picker" x-show="!sessionActive && !starting">
             <label class="bd-field">What are you working on?
               <input id="bd-activity-input" type="text" x-model="activity"
+                     @input="onActivityEdited()"
                      placeholder="e.g. Window functions"></label>
             <!-- Issue #30: the Today card's sit-with proposal hands over one passive
                  first move with the plan title; a proposal the learner may ignore. -->
@@ -2324,7 +2325,8 @@
 
           <div class="picker-field">
             <label for="target-kind-select">Study Target</label>
-            <select id="target-kind-select" x-model="targetKind" class="picker-select">
+            <select id="target-kind-select" x-model="targetKind" class="picker-select"
+                    @change="clearFirstMove()">
               <option value="topic">Course Material or Topic</option>
               <option value="vendor">Course Vendor</option>
               <option value="course">Course</option>
@@ -2347,7 +2349,7 @@
               <input id="topic-input" type="text" x-model="topicInput"
                      placeholder="Or type a topic..."
                      class="picker-input"
-                     @input="selectedTopic = ''">
+                     @input="onTopicEdited()">
             </div>
             <p id="topic-source-hint" class="picker-hint">
               Suggestions are the first three topics from <code>config.yaml</code>.

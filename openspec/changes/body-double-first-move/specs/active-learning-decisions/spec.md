@@ -212,7 +212,16 @@ layout SHALL carry it beneath the status bar for the whole session
 (`#study-live-first-move`, `#study-live-first-move-open`), cleared with the
 topic when the session ends; a planning launch SHALL clear it. A hand-off
 without a move (resume, a parked pick-up, a primary the engine gave none)
-SHALL clear any earlier one.
+SHALL clear any earlier one. The move SHALL never outlive the material it
+arrived beside (council review 8, the finding all three seats converged on):
+in either view, editing the material in the picker (the Study topic input, the
+Body Double activity input), choosing another target from any picker select or
+changing the target kind SHALL clear it; a hand-off that arrives while a
+session is live or starting SHALL leave the running session's move untouched
+(the picker's own fields are still pre-filled, as before); a session adopted
+through `reattachConflictSession()` is not the hand-off's and SHALL carry none.
+Each view SHALL clear the three fields through one writer (`clearFirstMove()`)
+so no transition can clear two of them and leave the third.
 
 #### Scenario: The row-3 repair at medium energy carries a warm-up into itself
 - **WHEN** rubric row 3's world is ranked at `medium` energy (capability 6)
@@ -257,3 +266,19 @@ SHALL clear any earlier one.
   `explorer-open-lesson` `{lessonId, title}`; `confirmEndSession()` clears the
   move with the topic; a primary without a move hands over `{topic, energy}`
   only; a flashcards primary hands over nothing and navigates as before
+
+#### Scenario: The move never outlives the material it arrived beside
+- **WHEN** a Start hand-off has landed a warm-up in the Study picker and the
+  learner types into `#topic-input`, or picks a suggested topic, vendor, course
+  or lesson from a picker select, or changes `#target-kind-select`
+- **THEN** `firstMove`, `firstMoveLessonId` and `firstMoveLessonTitle` are `''`
+  and `#study-first-move` is hidden; the same for `#bd-activity-input` in the
+  Body Double picker
+- **WHEN** a second `today-resume` (or `body-double-request`) arrives while
+  `sessionActive` or `starting` is true
+- **THEN** the running session's move and lesson are unchanged beneath the
+  status bar (or live strip), whether the hand-off carried another move or
+  none; the picker's topic (activity) and energy are pre-filled as before
+- **WHEN** `reattachConflictSession()` adopts a session while a picker move is
+  pending
+- **THEN** the adopted session shows no move and no **Open the lesson**

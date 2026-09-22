@@ -163,8 +163,14 @@ export function sessionTimer() {
           }
           /* Rubric 3c (e2): the move arrives beside the topic, or not at all.
              Set from THIS hand-off every time, so a resume or a parked pick-up
-             (which carry no move) clears one left by an earlier Start. */
+             (which carry no move) clears one left by an earlier Start.
+             Council review 8 (astra F2): the three fields feed the LIVE strip as
+             well as the picker, so while a session is running or starting a
+             hand-off must not swap the running session's move for another
+             recommendation's (or erase it). The picker fields above are still
+             pre-filled for the next session, as before. */
           const detail = e.detail || {};
+          if (this.sessionActive || this.starting) return;
           this.firstMove = detail.firstMove ? String(detail.firstMove) : '';
           this.firstMoveLessonId = detail.firstMoveLessonId ? String(detail.firstMoveLessonId) : '';
           this.firstMoveLessonTitle = detail.firstMoveLessonTitle
@@ -565,9 +571,29 @@ export function sessionTimer() {
         /* Rubric 3c (e2): the move arrived beside the topic in one hand-off and
            leaves with it — the status bar shows it for the whole session, so a
            stale one beneath the next topic would be a confidently wrong ramp. */
+        this.clearFirstMove();
+      },
+
+      /* Council review 8 (astra F1/F2, grok, qwen — the one finding all three
+         seats converged on): the move must never outlive the material it arrived
+         beside. One writer for the three fields' empty state, so every transition
+         that changes the material — end, a topic edit or re-selection, a change of
+         target kind, a planning launch, a reattach — clears the same three fields
+         and none can drift. */
+      clearFirstMove() {
         this.firstMove = '';
         this.firstMoveLessonId = '';
         this.firstMoveLessonTitle = '';
+      },
+
+      /* The picker's free-text topic input. Typing replaces the material the
+         hand-off named, so its move goes with it — a warm-up for "window
+         function" beneath a topic the learner has just retyped as something else
+         is the confidently wrong proposal (c) removed. Keeps the inline handler's
+         own job (a typed topic un-selects the suggestion). */
+      onTopicEdited() {
+        this.selectedTopic = '';
+        this.clearFirstMove();
       },
 
       /* "Open X" actually opens X (rubric 3c (d2), here for the Study view):
@@ -628,6 +654,10 @@ export function sessionTimer() {
         this.startTime = session.start_time ? new Date(session.start_time) : new Date();
         this.sessionActive = true;
         this.starting = false;
+        /* Council review 8 (grok, astra): the adopted session is not the one the
+           Today hand-off described — a pending picker move would otherwise sit
+           beneath its status bar for the whole session. Nothing is reconstructed. */
+        this.clearFirstMove();
         this._clearConflict();
         clearInterval(this.interval);
         this.tick();
@@ -767,6 +797,10 @@ export function sessionTimer() {
         const collection = this.studyOptions[`${kind}s`] || [];
         this.selectedOption = collection.find((item) => item.value === value) || null;
         if (this.selectedOption) this.topicInput = this.selectedOption.label;
+        /* Council review 8 (astra F1): a suggested topic, a vendor, a course or a
+           lesson chosen from the picker is different material from the one the
+           hand-off named — the move goes with the material it described. */
+        this.clearFirstMove();
       },
 
       agentOptions() {

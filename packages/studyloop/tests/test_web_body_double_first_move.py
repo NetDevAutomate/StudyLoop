@@ -206,5 +206,54 @@ def test_the_move_leaves_with_the_activity_when_the_session_ends() -> None:
     js = _read("components.js")
     body = _method(js, "async confirmEnd")
     assert "this.activity = ''" in body, "precondition: confirmEnd() clears the activity"
+    # Council review 8: the three fields now have one writer for their empty state,
+    # so the end path may clear them through it; either form is the same guarantee.
+    assert "clearFirstMove()" in body or all(
+        re.search(rf"this\.{field}\s*=\s*''", body)
+        for field in ("firstMove", "firstMoveLessonId", "firstMoveLessonTitle")
+    ), "confirmEnd() does not clear the first move"
+
+
+# --- Council review 8 (2026-09-21): the move never outlives the material it arrived beside --
+#
+# All three seats converged on this class (astra F1/F2 🔴, grok 1 and 12 🟡, qwen 🟡):
+# three transitions were unguarded — the learner edits the activity in the picker; a
+# second hand-off arrives while a session is live or starting; a session that is not
+# the hand-off's is reattached. Pinned statically here because the Body Double view has
+# no node harness; the Study view's equivalents are behaviour-tested.
+
+
+def test_editing_the_activity_clears_the_first_move() -> None:
+    html = _read("index.html")
+    match = re.search(r'<input[^>]*id="bd-activity-input"[^>]*>', html)
+    assert match, "no #bd-activity-input"
+    assert 'x-model="activity"' in match.group(0)
+    assert "onActivityEdited()" in match.group(0), "editing the activity does not clear the move"
+    js = _read("components.js")
+    body = _method(js, "onActivityEdited")
     for field in ("firstMove", "firstMoveLessonId", "firstMoveLessonTitle"):
-        assert re.search(rf"this\.{field}\s*=\s*''", body), f"confirmEnd() does not clear {field}"
+        assert re.search(rf"this\.{field}\s*=\s*''", body) or "clearFirstMove()" in body, (
+            f"onActivityEdited() does not clear {field}"
+        )
+    assert re.search(
+        r"clearFirstMove\s*\(\)\s*\{", js[js.index("function bodyDoubleSession()") :]
+    ), "the view has no clearFirstMove()"
+
+
+def test_a_hand_off_during_a_live_or_starting_session_leaves_its_move_alone() -> None:
+    js = _read("components.js")
+    listener = _listener(js)
+    guard = re.search(r"this\.sessionActive\s*\|\|\s*this\.starting", listener)
+    assert guard, "the body-double-request listener has no live/starting guard"
+    assert guard.start() < listener.index("this.firstMove ="), (
+        "the guard must decide before the move is overwritten"
+    )
+
+
+def test_reattaching_a_session_that_is_not_the_hand_offs_carries_no_move() -> None:
+    js = _read("components.js")
+    body = _method(js, "reattachConflictSession")
+    assert "clearFirstMove()" in body or all(
+        re.search(rf"this\.{f}\s*=\s*''", body)
+        for f in ("firstMove", "firstMoveLessonId", "firstMoveLessonTitle")
+    ), "reattachConflictSession() does not clear the move"

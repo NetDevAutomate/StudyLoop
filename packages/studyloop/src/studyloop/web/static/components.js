@@ -3232,6 +3232,14 @@ function bodyDoubleSession() {
       window.addEventListener('body-double-request', (event) => {
         const detail = (event && event.detail) || {};
         if (detail.activity) this.activity = String(detail.activity);
+        const bands = { low: 3, medium: 5, high: 8 };
+        if (detail.energy && bands[detail.energy]) this.energy = bands[detail.energy];
+        /* Council review 8 (astra F2): the three move fields feed the LIVE strip
+           as well as the picker, so while a session is running or starting a
+           hand-off must not swap the running session's move for another
+           recommendation's, or erase it. The picker fields above are still
+           pre-filled for the next session, as before. */
+        if (this.sessionActive || this.starting) return;
         /* Issue #30: the proposal's one passive first move, shown beneath the
            activity so the session does not open on a blank page. Cleared when
            a hand-off carries none, so a stale move never outlives its plan. */
@@ -3242,8 +3250,6 @@ function bodyDoubleSession() {
         this.firstMoveLessonId = detail.firstMoveLessonId ? String(detail.firstMoveLessonId) : '';
         this.firstMoveLessonTitle = detail.firstMoveLessonTitle
           ? String(detail.firstMoveLessonTitle) : '';
-        const bands = { low: 3, medium: 5, high: 8 };
-        if (detail.energy && bands[detail.energy]) this.energy = bands[detail.energy];
       });
       this.focusCollapsed = localStorage.getItem('bd.focus.collapsed') === 'true';
       this.captureCollapsed = localStorage.getItem('bd.capture.collapsed') === 'true';
@@ -3283,6 +3289,25 @@ function bodyDoubleSession() {
       window.dispatchEvent(new CustomEvent('explorer-open-lesson', {
         detail: { lessonId: this.firstMoveLessonId, title: this.firstMoveLessonTitle },
       }));
+    },
+
+    /* Council review 8 (astra F1/F2, grok, qwen — the one finding all three seats
+       converged on): the move must never outlive the material it arrived beside.
+       One writer for the three fields' empty state, so every transition that
+       changes the material — end, an activity edit, a reattach — clears the same
+       three fields and none can drift. */
+    clearFirstMove() {
+      this.firstMove = '';
+      this.firstMoveLessonId = '';
+      this.firstMoveLessonTitle = '';
+    },
+
+    /* The picker's activity input. Typing replaces the material the hand-off
+       named, so its move goes with it — a Frames sentence beneath an activity
+       the learner has just retyped as something else is the confidently wrong
+       proposal (c) removed. */
+    onActivityEdited() {
+      this.clearFirstMove();
     },
 
     async refreshFocus() {
@@ -3641,6 +3666,10 @@ function bodyDoubleSession() {
       this.conflictSession = null;
       this.startError = '';
       this.starting = false;
+      /* Council review 8 (grok, astra): the adopted session is not the one the
+         Today hand-off described — a pending picker move would otherwise sit
+         beneath its live strip for the whole session. Nothing is reconstructed. */
+      this.clearFirstMove();
       window.dispatchEvent(new CustomEvent('study-session-start', {
         detail: {
           topic,
@@ -3692,9 +3721,7 @@ function bodyDoubleSession() {
          move for the whole session, a stale one beneath the NEXT, unrelated
          activity would be a confidently wrong proposal on the one surface that
          is always on screen. */
-      this.firstMove = '';
-      this.firstMoveLessonId = '';
-      this.firstMoveLessonTitle = '';
+      this.clearFirstMove();
       this.confirmingEnd = false;
       /* Deliberately NOT clearing the note draft: losing a half-written note
          because the session ended is exactly the kind of loss this view exists

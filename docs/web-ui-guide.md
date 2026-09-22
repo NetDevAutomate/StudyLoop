@@ -41,7 +41,9 @@ The bottom status bar keeps the timer, topic, energy, wins, parked items, and
 review count visible without interrupting the conversation. A first move that
 arrived with the topic stays beneath the status bar for the whole session, with
 its **Open the lesson** control — a proposal on screen, never something the
-mentor says — and leaves with the topic when the session ends.
+mentor says — and leaves with the topic when the session ends. It belongs to
+the material it arrived beside: retype or re-pick the topic in the picker and
+the move goes with the old one, and a session you rejoin carries none.
 
 ## Body Double
 

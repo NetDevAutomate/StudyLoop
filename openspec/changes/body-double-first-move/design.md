@@ -207,6 +207,41 @@ body-doubling floor). Decisions taken here, each verified against the tree at
     listener, the opener, the end path, the planning launch), with the markup
     pinned statically. Sized as about a third of #30, as estimated.
 
+12. **The move never outlives the material it arrived beside (council review
+    8, the one finding all three seats converged on — astra F1/F2 🔴, grok 🟡,
+    qwen 🟡).** Decisions 9 and 11 cleared the move on two transitions — the
+    end of a session and a hand-off without a move — and claimed from them that
+    "a stale move never outlives its plan". Three transitions were unguarded,
+    and each puts a material-specific proposal beneath *different* material:
+    (i) the learner edits the material in the picker (`#topic-input`,
+    `#bd-activity-input`) or chooses another target from a picker select or the
+    target-kind select — the Frames sentence and its **Open the lesson** stayed
+    beneath whatever was typed and rode into the session; (ii) a second
+    hand-off arrives while a session is live or starting — both listeners wrote
+    the three fields unconditionally, and the same three fields feed the LIVE
+    strip, so a request for B installed B's move (or nothing) under A's running
+    session; (iii) `reattachConflictSession()` adopts a session that is not the
+    hand-off's, and a pending picker move sat beneath it for the whole session.
+    The build: each view gets one writer for the empty state,
+    `clearFirstMove()`, and every transition that changes the material calls
+    it — `onTopicEdited()` / `onActivityEdited()` on the inputs (keeping the
+    Study input's existing job of un-selecting the suggestion), `selectOption()`
+    for every picker select, `@change` on the target-kind select, the end paths
+    (now routed through the helper; the existing static pin accepts either
+    form), and both reattaches; both listeners return before touching the move
+    fields when `sessionActive || starting`, while still pre-filling the
+    picker's topic/activity and energy for the next session, as before. Weighed
+    and kept: grok's counter that a learner correcting a typo in the plan title
+    would lose a correct move — true, and cheaper than the alternative, which
+    is a confidently wrong proposal on the surface that is always on screen;
+    the move is one Start away. Behaviour-tested on the `session-timer.js`
+    harness (edit, re-select, live hand-off, reattach); the Body Double side
+    pinned statically, as at (d3), since `components.js` has no harness. A
+    test-harness fact found on the way: `reattachConflictSession()` arms the
+    real one-second tick, and the RED test did not `destroy()` it, so `node
+    --test` never exited the file — the run "hung" to the timeout rather than
+    failing, and the earlier continuation turns timed out on exactly this.
+
 ## Read cost
 
 The lookup runs only when a body double is synthesised or (since (e1)) when the

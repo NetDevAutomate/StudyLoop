@@ -352,3 +352,92 @@ test('a planning launch carries no warm-up', async () => {
     assert.equal(s.firstMoveLessonTitle, '');
   });
 });
+
+/* ---------------------------------------------------------------------------
+ * Council review 8 (2026-09-21), the finding all three seats converged on: the
+ * move must not outlive the material it arrived beside. Three transitions were
+ * unguarded — the learner edits or re-selects the material in the picker; a
+ * second hand-off arrives while a session is live or starting; a session that
+ * is not the hand-off's is reattached.
+ * ------------------------------------------------------------------------- */
+
+function handOff(s, listeners) {
+  listeners['today-resume']({ detail: {
+    topic: 'window function', energy: 'medium', firstMove: WARM_UP,
+    firstMoveLessonId: 'ztm/complete-sql-bootcamp/advanced-sql-4h', firstMoveLessonTitle: 'Advanced Sql 4H',
+  } });
+  assert.equal(s.firstMove, WARM_UP, 'precondition: the hand-off landed');
+}
+
+test('editing the topic clears the move that arrived with the previous topic', () => {
+  withStubs(({ listeners }) => {
+    const s = sessionTimer();
+    s._registerWindowListeners();
+    handOff(s, listeners);
+    s.selectedTopic = 'window function';
+
+    s.onTopicEdited();
+
+    assert.equal(s.selectedTopic, '', 'the handler still does what the inline handler did');
+    assert.equal(s.firstMove, '');
+    assert.equal(s.firstMoveLessonId, '');
+    assert.equal(s.firstMoveLessonTitle, '');
+  });
+});
+
+test('choosing another target from any picker select clears the move', () => {
+  withStubs(({ listeners }) => {
+    const s = sessionTimer();
+    s._registerWindowListeners();
+    s.studyOptions = { topics: [{ label: 'Joins', value: 'joins' }], vendors: [], courses: [], lessons: [] };
+    handOff(s, listeners);
+
+    s.selectOption('topic', 'joins');
+
+    assert.equal(s.firstMove, '');
+    assert.equal(s.firstMoveLessonId, '');
+    assert.equal(s.firstMoveLessonTitle, '');
+  });
+});
+
+test('a hand-off during a live or starting session does not touch the live move', () => {
+  withStubs(({ listeners }) => {
+    const s = sessionTimer();
+    s._registerWindowListeners();
+    handOff(s, listeners);
+    s.sessionActive = true;
+
+    listeners['today-resume']({ detail: { topic: 'joins', energy: 'high', firstMove: 'Open “Joins” …' } });
+
+    assert.equal(s.firstMove, WARM_UP, 'the live strip keeps the move of the session that is running');
+    assert.equal(s.firstMoveLessonId, 'ztm/complete-sql-bootcamp/advanced-sql-4h');
+
+    s.sessionActive = false;
+    s.starting = true;
+    listeners['today-resume']({ detail: { topic: 'joins', energy: 'high' } });
+
+    assert.equal(s.firstMove, WARM_UP, 'a start in flight is a session too');
+  });
+});
+
+test('reattaching to a session that is not the hand-off’s carries no move', () => {
+  withStubs(({ listeners }) => {
+    const s = sessionTimer();
+    s._registerWindowListeners();
+    handOff(s, listeners);
+    s.conflictSession = { study_session_id: 's-1', topic: 'Something else', reattach_url: '/api/session/ws?study_session_id=s-1' };
+    s.conflictIsOwn = true;
+    s.tick = () => {};
+    s.$nextTick = () => {};
+
+    s.reattachConflictSession();
+
+    assert.equal(s.sessionActive, true, 'precondition: the reattach happened');
+    assert.equal(s.firstMove, '');
+    assert.equal(s.firstMoveLessonId, '');
+    assert.equal(s.firstMoveLessonTitle, '');
+    // reattachConflictSession() arms the real one-second tick; without this the
+    // interval keeps the process alive and `node --test` never exits the file.
+    s.destroy();
+  });
+});
