@@ -2488,6 +2488,28 @@ def test_a_plan_related_active_item_that_is_neither_repair_nor_milestone_ramps_b
     assert seen == [("window function",)]
 
 
+def test_no_warm_up_when_the_primary_names_no_concept(monkeypatch) -> None:
+    """Council review 8 (grok 🔵, astra's "requested checks"): a candidate is
+    plan-related by its concept, its topic OR its course, and the struggle collector
+    does not guard ``row["concept"]`` — so a blank-concept active item can be the
+    plan-related primary. The repair and generic tails passed ``(concept,)`` regardless,
+    minting ``Open your “” material … — “” is too short for the index to look up.``
+    There is nothing to name and nothing to search: no warm-up, resolver not asked."""
+    _row3_plan()
+    _patch_collectors(monkeypatch, _candidate("", topic="sql", action_type="teachback", score=200))
+
+    def must_not_be_asked(concepts):
+        raise AssertionError(f"resolver asked with {concepts!r}")
+
+    monkeypatch.setattr(decision, "_resolve_lesson", must_not_be_asked)
+
+    primary = build_now_plan(energy="medium").primary
+
+    assert primary.concept == "" and primary.plan_refs, "precondition: plan-related by topic"
+    assert "first_move" not in primary.metadata
+    assert "first_move_lesson_id" not in primary.metadata
+
+
 def test_cli_now_prints_the_warm_up_beneath_the_evidence_door_at_medium_energy(
     monkeypatch,
 ) -> None:
