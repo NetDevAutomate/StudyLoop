@@ -1,0 +1,53 @@
+{
+  "run_at": "2026-09-21T19:31:19+00:00",
+  "brief": "docs/architecture/plan-integration/council/brief-review8-2026-09-21.md",
+  "brief_sha256": "8d70d90c2be1de956b46a8514804bc64082b2bf41aed4b2549dd7a07340f9de5",
+  "system_sha256": "06bd2b0d9d0edfacf9463f79cb598ce63560da80f22a3b8b29b64a87b7567f12",
+  "reviewed_tree": "c83ebd75",
+  "reviewed_range": "fa1b2af3..c83ebd75",
+  "seats": [
+    {
+      "model": "openai.gpt-6-astra",
+      "ok": true,
+      "max_tokens": 16000,
+      "finish_reason": "stop",
+      "elapsed_s": 59.4,
+      "usage": {
+        "prompt_tokens": 23930,
+        "completion_tokens": 3337,
+        "total_tokens": 27267,
+        "reasoning_tokens": 849
+      },
+      "error": null
+    },
+    {
+      "model": "grok-4.6",
+      "ok": true,
+      "max_tokens": 24000,
+      "finish_reason": "length",
+      "elapsed_s": 215.9,
+      "usage": {
+        "prompt_tokens": 25264,
+        "completion_tokens": 24000,
+        "total_tokens": 49264,
+        "reasoning_tokens": 123
+      },
+      "error": null
+    },
+    {
+      "model": "qwen3-coder",
+      "ok": true,
+      "max_tokens": 12000,
+      "finish_reason": "stop",
+      "elapsed_s": 12.7,
+      "usage": {
+        "prompt_tokens": 24306,
+        "completion_tokens": 1107,
+        "total_tokens": 25413,
+        "reasoning_tokens": 0
+      },
+      "error": null
+    }
+  ],
+  "provenance": "Seat files are copies of <alias>.review.md from the gitignored run directory reviews/2026-09-21-first-move/council/ on the main checkout, copied into the repo on 2026-09-22 after the coordinating session was interrupted before it could record them. The repo's pre-commit whitespace hooks trimmed trailing whitespace and normalised the final newline on the copies; `git diff -w` between the copies and the originals is empty, so the content is unchanged. The originals' sha256: astra 9fed14fc33fe12aa22f8be9db52593a994f5e23535a76ced6326b4f361d1ca92, grok df4aec1c40f419bb41c604429bdd8ce28f60de97a9ff2b39dfcc56e34a7d3ace, qwen 3194c93241a3a18c996b562f95b58a9939da728c307362aaacd4f92084842051; brief_sha256 above is the brief as sent, before the same normalisation. Usage and finish_reason are the run's own spend.json and run.log."
+}

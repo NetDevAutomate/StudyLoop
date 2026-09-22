@@ -84,8 +84,14 @@ edit; each task has a definition of done a reviewer can tick from output.
       new pins + Body Double pins + docs contract + now-guidance + web-now + golden 134/134, web unit suites
       reading the markup 144 passed, JS 160/160, `node --check` on both scripts, mkdocs `--strict` clean,
       openspec valid, golden `ec451ce8` unchanged.
-- [ ] ⚖ **T4** Council review (three seats) of the RED and the GREEN; arbitration; one commit per accepted
-      finding.
+- [x] ⚖ **T4** Council review (three seats) of the RED and the GREEN; arbitration; one commit per accepted
+      finding. Review 8 ran 2026-09-21 on `c83ebd75` (astra ACCEPT-WITH-CORRECTIONS, grok
+      ACCEPT-WITH-CORRECTIONS, qwen ACCEPT); GATE ACCEPT for `f8783a73` in
+      `council/review-8-arbitration-2026-09-21.md`, seats in `council/review8/`. Landed one commit each:
+      `a33249da`→`d029b0d6` (too-short concept; first well-formed hit), `c5065cf0` (the move never
+      outlives its material — design decision 12), `357ee258` (F4 record), `79761a94`→`193b541d` (blank
+      concept), `024373ba`→`f8783a73` (learning row's tail — my own finding). Open for the owner: the
+      high-energy ramp (decision 10); separate change: the frozen-clock gap.
 - [ ] **T5** Rubric row **3c** added to `docs/architecture/plan-integration/receipts/now-rubric-2026-09-16.md`:
       row 3's world emitted from the GREEN tree through both real collectors, the first move shown as
       emitted; verdict `PENDING` until the owner scores it. The change is archived only after the row is
