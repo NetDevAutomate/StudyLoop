@@ -186,7 +186,10 @@ option is the easier to take (row 3b (d)). The warm-up therefore SHALL end
 
 - a repair (`energy_demand` in the candidate's metadata — both collectors mark
   repairs and nothing else): the resolver is asked `(concept,)`, the material
-  is `“<concept>”`, the tail `then start the repair`;
+  is `“<concept>”`, the tail `then start the repair` — or `then start the
+  review` when the row's `confidence` is `learning`, whose own reason names a
+  gentle review, not a repair (row 3b (c); coordinator finding at council
+  review 8);
 - the plan's next milestone (a `PlanRef` naming an eligible milestone): the
   resolver is asked that milestone's own concepts, all of them in order, the
   material is the milestone's title, the tail `then start the milestone`;

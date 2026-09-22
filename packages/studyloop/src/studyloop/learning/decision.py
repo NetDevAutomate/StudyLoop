@@ -1480,9 +1480,11 @@ def _warm_up(primary: _Candidate, plans: _PlanContext) -> tuple[str, str | None,
     Scope: the primary only (one move); never the body double (it has its own);
     never a candidate off every plan (so the no-plan golden is byte-identical);
     never recall, visual or audio (:data:`_WARM_UP_ACTIONS`). Material, in order
-    of what the primary IS: a repair (``energy_demand`` in its metadata — both
-    collectors mark repairs and nothing else) asks the resolver its own concept
-    and ends "then start the repair"; a plan milestone (a ref naming the eligible
+    of what the primary IS: a demand-marked row (``energy_demand`` in its
+    metadata — every struggle row carries one) asks the resolver its own concept
+    and ends "then start the repair", or "then start the review" for a
+    ``learning`` row, whose own reason names a gentle review (row 3b (c)); a
+    plan milestone (a ref naming the eligible
     next milestone) asks that milestone's own concepts and ends "then start the
     milestone"; any other plan-related active item asks its concept and ends
     "then start on “<concept>”". Same evidence sentence, same honest no-lesson
@@ -1494,8 +1496,12 @@ def _warm_up(primary: _Candidate, plans: _PlanContext) -> tuple[str, str | None,
         return None
     concept = primary.concept.strip()
     if concept and "energy_demand" in primary.metadata:
+        # Every struggle row carries energy_demand; only a ``struggling`` one is a
+        # repair. A ``learning`` row is the gentle review its own reason names
+        # (row 3b (c)), so the ramp ends where that reason does, not at a repair.
+        what = "review" if primary.metadata.get("confidence") == "learning" else "repair"
         return _first_move_sentence(
-            (concept,), material=f"“{concept}”", tail="then start the repair"
+            (concept,), material=f"“{concept}”", tail=f"then start the {what}"
         )
     ref = next((r for r in primary.plan_refs if r.milestone_index is not None), None)
     if ref is not None:

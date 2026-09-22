@@ -171,7 +171,11 @@ body-doubling floor). Decisions taken here, each verified against the tree at
     defeats the test, and row 3b (b) already said familiar recall leads as it
     is; never `visual`/`audio`, already passive. The tail names what the
     primary is, tested in this order: a repair (`energy_demand` in metadata —
-    both collectors mark repairs and nothing else) → *then start the repair*;
+    both collectors mark repairs and nothing else) → *then start the repair*
+    *(corrected at council review 8, my own finding: every struggle row carries
+    `energy_demand`, a `learning` row included, and that row's reason names a
+    gentle review — so its tail is* then start the review*; only `struggling`
+    is a repair)*;
     the plan's eligible next milestone → its own concepts, all of them, *then
     start the milestone*; any other plan-related active item → *then start on
     “<concept>”*. Applies at any energy, not medium alone — starting, not
