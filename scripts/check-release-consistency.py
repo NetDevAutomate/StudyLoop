@@ -216,11 +216,12 @@ def validate_openspec_changes_shipped(repo_root: Path) -> None:
 def validate_new_archives(repo_root: Path) -> None:
     """Archive entries added since the last tag must pass ``openspec validate``.
 
-    Scoped to NEW archives, not ``--archived --all``: an archive from July
-    predates this guard and has unticked tasks nobody has evidence to
-    reconcile; re-failing every future release on it would teach people to
-    ignore the gate. Soft-skips when the openspec CLI is absent — the same
-    convention as ``just spec-check``.
+    Scoped to NEW archives, not ``--archived --all``, so a historical archive
+    nobody is working on can never re-fail a future release and teach people
+    to ignore the gate. (The July archive that motivated the scoping was
+    reconciled against the tree on 2026-09-23; ``--archived --all`` is green
+    today, and the scoping stays.) Soft-skips when the openspec CLI is absent
+    — the same convention as ``just spec-check``.
     """
     import shutil
 

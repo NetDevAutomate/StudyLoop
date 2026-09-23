@@ -218,9 +218,10 @@ release-consistency:
 # change with commits since the last tag must be archived or carry a
 # `deferred: <reason>`, and archive entries ADDED since the last tag must pass
 # `openspec validate` (soft-skipped when the CLI is absent, same convention as
-# spec-check; not `--archived --all`, because a July archive predating this
-# guard has unticked tasks nobody has evidence to reconcile, and re-failing
-# every future release on it would teach people to ignore the gate).
+# spec-check; not `--archived --all`, so that a historical archive nobody is
+# working on can never re-fail a future release and teach people to ignore
+# the gate — the July archive that motivated this was reconciled against the
+# tree on 2026-09-23 and `--archived --all` is green today).
 # Deliberately NOT part of preflight: open changes are legal during a cycle;
 # only shipping one is not. Both guards would have fired on the 0.2.0 cut
 # (2026-09-04 review, Q5).
