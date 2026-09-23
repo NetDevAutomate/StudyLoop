@@ -62,8 +62,9 @@ GOLDEN_SHA256 = (  # pragma: allowlist secret
     "ec451ce8857c8a72e398e3054e3c060cd3b5b13ecb29e29cba3822dc192503c0"  # pragma: allowlist secret
 )
 
-#: The production inventory: 23 original tools + the nine plan tools (review 3, F13).
-PRODUCTION_TOOL_COUNT = 32
+#: The production inventory: 23 original tools + the nine plan tools (review 3, F13)
+#: + record_teachback (learning tier item 1, 2026-09-23).
+PRODUCTION_TOOL_COUNT = 33
 CORE_TOOLS = frozenset({"list_courses", "get_study_backlog", "end_session"})
 
 #: Protected test files: byte-identical to their base since the programme began.
@@ -148,7 +149,7 @@ def check_golden_sha(repo_root: Path) -> tuple[int, dict[str, Any]]:
 
 
 def check_inventory_in_process(repo_root: Path) -> tuple[int, dict[str, Any]]:
-    """The in-process twin of the stdio inventory: exactly 32 unique names,
+    """The in-process twin of the stdio inventory: exactly 33 unique names,
     the nine plan tools, ``record_plan_learning`` and the core names."""
     _ = repo_root
     from studyloop.mcp.server import mcp

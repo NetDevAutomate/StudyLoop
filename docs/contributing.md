@@ -125,7 +125,10 @@ harness's transcripts).
      matter in six months, write an ADR (`docs/adr/NNNN-kebab-title.md`, indexed in `docs/adr/README.md`).
    - *New mentor harness or backend*: the issue must define the persona mechanism, launch and resume
      commands, session store, exporter, health check, failure behaviour and a live acceptance path. Drive-by
-     harness additions are declined.
+     harness additions are declined. A mentor definition must also reference
+     `agents/shared/recording-protocol.md` and name its four writers (`record_teachback`, `log_struggle`,
+     `log_topic`, `record_plan_learning`) — `test_adapter_parity.py` and `test_docs_harness_tier_contract.py`
+     pin this, and pin that no harness gains a pre-approval for them (owner decision, 2026-09-23).
 2. **Fork and branch.** Outside contributors fork and open pull requests against `main`; maintainers branch
    in the repository. Name branches `feat/…`, `fix/…`, `docs/…` or `test/…`. Do not use `lane/…`: that
    prefix is reserved for the maintainers' remediation lanes and carries an ownership test that only makes

@@ -42,6 +42,7 @@ SHARED_FILES = [
     "shared/session-protocol.md",
     "shared/session-db-mandate.md",
     "shared/teach-back-protocol.md",
+    "shared/recording-protocol.md",
     "shared/network-bridges.md",
     "shared/break-science.md",
     "shared/wind-down-protocol.md",

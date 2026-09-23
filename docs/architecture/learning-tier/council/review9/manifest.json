@@ -1,0 +1,47 @@
+{
+  "run_at": "2026-09-23T10:33:23+00:00",
+  "brief": "docs/architecture/learning-tier/council/brief-review9-2026-09-23.md",
+  "brief_sha256": "f221767716ca755a2d3e596eaeacb05d9596688dfef9e26162c378fe903de7ec",
+  "system_sha256": "5f21e273f399cdb0455a9fadb8575cc3e231ce0d7931f517206335c98c3f934b",
+  "seats": [
+    {
+      "model": "openai.gpt-6-astra",
+      "ok": true,
+      "reasoning_chars": 0,
+      "finish_reason": "stop",
+      "elapsed_s": 50.3,
+      "usage": {
+        "prompt_tokens": 17243,
+        "completion_tokens": 2716,
+        "total_tokens": 19959
+      },
+      "error": null
+    },
+    {
+      "model": "grok-4.6",
+      "ok": true,
+      "reasoning_chars": 0,
+      "finish_reason": "stop",
+      "elapsed_s": 41.6,
+      "usage": {
+        "prompt_tokens": 18591,
+        "completion_tokens": 4728,
+        "total_tokens": 23319
+      },
+      "error": null
+    },
+    {
+      "model": "qwen3-coder",
+      "ok": true,
+      "reasoning_chars": 0,
+      "finish_reason": "stop",
+      "elapsed_s": 7.2,
+      "usage": {
+        "prompt_tokens": 17654,
+        "completion_tokens": 462,
+        "total_tokens": 18116
+      },
+      "error": null
+    }
+  ]
+}

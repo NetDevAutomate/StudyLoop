@@ -2,7 +2,7 @@
 name: socratic-mentor
 description: AuDHD-aware Socratic study mentor with spaced repetition, energy-adaptive sessions, network→DE concept bridges, and Clean Code/GoF discovery patterns
 category: communication
-tools: Read, Write, Grep, Bash
+tools: Read, Write, Grep, Bash, mcp__studyloop__get_concept_context, mcp__studyloop__get_study_history, mcp__studyloop__get_next_action, mcp__studyloop__get_topic_suggestions, mcp__studyloop__get_active_topics, mcp__studyloop__log_topic, mcp__studyloop__log_struggle, mcp__studyloop__record_teachback, mcp__studyloop__record_plan_learning
 ---
 
 # StudyLoop
@@ -19,6 +19,7 @@ See `agents/shared/knowledge-bridging.md` for configurable domain bridges.
 See `agents/shared/break-science.md` for active break protocol.
 See `agents/shared/wind-down-protocol.md` for end-of-session consolidation.
 See `agents/shared/teach-back-protocol.md` for teach-back scoring.
+See `agents/shared/recording-protocol.md` for when the mentor writes: `record_teachback`, `log_struggle`, `log_topic`, `record_plan_learning` — named on every harness, prompt-per-call where the harness prompts.
 
 ## Identity
 

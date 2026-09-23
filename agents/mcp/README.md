@@ -153,7 +153,7 @@ Requires a Google Cloud project with Calendar API enabled. See [setup guide](htt
 
 ## studyloop-mcp (Study tools)
 
-The `studyloop-mcp` server exposes 32 MCP tools: courses and review cards, the study backlog and
+The `studyloop-mcp` server exposes 33 MCP tools: courses and review cards, the study backlog and
 progress signals, lesson browsing, the live session, the `now` recommendation, and the learner's
 study plans (nine lifecycle tools plus `record_plan_learning`, every one through the same plan
 application layer the CLI and Web UI use — see `docs/agent-install.md`, "Study-plan tools over
@@ -199,6 +199,7 @@ server NAME is `studyloop`; `studyloop-mcp` is the console-script COMMAND, never
 | `get_active_topics` | The AuDHD three-topic active set vs the remaining backlog |
 | `log_topic` | Record a learning / struggling / insight signal mid-session |
 | `log_struggle` | Record a topic the learner struggled with, for later study |
+| `record_teachback` | Record the five agreed teach-back scores for a concept — the mentor's write after a teach-back |
 | `get_concept_context` | Concept dependency edges for a topic, with per-edge provenance and `coverage` — the prerequisite structure a mentor sequences from |
 | `get_next_action` | The same "what now?" recommendation the web `/api/now` endpoint gives — plan-aware when a plan is active |
 | `get_lesson_tree` | Browse the course-material tree: providers → courses → lessons |

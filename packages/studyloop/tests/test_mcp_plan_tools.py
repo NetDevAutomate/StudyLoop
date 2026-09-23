@@ -97,8 +97,9 @@ NINE_TOOLS: tuple[str, ...] = SIX_TOOLS + PHASE_FOUR_TOOLS
 #: 23 original tools at ``0a20a796`` — ``record_plan_learning`` among them —
 #: plus the nine design-§4 plan tools = 32 (council review 3, F13: the design's
 #: "35" was arithmetic on a stale inventory; review 4, F6: the earlier comment
-#: here said "plus nine less one", which is 31).
-PRODUCTION_TOOL_COUNT = 32
+#: here said "plus nine less one", which is 31), plus ``record_teachback``
+#: (learning tier item 1, 2026-09-23) = 33.
+PRODUCTION_TOOL_COUNT = 33
 
 #: The core names the stdio smoke test also pins; asserted here too so the
 #: in-process twin is a real twin (review 4, F4).
@@ -933,8 +934,8 @@ def test_phase_four_schemas_carry_the_design_signatures() -> None:
     assert "const" not in confirmed and "enum" not in confirmed
 
 
-def test_production_inventory_is_thirty_two_with_the_nine_plan_tools() -> None:
-    """The in-process twin of the stdio pin (T4.1): exactly 32 names, each
+def test_production_inventory_is_thirty_three_with_the_nine_plan_tools() -> None:
+    """The in-process twin of the stdio pin (T4.1): exactly 33 names, each
     tool registered under its own name (a duplicate registration would
     overwrite its key silently, so the dict's size alone cannot show one),
     all nine design-§4 plan tools, ``record_plan_learning`` and the core

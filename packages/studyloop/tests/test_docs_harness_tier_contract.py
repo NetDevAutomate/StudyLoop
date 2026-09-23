@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from typing import ClassVar
 
 from studyloop.harnesses import CORE_HARNESSES, HARNESSES, PREVIEW_HARNESSES, RELEASE_HARNESSES
 
@@ -162,3 +163,84 @@ class TestHarnessRecordsAgreeWithTiers:
     def test_core_flag_mirrors_the_tuples(self) -> None:
         assert {n for n, h in HARNESSES.items() if h.core} == set(CORE_HARNESSES)
         assert {n for n, h in HARNESSES.items() if not h.core} == set(PREVIEW_HARNESSES)
+
+
+# ---------------------------------------------------------------------------
+# Learning tier, item 1 (S1-RED): one recording protocol, projected to every harness
+# ---------------------------------------------------------------------------
+
+
+class TestRecordingProtocol:
+    """``agents/shared/recording-protocol.md`` is the one instruction that tells
+    every mentor WHEN to write. Plan §5; owner decision 2 (parity of instruction).
+    """
+
+    PROTOCOL = "agents/shared/recording-protocol.md"
+    W_AUTO = ("log_topic", "log_struggle", "record_teachback", "record_plan_learning")
+    DEFINITIONS = (
+        "agents/kiro/study-mentor/persona.md",
+        "agents/claude/socratic-mentor.md",
+        "agents/opencode/study-mentor.md",
+        "agents/codex/AGENTS.md",
+        "agents/pi/AGENTS.md",
+        # The LIVE personas: ``build_canonical_persona`` renders these into every
+        # adapter's session document, whatever the installed definition says.
+        "agents/shared/personas/study.md",
+        "agents/shared/personas/co-study.md",
+    )
+    REQUIRED_KEYS: ClassVar[frozenset[str]] = frozenset(
+        {"trigger", "writer", "required_ids", "consent"}
+    )
+
+    def _table(self) -> list[dict]:
+        import yaml
+
+        text = _read(self.PROTOCOL)
+        blocks = re.findall(r"^```yaml\s*\n(.*?)^```", text, flags=re.MULTILINE | re.DOTALL)
+        assert len(blocks) == 1, f"expected exactly one fenced yaml block, found {len(blocks)}"
+        table = yaml.safe_load(blocks[0])
+        assert isinstance(table, list) and table, "the trigger table is a non-empty YAML list"
+        return table
+
+    def test_the_protocol_exists(self) -> None:
+        assert (REPO_ROOT / self.PROTOCOL).is_file(), f"{self.PROTOCOL} is absent"
+
+    def test_the_trigger_table_parses_with_the_documented_columns(self) -> None:
+        for row in self._table():
+            assert set(row) >= self.REQUIRED_KEYS, (
+                f"row lacks {self.REQUIRED_KEYS - set(row)}: {row}"
+            )
+
+    def test_every_trigger_names_a_w_auto_writer_and_every_writer_has_a_trigger(self) -> None:
+        writers = [row["writer"] for row in self._table()]
+        strangers = [w for w in writers if w not in self.W_AUTO]
+        assert not strangers, f"triggers name writers outside W_auto: {strangers}"
+        untriggered = [w for w in self.W_AUTO if w not in writers]
+        assert not untriggered, f"W_auto writers with no trigger: {untriggered}"
+
+    def test_no_trigger_names_an_srs_mutator(self) -> None:
+        srs = {"record_study_progress", "log_review_outcome", "record_topic_progress"}
+        assert not {row["writer"] for row in self._table()} & srs
+
+    def test_every_mentor_definition_references_the_protocol(self) -> None:
+        missing = [d for d in self.DEFINITIONS if "recording-protocol.md" not in _read(d)]
+        assert not missing, f"definitions that do not reference the protocol: {missing}"
+
+    def test_the_manifest_hashes_the_protocol(self) -> None:
+        import hashlib
+        import json
+
+        manifest = json.loads(_read("agents/manifest.json"))
+        entry = manifest["agents"].get("shared/recording-protocol.md")
+        assert entry, "agents/manifest.json has no entry for shared/recording-protocol.md"
+        digest = hashlib.sha256((REPO_ROOT / self.PROTOCOL).read_bytes()).hexdigest()[:16]
+        assert entry["hash"] == digest, "manifest hash is stale for the protocol"
+
+    def test_the_kiro_persona_no_longer_routes_record_progress_to_tutor_checkpoint(self) -> None:
+        lines = _read("agents/kiro/study-mentor/persona.md").splitlines()
+        offenders = [
+            ln for ln in lines if "record progress" in ln.lower() and "tutor-checkpoint" in ln
+        ]
+        assert offenders == [], (
+            f"persona still routes record-progress to tutor-checkpoint: {offenders}"
+        )

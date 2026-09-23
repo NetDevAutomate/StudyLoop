@@ -864,6 +864,80 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
         row_id = park_topic(question, topic_tag=topic_tag, context=context, source="struggled")
         return {"status": "logged", "id": row_id}
 
+    @tool()
+    def record_teachback(
+        concept: str,
+        topic: str,
+        scores: list[int],
+        review_type: str,
+        angle: str = "",
+        notes: str = "",
+    ) -> dict[str, Any]:
+        """Record a teach-back score the learner has agreed to.
+
+        Call once a teach-back round has ended and the learner has accepted
+        the five proposed scores (``agents/shared/recording-protocol.md``,
+        trigger ``teach_back_agreed``). Scores are in rubric order --
+        accuracy, own_words, structure, depth, transfer -- each 1 to 4;
+        ``review_type`` is one of micro, structured, transfer, full.
+        Teach-backs are events: a repeated call records a second row.
+
+        The row is owned by the configured scope, exactly as the CLI's rows
+        are. The live study session id is returned for the caller's record
+        but is not a storage link: the ownership layer binds a ``session_id``
+        only to a native harness session and links study sessions only for
+        parked topics and study notes (S1-0 receipt, finding N1).
+
+        Args:
+            concept: The concept that was taught back.
+            topic: Study topic (python, sql, ...).
+            scores: Exactly five integers, each 1-4, in rubric order.
+            review_type: micro, structured, transfer or full.
+            angle: Optional question angle used (e.g. "apply_network_analogy").
+            notes: Optional assessment notes.
+        """
+        from studyloop.history.teachback import coerce_review_type, coerce_scores
+        from studyloop.history.teachback import record_teachback as write_teachback
+        from studyloop.session_state import read_session_state
+
+        try:
+            five = coerce_scores(scores)
+            kind = coerce_review_type(review_type)
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+        concept = concept.strip()
+        topic = topic.strip()
+        if not concept or not topic:
+            # NOT NULL in the schema does not stop "" -- refuse it here so a blank
+            # never becomes a row nothing can find again (council review 9, grok Y5).
+            raise ToolError("concept and topic must both be non-empty")
+
+        study_session_id = read_session_state().get("study_session_id") or None
+        recorded = write_teachback(
+            concept=concept,
+            topic=topic,
+            scores=five,
+            review_type=kind,
+            angle=angle or None,
+            notes=notes or None,
+        )
+        if not recorded:
+            # The writer returns False for three different failures -- no database,
+            # a lock/timeout, a refused row -- and does not say which (its CLI caller
+            # inherited the same collapse). Say that, rather than claim one cause.
+            raise ToolError(
+                "teach-back not recorded: the sessions database could not take the write "
+                "(unavailable, locked, or it refused the row) -- run `studyloop doctor`"
+            )
+        return {
+            "recorded": True,
+            "concept": concept,
+            "topic": topic,
+            "review_type": kind,
+            "total": sum(five),
+            "study_session_id": study_session_id,
+        }
+
     # ── Study plans — discovery, authoring and progression through the seam (D-4, D-8, D-9) ──
     #
     # Nine thin adapters over ``studyloop.planning.PlanApplication`` (design §4):
