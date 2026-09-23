@@ -35,6 +35,20 @@ experience may change before `1.0.0`.
   separately through the skills CLI, not by `studyloop install agents`; its
   guide is published on the docs site as *Lesson Study Notes*
   (`docs/study-notes-skill.md`).
+- The mentor writes to the learning tier (issue #38, item 1 of the
+  learning-tier plan). A `record_teachback` MCP tool records a teach-back
+  score through the same validator the `studyloop teachback` CLI uses (the
+  CLI now delegates to it; its messages are unchanged), so a mentor session's
+  teach-back reaches tomorrow's recommendation instead of stopping at the
+  conversation. One `agents/shared/recording-protocol.md` carries a
+  machine-readable trigger table naming exactly the four append-only writers
+  (`log_topic`, `log_struggle`, `record_teachback`, `record_plan_learning`);
+  every harness definition and the built live persona name the same four,
+  and parity tests pin the names, the protocol hash and the absence of any
+  new pre-approval — recording stays prompt-per-call on every harness, by
+  owner decision. Scheduling mutators never fire from the protocol. A
+  child-process isolation guard proves the four writers land nowhere outside
+  the sandbox database. Owner decisions 1–5 are recorded in the plan (#34).
 
 ### Changed
 
@@ -62,6 +76,13 @@ experience may change before `1.0.0`.
   no learner saw the split; `spaced_repetition_due()` gains a keyword-only
   `now` for callers that already hold an instant, defaulting to the wall
   clock for everyone else.
+- A browser tab rejoining a session whose transport had already drained no
+  longer leaves *Task exception was never retrieved … StopAsyncIteration* in
+  the server log. The WebSocket pump pulls each transport event as its own
+  future; when a newer socket took the slot, or the client closed while the
+  drained future was already complete, the pump exited without reading that
+  future's `StopAsyncIteration`. The pump now retrieves the result of a done
+  pull future on every exit path.
 
 ## [0.5.0] - 2026-09-21
 
