@@ -16,6 +16,14 @@ from pathlib import Path
 
 import pytest
 
+# ``test_gate_fails_when_a_new_route_is_untested`` scans every test file for route
+# references twice (route test + full-stack test): 26 s on a laptop, and on
+# 2026-09-23 it crossed the 60 s unit ceiling under ``--cov`` on a shared CI runner
+# (python 3.13 lane; 3.12 passed; green on rerun). pyproject.toml's policy is that a
+# module whose honest cost is near the ceiling carries its own bound rather than
+# flaking against the global one.
+pytestmark = pytest.mark.timeout(180)
+
 _tests_dir = str(Path(__file__).resolve().parent)
 if _tests_dir not in sys.path:
     sys.path.insert(0, _tests_dir)
