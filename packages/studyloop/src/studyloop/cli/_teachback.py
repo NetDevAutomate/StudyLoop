@@ -8,12 +8,18 @@ import click
 from rich.table import Table
 
 from studyloop.cli._shared import console
+from studyloop.history.teachback import TEACHBACK_TYPES, coerce_scores
 
-TEACHBACK_TYPES = ("micro", "structured", "transfer", "full")
+__all__ = ["TEACHBACK_TYPES", "teachback"]
 
 
 class TeachbackScoresParam(click.ParamType):
-    """Parse five comma-separated teach-back rubric scores."""
+    """Parse five comma-separated teach-back rubric scores.
+
+    The rule itself lives in :func:`studyloop.history.teachback.coerce_scores`,
+    shared with the ``record_teachback`` MCP tool; this class only splits the
+    shell string and maps the shared ``ValueError`` to click's failure.
+    """
 
     name = "scores"
 
@@ -26,24 +32,10 @@ class TeachbackScoresParam(click.ParamType):
         if isinstance(value, tuple):
             return cast("tuple[int, int, int, int, int]", value)
 
-        raw = str(value)
-        parts = [part.strip() for part in raw.split(",")]
-        if len(parts) != 5 or any(part == "" for part in parts):
-            self.fail(
-                'expected exactly five comma-separated scores, e.g. "3,3,4,3,2"',
-                param,
-                ctx,
-            )
-
         try:
-            scores = tuple(int(part) for part in parts)
-        except ValueError:
-            self.fail("scores must be integers from 1 to 4", param, ctx)
-
-        if any(score < 1 or score > 4 for score in scores):
-            self.fail("each score must be between 1 and 4", param, ctx)
-
-        return cast("tuple[int, int, int, int, int]", scores)
+            return coerce_scores(str(value).split(","))
+        except ValueError as exc:
+            self.fail(str(exc), param, ctx)
 
 
 TEACHBACK_SCORES = TeachbackScoresParam()

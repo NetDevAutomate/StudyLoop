@@ -6,12 +6,56 @@ import json
 import logging
 import sqlite3
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING, cast
 
 from agent_session_tools.context import records
 
 from . import _connection, observations
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
 logger = logging.getLogger(__name__)
+
+#: Review types a teach-back may be recorded under (CLI ``--type`` and MCP ``review_type``).
+TEACHBACK_TYPES = ("micro", "structured", "transfer", "full")
+
+#: Rubric order of the five scores.
+SCORE_DIMENSIONS = ("accuracy", "own_words", "structure", "depth", "transfer")
+
+_FIVE_SCORES = 'expected exactly five comma-separated scores, e.g. "3,3,4,3,2"'
+_INTEGERS = "scores must be integers from 1 to 4"
+_RANGE = "each score must be between 1 and 4"
+
+
+def coerce_scores(values: Sequence[object]) -> tuple[int, int, int, int, int]:
+    """Validate five rubric scores the one way both surfaces share.
+
+    The CLI (``studyloop teachback --score``) and the MCP tool
+    (``record_teachback``) accept scores from different callers -- a shell
+    string and a JSON list -- but the rule is one: exactly five, integers,
+    each 1 to 4, in :data:`SCORE_DIMENSIONS` order. Raises ``ValueError``
+    with the message the CLI has always printed; each surface maps that to
+    its own error type.
+    """
+    parts = [str(part).strip() for part in values]
+    if len(parts) != 5 or any(part == "" for part in parts):
+        raise ValueError(_FIVE_SCORES)
+    try:
+        scores = tuple(int(part) for part in parts)
+    except ValueError as exc:
+        raise ValueError(_INTEGERS) from exc
+    if any(score < 1 or score > 4 for score in scores):
+        raise ValueError(_RANGE)
+    return cast("tuple[int, int, int, int, int]", scores)
+
+
+def coerce_review_type(value: str) -> str:
+    """Validate ``review_type`` against :data:`TEACHBACK_TYPES`; ``ValueError`` names the set."""
+    if value not in TEACHBACK_TYPES:
+        allowed = ", ".join(TEACHBACK_TYPES)
+        raise ValueError(f"review type must be one of {allowed}; got {value!r}")
+    return value
 
 
 def _confidence_from_teachback(total: int, review_type: str) -> str:

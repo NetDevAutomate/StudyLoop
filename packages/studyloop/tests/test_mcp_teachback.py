@@ -11,8 +11,9 @@ and the S1-0 receipt pin the contract this file tests:
   validation fails;
 * a valid call lands **one row** in ``teach_back_scores`` through the real
   migrated schema, whose CHECK constraints are what "honouring CHECK" means;
-* ``session_id`` is bound from the live session state, never taken from the
-  caller;
+* the live study session id is reported in the reply and never taken from
+  the caller; it is not stored as the row's ``session_id`` (finding N1: the
+  ownership layer reserves that column for native harness sessions);
 * a repeated call is two rows -- teach-backs are events, not state;
 * a missing connection is a ``ToolError``, never a silent success.
 
@@ -151,7 +152,7 @@ class TestARowLands:
         assert result["recorded"] is True
         assert result["total"] == sum(VALID_SCORES)
         rows = _rows(scratch_db)
-        assert rows == [("window frame", "sql", "study-42", 3, 3, 4, 3, 2)]
+        assert rows == [("window frame", "sql", None, 3, 3, 4, 3, 2)]
         # The schema is the migrated one: its CHECK constraints are present.
         conn = sqlite3.connect(scratch_db)
         try:
@@ -162,20 +163,34 @@ class TestARowLands:
             conn.close()
         assert "BETWEEN 1 AND 4" in ddl
 
-    def test_session_id_comes_from_session_state(self, scratch_db: Path, session_state) -> None:
-        session_state({"study_session_id": "study-7"})
-        _get_tool("record_teachback")(
-            concept="decorators", topic="python", scores=VALID_SCORES, review_type="micro"
-        )
-        assert [row[2] for row in _rows(scratch_db)] == ["study-7"]
-
-    def test_no_live_session_records_a_null_session_id_not_an_error(
+    def test_the_study_session_is_reported_not_stored_as_the_rows_session_id(
         self, scratch_db: Path, session_state
     ) -> None:
-        _get_tool("record_teachback")(
+        """Finding N1 (S1-GREEN, corrected from the RED as first written).
+
+        The RED assumed the live study session id would land in the row's
+        ``session_id``. The ownership layer forbids it: ``records.bind`` treats
+        ``session_id`` as a *native* harness session (it must exist in
+        ``sessions`` and be visible in scope) and links study sessions only for
+        ``parked_topics`` and ``study_notes`` -- the write failed and the tool
+        reported "not recorded". So the row is owned by scope, as the CLI's
+        rows are, and the study session id travels in the tool's reply.
+        """
+        session_state({"study_session_id": "study-7"})
+        result = _get_tool("record_teachback")(
             concept="decorators", topic="python", scores=VALID_SCORES, review_type="micro"
         )
+        assert result["study_session_id"] == "study-7"
         assert [row[2] for row in _rows(scratch_db)] == [None]
+
+    def test_no_live_session_reports_none_and_still_records(
+        self, scratch_db: Path, session_state
+    ) -> None:
+        result = _get_tool("record_teachback")(
+            concept="decorators", topic="python", scores=VALID_SCORES, review_type="micro"
+        )
+        assert result["study_session_id"] is None
+        assert len(_rows(scratch_db)) == 1
 
     def test_a_repeated_call_is_two_rows_because_teachbacks_are_events(
         self, scratch_db: Path, session_state
