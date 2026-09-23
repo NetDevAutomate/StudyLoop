@@ -32,6 +32,25 @@
 > --dev`. Now **62 of 67 resolved, 5 left open** (T6 plus four low-level
 > cleanup/docs tasks); the change is deferred pending upstream Kiro/detach
 > support, not release-blocking.
+>
+> **Closure, 2026-09-23 (housekeeping, no code change):** the change is
+> archived as **deferred**, which is what its `.openspec.yaml` has said since
+> 2026-09-05. The five open boxes are ticked below with an explicit
+> `_(closed 2026-09-23 — NOT built, deferred with the change …)_` disposition
+> each, so the archive counts complete without claiming work that was never
+> done; every disposition names its reopen condition. **The spec deltas under
+> `specs/` were NOT merged into the main specs** (`openspec archive
+> --skip-specs`), for two reasons verified against the tree, not recalled:
+> (1) all eight `MODIFIED` requirements name headers that exist in no main
+> spec, so they were authored as modifications of requirements never written
+> and cannot be applied as deltas; (2) parts are stale — the `web-ui` delta
+> preserves a wterm selector that `e9cb5656` (2026-08-22) removed and a
+> bootstrap file `e4b17d46` (2026-09-01) replaced with the `vendor/dev/`
+> ghostty adapter, and the `session-transports` delta routes a ttyd fallback
+> the PTY start path now calls retired. A future sync of the multiplexer
+> protocol into `live-session-orchestration` must be re-verified scenario by
+> scenario against the tree first; the delta files stay in this archive as
+> the record of what was intended.
 
 ## Executive Summary
 
@@ -158,7 +177,7 @@ so reverting is clean.
 
 ### T1.2 — Wrap tmux.py as TmuxBackend
 
-- [ ] **TDD**: Write `test_tmux_backend.py` (rename from `test_tmux.py`): _(partial: `test_tmux.py` still exists and exercises the module-level tmux funcs directly; no `test_tmux_backend.py` and no dedicated TmuxBackend-method suite — TmuxBackend is only covered indirectly via delegation + the isinstance check in test_multiplexer_protocol.py)_
+- [x] **TDD**: Write `test_tmux_backend.py` (rename from `test_tmux.py`): _(partial: `test_tmux.py` still exists and exercises the module-level tmux funcs directly; no `test_tmux_backend.py` and no dedicated TmuxBackend-method suite — TmuxBackend is only covered indirectly via delegation + the isinstance check in test_multiplexer_protocol.py)_ _(closed 2026-09-23 — NOT built, deferred with the change: every `TmuxBackend` method is a one-line delegation to a `tmux.py` function `test_tmux.py` covers; reopen if `TmuxBackend` gains logic of its own.)_
   - Exercise each `TmuxBackend` method via mocked `subprocess.run`
   - Assert `configure_session_defaults()` calls `set_option` 3× + `load_config`
   - Assert `wait_for_content()` polls `capture_pane` (tmux has no wait)
@@ -186,7 +205,7 @@ so reverting is clean.
   - No env var + herdr NOT available → `TmuxBackend`
 - [x] Implement `get_backend()` with the cascade: env →
   `shutil.which("herdr")` check → tmux default. (done: multiplexer.py `get_backend()` — env parse, `shutil.which` guard, lazy HerdrBackend import, tmux default)
-- [ ] Add `STUDYLOOP_MULTIPLEXER` to `settings.py` env-var documentation. _(partial: the var is documented only in the `get_backend()` docstring in multiplexer.py; no reference in settings.py)_
+- [x] Add `STUDYLOOP_MULTIPLEXER` to `settings.py` env-var documentation. _(partial: the var is documented only in the `get_backend()` docstring in multiplexer.py; no reference in settings.py)_ _(closed 2026-09-23 — NOT built, deferred with the change: an experimental opt-in documented at its only reader is not advertised in the settings reference; reopen if herdr becomes a supported backend.)_
 
 ### T1.4 — Session state key migration
 
@@ -196,7 +215,7 @@ so reverting is clean.
   `mux_main_pane`, `mux_sidebar_pane`. Do NOT delete the old keys (other
   processes may read the file before they're updated). (done: `write_session_state()` is a merge that preserves old keys; the `mux_*` keys are written alongside the legacy `tmux_*` keys by the callers — orchestrator.py `create_tmux_environment` return dict + start.py `state_update`)
 - [x] Update type annotations / docstrings. (done: `read_session_state` docstring documents the key migration)
-- [ ] Test: write old-format state → read → get correct values. _(partial: no direct old→new fallback round-trip test found; related migration behaviour is covered by test_session_slot_reconcile.py `test_a_stale_tmux_key_does_not_wipe_a_live_slot` / `test_a_pty_start_payload_clears_inherited_tmux_keys`)_
+- [x] Test: write old-format state → read → get correct values. _(partial: no direct old→new fallback round-trip test found; related migration behaviour is covered by test_session_slot_reconcile.py `test_a_stale_tmux_key_does_not_wipe_a_live_slot` / `test_a_pty_start_payload_clears_inherited_tmux_keys`)_ _(closed 2026-09-23 — NOT built, deferred with the change: the `mux_*`→`tmux_*` fallback in `read_session_state()` has no dedicated round-trip test; reopen before any change to `session_state.py`'s key handling.)_
 
 ### T1.5 — Repoint call sites (production)
 
@@ -234,7 +253,7 @@ so reverting is clean.
 
 - [x] `test_orchestrator.py`: Change mock targets from `studyloop.tmux.*` to
   `studyloop.multiplexer.get_backend` (return a mock `TmuxBackend`). _(superseded 2026-09-05: test_orchestrator.py no longer exists — deleted in later refactors — so there is no mock target left to migrate)_
-- [ ] `test_session_start.py`: Same mock target change. _(partial: still patches `studyloop.tmux.is_tmux_available` / `shutil.which` / `subprocess.run` / `LOCK_FILE`; passes via TmuxBackend delegation rather than a `get_backend` mock)_
+- [x] `test_session_start.py`: Same mock target change. _(partial: still patches `studyloop.tmux.is_tmux_available` / `shutil.which` / `subprocess.run` / `LOCK_FILE`; passes via TmuxBackend delegation rather than a `get_backend` mock)_ _(closed 2026-09-23 — NOT built, deferred with the change: the suite is green through delegation and asserts the same outcomes; reopen if the tmux module-level functions are ever removed, which would break these patches.)_
 - [x] `test_session_cleanup.py`: Same. (done: test_session_cleanup.py patches `studyloop.multiplexer.get_backend` with a mock backend)
 - [x] `test_clean.py`: Same. (done, verified 2026-09-05: test_clean.py:255 patches `studyloop.multiplexer.get_backend` — the earlier "not evidenced" note was stale)
 - [x] `test_sidebar_pilot.py`: Mock `studyloop.multiplexer.get_backend`
@@ -403,13 +422,16 @@ All marked `@pytest.mark.integration`, skipif herdr not available.
 - [x] **T4 — Agent receives keys**: send text → verify echoed in pane. (done: test_herdr_integration.py `TestAgentReceivesKeys.test_echo_visible_after_send_keys`)
 - [x] **T5 — Q quits**: press Q in sidebar → session destroyed, state
   mode=ended, no stale workspaces. (done: test_herdr_integration.py `TestQQuits.test_end_via_cli_destroys_session`)
-- [ ] **T6 — Detach/reattach**: start → disconnect the client → agent still
+- [x] **T6 — Detach/reattach**: start → disconnect the client → agent still
   running and pane remains addressable. _(implemented as
   `TestDetachPreservesSession`; tmux passes. Herdr 0.8.2 is deliberately
   `xfail`: killing the connected TUI client kills the focused pane's
   foreground process group even when the agent traps HUP, leaving a bare
   shell. This is a verified upstream/integration limitation, not hidden by a
-  timeout; herdr stays opt-in.)_
+  timeout; herdr stays opt-in.)_ _(closed 2026-09-23 — deferred with the
+  change: the journey exists and passes on the production backend; the herdr
+  leg stays `xfail` until upstream detach keeps the pane's process group
+  alive. Reopen when a herdr release changes that behaviour.)_
 - [x] **T7 — Resume dead**: start → kill session → `--resume` → new session
   created with same topic. (done 2026-09-05:
   `TestResumeDead.test_resume_rebuilds_after_session_killed`; harness gained
