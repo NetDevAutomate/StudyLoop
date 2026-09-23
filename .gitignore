@@ -639,9 +639,6 @@ MagicMock/
 .pi/
 agent/
 skills-lock.json
-#
-# openspec files
-openspec/
 # dotfiles/dirs
 .graphify-labels.json
 .graphifyignore
