@@ -66,6 +66,7 @@ exclude_docs: |
   !/content-pipeline.md
   !/voice-output.md
   !/obsidian-export.md
+  !/study-notes-skill.md
   !/second-brain.md
   !/tui-guide.md
   !/agent-install.md
@@ -92,6 +93,7 @@ nav:
     - Content Pipeline: content-pipeline.md
     - Voice Output: voice-output.md
     - Obsidian Export: obsidian-export.md
+    - Lesson Study Notes: study-notes-skill.md
     - Second Brain: second-brain.md
   - Interfaces:
     - TUI Guide: tui-guide.md

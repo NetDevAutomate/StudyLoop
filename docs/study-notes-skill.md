@@ -65,4 +65,5 @@ successful output is not lost or represented as complete in both apps.
 - Refreshing either output is an explicit agent action, not automatic two-way
   synchronisation. Learner annotations are preserved during updates.
 
-See [the skill](../skills/studyloop-study-notes/SKILL.md) for the workflow.
+See [the skill](https://github.com/NetDevAutomate/StudyLoop/blob/main/skills/studyloop-study-notes/SKILL.md)
+for the workflow.
