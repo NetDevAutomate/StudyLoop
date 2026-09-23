@@ -42,10 +42,11 @@ PLAN_TOOLS = {
 #: ``record_plan_learning`` among them — plus the nine plan tools = 32
 #: (council review 3, F13 — the design's "26 → 35" was arithmetic on a stale
 #: count; review 4, F6 — an earlier form of this comment said "plus nine less
-#: one", which is 31).
+#: one", which is 31), plus ``record_teachback`` (learning tier item 1,
+#: 2026-09-23) = 33.
 #: Exact, not a lower bound: an accidental registration is a failure here, and
 #: the name assertions stop an unrelated addition masking a missing tool.
-PRODUCTION_TOOL_COUNT = 32
+PRODUCTION_TOOL_COUNT = 33
 
 
 @pytest.fixture

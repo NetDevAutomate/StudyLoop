@@ -464,11 +464,11 @@ class TestRealPythonChecks:
         assert code == 0, measured
         assert measured["sha256"] == script.GOLDEN_SHA256
 
-    def test_inventory_check_reports_thirty_two_names_with_the_nine(self, script) -> None:
+    def test_inventory_check_reports_thirty_three_names_with_the_nine(self, script) -> None:
         code, measured = script.check_inventory_in_process(REPO_ROOT)
         assert code == 0, measured
-        assert measured["count"] == 32
-        assert len(measured["names"]) == len(set(measured["names"])) == 32
+        assert measured["count"] == 33
+        assert len(measured["names"]) == len(set(measured["names"])) == 33
         assert set(script.PLAN_TOOL_NAMES) <= set(measured["names"])
         assert "record_plan_learning" in measured["names"]
 
