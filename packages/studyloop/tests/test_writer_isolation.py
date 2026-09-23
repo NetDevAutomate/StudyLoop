@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import os
+import sqlite3
 import subprocess
 import sys
 import textwrap
@@ -108,12 +109,23 @@ def test_every_w_auto_writer_stays_inside_the_sandbox(tmp_path: Path) -> None:
     escaped = _tree(decoy_home) - before
     assert escaped == set(), f"writers reached the home tree: {sorted(escaped)}"
 
-    # Each writer landed inside the sandbox.
+    # Each writer landed inside the sandbox -- rows counted, not files stat'ed
+    # (council review 9, astra Y4).
     assert out["record_teachback"]["recorded"] is True
     assert out["record_plan_learning"]["created"] is True
     assert out["log_struggle"]["status"] == "logged"
-    assert (sandbox / "session" / "session-topics.md").is_file(), "log_topic wrote no session line"
-    assert (sandbox / "sessions.db").is_file(), "record_teachback / log_struggle wrote no database"
+    topics = sandbox / "session" / "session-topics.md"
+    assert topics.is_file() and "window frame" in topics.read_text(encoding="utf-8"), (
+        "log_topic wrote no session line"
+    )
+    conn = sqlite3.connect(sandbox / "sessions.db")
+    try:
+        teachbacks = conn.execute("SELECT COUNT(*) FROM teach_back_scores").fetchone()[0]
+        parked = conn.execute("SELECT COUNT(*) FROM parked_topics").fetchone()[0]
+    finally:
+        conn.close()
+    assert teachbacks == 1, f"record_teachback rows in the sandbox: {teachbacks}"
+    assert parked == 1, f"log_struggle rows in the sandbox: {parked}"
     plan_docs = list((sandbox / "plans").rglob("*.md"))
     assert plan_docs, "record_plan_learning wrote no plan document in the sandbox"
     assert any("Frames are ROWS or RANGE" in p.read_text(encoding="utf-8") for p in plan_docs)
