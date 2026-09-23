@@ -11,7 +11,7 @@ prompts is the harness's own setting, and nothing here changes it.
 
 ```yaml
 - trigger: teach_back_agreed
-  when: "a teach-back round has ended, you proposed five rubric scores, and the learner agreed them"
+  when: "you proposed five rubric scores in one sentence and the learner's next reply accepted them (a yes, or a corrected set they say they accept)"
   writer: record_teachback
   required_ids: [concept, topic, scores, review_type]
   consent: learner_agreed
@@ -57,3 +57,8 @@ prompts is the harness's own setting, and nothing here changes it.
 
 After any write, one short line: *"Recorded: window frame, structured, 15/20."* Then the next
 question. Never a paragraph.
+
+If the write does not happen — the tool refuses, the learner declines the harness's approval prompt,
+or the database is unavailable — say that in one line (*"Not recorded — the database refused; the
+CLI `studyloop teachback …` is the fallback."*) and continue. Never retry silently, never claim a
+record that did not land.
