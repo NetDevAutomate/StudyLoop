@@ -21,13 +21,19 @@
       bodies defensively instead of surfacing "Network error" for any
       `res.json()` failure. *Landed in 8b551e0: reads `res.text()` then
       `JSON.parse` in try/catch.*
-- [ ] 1.4 Add a fake-agent PTY binary (reads persona + echoes Socratic-ish
+- [x] 1.4 Add a fake-agent PTY binary (reads persona + echoes Socratic-ish
       output) so the PTY path has something real to spawn in CI/headless
       runs. *Descoped — not built. The rewritten journey test
       (`test_representative_user_journey.py`) drives the real UI/API
       surface without spawning a live agent process; phases needing a real
       agent turn are explicit `pytest.mark.skip` (see 4.1/4.4) rather than
-      backed by a fake binary.*
+      backed by a fake binary.* _(reconciled 2026-09-23 against the tree:
+      built after this note was written — `tests/_fake_agent.py` is a real
+      console script that reads the topic from the persona file in argv[1]
+      and asks the suite's Socratic question bank, unit-tested in
+      `tests/test_fake_agent.py`, spawned by
+      `test_fake_agent_full_session_walk` / `test_fake_agent_terminal_renders_in_browser`
+      in the journey file and by the body-double and ghostty journeys.)_
 
 ## 2. Close the path-traversal defect
 
@@ -80,7 +86,7 @@
 
 ## 4. Complete the representative journey (Phase B)
 
-- [ ] 4.1 Extend `tests/e2e/test_representative_user_journey.py` through
+- [x] 4.1 Extend `tests/e2e/test_representative_user_journey.py` through
       real generation (Stub provider), study blocks, break, flashcard/quiz
       review, session end. *Partially done, partially descoped: the
       journey was rewritten against the real UI (2c7b045) and now covers
@@ -89,7 +95,15 @@
       generation review and flashcard/quiz phases remain explicit
       `pytest.mark.skip` (`test_generate_and_review_flashcards_quizzes`) —
       NOT implemented, with the skip reason stating "a stub can't speak
-      the protocol or teach."*
+      the protocol or teach."* _(reconciled 2026-09-23 against the tree:
+      the phases landed, in two files — session start → agent turn → end →
+      durable row in `test_fake_agent_full_session_walk` (this file);
+      generation and flashcard/quiz review in
+      `tests/e2e/test_journey_generate_review.py`
+      (`test_phase2_generate_walk_produces_deck_files`,
+      `test_phase3_and_4_review_walk_records_outcomes`). The in-file
+      `test_generate_and_review_flashcards_quizzes` stays `skip` because its
+      sibling file carries that phase against the real UI.)_
 - [x] 4.2 Add the Socratic-steering LLM-judge assertion (judge model ≠
       mentor model, via the LiteLLM gateway) asserting the mentor asks
       guiding questions rather than giving full answers. *Test exists
@@ -102,18 +116,30 @@
       *Same file as 4.2 — `test_socratic_steering.py` is the
       `live_provider`-marked variant; it collects correctly under
       `-m live_provider` per the 2c7b045 commit message, but was not run.*
-- [ ] 4.4 Assert session-end export behavior (progress recorded, session
+- [x] 4.4 Assert session-end export behavior (progress recorded, session
       exported to `sessions.db`). *Not implemented — no session-end export
       assertion exists in the rewritten journey test or elsewhere in the
-      e2e suite. This remains open.*
+      e2e suite. This remains open.* _(reconciled 2026-09-23 against the
+      tree: `test_fake_agent_full_session_walk` phase 4 asserts a durable
+      `study_sessions` row after `/api/session/end`
+      (`get_last_study_session` is not None), and
+      `test_phase3_and_4_review_walk_records_outcomes` asserts
+      `card_reviews`/`review_sessions` rows in the same `sessions.db` after
+      the review walk.)_
 
 ## 5. Desktop MCP parity (Phase C)
 
-- [ ] 5.1 Add `get_lesson_tree`, `read_lesson`, `search_lessons` to
+- [x] 5.1 Add `get_lesson_tree`, `read_lesson`, `search_lessons` to
       `mcp/tools.py`, reusing `_safe_course_dir` / explorer internals.
       *Not done — confirmed absent from `mcp/tools.py` (18 tools total,
       none named `get_lesson_tree`/`read_lesson`/`search_lessons`). Course
-      Explorer read-parity remains an open gap.*
+      Explorer read-parity remains an open gap.* _(reconciled 2026-09-23
+      against the tree: landed the same day this note was written, in
+      `9f09cf08` "feat(mcp): Course Explorer read parity" — the three tools
+      are defined in `mcp/tools.py` and covered by
+      `tests/test_mcp_tools.py` (`test_tree_with_course_lists_lessons`,
+      `test_read_lesson_returns_content`, `test_read_lesson_rejects_traversal_to_real_file`,
+      `test_search_finds_lesson_body`).)_
 - [x] 5.2 Add `get_due_cards` and `submit_card_answer`, extracting the
       due-card join into a shared service if not already exposed. *Done
       with a rename: the outcome-logging tool landed as
