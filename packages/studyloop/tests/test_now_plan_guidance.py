@@ -1288,6 +1288,35 @@ def test_due_copy_of_a_live_struggle_defers_with_no_plan_too(monkeypatch) -> Non
     ]
 
 
+def test_due_copy_counts_days_from_the_engine_clock_not_its_own(monkeypatch) -> None:
+    """Receipt ``now-rubric-2026-09-16`` (row 3c, reading (e), 2026-09-21): the medium
+    screen's due copy printed *last seen 8 day(s) ago* for a struggle planted three days
+    before the frozen date, because ``history.progress.spaced_repetition_due`` read its own
+    ``datetime.now`` while the frozen clock covered ``decision`` only — the count drifted
+    with the real date, and so did the due copy's score. ``build_now_plan`` reads the clock
+    once and the due collector counts from that instant. The decoy below makes the
+    collector's own module clock absurd (2031), so this fails on *any* wall-clock date if
+    the count is taken anywhere but from the engine."""
+    from studyloop.history import progress
+
+    class _DecoyDatetime(datetime):
+        @classmethod
+        def now(cls, tz=None):  # type: ignore[override]
+            decoy = datetime(2031, 1, 1, tzinfo=UTC)
+            return decoy if tz is None else decoy.astimezone(tz)
+
+    monkeypatch.setattr(progress, "datetime", _DecoyDatetime)
+    _row3_plan()
+    _plant_struggles_for_both_collectors(monkeypatch, _struggle("window function", days_ago=3))
+
+    medium = build_now_plan(energy="medium")
+
+    assert medium.primary.source == "study_progress:sql:window function"
+    assert medium.primary.metadata["days_ago"] == 3
+    assert "last seen 3 day(s) ago" in medium.primary.reason
+    assert medium.primary.score == 138  # 100 + 3 days + 35 struggling: frozen, not drifting
+
+
 def test_live_struggle_repair_defers_at_low_energy_like_new_work(monkeypatch) -> None:
     """Rule 3 extended (design §5, amendment 1 + 2): repair carries a demand of its own.
 
