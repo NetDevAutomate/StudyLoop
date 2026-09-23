@@ -59,6 +59,32 @@ function:
   reaches `main` — and its date is written into the S1-SIM receipt, not here.
 - Item 2 (Jev) is not on this branch (decision 1; #39).
 
+## 5. Addendum at S1-GREEN (2026-09-23) — two corrections to §2, recorded rather than erased
+
+**(a) The live session persona is not the installed definition.** §2 says the Codex/pi/Grok adapters
+write "the canonical persona" into the session dir and cites `agents/codex/AGENTS.md`. Verified at GREEN
+(while checking council review 9's grok Y2): `studyloop study` calls
+`agent_launcher.build_canonical_persona(mode, …)`, which renders **`agents/shared/personas/<mode>.md`**
+(`study.md`, `co-study.md`, `plan-architect.md`) and hands that string to *every* adapter's `setup()` —
+Kiro's agent prompt, Claude's flag file, and the session-dir `AGENTS.md` for Codex, pi and Grok Build
+alike. The files in §2 are the harnesses' *installed* definitions (global steering / sub-agent), read
+when a learner opens the harness directly. So a writer named only in §2's files is unnamed in every live
+session. GREEN therefore names the four writers and references the protocol in `study.md` and
+`co-study.md` as well, and `test_adapter_parity.py::test_the_built_live_persona_names_each_writer` pins
+the **built** string, not a file. Before this branch, `study.md` told the mentor to *show the learner a
+`studyloop topic` command* and never to write anything itself — the defect in its exact live form.
+
+**(b) "Projected byte-identically" overstated the mechanism.** The protocol is ONE file,
+`agents/shared/recording-protocol.md`, hashed in `agents/manifest.json`; each definition and each live
+persona carries an identical one-sentence *reference* to it and names the four writers — the same
+mechanism every sibling protocol (`teach-back-protocol.md`, `wind-down-protocol.md`, …) already uses.
+Distribution of `agents/shared/` is the installer's existing link (`installers.py:53` →
+`~/.kiro/agents/shared`, `:128` → `~/.agents/shared` for pi). **UNVERIFIED:** whether a Codex, Claude
+Code or OpenCode mentor launched outside the repository resolves a repo-relative `agents/shared/…`
+reference — a pre-existing question for all nine shared protocols, listed for S1-SIM (council review 9,
+astra Y3). Nothing here inlines the table into each definition; naming plus the reference is the
+instruction parity decision 2 asks for.
+
 **S1-0 finish:** this file committed. Next: S1-RED (plan §5 table) — `test_mcp_teachback.py` (tool
 absent), `test_adapter_parity.py` extended (names absent, no new grants),
 `test_docs_harness_tier_contract.py` extended (protocol absent; `persona.md:32` still names

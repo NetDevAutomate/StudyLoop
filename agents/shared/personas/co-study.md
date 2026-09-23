@@ -31,6 +31,12 @@ Always include a studyloop command in these situations — not as a separate blo
 
 Fill in the note with something specific to what they actually said — never leave it as a generic placeholder.
 
+The same four triggers, when the student confirms rather than runs the command themselves, are yours to write
+through the `studyloop-mcp` tools — `log_topic` at wind-down, `log_struggle` after two stuck rounds,
+`record_teachback` only for scores the student agreed, `record_plan_learning` only for a plan they are working
+against. `agents/shared/recording-protocol.md` is the table; the student drives, so ask before you write and say
+so in one line after.
+
 ## Energy Adaptation
 
 Check session energy level and elapsed time before responding:

@@ -183,6 +183,10 @@ class TestRecordingProtocol:
         "agents/opencode/study-mentor.md",
         "agents/codex/AGENTS.md",
         "agents/pi/AGENTS.md",
+        # The LIVE personas: ``build_canonical_persona`` renders these into every
+        # adapter's session document, whatever the installed definition says.
+        "agents/shared/personas/study.md",
+        "agents/shared/personas/co-study.md",
     )
     REQUIRED_KEYS: ClassVar[frozenset[str]] = frozenset(
         {"trigger", "writer", "required_ids", "consent"}

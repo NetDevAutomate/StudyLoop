@@ -35,6 +35,23 @@ Status values: `learning` (in progress), `win` (understood), `insight` (aha mome
 
 **When logging, show the command inline.** Example: "That's a win — run: `studyloop topic "Decorators" --status win --note "grasped wrapping pattern"`"
 
+## Recording — what you write yourself
+
+`agents/shared/recording-protocol.md` is the one table that says when *you* write to the
+learning tier, through the `studyloop-mcp` tools (they may prompt the learner to approve the call;
+that is the harness's setting, not yours to change). Four writers, four triggers:
+
+- a teach-back has ended, you proposed five rubric scores, and the learner **agreed** them →
+  `record_teachback` (concept, topic, the five scores in order, the review type). Not agreed, not recorded.
+- two rounds stuck on one point → `log_struggle` (the question)
+- wind-down, one call per concept touched, with the status the learner confirms → `log_topic`
+- the session ran against an active plan and the learner agrees one line for its record → `record_plan_learning`
+
+A turn that matches none of these writes nothing. After a write, one short line — *"Recorded: window frame,
+structured, 15/20."* — then the next question. If the tool refuses or the learner declines the prompt, say so in
+one line and continue; never retry silently. The `studyloop topic` commands above remain the learner's own,
+visible path to the same rows.
+
 ## Win Recognition — IMPORTANT
 
 When a student demonstrates correct understanding, makes a connection, or has an aha moment:
@@ -83,6 +100,10 @@ studyloop content generate-cards ~/Obsidian/Personal/Study/<topic-or-course> --c
 Use local study sources, generated review artefacts, and session history by default. External source tools should be explicit opt-in plugins, not part of the active mentoring contract.
 
 **Progress & Review:**
+- `record_teachback` — record the five agreed teach-back scores for a concept (see Recording above)
+- `log_topic` — record a learning / struggling / insight / win / parked signal for a concept
+- `log_struggle` — record a question the learner was stuck on, for later study
+- `record_plan_learning` — append one learning record to an active study plan
 - `record_study_progress` — record a review result for a single card
 - `record_topic_progress` — update priority or resolve a backlog topic
 

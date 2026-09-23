@@ -106,8 +106,10 @@ def test_readme_names_every_supported_harness_by_its_label() -> None:
 #: The additive, learner-agreed writers (``record_teachback`` is the new one).
 W_AUTO = ("log_topic", "log_struggle", "record_teachback", "record_plan_learning")
 
-#: The mentor definition each harness actually loads. Grok Build reads the same
-#: canonical file as Codex (its header says so; ``adapters/grok.py`` projects it).
+#: The mentor definition each harness INSTALLS (global steering / sub-agent). Grok Build
+#: reads the same canonical file as Codex (its header says so; ``adapters/grok.py``
+#: projects it). The LIVE session persona is a different document -- see
+#: ``LIVE_PERSONAS`` and ``test_the_built_live_persona_names_each_writer`` below.
 MENTOR_DEFINITIONS = {
     "kiro": "agents/kiro/study-mentor/persona.md",
     "claude": "agents/claude/socratic-mentor.md",
@@ -116,6 +118,12 @@ MENTOR_DEFINITIONS = {
     "pi": "agents/pi/AGENTS.md",
     "grok": "agents/codex/AGENTS.md",
 }
+
+#: What ``studyloop study`` actually hands EVERY adapter's ``setup()`` (council review 9,
+#: coordinator finding): ``agent_launcher.build_canonical_persona(mode, ...)`` renders
+#: ``agents/shared/personas/<mode>.md``, not the installed definition above. A writer named
+#: only in the installed files would be unnamed in every live session.
+LIVE_PERSONAS = ("agents/shared/personas/study.md", "agents/shared/personas/co-study.md")
 
 
 def _definition(harness: str) -> str:
@@ -136,6 +144,41 @@ def test_every_mentor_definition_names_each_w_auto_writer() -> None:
     assert not missing, f"W_auto writers not named: {missing}"
 
 
+def test_every_live_persona_names_each_writer_and_the_protocol() -> None:
+    for rel in LIVE_PERSONAS:
+        text = (REPO_ROOT / rel).read_text(encoding="utf-8")
+        missing = [w for w in W_AUTO if not re.search(rf"\b{w}\b", text)]
+        assert not missing, f"{rel} does not name {missing}"
+        assert "recording-protocol.md" in text, f"{rel} does not reference the protocol"
+
+
+def test_the_built_live_persona_names_each_writer(monkeypatch) -> None:
+    """Pin the projection, not the file: the string every adapter's ``setup()`` receives."""
+    from studyloop import session_state
+    from studyloop.agent_launcher import build_canonical_persona
+
+    monkeypatch.setattr(session_state, "STATE_FILE", Path("/fixed/session-state.json"))
+    monkeypatch.setattr(session_state, "TOPICS_FILE", Path("/fixed/session-topics.md"))
+    monkeypatch.setattr(session_state, "PARKING_FILE", Path("/fixed/session-parking.md"))
+    for mode in ("study", "co-study"):
+        built = build_canonical_persona(mode, "window functions", 5)
+        missing = [w for w in W_AUTO if not re.search(rf"\b{w}\b", built)]
+        assert not missing, f"built {mode} persona does not name {missing}"
+        assert "recording-protocol.md" in built
+
+
+def test_grok_projects_the_codex_definition() -> None:
+    """``MENTOR_DEFINITIONS['grok']`` is the Codex file because the Grok adapter says so;
+    pin that statement so an ``agents/grok/`` split cannot drop the protocol silently."""
+    header = (REPO_ROOT / "packages/studyloop/src/studyloop/adapters/grok.py").read_text(
+        encoding="utf-8"
+    )
+    assert "AGENTS.md" in header.split('"""')[1], "grok adapter no longer documents AGENTS.md"
+    assert not (REPO_ROOT / "agents/grok").exists(), (
+        "agents/grok/ now exists: add it to MENTOR_DEFINITIONS and the protocol tests"
+    )
+
+
 def test_claude_mentor_tools_line_names_each_writer() -> None:
     """Claude's sub-agent frontmatter restricts tools to the ``tools:`` line;
     an unnamed MCP tool is unreachable there, whatever the permissions say."""
@@ -148,12 +191,15 @@ def test_claude_mentor_tools_line_names_each_writer() -> None:
 
 
 def test_kiro_gains_no_pre_approval() -> None:
-    """The one recorded asymmetry stays exactly one: ``log_topic``."""
+    """The one recorded asymmetry stays exactly one: ``log_topic`` -- and no wildcard
+    (``@studyloop`` or ``@studyloop/*``) can grant the rest by another spelling."""
     import json
 
     spec = json.loads((REPO_ROOT / "agents/kiro/study-mentor.json").read_text(encoding="utf-8"))
     allowed = set(spec["allowedTools"])
     assert allowed & {f"@studyloop/{w}" for w in W_AUTO} == {"@studyloop/log_topic"}
+    wildcards = {a for a in allowed if a in {"@studyloop", "@studyloop/*"} or a.endswith("*")}
+    assert wildcards == set(), f"allowedTools carries a wildcard grant: {sorted(wildcards)}"
 
 
 def test_claude_settings_grant_nothing() -> None:
@@ -164,12 +210,19 @@ def test_claude_settings_grant_nothing() -> None:
 
 
 def test_opencode_permission_block_is_exactly_as_recorded() -> None:
-    """Recorded as known and not least-privilege in the S1-0 receipt; unchanged here."""
+    """Recorded as known and not least-privilege in the S1-0 receipt; unchanged here --
+    parsed, not substring-matched, so an added allow rule fails too."""
+    import yaml
+
     text = _definition("opencode")
-    for line in (
-        '"studyloop *": allow',
-        '"session-* *": allow',
-        '"uv run tutor-*": allow',
-        '"*": ask',
-    ):
-        assert line in text, f"opencode permission block changed: {line!r} missing"
+    frontmatter = text.split("---")[1]
+    permission = yaml.safe_load(frontmatter)["permission"]
+    assert permission == {
+        "edit": "allow",
+        "bash": {
+            "studyloop *": "allow",
+            "session-* *": "allow",
+            "uv run tutor-*": "allow",
+            "*": "ask",
+        },
+    }, permission
