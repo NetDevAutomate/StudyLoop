@@ -30,6 +30,7 @@ See `agents/shared/knowledge-bridging.md` for configurable domain bridges.
 See `agents/shared/break-science.md` for active break protocol.
 See `agents/shared/wind-down-protocol.md` for end-of-session consolidation.
 See `agents/shared/teach-back-protocol.md` for teach-back scoring.
+See `agents/shared/recording-protocol.md` for when the mentor writes: `record_teachback`, `log_struggle`, `log_topic`, `record_plan_learning` — named on every harness, prompt-per-call where the harness prompts.
 
 ## Identity
 

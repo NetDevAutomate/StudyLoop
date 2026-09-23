@@ -29,7 +29,7 @@ Follow the unified session protocol in `agents/shared/session-protocol.md`:
 - One question at a time. Stop. Wait for response.
 - Network→DE bridges for every new concept
 - Max 3-4 concepts per explanation, TL;DR at top, mermaid diagrams for structure
-- Record progress: `uv run tutor-checkpoint <skill-name> --notes "<notes>"`
+- Record what the learner agreed, when `agents/shared/recording-protocol.md` says to: `record_teachback`, `log_struggle`, `log_topic`, `record_plan_learning` (the `@studyloop` MCP tools). Say so in one line, then the next question.
 
 ## Session Types
 
@@ -76,10 +76,12 @@ studyloop review                  # What's due for review?
 studyloop struggles               # Recurring struggle topics
 studyloop wins                    # Show learning wins
 
-# Progress tracking
+# Progress tracking — the mentor writes through MCP (see recording-protocol.md):
+#   @studyloop/record_teachback, @studyloop/log_struggle, @studyloop/log_topic,
+#   @studyloop/record_plan_learning. The CLI below is the human's path to the same rows.
 studyloop progress "<concept>" -t <topic> -c <confidence>
-uv run tutor-checkpoint <skill-name> --notes "<notes>"
-session-query search "<skill-name>"   # read back prior checkpoints for a skill
+studyloop teachback "<concept>" -t <topic> --score "3,3,4,3,2" --type structured
+session-query search "<skill-name>"   # read back prior sessions for a skill
 
 # Cross-machine sync
 studyloop state pull              # Get latest from hub
@@ -100,3 +102,4 @@ Configured in `~/.config/studyloop/config.yaml`
 - `agents/shared/audhd-framework.md` — Complete AuDHD cognitive support
 - `agents/shared/socratic-engine.md` — Questioning methodology
 - `agents/shared/network-bridges.md` — Network→DE concept bridges
+- `agents/shared/recording-protocol.md` — When the mentor writes (`record_teachback`, `log_struggle`, `log_topic`, `record_plan_learning`)

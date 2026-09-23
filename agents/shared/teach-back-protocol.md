@@ -128,17 +128,23 @@ Flip the question orientation:
 
 ## Recording Teach-Back Scores
 
-After each teach-back, record the score:
-
-```bash
-studyloop teachback "<concept>" -t <topic> --score "3,3,4,3,2" --type structured --angle "apply_network_analogy"
-```
-
 The agent should:
 1. Assess the teach-back internally using the rubric
 2. Propose the score to the student: "I'd score that as: Accuracy 3, Own Words 3, Structure 4, Depth 3, Transfer 2 — total 15/20. That's solid understanding with room on the transfer dimension. What do you think?"
 3. Adjust if the student disagrees (metacognitive calibration)
-4. Record the agreed score
+4. Record the **agreed** score — and only an agreed one
+
+The agent records through the `record_teachback` MCP tool (trigger `teach_back_agreed` in
+`agents/shared/recording-protocol.md`): concept, topic, the five scores in rubric order, the
+review type, and optionally the angle and a note. The same rule on every harness; whether the
+call prompts is the harness's own setting. Then one line — *"Recorded: window frame, structured,
+15/20."* — and the next question.
+
+The CLI is the human's path to the same row, and validates identically:
+
+```bash
+studyloop teachback "<concept>" -t <topic> --score "3,3,4,3,2" --type structured --angle "apply_network_analogy"
+```
 
 ### Score Transparency
 
