@@ -161,7 +161,16 @@ async def live_session_socket(websocket: WebSocket) -> None:
                         {"type": "agent_message", "kind": event.kind, "payload": event.payload}
                     )
         finally:
-            if not nxt.done():
+            if nxt.done():
+                # A pull that completed after the loop's last read -- a drain
+                # (StopAsyncIteration) landing beside a takeover, or a client
+                # close that cancelled this coroutine while the pull was
+                # already done. Read its outcome so asyncio does not log
+                # "Task exception was never retrieved" from the finalizer;
+                # a drained stream ending here is expected, not an error.
+                if not nxt.cancelled():
+                    nxt.exception()
+            else:
                 nxt.cancel()
             # Only the PTY transport's events() is an async generator, so only
             # it has aclose(). The ACP transport deliberately returns a

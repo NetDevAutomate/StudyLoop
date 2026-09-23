@@ -14,6 +14,9 @@ loop. The active-session singleton is seeded from sync code via
 
 from __future__ import annotations
 
+import asyncio
+import gc
+import logging
 import sys
 import time
 from pathlib import Path
@@ -425,3 +428,89 @@ class TestCleanup:
 
         assert run_async(active.current()) is None
         assert stub.end_calls == 1
+
+
+# ---------------------------------------------------------------------------
+# The drained pull future is retrieved on every exit
+# ---------------------------------------------------------------------------
+
+
+class _GatedStub(StubTransport):
+    """A transport whose stream drains only when the test says so.
+
+    ``events()`` yields ``Started`` and then waits on an ``asyncio.Event``
+    created in the server loop; setting it ends the generator, which is what
+    a real session's ``end()`` does when it pushes the queue sentinel.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.release: asyncio.Event | None = None
+
+    async def events(self):  # type: ignore[override]
+        self.release = asyncio.Event()
+        yield Started(agent="claude")
+        await self.release.wait()
+
+
+class TestDrainedPullFuture:
+    def test_a_drain_that_lands_beside_a_takeover_is_retrieved(
+        self,
+        config: SessionConfig,
+        caplog: pytest.LogCaptureFixture,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Regression: ``Task exception was never retrieved ... StopAsyncIteration``.
+
+        The pump pulls each transport event as its own future. When a newer
+        socket takes the consumer slot at the same moment the stream drains,
+        the pump raised ``_SupersededError`` before reading the drained
+        future's ``StopAsyncIteration``, and its ``finally`` left a *done*
+        future neither cancelled nor read -- so asyncio logged the exception
+        from the future's finalizer. Seen live on 2026-09-23 when a PWA tab
+        reattached to a session whose transport had already ended.
+        """
+        from studyloop.web.routes.session import _grace
+
+        # The pump must wake because the pull completed, never because its
+        # supersede poll timed out first: that path cancels a still-pending
+        # pull and never exhibited the leak.
+        monkeypatch.setattr(_grace, "SUPERSEDE_POLL_S", 5.0)
+        stub = _GatedStub()
+        _install_active(stub, config)
+
+        with (
+            TestClient(create_app()) as client,
+            caplog.at_level(logging.ERROR, logger="asyncio"),
+        ):
+            portal = client.portal
+            assert portal is not None
+            with client.websocket_connect(
+                "/api/session/ws?study_session_id=study-1",
+                headers={"Origin": "http://127.0.0.1:8788"},
+            ) as ws:
+                assert ws.receive_json() == {"type": "started", "agent": "claude"}
+
+                def takeover_and_drain() -> None:
+                    # The synchronous half of ``_grace.acquire_consumer``: a
+                    # newer socket has claimed the slot ...
+                    holder = _grace._attachment  # pyright: ignore[reportPrivateUsage]
+                    assert holder is not None
+                    holder.superseded = True
+                    # ... and the stream drains in the same loop turn.
+                    assert stub.release is not None
+                    stub.release.set()
+
+                portal.call(takeover_and_drain)
+                frame = ws.receive_json()
+                assert frame["type"] == "attach_superseded"
+
+        # A future whose exception was never read logs from its finalizer;
+        # force the finalizer so the assertion does not depend on refcount luck.
+        gc.collect()
+        leaked = [
+            record.getMessage()
+            for record in caplog.records
+            if record.name == "asyncio" and "never retrieved" in record.getMessage()
+        ]
+        assert leaked == [], leaked[0]
