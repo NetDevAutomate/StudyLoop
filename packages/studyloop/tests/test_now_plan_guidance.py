@@ -130,10 +130,10 @@ def _patch_collectors(monkeypatch: pytest.MonkeyPatch, *candidates: _Candidate) 
         "_practice_candidates",
         "_transfer_candidates",
     ):
-        monkeypatch.setattr(decision, name, lambda time_minutes: [])
+        monkeypatch.setattr(decision, name, lambda time_minutes, **_: [])
     if candidates:
         monkeypatch.setattr(
-            decision, "_due_progress_candidates", lambda time_minutes: list(candidates)
+            decision, "_due_progress_candidates", lambda time_minutes, **_: list(candidates)
         )
 
 
@@ -1314,7 +1314,8 @@ def test_due_copy_counts_days_from_the_engine_clock_not_its_own(monkeypatch) -> 
     assert medium.primary.source == "study_progress:sql:window function"
     assert medium.primary.metadata["days_ago"] == 3
     assert "last seen 3 day(s) ago" in medium.primary.reason
-    assert medium.primary.score == 138  # 100 + 3 days + 35 struggling: frozen, not drifting
+    # 100 + 3 frozen days + 35 struggling, then rule 5's plan bias: frozen, not drifting.
+    assert medium.primary.score == 138 + decision.PLAN_RELATED_BIAS
 
 
 def test_live_struggle_repair_defers_at_low_energy_like_new_work(monkeypatch) -> None:

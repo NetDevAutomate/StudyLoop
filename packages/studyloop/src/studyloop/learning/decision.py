@@ -391,12 +391,21 @@ def _table_columns(conn: sqlite3.Connection, table: str) -> set[str]:
         return set()
 
 
-def _due_progress_candidates(time_minutes: int) -> list[_Candidate]:
+def _due_progress_candidates(time_minutes: int, *, now: datetime | None = None) -> list[_Candidate]:
+    """Due spaced-repetition rows as candidates.
+
+    ``now`` is the engine's one clock read (``build_now_plan``): the collector
+    counts ``days_ago`` from it rather than from a second read inside
+    ``history.progress``, so the day count on a screen — and the score built
+    from it — cannot disagree with the rest of the plan (receipt
+    ``now-rubric-2026-09-16``, row 3c (e): a frozen engine printed a drifting
+    "last seen 8 day(s) ago" for a struggle planted three days back).
+    """
     from studyloop.history import spaced_repetition_due
 
     candidates: list[_Candidate] = []
     try:
-        due_items = spaced_repetition_due(TOPIC_KEYWORDS)
+        due_items = spaced_repetition_due(TOPIC_KEYWORDS, now=now)
     except Exception:
         return candidates
 
@@ -1656,7 +1665,7 @@ def build_now_plan(
 
     candidates = [
         *_due_card_candidates(time_minutes),
-        *_due_progress_candidates(time_minutes),
+        *_due_progress_candidates(time_minutes, now=now),
         *_struggle_candidates(time_minutes),
         *_continuity_candidates(time_minutes),
         *_practice_candidates(time_minutes),

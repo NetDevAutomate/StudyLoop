@@ -30,7 +30,7 @@ def _candidate(
 
 def _patch_collectors(monkeypatch, *candidates: _Candidate) -> None:
     monkeypatch.setattr(decision, "_due_card_candidates", lambda time_minutes: [])
-    monkeypatch.setattr(decision, "_due_progress_candidates", lambda time_minutes: [])
+    monkeypatch.setattr(decision, "_due_progress_candidates", lambda time_minutes, **_: [])
     monkeypatch.setattr(decision, "_struggle_candidates", lambda time_minutes: [])
     monkeypatch.setattr(decision, "_continuity_candidates", lambda time_minutes: [])
     monkeypatch.setattr(decision, "_practice_candidates", lambda time_minutes: [])
@@ -39,7 +39,7 @@ def _patch_collectors(monkeypatch, *candidates: _Candidate) -> None:
         monkeypatch.setattr(
             decision,
             "_due_progress_candidates",
-            lambda time_minutes: list(candidates),
+            lambda time_minutes, **_: list(candidates),
         )
 
 
@@ -62,7 +62,7 @@ def test_due_concept_outranks_new_topic(monkeypatch) -> None:
     due = _candidate("due decorators", score=100)
     new = _candidate("new topic", score=10)
     monkeypatch.setattr(decision, "_due_card_candidates", lambda time_minutes: [])
-    monkeypatch.setattr(decision, "_due_progress_candidates", lambda time_minutes: [due])
+    monkeypatch.setattr(decision, "_due_progress_candidates", lambda time_minutes, **_: [due])
     monkeypatch.setattr(decision, "_struggle_candidates", lambda time_minutes: [])
     monkeypatch.setattr(decision, "_continuity_candidates", lambda time_minutes: [new])
     monkeypatch.setattr(decision, "_practice_candidates", lambda time_minutes: [])
@@ -86,7 +86,7 @@ def test_low_energy_suppresses_transfer_context_switch(monkeypatch) -> None:
     current = _candidate("current repair", topic="python", action_type="conversation", score=60)
     transfer = _candidate("far transfer", topic="sql", action_type="visual", score=80)
     monkeypatch.setattr(decision, "_due_card_candidates", lambda time_minutes: [])
-    monkeypatch.setattr(decision, "_due_progress_candidates", lambda time_minutes: [transfer])
+    monkeypatch.setattr(decision, "_due_progress_candidates", lambda time_minutes, **_: [transfer])
     monkeypatch.setattr(decision, "_struggle_candidates", lambda time_minutes: [])
     monkeypatch.setattr(decision, "_continuity_candidates", lambda time_minutes: [current])
     monkeypatch.setattr(decision, "_practice_candidates", lambda time_minutes: [])

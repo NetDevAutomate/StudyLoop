@@ -123,16 +123,22 @@ def _progress_review_due(now: datetime) -> tuple[list[dict], set[str]]:
     )
 
 
-def spaced_repetition_due(topic_keywords_map: dict[str, list[str]]) -> list[dict]:
+def spaced_repetition_due(
+    topic_keywords_map: dict[str, list[str]], *, now: datetime | None = None
+) -> list[dict]:
     """Check which concepts are due for spaced review.
 
     Args:
         topic_keywords_map: {"python": ["python", "pattern", "dataclass"], ...}
+        now: The instant ``days_ago`` is counted from. Callers that already
+            hold one (the ``now`` engine reads its clock once per plan) pass
+            it so every date on a screen agrees; omitted, the wall clock.
 
     Returns:
         List of {topic, concept, last_studied, days_ago, review_type}
     """
-    now = datetime.now(UTC)
+    if now is None:
+        now = datetime.now(UTC)
 
     progress_due, topics_with_progress = _progress_review_due(now)
 
