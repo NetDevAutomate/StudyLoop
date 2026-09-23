@@ -32,8 +32,36 @@ experience may change before `1.0.0`.
 - A standalone `studyloop-study-notes` Agent Skill with per-lesson Markdown and
   section-overview templates, source/enrichment attribution, and explicit
   Obsidian-only, xTiles-only, and linked dual-destination workflows. Installed
-  separately through the skills CLI; see
-  `docs/study-notes-skill.md`.
+  separately through the skills CLI, not by `studyloop install agents`; its
+  guide is published on the docs site as *Lesson Study Notes*
+  (`docs/study-notes-skill.md`).
+
+### Changed
+
+- The `openspec/` tree is no longer listed in `.gitignore`. Seventy-eight
+  tracked, load-bearing files lived under an ignored path, so every new spec
+  or archive file was invisible to `git status` and skipped by `git add -A`.
+  The `herdr-ghostty-multiplexer-transport` change is archived as deferred
+  (the owner's 2026-09-05 decision, unchanged: tmux stays the production
+  default, herdr an experimental opt-in) with its five open tasks closed as
+  not built and its spec deltas deliberately not merged — they modified
+  requirements no main spec contains and describe a wterm selector and a ttyd
+  fallback the tree has since retired. The July e2e/MCP archive's four open
+  tasks are reconciled against the tree (all four were built the same day
+  their "not done" notes were written), so `openspec validate --archived
+  --all` is green for the first time since the release guard was added.
+
+### Fixed
+
+- The `now` engine counts every "last seen N day(s) ago" from the one clock
+  it reads per plan. The due-progress collector took its day count from a
+  second clock inside `history/progress.py`, so under a frozen test clock the
+  count — and the score built from it — drifted with the real date (the
+  medium-energy screen in receipt `now-rubric-2026-09-16` printed 8 days for
+  a struggle planted 3 days back). Production always read one wall clock, so
+  no learner saw the split; `spaced_repetition_due()` gains a keyword-only
+  `now` for callers that already hold an instant, defaulting to the wall
+  clock for everyone else.
 
 ## [0.5.0] - 2026-09-21
 
