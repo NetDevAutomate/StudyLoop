@@ -905,6 +905,12 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
             kind = coerce_review_type(review_type)
         except ValueError as exc:
             raise ToolError(str(exc)) from exc
+        concept = concept.strip()
+        topic = topic.strip()
+        if not concept or not topic:
+            # NOT NULL in the schema does not stop "" -- refuse it here so a blank
+            # never becomes a row nothing can find again (council review 9, grok Y5).
+            raise ToolError("concept and topic must both be non-empty")
 
         study_session_id = read_session_state().get("study_session_id") or None
         recorded = write_teachback(
@@ -916,9 +922,12 @@ def register_tools(mcp: FastMCP, *, include_exercises: bool = False) -> None:
             notes=notes or None,
         )
         if not recorded:
+            # The writer returns False for three different failures -- no database,
+            # a lock/timeout, a refused row -- and does not say which (its CLI caller
+            # inherited the same collapse). Say that, rather than claim one cause.
             raise ToolError(
-                "teach-back not recorded: the sessions database is unavailable "
-                "(run `studyloop doctor`)"
+                "teach-back not recorded: the sessions database could not take the write "
+                "(unavailable, locked, or it refused the row) -- run `studyloop doctor`"
             )
         return {
             "recorded": True,

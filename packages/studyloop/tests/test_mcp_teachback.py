@@ -132,6 +132,17 @@ class TestValidationMirrorsTheCli:
             assert allowed in str(excinfo.value)
         assert _rows(scratch_db) == []
 
+    @pytest.mark.parametrize(("concept", "topic"), [("", "sql"), ("   ", "sql"), ("frames", "")])
+    def test_blank_concept_or_topic_is_rejected_before_any_write(
+        self, scratch_db: Path, concept: str, topic: str
+    ) -> None:
+        """NOT NULL does not stop "" (council review 9, grok Y5): refuse at the boundary."""
+        with pytest.raises(ToolError, match="non-empty"):
+            _get_tool("record_teachback")(
+                concept=concept, topic=topic, scores=VALID_SCORES, review_type="micro"
+            )
+        assert _rows(scratch_db) == []
+
 
 class TestARowLands:
     def test_a_valid_call_lands_exactly_one_row_through_the_real_schema(
