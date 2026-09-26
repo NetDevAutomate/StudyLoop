@@ -151,13 +151,41 @@ class TestTheAcpLaunchNamesIt:
         assert self._argv("grok", monkeypatch) == ["grok", "agent", "stdio"]
 
 
-# ``kiro-cli agent list`` colours its scope column even when piped.
-_LISTING = (
+# Fixtures are kiro-cli 2.24.0's REAL output, captured 2026-09-26 (paths
+# redacted), not a guess at it. Three facts the first version of this check
+# got wrong, each pinned below:
+#   1. `agent list` writes its whole table to STDERR; stdout is empty.
+#   2. `agent validate` exits 0 even when the file is invalid -- the verdict is
+#      an `Error:` line on stderr, not the exit code.
+#   3. `acp --agent <missing>` does not fail: the session silently falls back
+#      to the built-in `kiro_default`. So this check is the only thing that
+#      notices an uninstalled or unloadable agent.
+_RED = "\x1b[38;5;9m"
+_GREY = "\x1b[38;5;244m"
+_OFF = "\x1b[0m"
+_LIST_HEAD = (
+    f"{_RED}Error: {_OFF}File URI not found: file:///home/learner/.kiro/agents/prompts/vibe.md\n"
+    f"{_GREY}Workspace: {_OFF}~/work/.kiro/agents\n"
+    f"{_GREY}Global:    {_OFF}~/.kiro/agents\n"
+    "\n"
     "* default-plus                     Global        \n"
-    "  studyloop                        Global        \n"
-    "  kiro_default                     \x1b[38;5;244m(Built-in)\x1b[0m    Default agent\n"
+    f"  kiro_default                     {_GREY}(Built-in){_OFF}    Default agent\n"
+    "  study-mentor                     Global        AuDHD-aware Socratic study mentor\n"
+    "                                                  study sources, shared session history\n"
 )
-_SHADOWED = "  studyloop                        \x1b[38;5;244m(Built-in)\x1b[0m    Default agent\n"
+_OURS = (
+    "  studyloop                        Global        StudyLoop's own agent for web (ACP)\n"
+    "                                                  study and planning sessions\n"
+)
+_LISTING = _LIST_HEAD + _OURS
+_SHADOWED = (
+    _LIST_HEAD + f"  studyloop                        {_GREY}(Built-in){_OFF}    Default agent\n"
+)
+# `agent validate` on a wrong-typed file: exit 0, verdict on stderr.
+_INVALID = (
+    f"{_RED}Error: {_OFF}Json supplied at /home/learner/.kiro/agents/studyloop.json is invalid:"
+    ' invalid type: string "not-a-list", expected a sequence at line 1 column 43\n'
+)
 
 
 class TestDoctorProvesItLoads:
@@ -190,7 +218,8 @@ class TestDoctorProvesItLoads:
                 code, err = validate
                 return subprocess.CompletedProcess(argv, code, "", err)
             if argv[1:3] == ["agent", "list"]:
-                return subprocess.CompletedProcess(argv, 0, listing, "")
+                # The real kiro-cli: table on stderr, nothing on stdout.
+                return subprocess.CompletedProcess(argv, 0, "", listing)
             raise AssertionError(f"unexpected command {argv}")
 
         monkeypatch.setattr(
@@ -208,16 +237,28 @@ class TestDoctorProvesItLoads:
         assert [(r.name, r.status) for r in results] == [("agent_kiro_studyloop_loads", "pass")]
         assert [c[1:3] for c in calls] == [["agent", "validate"], ["agent", "list"]]
 
-    def test_warns_when_kiro_rejects_it(
+    def test_warns_when_kiro_rejects_it_despite_exit_0(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        results, calls = self._run(monkeypatch, tmp_path, validate=(0, _INVALID))
+        (result,) = results
+        assert result.status == "warn"
+        assert 'invalid type: string "not-a-list"' in result.message
+        assert "\x1b" not in result.message
+        assert result.fix_auto is False
+        assert [c[1:3] for c in calls] == [["agent", "validate"]]
+
+    def test_warns_when_validate_exits_non_zero(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         results, _ = self._run(
-            monkeypatch, tmp_path, validate=(1, "error: unknown field `hookz`\n")
+            monkeypatch,
+            tmp_path,
+            validate=(1, "error: You are not logged in, please log in with kiro-cli login\n"),
         )
         (result,) = results
         assert result.status == "warn"
-        assert "unknown field `hookz`" in result.message
-        assert result.fix_auto is False
+        assert "not logged in" in result.message
 
     def test_warns_when_a_built_in_shadows_it(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
@@ -231,11 +272,21 @@ class TestDoctorProvesItLoads:
     def test_warns_when_kiro_does_not_list_it(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
-        listing = "* default-plus                     Global        \n"
-        results, _ = self._run(monkeypatch, tmp_path, listing=listing)
+        results, _ = self._run(monkeypatch, tmp_path, listing=_LIST_HEAD)
         (result,) = results
         assert result.status == "warn"
         assert "does not list" in result.message
+        assert "falls back" in result.message
+
+    def test_a_description_line_naming_it_is_not_a_row(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        wrapped = (
+            _LIST_HEAD + "                                                  studyloop sessions\n"
+        )
+        results, _ = self._run(monkeypatch, tmp_path, listing=wrapped)
+        (result,) = results
+        assert result.status == "warn"
 
     def test_warns_and_auto_fixes_when_not_installed(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
