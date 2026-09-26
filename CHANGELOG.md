@@ -67,6 +67,17 @@ experience may change before `1.0.0`.
 
 ### Fixed
 
+- Web (ACP) Kiro sessions run StudyLoop's own `studyloop` agent. They started
+  `kiro-cli acp` with no `--agent`, so each ran under whatever the learner's
+  default Kiro agent was: Kiro's built-in (its own system prompt, the learner's
+  personal steering and skills, every MCP server in their global `mcp.json`)
+  or the learner's own agent. `studyloop install agents` now installs
+  `~/.kiro/agents/studyloop.json` (StudyLoop's two MCP servers, the persona
+  agents' session-export hook and command denylist, no persona, no
+  pre-approved tools), every Kiro ACP launch names it, and `studyloop doctor`
+  checks that kiro-cli validates and lists it and that no built-in agent
+  shadows it. Run `studyloop install agents --tool kiro` (or
+  `studyloop doctor --fix`) once after upgrading.
 - The `now` engine counts every "last seen N day(s) ago" from the one clock
   it reads per plan. The due-progress collector took its day count from a
   second clock inside `history/progress.py`, so under a frozen test clock the
