@@ -28,6 +28,7 @@ Four defects made that state reachable and unescapable. One class each:
 from __future__ import annotations
 
 import asyncio
+import os
 import sys
 from pathlib import Path
 
@@ -559,3 +560,81 @@ class TestOutOfProcessEnds:
         _signal_dashboard_ended()
 
         assert session_state.read_session_state()["mode"] == "ended"
+
+
+# ---------------------------------------------------------------------------
+# Defect 4 — a web session whose server stopped is offered for reattach
+# ---------------------------------------------------------------------------
+
+_DEAD_PID = 999_999_999  # beyond any pid the kernel hands out
+
+
+class TestAWebSessionWhoseServerStoppedIsNotLive:
+    """A PTY/ACP session lives inside the server process that started it.
+
+    When that server stops without ending the session, the state file still
+    says ``mode=focus`` and names the dead server's ``pid``. ``/session/start``
+    already treats that claim as stale (``claim_blocks_web_start``), but this
+    endpoint reported it as live with no ``reattach_url``. After a restart of
+    ``studyloop web`` the console adopted it and told the learner it "cannot
+    render" transport pty, the one transport it renders with xterm.
+    """
+
+    def _write_orphan(self, **overrides: object) -> None:
+        session_state.write_session_state(
+            {
+                "study_session_id": "orphan-1",
+                "topic": "Decorators",
+                "mode": "focus",
+                "transport": "pty",
+                "origin": "study",
+                "pid": _DEAD_PID,
+                **overrides,
+            }
+        )
+
+    def test_state_reports_it_ended(self, client: TestClient) -> None:
+        self._write_orphan()
+
+        state = client.get("/api/session/state").json()
+
+        assert state.get("mode") == "ended", "a session whose server is gone was offered as live"
+        assert "reattach_url" not in state
+
+    def test_an_acp_orphan_is_reported_ended_too(self, client: TestClient) -> None:
+        self._write_orphan(transport="acp")
+
+        assert client.get("/api/session/state").json().get("mode") == "ended"
+
+    def test_nothing_is_deleted(self, client: TestClient) -> None:
+        """A session that never ended never flushed its parking lot; those are
+        the learner's notes, so reporting it ended must not destroy them."""
+        self._write_orphan()
+        session_state.PARKING_FILE.write_text("- a parked question\n")
+
+        client.get("/api/session/state")
+
+        assert session_state.STATE_FILE.exists()
+        assert session_state.PARKING_FILE.read_text() == "- a parked question\n"
+
+    def test_a_live_foreign_server_s_session_is_left_alone(self, client: TestClient) -> None:
+        # pid 1 always exists and is foreign to the test process.
+        self._write_orphan(pid=1)
+
+        assert client.get("/api/session/state").json().get("mode") == "focus"
+
+    def test_this_process_s_own_claim_is_left_alone(self, client: TestClient) -> None:
+        """A start in flight writes its reservation with this process's pid
+        before the slot is acquired; that is not an orphan."""
+        self._write_orphan(pid=os.getpid(), mode="starting")
+
+        assert client.get("/api/session/state").json().get("mode") == "starting"
+
+    def test_a_cli_session_is_left_alone(self, client: TestClient) -> None:
+        """A CLI session's pid is the CLI process, which can exit while its
+        multiplexer session lives on; the zombie rule judges CLI sessions."""
+        session_state.write_session_state(
+            {"study_session_id": "cli-1", "topic": "tmux", "mode": "focus", "pid": _DEAD_PID}
+        )
+
+        assert client.get("/api/session/state").json().get("mode") == "focus"
