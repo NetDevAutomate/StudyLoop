@@ -181,10 +181,35 @@ _KIRO_STUDYLOOP_AGENT = "~/.kiro/agents/studyloop.json"
 _KIRO_AGENT_CHECK_TIMEOUT = 15  # seconds
 #: ``kiro-cli agent list`` colours its scope column even when piped.
 _ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
+#: An agent row in ``kiro-cli agent list``: the name starts at column 2, after
+#: ``"  "`` or the default marker ``"* "``. Wrapped description lines are
+#: indented far deeper, so a description mentioning an agent is never a row.
+_AGENT_ROW = re.compile(r"^[* ] (\S+)\s+(.*)$")
 
 
 def _first_line(text: str) -> str:
     return next((line.strip() for line in text.splitlines() if line.strip()), "")
+
+
+def _error_line(text: str) -> str:
+    """The first ``Error:`` line kiro-cli printed, colour and prefix removed.
+
+    kiro-cli 2.24.0's ``agent validate`` exits 0 on an invalid file and states
+    the verdict as ``Error: Json supplied at <path> is invalid: ...``.
+    """
+    for line in _ANSI_ESCAPE.sub("", text).splitlines():
+        if line.strip().startswith("Error:"):
+            return line.strip().removeprefix("Error:").strip()
+    return ""
+
+
+def _agent_list_rows(text: str) -> list[list[str]]:
+    """``[name, scope-and-description...]`` for each agent row of ``agent list``."""
+    rows: list[list[str]] = []
+    for line in _ANSI_ESCAPE.sub("", text).splitlines():
+        if match := _AGENT_ROW.match(line):
+            rows.append([match.group(1), *match.group(2).split()])
+    return rows
 
 
 def check_kiro_studyloop_agent() -> list[CheckResult]:
@@ -197,6 +222,12 @@ def check_kiro_studyloop_agent() -> list[CheckResult]:
     name shadows it -- the way kiro-cli 2.24.0's reserved ``kiro_default``
     silently ignored a learner's own ``kiro_default.json``). Silent when
     kiro-cli is not installed; the smoke test already reports that.
+
+    This check is the only signal: an ``acp --agent`` naming an agent kiro-cli
+    cannot load does not fail, it runs the built-in default. The parsing
+    follows kiro-cli 2.24.0's real output (probed 2026-09-26): ``validate``
+    exits 0 on an invalid file and reports it as an ``Error:`` line on stderr,
+    and ``list`` writes its table to stderr.
     """
     from studyloop.adapters.kiro import KIRO_ACP_AGENT_NAME
 
@@ -228,18 +259,22 @@ def check_kiro_studyloop_agent() -> list[CheckResult]:
             text=True,
             timeout=_KIRO_AGENT_CHECK_TIMEOUT,
         )
-        if validated.returncode != 0:
-            reason = (
-                _first_line(validated.stderr)
-                or _first_line(validated.stdout)
+        # kiro-cli 2.24.0 exits 0 on an INVALID file; the verdict is an
+        # `Error:` line on stderr. So both signals count.
+        rejection = _error_line(validated.stderr) or _error_line(validated.stdout)
+        if validated.returncode != 0 and not rejection:
+            rejection = (
+                _first_line(_ANSI_ESCAPE.sub("", validated.stderr))
+                or _first_line(_ANSI_ESCAPE.sub("", validated.stdout))
                 or f"exit code {validated.returncode}"
             )
+        if rejection:
             return [
                 CheckResult(
                     "agents",
                     name,
                     "warn",
-                    f"kiro-cli rejects the {KIRO_ACP_AGENT_NAME} agent: {reason}",
+                    f"kiro-cli rejects the {KIRO_ACP_AGENT_NAME} agent: {rejection}",
                     "studyloop install agents --tool kiro, then re-run studyloop doctor",
                     False,
                 )
@@ -262,8 +297,13 @@ def check_kiro_studyloop_agent() -> list[CheckResult]:
             )
         ]
 
-    rows = [_ANSI_ESCAPE.sub("", line).lstrip("* ").split() for line in listed.stdout.splitlines()]
-    ours = [row for row in rows if row and row[0] == KIRO_ACP_AGENT_NAME]
+    # kiro-cli 2.24.0 writes the table to stderr; read both streams so a future
+    # release that moves it to stdout still parses.
+    ours = [
+        row
+        for row in _agent_list_rows(listed.stderr + "\n" + listed.stdout)
+        if row[0] == KIRO_ACP_AGENT_NAME
+    ]
     if any("(Built-in)" in row for row in ours):
         return [
             CheckResult(
@@ -284,7 +324,10 @@ def check_kiro_studyloop_agent() -> list[CheckResult]:
                 "agents",
                 name,
                 "warn",
-                f"kiro-cli does not list the {KIRO_ACP_AGENT_NAME} agent at {path}",
+                (
+                    f"kiro-cli does not list the {KIRO_ACP_AGENT_NAME} agent at {path}, so web"
+                    " (ACP) Kiro sessions silently fall back to kiro-cli's built-in default"
+                ),
                 "studyloop install agents --tool kiro, then re-run studyloop doctor",
                 False,
             )

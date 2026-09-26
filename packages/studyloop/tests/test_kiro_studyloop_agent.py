@@ -276,7 +276,7 @@ class TestDoctorProvesItLoads:
         (result,) = results
         assert result.status == "warn"
         assert "does not list" in result.message
-        assert "falls back" in result.message
+        assert "fall back to kiro-cli's built-in default" in result.message
 
     def test_a_description_line_naming_it_is_not_a_row(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
