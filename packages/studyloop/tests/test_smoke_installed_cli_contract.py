@@ -67,7 +67,14 @@ def test_smoke_uv_tool_install_uses_isolated_tool_home_and_runs_cli_smoke() -> N
         'uv tool install --force --editable --python "$PY_REQUEST" '
         '"$ROOT_DIR/packages/studyloop[all]"'
     ) in script_text
-    assert '--with-editable "$ROOT_DIR/packages/agent-session-tools"' in script_text
+    assert '--with-editable "$ROOT_DIR/packages/agent-session-tools[all]"' in script_text
+    # The studyloop venv serves `studyloop web`, whose encoder warm imports
+    # the semantic runtime in-process. Import level only: the isolated HOME
+    # has no Hugging Face cache, and the ONNX artefact is `doctor --fix`'s job.
+    assert (
+        '"$(uv tool dir)/studyloop/bin/python" -c '
+        '"import huggingface_hub, numpy, onnxruntime, sqlite_vec, tokenizers"'
+    ) in script_text
     assert (
         'uv tool install --force --editable --python "$PY_REQUEST" '
         '"$ROOT_DIR/packages/agent-session-tools[all]"'

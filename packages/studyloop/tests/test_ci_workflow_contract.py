@@ -290,3 +290,24 @@ def test_nightly_installer_job_plants_a_harness_before_running_install_sh() -> N
     assert verify["env"]["HOME"] == "${{ runner.temp }}/home"
     for planted_marker in planted:
         assert planted_marker in verify["run"], f"verify step does not look inside {planted_marker}"
+
+
+def test_nightly_installer_job_proves_the_studyloop_tool_env_carries_the_semantic_runtime() -> None:
+    """`install.sh` gave the studyloop tool venv no semantic runtime, and the
+    job's only checks were `--version` and `--help`, which pass without it --
+    so every install's `studyloop web` failed its encoder warm at import and
+    nothing in CI could see it. The job must import what the warm imports, in
+    the venv that serves `studyloop web`, after the script has run.
+    """
+    steps = _nightly_workflow()["jobs"]["installer"]["steps"]
+    names = [step.get("name") for step in steps]
+    wanted = "Verify the studyloop tool env carries the semantic runtime"
+    assert wanted in names, "the installer job must check the studyloop venv's semantic runtime"
+    assert names.index(wanted) > names.index("Run scripts/install.sh")
+
+    verify = steps[names.index(wanted)]
+    assert verify["env"]["UV_TOOL_DIR"] == "${{ runner.temp }}/tools"
+    assert (
+        '"$UV_TOOL_DIR/studyloop/bin/python" -c '
+        '"import huggingface_hub, numpy, onnxruntime, sqlite_vec, tokenizers"'
+    ) in verify["run"]
