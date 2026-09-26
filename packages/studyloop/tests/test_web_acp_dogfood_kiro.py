@@ -115,6 +115,9 @@ def _kiro_available() -> tuple[bool, str]:
         return False, f"kiro-cli whoami errored: {exc}"
     if result.returncode != 0:
         return False, f"kiro-cli whoami failed: {result.stderr.strip()[:200]}"
+    # Every Kiro ACP launch names StudyLoop's own agent (`--agent studyloop`).
+    if not (Path.home() / ".kiro/agents/studyloop.json").exists():
+        return False, "studyloop agent not installed (run: studyloop install agents --tool kiro)"
     return True, ""
 
 
@@ -130,8 +133,9 @@ pytestmark.append(pytest.mark.skipif(not _KIRO_OK, reason=f"Live Kiro unavailabl
 def _start_web_server_real_kiro() -> subprocess.Popen:
     """Spawn ``studyloop web`` with NO STUDYLOOP_TEST_ACP_CMD override.
 
-    The route's ``_build_acp_transport`` factory will use ``["kiro-cli", "acp"]``
-    — i.e. a real Kiro subprocess.
+    The route's ``_build_acp_transport`` factory will use
+    ``["kiro-cli", "acp", "--agent", "studyloop"]`` -- i.e. a real Kiro
+    subprocess running StudyLoop's own agent.
     """
     env = {**os.environ}
     env.pop("STUDYLOOP_TEST_ACP_CMD", None)  # belt-and-braces

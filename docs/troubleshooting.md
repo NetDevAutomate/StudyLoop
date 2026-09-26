@@ -155,6 +155,27 @@ process is gone `/api/session/state` reports the session ended and the Study
 view shows the picker. Start a new session; the old one's parking-lot file is
 left in place.
 
+## Kiro Reports `invalid agent config: kiro_default.json`
+
+kiro-cli 2.24.0 reserves the agent name `kiro_default`. A file of your own at
+`~/.kiro/agents/kiro_default.json` (the usual way to customise Kiro's default
+agent before 2.24.0) is ignored, with this notice on every start, including the
+Kiro sessions StudyLoop opens. It is kiro-cli's notice about your file:
+StudyLoop neither reads nor writes it, and StudyLoop's web sessions run their
+own `studyloop` agent whatever your default is.
+
+To keep your customisation, give it a name kiro-cli has not reserved and make
+it the default:
+
+```bash
+cd ~/.kiro/agents
+jq '.name = "default-plus"' kiro_default.json > default-plus.json
+mv kiro_default.json kiro_default.json.retired
+kiro-cli agent set-default default-plus
+```
+
+If another tool manages that file, check that it will not recreate it first.
+
 ## The Terminal Is Empty After A Page Refresh
 
 The panel should reattach on its own. What holds today:

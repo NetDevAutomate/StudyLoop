@@ -89,6 +89,7 @@ def _definition_sources_by_tool() -> dict[str, set[str]]:
         "study-mentor.md",
         "study-plan-architect.json",
         "study-plan-architect.md",
+        "studyloop.json",
     }
     result: dict[str, set[str]] = {}
     for tool, sources in _installer_sources_by_tool().items():

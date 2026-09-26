@@ -78,6 +78,15 @@ Kiro also receives the `study-plan-architect` agent. Start it directly with:
 kiro-cli chat --agent study-plan-architect
 ```
 
+Kiro also receives `studyloop`, StudyLoop's own agent for web sessions. Every
+Study Session or planning session that runs Kiro over ACP starts
+`kiro-cli acp --agent studyloop`, so your default Kiro agent — and whatever
+prompt, steering, skills or MCP servers it loads — never configures a
+StudyLoop session. It carries no persona (the session sends one), reaches only
+StudyLoop's `studyloop` and `session-db` MCP servers, and pre-approves no
+tools, the same grants ACP sessions had before it existed. You never start it
+yourself; `studyloop doctor` checks that kiro-cli validates and lists it.
+
 Kiro also receives the opt-in `studyloop-xtiles-wind-down` skill at `~/.kiro/skills/`, as a symlink to the shared copy described below. It stays silent unless your second-brain provider is `xtiles` and an `xtiles` MCP server is connected.
 
 ### Codex
