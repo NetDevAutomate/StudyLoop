@@ -446,6 +446,29 @@ def _reservation_pid_is_live_and_foreign(state: dict) -> bool:
     return _pid_is_alive(pid)
 
 
+def web_claim_is_orphaned(state: dict) -> bool:
+    """Whether ``state`` names a web session (PTY/ACP) whose server has gone.
+
+    A web-owned session lives inside the server process that started it, and
+    ``pid`` records that process. When the pid is neither this process nor
+    alive, nothing can be serving the session, whatever ``mode`` says: the
+    crash-then-restart cell :func:`claim_blocks_web_start` already treats as
+    stale on the start side. The read side needs the same verdict, or
+    ``/api/session/state`` offers a session for reattach that nothing serves.
+
+    A CLI session is never judged here -- its ``pid`` is the CLI process,
+    which can exit while its multiplexer session lives on. This process's own
+    pid is never an orphan (a start in flight writes its reservation before
+    the slot is acquired), and a claim with no ``pid`` cannot be proven dead.
+    """
+    if not _claim_exists(state) or state.get("transport") not in ("pty", "acp"):
+        return False
+    pid = state.get("pid")
+    if not isinstance(pid, int) or pid == os.getpid():
+        return False
+    return not _pid_is_alive(pid)
+
+
 def claim_blocks_web_start(state: dict) -> bool:
     """Whether a file claim should block a new web PTY/ACP session start.
 

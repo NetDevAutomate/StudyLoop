@@ -812,16 +812,20 @@ export function liveAgentConsole(origin = 'study') {
          The ttyd iframe was retired once the pty path survived a page reload, and
          ttyd retirement stage 3 removed the server-side transport axis entirely —
          the server now rejects transport=ttyd/STUDYLOOP_TRANSPORT=ttyd outright.
-         This method is the generic "the server reported a transport this view
-         cannot render" fallback for any future unrecognised value, not a
-         ttyd-specific branch. */
+         Two different failures land here, and the message must name the right
+         one: a KNOWN transport with no connection URL (the server gave nothing
+         to connect to), or a transport this view genuinely cannot render.
+         Telling a learner "cannot render pty" sent them looking for a renderer
+         problem that was not there. */
       _mountUnavailable(detail) {
         this.terminalMode = 'unavailable';
         this.connected = false;
         this.statusDot = 'error';
         this.status = 'No terminal available';
-        this.statusMessage = detail && detail.transport
-          ? `This session reports transport "${detail.transport}", which this view `
+        const transport = detail && detail.transport;
+        const renderable = transport === 'pty' || transport === 'acp';
+        this.statusMessage = transport && !renderable
+          ? `This session reports transport "${transport}", which this view `
             + 'cannot render. End the session and start it again with the browser '
             + 'terminal or ACP.'
           : 'The server did not return a connection for this session. Ending and '

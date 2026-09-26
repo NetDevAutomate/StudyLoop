@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from studyloop.session_state import PARKING_FILE, STATE_FILE, TOPICS_FILE
+from studyloop.session_state import PARKING_FILE, STATE_FILE, TOPICS_FILE, web_claim_is_orphaned
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +42,13 @@ def _get_full_state() -> dict:
             if f.exists():
                 f.unlink(missing_ok=True)
         return {"topics": [], "parking": []}
+
+    if web_claim_is_orphaned(state):
+        # A PTY/ACP session lives inside the server that started it, and that
+        # process is gone, so the session is too: report it ended, the verdict
+        # /session/start already reaches. Delete nothing -- a session that
+        # never ended never flushed its parking lot, and that is learner data.
+        state = {**state, "mode": "ended"}
 
     topics = session_pkg.parse_topics_file()
     parking = session_pkg.parse_parking_file()

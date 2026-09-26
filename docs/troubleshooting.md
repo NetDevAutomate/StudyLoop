@@ -148,6 +148,13 @@ If the transport is already `pty` and the panel still reports no terminal, the
 server did not return a connection for the session. Ending and restarting the
 session clears this; the message says so rather than leaving a blank pane.
 
+A session whose server stopped while it ran (`studyloop web` was restarted,
+crashed, or its terminal was closed) is not offered for reattach. A browser
+terminal or ACP session runs inside the server that started it, so once that
+process is gone `/api/session/state` reports the session ended and the Study
+view shows the picker. Start a new session; the old one's parking-lot file is
+left in place.
+
 ## The Terminal Is Empty After A Page Refresh
 
 The panel should reattach on its own. What holds today:

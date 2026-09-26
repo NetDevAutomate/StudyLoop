@@ -93,6 +93,17 @@ experience may change before `1.0.0`.
   `[all]`, and the nightly install job and `scripts/smoke-uv-tool-install.sh`
   import the runtime in that venv. Existing installs pick it up with
   `./scripts/install.sh --tools-only`.
+- Returning to the Study view after `studyloop web` restarted no longer offers
+  the session the old server was running and then reports *This session
+  reports transport "pty", which this view cannot render*. A browser-terminal
+  or ACP session runs inside the server that started it; when that server
+  stops without ending it, `/api/session/state` now reports the session ended
+  (the verdict `/session/start` already reached) instead of live with nothing
+  to connect to, and deletes nothing, because an unended session's parking lot
+  holds unflushed notes. The console's fallback also stops blaming the
+  renderer when only the connection is missing: a known transport with no
+  connection URL now reads *The server did not return a connection for this
+  session*.
 
 ## [0.5.0] - 2026-09-21
 
