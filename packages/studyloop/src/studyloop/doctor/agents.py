@@ -3,12 +3,15 @@
 Checks:
   1. Which AI coding tools are installed (binary detection + smoke test)
   2. Whether agent definitions are installed and up-to-date (hash vs manifest)
+  3. Whether kiro-cli can load StudyLoop's own ``studyloop`` agent, the one
+     every Kiro ACP session names
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 import urllib.error
@@ -170,6 +173,132 @@ def check_agent_smoke_tests() -> list[CheckResult]:
                 )
             )
     return results
+
+
+#: StudyLoop's own Kiro agent, named on every Kiro ACP launch.
+_KIRO_STUDYLOOP_AGENT = "~/.kiro/agents/studyloop.json"
+#: ``agent list`` reads every agent file, so it gets longer than the smoke test.
+_KIRO_AGENT_CHECK_TIMEOUT = 15  # seconds
+#: ``kiro-cli agent list`` colours its scope column even when piped.
+_ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def _first_line(text: str) -> str:
+    return next((line.strip() for line in text.splitlines() if line.strip()), "")
+
+
+def check_kiro_studyloop_agent() -> list[CheckResult]:
+    """Prove kiro-cli can load StudyLoop's own agent -- never the learner's default.
+
+    Web ACP sessions run ``kiro-cli acp --agent studyloop``. Both questions that
+    decide whether that works are put to kiro-cli itself rather than inferred
+    from the file: ``agent validate`` (this kiro-cli accepts the config) and
+    ``agent list`` (it discovers the agent, and no built-in agent of the same
+    name shadows it -- the way kiro-cli 2.24.0's reserved ``kiro_default``
+    silently ignored a learner's own ``kiro_default.json``). Silent when
+    kiro-cli is not installed; the smoke test already reports that.
+    """
+    from studyloop.adapters.kiro import KIRO_ACP_AGENT_NAME
+
+    binary = shutil.which("kiro-cli")
+    if not binary:
+        return []
+
+    name = "agent_kiro_studyloop_loads"
+    path = Path(_KIRO_STUDYLOOP_AGENT).expanduser()
+    if not path.exists():
+        return [
+            CheckResult(
+                "agents",
+                name,
+                "warn",
+                (
+                    f"kiro {KIRO_ACP_AGENT_NAME} agent not installed"
+                    " -- web (ACP) Kiro sessions need it"
+                ),
+                "studyloop install agents --tool kiro",
+                fix_auto=True,
+            )
+        ]
+
+    try:
+        validated = subprocess.run(
+            [binary, "agent", "validate", "--path", str(path)],
+            capture_output=True,
+            text=True,
+            timeout=_KIRO_AGENT_CHECK_TIMEOUT,
+        )
+        if validated.returncode != 0:
+            reason = (
+                _first_line(validated.stderr)
+                or _first_line(validated.stdout)
+                or f"exit code {validated.returncode}"
+            )
+            return [
+                CheckResult(
+                    "agents",
+                    name,
+                    "warn",
+                    f"kiro-cli rejects the {KIRO_ACP_AGENT_NAME} agent: {reason}",
+                    "studyloop install agents --tool kiro, then re-run studyloop doctor",
+                    False,
+                )
+            ]
+        listed = subprocess.run(
+            [binary, "agent", "list"],
+            capture_output=True,
+            text=True,
+            timeout=_KIRO_AGENT_CHECK_TIMEOUT,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return [
+            CheckResult(
+                "agents",
+                name,
+                "warn",
+                f"could not ask kiro-cli about the {KIRO_ACP_AGENT_NAME} agent: {exc}",
+                "Check kiro-cli installation",
+                False,
+            )
+        ]
+
+    rows = [_ANSI_ESCAPE.sub("", line).lstrip("* ").split() for line in listed.stdout.splitlines()]
+    ours = [row for row in rows if row and row[0] == KIRO_ACP_AGENT_NAME]
+    if any("(Built-in)" in row for row in ours):
+        return [
+            CheckResult(
+                "agents",
+                name,
+                "warn",
+                (
+                    f"a built-in kiro-cli agent is also named {KIRO_ACP_AGENT_NAME}, so kiro-cli"
+                    " ignores StudyLoop's agent file"
+                ),
+                "Report this to the StudyLoop maintainers: the agent needs a new name",
+                False,
+            )
+        ]
+    if not ours:
+        return [
+            CheckResult(
+                "agents",
+                name,
+                "warn",
+                f"kiro-cli does not list the {KIRO_ACP_AGENT_NAME} agent at {path}",
+                "studyloop install agents --tool kiro, then re-run studyloop doctor",
+                False,
+            )
+        ]
+    return [
+        CheckResult(
+            "agents",
+            name,
+            "pass",
+            f"kiro {KIRO_ACP_AGENT_NAME} agent loads (kiro-cli validates and lists it)",
+            "",
+            False,
+        )
+    ]
 
 
 def check_agent_definitions() -> list[CheckResult]:

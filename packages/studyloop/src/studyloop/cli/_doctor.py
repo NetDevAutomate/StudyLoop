@@ -168,6 +168,7 @@ def _get_registry():
     from studyloop.doctor.agents import (
         check_agent_definitions,
         check_agent_smoke_tests,
+        check_kiro_studyloop_agent,
         check_mcp_registration,
     )
     from studyloop.doctor.config import (
@@ -237,6 +238,9 @@ def _get_registry():
     # signal regardless of whether the binary happens to be on PATH.
     registry.register("agents")(check_agent_definitions)
     registry.register("agents")(check_agent_smoke_tests)
+    # The validity test runs on StudyLoop's own `studyloop` agent -- the one every
+    # Kiro ACP session names -- never on the learner's default agent.
+    registry.register("agents")(check_kiro_studyloop_agent)
     registry.register("agents")(check_mcp_registration)
     registry.register("harness")(check_harness_export)
     # check_pypi_versions is deliberately NOT registered. Nothing is published

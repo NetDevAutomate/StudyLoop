@@ -114,6 +114,7 @@ jobs:
         run: |
           test -e "$HOME/.kiro/agents/study-mentor.json"
           test -e "$HOME/.kiro/agents/study-plan-architect.json"
+          test -e "$HOME/.kiro/agents/studyloop.json"
           test -e "$HOME/.claude/agents/socratic-mentor.md"
           test -e "$HOME/.claude/agents/study-plan-architect.md"
           test -e "$HOME/.pi/agent/AGENTS.md"

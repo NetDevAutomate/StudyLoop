@@ -97,7 +97,8 @@ def _build_acp_transport(config):  # type: ignore[no-untyped-def]
     Mirrors ``_build_pty_transport`` but builds ACP argv instead of a
     shell command:
 
-    - Kiro: ``["kiro-cli", "acp"]``
+    - Kiro: ``["kiro-cli", "acp", "--agent", "studyloop"]`` -- StudyLoop's own
+      agent (``agents/kiro/studyloop.json``), never the learner's default
 
     The ``STUDYLOOP_TEST_ACP_CMD`` env var overrides the argv entirely,
     matching the shape of ``STUDYLOOP_TEST_AGENT_CMD`` on the PTY side.
@@ -139,7 +140,12 @@ def _build_acp_transport(config):  # type: ignore[no-untyped-def]
         if test_cmd:
             return shlex.split(test_cmd)
         if _config.agent == "kiro":
-            return ["kiro-cli", "acp"]
+            # Name StudyLoop's own agent: with no --agent, kiro-cli runs the
+            # learner's default agent, whose prompt, steering, skills and MCP
+            # servers are theirs to change and were never StudyLoop's.
+            from studyloop.adapters.kiro import KIRO_ACP_AGENT_NAME
+
+            return ["kiro-cli", "acp", "--agent", KIRO_ACP_AGENT_NAME]
         if _config.agent == "grok":
             # No ``--always-approve``: StudyLoop answers ``session/request_permission``
             # itself (``ACPTransport.send_permission_response``), so bypassing the

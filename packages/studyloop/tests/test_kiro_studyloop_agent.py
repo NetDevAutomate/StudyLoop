@@ -199,7 +199,7 @@ class TestDoctorProvesItLoads:
             lambda name: "/opt/bin/kiro-cli" if kiro and name == "kiro-cli" else None,
         )
         monkeypatch.setattr(doctor_agents.subprocess, "run", _run)
-        return doctor_agents.check_kiro_studyloop_agent(), calls  # pyright: ignore[reportAttributeAccessIssue]  # RED
+        return doctor_agents.check_kiro_studyloop_agent(), calls
 
     def test_passes_when_kiro_validates_and_lists_it(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
@@ -244,7 +244,7 @@ class TestDoctorProvesItLoads:
         (result,) = results
         assert result.status == "warn"
         assert result.fix_auto is True
-        assert "studyloop install agents" in result.fix
+        assert "studyloop install agents" in result.fix_hint
         assert calls == []
 
     def test_is_silent_without_kiro(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -254,8 +254,6 @@ class TestDoctorProvesItLoads:
 
     def test_is_registered_with_doctor(self) -> None:
         from studyloop.cli._doctor import _get_registry
-        from studyloop.doctor.agents import (
-            check_kiro_studyloop_agent,  # pyright: ignore[reportAttributeAccessIssue]  # RED
-        )
+        from studyloop.doctor.agents import check_kiro_studyloop_agent
 
         assert ("agents", check_kiro_studyloop_agent) in _get_registry()._checkers

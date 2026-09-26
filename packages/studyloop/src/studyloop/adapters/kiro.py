@@ -31,6 +31,11 @@ KIRO_AGENTS_DIR = Path(
     os.environ.get("STUDYLOOP_KIRO_AGENTS_DIR", Path.home() / ".kiro" / "agents")
 )
 KIRO_AGENT_NAME = "study-mentor"
+#: StudyLoop's own persona-neutral Kiro agent (``agents/kiro/studyloop.json``),
+#: installed by ``studyloop install agents`` and named on every Kiro ACP launch,
+#: so the learner's *default* Kiro agent never configures StudyLoop's sessions.
+#: The persona reaches an ACP session as its first turn, not from this agent.
+KIRO_ACP_AGENT_NAME = "studyloop"
 _KIRO_TEMPLATE = _REPO_ROOT / "agents" / "kiro" / "study-mentor.json"
 _KIRO_BACKUP_SUFFIX = ".studyloop-backup"
 

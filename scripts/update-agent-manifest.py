@@ -22,6 +22,7 @@ TRACKED_FILES: dict[str, list[str]] = {
     "kiro": [
         "kiro/study-mentor.json",
         "kiro/study-plan-architect.json",
+        "kiro/studyloop.json",
     ],
     "opencode": [
         "opencode/study-mentor.md",

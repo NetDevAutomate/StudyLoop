@@ -47,6 +47,10 @@ _HOME = Path.home()
 _TOOL_LINKS: dict[str, tuple[LinkSpec, ...]] = {
     "kiro": (
         LinkSpec("agents/kiro/study-mentor.json", str(_HOME / ".kiro/agents/study-mentor.json")),
+        # StudyLoop's own persona-neutral agent, named on every Kiro ACP launch
+        # (`kiro-cli acp --agent studyloop`) so the learner's default agent never
+        # configures a StudyLoop session (owner steer, 2026-09-26).
+        LinkSpec("agents/kiro/studyloop.json", str(_HOME / ".kiro/agents/studyloop.json")),
         # study-plan-architect.json declares `file://shared/*.md` resources, which
         # Kiro resolves relative to the agent file's directory; this link is what
         # makes them exist there (council phase 2, L7 reviewer).
