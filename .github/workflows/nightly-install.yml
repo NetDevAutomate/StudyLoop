@@ -96,6 +96,16 @@ jobs:
           "$UV_TOOL_BIN_DIR/studyloop" --version
           "$UV_TOOL_BIN_DIR/session-export" --help
 
+      - name: Verify the studyloop tool env carries the semantic runtime
+        # `studyloop web` warms the query encoder in-process at boot, inside
+        # the studyloop tool venv (not agent-session-tools' own). Without
+        # these the warm fails at import and the header chip reads
+        # "semantic: failed" -- invisible to the --version/--help checks.
+        env:
+          UV_TOOL_DIR: ${{ runner.temp }}/tools
+        run: |
+          "$UV_TOOL_DIR/studyloop/bin/python" -c "import huggingface_hub, numpy, onnxruntime, sqlite_vec, tokenizers"
+
       - name: Verify installed agent definitions
         # One artefact per planted harness, each a path `install agents`
         # writes for that tool (installers.py _TOOL_LINKS / _configure_*).

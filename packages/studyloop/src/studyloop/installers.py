@@ -1310,7 +1310,14 @@ def install_workspace_tools(
             cmd.append(f"{pkg_dir}[all]")
         elif package_name == "studyloop":
             cmd.append(f"{pkg_dir}[all]")
-            cmd.extend(["--with-editable", str(repo_root / "packages" / "agent-session-tools")])
+            # [all] on the co-installed package too. `studyloop web` imports
+            # agent_session_tools IN THIS venv: the server's boot-time encoder
+            # warm and every hybrid search run tokenizers, onnxruntime,
+            # huggingface_hub, numpy and sqlite_vec here, not in
+            # agent-session-tools' own tool venv. Co-installed bare, the warm
+            # failed at import and the header chip read "semantic: failed".
+            ast_pkg = repo_root / "packages" / "agent-session-tools"
+            cmd.extend(["--with-editable", f"{ast_pkg}[all]"])
         else:
             cmd.append(str(pkg_dir))
         cmd.append("--editable")

@@ -28,9 +28,14 @@ TOOL_BIN="$UV_TOOL_BIN_DIR"
 PY_REQUEST="$(tr -d '[:space:]' < "$ROOT_DIR/.python-version")"
 
 uv tool install --force --editable --python "$PY_REQUEST" "$ROOT_DIR/packages/studyloop[all]" \
-  --with-editable "$ROOT_DIR/packages/agent-session-tools"
+  --with-editable "$ROOT_DIR/packages/agent-session-tools[all]"
 uv tool install --force --editable --python "$PY_REQUEST" "$ROOT_DIR/packages/agent-session-tools[all]"
 
 test -x "$TOOL_BIN/studyloop"
 test -x "$TOOL_BIN/session-export"
+# The studyloop venv serves `studyloop web`, whose boot-time encoder warm
+# imports the semantic runtime in-process; without it the header chip reads
+# "semantic: failed". Import level only: this isolated HOME has no Hugging
+# Face cache, and fetching the ONNX artefact is `doctor --fix`'s job.
+"$(uv tool dir)/studyloop/bin/python" -c "import huggingface_hub, numpy, onnxruntime, sqlite_vec, tokenizers"
 STUDYLOOP_EXPECT_BIN_DIR="$TOOL_BIN" PATH="$TOOL_BIN:$PATH" "$ROOT_DIR/scripts/smoke-installed-cli.sh"

@@ -83,6 +83,16 @@ experience may change before `1.0.0`.
   drained future was already complete, the pump exited without reading that
   future's `StopAsyncIteration`. The pump now retrieves the result of a done
   pull future on every exit path.
+- `studyloop web` started from an installed tool no longer shows
+  **semantic: failed (0.0s)**. The installer co-installed `agent-session-tools`
+  into the `studyloop` tool venv without its extras, so the semantic runtime
+  (tokenizers, onnxruntime, huggingface-hub, numpy, sqlite-vec) never reached
+  the venv that serves the web UI: the boot-time encoder warm failed at import
+  and search silently stayed lexical-only, while `studyloop doctor` in the same
+  venv called the encoder check "does not apply". The co-install now carries
+  `[all]`, and the nightly install job and `scripts/smoke-uv-tool-install.sh`
+  import the runtime in that venv. Existing installs pick it up with
+  `./scripts/install.sh --tools-only`.
 
 ## [0.5.0] - 2026-09-21
 

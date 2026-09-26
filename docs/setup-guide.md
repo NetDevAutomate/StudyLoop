@@ -136,9 +136,14 @@ such as `session-export`, `session-query`, and `session-sync` may not appear on
 ```bash
 uv sync --all-packages
 uv tool install --editable './packages/studyloop[all]' \
-  --with-editable ./packages/agent-session-tools
+  --with-editable './packages/agent-session-tools[all]'
 uv tool install --editable './packages/agent-session-tools[all]'
 ```
+
+The `[all]` on `--with-editable` matters: `studyloop web` runs the semantic
+search layer inside the `studyloop` tool venv, so co-installing
+`agent-session-tools` without its extras leaves the header chip reading
+`semantic: failed`.
 
 Prefer `./scripts/install.sh` or `studyloop install tools` for normal source
 checkout installs because they keep the two tool venvs wired together.
@@ -943,7 +948,7 @@ command:
 ```bash
 uv sync --all-packages
 uv tool install --editable './packages/studyloop[all]' \
-  --with-editable ./packages/agent-session-tools \
+  --with-editable './packages/agent-session-tools[all]' \
   --force
 ```
 
