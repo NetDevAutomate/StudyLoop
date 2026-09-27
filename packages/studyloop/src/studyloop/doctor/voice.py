@@ -67,28 +67,35 @@ def check_voice_readiness() -> list[CheckResult]:
         )
     )
 
-    if _KOKORO_MODEL.exists() and _KOKORO_VOICES.exists():
-        results.append(
-            CheckResult(
-                "voice",
-                "kokoro_models",
-                "pass",
-                "Kokoro model and voices are available",
-                "",
-                False,
+    # Only study-speak's local ``kokoro`` backend reads these files, and it
+    # downloads them itself on first use (agent_session_tools.speak). For any
+    # other backend the row asked a learner to pre-download ~354 MB that nothing
+    # on their machine would ever read, so it is not reported at all.
+    if backend == "kokoro":
+        if _KOKORO_MODEL.exists() and _KOKORO_VOICES.exists():
+            results.append(
+                CheckResult(
+                    "voice",
+                    "kokoro_models",
+                    "pass",
+                    "Kokoro model and voices are available",
+                    "",
+                    False,
+                )
             )
-        )
-    else:
-        results.append(
-            CheckResult(
-                "voice",
-                "kokoro_models",
-                "info",
-                "Kokoro model files are not pre-warmed",
-                "See docs/voice-output.md for the model download command",
-                False,
+        else:
+            results.append(
+                CheckResult(
+                    "voice",
+                    "kokoro_models",
+                    "info",
+                    "Kokoro model files (about 354 MB) are not downloaded yet; "
+                    "study-speak fetches them on first use",
+                    "Nothing to do. To fetch them now instead of on first use, see "
+                    "docs/voice-output.md",
+                    False,
+                )
             )
-        )
 
     afplay = shutil.which("afplay")
     results.append(
