@@ -1018,3 +1018,22 @@ def test_topic_exercises_generic_mcp_example_uses_studyloop_as_server_name() -> 
     text = _repo_text("docs/topic-exercises.md")
     assert '"studyloop": {' in text
     assert '"studyloop-mcp": {' not in text
+
+
+def test_xtiles_mcp_harnesses_reads_each_config_for_a_server_named_xtiles(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Read-only report the doctor's xTiles row uses. A missing or unreadable
+    config is simply "not registered there", never an error."""
+    files = {
+        "claude": tmp_path / "claude.json",
+        "kiro": tmp_path / "mcp.json",
+        "codex": tmp_path / "config.toml",
+        "opencode": tmp_path / "absent.json",
+    }
+    files["claude"].write_text(json.dumps({"mcpServers": {"studyloop": {}}}))
+    files["kiro"].write_text(json.dumps({"mcpServers": {"xtiles": {"url": "https://x.invalid"}}}))
+    files["codex"].write_text('[mcp_servers.xtiles]\nurl = "https://x.invalid"\n')
+    monkeypatch.setattr(installers, "_mcp_config_path", lambda tool: files[tool])
+
+    assert installers.xtiles_mcp_harnesses() == ["codex", "kiro"]

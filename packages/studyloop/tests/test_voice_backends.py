@@ -416,3 +416,26 @@ def test_doctor_reports_the_valid_backend_it_resolved(
 
     assert by_name["backend"].status == "pass"
     assert "openvox" in by_name["backend"].message
+
+
+def test_kokoro_model_files_are_only_reported_for_the_kokoro_backend(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path
+) -> None:
+    """Only study-speak's local ``kokoro`` backend reads ~/.cache/kokoro-onnx, and
+    it downloads the files itself on first use. With ``backend: openvox`` the row
+    asked a learner to pre-download about 354 MB that nothing on their machine
+    would read (reported 2026-09-27)."""
+    from studyloop.doctor import voice as doctor_voice
+
+    monkeypatch.setattr(doctor_voice, "_KOKORO_MODEL", tmp_path / "kokoro-v1.0.onnx")
+    monkeypatch.setattr(doctor_voice, "_KOKORO_VOICES", tmp_path / "voices-v1.0.bin")
+    monkeypatch.setattr(doctor_voice, "_openvox_reachable", lambda base_url: True)
+
+    monkeypatch.setattr(doctor_voice, "load_raw_config", lambda: {"tts": {"backend": "openvox"}})
+    assert "kokoro_models" not in {r.name for r in doctor_voice.check_voice_readiness()}
+
+    monkeypatch.setattr(doctor_voice, "load_raw_config", lambda: {"tts": {"backend": "kokoro"}})
+    row = {r.name: r for r in doctor_voice.check_voice_readiness()}["kokoro_models"]
+    assert row.status == "info"
+    assert "first use" in row.message
+    assert "MB" in row.message

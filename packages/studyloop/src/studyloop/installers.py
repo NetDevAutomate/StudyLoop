@@ -991,6 +991,11 @@ def unregister_mcp_servers(tools: list[str]) -> dict[str, int]:
     return changed
 
 
+def xtiles_mcp_harnesses() -> list[str]:
+    """Harnesses whose MCP config registers a server named ``xtiles`` (stub; RED)."""
+    return []
+
+
 def mcp_registration_status(tools: list[str] | None = None) -> dict[str, bool]:
     """Report registration state without modifying any harness configuration."""
     import json

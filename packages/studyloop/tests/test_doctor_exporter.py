@@ -296,3 +296,71 @@ class TestExportFreshness:
     def test_an_empty_database_warns(self, tmp_path: Path) -> None:
         db = _db(tmp_path / "empty.db", 48, None)
         assert exporter.check_export_freshness(db).status == "warn"
+
+
+def _db_by_source(path: Path, newest: dict[str, datetime]) -> Path:
+    conn = sqlite3.connect(path)
+    conn.execute("CREATE TABLE sessions(id TEXT, source TEXT)")
+    conn.execute("CREATE TABLE messages(id TEXT, session_id TEXT, timestamp TEXT)")
+    for n, (source, stamp) in enumerate(newest.items()):
+        conn.execute("INSERT INTO sessions VALUES (?, ?)", (f"s{n}", source))
+        conn.execute("INSERT INTO messages VALUES (?, ?, ?)", (f"m{n}", f"s{n}", stamp.isoformat()))
+    conn.execute("PRAGMA user_version = 48")
+    conn.commit()
+    conn.close()
+    return path
+
+
+class TestFreshnessNamesTheStaleHarness:
+    """The row said "newest exported message is 48 h old": the newest across ALL
+    harnesses. That hid that Kiro, the harness in daily use, had exported nothing
+    for 22 days, because kiro-cli moved its sessions to ~/.kiro/sessions/cli/,
+    which the exporter does not read (reported 2026-09-27)."""
+
+    NOW = datetime(2026, 9, 27, 12, 0, tzinfo=UTC)
+
+    def test_a_stale_row_lists_every_harness_newest_first(self, tmp_path: Path) -> None:
+        db = _db_by_source(
+            tmp_path / "s.db",
+            {
+                "kiro_cli": self.NOW - timedelta(days=22),
+                "codex": self.NOW - timedelta(hours=48),
+                "pi": self.NOW - timedelta(days=11),
+            },
+        )
+        result = exporter.check_export_freshness(
+            db, now=self.NOW, kiro_sessions_dir=tmp_path / "absent"
+        )
+        assert result.status == "warn"
+        assert "codex 2 d, pi 11 d, kiro_cli 22 d" in result.message
+
+    def test_kiro_sessions_the_exporter_cannot_read_warn_even_when_another_is_fresh(
+        self, tmp_path: Path
+    ) -> None:
+        db = _db_by_source(
+            tmp_path / "s.db",
+            {"codex": self.NOW - timedelta(hours=1), "kiro_cli": self.NOW - timedelta(days=22)},
+        )
+        store = tmp_path / "cli"
+        store.mkdir()
+        (store / "a.jsonl").write_text("{}\n")
+        stamp = (self.NOW - timedelta(hours=1)).timestamp()
+        os.utime(store, (stamp, stamp))
+
+        result = exporter.check_export_freshness(db, now=self.NOW, kiro_sessions_dir=store)
+        assert result.status == "warn"
+        assert str(store) in result.message
+        assert "does not read" in result.message
+        assert "kiro_cli 22 d" in result.message
+
+    def test_a_kiro_store_older_than_the_last_kiro_export_says_nothing(
+        self, tmp_path: Path
+    ) -> None:
+        db = _db_by_source(tmp_path / "s.db", {"kiro_cli": self.NOW - timedelta(hours=2)})
+        store = tmp_path / "cli"
+        store.mkdir()
+        stamp = (self.NOW - timedelta(days=3)).timestamp()
+        os.utime(store, (stamp, stamp))
+
+        result = exporter.check_export_freshness(db, now=self.NOW, kiro_sessions_dir=store)
+        assert result.status == "pass"

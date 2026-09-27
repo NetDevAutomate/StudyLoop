@@ -332,3 +332,27 @@ class TestCheckObsidianExport:
 # owned by a different remediation lane (m5); the ttyd-retirement lane (m1)
 # that needs this check for the orphaned ttyd_port key put it in a module it
 # owns instead.
+
+
+class TestObsidianExportSaysWhyItIsOff:
+    """ "Obsidian export disabled" named no reason and no next step. The export in
+    question is the session-memory export (``obsidian.export_enabled``), which is
+    independent of ``second_brain``: a learner on ``provider: xtiles`` read the row
+    as "off because Obsidian is not my second brain" (reported 2026-09-27)."""
+
+    def test_the_row_names_the_switch_and_its_independence(self, tmp_path: Path):
+        from studyloop.doctor.config import check_obsidian_export
+
+        vault = str(tmp_path / "vault")
+        obs_cfg = _make_obsidian_config(export_enabled=False, vault_path=vault)
+        with patch(
+            "studyloop.doctor.config._load_settings",
+            return_value=_make_settings(obsidian_base=vault, obsidian=obs_cfg),
+        ):
+            (row,) = check_obsidian_export()
+
+        assert row.status == "info"
+        assert "disabled" in row.message.lower()
+        assert "second_brain" in row.message
+        assert "export_enabled: true" in row.fix_hint
+        assert "AgentMemory" in row.fix_hint

@@ -933,3 +933,37 @@ def test_known_top_level_keys_covers_the_full_docs_drift_derivation():
     known = known_top_level_keys()
     full_derivation = _known_top_level_keys()
     assert full_derivation <= known, sorted(full_derivation - known)
+
+
+def test_project_aliases_is_a_known_key_because_session_search_reads_it():
+    """agent-session-tools reads ``project_aliases`` from the same config.yaml
+    (``query_utils.build_project_filter``; PROJECT_ALIASES.md). The doctor called
+    it inert and said to delete it -- which would have cut session search off
+    from every aliased path: 732 sessions for one project on the machine that
+    reported it (2026-09-27)."""
+    from studyloop.settings import known_top_level_keys, unknown_top_level_keys
+
+    assert "project_aliases" in known_top_level_keys()
+    assert unknown_top_level_keys({"project_aliases": {"/a": ["/b"]}}) == []
+
+
+def test_every_key_agent_session_tools_reads_directly_is_known():
+    """The class, not the instance: every ``load_config().get("<key>")`` or
+    ``load_config()["<key>"]`` in agent-session-tools names a top-level key that
+    the doctor must not report as unknown. DEFAULT_CONFIG's keys are covered by
+    test_docs_drift; this covers the reads that bypass it."""
+    import re
+
+    import agent_session_tools
+    from studyloop.settings import known_top_level_keys
+
+    pattern = re.compile(r"""load_config\(\)(?:\.get\(|\[)\s*["']([A-Za-z_]+)["']""")
+    package = Path(agent_session_tools.__file__).parent
+    read = {
+        (key, path.name)
+        for path in package.rglob("*.py")
+        for key in pattern.findall(path.read_text(encoding="utf-8"))
+    }
+    assert read, "the scan found no reads; the pattern no longer matches the code"
+    known = known_top_level_keys()
+    assert sorted(pair for pair in read if pair[0] not in known) == []

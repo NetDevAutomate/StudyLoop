@@ -124,3 +124,29 @@ def test_registered_only_when_the_section_exists(config, tmp_path, monkeypatch) 
     config({"second_brain": {"provider": "obsidian", "vault_path": str(vault)}})
     registered = {fn.__name__ for _category, fn in _get_registry()._checkers}
     assert "check_second_brain" in registered
+
+
+def test_rows_xtiles_say_what_is_installed_and_where_a_server_is_registered(
+    config, tmp_path, monkeypatch
+) -> None:
+    """ "no programmatic backend; prompts and an opt-in assistant skill" read as
+    "the skill still needs installing". ``studyloop install agents`` installs it
+    for every harness; what decides whether it ever offers is an MCP server named
+    ``xtiles`` in the session, so the row now says where one is registered
+    (reported 2026-09-27)."""
+    from studyloop import installers
+
+    config({"second_brain": {"provider": "xtiles"}})
+    hub = tmp_path / "hub"
+    hub.mkdir()
+    monkeypatch.setattr(installers, "XTILES_SKILL_HUB", hub)
+    monkeypatch.setattr(installers, "xtiles_mcp_harnesses", lambda: ["codex"])
+
+    (row,) = check_second_brain()
+    assert "opt-in assistant skill" not in row.message
+    assert "skill is installed" in row.message
+    assert "codex" in row.message
+
+    monkeypatch.setattr(installers, "xtiles_mcp_harnesses", lambda: [])
+    (row,) = check_second_brain()
+    assert "no harness" in row.message.lower()

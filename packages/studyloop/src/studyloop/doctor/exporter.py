@@ -205,7 +205,9 @@ def check_export_freshness(
     *,
     now: datetime | None = None,
     max_age_hours: float = EXPORT_FRESHNESS_HOURS,
+    kiro_sessions_dir: Path | None = None,  # stub; RED
 ) -> CheckResult:
+    del kiro_sessions_dir
     db_path = db_path or _db_path()
     newest = newest_message_at(db_path) if db_path.exists() else None
     if newest is None:

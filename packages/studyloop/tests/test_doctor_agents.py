@@ -309,3 +309,44 @@ class TestPlanArchitectDefinitionCheck:
         assert "study-plan-architect" in secondary[0].message or "study-plan-architect" in (
             secondary[0].name
         )
+
+
+class TestSharedDefinitionIsCheckedAgainstItsSource:
+    """Grok Build has no definition of its own: it reads the repo-root AGENTS.md
+    that the ``codex/AGENTS.md`` manifest entry tracks (installers._TOOL_LINKS).
+    The doctor looked for a ``grok/`` key, found none and said "No manifest
+    entry for grok" -- a row about a file that cannot exist, while the file
+    Grok actually reads went unchecked (reported 2026-09-27)."""
+
+    @staticmethod
+    def _manifest(body: bytes) -> dict:
+        import hashlib
+
+        digest = hashlib.sha256(body).hexdigest()[:16]
+        return {"version": 1, "agents": {"codex/AGENTS.md": {"hash": digest, "updated": "x"}}}
+
+    @staticmethod
+    def _rows(tmp_path: Path, installed: bytes, manifest: dict) -> dict:
+        from studyloop.doctor.agents import check_agent_definitions
+
+        agents_md = tmp_path / "AGENTS.md"
+        agents_md.write_bytes(installed)
+        with (
+            patch("studyloop.doctor.agents._detect_ai_tools", return_value=["grok"]),
+            patch("studyloop.doctor.agents._get_agent_install_path", return_value=agents_md),
+            patch(
+                "studyloop.doctor.agents._fetch_manifest_with_reason",
+                return_value=(manifest, ""),
+            ),
+        ):
+            return {row.name: row for row in check_agent_definitions()}
+
+    def test_a_current_shared_file_passes_and_names_its_source(self, tmp_path: Path):
+        rows = self._rows(tmp_path, b"persona", self._manifest(b"persona"))
+        assert rows["agent_grok"].status == "pass"
+        assert "No manifest entry" not in rows["agent_grok"].message
+        assert "codex/AGENTS.md" in rows["agent_grok"].message
+
+    def test_a_stale_shared_file_warns(self, tmp_path: Path):
+        rows = self._rows(tmp_path, b"older persona", self._manifest(b"persona"))
+        assert rows["agent_grok"].status == "warn"
