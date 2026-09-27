@@ -392,8 +392,21 @@ def check_agent_definitions() -> list[CheckResult]:
     results: list[CheckResult] = []
     manifest_agents = manifest.get("agents", {})
 
+    from studyloop.installers import _TOOL_LINKS
+
     for tool in tools:
         tool_keys = [k for k in manifest_agents if k.startswith(f"{tool}/")]
+        if not tool_keys:
+            # A harness with no definition of its own is checked against the
+            # manifest entries of the files its installer links. Grok Build reads
+            # the repo-root AGENTS.md that ``codex/AGENTS.md`` tracks; looking only
+            # for a ``grok/`` key reported "No manifest entry" and left the file it
+            # actually reads unchecked.
+            tool_keys = [
+                key
+                for spec in _TOOL_LINKS.get(tool, ())
+                if (key := spec.source.removeprefix("agents/")) in manifest_agents
+            ]
         if not tool_keys:
             results.append(
                 CheckResult(
@@ -411,6 +424,7 @@ def check_agent_definitions() -> list[CheckResult]:
             is_primary = Path(key).name == primary_name
             check_name = f"agent_{tool}" if is_primary else f"agent_{tool}_{Path(key).stem}"
             label = tool if is_primary else f"{tool} {Path(key).stem}"
+            shared = "" if key.startswith(f"{tool}/") else f" (shares {key})"
 
             if not install_path.exists():
                 results.append(
@@ -418,7 +432,7 @@ def check_agent_definitions() -> list[CheckResult]:
                         "agents",
                         check_name,
                         "warn",
-                        f"{tool} detected but agent definition not installed",
+                        f"{tool} detected but agent definition not installed{shared}",
                         "studyloop upgrade --component agents",
                         fix_auto=True,
                     )
@@ -433,7 +447,7 @@ def check_agent_definitions() -> list[CheckResult]:
                         "agents",
                         check_name,
                         "pass",
-                        f"{label} agent definition current",
+                        f"{label} agent definition current{shared}",
                         "",
                         False,
                     )
@@ -447,6 +461,7 @@ def check_agent_definitions() -> list[CheckResult]:
                         (
                             f"{label} agent definition outdated"
                             f" (local={local_hash[:8]}... expected={expected_hash[:8]}...)"
+                            f"{shared}"
                         ),
                         "studyloop upgrade --component agents",
                         fix_auto=True,
