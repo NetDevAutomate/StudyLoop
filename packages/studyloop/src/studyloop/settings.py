@@ -611,6 +611,12 @@ _RAW_ONLY_SECTIONS: frozenset[str] = frozenset(
         "semantic_search",
         "excluded_dirs",
         "endpoints",  # legacy sync format, agent_session_tools.get_endpoints()
+        # agent_session_tools.query_utils.build_project_filter: the explicit
+        # alias groups that let session search find one project's history
+        # under old paths, usernames and worktrees (PROJECT_ALIASES.md). Read
+        # with load_config().get(), not through DEFAULT_CONFIG, so the
+        # unknown-key check called it inert and told learners to delete it.
+        "project_aliases",
     }
 )
 
