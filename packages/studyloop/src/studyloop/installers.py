@@ -992,8 +992,31 @@ def unregister_mcp_servers(tools: list[str]) -> dict[str, int]:
 
 
 def xtiles_mcp_harnesses() -> list[str]:
-    """Harnesses whose MCP config registers a server named ``xtiles`` (stub; RED)."""
-    return []
+    """Harnesses whose MCP config registers a server named ``xtiles``, sorted.
+
+    Read-only, for the doctor's xTiles row. The wind-down skill offers only in a
+    session where an ``xtiles`` MCP server is connected, so where one is
+    registered decides where the offer can ever appear. Reads the same files
+    :func:`_mcp_config_path` names; Grok Build is not read (its registration goes
+    through its own CLI). A missing or unreadable config counts as "not
+    registered there", never as an error.
+    """
+    import json
+    import tomllib
+
+    sections = {"claude": "mcpServers", "codex": "mcp_servers", "kiro": "mcpServers"}
+    sections["opencode"] = "mcp"
+    found: list[str] = []
+    for tool, section in sections.items():
+        try:
+            text = _mcp_config_path(tool).read_text(encoding="utf-8")
+            data = tomllib.loads(text) if tool == "codex" else json.loads(text)
+        except (OSError, ValueError):
+            continue
+        servers = data.get(section) if isinstance(data, dict) else None
+        if isinstance(servers, dict) and "xtiles" in servers:
+            found.append(tool)
+    return sorted(found)
 
 
 def mcp_registration_status(tools: list[str] | None = None) -> dict[str, bool]:

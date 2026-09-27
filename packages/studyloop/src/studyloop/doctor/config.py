@@ -312,13 +312,31 @@ def check_second_brain() -> list[CheckResult]:
         return []
 
     if config.provider == "xtiles":
+        # "prompts and an opt-in assistant skill" read as "the skill still needs
+        # installing". It is installed for every harness by `studyloop install
+        # agents`; the opt-in is the learner's yes at wind-down. What decides
+        # whether the offer can ever appear is an MCP server named `xtiles` in
+        # the session, so the row says where one is registered.
+        from studyloop import installers
+
+        skill = (
+            "The wind-down skill is installed"
+            if installers.XTILES_SKILL_HUB.exists()
+            else "The wind-down skill is not installed (studyloop install agents installs it)"
+        )
+        servers = installers.xtiles_mcp_harnesses()
+        where = (
+            f"an xtiles MCP server is registered in: {', '.join(servers)}"
+            if servers
+            else "no harness here registers an xtiles MCP server, so the offer cannot appear yet"
+        )
         return [
             CheckResult(
                 "config",
                 "second_brain_provider",
                 "info",
-                "Second brain: xTiles (no programmatic backend; prompts and an "
-                "opt-in assistant skill)",
+                f"Second brain: xTiles (no programmatic backend). {skill}; it offers to "
+                f"write only in a session with an xtiles MCP server connected, and {where}.",
                 "See docs/second-brain.md for the xTiles setup and the three prompts.",
                 False,
             )
