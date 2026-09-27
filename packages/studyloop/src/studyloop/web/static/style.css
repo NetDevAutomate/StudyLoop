@@ -177,6 +177,9 @@ header {
 .header-controls {
   display: flex;
   gap: 8px;
+  /* One bottom edge for every control. Stretch (the default) pulled the
+     unlabelled buttons and pickers up to the height of the labelled fields. */
+  align-items: flex-end;
 }
 
 .toggle-btn {
@@ -2769,6 +2772,49 @@ body[data-palette="everforest"] {
   line-height: 1;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+/* The voice field's label row: "VOICE" and the engine badge on one line. */
+.header-field-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Voice-engine badge (#tts-engine-badge). It had no rule at all from the commit
+ * that added it (de7e870b), so the span inherited the header's text styles and
+ * read as a large bold heading beside the FONT and SIZE labels (reported
+ * 2026-09-27). Same pill as .bd-chip, sized for a label row. "degraded" uses the
+ * warn colours on purpose: a silent downgrade looks exactly like working
+ * software, which is the reason the badge exists. */
+.tts-engine-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 7px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 0.64rem;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.tts-engine-badge.pending {
+  font-style: italic;
+}
+
+.tts-engine-badge.ok {
+  background: color-mix(in srgb, var(--green) 14%, var(--bg-card));
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.tts-engine-badge.degraded {
+  background: color-mix(in srgb, var(--yellow) 14%, var(--bg-card));
+  border-color: var(--yellow);
+  color: var(--yellow);
 }
 
 /* One line of orientation above the Mastery graph. The panel's subtitle

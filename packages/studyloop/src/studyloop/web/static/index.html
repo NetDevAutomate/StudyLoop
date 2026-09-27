@@ -134,17 +134,25 @@
         <span class="tts-progress-label" x-text="$store.settings.ttsDownloadPct + '%'"></span>
       </div>
 
-      <select id="voice-select" class="voice-select" :class="{ hidden: !$store.settings.voiceOn }"
-              @change="$store.settings.onVoiceChange($event.target.value)" title="Choose voice"></select>
-      <!-- Which engine is ACTUALLY speaking. Shown whenever voice is on, not
-           only when something is wrong: a badge that appears only on failure
-           teaches nobody what "working" looks like, and the degraded state is
-           the one a learner most needs to be able to notice. -->
-      <span id="tts-engine-badge"
-            x-show="$store.settings.voiceOn"
-            :class="$store.settings.ttsEngineClass"
-            :title="$store.settings.ttsEngineTitle"
-            x-text="$store.settings.ttsEngineLabel"></span>
+      <!-- Voice picker, labelled like Font and Size below. The engine badge sits
+           in the label row, so it reads as a note on the picker rather than as a
+           heading (reported 2026-09-27: unstyled, it rendered as large bold text).
+           The badge says which engine is ACTUALLY speaking. Shown whenever voice
+           is on, not only when something is wrong: a badge that appears only on
+           failure teaches nobody what "working" looks like, and the degraded
+           state is the one a learner most needs to be able to notice. -->
+      <div class="header-field voice-field" x-show="$store.settings.voiceOn" x-cloak>
+        <span class="header-field-row">
+          <label class="header-field-label text-muted" for="voice-select">Voice</label>
+          <span id="tts-engine-badge"
+                x-show="$store.settings.voiceOn"
+                :class="$store.settings.ttsEngineClass"
+                :title="$store.settings.ttsEngineTitle"
+                x-text="$store.settings.ttsEngineLabel"></span>
+        </span>
+        <select id="voice-select" class="voice-select" :class="{ hidden: !$store.settings.voiceOn }"
+                @change="$store.settings.onVoiceChange($event.target.value)" title="Choose voice"></select>
+      </div>
       <!-- Encoder-warm chip (lane A4). Shown only while the semantic arm is
            loading, failed or off — the states a learner can act on; a
            permanently visible "ready" badge would just be noise. No percentage:
@@ -158,22 +166,25 @@
               @click="$store.settings.toggleTheme()" title="Toggle light/dark theme">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
       </button>
-      <select class="palette-select" title="Theme palette"
-              :value="$store.settings.palette"
-              @change="$store.settings.setPalette($event.target.value)">
-        <option value="tokyo-night">Tokyo Night</option>
-        <option value="dracula">Dracula</option>
-        <option value="catppuccin-mocha">Catppuccin Mocha</option>
-        <option value="catppuccin-latte">Catppuccin Latte</option>
-        <option value="nord">Nord</option>
-        <option value="gruvbox-dark">Gruvbox Dark</option>
-        <option value="gruvbox-light">Gruvbox Light</option>
-        <option value="solarized-dark">Solarized Dark</option>
-        <option value="solarized-light">Solarized Light</option>
-        <option value="one-dark">One Dark</option>
-        <option value="rose-pine">Rosé Pine</option>
-        <option value="everforest">Everforest</option>
-      </select>
+      <label class="header-field">
+        <span class="header-field-label text-muted">Theme</span>
+        <select class="palette-select" title="Theme palette"
+                :value="$store.settings.palette"
+                @change="$store.settings.setPalette($event.target.value)">
+          <option value="tokyo-night">Tokyo Night</option>
+          <option value="dracula">Dracula</option>
+          <option value="catppuccin-mocha">Catppuccin Mocha</option>
+          <option value="catppuccin-latte">Catppuccin Latte</option>
+          <option value="nord">Nord</option>
+          <option value="gruvbox-dark">Gruvbox Dark</option>
+          <option value="gruvbox-light">Gruvbox Light</option>
+          <option value="solarized-dark">Solarized Dark</option>
+          <option value="solarized-light">Solarized Light</option>
+          <option value="one-dark">One Dark</option>
+          <option value="rose-pine">Rosé Pine</option>
+          <option value="everforest">Everforest</option>
+        </select>
+      </label>
       <!-- Reading font + font size, both with a VISIBLE label.  The user asked
            for "standard fonts other than just OpenDyslexic" when five already
            sat in this dropdown: they could not tell what the unlabelled control
