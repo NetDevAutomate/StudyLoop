@@ -67,6 +67,30 @@ experience may change before `1.0.0`.
 
 ### Fixed
 
+- The web header reads as one row of labelled controls: **Voice**, **Theme**,
+  **Font** and **Size** each have a visible label, and the controls share one
+  bottom edge. The voice-engine badge ("System voices", "Kokoro (server)") is a
+  small pill beside the Voice label, yellow when something other than the
+  host's Kokoro is speaking. It never had a style, so it rendered as large bold
+  text in the middle of the header.
+- `studyloop doctor` no longer gives advice that is wrong or leads nowhere:
+  - `project_aliases` is no longer called inert. Session search reads it
+    (`PROJECT_ALIASES.md`), and deleting it as the row advised would have cut
+    `--project` searches off from every aliased path.
+  - Grok Build's definition is checked against the repo-root `AGENTS.md` it
+    shares with Codex, instead of "No manifest entry for grok".
+  - The xTiles row says whether the wind-down skill is installed and which
+    harnesses register an `xtiles` MCP server; the offer can only appear in a
+    session connected to one.
+  - A stale `export_freshness` row lists every harness's own age, and says so
+    when kiro-cli's session store (`~/.kiro/sessions/cli/`) has moved on while
+    Kiro exports have not: kiro-cli 2.x keeps sessions there and the exporter
+    does not read it yet (#49).
+  - The Kokoro model-files row appears only for `tts.backend: kokoro`, the one
+    backend that reads them, and says they download on first use.
+  - "Obsidian export disabled" says it means the session-memory export
+    (`obsidian.export_enabled`), which is independent of `second_brain`, and
+    how to turn it on.
 - Web (ACP) Kiro sessions run StudyLoop's own `studyloop` agent. They started
   `kiro-cli acp` with no `--agent`, so each ran under whatever the learner's
   default Kiro agent was: Kiro's built-in (its own system prompt, the learner's
