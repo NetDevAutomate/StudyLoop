@@ -176,38 +176,43 @@ def check_pandoc() -> list[CheckResult]:
     ]
 
 
+def _obsidian_export_disabled(vault: object, memory_dir: str) -> list[CheckResult]:
+    """The one "off" row for both ways export can be off.
+
+    "Obsidian export disabled" alone named no reason and no next step, and a
+    learner on ``second_brain.provider: xtiles`` read it as "off because Obsidian
+    is not my second brain". The two settings are independent: this export writes
+    session-memory notes; ``second_brain`` only chooses where study notes go.
+    """
+    target = f"{Path(str(vault)).expanduser()}/{memory_dir}" if str(vault) else memory_dir
+    return [
+        CheckResult(
+            "config",
+            "obsidian_export",
+            "info",
+            "Obsidian session-memory export disabled: obsidian.export_enabled is not true. "
+            "It is independent of second_brain, which only chooses where study notes go.",
+            f"To write session notes into {target}, set export_enabled: true under the "
+            "obsidian: section of config.yaml",
+            False,
+        )
+    ]
+
+
 def check_obsidian_export() -> list[CheckResult]:
     """Check Obsidian export configuration and vault writability.
 
     If export is enabled, verify that the resolved vault_path/memory_dir
     is present (or at least that the vault exists).  If export is disabled,
-    return an informational result.
+    return an informational result that says how to turn it on.
     """
     settings = _load_settings()
     obsidian = getattr(settings, "obsidian", None)
     if obsidian is None:
-        return [
-            CheckResult(
-                "config",
-                "obsidian_export",
-                "info",
-                "Obsidian export disabled",
-                "",
-                False,
-            )
-        ]
+        return _obsidian_export_disabled(getattr(settings, "obsidian_base", ""), "AgentMemory")
 
     if not obsidian.export_enabled:
-        return [
-            CheckResult(
-                "config",
-                "obsidian_export",
-                "info",
-                "Obsidian export disabled",
-                "",
-                False,
-            )
-        ]
+        return _obsidian_export_disabled(obsidian.vault_path, obsidian.memory_dir)
 
     # Export is enabled — verify vault_path / memory_dir is accessible.
     vault_path = Path(obsidian.vault_path).expanduser()
