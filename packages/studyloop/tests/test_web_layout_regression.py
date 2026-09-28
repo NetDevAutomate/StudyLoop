@@ -863,3 +863,145 @@ class TestCourseExplorerTtsGating:
         )
         assert state["ttsAvailable"] is True, "ttsAvailable must be true when engine injected"
         assert state["btnVisible"] is True, "read-aloud button must appear when TTS present"
+
+
+# ---------------------------------------------------------------------------
+# App header — one line of controls on the brand's centre line (2026-09-28)
+# ---------------------------------------------------------------------------
+#
+# Reported twice with a screenshot: "the top panel of the web ui is still not
+# neat/central/aligned". The first fix (labels on every picker, one bottom edge)
+# was checked only by parsing the HTML and CSS, and measured in a browser it was
+# still wrong in three ways: the voice picker was 25.5px tall beside 31px
+# buttons and 32px pickers, the voice label sat 3px lower than the others
+# because the engine pill made its row taller, and the whole row sat 6.5px below
+# the brand. At a 1024px tablet width, with the semantic chip showing, the
+# controls also ran 70px past the window and under the brand. These tests
+# measure the rendered header, which is the only thing the learner sees.
+
+# Every label ttsEngineLabel can produce, so the widest one is always covered.
+_ENGINE_TIERS = (None, "server-openvox", "web-speech", "silent")
+
+_HEADER_GEOMETRY_JS = """async (tier) => {
+  const settings = window.Alpine.store('settings');
+  settings.ttsTier = tier;
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  const shown = (el) => {
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden';
+  };
+  const box = (el) => {
+    const r = el.getBoundingClientRect();
+    return {top: r.top, bottom: r.bottom, left: r.left, right: r.right,
+            height: r.height, cy: r.top + r.height / 2,
+            name: el.id || el.getAttribute('title') || el.textContent.trim().slice(0, 24)};
+  };
+  const header = document.querySelector('body > header');
+  const controls = [...header.querySelectorAll(
+    '.header-controls button, .header-controls select')].filter(shown).map(box);
+  const labels = [...header.querySelectorAll(
+    '.header-field-label, #tts-engine-badge')].filter(shown).map(box);
+  return {badge: document.querySelector('#tts-engine-badge').textContent.trim(),
+          header: box(header), brand: box(header.querySelector('.brand')),
+          controls, labels,
+          scrollWidth: document.documentElement.scrollWidth,
+          innerWidth: window.innerWidth};
+}"""
+
+
+def _open_header_worst_case(page: Page, width: int, height: int) -> None:
+    """Every optional header item at once: voice on (adds the voice field and
+    its engine badge) and the semantic chip showing a failure."""
+    page.route(
+        "**/api/retrieval/health",
+        lambda route: _fulfill(
+            route, {"state": "failed", "model": "bge-small", "elapsed": 3.6, "detail": ""}
+        ),
+    )
+    page.set_viewport_size({"width": width, "height": height})
+    _goto(page, "today")
+    page.evaluate(
+        "() => { const s = window.Alpine.store('settings'); if (!s.voiceOn) s.toggleVoice(); }"
+    )
+    page.wait_for_selector("#voice-select", state="visible", timeout=5000)
+    page.wait_for_selector("#encoder-warm-chip", state="visible", timeout=5000)
+    page.wait_for_timeout(300)
+
+
+def _rows(boxes: list[dict]) -> list[list[dict]]:
+    """Group boxes into visual rows: a box starts a new row once it begins
+    below every box of the current one."""
+    rows: list[list[dict]] = []
+    for item in sorted(boxes, key=lambda b: b["top"]):
+        if rows and item["top"] < max(b["bottom"] for b in rows[-1]):
+            rows[-1].append(item)
+        else:
+            rows.append([item])
+    return rows
+
+
+def _overlaps(a: dict, b: dict, slack: float = 0.5) -> bool:
+    return (
+        a["left"] < b["right"] - slack
+        and b["left"] < a["right"] - slack
+        and a["top"] < b["bottom"] - slack
+        and b["top"] < a["bottom"] - slack
+    )
+
+
+def _assert_header_neat(geo: dict, *, single_row: bool) -> None:
+    where = f"(badge {geo['badge']!r}, window {geo['innerWidth']}px)"
+    controls, labels, header = geo["controls"], geo["labels"], geo["header"]
+    assert controls, f"no header controls were measured {where}"
+
+    overflow = geo["scrollWidth"] - geo["innerWidth"]
+    assert overflow <= 0, (
+        f"the header pushes the page {overflow:.0f}px wider than the window {where}"
+    )
+
+    heights = sorted({round(c["height"], 1) for c in controls})
+    assert heights[-1] - heights[0] <= 1, f"header controls are not one height: {heights} {where}"
+
+    rows = _rows(controls)
+    for row in rows:
+        centres = [c["cy"] for c in row]
+        assert max(centres) - min(centres) <= 1, (
+            "controls in one row are not on one line: "
+            f"{[(c['name'], round(c['cy'], 1)) for c in row]} {where}"
+        )
+    if single_row:
+        assert len(rows) == 1, f"the controls wrapped into {len(rows)} rows {where}"
+        drift = rows[0][0]["cy"] - geo["brand"]["cy"]
+        assert abs(drift) <= 1.5, (
+            f"the controls sit {drift:+.1f}px off the brand's centre line {where}"
+        )
+
+    for label in labels:
+        assert label["top"] >= header["top"] - 0.5 and label["bottom"] <= header["bottom"] + 0.5, (
+            f"label {label['name']!r} spills out of the header {where}"
+        )
+    for row in _rows(labels):
+        bottoms = [label["bottom"] for label in row]
+        assert max(bottoms) - min(bottoms) <= 1, (
+            "field labels in one row do not share a bottom edge: "
+            f"{[(label['name'], round(label['bottom'], 1)) for label in row]} {where}"
+        )
+
+    boxes = controls + labels
+    for i, first in enumerate(boxes):
+        for second in boxes[i + 1 :]:
+            assert not _overlaps(first, second), (
+                f"{first['name']!r} overlaps {second['name']!r} {where}"
+            )
+
+
+class TestHeaderControlsLayout:
+    def test_one_line_of_controls_on_the_brand_centre_at_laptop_width(self, web_page: Page) -> None:
+        _open_header_worst_case(web_page, 1440, 900)
+        for tier in _ENGINE_TIERS:
+            _assert_header_neat(web_page.evaluate(_HEADER_GEOMETRY_JS, tier), single_row=True)
+
+    def test_the_header_fits_a_tablet_width_without_overlap(self, web_page: Page) -> None:
+        _open_header_worst_case(web_page, 1024, 768)
+        for tier in _ENGINE_TIERS:
+            _assert_header_neat(web_page.evaluate(_HEADER_GEOMETRY_JS, tier), single_row=False)
