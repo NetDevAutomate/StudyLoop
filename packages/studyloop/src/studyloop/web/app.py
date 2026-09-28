@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
@@ -20,6 +20,23 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
 STATIC_DIR = Path(__file__).parent / "static"
+
+
+class RevalidatedStaticFiles(StaticFiles):
+    """Static files the browser must revalidate before reusing.
+
+    ``/`` is served ``no-store``, but without a Cache-Control of their own the
+    CSS and JS it loads were subject to heuristic freshness -- commonly a tenth
+    of the file's age -- so a stylesheet unchanged for weeks was reused for days
+    without asking. After an update the learner got the new page beside the old
+    CSS and JS. ``no-cache`` keeps the copy and asks first; an unchanged file
+    costs a 304 against the ETag Starlette already sends.
+    """
+
+    def file_response(self, *args: Any, **kwargs: Any) -> Response:
+        response = super().file_response(*args, **kwargs)
+        response.headers["Cache-Control"] = "no-cache"
+        return response
 
 
 @asynccontextmanager
@@ -353,7 +370,7 @@ def create_app(
         return RedirectResponse(url="/#study-session")
 
     # Mount static files LAST (catch-all)
-    app.mount("/", StaticFiles(directory=str(STATIC_DIR)), name="static")
+    app.mount("/", RevalidatedStaticFiles(directory=str(STATIC_DIR)), name="static")
 
     # Security headers: wraps the FINISHED app object rather than being
     # registered via app.add_middleware(). Starlette always puts its own
