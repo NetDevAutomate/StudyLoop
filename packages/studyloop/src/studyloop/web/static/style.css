@@ -136,7 +136,10 @@ header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 24px;
+  gap: 16px;
+  /* 20px, not 16px: the field labels sit in this top padding, out of the
+     layout (see .header-field), so the controls can share one centre line. */
+  padding: 20px 24px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
@@ -145,6 +148,7 @@ header {
   display: inline-flex;
   align-items: center;
   gap: 10px;
+  flex-shrink: 0;
   text-decoration: none;
   color: inherit;
   border-radius: 6px;
@@ -176,10 +180,35 @@ header {
 
 .header-controls {
   display: flex;
-  gap: 8px;
-  /* One bottom edge for every control. Stretch (the default) pulled the
-     unlabelled buttons and pickers up to the height of the labelled fields. */
-  align-items: flex-end;
+  /* Wrap rather than overflow. At a 1024px tablet width with every optional
+     item showing (voice field, semantic chip) the row is wider than the window;
+     it used to run past the right edge and under the brand. A wrapped row keeps
+     24px above it for its own labels. */
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  /* Every item is one 32px control now that labels are out of flow, so centre
+     is the brand's centre line for all of them. */
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 24px;
+  min-width: 0;
+}
+
+/* One height for every header control. The buttons were 30.5px, the voice
+   picker 26px and the other pickers 32px, so no alignment could line up both
+   their tops and their bottoms. */
+.header-controls .toggle-btn,
+.header-controls select {
+  box-sizing: border-box;
+  height: 32px;
+}
+
+.header-controls .toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 .toggle-btn {
@@ -200,11 +229,14 @@ header {
 .voice-select {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text-dim);
-  font-size: 12px;
-  padding: 4px 6px;
-  max-width: 140px;
+  /* Same shape and type as .palette-select (theme, font, size): it was a
+     smaller 12px, dimmer picker, so it read as a different kind of control. */
+  border-radius: 6px;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 4px 8px;
+  max-width: 150px;
   cursor: pointer;
 }
 /* Alpine toggles .hidden on this select when voice output is off; without
@@ -2761,10 +2793,9 @@ body[data-palette="everforest"] {
  * class names after the work was partitioned, so no agent owned them. They
  * rendered acceptably on inherited styles, which is luck rather than design. */
 .header-field {
+  position: relative;
   display: inline-flex;
   flex-direction: column;
-  gap: 2px;
-  align-items: flex-start;
 }
 
 .header-field-label {
@@ -2772,6 +2803,22 @@ body[data-palette="everforest"] {
   line-height: 1;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+/* A field's label sits ABOVE its control but OUTSIDE the layout. While labels
+ * took part in layout, a labelled field was taller than the buttons beside it,
+ * so the row could be aligned on its top, its bottom or its middle and was
+ * wrong for one kind of item every time (reported 2026-09-28: "still not
+ * neat/central/aligned"). Out of flow, every item in the row is one 32px
+ * control, and .header-controls' align-items:center puts them all on the
+ * brand's centre line. The labels live in the header's top padding, which is
+ * why that padding is 20px rather than 16px. */
+.header-field > .header-field-label,
+.header-field > .header-field-row {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 3px);
+  white-space: nowrap;
 }
 
 /* The voice field's label row: "VOICE" and the engine badge on one line. */
@@ -2784,21 +2831,29 @@ body[data-palette="everforest"] {
 /* Voice-engine badge (#tts-engine-badge). It had no rule at all from the commit
  * that added it (de7e870b), so the span inherited the header's text styles and
  * read as a large bold heading beside the FONT and SIZE labels (reported
- * 2026-09-27). Same pill as .bd-chip, sized for a label row. "degraded" uses the
- * warn colours on purpose: a silent downgrade looks exactly like working
- * software, which is the reason the badge exists. */
+ * 2026-09-27). A coloured dot and small text, not a pill: a pill is taller than
+ * a label, which put VOICE 3px below THEME, FONT and SIZE, and it was the
+ * loudest thing in a row of quiet labels. "degraded" keeps the warn colour on
+ * purpose: a silent downgrade looks exactly like working software, which is the
+ * reason the badge exists. */
 .tts-engine-badge {
   display: inline-flex;
   align-items: center;
-  padding: 0 7px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 999px;
+  gap: 4px;
   color: var(--text-muted);
   font-size: 0.64rem;
   font-weight: 600;
-  line-height: 1.5;
+  line-height: 1;
   white-space: nowrap;
+}
+
+.tts-engine-badge::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
 }
 
 .tts-engine-badge.pending {
@@ -2806,14 +2861,10 @@ body[data-palette="everforest"] {
 }
 
 .tts-engine-badge.ok {
-  background: color-mix(in srgb, var(--green) 14%, var(--bg-card));
-  border-color: var(--green);
   color: var(--green);
 }
 
 .tts-engine-badge.degraded {
-  background: color-mix(in srgb, var(--yellow) 14%, var(--bg-card));
-  border-color: var(--yellow);
   color: var(--yellow);
 }
 
