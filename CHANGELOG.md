@@ -67,12 +67,20 @@ experience may change before `1.0.0`.
 
 ### Fixed
 
-- The web header reads as one row of labelled controls: **Voice**, **Theme**,
-  **Font** and **Size** each have a visible label, and the controls share one
-  bottom edge. The voice-engine badge ("System voices", "Kokoro (server)") is a
-  small pill beside the Voice label, yellow when something other than the
-  host's Kokoro is speaking. It never had a style, so it rendered as large bold
-  text in the middle of the header.
+- The web header is one line of controls on the brand's centre line.
+  **Voice**, **Theme**, **Font** and **Size** each have a visible label, set
+  above the control and out of the layout, so every control is the same 32px
+  height and sits on one centre line; the voice picker matches the other
+  pickers instead of a smaller 12px style. The voice-engine badge ("System
+  voices", "Kokoro (server)") is a coloured dot and small text beside the Voice
+  label, yellow when something other than the host's Kokoro is speaking; it
+  never had a style, so it rendered as large bold text in the middle of the
+  header. At a 1024px tablet width with the semantic chip showing, the controls
+  wrap instead of running 75px past the window.
+- CSS and JavaScript are revalidated before a browser reuses them
+  (`Cache-Control: no-cache`, answered with a 304 when unchanged), like the page
+  itself. They were sent with no Cache-Control, so after an update a browser
+  could pair the new page with a days-old stylesheet or script.
 - `studyloop doctor` no longer gives advice that is wrong or leads nowhere:
   - `project_aliases` is no longer called inert. Session search reads it
     (`PROJECT_ALIASES.md`), and deleting it as the row advised would have cut
