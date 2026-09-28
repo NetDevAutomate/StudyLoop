@@ -109,7 +109,9 @@ def bd_page(browser: Browser, env):
     try:
         page.goto(f"{env.base_url}/")
         goto_view(page, "body-double")
-        page.wait_for_selector("#bd-focus", state="visible", timeout=15_000)
+        # The picker, not a panel: it is the one thing an idle Body Double view
+        # must always show.
+        page.wait_for_selector("#bd-activity-input", state="visible", timeout=15_000)
         yield page
     finally:
         ctx.close()
@@ -418,6 +420,239 @@ class TestEndingASessionIsFindableAndComplete:
         except Exception:
             diag(bd_page, "bd-post-end", _watch_for(bd_page))
             raise
+
+
+# ---------------------------------------------------------------------------
+# Body doubling is for anything — and a live session is the agent's screen
+# ---------------------------------------------------------------------------
+
+
+def _park_via_api(env, question: str) -> None:
+    import requests
+
+    response = requests.post(
+        f"{env.base_url}/api/parking/item", json={"question": question, "notes": ""}, timeout=15
+    )
+    assert response.status_code in (200, 201), response.text
+
+
+def _clear_parking(env) -> None:
+    import requests
+
+    with contextlib.suppress(Exception):
+        requests.post(
+            f"{env.base_url}/api/parking/clear", json={"all": True, "hard": True}, timeout=15
+        )
+
+
+def _end_any_session(env) -> None:
+    with contextlib.suppress(Exception):
+        urllib.request.urlopen(
+            urllib.request.Request(f"{env.base_url}/api/session/end", data=b"", method="POST"),
+            timeout=10,
+        )
+
+
+_STUDY_TOPICS = ("Spark shuffle", "SQL window functions", "dbt tests", "Glue bookmarks")
+
+_LIVE_GEOMETRY_JS = """() => {
+  const rect = (selector) => {
+    const el = document.querySelector(selector);
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 && r.height === 0) return null;
+    return {top: r.top, bottom: r.bottom, left: r.left, right: r.right, height: r.height};
+  };
+  return {
+    innerHeight: window.innerHeight,
+    content: rect('.content-area'),
+    strip: rect('.bd-live-strip'),
+    console: rect('.bd-console-panel'),
+    viewHeader: rect('.body-double-view .body-double-header'),
+    timerBlock: rect('.body-double-view .body-double-timer'),
+    capture: rect('#bd-capture'),
+    fab: rect('.quick-park-btn'),
+  };
+}"""
+
+
+def _overlaps(a: dict, b: dict, slack: float = 0.5) -> bool:
+    return (
+        a["left"] < b["right"] - slack
+        and b["left"] < a["right"] - slack
+        and a["top"] < b["bottom"] - slack
+        and b["top"] < a["bottom"] - slack
+    )
+
+
+class TestBodyDoubleIsForAnything:
+    """Reported 2026-09-28 with screenshots: "I should be able to run a body
+    double session for anything I'm doing, no restrictions or list of Focus
+    areas". The Focus card listed the three most recent pending STUDY topics
+    with an "at capacity" chip, above the picker and above the live terminal.
+    The activity field was always free text, so the card restricted nothing; it
+    only looked as if it did, on a surface whose own spec says body doubling is
+    not a new study thread (ADR-0003)."""
+
+    def test_the_surface_lists_no_study_topics(self, bd_page: Page, env) -> None:
+        try:
+            # Fill every slot first, so a Focus card that still existed would have
+            # to show topics and its at-capacity chip.
+            for topic in _STUDY_TOPICS:
+                _park_via_api(env, topic)
+            bd_page.reload()
+            goto_view(bd_page, "body-double")
+            bd_page.wait_for_selector("#bd-activity-input", state="visible", timeout=15_000)
+            bd_page.wait_for_function(
+                "() => window.Alpine.$data(document.querySelector("
+                "'[x-data=\"bodyDoubleSession()\"]'))._initDone === true",
+                timeout=15_000,
+            )
+            view = bd_page.locator(".body-double-view")
+            assert view.locator("#bd-focus").count() == 0, "the Focus card is still on Body Double"
+            text = view.inner_text()
+            for phrase in ("of 3 topics", "at capacity", *_STUDY_TOPICS):
+                assert phrase not in text, f"Body Double still shows {phrase!r}"
+            options = bd_page.eval_on_selector_all(
+                "#bd-note-topic option", "(els) => els.map((e) => e.textContent.trim())"
+            )
+            assert options == ["No topic"], f"the note composer offers study topics: {options}"
+        except Exception:
+            diag(bd_page, "bd-no-focus-list", _watch_for(bd_page))
+            raise
+        finally:
+            _clear_parking(env)
+
+
+class TestTheAgentIsTheCentreOfALiveSession:
+    """Same report: "I end up with a very 'busy' screen with the agent not being
+    a clear central focus". Measured at 1440x900 before this change: the view's
+    heading, the 25:00 timer block and the Focus card put the terminal 432px down
+    the content area, its bottom fell below the window, the Capture card sat
+    wholly below the fold, and the Park-a-thought button covered the terminal's
+    bottom-right corner."""
+
+    @pytest.fixture(autouse=True)
+    def _no_orphan_session(self, env):
+        yield
+        _end_any_session(env)
+
+    @pytest.mark.parametrize("size", [(1440, 900), (1024, 768)], ids=["laptop", "tablet"])
+    def test_one_strip_then_a_console_that_fills_the_window(
+        self, browser: Browser, env, size: tuple[int, int]
+    ) -> None:
+        width, height = size
+        ctx = browser.new_context(viewport={"width": width, "height": height})
+        page = ctx.new_page()
+        watch = ConsoleWatch(page)
+        try:
+            page.goto(f"{env.base_url}/")
+            goto_view(page, "body-double")
+            page.wait_for_selector("#bd-activity-input", state="visible", timeout=15_000)
+            _start_session(page, "Reconcile the March invoices")
+            page.wait_for_selector(
+                ".bd-console-panel .xterm-mount", state="visible", timeout=30_000
+            )
+            page.wait_for_timeout(600)
+            g = page.evaluate(_LIVE_GEOMETRY_JS)
+
+            assert g["viewHeader"] is None, "the view's heading still sits above a live session"
+            assert g["timerBlock"] is None, "the 25:00 timer block still sits above a live session"
+            content, strip, console = g["content"], g["strip"], g["console"]
+            above = strip["top"] - content["top"]
+            assert above <= 24, f"{above:.0f}px of other panels above the session strip"
+            gap = console["top"] - strip["bottom"]
+            assert gap <= 16, f"{gap:.0f}px between the session strip and the agent"
+            below = console["bottom"] - g["innerHeight"]
+            assert below <= 0.5, f"the agent's console runs {below:.0f}px below the window"
+            share = console["height"] / content["height"]
+            assert share >= 0.6, f"the agent's console gets {share:.0%} of the content area"
+            for name in ("capture", "fab"):
+                if g[name] is not None:
+                    assert not _overlaps(console, g[name]), f"the {name} covers the agent's console"
+        except Exception:
+            diag(page, f"bd-live-fill-{width}", watch)
+            raise
+        finally:
+            ctx.close()
+
+    def test_the_strip_carries_the_timer_and_the_end_control(self, bd_page: Page) -> None:
+        try:
+            _start_session(bd_page, "Write the quarterly report")
+            strip = bd_page.locator(".bd-live-strip")
+            timer = strip.locator("#bd-live-timer")
+            assert timer.is_visible(), "no timer on the session strip"
+            assert timer.inner_text() == bd_page.evaluate(
+                "() => window.Alpine.store('pomodoro').display"
+            )
+            strip.locator("#bd-live-pomodoro").click()
+            bd_page.wait_for_function(
+                "() => window.Alpine.store('pomodoro').running === true", timeout=5_000
+            )
+            assert strip.locator("#bd-end-session").is_visible()
+        except Exception:
+            diag(bd_page, "bd-live-strip-timer", _watch_for(bd_page))
+            raise
+        finally:
+            with contextlib.suppress(Exception):
+                bd_page.evaluate("() => window.Alpine.store('pomodoro').stop()")
+
+    def test_capture_folds_for_the_session_and_opens_on_request(self, bd_page: Page) -> None:
+        try:
+            assert bd_page.locator("#bd-capture-body").is_visible(), "fixture: Capture starts open"
+            _start_session(bd_page, "Tidy the garage inventory sheet")
+            bd_page.wait_for_selector("#bd-capture-body", state="hidden", timeout=5_000)
+            assert bd_page.locator("#bd-tab-note").is_visible(), (
+                "the way to take a note must stay on screen while Capture is folded"
+            )
+
+            bd_page.locator("#bd-tab-note").click()
+            bd_page.wait_for_selector("#bd-note-body", state="visible", timeout=5_000)
+            bd_page.wait_for_timeout(300)
+            g = bd_page.evaluate(_LIVE_GEOMETRY_JS)
+            assert g["console"]["height"] >= 240, (
+                f"opening Capture squeezed the agent to {g['console']['height']:.0f}px"
+            )
+            assert not _overlaps(g["console"], g["capture"]), "Capture covers the agent's console"
+
+            bd_page.locator("#bd-end-session").click()
+            bd_page.locator("#bd-end-confirm-yes").click()
+            bd_page.wait_for_selector("#bd-end-session", state="hidden", timeout=20_000)
+            assert bd_page.locator("#bd-capture-body").is_visible(), (
+                "ending must give back the idle layout the learner chose"
+            )
+        except Exception:
+            diag(bd_page, "bd-live-capture-fold", _watch_for(bd_page))
+            raise
+
+    def test_the_note_topic_is_what_you_are_working_on(self, bd_page: Page, env) -> None:
+        import requests
+
+        try:
+            for topic in _STUDY_TOPICS[:3]:
+                _park_via_api(env, topic)
+            _start_session(bd_page, "Plan the allotment beds")
+            bd_page.locator("#bd-tab-note").click()
+            bd_page.wait_for_selector("#bd-note-topic", state="visible", timeout=5_000)
+            options = bd_page.eval_on_selector_all(
+                "#bd-note-topic option", "(els) => els.map((e) => e.textContent.trim())"
+            )
+            assert options == ["No topic", "Plan the allotment beds"], options
+            assert bd_page.eval_on_selector("#bd-note-topic", "(el) => el.value") == (
+                "Plan the allotment beds"
+            )
+
+            bd_page.locator("#bd-note-title").fill("Filed under the activity")
+            bd_page.locator("#bd-save-note").click()
+            bd_page.wait_for_selector("#bd-note-saved", state="visible", timeout=10_000)
+            notes = requests.get(f"{env.base_url}/api/notes?limit=5", timeout=15).json()
+            match = next(n for n in notes["notes"] if n["title"] == "Filed under the activity")
+            assert match["topic"] == "Plan the allotment beds", match
+        except Exception:
+            diag(bd_page, "bd-note-topic-activity", _watch_for(bd_page))
+            raise
+        finally:
+            _clear_parking(env)
 
 
 # ---------------------------------------------------------------------------
