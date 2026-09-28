@@ -52,6 +52,22 @@ experience may change before `1.0.0`.
 
 ### Changed
 
+- Body Double is for anything you are doing, and a live session is the
+  agent's screen. The **Focus** card is gone from Body Double: it listed the
+  three most recent study topics with an "at capacity" chip above the picker
+  and the terminal, which read as a limit on what could be body-doubled (the
+  activity field was always free text). The three-topic rule is unchanged where
+  study threads start, and committed focus is managed with `studyloop focus`;
+  notes taken in Body Double are filed under the activity. While a session is
+  live the view's heading and big timer step aside: the session strip carries
+  the activity, the Pomodoro (time, Start/Pause/Resume, Break) and **End
+  session**, the console fills the rest of the window, and Capture folds to one
+  row beneath it — its Note and Park tabs open it, and ending the session gives
+  back the layout you had. The floating Park-a-thought button and Pomodoro
+  widget step aside during a live Body Double session (the `P` shortcut still
+  parks), because they covered the terminal's last line and the End button.
+  Measured at 1440×900 before the change, the terminal started 432px down the
+  page and ran below the window.
 - The `openspec/` tree is no longer listed in `.gitignore`. Seventy-eight
   tracked, load-bearing files lived under an ignored path, so every new spec
   or archive file was invisible to `git status` and skipped by `git add -A`.

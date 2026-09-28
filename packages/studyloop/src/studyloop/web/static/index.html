@@ -1671,8 +1671,14 @@
              components.js, so the old string still FUNCTIONS in a browser —
              which is exactly why a stale attribute here would look fine and
              still fail the suite. -->
-        <div class="body-double-view session-dashboard" x-data="bodyDoubleSession()" x-init="init()">
-          <header class="body-double-header">
+        <div class="body-double-view session-dashboard" x-data="bodyDoubleSession()" x-init="init()"
+             :class="{ 'bd-live': sessionActive }">
+          <!-- While a session is live the view is the agent's screen: this
+               heading and the big timer block step aside (the timer moves onto
+               the session strip), so the console is the first thing under the
+               strip. Reported 2026-09-28: "a very 'busy' screen with the agent
+               not being a clear central focus". -->
+          <header class="body-double-header" x-show="!sessionActive">
             <h2>Body Double</h2>
             <p class="text-muted">A focused workspace with timer and terminal. Just be here.</p>
           </header>
@@ -1681,7 +1687,7 @@
                reason this surface exists, and test_remaining_surface asserts
                #bd-timer-display matches the SERVED defaults, so it binds to the
                store rather than hardcoding 00:00 as the old markup did. -->
-          <div class="body-double-timer">
+          <div class="body-double-timer" x-show="!sessionActive">
             <div class="timer-display large-timer">
               <span class="timer-time" id="bd-timer-display" x-text="$store.pomodoro.display">00:00</span>
             </div>
@@ -1698,39 +1704,12 @@
             </div>
           </div>
 
-          <!-- FOCUS: at most three live topics. The cap is the point — an
-               unbounded list is the thing this whole feature exists to prevent. -->
-          <section id="bd-focus" class="bd-card">
-            <div class="bd-card-head">
-              <button id="bd-focus-toggle" type="button" class="bd-collapse-btn"
-                      :aria-expanded="String(!focusCollapsed)" @click="toggleFocus()">
-                <span x-text="focusCollapsed ? '▸' : '▾'"></span> Focus
-              </button>
-              <span id="bd-focus-count" x-text="slotsUsed + ' of ' + maxActive + ' topics'"></span>
-              <button id="bd-focus-refresh" type="button" class="bulk-btn" @click="refreshFocus()">Refresh</button>
-              <button id="bd-focus-clear" type="button" class="bulk-btn" x-show="focus.is_set"
-                      @click="clearFocus()">Clear focus</button>
-              <span id="bd-focus-stale" class="bd-chip warn" x-show="focus.is_stale"
-                    title="This focus was set more than 30 days ago — still current?">stale</span>
-            </div>
-            <div id="bd-focus-body" x-show="!focusCollapsed">
-              <div id="bd-focus-empty" class="text-muted" x-show="slots.length === 0">
-                Nothing in focus yet. Park a tangent or set a focus to fill these slots.
-              </div>
-              <template x-for="slot in slots" :key="slot.topic">
-                <div class="bd-focus-slot">
-                  <button type="button" class="bd-focus-slot-topic" x-text="slot.topic"
-                          @click="pickTopic(slot)"></button>
-                  <button type="button" class="bd-focus-drop" x-show="slot.source === 'focus'"
-                          :data-topic="slot.topic" @click="dropTopic(slot.topic)"
-                          aria-label="Drop this topic">&times;</button>
-                </div>
-              </template>
-              <span id="bd-focus-at-capacity" class="bd-chip" x-show="atCapacity">at capacity</span>
-              <span id="bd-focus-parked" class="bd-chip" x-show="parkingLotCount > 0"
-                    x-text="parkingLotCount + ' parked'"></span>
-            </div>
-          </section>
+          <!-- No Focus card here (removed 2026-09-28). Body doubling is for
+               anything the learner is doing, not a study thread (ADR-0003), and
+               a list of three study topics with an "at capacity" chip above the
+               picker read as a restriction on what could be body-doubled. The
+               three-topic rule still holds where study threads start (the Study
+               picker's park-first check) and in `studyloop focus`. -->
 
           <!-- PICKER (idle). .bd-start-picker is the surface-scoping hook: this
                view is declared BEFORE the Study view in the document, so an
@@ -1834,9 +1813,19 @@
 
           <!-- LIVE (session active). The strip is sticky so End stays reachable
                without scrolling back up mid-session. -->
-          <section x-show="sessionActive">
+          <section class="bd-live-section" x-show="sessionActive">
             <div class="bd-live-strip">
               <span id="bd-live-activity" x-text="liveActivity"></span>
+              <!-- The Pomodoro, on the strip while a session is live: the big
+                   timer block steps aside so the console sits right under this
+                   strip. Same store, so starting it here is starting it. -->
+              <span class="bd-live-timer-phase" x-show="$store.pomodoro.running && $store.pomodoro.isBreak">Break</span>
+              <span id="bd-live-timer" class="bd-live-timer"
+                    :class="{ running: $store.pomodoro.running && !$store.pomodoro.paused }"
+                    x-text="$store.pomodoro.display" aria-label="Pomodoro time"></span>
+              <button id="bd-live-pomodoro" type="button" class="bulk-btn"
+                      @click="$store.pomodoro.running ? $store.pomodoro.togglePause() : $store.pomodoro.start()"
+                      x-text="!$store.pomodoro.running ? 'Start Pomodoro' : ($store.pomodoro.paused ? 'Resume' : 'Pause')"></button>
               <button id="bd-end-session" type="button" class="toggle-btn"
                       aria-label="End body double session" @click="endSession()">End session</button>
               <div id="bd-end-confirm" class="bd-end-confirm" x-show="confirmingEnd">
@@ -1878,7 +1867,10 @@
             <div class="bd-console-panel">
               <div class="session-terminal-area agent-console" x-data="liveAgentConsole('body-double')">
                 <div class="agent-console-status">
-                  <span class="status-dot" :class="statusDot"></span>
+                  <!-- The Study console's dot classes: .status-dot had no rule,
+                       so the dot was invisible and "Connected · kiro" rendered
+                       as large bold text over the terminal. -->
+                  <span class="agent-status-dot" :class="'agent-status-dot-' + statusDot"></span>
                   <span x-text="status"></span>
                 </div>
                 <!-- The .xterm-mount class is applied ONLY while a Body Double
@@ -1898,7 +1890,7 @@
           </section>
 
           <!-- CAPTURE: note or park, without leaving the session. -->
-          <section id="bd-capture" class="bd-card">
+          <section id="bd-capture" class="bd-card" :class="{ collapsed: captureCollapsed }">
             <div class="bd-card-head">
               <button id="bd-capture-toggle" type="button" class="bd-collapse-btn"
                       :aria-expanded="String(!captureCollapsed)" @click="toggleCapture()">
@@ -1932,10 +1924,13 @@
                   <option value="struggle">Struggle</option>
                 </select>
                 <button id="bd-note-template" type="button" class="bulk-btn" @click="applyTemplate()">Template</button>
+                <!-- What you are working on, not a list of study topics: a note
+                     taken while body-doubling "the March invoices" belongs to
+                     the March invoices. -->
                 <select id="bd-note-topic" class="picker-select" x-model="noteTopic">
                   <option value="">No topic</option>
-                  <template x-for="slot in slots" :key="'nt-' + slot.topic">
-                    <option :value="slot.topic" x-text="slot.topic"></option>
+                  <template x-for="topic in noteTopicOptions" :key="'nt-' + topic">
+                    <option :value="topic" x-text="topic"></option>
                   </template>
                 </select>
                 <input id="bd-note-title" type="text" x-model="noteTitle" placeholder="Title">

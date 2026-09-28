@@ -48,7 +48,8 @@ the move goes with the old one, and a session you rejoin carries none.
 ## Body Double
 
 Use Body Double when the difficult part is starting or staying alongside the
-work rather than learning a new concept.
+work rather than learning a new concept. It is for anything you are doing —
+study, a report, a tax return — so there is no topic list to choose from.
 
 1. Open **Body Double**.
 2. Name the activity in concrete terms, such as “trace one decorator call”.
@@ -58,15 +59,20 @@ work rather than learning a new concept.
    move names an indexed lesson, **Open the lesson** opens it in the Course
    Explorer panel beside the picker, so the session can start with it already
    open next to you.
-3. Choose an agent and start the Pomodoro timer if a time box would help.
-4. Start the body-double session. The first move stays with you: it sits on
-   the session strip beneath the activity name for the whole session, with
-   **Open the lesson** beside it when a lesson was named, so the blank page
-   never arrives without it. It is a proposal on screen — the companion never
-   says it, and nothing opens unless you press the button.
-5. Use **Focus** for up to three active topics and **Park a thought** for anything
-   that can wait.
-6. End the session when the work block is complete.
+3. Choose an agent, and set the Pomodoro lengths if a time box would help.
+4. Start the body-double session. The page becomes the agent's screen: one
+   strip at the top with the activity, the Pomodoro (**Start Pomodoro**,
+   **Pause**, **Resume**) and **End session**, and the agent's console filling
+   the rest of the window. The first move stays with you: it sits on the strip
+   beneath the activity name for the whole session, with **Open the lesson**
+   beside it when a lesson was named. It is a proposal on screen — the
+   companion never says it, and nothing opens unless you press the button.
+5. **Capture** folds to one row under the console while the session runs.
+   **Note** opens the note composer (notes are filed under the activity) and
+   **Park** keeps a tangent for later without leaving the session; the `P`
+   shortcut parks from anywhere.
+6. End the session when the work block is complete. The page returns to the
+   layout you had before it started.
 
 ![A Body Double workspace with timer and a Kiro mentor](images/studyloop-body-double.png)
 

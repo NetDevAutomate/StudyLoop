@@ -14,6 +14,11 @@ the code reading was wrong, which is what made it a defect worth a suite:
 * a focus topic committed with ``studyloop focus set`` could not be removed from
   the web UI at all — ``POST /api/body-double/focus`` had zero callers.
 
+2026-09-28: the Focus pane left Body Double entirely ("I should be able to run
+a body double session for anything I'm doing, no restrictions or list of Focus
+areas"), so committed focus is managed with ``studyloop focus`` again, and a
+live session became the agent's screen (``TestTheAgentIsTheCentreOfALiveSession``).
+
 The `#bd-transport-select` coverage lives here too: it was actuated by no test
 anywhere, and its ``pty`` label is the one that lies under ``studyloop web
 --dev`` (see ``TestDevEngineIsVisible``).
@@ -117,55 +122,12 @@ def bd_page(browser: Browser, env):
         ctx.close()
 
 
-def _post_focus(env, topics: list[str]) -> None:
-    import requests
-
-    response = requests.post(
-        f"{env.base_url}/api/body-double/focus", json={"topics": topics}, timeout=15
-    )
-    assert response.status_code == 200, response.text
-
-
-def _focus_payload(env) -> dict:
-    import requests
-
-    return requests.get(f"{env.base_url}/api/body-double/focus", timeout=15).json()
-
-
 # ---------------------------------------------------------------------------
 # The dismiss path — collapse, because nothing could reopen a closed pane
 # ---------------------------------------------------------------------------
 
 
 class TestPanesCanBeFoldedAway:
-    def test_focus_pane_collapses_and_the_way_back_stays_on_screen(self, bd_page: Page) -> None:
-        """Collapsing hides the body but never the toggle.
-
-        A close button would be the wrong pattern here: this surface has no
-        sidebar entry, no store flag and no other affordance that could bring a
-        closed pane back, so "dismiss" would swap one dead end for another.
-        """
-        try:
-            body = bd_page.locator("#bd-focus-body")
-            toggle = bd_page.locator("#bd-focus-toggle")
-            assert body.is_visible(), "the focus panel should start expanded"
-            assert toggle.get_attribute("aria-expanded") == "true"
-
-            toggle.click()
-            bd_page.wait_for_selector("#bd-focus-body", state="hidden", timeout=5_000)
-            assert toggle.is_visible(), "collapsing must not hide its own toggle"
-            assert toggle.get_attribute("aria-expanded") == "false"
-            # The header row survives, so the state is legible while folded.
-            assert bd_page.locator("#bd-focus-count").is_visible()
-
-            toggle.click()
-            bd_page.wait_for_selector("#bd-focus-body", state="visible", timeout=5_000)
-            assert toggle.get_attribute("aria-expanded") == "true"
-            _watch_for(bd_page).assert_clean("collapsing the focus panel")
-        except Exception:
-            diag(bd_page, "bd-focus-collapse", _watch_for(bd_page))
-            raise
-
     def test_capture_pane_collapses_without_losing_the_draft(self, bd_page: Page) -> None:
         """A half-written note survives the fold — collapse is not discard."""
         try:
@@ -200,94 +162,16 @@ class TestPanesCanBeFoldedAway:
     def test_collapsed_state_survives_a_reload(self, bd_page: Page) -> None:
         """ "Get this out of my way" that undoes itself every reload is not an answer."""
         try:
-            bd_page.locator("#bd-focus-toggle").click()
             bd_page.locator("#bd-capture-toggle").click()
-            bd_page.wait_for_selector("#bd-focus-body", state="hidden", timeout=5_000)
             bd_page.wait_for_selector("#bd-capture-body", state="hidden", timeout=5_000)
 
             bd_page.reload()
             goto_view(bd_page, "body-double")
-            bd_page.wait_for_selector("#bd-focus", state="visible", timeout=15_000)
-            bd_page.wait_for_selector("#bd-focus-body", state="hidden", timeout=10_000)
+            bd_page.wait_for_selector("#bd-activity-input", state="visible", timeout=15_000)
             bd_page.wait_for_selector("#bd-capture-body", state="hidden", timeout=10_000)
         except Exception:
             diag(bd_page, "bd-collapse-persist", _watch_for(bd_page))
             raise
-
-
-# ---------------------------------------------------------------------------
-# Removing a committed focus topic — POST /api/body-double/focus had no caller
-# ---------------------------------------------------------------------------
-
-
-class TestCommittedFocusIsRemovable:
-    def test_a_config_committed_topic_can_be_dropped_from_the_web_ui(
-        self, bd_page: Page, env
-    ) -> None:
-        """The per-slot Park button is hidden for config-sourced slots (no row
-        id to demote), so before this there was no removal path at all."""
-        try:
-            _post_focus(env, ["Committed alpha", "Committed beta"])
-            bd_page.locator("#bd-focus-refresh").click()
-            bd_page.wait_for_function(
-                "() => document.querySelectorAll('.bd-focus-drop').length === 2",
-                timeout=10_000,
-            )
-
-            bd_page.locator('.bd-focus-drop[data-topic="Committed alpha"]').click()
-            bd_page.wait_for_function(
-                "() => document.querySelectorAll('.bd-focus-drop').length === 1",
-                timeout=10_000,
-            )
-            # The server agrees, not just the DOM.
-            topics = _focus_payload(env)["focus"]["topics"]
-            assert topics == ["Committed beta"], topics
-        finally:
-            with contextlib.suppress(Exception):
-                _post_focus(env, [])
-
-    def test_clear_focus_removes_every_committed_topic(self, bd_page: Page, env) -> None:
-        try:
-            _post_focus(env, ["Committed alpha", "Committed beta"])
-            bd_page.locator("#bd-focus-refresh").click()
-            bd_page.wait_for_selector("#bd-focus-clear", state="visible", timeout=10_000)
-
-            bd_page.locator("#bd-focus-clear").click()
-            bd_page.wait_for_selector("#bd-focus-clear", state="hidden", timeout=10_000)
-            payload = _focus_payload(env)
-            assert payload["focus"]["topics"] == []
-            assert payload["focus"]["is_set"] is False
-        finally:
-            with contextlib.suppress(Exception):
-                _post_focus(env, [])
-
-    def test_clear_focus_is_hidden_when_nothing_is_committed(self, bd_page: Page) -> None:
-        """It must not offer to clear a focus that only came from the parking lot."""
-        assert not bd_page.locator("#bd-focus-clear").is_visible()
-
-    def test_stale_focus_is_surfaced(self, browser: Browser, env) -> None:
-        """``is_stale`` shipped in the API payload and was rendered nowhere, so a
-        focus committed months ago looked identical to one chosen this morning."""
-        original = env.config.read_text(encoding="utf-8")
-        env.config.write_text(
-            original + "focus:\n  topics:\n    - Ancient commitment\n  updated: '2024-01-01'\n",
-            encoding="utf-8",
-        )
-        ctx = browser.new_context(viewport={"width": 1400, "height": 900})
-        page = ctx.new_page()
-        watch = ConsoleWatch(page)
-        try:
-            assert _focus_payload(env)["focus"]["is_stale"] is True, "fixture is not stale"
-            page.goto(f"{env.base_url}/")
-            goto_view(page, "body-double")
-            page.wait_for_selector("#bd-focus-stale", state="visible", timeout=15_000)
-            assert "30 days" in (page.locator("#bd-focus-stale").get_attribute("title") or "")
-        except Exception:
-            diag(page, "bd-focus-stale", watch)
-            raise
-        finally:
-            ctx.close()
-            env.config.write_text(original, encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------
@@ -378,7 +262,9 @@ class TestEndingASessionIsFindableAndComplete:
         """
         try:
             _start_session(bd_page, "Spark shuffle partitions")
-            bd_page.locator('.body-double-controls button:has-text("Start Pomodoro")').click()
+            # While live, the Pomodoro is on the session strip (the timer block
+            # steps aside so the console sits under the strip).
+            bd_page.locator("#bd-live-pomodoro").click()
             bd_page.wait_for_function(
                 "() => window.Alpine.store('pomodoro').running === true", timeout=5_000
             )
@@ -400,16 +286,17 @@ class TestEndingASessionIsFindableAndComplete:
             raise
 
     def test_the_panes_are_still_usable_after_the_session_ends(self, bd_page: Page) -> None:
-        """Post-end state, which nothing asserted before: the panes stay (they
-        are the workspace, not session chrome), and they stay operable."""
+        """Post-end state, which nothing asserted before: the Capture pane stays
+        (it is the workspace, not session chrome), and it stays operable."""
         try:
             _start_session(bd_page, "dbt test selectors")
+            # Capture folds for a live session; the Note tab opens it.
+            bd_page.locator("#bd-tab-note").click()
             bd_page.locator("#bd-note-body").fill("A draft that must outlive the session.")
             bd_page.locator("#bd-end-session").click()
             bd_page.locator("#bd-end-confirm-yes").click()
             bd_page.wait_for_selector("#bd-end-session", state="hidden", timeout=20_000)
 
-            assert bd_page.locator("#bd-focus").is_visible()
             assert bd_page.locator("#bd-capture").is_visible()
             assert bd_page.locator("#bd-note-body").input_value() == (
                 "A draft that must outlive the session."
@@ -590,6 +477,20 @@ class TestTheAgentIsTheCentreOfALiveSession:
                 "() => window.Alpine.store('pomodoro').running === true", timeout=5_000
             )
             assert strip.locator("#bd-end-session").is_visible()
+            # A hit test, not visibility: starting the Pomodoro shows the floating
+            # timer widget (fixed, top-right), which landed exactly on End once
+            # the strip moved to the top of the view. Playwright's click only
+            # reported "intercepts pointer events" after a 30s timeout.
+            hit = bd_page.evaluate(
+                """() => {
+                    const end = document.querySelector('#bd-end-session');
+                    const r = end.getBoundingClientRect();
+                    const el = document.elementFromPoint(
+                        r.left + r.width / 2, r.top + r.height / 2);
+                    return el && el.closest('#bd-end-session') ? 'end' : (el ? el.className : null);
+                }"""
+            )
+            assert hit == "end", f"End session is covered by {hit!r} while the Pomodoro runs"
         except Exception:
             diag(bd_page, "bd-live-strip-timer", _watch_for(bd_page))
             raise
@@ -624,6 +525,40 @@ class TestTheAgentIsTheCentreOfALiveSession:
         except Exception:
             diag(bd_page, "bd-live-capture-fold", _watch_for(bd_page))
             raise
+
+    @pytest.mark.parametrize("size", [(1440, 900), (1024, 768)], ids=["laptop", "tablet"])
+    def test_opening_capture_never_covers_the_agent(
+        self, browser: Browser, env, size: tuple[int, int]
+    ) -> None:
+        """Found by measuring the first version of this layout at 1024x768: with
+        Capture open, the section holding the console shrank to 201px while the
+        console kept its 240px floor, so the console spilled 90px under the note
+        form. Short windows may scroll; they must never overlap."""
+        width, height = size
+        ctx = browser.new_context(viewport={"width": width, "height": height})
+        page = ctx.new_page()
+        watch = ConsoleWatch(page)
+        try:
+            page.goto(f"{env.base_url}/")
+            goto_view(page, "body-double")
+            page.wait_for_selector("#bd-activity-input", state="visible", timeout=15_000)
+            _start_session(page, "Sort the photo archive")
+            page.locator("#bd-tab-note").click()
+            page.wait_for_selector("#bd-note-body", state="visible", timeout=5_000)
+            page.wait_for_timeout(400)
+            g = page.evaluate(_LIVE_GEOMETRY_JS)
+            assert not _overlaps(g["console"], g["capture"]), (
+                f"the note form covers the agent's console: console {g['console']}, "
+                f"capture {g['capture']}"
+            )
+            assert g["console"]["height"] >= 220, (
+                f"opening Capture squeezed the agent to {g['console']['height']:.0f}px"
+            )
+        except Exception:
+            diag(page, f"bd-live-capture-{width}", watch)
+            raise
+        finally:
+            ctx.close()
 
     def test_the_note_topic_is_what_you_are_working_on(self, bd_page: Page, env) -> None:
         import requests
@@ -698,37 +633,8 @@ class TestTransportPickerNamesTheRealRenderer:
 
 class TestNoteComposerControls:
     """``#bd-note-topic`` and ``#bd-note-diagram`` were actuated by no test at
-    all — they were only ever asserted to exist."""
-
-    def test_the_topic_select_offers_the_live_focus_slots(self, bd_page: Page, env) -> None:
-        import requests
-
-        try:
-            _post_focus(env, ["Committed alpha"])
-            bd_page.locator("#bd-focus-refresh").click()
-            bd_page.wait_for_function(
-                "() => [...document.querySelectorAll('#bd-note-topic option')]"
-                ".some((o) => o.value === 'Committed alpha')",
-                timeout=10_000,
-            )
-            bd_page.select_option("#bd-note-topic", value="Committed alpha")
-            assert bd_page.eval_on_selector("#bd-note-topic", "(el) => el.value") == (
-                "Committed alpha"
-            )
-
-            # And it is what the saved note is filed under.
-            bd_page.locator("#bd-note-title").fill("Filed under the chosen topic")
-            bd_page.locator("#bd-save-note").click()
-            bd_page.wait_for_selector("#bd-note-saved", state="visible", timeout=10_000)
-            notes = requests.get(f"{env.base_url}/api/notes?limit=5", timeout=15).json()
-            match = next(n for n in notes["notes"] if n["title"] == "Filed under the chosen topic")
-            assert match["topic"] == "Committed alpha", match
-        except Exception:
-            diag(bd_page, "bd-note-topic", _watch_for(bd_page))
-            raise
-        finally:
-            with contextlib.suppress(Exception):
-                _post_focus(env, [])
+    all — they were only ever asserted to exist. The topic select's behaviour
+    is pinned by TestTheAgentIsTheCentreOfALiveSession's note-topic test."""
 
     def test_the_diagram_button_inserts_a_mermaid_block_and_renders_it(self, bd_page: Page) -> None:
         try:
@@ -765,7 +671,7 @@ class TestDevEngineIsVisible:
         try:
             page.goto(f"{dev_env.base_url}/")
             goto_view(page, "body-double")
-            page.wait_for_selector("#bd-focus", state="visible", timeout=15_000)
+            page.wait_for_selector("#bd-activity-input", state="visible", timeout=15_000)
             yield page
         finally:
             ctx.close()

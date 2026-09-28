@@ -3160,9 +3160,7 @@ function notesPanel() {
  * ==================================================================== */
 function bodyDoubleSession() {
   return {
-    slots: [], slotsUsed: 0, maxActive: 3, atCapacity: false, parkingLotCount: 0,
-    focus: { topics: [], is_set: false, is_stale: false },
-    focusCollapsed: false, captureCollapsed: false, captureTab: 'note',
+    captureCollapsed: false, captureTab: 'note',
     activity: '', firstMove: '', firstMoveLessonId: '', firstMoveLessonTitle: '',
     agent: '', transport: 'pty', energy: 5, agents: [],
     sessionActive: false, liveActivity: '', confirmingEnd: false,
@@ -3186,7 +3184,7 @@ function bodyDoubleSession() {
        comparison would then work only by accident. */
     _conflictEpoch: 0,
     /* True once init() has finished ALL its async work. The only honest ready
-       signal for tests: the conflict probe settles after the focus and options
+       signal for tests: the conflict probe settles after the options and notes
        loads, so nothing else marks the end of init(). */
     _initDone: false,
     noteKind: 'note', noteTopic: '', noteTitle: '', noteBody: '',
@@ -3251,9 +3249,18 @@ function bodyDoubleSession() {
         this.firstMoveLessonTitle = detail.firstMoveLessonTitle
           ? String(detail.firstMoveLessonTitle) : '';
       });
-      this.focusCollapsed = localStorage.getItem('bd.focus.collapsed') === 'true';
       this.captureCollapsed = localStorage.getItem('bd.capture.collapsed') === 'true';
-      await this.refreshFocus();
+      /* A live session is the agent's screen, so Capture folds when one starts
+         and the learner's own idle choice comes back when it ends. One watcher
+         rather than a line in each path, because a session goes live three
+         ways (start, reattach, adopt) and ends several more; a fold wired into
+         only some of them would leave the note form over the console in the
+         rest. Not persisted: this is the session's layout, not a preference. */
+      this.$watch('sessionActive', (live) => {
+        this.captureCollapsed = live
+          ? true
+          : localStorage.getItem('bd.capture.collapsed') === 'true';
+      });
       try {
         const res = await fetch('/api/session/options');
         if (res.ok) {
@@ -3310,52 +3317,18 @@ function bodyDoubleSession() {
       this.clearFirstMove();
     },
 
-    async refreshFocus() {
-      try {
-        const res = await fetch('/api/body-double/focus');
-        if (!res.ok) return;
-        const d = await res.json();
-        this.slots = d.slots || [];
-        this.slotsUsed = d.slots_used ?? this.slots.length;
-        this.maxActive = d.max_active ?? 3;
-        this.atCapacity = !!d.at_capacity;
-        this.parkingLotCount = d.parking_lot_count || 0;
-        this.focus = d.focus || { topics: [], is_set: false, is_stale: false };
-        /* Default the note topic to what the learner is actually doing. A note
-           filed against the wrong topic is worse than an untagged one. */
-        if (!this.noteTopic) {
-          this.noteTopic = this.liveActivity || (this.slots[0] && this.slots[0].topic) || '';
-        }
-      } catch {
-        Alpine.store('toast').show('Could not load focus — offline?');
-      }
+    /* The note composer's topic choices: what the learner is working on. While
+       a session is live that is its activity; afterwards, the topic the last
+       note was filed under, so an unsaved draft keeps its topic. Never a list
+       of study topics — this surface is for anything (2026-09-28). */
+    get noteTopicOptions() {
+      const topic = (this.liveActivity || this.noteTopic || '').trim();
+      return topic ? [topic] : [];
     },
 
-    toggleFocus() {
-      this.focusCollapsed = !this.focusCollapsed;
-      localStorage.setItem('bd.focus.collapsed', String(this.focusCollapsed));
-    },
     toggleCapture() {
       this.captureCollapsed = !this.captureCollapsed;
       localStorage.setItem('bd.capture.collapsed', String(this.captureCollapsed));
-    },
-
-    pickTopic(slot) { this.activity = slot.topic; },
-
-    async dropTopic(topic) { await this._setFocus(this.focus.topics.filter((t) => t !== topic)); },
-    async clearFocus() { await this._setFocus([]); },
-    async _setFocus(topics) {
-      try {
-        const res = await fetch('/api/body-double/focus', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ topics }),
-        });
-        if (res.ok) await this.refreshFocus();
-        else Alpine.store('toast').show('Could not update focus — try again');
-      } catch {
-        Alpine.store('toast').show('Could not update focus — offline?');
-      }
     },
 
     applyTemplate() { this.noteBody = this.templates[this.noteKind] || ''; },
@@ -3439,7 +3412,6 @@ function bodyDoubleSession() {
         // discard.
         if (this.parkQuestion.trim() === question) this.parkQuestion = '';
         if (this.parkNotes === notes) this.parkNotes = '';
-        await this.refreshFocus();
         window.dispatchEvent(new CustomEvent('parking:changed'));
       } catch {
         Alpine.store('toast').show('Could not park — offline?');
@@ -3478,10 +3450,8 @@ function bodyDoubleSession() {
         /* A start that succeeded proves nothing is blocking us any more. */
         this.conflictSession = null;
         this.liveActivity = topic;
-        /* Re-point the note composer at the live activity. refreshFocus() ran at
-           init(), before any session existed, so its default fell back to the
-           first focus slot - filing notes against the wrong topic for the whole
-           session. A misfiled note is worse than an untagged one. */
+        /* File notes under the live activity. A note filed against the wrong
+           topic is worse than an untagged one. */
         this.noteTopic = topic;
         window.dispatchEvent(new CustomEvent('study-session-start', {
           detail: {

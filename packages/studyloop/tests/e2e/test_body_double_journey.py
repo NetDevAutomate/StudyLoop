@@ -373,21 +373,6 @@ def _open_parking_panel(page: Page) -> None:
     page.wait_for_selector("#parking-panel", state="visible", timeout=10_000)
 
 
-def _ensure_topic_live(page: Page, topic: str) -> None:
-    """Guarantee ``topic`` occupies a focus slot, parking it if it does not.
-
-    The phases below tell one story in order, but a developer debugging the
-    session phase should not have to run the four before it. This makes the
-    precondition explicit and idempotent instead of implicit in test ordering.
-    """
-    slot = page.locator(f'.bd-focus-slot-topic:has-text("{topic}")')
-    if slot.count() == 0:
-        _park(page, topic)
-        page.wait_for_selector(
-            f'.bd-focus-slot-topic:has-text("{topic}")', state="visible", timeout=15_000
-        )
-
-
 # ---------------------------------------------------------------------------
 # Phase 1 — Body doubling is its own surface
 # ---------------------------------------------------------------------------
@@ -395,7 +380,8 @@ def _ensure_topic_live(page: Page, topic: str) -> None:
 
 def test_phase1_body_double_owns_its_surface(page: Page, bd_env: RunningServer) -> None:
     """The Study Session picker no longer offers Body Double as a session type,
-    and the Body Double view has a picker, a focus card and a capture panel."""
+    and the Body Double view has a picker and a capture panel — and, since
+    2026-09-28, no study-topic Focus card: body doubling is for anything."""
     try:
         page.goto(f"{bd_env.base_url}/#study-session")
         page.wait_for_function("() => !!window.Alpine", timeout=15_000)
@@ -414,8 +400,11 @@ def test_phase1_body_double_owns_its_surface(page: Page, bd_env: RunningServer) 
         assert page.locator(".body-double-view .body-double-header h2").inner_text() == (
             "Body Double"
         )
-        for selector in ("#bd-focus", "#bd-activity-input", "#bd-start-session", "#bd-capture"):
+        for selector in ("#bd-activity-input", "#bd-start-session", "#bd-capture"):
             assert page.locator(selector).is_visible(), f"{selector} missing on Body Double"
+        assert page.locator(".body-double-view #bd-focus").count() == 0, (
+            "the study-topic Focus card is back on Body Double"
+        )
 
         # The retained Pomodoro affordances (three suites address these).
         assert page.locator(
@@ -439,11 +428,15 @@ def test_phase1_body_double_owns_its_surface(page: Page, bd_env: RunningServer) 
 
 
 def test_phase2_focus_contract_caps_live_topics_at_three(page: Page, bd_env: RunningServer) -> None:
-    """A 4th topic goes to the parking lot; the panel says so, and the server agrees."""
+    """A 4th topic goes to the parking lot, and the server agrees.
+
+    Body Double no longer DISPLAYS the contract (2026-09-28: "no restrictions or
+    list of Focus areas"), so it is read from the API; the surface is asserted
+    to show none of it, which is the point of the change."""
     try:
         _open_body_double(page, bd_env)
-        assert page.locator("#bd-focus-count").inner_text() == "0 of 3 topics"
-        assert page.locator("#bd-focus-empty").is_visible()
+        before = _api(page, "/api/body-double/focus")
+        assert before["slots"] == [] and before["at_capacity"] is False
 
         # Order matters and is part of the contract: the live slots are the
         # MOST RECENT pending topics, so the first thing parked is the first
@@ -452,19 +445,6 @@ def test_phase2_focus_contract_caps_live_topics_at_three(page: Page, bd_env: Run
         for topic in ("Spark shuffle", "SQL window functions", "dbt tests", STUDY_TOPIC):
             _park(page, topic)
 
-        page.wait_for_function(
-            "() => document.querySelector('#bd-focus-count').innerText === '3 of 3 topics'",
-            timeout=15_000,
-        )
-        assert page.locator("#bd-focus-at-capacity").is_visible(), (
-            "at-capacity badge should show once three topics are live"
-        )
-        assert page.locator("#bd-focus .bd-focus-slot").count() == 3
-
-        # The overflow is parked, not lost, and the panel points at the board.
-        # Waited for, not asserted instantly: the focus card re-reads the server
-        # after each park, so the 4th park's refresh is in flight.
-        page.wait_for_selector("#bd-focus-parked", state="visible", timeout=15_000)
         focus = _api(page, "/api/body-double/focus")
         live = [slot["topic"] for slot in focus["slots"]]
         assert STUDY_TOPIC in live, f"most recent topic should be live, got {live}"
@@ -475,6 +455,11 @@ def test_phase2_focus_contract_caps_live_topics_at_three(page: Page, bd_env: Run
         assert focus["at_capacity"] is True
         assert len(focus["slots"]) == 3
         assert focus["parking_lot_count"] == 1
+
+        # At capacity, and Body Double still restricts nothing and lists nothing.
+        text = page.locator(".body-double-view").inner_text()
+        for phrase in ("of 3 topics", "at capacity", *live):
+            assert phrase not in text, f"Body Double shows {phrase!r}"
     except Exception:
         _diag(page, "phase2")
         raise
@@ -489,11 +474,9 @@ def test_phase3_session_starts_on_this_surface_only(page: Page, bd_env: RunningS
     """Real spawn, real WebSocket, and only the Body Double console mounts."""
     try:
         _open_body_double(page, bd_env)
-        _ensure_topic_live(page, STUDY_TOPIC)
 
-        # Pick the topic straight off the focus card — the whole point of the
-        # card is that it is actionable, not decorative.
-        page.locator(f'.bd-focus-slot-topic:has-text("{STUDY_TOPIC}")').first.click()
+        # Typed, as a learner names any activity: there is no list to pick from.
+        page.locator("#bd-activity-input").fill(STUDY_TOPIC)
         assert page.locator("#bd-activity-input").input_value() == STUDY_TOPIC
 
         page.wait_for_function(
@@ -1032,10 +1015,18 @@ def test_phase9_everything_survives_a_reload(page: Page, bd_env: RunningServer) 
         page.wait_for_function("() => !!window.Alpine", timeout=15_000)
         _open_body_double(page, bd_env)
 
-        # The focus contract is rebuilt from the two DBs, not from memory.
-        page.wait_for_function(
-            "() => document.querySelector('#bd-focus-count').innerText === '3 of 3 topics'",
-            timeout=15_000,
+        # The focus contract is rebuilt from the two DBs, not from memory. Read
+        # from the server: Body Double no longer displays it.
+        await_async_predicate(
+            page,
+            """async () => {
+                const r = await fetch('/api/body-double/focus');
+                if (!r.ok) return false;
+                const f = await r.json();
+                return f.at_capacity === true && f.slots.length === 3;
+            }""",
+            timeout=15.0,
+            what="the rebuilt focus contract to hold three live topics",
         )
         _open_notes_panel(page)
         page.wait_for_function(
