@@ -17,13 +17,20 @@ Run:  cd packages/studyloop && uv run pytest tests/e2e/test_server_tts.py -m e2e
 
 from __future__ import annotations
 
+import io
 import sys
+import time
+import wave
+from contextlib import suppress
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 
 pytest.importorskip("requests")
+pytest.importorskip("playwright")
+
+from playwright.sync_api import Error as PlaywrightError
 
 _tests_dir = str(Path(__file__).resolve().parent.parent)
 if _tests_dir not in sys.path:
@@ -32,7 +39,7 @@ if _tests_dir not in sys.path:
 from e2e._env import ConsoleWatch, launch_env, shutdown  # noqa: E402
 
 if TYPE_CHECKING:
-    from playwright.sync_api import Browser
+    from playwright.sync_api import Browser, Page
 
 pytestmark = [pytest.mark.e2e]
 
@@ -159,6 +166,189 @@ def test_warm_is_idempotent(env) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Playback probes — did the learner HEAR it, not just did the engine ask?
+# ---------------------------------------------------------------------------
+
+#: Installed before any app script: records how every media element's play()
+#: ended and every CSP violation, so a test can tell "the engine asked for audio"
+#: apart from "the audio played".
+_PLAYBACK_PROBE = """
+window.__plays = [];
+window.__cspViolations = [];
+document.addEventListener('securitypolicyviolation', (e) => {
+  window.__cspViolations.push(`${e.effectiveDirective} ${e.blockedURI}`);
+});
+const __play = HTMLMediaElement.prototype.play;
+HTMLMediaElement.prototype.play = function () {
+  const record = { outcome: 'pending', playing: false };
+  window.__plays.push(record);
+  this.addEventListener('playing', () => { record.playing = true; });
+  const promise = __play.call(this);
+  promise.then(
+    () => { record.outcome = 'resolved'; },
+    (err) => { record.outcome = `${err.name}: ${err.message}`; },
+  );
+  return promise;
+};
+"""
+
+_PLAYS_SETTLED = (
+    "() => window.__plays.length > 0 && window.__plays.every((p) => p.outcome !== 'pending')"
+)
+
+
+def _enable_voice(page: Page, base_url: str, *, timeout_ms: int) -> dict:
+    """Click the header voice toggle, as the learner does, and report how its
+    "Voice enabled" utterance ended.
+
+    A real click rather than page.evaluate: it is the learner's path, and it
+    gives the page the user activation a browser requires before audio plays.
+    """
+    page.goto(f"{base_url}/", wait_until="domcontentloaded", timeout=30000)
+    page.wait_for_function(
+        "() => !!window.Alpine && !!window.Alpine.store('settings')", timeout=15000
+    )
+    page.click("button[title^='Toggle voice']")
+    page.wait_for_function(
+        "() => !!window.ttsEngine && window.ttsEngine.tier !== null", timeout=timeout_ms
+    )
+    # Only the server tier plays through a media element; on any other tier
+    # there is nothing to wait for, and the caller's tier assertion says why.
+    if page.evaluate("() => window.ttsEngine.tier") == "server-openvox":
+        page.wait_for_function(_PLAYS_SETTLED, timeout=timeout_ms)
+    return page.evaluate(
+        "() => ({ plays: window.__plays, csp: window.__cspViolations,"
+        " tier: window.ttsEngine.tier })"
+    )
+
+
+#: The host's answers, faked at the network edge so the next two tests need no
+#: OpenVox and therefore run in CI. Only /api/tts/* is faked: the page, its real
+#: Content-Security-Policy header and the real tts-engine.js come from the server.
+_FAKE_HEALTH = {
+    "available": True,
+    "model": "kokoro",
+    "voice_count": 1,
+    "detail": "",
+    "voices": [{"id": "bf_emma", "language": "en-gb", "british": True}],
+}
+
+
+def _silent_wav(seconds: float = 0.2, rate: int = 24000) -> bytes:
+    """A real, decodable WAV in the shape OpenVox returns: 24 kHz, 16-bit, mono."""
+    buffer = io.BytesIO()
+    with wave.open(buffer, "wb") as out:
+        out.setnchannels(1)
+        out.setsampwidth(2)
+        out.setframerate(rate)
+        out.writeframes(b"\x00\x00" * int(seconds * rate))
+    return buffer.getvalue()
+
+
+def _fake_host(page: Page, *, audio: bytes, health_delay_s: float = 0.0) -> None:
+    def health(route) -> None:
+        if health_delay_s:
+            time.sleep(health_delay_s)  # the page's fetch waits; nothing else runs meanwhile
+        # The page may have given up and aborted the fetch while we slept.
+        with suppress(PlaywrightError):
+            route.fulfill(json=_FAKE_HEALTH)
+
+    page.route("**/api/tts/health", health)
+    page.route("**/api/tts/warm", lambda route: route.fulfill(json={"warmed": True}))
+    page.route(
+        "**/api/tts/speak",
+        lambda route: route.fulfill(status=200, content_type="audio/wav", body=audio),
+    )
+
+
+def test_host_audio_plays_under_the_pages_own_policy(browser: Browser, env) -> None:
+    """The host's audio must PLAY in the page, not merely be fetched.
+
+    Regression: `default-src 'self'` (2 Sep) with no media-src refused the blob:
+    URL every server-tier utterance plays through. /api/tts/speak answered 200
+    audio/wav, play() rejected, and the learner heard nothing while the badge
+    said "Kokoro (server)". The real-engine test below caught that only while
+    OpenVox was running, and so never in CI, which has none. This one fakes the
+    host's answers instead, so CI runs it.
+    """
+    ctx = browser.new_context(viewport={"width": 1440, "height": 900})
+    page = ctx.new_page()
+    page.add_init_script(_PLAYBACK_PROBE)
+    _fake_host(page, audio=_silent_wav())
+    watch = ConsoleWatch(page)
+    try:
+        state = _enable_voice(page, env.base_url, timeout_ms=20000)
+
+        assert state["tier"] == "server-openvox"
+        assert state["csp"] == [], f"the page's own policy refused: {state['csp']}"
+        assert [p["outcome"] for p in state["plays"]] == ["resolved"], state["plays"]
+        assert state["plays"][0]["playing"], "play() resolved but playback never started"
+        watch.assert_clean("playing the host's audio")
+    finally:
+        ctx.close()
+
+
+def test_audio_the_page_cannot_play_is_reported_not_silent(browser: Browser, env) -> None:
+    """When the host answers but the browser will not play it, the learner is told.
+
+    The engine resolved a refused play() silently, which is why the regression
+    above looked like a dead speech server: the badge stayed green, OpenVox had
+    answered every request, and the only trace was one console line. Bytes no
+    browser can decode stand in for any refusal: a policy, a codec, a corrupt
+    response.
+    """
+    ctx = browser.new_context(viewport={"width": 1440, "height": 900})
+    page = ctx.new_page()
+    page.add_init_script(_PLAYBACK_PROBE)
+    _fake_host(page, audio=b"this is not audio " * 64)
+    try:
+        state = _enable_voice(page, env.base_url, timeout_ms=20000)
+        assert state["plays"][0]["outcome"] != "resolved", "undecodable bytes played?"
+
+        toast = _toast_text(page, timeout_ms=5000)
+        assert "would not play" in toast, f"the refusal was silent (toast: {toast!r})"
+        # A failure notice has to last long enough to read; the store's 2s
+        # default is gone before a sentence is finished.
+        page.wait_for_timeout(3000)
+        assert page.evaluate("() => window.Alpine.store('toast').visible"), (
+            "the failure notice vanished before it could be read"
+        )
+    finally:
+        ctx.close()
+
+
+def test_a_slow_but_alive_host_still_gets_the_server_tier(browser: Browser, env) -> None:
+    """A host that answers in a few seconds is present, not absent.
+
+    Measured on the developer's Mac (29 Sep): OpenVox's own /v1/models takes 1.2
+    to 2.7s, so /api/tts/health does too, and the page gave it 2.5s. Five of eight
+    health calls ran over, and one page load in five fell back to system voices
+    with a healthy host -- a badge that flips between loads for no visible reason.
+    Four seconds is over the old budget and well inside a sane one.
+    """
+    ctx = browser.new_context(viewport={"width": 1440, "height": 900})
+    page = ctx.new_page()
+    page.add_init_script(_PLAYBACK_PROBE)
+    _fake_host(page, audio=_silent_wav(), health_delay_s=4.0)
+    try:
+        state = _enable_voice(page, env.base_url, timeout_ms=20000)
+        assert state["tier"] == "server-openvox", (
+            f"a host answering in 4s was treated as absent (tier {state['tier']!r})"
+        )
+    finally:
+        ctx.close()
+
+
+def _toast_text(page: Page, *, timeout_ms: int) -> str:
+    """The toast's message once one appears, or '' if none does in time."""
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+    with suppress(PlaywrightTimeoutError):
+        page.wait_for_function("() => !!window.Alpine.store('toast').message", timeout=timeout_ms)
+    return page.evaluate("() => window.Alpine.store('toast').message || ''")
+
+
+# ---------------------------------------------------------------------------
 # Browser leg — the reason this path exists
 # ---------------------------------------------------------------------------
 
@@ -172,30 +362,28 @@ def test_browser_uses_the_server_tier_without_touching_webgpu(browser: Browser, 
     needs none of them. A tablet on `--lan` is served over plain HTTP, so it is
     not a secure context and cannot have the first path -- if this assertion ever
     fails, the tablet has silently lost its voice.
+
+    It asserts that the audio PLAYED. It used to count play() calls, which kept
+    passing while the page's own policy refused every one (see
+    test_host_audio_plays_under_the_pages_own_policy below).
     """
     if not _health(env)["available"]:
         pytest.skip("no OpenVox on this host")
 
     ctx = browser.new_context(viewport={"width": 1440, "height": 900})
     page = ctx.new_page()
+    page.add_init_script(_PLAYBACK_PROBE)
     watch = ConsoleWatch(page)
     try:
-        page.goto(f"{env.base_url}/", wait_until="domcontentloaded", timeout=30000)
-        page.wait_for_timeout(1500)
-        page.evaluate(
-            """() => {
-                window.__played = 0;
-                const orig = Audio.prototype.play;
-                Audio.prototype.play = function () { window.__played++; return orig.call(this); };
-            }"""
-        )
-        page.evaluate("async () => { await window.ttsEngine.init(); }")
+        # A cold model costs ~51s on its first utterance, so allow for one.
+        state = _enable_voice(page, env.base_url, timeout_ms=120000)
 
-        assert page.evaluate("() => window.ttsEngine.tier") == "server-openvox"
+        assert state["tier"] == "server-openvox"
         assert page.evaluate("() => window.ttsEngine.listVoices().length") > 0
-
-        page.evaluate("async () => { await window.ttsEngine.speak('Hello from the host.'); }")
-        assert page.evaluate("() => window.__played") >= 1, "no audio element ever played"
+        assert state["csp"] == [], f"the page's own policy refused: {state['csp']}"
+        assert [p["outcome"] for p in state["plays"]] == ["resolved"], (
+            f"the host's audio never played: {state['plays']}"
+        )
         assert page.evaluate("() => window.ttsEngine._audioCtx ? 'created' : 'never'") == "never", (
             "the server tier should never build an AudioContext"
         )
