@@ -83,6 +83,21 @@ experience may change before `1.0.0`.
 
 ### Fixed
 
+- Web voice plays again. From 2 September the page's security policy
+  (`default-src 'self'`, no `media-src`) refused the `blob:` URL every
+  server-voice utterance plays through, so the badge said **Kokoro (server)**,
+  the speech server answered every request, and nothing was heard. The policy
+  now allows `media-src 'self' blob:`, for media only. A new browser test fakes
+  the speech server's answers, so CI checks that the audio actually plays; the
+  only earlier test needed a running speech server and so never ran in CI.
+- When the speech server sends audio that the browser will not play, a notice
+  now says so and stays up for 8 seconds. The refusal used to be silent, which
+  made a browser-side problem look like a dead speech server.
+- A slow but healthy speech server keeps the server voice. The page gave
+  `/api/tts/health` 2.5 seconds, and OpenVox's own model list takes 1.2 to
+  2.7 seconds, so about one page load in five fell back to system voices with
+  the server up. The budget is now 8 seconds; a server that is not running
+  still fails at once.
 - The web header is one line of controls on the brand's centre line.
   **Voice**, **Theme**, **Font** and **Size** each have a visible label, set
   above the control and out of the layout, so every control is the same 32px
