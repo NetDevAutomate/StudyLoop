@@ -51,8 +51,12 @@
 const SERVER_TTS_HEALTH = '/api/tts/health';
 const SERVER_TTS_SPEAK = '/api/tts/speak';
 const SERVER_TTS_WARM = '/api/tts/warm';
-// A host that is not answering must not hold the voice system in 'warming'.
-const SERVER_PROBE_TIMEOUT_MS = 2500;
+// A host that is not answering must not hold the voice system in 'warming' --
+// but a healthy one has to fit. OpenVox's own /v1/models takes 1.2-2.7s on the
+// developer's Mac (measured 29 Sep), so /api/tts/health does too; a 2.5s budget
+// missed 5 of 8 calls and sent 1 page load in 5 to system voices with the host
+// up. 8s still ends a hung host's probe and leaves room for a tablet's LAN hop.
+const SERVER_PROBE_TIMEOUT_MS = 8000;
 /* What the two common play() refusals mean, for the learner rather than a
  * developer. Anything else is reported by its own name. */
 const UNPLAYABLE_HINTS = {
