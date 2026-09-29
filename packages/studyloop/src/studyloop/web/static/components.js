@@ -465,7 +465,9 @@ document.addEventListener("alpine:init", () => {
       window.addEventListener('tts:engine-notice', (e) => {
         const d = (e && e.detail) || {};
         this.ttsNotice = d.message || '';
-        if (this.ttsNotice) Alpine.store('toast').show(this.ttsNotice);
+        // 8s, not the toast's 2s default: a failure notice is a sentence the
+        // learner has to read, and 2s is gone before it is finished.
+        if (this.ttsNotice) Alpine.store('toast').show(this.ttsNotice, 8000);
       });
 
       // Adopt whatever the engine already resolved before this store mounted —

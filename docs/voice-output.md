@@ -311,6 +311,7 @@ An iPad (both Brave and Chrome) and an Android tablet all speak through the serv
 - **Read once** — tap the speaker icon on a card, or press `T`. Reads the current content once. This works whether or not the header voice toggle is on.
 - **Voice toggle** — the header speaker button. It enables the app's own spoken announcements (Pomodoro transitions and confirmations such as "voice enabled") and reveals the voice selector and engine badge. Persists to `localStorage` under `voice`. **Click-only — no key is bound to it, and it does not read cards to you automatically.**
 - **Engine badge** — names the tier actually speaking (`server-openvox`, `web-speech`, `silent`), shown whenever voice is on rather than only on failure. A badge that appears only when something breaks teaches nobody what working looks like.
+- **Playback notice** — if the server sends audio but the browser will not play it, a notice says so (for example, that the browser blocks sound until you click the page) instead of staying silent. The badge names the tier, not whether this device could play a particular utterance.
 - **Stop** — a stop button appears in the header while audio is playing; click it (or it clears automatically when playback ends) to interrupt mid-utterance. It halts server-audio playback, not just Web Speech API output.
 
 !!! warning "There is no auto-voice, and `V` is unbound"

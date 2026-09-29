@@ -196,6 +196,54 @@ class TestDevModeCsp:
         assert "data:" in connect_src
 
 
+class TestMediaSrcAllowsServerSpeech:
+    """The server voice tier plays through a blob: URL, so media-src must allow
+    blob: -- in both modes, and in no other directive.
+
+    tts-engine.js ``_speakServer`` plays the host's WAV with
+    ``new Audio(URL.createObjectURL(blob))``. With no media-src, media falls
+    back to ``default-src 'self'``, and ``'self'`` does not match a blob: URL.
+    Reproduced in Chromium against the real host engine on 2026-09-29:
+    /api/tts/speak answered 200 audio/wav, the browser refused the load
+    ("Loading media from 'blob:...' violates the following Content Security
+    Policy directive: "default-src 'self'""), play() rejected with
+    NotSupportedError, and the learner heard nothing while the badge said
+    "Kokoro (server)". The same page with the policy bypassed played.
+    """
+
+    @staticmethod
+    def _directives(dev_mode: bool) -> dict[str, list[str]]:
+        csp = TestClient(create_app(dev_mode=dev_mode)).get("/").headers["content-security-policy"]
+        directives: dict[str, list[str]] = {}
+        for part in csp.split(";"):
+            tokens = part.split()
+            if tokens:
+                directives[tokens[0]] = tokens[1:]
+        return directives
+
+    @pytest.mark.parametrize("dev_mode", [False, True])
+    def test_media_src_allows_blob_urls(self, dev_mode: bool) -> None:
+        directives = self._directives(dev_mode)
+        assert "media-src" in directives, (
+            "no media-src: media falls back to default-src 'self', which refuses "
+            "the blob: URL every server-tier utterance plays through"
+        )
+        assert "'self'" in directives["media-src"]
+        assert "blob:" in directives["media-src"]
+
+    @pytest.mark.parametrize("dev_mode", [False, True])
+    def test_blob_is_allowed_for_media_only(self, dev_mode: bool) -> None:
+        """Guard: the relaxation must not spread. blob: in script-src would let
+        a script run code from a blob it built; media is the one consumer."""
+        directives = self._directives(dev_mode)
+        widened = sorted(
+            name
+            for name, sources in directives.items()
+            if "blob:" in sources and name != "media-src"
+        )
+        assert not widened, f"blob: must stay scoped to media-src; also found in {widened}"
+
+
 class TestSecurityHeadersSurviveExceptions:
     """R-13d: SecurityHeadersMiddleware was a BaseHTTPMiddleware, whose
     response path is bypassed when a route raises -- the resulting 500

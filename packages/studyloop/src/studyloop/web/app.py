@@ -107,6 +107,16 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
 #   passes `--dev` gets no `data:` relaxation at all, since ghostty-web is
 #   the sole consumer (found in the M1 council, A2: the first cut sent this
 #   unconditionally, in every mode, for a --dev-only need).
+# - media-src 'self' blob:: the server voice tier plays the host's WAV
+#   through `new Audio(URL.createObjectURL(blob))` (tts-engine.js
+#   `_speakServer`), and `'self'` does not match a blob: URL. With no
+#   media-src, media fell back to `default-src 'self'` and the browser
+#   refused every utterance -- /api/tts/speak answered 200 audio/wav, play()
+#   rejected, the badge said "Kokoro (server)" and nothing was heard, from
+#   2 Sep (when default-src arrived) until 29 Sep. Reproduced in Chromium
+#   against the real host engine; the same page with the policy bypassed
+#   played. A blob: URL can only be minted by this origin's own script, and
+#   the exception is media-only: script-src stays `'self' 'unsafe-eval'`.
 #
 # R-13c adds the four directives a CSP audit checks for by name rather than
 # trusting default-src to cover them, each verified free of cost here:
@@ -131,6 +141,7 @@ def _build_csp(dev_mode: bool) -> str:
     return (
         "default-src 'self'; script-src 'self' 'unsafe-eval'; "
         f"style-src 'self' 'unsafe-inline'; {connect_src}; "
+        "media-src 'self' blob:; "
         "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; "
         "form-action 'self'"
     )
