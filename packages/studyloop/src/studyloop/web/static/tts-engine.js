@@ -53,6 +53,12 @@ const SERVER_TTS_SPEAK = '/api/tts/speak';
 const SERVER_TTS_WARM = '/api/tts/warm';
 // A host that is not answering must not hold the voice system in 'warming'.
 const SERVER_PROBE_TIMEOUT_MS = 2500;
+/* What the two common play() refusals mean, for the learner rather than a
+ * developer. Anything else is reported by its own name. */
+const UNPLAYABLE_HINTS = {
+  NotAllowedError: 'the browser blocks sound until you click or tap the page',
+  NotSupportedError: 'the browser refused the audio',
+};
 /* The voice used until the learner picks one, and until the host's catalogue is
  * known.
  *
@@ -300,14 +306,36 @@ class TTSEngine {
     this._serverAudio = audio;
     try {
       await new Promise((resolve) => {
+        // A refused or undecodable audio used to resolve here in silence. The
+        // badge stayed green, the host had answered every request, and the
+        // learner went looking at the speech server -- which was fine: the page's
+        // own policy was refusing the audio. Say so instead. One notice per
+        // utterance (the error event and the rejected play() arrive together),
+        // and none for audio that stop() or a newer utterance cut short.
+        let reported = false;
+        const refused = (reason) => {
+          if (!reported && !this._stopped && gen === this._generation) {
+            reported = true;
+            const hint = UNPLAYABLE_HINTS[reason] || reason;
+            this._notice(`The voice would not play (${hint}), so nothing was spoken.`);
+          }
+          resolve();
+        };
         audio.onended = resolve;
-        audio.onerror = resolve;
-        audio.play().catch(() => resolve());
+        audio.onerror = () => refused(audio.error ? `media error ${audio.error.code}` : 'media error');
+        audio.play().catch((err) => refused((err && err.name) || 'play() refused'));
       });
     } finally {
       URL.revokeObjectURL(url);
       if (this._serverAudio === audio) this._serverAudio = null;
     }
+  }
+
+  /* Tell the learner something went wrong inside the engine. The settings store
+     turns tts:engine-notice into a toast; a console line alone is read by nobody. */
+  _notice(message) {
+    console.warn('[tts-engine]', message);
+    window.dispatchEvent(new CustomEvent('tts:engine-notice', { detail: { message } }));
   }
 
   _initWebSpeech(reason = 'no-server-speech', detail = '') {
