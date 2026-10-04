@@ -7,17 +7,17 @@ preflight`. "Red kept" = the failing-test transcript is in the commit body or un
 
 ## 0. Setup (coordinator)
 
-- [ ] 0.1 Create five worktrees under `../studyloop-wt/module-<lane>`, one per lane branch
+- [x] 0.1 Create five worktrees under `../studyloop-wt/module-<lane>`, one per lane branch
       (`feat/module-schema`, `feat/module-conformance`, `feat/module-runner`,
       `feat/module-mentor-delivery`, `feat/module-web-labs`) from the same base sha; run
       `env -u VIRTUAL_ENV just sync-dev` then `env -u VIRTUAL_ENV just test` in **one** of them
       (the recipe is proven once); every other lane runs `just sync-dev` as its own step 1.
-- [ ] 0.2 Write the five lane briefs per `design.md` §11 and store them under
+- [x] 0.2 Write the five lane briefs per `design.md` §11 and store them under
       `openspec/changes/module-contract-v1/briefs/`; verify each names its owned/forbidden
       globs, DoD tests, red-first obligation and merge position.
-- [ ] 0.3 Confirm the docs lease: `docs/`, `mkdocs.yml`, `CHANGELOG.md` have no uncommitted
+- [x] 0.3 Confirm the docs lease: `docs/`, `mkdocs.yml`, `CHANGELOG.md` have no uncommitted
       edits from the other session before S3 is scheduled; verify with `git status` on `main`.
-- [ ] 0.4 Open `council/catch-rate.md` (design.md §7 review cadence) with one row per planned
+- [x] 0.4 Open `council/catch-rate.md` (design.md §7 review cadence) with one row per planned
       review: S-review, M0, C-review, M1, T-review, W-review, M2.
 
 ## 1. Wave 0 — S lands; C and R go red; T spikes

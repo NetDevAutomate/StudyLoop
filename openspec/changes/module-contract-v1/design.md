@@ -64,9 +64,12 @@ does not exist yet; T creates it, marked `integration`.
 - **`web/routes/session/_options.py`**, the web trio, `labs.js` — W only.
 - **`docs/`, `mkdocs.yml`, `CHANGELOG.md`** — a **docs lease**: one writer at a time. Another
   session is editing `docs/contributing.md`, `CONTRIBUTING.md`, `CHANGELOG.md` and `mkdocs.yml`
-  in the main checkout as this is written; S's docs commit (S3) waits until that work has
-  landed on `main`, then rebases once. W holds the lease last for reconciliation. Nobody in
-  this change edits `docs/contributing.md`, `CONTRIBUTING.md` or `docs/contributor-modules.md`.
+  in the main checkout as this is written — **landed on `main` as `71c09393` (16:58)**. The lease
+  queue is now: the contributor-guide lane (`openspec/changes/contributor-guide-v1`, owner
+  request 16:45) → S3 → W5. S3 rebases once onto whatever the guide lane merged. Nobody in
+  this change edits `docs/contributing.md`, `CONTRIBUTING.md` or `docs/contributor-modules.md`;
+  `docs/module-contract.md` (S3) and the guide's proposals pages must agree — the guide lane
+  links the proposal, S3 writes the contract page.
 - **Lane-ownership guard** — S re-keys `tests/_lane_ownership.py` from the `lane/m<n>-` regex to
   an explicit branch→lane map (`feat/module-schema` → `S`, …) in `fixtures/lane_ownership.yaml`,
   preserving the legacy behaviour for the archived lanes, keeping fnmatch, `shared` and

@@ -20,6 +20,17 @@ the repository, **report the gap** in your final report; do not guess.
   `env -u VIRTUAL_ENV just sync-dev`, then prove the import resolves inside the worktree:
   `env -u VIRTUAL_ENV uv run python -c 'import studyloop, sys; print(studyloop.__file__)'`
   must print a path under your worktree. If it prints the main checkout's path, stop and report.
+- **Sandbox facts (verified 2026-10-04, do not re-diagnose):**
+  - The default `TMPDIR` in this sandbox cannot host SQLite (`sqlite3.OperationalError: unable
+    to open database file`), which turns the suite into ~400 failures and ~1,600 errors. Before
+    **every** test or gate command run `export TMPDIR="$(getconf DARWIN_USER_TEMP_DIR)"`.
+  - With that, the baseline at base `f8c68662` is **7445 passed, 16 skipped, 1 failed**; the one
+    failure is `test_fresh_install_scope.py::test_studyloop_study_exits_2_with_the_diagnostic_on_a_virgin_home`
+    (tmux is a mise shim that cannot resolve under the test's virgin HOME). It is pre-existing;
+    report it as such. Any other red is yours.
+  - `mkdocs.yml` uses an `exclude_docs` allowlist: a new docs page needs both a `!/page.md`
+    un-exclude line and a nav entry, and ADR files are excluded from the built site by design.
+    Both edits are docs-lease territory (§4).
 
 ## 1. Settled constraints (C1–C8) — flag a violation, do not re-argue
 

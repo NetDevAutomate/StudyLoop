@@ -12,7 +12,7 @@ browser Check progress, automatic checks), §5.6 (no learner-facing hint/solutio
 | --- | --- |
 | Branch | `feat/module-web-labs` |
 | Worktree | `/Users/ataylor/code/personal/tools/studyloop-wt/module-web-labs` |
-| Base | the `main` sha after S merges (re-create the worktree then; the one created at wave 0 is a placeholder) |
+| Base | created at wave 0 from `f8c68662` like the others; **rebase onto `main`** after S merges and again before W2 — no re-creation |
 | Merge position | **always last**; holds the docs lease last for reconciliation |
 | DoD items | 4-UI, 7 (acceptance test only — Bruno runs the live proof), assembly |
 
