@@ -1,0 +1,105 @@
+$ uv run studyloop --help
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:19Z
+Usage: studyloop [OPTIONS] COMMAND [ARGS]...
+
+  studyloop — AuDHD study pipeline: content, review, and session tracking.
+
+Options:
+
+$ uv run studyloop chat-note --help
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:19Z
+Usage: studyloop chat-note [OPTIONS] PATH
+
+  Build a Socratic context pack for a note.
+
+Options:
+
+$ uv run --group dev pytest packages/studyloop/tests/test_contributor_examples.py -q
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:19Z
+....                                                                     [100%]
+4 passed in 0.31s
+
+$ uv run --group dev pytest packages/studyloop/tests/test_docs_drift.py -q -k studyloop_example
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:19Z
+........................................................................ [ 26%]
+........................................................................ [ 52%]
+........................................................................ [ 79%]
+........................................................                 [100%]
+272 passed, 25 deselected in 1.02s
+
+$ uv run --group dev pytest packages/studyloop/tests/test_e2e_coverage_gate.py -q -k cli
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:19Z
+..                                                                       [100%]
+2 passed, 14 deselected in 6.64s
+
+$ uv run --group dev pytest packages/studyloop/tests/test_web_now.py -q
+exit=0  sha=b5d15227  utc=2026-10-04T19:25Z
+.                                                                        [100%]
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/starlette/testclient.py:53
+  /Users/ataylor/code/personal/tools/studyloop-wt/contributor-guide-b/.venv/lib/python3.12/site-packages/starlette/testclient.py:53: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+$ just test-web
+exit=0  sha=b5d15227  utc=2026-10-04T19:25Z
+uv run --group dev pytest packages/studyloop/tests/test_web_app.py packages/studyloop/tests/test_web_content_gen_rest.py packages/studyloop/tests/test_web_content_gen_ws.py packages/studyloop/tests/test_web_content_providers.py packages/studyloop/tests/test_web_secrets_route.py packages/studyloop/tests/test_web_session_start_acp.py packages/studyloop/tests/test_web_session_start_pty.py packages/studyloop/tests/test_web_session_ws.py packages/studyloop/tests/test_web_runtime_feedback.py
+============================= test session starts ==============================
+platform darwin -- Python 3.12.8, pytest-9.0.3, pluggy-1.6.0
+readiness budgets: unscaled (1.0x) — release configuration
+rootdir: /Users/ataylor/code/personal/tools/studyloop-wt/contributor-guide-b/packages/studyloop
+
+$ just test-js
+exit=0  sha=b5d15227  utc=2026-10-04T19:25Z
+node --test packages/studyloop/tests/js/*.test.js
+✔ extractChunkText: single content object (0.3505ms)
+✔ extractChunkText: content array takes the first entry (0.0565ms)
+✔ extractChunkText: flat payload (0.404084ms)
+✔ extractChunkText: malformed frames yield empty string, never throw (0.1175ms)
+
+$ uv run --group dev pytest packages/studyloop/tests/test_e2e_coverage_gate.py -q -k route
+exit=0  sha=b5d15227  utc=2026-10-04T19:26Z
+.....                                                                    [100%]
+5 passed, 11 deselected in 32.05s
+
+$ uv run --group dev pytest packages/studyloop/tests/test_mcp_next_action.py -q
+exit=0  sha=d88d1c7d  utc=2026-10-04T19:29Z
+..........                                                               [100%]
+10 passed in 1.11s
+
+$ uv run --group dev pytest packages/studyloop/tests/test_mcp_session_parity.py -q
+exit=0  sha=d88d1c7d  utc=2026-10-04T19:29Z
+...............                                                          [100%]
+15 passed in 0.40s
+
+$ uv run --group dev pytest packages/studyloop/tests/test_mcp_*.py -q
+exit=0  sha=d88d1c7d  utc=2026-10-04T19:29Z
+........................................................................ [ 26%]
+........................................................................ [ 52%]
+........................................................................ [ 78%]
+............................................................             [100%]
+276 passed, 3 deselected in 3.91s
+
+$ uv run studyloop doctor --help
+exit=0  sha=393102f7  utc=2026-10-04T19:32Z
+Usage: studyloop doctor [OPTIONS]
+
+  Check installation health and report issues.
+
+Options:
+
+$ uv run --group dev pytest packages/studyloop/tests/test_doctor_deps.py packages/studyloop/tests/test_doctor_models.py -q
+exit=0  sha=393102f7  utc=2026-10-04T19:32Z
+..........                                                               [100%]
+10 passed in 0.32s
+
+$ uv run --group dev pytest packages/studyloop/tests/test_cli_doctor.py packages/studyloop/tests/test_doctor_exit_code.py -q
+exit=0  sha=393102f7  utc=2026-10-04T19:33Z
+...................                                                      [100%]
+19 passed in 0.45s
+
+$ uv run --group dev pytest packages/studyloop/tests/test_doctor_*.py -q
+exit=0  sha=393102f7  utc=2026-10-04T19:33Z
+........................................................................ [ 48%]
+........................................................................ [ 96%]
+......                                                                   [100%]
+150 passed in 24.95s
