@@ -106,7 +106,7 @@ preflight`. "Red kept" = the failing-test transcript is in the commit body or un
 - [x] R6 `cli/_drill.py`: `studyloop drill <setup|check|cleanup> <module>/<deck>/<task>` exported
       group; verify `test_module_drill_cli.py` runs the C3 scaffold's offline drill end to end
       with no Docker. G.
-- [ ] **M1 council** — adversarial review of R2–R5 before merge; coordinator arbitrates;
+- [x] **M1 council** — adversarial review of R2–R5 before merge; coordinator arbitrates;
       verify every M1 finding is either fixed with a test or recorded as accepted risk in
       `design.md` §9.
 
