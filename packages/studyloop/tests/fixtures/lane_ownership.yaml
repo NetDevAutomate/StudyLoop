@@ -226,8 +226,12 @@ lanes:
     - packages/studyloop/src/studyloop/modules/consent.py
     - packages/studyloop/src/studyloop/modules/attempt.py
     - packages/studyloop/src/studyloop/cli/_drill.py
+    # Coordinator entries at the R merge: hop.py was named by the R2 brief but never mapped;
+    # the seam test exercises C, R and T together and is owned by the coordinator (R row).
+    - packages/studyloop/src/studyloop/modules/hop.py
     - packages/studyloop/tests/test_module_runner.py
     - packages/studyloop/tests/test_module_drill_cli.py
+    - packages/studyloop/tests/test_module_lane_seams.py
     - packages/studyloop/tests/fixtures/runner/**
 
   T: # mentor delivery (feat/module-mentor-delivery)
