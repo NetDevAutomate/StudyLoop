@@ -17,6 +17,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+from studyloop.doctor.modules import check_module_prerequisites, probe_tool
 from studyloop.modules.check import check_module
 from studyloop.modules.scaffold import ScaffoldError, scaffold_module
 from studyloop.modules.store import (
@@ -315,3 +316,141 @@ def test_load_lockfile_rejects_a_foreign_shape(tmp_path: Path) -> None:
     with pytest.raises(StoreError, match="version-1"):
         load_lockfile(root)
     assert load_lockfile(tmp_path / "absent") == []
+
+
+# ---------------------------------------------------------------------------
+# C5 -- doctor probes for installed modules' prerequisites (fake binaries on PATH)
+# ---------------------------------------------------------------------------
+
+
+def _fake_bin(directory: Path, tool: str, output: str, exit_code: int = 0) -> Path:
+    """A fake ``tool`` that logs its argv to $FAKE_PROBE_LOG and prints ``output``."""
+    directory.mkdir(parents=True, exist_ok=True)
+    script = directory / tool
+    script.write_text(
+        "#!/bin/sh\n"
+        f'printf "%s\\n" "{tool} $*" >> "$FAKE_PROBE_LOG"\n'
+        f"printf '%s\\n' '{output}'\n"
+        f"exit {exit_code}\n",
+        encoding="utf-8",
+    )
+    script.chmod(0o755)
+    return script
+
+
+def _probe_log(path: Path) -> list[str]:
+    return path.read_text(encoding="utf-8").splitlines() if path.exists() else []
+
+
+def _install_with_prerequisites(
+    store: ModuleStore, tmp_path: Path, module_id: str, prerequisites: str
+) -> None:
+    module = scaffold_module(tmp_path / module_id, module_id)
+    manifest = module / "module.yaml"
+    text = manifest.read_text(encoding="utf-8")
+    assert "prerequisites: []" in text
+    manifest.write_text(
+        text.replace(
+            "prerequisites: []        # ids from core's enum: docker | kind | kubectl",
+            f"prerequisites: {prerequisites}",
+        ),
+        encoding="utf-8",
+    )
+    assert check_module(module).ok is True
+    store.add(module)
+
+
+@pytest.fixture
+def fake_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[str, Path]:
+    """A PATH holding only fake docker/kind/kubectl, each logging every invocation."""
+    log = tmp_path / "probe.log"
+    monkeypatch.setenv("FAKE_PROBE_LOG", str(log))
+    bins = tmp_path / "bin"
+    _fake_bin(bins, "docker", "Docker version 27.1.1, build deadbeef")
+    _fake_bin(bins, "kind", "kind version 0.24.0")
+    _fake_bin(bins, "kubectl", "Client Version: v1.31.0")
+    return str(bins), log
+
+
+def test_no_module_installed_runs_no_probe(store: ModuleStore, fake_path: tuple[str, Path]) -> None:
+    """Spec scenario: no module installed -> no prerequisite probe runs, nothing is touched."""
+    path, log = fake_path
+    assert check_module_prerequisites(store_root=store.root, path=path) == []
+    assert _probe_log(log) == []
+
+
+def test_probes_only_the_installed_modules_prerequisites_with_version_only(
+    store: ModuleStore, tmp_path: Path, fake_path: tuple[str, Path]
+) -> None:
+    path, log = fake_path
+    _install_with_prerequisites(
+        store, tmp_path, "k8s-drills", '[{id: docker, min: "24"}, {id: kind}]'
+    )
+    _install_with_prerequisites(store, tmp_path, "docker-drills", "[{id: docker}]")
+
+    results = check_module_prerequisites(store_root=store.root, path=path)
+
+    assert [(r.category, r.name, r.status) for r in results] == [
+        ("deps", "module_prereq_docker", "pass"),
+        ("deps", "module_prereq_kind", "pass"),
+    ]
+    assert results[0].message == "docker 27.1.1 (needed by docker-drills, k8s-drills)"
+    assert results[1].message == "kind 0.24.0 (needed by k8s-drills)"
+    # kubectl is on PATH but no installed module needs it: never looked up, never run
+    assert sorted(_probe_log(log)) == ["docker --version", "kind --version"]
+
+
+def test_missing_tool_fails_and_an_old_version_warns(
+    store: ModuleStore, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    log = tmp_path / "probe.log"
+    monkeypatch.setenv("FAKE_PROBE_LOG", str(log))
+    bins = tmp_path / "bin"
+    _fake_bin(bins, "docker", "Docker version 23.0.1, build cafebabe")
+    # no kubectl on this PATH at all
+    _install_with_prerequisites(
+        store, tmp_path, "k8s-drills", '[{id: docker, min: "24"}, {id: kubectl}]'
+    )
+
+    results = {r.name: r for r in check_module_prerequisites(store_root=store.root, path=str(bins))}
+
+    assert results["module_prereq_docker"].status == "warn"
+    assert (
+        "23.0.1 is below the minimum: k8s-drills needs >= 24"
+        in results["module_prereq_docker"].message
+    )
+    assert results["module_prereq_kubectl"].status == "fail"
+    assert "kubectl not found (needed by k8s-drills)" in results["module_prereq_kubectl"].message
+    assert results["module_prereq_kubectl"].fix_hint
+    assert _probe_log(log) == ["docker --version"]
+
+
+def test_tool_that_rejects_version_flag_is_a_warn_not_a_fail(
+    store: ModuleStore, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Real kubectl has no --version flag; present-but-unparseable is reported, not hidden."""
+    log = tmp_path / "probe.log"
+    monkeypatch.setenv("FAKE_PROBE_LOG", str(log))
+    bins = tmp_path / "bin"
+    _fake_bin(bins, "kubectl", "Error: unknown flag: --version", exit_code=1)
+    _install_with_prerequisites(store, tmp_path, "k8s-drills", "[{id: kubectl}]")
+
+    [result] = check_module_prerequisites(store_root=store.root, path=str(bins))
+
+    assert result.status == "warn"
+    assert "version is unknown" in result.message
+    assert "exited 1" in result.message
+    assert _probe_log(log) == ["kubectl --version"]
+
+
+def test_probe_tool_refuses_anything_outside_the_enum(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="not a prerequisite id"):
+        probe_tool("rm", path=str(tmp_path))
+
+
+def test_module_prerequisites_check_is_registered_under_deps() -> None:
+    """A checker that is defined but never registered is a doctor that stays silent."""
+    from studyloop.cli._doctor import _get_registry
+
+    registered = {(category, fn.__name__) for category, fn in _get_registry()._checkers}
+    assert ("deps", "check_module_prerequisites") in registered
