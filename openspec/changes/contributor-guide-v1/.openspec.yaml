@@ -1,0 +1,5 @@
+schema: spec-driven
+created: 2026-10-04
+# Documentation and a docs-drift test only: no product behaviour changes, so there are no
+# spec deltas to record. The guide's own definition of done is proposal.md.
+skip_specs: true

@@ -10,7 +10,7 @@ acted = changed code, tests or docs; discounted = false or unverifiable, with th
 
 | Review | Date | Seat(s) | Coordinator call (before) | Raised | Verified | Acted | Discounted (why) | Pointer |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| S-review | | | | | | | | |
+| S-review | 2026-10-04 | gpt-5.6-sol | Diff is small and mechanical (S1 `ea56f656` guard re-key, S2 `b462ed42` six fields). Expect 0–2 findings, verdict `merge` or `merge after fixes` on evidence only: (a) S1 has no red transcript under `evidence/S/` — the S brief asked for tests but not a saved red, while design.md's red-first rule does; (b) next-lane risks are the new public names `SlugId` / `SLUG_PATTERN` / `ScaffoldingLevel` in `content/schemas.py` that C's MC014 will import, and the `lane_ownership.yaml` glob transcription for files C/R/T create. I do not expect an ownership or scope finding. | | | | | |
 | M0 transport decision | | | | | | | | |
 | C-review | | | | | | | | |
 | M1 runner security | | | | | | | | |
