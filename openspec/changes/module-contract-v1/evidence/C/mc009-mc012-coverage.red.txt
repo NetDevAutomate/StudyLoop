@@ -1,0 +1,60 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_check.py -q -p no:cacheprovider -k "mc009_sees or placeholders_only or mc012_"
+# HEAD 2e840d1d5c6601952c110ab6acf8f1a73b953634 (tests added; check.py as committed there: MC009 uses .search + first-value placeholder skip, MC012 rejects four filenames and *.py only)  2026-10-04T21:38:20Z
+________ test_mc009_sees_a_secret_after_a_placeholder_on_the_same_line _________
+    assert _rule_ids(report) == {"MC009"}
+E   AssertionError: assert set() == {'MC009'}
+E
+E     Extra items in the right set:
+E     'MC009'
+E     Use -v to get more diff
+    assert _rule_ids(report) == {"MC012"}, [(f.rule_id, f.path) for f in report.findings]
+E   AssertionError: []
+E   assert set() == {'MC012'}
+E
+E     Extra items in the right set:
+E     'MC012'
+E     Use -v to get more diff
+    assert _rule_ids(report) == {"MC012"}, [(f.rule_id, f.path) for f in report.findings]
+E   AssertionError: []
+E   assert set() == {'MC012'}
+E
+E     Extra items in the right set:
+E     'MC012'
+E     Use -v to get more diff
+    assert _rule_ids(report) == {"MC012"}, [(f.rule_id, f.path) for f in report.findings]
+E   AssertionError: []
+E   assert set() == {'MC012'}
+E
+E     Extra items in the right set:
+E     'MC012'
+E     Use -v to get more diff
+    assert _rule_ids(report) == {"MC012"}, [(f.rule_id, f.path) for f in report.findings]
+E   AssertionError: []
+E   assert set() == {'MC012'}
+E
+E     Extra items in the right set:
+E     'MC012'
+E     Use -v to get more diff
+    assert _rule_ids(report) == {"MC012"}, [(f.rule_id, f.path) for f in report.findings]
+E   AssertionError: []
+E   assert set() == {'MC012'}
+E
+E     Extra items in the right set:
+E     'MC012'
+E     Use -v to get more diff
+_________________ test_mc012_flags_an_empty_pycache_directory __________________
+    assert _rule_ids(report) == {"MC012"}
+E   AssertionError: assert set() == {'MC012'}
+E
+E     Extra items in the right set:
+E     'MC012'
+E     Use -v to get more diff
+# -- summary --
+FAILED packages/studyloop/tests/test_module_check.py::test_mc009_sees_a_secret_after_a_placeholder_on_the_same_line
+FAILED packages/studyloop/tests/test_module_check.py::test_mc012_rejects_compiled_cached_and_shebang_python_and_the_repaired_twin_passes[pycache]
+FAILED packages/studyloop/tests/test_module_check.py::test_mc012_rejects_compiled_cached_and_shebang_python_and_the_repaired_twin_passes[pyc]
+FAILED packages/studyloop/tests/test_module_check.py::test_mc012_rejects_compiled_cached_and_shebang_python_and_the_repaired_twin_passes[pyo]
+FAILED packages/studyloop/tests/test_module_check.py::test_mc012_rejects_compiled_cached_and_shebang_python_and_the_repaired_twin_passes[env-python3-shebang]
+FAILED packages/studyloop/tests/test_module_check.py::test_mc012_rejects_compiled_cached_and_shebang_python_and_the_repaired_twin_passes[usr-bin-python-shebang]
+FAILED packages/studyloop/tests/test_module_check.py::test_mc012_flags_an_empty_pycache_directory
+7 failed, 2 passed, 44 deselected in 0.38s

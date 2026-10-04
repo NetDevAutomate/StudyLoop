@@ -1,0 +1,14 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_lifecycle.py -q -p no:cacheprovider -k "probe or prereq or version"   # doctor/modules.py temporarily probes every enum tool when no module is installed (the naive doctor), and check_module_prerequisites is not yet registered in cli/_doctor.py
+____________________ test_no_module_installed_runs_no_probe ____________________
+    assert check_module_prerequisites(store_root=store.root, path=path) == []
+E   AssertionError: assert [CheckResult(...x_auto=False)] == []
+E
+E     Left contains 3 more items, first extra item: CheckResult(category='deps', name='module_prereq_docker', status='pass', message='docker 27.1.1 (needed by (none))', fix_hint='', fix_auto=False)
+E     Use -v to get more diff
+___________ test_module_prerequisites_check_is_registered_under_deps ___________
+    assert ("deps", "check_module_prerequisites") in registered
+E   AssertionError: assert ('deps', 'check_module_prerequisites') in {('agents', 'check_agent_definitions'), ('agents', 'check_agent_smoke_tests'), ('agents', 'check_kiro_studyloop_agent'), ('agents',
+# -- summary --
+FAILED packages/studyloop/tests/test_module_lifecycle.py::test_no_module_installed_runs_no_probe
+FAILED packages/studyloop/tests/test_module_lifecycle.py::test_module_prerequisites_check_is_registered_under_deps
+2 failed, 5 passed, 16 deselected in 1.02s

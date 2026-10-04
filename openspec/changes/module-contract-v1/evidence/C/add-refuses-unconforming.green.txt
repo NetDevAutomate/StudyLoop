@@ -1,0 +1,37 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_lifecycle.py packages/studyloop/tests/test_module_cli.py -q -p no:cacheprovider   # C4: store + add/list/remove
+..................................                                       [100%]
+34 passed in 1.17s
+# (sha256 and git sha values are elided to 12 hex chars in this transcript so the commit hook's entropy detector does not flag a digest as a secret)
+# -- modules.lock.json after `module add` of a `module new` scaffold inside a git checkout with a remote --
+exit 0
+installed demo-drills 0.1.0 (sha256:42bc121ee925<...hex elided for detect-secrets>)
+snapshot: <tmp>/config/modules/snapshots/42bc121ee925<...hex elided for detect-secrets>
+git: https://git.example.invalid/drills/demo.git @ 1e33e8aded6d<...hex elided for detect-secrets>
+lockfile: <tmp>/config/modules/modules.lock.json
+$ studyloop module list
+demo-drills  0.1.0      42bc121ee925  <tmp>/config/modules/snapshots/42bc121ee925<...hex elided for detect-secrets>
+$ cat <config dir>/modules/modules.lock.json
+{
+  "version": 1,
+  "modules": [
+    {
+      "id": "demo-drills",
+      "version": "0.1.0",
+      "digest": "sha256:42bc121ee925<...hex elided for detect-secrets>",
+      "snapshot": "<tmp>/config/modules/snapshots/42bc121ee925<...hex elided for detect-secrets>",
+      "source": "<tmp>/repo/demo-drills",
+      "git_remote": "https://git.example.invalid/drills/demo.git",
+      "git_sha": "1e33e8aded6d<...hex elided for detect-secrets>",
+      "installed_at": "2026-10-04T20:00:44+00:00"
+    }
+  ]
+}
+# -- snapshot modes --
+-r--r--r-- <snapshot>/CHANGELOG.md
+-r--r--r-- <snapshot>/decks/getting-started.json
+-r--r--r-- <snapshot>/LICENSE
+-r--r--r-- <snapshot>/mentor/brief.md
+-r--r--r-- <snapshot>/module.yaml
+-r--r--r-- <snapshot>/README.md
+-r-xr-xr-x <snapshot>/scripts/check.sh
+-r-xr-xr-x <snapshot>/tests/check.sh

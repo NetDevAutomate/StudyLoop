@@ -1,0 +1,30 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_lifecycle.py -q -p no:cacheprovider -k "symlinked_manifest or fifo or hard_link or checks_the_bytes or published_bytes or does_not_match or staging_directory"
+# HEAD 494b64cc922a64af200696db575288ec83eb96aa (tests added, store.py as committed there: check -> digest -> copy, three reads of the live source)  2026-10-04T21:36:27Z
+____________ test_add_refuses_a_symlinked_manifest_naming_the_path _____________
+E   Failed: DID NOT RAISE <class 'studyloop.modules.store.StoreError'>
+___________________ test_add_refuses_a_fifo_naming_the_path ____________________
+E   studyloop.modules.store.ModuleCheckError: <tmp>/test_add_refuses_a_fifo_naming0/fifo fails module check (MC013); not installed
+_________________ test_add_refuses_a_hard_link_naming_the_path _________________
+E   Failed: DID NOT RAISE <class 'studyloop.modules.store.StoreError'>
+____________________ test_add_checks_the_bytes_it_publishes ____________________
+    assert check_module(snapshot).ok is True, [f.rule_id for f in check_module(snapshot).findings]
+E   AssertionError: ['MC007']
+E   assert False is True
+E    +  where False = CheckReport(ok=False, findings=[Finding(rule_id='MC007', message="decks/getting-started.json: task ready-01 command references 'scripts/check.sh', which does not exist", path='de
+E    +    where CheckReport(ok=False, findings=[Finding(rule_id='MC007', message="decks/getting-started.json: task ready-01 command references 'scripts/check.sh', which does not exist", path='decks/ge
+_____________ test_add_digest_is_the_digest_of_the_published_bytes _____________
+    assert content_digest(snapshot_dir(entry)) == entry.digest
+E   AssertionError: assert 'sha256:fa1fb...a6ba723cd9764' == 'sha256:f2c11...5d25c26672fec'
+E
+E     - sha256:f2c11c840f88…
+E     + sha256:fa1fba222c9b…
+____ test_add_refuses_when_the_existing_snapshot_does_not_match_its_digest _____
+E   Failed: DID NOT RAISE <class 'studyloop.modules.store.StoreError'>
+# -- summary --
+FAILED packages/studyloop/tests/test_module_lifecycle.py::test_add_refuses_a_symlinked_manifest_naming_the_path
+FAILED packages/studyloop/tests/test_module_lifecycle.py::test_add_refuses_a_fifo_naming_the_path
+FAILED packages/studyloop/tests/test_module_lifecycle.py::test_add_refuses_a_hard_link_naming_the_path
+FAILED packages/studyloop/tests/test_module_lifecycle.py::test_add_checks_the_bytes_it_publishes
+FAILED packages/studyloop/tests/test_module_lifecycle.py::test_add_digest_is_the_digest_of_the_published_bytes
+FAILED packages/studyloop/tests/test_module_lifecycle.py::test_add_refuses_when_the_existing_snapshot_does_not_match_its_digest
+6 failed, 1 passed, 23 deselected in 0.50s

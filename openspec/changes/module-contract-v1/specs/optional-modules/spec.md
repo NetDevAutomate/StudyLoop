@@ -30,6 +30,11 @@ capability is not declared SHALL fail conformance (MC006), and a declared `setup
 `cleanup` that no deck uses SHALL fail MC016. `terminal` names the learner's session itself and is
 always in use: declaring it never fails MC016.
 
+#### Scenario: a prerequisite outside the enum is refused
+- **GIVEN** a manifest whose `prerequisites` name an id core's enum lacks (e.g. `duckdb`)
+- **WHEN** `module check` runs
+- **THEN** it fails (rule MC005) naming the id and the ids core accepts
+
 #### Scenario: an undeclared capability is caught
 - **GIVEN** a deck task carrying `setupCommand` and a manifest whose `capabilities` omit `setup`
 - **WHEN** `module check` runs
@@ -57,7 +62,7 @@ fixture that fails it and a repaired twin that passes.
 - **THEN** it passes with zero findings
 
 #### Scenario: each rule has a failing fixture
-- **GIVEN** fixture `tests/fixtures/modules/mc0NN/`
+- **GIVEN** fixture `tests/fixtures/modules/mc0NN/broken/`
 - **WHEN** `module check` runs on it
 - **THEN** exactly rule `MC0NN` is reported, and its repaired twin passes
 

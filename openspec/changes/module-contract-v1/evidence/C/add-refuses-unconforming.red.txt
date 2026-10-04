@@ -1,0 +1,9 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_lifecycle.py -q -p no:cacheprovider -k "add_refuses or byte_identical"   # ModuleStore.add() temporarily writes the snapshot and lockfile BEFORE running check_module (the naive order): the test must catch the rewritten lockfile on its assertion
+    assert _lock_bytes(store) == before
+E   assert b'{\n  "versi...  }\n  ]\n}\n' == b'{\n  "versi...  }\n  ]\n}\n'
+E
+E     At index 52 diff: b'e' != b'g'
+E     Use -v to get more diff
+# -- summary --
+FAILED packages/studyloop/tests/test_module_lifecycle.py::test_add_refuses_an_unconforming_module_and_leaves_the_lockfile_byte_identical
+1 failed, 16 deselected in 0.56s

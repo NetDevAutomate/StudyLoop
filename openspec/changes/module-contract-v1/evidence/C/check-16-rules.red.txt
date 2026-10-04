@@ -1,0 +1,105 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_check.py -q --tb=line -p no:cacheprovider
+# worktree: feat/module-conformance after merging main at 1e4a777b (S2 schema present); engine stub raises NotImplementedError; the 5 fixture-integrity tests pass
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF.....                                   [100%]
+=================================== FAILURES ===================================
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_module_check.py::test_valid_scaffold_passes_every_rule
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC001]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC002]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC003]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC004]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC005]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC006]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC007]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC008]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC009]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC010]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC011]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC012]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC013]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC014]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC015]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC016]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC001]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC002]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC003]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC004]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC005]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC006]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC007]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC008]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC009]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC010]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC011]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC012]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC013]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC014]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC015]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC016]
+33 failed, 5 passed in 0.38s

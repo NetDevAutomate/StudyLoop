@@ -1,0 +1,15 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_lifecycle.py -q -p no:cacheprovider -k "kubectl or version_argv or rejects_version"
+# HEAD 6c172b85ee15114b060084ccbdd6a658aa9610cd (tests added; doctor/modules.py as committed there probes every tool with --version; no PREREQ_VERSION_ARGV)  2026-10-04T21:41:28Z
+# The kubectl test fails on its assertion (fake kubectl answers only `version --client --output=json`, so --version -> warn); the table test fails on the import of the not-yet-existing name.
+__________ test_kubectl_is_probed_with_version_client_json_and_parsed __________
+    assert (result.status, result.message) == ("pass", "kubectl 1.31.0 (needed by k8s-drills)")
+E   AssertionError: assert ('warn', 'kub... k8s-drills)') == ('pass', 'kub... k8s-drills)')
+E
+E     At index 0 diff: 'warn' != 'pass'
+E     Use -v to get more diff
+____________ test_version_argv_table_defaults_to_dash_dash_version _____________
+E   ImportError: cannot import name 'PREREQ_VERSION_ARGV' from 'studyloop.doctor.modules' (<wt>/packages/studyloop/src/studyloop/doctor/modules.py)
+# -- summary --
+FAILED packages/studyloop/tests/test_module_lifecycle.py::test_kubectl_is_probed_with_version_client_json_and_parsed
+FAILED packages/studyloop/tests/test_module_lifecycle.py::test_version_argv_table_defaults_to_dash_dash_version
+2 failed, 2 passed, 29 deselected in 0.48s

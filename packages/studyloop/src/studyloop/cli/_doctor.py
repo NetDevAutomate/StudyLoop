@@ -189,6 +189,7 @@ def _get_registry():
     from studyloop.doctor.database import check_review_db, check_sessions_db
     from studyloop.doctor.deps import check_optional_deps
     from studyloop.doctor.harness import check_harness_export
+    from studyloop.doctor.modules import check_module_prerequisites
     from studyloop.doctor.query_encoder import check_query_encoder_artefact
     from studyloop.doctor.voice import check_voice_readiness
 
@@ -232,6 +233,7 @@ def _get_registry():
         registry.register("config")(fn)
     registry.register("deps")(check_optional_deps)
     registry.register("deps")(check_query_encoder_artefact)
+    registry.register("deps")(check_module_prerequisites)  # module-contract v1 §5.4 probes
     # check_system_binaries (bin_ttyd) is gone: ttyd is fully retired
     # (ADR-0005, ADR-0008) -- nothing installs, spawns, or reads a ttyd
     # process any more, so reporting its absence would be noise with no

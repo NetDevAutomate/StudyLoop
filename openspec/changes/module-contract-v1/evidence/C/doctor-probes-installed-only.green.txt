@@ -1,0 +1,11 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_lifecycle.py packages/studyloop/tests/test_cli_doctor.py packages/studyloop/tests/test_doctor_integration.py -q -p no:cacheprovider   # C5: probes + the registration line; the existing doctor suites still pass with the new deps row registered
+.................................................                        [100%]
+49 passed in 21.49s
+# -- fake-binary invocation log from test_probes_only_the_installed_modules_prerequisites_with_version_only: exactly `docker --version` and `kind --version`; kubectl on PATH but never run --
+test_module_lifecycle.py::test_add_records_id_version_digest_and_snapshot PASSED [ 14%]
+test_module_lifecycle.py::test_no_module_installed_runs_no_probe PASSED [ 28%]
+test_module_lifecycle.py::test_probes_only_the_installed_modules_prerequisites_with_version_only PASSED [ 42%]
+test_module_lifecycle.py::test_missing_tool_fails_and_an_old_version_warns PASSED [ 57%]
+test_module_lifecycle.py::test_tool_that_rejects_version_flag_is_a_warn_not_a_fail PASSED [ 71%]
+test_module_lifecycle.py::test_probe_tool_refuses_anything_outside_the_enum PASSED [ 85%]
+test_module_lifecycle.py::test_module_prerequisites_check_is_registered_under_deps PASSED [100%]

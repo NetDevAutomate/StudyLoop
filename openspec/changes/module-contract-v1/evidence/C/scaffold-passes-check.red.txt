@@ -1,0 +1,18 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_lifecycle.py -q -p no:cacheprovider   # scaffold_module() temporarily writes module.yaml only: check_module must reject the incomplete scaffold on its assertions
+_______________________ test_scaffold_passes_every_rule ________________________
+    assert report.findings == []
+E   AssertionError: assert [Finding(rule...ml', line=10)] == []
+E
+E     Left contains 5 more items, first extra item: Finding(rule_id='MC003', message='required file README.md is missing', path='README.md', line=None)
+E     Use -v to get more diff
+_________________ test_scaffold_carries_one_offline_echo_drill _________________
+    assert len(decks) == 1
+E   assert 0 == 1
+E    +  where 0 = len([])
+__________ test_scaffold_ships_its_own_offline_shell_test_not_python ___________
+E   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>/test_scaffold_ships_its_own_of0/my-drills/tests'
+# -- summary --
+FAILED packages/studyloop/tests/test_module_lifecycle.py::test_scaffold_passes_every_rule
+FAILED packages/studyloop/tests/test_module_lifecycle.py::test_scaffold_carries_one_offline_echo_drill
+FAILED packages/studyloop/tests/test_module_lifecycle.py::test_scaffold_ships_its_own_offline_shell_test_not_python
+3 failed, 3 passed in 0.36s

@@ -1,0 +1,12 @@
+# Lane C merge gate — every preflight recipe individually at 779b3cc1
+
+    sha=779b3cc1 start=2026-10-04T22:53:44+01:00
+    lint: rc=0 All checks passed!
+    typecheck: rc=0 0 errors, 0 warnings, 0 informations
+    test: rc=0 ========= 7740 passed, 15 skipped, 813 deselected in 986.72s (0:16:26) =========
+    test-js: rc=0 ℹ pass 167 ℹ fail 0
+    docs: rc=0 INFO    -  Documentation built in 0.61 seconds
+    release-consistency: rc=0 release consistency passed for studyloop 0.5.0
+    spec-check: rc=0 Totals: 25 passed, 0 failed (25 items)
+    end=2026-10-04T23:10:42+01:00 gate_fail=0
+    DONE

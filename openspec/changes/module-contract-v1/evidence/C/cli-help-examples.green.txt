@@ -1,0 +1,124 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_cli.py -q -p no:cacheprovider   # C6: the Click group driven by CliRunner -- 19 tests
+...................                                                      [100%]
+19 passed in 0.45s
+# -- `studyloop module --help` (group exported, not registered; W adds the lazy_subcommands line) --
+Usage: module [OPTIONS] COMMAND [ARGS]...
+
+  Optional learning modules: check conformance, scaffold, install, list, remove.
+
+  A module is a directory of data (module.yaml, decks/*.json, scripts/,
+  mentor/brief.md) that StudyLoop validates against contract rules MC001-MC016
+  and never imports or executes. Install from a local path only; StudyLoop makes
+  no network access here. Drills from installed modules run through `studyloop
+  drill` inside the one claimed study session; `studyloop doctor` reports their
+  declared prerequisites.
+
+Options:
+  --help  Show this message and exit.
+
+Commands:
+  add     Install the module at local PATH into an immutable snapshot.
+  check   Check the module at PATH against conformance rules MC001-MC016.
+  list    List installed modules from the lockfile, modules.lock.json.
+  new     Scaffold a conforming module MODULE_ID with one offline drill.
+  remove  Remove MODULE_ID from modules.lock.json and delete its snapshot.
+# -- studyloop module check --help --
+Usage: module check [OPTIONS] PATH
+
+  Check the module at PATH against conformance rules MC001-MC016.
+
+  Reports each failure as `MCnnn <file>:<line>: <message>` (the line is omitted,
+  and null in --json, for a file-level fault such as a missing file). Nothing in
+  the module is executed: the check reads files only.
+
+  Exit codes: Exit 0 when the module conforms, exit 1 on any finding, exit 2
+  when PATH is not a directory.
+
+  Examples:
+
+      studyloop module check ./kubernetes-drills
+
+      studyloop module check --json ./kubernetes-drills
+
+Options:
+  --json  Emit {ok, findings[{rule_id,message,path,line}]} for CI.
+  --help  Show this message and exit.
+# -- studyloop module new --help --
+Usage: module new [OPTIONS] MODULE_ID
+
+  Scaffold a conforming module MODULE_ID with one offline drill.
+
+  Writes module.yaml, one deck with an offline echo-based drill
+  (scripts/check.sh exits 0 with no network, Docker or kind), mentor/brief.md,
+  README.md with the four required sections, LICENSE, CHANGELOG.md and
+  tests/check.sh into ./MODULE_ID (or --dir/MODULE_ID). MODULE_ID is a slug:
+  lowercase letters, digits and hyphens. The destination must not exist or must
+  be empty; exit 1 otherwise, with nothing written.
+
+  Examples:
+
+      studyloop module new kubernetes-drills
+
+      studyloop module new sql-drills --dir ~/code --topic sql --author "Ada L."
+
+Options:
+  --dir DIRECTORY  Parent directory for the new module (default: the current
+                   directory).
+  --title TEXT     Module title (default: derived from MODULE_ID).
+  --topic TEXT     One tech area, as topics use it.  [default: shell]
+  --author TEXT    Maintainer name.  [default: Module author]
+  --help           Show this message and exit.
+# -- studyloop module add --help --
+Usage: module add [OPTIONS] PATH
+
+  Install the module at local PATH into an immutable snapshot.
+
+  Runs `studyloop module check PATH` first and refuses on any finding: nothing
+  is written and modules.lock.json is left exactly as it was (exit 1). On
+  success the module is copied into StudyLoop's config directory under
+  modules/snapshots/<digest> (files read-only) and recorded in modules.lock.json
+  with its id, version, content digest and -- when PATH is inside a git checkout
+  -- the origin URL and HEAD sha, read locally with no fetch. No network access
+  occurs; a git URL is not accepted in v1. Re-adding an id replaces its entry.
+
+  Examples:
+
+      studyloop module add ./kubernetes-drills
+
+      studyloop module add --json ./kubernetes-drills
+
+Options:
+  --json  Print the lockfile entry as JSON.
+  --help  Show this message and exit.
+# -- studyloop module list --help --
+Usage: module list [OPTIONS]
+
+  List installed modules from the lockfile, modules.lock.json.
+
+  One line per module: id, version, the first 12 hex digits of the content
+  digest and the snapshot directory. --json prints the full lockfile entries.
+
+  Examples:
+
+      studyloop module list
+
+      studyloop module list --json
+
+Options:
+  --json  Print the lockfile entries as a JSON list.
+  --help  Show this message and exit.
+# -- studyloop module remove --help --
+Usage: module remove [OPTIONS] MODULE_ID
+
+  Remove MODULE_ID from modules.lock.json and delete its snapshot.
+
+  Idempotent: removing an id that is not installed is not an error (exit 0) and
+  leaves the lockfile untouched. Only the lockfile and the module's own snapshot
+  are touched; the source directory it was added from is never deleted.
+
+  Examples:
+
+      studyloop module remove kubernetes-drills
+
+Options:
+  --help  Show this message and exit.

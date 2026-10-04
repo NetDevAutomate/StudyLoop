@@ -1,0 +1,20 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_check.py -q -p no:cacheprovider   # C2 engine: the 33 C1 reds + 6 new finding-shape tests + 5 fixture-integrity tests
+............................................                             [100%]
+44 passed in 0.46s
+# -- per rule: fixture -> finding (rule_id path:line message) --
+mc001/broken -> MC001 module.yaml:6  module.yaml has an unknown key 'homepage'
+mc002/broken -> MC002 module.yaml:2  contract 99 is not one this StudyLoop speaks (supported: 1)
+mc003/broken -> MC003 CHANGELOG.md:None  required file CHANGELOG.md is missing
+mc004/broken -> MC004 decks/echo-basics.json:25  decks/echo-basics.json does not validate as a PracticeDeck: tasks.0.difficulty: Extra inputs are not permitted
+mc005/broken -> MC005 module.yaml:11  prerequisite id 'duckdb' is not in core's enum (docker, kind, kubectl)
+mc006/broken -> MC006 decks/echo-basics.json:24  decks/echo-basics.json: task echo-01 setupCommand needs capability 'setup', which module.yaml does not declare
+mc007/broken -> MC007 decks/echo-basics.json:22  decks/echo-basics.json: task echo-01 command references 'scripts/check-missing.sh', which does not exist
+mc008/broken -> MC008 decks/echo-basics.json:22  decks/echo-basics.json: task echo-01 command overrides the injected context ('--context')
+mc009/broken -> MC009 scripts/check.sh:3  scripts/check.sh:3 assigns a literal value to 'PASSWORD'; no secret patterns may ship in a module
+mc010/broken -> MC010 decks/echo-basics.json:14  decks/echo-basics.json: task echo-01 has a solution but no scaffolding level
+mc011/broken -> MC011 README.md:None  README.md lacks the required heading '## Limits'
+mc012/broken -> MC012 setup.py:None  setup.py is importable code; a module ships data only
+mc013/broken -> MC013 decks/echo-basics.json:22  decks/echo-basics.json: task echo-01 command references 'scripts/check.sh', which is not a regular file inside the module (symlink, hardlink, device or path escape)
+mc014/broken -> MC014 decks/echo-basics.json:5  decks/echo-basics.json: tasks[0] has no task id
+mc015/broken -> MC015 decks/echo-basics.json:22  decks/echo-basics.json: task echo-01 command contains shell syntax ('&&'); a phase is one scripts/ executable plus literal arguments
+mc016/broken -> MC016 module.yaml:11  module.yaml declares capability 'cleanup' but no deck phase uses it
