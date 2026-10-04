@@ -188,6 +188,80 @@ lanes:
     - scripts/update-agent-manifest.py
     - packages/studyloop/src/studyloop/installers.py        # two LinkSpec rows; reassigned from m5
 
+  # ── 2026-10 module contract v1 ─────────────────────────────────────────────
+  # Source of truth: openspec/changes/module-contract-v1/design.md §2 (the
+  # ownership table, transcribed glob for glob; its `{a,b}.py` shorthand is
+  # expanded because fnmatch has no brace expansion) and §3 (hotspots). These
+  # lanes are keyed by the `branches` map below, not by branch name: their
+  # branches are `feat/...` like every other feature branch.
+
+  S: # schema + ownership guard (feat/module-schema) — merges first and alone
+    - packages/studyloop/src/studyloop/content/schemas.py   # hotspot: S only (§3)
+    - packages/studyloop/tests/test_module_schema.py
+    - packages/studyloop/tests/_lane_ownership.py
+    - packages/studyloop/tests/test_lane_ownership.py
+    - packages/studyloop/tests/fixtures/lane_ownership.yaml
+    # docs commit only (S3, after the docs lease is free — §3)
+    - docs/module-contract.md
+    - .github/PULL_REQUEST_TEMPLATE/module.md
+    - mkdocs.yml
+    - CHANGELOG.md
+
+  C: # conformance + lifecycle (feat/module-conformance)
+    - packages/studyloop/src/studyloop/modules/__init__.py  # hotspot: C only (§3)
+    - packages/studyloop/src/studyloop/modules/manifest.py
+    - packages/studyloop/src/studyloop/modules/check.py
+    - packages/studyloop/src/studyloop/modules/scaffold.py
+    - packages/studyloop/src/studyloop/modules/store.py
+    - packages/studyloop/src/studyloop/cli/_module.py
+    - packages/studyloop/src/studyloop/doctor/modules.py
+    - packages/studyloop/src/studyloop/cli/_doctor.py       # one registration line (§3)
+    - packages/studyloop/tests/test_module_check.py
+    - packages/studyloop/tests/test_module_lifecycle.py
+    - packages/studyloop/tests/test_module_cli.py
+    - packages/studyloop/tests/fixtures/modules/**
+
+  R: # secure runner (feat/module-runner)
+    - packages/studyloop/src/studyloop/modules/runner.py
+    - packages/studyloop/src/studyloop/modules/consent.py
+    - packages/studyloop/src/studyloop/modules/attempt.py
+    - packages/studyloop/src/studyloop/cli/_drill.py
+    - packages/studyloop/tests/test_module_runner.py
+    - packages/studyloop/tests/test_module_drill_cli.py
+    - packages/studyloop/tests/fixtures/runner/**
+
+  T: # mentor delivery (feat/module-mentor-delivery)
+    - packages/studyloop/src/studyloop/session/module_delivery.py
+    - docs/adr/0012-practice-check-delivery.md
+    - packages/studyloop/tests/test_module_delivery.py
+    - packages/studyloop/tests/integration/test_module_delivery_transports.py
+
+  W: # Labs + assembly (feat/module-web-labs) — always last
+    - packages/studyloop/src/studyloop/web/routes/modules.py
+    - packages/studyloop/src/studyloop/web/routes/session/_options.py  # hotspot: W only (§3)
+    - packages/studyloop/src/studyloop/web/static/index.html
+    - packages/studyloop/src/studyloop/web/static/components.js
+    - packages/studyloop/src/studyloop/web/static/style.css
+    - packages/studyloop/src/studyloop/web/static/js/labs.js
+    - packages/studyloop/src/studyloop/cli/__init__.py      # registrations; hotspot: W only (§3)
+    - packages/studyloop/src/studyloop/web/app.py           # router inclusion, one line (§2 note under the table)
+    - packages/studyloop/tests/test_web_modules.py
+    - packages/studyloop/tests/js/module-labs.test.js
+    - packages/studyloop/tests/e2e/test_module_labs_journey.py
+    - packages/studyloop/tests/acceptance/test_module_kdrill_live.py
+    - packages/studyloop/tests/acceptance/uat/**            # module rubric
+
+# Explicit branch -> lane key for lanes whose branch name carries no lane id.
+# Consulted BEFORE the legacy `lane/m<n>-<slug>` pattern (tests/_lane_ownership.py,
+# lane_id_from_branch). A `feat/` branch that is not listed here is not a lane
+# branch: the guard logs that and skips, exactly as it does for `main`.
+branches:
+  feat/module-schema: S
+  feat/module-conformance: C
+  feat/module-runner: R
+  feat/module-mentor-delivery: T
+  feat/module-web-labs: W
+
 # Any lane may touch these. Docs and the changelog are shared because plan
 # principle 6 requires them to land in the same commit as the code they
 # describe (DECISIONS.md §E3); the coordinator resolves adjacent-line CHANGELOG

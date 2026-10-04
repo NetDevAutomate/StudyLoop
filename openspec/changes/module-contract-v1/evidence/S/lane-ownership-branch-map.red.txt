@@ -1,0 +1,27 @@
+$ # RETROSPECTIVE RED (S-review finding 1, 2026-10-04): test_lane_ownership.py as committed in S1 (ea56f656) run against _lane_ownership.py and fixtures/lane_ownership.yaml restored to base 60bbb504 (pre-S1). Reconstructed after the fact; the lane brief had not asked for this transcript.
+$ git checkout 60bbb504 -- packages/studyloop/tests/_lane_ownership.py packages/studyloop/tests/fixtures/lane_ownership.yaml && uv run --group dev pytest packages/studyloop/tests/test_lane_ownership.py -q -p no:cacheprovider 2>&1 | tail -25
+    lane = lane_id_from_branch(branch, _load_branch_map())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: lane_id_from_branch() takes 1 positional argument but 2 were given
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_lane_ownership.py::test_mapped_feat_branch_resolves_to_its_lane[feat/module-conformance]
+FAILED packages/studyloop/tests/test_lane_ownership.py::test_mapped_feat_branch_resolves_to_its_lane[feat/module-mentor-delivery]
+FAILED packages/studyloop/tests/test_lane_ownership.py::test_mapped_feat_branch_resolves_to_its_lane[feat/module-runner]
+FAILED packages/studyloop/tests/test_lane_ownership.py::test_mapped_feat_branch_resolves_to_its_lane[feat/module-schema]
+FAILED packages/studyloop/tests/test_lane_ownership.py::test_mapped_feat_branch_resolves_to_its_lane[feat/module-web-labs]
+FAILED packages/studyloop/tests/test_lane_ownership.py::test_fixture_branch_map_matches_design_and_points_at_real_lanes
+FAILED packages/studyloop/tests/test_lane_ownership.py::test_unmapped_branch_is_none_not_an_error[feat-not-in-map]
+FAILED packages/studyloop/tests/test_lane_ownership.py::test_unmapped_branch_is_none_not_an_error[near-miss-is-not-a-prefix-match]
+FAILED packages/studyloop/tests/test_lane_ownership.py::test_unmapped_branch_is_none_not_an_error[main]
+FAILED packages/studyloop/tests/test_lane_ownership.py::test_unmapped_branch_is_none_not_an_error[integration]
+FAILED packages/studyloop/tests/test_lane_ownership.py::test_legacy_lane_branches_still_resolve_when_a_map_is_supplied
+FAILED packages/studyloop/tests/test_lane_ownership.py::test_explicit_map_entry_wins_over_the_legacy_pattern
+FAILED packages/studyloop/tests/test_lane_ownership.py::test_no_map_means_legacy_only
+FAILED packages/studyloop/tests/test_lane_ownership.py::test_mapped_lane_editing_another_lanes_file_fails[schema-lane-edits-conformance-engine]
+FAILED packages/studyloop/tests/test_lane_ownership.py::test_mapped_lane_editing_another_lanes_file_fails[conformance-lane-edits-schema-hotspot]
+FAILED packages/studyloop/tests/test_lane_ownership.py::test_mapped_lane_editing_another_lanes_file_fails[runner-lane-edits-web-route]
+FAILED packages/studyloop/tests/test_lane_ownership.py::test_mapped_lane_editing_another_lanes_file_fails[delivery-lane-edits-runner]
+FAILED packages/studyloop/tests/test_lane_ownership.py::test_mapped_lane_editing_another_lanes_file_fails[web-lane-edits-delivery]
+FAILED packages/studyloop/tests/test_lane_ownership.py::test_mapped_lane_editing_its_own_file_is_ok
+FAILED packages/studyloop/tests/test_lane_ownership.py::test_lane_stays_in_its_lane
+20 failed, 20 passed in 2.40s

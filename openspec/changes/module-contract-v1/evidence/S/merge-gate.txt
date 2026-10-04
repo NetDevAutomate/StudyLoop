@@ -1,0 +1,20 @@
+# S merge gate — run alone in this worktree at b462ed42 via run-merge-gate.sh (tmux studyloop-s-gate)
+# sha=b462ed42 start=2026-10-04T18:45:18+01:00 ; end=2026-10-04T19:17:17+01:00
+
+## just preflight (exit 1 — ONLY the final step, spec-check, failed; cause below)
+lint:    All checks passed!
+typecheck: 0 errors, 0 warnings, 0 informations
+test:     7504 passed, 15 skipped, 813 deselected in 1006.97s (0:16:46)
+test-js: ℹ tests 167 / ℹ pass 167 / ℹ fail 0
+docs:    Documentation built in 1.97 seconds
+release-consistency: release consistency passed for studyloop 0.5.0
+spec-check: Totals: 23 passed, 2 failed (25 items) — module-contract-v1 and contributor-guide-v1 had no specs/ deltas at this base;
+            a defect of the change folders, not of this diff. Fixed on main in 32254451 (five capability deltas; skip_specs for the guide);
+            spec-check re-run on this branch after merging main — see below.
+
+## just e2e (exit 0)
+582 passed, 17 skipped, 7733 deselected in 877.41s (0:14:37)
+
+## pytest -m "" test summary for the lane's own files (b462ed42)
+test_module_schema.py: 29 passed (17 tests) ; test_lane_ownership.py: 40 passed (39 at S1 + the S-review precedence test). Correction: the "68 cases" in b462ed42's message was the two files run together (29 + 39), not the schema file alone.
+spec-check after merging main (f800dcf7): Totals: 25 passed, 0 failed (25 items)
