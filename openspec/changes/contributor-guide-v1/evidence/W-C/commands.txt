@@ -7,3 +7,15 @@ $ uv run --group dev pytest packages/studyloop/tests/test_docs_harness_tier_cont
 exit=0  sha=f2e1c70e  utc=2026-10-04T19:18Z
 ................                                                         [100%]
 16 passed in 0.31s
+$ just test-content
+exit=0  sha=814783e5  utc=2026-10-04T19:21Z
+uv run --group dev pytest packages/studyloop/tests/test_content_cli.py packages/studyloop/tests/test_content_generators.py packages/studyloop/tests/test_content_generators_runner.py packages/studyloop/tests/test_content_generators_stub.py packages/studyloop/tests/test_content_job_runner.py packages/studyloop/tests/test_content_scope.py packages/studyloop/tests/test_content_storage.py packages/studyloop/tests/test_content_storage_merge.py packages/studyloop/tests/test_content_workflow.py
+============================= test session starts ==============================
+platform darwin -- Python 3.12.8, pytest-9.0.3, pluggy-1.6.0
+readiness budgets: unscaled (1.0x) — release configuration
+rootdir: /Users/ataylor/code/personal/tools/studyloop-wt/contributor-guide-c/packages/studyloop
+
+$ uv run --group dev pytest packages/studyloop/tests/test_content_schemas.py -q
+exit=0  sha=814783e5  utc=2026-10-04T19:21Z
+............................                                             [100%]
+28 passed in 0.37s
