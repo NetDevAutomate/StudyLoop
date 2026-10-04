@@ -1,0 +1,33 @@
+$ uv run studyloop --help
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:19Z
+Usage: studyloop [OPTIONS] COMMAND [ARGS]...
+
+  studyloop — AuDHD study pipeline: content, review, and session tracking.
+
+Options:
+
+$ uv run studyloop chat-note --help
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:19Z
+Usage: studyloop chat-note [OPTIONS] PATH
+
+  Build a Socratic context pack for a note.
+
+Options:
+
+$ uv run --group dev pytest packages/studyloop/tests/test_contributor_examples.py -q
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:19Z
+....                                                                     [100%]
+4 passed in 0.31s
+
+$ uv run --group dev pytest packages/studyloop/tests/test_docs_drift.py -q -k studyloop_example
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:19Z
+........................................................................ [ 26%]
+........................................................................ [ 52%]
+........................................................................ [ 79%]
+........................................................                 [100%]
+272 passed, 25 deselected in 1.02s
+
+$ uv run --group dev pytest packages/studyloop/tests/test_e2e_coverage_gate.py -q -k cli
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:19Z
+..                                                                       [100%]
+2 passed, 14 deselected in 6.64s
