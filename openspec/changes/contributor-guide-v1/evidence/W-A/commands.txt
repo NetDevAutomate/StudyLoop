@@ -112,3 +112,8 @@ fix end of files................................................................
 check yaml....................................................(no files to check)Skipped
 check for added large files.......................................................Passed
 check for merge conflicts.........................................................Passed
+
+$ just release-consistency
+exit=0  sha=19b747e0  utc=2026-10-04T19:28Z
+uv run python scripts/check-release-consistency.py --skip-wheel
+release consistency passed for studyloop 0.5.0
