@@ -86,7 +86,7 @@ preflight`. "Red kept" = the failing-test transcript is in the commit body or un
       execute anything but `--version`. G.
 - [x] C6 `cli/_module.py` Click group (`click.Group`, mounted lazily like every other `cli/_*.py`) exported, not registered; verify `test_module_cli.py`
       via `CliRunner` on the group object. G.
-- [ ] C-review One independent seat reviews C2–C6 before C merges; verify the catch-rate row.
+- [x] C-review One independent seat reviews C2–C6 before C merges; verify the catch-rate row.
 
 ### R — secure runner + drill CLI
 
@@ -127,7 +127,7 @@ preflight`. "Red kept" = the failing-test transcript is in the commit body or un
   - Coordinator-approved ownership exception (T-review finding 5): lane T's +10-line hunk in
     `packages/studyloop/tests/fixtures/lane_ownership.yaml` adding `session/transport.py`, `transports/pty.py`
     and `transports/acp.py` to T's row is accepted as the transcription of council M0 §2 Q1 (4/4).
-- [ ] T-review One independent seat reviews T2–T4 before T merges; verify the catch-rate row.
+- [x] T-review One independent seat reviews T2–T4 before T merges; verify the catch-rate row.
 
 ### W — tests only
 
