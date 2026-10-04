@@ -21,9 +21,8 @@ Started 2026-10-04T20:56:22+01:00, finished 2026-10-04T21:14:34+01:00, preflight
 0705b05e (G1 council fixes) landed after this run. It touches seven docs pages and
 evidence/A1/commands.txt only — no Python, no tests, no justfile. Re-run on 0705b05e:
 test_contributor_guide_drift.py 119 passed; the five docs suites 484 passed, 3 skipped;
-`just docs` strict green. The preflight was not repeated: the recipes the delta can
-affect (docs, test) were re-run directly above; lint/typecheck/test-js/release-consistency/
-spec-check read no file the delta changed.
+`just docs` strict green. The full preflight was not repeated: the test files that read
+the guide pages (the drift test and the five docs suites) and the docs recipe were re-run;
+lint, typecheck, test-js, release-consistency and spec-check read no file the delta changed.
 
-Known-allowed red (test_fresh_install_scope::virgin_home) did not fire in this run: the
-detached tmux shell inherits no live StudyLoop HOME configuration.
+The known intermittent red (test_fresh_install_scope::virgin_home) did not fire in this run.
