@@ -73,7 +73,7 @@ GUIDE_PAGES: tuple[tuple[str, str, int], ...] = (
     ("contributor-harnesses-agents", "contribute", 150),
     ("contributor-content", "contribute", 150),
     ("contributor-documentation", "contribute", 150),
-    ("contributor-testing", "testing", 150),
+    ("contributor-testing", "testing", 220),  # pinned collected examples are code (design.md §6)
     ("acceptance-testing", "testing", 150),
     ("contributor-changelog", "process", 150),
     ("contributor-pull-requests", "process", 150),
