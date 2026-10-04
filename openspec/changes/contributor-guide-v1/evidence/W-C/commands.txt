@@ -43,3 +43,19 @@ exit=0  sha=4edc78f6  utc=2026-10-04T19:24Z
 ........................................................................ [ 71%]
 ............................................................s..........s [ 95%]
 ....s..........                                                          [100%]
+
+$ rg -n 'def load_practice_deck' packages
+exit=0  sha=767806c8  utc=2026-10-04T19:26Z
+packages/studyloop/src/studyloop/learning/practice.py:44:def load_practice_deck(path: Path) -> PracticeDeck:
+
+$ rg -n 'def build_now_plan' packages
+exit=0  sha=767806c8  utc=2026-10-04T19:26Z
+packages/studyloop/src/studyloop/learning/decision.py:1642:def build_now_plan(
+
+$ rg -n 'build_now_plan' packages/studyloop/src/studyloop/cli packages/studyloop/src/studyloop/web/routes packages/studyloop/src/studyloop/mcp
+exit=0  sha=767806c8  utc=2026-10-04T19:26Z
+packages/studyloop/src/studyloop/mcp/tools.py:730:            build_now_plan,
+packages/studyloop/src/studyloop/mcp/tools.py:746:        plan = build_now_plan(
+packages/studyloop/src/studyloop/web/routes/now.py:7:from studyloop.learning.decision import build_now_plan
+packages/studyloop/src/studyloop/web/routes/now.py:23:    plan = build_now_plan(
+packages/studyloop/src/studyloop/cli/_now.py:13:from studyloop.learning import EnergyLevel, InterleaveMode, Modality, build_now_plan
