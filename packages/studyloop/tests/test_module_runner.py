@@ -40,11 +40,15 @@ from studyloop.learning import practice
 from studyloop.modules import runner
 from studyloop.modules.attempt import Attempt, DrillIdentity, ExitClass, Phase
 from studyloop.modules.consent import (
+    CONSENT_TTL_SECONDS,
     Consent,
+    ConsentExpiredError,
     ConsentLedger,
     ConsentMismatchError,
     ConsentReplayedError,
+    ConsentUnknownError,
     DigestMismatchError,
+    describe_consent,
 )
 from studyloop.modules.runner import ArgvLengthError, ScriptPathError, ShellTokenError
 
@@ -534,6 +538,78 @@ def test_runner_refuses_consent_replay(world: World, spawn_spy: list[SpawnCall])
     assert len(spawn_spy) == 1
     runs = (world.attempt.attempt_dir / "runs.log").read_text(encoding="utf-8").splitlines()
     assert runs == ["ran"]
+
+
+def test_runner_refuses_consent_not_issued_by_the_ledger(
+    world: World, spawn_spy: list[SpawnCall]
+) -> None:
+    """A :class:`Consent` object that passes argv and path validation but was never issued by
+    the ledger -- forged in-process, or carried over from another run -- is refused at
+    redemption, and nothing is spawned."""
+    world.script("check.sh", "touch ran.marker")
+    argv = ("scripts/check.sh",)
+    forged = world.forged_consent(Phase.CHECK, argv, digest=_sha256(world.scripts / "check.sh"))
+
+    with pytest.raises(ConsentUnknownError):
+        world.run(Phase.CHECK, argv, consent=forged)
+
+    assert spawn_spy == []
+    assert not world.ran_marker()
+
+
+@pytest.mark.parametrize(
+    ("age_seconds", "expect_run"),
+    [(CONSENT_TTL_SECONDS - 1, True), (CONSENT_TTL_SECONDS + 1, False)],
+    ids=["one-second-inside-the-ttl", "one-second-past-the-ttl"],
+)
+def test_cli_consent_expires_ten_minutes_after_it_is_given(
+    tmp_path: Path, spawn_spy: list[SpawnCall], age_seconds: int, expect_run: bool
+) -> None:
+    """Spec (ruling 7): a CLI confirmation is single-use and expires 10 minutes after it is
+    given. The ledger's clock is injected so the test does not sleep."""
+    now = [1_000.0]
+    snapshot = tmp_path / "snapshot"
+    (snapshot / "scripts").mkdir(parents=True)
+    attempt_dir = tmp_path / "attempt"
+    attempt_dir.mkdir()
+    attempt = Attempt(
+        attempt_id="attempt-ttl", drill=DRILL, snapshot_dir=snapshot, attempt_dir=attempt_dir
+    )
+    world = World(attempt=attempt, ledger=ConsentLedger(clock=lambda: now[0]))
+    world.script("check.sh", "touch ran.marker")
+    argv = ("scripts/check.sh",)
+    consent = world.consent(Phase.CHECK, argv)
+
+    now[0] += age_seconds
+
+    if expect_run:
+        result = world.run(Phase.CHECK, argv, consent=consent)
+        assert result.exit_class is ExitClass.PASSED
+        assert len(spawn_spy) == 1
+        assert world.ran_marker()
+    else:
+        with pytest.raises(ConsentExpiredError):
+            world.run(Phase.CHECK, argv, consent=consent)
+        assert spawn_spy == []
+        assert not world.ran_marker()
+
+
+def test_consent_prompt_shows_phase_target_argv_and_digest(world: World) -> None:
+    """§5.5 *Consent*: the exact argv and the script's content digest are shown and
+    confirmed -- so the text the learner reads names the phase, the target, every argv item
+    verbatim and the digest the runner will re-check at spawn."""
+    world.script("cleanup.sh", "exit 0")
+    argv = ("scripts/cleanup.sh", "--namespace", "drill")
+    digest = _sha256(world.scripts / "cleanup.sh")
+
+    text = describe_consent(world.attempt, Phase.CLEANUP, argv, script_digest=digest)
+
+    assert "cleanup" in text
+    assert str(world.attempt.attempt_dir) in text, "target (the attempt dir for workdir) missing"
+    for item in argv:
+        assert item in text, f"argv item {item!r} not shown"
+    assert digest in text, "script sha256 not shown"
+    assert "--yes" not in text
 
 
 def test_runner_timeout_is_error_and_child_is_terminated(
