@@ -9,6 +9,15 @@ experience may change before `1.0.0`.
 
 ### Added
 
+- A twenty-page **Contribute** section of the documentation site, modelled on the Terraform AWS
+  Provider contributor guide: a numbered start-here path (environment, debugging), one page per
+  kind of change (CLI command, web route and UI, MCP tool, doctor check, harnesses and agents,
+  content pipeline, documentation), the testing tiers, and the process pages — changelog, pull
+  requests with the branch / commit / PR-title naming standard and eight worked examples from
+  real history, issues and prioritisation, AI usage — plus a developer reference (code map,
+  conventions) and two proposal pages that say plainly the module contract and module index are
+  at design stage. Every command a page shows was run first and is pinned by a drift test
+  (`test_contributor_guide_drift.py`); a pull-request template carries the five review questions.
 - A first-contribution walkthrough, source-code map and testing cookbook with runnable Python
   and Playwright examples. An optional-topic-module proposal explains the boundaries for
   Kubernetes drills and a possible registry; no plugin runtime or registry is introduced.
