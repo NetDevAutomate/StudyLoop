@@ -22,7 +22,9 @@ core does not speak SHALL be refused.
 `prerequisites` SHALL be drawn from a core-owned enum (`docker`, `kind`, `kubectl` in v1) with an
 optional minimum version; the probe for each lives in core's `doctor/` and never runs module text.
 `capabilities` SHALL be drawn from `terminal`, `setup`, `check`, `cleanup`; a deck phase whose
-capability is not declared SHALL fail conformance.
+capability is not declared SHALL fail conformance (MC006), and a declared `setup`, `check` or
+`cleanup` that no deck uses SHALL fail MC016. `terminal` names the learner's session itself and is
+always in use: declaring it never fails MC016.
 
 #### Scenario: an undeclared capability is caught
 - **GIVEN** a deck task carrying `setupCommand` and a manifest whose `capabilities` omit `setup`
@@ -36,7 +38,13 @@ capability is not declared SHALL fail conformance.
 
 ### Requirement: `studyloop module check` applies conformance rules MC001–MC016 with stable ids
 `module check <path>` SHALL evaluate every rule in `proposal.md` §6, report each failure with its
-rule id, file and line, support `--json`, and exit non-zero on any failure. Every rule SHALL have a
+rule id, file and line (line `None` when the fault is file-level), support `--json`, and exit
+non-zero on any failure. When one fault could satisfy several rules the most specific wins: a bad
+`contract` is MC002 and a bad `prerequisites[].id` is MC005, never MC001; a deck that `PracticeDeck`
+rejects (missing field, malformed or duplicate id, unknown field) is MC004; MC010 fires only for a
+`solution` without a `scaffolding` level. MC009 SHALL run the secret detector's keyword detector
+with its heuristic filters disabled, so a fixture secret the commit hook ignores is still caught.
+MC011's required brief headings are the `##` headings `proposal.md` §5.1 lists. Every rule SHALL have a
 fixture that fails it and a repaired twin that passes.
 
 #### Scenario: the scaffold passes every rule

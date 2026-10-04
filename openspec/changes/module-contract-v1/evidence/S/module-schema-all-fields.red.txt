@@ -1,0 +1,42 @@
+$ # RETROSPECTIVE RED (S-review finding 3, 2026-10-04): the complete test_module_schema.py (b462ed42) run against content/schemas.py restored to ea56f656 (pre-S2). The committed red (example-deck-extra-forbidden.red.txt) covered only the first test; the brief sequenced the remaining tests after implementation.
+$ git checkout ea56f656 -- packages/studyloop/src/studyloop/content/schemas.py && uv run --group dev pytest packages/studyloop/tests/test_module_schema.py -q -p no:cacheprovider 2>&1 | tail -40
+E   pydantic_core._pydantic_core.ValidationError: 1 validation error for PracticeTask
+E   scaffolding
+E     Extra inputs are not permitted [type=extra_forbidden, input_value='unaided', input_type=str]
+E       For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden
+________________ test_scaffolding_accepts_the_four_levels[exam] ________________
+packages/studyloop/tests/test_module_schema.py:328: in test_scaffolding_accepts_the_four_levels
+    task = PracticeTask.model_validate(_legacy_task(scaffolding=level))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   pydantic_core._pydantic_core.ValidationError: 1 validation error for PracticeTask
+E   scaffolding
+E     Extra inputs are not permitted [type=extra_forbidden, input_value='exam', input_type=str]
+E       For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden
+_________ test_solution_without_scaffolding_is_accepted_by_the_schema __________
+packages/studyloop/tests/test_module_schema.py:341: in test_solution_without_scaffolding_is_accepted_by_the_schema
+    task = PracticeTask.model_validate(_legacy_task(solution="print(1)"))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   pydantic_core._pydantic_core.ValidationError: 1 validation error for PracticeTask
+E   solution
+E     Extra inputs are not permitted [type=extra_forbidden, input_value='print(1)', input_type=str]
+E       For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_module_schema.py::test_proposal_example_deck_loads_through_load_practice_deck
+FAILED packages/studyloop/tests/test_module_schema.py::test_six_fields_round_trip_by_alias
+FAILED packages/studyloop/tests/test_module_schema.py::test_round_trip_is_stable_through_write_json
+FAILED packages/studyloop/tests/test_module_schema.py::test_json_schema_exposes_new_fields_under_their_aliases
+FAILED packages/studyloop/tests/test_module_schema.py::test_missing_id_is_accepted_on_deck_and_task
+FAILED packages/studyloop/tests/test_module_schema.py::test_new_task_fields_default_to_empty_or_none
+FAILED packages/studyloop/tests/test_module_schema.py::test_populate_by_name_still_accepts_snake_case_attributes
+FAILED packages/studyloop/tests/test_module_schema.py::test_well_formed_id_is_accepted[single-char]
+FAILED packages/studyloop/tests/test_module_schema.py::test_well_formed_id_is_accepted[leading-digit]
+FAILED packages/studyloop/tests/test_module_schema.py::test_well_formed_id_is_accepted[hyphenated]
+FAILED packages/studyloop/tests/test_module_schema.py::test_well_formed_id_is_accepted[63-chars]
+FAILED packages/studyloop/tests/test_module_schema.py::test_duplicate_task_ids_are_rejected_and_the_error_names_the_duplicate
+FAILED packages/studyloop/tests/test_module_schema.py::test_tasks_without_ids_do_not_count_as_duplicates
+FAILED packages/studyloop/tests/test_module_schema.py::test_scaffolding_accepts_the_four_levels[guided]
+FAILED packages/studyloop/tests/test_module_schema.py::test_scaffolding_accepts_the_four_levels[hinted]
+FAILED packages/studyloop/tests/test_module_schema.py::test_scaffolding_accepts_the_four_levels[unaided]
+FAILED packages/studyloop/tests/test_module_schema.py::test_scaffolding_accepts_the_four_levels[exam]
+FAILED packages/studyloop/tests/test_module_schema.py::test_solution_without_scaffolding_is_accepted_by_the_schema
+18 failed, 11 passed in 2.27s
