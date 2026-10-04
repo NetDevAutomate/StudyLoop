@@ -1,6 +1,6 @@
 # Contributing to StudyLoop
 
-<!-- facts: F1 F2 F3 F7 F8 F10 F13 -->
+<!-- facts: F1 F2 F3 F4 F7 F8 F10 F13 -->
 
 StudyLoop is a local-first, AuDHD-aware study tool, pre-1.0, and every kind of contribution is
 welcome — a reproducible bug, a clearer sentence, a focused test, an honest account of where a study
@@ -88,7 +88,9 @@ Code-level naming, OpenSpec changes and ADRs: [Conventions](contributor-conventi
 ## Making changes
 
 Small fix: open the PR directly. Behaviour or design change: an issue first, then a proposal under
-`openspec/changes/`. New mentor harness: declined unless an issue defines all seven items — persona
+`openspec/changes/`. Six mentor harnesses are first-party: Kiro CLI, Codex, Claude Code and pi are
+core; OpenCode and Grok Build are preview (F4); everything else is out of scope until an issue
+defines it, and a new harness is declined unless that issue defines all seven items — persona
 mechanism, launch and resume commands, session store, exporter, health check, failure behaviour, a
 live acceptance path (F2; [Harnesses and Agents](contributor-harnesses-agents.md)). Then pick the
 page for your kind of change:

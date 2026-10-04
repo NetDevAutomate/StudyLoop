@@ -179,3 +179,17 @@ $ git switch -c docs/first-contribution upstream/main
 exit=0  sha=b20d4029  utc=2026-10-04T19:35Z
 Switched to a new branch 'docs/first-contribution'
 branch 'docs/first-contribution' set up to track 'upstream/main'.
+
+$ just preflight
+exit=1  sha=d4492e53  utc=2026-10-04T19:49Z
+uv run --group dev ruff check .
+All checks passed!
+uv run --group dev ruff format --check .
+1053 files already formatted
+uv run --group dev pyright
+# just preflight ran in the background from 19:34Z (started at sha 8016cf8b, finished with d4492e53 as HEAD); 'just test' ended
+# '17 failed, 7538 passed, 16 skipped, 813 deselected in 934.21s'. 12 failures are the sibling writers' GUIDE-STUB pages
+# (test_contributor_guide_drift.py test_structure / test_module_pages_stay_proposals), 1 is the pre-recorded sandbox failure
+# (test_fresh_install_scope.py virgin_home, tmux shim), 4 were W-A's own router regressions (test_docs_harness_contract.py x2,
+# test_docs_harness_tier_contract.py::TestContributingSplitSentence x2) -- fixed in the next commit by restoring the six-harness
+# tier sentence; those four files re-run green. The remaining preflight recipes did not run because 'test' failed first.
