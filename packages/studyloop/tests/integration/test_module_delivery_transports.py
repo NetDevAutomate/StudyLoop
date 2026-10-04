@@ -37,6 +37,7 @@ from studyloop.session.transport import (
     SessionConfig,
     Stopped,
 )
+from studyloop.session.transports import acp as acp_module
 from studyloop.session.transports.acp import ACPTransport
 from studyloop.session.transports.pty import PTYTransport
 
@@ -455,6 +456,93 @@ _ACP_FAKE_MENTOR = textwrap.dedent(
 )
 
 
+_ACP_FAKE_MENTOR_HUNG = textwrap.dedent(
+    """
+    import json, os, select, sys, time
+
+    _buf = b""
+
+    def read_frame(timeout):
+        global _buf
+        deadline = time.monotonic() + timeout
+        while b"\\n" not in _buf:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return None
+            ready, _, _ = select.select([0], [], [], remaining)
+            if not ready:
+                return None
+            chunk = os.read(0, 65536)
+            if not chunk:
+                return None
+            _buf += chunk
+        line, _buf = _buf.split(b"\\n", 1)
+        return json.loads(line)
+
+    def emit(frame):
+        sys.stdout.write(json.dumps(frame) + "\\n"); sys.stdout.flush()
+
+    def update(session_id, record):
+        emit({"jsonrpc": "2.0", "method": "session/update", "params": {
+            "sessionId": session_id,
+            "update": {"sessionUpdate": "agent_message_chunk",
+                       "content": {"type": "text", "text": json.dumps(record)}}}})
+
+    def prompt_text(frame):
+        blocks = frame.get("params", {}).get("prompt", [])
+        return "".join(b.get("text", "") for b in blocks if b.get("type") == "text")
+
+    session_id = "fake-mentor-hung"
+    pending = []
+    turn = 0
+    while True:
+        frame = pending.pop(0) if pending else read_frame(30.0)
+        if frame is None:
+            break
+        method, rid = frame.get("method"), frame.get("id")
+        if method == "initialize":
+            emit({"jsonrpc": "2.0", "id": rid, "result": {
+                "protocolVersion": 1, "agentCapabilities": {}, "authMethods": [],
+                "agentInfo": {"name": "Fake hung ACP mentor", "version": "0"}}})
+        elif method == "session/new":
+            emit({"jsonrpc": "2.0", "id": rid, "result": {"sessionId": session_id}})
+        elif method == "session/prompt" and turn == 0:
+            # The first turn HANGS: no response until the client cancels it. Every
+            # session/prompt that arrives meanwhile overlaps the hung turn (M0 Q5).
+            turn += 1
+            text = prompt_text(frame)
+            overlapping = 0
+            cancelled = False
+            while True:
+                nxt = read_frame(30.0)
+                if nxt is None:
+                    break
+                if nxt.get("method") == "session/cancel":
+                    emit({"jsonrpc": "2.0", "id": nxt.get("id"), "result": None})
+                    time.sleep(0.5)              # a real agent takes a moment to unwind
+                    cancelled = True
+                    break
+                if nxt.get("method") == "session/prompt":
+                    overlapping += 1
+                pending.append(nxt)
+            update(session_id, {"turn": turn, "received": text,
+                                "overlapping_prompts": overlapping, "cancelled": cancelled})
+            emit({"jsonrpc": "2.0", "id": rid,
+                  "result": {"stopReason": "cancelled" if cancelled else "end_turn"}})
+        elif method == "session/prompt":
+            turn += 1
+            update(session_id, {"turn": turn, "received": prompt_text(frame),
+                                "overlapping_prompts": 0, "cancelled": False})
+            emit({"jsonrpc": "2.0", "id": rid, "result": {"stopReason": "end_turn"}})
+        elif method == "session/cancel":
+            emit({"jsonrpc": "2.0", "id": rid, "result": None})
+        elif rid is not None:
+            emit({"jsonrpc": "2.0", "id": rid,
+                  "error": {"code": -32601, "message": "Method not found"}})
+    """
+)
+
+
 async def _acp_turn_records(transport: ACPTransport, *, turns: int, timeout: float) -> list[dict]:
     """Collect the fake mentor's per-turn records until ``turns`` turn_end events."""
     records: list[dict] = []
@@ -572,6 +660,74 @@ async def test_acp_no_overlap_with_learner_turn(tmp_path: Path) -> None:
     assert BEGIN_SENTINEL in by_turn[2]["received"], (
         f"[{seam}] second turn is not the labelled envelope: {by_turn[2]['received'][:80]!r}"
     )
+
+
+@pytest.mark.asyncio
+async def test_acp_hung_turn_times_out_once_and_does_not_overlap(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Spec scenario "a hung ACP turn times out once" (M0 Q5).
+
+    GIVEN an ACP session whose fake agent never answers ``session/prompt`` until it
+    is cancelled, WHEN an envelope is delivered, THEN after the bound the outcome is
+    ``timed_out``, exactly one envelope was ever sent (never retried), the turn was
+    cancelled, and a learner prompt fired while the cancellation was still
+    unconfirmed does NOT overlap the cancelled turn -- the prompt lock is held until
+    the agent has answered the cancelled prompt.
+
+    The bound is 120 s in production (``acp.DELIVERY_TIMEOUT_S``); the test lowers
+    it to 1 s because the suite's per-test ceiling is 60 s. The fake takes 0.5 s to
+    confirm the cancel, and the learner types at 1.3 s -- inside that window.
+    """
+    # raising=False so the red before T4 (no constant, no deliver_block) fails on the
+    # assertion below, not here; a renamed constant later would run 120 s into the
+    # 60 s ceiling and fail just as loudly.
+    monkeypatch.setattr(acp_module, "DELIVERY_TIMEOUT_S", 1.0, raising=False)
+    script = tmp_path / "fake_acp_mentor_hung.py"
+    script.write_text(_ACP_FAKE_MENTOR_HUNG)
+    transport = ACPTransport(
+        resolve_binary=lambda _agent: sys.executable,
+        build_argv=lambda _cfg: [sys.executable, str(script)],
+    )
+    config = _config(tmp_path, agent="kiro")
+    seam = SEAM
+    result = _sample_result(stdout="ok\n")
+
+    await transport.start(config)
+    try:
+        session = ActiveSession(
+            study_session_id=config.study_session_id, transport=transport, config=config
+        )
+        started = asyncio.get_running_loop().time()
+        delivery = asyncio.create_task(deliver(session, result))
+        await asyncio.sleep(1.3)  # past the bound; the cancel is in flight, unconfirmed
+        await transport.send_input(b"are you there?")  # the learner, as _ws.py:201 sends it
+        outcome = await delivery
+        elapsed = asyncio.get_running_loop().time() - started
+        records = await _acp_turn_records(transport, turns=2, timeout=15.0)
+    finally:
+        await transport.end()
+
+    assert getattr(outcome, "status", None) == "timed_out", (
+        f"[{seam}] a prompt the agent never answers must be reported timed_out: {outcome!r}"
+    )
+    assert "att-0001" in str(getattr(outcome, "reason", "")), f"[{seam}] {outcome!r}"
+    assert elapsed >= 1.0, f"[{seam}] delivery returned before the bound: {elapsed:.2f}s"
+    envelopes = [r for r in records if BEGIN_SENTINEL in r["received"]]
+    assert len(envelopes) == 1, (
+        f"[{seam}] exactly one envelope must be sent, never retried: {len(envelopes)} seen"
+    )
+    by_turn = {r["turn"]: r for r in records}
+    assert 1 in by_turn and 2 in by_turn, f"[{seam}] expected two turns, got {records!r}"
+    assert by_turn[1]["cancelled"] is True, (
+        f"[{seam}] the hung turn was never cancelled (M0 Q5: cancel, hold, report)"
+    )
+    assert by_turn[1]["overlapping_prompts"] == 0, (
+        f"[{seam}] the learner's prompt reached the agent while the timed-out turn was "
+        f"still unconfirmed ({by_turn[1]['overlapping_prompts']} overlapping). M0 Q5: the "
+        f"prompt lock is held until cancellation is confirmed"
+    )
+    assert by_turn[2]["received"] == "are you there?", f"[{seam}] {by_turn[2]!r}"
 
 
 # --- Failure visibility: a closed transport ------------------------------------------

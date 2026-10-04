@@ -1,0 +1,10 @@
+env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/integration -m integration -p no:cacheprovider -v
+# worktree: module-mentor-delivery  T2-T4 implemented (T4 uncommitted on top of 000e1394)  TMPDIR=$(getconf DARWIN_USER_TEMP_DIR)
+test_module_delivery_transports.py::test_pty PASSED [ 14%]
+test_module_delivery_transports.py::test_pty_concurrent_learner_input_never_lands_inside_block PASSED [ 28%]
+test_module_delivery_transports.py::test_pty_mode_2004_off_falls_back_to_one_line PASSED [ 42%]
+test_module_delivery_transports.py::test_acp PASSED [ 57%]
+test_module_delivery_transports.py::test_acp_no_overlap_with_learner_turn PASSED [ 71%]
+test_module_delivery_transports.py::test_acp_hung_turn_times_out_once_and_does_not_overlap PASSED [ 85%]
+test_module_delivery_transports.py::test_pty_closed_transport_is_reported PASSED [100%]
+============================== 7 passed in 7.85s ===============================
