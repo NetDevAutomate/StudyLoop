@@ -30,7 +30,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from studyloop.session.active import ActiveSession
-from studyloop.session.module_delivery import PracticeCheckEnvelope, deliver
+from studyloop.session.module_delivery import PracticeCheckEnvelope, deliver, render_envelope
 from studyloop.session.transport import (
     AgentMessage,
     OutputBytes,
@@ -145,6 +145,32 @@ _PTY_FAKE_MENTOR_NO_2004 = textwrap.dedent(
 )
 
 
+_PTY_FAKE_MENTOR_SLOW_READER = textwrap.dedent(
+    """
+    import os, select, sys, time, tty
+    fd = sys.stdin.fileno()
+    tty.setraw(fd)
+    sys.stdout.write("\\x1b[?2004h")        # bracketed paste on
+    sys.stdout.write("READY\\n"); sys.stdout.flush()
+    buf = b""
+    deadline = time.monotonic() + 20.0
+    seen_end = False
+    while time.monotonic() < deadline:
+        ready, _, _ = select.select([fd], [], [], 0.7)
+        if ready:
+            chunk = os.read(fd, 512)         # a slow TUI: small reads, a pause between
+            if not chunk:
+                break
+            buf += chunk
+            seen_end = seen_end or b"\\x1b[201~\\r" in buf
+            time.sleep(0.02)
+        elif seen_end:
+            break                            # idle after the block closed: that is all
+    sys.stdout.write("MENTOR-GOT " + buf.hex() + "\\n"); sys.stdout.flush()
+    """
+)
+
+
 async def _pty_mentor_received(transport: PTYTransport, timeout: float) -> bytes:
     """Drain events() until the fake mentor prints what it received."""
     out = b""
@@ -238,6 +264,70 @@ async def test_pty(tmp_path: Path) -> None:
     assert "kubectl: context deadline exceeded" in text, (
         f"[{seam}] stderr was cut before the stdout tail (ADR-0012 Q3: stdout first)"
     )
+
+
+@pytest.mark.asyncio
+async def test_pty_concurrent_learner_input_never_lands_inside_block(tmp_path: Path) -> None:
+    """Spec scenario "a learner keystroke cannot land inside the block" (M0 Q1 amendment).
+
+    GIVEN a PTY session whose mentor reads slowly (so an 8 KiB block takes many
+    write rounds), WHEN learner keystrokes (the ``_ws.py:201`` path, ``send_input``)
+    and an envelope (``deliver_block``) are sent concurrently, THEN the envelope's
+    bytes are contiguous in the child's input -- exactly the rendered block -- and
+    every learner byte precedes or follows the whole block, in order.
+    """
+    script = tmp_path / "fake_pty_mentor_slow.py"
+    script.write_text(_PTY_FAKE_MENTOR_SLOW_READER)
+    transport = PTYTransport(
+        resolve_binary=lambda _agent: sys.executable,
+        build_launch_cmd=lambda _cfg: [sys.executable, str(script)],
+    )
+    config = _config(tmp_path, agent="fake-pty-mentor")
+    seam = SEAM
+    result = _sample_result(stdout="replica count mismatch\n" * 900, stderr="boom\n")
+    keys = [f"k{i:02d}".encode("ascii") for i in range(40)]
+
+    await transport.start(config)
+    try:
+        await _wait_for_ready(transport, timeout=10.0)
+        session = ActiveSession(
+            study_session_id=config.study_session_id, transport=transport, config=config
+        )
+
+        async def _learner_types() -> None:
+            for key in keys:
+                await transport.send_input(key)
+                await asyncio.sleep(0.005)
+
+        delivery = asyncio.create_task(deliver(session, result))
+        typing = asyncio.create_task(_learner_types())
+        outcome = await delivery
+        await typing
+        received = await _pty_mentor_received(transport, timeout=25.0)
+    finally:
+        await transport.end()
+
+    expected = render_envelope(result, framing="pty")
+    assert received.count(PASTE_BEGIN) == 1 and received.count(PASTE_END) == 1, (
+        f"[{seam}] expected exactly one bracketed block in the child's input"
+    )
+    begin = received.index(PASTE_BEGIN)
+    end = received.index(PASTE_END + b"\r") + len(PASTE_END) + 1
+    block = received[begin:end]
+    first_diff = next(
+        (i for i, (a, b) in enumerate(zip(block, expected, strict=False)) if a != b),
+        min(len(block), len(expected)),
+    )
+    assert block == expected, (
+        f"[{seam}] learner bytes landed INSIDE the block: {len(block)} bytes arrived between "
+        f"the paste brackets, {len(expected)} rendered; first difference at byte {first_diff} "
+        f"(M0 Q1: one lock for every writer)"
+    )
+    outside = received[:begin] + received[end:]
+    assert outside == b"".join(keys), (
+        f"[{seam}] learner bytes were lost or reordered around the block: {outside!r}"
+    )
+    assert getattr(outcome, "status", None) == "delivered", f"[{seam}] {outcome!r}"
 
 
 @pytest.mark.asyncio
