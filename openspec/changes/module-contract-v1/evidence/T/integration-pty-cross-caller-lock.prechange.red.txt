@@ -1,0 +1,15 @@
+env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/integration/test_module_delivery_transports.py -m integration -k concurrent_learner_input_never_lands_inside_block -q -p no:cacheprovider
+# pre-change red: disposable worktree at 72182acb (= 47c0b13b^, the parent of the PTY lock commit); only tests/integration/test_module_delivery_transports.py copied in from 66ecda02; 2026-10-04T21:32:40Z; TMPDIR=$(getconf DARWIN_USER_TEMP_DIR)
+# (-k cross_caller as briefed selects nothing: the test id is test_pty_concurrent_learner_input_never_lands_inside_block. Worktree under the per-user TMPDIR: $KIROCREW_SCRATCH is not writable from this sandbox.)
+F                                                                        [100%]
+=================================== FAILURES ===================================
+__________ test_pty_concurrent_learner_input_never_lands_inside_block __________
+packages/studyloop/tests/integration/test_module_delivery_transports.py:312: in test_pty_concurrent_learner_input_never_lands_inside_block
+    assert received.count(PASTE_BEGIN) == 1 and received.count(PASTE_END) == 1, (
+E   AssertionError: [studyloop.session.module_delivery.deliver] expected exactly one bracketed block in the child's input
+E   assert (0 == 1)
+E    +  where 0 = <built-in method count of bytes object at 0x10b3e8490>(b'\x1b[200~')
+E    +    where <built-in method count of bytes object at 0x10b3e8490> = b'k00k01k02k03k04k05k06k07k08k09k10k11k12k13k14k15k16k17k18k19k20k21k22k23k24k25k26k27k28k29k30k31k32k33k34k35k36k37k38k39'.count
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/integration/test_module_delivery_transports.py::test_pty_concurrent_learner_input_never_lands_inside_block
+1 failed, 6 deselected in 21.35s

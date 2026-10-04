@@ -1,0 +1,4 @@
+env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_delivery.py -q -p no:cacheprovider
+# worktree module-mentor-delivery  9b04c33d+uncommitted TAIL_LINE_PREFIX  2026-10-04T21:36:10Z
+.................................                                        [100%]
+33 passed in 0.44s

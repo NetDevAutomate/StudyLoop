@@ -1,0 +1,27 @@
+env -u VIRTUAL_ENV uv run pytest "packages/studyloop/tests/integration/test_module_delivery_transports.py::test_pty_concurrent_learner_input_never_lands_inside_block" -m integration -q -p no:cacheprovider
+# MUTATION EVIDENCE (lock neutralised at 47c0b13b), not a pre-change red -- the pre-change red is integration-pty-cross-caller-lock.prechange.red.txt (T-review finding 4). worktree: module-mentor-delivery  HEAD: 47c0b13b  TMPDIR=$(getconf DARWIN_USER_TEMP_DIR)
+# Run against pty.py with the per-transport write lock NEUTRALISED by this uncommitted one-line patch
+# (47c0b13b already carries the lock; this is the state the lock exists to fix -- full write loop, no lock):
+#   @@ -271,7 +271,7 @@ class PTYTransport:
+#            self._cancel_requested = False
+#            # One lock for every writer (send_input AND deliver_block): a block is
+#            # contiguous on the wire only if no keystroke can land between its rounds.
+#   -        self._write_lock = asyncio.Lock()
+#   +        self._write_lock = contextlib.nullcontext()  # RED PROBE: lock neutralised
+#            self._bracketed_paste = False
+#            self._dec_carry = b""
+#
+F                                                                        [100%]
+=================================== FAILURES ===================================
+__________ test_pty_concurrent_learner_input_never_lands_inside_block __________
+packages/studyloop/tests/integration/test_module_delivery_transports.py:311: in test_pty_concurrent_learner_input_never_lands_inside_block
+    assert received.count(PASTE_BEGIN) == 1 and received.count(PASTE_END) == 1, (
+E   AssertionError: [studyloop.session.module_delivery.deliver] expected exactly one bracketed block in the child's input
+E   assert (1 == 1 and 0 == 1)
+E    +  where 1 = <built-in method count of bytes object at 0x79e3b9c000>(b'\x1b[200~')
+E    +    where <built-in method count of bytes object at 0x79e3b9c000> = b'\x1b[200~<<<studyloop:practice_check v1 attempt=att-0001>>>\ndata: a drill check result from studyloop, for the ment...0k01k02k03k04k05k06k07k08k09k10k11k12k13k14k15k16k17k18k19k20k21k22k23k24k25k26k27k28k29k30k31k32k33k34k35k36k37k38k39'.count
+E    +  and   0 = <built-in method count of bytes object at 0x79e3b9c000>(b'\x1b[201~')
+E    +    where <built-in method count of bytes object at 0x79e3b9c000> = b'\x1b[200~<<<studyloop:practice_check v1 attempt=att-0001>>>\ndata: a drill check result from studyloop, for the ment...0k01k02k03k04k05k06k07k08k09k10k11k12k13k14k15k16k17k18k19k20k21k22k23k24k25k26k27k28k29k30k31k32k33k34k35k36k37k38k39'.count
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/integration/test_module_delivery_transports.py::test_pty_concurrent_learner_input_never_lands_inside_block
+1 failed in 30.41s

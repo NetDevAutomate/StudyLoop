@@ -1,0 +1,32 @@
+env -u VIRTUAL_ENV uv run pytest "packages/studyloop/tests/integration/test_module_delivery_transports.py::test_acp_hung_turn_times_out_once_and_does_not_overlap" -m integration -q -p no:cacheprovider
+# worktree: module-mentor-delivery  HEAD: 000e1394 (T3 landed; ACPTransport has no deliver_block, no prompt lock, no awaited turn)  TMPDIR=$(getconf DARWIN_USER_TEMP_DIR)
+____________ test_acp_hung_turn_times_out_once_and_does_not_overlap ____________
+packages/studyloop/tests/integration/test_module_delivery_transports.py:553: in _drain
+    async for event in transport.events():
+packages/studyloop/src/studyloop/session/transports/acp.py:118: in __anext__
+    event = await self._queue.get()
+            ^^^^^^^^^^^^^^^^^^^^^^^
+/Users/ataylor/.local/share/uv/python/cpython-3.12-macos-aarch64-none/lib/python3.12/asyncio/queues.py:158: in get
+    await getter
+E   asyncio.exceptions.CancelledError
+
+The above exception was the direct cause of the following exception:
+packages/studyloop/tests/integration/test_module_delivery_transports.py:566: in _acp_turn_records
+    await asyncio.wait_for(_drain(), timeout=timeout)
+/Users/ataylor/.local/share/uv/python/cpython-3.12-macos-aarch64-none/lib/python3.12/asyncio/tasks.py:519: in wait_for
+    async with timeouts.timeout(timeout):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/ataylor/.local/share/uv/python/cpython-3.12-macos-aarch64-none/lib/python3.12/asyncio/timeouts.py:115: in __aexit__
+    raise TimeoutError from exc_val
+E   TimeoutError
+
+During handling of the above exception, another exception occurred:
+packages/studyloop/tests/integration/test_module_delivery_transports.py:707: in test_acp_hung_turn_times_out_once_and_does_not_overlap
+    records = await _acp_turn_records(transport, turns=2, timeout=15.0)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+packages/studyloop/tests/integration/test_module_delivery_transports.py:568: in _acp_turn_records
+    pytest.fail(f"fake ACP mentor: {ends}/{turns} turn_end in {timeout}s; records={records!r}")
+E   Failed: fake ACP mentor: 0/2 turn_end in 15.0s; records=[]
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/integration/test_module_delivery_transports.py::test_acp_hung_turn_times_out_once_and_does_not_overlap
+1 failed in 16.73s

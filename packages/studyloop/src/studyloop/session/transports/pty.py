@@ -37,6 +37,8 @@ from studyloop.session.child_env import (
     build_child_env,
 )
 from studyloop.session.transport import (
+    BlockFraming,
+    DeliveryWrite,
     OutputBytes,
     SessionConfig,
     Started,
@@ -74,6 +76,34 @@ _CHILD_ENV_DENY_PAT = CHILD_ENV_DENY_PAT
 
 # Grace window between SIGTERM and SIGKILL on cancel().
 _SIGKILL_GRACE_S = 1.5
+
+# --- Writing to the child (ADR-0012, council M0 Q1) ---------------------------
+#
+# The master fd is O_NONBLOCK. In raw mode a write longer than the tty input
+# queue returns a PARTIAL count (~1 KiB on macOS; evidence/T/pty-single-write.txt)
+# and the next write raises EAGAIN until the child reads -- so one os.write()
+# silently truncated any paste longer than that, learner or envelope. Every
+# write now loops until the whole buffer is consumed, waiting for writability
+# through the event loop between rounds (evidence/T/pty-looped-write.txt: 64 KiB
+# intact in 65 rounds), and holds one per-transport lock so two callers' bytes
+# cannot interleave.
+#
+# A write that makes no progress for this long means the child is not reading
+# its terminal at all (a wedged TUI). Give up and say so rather than hold the
+# lock -- and every learner keystroke queued behind it -- indefinitely.
+_WRITE_STALL_TIMEOUT_S = 30.0
+
+# DEC private mode 2004, bracketed paste. A TUI line editor that has enabled it
+# treats everything between ESC[200~ and ESC[201~ as pasted text, which is what
+# keeps a multi-line envelope together as ONE prompt. The reader loop sees every
+# byte the child writes, so the transport tracks the mode and the renderer picks
+# the framing from it (M0 Q3): bracket when on, one printable line when off.
+_DEC2004_ON = b"\x1b[?2004h"
+_DEC2004_OFF = b"\x1b[?2004l"
+# A sequence may straddle two reads. Carry the longest proper prefix a chunk can
+# end with (7 bytes) into the next scan; a carry can never hold a whole 8-byte
+# sequence, so nothing is counted twice.
+_DEC2004_CARRY = len(_DEC2004_ON) - 1
 
 
 # --- SIGCHLD dispatch -------------------------------------------------------
@@ -177,6 +207,21 @@ def _blocking_select_read(fd: int) -> bytes:
         raise
 
 
+def _scan_dec2004(carry: bytes, data: bytes, enabled: bool) -> tuple[bytes, bool]:
+    """Track DEC mode 2004 across one more chunk of child output.
+
+    Returns the new carry (the chunk's last ``_DEC2004_CARRY`` bytes, so a split
+    ``ESC[?2004h`` is still seen) and the mode after this chunk: the LAST enable
+    or disable in ``carry + data`` wins; neither present leaves it unchanged.
+    """
+    window = carry + data
+    on = window.rfind(_DEC2004_ON)
+    off = window.rfind(_DEC2004_OFF)
+    if on >= 0 or off >= 0:
+        enabled = on > off
+    return window[-_DEC2004_CARRY:], enabled
+
+
 # --- PTYTransport -----------------------------------------------------------
 
 
@@ -224,6 +269,11 @@ class PTYTransport:
         self._state: _Running | None = None
         self._ended = False
         self._cancel_requested = False
+        # One lock for every writer (send_input AND deliver_block): a block is
+        # contiguous on the wire only if no keystroke can land between its rounds.
+        self._write_lock = asyncio.Lock()
+        self._bracketed_paste = False
+        self._dec_carry = b""
 
     @property
     def pid(self) -> int | None:
@@ -349,16 +399,103 @@ class PTYTransport:
         return True
 
     async def send_input(self, data: bytes) -> None:
+        """Write learner bytes, all of them, under the write lock.
+
+        Fire-and-forget for the Protocol: a closed child is not reported here
+        (the SIGCHLD path emits ``Stopped``), and a stalled write becomes a
+        ``TransportError`` event rather than an exception in the websocket pump.
+        """
         state = self._state
         if state is None:
             return
+        async with self._write_lock:
+            write = await self._write_all(state, data)
+        if write.status == "error":
+            self._put_event(TransportError(message=f"send_input: {write.detail}"))
+
+    @property
+    def bracketed_paste_enabled(self) -> bool:
+        """Whether the child has DEC mode 2004 on, as last seen in its output."""
+        return self._bracketed_paste
+
+    @property
+    def block_framing(self) -> BlockFraming:
+        return "pty" if self._bracketed_paste else "pty-line"
+
+    async def deliver_block(self, data: bytes) -> DeliveryWrite:
+        """Write one block contiguously and report what the write itself said.
+
+        ``closed`` comes from ``EIO``/``EBADF``/``EPIPE`` on the master fd -- the
+        kernel's word that the child is gone -- not from a liveness probe, so a
+        delivery into a session that ended a moment ago is reported, not lost
+        (ADR-0012 Q4; M0 Q7.1).
+        """
+        state = self._state
+        if state is None or self._ended:
+            return DeliveryWrite(status="closed", detail="transport not started or already ended")
+        async with self._write_lock:
+            return await self._write_all(state, data)
+
+    async def _write_all(self, state: _Running, data: bytes) -> DeliveryWrite:
+        """Write every byte of ``data`` to the master fd; caller holds the lock."""
+        view = memoryview(data)
+        total = len(data)
+        sent = 0
+        while sent < total:
+            try:
+                written = os.write(state.master_fd, view[sent:])
+            except BlockingIOError:
+                # Input queue full: wait until the child has read some of it.
+                if not await self._wait_writable(state):
+                    return DeliveryWrite(
+                        status="error",
+                        detail=f"write stalled after {sent}/{total} bytes: the child is "
+                        f"not reading its terminal",
+                    )
+                continue
+            except OSError as exc:
+                if exc.errno in (errno.EIO, errno.EBADF, errno.EPIPE):
+                    return DeliveryWrite(
+                        status="closed",
+                        detail=f"write failed after {sent}/{total} bytes: {exc.strerror} "
+                        f"(the child is gone)",
+                    )
+                return DeliveryWrite(
+                    status="error",
+                    detail=f"write failed after {sent}/{total} bytes: {exc.strerror}",
+                )
+            if written == 0:
+                if not await self._wait_writable(state):
+                    return DeliveryWrite(
+                        status="error",
+                        detail=f"write stalled after {sent}/{total} bytes: the child is "
+                        f"not reading its terminal",
+                    )
+                continue
+            sent += written
+        return DeliveryWrite(status="written", detail=f"{total} bytes")
+
+    async def _wait_writable(self, state: _Running) -> bool:
+        """Block until the master fd is writable; False if that takes too long."""
+        loop = state.loop
+        fut: asyncio.Future[None] = loop.create_future()
+
+        def _ready() -> None:
+            if not fut.done():
+                fut.set_result(None)
+
         try:
-            os.write(state.master_fd, data)
-        except OSError as exc:
-            if exc.errno in (errno.EIO, errno.EBADF, errno.EPIPE):
-                # Child is gone. The SIGCHLD path will emit Stopped.
-                return
-            raise
+            loop.add_writer(state.master_fd, _ready)
+        except (OSError, ValueError):
+            # The fd was closed under us; the next os.write reports EBADF.
+            return True
+        try:
+            await asyncio.wait_for(fut, timeout=_WRITE_STALL_TIMEOUT_S)
+        except TimeoutError:
+            return False
+        finally:
+            loop.remove_writer(state.master_fd)
+        return True
 
     async def resize(self, cols: int, rows: int) -> None:
         state = self._state
@@ -445,6 +582,9 @@ class PTYTransport:
             while True:
                 data = await loop.run_in_executor(None, _blocking_select_read, state.master_fd)
                 if data:
+                    self._dec_carry, self._bracketed_paste = _scan_dec2004(
+                        self._dec_carry, data, self._bracketed_paste
+                    )
                     self._put_event(OutputBytes(data=data))
                 else:
                     # select timeout OR EOF. Check if child is gone.

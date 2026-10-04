@@ -235,6 +235,16 @@ lanes:
     - docs/adr/0012-practice-check-delivery.md
     - packages/studyloop/tests/test_module_delivery.py
     - packages/studyloop/tests/integration/test_module_delivery_transports.py
+    # design.md §2 forbids these three to T "until M0 proves a change is required".
+    # Council M0 ruled the change REQUIRED (council/2026-10-04-m0-arbitration.md
+    # §2 Q1, 4/4; §4 "T2–T4 inherit"): PTY full-write-under-lock + closed-write
+    # observable + DEC 2004 tracking, ACP prompt lock + awaitable deliver_block,
+    # and the `DeliveryWrite` / `BlockDeliverer` types beside the Protocol. The
+    # `AgentSessionTransport` Protocol's own methods are unchanged (S6). Still
+    # forbidden to T: session/active.py and everything under web/, cli/, modules/.
+    - packages/studyloop/src/studyloop/session/transport.py
+    - packages/studyloop/src/studyloop/session/transports/pty.py
+    - packages/studyloop/src/studyloop/session/transports/acp.py
 
   W: # Labs + assembly (feat/module-web-labs) — always last
     - packages/studyloop/src/studyloop/web/routes/modules.py

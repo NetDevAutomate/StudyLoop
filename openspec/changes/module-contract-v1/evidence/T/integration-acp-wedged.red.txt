@@ -1,0 +1,14 @@
+env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/integration/test_module_delivery_transports.py -m integration -k unconfirmed_cancel_wedges -q -p no:cacheprovider
+# worktree module-mentor-delivery  HEAD f517ef86  2026-10-04T21:41:18Z  TMPDIR=$(getconf DARWIN_USER_TEMP_DIR)  (acp.py releases the FIFO after an unconfirmed cancel: T-review finding 2)
+F                                                                        [100%]
+=================================== FAILURES ===================================
+___ test_acp_unconfirmed_cancel_wedges_transport_and_later_prompts_fail_fast ___
+packages/studyloop/tests/integration/test_module_delivery_transports.py:864: in test_acp_unconfirmed_cancel_wedges_transport_and_later_prompts_fail_fast
+    assert prompts_on_wire == 1, (
+E   AssertionError: [studyloop.session.module_delivery.deliver] 2 session/prompt reached the agent: a learner prompt was sent after an UNCONFIRMED cancellation and may overlap the still-running turn (M0 Q5: no subsequent overlap). Records: [{'prompt_seen': 1, 'text': '<<<studyloop:practice_check v1 attempt=att-0001>>>\ndata: a d'}, {'prompt_seen': 2, 'text': 'are you there?'}]
+E   assert 2 == 1
+------------------------------ Captured log call -------------------------------
+WARNING  studyloop.session.transports.acp:acp.py:481 ACP: timed-out delivery turn not confirmed cancelled within 0.5s; releasing the prompt lock
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/integration/test_module_delivery_transports.py::test_acp_unconfirmed_cancel_wedges_transport_and_later_prompts_fail_fast
+1 failed, 7 deselected in 6.44s

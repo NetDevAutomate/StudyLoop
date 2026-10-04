@@ -1,0 +1,23 @@
+env -u VIRTUAL_ENV just preflight   # worktree module-mentor-delivery, HEAD 5817dcb9 (merge of main 7119322a), TMPDIR=$(getconf DARWIN_USER_TEMP_DIR)
+# just stops at the first red recipe (test: the pre-existing virgin-HOME tmux failure), so test-js docs release-consistency spec-check were run individually right after.
+uv run --group dev ruff check .
+All checks passed!
+uv run --group dev ruff format --check .
+1059 files already formatted
+uv run --group dev pyright
+0 errors, 0 warnings, 0 informations
+[... pytest progress ...]
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_fresh_install_scope.py::test_studyloop_study_exits_2_with_the_diagnostic_on_a_virgin_home
+==== 1 failed, 7656 passed, 15 skipped, 820 deselected in 914.14s (0:15:14) ====
+error: recipe `test` failed on line 27 with exit code 1
+# --- run individually after the test recipe ---
+ℹ tests 167
+ℹ pass 167
+ℹ fail 0
+INFO    -  Documentation built in 0.50 seconds
+release consistency passed for studyloop 0.5.0
+Totals: 25 passed, 0 failed (25 items)
+# --- integration (not part of preflight; -m integration) ---
+env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/integration -m integration -q -p no:cacheprovider
+7 passed in 9.24s

@@ -1,0 +1,12 @@
+uv run pytest packages/studyloop/tests/integration/test_module_delivery_transports.py::test_acp_no_overlap_with_learner_turn -m integration -q -p no:cacheprovider
+# worktree: module-mentor-delivery  base: 60bbb504  TMPDIR=$(getconf DARWIN_USER_TEMP_DIR)
+F                                                                        [100%]
+=================================== FAILURES ===================================
+____________________ test_acp_no_overlap_with_learner_turn _____________________
+packages/studyloop/tests/integration/test_module_delivery_transports.py:458: in test_acp_no_overlap_with_learner_turn
+    assert by_turn[1]["overlapping_prompts"] == 0, (
+E   AssertionError: [today: transport.send_input(raw text) as _ws.py:201 does] the practice_check prompt was written while the learner's turn was still in flight (1 overlapping session/prompt). ADR-0012 Q2: queue behind the in-flight turn
+E   assert 1 == 0
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/integration/test_module_delivery_transports.py::test_acp_no_overlap_with_learner_turn
+1 failed in 1.55s

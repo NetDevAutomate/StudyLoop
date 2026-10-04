@@ -1,0 +1,39 @@
+env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_delivery.py -q -p no:cacheprovider
+# worktree: module-mentor-delivery  parent: 4ee6851d  TMPDIR=$(getconf DARWIN_USER_TEMP_DIR)
+# red-only commit: module_delivery.py is an interface stub (bodies raise NotImplementedError).
+# NotImplementedError tracebacks in this run: 28
+_____________ test_render_header_survives_when_both_tails_overflow _____________
+packages/studyloop/tests/test_module_delivery.py:292: in test_render_header_survives_when_both_tails_overflow
+    data = render_envelope(envelope, framing=framing)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[... one such traceback per failing test ...]
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_module_delivery.py::test_render_pty_envelope_is_one_bracketed_labelled_block
+FAILED packages/studyloop/tests/test_module_delivery.py::test_render_acp_envelope_is_labelled_without_escape_bytes
+FAILED packages/studyloop/tests/test_module_delivery.py::test_render_cuts_stdout_tail_first_then_stderr_never_identity
+FAILED packages/studyloop/tests/test_module_delivery.py::test_render_strips_control_bytes_from_module_output
+FAILED packages/studyloop/tests/test_module_delivery.py::test_render_header_survives_when_both_tails_overflow
+FAILED packages/studyloop/tests/test_module_delivery.py::test_one_renderer_every_framing_shares_one_body
+FAILED packages/studyloop/tests/test_module_delivery.py::test_render_bound_holds_in_one_line_framing_after_escaping
+FAILED packages/studyloop/tests/test_module_delivery.py::test_validate_accepts_the_documented_fields_and_forbids_extras
+FAILED packages/studyloop/tests/test_module_delivery.py::test_validate_rejects_out_of_bound_header_fields[module-id-64-chars]
+FAILED packages/studyloop/tests/test_module_delivery.py::test_validate_rejects_out_of_bound_header_fields[module-id-not-a-slug]
+FAILED packages/studyloop/tests/test_module_delivery.py::test_validate_rejects_out_of_bound_header_fields[attempt-id-65-chars]
+FAILED packages/studyloop/tests/test_module_delivery.py::test_validate_rejects_out_of_bound_header_fields[attempt-id-empty]
+FAILED packages/studyloop/tests/test_module_delivery.py::test_validate_rejects_out_of_bound_header_fields[deck-id-64-chars]
+FAILED packages/studyloop/tests/test_module_delivery.py::test_validate_rejects_out_of_bound_header_fields[task-id-not-a-slug]
+FAILED packages/studyloop/tests/test_module_delivery.py::test_validate_rejects_out_of_bound_header_fields[digest-not-sha256]
+FAILED packages/studyloop/tests/test_module_delivery.py::test_validate_rejects_out_of_bound_header_fields[phase-unknown]
+FAILED packages/studyloop/tests/test_module_delivery.py::test_validate_rejects_out_of_bound_header_fields[exit-class-unknown]
+FAILED packages/studyloop/tests/test_module_delivery.py::test_validate_rejects_out_of_bound_header_fields[exit-code-out-of-range]
+FAILED packages/studyloop/tests/test_module_delivery.py::test_validate_rejects_out_of_bound_header_fields[duration-negative]
+FAILED packages/studyloop/tests/test_module_delivery.py::test_validate_rejects_out_of_bound_header_fields[triggered-by-not-learner]
+FAILED packages/studyloop/tests/test_module_delivery.py::test_validate_accepts_bounds_inclusive_and_normalises_exit_class_case
+FAILED packages/studyloop/tests/test_module_delivery.py::test_validate_strips_control_bytes_from_the_tails
+FAILED packages/studyloop/tests/test_module_delivery.py::test_deliver_with_no_active_session_is_learner_visible
+FAILED packages/studyloop/tests/test_module_delivery.py::test_deliver_to_closed_transport_reports_transport_closed
+FAILED packages/studyloop/tests/test_module_delivery.py::test_deliver_sends_exactly_one_labelled_envelope_and_says_so
+FAILED packages/studyloop/tests/test_module_delivery.py::test_deliver_to_transport_without_block_path_is_unsupported_framing
+FAILED packages/studyloop/tests/test_module_delivery.py::test_deliver_maps_a_timed_out_write_and_a_raising_transport
+FAILED packages/studyloop/tests/test_module_delivery.py::test_deliver_to_active_session_reads_active_current
+28 failed, 1 passed in 0.50s
