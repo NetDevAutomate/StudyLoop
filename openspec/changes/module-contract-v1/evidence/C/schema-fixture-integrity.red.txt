@@ -1,0 +1,53 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_check.py -q --tb=short -p no:cacheprovider -k "deck or slug or scaffolding"
+# red until S2 (feat/module-schema b462ed42) reaches this branch: PracticeDeck rejects the §5.3 fields (extra_forbidden) and schemas has no SLUG_PATTERN / ScaffoldingLevel
+FFFFF                                                                    [100%]
+=================================== FAILURES ===================================
+_________ test_every_deck_except_mc004_validates_against_practice_deck _________
+packages/studyloop/tests/test_module_check.py:119: in test_every_deck_except_mc004_validates_against_practice_deck
+    assert failures == []
+E   AssertionError: assert ['valid-scaff...rror(s)', ...] == []
+E
+E     Left contains 32 more items, first extra item: 'valid-scaffold/decks/echo-basics.json: 5 error(s)'
+E     Use -v to get more diff
+__________ test_mc004_deck_is_rejected_for_exactly_its_one_extra_key ___________
+packages/studyloop/tests/test_module_check.py:126: in test_mc004_deck_is_rejected_for_exactly_its_one_extra_key
+    assert [error["loc"] for error in excinfo.value.errors()] == [("tasks", 0, "difficulty")]
+E   AssertionError: assert [('tasks', 0,...ty'), ('id',)] == [('tasks', 0, 'difficulty')]
+E
+E     At index 0 diff: ('tasks', 0, 'id') != ('tasks', 0, 'difficulty')
+E     Left contains 5 more items, first extra item: ('tasks', 0, 'solution')
+E     Use -v to get more diff
+_______________ test_mc014_deck_validates_but_lacks_its_task_id ________________
+packages/studyloop/tests/test_module_check.py:136: in test_mc014_deck_validates_but_lacks_its_task_id
+    dumped = PracticeDeck.model_validate(_load_json(deck)).model_dump(by_alias=True)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   pydantic_core._pydantic_core.ValidationError: 4 validation errors for PracticeDeck
+E   tasks.0.solution
+E     Extra inputs are not permitted [type=extra_forbidden, input_value='echo ready', input_type=str]
+E       For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden
+E   tasks.0.scaffolding
+E     Extra inputs are not permitted [type=extra_forbidden, input_value='guided', input_type=str]
+E       For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden
+E   tasks.0.mentorNotes
+E     Extra inputs are not permitted [type=extra_forbidden, input_value='If they reach for printf...t echo would have done.', input_type=str]
+E       For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden
+E   id
+E     Extra inputs are not permitted [type=extra_forbidden, input_value='echo-basics', input_type=str]
+E       For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden
+____________________ test_valid_fixture_ids_are_slug_valid _____________________
+packages/studyloop/tests/test_module_check.py:142: in test_valid_fixture_ids_are_slug_valid
+    pattern = re.compile(_schemas().SLUG_PATTERN)
+                         ^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'studyloop.content.schemas' has no attribute 'SLUG_PATTERN'
+_______________ test_fixture_scaffolding_levels_are_in_the_enum ________________
+packages/studyloop/tests/test_module_check.py:159: in test_fixture_scaffolding_levels_are_in_the_enum
+    levels = set(get_args(_schemas().ScaffoldingLevel))
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'studyloop.content.schemas' has no attribute 'ScaffoldingLevel'
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_module_check.py::test_every_deck_except_mc004_validates_against_practice_deck
+FAILED packages/studyloop/tests/test_module_check.py::test_mc004_deck_is_rejected_for_exactly_its_one_extra_key
+FAILED packages/studyloop/tests/test_module_check.py::test_mc014_deck_validates_but_lacks_its_task_id
+FAILED packages/studyloop/tests/test_module_check.py::test_valid_fixture_ids_are_slug_valid
+FAILED packages/studyloop/tests/test_module_check.py::test_fixture_scaffolding_levels_are_in_the_enum
+5 failed, 33 deselected in 0.47s

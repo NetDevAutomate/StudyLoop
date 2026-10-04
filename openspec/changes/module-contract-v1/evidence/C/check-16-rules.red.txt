@@ -1,0 +1,120 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_check.py -q --tb=line -p no:cacheprovider
+# worktree: feat/module-conformance at 5f8a5160 (base 60bbb504); engine stub raises NotImplementedError; S2 schema fields not yet on this branch
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   NotImplementedError: module check engine is not implemented yet (lands in C2)
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/src/studyloop/modules/check.py:57: NotImplementedError: module check engine is not implemented yet (lands in C2)
+E   AssertionError: assert ['valid-scaff...rror(s)', ...] == []
+
+      Left contains 32 more items, first extra item: 'valid-scaffold/decks/echo-basics.json: 5 error(s)'
+      Use -v to get more diff
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/tests/test_module_check.py:119: AssertionError: assert ['valid-scaff...rror(s)', ...] == []
+E   AssertionError: assert [('tasks', 0,...ty'), ('id',)] == [('tasks', 0, 'difficulty')]
+
+      At index 0 diff: ('tasks', 0, 'id') != ('tasks', 0, 'difficulty')
+      Left contains 5 more items, first extra item: ('tasks', 0, 'solution')
+      Use -v to get more diff
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/tests/test_module_check.py:126: AssertionError: assert [('tasks', 0,...ty'), ('id',)] == [('tasks', 0, 'difficulty')]
+E   pydantic_core._pydantic_core.ValidationError: 4 validation errors for PracticeDeck
+    tasks.0.solution
+      Extra inputs are not permitted [type=extra_forbidden, input_value='echo ready', input_type=str]
+        For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden
+    tasks.0.scaffolding
+      Extra inputs are not permitted [type=extra_forbidden, input_value='guided', input_type=str]
+        For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden
+    tasks.0.mentorNotes
+      Extra inputs are not permitted [type=extra_forbidden, input_value='If they reach for printf...t echo would have done.', input_type=str]
+        For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden
+    id
+      Extra inputs are not permitted [type=extra_forbidden, input_value='echo-basics', input_type=str]
+        For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/tests/test_module_check.py:136: pydantic_core._pydantic_core.ValidationError: 4 validation errors for PracticeDeck
+E   AttributeError: module 'studyloop.content.schemas' has no attribute 'SLUG_PATTERN'
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/tests/test_module_check.py:142: AttributeError: module 'studyloop.content.schemas' has no attribute 'SLUG_PATTERN'
+E   AttributeError: module 'studyloop.content.schemas' has no attribute 'ScaffoldingLevel'
+/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop/tests/test_module_check.py:159: AttributeError: module 'studyloop.content.schemas' has no attribute 'ScaffoldingLevel'
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_module_check.py::test_valid_scaffold_passes_every_rule
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC001]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC002]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC003]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC004]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC005]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC006]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC007]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC008]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC009]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC010]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC011]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC012]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC013]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC014]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC015]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC016]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC001]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC002]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC003]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC004]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC005]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC006]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC007]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC008]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC009]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC010]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC011]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC012]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC013]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC014]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC015]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC016]
+FAILED packages/studyloop/tests/test_module_check.py::test_every_deck_except_mc004_validates_against_practice_deck
+FAILED packages/studyloop/tests/test_module_check.py::test_mc004_deck_is_rejected_for_exactly_its_one_extra_key
+FAILED packages/studyloop/tests/test_module_check.py::test_mc014_deck_validates_but_lacks_its_task_id
+FAILED packages/studyloop/tests/test_module_check.py::test_valid_fixture_ids_are_slug_valid
+FAILED packages/studyloop/tests/test_module_check.py::test_fixture_scaffolding_levels_are_in_the_enum
+38 failed in 0.69s
