@@ -204,6 +204,21 @@ def test_legacy_lane_branches_still_resolve_when_a_map_is_supplied() -> None:
         lane_id_from_branch("lane/m1x", _MODULE_CONTRACT_BRANCHES)
 
 
+def test_explicit_map_entry_wins_over_the_legacy_pattern() -> None:
+    """``lane_id_from_branch``'s docstring promises "an exact name match wins
+    outright" -- so a map entry whose key happens to be shaped like a legacy
+    ``lane/m<n>-<slug>`` branch must resolve to the MAPPED value, not to the
+    ``m<n>`` the regex would derive. Pinned at the S-review's request (finding
+    2, 2026-10-04): without this case nothing proved the precedence rather than
+    the mere coexistence of the two mechanisms. It is a pin of existing
+    behaviour, so it has no red transcript -- reversing the two branches in
+    ``lane_id_from_branch`` is what would make it fail."""
+    branches = {**_MODULE_CONTRACT_BRANCHES, "lane/m3-data-safety": "S"}
+    assert lane_id_from_branch("lane/m3-data-safety", branches) == "S"
+    # And an unmapped legacy name beside it still falls through to the regex.
+    assert lane_id_from_branch("lane/m4-security", branches) == "m4"
+
+
 def test_no_map_means_legacy_only() -> None:
     """Without a map a `feat/` branch is not a lane branch -- the old behaviour, untouched."""
     assert lane_id_from_branch("feat/module-schema") is None
