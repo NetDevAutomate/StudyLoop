@@ -46,7 +46,7 @@ from studyloop.modules.consent import (
     ConsentReplayedError,
     DigestMismatchError,
 )
-from studyloop.modules.runner import ScriptPathError, ShellTokenError
+from studyloop.modules.runner import ArgvLengthError, ScriptPathError, ShellTokenError
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -76,15 +76,17 @@ DOCUMENTED_CHILD_VARIABLES = frozenset(
         "STUDYLOOP_MODULE_ID",
         "STUDYLOOP_DRILL_ID",
         "STUDYLOOP_ATTEMPT_ID",
+        "STUDYLOOP_ATTEMPT_DIR",
         "KUBECONFIG",
         "PATH",
         "HOME",
     }
 )
-"""Every non-XDG name the child may see, from proposal §5.5 *Environment* verbatim: the
-three ``STUDYLOOP_*`` variables, ``KUBECONFIG`` (when applicable), "a minimal ``PATH``" and
-"a scratch ``HOME``/XDG". Which ``XDG_*`` names are set is a contract gap; the test accepts
-any ``XDG_*`` name whose value lives under the attempt directory and nothing else."""
+"""Every non-XDG name the child may see: proposal §5.5 *Environment* names the three
+``STUDYLOOP_*`` variables, ``KUBECONFIG`` (when applicable), "a minimal ``PATH``" and "a
+scratch ``HOME``/XDG"; the wave-1 brief (R2) adds ``STUDYLOOP_ATTEMPT_DIR``. Which ``XDG_*``
+names are set is a contract gap; the test accepts any ``XDG_*`` name whose value lives under
+the attempt directory and nothing else."""
 
 
 def _sha256(path: Path) -> str:
@@ -287,20 +289,53 @@ def test_runner_never_shell(
 
 @pytest.mark.parametrize(
     "token",
-    [";", "|", "$(", "`", ">"],
-    ids=["semicolon", "pipe", "dollar-paren", "backtick", "redirect"],
+    [";", "|", "&", "&&", "||", "$(", "`", ">", "<", "\n"],
+    ids=[
+        "semicolon",
+        "pipe",
+        "ampersand",
+        "double-ampersand",
+        "double-pipe",
+        "dollar-paren",
+        "backtick",
+        "redirect-out",
+        "redirect-in",
+        "newline",
+    ],
 )
 def test_runner_refuses_shell_token_in_literal_argument(
     world: World, spawn_spy: list[SpawnCall], token: str
 ) -> None:
     """MC015 at runtime: arguments are literal. An argument carrying a shell operator or
-    substitution is refused before anything is spawned -- even when a consent object for
-    that very argv exists, because argv validation precedes the consent lookup."""
+    substitution (spec: ``;`` ``|`` ``&`` ``&&`` ``||`` ``$(`` backtick ``>`` ``<`` newline)
+    is refused before anything is spawned and the refusal names the token -- even when a
+    consent object for that very argv exists, because argv validation precedes the consent
+    lookup."""
     world.script("check.sh", "touch ran.marker")
     argv = ("scripts/check.sh", f"literal{token}touch pwned")
     consent = world.forged_consent(Phase.CHECK, argv, digest=_sha256(world.scripts / "check.sh"))
 
-    with pytest.raises(ShellTokenError):
+    with pytest.raises(ShellTokenError) as excinfo:
+        world.run(Phase.CHECK, argv, consent=consent)
+
+    message = str(excinfo.value)
+    assert token in message or repr(token) in message, (
+        f"refusal does not name the token {token!r}: {message}"
+    )
+    assert spawn_spy == []
+    assert not world.ran_marker()
+
+
+def test_runner_refuses_argv_longer_than_64_arguments(
+    world: World, spawn_spy: list[SpawnCall]
+) -> None:
+    """Spec (drill-runner): an argv of more than 64 arguments is refused before any process
+    starts. 64 is the last accepted length; 65 is refused."""
+    world.script("check.sh", "touch ran.marker")
+    argv = ("scripts/check.sh", *(f"arg{i}" for i in range(64)))
+    consent = world.forged_consent(Phase.CHECK, argv, digest=_sha256(world.scripts / "check.sh"))
+
+    with pytest.raises(ArgvLengthError):
         world.run(Phase.CHECK, argv, consent=consent)
 
     assert spawn_spy == []
@@ -347,6 +382,27 @@ def _directory_not_script(world: World, tmp_path: Path) -> str:
     return "scripts/check.sh"
 
 
+def _regular_file_outside_scripts(world: World, tmp_path: Path) -> str:
+    """MC013 at runtime (wave-1 ruling 1): a regular file *inside* the snapshot but outside
+    ``scripts/`` -- ``decks/helper.sh`` -- is not a phase executable."""
+    decks = world.attempt.snapshot_dir / "decks"
+    decks.mkdir()
+    helper = decks / "helper.sh"
+    helper.write_text("#!/bin/sh\ntouch ran.marker\n", encoding="utf-8")
+    helper.chmod(0o755)
+    return "decks/helper.sh"
+
+
+def _nested_under_scripts(world: World, tmp_path: Path) -> str:
+    """The spec says *directly* under ``scripts/``: a regular file one level down is refused."""
+    nested = world.scripts / "sub"
+    nested.mkdir()
+    script = nested / "check.sh"
+    script.write_text("#!/bin/sh\ntouch ran.marker\n", encoding="utf-8")
+    script.chmod(0o755)
+    return "scripts/sub/check.sh"
+
+
 @pytest.mark.parametrize(
     "arrange",
     [
@@ -355,24 +411,36 @@ def _directory_not_script(world: World, tmp_path: Path) -> str:
         _escaping_script,
         _absolute_script,
         _directory_not_script,
+        _regular_file_outside_scripts,
+        _nested_under_scripts,
     ],
-    ids=["symlink", "hardlink", "path-escape", "absolute-path", "directory"],
+    ids=[
+        "symlink",
+        "hardlink",
+        "path-escape",
+        "absolute-path",
+        "directory",
+        "regular-file-outside-scripts",
+        "nested-under-scripts",
+    ],
 )
 def test_runner_refuses_script_that_is_not_a_regular_file_in_snapshot(
     world: World, spawn_spy: list[SpawnCall], tmp_path: Path, arrange: Any
 ) -> None:
-    """MC013 at runtime: ``argv[0]`` must resolve to a regular file inside the snapshot --
-    not a symlink, not a hardlink to anything, not a path that escapes the snapshot, not an
-    absolute path, not a directory. Refused before spawn, consent or not."""
+    """MC013 at runtime: ``argv[0]`` must resolve to a regular file *directly under* the
+    snapshot's ``scripts/`` -- not a symlink, not a hardlink to anything, not a path that
+    escapes the snapshot, not an absolute path, not a directory, not a regular file elsewhere
+    in the snapshot. Refused before spawn, consent or not, and the refusal names the path."""
     script_arg: str = arrange(world, tmp_path)
     candidate = world.attempt.snapshot_dir / script_arg
     digest = _sha256(candidate) if candidate.is_file() else "unavailable"
     argv = (script_arg,)
     consent = world.forged_consent(Phase.CHECK, argv, digest=digest)
 
-    with pytest.raises(ScriptPathError):
+    with pytest.raises(ScriptPathError) as excinfo:
         world.run(Phase.CHECK, argv, consent=consent)
 
+    assert script_arg in str(excinfo.value), f"refusal does not name the path: {excinfo.value}"
     assert spawn_spy == []
     assert not world.ran_marker()
 
@@ -419,6 +487,9 @@ def test_runner_builds_environment_from_scratch(
     assert child_env["STUDYLOOP_MODULE_ID"] == MODULE_ID
     assert child_env["STUDYLOOP_DRILL_ID"] == EXPECTED_DRILL_ID
     assert child_env["STUDYLOOP_ATTEMPT_ID"] == world.attempt.attempt_id
+    assert Path(child_env["STUDYLOOP_ATTEMPT_DIR"]).resolve() == attempt_dir
+    assert spawn_spy[0].kwargs.get("cwd") is not None
+    assert Path(spawn_spy[0].kwargs["cwd"]).resolve() == attempt_dir, "cwd is not the attempt dir"
     assert "KUBECONFIG" not in child_env, "workdir target must not export KUBECONFIG"
     child_home = Path(child_env["HOME"]).resolve()
     assert child_home != learner_home.resolve()

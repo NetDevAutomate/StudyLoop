@@ -1,0 +1,61 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_runner.py -p no:cacheprovider --no-header -q --tb=line -k 'shell_token or not_a_regular_file or argv_longer'
+# worktree studyloop-wt/module-runner at b3c4738a + uncommitted R2 test additions (runner.run_phase still the R1 stub); TMPDIR=$(getconf DARWIN_USER_TEMP_DIR); 2026-10-04
+# new reds for wave 1: tokens & && || < newline (ruling 5), argv > 64 (ruling 5), regular file outside scripts/ and nested under scripts/ (ruling 1, MC013 at runtime); red on the stub's NotImplementedError before R2 is implemented
+FFFFFFFFFFFFFFFFFF                                                       [100%]
+=================================== FAILURES ===================================
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/runner.py:76: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/runner.py:76: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/runner.py:76: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/runner.py:76: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/runner.py:76: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/runner.py:76: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/runner.py:76: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/runner.py:76: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/runner.py:76: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/runner.py:76: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/runner.py:76: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/runner.py:76: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/runner.py:76: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/runner.py:76: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/runner.py:76: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/runner.py:76: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/runner.py:76: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/runner.py:76: NotImplementedError
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_refuses_shell_token_in_literal_argument[semicolon]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_refuses_shell_token_in_literal_argument[pipe]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_refuses_shell_token_in_literal_argument[ampersand]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_refuses_shell_token_in_literal_argument[double-ampersand]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_refuses_shell_token_in_literal_argument[double-pipe]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_refuses_shell_token_in_literal_argument[dollar-paren]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_refuses_shell_token_in_literal_argument[backtick]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_refuses_shell_token_in_literal_argument[redirect-out]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_refuses_shell_token_in_literal_argument[redirect-in]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_refuses_shell_token_in_literal_argument[newline]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_refuses_argv_longer_than_64_arguments
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_refuses_script_that_is_not_a_regular_file_in_snapshot[symlink]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_refuses_script_that_is_not_a_regular_file_in_snapshot[hardlink]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_refuses_script_that_is_not_a_regular_file_in_snapshot[path-escape]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_refuses_script_that_is_not_a_regular_file_in_snapshot[absolute-path]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_refuses_script_that_is_not_a_regular_file_in_snapshot[directory]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_refuses_script_that_is_not_a_regular_file_in_snapshot[regular-file-outside-scripts]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_refuses_script_that_is_not_a_regular_file_in_snapshot[nested-under-scripts]
+18 failed, 14 deselected in 0.35s

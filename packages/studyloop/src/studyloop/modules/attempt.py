@@ -71,6 +71,11 @@ class DrillIdentity:
     deck_id: str
     task_id: str
 
+    @property
+    def drill_id(self) -> str:
+        """``STUDYLOOP_DRILL_ID``: ``<deck id>/<task id>`` (§5.5)."""
+        return f"{self.deck_id}/{self.task_id}"
+
 
 @dataclass(frozen=True)
 class Attempt:
