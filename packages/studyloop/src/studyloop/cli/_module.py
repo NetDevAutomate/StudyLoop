@@ -32,6 +32,8 @@ def module_group() -> None:
     A module is a directory of data (module.yaml, decks/*.json, scripts/, mentor/brief.md)
     that StudyLoop validates against contract rules MC001-MC016 and never imports or
     executes. Install from a local path only; StudyLoop makes no network access here.
+    Drills from installed modules run through `studyloop drill` inside the one claimed
+    study session; `studyloop doctor` reports their declared prerequisites.
     """
 
 
@@ -64,9 +66,18 @@ def _print_report(report: CheckReport, module_path: Path, as_json: bool) -> None
 def module_check(path: Path, as_json: bool) -> None:
     """Check the module at PATH against conformance rules MC001-MC016.
 
-    Reports each failure with its rule id, file and line (line is null for a file-level
-    fault such as a missing file). Exit 0 when the module conforms, 1 on any finding,
-    2 when PATH is not a directory. Nothing in the module is executed.
+    Reports each failure as `MCnnn <file>:<line>: <message>` (the line is omitted,
+    and null in --json, for a file-level fault such as a missing file). Nothing in the
+    module is executed: the check reads files only.
+
+    Exit codes: Exit 0 when the module conforms, exit 1 on any finding, exit 2 when
+    PATH is not a directory.
+
+    Examples:
+
+        studyloop module check ./kubernetes-drills
+
+        studyloop module check --json ./kubernetes-drills
     """
     if not path.is_dir():
         raise click.UsageError(f"{path} is not a directory")
@@ -93,12 +104,19 @@ def module_check(path: Path, as_json: bool) -> None:
 def module_new(
     module_id: str, parent: Path | None, title: str | None, topic: str, author: str
 ) -> None:
-    """Scaffold a new module MODULE_ID that passes `studyloop module check`.
+    """Scaffold a conforming module MODULE_ID with one offline drill.
 
     Writes module.yaml, one deck with an offline echo-based drill (scripts/check.sh
     exits 0 with no network, Docker or kind), mentor/brief.md, README.md with the four
     required sections, LICENSE, CHANGELOG.md and tests/check.sh into ./MODULE_ID (or
-    --dir/MODULE_ID). The destination must not exist or must be empty.
+    --dir/MODULE_ID). MODULE_ID is a slug: lowercase letters, digits and hyphens. The
+    destination must not exist or must be empty; exit 1 otherwise, with nothing written.
+
+    Examples:
+
+        studyloop module new kubernetes-drills
+
+        studyloop module new sql-drills --dir ~/code --topic sql --author "Ada L."
     """
     destination = (parent or Path.cwd()) / module_id
     try:
@@ -113,14 +131,21 @@ def module_new(
 @click.argument("path", type=click.Path(path_type=Path))
 @click.option("--json", "as_json", is_flag=True, help="Print the lockfile entry as JSON.")
 def module_add(path: Path, as_json: bool) -> None:
-    """Install the module at PATH from a local directory into an immutable snapshot.
+    """Install the module at local PATH into an immutable snapshot.
 
     Runs `studyloop module check PATH` first and refuses on any finding: nothing is
     written and modules.lock.json is left exactly as it was (exit 1). On success the
     module is copied into StudyLoop's config directory under modules/snapshots/<digest>
     (files read-only) and recorded in modules.lock.json with its id, version, content
     digest and -- when PATH is inside a git checkout -- the origin URL and HEAD sha, read
-    locally with no fetch. No network access occurs. Re-adding an id replaces its entry.
+    locally with no fetch. No network access occurs; a git URL is not accepted in v1.
+    Re-adding an id replaces its entry.
+
+    Examples:
+
+        studyloop module add ./kubernetes-drills
+
+        studyloop module add --json ./kubernetes-drills
     """
     if not path.is_dir():
         raise click.UsageError(f"{path} is not a directory")
@@ -151,7 +176,17 @@ def module_add(path: Path, as_json: bool) -> None:
 @module_group.command("list")
 @click.option("--json", "as_json", is_flag=True, help="Print the lockfile entries as a JSON list.")
 def module_list(as_json: bool) -> None:
-    """List installed modules from modules.lock.json (the lockfile is the only source)."""
+    """List installed modules from the lockfile, modules.lock.json.
+
+    One line per module: id, version, the first 12 hex digits of the content digest
+    and the snapshot directory. --json prints the full lockfile entries.
+
+    Examples:
+
+        studyloop module list
+
+        studyloop module list --json
+    """
     store = ModuleStore()
     try:
         entries = store.entries()
@@ -175,7 +210,12 @@ def module_remove(module_id: str) -> None:
     """Remove MODULE_ID from modules.lock.json and delete its snapshot.
 
     Idempotent: removing an id that is not installed is not an error (exit 0) and
-    leaves the lockfile untouched.
+    leaves the lockfile untouched. Only the lockfile and the module's own snapshot are
+    touched; the source directory it was added from is never deleted.
+
+    Examples:
+
+        studyloop module remove kubernetes-drills
     """
     store = ModuleStore()
     try:

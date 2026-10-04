@@ -9,8 +9,11 @@ resolve fenced ``studyloop module ...`` examples against it once registered.
 from __future__ import annotations
 
 import json
+import re
+import shlex
 from pathlib import Path
 
+import click
 import pytest
 from click.testing import CliRunner
 
@@ -218,3 +221,81 @@ def test_remove_is_idempotent(config_dir: Path, tmp_path: Path) -> None:
     second = _run("remove", "my-drills")
     assert second.exit_code == 0, second.output
     assert "not installed" in second.output
+
+
+# ---------------------------------------------------------------------------
+# C6 -- help text is documentation: every command carries resolvable examples
+# ---------------------------------------------------------------------------
+
+_EXAMPLE_RE = re.compile(r"^studyloop module\b.*")
+
+
+def _commands() -> dict[str, click.Command]:
+    ctx = click.Context(module_group, info_name="module")
+    return {
+        name: cmd
+        for name in module_group.list_commands(ctx)
+        if (cmd := module_group.get_command(ctx, name))
+    }
+
+
+def _examples(cmd: click.Command) -> list[str]:
+    help_text = cmd.help or ""
+    if "Examples:" not in help_text:
+        return []
+    after = help_text.split("Examples:", 1)[1]
+    return [line.strip() for line in after.splitlines() if _EXAMPLE_RE.match(line.strip())]
+
+
+def _declared_options(cmd: click.Command) -> set[str]:
+    opts: set[str] = {"--help"}
+    for param in cmd.params:
+        if isinstance(param, click.Option):
+            opts.update(param.opts)
+            opts.update(param.secondary_opts)
+    return opts
+
+
+def test_every_command_has_examples_that_resolve_against_the_group() -> None:
+    """The docs-drift test will validate ``studyloop module ...`` lines in ``Examples:``
+    sections once W registers the group; this is the same contract, applied now."""
+    commands = _commands()
+    assert set(commands) == {"check", "new", "add", "list", "remove"}
+    problems: list[str] = []
+    for name, cmd in commands.items():
+        examples = _examples(cmd)
+        if not examples:
+            problems.append(f"{name}: no `studyloop module ...` line under Examples:")
+            continue
+        for example in examples:
+            tokens = shlex.split(example)
+            if tokens[:3] != ["studyloop", "module", name]:
+                problems.append(
+                    f"{name}: example does not start with `studyloop module {name}`: {example}"
+                )
+                continue
+            declared = _declared_options(cmd)
+            for token in tokens[3:]:
+                if token.startswith("-"):
+                    opt = token.split("=", 1)[0]
+                    if opt not in declared:
+                        problems.append(f"{name}: {opt!r} is not a declared option ({example})")
+    assert problems == []
+
+
+def test_help_states_exit_codes_and_the_no_network_promise() -> None:
+    commands = _commands()
+    # Click rewraps paragraphs, so compare on whitespace-normalised text.
+    check_help = " ".join(_run("check", "--help").output.split())
+    assert "Exit 0 when the module conforms" in check_help
+    assert "exit 1 on any finding" in check_help
+    assert "exit 2 when PATH is not a directory" in check_help
+    add_help = " ".join(_run("add", "--help").output.split())
+    assert "no fetch" in add_help and "No network access" in add_help
+    assert "modules.lock.json" in add_help
+    remove_help = " ".join(_run("remove", "--help").output.split())
+    assert "Idempotent" in remove_help
+    for name, cmd in commands.items():
+        result = _run(name, "--help")
+        assert result.exit_code == 0, (name, result.output)
+        assert (cmd.help or "").strip(), f"{name} has no help text"
