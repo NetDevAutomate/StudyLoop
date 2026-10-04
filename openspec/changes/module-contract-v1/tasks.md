@@ -46,7 +46,7 @@ preflight`. "Red kept" = the failing-test transcript is in the commit body or un
 
 ### C — red tests only (`feat/module-conformance`)
 
-- [ ] C1 Fixtures under `tests/fixtures/modules/`: `valid-scaffold/` plus `mc001/` … `mc016/`,
+- [x] C1 Fixtures under `tests/fixtures/modules/`: `valid-scaffold/` plus `mc001/` … `mc016/`,
       each breaking exactly one rule, each with a `repaired/` twin; `test_module_check.py`
       asserting one named rule per fixture; verify all 16 fail (no engine yet). Red kept.
 
@@ -72,19 +72,19 @@ preflight`. "Red kept" = the failing-test transcript is in the commit body or un
 
 ### C — conformance + lifecycle
 
-- [ ] C2 `modules/manifest.py` (Pydantic, `extra: forbid`), `modules/check.py` with rule ids and
+- [x] C2 `modules/manifest.py` (Pydantic, `extra: forbid`), `modules/check.py` with rule ids and
       `--json`; verify the 16 fixtures each fail naming exactly one `MCnnn`, 16 repaired twins
       pass, `valid-scaffold` passes. G.
-- [ ] C3 `modules/scaffold.py` + `module new <id>`; verify scaffold output passes `check` and
+- [x] C3 `modules/scaffold.py` + `module new <id>`; verify scaffold output passes `check` and
       contains one `echo`-based offline drill. G.
-- [ ] C4 `modules/store.py` + `module add <path>` / `list` / `remove`: immutable snapshot,
+- [x] C4 `modules/store.py` + `module add <path>` / `list` / `remove`: immutable snapshot,
       content digest, lockfile written only after `check` passes, git remote + `HEAD` sha read
       locally when present, `remove` idempotent; verify `test_module_lifecycle.py`: failed check
       leaves `modules.lock.json` byte-identical (red kept). G.
-- [ ] C5 `doctor/modules.py` probes `docker`, `kind`, `kubectl` with fake binaries on `PATH`;
+- [x] C5 `doctor/modules.py` probes `docker`, `kind`, `kubectl` with fake binaries on `PATH`;
       one registration in `cli/_doctor.py`; verify probes report version/missing and never
       execute anything but `--version`. G.
-- [ ] C6 `cli/_module.py` Click group (`click.Group`, mounted lazily like every other `cli/_*.py`) exported, not registered; verify `test_module_cli.py`
+- [x] C6 `cli/_module.py` Click group (`click.Group`, mounted lazily like every other `cli/_*.py`) exported, not registered; verify `test_module_cli.py`
       via `CliRunner` on the group object. G.
 - [ ] C-review One independent seat reviews C2–C6 before C merges; verify the catch-rate row.
 
