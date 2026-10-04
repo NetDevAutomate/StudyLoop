@@ -88,7 +88,7 @@ flowchart LR
 | `website/docs/r/*.md` is mandatory | `README.md` with required sections: prerequisites, what runs, data collected, limits |
 | `required_providers` version constraint | `contract: 1` in the manifest; core refuses a module whose contract it does not speak |
 | `.terraform.lock.hcl` checksums | `modules.lock.json`: git sha + content digest per installed module |
-| Terraform Registry lists providers | (stage 3) a `StudyLoop-Modules` repo holding a reviewed `index.json`; its CI runs `module check` on every entry |
+| Terraform Registry lists providers | (stage 3) `studyloop-module-index`: a reviewed `index.json`, CI runs `module check` on every entry — the krew-index model |
 
 ## 4. What exists today (the seams we reuse)
 
@@ -306,8 +306,23 @@ lacks, either the need is generic (add it to v1) or kdrill adapts.
 | Second module: SQL lab on in-process DuckDB (post-MVP, stage 2) | Someone who did **not** write the contract | After item 6 |
 
 After stage 2 proves the boundary, stage 3 publishes the contract as stable and opens the
-`StudyLoop-Modules` index repository; stage 4 (installation lifecycle, Web UI install,
-revocation) is designed only then.
+index repository; stage 4 (installation lifecycle, Web UI install, revocation) is designed
+only then.
+
+### Naming conventions
+
+- **Module repositories:** `studyloop-module-<id>`, carrying the GitHub topic
+  `studyloop-module`, where `<id>` is exactly the manifest's `id` — the
+  `terraform-provider-<name>` convention. It is what makes discovery, a shared `module check`
+  CI template and the later index mechanical. kdrill would become
+  `studyloop-module-kubernetes-drills` (the project can keep its nickname).
+- **Index repository (stage 3, not before):** `studyloop-module-index`, under the same
+  organisation. It is an index of manifests pointing at sha-pinned artefacts with CI that runs
+  `module check` on every entry — the `kubernetes-sigs/krew-index` model — not a hosted
+  registry, so it is not called one. It is deliberately **not created** until the first module
+  passes `module check`; an empty "registry" would advertise a capability that does not exist.
+- **Casing:** lowercase-hyphen for everything except the core repository, matching the
+  package and CLI name `studyloop`.
 
 ## 10. Questions for reviewers
 
@@ -330,5 +345,8 @@ Each has a recommended answer. "Yes" is a complete reply; so is "no, because …
 8. **Ownership and order** as in §9. *Recommended: as written.* Who takes the second core
    contributor slices, and does Bruno want to start the conversion against the draft schema
    before `module check` exists?
+9. **Naming.** Module repos `studyloop-module-<id>` with topic `studyloop-module`; the stage-3
+   index repo `studyloop-module-index`. *Recommended: yes.* Bruno — happy to rename when you
+   start the conversion?
 
 Reply on issue #53, or as review comments on the pull request that carries this file.
