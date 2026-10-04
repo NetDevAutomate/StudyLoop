@@ -39,6 +39,7 @@ from studyloop.session.transport import (
     TransportError,
 )
 from studyloop.session.transports import acp as acp_module
+from studyloop.session.transports import pty as pty_module
 from studyloop.session.transports.acp import ACPTransport
 from studyloop.session.transports.pty import PTYTransport
 
@@ -169,6 +170,38 @@ _PTY_FAKE_MENTOR_SLOW_READER = textwrap.dedent(
         elif seen_end:
             break                            # idle after the block closed: that is all
     sys.stdout.write("MENTOR-GOT " + buf.hex() + "\\n"); sys.stdout.flush()
+    """
+)
+
+
+_PTY_FAKE_SLOW_LEARNER_READER = textwrap.dedent(
+    """
+    import os, select, sys, time, tty
+    fd = sys.stdin.fileno()
+    tty.setraw(fd)
+    sys.stdout.write("READY\\n"); sys.stdout.flush()
+    buf = b""
+    deadline = time.monotonic() + 20.0
+    while time.monotonic() < deadline:
+        ready, _, _ = select.select([fd], [], [], 1.0)
+        if ready:
+            chunk = os.read(fd, 256)             # a slow TUI: small reads, a pause between
+            if not chunk:
+                break
+            buf += chunk
+            time.sleep(0.02)
+        elif buf:
+            break                                # idle after input: whatever came is all
+    sys.stdout.write("MENTOR-GOT " + buf.hex() + "\\n"); sys.stdout.flush()
+    """
+)
+
+_PTY_FAKE_NEVER_READS = textwrap.dedent(
+    """
+    import sys, time, tty
+    tty.setraw(sys.stdin.fileno())               # raw mode: the input queue is ~1 KiB
+    sys.stdout.write("READY\\n"); sys.stdout.flush()
+    time.sleep(20.0)                             # a wedged TUI: never reads its terminal
     """
 )
 
@@ -379,6 +412,85 @@ async def test_pty_mode_2004_off_falls_back_to_one_line(tmp_path: Path) -> None:
     )
     assert "kdrill" in text and "deployments/scale-to-three" in text and "failed" in text
     assert getattr(outcome, "status", None) == "delivered", f"[{seam}] {outcome!r}"
+
+
+# --- PTY learner input: the same write path, as _ws.py:201 uses it (T-review 3) -------
+
+
+@pytest.mark.asyncio
+async def test_pty_learner_send_input_over_1kib_arrives_whole_and_in_order(tmp_path: Path) -> None:
+    """A learner's paste longer than the tty input queue (~1 KiB raw) arrives whole.
+
+    Before the write loop, ``PTYTransport.send_input`` did one ``os.write`` and discarded
+    its partial count (evidence/T/pty-single-write.txt), so a long paste was silently cut.
+    One ``send_input`` of ~4 KiB through a slow reader must reach the child byte-for-byte.
+    """
+    script = tmp_path / "fake_slow_learner_reader.py"
+    script.write_text(_PTY_FAKE_SLOW_LEARNER_READER)
+    transport = PTYTransport(
+        resolve_binary=lambda _agent: sys.executable,
+        build_launch_cmd=lambda _cfg: [sys.executable, str(script)],
+    )
+    config = _config(tmp_path, agent="fake-pty-mentor")
+    payload = b"".join(f"line {i:04d} of a long learner paste\n".encode() for i in range(130))
+    assert len(payload) > 4096
+
+    await transport.start(config)
+    try:
+        await _wait_for_ready(transport, timeout=10.0)
+        await transport.send_input(payload)
+        received = await _pty_mentor_received(transport, timeout=25.0)
+    finally:
+        await transport.end()
+
+    assert len(received) == len(payload), (
+        f"learner input was cut: {len(received)} of {len(payload)} bytes reached the child "
+        f"(pty.py single os.write with a discarded partial count)"
+    )
+    assert received == payload, "learner input arrived reordered or corrupted"
+
+
+@pytest.mark.asyncio
+async def test_pty_learner_send_input_to_a_reader_that_stops_draining_errors_within_bound(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A child that never reads its terminal cannot wedge the writer forever.
+
+    ``send_input`` is fire-and-forget, so the learner learns of the stall through a
+    ``TransportError`` on the event stream, within ``_WRITE_STALL_TIMEOUT_S`` (30 s in
+    production; lowered to 1 s here under the suite's 60 s ceiling). Nothing is raised
+    into the websocket pump.
+    """
+    # raising=False: against pty.py before the write loop there is no such constant and the
+    # test must fail on its behaviour, not on the monkeypatch.
+    monkeypatch.setattr(pty_module, "_WRITE_STALL_TIMEOUT_S", 1.0, raising=False)
+    script = tmp_path / "fake_never_reads.py"
+    script.write_text(_PTY_FAKE_NEVER_READS)
+    transport = PTYTransport(
+        resolve_binary=lambda _agent: sys.executable,
+        build_launch_cmd=lambda _cfg: [sys.executable, str(script)],
+    )
+    config = _config(tmp_path, agent="fake-pty-mentor")
+
+    await transport.start(config)
+    try:
+        await _wait_for_ready(transport, timeout=10.0)
+        started = asyncio.get_running_loop().time()
+        await asyncio.wait_for(transport.send_input(b"x" * 65536), timeout=10.0)
+        elapsed = asyncio.get_running_loop().time() - started
+
+        async def _first_error() -> TransportError:
+            async for event in transport.events():
+                if isinstance(event, TransportError):
+                    return event
+            pytest.fail("event stream ended without a TransportError")
+
+        error = await asyncio.wait_for(_first_error(), timeout=5.0)
+    finally:
+        await transport.end()
+
+    assert "stalled" in error.message and "not reading" in error.message, error.message
+    assert 1.0 <= elapsed < 5.0, f"send_input returned after {elapsed:.2f}s; bound is 1 s"
 
 
 # --- ACP: a fake mentor that echoes each prompt and notices overlapping ones ---------

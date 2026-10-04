@@ -1,0 +1,4 @@
+env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/integration/test_module_delivery_transports.py -m integration -k learner_send_input -q -p no:cacheprovider
+# worktree module-mentor-delivery  HEAD 8e1adc6b  2026-10-04T21:46:22Z
+..                                                                       [100%]
+2 passed, 8 deselected in 4.29s
