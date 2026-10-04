@@ -1,0 +1,85 @@
+# W-A receipts (design.md §6; 00-common.md §3). Every command below was executed in the W-A
+# worktree with `env -u VIRTUAL_ENV` prefixed and TMPDIR="$(getconf DARWIN_USER_TEMP_DIR)" exported
+# (00-common.md §0 sandbox facts); the `$` line is the command exactly as the page shows it.
+
+$ uv --version
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:19Z
+uv 0.11.11 (ed7b06001 2026-05-06 aarch64-apple-darwin)
+
+$ just --version
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:19Z
+just 1.58.0
+
+$ tmux -V
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:19Z
+tmux 3.7b
+
+$ node --version
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:19Z
+v26.7.0
+
+$ cat .python-version
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:19Z
+3.12
+
+$ just sync-dev
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:19Z
+uv sync --all-packages --group dev
+Resolved 203 packages in 4ms
+Checked 159 packages in 15ms
+
+$ uv run python -c 'import studyloop; print(studyloop.__file__)'
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:19Z
+/Users/ataylor/code/personal/tools/studyloop-wt/contributor-guide-a/packages/studyloop/src/studyloop/__init__.py
+
+$ uv run --group dev playwright install chromium
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:19Z
+(no output)
+
+$ uv run studyloop --version
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:19Z
+studyloop, version 0.5.0
+
+$ uv run studyloop doctor
+exit=1  sha=f2e1c70e  utc=2026-10-04T19:19Z
+                                studyloop doctor
+┏━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ St… ┃ Check                 ┃ Details               ┃ Fix                    ┃
+┡━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━┩
+│  ✓  │ core/python_version   │ Python 3.12.8         │                        │
+
+$ just test-js
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:19Z
+node --test packages/studyloop/tests/js/*.test.js
+✔ extractChunkText: single content object (0.350042ms)
+✔ extractChunkText: content array takes the first entry (0.055292ms)
+✔ extractChunkText: flat payload (0.53125ms)
+✔ extractChunkText: malformed frames yield empty string, never throw (0.088458ms)
+
+$ uv run --group dev pre-commit install
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:21Z
+Using CPython 3.12.8
+Creating virtual environment at: .venv
+   Building studyloop-workspace @ file:///private/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/wa/clone
+      Built studyloop-workspace @ file:///private/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/wa/clone
+Installed 126 packages in 759ms
+
+$ uv run studyloop doctor --help
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:21Z
+Usage: studyloop doctor [OPTIONS]
+
+  Check installation health and report issues.
+
+Options:
+
+$ uv run studyloop doctor --quiet
+exit=1  sha=f2e1c70e  utc=2026-10-04T19:22Z
+63 passed, 9 warnings, 2 info. Run 'studyloop doctor --fix' to fix 5 issues.
+
+$ just --list
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:23Z
+Available recipes:
+    audit
+    audit-full
+    build-release
+    check-semantic-profile
