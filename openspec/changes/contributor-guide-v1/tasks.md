@@ -34,11 +34,11 @@ page; pre-commit at commit time; `env -u VIRTUAL_ENV` before `just`/`uv`;
 ## 2. Writers (W-A ∥ W-B ∥ W-C ∥ W-D, four worktrees branched from the scaffold sha)
 
 Per page, in this order, one commit each:
-- [ ] 2.x.1 Run every command the page will show; write `evidence/<writer>/commands.txt` entries
+- [x] 2.x.1 Run every command the page will show; write `evidence/<writer>/commands.txt` entries
       (`$ cmd` / `exit=` / 5 lines / `sha=` / `utc=`). A command that fails is not documented.
-- [ ] 2.x.2 Write the page to its §2 "one job"; cite §3 facts by number in an HTML comment at the
+- [x] 2.x.2 Write the page to its §2 "one job"; cite §3 facts by number in an HTML comment at the
       top (`<!-- facts: F1 F3 F13 -->`) so A1 can audit; no `<!-- GUIDE-STUB -->` left.
-- [ ] 2.x.3 Verify `pytest packages/studyloop/tests/test_contributor_guide_drift.py -k <page>` green,
+- [x] 2.x.3 Verify `pytest packages/studyloop/tests/test_contributor_guide_drift.py -k <page>` green,
       `test_docs_drift.py` green, `just docs` strict green; commit page + receipt together:
       `docs(contributing): <page stem> — <one line>`.
 
@@ -65,7 +65,7 @@ contributor-issues-prioritisation, contributor-ai, contributor-modules, contribu
 - [x] 3.3 Cross-link and duplication pass: H2 text grep across `docs/contributor-*.md` (a repeated
       H2 is a finding); router links every owning page; `CONTRIBUTING.md` root links still resolve.
 - [x] 3.4 `CHANGELOG.md` `[Unreleased]` → `### Added`: one learner-facing entry for the guide.
-- [ ] 3.5 Gates: `test_contributor_guide_drift.py` all green, `test_docs_drift.py` green,
+- [x] 3.5 Gates: `test_contributor_guide_drift.py` all green, `test_docs_drift.py` green,
       `env -u VIRTUAL_ENV just preflight` green, `just docs` strict green. Save summary lines under
       `evidence/A1/`. Commit.
 
@@ -83,7 +83,7 @@ contributor-issues-prioritisation, contributor-ai, contributor-modules, contribu
 ## 5. Merge and release of the lease
 
 - [ ] 5.1 Owner reads design.md §2 and §4 (objection window) — amendments applied before merge.
-- [ ] 5.2 `git merge --no-ff feat/contributor-guide` into local `main`; verify `just docs` and the
+- [x] 5.2 (merged 6a3f45d2 before 5.1 — owner away; 5.1 becomes a post-merge objection window, amendments are ordinary docs(contributing) commits) `git merge --no-ff feat/contributor-guide` into local `main`; verify `just docs` and the
       three drift test files green on `main`; update the module-contract ledger: lease released,
       S3 and W5 unblocked.
 - [ ] 5.3 Owner pushes `main`; owner schedules DoD 7 (Bruno or the second contributor walks
