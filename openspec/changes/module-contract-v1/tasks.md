@@ -52,7 +52,7 @@ preflight`. "Red kept" = the failing-test transcript is in the commit body or un
 
 ### R — adversarial red tests only (`feat/module-runner`)
 
-- [ ] R1 `test_module_runner.py` adversarial cases: shell token in argv, symlink/hardlink
+- [x] R1 `test_module_runner.py` adversarial cases: shell token in argv, symlink/hardlink
       script, inherited environment variable visible, script changed after consent, consent
       replay, per-phase timeout, output flood; plus `test_drill_writes_no_observation` and
       `test_runner_never_shell`; verify all fail — the last two against today's
@@ -60,7 +60,7 @@ preflight`. "Red kept" = the failing-test transcript is in the commit body or un
 
 ### T — spike (`feat/module-mentor-delivery`)
 
-- [ ] T1 Read `session/active.py`, `session/transport.py`, `session/transports/pty.py`,
+- [x] T1 Read `session/active.py`, `session/transport.py`, `session/transports/pty.py`,
       `session/transports/acp.py`, `web/routes/session/_transport.py`; draft
       `docs/adr/0012-practice-check-delivery.md` answering: PTY framing, ACP serialisation
       against an in-flight turn, envelope size bound, learner-visible failure; write test
@@ -115,15 +115,18 @@ preflight`. "Red kept" = the failing-test transcript is in the commit body or un
 - [ ] T-owner Probe each PTY harness (claude, codex, kiro-cli, pi) for `ESC[?2004h` at start-up with
       the real binaries; record which enable bracketed paste (M0 Q3: confirms, does not gate T3).
 
-- [ ] T2 `session/module_delivery.py`: typed, size-bounded `PracticeCheckEnvelope`; adapter
+- [x] T2 `session/module_delivery.py`: typed, size-bounded `PracticeCheckEnvelope`; adapter
       resolving `ActiveSession.transport`; verify unit tests for bound, labelling and the
       "no active session" path. G.
-- [ ] T3 PTY delivery per the ADR's framing; verify
+- [x] T3 PTY delivery per the ADR's framing; verify
       `integration/test_module_delivery_transports.py::test_pty` shows one labelled envelope
       reaching a fake mentor, identity + exit class present, output redacted (red kept). G.
-- [ ] T4 ACP delivery per the ADR's serialisation; verify `::test_acp` green and
+- [x] T4 ACP delivery per the ADR's serialisation; verify `::test_acp` green and
       `::test_acp_no_overlap_with_learner_turn` green; verify delivery failure is surfaced to
       the learner by a third test. G.
+  - Coordinator-approved ownership exception (T-review finding 5): lane T's +10-line hunk in
+    `packages/studyloop/tests/fixtures/lane_ownership.yaml` adding `session/transport.py`, `transports/pty.py`
+    and `transports/acp.py` to T's row is accepted as the transcription of council M0 §2 Q1 (4/4).
 - [ ] T-review One independent seat reviews T2–T4 before T merges; verify the catch-rate row.
 
 ### W — tests only
