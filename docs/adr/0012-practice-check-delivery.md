@@ -2,7 +2,7 @@
 
 **Status:** Proposed (draft for council M0) · **Date:** 2026-10-04 · **Deciders:** council M0
 (four seats) and Andy Taylor (owner) · **Change:** `openspec/changes/module-contract-v1`
-(proposal §5.7, design §7 M0 / §8 T1)
+(proposal §5.7, design §7 M0 / §8 T1, spec delta `specs/session-transports/spec.md`)
 
 ## Context
 
@@ -75,6 +75,12 @@ Consequence: **today `PTYTransport.send_input` silently truncates any write long
 tty input queue (~1 KiB on macOS)** — for a `practice_check` envelope and equally for a learner
 pasting a long block into the web terminal. Nothing above the transport can detect it.
 
+Against design §8: its line references hold (`active.py:50-54`, `transport.py:145`,
+`pty.py:351-360`; `acp.py:267-288` is `send_input`, `_prompt_turn` follows at 290-316). Two
+things it did not say: the PTY write is short, not whole; and the transport it names exists
+only in the web server's process, for web-started sessions — the CLI `studyloop study`
+session has none.
+
 ## Decision
 
 ### Q1 — PTY framing: how does injected text arrive as unmistakable *data*?
@@ -86,7 +92,8 @@ once.** The delivery module renders
 ESC[200~
 <<<studyloop:practice_check v1 attempt=<id>>>>
 module: <module id>@<digest[:12]>   drill: <deck id>/<task id>   phase: check
-exit: <passed|failed|error> (code <n>)   duration: <s>s   truncated: <stdout|stderr|none>
+exit: <passed|failed|error> (code <n>)   duration: <s>s   triggered_by: learner
+truncated: <stdout|stderr|none>
 --- stdout (last <n> bytes) ---
 <redacted stdout tail>
 --- stderr (last <n> bytes) ---
@@ -103,6 +110,18 @@ the mentor's transcript and in the persona's `practice_check` protocol (wave-1 c
 by the agents/persona files, not by this lane). The payload contains no raw control bytes: the
 renderer strips everything below 0x20 except `\n` and `\t` from module output before framing,
 so a module cannot smuggle its own ESC sequences or a Ctrl-C through the envelope.
+
+Framing is chosen by the transport's class — `PTYTransport` gets the bracket and the CR,
+`ACPTransport` gets the bare labelled text (Q2); any other transport gets the bare labelled
+text, so a test double or a future adapter is never handed terminal escapes it did not ask
+for. The renderer is one function, `render_envelope(result, *, framing)`, and the tests
+exercise it directly.
+
+What the existing harness agents recognise was **not** verified against the real binaries in
+this spike: starting `claude`, `codex`, `kiro-cli chat` or `pi` in a PTY to look for the mode
+2004 enable sequence (`ESC[?2004h`) needs the binaries and, for some, network at start-up —
+outside a default-lane test (common C4). It is open question 2 for M0. What *is* verified is
+the other end of the pipe: the learner's browser pastes through exactly this bracket today.
 
 Why this over the alternatives (§Rejected): it is the only framing that keeps a multi-line
 block together in a TUI line editor without agent-specific knowledge, and it is what the
@@ -180,11 +199,38 @@ recorded: the transient `practice_check` event on the attempt gains `delivery: {
 reason}`; nothing goes to `study_progress`, learning records or review items (§5.7). The web
 surface (lane W, wave 2) renders the same outcome string.
 
+The spec delta names three failure reasons — "transport closed, size exceeded, serialisation
+refused". Under this design the first maps to `transport_closed`; the other two are
+**unreachable by construction** and are reported here rather than tested for: *size exceeded*
+cannot happen because the renderer truncates to the bound and the header is bounded by
+slug validation (MC014) and enum values, so there is no envelope too large to send; and
+*serialisation refused* cannot happen because Q2 queues rather than refuses — the nearest
+real failure is a prompt that never ends, which is `timed_out`. If M0 picks refuse-and-retry
+instead, `serialisation_refused` returns as an outcome and the ACP overlap test changes.
+
 Today, by contrast, every failure path but one is invisible to the caller: PTY `send_input`
 returns `None` whether the bytes went anywhere or not (pty.py:352-360); ACP `send_input`
 returns `None` when ended (acp.py:268-269) or on a decode error (273-279), and a failed prompt
 surfaces only as a `TransportError` on the websocket's queue (308-313). Only the
 pre-handshake `RuntimeError` (270-271) reaches a caller.
+
+## What the tests encode (wave 0, all red against `60bbb504`)
+
+| Spec scenario (`specs/session-transports/spec.md`) | Test | Red today because |
+| --- | --- | --- |
+| delivery on PTY | `tests/integration/test_module_delivery_transports.py::test_pty` | the raw-mode fake mentor received bare keystrokes, no bracket — and only the first ~1 KiB (`evidence/T/integration-pty.red.txt`) |
+| delivered on both transports | `::test_acp` | the `session/prompt` text is not a sentinel-labelled envelope (`integration-acp.red.txt`) |
+| delivery on ACP does not interleave with a learner turn | `::test_acp_no_overlap_with_learner_turn` | the fake mentor saw 1 `session/prompt` arrive inside the learner's open turn (`integration-acp-no-overlap.red.txt`) |
+| a closed transport is reported | `::test_pty_closed_transport_is_reported` and `tests/test_module_delivery.py::test_deliver_to_closed_transport_reports_transport_closed` | delivery returned nothing; the drop is silent (`integration-pty-closed-transport.red.txt`, `unit-module-delivery.red.txt`) |
+| (unit) bound, order, labelling, control-byte stripping, no-session and success outcomes | `tests/test_module_delivery.py` (7 red, 1 green double check) | `unit-module-delivery.red.txt` |
+
+The tests resolve their subject through a seam: `studyloop.session.module_delivery`
+(`render_envelope(result, *, framing) -> bytes`, `deliver(session, result) ->
+DeliveryOutcome(status, reason)`) once wave 1 creates it; until then, today's only path —
+raw bytes through `send_input`, no outcome — so every red is an assertion red carrying the
+ADR question, and wave 1 turns them green without editing an assertion. The result type the
+tests pass is a test-local dataclass with §5.7's fields plus `triggered_by`; wave 1 replaces
+it with the typed `PracticeCheckEnvelope` input from lane R.
 
 ## Consequences
 
