@@ -60,8 +60,9 @@ small fix with a test goes straight to a pull request.
    **delta** to the living spec in `openspec/specs/<capability>/spec.md`. Requirements use SHALL
    and each has at least one `#### Scenario:` with WHEN/THEN.
 2. Add `.openspec.yaml` (`schema: spec-driven`, `created:`). A documentation-only change declares
-   `skip_specs: true` there, as `openspec/changes/contributor-guide-v1/.openspec.yaml` does, to
-   record that it carries no spec delta; nothing enforces the flag today, so the reviewer reads it.
+   `skip_specs: true` there, as `openspec/changes/contributor-guide-v1/.openspec.yaml` does: the
+   `openspec` CLI refuses a change with no spec delta unless the flag is set (this change failed
+   `spec-check` until it was added), so the flag is the reviewer's cue that "no delta" was a choice.
 3. Validate the structure. The recipe runs `openspec validate --specs --all` when the `openspec`
    CLI is installed and prints a skip message otherwise -- a skip is not a pass:
 
