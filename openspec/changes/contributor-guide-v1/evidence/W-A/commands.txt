@@ -117,3 +117,43 @@ $ just release-consistency
 exit=0  sha=19b747e0  utc=2026-10-04T19:28Z
 uv run python scripts/check-release-consistency.py --skip-wheel
 release consistency passed for studyloop 0.5.0
+
+$ git log -1 --format='%h %s' e659f8cf
+exit=0  sha=8016cf8b  utc=2026-10-04T19:31Z
+e659f8cf fix(web): give the voice health probe a budget a healthy host fits in
+
+$ git log -1 --format='%h %s' 019624c3
+exit=0  sha=8016cf8b  utc=2026-10-04T19:31Z
+019624c3 fix(mcp): record_teachback refuses blank concept/topic and names its failure honestly
+
+$ git log -1 --format='%h %s' 93f30789
+exit=0  sha=8016cf8b  utc=2026-10-04T19:31Z
+93f30789 fix(web): revalidate CSS and JS before reuse, like the page itself
+
+$ git log -1 --format='%h %s' 711459c1
+exit=0  sha=8016cf8b  utc=2026-10-04T19:31Z
+711459c1 feat(kiro): web ACP sessions run StudyLoop's own `studyloop` agent
+
+$ git log -1 --format='%h %s' fa5d76be
+exit=0  sha=8016cf8b  utc=2026-10-04T19:31Z
+fa5d76be test(now): RED — a plan-related active primary carries a warm-up first move on its own material (rubric 3c (e1))
+
+$ git log -1 --format='%h %s' 2883588f
+exit=0  sha=8016cf8b  utc=2026-10-04T19:31Z
+2883588f Merge PR #40 (fix/ws-drained-pull-future): read a done pull future on every WS pump exit
+
+$ git log -1 --format='%h %s' 6b6a35bd
+exit=0  sha=8016cf8b  utc=2026-10-04T19:31Z
+6b6a35bd Merge PR #41 (feat/learning-tier-fed): item 1, the mentor writes (S1-0 through council review 9)
+
+$ git log -1 --format='%h %s' 8d31f1ec
+exit=0  sha=8016cf8b  utc=2026-10-04T19:31Z
+8d31f1ec Merge PR #42 (fix/coverage-gate-selftest-timeout): coverage-gate self-test carries its own timeout
+
+$ git log -n 300 --format=%s | awk '{ n=length($0); if (n>max) max=n; sum+=n; if (n<=72) a++; if (n<=100) b++; if (n<=120) c++ } END { printf "n=%d max=%d mean=%.1f fit72=%d fit100=%d fit120=%d\n", NR, max, sum/NR, a, b, c }'
+exit=0  sha=8016cf8b  utc=2026-10-04T19:31Z
+n=300 max=163 mean=90.5 fit72=68 fit100=209 fit120=265
+
+$ git log -n 300 --format=%s | awk '{ print length($0) }' | sort -n | awk '{ a[NR]=$1 } END { print "median=" a[int((NR+1)/2)] " p90=" a[int(NR*0.9)] }'
+exit=0  sha=8016cf8b  utc=2026-10-04T19:31Z
+median=85 p90=124
