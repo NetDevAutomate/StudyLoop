@@ -13,6 +13,8 @@ outcome:
    printable line + CR, M0 Q3), ``acp`` / ``plain`` (bare labelled text). The whole
    rendering is <= ``ENVELOPE_BOUND_BYTES`` in every framing; when the result is
    larger the stdout tail is cut first, then the stderr tail, and the header never.
+   Every tail data line is prefixed ``| `` (``TAIL_LINE_PREFIX``) so printed text can
+   never pose as a sentinel or a section header; the prefix counts toward the bound.
 3. ``deliver(session, envelope)`` -- picks the framing from the transport, writes the
    block through ``BlockDeliverer.deliver_block`` (never ``send_input``), and maps the
    transport's ``DeliveryWrite`` to one of six ``DeliveryOutcome`` states. The reason
@@ -186,16 +188,30 @@ def _utf8_tail(text: str, keep: int) -> str:
     return raw[-keep:].decode("utf-8", errors="ignore")
 
 
+#: Every DATA line of a tail carries this prefix. Control bytes are stripped at
+#: validation, but a module can still PRINT ``<<<end studyloop:practice_check>>>``
+#: or ``--- stderr (1 bytes) ---`` and forge mentor-visible structure (T-review
+#: finding 1). With the prefix no tail line can ever equal a sentinel or begin
+#: with ``---``; header and sentinel lines are the only unprefixed ones, so a
+#: reader can parse sentinel-to-sentinel and trust the shape.
+TAIL_LINE_PREFIX = "| "
+
+
+def _marked(text: str) -> list[str]:
+    """The tail's lines, each prefixed with ``TAIL_LINE_PREFIX`` (trailing newline dropped)."""
+    return [TAIL_LINE_PREFIX + line for line in text.rstrip("\n").split("\n")]
+
+
 def _section(name: str, text: str, keep: int) -> list[str]:
     total = len(text.encode("utf-8"))
     if total == 0:
         return [f"--- {name} (empty) ---"]
     if keep >= total:
-        return [f"--- {name} ({total} bytes) ---", text.rstrip("\n")]
+        return [f"--- {name} ({total} bytes) ---", *_marked(text)]
     tail = _utf8_tail(text, keep)
     shown = len(tail.encode("utf-8"))
     header = f"--- {name} (last {shown} of {total} bytes; {total - shown} bytes truncated) ---"
-    return [header, tail.rstrip("\n")] if tail.strip("\n") else [header]
+    return [header, *_marked(tail)] if tail.strip("\n") else [header]
 
 
 def _body_lines(envelope: PracticeCheckEnvelope, *, out_keep: int, err_keep: int) -> list[str]:

@@ -373,7 +373,7 @@ async def test_pty_mode_2004_off_falls_back_to_one_line(tmp_path: Path) -> None:
     assert text.startswith(BEGIN_SENTINEL) and END_SENTINEL in text, (
         f"[{seam}] sentinels missing from the one-line envelope: {text[:80]!r}"
     )
-    assert "replica count mismatch\\nreplica count mismatch" in text, (
+    assert "| replica count mismatch\\n| replica count mismatch" in text, (
         f"[{seam}] output newlines must be escaped as the two characters \\n"
     )
     assert "kdrill" in text and "deployments/scale-to-three" in text and "failed" in text

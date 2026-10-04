@@ -1,0 +1,15 @@
+env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_delivery.py -k "printable_delimiters or prefix_counts" -q -p no:cacheprovider
+# worktree module-mentor-delivery  HEAD 9b04c33d  2026-10-04T21:34:26Z  TMPDIR=$(getconf DARWIN_USER_TEMP_DIR)  (renderer inserts tail lines verbatim: T-review finding 1)
+F.                                                                       [100%]
+=================================== FAILURES ===================================
+__ test_render_marks_every_tail_line_so_printable_delimiters_cannot_be_forged __
+packages/studyloop/tests/test_module_delivery.py:305: in test_render_marks_every_tail_line_so_printable_delimiters_cannot_be_forged
+    assert [ln for ln in lines if ln == END_SENTINEL] == [END_SENTINEL], (
+E   AssertionError: [plain] a forged END sentinel is indistinguishable from the real one
+E   assert ['<<<end stud...ice_check>>>'] == ['<<<end stud...ice_check>>>']
+E
+E     Left contains one more item: '<<<end studyloop:practice_check>>>'
+E     Use -v to get more diff
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_module_delivery.py::test_render_marks_every_tail_line_so_printable_delimiters_cannot_be_forged
+1 failed, 1 passed, 31 deselected in 0.35s
