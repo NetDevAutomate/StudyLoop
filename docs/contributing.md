@@ -41,7 +41,8 @@ threads.
 
 ## Development environment
 
-Requirements: Python 3.12 or newer, [`uv`](https://docs.astral.sh/uv/), [`just`](https://github.com/casey/just),
+Use the Python version in `.python-version` (currently 3.12); CI also checks 3.13. Requirements include
+[`uv`](https://docs.astral.sh/uv/), [`just`](https://github.com/casey/just),
 `tmux` (for CLI study sessions and the integration suite), Node.js (for the JavaScript tests), and Chromium
 via Playwright (for the browser suite).
 
@@ -72,6 +73,47 @@ fails, the [troubleshooting page](troubleshooting.md) covers the common causes; 
 
 Working from a git worktree? Prefix `just` and `uv run` with `env -u VIRTUAL_ENV` so the worktree's own venv is
 used rather than the one exported by your shell.
+
+## Your first contribution
+
+You do not need to fix an entire workflow. A clearer sentence or a test for one refused operation is
+a useful first PR. For a new capability, open an issue and agree the smallest slice before coding.
+
+1. **Try the learner workflow.** Follow the [setup guide](setup-guide.md), then reproduce the problem
+   with synthetic data. Read the [code map](contributor-code-map.md) to find the owning layer.
+2. **Fork and make one change.** On GitHub, fork StudyLoop into your account. Replace
+   `YOUR_GITHUB_USER` below; the placeholder is not a real repository to clone.
+3. **Prove and explain it.** Use the [testing cookbook](contributor-testing.md), run the relevant
+   gates, and open a PR from your fork into upstream `main` with the evidence template.
+
+```bash
+git clone https://github.com/YOUR_GITHUB_USER/StudyLoop.git
+cd StudyLoop
+git remote add upstream https://github.com/NetDevAutomate/StudyLoop.git
+git fetch upstream
+git switch -c docs/first-contribution upstream/main
+just sync-full
+uv run --group dev playwright install chromium
+uv run --group dev pre-commit install
+```
+
+Choose `fix/`, `test/` or `feat/` instead for those changes. Before starting another contribution,
+fetch upstream and create a fresh branch from `upstream/main`; do not stack unrelated changes on
+your first PR. Never discard uncommitted work to synchronize a branch.
+
+After checking and committing your focused diff, `git push -u origin docs/first-contribution`
+publishes **your fork branch**, not a release. GitHub can then open a PR targeting
+`NetDevAutomate/StudyLoop:main`. For documentation-only changes, `just docs` is a quick local loop;
+the full `just preflight` remains the before-push gate. Report setup failures rather than bypassing
+checks or describing skipped tests as passing.
+
+### Contributor handbook
+
+- [Code map](contributor-code-map.md): source ownership, request paths and where a change belongs.
+- [Testing cookbook](contributor-testing.md): unit, CLI, API, JavaScript and Playwright patterns,
+  isolated fixtures, runnable examples, failure diagnosis and a copyable PR template.
+- [Optional topic modules](contributor-modules.md): a proposal for topic-specific practice without
+  topic-specific core dependencies, including Kubernetes drills and registry design boundaries.
 
 ## How the repository is organised
 
@@ -161,7 +203,7 @@ The suite is layered by what each layer can prove and what it needs from the mac
 | Browser (e2e) | `just e2e` (`pytest -m e2e`) | The Web UI journeys against a real server with fake agents | Playwright Chromium; one run per machine |
 | Live | `pytest -m live_kiro`, `pytest -m live_provider` | A real Kiro child, a real LLM provider | Credentials and quota; opt-in only |
 | Live, second brain | `just live-obsidian`, `just live-xtiles <url> <probe>` | That a projection really lands in a vault and is really removed again; that what an assistant wrote is visible in xTiles' own interface | A throwaway Obsidian vault; a captured xTiles session (`just xtiles-auth`). Opt-in, and refused rather than skipped when the safety scope is missing |
-| Acceptance | `just testacc [harness] [actor] [tests]` (`pytest -m acceptance`) | A real harness driven through the real product surface (web ACP first; CLI/tmux lands in a later lane), with a deterministic scripted learner, against a disposable scratch env | `STUDYLOOP_ACC=1`; opt-in, never runs in CI. See [Acceptance Testing](acceptance-testing.md) |
+| Acceptance | `just testacc [harness] [actor] [tests]` (`pytest -m acceptance`) | A real harness driven through the real product surface, including CLI/tmux and the Web ACP lane, with a scripted learner and disposable scratch state | `STUDYLOOP_ACC=1`; opt-in, never runs in CI. See [Acceptance Testing](acceptance-testing.md) for authentication and safety boundaries |
 
 **Rules that keep the suite honest.**
 

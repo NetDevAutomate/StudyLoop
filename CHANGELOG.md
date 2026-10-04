@@ -9,6 +9,9 @@ experience may change before `1.0.0`.
 
 ### Added
 
+- A first-contribution walkthrough, source-code map and testing cookbook with runnable Python
+  and Playwright examples. An optional-topic-module proposal explains the boundaries for
+  Kubernetes drills and a possible registry; no plugin runtime or registry is introduced.
 - The `now` engine's recommendation can carry one passive **first move**
   (issue #30). On a low-energy day, the sit-with proposal names one tiny
   action on the deferred milestone — *Open “Advanced Sql 4H” from Complete Sql

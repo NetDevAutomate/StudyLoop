@@ -1,12 +1,17 @@
 # Contributing to StudyLoop
 
 Thank you for helping improve an AuDHD-aware learning tool. The full contributor guide lives in the
-documentation: **[docs/contributing.md](docs/contributing.md)** (published at
-[docs/contributing.md](docs/contributing.md)). It covers the development environment,
+documentation: **[docs/contributing.md](docs/contributing.md)**. It covers the development environment,
 repository layout, how changes are made and tested, CI, documentation standards, the changelog, pull
 requests, issues, prioritisation, AI usage and models through a LiteLLM gateway, and security.
 
 The short version:
+
+First contribution? Start with the [fork-to-PR walkthrough](docs/contributing.md#your-first-contribution),
+then use the [code map](docs/contributor-code-map.md) and
+[testing cookbook with runnable examples](docs/contributor-testing.md).
+For topic-specific integrations, read the [optional-module proposal](docs/contributor-modules.md);
+it is a design discussion, not an available plugin API.
 
 ```bash
 git clone https://github.com/NetDevAutomate/StudyLoop.git studyloop

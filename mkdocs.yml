@@ -77,6 +77,9 @@ exclude_docs: |
   !/roadmap.md
   !/architecture.md
   !/contributing.md
+  !/contributor-code-map.md
+  !/contributor-testing.md
+  !/contributor-modules.md
   !/acceptance-testing.md
   !/images/**
   !/stylesheets/**
@@ -106,5 +109,9 @@ nav:
     - AuDHD Learning Philosophy: audhd-learning-philosophy.md
     - Architecture Overview: architecture.md
     - Roadmap: roadmap.md
-  - Contribute: contributing.md
+  - Contribute:
+    - Start Contributing: contributing.md
+    - Code Map: contributor-code-map.md
+    - Testing Cookbook: contributor-testing.md
+    - Optional Modules (Proposal): contributor-modules.md
   - Acceptance Testing: acceptance-testing.md
