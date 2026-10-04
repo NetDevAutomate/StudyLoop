@@ -1,0 +1,52 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_lifecycle.py -q -p no:cacheprovider -k "read_only or not_writable"
+# HEAD 0bb025dacf98f65cd42e4df30eac27a3efe48d39 (tests added; store.py as committed there: _publish leaves directories 0o755, only files are 0o444/0o555)  2026-10-04T21:48:22Z
+# -- stage 1: directories are writable after add (os.access W_OK is True) --
+_____________ test_published_snapshot_directories_are_not_writable _____________
+    assert os.access(scripts, os.W_OK) is False
+E   AssertionError: assert True is False
+E    +  where True = <built-in function access>(PosixPath('<tmp>/test_published_snapshot_direct0/store/snapshots/4ee75ad59ee2…/scripts'), 2)
+E    +    where <built-in function access> = os.access
+E    +    and   2 = os.W_OK
+___________________ test_remove_deletes_a_read_only_snapshot ___________________
+    assert os.access(snapshot / "scripts", os.W_OK) is False
+E   AssertionError: assert True is False
+E    +  where True = <built-in function access>((PosixPath('<tmp>/test_remove_deletes_a_read_onl0/store/snapshots/4ee75ad59ee2…') / 'scripts'), 2)
+E    +    where <built-in function access> = os.access
+E    +    and   2 = os.W_OK
+_______________ test_re_add_drops_a_read_only_orphaned_snapshot ________________
+    assert os.access(snapshot_dir(first) / "decks", os.W_OK) is False
+E   AssertionError: assert True is False
+E    +  where True = <built-in function access>((PosixPath('<tmp>/test_re_add_drops_a_read_only_0/store/snapshots/4ee75ad59ee2…') / 'decks'), 2)
+E    +    where <built-in function access> = os.access
+E    +    and   PosixPath('<tmp>/test_re_add_drops_a_read_only_0/store/snapshots/4ee75ad59ee2…') = snapshot_dir(LockEntry(id='good-drills', version='0.1.0', digest='sha256:4ee75ad59ee2…...est-441/test
+E    +    and   2 = os.W_OK
+    assert os.access(snapshot_dir(second), os.W_OK) is False
+E   AssertionError: assert True is False
+E    +  where True = <built-in function access>(PosixPath('<tmp>/test_existing_read_only_snapsh0/store/snapshots/4ee75ad59ee2…'), 2)
+E    +    where <built-in function access> = os.access
+E    +    and   PosixPath('<tmp>/test_existing_read_only_snapsh0/store/snapshots/4ee75ad59ee2…') = snapshot_dir(LockEntry(id='good-drills', version='0.1.0', digest='sha256:4ee75ad59ee2…...est-441/test
+E    +    and   2 = os.W_OK
+# -- summary --
+FAILED packages/studyloop/tests/test_module_lifecycle.py::test_published_snapshot_directories_are_not_writable
+FAILED packages/studyloop/tests/test_module_lifecycle.py::test_remove_deletes_a_read_only_snapshot
+FAILED packages/studyloop/tests/test_module_lifecycle.py::test_re_add_drops_a_read_only_orphaned_snapshot
+FAILED packages/studyloop/tests/test_module_lifecycle.py::test_existing_read_only_snapshot_is_reused_on_re_add_of_identical_content
+4 failed, 1 passed, 32 deselected in 0.53s
+
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_lifecycle.py -q -p no:cacheprovider -k "read_only or not_writable or re_adding or remove_is_idempotent_and"
+# -- stage 2: _publish now seals directories 0o555 (uncommitted), remove()/_drop_orphaned_snapshot unchanged: rmtree on a sealed tree fails, so remove and re-add fail with PermissionError  2026-10-04T21:48:46Z
+E   PermissionError: [Errno 13] Permission denied: PosixPath('<tmp>/test_re_adding_the_same_id_rep0/store/snapshots/4ee75ad59ee2…')
+________________ test_remove_is_idempotent_and_lockfile_driven _________________
+    assert store.remove("good-drills") is True
+E   PermissionError: [Errno 13] Permission denied: PosixPath('<tmp>/test_remove_is_idempotent_and_0/store/snapshots/4ee75ad59ee2…')
+___________________ test_remove_deletes_a_read_only_snapshot ___________________
+    assert store.remove("good-drills") is True
+E   PermissionError: [Errno 13] Permission denied: PosixPath('<tmp>/test_remove_deletes_a_read_onl0/store/snapshots/4ee75ad59ee2…')
+_______________ test_re_add_drops_a_read_only_orphaned_snapshot ________________
+E   PermissionError: [Errno 13] Permission denied: PosixPath('<tmp>/test_re_add_drops_a_read_only_0/store/snapshots/4ee75ad59ee2…')
+# -- summary --
+FAILED packages/studyloop/tests/test_module_lifecycle.py::test_re_adding_the_same_id_replaces_the_entry_and_drops_the_orphaned_snapshot
+FAILED packages/studyloop/tests/test_module_lifecycle.py::test_remove_is_idempotent_and_lockfile_driven
+FAILED packages/studyloop/tests/test_module_lifecycle.py::test_remove_deletes_a_read_only_snapshot
+FAILED packages/studyloop/tests/test_module_lifecycle.py::test_re_add_drops_a_read_only_orphaned_snapshot
+4 failed, 3 passed, 30 deselected in 0.58s

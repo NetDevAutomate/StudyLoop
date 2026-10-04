@@ -52,9 +52,13 @@ symlinks and other non-regular entries skipped), in sorted relative-POSIX-path o
 contributing ``"<rel>\\0<x|->\\0<size>\\0"`` (``x`` when the file is executable) followed by its
 bytes. Two trees with the same files, bytes and exec bits share one digest and one snapshot.
 
-Snapshot files are read-only: ``0o444``, or ``0o555`` for files that were executable in the
-source (the drill scripts). Lane R's drill runner reads :func:`load_lockfile`,
-:class:`LockEntry` and :func:`snapshot_dir`; the snapshot is the tree it executes from.
+Snapshots are read-only: files ``0o444`` (``0o555`` when executable in the source, i.e. the
+drill scripts) and every directory ``0o555``, so nothing inside the snapshot can be created,
+renamed or unlinked -- a running ``setup.sh`` cannot swap ``scripts/check.sh`` before the check
+phase. ``remove`` and the orphan drop on re-add re-open the directories (``u+w``) first.
+
+Lane R's drill runner reads :func:`load_lockfile`, :class:`LockEntry` and
+:func:`snapshot_dir`; the snapshot is the tree it executes from.
 """
 
 from __future__ import annotations
@@ -254,6 +258,26 @@ def _stage_tree(source: Path, staging: Path) -> None:
                 destination.chmod(0o555 if mode & stat.S_IXUSR else 0o444)
 
 
+def _seal_directories(root: Path) -> None:
+    """``chmod 0o555`` every directory under ``root`` (and ``root``), deepest first.
+
+    Read-only files alone do not protect a snapshot: a directory that is writable lets a
+    running ``setup.sh`` unlink ``scripts/check.sh`` and create a different one before the
+    check phase runs. Sealing the directories closes that; the owner can still re-open them
+    (see :func:`_unseal_directories`) to delete the snapshot.
+    """
+    # Path.chmod, like _stage_tree and installers.py: the world-read/exec bits are the point
+    # (the runner reads the snapshot as a subprocess), the same bits the files already carry.
+    for dirpath, _dirnames, _filenames in os.walk(root, topdown=False, followlinks=False):
+        Path(dirpath).chmod(0o555)
+
+
+def _unseal_directories(root: Path) -> None:
+    """``chmod u+w`` every directory under ``root``, top-down, so ``rmtree`` can delete it."""
+    for dirpath, _dirnames, _filenames in os.walk(root, topdown=True, followlinks=False):
+        Path(dirpath).chmod(0o755)
+
+
 # ---------------------------------------------------------------------------
 # git provenance -- local reads only, never a fetch
 # ---------------------------------------------------------------------------
@@ -335,6 +359,7 @@ class ModuleStore:
             snapshot = self._publish(staging, digest)
         finally:
             if staging.exists():
+                _unseal_directories(staging)
                 shutil.rmtree(staging, ignore_errors=True)
         remote, sha = git_provenance(source)
         entry = LockEntry(
@@ -359,7 +384,7 @@ class ModuleStore:
     def _publish(self, staging: Path, digest: str) -> Path:
         """Atomically rename the staged tree to ``snapshots/<hex>``; verify an existing one."""
         target = self.snapshots / digest.removeprefix("sha256:")
-        staging.chmod(0o755)
+        _seal_directories(staging)
         if not target.exists():
             try:
                 os.rename(staging, target)
@@ -416,4 +441,5 @@ class ModuleStore:
         except (OSError, ValueError):
             return  # never delete outside our own snapshots directory
         if snapshot.is_dir():
+            _unseal_directories(snapshot)  # sealed 0o555 at publish; rmtree needs u+w
             shutil.rmtree(snapshot)

@@ -645,3 +645,75 @@ def test_version_argv_table_defaults_to_dash_dash_version(
 
     assert (result.status, result.message) == ("pass", "docker 27.1.1 (needed by docker-drills)")
     assert _probe_log(log) == ["docker --version"]
+
+
+# ---------------------------------------------------------------------------
+# M1 / Q3 -- snapshot DIRECTORIES are read-only too; remove/orphan-drop re-open them to delete
+# ---------------------------------------------------------------------------
+
+
+def _snapshot_dirs(snapshot: Path) -> list[Path]:
+    return [snapshot, *(p for p in snapshot.rglob("*") if p.is_dir())]
+
+
+def test_published_snapshot_directories_are_not_writable(
+    store: ModuleStore, tmp_path: Path
+) -> None:
+    """A running setup.sh must not be able to unlink+create scripts/check.sh before the check
+    phase: the directory, not just the file, has to refuse the write."""
+    entry = store.add(scaffold_module(tmp_path / "good", "good-drills"))
+    snapshot = snapshot_dir(entry)
+    scripts = snapshot / "scripts"
+
+    assert os.access(scripts, os.W_OK) is False
+    assert os.access(snapshot, os.W_OK) is False
+    for directory in _snapshot_dirs(snapshot):
+        assert stat.S_IMODE(directory.stat().st_mode) == 0o555, (
+            directory,
+            oct(directory.stat().st_mode),
+        )
+    with pytest.raises(PermissionError):
+        (scripts / "replacement.sh").write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    with pytest.raises(PermissionError):
+        (scripts / "check.sh").unlink()
+    assert (scripts / "check.sh").is_file()
+    assert sorted(p.name for p in scripts.iterdir()) == ["check.sh"]
+
+
+def test_remove_deletes_a_read_only_snapshot(store: ModuleStore, tmp_path: Path) -> None:
+    entry = store.add(scaffold_module(tmp_path / "good", "good-drills"))
+    snapshot = snapshot_dir(entry)
+    assert os.access(snapshot / "scripts", os.W_OK) is False
+
+    assert store.remove("good-drills") is True
+
+    assert not snapshot.exists()
+    assert store.entries() == []
+    assert [p.name for p in store.snapshots.iterdir()] == []
+
+
+def test_re_add_drops_a_read_only_orphaned_snapshot(store: ModuleStore, tmp_path: Path) -> None:
+    good = scaffold_module(tmp_path / "good", "good-drills")
+    first = store.add(good)
+    assert os.access(snapshot_dir(first) / "decks", os.W_OK) is False
+    (good / "CHANGELOG.md").write_text("# Changelog\n\n## 0.1.1\n\n- changed\n", encoding="utf-8")
+
+    second = store.add(good)
+
+    assert first.digest != second.digest
+    assert not snapshot_dir(first).exists()
+    assert snapshot_dir(second).is_dir()
+    assert os.access(snapshot_dir(second) / "scripts", os.W_OK) is False
+
+
+def test_existing_read_only_snapshot_is_reused_on_re_add_of_identical_content(
+    store: ModuleStore, tmp_path: Path
+) -> None:
+    """Publishing onto an existing digest must still verify it, and verifying must not need
+    write access: the second add reads the read-only snapshot and reuses it."""
+    good = scaffold_module(tmp_path / "good", "good-drills")
+    first = store.add(good)
+    second = store.add(good)
+    assert first.digest == second.digest
+    assert snapshot_dir(first) == snapshot_dir(second)
+    assert os.access(snapshot_dir(second), os.W_OK) is False

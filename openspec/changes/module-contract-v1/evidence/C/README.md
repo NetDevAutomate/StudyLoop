@@ -19,6 +19,7 @@ This file exists so nobody mistakes "has a green transcript" for "was red first"
 | `store-stage-then-check.red.txt` | 6 staging tests (symlink, FIFO, hard link, check-vs-publish race, digest-vs-publish race, tampered snapshot) | review fix 1 |
 | `mc009-mc012-coverage.red.txt` | `test_mc009_sees_a_secret_after_a_placeholder_on_the_same_line`, the 5 `test_mc012_rejects_…` cases, `test_mc012_flags_an_empty_pycache_directory` | review fix 2–3 |
 | `doctor-kubectl-version-argv.red.txt` | `test_kubectl_is_probed_with_version_client_json_and_parsed` (assertion), `test_version_argv_table_defaults_to_dash_dash_version` (red on import of the missing name, then on assertion) | review fix 4 |
+| `snapshot-dirs-read-only.red.txt` | stage 1 (old code): `test_published_snapshot_directories_are_not_writable`, `test_remove_deletes_a_read_only_snapshot`, `test_re_add_drops_a_read_only_orphaned_snapshot`, `test_existing_read_only_snapshot_is_reused_on_re_add_of_identical_content` fail on `os.access(..., W_OK) is False`; stage 2 (publish seals, remove unchanged): `test_remove_deletes_a_read_only_snapshot`, `test_re_add_drops_a_read_only_orphaned_snapshot`, and the two pre-existing remove/re-add tests fail with `PermissionError` from `rmtree` | M1 Q3 (a)+(b) |
 
 ## Never red — landed green with the implementing commit
 
@@ -59,12 +60,15 @@ Review follow-up — negative-space guards that pass before and after by design:
 `test_kubectl_json_without_a_client_version_is_a_warn` (old code also warned, for a different
 reason).
 
+M1 Q3 follow-up: none -- all four new tests appear in `snapshot-dirs-read-only.red.txt`.
+
 ## Not evidence of anything
 
 `check-16-rules.green.txt`, `scaffold-passes-check.green.txt`, `add-refuses-unconforming.green.txt`,
 `doctor-probes-installed-only.green.txt`, `cli-help-examples.green.txt`,
 `store-stage-then-check.green.txt`, `mc009-mc012-coverage.green.txt`,
-`doctor-kubectl-version-argv.green.txt`, `schema-fixture-integrity.green.txt` are the matching
+`doctor-kubectl-version-argv.green.txt`, `snapshot-dirs-read-only.green.txt`,
+`schema-fixture-integrity.green.txt` are the matching
 green runs plus samples (`--json` output, the lockfile, `--help`). They show the state after a
 commit, not that anything was ever red. Digests in them are elided to 12 hex characters so the
 commit-time entropy detector does not mistake a sha256 for a secret.
