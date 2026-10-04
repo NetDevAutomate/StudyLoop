@@ -1,0 +1,17 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_check.py -q -p no:cacheprovider -v -k "deck or slug or scaffolding"
+# the same 5 tests that are red in schema-fixture-integrity.red.txt, after main (S2, feat/module-schema) was merged at 1e4a777b: the fixtures conform to the §5.3 schema
+============================= test session starts ==============================
+platform darwin -- Python 3.12.8, pytest-9.0.3, pluggy-1.6.0
+readiness budgets: unscaled (1.0x) — release configuration
+rootdir: /Users/ataylor/code/personal/tools/studyloop-wt/module-conformance/packages/studyloop
+configfile: pyproject.toml
+plugins: playwright-0.7.2, timeout-2.4.0, asyncio-1.3.0, base-url-2.1.0, anyio-4.15.1, respx-0.23.1, cov-7.0.0
+timeout: 60.0s
+timeout method: signal
+timeout func_only: False
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 38 items / 33 deselected / 5 selected
+
+packages/studyloop/tests/test_module_check.py .....                      [100%]
+
+======================= 5 passed, 33 deselected in 0.32s =======================

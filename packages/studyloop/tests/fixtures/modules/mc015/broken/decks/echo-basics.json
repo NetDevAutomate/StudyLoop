@@ -1,0 +1,27 @@
+{
+  "id": "echo-basics",
+  "title": "Echo basics",
+  "tasks": [
+    {
+      "id": "echo-01",
+      "taskType": "apply",
+      "prompt": "Print the word `ready` to standard output.",
+      "successCriteria": [
+        "The word `ready` is printed"
+      ],
+      "expectedLearningOutcome": "Run a command and read its output.",
+      "hint": "Which command prints its arguments?",
+      "solution": "echo ready",
+      "scaffolding": "guided",
+      "mentorNotes": "If they reach for printf, ask what echo would have done.",
+      "verification": {
+        "kind": "command",
+        "successCriteria": [
+          "Check script exits 0"
+        ],
+        "command": "scripts/check.sh && echo ok",
+        "timeoutSeconds": 10
+      }
+    }
+  ]
+}

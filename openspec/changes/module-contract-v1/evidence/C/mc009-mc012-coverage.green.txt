@@ -1,0 +1,18 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_check.py -q -p no:cacheprovider
+# worktree with check.py MC009 finditer + MC012 suffix/pycache/shebang (sha = the commit carrying this file)  2026-10-04T21:39:47Z
+.....................................................                    [100%]
+53 passed in 0.52s
+# -- the nine new tests, by name --
+test_module_check.py::test_mc009_sees_a_secret_after_a_placeholder_on_the_same_line PASSED [ 11%]
+test_module_check.py::test_mc009_still_ignores_a_line_of_placeholders_only PASSED [ 22%]
+test_module_check.py::test_mc012_rejects_compiled_cached_and_shebang_python_and_the_repaired_twin_passes[pycache] PASSED [ 33%]
+test_module_check.py::test_mc012_rejects_compiled_cached_and_shebang_python_and_the_repaired_twin_passes[pyc] PASSED [ 44%]
+test_module_check.py::test_mc012_rejects_compiled_cached_and_shebang_python_and_the_repaired_twin_passes[pyo] PASSED [ 55%]
+test_module_check.py::test_mc012_rejects_compiled_cached_and_shebang_python_and_the_repaired_twin_passes[env-python3-shebang] PASSED [ 66%]
+test_module_check.py::test_mc012_rejects_compiled_cached_and_shebang_python_and_the_repaired_twin_passes[usr-bin-python-shebang] PASSED [ 77%]
+test_module_check.py::test_mc012_flags_an_empty_pycache_directory PASSED [ 88%]
+test_module_check.py::test_mc012_does_not_flag_a_posix_shell_shebang PASSED [100%]
+# -- the two-assignment line, as the CLI reports it (value never echoed) --
+exit 1
+MC009 scripts/check.sh:2: scripts/check.sh:2 assigns a literal value to 'API_TOKEN'; no secret patterns may ship in a module
+1 finding in <tmp>/m

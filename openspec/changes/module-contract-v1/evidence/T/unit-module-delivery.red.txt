@@ -1,0 +1,53 @@
+uv run pytest packages/studyloop/tests/test_module_delivery.py -q -p no:cacheprovider
+# worktree: module-mentor-delivery  base: 60bbb504  TMPDIR=$(getconf DARWIN_USER_TEMP_DIR)
+.FFFFFFF                                                                 [100%]
+=================================== FAILURES ===================================
+___________ test_render_pty_envelope_is_one_bracketed_labelled_block ___________
+packages/studyloop/tests/test_module_delivery.py:213: in test_render_pty_envelope_is_one_bracketed_labelled_block
+    assert data.startswith(PASTE_BEGIN) and data.endswith(PASTE_END + b"\r"), (
+E   AssertionError: [today: raw send_input, no outcome (_ws.py:201)] PTY envelope is not one bracketed-paste block submitted once (ADR-0012 Q1): b'practice_check kdrill deployments/scale-to-three check faile'
+E   assert (False)
+E    +  where False = <built-in method startswith of bytes object at 0x10c382720>(b'\x1b[200~')
+E    +    where <built-in method startswith of bytes object at 0x10c382720> = b'practice_check kdrill deployments/scale-to-three check failed (1)\nok\n\n\n'.startswith
+__________ test_render_acp_envelope_is_labelled_without_escape_bytes ___________
+packages/studyloop/tests/test_module_delivery.py:228: in test_render_acp_envelope_is_labelled_without_escape_bytes
+    assert text.startswith(BEGIN_SENTINEL) and text.rstrip().endswith(END_SENTINEL), (
+E   AssertionError: [today: raw send_input, no outcome (_ws.py:201)] ACP envelope is not sentinel-labelled (ADR-0012 Q1): 'practice_check kdrill deployments/scale-to-three check faile'
+E   assert (False)
+E    +  where False = <built-in method startswith of str object at 0x10c381060>('<<<studyloop:practice_check v1')
+E    +    where <built-in method startswith of str object at 0x10c381060> = 'practice_check kdrill deployments/scale-to-three check failed (1)\nok\n\n\n'.startswith
+________ test_render_cuts_stdout_tail_first_then_stderr_never_identity _________
+packages/studyloop/tests/test_module_delivery.py:240: in test_render_cuts_stdout_tail_first_then_stderr_never_identity
+    assert len(data) <= ENVELOPE_BOUND_BYTES, (
+E   AssertionError: [today: raw send_input, no outcome (_ws.py:201)] envelope is 21068 bytes; bound is 8192 (ADR-0012 Q3)
+E   assert 21068 <= 8192
+E    +  where 21068 = len(b'practice_check kdrill deployments/scale-to-three check failed (1)\nreplica count mismatch\nreplica count mismatch\nr...ne\nboom: deadline\nboom: deadline\nboom: deadline\nboom: deadline\nboom: deadline\nboom: deadline\nboom: deadline\n\n')
+_____________ test_render_strips_control_bytes_from_module_output ______________
+packages/studyloop/tests/test_module_delivery.py:260: in test_render_strips_control_bytes_from_module_output
+    assert b"\x03" not in data and b"\x04" not in data, (
+E   AssertionError: [today: raw send_input, no outcome (_ws.py:201)] raw control bytes from module output reached the envelope (ADR-0012 Q1)
+E   assert (b'\x03' not in b'practice_check kdrill deployments/scale-to-three check failed (1)\nfine\n\x1b[201~\rrm -rf /\n\x03\x04still fine\n\n\n')
+____________ test_deliver_with_no_active_session_is_learner_visible ____________
+packages/studyloop/tests/test_module_delivery.py:273: in test_deliver_with_no_active_session_is_learner_visible
+    assert outcome is not None, (
+E   AssertionError: [today: raw send_input, no outcome (_ws.py:201)] no active session and nothing is said: the drop is silent (ADR-0012 Q4)
+E   assert None is not None
+__________ test_deliver_to_closed_transport_reports_transport_closed ___________
+packages/studyloop/tests/test_module_delivery.py:289: in test_deliver_to_closed_transport_reports_transport_closed
+    assert outcome is not None, (
+E   AssertionError: [today: raw send_input, no outcome (_ws.py:201)] delivery into a closed transport returned nothing: the drop is silent (spec: 'a closed transport is reported'; ADR-0012 Q4)
+E   assert None is not None
+_________ test_deliver_sends_exactly_one_labelled_envelope_and_says_so _________
+packages/studyloop/tests/test_module_delivery.py:308: in test_deliver_sends_exactly_one_labelled_envelope_and_says_so
+    assert BEGIN_SENTINEL in text and END_SENTINEL in text, (
+E   AssertionError: [today: raw send_input, no outcome (_ws.py:201)] what reached the transport is not a labelled envelope: 'practice_check kdrill deployments/scale-to-three check faile'
+E   assert ('<<<studyloop:practice_check v1' in 'practice_check kdrill deployments/scale-to-three check failed (1)\nok\n\n\n')
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_module_delivery.py::test_render_pty_envelope_is_one_bracketed_labelled_block
+FAILED packages/studyloop/tests/test_module_delivery.py::test_render_acp_envelope_is_labelled_without_escape_bytes
+FAILED packages/studyloop/tests/test_module_delivery.py::test_render_cuts_stdout_tail_first_then_stderr_never_identity
+FAILED packages/studyloop/tests/test_module_delivery.py::test_render_strips_control_bytes_from_module_output
+FAILED packages/studyloop/tests/test_module_delivery.py::test_deliver_with_no_active_session_is_learner_visible
+FAILED packages/studyloop/tests/test_module_delivery.py::test_deliver_to_closed_transport_reports_transport_closed
+FAILED packages/studyloop/tests/test_module_delivery.py::test_deliver_sends_exactly_one_labelled_envelope_and_says_so
+7 failed, 1 passed in 0.55s

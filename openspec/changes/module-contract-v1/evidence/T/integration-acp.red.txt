@@ -1,0 +1,14 @@
+uv run pytest packages/studyloop/tests/integration/test_module_delivery_transports.py::test_acp -m integration -q -p no:cacheprovider
+# worktree: module-mentor-delivery  base: 60bbb504  TMPDIR=$(getconf DARWIN_USER_TEMP_DIR)
+F                                                                        [100%]
+=================================== FAILURES ===================================
+___________________________________ test_acp ___________________________________
+packages/studyloop/tests/integration/test_module_delivery_transports.py:410: in test_acp
+    assert text.startswith(BEGIN_SENTINEL) and text.rstrip().endswith(END_SENTINEL), (
+E   AssertionError: [today: transport.send_input(raw text) as _ws.py:201 does] ACP prompt is not a sentinel-labelled envelope (ADR-0012 Q1). First 80 chars: 'practice_check kdrill deployments/scale-to-three check failed (1)\nreplica count '
+E   assert (False)
+E    +  where False = <built-in method startswith of str object at 0x78d1367000>('<<<studyloop:practice_check v1')
+E    +    where <built-in method startswith of str object at 0x78d1367000> = 'practice_check kdrill deployments/scale-to-three check failed (1)\nreplica count mismatch\nreplica count mismatch\nre...t mismatch\nreplica count mismatch\nreplica count mismatch\nreplica count mismatch\nreplica count mismatch\n\nboom\n\n'.startswith
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/integration/test_module_delivery_transports.py::test_acp
+1 failed in 1.61s

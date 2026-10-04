@@ -1,0 +1,9 @@
+env -u VIRTUAL_ENV uv run python openspec/changes/module-contract-v1/evidence/T/pty_probe2.py  # macOS 27.0.0
+raw    size=  1024 nl=False :: looped write sent 1024/1024 in 2 rounds  :: child GOT 1024 sha=cae91055c2e9 (payload sha=cae91055c2e9)
+raw    size=  4096 nl=False :: looped write sent 4096/4096 in 5 rounds  :: child GOT 4096 sha=1232e5e18755 (payload sha=1232e5e18755)
+raw    size= 16384 nl=False :: looped write sent 16384/16384 in 17 rounds  :: child GOT 16384 sha=7639e3e70a79 (payload sha=7639e3e70a79)
+raw    size= 65536 nl=False :: looped write sent 65536/65536 in 65 rounds  :: child GOT 65536 sha=fb5e29d6eeb2 (payload sha=fb5e29d6eeb2)
+cooked size=   512 nl=True  :: looped write sent 512/512 in 1 rounds  :: child GOT 512 sha=7ab2d4c2d58b (payload sha=7ab2d4c2d58b)
+cooked size=  1024 nl=True  :: looped write sent 1024/1024 in 1 rounds  :: child GOT 1024 sha=0e40468ced5b (payload sha=0e40468ced5b)
+cooked size=  2048 nl=True  :: looped write sent 2048/2048 in 1 rounds  | child never reported :: child  (payload sha=e1337b1c8361)
+cooked size=  4096 nl=True  :: looped write sent 4096/4096 in 1 rounds  | child never reported :: child  (payload sha=db8d787e8415)

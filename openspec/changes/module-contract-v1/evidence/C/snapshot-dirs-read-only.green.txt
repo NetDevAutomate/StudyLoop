@@ -1,0 +1,28 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_lifecycle.py packages/studyloop/tests/test_module_cli.py -q -p no:cacheprovider
+# worktree with store.py _seal_directories at publish + _unseal_directories before rmtree (sha = the commit carrying this file)  2026-10-04T21:49:40Z
+........................................................                 [100%]
+56 passed in 1.43s
+# -- the read-only tests, by name --
+test_module_lifecycle.py::test_snapshot_is_a_read_only_copy_that_passes_check PASSED [ 14%]
+test_module_lifecycle.py::test_re_adding_the_same_id_replaces_the_entry_and_drops_the_orphaned_snapshot PASSED [ 28%]
+test_module_lifecycle.py::test_remove_is_idempotent_and_lockfile_driven PASSED [ 42%]
+test_module_lifecycle.py::test_published_snapshot_directories_are_not_writable PASSED [ 57%]
+test_module_lifecycle.py::test_remove_deletes_a_read_only_snapshot PASSED [ 71%]
+test_module_lifecycle.py::test_re_add_drops_a_read_only_orphaned_snapshot PASSED [ 85%]
+test_module_lifecycle.py::test_existing_read_only_snapshot_is_reused_on_re_add_of_identical_content PASSED [100%]
+# -- modes after `module add` of a `module new` scaffold (dirs and files) --
+0o555 d <snapshot>
+0o444 f <snapshot>/CHANGELOG.md
+0o444 f <snapshot>/LICENSE
+0o444 f <snapshot>/README.md
+0o444 f <snapshot>/module.yaml
+0o555 d <snapshot>/tests
+0o555 f <snapshot>/tests/check.sh
+0o555 d <snapshot>/mentor
+0o444 f <snapshot>/mentor/brief.md
+0o555 d <snapshot>/decks
+0o444 f <snapshot>/decks/getting-started.json
+0o555 d <snapshot>/scripts
+0o555 f <snapshot>/scripts/check.sh
+$ studyloop module remove demo-drills -> exit 0 removed demo-drills
+snapshots left: []

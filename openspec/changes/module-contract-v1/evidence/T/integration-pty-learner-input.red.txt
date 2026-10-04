@@ -1,0 +1,35 @@
+env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/integration/test_module_delivery_transports.py -m integration -k learner_send_input -q -p no:cacheprovider
+# pre-change red: disposable worktree at 72182acb (parent of 47c0b13b: PTYTransport.send_input is one os.write with a discarded count, no write loop, no stall bound); only tests/integration/test_module_delivery_transports.py copied in; 2026-10-04T21:45:42Z; TMPDIR=$(getconf DARWIN_USER_TEMP_DIR); worktree under the per-user TMPDIR ($KIROCREW_SCRATCH not writable here)
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+_______ test_pty_learner_send_input_over_1kib_arrives_whole_and_in_order _______
+packages/studyloop/tests/integration/test_module_delivery_transports.py:446: in test_pty_learner_send_input_over_1kib_arrives_whole_and_in_order
+    assert len(received) == len(payload), (
+E   AssertionError: learner input was cut: 1022 of 4420 bytes reached the child (pty.py single os.write with a discarded partial count)
+E   assert 1022 == 4420
+E    +  where 1022 = len(b'line 0000 of a long learner paste\nline 0001 of a long learner paste\nline 0002 of a long learner paste\nline 0003 o...ner paste\nline 0027 of a long learner paste\nline 0028 of a long learner paste\nline 0029 of a long learner paste\nli')
+E    +  and   4420 = len(b'line 0000 of a long learner paste\nline 0001 of a long learner paste\nline 0002 of a long learner paste\nline 0003 o...arner paste\nline 0127 of a long learner paste\nline 0128 of a long learner paste\nline 0129 of a long learner paste\n')
+_ test_pty_learner_send_input_to_a_reader_that_stops_draining_errors_within_bound _
+packages/studyloop/tests/integration/test_module_delivery_transports.py:483: in _first_error
+    async for event in transport.events():
+packages/studyloop/src/studyloop/session/transports/pty.py:377: in events
+    event = await state.queue.get()
+            ^^^^^^^^^^^^^^^^^^^^^^^
+/Users/ataylor/.local/share/uv/python/cpython-3.12-macos-aarch64-none/lib/python3.12/asyncio/queues.py:158: in get
+    await getter
+E   asyncio.exceptions.CancelledError
+
+The above exception was the direct cause of the following exception:
+packages/studyloop/tests/integration/test_module_delivery_transports.py:488: in test_pty_learner_send_input_to_a_reader_that_stops_draining_errors_within_bound
+    error = await asyncio.wait_for(_first_error(), timeout=5.0)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/ataylor/.local/share/uv/python/cpython-3.12-macos-aarch64-none/lib/python3.12/asyncio/tasks.py:519: in wait_for
+    async with timeouts.timeout(timeout):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/ataylor/.local/share/uv/python/cpython-3.12-macos-aarch64-none/lib/python3.12/asyncio/timeouts.py:115: in __aexit__
+    raise TimeoutError from exc_val
+E   TimeoutError
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/integration/test_module_delivery_transports.py::test_pty_learner_send_input_over_1kib_arrives_whole_and_in_order
+FAILED packages/studyloop/tests/integration/test_module_delivery_transports.py::test_pty_learner_send_input_to_a_reader_that_stops_draining_errors_within_bound
+2 failed, 8 deselected in 7.84s

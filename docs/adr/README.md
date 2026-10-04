@@ -41,3 +41,4 @@ the code and ask "why on earth is it done this way?" — it gets an ADR, and
 | [0009](0009-one-session-authority.md) | The session-state file is the claim; the in-process slot is a cache | Accepted | M2 session-authority remediation |
 | [0010](0010-second-brains-are-projections.md) | Second brains are projections; plan Markdown is the source of truth | Accepted | `second-brain` |
 | [0011](0011-retire-okf-ontology-and-concept-sidecar.md) | Retire the OKF import, the tier-1 ontology and the concept sidecar — no functional remnant | Accepted | 2026-09-10 OKF removal (Stages 4–6) |
+| [0012](0012-practice-check-delivery.md) | Delivering a `practice_check` result to the live mentor — PTY framing, ACP serialisation, size bound, learner-visible failure | Proposed | `module-contract-v1` (T1 spike, for council M0) |

@@ -1,0 +1,14 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_cli.py -q -p no:cacheprovider -k "examples or exit_codes"   # C6: the help-as-documentation tests against the C3/C4 help text, before any Examples: section or exit-code wording exists
+________ test_every_command_has_examples_that_resolve_against_the_group ________
+    assert problems == []
+E   AssertionError: assert ['add: no `st...er Examples:'] == []
+E
+E     Left contains 5 more items, first extra item: 'add: no `studyloop module ...` line under Examples:'
+E     Use -v to get more diff
+____________ test_help_states_exit_codes_and_the_no_network_promise ____________
+    assert (
+E   AssertionError: assert ('Exit 0' in 'Usage: module check [OPTIONS] PATH\n\n  Check the module at PATH against conformance rules MC001-MC016.\n\n  Reports ...nOptions:\n  --json  Emit {ok, findings[{rule_id,message,pa
+# -- summary --
+FAILED packages/studyloop/tests/test_module_cli.py::test_every_command_has_examples_that_resolve_against_the_group
+FAILED packages/studyloop/tests/test_module_cli.py::test_help_states_exit_codes_and_the_no_network_promise
+2 failed, 17 deselected in 0.35s

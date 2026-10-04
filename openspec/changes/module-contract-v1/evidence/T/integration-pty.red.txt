@@ -1,0 +1,14 @@
+uv run pytest packages/studyloop/tests/integration/test_module_delivery_transports.py::test_pty -m integration -q -p no:cacheprovider
+# worktree: module-mentor-delivery  base: 60bbb504  TMPDIR=$(getconf DARWIN_USER_TEMP_DIR)
+F                                                                        [100%]
+=================================== FAILURES ===================================
+___________________________________ test_pty ___________________________________
+packages/studyloop/tests/integration/test_module_delivery_transports.py:246: in test_pty
+    assert received.startswith(PASTE_BEGIN) and received.endswith(PASTE_END + b"\r"), (
+E   AssertionError: [today: transport.send_input(raw text) as _ws.py:201 does] envelope reached the mentor as bare keystrokes, not as one bracketed-paste block submitted once (ADR-0012 Q1). First 80 bytes: b'practice_check kdrill deployments/scale-to-three check failed (1)\n\x1b[201~\rrm -rf '
+E   assert (False)
+E    +  where False = <built-in method startswith of bytes object at 0x76d1fd1e00>(b'\x1b[200~')
+E    +    where <built-in method startswith of bytes object at 0x76d1fd1e00> = b'practice_check kdrill deployments/scale-to-three check failed (1)\n\x1b[201~\rrm -rf / # not really\nreplica count m...ount mismatch\nreplica count mismatch\nreplica count mismatch\nreplica count mismatch\nreplica count mismatch\nreplica'.startswith
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/integration/test_module_delivery_transports.py::test_pty
+1 failed in 1.67s

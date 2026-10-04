@@ -40,6 +40,8 @@ from typing import TYPE_CHECKING, Any
 from studyloop.session.child_env import build_child_env
 from studyloop.session.transport import (
     AgentMessage,
+    BlockFraming,
+    DeliveryWrite,
     Started,
     Stopped,
     TransportError,
@@ -66,12 +68,83 @@ _EVENT_QUEUE_MAX = 256
 # aid, not a log sink.
 _STDERR_TAIL_BYTES = 4096
 
+# --- Block delivery (ADR-0012; council M0 Q2/Q5) ------------------------------
+#
+# A practice_check envelope is one session/prompt like any other, but its
+# caller must learn the outcome: deliver_block AWAITS the prompt's response
+# (send_input for learner text stays fire-and-forget) up to this bound. On
+# timeout the outcome is unknown -> `timed_out`; the turn is cancelled and the
+# prompt lock is HELD until the agent has answered the cancelled prompt, so a
+# later prompt cannot overlap a turn that may still be running. Never retried.
+# Public (not underscored) so a test can lower it: the suite's per-test ceiling
+# is 60 s.
+DELIVERY_TIMEOUT_S = 120.0
+# How long to wait for the cancel to be confirmed (two bounded waits: the
+# session/cancel response, then the cancelled prompt's own response). If the
+# agent confirms, the queue moves on exactly as after any turn. If it does NOT,
+# the turn may still be running inside the agent, and releasing the queue would
+# let the learner's next prompt overlap it -- so the transport is marked WEDGED
+# instead (T-review finding 2; M0 Q5 "no subsequent overlap"): every later
+# send_input / deliver_block fails fast with _WEDGED_MESSAGE, the one synthetic
+# turn_end carries reason="wedged" so the UI can say so, and nothing overlaps.
+# The way out is to end the session and start a new one.
+_CANCEL_CONFIRM_TIMEOUT_S = 10.0
+_WEDGED_MESSAGE = (
+    "agent did not confirm cancellation of a timed-out delivery; "
+    "later prompts are refused -- restart the session"
+)
+
 
 @dataclass
 class _Running:
     proc: asyncio.subprocess.Process
     reader_task: asyncio.Task[None]
     queue: asyncio.Queue[TransportEventT | None]
+
+
+class _TurnQueue:
+    """FIFO serialiser for ``session/prompt`` turns (M0 Q2, Q6 invariant).
+
+    Why not a plain ``asyncio.Lock``: ``send_input`` is fire-and-forget -- it
+    creates a task and returns before that task has reached ``acquire()`` -- so a
+    ``deliver_block`` call made right after it would take the lock FIRST and the
+    envelope would overtake the learner's prompt. ``ticket()`` fixes a caller's
+    place in line synchronously, at call time; ``async with ticket`` then waits
+    for every earlier ticket to finish. Cancellation-safe: a waiter cancelled
+    while queued still releases its own ticket, so the chain never stalls.
+    """
+
+    def __init__(self) -> None:
+        self._tail: asyncio.Future[None] | None = None
+
+    def ticket(self) -> _Ticket:
+        loop = asyncio.get_running_loop()
+        mine: asyncio.Future[None] = loop.create_future()
+        ticket = _Ticket(previous=self._tail, mine=mine)
+        self._tail = mine
+        return ticket
+
+
+class _Ticket:
+    def __init__(self, *, previous: asyncio.Future[None] | None, mine: asyncio.Future[None]):
+        self._previous = previous
+        self._mine = mine
+
+    async def __aenter__(self) -> _Ticket:
+        if self._previous is not None:
+            try:
+                await self._previous
+            except BaseException:
+                self.release()
+                raise
+        return self
+
+    async def __aexit__(self, *exc_info: object) -> None:
+        self.release()
+
+    def release(self) -> None:
+        if not self._mine.done():
+            self._mine.set_result(None)
 
 
 class _EventStream:
@@ -156,6 +229,14 @@ class ACPTransport:
         self._next_id = 1
         self._pending: dict[int, asyncio.Future[dict[str, Any]]] = {}
         self._prompt_tasks: set[asyncio.Task[None]] = set()
+        # One prompt on the wire at a time (M0 Q2): learner turns and delivered
+        # blocks queue FIFO behind it, in call order, and turn_end keeps its
+        # one-per-prompt meaning for the UI. cancel() deliberately does NOT queue.
+        self._turns = _TurnQueue()
+        # Set when a timed-out delivery's cancellation was never confirmed.
+        # Checked at every entry AND after every ticket is acquired, so a prompt
+        # already queued when the wedge happened is refused too, not sent.
+        self._wedged = False
         self._handshake_complete = False
         # R-07: stderr was DEVNULL, so a crash before the handshake completed
         # (or a non-zero exit later) reported only a generic timeout/exit
@@ -264,11 +345,21 @@ class ACPTransport:
             proc.pid,
         )
 
+    @property
+    def wedged(self) -> bool:
+        """True once a timed-out delivery's cancel went unconfirmed (see `_WEDGED_MESSAGE`)."""
+        return self._wedged
+
     async def send_input(self, data: bytes) -> None:
         if self._state is None or self._ended:
             return
         if self._session_id is None:
             raise RuntimeError("session not initialised — call start() first")
+        if self._wedged:
+            # Fail fast and loud: the agent may still be running a turn we could
+            # not stop, so this prompt must not reach the wire (M0 Q5).
+            _put_event(self._state.queue, TransportError(message=_WEDGED_MESSAGE))
+            return
 
         try:
             text = data.decode("utf-8")
@@ -278,16 +369,17 @@ class ACPTransport:
             )
             return
 
-        # Fire-and-forget: don't block send_input on the full turn.
+        # Fire-and-forget: don't block send_input on the full turn -- but take
+        # the turn ticket NOW, so the prompt's place in line is this call's.
         # Keep a reference to the task so asyncio doesn't GC it mid-flight.
         task = asyncio.create_task(
-            self._prompt_turn(text),
+            self._prompt_turn(text, self._turns.ticket()),
             name=f"acptransport-prompt-{self._next_id}",
         )
         self._prompt_tasks.add(task)
         task.add_done_callback(self._prompt_tasks.discard)
 
-    async def _prompt_turn(self, text: str) -> None:
+    async def _prompt_turn(self, text: str, ticket: _Ticket) -> None:
         """Send session/prompt and surface the terminal response as
         AgentMessage(kind='turn_end'). The turn's ``stopReason`` is
         the authoritative signal — when cancel() fires mid-turn, the
@@ -296,24 +388,154 @@ class ACPTransport:
         on subprocess exit."""
         state = self._state
         if state is None:
+            ticket.release()
             return
-        try:
-            result = await self._rpc(
-                "session/prompt",
-                {
-                    "sessionId": self._session_id,
-                    "prompt": [{"type": "text", "text": text}],
-                },
-            )
-        except _RpcError as exc:
-            state.queue.put_nowait(TransportError(message=exc.message))
-            return
-        except Exception as exc:  # pragma: no cover — defensive
-            state.queue.put_nowait(TransportError(message=f"prompt failed: {exc}"))
-            return
+        async with ticket:
+            if self._wedged:
+                # Queued behind the delivery that wedged us: refuse, do not send.
+                _put_event(state.queue, TransportError(message=_WEDGED_MESSAGE))
+                return
+            try:
+                result = await self._rpc(
+                    "session/prompt",
+                    {
+                        "sessionId": self._session_id,
+                        "prompt": [{"type": "text", "text": text}],
+                    },
+                )
+            except _RpcError as exc:
+                state.queue.put_nowait(TransportError(message=exc.message))
+                return
+            except Exception as exc:  # pragma: no cover — defensive
+                state.queue.put_nowait(TransportError(message=f"prompt failed: {exc}"))
+                return
 
-        stop_reason = result.get("stopReason") or "end_turn"
-        state.queue.put_nowait(AgentMessage(kind="turn_end", payload={"reason": stop_reason}))
+            stop_reason = result.get("stopReason") or "end_turn"
+            state.queue.put_nowait(AgentMessage(kind="turn_end", payload={"reason": stop_reason}))
+
+    @property
+    def block_framing(self) -> BlockFraming:
+        # A session/prompt is already one turn: the bare labelled text, no bracket.
+        return "acp"
+
+    async def deliver_block(self, data: bytes, *, timeout_s: float | None = None) -> DeliveryWrite:
+        """Send one block as a prompt turn and AWAIT its outcome (M0 Q5).
+
+        Takes a turn ticket, so the block queues behind an in-flight learner turn
+        -- and behind any prompt whose ``send_input`` was called before this --
+        and never inside one (M0 Q2); emits the same ``turn_end`` a learner
+        prompt would. ``timeout_s`` defaults to ``DELIVERY_TIMEOUT_S`` (120 s).
+        On timeout: ``timed_out`` (outcome unknown), ``session/cancel`` is sent,
+        and the queue is held until the agent answers the cancelled prompt. If it
+        does so, later prompts proceed as normal. If it does NOT within
+        ``_CANCEL_CONFIRM_TIMEOUT_S``, the transport is WEDGED: this and every
+        later ``deliver_block`` reports ``closed`` and every later ``send_input``
+        emits a ``TransportError`` (``_WEDGED_MESSAGE``), so no prompt can ever
+        overlap the turn that may still be running (M0 Q5). Never retried.
+        """
+        if self._state is None or self._ended:
+            return DeliveryWrite(status="closed", detail="transport not started or already ended")
+        if self._wedged:
+            return DeliveryWrite(status="closed", detail=_WEDGED_MESSAGE)
+        if self._session_id is None:
+            return DeliveryWrite(status="error", detail="session not initialised")
+        try:
+            text = data.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            return DeliveryWrite(status="error", detail=f"non-UTF-8 block: {exc}")
+        bound = DELIVERY_TIMEOUT_S if timeout_s is None else timeout_s
+
+        async with self._turns.ticket():
+            state = self._state
+            if state is None or self._ended:
+                return DeliveryWrite(status="closed", detail="transport ended before the prompt")
+            if self._wedged:
+                return DeliveryWrite(status="closed", detail=_WEDGED_MESSAGE)
+            prompt = asyncio.ensure_future(
+                self._rpc(
+                    "session/prompt",
+                    {
+                        "sessionId": self._session_id,
+                        "prompt": [{"type": "text", "text": text}],
+                    },
+                )
+            )
+            try:
+                result = await asyncio.wait_for(asyncio.shield(prompt), timeout=bound)
+            except TimeoutError:
+                await self._cancel_and_hold(state, prompt, bound)
+                return DeliveryWrite(
+                    status="timed_out",
+                    detail=f"no response to session/prompt within {bound:g}s; the turn was "
+                    f"cancelled and the block is not retried",
+                )
+            except Exception as exc:
+                prompt.cancel()
+                if self._state is None or self._ended or state.proc.returncode is not None:
+                    return DeliveryWrite(
+                        status="closed", detail=f"agent exited before answering: {exc}"
+                    )
+                message = exc.message if isinstance(exc, _RpcError) else f"prompt failed: {exc}"
+                return DeliveryWrite(status="error", detail=message)
+
+            stop_reason = result.get("stopReason") or "end_turn"
+            _put_event(state.queue, AgentMessage(kind="turn_end", payload={"reason": stop_reason}))
+            return DeliveryWrite(status="written", detail=f"stopReason={stop_reason}")
+
+    async def _cancel_and_hold(
+        self,
+        state: _Running,
+        prompt: asyncio.Future[dict[str, Any]],
+        bound: float,
+    ) -> None:
+        """Cancel a timed-out turn and wait, queue held, for the agent to confirm.
+
+        ``_cancel_requested`` is deliberately NOT set: that flag is the SESSION's
+        cancel and would flip the eventual ``Stopped`` reason. The agent confirms
+        by answering the cancelled ``session/prompt`` (ACP: ``stopReason``
+        ``cancelled``); until then a later prompt could overlap a turn that is
+        still running, so the caller keeps the ticket through this call.
+
+        Confirmed: one ``turn_end`` with the agent's stop reason; the queue moves
+        on. NOT confirmed within the bound: the transport is marked wedged, a
+        ``TransportError`` carries ``_WEDGED_MESSAGE``, and the one synthetic
+        ``turn_end`` has ``reason="wedged"``; the caller's ticket is then released
+        only so that queued prompts can be REFUSED (they check ``_wedged`` after
+        acquiring), never sent.
+        """
+        _put_event(
+            state.queue,
+            TransportError(
+                message=f"practice_check delivery: no response within {bound:g}s; "
+                f"cancelling the turn"
+            ),
+        )
+        try:
+            await asyncio.wait_for(
+                self._rpc("session/cancel", {"sessionId": self._session_id}),
+                timeout=_CANCEL_CONFIRM_TIMEOUT_S,
+            )
+        except Exception as exc:
+            logger.warning("ACP: session/cancel for a timed-out delivery got no answer: %s", exc)
+        stop_reason = "cancelled"
+        try:
+            result = await asyncio.wait_for(prompt, timeout=_CANCEL_CONFIRM_TIMEOUT_S)
+            stop_reason = result.get("stopReason") or "cancelled"
+        except TimeoutError:
+            # The turn may still be running inside the agent. Releasing the queue
+            # would let the next learner prompt overlap it, so wedge instead.
+            self._wedged = True
+            stop_reason = "wedged"
+            prompt.cancel()  # a late answer is dropped as an unknown id by the reader
+            logger.error(
+                "ACP: timed-out delivery turn not confirmed cancelled within %gs; "
+                "transport wedged -- later prompts are refused",
+                _CANCEL_CONFIRM_TIMEOUT_S,
+            )
+            _put_event(state.queue, TransportError(message=_WEDGED_MESSAGE))
+        except Exception as exc:
+            logger.warning("ACP: cancelled delivery turn ended with: %s", exc)
+        _put_event(state.queue, AgentMessage(kind="turn_end", payload={"reason": stop_reason}))
 
     async def resize(self, cols: int, rows: int) -> None:
         # ACP is turn-based; no PTY geometry to update. Declared for
@@ -671,6 +893,20 @@ class ACPTransport:
     # Accessor used only by unit tests (not part of the Protocol).
     # Hidden rather than public because callers shouldn't depend on it.
     # Kept for TDD reachability; remove if Phase 2.2+ finds no further use.
+
+
+def _put_event(
+    queue: asyncio.Queue[TransportEventT | None],
+    event: TransportEventT,
+) -> None:
+    """Enqueue with the drop-oldest rule ``_dispatch_frame`` uses on a full queue."""
+    try:
+        queue.put_nowait(event)
+    except asyncio.QueueFull:
+        logger.warning("ACP event queue full; dropping oldest")
+        with contextlib.suppress(asyncio.QueueEmpty):
+            queue.get_nowait()
+        queue.put_nowait(event)
 
 
 class _RpcError(RuntimeError):

@@ -1,0 +1,13 @@
+id: echo-drills
+contract: 99
+version: 0.1.0
+title: Echo drills (offline fixture)
+topic: shell
+license: MIT
+maintainers:
+  - name: StudyLoop fixture author
+    github: studyloop-fixtures
+prerequisites: []
+capabilities: [check]
+target:
+  kind: workdir

@@ -1,0 +1,26 @@
+env -u VIRTUAL_ENV just preflight   # worktree module-mentor-delivery, HEAD 1ed3f265, TMPDIR=$(getconf DARWIN_USER_TEMP_DIR)
+# lint typecheck test: just stops at the first red recipe (test), so test-js docs release-consistency spec-check were run individually right after (lines appended below).
+uv run --group dev ruff check .
+All checks passed!
+uv run --group dev ruff format --check .
+1058 files already formatted
+uv run --group dev pyright
+0 errors, 0 warnings, 0 informations
+WARNING: there is a new pyright version available (v1.1.408 -> v1.1.414).
+[... pytest progress ...]
+E       assert 1 == 2
+E        +  where 1 = CompletedProcess(args=['/Users/ataylor/code/personal/tools/studyloop-wt/module-mentor-delivery/.venv/bin/studyloop', '...iplexer is required but not available.\n  Install: brew install tmux (macOS) or apt install tmux (Linux)\n', stderr='').returncode
+
+packages/studyloop/tests/test_fresh_install_scope.py:188: AssertionError
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_fresh_install_scope.py::test_studyloop_study_exits_2_with_the_diagnostic_on_a_virgin_home
+==== 1 failed, 7537 passed, 15 skipped, 820 deselected in 939.36s (0:15:39) ====
+error: recipe `test` failed on line 27 with exit code 1
+# --- run individually after the test recipe ---
+ℹ tests 167
+ℹ pass 167
+ℹ fail 0
+ℹ duration_ms 15052.043833
+INFO    -  Documentation built in 0.42 seconds
+release consistency passed for studyloop 0.5.0
+Totals: 25 passed, 0 failed (25 items)
