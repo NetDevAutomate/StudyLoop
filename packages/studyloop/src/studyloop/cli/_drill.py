@@ -49,6 +49,7 @@ from studyloop.modules.attempt import (
     Phase,
     PhaseResult,
     RefusalError,
+    SidecarError,
     record_phase,
 )
 from studyloop.modules.consent import ConsentLedger, describe_consent
@@ -83,7 +84,8 @@ def attempts_root() -> Path:
 def locate_installed_module(module_id: str) -> InstalledModule:
     """Resolve an installed module through lane C's ``modules/store.py``.
 
-    C exports ``load_lockfile()``, ``LockEntry`` (``id``, ``version``, ``digest``, ...) and
+    C exports ``load_lockfile()``, ``LockEntry`` (``id``, ``version``, ``digest`` in its
+    canonical ``sha256:<64 hex>`` form -- the value the mentor envelope carries verbatim) and
     ``snapshot_dir(entry)`` (C2 brief, cross-lane facts). The import is lazy and by name
     because the store had not merged when this was written: until it lands, every lookup
     raises :class:`ModuleNotInstalledError` naming the gap, and the test suite points this
@@ -234,10 +236,17 @@ def run_drill_phase(phase: Phase, ref: str) -> int:
         task_id=task_id,
     )
 
-    # Refuse what the runner would refuse BEFORE anyone is asked to consent to it.
+    # TODO(module-contract-v1): read ``prerequisites[].id`` from the module's manifest once
+    # lane C's ``modules/manifest.py`` is on main; until then no tool is exposed to the child
+    # beyond /usr/bin:/bin (M1 PATH ruling: core resolves what the module declares).
+    prerequisites: tuple[str, ...] = ()
+
+    # Refuse what the runner would refuse BEFORE anyone is asked to consent to it: argv
+    # (tokens, NUL, size), the script path (MC013) and the declared tools on the PATH.
     try:
         runner.validate_argv(argv)
         script = runner.resolve_script(installed.snapshot_dir, argv[0])
+        runner.resolve_prerequisites(prerequisites)
     except RefusalError as exc:
         raise click.ClickException(str(exc)) from exc
     digest = runner.script_digest(script)
@@ -256,7 +265,13 @@ def run_drill_phase(phase: Phase, ref: str) -> int:
     consent = ledger.issue(attempt, phase, argv, script_digest=digest)
     try:
         result = runner.run_phase(
-            attempt, phase, argv, consent=consent, ledger=ledger, timeout_seconds=timeout
+            attempt,
+            phase,
+            argv,
+            consent=consent,
+            ledger=ledger,
+            timeout_seconds=timeout,
+            prerequisites=prerequisites,
         )
     except RefusalError as exc:
         if opened_here:
@@ -264,7 +279,7 @@ def run_drill_phase(phase: Phase, ref: str) -> int:
         raise click.ClickException(str(exc)) from exc
 
     _echo_result(result)
-    fields = hop.check_result_fields(attempt, result, session_id="")
+    fields = hop.check_result_fields(attempt, result)
     outcome = hop.post_check_result(fields)
     _echo_outcome(outcome)
 
@@ -272,11 +287,15 @@ def run_drill_phase(phase: Phase, ref: str) -> int:
         click.echo(
             "practice_check event not recorded: the sessions database is unavailable", err=True
         )
-    store.record_evidence(attempt, result, delivery=outcome)
-    if phase is Phase.CLEANUP or (
-        phase is Phase.SETUP and result.exit_class is not ExitClass.PASSED
-    ):
-        store.close(attempt, reason=result.message)
+    # The child has exited and been reaped (run_phase returned): safe to write the sidecar.
+    try:
+        store.record_evidence(attempt, result, delivery=outcome)
+        if phase is Phase.CLEANUP or (
+            phase is Phase.SETUP and result.exit_class is not ExitClass.PASSED
+        ):
+            store.close(attempt, reason=result.message)
+    except SidecarError as exc:
+        raise click.ClickException(f"attempt record not updated: {exc}") from exc
     return _exit_status(result)
 
 

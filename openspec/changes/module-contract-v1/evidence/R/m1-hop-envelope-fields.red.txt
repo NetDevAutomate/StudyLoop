@@ -1,0 +1,27 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_drill_cli.py -p no:cacheprovider --no-header -q --tb=short -k 'mentor_told_when or process_return_code or message_or_raw_hex'
+# worktree studyloop-wt/module-runner at 3ac12521 + uncommitted M1 tests (declaration-only names added so the files import); TMPDIR=$(getconf DARWIN_USER_TEMP_DIR); 2026-10-04T21:48:20Z
+F.F                                                                      [100%]
+=================================== FAILURES ===================================
+______ test_mentor_told_when_the_loopback_route_accepts_the_typed_fields _______
+packages/studyloop/tests/test_module_drill_cli.py:415: in test_mentor_told_when_the_loopback_route_accepts_the_typed_fields
+    assert set(fields) == ENVELOPE_FIELDS, f"body keys differ from T's envelope: {sorted(fields)}"
+E   AssertionError: body keys differ from T's envelope: ['attempt_id', 'cap_hit', 'deck_id', 'duration_seconds', 'exit_class', 'exit_code', 'message', 'module_digest', 'module_id', 'phase', 'session_id', 'stderr_tail', 'stdout_tail', 'task_id', 'timed_out', 'triggered_by', 'truncated']
+E   assert {'attempt_id'...it_code', ...} == frozenset({'a...digest', ...})
+E
+E     Extra items in the left set:
+E     'timed_out'
+E     'truncated'
+E     'session_id'
+E     'message'
+E     'cap_hit'...
+E
+E     ...Full output truncated (4 lines hidden), use '-vv' to show
+___ test_hop_sends_the_process_return_code_when_the_runner_stopped_the_child ___
+packages/studyloop/tests/test_module_drill_cli.py:482: in test_hop_sends_the_process_return_code_when_the_runner_stopped_the_child
+    fields = hop.check_result_fields(attempt, result)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: check_result_fields() missing 1 required keyword-only argument: 'session_id'
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_module_drill_cli.py::test_mentor_told_when_the_loopback_route_accepts_the_typed_fields
+FAILED packages/studyloop/tests/test_module_drill_cli.py::test_hop_sends_the_process_return_code_when_the_runner_stopped_the_child
+2 failed, 1 passed, 22 deselected in 0.98s

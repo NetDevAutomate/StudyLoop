@@ -1,0 +1,17 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_runner.py -p no:cacheprovider --no-header -q --tb=short -k 'straddling'
+# worktree studyloop-wt/module-runner at 3ac12521: runner.py as committed (declaration-only PrerequisiteError/prerequisites= added so the file imports) + the M1 test; TMPDIR=$(getconf DARWIN_USER_TEMP_DIR); 2026-10-04T21:54:10Z
+# re-run of the red after fixing the test fixture: the first draft butted the token against the filler with no word boundary, which the detector never matches anywhere -- the filler now ends in a space, as a real 'token=ghp_...' line does
+F                                                                        [100%]
+=================================== FAILURES ===================================
+___________ test_secret_straddling_the_stdout_cap_leaves_no_fragment ___________
+packages/studyloop/tests/test_module_runner.py:1030: in test_secret_straddling_the_stdout_cap_leaves_no_fragment
+    assert "ghp_" not in result.stdout, "a fragment of the secret survived the cut"
+E   AssertionError: a fragment of the secret survived the cut
+E   assert 'ghp_' not in 'fffffffffff...c3d4a1b2c3d4'
+E
+E     'ghp_' is contained here:
+E       fffffffff ghp_a1b2c3d4a1b2c3d4
+E     ?           ++++
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_module_runner.py::test_secret_straddling_the_stdout_cap_leaves_no_fragment
+1 failed, 55 deselected in 0.54s

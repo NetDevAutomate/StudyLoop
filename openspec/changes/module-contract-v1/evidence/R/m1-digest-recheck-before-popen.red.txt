@@ -1,0 +1,13 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_runner.py -p no:cacheprovider --no-header -q --tb=short -k 'rewritten_between_redeem'
+# worktree studyloop-wt/module-runner at 3ac12521 + uncommitted M1 tests (declaration-only names added so the files import); TMPDIR=$(getconf DARWIN_USER_TEMP_DIR); 2026-10-04T21:48:20Z
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_________ test_script_rewritten_between_redeem_and_spawn_does_not_run __________
+packages/studyloop/tests/test_module_runner.py:757: in test_script_rewritten_between_redeem_and_spawn_does_not_run
+    assert result.exit_class is ExitClass.ERROR
+E   AssertionError: assert <ExitClass.PASSED: 'passed'> is <ExitClass.ERROR: 'error'>
+E    +  where <ExitClass.PASSED: 'passed'> = PhaseResult(phase=<Phase.CHECK: 'check'>, exit_class=<ExitClass.PASSED: 'passed'>, exit_code=0, stdout='', stderr='', ...t=False, duration_seconds=0.057290708005893975, cap_hit=None, message='check passed (exit 0)', process_returncode=None).exit_class
+E    +  and   <ExitClass.ERROR: 'error'> = ExitClass.ERROR
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_module_runner.py::test_script_rewritten_between_redeem_and_spawn_does_not_run
+1 failed, 55 deselected in 0.44s

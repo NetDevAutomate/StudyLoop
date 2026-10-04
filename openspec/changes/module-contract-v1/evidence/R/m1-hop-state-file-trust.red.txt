@@ -1,0 +1,28 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_drill_cli.py -p no:cacheprovider --no-header -q --tb=short -k 'session_state_file or session_state_symlink'
+# worktree studyloop-wt/module-runner at 3ac12521 + uncommitted M1 tests (declaration-only names added so the files import); TMPDIR=$(getconf DARWIN_USER_TEMP_DIR); 2026-10-04T21:48:20Z
+FFF                                                                      [100%]
+=================================== FAILURES ===================================
+__________ test_session_state_file_readable_by_others_is_not_trusted ___________
+packages/studyloop/tests/test_module_drill_cli.py:500: in test_session_state_file_readable_by_others_is_not_trusted
+    assert "Mentor not told: no_active_session" in result.output
+E   AssertionError: assert 'Mentor not told: no_active_session' in 'Drill phase: check\nDrill:       runner-offline offline/echo-check\nTarget:      workdir /private/var/folders/cy/jqj_... y\ncheck: check failed: task not complete (exit 1)\ncheck: hello.txt is missing or does not say hello\nMentor told.\n'
+E    +  where 'Drill phase: check\nDrill:       runner-offline offline/echo-check\nTarget:      workdir /private/var/folders/cy/jqj_... y\ncheck: check failed: task not complete (exit 1)\ncheck: hello.txt is missing or does not say hello\nMentor told.\n' = <Result SystemExit(1)>.output
+_________ test_session_state_file_owned_by_another_user_is_not_trusted _________
+packages/studyloop/tests/test_module_drill_cli.py:531: in test_session_state_file_owned_by_another_user_is_not_trusted
+    assert outcome.status == "no_active_session"
+E   AssertionError: assert 'delivered' == 'no_active_session'
+E
+E     - no_active_session
+E     + delivered
+__________________ test_session_state_symlink_is_not_trusted ___________________
+packages/studyloop/tests/test_module_drill_cli.py:558: in test_session_state_symlink_is_not_trusted
+    assert outcome.status == "no_active_session"
+E   AssertionError: assert 'delivered' == 'no_active_session'
+E
+E     - no_active_session
+E     + delivered
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_module_drill_cli.py::test_session_state_file_readable_by_others_is_not_trusted
+FAILED packages/studyloop/tests/test_module_drill_cli.py::test_session_state_file_owned_by_another_user_is_not_trusted
+FAILED packages/studyloop/tests/test_module_drill_cli.py::test_session_state_symlink_is_not_trusted
+3 failed, 22 deselected in 2.10s

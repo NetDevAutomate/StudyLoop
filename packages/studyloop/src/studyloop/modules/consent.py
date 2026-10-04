@@ -76,7 +76,8 @@ def consent_target(attempt: Attempt) -> str:
 def describe_consent(
     attempt: Attempt, phase: Phase, argv: Sequence[str], *, script_digest: str
 ) -> str:
-    """The text shown to the learner before confirming: phase, target, exact argv, digest.
+    """The text shown to the learner before confirming: phase, target, exact argv, digest,
+    and what consenting means (M1 Q2/Q7: hygiene, not a sandbox).
 
     Every argv item is printed verbatim on its own line so a learner can see an argument
     that *looks* like a flag but is not, and the digest is the one the runner re-checks at
@@ -90,6 +91,12 @@ def describe_consent(
     ]
     lines.extend(f"  [{index}] {item}" for index, item in enumerate(argv))
     lines.append(f"Script sha256: {script_digest}")
+    lines.append(
+        "This script runs with YOUR privileges on this machine -- it can read and write "
+        "anything you can. StudyLoop runs it without a shell, with a clean environment, in a "
+        "scratch directory, with capped and redacted output, and stops it on timeout; that is "
+        "hygiene, not a sandbox (a process that detaches itself survives the stop)."
+    )
     if phase is Phase.CLEANUP:
         lines.append("This phase is destructive: it deletes what the attempt created.")
     return "\n".join(lines)

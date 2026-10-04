@@ -36,8 +36,11 @@ Contract rows these types carry (proposal §5.5):
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
+import os
+import stat
 import uuid
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
@@ -76,6 +79,10 @@ class ExitClass(StrEnum):
     PASSED = "passed"
     FAILED = "failed"
     ERROR = "error"
+
+
+class SidecarError(RuntimeError):
+    """The attempt's sidecar record path is not what the store wrote (symlink, foreign file)."""
 
 
 class RefusalError(Exception):
@@ -161,6 +168,7 @@ class PhaseResult:
     duration_seconds: float
     cap_hit: str | None = None
     message: str = ""
+    process_returncode: int | None = None
 
     @property
     def output(self) -> str:
@@ -339,17 +347,70 @@ class AttemptStore:
     def _record_path(self, attempt: Attempt) -> Path:
         return self._drill_dir(attempt.drill) / f"{attempt.attempt_id}.json"
 
-    def _read(self, path: Path) -> dict[str, Any] | None:
+    @staticmethod
+    def _ensure_private_dir(path: Path) -> None:
+        """``mkdir -p`` then force ``0o700`` on the leaf (``mkdir(mode=)`` is umask-subject)."""
+        path.mkdir(parents=True, exist_ok=True)
+        os.chmod(path, 0o700)
+
+    @staticmethod
+    def _refuse_if_not_regular(path: Path, *, must_exist: bool) -> None:
+        """M1 Q7: the sidecar path must be absent or a regular file -- never a symlink."""
         try:
-            data = json.loads(path.read_text(encoding="utf-8"))
+            st = os.lstat(path)
+        except FileNotFoundError:
+            if must_exist:
+                raise SidecarError(f"attempt record {path.name} is missing") from None
+            return
+        if not stat.S_ISREG(st.st_mode):
+            raise SidecarError(
+                f"attempt record {path.name} is not a regular file (symlink or special file "
+                "planted at the sidecar path); refusing to read or write it"
+            )
+
+    def _read(self, path: Path) -> dict[str, Any] | None:
+        self._refuse_if_not_regular(path, must_exist=False)
+        try:
+            fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+        except FileNotFoundError:
+            return None
+        except OSError as exc:
+            raise SidecarError(f"attempt record {path.name} unreadable: {exc.strerror}") from exc
+        try:
+            with os.fdopen(fd, encoding="utf-8") as handle:
+                data = json.loads(handle.read())
         except (OSError, json.JSONDecodeError):
             return None
         return data if isinstance(data, dict) else None
 
     def _write(self, path: Path, record: dict[str, Any]) -> None:
+        """Write the sidecar: ``O_EXCL | O_NOFOLLOW`` temp file in a ``0o700`` directory, then
+        an atomic rename. Called only after the child has exited (the caller's contract), so
+        a running module script cannot race the record it is being judged by."""
+        self._ensure_private_dir(path.parent)
+        self._refuse_if_not_regular(path, must_exist=False)
         tmp = path.with_suffix(".json.tmp")
-        tmp.write_text(json.dumps(record, indent=2, sort_keys=True), encoding="utf-8")
-        tmp.replace(path)
+        try:
+            fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        except FileExistsError as exc:
+            raise SidecarError(
+                f"attempt record temp file {tmp.name} already exists (planted or a crashed "
+                "earlier write); refusing to write over it"
+            ) from exc
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                handle.write(json.dumps(record, indent=2, sort_keys=True))
+                handle.flush()
+                os.fsync(handle.fileno())
+            # Re-check the destination right before the rename: a symlink planted between the
+            # first check and now would be *replaced*, not followed, but we refuse anyway so a
+            # tampered path is loud rather than silently rewritten.
+            self._refuse_if_not_regular(path, must_exist=False)
+            os.replace(tmp, path)
+        except BaseException:
+            with contextlib.suppress(OSError):
+                tmp.unlink()
+            raise
 
     def _attempt_from(self, record: dict[str, Any]) -> Attempt:
         drill = DrillIdentity(**record["drill"])
@@ -374,8 +435,10 @@ class AttemptStore:
         """Create a new attempt directory (mode ``0o700``) and its sidecar record."""
         attempt_id = str(uuid.uuid4())
         drill_dir = self._drill_dir(drill)
+        self._ensure_private_dir(drill_dir)
         attempt_dir = drill_dir / attempt_id
-        attempt_dir.mkdir(parents=True, mode=0o700)
+        attempt_dir.mkdir(mode=0o700)
+        os.chmod(attempt_dir, 0o700)
         attempt = Attempt(
             attempt_id=attempt_id,
             drill=drill,
@@ -410,6 +473,9 @@ class AttemptStore:
             return None
         candidates: list[tuple[str, dict[str, Any]]] = []
         for path in drill_dir.glob("*.json"):
+            if not stat.S_ISREG(os.lstat(path).st_mode):
+                logger.warning("ignoring non-regular file in attempts dir: %s", path.name)
+                continue
             record = self._read(path)
             if record is None or record.get("closed_at") is not None:
                 continue
@@ -437,7 +503,9 @@ class AttemptStore:
 
         This is the §5.5 *Output* "kept for the attempt only": the transient evidence a
         learner or the coordinator can read back for this attempt. It is not learner
-        history and nothing reads it into the mentor or the dashboard.
+        history and nothing reads it into the mentor or the dashboard. Called by the CLI
+        only after ``run_phase`` has returned -- i.e. after the child has exited and been
+        reaped -- so no module process is alive while its record is written (M1 Q7).
         """
         path = self._record_path(attempt)
         record = self._read(path)

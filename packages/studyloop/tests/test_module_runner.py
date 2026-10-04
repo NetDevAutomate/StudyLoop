@@ -46,6 +46,7 @@ from studyloop.modules.attempt import (
     ExitClass,
     OutputCaps,
     Phase,
+    SidecarError,
     record_phase,
 )
 from studyloop.modules.consent import (
@@ -59,7 +60,12 @@ from studyloop.modules.consent import (
     DigestMismatchError,
     describe_consent,
 )
-from studyloop.modules.runner import ArgvLengthError, ScriptPathError, ShellTokenError
+from studyloop.modules.runner import (
+    ArgvLengthError,
+    PrerequisiteError,
+    ScriptPathError,
+    ShellTokenError,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -73,7 +79,7 @@ if TYPE_CHECKING:
 MODULE_ID = "example-module"
 DRILL = DrillIdentity(
     module_id=MODULE_ID,
-    module_digest="snapshot-digest-fixture",
+    module_digest="sha256:" + hashlib.sha256(b"snapshot-digest-fixture").hexdigest(),
     deck_id="pods",
     task_id="create-nginx",
 )
@@ -185,6 +191,7 @@ class World:
         consent: Consent | None = None,
         timeout_seconds: int = 10,
         caps: OutputCaps = DEFAULT_CAPS,
+        prerequisites: Sequence[str] = (),
     ) -> PhaseResult:
         return runner.run_phase(
             self.attempt,
@@ -194,6 +201,7 @@ class World:
             ledger=self.ledger,
             timeout_seconds=timeout_seconds,
             caps=caps,
+            prerequisites=prerequisites,
         )
 
     def ran_marker(self, name: str = "ran.marker") -> bool:
@@ -355,6 +363,30 @@ def test_runner_never_shell(world: World, spawn_spy: list[SpawnCall]) -> None:
     assert Path(spawned[0]).is_absolute(), "argv[0] must be the resolved script, not a PATH lookup"
 
 
+def test_pre_planted_symlink_at_the_sidecar_path_is_refused(tmp_path: Path) -> None:
+    """M1 Q7: the sidecar is written with ``O_EXCL | O_NOFOLLOW`` into a 0o700 directory. A
+    symlink planted where the record lives is refused -- the target it points at is never
+    written -- rather than followed."""
+    snapshot = tmp_path / "snapshot"
+    (snapshot / "scripts").mkdir(parents=True)
+    store = AttemptStore(root=tmp_path / "attempts")
+    attempt = store.open(DRILL, snapshot_dir=snapshot)
+    record_path = store.root / DRILL.module_id / DRILL.deck_id / DRILL.task_id
+    record_path = record_path / f"{attempt.attempt_id}.json"
+    assert record_path.is_file()
+    assert (record_path.parent.stat().st_mode & 0o777) == 0o700
+    victim = tmp_path / "victim.txt"
+    victim.write_text("untouched", encoding="utf-8")
+    record_path.unlink()
+    record_path.symlink_to(victim)
+
+    with pytest.raises(SidecarError):
+        store.close(attempt, reason="planted")
+
+    assert victim.read_text(encoding="utf-8") == "untouched"
+    assert record_path.is_symlink()
+
+
 # ---------------------------------------------------------------------------
 # (b) Boundary reds against the runner -- one per attack, red by NotImplementedError today
 # ---------------------------------------------------------------------------
@@ -413,6 +445,50 @@ def test_runner_refuses_argv_longer_than_64_arguments(
 
     assert spawn_spy == []
     assert not world.ran_marker()
+
+
+@pytest.mark.parametrize(
+    ("argument", "expected"),
+    [
+        ("literal\x00touch pwned", ShellTokenError),
+        ("x" * (2 * 1024 * 1024), ArgvLengthError),
+        ("${HOME}/pwned", ShellTokenError),
+    ],
+    ids=["nul-byte", "two-mebibyte-argument", "dollar-brace"],
+)
+def test_runner_refuses_nul_oversize_and_dollar_brace_arguments(
+    world: World, spawn_spy: list[SpawnCall], argument: str, expected: type[Exception]
+) -> None:
+    """M1 Q1: a NUL byte and a multi-megabyte argument passed the 64-item check and failed
+    *after* consent with CPython's own exception; ``${`` is cheap defence in depth. All
+    three are refused by ``validate_argv`` -- before consent, before spawn -- with the
+    runner's own refusal type, never an uncaught ``ValueError``."""
+    world.script("check.sh", "touch ran.marker")
+    argv = ("scripts/check.sh", argument)
+    consent = world.forged_consent(Phase.CHECK, argv, digest=_sha256(world.scripts / "check.sh"))
+
+    with pytest.raises(expected):
+        world.run(Phase.CHECK, argv, consent=consent)
+
+    assert spawn_spy == []
+    assert not world.ran_marker()
+
+
+def test_spawn_failure_is_an_error_result_not_an_exception(world: World) -> None:
+    """M1 Q1: every spawn failure becomes ``PhaseResult(ERROR)`` naming the reason. A
+    consented script that the kernel refuses to execute (no shebang, not a binary ->
+    ``ENOEXEC``) is a phase that could not run, not a traceback."""
+    script = world.scripts / "check.sh"
+    script.write_bytes(b"this is not a script and has no interpreter line\n")
+    script.chmod(0o755)
+    argv = ("scripts/check.sh",)
+
+    result = world.run(Phase.CHECK, argv)
+
+    assert result.exit_class is ExitClass.ERROR
+    assert result.timed_out is False
+    assert "could not be started" in result.message
+    assert "Exec format error" in result.message or "errno" in result.message.lower()
 
 
 def _symlinked_script(world: World, tmp_path: Path) -> str:
@@ -573,6 +649,58 @@ def test_runner_builds_environment_from_scratch(
     assert child_env["PATH"] != os.environ["PATH"], "child PATH is the server's PATH, not minimal"
 
 
+def test_declared_prerequisite_resolves_from_the_learners_path_into_attempt_bin(
+    world: World, spawn_spy: list[SpawnCall], monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """M1 Q2 PATH ruling: core resolves each declared prerequisite on the *learner's* PATH,
+    symlinks exactly those tools into ``<attempt>/bin``, and the child's PATH is
+    ``<attempt>/bin:/usr/bin:/bin`` -- kubectl under a Homebrew prefix resolves without
+    exposing the rest of the prefix."""
+    homebrew_bin = tmp_path / "opt" / "homebrew" / "bin"
+    homebrew_bin.mkdir(parents=True)
+    fake_kubectl = homebrew_bin / "kubectl"
+    fake_kubectl.write_text(
+        '#!/bin/sh\necho fake-kubectl "$@" > kubectl.marker\n', encoding="utf-8"
+    )
+    fake_kubectl.chmod(0o755)
+    (homebrew_bin / "brew").write_text("#!/bin/sh\ntouch brew.marker\n", encoding="utf-8")
+    (homebrew_bin / "brew").chmod(0o755)
+    monkeypatch.setenv("PATH", f"{homebrew_bin}:/usr/bin:/bin")
+    world.script("check.sh", "kubectl get pods\nbrew install anything 2>/dev/null || true")
+    argv = ("scripts/check.sh",)
+
+    result = world.run(Phase.CHECK, argv, prerequisites=("kubectl",))
+
+    assert result.exit_class is ExitClass.PASSED
+    attempt_dir = world.attempt.attempt_dir.resolve()
+    env = spawn_spy[0].kwargs["env"]
+    assert env["PATH"] == f"{attempt_dir / 'bin'}:/usr/bin:/bin"
+    link = attempt_dir / "bin" / "kubectl"
+    assert link.is_symlink()
+    assert link.resolve() == fake_kubectl.resolve()
+    assert (attempt_dir / "kubectl.marker").read_text(encoding="utf-8") == "fake-kubectl get pods\n"
+    assert not (attempt_dir / "brew.marker").exists(), "an undeclared tool leaked via PATH"
+    assert sorted(p.name for p in (attempt_dir / "bin").iterdir()) == ["kubectl"]
+
+
+def test_unresolvable_prerequisite_refuses_before_spawn(
+    world: World, spawn_spy: list[SpawnCall], monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A declared tool that is not on the learner's PATH refuses the phase naming the
+    tool; nothing is spawned and the consent is not consumed."""
+    monkeypatch.setenv("PATH", "/usr/bin:/bin")
+    world.script("check.sh", "touch ran.marker")
+    argv = ("scripts/check.sh",)
+    consent = world.consent(Phase.CHECK, argv)
+
+    with pytest.raises(PrerequisiteError, match="no-such-tool-xyz"):
+        world.run(Phase.CHECK, argv, consent=consent, prerequisites=("no-such-tool-xyz",))
+
+    assert spawn_spy == []
+    assert not world.ran_marker()
+    assert world.run(Phase.CHECK, argv, consent=consent).exit_class is ExitClass.PASSED
+
+
 def test_runner_refuses_script_changed_after_consent(
     world: World, spawn_spy: list[SpawnCall]
 ) -> None:
@@ -587,6 +715,47 @@ def test_runner_refuses_script_changed_after_consent(
     with pytest.raises(DigestMismatchError):
         world.run(Phase.CHECK, argv, consent=consent)
 
+    assert spawn_spy == []
+    assert not world.ran_marker("swapped.marker")
+
+
+class _RewritingLedger(ConsentLedger):
+    """A ledger whose successful ``redeem`` rewrites the script -- the redeem->exec window."""
+
+    def __init__(self, script: Path, body: str) -> None:
+        super().__init__()
+        self._script = script
+        self._body = body
+
+    def redeem(self, consent: Consent, **kwargs: Any) -> None:
+        super().redeem(consent, **kwargs)
+        self._script.write_text(self._body, encoding="utf-8")
+
+
+def test_script_rewritten_between_redeem_and_spawn_does_not_run(
+    tmp_path: Path, spawn_spy: list[SpawnCall]
+) -> None:
+    """M1 Q3: the digest is re-verified immediately before ``Popen``; a script swapped in
+    the redeem->exec window is refused as an ERROR result naming the mismatch, and the
+    swapped content never runs."""
+    snapshot = tmp_path / "snapshot"
+    (snapshot / "scripts").mkdir(parents=True)
+    attempt_dir = tmp_path / "attempt"
+    attempt_dir.mkdir()
+    attempt = Attempt(
+        attempt_id="attempt-race", drill=DRILL, snapshot_dir=snapshot, attempt_dir=attempt_dir
+    )
+    script = snapshot / "scripts" / "check.sh"
+    ledger = _RewritingLedger(script, "#!/bin/sh\ntouch swapped.marker\nexit 0\n")
+    world = World(attempt=attempt, ledger=ledger)
+    world.script("check.sh", "exit 0")
+    argv = ("scripts/check.sh",)
+    consent = world.consent(Phase.CHECK, argv)
+
+    result = world.run(Phase.CHECK, argv, consent=consent)
+
+    assert result.exit_class is ExitClass.ERROR
+    assert "digest" in result.message
     assert spawn_spy == []
     assert not world.ran_marker("swapped.marker")
 
@@ -838,6 +1007,29 @@ def test_runner_redacts_secrets_before_returning_output(world: World) -> None:
     assert token not in result.output
     assert "[GITHUB_PAT-001]" in result.stdout
     assert "[GITHUB_PAT-001]" in result.stderr
+
+
+def test_secret_straddling_the_stdout_cap_leaves_no_fragment(world: World) -> None:
+    """M1 Q5: the cap used to cut the stream first and redact the truncated bytes, so a
+    token sitting across the boundary half-survived (``ghp_`` + 16 of its 36 chars is no
+    longer a GitHub PAT to the detector). The runner now streams past the cap, redacts the
+    whole captured buffer, then cuts to the cap: zero bytes of the secret survive."""
+    cap = 4096
+    token = "ghp_" + "a1b2c3d4" * 4 + "e5f6"
+    # The token starts 20 bytes before the cap and crosses it; the space before it is the
+    # word boundary the detector's ``\\bghp_`` needs (as in any real ``token=ghp_...`` line).
+    filler = "f" * (cap - 21) + " "
+    world.script("check.sh", f"printf '%s' '{filler}'\nprintf '%s\\n' '{token}'\nexit 0")
+    argv = ("scripts/check.sh",)
+
+    result = world.run(Phase.CHECK, argv, caps=OutputCaps(stdout_bytes=cap))
+
+    assert result.truncated is True
+    assert result.cap_hit == "stdout"
+    assert len(result.stdout.encode("utf-8")) <= cap
+    assert "ghp_" not in result.stdout, "a fragment of the secret survived the cut"
+    assert token[4:20] not in result.stdout
+    assert token not in result.output
 
 
 @pytest.mark.parametrize(

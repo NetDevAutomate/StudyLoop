@@ -19,22 +19,26 @@ from __future__ import annotations
 import contextlib
 import hashlib
 import json
+import os
 import shutil
 import sqlite3
+import stat
 import threading
 from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Annotated, Any, Literal
 
 import pytest
 from click.testing import CliRunner
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from test_module_runner import LEARNER_HISTORY_TABLES, SpawnCall, _table_rows, spawn_spy
 from test_practice_verify import _attempt_db, _patch_db
 
 from studyloop import session_state
 from studyloop.cli import _drill
 from studyloop.cli._drill import drill_group
+from studyloop.content.schemas import SLUG_PATTERN
 from studyloop.modules import hop
 from studyloop.modules.attempt import AttemptStore, DrillIdentity, InstalledModule
 
@@ -49,13 +53,43 @@ DRILL_REF = f"{MODULE_ID}/offline/echo-check"
 
 
 def _module_digest(root: Path) -> str:
-    """sha256 over sorted relative paths + bytes -- the lockfile rule in lane C's brief."""
+    """``sha256:<64 hex>`` over sorted relative paths + bytes -- C's ``LockEntry.digest`` form."""
     digest = hashlib.sha256()
     for path in sorted(p for p in root.rglob("*") if p.is_file()):
         digest.update(str(path.relative_to(root)).encode("utf-8"))
         digest.update(b"\0")
         digest.update(path.read_bytes())
-    return digest.hexdigest()
+    return "sha256:" + digest.hexdigest()
+
+
+# Lane T's wire shape, copied from session/module_delivery.py::PracticeCheckEnvelope so this
+# lane's hop is checked against the validator the route will actually run (M1 Q6). Kept as a
+# COPY on purpose: T has not merged, and importing it would couple the two lanes' trees.
+_SlugId = Annotated[str, Field(pattern=SLUG_PATTERN, min_length=1, max_length=63)]
+_Digest = Annotated[str, Field(pattern=r"^sha256:[0-9a-f]{12,64}$", max_length=71)]
+_AttemptId = Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$", max_length=64)]
+
+
+class EnvelopeShape(BaseModel):
+    """``extra: forbid``: a body carrying ``message``, ``session_id`` or a raw-hex digest fails."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    module_id: _SlugId
+    module_digest: _Digest
+    deck_id: _SlugId
+    task_id: _SlugId
+    attempt_id: _AttemptId
+    phase: Literal["setup", "check", "cleanup"]
+    exit_class: Literal["passed", "failed", "error"]
+    exit_code: int = Field(ge=-128, le=255)
+    duration_s: float = Field(ge=0.0, le=604_800.0)
+    stdout_tail: str = Field(max_length=16 * 1024 * 1024)
+    stderr_tail: str = Field(max_length=16 * 1024 * 1024)
+    triggered_by: Literal["learner"] = "learner"
+
+
+ENVELOPE_FIELDS = frozenset(EnvelopeShape.model_fields)
 
 
 def _install(monkeypatch: pytest.MonkeyPatch, snapshot: Path) -> DrillIdentity:
@@ -122,6 +156,10 @@ class FakeRoute:
     body: bytes = b'{"status": "delivered"}'
     requests: list[dict[str, Any]] = field(default_factory=list)
     port: int = 0
+
+    def validated(self) -> list[EnvelopeShape]:
+        """Every posted body, run through lane T's shape; raises on the first rejection."""
+        return [EnvelopeShape.model_validate(request["json"]) for request in self.requests]
 
 
 @pytest.fixture
@@ -217,7 +255,7 @@ def test_scaffold_offline_drill_runs_setup_check_cleanup_end_to_end(
         executables.append(Path(call.args[0]).name)
         assert Path(call.kwargs["cwd"]).resolve() == attempt.attempt_dir.resolve()
         env = call.kwargs["env"]
-        assert env["PATH"] == "/usr/local/bin:/usr/bin:/bin"
+        assert env["PATH"] == f"{attempt.attempt_dir.resolve() / 'bin'}:/usr/bin:/bin"
         assert "DOCKER_HOST" not in env and "KUBECONFIG" not in env
     assert executables == ["setup.sh", "check.sh", "cleanup.sh"]
     assert spawn_spy[1].args[1:] == ["hello.txt"], "literal argument passed as its own element"
@@ -360,7 +398,9 @@ def test_mentor_told_when_the_loopback_route_accepts_the_typed_fields(
 ) -> None:
     """M0 Q2: the CLI reads port + token from the session state file, posts typed fields with
     the token in a header to the loopback route, prints ``Mentor told.`` on success and
-    records ``delivered`` on the row. The fields are the ones ``hop.py`` documents."""
+    records ``delivered`` on the row. The body is EXACTLY lane T's ``PracticeCheckEnvelope``
+    (M1 Q6): no ``message`` (the server renders), no ``session_id`` (the token names the
+    session), canonical ``sha256:`` digest."""
     _claim_session(fake_route.port)
 
     result = _invoke("check", DRILL_REF)
@@ -372,37 +412,152 @@ def test_mentor_told_when_the_loopback_route_accepts_the_typed_fields(
     assert request["headers"][hop.TOKEN_HEADER.lower()] == "cap-token-for-tests"
     assert request["headers"]["content-type"] == "application/json"
     fields = request["json"]
-    assert set(fields) == {
-        "session_id",
-        "module_id",
-        "module_digest",
-        "deck_id",
-        "task_id",
-        "attempt_id",
-        "phase",
-        "exit_class",
-        "exit_code",
-        "duration_seconds",
-        "timed_out",
-        "truncated",
-        "cap_hit",
-        "message",
-        "stdout_tail",
-        "stderr_tail",
-        "triggered_by",
-    }
-    assert fields["session_id"] == "sess-1"
-    assert fields["module_id"] == MODULE_ID
-    assert fields["module_digest"] == installed.module_digest
-    assert (fields["deck_id"], fields["task_id"]) == ("offline", "echo-check")
-    assert fields["phase"] == "check"
-    assert fields["exit_class"] == "failed"  # no setup ran: hello.txt is missing
-    assert fields["exit_code"] == 1
-    assert fields["triggered_by"] == "learner"
-    assert "does not say hello" in fields["stdout_tail"]
+    assert set(fields) == ENVELOPE_FIELDS, f"body keys differ from T's envelope: {sorted(fields)}"
+    envelope = fake_route.validated()[0]  # raises if T's validator would reject the body
+    assert envelope.module_id == MODULE_ID
+    assert envelope.module_digest == installed.module_digest
+    assert envelope.module_digest.startswith("sha256:")
+    assert (envelope.deck_id, envelope.task_id) == ("offline", "echo-check")
+    assert envelope.phase == "check"
+    assert envelope.exit_class == "failed"  # no setup ran: hello.txt is missing
+    assert envelope.exit_code == 1
+    assert envelope.triggered_by == "learner"
+    assert "does not say hello" in envelope.stdout_tail
     rows = _events(sessions_db)
     assert rows[0]["delivery_status"] == "delivered"
-    assert rows[0]["attempt_id"] == fields["attempt_id"]
+    assert rows[0]["attempt_id"] == envelope.attempt_id
+
+
+def test_hop_body_with_message_or_raw_hex_digest_is_rejected_by_the_servers_shape() -> None:
+    """The negative half of M1 Q6, pinned so the shape copy above stays honest: a body
+    carrying ``message`` or a bare-hex digest -- what the hop sent before this fix -- fails
+    T's ``extra: forbid`` validator."""
+    good = {
+        "module_id": "m",
+        "module_digest": "sha256:" + "0" * 64,
+        "deck_id": "d",
+        "task_id": "t",
+        "attempt_id": "a1",
+        "phase": "check",
+        "exit_class": "passed",
+        "exit_code": 0,
+        "duration_s": 0.5,
+        "stdout_tail": "",
+        "stderr_tail": "",
+        "triggered_by": "learner",
+    }
+    EnvelopeShape.model_validate(good)
+    with pytest.raises(ValidationError):
+        EnvelopeShape.model_validate({**good, "message": "check passed (exit 0)"})
+    with pytest.raises(ValidationError):
+        EnvelopeShape.model_validate({**good, "module_digest": "0" * 64})
+    with pytest.raises(ValidationError):
+        EnvelopeShape.model_validate({**good, "session_id": "sess-1"})
+
+
+def test_hop_sends_the_process_return_code_when_the_runner_stopped_the_child(
+    installed: DrillIdentity, tmp_path: Path
+) -> None:
+    """T's ``exit_code`` is a required int (negative = killed by that signal). A phase the
+    runner stopped has ``exit_code None`` in the result; on the wire it is the child's real
+    return code, never ``null``."""
+    from studyloop.modules.attempt import Attempt, ExitClass, Phase, PhaseResult
+
+    attempt = Attempt(
+        attempt_id="a-1", drill=installed, snapshot_dir=tmp_path, attempt_dir=tmp_path
+    )
+    result = PhaseResult(
+        phase=Phase.CHECK,
+        exit_class=ExitClass.ERROR,
+        exit_code=None,
+        stdout="",
+        stderr="",
+        truncated=False,
+        timed_out=True,
+        duration_seconds=1.0,
+        message="check timed out",
+        process_returncode=-15,
+    )
+
+    fields = hop.check_result_fields(attempt, result)
+
+    assert set(fields) == ENVELOPE_FIELDS
+    assert fields["exit_code"] == -15
+    EnvelopeShape.model_validate(fields)
+
+
+def test_session_state_file_readable_by_others_is_not_trusted(
+    installed: DrillIdentity, sessions_db: Path, fake_route: FakeRoute
+) -> None:
+    """M1 Q6: the state file carries the capability token; it is accepted only as a regular
+    file owned by this user with ``mode & 0o077 == 0``. World-readable -> the token is not
+    presented, the outcome is ``no_active_session`` and the reason names the mode."""
+    _claim_session(fake_route.port)
+    session_state.STATE_FILE.chmod(0o644)
+
+    result = _invoke("check", DRILL_REF)
+
+    assert "Mentor not told: no_active_session" in result.output
+    assert fake_route.requests == [], "the token was presented from an untrusted file"
+    row = _events(sessions_db)[0]
+    assert row["delivery_status"] == "no_active_session"
+    assert "0o644" in row["delivery_reason"] or "mode" in row["delivery_reason"]
+
+
+def test_session_state_file_owned_by_another_user_is_not_trusted(
+    installed: DrillIdentity,
+    sessions_db: Path,
+    fake_route: FakeRoute,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Foreign ownership simulated through ``os.stat``: a correctly-moded file owned by
+    another uid is refused with the reason naming the owner."""
+    _claim_session(fake_route.port)
+    real_stat = os.stat
+    target_inode = (session_state.STATE_FILE.stat().st_dev, session_state.STATE_FILE.stat().st_ino)
+
+    def foreign_stat(path: Any, *args: Any, **kwargs: Any) -> os.stat_result:
+        st = real_stat(path, *args, **kwargs)
+        if (st.st_dev, st.st_ino) == target_inode:
+            values = list(st)
+            values[stat.ST_UID] = st.st_uid + 1
+            return os.stat_result(values)
+        return st
+
+    monkeypatch.setattr(os, "stat", foreign_stat)
+    outcome = hop.post_check_result({"phase": "check"}, timeout_seconds=2)
+    monkeypatch.undo()
+
+    assert outcome.status == "no_active_session"
+    assert "owned" in outcome.reason
+    assert fake_route.requests == []
+
+
+def test_session_state_symlink_is_not_trusted(
+    installed: DrillIdentity, fake_route: FakeRoute, tmp_path: Path
+) -> None:
+    """A symlink at the state-file path is not a regular file: refused, never followed."""
+    real = tmp_path / "elsewhere.json"
+    real.write_text(
+        json.dumps(
+            {
+                "study_session_id": "sess-1",
+                "mode": "active",
+                hop.PORT_KEY: fake_route.port,
+                hop.TOKEN_KEY: "t",
+            }
+        ),
+        encoding="utf-8",
+    )
+    real.chmod(0o600)
+    session_state.STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    session_state.STATE_FILE.symlink_to(real)
+
+    outcome = hop.post_check_result({"phase": "check"}, timeout_seconds=2)
+
+    assert outcome.status == "no_active_session"
+    assert "regular file" in outcome.reason
+    assert fake_route.requests == []
 
 
 def test_mentor_not_told_when_nothing_listens_or_no_session(
