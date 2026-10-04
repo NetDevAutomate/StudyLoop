@@ -43,7 +43,7 @@ from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 if TYPE_CHECKING:
     import sqlite3
@@ -462,3 +462,32 @@ class AttemptStore:
             }
         )
         self._write(path, record)
+
+
+# ---------------------------------------------------------------------------
+# What the CLI needs from lane C's store, as a Protocol (R6 cross-lane seam)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class InstalledModule:
+    """The three facts ``studyloop drill`` needs about an installed module.
+
+    Lane C's ``modules/store.py`` (``load_lockfile()``, ``LockEntry``, ``snapshot_dir(entry)``)
+    is the source of truth once it merges; until then :class:`ModuleLocator` is the seam the
+    CLI calls and the coordinator reconciles at merge.
+    """
+
+    module_id: str
+    module_digest: str
+    snapshot_dir: Path
+
+
+class ModuleNotInstalledError(LookupError):
+    """No lockfile entry for the module id (``studyloop module list`` shows what is installed)."""
+
+
+class ModuleLocator(Protocol):
+    """``locator(module_id) -> InstalledModule`` or raise :class:`ModuleNotInstalledError`."""
+
+    def __call__(self, module_id: str) -> InstalledModule: ...

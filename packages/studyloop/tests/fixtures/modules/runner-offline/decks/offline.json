@@ -1,0 +1,25 @@
+{
+  "id": "offline",
+  "title": "Offline drill",
+  "tasks": [
+    {
+      "id": "echo-check",
+      "taskType": "apply",
+      "prompt": "Create a file named `hello.txt` in the attempt directory containing the word hello.",
+      "successCriteria": ["hello.txt exists in the attempt directory", "its first line is hello"],
+      "expectedLearningOutcome": "Run a drill end to end: setup, check, cleanup, each consented to separately.",
+      "hint": "The attempt directory is your current working directory.",
+      "solution": "echo hello > hello.txt",
+      "scaffolding": "guided",
+      "mentorNotes": "If they ask where the file should go, point at the prompt's wording before answering.",
+      "verification": {
+        "kind": "command",
+        "successCriteria": ["Check script exits 0"],
+        "setupCommand": "scripts/setup.sh",
+        "command": "scripts/check.sh hello.txt",
+        "cleanupCommand": "scripts/cleanup.sh",
+        "timeoutSeconds": 10
+      }
+    }
+  ]
+}
