@@ -19,3 +19,19 @@ $ uv run --group dev pytest packages/studyloop/tests/test_e2e_coverage_gate.py p
 exit=0  sha=f2e1c70e  utc=2026-10-04T19:20Z
 ..................................                                       [100%]
 34 passed in 73.71s (0:01:13)
+
+$ uv run studyloop --version
+exit=0  sha=603f36ec  utc=2026-10-04T19:24Z
+studyloop, version 0.5.0
+
+$ uv run studyloop doctor --json | sed "s|$HOME|~|g"
+exit=0  sha=603f36ec  utc=2026-10-04T19:24Z
+[
+  {
+    "category": "core",
+    "name": "python_version",
+    "status": "pass",
+
+$ uv run studyloop doctor --quiet
+exit=1  sha=603f36ec  utc=2026-10-04T19:25Z
+63 passed, 9 warnings, 2 info. Run 'studyloop doctor --fix' to fix 5 issues.
