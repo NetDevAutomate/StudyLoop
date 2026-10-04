@@ -11,11 +11,14 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
 from click.testing import CliRunner
 
 from studyloop.cli import cli as root_cli
 from studyloop.cli._module import module_group
 from studyloop.modules.check import check_module
+from studyloop.modules.scaffold import scaffold_module
+from studyloop.modules.store import load_lockfile
 
 FIXTURES = Path(__file__).parent / "fixtures" / "modules"
 VALID = FIXTURES / "valid-scaffold"
@@ -42,7 +45,7 @@ def test_group_is_exported_but_not_registered() -> None:
 def test_help_lists_the_lifecycle_commands() -> None:
     result = _run("--help")
     assert result.exit_code == 0, result.output
-    for command in ("check", "new"):
+    for command in ("check", "new", "add", "list", "remove"):
         assert command in result.output
 
 
@@ -124,3 +127,94 @@ def test_new_refuses_an_occupied_destination(tmp_path: Path) -> None:
     assert result.exit_code == 1
     assert "not empty" in result.output
     assert (tmp_path / "taken" / "keep.txt").read_text(encoding="utf-8") == "keep"
+
+
+# ---------------------------------------------------------------------------
+# module add / list / remove (store under a per-test STUDYLOOP_CONFIG)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def config_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Point the store at a per-test config dir: ModuleStore() resolves it via get_config_dir()."""
+    config = tmp_path / "config"
+    config.mkdir()
+    monkeypatch.setenv("STUDYLOOP_CONFIG", str(config / "config.yaml"))
+    return config
+
+
+def test_add_installs_and_list_shows_it(config_dir: Path, tmp_path: Path) -> None:
+    module = scaffold_module(tmp_path / "my-drills", "my-drills")
+    result = _run("add", str(module))
+    assert result.exit_code == 0, result.output
+    assert "installed my-drills 0.1.0 (sha256:" in result.output
+    lockfile = config_dir / "modules" / "modules.lock.json"
+    assert lockfile.is_file()
+    [entry] = load_lockfile(config_dir / "modules")
+    assert entry.id == "my-drills"
+    assert Path(entry.snapshot).is_dir()
+
+    listed = _run("list")
+    assert listed.exit_code == 0, listed.output
+    assert listed.output.startswith("my-drills")
+    assert "0.1.0" in listed.output
+
+    as_json = _run("list", "--json")
+    assert as_json.exit_code == 0, as_json.output
+    assert json.loads(as_json.output) == [entry.to_dict()]
+
+
+def test_add_json_prints_the_lock_entry(config_dir: Path, tmp_path: Path) -> None:
+    module = scaffold_module(tmp_path / "my-drills", "my-drills")
+    result = _run("add", "--json", str(module))
+    assert result.exit_code == 0, result.output
+    payload = json.loads(result.output)
+    [entry] = load_lockfile(config_dir / "modules")
+    assert payload == entry.to_dict()
+
+
+def test_add_refuses_an_unconforming_module_and_shows_the_finding(
+    config_dir: Path, tmp_path: Path
+) -> None:
+    good = scaffold_module(tmp_path / "good", "good-drills")
+    assert _run("add", str(good)).exit_code == 0
+    lockfile = config_dir / "modules" / "modules.lock.json"
+    before = lockfile.read_bytes()
+
+    result = _run("add", str(FIXTURES / "mc011" / "broken"))
+
+    assert result.exit_code == 1
+    assert "MC011" in result.output
+    assert "## Limits" in result.output
+    assert "not installed" in result.output
+    assert lockfile.read_bytes() == before
+    assert [e.id for e in load_lockfile(config_dir / "modules")] == ["good-drills"]
+
+
+def test_add_rejects_a_missing_path(config_dir: Path, tmp_path: Path) -> None:
+    result = _run("add", str(tmp_path / "nope"))
+    assert result.exit_code == 2
+    assert not (config_dir / "modules").exists()
+
+
+def test_list_with_nothing_installed(config_dir: Path) -> None:
+    result = _run("list")
+    assert result.exit_code == 0, result.output
+    assert "no modules installed" in result.output
+    assert json.loads(_run("list", "--json").output) == []
+
+
+def test_remove_is_idempotent(config_dir: Path, tmp_path: Path) -> None:
+    module = scaffold_module(tmp_path / "my-drills", "my-drills")
+    assert _run("add", str(module)).exit_code == 0
+    [entry] = load_lockfile(config_dir / "modules")
+
+    first = _run("remove", "my-drills")
+    assert first.exit_code == 0, first.output
+    assert "removed my-drills" in first.output
+    assert load_lockfile(config_dir / "modules") == []
+    assert not Path(entry.snapshot).exists()
+
+    second = _run("remove", "my-drills")
+    assert second.exit_code == 0, second.output
+    assert "not installed" in second.output
