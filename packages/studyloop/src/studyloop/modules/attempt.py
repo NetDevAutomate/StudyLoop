@@ -97,18 +97,48 @@ class Attempt:
 
 
 @dataclass(frozen=True)
+class OutputCaps:
+    """Streamed-output caps the runner enforces while the child runs (spec, ruling 2).
+
+    ``stdout_bytes`` and ``stderr_bytes`` bound each stream separately; ``lines`` bounds the
+    two streams together. Hitting any cap terminates the child, records ``truncated`` and
+    classes the phase ``ERROR`` naming the cap (ruling 3) -- a flooding check is not a
+    trustworthy pass.
+    """
+
+    stdout_bytes: int = 64 * 1024
+    stderr_bytes: int = 16 * 1024
+    lines: int = 2_000
+
+
+#: The spec's values: 64 KiB stdout, 16 KiB stderr, 2,000 lines in total.
+DEFAULT_CAPS = OutputCaps()
+
+
+@dataclass(frozen=True)
 class PhaseResult:
     """What one phase execution produced, after redaction and truncation.
 
-    ``output`` is the combined stdout+stderr stream, truncated at the byte cap
-    (``truncated`` records that it was) and redacted before it is persisted or delivered.
-    ``exit_code`` is ``None`` when the child was terminated by the runner (timeout).
+    ``stdout`` and ``stderr`` are the captured streams, cut at their caps (``truncated``
+    records that one was hit and ``cap_hit`` names which: ``"stdout"``, ``"stderr"`` or
+    ``"lines"``) and redacted by the secret detector before anything is persisted, shown or
+    delivered. ``exit_code`` is ``None`` when the runner stopped the child (timeout or cap)
+    before it exited on its own. ``message`` is the one-line human reading of the outcome
+    the CLI prints and the mentor hop forwards verbatim.
     """
 
     phase: Phase
     exit_class: ExitClass
     exit_code: int | None
-    output: str
+    stdout: str
+    stderr: str
     truncated: bool
     timed_out: bool
     duration_seconds: float
+    cap_hit: str | None = None
+    message: str = ""
+
+    @property
+    def output(self) -> str:
+        """stdout followed by stderr -- the combined transient evidence."""
+        return self.stdout + self.stderr

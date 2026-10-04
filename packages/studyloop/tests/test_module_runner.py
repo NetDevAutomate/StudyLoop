@@ -38,7 +38,14 @@ from test_practice_verify import _attempt_db, _patch_db, _practice_file
 
 from studyloop.learning import practice
 from studyloop.modules import runner
-from studyloop.modules.attempt import Attempt, DrillIdentity, ExitClass, Phase
+from studyloop.modules.attempt import (
+    DEFAULT_CAPS,
+    Attempt,
+    DrillIdentity,
+    ExitClass,
+    OutputCaps,
+    Phase,
+)
 from studyloop.modules.consent import (
     CONSENT_TTL_SECONDS,
     Consent,
@@ -69,11 +76,6 @@ DRILL = DrillIdentity(
     task_id="create-nginx",
 )
 EXPECTED_DRILL_ID = "pods/create-nginx"
-
-OUTPUT_BYTE_CAP = 64 * 1024
-"""The cap these tests run under when a test is not about the cap. The proposal requires a
-byte cap but names no value (contract gap, R1 report); the value is the test's, not the
-runner's, so an implementation cannot make a test pass by changing a default."""
 
 DOCUMENTED_CHILD_VARIABLES = frozenset(
     {
@@ -185,7 +187,7 @@ class World:
         *,
         consent: Consent | None = None,
         timeout_seconds: int = 10,
-        output_byte_cap: int = OUTPUT_BYTE_CAP,
+        caps: OutputCaps = DEFAULT_CAPS,
     ) -> PhaseResult:
         return runner.run_phase(
             self.attempt,
@@ -194,7 +196,7 @@ class World:
             consent=consent if consent is not None else self.consent(phase, argv),
             ledger=self.ledger,
             timeout_seconds=timeout_seconds,
-            output_byte_cap=output_byte_cap,
+            caps=caps,
         )
 
     def ran_marker(self, name: str = "ran.marker") -> bool:
@@ -253,30 +255,19 @@ def test_drill_writes_no_observation(monkeypatch: pytest.MonkeyPatch, tmp_path: 
     )
 
 
-def test_runner_never_shell(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, spawn_spy: list[SpawnCall]
-) -> None:
+def test_runner_never_shell(world: World, spawn_spy: list[SpawnCall]) -> None:
     """§5.5 *Invocation*: a phase is spawned as an argv **list** with ``shell=False`` --
-    no shell, ever. Today's path (``learning/practice.py`` ~282-290) hands the confirmed
-    command *string* to ``subprocess.run(..., shell=True)``, so this fails on its
-    assertion. R2 re-points the drive at ``runner.run_phase`` and keeps the assertion."""
-    db = _attempt_db(tmp_path)
-    _patch_db(monkeypatch, db)
-    workdir = tmp_path / "learner-workdir"
-    workdir.mkdir()
-    deck = _practice_file(
-        tmp_path,
-        {"kind": "command", "successCriteria": ["Command passes."], "command": "true"},
-    )
+    no shell, ever. R1 drove today's path (``learning/practice.py`` ~282-290), which hands
+    the confirmed command *string* to ``subprocess.run(..., shell=True)``, and failed on
+    this assertion (``evidence/R/never-shell.red.txt``). The drive is now the runner's
+    own path; the assertion is unchanged. The spawn argv is the resolved script followed
+    by the literal arguments, each one its own list element."""
+    world.script("check.sh", "exit 0")
+    argv = ("scripts/check.sh", "literal arg with spaces", "--flag=value")
 
-    practice.verify_practice_task(
-        deck,
-        task_index=1,
-        workdir=workdir,
-        run_command=True,
-        confirmed_command="true",
-    )
+    result = world.run(Phase.CHECK, argv)
 
+    assert result.exit_class is ExitClass.PASSED
     assert spawn_spy, "no subprocess was spawned, so nothing was verified"
     for call in spawn_spy:
         shell = call.kwargs.get("shell", False)
@@ -284,6 +275,10 @@ def test_runner_never_shell(
         assert isinstance(call.args, list), (
             f"argv was passed as {type(call.args).__name__}, not a list: {call.args!r}"
         )
+    spawned = spawn_spy[0].args
+    assert spawned[1:] == ["literal arg with spaces", "--flag=value"]
+    assert Path(spawned[0]).resolve() == (world.scripts / "check.sh").resolve()
+    assert Path(spawned[0]).is_absolute(), "argv[0] must be the resolved script, not a PATH lookup"
 
 
 # ---------------------------------------------------------------------------
@@ -627,6 +622,8 @@ def test_runner_timeout_is_error_and_child_is_terminated(
     assert result.timed_out is True
     assert result.exit_class is ExitClass.ERROR
     assert result.exit_class is not ExitClass.FAILED
+    assert result.exit_code is None, "a child the runner stopped has no exit code of its own"
+    assert "timed out" in result.message
     assert elapsed < 10, f"runner took {elapsed:.1f}s to honour a 1s timeout"
     pid = int((world.attempt.attempt_dir / "child.pid").read_text(encoding="utf-8").strip())
     assert len(spawn_spy) == 1
@@ -634,32 +631,139 @@ def test_runner_timeout_is_error_and_child_is_terminated(
     assert not _alive(pid), f"child {pid} is still running after the timeout"
 
 
+def test_runner_kills_a_child_that_ignores_sigterm(
+    world: World, spawn_spy: list[SpawnCall]
+) -> None:
+    """R4: timeout -> terminated **then killed**. A child that traps SIGTERM and keeps
+    running must still be gone shortly after the grace period -- the runner never waits
+    on a child's goodwill."""
+    world.script(
+        "check.sh",
+        "trap '' TERM\necho $$ > child.pid\n"
+        "i=0\nwhile [ $i -lt 300 ]; do /bin/sleep 0.1; i=$((i+1)); done",
+    )
+    argv = ("scripts/check.sh",)
+
+    started = time.monotonic()
+    result = world.run(Phase.CHECK, argv, timeout_seconds=1)
+    elapsed = time.monotonic() - started
+
+    assert result.timed_out is True
+    assert result.exit_class is ExitClass.ERROR
+    assert elapsed < 8, f"runner took {elapsed:.1f}s: SIGTERM was ignored and no SIGKILL followed"
+    pid = int((world.attempt.attempt_dir / "child.pid").read_text(encoding="utf-8").strip())
+    assert spawn_spy[0].process.returncode is not None, "runner did not reap the child"
+    assert not _alive(pid), (
+        f"child {pid} survived the timeout: it ignored SIGTERM and was not killed"
+    )
+
+
+FLOOD_SCRIPT = (
+    "echo $$ > child.pid\n"
+    "i=0\n"
+    'while [ $i -lt 20000 ]; do echo "flood line $i"; i=$((i+1)); done\n'
+    "exit 0"
+)
+
+
 def test_runner_truncates_output_flood_and_reaps_child(
     world: World, spawn_spy: list[SpawnCall]
 ) -> None:
-    """§5.5 *Output*: streamed with a byte cap. A child that writes far more than the cap
-    gets its output truncated, the truncation recorded, and is never left running --
-    nor is the flood "handled" by waiting for the phase timeout."""
-    world.script(
-        "check.sh",
-        "echo $$ > child.pid\n"
-        "i=0\n"
-        'while [ $i -lt 20000 ]; do echo "flood line $i"; i=$((i+1)); done\n'
-        "exit 0",
-    )
+    """§5.5 *Output* + spec (rulings 2-3): streamed with caps enforced while the process
+    runs. A child that writes far more than the stdout cap gets its output cut at the cap,
+    the truncation recorded, the process **terminated** (never left running, nor "handled"
+    by waiting for the phase timeout) and the phase classed ``ERROR`` naming the cap -- a
+    flooding check is not a trustworthy pass, even though the script would ``exit 0``."""
+    world.script("check.sh", FLOOD_SCRIPT)
     argv = ("scripts/check.sh",)
     cap = 4096
 
-    result = world.run(Phase.CHECK, argv, timeout_seconds=10, output_byte_cap=cap)
+    result = world.run(Phase.CHECK, argv, timeout_seconds=10, caps=OutputCaps(stdout_bytes=cap))
 
     assert result.truncated is True
-    assert len(result.output.encode("utf-8")) <= cap, "output exceeds the byte cap"
-    assert result.output.startswith("flood line 0"), "truncation must keep the head of the stream"
+    assert result.cap_hit == "stdout"
+    assert result.exit_class is ExitClass.ERROR, "a flood that exits 0 must not read as passed"
+    assert "stdout" in result.message and "cap" in result.message, result.message
+    assert len(result.stdout.encode("utf-8")) <= cap, "stdout exceeds the byte cap"
+    assert result.stdout.startswith("flood line 0"), "truncation must keep the head of the stream"
     assert result.timed_out is False, "a flood must not be resolved by the phase timeout"
     pid = int((world.attempt.attempt_dir / "child.pid").read_text(encoding="utf-8").strip())
     assert len(spawn_spy) == 1
     assert spawn_spy[0].process.returncode is not None, "runner did not reap the child"
     assert not _alive(pid), f"child {pid} is still running after the output cap"
+
+
+def test_runner_caps_stderr_separately(world: World, spawn_spy: list[SpawnCall]) -> None:
+    """Spec: 16 KiB of stderr is its own cap. A child flooding stderr while stdout stays
+    small hits the stderr cap, is terminated, and the phase is an error naming stderr."""
+    world.script(
+        "check.sh",
+        "echo $$ > child.pid\necho small-stdout\n"
+        'i=0\nwhile [ $i -lt 20000 ]; do echo "err line $i" >&2; i=$((i+1)); done\nexit 0',
+    )
+    argv = ("scripts/check.sh",)
+
+    result = world.run(
+        Phase.CHECK,
+        argv,
+        timeout_seconds=10,
+        caps=OutputCaps(stdout_bytes=64 * 1024, stderr_bytes=2048),
+    )
+
+    assert result.truncated is True
+    assert result.cap_hit == "stderr"
+    assert result.exit_class is ExitClass.ERROR
+    assert len(result.stderr.encode("utf-8")) <= 2048
+    assert result.stderr.startswith("err line 0")
+    assert result.timed_out is False
+    pid = int((world.attempt.attempt_dir / "child.pid").read_text(encoding="utf-8").strip())
+    assert not _alive(pid)
+
+
+def test_runner_caps_total_lines(world: World, spawn_spy: list[SpawnCall]) -> None:
+    """Spec: 2,000 lines in total across both streams. Short lines never reach a byte cap,
+    so the line cap is what stops them; the phase is an error naming the line cap."""
+    world.script("check.sh", FLOOD_SCRIPT)
+    argv = ("scripts/check.sh",)
+
+    result = world.run(Phase.CHECK, argv, timeout_seconds=10, caps=OutputCaps(lines=100))
+
+    assert result.truncated is True
+    assert result.cap_hit == "lines"
+    assert result.exit_class is ExitClass.ERROR
+    assert "line" in result.message
+    assert result.stdout.count("\n") <= 100
+    assert result.timed_out is False
+    pid = int((world.attempt.attempt_dir / "child.pid").read_text(encoding="utf-8").strip())
+    assert not _alive(pid)
+
+
+def test_default_caps_are_the_specs_values() -> None:
+    """Rulings 2: 64 KiB stdout, 16 KiB stderr, 2,000 lines -- values, not an open knob."""
+    assert (DEFAULT_CAPS.stdout_bytes, DEFAULT_CAPS.stderr_bytes, DEFAULT_CAPS.lines) == (
+        64 * 1024,
+        16 * 1024,
+        2_000,
+    )
+
+
+def test_runner_redacts_secrets_before_returning_output(world: World) -> None:
+    """§5.5 *Output*: redacted before persistence or delivery, by the existing secret
+    detector (``agent_session_tools.scrubber``). A token the script prints on either stream
+    never appears in the result; the detector's placeholder does."""
+    token = "ghp_" + "a1b2c3d4" * 4 + "e5f6"  # 36 chars after the prefix: the GitHub PAT shape
+    assert len(token) == 40
+    world.script("check.sh", f"echo 'token is {token}'\necho 'stderr {token}' >&2\nexit 0")
+    argv = ("scripts/check.sh",)
+
+    result = world.run(Phase.CHECK, argv)
+
+    assert result.exit_class is ExitClass.PASSED
+    assert token not in result.stdout, "the secret reached the result's stdout unredacted"
+    assert token not in result.stderr, "the secret reached the result's stderr unredacted"
+    assert token not in result.output
+    assert "[GITHUB_PAT-001]" in result.stdout
+    assert "[GITHUB_PAT-001]" in result.stderr
 
 
 @pytest.mark.parametrize(
@@ -669,23 +773,31 @@ def test_runner_truncates_output_flood_and_reaps_child(
         (Phase.CHECK, 1, ExitClass.FAILED),
         (Phase.CHECK, 2, ExitClass.ERROR),
         (Phase.CHECK, 7, ExitClass.ERROR),
+        (Phase.SETUP, 0, ExitClass.PASSED),
         (Phase.SETUP, 1, ExitClass.ERROR),
+        (Phase.CLEANUP, 0, ExitClass.PASSED),
+        (Phase.CLEANUP, 1, ExitClass.ERROR),
+        (Phase.CLEANUP, 3, ExitClass.ERROR),
     ],
     ids=[
         "check-0-passed",
         "check-1-failed",
         "check-2-error",
         "check-7-error",
+        "setup-0-passed",
         "setup-1-error",
+        "cleanup-0-passed",
+        "cleanup-1-error",
+        "cleanup-3-error",
     ],
 )
 def test_runner_maps_exit_codes_to_exit_classes(
     world: World, phase: Phase, code: int, expected: ExitClass
 ) -> None:
-    """§5.5 *Exit codes*: ``check`` ``0`` = passed, ``1`` = failed (task not complete),
-    ``>= 2`` = error; ``setup`` any non-zero = error (attempt not started). The exit class
-    of a non-zero ``cleanup`` is not named by §5.5 ("logged and surfaced; the attempt still
-    closes") -- a contract gap reported by R1, deliberately not asserted here."""
+    """§5.5 *Exit codes* + spec (ruling 4): ``check`` ``0`` = passed, ``1`` = failed (task
+    not complete), ``>= 2`` = error; ``setup`` and ``cleanup`` any non-zero = error, logged
+    and surfaced (the message names the phase and the code) -- a failed cleanup still
+    closes the attempt, which the CLI test proves."""
     world.script(f"{phase}.sh", f"exit {code}")
     argv = (f"scripts/{phase}.sh",)
 
@@ -694,6 +806,10 @@ def test_runner_maps_exit_codes_to_exit_classes(
     assert result.exit_class is expected
     assert result.exit_code == code
     assert result.timed_out is False
+    assert result.truncated is False
+    assert phase.value in result.message
+    if expected is not ExitClass.PASSED:
+        assert str(code) in result.message, "a non-zero exit must be surfaced with its code"
 
 
 @pytest.mark.parametrize("phase", [Phase.SETUP, Phase.CLEANUP], ids=["setup", "cleanup"])

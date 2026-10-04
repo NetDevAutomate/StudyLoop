@@ -19,10 +19,20 @@ Spec: ``openspec/changes/module-contract-v1/specs/drill-runner/spec.md``. What
   context. Nothing from ``os.environ`` is copied.
 - *Consent*: the script digest is recomputed and ``ConsentLedger.redeem`` is called
   **immediately before** ``subprocess.Popen`` -- never earlier (R3 owns the ledger).
-- *Timeouts*: ``timeout_seconds`` applies to this phase alone; on expiry the child is
-  terminated and the result is ``ExitClass.ERROR`` with ``timed_out=True``.
-- *Output*: stdout+stderr streamed with caps (R4 owns the caps, the exit-class table and
-  redaction; R2 captures and classifies ``0`` as passed, anything else as error).
+- *Exit classes*: ``check`` ``0`` passed, ``1`` failed (task not complete), anything else
+  error; ``setup``/``cleanup`` any non-zero is an error that is surfaced with its code
+  (ruling 4 -- the CLI still closes the attempt after a failed cleanup).
+- *Timeouts*: ``timeout_seconds`` applies to this phase alone; on expiry the child's
+  process group is terminated, then killed after a short grace, and the result is
+  ``ExitClass.ERROR`` with ``timed_out=True`` and ``exit_code=None``.
+- *Output*: stdout and stderr are streamed through :func:`_stream` with the spec's caps
+  (:data:`~studyloop.modules.attempt.DEFAULT_CAPS`: 64 KiB stdout, 16 KiB stderr, 2,000
+  lines in total) enforced **while the child runs**; a cap hit terminates the child,
+  records ``truncated``/``cap_hit`` and classes the phase ``ERROR`` naming the cap
+  (ruling 3). Both streams are redacted by the existing secret detector
+  (``agent_session_tools.scrubber.Scrubber``) before the result exists, so nothing
+  downstream -- the CLI, the ``practice_check_events`` row, the mentor hop -- ever sees
+  an unredacted byte.
 
 Spawning goes through ``subprocess.Popen`` looked up on the module at call time (not a
 ``from subprocess import Popen``) so that tests can observe the exact spawn arguments by
@@ -33,15 +43,20 @@ from __future__ import annotations
 
 import hashlib
 import os
+import selectors
 import stat
 import subprocess
 import time
+from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING
 
+from agent_session_tools.scrubber import Scrubber
 from studyloop.modules.attempt import (
+    DEFAULT_CAPS,
     Attempt,
     ExitClass,
+    OutputCaps,
     Phase,
     PhaseResult,
     RefusalError,
@@ -236,11 +251,139 @@ def _stop(process: subprocess.Popen[bytes]) -> None:
     process.wait()
 
 
-def _classify(phase: Phase, exit_code: int | None) -> ExitClass:
-    """R2 interim table: ``0`` passed, anything else error. R4 installs §5.5's full table."""
+@dataclass
+class _Captured:
+    """What :func:`_stream` collected: raw bytes per stream and why it stopped."""
+
+    stdout: bytearray
+    stderr: bytearray
+    cap_hit: str | None
+    timed_out: bool
+
+
+def _stream(
+    process: subprocess.Popen[bytes], *, caps: OutputCaps, timeout_seconds: float
+) -> _Captured:
+    """Read both pipes until EOF, the phase timeout or a cap -- whichever comes first.
+
+    Caps are enforced on every chunk, not after the fact: the moment a stream passes its
+    byte cap or the two streams pass the line cap together, reading stops with the kept
+    bytes cut at the cap and the caller terminates the child. The timeout is a deadline
+    measured from the spawn, checked on every wake-up, and also bounds the final wait for
+    the exit status once both pipes have closed (a child that closes its pipes and lingers
+    is still a timeout).
+    """
+    assert process.stdout is not None and process.stderr is not None
+    captured = _Captured(bytearray(), bytearray(), None, False)
+    limits = {"stdout": caps.stdout_bytes, "stderr": caps.stderr_bytes}
+    buffers = {"stdout": captured.stdout, "stderr": captured.stderr}
+    lines = 0
+    deadline = time.monotonic() + timeout_seconds
+    selector = selectors.DefaultSelector()
+    selector.register(process.stdout, selectors.EVENT_READ, "stdout")
+    selector.register(process.stderr, selectors.EVENT_READ, "stderr")
+    try:
+        while selector.get_map() and captured.cap_hit is None:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                captured.timed_out = True
+                break
+            for key, _events in selector.select(timeout=min(remaining, 0.25)):
+                name: str = key.data
+                chunk = os.read(key.fd, 65536)
+                if not chunk:
+                    selector.unregister(key.fileobj)
+                    continue
+                buffer = buffers[name]
+                buffer.extend(chunk)
+                lines += chunk.count(b"\n")
+                if len(buffer) > limits[name]:
+                    del buffer[limits[name] :]
+                    captured.cap_hit = name
+                    break
+                if lines > caps.lines:
+                    # Every excess line arrived in this chunk; keep this buffer's share of
+                    # the cap and drop the rest, so the kept text has at most `caps.lines`
+                    # newlines across both streams.
+                    _cut_after_newlines(buffer, buffer.count(b"\n") - (lines - caps.lines))
+                    captured.cap_hit = "lines"
+                    break
+    finally:
+        selector.close()
+    if captured.cap_hit is None and not captured.timed_out:
+        try:
+            process.wait(timeout=max(deadline - time.monotonic(), 0.0))
+        except subprocess.TimeoutExpired:
+            captured.timed_out = True
+    return captured
+
+
+def _cut_after_newlines(buffer: bytearray, keep: int) -> None:
+    """Truncate ``buffer`` just after its ``keep``-th newline (drop everything if ``keep <= 0``)."""
+    if keep <= 0:
+        del buffer[:]
+        return
+    position = -1
+    for _ in range(keep):
+        position = buffer.find(b"\n", position + 1)
+        if position == -1:
+            return
+    del buffer[position + 1 :]
+
+
+def _classify(
+    phase: Phase, exit_code: int | None, *, timed_out: bool, cap_hit: str | None
+) -> ExitClass:
+    """§5.5 *Exit codes* and the spec's rulings 3-4, as one table."""
+    if timed_out or cap_hit is not None:
+        return ExitClass.ERROR
     if exit_code == 0:
         return ExitClass.PASSED
+    if phase is Phase.CHECK and exit_code == 1:
+        return ExitClass.FAILED
     return ExitClass.ERROR
+
+
+def _cap_label(cap_hit: str, caps: OutputCaps) -> str:
+    if cap_hit == "stdout":
+        return f"stdout cap ({caps.stdout_bytes} bytes)"
+    if cap_hit == "stderr":
+        return f"stderr cap ({caps.stderr_bytes} bytes)"
+    return f"line cap ({caps.lines} lines in total)"
+
+
+def _message(
+    phase: Phase,
+    exit_class: ExitClass,
+    exit_code: int | None,
+    *,
+    timed_out: bool,
+    cap_hit: str | None,
+    caps: OutputCaps,
+    timeout_seconds: int,
+) -> str:
+    """The one line the learner reads; every ERROR names its cause and the code if any."""
+    name = phase.value
+    if timed_out:
+        return f"{name} timed out after {timeout_seconds}s; process terminated (error)"
+    if cap_hit is not None:
+        return (
+            f"{name} exceeded the {_cap_label(cap_hit, caps)}; process terminated and output "
+            "truncated -- a flooding phase is not a trustworthy result (error)"
+        )
+    if exit_class is ExitClass.PASSED:
+        return f"{name} passed (exit 0)"
+    if exit_class is ExitClass.FAILED:
+        return f"{name} failed: task not complete (exit {exit_code})"
+    if phase is Phase.CHECK:
+        return f"{name} could not run (exit {exit_code}; error)"
+    if phase is Phase.SETUP:
+        return f"{name} failed (exit {exit_code}; error) -- attempt not started"
+    return f"{name} failed (exit {exit_code}; error) -- the attempt is closed anyway"
+
+
+def _redact(raw: bytes, scrubber: Scrubber) -> str:
+    return scrubber.scrub(raw.decode("utf-8", errors="replace")).text
 
 
 def run_phase(
@@ -251,14 +394,15 @@ def run_phase(
     consent: Consent,
     ledger: ConsentLedger,
     timeout_seconds: int,
-    output_byte_cap: int,
+    caps: OutputCaps = DEFAULT_CAPS,
 ) -> PhaseResult:
     """Run one phase of ``attempt`` under the §5.5 execution model and classify the result.
 
     Order of operations is part of the contract: validate argv (MC015) -> resolve and
-    validate the script path (MC013) -> recompute the digest -> ``ledger.redeem`` ->
-    build the environment from scratch -> ``subprocess.Popen(list, shell=False, cwd=
-    attempt.attempt_dir, env=...)`` -> capture with the phase timeout -> classify. Any
+    validate the script path (MC013) -> build the environment from scratch -> recompute
+    the digest -> ``ledger.redeem`` -> ``subprocess.Popen(list, shell=False, cwd=
+    attempt.attempt_dir, env=...)`` -> stream with caps and the phase timeout -> stop the
+    child if either tripped -> classify -> redact. Any
     :class:`~studyloop.modules.attempt.RefusalError` is raised before the spawn step.
     """
     items = validate_argv(argv)
@@ -289,31 +433,43 @@ def run_phase(
         start_new_session=True,
         close_fds=True,
     )
-    timed_out = False
+    stopped_by_runner = False
     try:
-        stdout_bytes, stderr_bytes = process.communicate(timeout=timeout_seconds)
-    except subprocess.TimeoutExpired:
-        timed_out = True
-        _stop(process)
-        stdout_bytes, stderr_bytes = b"", b""
+        captured = _stream(process, caps=caps, timeout_seconds=timeout_seconds)
+        if captured.timed_out or captured.cap_hit is not None:
+            stopped_by_runner = process.returncode is None
+            _stop(process)
+    finally:
+        for pipe in (process.stdout, process.stderr):
+            if pipe is not None:
+                pipe.close()
+        if process.returncode is None:
+            _stop(process)
     duration = time.monotonic() - started
 
-    exit_code: int | None = None if timed_out else process.returncode
-    stdout = _bounded_text(stdout_bytes, output_byte_cap)
-    stderr = _bounded_text(stderr_bytes, output_byte_cap)
+    exit_code: int | None = None if stopped_by_runner else process.returncode
+    exit_class = _classify(phase, exit_code, timed_out=captured.timed_out, cap_hit=captured.cap_hit)
+    scrubber = Scrubber()
     return PhaseResult(
         phase=phase,
-        exit_class=ExitClass.ERROR if timed_out else _classify(phase, exit_code),
+        exit_class=exit_class,
         exit_code=exit_code,
-        output=stdout + stderr,
-        truncated=False,
-        timed_out=timed_out,
+        stdout=_redact(bytes(captured.stdout), scrubber),
+        stderr=_redact(bytes(captured.stderr), scrubber),
+        truncated=captured.cap_hit is not None,
+        timed_out=captured.timed_out,
         duration_seconds=duration,
+        cap_hit=captured.cap_hit,
+        message=_message(
+            phase,
+            exit_class,
+            exit_code,
+            timed_out=captured.timed_out,
+            cap_hit=captured.cap_hit,
+            caps=caps,
+            timeout_seconds=timeout_seconds,
+        ),
     )
-
-
-def _bounded_text(raw: bytes, cap: int) -> str:
-    return raw[:cap].decode("utf-8", errors="replace")
 
 
 def describe_spawn(attempt: Attempt, argv: Sequence[str]) -> Mapping[str, object]:

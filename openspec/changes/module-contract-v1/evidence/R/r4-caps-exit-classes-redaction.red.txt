@@ -1,0 +1,55 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_runner.py -p no:cacheprovider --no-header -q --tb=line -k 'flood or caps or redact or exit_codes or sigterm or timeout or never_shell'
+# worktree studyloop-wt/module-runner at 33742f97 + uncommitted R4 tests and the caps= signature refactor only (no caps enforced, no redaction, R2's two-row exit table); TMPDIR=$(getconf DARWIN_USER_TEMP_DIR); 2026-10-04
+# meaningful reds (fail on assertion): flood -> truncated/ERROR naming the cap (rulings 2-3), stderr cap, line cap, redaction, the full exit table incl. cleanup non-zero -> ERROR with the code surfaced (ruling 4), timeout exit_code None + message
+# the redaction test's fixture token (a GitHub-PAT-shaped string built at test time, never a real credential) is masked in this transcript so the evidence file itself passes detect-secrets/trufflehog; the unmasked assertion read `'ghp_...' not in 'token is ghp_...'`
+# green on arrival (not evidence, reported): test_runner_never_shell re-pointed at the runner, test_runner_kills_a_child_that_ignores_sigterm (R2's _stop already SIGKILLs), test_default_caps_are_the_specs_values
+.F.FFF.FFFFFFFFFF                                                        [100%]
+=================================== FAILURES ===================================
+E   AssertionError: assert 'timed out' in ''
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/tests/test_module_runner.py:626: AssertionError: assert 'timed out' in ''
+E   AssertionError: assert False is True
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/tests/test_module_runner.py:683: AssertionError: assert False is True
+E   AssertionError: assert False is True
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/tests/test_module_runner.py:713: AssertionError: assert False is True
+E   AssertionError: assert False is True
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/tests/test_module_runner.py:731: AssertionError: assert False is True
+E   AssertionError: the secret reached the result's stdout unredacted
+    assert 'ghp_a1b2c3d...a1b2c3d4e5f6' not in 'token is gh...b2c3d4e5f6\n'
+
+      'ghp_<fixture-token-masked-in-evidence>' is contained here:
+        token is ghp_<fixture-token-masked-in-evidence>
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/tests/test_module_runner.py:762: AssertionError: the secret reached the result's stdout unredacted
+E   AssertionError: assert 'check' in ''
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/tests/test_module_runner.py:810: AssertionError: assert 'check' in ''
+E   AssertionError: assert <ExitClass.ERROR: 'error'> is <ExitClass.FAILED: 'failed'>
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/tests/test_module_runner.py:806: AssertionError: assert <ExitClass.ERROR: 'error'> is <ExitClass.FAILED: 'failed'>
+E   AssertionError: assert 'check' in ''
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/tests/test_module_runner.py:810: AssertionError: assert 'check' in ''
+E   AssertionError: assert 'check' in ''
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/tests/test_module_runner.py:810: AssertionError: assert 'check' in ''
+E   AssertionError: assert 'setup' in ''
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/tests/test_module_runner.py:810: AssertionError: assert 'setup' in ''
+E   AssertionError: assert 'setup' in ''
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/tests/test_module_runner.py:810: AssertionError: assert 'setup' in ''
+E   AssertionError: assert 'cleanup' in ''
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/tests/test_module_runner.py:810: AssertionError: assert 'cleanup' in ''
+E   AssertionError: assert 'cleanup' in ''
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/tests/test_module_runner.py:810: AssertionError: assert 'cleanup' in ''
+E   AssertionError: assert 'cleanup' in ''
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/tests/test_module_runner.py:810: AssertionError: assert 'cleanup' in ''
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_timeout_is_error_and_child_is_terminated
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_truncates_output_flood_and_reaps_child
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_caps_stderr_separately
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_caps_total_lines
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_redacts_secrets_before_returning_output
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_maps_exit_codes_to_exit_classes[check-0-passed]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_maps_exit_codes_to_exit_classes[check-1-failed]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_maps_exit_codes_to_exit_classes[check-2-error]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_maps_exit_codes_to_exit_classes[check-7-error]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_maps_exit_codes_to_exit_classes[setup-0-passed]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_maps_exit_codes_to_exit_classes[setup-1-error]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_maps_exit_codes_to_exit_classes[cleanup-0-passed]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_maps_exit_codes_to_exit_classes[cleanup-1-error]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_maps_exit_codes_to_exit_classes[cleanup-3-error]
+14 failed, 3 passed, 28 deselected in 5.04s
