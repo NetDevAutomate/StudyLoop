@@ -1,0 +1,34 @@
+uv run pytest packages/studyloop/tests/integration -m integration -q -p no:cacheprovider
+# worktree: module-mentor-delivery  base: 60bbb504  TMPDIR=$(getconf DARWIN_USER_TEMP_DIR)
+FFFF                                                                     [100%]
+=================================== FAILURES ===================================
+___________________________________ test_pty ___________________________________
+packages/studyloop/tests/integration/test_module_delivery_transports.py:246: in test_pty
+    assert received.startswith(PASTE_BEGIN) and received.endswith(PASTE_END + b"\r"), (
+E   AssertionError: [today: transport.send_input(raw text) as _ws.py:201 does] envelope reached the mentor as bare keystrokes, not as one bracketed-paste block submitted once (ADR-0012 Q1). First 80 bytes: b'practice_check kdrill deployments/scale-to-three check failed (1)\n\x1b[201~\rrm -rf '
+E   assert (False)
+E    +  where False = <built-in method startswith of bytes object at 0x74e87de300>(b'\x1b[200~')
+E    +    where <built-in method startswith of bytes object at 0x74e87de300> = b'practice_check kdrill deployments/scale-to-three check failed (1)\n\x1b[201~\rrm -rf / # not really\nreplica count m...ount mismatch\nreplica count mismatch\nreplica count mismatch\nreplica count mismatch\nreplica count mismatch\nreplica'.startswith
+___________________________________ test_acp ___________________________________
+packages/studyloop/tests/integration/test_module_delivery_transports.py:410: in test_acp
+    assert text.startswith(BEGIN_SENTINEL) and text.rstrip().endswith(END_SENTINEL), (
+E   AssertionError: [today: transport.send_input(raw text) as _ws.py:201 does] ACP prompt is not a sentinel-labelled envelope (ADR-0012 Q1). First 80 chars: 'practice_check kdrill deployments/scale-to-three check failed (1)\nreplica count '
+E   assert (False)
+E    +  where False = <built-in method startswith of str object at 0x74e9f1f000>('<<<studyloop:practice_check v1')
+E    +    where <built-in method startswith of str object at 0x74e9f1f000> = 'practice_check kdrill deployments/scale-to-three check failed (1)\nreplica count mismatch\nreplica count mismatch\nre...t mismatch\nreplica count mismatch\nreplica count mismatch\nreplica count mismatch\nreplica count mismatch\n\nboom\n\n'.startswith
+____________________ test_acp_no_overlap_with_learner_turn _____________________
+packages/studyloop/tests/integration/test_module_delivery_transports.py:458: in test_acp_no_overlap_with_learner_turn
+    assert by_turn[1]["overlapping_prompts"] == 0, (
+E   AssertionError: [today: transport.send_input(raw text) as _ws.py:201 does] the practice_check prompt was written while the learner's turn was still in flight (1 overlapping session/prompt). ADR-0012 Q2: queue behind the in-flight turn
+E   assert 1 == 0
+____________________ test_pty_closed_transport_is_reported _____________________
+packages/studyloop/tests/integration/test_module_delivery_transports.py:506: in test_pty_closed_transport_is_reported
+    assert outcome is not None, (
+E   AssertionError: [today: transport.send_input(raw text) as _ws.py:201 does] delivery into a closed transport returned nothing: the drop is silent (spec: 'a closed transport is reported'; ADR-0012 Q4)
+E   assert None is not None
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/integration/test_module_delivery_transports.py::test_pty
+FAILED packages/studyloop/tests/integration/test_module_delivery_transports.py::test_acp
+FAILED packages/studyloop/tests/integration/test_module_delivery_transports.py::test_acp_no_overlap_with_learner_turn
+FAILED packages/studyloop/tests/integration/test_module_delivery_transports.py::test_pty_closed_transport_is_reported
+4 failed in 3.76s

@@ -1,0 +1,516 @@
+"""Integration tests for ``practice_check`` delivery over the two live transports.
+
+Lane T of module-contract v1 (proposal §5.7, DoD item 5). The scenarios are the ones in
+``openspec/changes/module-contract-v1/specs/session-transports/spec.md``; each test names
+the scenario it proves. Marked ``integration``, so the default suite deselects them
+(``addopts`` in ``pyproject.toml``); run with::
+
+    env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/integration -m integration -q
+
+Each test drives a REAL transport (``pty.fork()`` child / NDJSON JSON-RPC subprocess)
+against a fake mentor that reports back exactly what reached it, and asserts the
+behaviour ADR-0012 requires. The delivery seam is resolved by ``_delivery_seam()``:
+
+- once ``studyloop.session.module_delivery`` exists (wave 1, T2), its ``deliver`` is used;
+- until then the seam is **today's only path from text to the mentor** -- the raw
+  ``transport.send_input(text.encode())`` the websocket route performs for learner
+  keystrokes (``web/routes/session/_ws.py:198-201``) -- so every test here is RED on
+  its assertion against today's code, not on an import. Wave 1 turns them green
+  without editing the assertions.
+
+Written as red-first evidence in wave 0; nothing under ``session/`` is changed here.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import importlib
+import json
+import os
+import sys
+import textwrap
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any
+
+import pytest
+
+from studyloop.session.active import ActiveSession
+from studyloop.session.transport import (
+    AgentMessage,
+    OutputBytes,
+    SessionConfig,
+    Stopped,
+)
+from studyloop.session.transports.acp import ACPTransport
+from studyloop.session.transports.pty import PTYTransport
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.skipif(sys.platform == "win32", reason="PTY transport is POSIX-only"),
+    # Same stdlib warning test_pty_transport.py scopes out: forkpty() from a
+    # multi-threaded pytest process. Never suppressed globally.
+    pytest.mark.filterwarnings(
+        r"ignore:This process .* is multi-threaded, use of forkpty\(\) may lead to "
+        r"deadlocks in the child\.:DeprecationWarning"
+    ),
+]
+
+# --- ADR-0012 constants the tests assert against -----------------------------------
+
+ENVELOPE_BOUND_BYTES = 8192  # Q3: whole rendered envelope, UTF-8
+BEGIN_SENTINEL = "<<<studyloop:practice_check v1"
+END_SENTINEL = "<<<end studyloop:practice_check>>>"
+PASTE_BEGIN = b"\x1b[200~"  # Q1: DEC mode 2004 bracketed paste
+PASTE_END = b"\x1b[201~"
+
+
+@dataclass(frozen=True)
+class PracticeCheckResult:
+    """The fields proposal §5.7 names for the envelope, as a test-local value.
+
+    Lane S owns the real schema; wave 1 replaces this with the typed result the
+    runner (lane R) hands to ``module_delivery.deliver``.
+    """
+
+    attempt_id: str
+    module_id: str
+    module_digest: str
+    deck_id: str
+    task_id: str
+    phase: str
+    exit_class: str
+    exit_code: int
+    duration_s: float
+    triggered_by: str
+    stdout: str
+    stderr: str
+
+
+def _sample_result(*, stdout: str, stderr: str = "") -> PracticeCheckResult:
+    return PracticeCheckResult(
+        attempt_id="att-0001",
+        module_id="kdrill",
+        module_digest="sha256:0123456789abcdef0123456789abcdef",
+        deck_id="deployments",
+        task_id="scale-to-three",
+        phase="check",
+        exit_class="failed",
+        exit_code=1,
+        duration_s=2.5,
+        triggered_by="learner",
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+
+# --- The delivery seam --------------------------------------------------------------
+
+Deliver = Callable[[ActiveSession, PracticeCheckResult], Awaitable[Any]]
+
+
+def _render_plain(result: PracticeCheckResult) -> str:
+    """What a naive caller would push through send_input today: the fields, raw."""
+    return (
+        f"practice_check {result.module_id} {result.deck_id}/{result.task_id} "
+        f"{result.phase} {result.exit_class} ({result.exit_code})\n"
+        f"{result.stdout}\n{result.stderr}\n"
+    )
+
+
+def _delivery_seam() -> tuple[Deliver, str]:
+    """Return (deliver, label). See the module docstring for the two cases."""
+    try:
+        mod = importlib.import_module("studyloop.session.module_delivery")
+    except ModuleNotFoundError:
+        mod = None
+    if mod is not None:
+        return mod.deliver, "studyloop.session.module_delivery.deliver"
+
+    async def _today(session: ActiveSession, result: PracticeCheckResult) -> None:
+        await session.transport.send_input(_render_plain(result).encode("utf-8"))
+        return None
+
+    return _today, "today: transport.send_input(raw text) as _ws.py:201 does"
+
+
+def _config(tmp_path: Path, agent: str) -> SessionConfig:
+    return SessionConfig(
+        study_session_id="module-delivery-it",
+        agent=agent,
+        persona_file=str(tmp_path / "persona.md"),
+        cwd=str(tmp_path),
+        env={"PATH": os.environ.get("PATH", ""), "HOME": str(tmp_path)},
+        cols=120,
+        rows=40,
+    )
+
+
+# --- PTY: a fake mentor that reports the exact bytes it received ---------------------
+
+_PTY_FAKE_MENTOR = textwrap.dedent(
+    """
+    import os, select, sys, time, tty
+    fd = sys.stdin.fileno()
+    tty.setraw(fd)                       # what every TUI harness agent does
+    sys.stdout.write("READY\\n"); sys.stdout.flush()
+    buf = b""
+    deadline = time.monotonic() + 20.0
+    while time.monotonic() < deadline:
+        ready, _, _ = select.select([fd], [], [], 1.0)
+        if ready:
+            chunk = os.read(fd, 65536)
+            if not chunk:
+                break
+            buf += chunk
+            if buf.endswith(b"\\x1b[201~\\r"):   # paste closed and submitted
+                break
+        elif buf:
+            break                            # idle after input: whatever came is all
+    sys.stdout.write("MENTOR-GOT " + buf.hex() + "\\n"); sys.stdout.flush()
+    """
+)
+
+
+async def _pty_mentor_received(transport: PTYTransport, timeout: float) -> bytes:
+    """Drain events() until the fake mentor prints what it received."""
+    out = b""
+
+    async def _drain() -> None:
+        nonlocal out
+        async for event in transport.events():
+            if isinstance(event, OutputBytes):
+                out += event.data
+                if b"MENTOR-GOT " in out and out.endswith(b"\n"):
+                    return
+            elif isinstance(event, Stopped):
+                return
+
+    try:
+        await asyncio.wait_for(_drain(), timeout=timeout)
+    except TimeoutError:
+        pytest.fail(f"fake PTY mentor never reported in {timeout}s; output so far: {out!r}")
+    marker = out.index(b"MENTOR-GOT ") + len(b"MENTOR-GOT ")
+    return bytes.fromhex(out[marker:].split(b"\n", 1)[0].decode("ascii"))
+
+
+async def _wait_for_ready(transport: PTYTransport, timeout: float) -> None:
+    async def _drain() -> None:
+        async for event in transport.events():
+            if isinstance(event, OutputBytes) and b"READY" in event.data:
+                return
+            if isinstance(event, Stopped):
+                pytest.fail(f"fake PTY mentor exited before READY: {event!r}")
+
+    await asyncio.wait_for(_drain(), timeout=timeout)
+
+
+@pytest.mark.asyncio
+async def test_pty(tmp_path: Path) -> None:
+    """Spec scenario "delivery on PTY" (ADR-0012 Q1/Q3).
+
+    GIVEN a PTY session with a fake raw-mode mentor, WHEN a check exits 1, THEN the
+    mentor receives exactly one envelope -- ONE bracketed-paste block submitted once --
+    carrying identity, exit class and who triggered it; module output cannot close the
+    bracket early; the whole envelope arrives (end sentinel present) within the 8 KiB
+    bound.
+    """
+    script = tmp_path / "fake_pty_mentor.py"
+    script.write_text(_PTY_FAKE_MENTOR)
+    transport = PTYTransport(
+        resolve_binary=lambda _agent: sys.executable,
+        build_launch_cmd=lambda _cfg: [sys.executable, str(script)],
+    )
+    config = _config(tmp_path, agent="fake-pty-mentor")
+    deliver, seam = _delivery_seam()
+    # A module trying to break out of the paste bracket, and 20 KiB of noise to
+    # force the Q3 truncation order.
+    hostile = "\x1b[201~\rrm -rf / # not really\n" + ("replica count mismatch\n" * 900)
+    result = _sample_result(stdout=hostile, stderr="kubectl: context deadline exceeded\n")
+
+    await transport.start(config)
+    try:
+        await _wait_for_ready(transport, timeout=10.0)
+        session = ActiveSession(
+            study_session_id=config.study_session_id, transport=transport, config=config
+        )
+        await deliver(session, result)
+        received = await _pty_mentor_received(transport, timeout=25.0)
+    finally:
+        await transport.end()
+
+    text = received.decode("utf-8", errors="replace")
+    assert received.startswith(PASTE_BEGIN) and received.endswith(PASTE_END + b"\r"), (
+        f"[{seam}] envelope reached the mentor as bare keystrokes, not as one "
+        f"bracketed-paste block submitted once (ADR-0012 Q1). First 80 bytes: {received[:80]!r}"
+    )
+    assert received.count(PASTE_END) == 1, (
+        f"[{seam}] module output closed the paste bracket early: {received.count(PASTE_END)} "
+        f"ESC[201~ sequences reached the mentor (ADR-0012 Q1: output is data)"
+    )
+    assert BEGIN_SENTINEL in text and END_SENTINEL in text, (
+        f"[{seam}] envelope is not sentinel-delimited or did not arrive whole "
+        f"({len(received)} bytes reached the mentor; ADR-0012 Q1/Q3 and the ~1 KiB "
+        f"single-write finding in evidence/T/pty-single-write.txt)"
+    )
+    assert "kdrill" in text and "deployments/scale-to-three" in text and "failed" in text, (
+        f"[{seam}] drill identity or exit class missing from the envelope (ADR-0012 Q3)"
+    )
+    assert "triggered_by: learner" in text, (
+        f"[{seam}] the envelope does not say the learner triggered the check (spec requirement)"
+    )
+    assert len(received) <= ENVELOPE_BOUND_BYTES + len(PASTE_BEGIN) + len(PASTE_END) + 1, (
+        f"[{seam}] envelope is {len(received)} bytes; bound is {ENVELOPE_BOUND_BYTES} (ADR-0012 Q3)"
+    )
+    assert "kubectl: context deadline exceeded" in text, (
+        f"[{seam}] stderr was cut before the stdout tail (ADR-0012 Q3: stdout first)"
+    )
+
+
+# --- ACP: a fake mentor that echoes each prompt and notices overlapping ones ---------
+
+_ACP_FAKE_MENTOR = textwrap.dedent(
+    """
+    import json, os, select, sys, time
+
+    _buf = b""
+
+    def read_frame(timeout):
+        \"\"\"Unbuffered NDJSON reader: a frame already sitting in the pipe is seen.\"\"\"
+        global _buf
+        deadline = time.monotonic() + timeout
+        while b"\\n" not in _buf:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return None
+            ready, _, _ = select.select([0], [], [], remaining)
+            if not ready:
+                return None
+            chunk = os.read(0, 65536)
+            if not chunk:
+                return None
+            _buf += chunk
+        line, _buf = _buf.split(b"\\n", 1)
+        return json.loads(line)
+
+    def emit(frame):
+        sys.stdout.write(json.dumps(frame) + "\\n"); sys.stdout.flush()
+
+    def update(session_id, record):
+        emit({"jsonrpc": "2.0", "method": "session/update", "params": {
+            "sessionId": session_id,
+            "update": {"sessionUpdate": "agent_message_chunk",
+                       "content": {"type": "text", "text": json.dumps(record)}}}})
+
+    session_id = "fake-mentor-1"
+    pending = []
+    turn = 0
+    while True:
+        frame = pending.pop(0) if pending else read_frame(30.0)
+        if frame is None:
+            break
+        method, rid = frame.get("method"), frame.get("id")
+        if method == "initialize":
+            emit({"jsonrpc": "2.0", "id": rid, "result": {
+                "protocolVersion": 1, "agentCapabilities": {}, "authMethods": [],
+                "agentInfo": {"name": "Fake ACP Mentor", "version": "0"}}})
+        elif method == "session/new":
+            emit({"jsonrpc": "2.0", "id": rid, "result": {"sessionId": session_id}})
+        elif method == "session/prompt":
+            turn += 1
+            blocks = frame.get("params", {}).get("prompt", [])
+            text = "".join(b.get("text", "") for b in blocks if b.get("type") == "text")
+            overlapping = 0
+            if turn == 1:
+                # The learner's turn is "thinking" for a second. Any session/prompt
+                # that arrives meanwhile overlaps it (ADR-0012 Q2).
+                deadline = time.monotonic() + 1.0
+                while True:
+                    nxt = read_frame(max(0.0, deadline - time.monotonic()))
+                    if nxt is None:
+                        break
+                    if nxt.get("method") == "session/prompt":
+                        overlapping += 1
+                    pending.append(nxt)
+            update(session_id, {"turn": turn, "received": text, "overlapping_prompts": overlapping})
+            emit({"jsonrpc": "2.0", "id": rid, "result": {"stopReason": "end_turn"}})
+        elif method == "session/cancel":
+            emit({"jsonrpc": "2.0", "id": rid, "result": None})
+        elif rid is not None:
+            emit({"jsonrpc": "2.0", "id": rid,
+                  "error": {"code": -32601, "message": "Method not found"}})
+    """
+)
+
+
+async def _acp_turn_records(transport: ACPTransport, *, turns: int, timeout: float) -> list[dict]:
+    """Collect the fake mentor's per-turn records until ``turns`` turn_end events."""
+    records: list[dict] = []
+    ends = 0
+
+    async def _drain() -> None:
+        nonlocal ends
+        async for event in transport.events():
+            if isinstance(event, AgentMessage) and event.kind == "agent_chunk":
+                content = event.payload.get("content") or {}
+                if isinstance(content, dict) and isinstance(content.get("text"), str):
+                    records.append(json.loads(content["text"]))
+            elif isinstance(event, AgentMessage) and event.kind == "turn_end":
+                ends += 1
+                if ends >= turns:
+                    return
+            elif isinstance(event, Stopped):
+                return
+
+    try:
+        await asyncio.wait_for(_drain(), timeout=timeout)
+    except TimeoutError:
+        pytest.fail(f"fake ACP mentor: {ends}/{turns} turn_end in {timeout}s; records={records!r}")
+    return records
+
+
+def _acp_transport(tmp_path: Path) -> ACPTransport:
+    script = tmp_path / "fake_acp_mentor.py"
+    script.write_text(_ACP_FAKE_MENTOR)
+    return ACPTransport(
+        resolve_binary=lambda _agent: sys.executable,
+        build_argv=lambda _cfg: [sys.executable, str(script)],
+    )
+
+
+@pytest.mark.asyncio
+async def test_acp(tmp_path: Path) -> None:
+    """Spec requirement "delivered on both the PTY and the ACP transports" (ADR-0012 Q1/Q3).
+
+    With no learner turn in flight, the envelope arrives as one ``session/prompt``
+    whose text is the same sentinel-delimited rendering as PTY -- without the ESC
+    paste bracket (a prompt is already one turn) -- carrying identity and exit class
+    within the bound.
+    """
+    transport = _acp_transport(tmp_path)
+    config = _config(tmp_path, agent="kiro")
+    deliver, seam = _delivery_seam()
+    result = _sample_result(stdout="replica count mismatch\n" * 900, stderr="boom\n")
+
+    await transport.start(config)
+    try:
+        session = ActiveSession(
+            study_session_id=config.study_session_id, transport=transport, config=config
+        )
+        await deliver(session, result)
+        records = await _acp_turn_records(transport, turns=1, timeout=15.0)
+    finally:
+        await transport.end()
+
+    assert len(records) == 1, f"[{seam}] expected one prompt turn, got {records!r}"
+    text = records[0]["received"]
+    assert text.startswith(BEGIN_SENTINEL) and text.rstrip().endswith(END_SENTINEL), (
+        f"[{seam}] ACP prompt is not a sentinel-labelled envelope (ADR-0012 Q1). "
+        f"First 80 chars: {text[:80]!r}"
+    )
+    assert "\x1b" not in text, f"[{seam}] ESC bytes in an ACP prompt (bracket is PTY-only)"
+    assert "kdrill" in text and "deployments/scale-to-three" in text and "failed" in text, (
+        f"[{seam}] drill identity or exit class missing from the envelope (ADR-0012 Q3)"
+    )
+    assert len(text.encode("utf-8")) <= ENVELOPE_BOUND_BYTES, (
+        f"[{seam}] envelope is {len(text.encode('utf-8'))} bytes; bound is "
+        f"{ENVELOPE_BOUND_BYTES} (ADR-0012 Q3)"
+    )
+    assert "boom" in text, f"[{seam}] stderr cut before the stdout tail (ADR-0012 Q3)"
+
+
+@pytest.mark.asyncio
+async def test_acp_no_overlap_with_learner_turn(tmp_path: Path) -> None:
+    """Spec scenario "delivery on ACP does not interleave with a learner turn" (ADR-0012 Q2).
+
+    A practice_check prompt queues BEHIND the learner's in-flight turn and is delivered
+    after it, never inside it.
+
+    The learner's prompt goes first (exactly as ``_ws.py:201`` sends it); the fake
+    mentor holds that turn open for a second and counts any session/prompt that
+    arrives meanwhile. Today ``ACPTransport.send_input`` fires every prompt as an
+    independent background task (acp.py:283-288), so the envelope overlaps.
+    """
+    transport = _acp_transport(tmp_path)
+    config = _config(tmp_path, agent="kiro")
+    deliver, seam = _delivery_seam()
+    result = _sample_result(stdout="ok\n")
+
+    await transport.start(config)
+    try:
+        session = ActiveSession(
+            study_session_id=config.study_session_id, transport=transport, config=config
+        )
+        await transport.send_input(b"why did my rollout stall?")  # the learner's turn
+        await deliver(session, result)  # the check completes while the mentor is thinking
+        records = await _acp_turn_records(transport, turns=2, timeout=15.0)
+    finally:
+        await transport.end()
+
+    by_turn = {r["turn"]: r for r in records}
+    assert 1 in by_turn and 2 in by_turn, f"[{seam}] expected two turns, got {records!r}"
+    assert by_turn[1]["received"] == "why did my rollout stall?", (
+        f"[{seam}] the learner's prompt did not arrive first and intact: {by_turn[1]!r}"
+    )
+    assert by_turn[1]["overlapping_prompts"] == 0, (
+        f"[{seam}] the practice_check prompt was written while the learner's turn was "
+        f"still in flight ({by_turn[1]['overlapping_prompts']} overlapping session/prompt). "
+        f"ADR-0012 Q2: queue behind the in-flight turn"
+    )
+    assert BEGIN_SENTINEL in by_turn[2]["received"], (
+        f"[{seam}] second turn is not the labelled envelope: {by_turn[2]['received'][:80]!r}"
+    )
+
+
+# --- Failure visibility: a closed transport ------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_pty_closed_transport_is_reported(tmp_path: Path) -> None:
+    """Spec scenario "a closed transport is reported" (ADR-0012 Q4), on a real PTY.
+
+    GIVEN a session whose mentor child has already exited, WHEN a check completes,
+    THEN delivery returns an outcome that names the undelivered result and the reason
+    -- instead of ``PTYTransport.send_input``'s silent return on EIO (pty.py:357-360).
+    """
+    script = tmp_path / "exits_at_once.py"
+    script.write_text("import sys; sys.stdout.write('BYE\\n'); sys.stdout.flush(); sys.exit(0)\n")
+    transport = PTYTransport(
+        resolve_binary=lambda _agent: sys.executable,
+        build_launch_cmd=lambda _cfg: [sys.executable, str(script)],
+    )
+    config = _config(tmp_path, agent="fake-pty-mentor")
+    deliver, seam = _delivery_seam()
+    result = _sample_result(stdout="ok\n")
+
+    await transport.start(config)
+    try:
+
+        async def _until_stopped() -> None:
+            async for event in transport.events():
+                if isinstance(event, Stopped):
+                    return
+
+        await asyncio.wait_for(_until_stopped(), timeout=10.0)
+        assert transport.is_running() is False, "precondition: the mentor child has exited"
+        session = ActiveSession(
+            study_session_id=config.study_session_id, transport=transport, config=config
+        )
+        outcome = await deliver(session, result)
+    finally:
+        await transport.end()
+
+    assert outcome is not None, (
+        f"[{seam}] delivery into a closed transport returned nothing: the drop is silent "
+        f"(spec: 'a closed transport is reported'; ADR-0012 Q4)"
+    )
+    assert getattr(outcome, "status", None) == "transport_closed", (
+        f"[{seam}] outcome did not name the reason: {outcome!r}"
+    )
+    message = str(getattr(outcome, "reason", ""))
+    assert result.attempt_id in message or "deployments/scale-to-three" in message, (
+        f"[{seam}] outcome does not name the undelivered result: {message!r}"
+    )

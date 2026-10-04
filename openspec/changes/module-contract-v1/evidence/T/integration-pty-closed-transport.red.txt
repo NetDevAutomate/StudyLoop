@@ -1,0 +1,12 @@
+uv run pytest packages/studyloop/tests/integration/test_module_delivery_transports.py::test_pty_closed_transport_is_reported -m integration -q -p no:cacheprovider
+# worktree: module-mentor-delivery  base: 60bbb504  TMPDIR=$(getconf DARWIN_USER_TEMP_DIR)
+F                                                                        [100%]
+=================================== FAILURES ===================================
+____________________ test_pty_closed_transport_is_reported _____________________
+packages/studyloop/tests/integration/test_module_delivery_transports.py:506: in test_pty_closed_transport_is_reported
+    assert outcome is not None, (
+E   AssertionError: [today: transport.send_input(raw text) as _ws.py:201 does] delivery into a closed transport returned nothing: the drop is silent (spec: 'a closed transport is reported'; ADR-0012 Q4)
+E   assert None is not None
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/integration/test_module_delivery_transports.py::test_pty_closed_transport_is_reported
+1 failed in 0.49s
