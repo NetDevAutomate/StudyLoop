@@ -1,0 +1,32 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_schema.py -q -k test_proposal_example_deck_loads_through_load_practice_deck
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_________ test_proposal_example_deck_loads_through_load_practice_deck __________
+packages/studyloop/tests/test_module_schema.py:122: in test_proposal_example_deck_loads_through_load_practice_deck
+    deck = load_practice_deck(path)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+packages/studyloop/src/studyloop/learning/practice.py:51: in load_practice_deck
+    return PracticeDeck.model_validate(raw)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   pydantic_core._pydantic_core.ValidationError: 6 validation errors for PracticeDeck
+E   tasks.0.verification.cleanupCommand
+E     Extra inputs are not permitted [type=extra_forbidden, input_value='scripts/cleanup-pods-01.sh', input_type=str]
+E       For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden
+E   tasks.0.id
+E     Extra inputs are not permitted [type=extra_forbidden, input_value='pods-01', input_type=str]
+E       For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden
+E   tasks.0.solution
+E     Extra inputs are not permitted [type=extra_forbidden, input_value='kubectl create ns drill ...age=nginx:1.27 -n drill', input_type=str]
+E       For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden
+E   tasks.0.scaffolding
+E     Extra inputs are not permitted [type=extra_forbidden, input_value='guided', input_type=str]
+E       For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden
+E   tasks.0.mentorNotes
+E     Extra inputs are not permitted [type=extra_forbidden, input_value='Common slip: creating th...before saying anything.', input_type=str]
+E       For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden
+E   id
+E     Extra inputs are not permitted [type=extra_forbidden, input_value='pods-and-namespaces', input_type=str]
+E       For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_module_schema.py::test_proposal_example_deck_loads_through_load_practice_deck
+1 failed, 28 deselected in 0.51s
