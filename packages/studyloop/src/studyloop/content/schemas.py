@@ -266,9 +266,24 @@ class QuizDeck(BaseModel):
 # Hands-on practice schemas
 # ---------------------------------------------------------------------------
 
+# Module-contract v1 §5.3 / MC014: a deck or task id is a stable lowercase
+# slug -- 1 to 63 characters of ``[a-z0-9-]``, never starting with a hyphen.
+# It is the identity a drill is recorded under, so it must never be an array
+# position or a prompt string. Optional at the schema level so that every deck
+# written before §5.3 still validates; the conformance checker (MC014) is what
+# requires it on module decks.
+SLUG_PATTERN = r"^[a-z0-9][a-z0-9-]{0,62}$"
+SlugId = Annotated[str, Field(pattern=SLUG_PATTERN)]
+
+ScaffoldingLevel = Literal["guided", "hinted", "unaided", "exam"]
+
 
 class PracticeVerification(BaseModel):
-    """Optional machine/self-verification metadata for a practice task."""
+    """Optional machine/self-verification metadata for a practice task.
+
+    ``timeout_seconds`` applies to **each phase separately** -- setup, check
+    and cleanup (§5.3); a timeout is an error, never a fail.
+    """
 
     kind: Literal["checklist", "rubric", "command"]
     success_criteria: list[NonEmptyStr] = Field(min_length=1, alias="successCriteria")
@@ -277,32 +292,70 @@ class PracticeVerification(BaseModel):
     rubric: list[NonEmptyStr] = Field(default_factory=list)
     evidence_prompts: list[NonEmptyStr] = Field(default_factory=list, alias="evidencePrompts")
     setup_command: str = Field(default="", alias="setupCommand")
+    # §5.3 ★ cleanupCommand: a separate capability from setup and check --
+    # destructive, and separately consented to by the runner.
+    cleanup_command: str = Field(default="", alias="cleanupCommand")
     timeout_seconds: int = Field(default=60, ge=1, le=600, alias="timeoutSeconds")
 
     model_config = {"extra": "forbid", "populate_by_name": True}
 
 
 class PracticeTask(BaseModel):
-    """A concrete hands-on exercise for active technical practice."""
+    """A concrete hands-on exercise for active technical practice.
 
+    The §5.3 fields ``solution``, ``scaffolding`` and ``mentor_notes`` are
+    mentor-side material: ``solution`` reaches the learner only through the
+    mentor's "just show me" path and ``mentor_notes`` is never rendered to the
+    learner at all. The schema does not couple them (whether a ``solution``
+    needs a ``scaffolding`` level is MC010, a conformance rule).
+    """
+
+    # §5.3 ★ id: stable slug, unique within the deck; the source of
+    # ``STUDYLOOP_DRILL_ID``. Optional so pre-§5.3 decks keep validating.
+    id: SlugId | None = None
     task_type: Literal["build", "debug", "diagram", "trace", "apply"] = Field(alias="taskType")
     prompt: NonEmptyStr
     setup: str = ""
     success_criteria: list[NonEmptyStr] = Field(min_length=1, alias="successCriteria")
     hint: str = ""
     expected_learning_outcome: NonEmptyStr = Field(alias="expectedLearningOutcome")
+    # §5.3 ★ solution / scaffolding / mentorNotes
+    solution: str = ""
+    scaffolding: ScaffoldingLevel | None = None
+    mentor_notes: str = Field(default="", alias="mentorNotes")
     verification: PracticeVerification | None = None
 
     model_config = {"extra": "forbid", "populate_by_name": True}
 
 
 class PracticeDeck(BaseModel):
-    """A deck of hands-on practice tasks for a single chapter / study note."""
+    """A deck of hands-on practice tasks for a single chapter / study note.
 
+    Invariant (enforced by ``_check_task_ids_unique``): task ids that are
+    present are unique within the deck (MC014). Tasks without an id are not
+    compared -- uniqueness is a property of ids, not of positions.
+    """
+
+    # §5.3 ★ id: stable slug, unique within the module (checked by the
+    # conformance lane, which sees the whole module; the deck sees only itself).
+    id: SlugId | None = None
     title: NonEmptyStr
     tasks: list[PracticeTask] = Field(min_length=1)
 
     model_config = {"extra": "forbid"}
+
+    @model_validator(mode="after")
+    def _check_task_ids_unique(self) -> PracticeDeck:
+        seen: set[str] = set()
+        for task in self.tasks:
+            if task.id is None:
+                continue
+            if task.id in seen:
+                raise ValueError(
+                    f"duplicate task id {task.id!r}: task ids must be unique within a deck"
+                )
+            seen.add(task.id)
+        return self
 
     def write_json(self, directory: Path, slug: str) -> Path:
         """Write this deck to ``directory/<slug>-practice.json``."""

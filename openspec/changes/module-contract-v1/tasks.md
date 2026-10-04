@@ -24,20 +24,21 @@ preflight`. "Red kept" = the failing-test transcript is in the commit body or un
 
 ### S — schema + guard (`feat/module-schema`)
 
-- [ ] S1 Re-key `tests/_lane_ownership.py` to an explicit branch→lane map in
+- [x] S1 Re-key `tests/_lane_ownership.py` to an explicit branch→lane map in
       `tests/fixtures/lane_ownership.yaml` (`feat/module-schema`→S, …), keep legacy `lane/m<n>-`
       entries and fnmatch/`shared`/unmapped semantics; verify new branch-parsing tests pass and
       the existing `test_lane_ownership.py` still passes. G.
-- [ ] S2 Add the six §5.3 fields (`id` on deck and task; `solution`, `scaffolding`,
+- [x] S2 Add the six §5.3 fields (`id` on deck and task; `solution`, `scaffolding`,
       `mentorNotes`; `verification.cleanupCommand`) with `extra: forbid` kept; verify
       `test_module_schema.py`: the proposal's example validates, each field round-trips,
       missing/duplicate/malformed `id` rejected, a pre-existing deck still validates.
       Red kept: the example failing before this commit. G.
-- [ ] S-review One independent seat reviews S1–S2 (design.md §7 cadence); coordinator
+- [x] S-review One independent seat reviews S1–S2 (design.md §7 cadence); coordinator
       verifies each finding against the tree; verify the row in `council/catch-rate.md` is filled.
-- [ ] S-merge Merge S1–S2 to `main` as the first and only early merge; push `main`; post
-      `comms/2026-10-04-issue-53-reply.md` on #53 with `<SHA>` filled in (owner's account, owner's
-      call); verify the comment is up and its proposal link resolves.
+- [x] S-merge (local) Merged to `main` as `d2671ce8`, the first and only early merge; sha filled
+      into `comms/2026-10-04-issue-53-reply.md`.
+- [ ] S-merge (owner) push `main`; post the #53 reply (owner's account, owner's call); verify the
+      comment is up and its proposal link resolves.
 - [ ] S3 (docs lease held) `docs/module-contract.md` with the "Adding a module" checklist,
       `.github/PULL_REQUEST_TEMPLATE/module.md`, `mkdocs.yml` nav entry, changelog entry;
       verify `test_docs_drift.py` extension (checklist, four README headings, PR template,

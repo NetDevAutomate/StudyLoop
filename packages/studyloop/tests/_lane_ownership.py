@@ -12,7 +12,14 @@ from __future__ import annotations
 import fnmatch
 import re
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+#: Legacy key: the 2026-09 campaigns named their branches ``lane/m<n>-<slug>``
+#: and the lane id was derived from the name. Kept so the archived lanes still
+#: classify; new campaigns use an explicit ``branches`` map instead (below).
 _LANE_BRANCH_RE = re.compile(r"^lane/m(\d+)-")
 
 
@@ -26,15 +33,27 @@ class MalformedLaneBranchError(ValueError):
     """
 
 
-def lane_id_from_branch(branch: str) -> str | None:
-    """Return the lane id (``"m3"``) for a lane branch, or ``None`` otherwise.
+def lane_id_from_branch(branch: str, branches: Mapping[str, str] | None = None) -> str | None:
+    """Return the lane id for a lane branch, or ``None`` otherwise.
+
+    Two keys, consulted in this order:
+
+    1. *branches* -- the explicit branch -> lane map from
+       ``fixtures/lane_ownership.yaml`` (``feat/module-schema`` -> ``"S"``).
+       An exact name match wins outright. This is how the module-contract
+       lanes are keyed: their branches are ``feat/...`` like every other
+       feature branch, so nothing can be inferred from the name.
+    2. the legacy ``lane/m<n>-<slug>`` pattern -> ``"m<n>"``, for the archived
+       2026-09 remediation and second-brain lanes.
 
     ``None`` covers everything that isn't a lane branch at all (``main``,
-    ``integration/...``, a probe branch without the ``lane/`` prefix) -- the
-    caller's job is to skip in that case, not fail. A branch that IS under
+    ``integration/...``, a ``feat/`` branch the map does not list) -- the
+    caller's job is to log/skip in that case, not fail. A branch that IS under
     ``lane/`` but does not fit ``lane/m<n>-<slug>`` raises
     :class:`MalformedLaneBranchError`, which the caller turns into a failure.
     """
+    if branches and branch in branches:
+        return branches[branch]
     match = _LANE_BRANCH_RE.match(branch)
     if match:
         return f"m{match.group(1)}"
