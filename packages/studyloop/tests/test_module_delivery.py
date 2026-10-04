@@ -295,7 +295,7 @@ def test_render_header_survives_when_both_tails_overflow() -> None:
         assert text.count("truncated") >= 2, f"[{framing}] both tails must be marked truncated"
         for needle in (
             "attempt=att-0001",
-            "kdrill@012345678901",
+            "kdrill@0123456789ab",
             "deployments/scale-to-three",
             "phase: check",
             "failed (code 1)",
