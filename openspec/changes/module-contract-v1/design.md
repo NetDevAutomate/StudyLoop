@@ -199,6 +199,24 @@ persisted under `council/`, exactly as the two 2026-10-04 rounds were run.
 - **Not reviewed by a council:** fixture content, naming, formatting, commit wording, anything
   the gate decides mechanically.
 
+## 7a. Autonomous run (owner mandate, 2026-10-04 17:30)
+
+The owner is away and asked the coordinator to iterate data-driven on test results until each
+lane can be committed locally with unit, integration and e2e tests green, with council input at
+every milestone. Delegated to the coordinator: lane dispatch, verification of lane reports
+against the worktrees, the lane-merge reviews and councils, fixes through gate G, and **local**
+merges to `main` with a merge commit. Reserved for the owner: every push; posting the #53
+comment under his account (the draft is kept with the sha filled in); the `agents/kiro/*.json`
+diff another session left uncommitted; UAT sign-off (U2); the kdrill live proof (K1–K2). Before
+each local merge the coordinator also runs the lane's integration tests and `just e2e` (alone,
+machine lock) in the lane worktree and records the summary lines in `evidence/<lane>/`.
+
+Council transport: the LiteLLM proxy at `localhost:4000` is up, but its key exists only as a
+1Password reference (`LITELLM_MASTER_KEY_REF`) and `LITELLM_API_KEY` is not in this sandbox, so
+`scripts/council/run_council.py` cannot authenticate from here. Councils therefore run through
+the Kiro model inventory (`gpt-5.6-sol`, `deepseek-3.2`, `glm-5`, `qwen3-coder-next`) until the
+owner exports `LITELLM_API_KEY` where the gateway can see it; the methodology is unchanged.
+
 ## 8. The transport spike (T1), scoped by what is already verified
 
 Known: the live session exposes its transport (`ActiveSession.transport`,
