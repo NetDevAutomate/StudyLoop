@@ -84,7 +84,7 @@ preflight`. "Red kept" = the failing-test transcript is in the commit body or un
 - [ ] C5 `doctor/modules.py` probes `docker`, `kind`, `kubectl` with fake binaries on `PATH`;
       one registration in `cli/_doctor.py`; verify probes report version/missing and never
       execute anything but `--version`. G.
-- [ ] C6 `cli/_module.py` Typer group exported, not registered; verify `test_module_cli.py`
+- [ ] C6 `cli/_module.py` Click group (`click.Group`, mounted lazily like every other `cli/_*.py`) exported, not registered; verify `test_module_cli.py`
       via `CliRunner` on the group object. G.
 - [ ] C-review One independent seat reviews C2–C6 before C merges; verify the catch-rate row.
 
