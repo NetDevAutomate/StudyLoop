@@ -31,8 +31,9 @@ preflight`. "Red kept" = the failing-test transcript is in the commit body or un
       `test_module_schema.py`: the proposal's example validates, each field round-trips,
       missing/duplicate/malformed `id` rejected, a pre-existing deck still validates.
       Red kept: the example failing before this commit. G.
-- [ ] S-merge Merge S1–S2 to `main` as the first and only early merge; verify Bruno is told
-      the schema is live.
+- [ ] S-merge Merge S1–S2 to `main` as the first and only early merge; push `main`; post
+      `comms/2026-10-04-issue-53-reply.md` on #53 with `<SHA>` filled in (owner's account, owner's
+      call); verify the comment is up and its proposal link resolves.
 - [ ] S3 (docs lease held) `docs/module-contract.md` with the "Adding a module" checklist,
       `.github/PULL_REQUEST_TEMPLATE/module.md`, `mkdocs.yml` nav entry, changelog entry;
       verify `test_docs_drift.py` extension (checklist, four README headings, PR template,
