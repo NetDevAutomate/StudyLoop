@@ -78,3 +78,28 @@ exit=0  sha=d88d1c7d  utc=2026-10-04T19:29Z
 ........................................................................ [ 78%]
 ............................................................             [100%]
 276 passed, 3 deselected in 3.91s
+
+$ uv run studyloop doctor --help
+exit=0  sha=393102f7  utc=2026-10-04T19:32Z
+Usage: studyloop doctor [OPTIONS]
+
+  Check installation health and report issues.
+
+Options:
+
+$ uv run --group dev pytest packages/studyloop/tests/test_doctor_deps.py packages/studyloop/tests/test_doctor_models.py -q
+exit=0  sha=393102f7  utc=2026-10-04T19:32Z
+..........                                                               [100%]
+10 passed in 0.32s
+
+$ uv run --group dev pytest packages/studyloop/tests/test_cli_doctor.py packages/studyloop/tests/test_doctor_exit_code.py -q
+exit=0  sha=393102f7  utc=2026-10-04T19:33Z
+...................                                                      [100%]
+19 passed in 0.45s
+
+$ uv run --group dev pytest packages/studyloop/tests/test_doctor_*.py -q
+exit=0  sha=393102f7  utc=2026-10-04T19:33Z
+........................................................................ [ 48%]
+........................................................................ [ 96%]
+......                                                                   [100%]
+150 passed in 24.95s
