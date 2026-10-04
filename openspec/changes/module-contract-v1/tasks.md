@@ -115,13 +115,13 @@ preflight`. "Red kept" = the failing-test transcript is in the commit body or un
 - [ ] T-owner Probe each PTY harness (claude, codex, kiro-cli, pi) for `ESC[?2004h` at start-up with
       the real binaries; record which enable bracketed paste (M0 Q3: confirms, does not gate T3).
 
-- [ ] T2 `session/module_delivery.py`: typed, size-bounded `PracticeCheckEnvelope`; adapter
+- [x] T2 `session/module_delivery.py`: typed, size-bounded `PracticeCheckEnvelope`; adapter
       resolving `ActiveSession.transport`; verify unit tests for bound, labelling and the
       "no active session" path. G.
-- [ ] T3 PTY delivery per the ADR's framing; verify
+- [x] T3 PTY delivery per the ADR's framing; verify
       `integration/test_module_delivery_transports.py::test_pty` shows one labelled envelope
       reaching a fake mentor, identity + exit class present, output redacted (red kept). G.
-- [ ] T4 ACP delivery per the ADR's serialisation; verify `::test_acp` green and
+- [x] T4 ACP delivery per the ADR's serialisation; verify `::test_acp` green and
       `::test_acp_no_overlap_with_learner_turn` green; verify delivery failure is surfaced to
       the learner by a third test. G.
 - [ ] T-review One independent seat reviews T2–T4 before T merges; verify the catch-rate row.
