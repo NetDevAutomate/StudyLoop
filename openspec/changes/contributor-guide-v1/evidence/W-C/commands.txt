@@ -59,3 +59,11 @@ packages/studyloop/src/studyloop/mcp/tools.py:746:        plan = build_now_plan(
 packages/studyloop/src/studyloop/web/routes/now.py:7:from studyloop.learning.decision import build_now_plan
 packages/studyloop/src/studyloop/web/routes/now.py:23:    plan = build_now_plan(
 packages/studyloop/src/studyloop/cli/_now.py:13:from studyloop.learning import EnergyLevel, InterleaveMode, Modality, build_now_plan
+
+$ just spec-check
+exit=0  sha=ae8bb7a7  utc=2026-10-04T19:28Z
+if command -v openspec >/dev/null 2>&1; then openspec validate --specs --all; else echo "openspec CLI not found — skipping spec validation (see the OpenSpec section of docs/contributing.md)"; fi
+- Validating...
+✓ spec/active-learning-decisions
+  ℹ [INFO] requirements[0]: Requirement text is very long (>500 characters). Consider breaking it down.
+  ℹ [INFO] requirements[5]: Requirement text is very long (>500 characters). Consider breaking it down.
