@@ -16,5 +16,5 @@ spec-check: Totals: 23 passed, 2 failed (25 items) — module-contract-v1 and co
 582 passed, 17 skipped, 7733 deselected in 877.41s (0:14:37)
 
 ## pytest -m "" test summary for the lane's own files (b462ed42)
-test_module_schema.py: 68 passed ; test_lane_ownership.py: 40 passed (after the S-review's precedence test)
+test_module_schema.py: 29 passed (17 tests) ; test_lane_ownership.py: 40 passed (39 at S1 + the S-review precedence test). Correction: the "68 cases" in b462ed42's message was the two files run together (29 + 39), not the schema file alone.
 spec-check after merging main (f800dcf7): Totals: 25 passed, 0 failed (25 items)
