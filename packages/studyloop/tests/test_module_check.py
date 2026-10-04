@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 from pathlib import Path
 from typing import Any, get_args
 
@@ -203,3 +204,96 @@ def test_fixture_scaffolding_levels_are_in_the_enum() -> None:
                 if "scaffolding" in task:
                     seen.add(task["scaffolding"])
     assert seen and seen <= levels
+
+
+# ---------------------------------------------------------------------------
+# C-review 2 and 3: MC009 scans every assignment on a line; MC012 catches compiled,
+# cached and shebang-python code, not just *.py and four filenames
+# ---------------------------------------------------------------------------
+
+
+def _variant(tmp_path: Path, name: str) -> Path:
+    """A writable copy of the valid scaffold to break in exactly one way."""
+    target = tmp_path / name
+    shutil.copytree(VALID, target, symlinks=True)
+    return target
+
+
+def test_mc009_sees_a_secret_after_a_placeholder_on_the_same_line(tmp_path: Path) -> None:
+    """``PASSWORD=true API_TOKEN=<value>``: the first match is a placeholder, the second is not."""
+    module = _variant(tmp_path, "two-assignments")
+    script = module / "scripts" / "check.sh"
+    fake_value = "plainly-fake-value"
+    line = "PASSWORD=true API_" + "TOKEN=" + fake_value
+    script.write_text(f"#!/bin/sh\n{line}\necho ready\nexit 0\n", encoding="utf-8")
+
+    report = check_module(module)
+
+    assert _rule_ids(report) == {"MC009"}
+    [finding] = report.findings
+    assert (finding.path, finding.line) == ("scripts/check.sh", 2)
+    assert "API_" + "TOKEN" in finding.message
+    assert fake_value not in finding.message
+
+
+def test_mc009_still_ignores_a_line_of_placeholders_only(tmp_path: Path) -> None:
+    module = _variant(tmp_path, "placeholders")
+    script = module / "scripts" / "check.sh"
+    script.write_text("#!/bin/sh\nPASSWORD=true TOKEN=null\necho ready\nexit 0\n", encoding="utf-8")
+    assert check_module(module).ok is True
+
+
+_PYTHON_SHEBANG = "#!/usr/bin/env python3\nprint('hello')\n"
+_PYTHON_SHEBANG_DIRECT = "#!/usr/bin/python\nprint('hello')\n"
+
+
+@pytest.mark.parametrize(
+    ("relative", "content", "executable"),
+    [
+        pytest.param(
+            "__pycache__/helper.cpython-312.pyc", b"\x00\x00compiled", False, id="pycache"
+        ),
+        pytest.param("tools/helper.pyc", b"\x00\x00compiled", False, id="pyc"),
+        pytest.param("tools/helper.pyo", b"\x00\x00compiled", False, id="pyo"),
+        pytest.param("scripts/helper", _PYTHON_SHEBANG.encode(), True, id="env-python3-shebang"),
+        pytest.param(
+            "scripts/run", _PYTHON_SHEBANG_DIRECT.encode(), True, id="usr-bin-python-shebang"
+        ),
+    ],
+)
+def test_mc012_rejects_compiled_cached_and_shebang_python_and_the_repaired_twin_passes(
+    tmp_path: Path, relative: str, content: bytes, executable: bool
+) -> None:
+    module = _variant(tmp_path, "code")
+    offending = module / relative
+    offending.parent.mkdir(parents=True, exist_ok=True)
+    offending.write_bytes(content)
+    if executable:
+        offending.chmod(0o755)
+
+    report = check_module(module)
+    assert _rule_ids(report) == {"MC012"}, [(f.rule_id, f.path) for f in report.findings]
+    # the finding names the file, or the __pycache__ directory that holds it
+    assert all(relative == f.path or relative.startswith(f.path + "/") for f in report.findings)
+
+    # the repaired twin: the same tree without the offending file (and its empty dir)
+    offending.unlink()
+    if offending.parent.name == "__pycache__":
+        offending.parent.rmdir()
+    assert check_module(module).ok is True
+
+
+def test_mc012_flags_an_empty_pycache_directory(tmp_path: Path) -> None:
+    module = _variant(tmp_path, "empty-pycache")
+    (module / "__pycache__").mkdir()
+    report = check_module(module)
+    assert _rule_ids(report) == {"MC012"}
+    assert [f.path for f in report.findings] == ["__pycache__"]
+
+
+def test_mc012_does_not_flag_a_posix_shell_shebang(tmp_path: Path) -> None:
+    """``scripts/check.sh`` starts with ``#!/bin/sh``: shell is the module's own language."""
+    module = _variant(tmp_path, "sh-only")
+    (module / "scripts" / "extra.sh").write_text("#!/usr/bin/env bash\necho ok\n", encoding="utf-8")
+    (module / "scripts" / "extra.sh").chmod(0o755)
+    assert check_module(module).ok is True

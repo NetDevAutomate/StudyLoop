@@ -87,7 +87,17 @@ REQUIRED_README_HEADINGS: tuple[str, ...] = (
 FORBIDDEN_CODE_FILES: frozenset[str] = frozenset(
     {"pyproject.toml", "package.json", "setup.py", "setup.cfg"}
 )
-"""MC012, together with any ``*.py``."""
+"""MC012 by filename; see also :data:`FORBIDDEN_CODE_SUFFIXES`, ``__pycache__`` and shebangs."""
+
+FORBIDDEN_CODE_SUFFIXES: frozenset[str] = frozenset({".py", ".pyc", ".pyo", ".pyd", ".pyw"})
+"""MC012 by suffix: Python source, byte-compiled and extension files."""
+
+_PYCACHE_DIRNAME = "__pycache__"
+_PYTHON_SHEBANG = re.compile(
+    r"^#!\s*(?:\S*/)?(?:env\s+(?:-\S+\s+)*)?python[0-9.]*(?:\s|$)", flags=re.ASCII
+)
+"""MC012 by shebang: ``#!/usr/bin/python``, ``#!/usr/bin/env python3``, ``#!/usr/bin/env -S python``
+(the last two are what ``_PYTHON_SHEBANG`` accepts after ``env`` and its flags)."""
 
 _SHELL_OPERATOR_TOKENS: frozenset[str] = frozenset(
     {"&&", "||", "|", ";", "&", ">", ">>", "<", "<<", "2>", "2>&1", "1>", "&>", "|&"}
@@ -260,6 +270,20 @@ def _phase_fields(verification: dict[str, Any]) -> list[tuple[str, str, str]]:
         if isinstance(command, str) and command.strip():
             phases.append((field, capability, command))
     return phases
+
+
+def _shebang_interpreter(path: Path) -> str | None:
+    """The first line of ``path`` when it is a ``#!`` line, else ``None``. Reads 256 bytes."""
+    try:
+        if not stat.S_ISREG(path.lstat().st_mode):
+            return None
+        with path.open("rb") as handle:
+            head = handle.read(256)
+    except OSError:
+        return None
+    if not head.startswith(b"#!"):
+        return None
+    return head.split(b"\n", 1)[0].decode("utf-8", errors="replace")
 
 
 def _is_text_file(path: Path) -> bool:
@@ -618,14 +642,19 @@ class _ModuleChecker:
                 continue
             rel = self.rel(path)
             for number, content in enumerate(text.splitlines(), start=1):
-                match = _SECRET_ASSIGNMENT.search(content)
-                if match is None:
-                    continue
-                if match.group("value").lower().strip("\"'") in _SECRET_PLACEHOLDER_VALUES:
+                # Every assignment on the line is a candidate: `PASSWORD=true TOKEN=<real>`
+                # must not pass because the first match happened to be a placeholder.
+                flagged = [
+                    match.group("keyword")
+                    for match in _SECRET_ASSIGNMENT.finditer(content)
+                    if match.group("value").lower().strip("\"'") not in _SECRET_PLACEHOLDER_VALUES
+                ]
+                if not flagged:
                     continue
                 self.add(
                     "MC009",
-                    f"{rel}:{number} assigns a literal value to {match.group('keyword')!r}; "
+                    f"{rel}:{number} assigns a literal value to "
+                    f"{', '.join(repr(k) for k in flagged)}; "
                     "no secret patterns may ship in a module",
                     rel,
                     number,
@@ -651,7 +680,25 @@ class _ModuleChecker:
     # -- MC012 ------------------------------------------------------------------
 
     def check_no_code(self) -> None:
+        for dirpath, dirnames, _ in os.walk(self.root, followlinks=False):
+            dirnames[:] = sorted(name for name in dirnames if name != ".git")
+            if _PYCACHE_DIRNAME in dirnames:
+                rel = self.rel(Path(dirpath) / _PYCACHE_DIRNAME)
+                self.add(
+                    "MC012", f"{rel}/ is a Python bytecode cache; a module ships data only", rel
+                )
         for path in self.walk_files():
-            if path.name in FORBIDDEN_CODE_FILES or path.suffix == ".py":
-                rel = self.rel(path)
+            rel = self.rel(path)
+            if path.parent.name == _PYCACHE_DIRNAME:
+                continue  # reported once, on the directory
+            if path.name in FORBIDDEN_CODE_FILES or path.suffix.lower() in FORBIDDEN_CODE_SUFFIXES:
                 self.add("MC012", f"{rel} is importable code; a module ships data only", rel)
+                continue
+            interpreter = _shebang_interpreter(path)
+            if interpreter is not None and _PYTHON_SHEBANG.match(interpreter):
+                self.add(
+                    "MC012",
+                    f"{rel} is a Python script ({interpreter.strip()}); a module ships data only",
+                    rel,
+                    1,
+                )
