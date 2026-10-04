@@ -41,7 +41,10 @@ Delivery SHALL return exactly one of `delivered`, `no_active_session`, `transpor
 the learner (`Mentor told.` / `Mentor not told: <reason>`). A closed transport SHALL be detected
 from the write itself, not from a pre-flight liveness check alone. An ACP delivery SHALL be
 awaited up to 120 seconds; on timeout the outcome is `timed_out`, the turn is cancelled, the
-prompt lock is held until cancellation is confirmed, and the envelope is never retried. The
+prompt serialiser is held until the agent confirms the cancellation by answering the cancelled
+prompt (bounded, so an agent that answers nothing at all cannot wedge every later prompt), and
+the envelope is never retried. Prompts SHALL go to the agent in the order their callers asked,
+learner input and deliveries alike. The
 transient `practice_check` event SHALL record the outcome; nothing SHALL be written to learner
 history.
 
