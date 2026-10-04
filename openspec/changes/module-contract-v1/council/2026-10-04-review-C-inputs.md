@@ -1,0 +1,11 @@
+# C-review — filled Inputs for `briefs/review-lane-merge.md`
+
+- Lane: `C` · branch `feat/module-conformance` · worktree `/Users/ataylor/code/personal/tools/studyloop-wt/module-conformance`
+- Base sha: `60bbb504` (lane base) · review the lane's own changes as `git diff main...HEAD` in the worktree — the tip `acea8bce` already has `main` merged, so that range is exactly the lane's work
+- Lane commits (first-parent, newest first): 0bc20e4d ticks · 5bfdfa0a C6 help · 00298cdd C5 doctor probe · 29d14020 C4 store · 2a1b40e9 C3 scaffold+CLI · c9a979e6 C2 engine · bce7b6d8 / 1f9139d1 / e23b2b9a / 5f8a5160 wave-0 reds+fixtures
+- Lane briefs: `briefs/C-conformance.md`, `briefs/C2-conformance-impl.md`, `briefs/00-common.md`
+- Evidence directory: `openspec/changes/module-contract-v1/evidence/C/` (12 red/green transcripts)
+- Gate transcript tail (from the lane's report): pre-commit green on all six commits (ruff, ruff-format, detect-secrets, bandit, trufflehog, pyright, author, AWS-token, private-key). Final `just preflight` on tip 0bc20e4d: ruff clean; 1064 files formatted; pyright 0/0/0; pytest `1 failed, 7597 passed, 15 skipped, 813 deselected` — the one failure is the known pre-existing `test_fresh_install_scope.py::…virgin_home`; test-js, docs, release-consistency, spec-check run individually and green. Coordinator re-ran the lane + doctor suites on the tip: 112 passed; after merging the contributor guide from main: drift/docs 418 passed, strict docs green.
+- Lane's own declared gaps (verify, do not take on trust): MC009 mirrors the detect-secrets keyword regex family instead of depending on the package; doctor rows live under `deps` as `module_prereq_<tool>` (no `modules` category); `kubectl --version` is not a real flag so a present kubectl reports **warn**; scaffold ships `tests/check.sh` because MC012 forbids `*.py`; snapshot immutability is file-level 0o444/0o555; re-adding an id replaces the entry and drops the orphan snapshot; W must register `module_group` in `cli/__init__.py`.
+- Coordinator's own call: see `council/catch-rate.md` row C-review (written before dispatch).
+- Output file: `openspec/changes/module-contract-v1/council/2026-10-04-review-C-gpt-5.6-sol.md`

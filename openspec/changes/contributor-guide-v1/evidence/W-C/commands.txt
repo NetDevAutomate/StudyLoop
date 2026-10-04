@@ -1,0 +1,69 @@
+$ uv run --group dev pytest packages/studyloop/tests/test_adapter_parity.py -q
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:18Z
+...............                                                          [100%]
+15 passed in 0.85s
+
+$ uv run --group dev pytest packages/studyloop/tests/test_docs_harness_tier_contract.py -q
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:18Z
+................                                                         [100%]
+16 passed in 0.31s
+$ just test-content
+exit=0  sha=814783e5  utc=2026-10-04T19:21Z
+uv run --group dev pytest packages/studyloop/tests/test_content_cli.py packages/studyloop/tests/test_content_generators.py packages/studyloop/tests/test_content_generators_runner.py packages/studyloop/tests/test_content_generators_stub.py packages/studyloop/tests/test_content_job_runner.py packages/studyloop/tests/test_content_scope.py packages/studyloop/tests/test_content_storage.py packages/studyloop/tests/test_content_storage_merge.py packages/studyloop/tests/test_content_workflow.py
+============================= test session starts ==============================
+platform darwin -- Python 3.12.8, pytest-9.0.3, pluggy-1.6.0
+readiness budgets: unscaled (1.0x) — release configuration
+rootdir: /Users/ataylor/code/personal/tools/studyloop-wt/contributor-guide-c/packages/studyloop
+
+$ uv run --group dev pytest packages/studyloop/tests/test_content_schemas.py -q
+exit=0  sha=814783e5  utc=2026-10-04T19:21Z
+............................                                             [100%]
+28 passed in 0.37s
+
+$ just docs
+exit=0  sha=4edc78f6  utc=2026-10-04T19:24Z
+NO_MKDOCS_2_WARNING=1 uv run --extra docs mkdocs build --strict
+INFO    -  Cleaning site directory
+INFO    -  Building documentation to directory: /Users/ataylor/code/personal/tools/studyloop-wt/contributor-guide-c/site
+INFO    -  Doc file 'session-memory.md' contains a link to 'context-memory.md' which is excluded from the built site.
+INFO    -  Doc file 'troubleshooting.md' contains a link to 'adr/0005-retire-ttyd-browser-surface.md' which is excluded from the built site.
+
+$ uv run --group dev pytest packages/studyloop/tests/test_docs_drift.py packages/studyloop/tests/test_contributor_guide_drift.py packages/studyloop/tests/test_contributor_docs.py -q
+exit=1  sha=4edc78f6  utc=2026-10-04T19:24Z
+........................................................................ [ 18%]
+........................................................................ [ 36%]
+........................................................................ [ 54%]
+............................................................s..........s [ 72%]
+....s......................................FFFFFFF..F.FFFF.F.F.......... [ 90%]
+
+$ uv run --group dev pytest packages/studyloop/tests/test_docs_drift.py packages/studyloop/tests/test_contributor_docs.py -q
+exit=0  sha=4edc78f6  utc=2026-10-04T19:24Z
+........................................................................ [ 23%]
+........................................................................ [ 47%]
+........................................................................ [ 71%]
+............................................................s..........s [ 95%]
+....s..........                                                          [100%]
+
+$ rg -n 'def load_practice_deck' packages
+exit=0  sha=767806c8  utc=2026-10-04T19:26Z
+packages/studyloop/src/studyloop/learning/practice.py:44:def load_practice_deck(path: Path) -> PracticeDeck:
+
+$ rg -n 'def build_now_plan' packages
+exit=0  sha=767806c8  utc=2026-10-04T19:26Z
+packages/studyloop/src/studyloop/learning/decision.py:1642:def build_now_plan(
+
+$ rg -n 'build_now_plan' packages/studyloop/src/studyloop/cli packages/studyloop/src/studyloop/web/routes packages/studyloop/src/studyloop/mcp
+exit=0  sha=767806c8  utc=2026-10-04T19:26Z
+packages/studyloop/src/studyloop/mcp/tools.py:730:            build_now_plan,
+packages/studyloop/src/studyloop/mcp/tools.py:746:        plan = build_now_plan(
+packages/studyloop/src/studyloop/web/routes/now.py:7:from studyloop.learning.decision import build_now_plan
+packages/studyloop/src/studyloop/web/routes/now.py:23:    plan = build_now_plan(
+packages/studyloop/src/studyloop/cli/_now.py:13:from studyloop.learning import EnergyLevel, InterleaveMode, Modality, build_now_plan
+
+$ just spec-check
+exit=0  sha=ae8bb7a7  utc=2026-10-04T19:28Z
+if command -v openspec >/dev/null 2>&1; then openspec validate --specs --all; else echo "openspec CLI not found — skipping spec validation (see the OpenSpec section of docs/contributing.md)"; fi
+- Validating...
+✓ spec/active-learning-decisions
+  ℹ [INFO] requirements[0]: Requirement text is very long (>500 characters). Consider breaking it down.
+  ℹ [INFO] requirements[5]: Requirement text is very long (>500 characters). Consider breaking it down.

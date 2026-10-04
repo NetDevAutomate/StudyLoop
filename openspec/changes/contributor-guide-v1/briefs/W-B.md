@@ -19,7 +19,7 @@ the pytest path) → *what reviewers look for* (3-5 bullets).
 
 ## Pages
 
-1. **`contributor-cli.md`** — Typer commands under `cli/_*.py`, how they are mounted in
+1. **`contributor-cli.md`** — Click commands (`@click.command`, NOT Typer) under `cli/_*.py`, how they are mounted in
    `cli/__init__.py` (read it: lazy mounting), `--help` text is documentation (the drift test
    resolves every fenced `studyloop …` example, so `--help` must be true), the CliRunner test.
 2. **`contributor-web.md`** — FastAPI route under `web/routes/`, registration in `web/app.py`, the

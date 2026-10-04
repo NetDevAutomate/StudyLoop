@@ -1,0 +1,195 @@
+# W-A receipts (design.md §6; 00-common.md §3). Every command below was executed in the W-A
+# worktree with `env -u VIRTUAL_ENV` prefixed and TMPDIR="$(getconf DARWIN_USER_TEMP_DIR)" exported
+# (00-common.md §0 sandbox facts); the `$` line is the command exactly as the page shows it.
+
+$ uv --version
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:19Z
+uv 0.11.11 (ed7b06001 2026-05-06 aarch64-apple-darwin)
+
+$ just --version
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:19Z
+just 1.58.0
+
+$ tmux -V
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:19Z
+tmux 3.7b
+
+$ node --version
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:19Z
+v26.7.0
+
+$ cat .python-version
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:19Z
+3.12
+
+$ just sync-dev
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:19Z
+uv sync --all-packages --group dev
+Resolved 203 packages in 4ms
+Checked 159 packages in 15ms
+
+$ uv run python -c 'import studyloop; print(studyloop.__file__)'
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:19Z
+/Users/ataylor/code/personal/tools/studyloop-wt/contributor-guide-a/packages/studyloop/src/studyloop/__init__.py
+
+$ uv run --group dev playwright install chromium
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:19Z
+(no output)
+
+$ uv run studyloop --version
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:19Z
+studyloop, version 0.5.0
+
+$ uv run studyloop doctor
+exit=1  sha=f2e1c70e  utc=2026-10-04T19:19Z
+                                studyloop doctor
+┏━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ St… ┃ Check                 ┃ Details               ┃ Fix                    ┃
+┡━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━┩
+│  ✓  │ core/python_version   │ Python 3.12.8         │                        │
+
+$ just test-js
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:19Z
+node --test packages/studyloop/tests/js/*.test.js
+✔ extractChunkText: single content object (0.350042ms)
+✔ extractChunkText: content array takes the first entry (0.055292ms)
+✔ extractChunkText: flat payload (0.53125ms)
+✔ extractChunkText: malformed frames yield empty string, never throw (0.088458ms)
+
+$ uv run --group dev pre-commit install
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:21Z
+Using CPython 3.12.8
+Creating virtual environment at: .venv
+   Building studyloop-workspace @ file:///private/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/wa/clone
+      Built studyloop-workspace @ file:///private/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/wa/clone
+Installed 126 packages in 759ms
+
+$ uv run studyloop doctor --help
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:21Z
+Usage: studyloop doctor [OPTIONS]
+
+  Check installation health and report issues.
+
+Options:
+
+$ uv run studyloop doctor --quiet
+exit=1  sha=f2e1c70e  utc=2026-10-04T19:22Z
+63 passed, 9 warnings, 2 info. Run 'studyloop doctor --fix' to fix 5 issues.
+
+$ just --list
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:23Z
+Available recipes:
+    audit
+    audit-full
+    build-release
+    check-semantic-profile
+
+$ uv run --group dev pytest packages/studyloop/tests/test_session_state.py::test_read_session_state_corrupt_json -x -vv -p no:cacheprovider
+exit=0  sha=684e4041  utc=2026-10-04T19:25Z
+============================= test session starts ==============================
+platform darwin -- Python 3.12.8, pytest-9.0.3, pluggy-1.6.0 -- /Users/ataylor/code/personal/tools/studyloop-wt/contributor-guide-a/.venv/bin/python
+readiness budgets: unscaled (1.0x) — release configuration
+rootdir: /Users/ataylor/code/personal/tools/studyloop-wt/contributor-guide-a/packages/studyloop
+configfile: pyproject.toml
+
+$ uv run --group dev pytest packages/studyloop/tests/test_session_state.py -x -q -p no:cacheprovider
+exit=0  sha=684e4041  utc=2026-10-04T19:25Z
+.............................................                            [100%]
+45 passed in 0.38s
+
+$ uv run --group dev pre-commit run --files docs/contributor-debugging.md
+exit=1  sha=684e4041  utc=2026-10-04T19:26Z
+trim trailing whitespace..........................................................Failed
+- hook id: trailing-whitespace
+- exit code: 1
+- files were modified by this hook
+
+
+$ uv run --group dev pre-commit run --files docs/contributor-debugging.md
+exit=0  sha=684e4041  utc=2026-10-04T19:26Z
+trim trailing whitespace..........................................................Passed
+fix end of files..................................................................Passed
+check yaml....................................................(no files to check)Skipped
+check for added large files.......................................................Passed
+check for merge conflicts.........................................................Passed
+
+$ just release-consistency
+exit=0  sha=19b747e0  utc=2026-10-04T19:28Z
+uv run python scripts/check-release-consistency.py --skip-wheel
+release consistency passed for studyloop 0.5.0
+
+$ git log -1 --format='%h %s' e659f8cf
+exit=0  sha=8016cf8b  utc=2026-10-04T19:31Z
+e659f8cf fix(web): give the voice health probe a budget a healthy host fits in
+
+$ git log -1 --format='%h %s' 019624c3
+exit=0  sha=8016cf8b  utc=2026-10-04T19:31Z
+019624c3 fix(mcp): record_teachback refuses blank concept/topic and names its failure honestly
+
+$ git log -1 --format='%h %s' 93f30789
+exit=0  sha=8016cf8b  utc=2026-10-04T19:31Z
+93f30789 fix(web): revalidate CSS and JS before reuse, like the page itself
+
+$ git log -1 --format='%h %s' 711459c1
+exit=0  sha=8016cf8b  utc=2026-10-04T19:31Z
+711459c1 feat(kiro): web ACP sessions run StudyLoop's own `studyloop` agent
+
+$ git log -1 --format='%h %s' fa5d76be
+exit=0  sha=8016cf8b  utc=2026-10-04T19:31Z
+fa5d76be test(now): RED — a plan-related active primary carries a warm-up first move on its own material (rubric 3c (e1))
+
+$ git log -1 --format='%h %s' 2883588f
+exit=0  sha=8016cf8b  utc=2026-10-04T19:31Z
+2883588f Merge PR #40 (fix/ws-drained-pull-future): read a done pull future on every WS pump exit
+
+$ git log -1 --format='%h %s' 6b6a35bd
+exit=0  sha=8016cf8b  utc=2026-10-04T19:31Z
+6b6a35bd Merge PR #41 (feat/learning-tier-fed): item 1, the mentor writes (S1-0 through council review 9)
+
+$ git log -1 --format='%h %s' 8d31f1ec
+exit=0  sha=8016cf8b  utc=2026-10-04T19:31Z
+8d31f1ec Merge PR #42 (fix/coverage-gate-selftest-timeout): coverage-gate self-test carries its own timeout
+
+$ git log -n 300 --format=%s | awk '{ n=length($0); if (n>max) max=n; sum+=n; if (n<=72) a++; if (n<=100) b++; if (n<=120) c++ } END { printf "n=%d max=%d mean=%.1f fit72=%d fit100=%d fit120=%d\n", NR, max, sum/NR, a, b, c }'
+exit=0  sha=8016cf8b  utc=2026-10-04T19:31Z
+n=300 max=163 mean=90.5 fit72=68 fit100=209 fit120=265
+
+$ git log -n 300 --format=%s | awk '{ print length($0) }' | sort -n | awk '{ a[NR]=$1 } END { print "median=" a[int((NR+1)/2)] " p90=" a[int(NR*0.9)] }'
+exit=0  sha=8016cf8b  utc=2026-10-04T19:31Z
+median=85 p90=124
+
+$ git remote add upstream https://github.com/NetDevAutomate/StudyLoop.git
+exit=0  sha=b20d4029  utc=2026-10-04T19:35Z
+(no output)
+
+$ git fetch upstream
+exit=0  sha=b20d4029  utc=2026-10-04T19:35Z
+From https://github.com/NetDevAutomate/StudyLoop
+ * [new branch]        fix/voice-csp-media-src -> upstream/fix/voice-csp-media-src
+ * [new branch]        main       -> upstream/main
+
+$ git switch -c docs/first-contribution upstream/main
+exit=1  sha=b20d4029  utc=2026-10-04T19:35Z
+error: Your local changes to the following files would be overwritten by checkout:
+	docs/contributor-debugging.md
+Please commit your changes or stash them before you switch branches.
+Aborting
+
+$ git switch -c docs/first-contribution upstream/main
+exit=0  sha=b20d4029  utc=2026-10-04T19:35Z
+Switched to a new branch 'docs/first-contribution'
+branch 'docs/first-contribution' set up to track 'upstream/main'.
+
+$ just preflight
+exit=1  sha=d4492e53  utc=2026-10-04T19:49Z
+uv run --group dev ruff check .
+All checks passed!
+uv run --group dev ruff format --check .
+1053 files already formatted
+uv run --group dev pyright
+# just preflight ran in the background from 19:34Z (started at sha 8016cf8b, finished with d4492e53 as HEAD); 'just test' ended
+# '17 failed, 7538 passed, 16 skipped, 813 deselected in 934.21s'. 12 failures are the sibling writers' GUIDE-STUB pages
+# (test_contributor_guide_drift.py test_structure / test_module_pages_stay_proposals), 1 is the pre-recorded sandbox failure
+# (test_fresh_install_scope.py virgin_home, tmux shim), 4 were W-A's own router regressions (test_docs_harness_contract.py x2,
+# test_docs_harness_tier_contract.py::TestContributingSplitSentence x2) -- fixed in the next commit by restoring the six-harness
+# tier sentence; those four files re-run green. The remaining preflight recipes did not run because 'test' failed first.
