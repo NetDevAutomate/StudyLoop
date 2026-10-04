@@ -83,3 +83,32 @@ Available recipes:
     audit-full
     build-release
     check-semantic-profile
+
+$ uv run --group dev pytest packages/studyloop/tests/test_session_state.py::test_read_session_state_corrupt_json -x -vv -p no:cacheprovider
+exit=0  sha=684e4041  utc=2026-10-04T19:25Z
+============================= test session starts ==============================
+platform darwin -- Python 3.12.8, pytest-9.0.3, pluggy-1.6.0 -- /Users/ataylor/code/personal/tools/studyloop-wt/contributor-guide-a/.venv/bin/python
+readiness budgets: unscaled (1.0x) — release configuration
+rootdir: /Users/ataylor/code/personal/tools/studyloop-wt/contributor-guide-a/packages/studyloop
+configfile: pyproject.toml
+
+$ uv run --group dev pytest packages/studyloop/tests/test_session_state.py -x -q -p no:cacheprovider
+exit=0  sha=684e4041  utc=2026-10-04T19:25Z
+.............................................                            [100%]
+45 passed in 0.38s
+
+$ uv run --group dev pre-commit run --files docs/contributor-debugging.md
+exit=1  sha=684e4041  utc=2026-10-04T19:26Z
+trim trailing whitespace..........................................................Failed
+- hook id: trailing-whitespace
+- exit code: 1
+- files were modified by this hook
+
+
+$ uv run --group dev pre-commit run --files docs/contributor-debugging.md
+exit=0  sha=684e4041  utc=2026-10-04T19:26Z
+trim trailing whitespace..........................................................Passed
+fix end of files..................................................................Passed
+check yaml....................................................(no files to check)Skipped
+check for added large files.......................................................Passed
+check for merge conflicts.........................................................Passed
