@@ -1,14 +1,13 @@
 """Red tests for ``studyloop module check`` (proposal §6, MC001-MC016).
 
-Wave 0 (C1) of module-contract v1, lane C. Everything here is expected to fail at this
-commit, for two different reasons that the evidence transcript keeps apart:
+Wave 0 (C1) of module-contract v1, lane C. Two groups, kept apart in the evidence:
 
 - the 33 engine tests fail with ``NotImplementedError`` from the ``check_module`` stub
-  until C2 lands the engine;
-- the fixture-integrity tests fail until S2 (``feat/module-schema``) reaches this branch:
-  they validate the fixture decks against ``PracticeDeck`` *with* the §5.3 fields and read
-  ``SLUG_PATTERN`` / ``ScaffoldingLevel`` from ``studyloop.content.schemas``, none of which
-  exist at the base of this branch.
+  until C2 lands the engine (``evidence/C/check-16-rules.red.txt``);
+- the five fixture-integrity tests validate the fixtures against S2's schema --
+  ``PracticeDeck`` with the §5.3 fields, ``SLUG_PATTERN``, ``ScaffoldingLevel``. They were
+  red before ``feat/module-schema`` merged (``evidence/C/schema-fixture-integrity.red.txt``)
+  and pass once it has; they guard the fixtures, not the engine.
 
 Fixture layout: ``tests/fixtures/modules/valid-scaffold`` plus ``mcNNN/broken`` (breaks
 exactly rule ``MCNNN``) and ``mcNNN/repaired`` (the minimal repair; a valid module). See the
@@ -17,7 +16,6 @@ README in that directory for the per-rule faults.
 
 from __future__ import annotations
 
-import importlib
 import json
 import re
 from pathlib import Path
@@ -27,7 +25,7 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from studyloop.content.schemas import PracticeDeck
+from studyloop.content.schemas import SLUG_PATTERN, PracticeDeck, ScaffoldingLevel
 from studyloop.modules.check import RULE_IDS, CheckReport, check_module
 
 FIXTURES = Path(__file__).parent / "fixtures" / "modules"
@@ -72,18 +70,8 @@ def test_repaired_twin_passes_every_rule(rule: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Fixture integrity against the §5.3 schema (S2) -- red until S has merged
+# Fixture integrity against the §5.3 schema (S2)
 # ---------------------------------------------------------------------------
-#
-# ``SLUG_PATTERN`` and ``ScaffoldingLevel`` do not exist in ``studyloop.content.schemas``
-# at this branch's base; they land with S2. They are read through ``importlib`` so this
-# file type-checks at the commit stage (pyright runs there) while the tests still fail on
-# the missing name at runtime -- that failure is this wave's red for them. Once S has
-# merged these become plain imports.
-
-
-def _schemas() -> Any:
-    return importlib.import_module("studyloop.content.schemas")
 
 
 def _load_json(path: Path) -> dict[str, Any]:
@@ -133,13 +121,13 @@ def test_mc014_deck_validates_but_lacks_its_task_id() -> None:
     (``id: SlugId | None``); duplicate and malformed ids are schema rejections.
     """
     [deck] = _deck_files(_broken("MC014"))
-    dumped = PracticeDeck.model_validate(_load_json(deck)).model_dump(by_alias=True)
-    assert dumped.get("id") == "echo-basics"
-    assert [task.get("id") for task in dumped["tasks"]] == [None]
+    parsed = PracticeDeck.model_validate(_load_json(deck))
+    assert parsed.id == "echo-basics"
+    assert [task.id for task in parsed.tasks] == [None]
 
 
 def test_valid_fixture_ids_are_slug_valid() -> None:
-    pattern = re.compile(_schemas().SLUG_PATTERN)
+    pattern = re.compile(SLUG_PATTERN)
     bad: list[str] = []
     for module in _VALID_MODULES:
         ids: list[tuple[str, Any]] = [("module.yaml", _manifest_id(module))]
@@ -156,7 +144,7 @@ def test_valid_fixture_ids_are_slug_valid() -> None:
 
 
 def test_fixture_scaffolding_levels_are_in_the_enum() -> None:
-    levels = set(get_args(_schemas().ScaffoldingLevel))
+    levels = set(get_args(ScaffoldingLevel))
     assert levels == {"guided", "hinted", "unaided", "exam"}
     seen: set[Any] = set()
     for module in [*_VALID_MODULES, *(_broken(rule) for rule in RULE_IDS)]:
