@@ -1,5 +1,5 @@
 env -u VIRTUAL_ENV uv run pytest "packages/studyloop/tests/integration/test_module_delivery_transports.py::test_pty_concurrent_learner_input_never_lands_inside_block" -m integration -q -p no:cacheprovider
-# worktree: module-mentor-delivery  HEAD: 47c0b13b  TMPDIR=$(getconf DARWIN_USER_TEMP_DIR)
+# MUTATION EVIDENCE (lock neutralised at 47c0b13b), not a pre-change red -- the pre-change red is integration-pty-cross-caller-lock.prechange.red.txt (T-review finding 4). worktree: module-mentor-delivery  HEAD: 47c0b13b  TMPDIR=$(getconf DARWIN_USER_TEMP_DIR)
 # Run against pty.py with the per-transport write lock NEUTRALISED by this uncommitted one-line patch
 # (47c0b13b already carries the lock; this is the state the lock exists to fix -- full write loop, no lock):
 #   @@ -271,7 +271,7 @@ class PTYTransport:
