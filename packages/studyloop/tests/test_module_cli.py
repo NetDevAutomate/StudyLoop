@@ -1,0 +1,126 @@
+"""CLI tests for the ``studyloop module`` group (module-contract v1, lane C).
+
+The group is exported from ``studyloop.cli._module`` and NOT registered in ``cli/__init__.py``
+(lane W registers it at assembly), so every test drives the group object directly with
+``click.testing.CliRunner``. ``--help`` text is documentation: the docs-drift test will
+resolve fenced ``studyloop module ...`` examples against it once registered.
+"""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+from click.testing import CliRunner
+
+from studyloop.cli import cli as root_cli
+from studyloop.cli._module import module_group
+from studyloop.modules.check import check_module
+
+FIXTURES = Path(__file__).parent / "fixtures" / "modules"
+VALID = FIXTURES / "valid-scaffold"
+
+
+def _run(*args: str):
+    return CliRunner().invoke(module_group, list(args))
+
+
+# ---------------------------------------------------------------------------
+# the group itself
+# ---------------------------------------------------------------------------
+
+
+def test_group_is_exported_but_not_registered() -> None:
+    """W registers the group at assembly; until then the root CLI must not know ``module``."""
+    assert module_group.name == "module"
+    assert "module" not in root_cli._lazy_subcommands  # type: ignore[attr-defined]
+    result = CliRunner().invoke(root_cli, ["module", "--help"])
+    assert result.exit_code == 2
+    assert "No such command 'module'" in result.output
+
+
+def test_help_lists_the_lifecycle_commands() -> None:
+    result = _run("--help")
+    assert result.exit_code == 0, result.output
+    for command in ("check", "new"):
+        assert command in result.output
+
+
+# ---------------------------------------------------------------------------
+# module check
+# ---------------------------------------------------------------------------
+
+
+def test_check_exits_0_on_a_conforming_module() -> None:
+    result = _run("check", str(VALID))
+    assert result.exit_code == 0, result.output
+    assert "ok" in result.output
+
+
+def test_check_exits_1_and_names_the_rule_file_and_line() -> None:
+    result = _run("check", str(FIXTURES / "mc002" / "broken"))
+    assert result.exit_code == 1
+    assert "MC002" in result.output
+    assert "module.yaml:2" in result.output
+
+
+def test_check_json_matches_the_engine_report() -> None:
+    broken = FIXTURES / "mc015" / "broken"
+    result = _run("check", "--json", str(broken))
+    assert result.exit_code == 1
+    payload = json.loads(result.output)
+    assert payload == check_module(broken).to_dict()
+    [finding] = payload["findings"]
+    assert finding["rule_id"] == "MC015"
+    assert finding["path"] == "decks/echo-basics.json"
+    assert isinstance(finding["line"], int)
+
+
+def test_check_json_on_a_conforming_module_is_ok_with_no_findings() -> None:
+    result = _run("check", "--json", str(VALID))
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.output) == {"ok": True, "findings": []}
+
+
+def test_check_exits_2_when_the_path_is_not_a_directory(tmp_path: Path) -> None:
+    result = _run("check", str(tmp_path / "missing"))
+    assert result.exit_code == 2
+    assert "not a directory" in result.output
+
+
+# ---------------------------------------------------------------------------
+# module new
+# ---------------------------------------------------------------------------
+
+
+def test_new_scaffolds_into_dir_and_the_result_passes_check(tmp_path: Path) -> None:
+    result = _run("new", "my-drills", "--dir", str(tmp_path))
+    assert result.exit_code == 0, result.output
+    module = tmp_path / "my-drills"
+    assert (module / "module.yaml").is_file()
+    assert check_module(module).ok is True
+    check = _run("check", str(module))
+    assert check.exit_code == 0, check.output
+
+
+def test_new_defaults_to_the_current_directory(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    result = _run("new", "here-drills")
+    assert result.exit_code == 0, result.output
+    assert (tmp_path / "here-drills" / "decks").is_dir()
+
+
+def test_new_refuses_a_bad_id_and_writes_nothing(tmp_path: Path) -> None:
+    result = _run("new", "Bad Id", "--dir", str(tmp_path))
+    assert result.exit_code == 1
+    assert "not a module id" in result.output
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_new_refuses_an_occupied_destination(tmp_path: Path) -> None:
+    (tmp_path / "taken").mkdir()
+    (tmp_path / "taken" / "keep.txt").write_text("keep", encoding="utf-8")
+    result = _run("new", "taken", "--dir", str(tmp_path))
+    assert result.exit_code == 1
+    assert "not empty" in result.output
+    assert (tmp_path / "taken" / "keep.txt").read_text(encoding="utf-8") == "keep"

@@ -1,0 +1,19 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_lifecycle.py packages/studyloop/tests/test_module_cli.py -q -p no:cacheprovider   # C3: scaffold + module check/new CLI
+.................                                                        [100%]
+17 passed in 0.47s
+# -- the scaffold, checked by the CLI --
+created <tmp>/demo-drills
+next: studyloop module check <tmp>/demo-drills
+exit 0
+{
+  "ok": true,
+  "findings": []
+}
+demo-drills/CHANGELOG.md
+demo-drills/decks/getting-started.json
+demo-drills/LICENSE
+demo-drills/mentor/brief.md
+demo-drills/module.yaml
+demo-drills/README.md
+demo-drills/scripts/check.sh
+demo-drills/tests/check.sh
