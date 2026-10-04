@@ -1,0 +1,12 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_runner.py::test_drill_writes_no_observation -p no:cacheprovider --no-header -q --tb=short
+# worktree studyloop-wt/module-runner at efe5bc76 (stubs committed; today's learning/practice.py untouched); TMPDIR=$(getconf DARWIN_USER_TEMP_DIR); 2026-10-04
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_______________________ test_drill_writes_no_observation _______________________
+packages/studyloop/tests/test_module_runner.py:244: in test_drill_writes_no_observation
+    assert after == before, (
+E   AssertionError: a passing check wrote 1 observation row(s) into learner history (learning/practice.py _record_attempt); §5.7 forbids any -- a check is transient
+E   assert 1 == 0
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_module_runner.py::test_drill_writes_no_observation
+1 failed in 0.52s
