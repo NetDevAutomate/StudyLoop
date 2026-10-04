@@ -19,3 +19,27 @@ $ uv run --group dev pytest packages/studyloop/tests/test_content_schemas.py -q
 exit=0  sha=814783e5  utc=2026-10-04T19:21Z
 ............................                                             [100%]
 28 passed in 0.37s
+
+$ just docs
+exit=0  sha=4edc78f6  utc=2026-10-04T19:24Z
+NO_MKDOCS_2_WARNING=1 uv run --extra docs mkdocs build --strict
+INFO    -  Cleaning site directory
+INFO    -  Building documentation to directory: /Users/ataylor/code/personal/tools/studyloop-wt/contributor-guide-c/site
+INFO    -  Doc file 'session-memory.md' contains a link to 'context-memory.md' which is excluded from the built site.
+INFO    -  Doc file 'troubleshooting.md' contains a link to 'adr/0005-retire-ttyd-browser-surface.md' which is excluded from the built site.
+
+$ uv run --group dev pytest packages/studyloop/tests/test_docs_drift.py packages/studyloop/tests/test_contributor_guide_drift.py packages/studyloop/tests/test_contributor_docs.py -q
+exit=1  sha=4edc78f6  utc=2026-10-04T19:24Z
+........................................................................ [ 18%]
+........................................................................ [ 36%]
+........................................................................ [ 54%]
+............................................................s..........s [ 72%]
+....s......................................FFFFFFF..F.FFFF.F.F.......... [ 90%]
+
+$ uv run --group dev pytest packages/studyloop/tests/test_docs_drift.py packages/studyloop/tests/test_contributor_docs.py -q
+exit=0  sha=4edc78f6  utc=2026-10-04T19:24Z
+........................................................................ [ 23%]
+........................................................................ [ 47%]
+........................................................................ [ 71%]
+............................................................s..........s [ 95%]
+....s..........                                                          [100%]
