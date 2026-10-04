@@ -17,3 +17,4 @@ spec-check: Totals: 23 passed, 2 failed (25 items) — module-contract-v1 and co
 
 ## pytest -m "" test summary for the lane's own files (b462ed42)
 test_module_schema.py: 68 passed ; test_lane_ownership.py: 40 passed (after the S-review's precedence test)
+spec-check after merging main (f800dcf7): Totals: 25 passed, 0 failed (25 items)
