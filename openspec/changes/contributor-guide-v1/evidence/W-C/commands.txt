@@ -1,0 +1,9 @@
+$ uv run --group dev pytest packages/studyloop/tests/test_adapter_parity.py -q
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:18Z
+...............                                                          [100%]
+15 passed in 0.85s
+
+$ uv run --group dev pytest packages/studyloop/tests/test_docs_harness_tier_contract.py -q
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:18Z
+................                                                         [100%]
+16 passed in 0.31s
