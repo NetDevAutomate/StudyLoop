@@ -11,7 +11,7 @@ See private-docs/2026-05-09-refactor-agent-session-transport-plan.md
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Any, Literal, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -179,3 +179,68 @@ class AgentSessionTransport(Protocol):
     async def __aenter__(self) -> AgentSessionTransport: ...
 
     async def __aexit__(self, *exc_info: object) -> None: ...
+
+
+# --- Block delivery (ADR-0012; council M0 2026-10-04 Q1/Q3/Q5) --------------
+#
+# A ``practice_check`` envelope is not learner input: it must arrive whole, as
+# one block, and the caller must learn whether it did. ``send_input`` keeps its
+# fire-and-forget ``-> None`` contract for keystrokes (the Protocol above is
+# unchanged); transports that can carry a block implement ``BlockDeliverer``
+# beside it. The delivery module (``session/module_delivery.py``) duck-types it
+# the way ``_grace._LivenessProbe`` duck-types ``is_running()`` -- a transport
+# without it is reported as ``unsupported_framing``, never written to blind.
+
+#: How the renderer frames an envelope for a transport. ``pty`` = DEC 2004
+#: bracketed paste + CR (the child has enabled mode 2004); ``pty-line`` = the
+#: one-printable-line fallback + CR (mode 2004 off); ``acp`` = bare labelled
+#: text (a ``session/prompt`` is already one turn); ``plain`` = bare labelled
+#: text for doubles and unknown adapters.
+BlockFraming = Literal["pty", "pty-line", "acp", "plain"]
+
+DeliveryWriteStatus = Literal["written", "closed", "timed_out", "unsupported_framing", "error"]
+
+
+@dataclass(frozen=True)
+class DeliveryWrite:
+    """What became of one ``deliver_block`` call.
+
+    - ``written``: every byte reached the child (PTY) / the prompt turn
+      completed (ACP).
+    - ``closed``: the write itself failed because the child is gone
+      (``EIO``/``EBADF``/``EPIPE`` on the PTY master; subprocess exit on ACP).
+      Observed from the write, not guessed from a pre-flight probe (M0 Q7.1).
+    - ``timed_out``: ACP only -- no response to ``session/prompt`` within the
+      bound; the turn was cancelled and the outcome is unknown (M0 Q5).
+    - ``unsupported_framing``: the transport has no framing for a block.
+    - ``error``: anything else; ``detail`` says what.
+    """
+
+    status: DeliveryWriteStatus
+    detail: str = ""
+
+
+@runtime_checkable
+class BlockDeliverer(Protocol):
+    """Optional transport capability: deliver one bounded block as data.
+
+    Not on ``AgentSessionTransport`` -- adding it there would fail structural
+    checks for doubles and adapters that do not carry blocks. ``PTYTransport``
+    and ``ACPTransport`` implement it; ``module_delivery.deliver`` is its only
+    caller. Ordinary learner input never goes through ``deliver_block``.
+    """
+
+    @property
+    def block_framing(self) -> BlockFraming:
+        """The framing the renderer must use for this transport right now."""
+        ...
+
+    async def deliver_block(self, data: bytes) -> DeliveryWrite:
+        """Write *data* as one contiguous block and report what happened.
+
+        The whole buffer or nothing observable: a transport that cannot keep
+        the block contiguous against concurrent ``send_input`` calls, or
+        cannot tell a closed child from a successful write, does not satisfy
+        this contract.
+        """
+        ...

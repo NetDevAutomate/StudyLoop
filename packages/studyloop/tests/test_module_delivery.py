@@ -1,34 +1,50 @@
-"""Unit tests and test doubles for ``practice_check`` delivery (lane T, wave 0).
+"""Unit tests and test doubles for ``practice_check`` delivery (lane T).
 
-Doubles: ``FakeTransport`` records every ``send_input`` call and can be told it has
-closed; ``FakeActiveSession`` mirrors ``session/active.py``'s dataclass shape. Wave 1
-(T2) uses them to verify ``studyloop.session.module_delivery`` without a PTY or a
-subprocess.
+Doubles: ``FakeTransport`` records every ``send_input`` / ``deliver_block`` call and
+can be told it has closed; ``FakeActiveSession`` mirrors ``session/active.py``'s
+dataclass shape. They verify ``studyloop.session.module_delivery`` without a PTY or a
+subprocess; the real transports are exercised in
+``tests/integration/test_module_delivery_transports.py``.
 
-The tests encode what ADR-0012 decides for the three M0 scenarios in
-``openspec/changes/module-contract-v1/specs/session-transports/spec.md``. They resolve
-their subject through ``_seam()``: once ``studyloop.session.module_delivery`` exists its
-``render_envelope`` / ``deliver`` are used; until then the seam is today's behaviour --
-raw text through ``transport.send_input`` (``web/routes/session/_ws.py:198-201``) and no
-delivery outcome at all -- so each test is red on its assertion, not on an import, and
-wave 1 turns it green without editing the assertions. ``test_doubles_record_calls`` is
-green now: it proves the doubles themselves.
+Wave 0 wrote the first seven tests against a seam (today's raw ``send_input``) so
+they were red on their assertions; wave 1 (T2) retired the seam -- the module under
+test now exists -- and added the tests council M0 asked for (header never dropped
+under truncation; module/attempt id bounds; control bytes stripped; one renderer,
+every framing). Red transcripts: ``openspec/changes/module-contract-v1/evidence/T/``.
 """
 
 from __future__ import annotations
 
-import importlib
-from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from studyloop.session.transport import SessionConfig, Started, Stopped, TransportEventT
+from studyloop.session import module_delivery
+from studyloop.session.module_delivery import (
+    ENVELOPE_BOUND_BYTES,
+    DeliveryOutcome,
+    EnvelopeValidationError,
+    PracticeCheckEnvelope,
+    deliver,
+    deliver_to_active_session,
+    render_envelope,
+    validate_envelope,
+)
+from studyloop.session.transport import (
+    BlockFraming,
+    DeliveryWrite,
+    SessionConfig,
+    Started,
+    Stopped,
+    TransportEventT,
+)
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
 
 # --- ADR-0012 constants -------------------------------------------------------------
 
-ENVELOPE_BOUND_BYTES = 8192
 BEGIN_SENTINEL = "<<<studyloop:practice_check v1"
 END_SENTINEL = "<<<end studyloop:practice_check>>>"
 PASTE_BEGIN = b"\x1b[200~"
@@ -39,13 +55,17 @@ PASTE_END = b"\x1b[201~"
 
 
 class FakeTransport:
-    """``AgentSessionTransport`` double that records ``send_input`` and can be closed.
+    """``AgentSessionTransport`` + ``BlockDeliverer`` double.
 
-    ``running`` mirrors ``PTYTransport.is_running()`` (pty.py:318) -- the duck-typed
-    liveness probe ``_grace._LivenessProbe`` already looks for. ``send_input`` on a
-    closed fake records nothing and returns ``None``, exactly as pty.py:357-360 does
-    when the child is gone, so a delivery module that trusts the call is caught.
+    ``running`` mirrors ``PTYTransport.is_running()`` (pty.py:318). ``send_input`` on
+    a closed fake records nothing and returns ``None``, exactly as pty.py did when the
+    child was gone, so a delivery module that trusts that call is caught.
+    ``deliver_block`` on a closed fake reports ``closed`` from the write, as M0 Q7.1
+    requires of the real transports; on a live one it records the block in ``sent``
+    (one entry per block) and reports ``written``.
     """
+
+    block_framing: BlockFraming = "plain"
 
     def __init__(self, *, running: bool = True, events: list[TransportEventT] | None = None):
         self.running = running
@@ -62,6 +82,12 @@ class FakeTransport:
         if not self.running:
             return
         self.sent.append(data)
+
+    async def deliver_block(self, data: bytes) -> DeliveryWrite:
+        if not self.running:
+            return DeliveryWrite(status="closed", detail="fake child is gone")
+        self.sent.append(data)
+        return DeliveryWrite(status="written", detail=f"{len(data)} bytes")
 
     async def resize(self, cols: int, rows: int) -> None:
         return
@@ -87,31 +113,48 @@ class FakeTransport:
         await self.end()
 
 
+class BlocklessTransport:
+    """A transport with no ``deliver_block`` at all -- a future adapter or a stub."""
+
+    def __init__(self) -> None:
+        self.sent: list[bytes] = []
+
+    async def start(self, config: SessionConfig) -> None:
+        return
+
+    async def send_input(self, data: bytes) -> None:
+        self.sent.append(data)
+
+    async def resize(self, cols: int, rows: int) -> None:
+        return
+
+    async def events(self) -> AsyncIterator[TransportEventT]:
+        return
+        yield  # pragma: no cover -- makes this an async generator
+
+    async def cancel(self) -> None:
+        return
+
+    async def end(self) -> None:
+        return
+
+    def is_running(self) -> bool:
+        return True
+
+    async def __aenter__(self) -> BlocklessTransport:
+        return self
+
+    async def __aexit__(self, *exc_info: object) -> None:
+        return
+
+
 @dataclass
 class FakeActiveSession:
     """Same three fields as ``session/active.py:50-54``; no lock, no state file."""
 
     study_session_id: str
-    transport: FakeTransport
+    transport: Any
     config: SessionConfig
-
-
-@dataclass(frozen=True)
-class PracticeCheckResult:
-    """Proposal §5.7's envelope fields as a test-local value (lane S owns the schema)."""
-
-    attempt_id: str
-    module_id: str
-    module_digest: str
-    deck_id: str
-    task_id: str
-    phase: str
-    exit_class: str
-    exit_code: int
-    duration_s: float
-    triggered_by: str
-    stdout: str
-    stderr: str
 
 
 def make_config() -> SessionConfig:
@@ -126,62 +169,34 @@ def make_config() -> SessionConfig:
     )
 
 
-def make_result(*, stdout: str = "ok\n", stderr: str = "") -> PracticeCheckResult:
-    return PracticeCheckResult(
-        attempt_id="att-0001",
-        module_id="kdrill",
-        module_digest="sha256:0123456789abcdef0123456789abcdef",
-        deck_id="deployments",
-        task_id="scale-to-three",
-        phase="check",
-        exit_class="failed",
-        exit_code=1,
-        duration_s=2.5,
-        triggered_by="learner",
-        stdout=stdout,
-        stderr=stderr,
-    )
+def make_fields(**overrides: Any) -> dict[str, Any]:
+    """The typed fields lane R6 posts and lane W hands to ``validate_envelope``."""
+    fields: dict[str, Any] = {
+        "module_id": "kdrill",
+        "module_digest": "sha256:0123456789abcdef0123456789abcdef",
+        "deck_id": "deployments",
+        "task_id": "scale-to-three",
+        "attempt_id": "att-0001",
+        "phase": "check",
+        "exit_class": "failed",
+        "exit_code": 1,
+        "duration_s": 2.5,
+        "stdout_tail": "ok\n",
+        "stderr_tail": "",
+        "triggered_by": "learner",
+    }
+    fields.update(overrides)
+    return fields
 
 
-def make_session(transport: FakeTransport) -> FakeActiveSession:
+def make_envelope(*, stdout: str = "ok\n", stderr: str = "") -> PracticeCheckEnvelope:
+    return PracticeCheckEnvelope(**make_fields(stdout_tail=stdout, stderr_tail=stderr))
+
+
+def make_session(transport: Any) -> FakeActiveSession:
     return FakeActiveSession(
         study_session_id="unit-session", transport=transport, config=make_config()
     )
-
-
-# --- The seam -----------------------------------------------------------------------
-
-Render = Callable[..., bytes]
-Deliver = Callable[[Any, PracticeCheckResult], Awaitable[Any]]
-
-
-def _render_plain(result: PracticeCheckResult) -> bytes:
-    """What a naive caller pushes through send_input today: the fields, raw, unbounded."""
-    return (
-        f"practice_check {result.module_id} {result.deck_id}/{result.task_id} "
-        f"{result.phase} {result.exit_class} ({result.exit_code})\n"
-        f"{result.stdout}\n{result.stderr}\n"
-    ).encode()
-
-
-def _seam() -> tuple[Render, Deliver, str]:
-    try:
-        mod = importlib.import_module("studyloop.session.module_delivery")
-    except ModuleNotFoundError:
-        mod = None
-    if mod is not None:
-        return mod.render_envelope, mod.deliver, "studyloop.session.module_delivery"
-
-    def _render_today(result: PracticeCheckResult, *, framing: str) -> bytes:
-        return _render_plain(result)
-
-    async def _deliver_today(session: Any, result: PracticeCheckResult) -> None:
-        if session is None:
-            return None  # today: no code runs, nothing is said
-        await session.transport.send_input(_render_plain(result))
-        return None  # today: send_input tells the caller nothing
-
-    return _render_today, _deliver_today, "today: raw send_input, no outcome (_ws.py:201)"
 
 
 # --- The doubles themselves (green) -------------------------------------------------
@@ -198,8 +213,10 @@ async def test_doubles_record_calls() -> None:
     assert [type(e).__name__ for e in seen] == ["Started", "Stopped"]
     await transport.end()
     await transport.send_input(b"after close")
-    assert transport.sent == [b"hello"], "a closed fake swallows input, as pty.py:357-360 does"
+    assert transport.sent == [b"hello"], "a closed fake swallows input, as pty.py:357-360 did"
     assert transport.is_running() is False
+    assert (await transport.deliver_block(b"block")).status == "closed"
+    assert transport.sent == [b"hello"], "a closed fake reports closed and records nothing"
 
 
 # --- Rendering (ADR-0012 Q1, Q3) ----------------------------------------------------
@@ -207,60 +224,167 @@ async def test_doubles_record_calls() -> None:
 
 def test_render_pty_envelope_is_one_bracketed_labelled_block() -> None:
     """Spec scenario "delivery on PTY": one bracketed-paste block, labelled, submitted once."""
-    render, _, seam = _seam()
-    data = render(make_result(), framing="pty")
+    data = render_envelope(make_envelope(), framing="pty")
     text = data.decode("utf-8", errors="replace")
     assert data.startswith(PASTE_BEGIN) and data.endswith(PASTE_END + b"\r"), (
-        f"[{seam}] PTY envelope is not one bracketed-paste block submitted once (ADR-0012 Q1): "
-        f"{data[:60]!r}"
+        f"PTY envelope is not one bracketed-paste block submitted once (ADR-0012 Q1): {data[:60]!r}"
     )
     assert BEGIN_SENTINEL in text and END_SENTINEL in text, (
-        f"[{seam}] envelope is not sentinel-labelled (ADR-0012 Q1)"
+        "envelope is not sentinel-labelled (ADR-0012 Q1)"
     )
     for needle in ("kdrill", "deployments/scale-to-three", "failed", "triggered_by: learner"):
-        assert needle in text, f"[{seam}] {needle!r} missing from the envelope header (Q3)"
+        assert needle in text, f"{needle!r} missing from the envelope header (Q3)"
 
 
 def test_render_acp_envelope_is_labelled_without_escape_bytes() -> None:
     """On ACP a session/prompt is already one turn: sentinels only, no ESC bracket."""
-    render, _, seam = _seam()
-    text = render(make_result(), framing="acp").decode("utf-8", errors="replace")
+    text = render_envelope(make_envelope(), framing="acp").decode("utf-8", errors="replace")
     assert text.startswith(BEGIN_SENTINEL) and text.rstrip().endswith(END_SENTINEL), (
-        f"[{seam}] ACP envelope is not sentinel-labelled (ADR-0012 Q1): {text[:60]!r}"
+        f"ACP envelope is not sentinel-labelled (ADR-0012 Q1): {text[:60]!r}"
     )
-    assert "\x1b" not in text, f"[{seam}] ESC bytes in an ACP envelope (bracket is PTY-only)"
+    assert "\x1b" not in text, "ESC bytes in an ACP envelope (bracket is PTY-only)"
 
 
 def test_render_cuts_stdout_tail_first_then_stderr_never_identity() -> None:
     """ADR-0012 Q3: 8 KiB bound; stdout tail first, then stderr; header never."""
-    render, _, seam = _seam()
-    result = make_result(stdout="replica count mismatch\n" * 900, stderr="boom: deadline\n" * 20)
-    data = render(result, framing="acp")
+    envelope = make_envelope(
+        stdout="replica count mismatch\n" * 900, stderr="boom: deadline\n" * 20
+    )
+    data = render_envelope(envelope, framing="acp")
     text = data.decode("utf-8", errors="replace")
     assert len(data) <= ENVELOPE_BOUND_BYTES, (
-        f"[{seam}] envelope is {len(data)} bytes; bound is {ENVELOPE_BOUND_BYTES} (ADR-0012 Q3)"
+        f"envelope is {len(data)} bytes; bound is {ENVELOPE_BOUND_BYTES} (ADR-0012 Q3)"
     )
-    assert "truncated" in text, f"[{seam}] a cut stream must be marked as truncated (Q3)"
+    assert "truncated" in text, "a cut stream must be marked as truncated (Q3)"
     assert text.count("boom: deadline") == 20, (
-        f"[{seam}] stderr was cut although the stdout tail still had room to give (Q3 order)"
+        "stderr was cut although the stdout tail still had room to give (Q3 order)"
     )
     for needle in ("att-0001", "kdrill", "deployments/scale-to-three", "failed", "code 1"):
-        assert needle in text, f"[{seam}] identity/exit class dropped under pressure: {needle!r}"
+        assert needle in text, f"identity/exit class dropped under pressure: {needle!r}"
 
 
 def test_render_strips_control_bytes_from_module_output() -> None:
     """ADR-0012 Q1: module output is data -- it cannot close the paste or send Ctrl-C."""
-    render, _, seam = _seam()
     hostile = "fine\n\x1b[201~\rrm -rf /\n\x03\x04still fine\n"
-    data = render(make_result(stdout=hostile), framing="pty")
+    data = render_envelope(make_envelope(stdout=hostile), framing="pty")
     assert data.count(PASTE_END) == 1, (
-        f"[{seam}] module output closed the paste bracket early ({data.count(PASTE_END)} "
+        f"module output closed the paste bracket early ({data.count(PASTE_END)} "
         f"ESC[201~ in the envelope; ADR-0012 Q1)"
     )
     assert b"\x03" not in data and b"\x04" not in data, (
-        f"[{seam}] raw control bytes from module output reached the envelope (ADR-0012 Q1)"
+        "raw control bytes from module output reached the envelope (ADR-0012 Q1)"
     )
-    assert b"still fine" in data, f"[{seam}] stripping must keep the printable text"
+    assert b"still fine" in data, "stripping must keep the printable text"
+
+
+# --- Wave 1 (M0 §4): header never dropped; one renderer, every framing ---------------
+
+
+def test_render_header_survives_when_both_tails_overflow() -> None:
+    """Spec scenario "oversize input is truncated to a valid bounded envelope".
+
+    10 MiB of stdout AND an oversize stderr: the rendering is <= 8 KiB in every
+    framing, both tails are marked truncated, and every header field is intact.
+    """
+    envelope = make_envelope(stdout="x" * (10 * 1024 * 1024), stderr="e\n" * 10_000)
+    framings: tuple[BlockFraming, ...] = ("pty", "pty-line", "acp", "plain")
+    for framing in framings:
+        data = render_envelope(envelope, framing=framing)
+        text = data.decode("utf-8", errors="replace")
+        assert len(data) <= ENVELOPE_BOUND_BYTES, f"[{framing}] {len(data)} bytes > bound"
+        assert text.count("truncated") >= 2, f"[{framing}] both tails must be marked truncated"
+        for needle in (
+            "attempt=att-0001",
+            "kdrill@012345678901",
+            "deployments/scale-to-three",
+            "phase: check",
+            "failed (code 1)",
+            "duration: 2.5s",
+            "triggered_by: learner",
+            END_SENTINEL,
+        ):
+            assert needle in text, f"[{framing}] header field dropped under pressure: {needle!r}"
+
+
+def test_one_renderer_every_framing_shares_one_body() -> None:
+    """M0 Q1/Q3: one renderer; the framings differ only in their wrapping."""
+    envelope = make_envelope(stdout="line one\nline two\n", stderr="warn\n")
+    plain = render_envelope(envelope, framing="plain")
+    acp = render_envelope(envelope, framing="acp")
+    pty = render_envelope(envelope, framing="pty")
+    line = render_envelope(envelope, framing="pty-line")
+
+    assert acp == plain, "ACP and plain are the same bare labelled text"
+    body = plain.decode()
+    assert pty == PASTE_BEGIN + body.rstrip("\n").encode() + PASTE_END + b"\r", (
+        "PTY framing is exactly the bracket around the same body, submitted once"
+    )
+    assert b"\x1b" not in plain and b"\x1b" not in line, "only the pty framing carries ESC"
+
+    one_line = line.decode()
+    assert one_line.endswith("\r") and one_line.count("\r") == 1, "one CR, at the end"
+    assert "\n" not in one_line, "mode 2004 off: output newlines are escaped, not sent"
+    assert one_line.startswith(BEGIN_SENTINEL) and END_SENTINEL in one_line, "sentinels kept"
+    assert "line one\\nline two" in one_line, "newlines are escaped as the two characters \\n"
+    assert body.replace("\n", "\\n").rstrip("\\n") in one_line, "same body, escaped"
+
+
+def test_render_bound_holds_in_one_line_framing_after_escaping() -> None:
+    """Escaping doubles every newline; the bound applies AFTER the framing transform."""
+    envelope = make_envelope(stdout="\n" * 9000, stderr="")
+    line = render_envelope(envelope, framing="pty-line")
+    assert len(line) <= ENVELOPE_BOUND_BYTES, f"{len(line)} bytes > bound after escaping"
+    assert b"\n" not in line and line.endswith(b"\r")
+
+
+# --- Validation (M0 §4: control strip, header bounds) --------------------------------
+
+
+def test_validate_accepts_the_documented_fields_and_forbids_extras() -> None:
+    envelope = validate_envelope(make_fields())
+    assert envelope == make_envelope()
+    with pytest.raises(EnvelopeValidationError, match="surprise"):
+        validate_envelope(make_fields(surprise="x"))
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        pytest.param("module_id", "m" * 64, id="module-id-64-chars"),
+        pytest.param("module_id", "Not-A-Slug", id="module-id-not-a-slug"),
+        pytest.param("attempt_id", "a" * 65, id="attempt-id-65-chars"),
+        pytest.param("attempt_id", "", id="attempt-id-empty"),
+        pytest.param("deck_id", "d" * 64, id="deck-id-64-chars"),
+        pytest.param("task_id", "has space", id="task-id-not-a-slug"),
+        pytest.param("module_digest", "md5:abc", id="digest-not-sha256"),
+        pytest.param("phase", "verify", id="phase-unknown"),
+        pytest.param("exit_class", "crashed", id="exit-class-unknown"),
+        pytest.param("exit_code", 70000, id="exit-code-out-of-range"),
+        pytest.param("duration_s", -1.0, id="duration-negative"),
+        pytest.param("triggered_by", "module", id="triggered-by-not-learner"),
+    ],
+)
+def test_validate_rejects_out_of_bound_header_fields(field: str, value: object) -> None:
+    """M0 Q6 caveat: module id <= 63 and attempt id <= 64 chars; every header field bounded."""
+    with pytest.raises(EnvelopeValidationError, match=field):
+        validate_envelope(make_fields(**{field: value}))
+
+
+def test_validate_accepts_bounds_inclusive_and_normalises_exit_class_case() -> None:
+    envelope = validate_envelope(
+        make_fields(module_id="m" * 63, attempt_id="a" * 64, exit_class="FAILED")
+    )
+    assert len(envelope.module_id) == 63 and len(envelope.attempt_id) == 64
+    assert envelope.exit_class == "failed", "lane R's upper-case class names are accepted"
+
+
+def test_validate_strips_control_bytes_from_the_tails() -> None:
+    """The server strips control bytes BEFORE rendering (M0 Q2.4), keeping \\n and \\t."""
+    envelope = validate_envelope(
+        make_fields(stdout_tail="a\x1b[31mred\x1b[0m\tb\r\n\x07", stderr_tail="\x9bE\x00ok")
+    )
+    assert envelope.stdout_tail == "a[31mred[0m\tb\n"
+    assert envelope.stderr_tail == "Eok"
 
 
 # --- Outcomes (ADR-0012 Q4; spec: delivery failure is learner-visible) ---------------
@@ -268,46 +392,90 @@ def test_render_strips_control_bytes_from_module_output() -> None:
 
 @pytest.mark.asyncio
 async def test_deliver_with_no_active_session_is_learner_visible() -> None:
-    _, deliver, seam = _seam()
-    outcome = await deliver(None, make_result())
+    outcome = await deliver(None, make_envelope())
     assert outcome is not None, (
-        f"[{seam}] no active session and nothing is said: the drop is silent (ADR-0012 Q4)"
+        "no active session and nothing is said: the drop is silent (ADR-0012 Q4)"
     )
-    assert getattr(outcome, "status", None) == "no_active_session", f"[{seam}] {outcome!r}"
-    assert "att-0001" in str(getattr(outcome, "reason", "")), (
-        f"[{seam}] the outcome must name the undelivered result: {outcome!r}"
+    assert outcome.status == "no_active_session", repr(outcome)
+    assert "att-0001" in outcome.reason, (
+        f"the outcome must name the undelivered result: {outcome!r}"
     )
 
 
 @pytest.mark.asyncio
 async def test_deliver_to_closed_transport_reports_transport_closed() -> None:
     """Spec scenario "a closed transport is reported"."""
-    _, deliver, seam = _seam()
     transport = FakeTransport(running=False)
-    outcome = await deliver(make_session(transport), make_result())
-    assert transport.sent == [], f"[{seam}] bytes were pushed into a closed transport"
+    outcome = await deliver(make_session(transport), make_envelope())
+    assert transport.sent == [], "bytes were pushed into a closed transport"
     assert outcome is not None, (
-        f"[{seam}] delivery into a closed transport returned nothing: the drop is silent "
-        f"(spec: 'a closed transport is reported'; ADR-0012 Q4)"
+        "delivery into a closed transport returned nothing: the drop is silent "
+        "(spec: 'a closed transport is reported'; ADR-0012 Q4)"
     )
-    assert getattr(outcome, "status", None) == "transport_closed", f"[{seam}] {outcome!r}"
-    assert "deployments/scale-to-three" in str(getattr(outcome, "reason", "")), (
-        f"[{seam}] the reason must name the undelivered result: {outcome!r}"
+    assert outcome.status == "transport_closed", repr(outcome)
+    assert "deployments/scale-to-three" in outcome.reason, (
+        f"the reason must name the undelivered result: {outcome!r}"
     )
 
 
 @pytest.mark.asyncio
 async def test_deliver_sends_exactly_one_labelled_envelope_and_says_so() -> None:
-    _, deliver, seam = _seam()
     transport = FakeTransport(running=True)
-    outcome = await deliver(make_session(transport), make_result())
+    outcome = await deliver(make_session(transport), make_envelope())
     assert len(transport.sent) == 1, (
-        f"[{seam}] expected exactly one send_input call, got {len(transport.sent)} (ADR-0012 Q1)"
+        f"expected exactly one block, got {len(transport.sent)} (ADR-0012 Q1)"
     )
     text = transport.sent[0].decode("utf-8", errors="replace")
     assert BEGIN_SENTINEL in text and END_SENTINEL in text, (
-        f"[{seam}] what reached the transport is not a labelled envelope: {text[:60]!r}"
+        f"what reached the transport is not a labelled envelope: {text[:60]!r}"
     )
-    assert getattr(outcome, "status", None) == "delivered", (
-        f"[{seam}] a successful delivery must say so to the caller: {outcome!r} (ADR-0012 Q4)"
+    assert outcome.status == "delivered", (
+        f"a successful delivery must say so to the caller: {outcome!r} (ADR-0012 Q4)"
     )
+
+
+@pytest.mark.asyncio
+async def test_deliver_to_transport_without_block_path_is_unsupported_framing() -> None:
+    """M0 Q3/Q6: the sixth outcome is reachable -- a transport with no block delivery."""
+    transport = BlocklessTransport()
+    outcome = await deliver(make_session(transport), make_envelope())
+    assert transport.sent == [], "nothing may be written blind through send_input"
+    assert outcome.status == "unsupported_framing", repr(outcome)
+    assert "BlocklessTransport" in outcome.reason and "att-0001" in outcome.reason
+
+
+@pytest.mark.asyncio
+async def test_deliver_maps_a_timed_out_write_and_a_raising_transport() -> None:
+    class TimedOut(FakeTransport):
+        async def deliver_block(self, data: bytes) -> DeliveryWrite:
+            return DeliveryWrite(status="timed_out", detail="no response in 120s")
+
+    class Raising(FakeTransport):
+        async def deliver_block(self, data: bytes) -> DeliveryWrite:
+            raise RuntimeError("stdin closed")
+
+    timed = await deliver(make_session(TimedOut()), make_envelope())
+    assert timed == DeliveryOutcome(status="timed_out", reason=timed.reason)
+    assert "no response in 120s" in timed.reason and "att-0001" in timed.reason
+    raised = await deliver(make_session(Raising()), make_envelope())
+    assert raised.status == "error" and "stdin closed" in raised.reason
+
+
+@pytest.mark.asyncio
+async def test_deliver_to_active_session_reads_active_current(monkeypatch) -> None:
+    """``deliver_to_active_session`` is ``active.current()`` + ``deliver`` (design §8)."""
+    transport = FakeTransport()
+    session = make_session(transport)
+
+    async def _current() -> Any:
+        return session
+
+    monkeypatch.setattr(module_delivery.active, "current", _current)
+    outcome = await deliver_to_active_session(make_envelope())
+    assert outcome.status == "delivered" and len(transport.sent) == 1
+
+    async def _none() -> Any:
+        return None
+
+    monkeypatch.setattr(module_delivery.active, "current", _none)
+    assert (await deliver_to_active_session(make_envelope())).status == "no_active_session"
