@@ -42,8 +42,10 @@ the learner (`Mentor told.` / `Mentor not told: <reason>`). A closed transport S
 from the write itself, not from a pre-flight liveness check alone. An ACP delivery SHALL be
 awaited up to 120 seconds; on timeout the outcome is `timed_out`, the turn is cancelled, the
 prompt serialiser is held until the agent confirms the cancellation by answering the cancelled
-prompt (bounded, so an agent that answers nothing at all cannot wedge every later prompt), and
-the envelope is never retried. Prompts SHALL go to the agent in the order their callers asked,
+prompt. The wait is bounded; when the agent never confirms, the transport is marked wedged and
+every later prompt fails fast with a clear error (a delivery reports `transport_closed`) rather
+than overlap a turn that may still be running — the learner restarts the session. The envelope
+is never retried. Prompts SHALL go to the agent in the order their callers asked,
 learner input and deliveries alike. The
 transient `practice_check` event SHALL record the outcome; nothing SHALL be written to learner
 history.

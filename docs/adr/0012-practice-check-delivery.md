@@ -468,3 +468,13 @@ the wave-0 seam and test-local dataclass are gone.
    hazard is recorded above and goes into the Labs UI copy (4/4).**
 5. ACP `timed_out` bound and retry. **120 s, report, never retry; cancel the turn and hold the
    serialiser until the cancellation is confirmed (4/4).**
+
+## Residuals ruled by council M1 (2026-10-04)
+
+The runner that produces these envelopes is consent-gated execution with hygiene, not a
+sandbox: a phase script runs with the learner's own privileges; a descendant that calls
+`setsid()` leaves the process group and survives the kill; a same-UID process can read the
+per-session capability token in the 0600 session-state file. v1 states these in the runner's
+docstring and the consent prompt and does not claim to prevent them; OS sandboxing
+(`sandbox-exec` / `bwrap`) is a tracked follow-up change. See
+`openspec/changes/module-contract-v1/council/2026-10-04-m1-arbitration.md` §2.
