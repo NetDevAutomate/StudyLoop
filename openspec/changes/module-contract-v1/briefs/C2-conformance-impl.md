@@ -54,7 +54,7 @@ your first commit (one-line edit, your lane's spec, say so in the report).
   only, with fake binaries on `PATH` in tests; reports for installed modules' prerequisites only
   (no module installed → no probe runs, no cluster/context touched). One registration line in
   `cli/_doctor.py` (your one allowed edit there).
-- **C6** `cli/_module.py`: Typer group with `check`, `new`, `add`, `list`, `remove` — **exported,
+- **C6** `cli/_module.py`: a Click group (`click.Group` — the CLI is Click with `LazyGroup` mounting in `cli/__init__.py`, NOT Typer; `click.testing.CliRunner` drives it) with `check`, `new`, `add`, `list`, `remove` — **exported,
   not registered** in `cli/__init__.py` (W registers it in wave 2). `test_module_cli.py` drives the
   group object with `CliRunner`. `--help` text is documentation: the docs-drift test will resolve
   fenced `studyloop module …` examples against it once registered, so make the help accurate.
