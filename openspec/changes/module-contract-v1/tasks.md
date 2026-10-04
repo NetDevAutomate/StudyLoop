@@ -124,6 +124,9 @@ preflight`. "Red kept" = the failing-test transcript is in the commit body or un
 - [x] T4 ACP delivery per the ADR's serialisation; verify `::test_acp` green and
       `::test_acp_no_overlap_with_learner_turn` green; verify delivery failure is surfaced to
       the learner by a third test. G.
+  - Coordinator-approved ownership exception (T-review finding 5): lane T's +10-line hunk in
+    `packages/studyloop/tests/fixtures/lane_ownership.yaml` adding `session/transport.py`, `transports/pty.py`
+    and `transports/acp.py` to T's row is accepted as the transcription of council M0 §2 Q1 (4/4).
 - [ ] T-review One independent seat reviews T2–T4 before T merges; verify the catch-rate row.
 
 ### W — tests only
