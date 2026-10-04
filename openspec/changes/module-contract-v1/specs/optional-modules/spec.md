@@ -21,6 +21,10 @@ core does not speak SHALL be refused.
 ### Requirement: Prerequisites and capabilities are declared from closed enums and enforced by core
 `prerequisites` SHALL be drawn from a core-owned enum (`docker`, `kind`, `kubectl` in v1) with an
 optional minimum version; the probe for each lives in core's `doctor/` and never runs module text.
+The probe argv is `<bin> --version` unless core's per-tool table names another — as it does for
+kubectl, which has no `--version` flag: `kubectl version --client --output=json`. An installed tool
+whose version output cannot be parsed is reported as a warning ("version unknown"), never as a pass
+or a failure.
 `capabilities` SHALL be drawn from `terminal`, `setup`, `check`, `cleanup`; a deck phase whose
 capability is not declared SHALL fail conformance (MC006), and a declared `setup`, `check` or
 `cleanup` that no deck uses SHALL fail MC016. `terminal` names the learner's session itself and is
@@ -58,10 +62,15 @@ fixture that fails it and a repaired twin that passes.
 - **THEN** exactly rule `MC0NN` is reported, and its repaired twin passes
 
 ### Requirement: Modules are installed from a local path into an immutable snapshot recorded in a lockfile
-`studyloop module add <path>` SHALL run `module check` first and refuse on any finding; copy the
-module into an immutable snapshot keyed by content digest; and record `id`, `version`, digest and,
+`studyloop module add <path>` SHALL first copy the module into a private staging area (regular
+files only — a symlink, hard link or special file anywhere in the tree is refused by name, never
+skipped), run `module check` on the staged copy and refuse on any finding, digest the staged copy,
+and publish it atomically as an immutable snapshot keyed by that digest (an existing snapshot at
+that digest is re-digested and refused on mismatch); and record `id`, `version`, digest and,
 when the path is a git checkout, the remote URL and HEAD sha read locally with no fetch, into
-`modules.lock.json`. `module list` and `module remove` SHALL operate on the lockfile only. No
+`modules.lock.json`. `module add` of an id that is already installed SHALL replace its lock entry
+and remove the orphaned snapshot; the lockfile records the new digest. `module list` and
+`module remove` SHALL operate on the lockfile only. No
 network access SHALL occur in v1.
 
 #### Scenario: an unconforming module is not installed
