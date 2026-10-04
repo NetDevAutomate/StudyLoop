@@ -29,7 +29,7 @@ always in use: declaring it never fails MC016.
 #### Scenario: an undeclared capability is caught
 - **GIVEN** a deck task carrying `setupCommand` and a manifest whose `capabilities` omit `setup`
 - **WHEN** `module check` runs
-- **THEN** it fails (rule MC005) naming the task and the missing capability
+- **THEN** it fails (rule MC006) naming the task and the missing capability
 
 #### Scenario: doctor reports only installed modules' prerequisites
 - **GIVEN** no module is installed

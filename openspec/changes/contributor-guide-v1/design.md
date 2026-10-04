@@ -41,7 +41,7 @@ candidates the writer must run and may replace; "Pin" names the drift-test patte
 
 | # | Page | One job | Mirror | State | Example candidates | Pin |
 | --- | --- | --- | --- | --- | --- | --- |
-| 4 | `docs/contributor-cli.md` | Add or change a Typer command (`cli/_*.py`, lazy mounting in `cli/__init__.py`) with its CliRunner test and `--help` text | Add a New Resource Type | new | `uv run studyloop --help`, `uv run --group dev pytest packages/studyloop/tests/test_cli_*.py -q` | C H L |
+| 4 | `docs/contributor-cli.md` | Add or change a Click command (`cli/_*.py`, `@click.command`, mounted lazily by `LazyGroup` in `cli/__init__.py` — the CLI is Click, not Typer) with its `CliRunner` test and `--help` text | Add a New Resource Type | new | `uv run studyloop --help`, `uv run --group dev pytest packages/studyloop/tests/test_cli_*.py -q` | C H L |
 | 5 | `docs/contributor-web.md` | Add or change a FastAPI route + Alpine/HTMX UI (`web/routes/`, `web/static/`), TestClient test, one Playwright journey | Add a New Resource Type | new | `just test-web`, `just test-js` | C H L |
 | 6 | `docs/contributor-mcp.md` | Add or change an MCP tool (`mcp/`), parity with the CLI, its test | Add a New Data Source Type | new | `uv run --group dev pytest packages/studyloop/tests/test_mcp_*.py -q` | C H L |
 | 7 | `docs/contributor-doctor.md` | Add a diagnostic (`doctor/`): `CheckResult` shape, honest wording, no side effects | Bugs and Enhancements | new | `uv run studyloop doctor` | C H L |
@@ -277,7 +277,9 @@ line_cap)`), default-tier, no network:
   never `just testacc`, never a session start, never network.
 - **H — structure.** First non-heading block is a paragraph of ≤ 3 sentences or a numbered list;
   ≥ 1 numbered list; no H1 other than the title; line count ≤ the page's cap (150 for every
-  page; 200 for the router, which carries 15 anchors); no `<!-- GUIDE-STUB -->` marker left.
+  page; 200 for the router, which carries 15 anchors; 220 for the testing cookbook, whose
+  collected examples are code pinned by `test_contributor_docs.py` — assembler amendment after
+  A0 measured it at 214); no `<!-- GUIDE-STUB -->` marker left.
 - **L — links.** Every `[text](path.md)` and `[text](path.md#anchor)` to `docs/` resolves and the
   anchor exists (GitHub-style slug); the router's H2 set equals F10 exactly.
 - **M — module pages.** Page 20: "design stage" within the first paragraph; a link containing

@@ -1,0 +1,45 @@
+$ just sync-web
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:19Z
+uv sync --all-packages --group dev --extra web
+Resolved 203 packages in 5ms
+Downloading uvloop (1.3MiB)
+ Downloaded uvloop
+Prepared 2 packages in 122ms
+
+$ uv run --group dev playwright install chromium
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:19Z
+(no output)
+
+$ uv run --group dev pytest packages/studyloop/tests/test_contributor_examples.py -q
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:19Z
+....                                                                     [100%]
+4 passed in 0.32s
+
+$ uv run --group dev pytest packages/studyloop/tests/test_e2e_coverage_gate.py packages/studyloop/tests/test_e2e_coverage_gate_selftest.py -q
+exit=0  sha=f2e1c70e  utc=2026-10-04T19:20Z
+..................................                                       [100%]
+34 passed in 73.71s (0:01:13)
+
+$ uv run studyloop --version
+exit=0  sha=603f36ec  utc=2026-10-04T19:24Z
+studyloop, version 0.5.0
+
+$ uv run studyloop doctor --json | sed "s|$HOME|~|g"
+exit=0  sha=603f36ec  utc=2026-10-04T19:24Z
+[
+  {
+    "category": "core",
+    "name": "python_version",
+    "status": "pass",
+
+$ uv run studyloop doctor --quiet
+exit=1  sha=603f36ec  utc=2026-10-04T19:25Z
+63 passed, 9 warnings, 2 info. Run 'studyloop doctor --fix' to fix 5 issues.
+
+$ rg -n 'slug=' packages/studyloop/src/studyloop/content/generators/provider_profiles.py
+exit=0  sha=f469fdbb  utc=2026-10-04T19:28Z
+89:        slug="openai",
+107:        slug="openrouter",
+138:        slug="gemini",
+173:        slug="anthropic",
+203:        slug="bedrock",
