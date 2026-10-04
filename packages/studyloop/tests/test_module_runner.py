@@ -1,18 +1,18 @@
-"""Adversarial red suite for the module drill runner (module-contract-v1, lane R, R1).
+"""Runner, consent and attempt tests for the module drill runner (module-contract-v1, lane R).
 
-Two kinds of red live here, and the distinction is the point of the commit:
+Born as R1's adversarial red suite, grown through R2-R5. Two kinds of test live here:
 
-* **Meaningful reds against today's code** -- :func:`test_drill_writes_no_observation` and
-  :func:`test_runner_never_shell` drive the only verification path StudyLoop has today
-  (``learning/practice.py``) and fail on their *assertion*: today a check writes a
-  ``confident``/``struggling`` observation into learner history (``_record_attempt``,
-  ~lines 179-188) and spawns the confirmed command through ``shell=True`` (~lines
-  282-290). Proposal §5.7 and §5.5 forbid both. R2/R5 re-point the drive at the runner's
-  path and keep the assertions.
-* **Boundary reds against the future runner** -- the nine attacks the M1 council will read
-  (``design.md`` §7, §9). They import the R1 interface stubs in
-  ``studyloop.modules.{runner,consent,attempt}`` whose bodies raise
-  ``NotImplementedError``; each turns green in R2-R4 against the real implementation.
+* **The two (a) reds** -- :func:`test_drill_writes_no_observation` and
+  :func:`test_runner_never_shell` -- were first run against the only verification path
+  StudyLoop had (``learning/practice.py``) and failed on their *assertion* there: a check
+  wrote a ``confident``/``struggling`` observation into learner history (``_record_attempt``,
+  ~lines 179-188) and the confirmed command string went through ``shell=True`` (~282-290).
+  Those transcripts are ``evidence/R/no-observation.red.txt`` and ``never-shell.red.txt``.
+  Both now drive the runner's own path with the same assertions.
+* **Boundary tests against the runner** -- the attacks the M1 council reads (``design.md``
+  §7, §9) plus the wave-1 rulings: shell tokens, MC013 at runtime, the clean environment,
+  digest race, consent replay/forgery/expiry, timeouts, streamed caps, redaction, the exit
+  table, and the transient ``practice_check_events`` record.
 
 Every target script a test writes is a real ``#!/bin/sh`` file inside a temporary module
 snapshot. The runner under test must never pass a *string* to a shell; the scripts
@@ -34,17 +34,19 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pytest
-from test_practice_verify import _attempt_db, _patch_db, _practice_file
+from test_practice_verify import _attempt_db, _patch_db
 
-from studyloop.learning import practice
 from studyloop.modules import runner
 from studyloop.modules.attempt import (
     DEFAULT_CAPS,
     Attempt,
+    AttemptStore,
+    DeliveryOutcome,
     DrillIdentity,
     ExitClass,
     OutputCaps,
     Phase,
+    record_phase,
 )
 from studyloop.modules.consent import (
     CONSENT_TTL_SECONDS,
@@ -108,11 +110,6 @@ def _alive(pid: int) -> bool:
     except PermissionError:
         return True
     return True
-
-
-def _observation_rows(db: Path) -> int:
-    with contextlib.closing(sqlite3.connect(db)) as conn:
-        return conn.execute("SELECT count(*) FROM context_observations").fetchone()[0]
 
 
 @dataclass
@@ -223,36 +220,113 @@ def world(tmp_path: Path) -> World:
 # ---------------------------------------------------------------------------
 
 
-def test_drill_writes_no_observation(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    """§5.7: a completed check records a transient ``practice_check`` on the attempt and
-    never a learning record. Today's only verification path, ``learning/practice.py``
-    ``_record_attempt`` (~179-188), writes a ``confident``/``struggling`` observation after
-    every check -- so this fails on its assertion against today's code. R5 re-points the
-    drive at the runner's transient path and keeps the assertion exactly as it is."""
+def _table_rows(db: Path, table: str) -> int:
+    with contextlib.closing(sqlite3.connect(db)) as conn:
+        return conn.execute(f"SELECT count(*) FROM {table}").fetchone()[0]
+
+
+LEARNER_HISTORY_TABLES = ("context_observations", "study_progress", "practice_attempts")
+"""What §5.7 forbids a check from touching: the observation store, mastery, and today's
+``practice verify`` attempt table (which binds an observation per row)."""
+
+
+def test_drill_writes_no_observation(
+    world: World, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """§5.7: a completed check records a transient ``practice_check`` event on the attempt and
+    never a learning record. R1 drove today's only verification path, ``learning/practice.py``
+    ``_record_attempt`` (~179-188), which writes a ``confident``/``struggling`` observation
+    after every check, and failed on this assertion (``evidence/R/no-observation.red.txt``).
+    The drive is now the runner's own path -- ``runner.run_phase`` then
+    ``attempt.record_phase`` into the same sessions database -- and the assertion is the one
+    R1 wrote: the observation row count is **unchanged**. The spec scenario adds
+    ``study_progress`` unchanged and exactly one ``practice_check`` event."""
     db = _attempt_db(tmp_path)
     _patch_db(monkeypatch, db)
-    workdir = tmp_path / "learner-workdir"
-    workdir.mkdir()
-    deck = _practice_file(
-        tmp_path,
-        {"kind": "command", "successCriteria": ["Command passes."], "command": "true"},
-    )
-    before = _observation_rows(db)
+    before = {table: _table_rows(db, table) for table in LEARNER_HISTORY_TABLES}
+    world.script("check.sh", "echo all good\nexit 0")
+    argv = ("scripts/check.sh",)
 
-    result = practice.verify_practice_task(
-        deck,
-        task_index=1,
-        workdir=workdir,
-        run_command=True,
-        confirmed_command="true",
+    result = world.run(Phase.CHECK, argv)
+    row_id = record_phase(
+        world.attempt, result, delivery=DeliveryOutcome("no_active_session", "no state file")
     )
 
-    assert result.passed is True  # the check itself passed; what matters is what got recorded
-    after = _observation_rows(db)
-    assert after == before, (
-        f"a passing check wrote {after - before} observation row(s) into learner history "
-        "(learning/practice.py _record_attempt); §5.7 forbids any -- a check is transient"
+    assert result.exit_class is ExitClass.PASSED  # the check passed; what matters is the record
+    after = {table: _table_rows(db, table) for table in LEARNER_HISTORY_TABLES}
+    assert after["context_observations"] == before["context_observations"], (
+        f"a passing check wrote {after['context_observations'] - before['context_observations']} "
+        "observation row(s) into learner history; §5.7 forbids any -- a check is transient"
     )
+    assert after == before, f"learner history changed: {before} -> {after}"
+    assert row_id is not None
+    assert _table_rows(db, "practice_check_events") == 1
+
+
+def test_practice_check_event_row_carries_identity_outcome_and_delivery(
+    world: World, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Ruling 6: one row per phase completion in ``practice_check_events`` of the sessions
+    database -- identity (module id + digest, deck id, task id), attempt id, phase, exit
+    class and code, duration, truncation flags, delivery status and reason. The row holds
+    no output text: output is transient evidence of the attempt, not a learning record."""
+    db = _attempt_db(tmp_path)
+    _patch_db(monkeypatch, db)
+    world.script("check.sh", "echo nope >&2\nexit 1")
+    argv = ("scripts/check.sh",)
+
+    result = world.run(Phase.CHECK, argv)
+    record_phase(world.attempt, result, delivery=DeliveryOutcome("delivered"))
+
+    with contextlib.closing(sqlite3.connect(db)) as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute("SELECT * FROM practice_check_events").fetchall()
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(practice_check_events)")}
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["attempt_id"] == world.attempt.attempt_id
+    assert row["module_id"] == MODULE_ID
+    assert row["module_digest"] == DRILL.module_digest
+    assert row["deck_id"] == DRILL.deck_id
+    assert row["task_id"] == DRILL.task_id
+    assert row["phase"] == "check"
+    assert row["exit_class"] == "failed"
+    assert row["exit_code"] == 1
+    assert row["duration_seconds"] == pytest.approx(result.duration_seconds)
+    assert row["timed_out"] == 0
+    assert row["truncated"] == 0
+    assert row["cap_hit"] is None
+    assert row["delivery_status"] == "delivered"
+    assert row["delivery_reason"] == ""
+    assert row["created_at"]
+    assert not {"stdout", "stderr", "output"} & columns, "output text must not be persisted"
+
+
+def test_attempt_store_opens_finds_and_closes_one_attempt_per_drill(tmp_path: Path) -> None:
+    """R5: an attempt is a core-created directory plus a sidecar record outside the child's
+    cwd. ``current`` finds the one open attempt for a drill; ``close`` ends it (with the
+    reason the CLI gives, e.g. a failed cleanup) and the next ``open`` is a new attempt."""
+    snapshot = tmp_path / "snapshot"
+    (snapshot / "scripts").mkdir(parents=True)
+    store = AttemptStore(root=tmp_path / "attempts")
+
+    assert store.current(DRILL) is None
+    first = store.open(DRILL, snapshot_dir=snapshot)
+
+    assert first.attempt_dir.is_dir()
+    assert first.attempt_dir.is_relative_to(store.root)
+    assert first.drill == DRILL
+    assert first.snapshot_dir == snapshot
+    assert store.current(DRILL) == first
+    assert not any(first.attempt_dir.iterdir()), "the child's cwd starts empty"
+
+    store.close(first, reason="cleanup failed (exit 3; error) -- the attempt is closed anyway")
+
+    assert store.current(DRILL) is None
+    second = store.open(DRILL, snapshot_dir=snapshot)
+    assert second.attempt_id != first.attempt_id
+    assert second.attempt_dir != first.attempt_dir
+    assert store.current(DRILL) == second
 
 
 def test_runner_never_shell(world: World, spawn_spy: list[SpawnCall]) -> None:

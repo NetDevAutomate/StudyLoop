@@ -1,9 +1,24 @@
 """Attempt identity, phases and exit classes for module drills (proposal §5.5, §5.7).
 
-**R1 interface stub.** This module holds only the types ``tests/test_module_runner.py``
-needs; it has no functions. R2-R5 add behaviour. It is the leaf of the
-``attempt <- consent <- runner`` import chain and must stay free of ``subprocess`` and of
-the sessions store.
+This module is the leaf of the ``attempt <- consent <- runner`` import chain: the types
+every other runner module shares, the attempt directory lifecycle (:class:`AttemptStore`),
+and the one write path a drill has -- :func:`record_phase`, the transient
+``practice_check_events`` row (§5.7, wave-1 ruling 6). It stays free of ``subprocess``.
+
+**Where the table lives and why the DDL is here.** The sessions database's schema is
+versioned by ``agent_session_tools.migrations`` (``PRAGMA user_version``, ``CURRENT_VERSION``
+48 at the time of writing, one ``@migration(n, ...)`` per step). That file is owned by
+another lane (``lane_ownership.yaml`` m3: ``packages/agent-session-tools/**``), and a table
+created from outside it cannot bump ``user_version`` without ``migrate()`` refusing the
+database as "newer than supported". The repo already has a pattern for a StudyLoop-owned
+table in the same database that does not touch ``user_version``:
+``planning/index.py`` (``study_plans`` / ``study_plan_checkpoints``) connects through
+``history._connection._connect`` -- which applies the base schema and every pending
+migration first -- and then runs its own idempotent ``CREATE TABLE IF NOT EXISTS``.
+:func:`ensure_schema` follows that pattern exactly; the coordinator may fold the DDL into a
+numbered migration at merge, and ``IF NOT EXISTS`` makes that fold a no-op here.
+
+Contract rows these types carry (proposal §5.5):
 
 Contract rows these types carry (proposal §5.5):
 
@@ -13,18 +28,27 @@ Contract rows these types carry (proposal §5.5):
 - *Exit codes*: ``check`` ``0`` = passed, ``1`` = failed (task not complete), ``>= 2`` =
   error; ``setup`` any non-zero = error; a timeout is always an error.
 - §5.7: a completed check records a **transient** ``practice_check`` event on the attempt
-  and never an observation (R5 adds that path; R1's test for it drives today's
-  ``learning/practice.py`` and is red there).
+  and never an observation, mastery row, learning record or review item. The row holds
+  identity, phase, exit class and code, duration, truncation flags and the delivery
+  outcome -- **no output text**: redacted stdout/stderr tails are kept only as the
+  attempt's own evidence in its sidecar record (:meth:`AttemptStore.record_evidence`).
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import json
+import logging
+import uuid
+from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
 from enum import StrEnum
-from typing import TYPE_CHECKING
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
-    from pathlib import Path
+    import sqlite3
+
+logger = logging.getLogger(__name__)
 
 
 class Phase(StrEnum):
@@ -142,3 +166,299 @@ class PhaseResult:
     def output(self) -> str:
         """stdout followed by stderr -- the combined transient evidence."""
         return self.stdout + self.stderr
+
+
+DeliveryStatus = Literal[
+    "delivered",
+    "no_active_session",
+    "transport_closed",
+    "timed_out",
+    "unsupported_framing",
+    "error",
+]
+
+
+@dataclass(frozen=True)
+class DeliveryOutcome:
+    """What happened when the phase result was handed to the mentor (M0 Q2/Q6: six states).
+
+    ``status`` is one of the six reachable outcomes; ``reason`` is the detail the learner
+    sees after ``Mentor not told:`` (empty when delivered). Recorded on the
+    ``practice_check_events`` row as ``delivery_status`` / ``delivery_reason``.
+    """
+
+    status: DeliveryStatus
+    reason: str = ""
+
+    @property
+    def delivered(self) -> bool:
+        return self.status == "delivered"
+
+
+# ---------------------------------------------------------------------------
+# practice_check_events -- the transient record (§5.7, ruling 6)
+# ---------------------------------------------------------------------------
+
+PRACTICE_CHECK_EVENTS_DDL = """
+CREATE TABLE IF NOT EXISTS practice_check_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    attempt_id TEXT NOT NULL,
+    module_id TEXT NOT NULL,
+    module_digest TEXT NOT NULL,
+    deck_id TEXT NOT NULL,
+    task_id TEXT NOT NULL,
+    phase TEXT NOT NULL CHECK (phase IN ('setup', 'check', 'cleanup')),
+    exit_class TEXT NOT NULL CHECK (exit_class IN ('passed', 'failed', 'error')),
+    exit_code INTEGER,
+    duration_seconds REAL NOT NULL,
+    timed_out INTEGER NOT NULL DEFAULT 0 CHECK (timed_out IN (0, 1)),
+    truncated INTEGER NOT NULL DEFAULT 0 CHECK (truncated IN (0, 1)),
+    cap_hit TEXT CHECK (cap_hit IS NULL OR cap_hit IN ('stdout', 'stderr', 'lines')),
+    delivery_status TEXT NOT NULL CHECK (delivery_status IN (
+        'delivered', 'no_active_session', 'transport_closed', 'timed_out',
+        'unsupported_framing', 'error')),
+    delivery_reason TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+)
+"""
+
+_PRACTICE_CHECK_EVENTS_INDEXES = (
+    "CREATE INDEX IF NOT EXISTS idx_practice_check_events_attempt "
+    "ON practice_check_events(attempt_id, phase)",
+    "CREATE INDEX IF NOT EXISTS idx_practice_check_events_drill "
+    "ON practice_check_events(module_id, deck_id, task_id, created_at DESC)",
+)
+
+
+def ensure_schema(conn: sqlite3.Connection) -> None:
+    """Create ``practice_check_events`` and its indexes if missing (idempotent)."""
+    conn.execute(PRACTICE_CHECK_EVENTS_DDL)
+    for statement in _PRACTICE_CHECK_EVENTS_INDEXES:
+        conn.execute(statement)
+
+
+def _connect() -> sqlite3.Connection | None:
+    """The sessions database with the base schema, every migration, and our table applied.
+
+    Goes through ``history._connection._connect`` -- the same door ``planning/index.py``
+    uses -- looked up at call time so a test that re-points that module's ``_connect`` at a
+    temporary database re-points this one too. ``None`` when the database is unavailable;
+    the caller treats that as "not recorded", never as success.
+    """
+    try:
+        from studyloop.history import _connection
+    except Exception:  # pragma: no cover - import guard
+        logger.debug("history._connection unavailable", exc_info=True)
+        return None
+    conn = _connection._connect()
+    if conn is None:
+        return None
+    try:
+        ensure_schema(conn)
+        conn.commit()
+    except Exception:
+        logger.debug("could not ensure practice_check_events schema", exc_info=True)
+        conn.close()
+        return None
+    return conn
+
+
+def record_phase(attempt: Attempt, result: PhaseResult, *, delivery: DeliveryOutcome) -> int | None:
+    """Insert one ``practice_check_events`` row for a completed phase (§5.7, ruling 6).
+
+    Writes nothing else: no ``study_progress``, no observation, no learning record, no
+    review item, and no output text. Returns the new row id, or ``None`` when the sessions
+    database could not be opened (logged; the CLI tells the learner).
+    """
+    conn = _connect()
+    if conn is None:
+        return None
+    try:
+        cursor = conn.execute(
+            """
+            INSERT INTO practice_check_events (
+                attempt_id, module_id, module_digest, deck_id, task_id,
+                phase, exit_class, exit_code, duration_seconds,
+                timed_out, truncated, cap_hit, delivery_status, delivery_reason
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                attempt.attempt_id,
+                attempt.drill.module_id,
+                attempt.drill.module_digest,
+                attempt.drill.deck_id,
+                attempt.drill.task_id,
+                result.phase.value,
+                result.exit_class.value,
+                result.exit_code,
+                result.duration_seconds,
+                1 if result.timed_out else 0,
+                1 if result.truncated else 0,
+                result.cap_hit,
+                delivery.status,
+                delivery.reason,
+            ),
+        )
+        conn.commit()
+        return cursor.lastrowid
+    except Exception:
+        logger.exception("practice_check_events insert failed for attempt %s", attempt.attempt_id)
+        return None
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# AttemptStore -- the per-attempt directory and its sidecar record (R5)
+# ---------------------------------------------------------------------------
+
+
+def _now() -> str:
+    return datetime.now(UTC).isoformat(timespec="seconds")
+
+
+@dataclass
+class AttemptStore:
+    """Opens, finds and closes attempts under ``root``.
+
+    Layout: ``<root>/<module id>/<deck id>/<task id>/<attempt id>/`` is the attempt
+    directory -- the child's cwd and the parent of its scratch ``HOME`` -- and
+    ``<root>/<module id>/<deck id>/<task id>/<attempt id>.json`` is the sidecar record
+    (opened/closed timestamps, close reason, per-phase evidence). The sidecar sits *beside*
+    the attempt directory, not inside it, so a module script running in the attempt
+    directory cannot rewrite its own record. At most one attempt per drill is open at a
+    time: :meth:`current` returns it, :meth:`close` ends it, and :meth:`open` always starts
+    a fresh one.
+    """
+
+    root: Path
+
+    def _drill_dir(self, drill: DrillIdentity) -> Path:
+        return self.root / drill.module_id / drill.deck_id / drill.task_id
+
+    def _record_path(self, attempt: Attempt) -> Path:
+        return self._drill_dir(attempt.drill) / f"{attempt.attempt_id}.json"
+
+    def _read(self, path: Path) -> dict[str, Any] | None:
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return None
+        return data if isinstance(data, dict) else None
+
+    def _write(self, path: Path, record: dict[str, Any]) -> None:
+        tmp = path.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(record, indent=2, sort_keys=True), encoding="utf-8")
+        tmp.replace(path)
+
+    def _attempt_from(self, record: dict[str, Any]) -> Attempt:
+        drill = DrillIdentity(**record["drill"])
+        kubeconfig = record.get("kubeconfig")
+        return Attempt(
+            attempt_id=record["attempt_id"],
+            drill=drill,
+            snapshot_dir=Path(record["snapshot_dir"]),
+            attempt_dir=Path(record["attempt_dir"]),
+            target=TargetKind(record.get("target", TargetKind.WORKDIR.value)),
+            kubeconfig=Path(kubeconfig) if kubeconfig else None,
+        )
+
+    def open(
+        self,
+        drill: DrillIdentity,
+        *,
+        snapshot_dir: Path,
+        target: TargetKind = TargetKind.WORKDIR,
+        kubeconfig: Path | None = None,
+    ) -> Attempt:
+        """Create a new attempt directory (mode ``0o700``) and its sidecar record."""
+        attempt_id = str(uuid.uuid4())
+        drill_dir = self._drill_dir(drill)
+        attempt_dir = drill_dir / attempt_id
+        attempt_dir.mkdir(parents=True, mode=0o700)
+        attempt = Attempt(
+            attempt_id=attempt_id,
+            drill=drill,
+            snapshot_dir=snapshot_dir,
+            attempt_dir=attempt_dir,
+            target=target,
+            kubeconfig=kubeconfig,
+        )
+        record: dict[str, Any] = {
+            "attempt_id": attempt_id,
+            "drill": asdict(drill),
+            "snapshot_dir": str(snapshot_dir),
+            "attempt_dir": str(attempt_dir),
+            "target": target.value,
+            "kubeconfig": str(kubeconfig) if kubeconfig else None,
+            "opened_at": _now(),
+            "closed_at": None,
+            "close_reason": None,
+            "phases": [],
+        }
+        self._write(self._record_path(attempt), record)
+        return attempt
+
+    def current(self, drill: DrillIdentity) -> Attempt | None:
+        """The one open attempt for ``drill``, or ``None``.
+
+        Newest open record wins if more than one is somehow open (only the CLI opens
+        attempts, one at a time, so this is a repair path rather than a feature).
+        """
+        drill_dir = self._drill_dir(drill)
+        if not drill_dir.is_dir():
+            return None
+        candidates: list[tuple[str, dict[str, Any]]] = []
+        for path in drill_dir.glob("*.json"):
+            record = self._read(path)
+            if record is None or record.get("closed_at") is not None:
+                continue
+            candidates.append((str(record.get("opened_at", "")), record))
+        if not candidates:
+            return None
+        candidates.sort(key=lambda item: item[0])
+        return self._attempt_from(candidates[-1][1])
+
+    def close(self, attempt: Attempt, *, reason: str) -> None:
+        """Mark the attempt closed with ``reason``; idempotent (a second close is a no-op)."""
+        path = self._record_path(attempt)
+        record = self._read(path)
+        if record is None:
+            return
+        if record.get("closed_at") is None:
+            record["closed_at"] = _now()
+            record["close_reason"] = reason
+            self._write(path, record)
+
+    def record_evidence(
+        self, attempt: Attempt, result: PhaseResult, *, delivery: DeliveryOutcome
+    ) -> None:
+        """Append the (already redacted) phase outcome to the attempt's sidecar record.
+
+        This is the §5.5 *Output* "kept for the attempt only": the transient evidence a
+        learner or the coordinator can read back for this attempt. It is not learner
+        history and nothing reads it into the mentor or the dashboard.
+        """
+        path = self._record_path(attempt)
+        record = self._read(path)
+        if record is None:
+            return
+        phases = record.setdefault("phases", [])
+        phases.append(
+            {
+                "at": _now(),
+                "phase": result.phase.value,
+                "exit_class": result.exit_class.value,
+                "exit_code": result.exit_code,
+                "duration_seconds": result.duration_seconds,
+                "timed_out": result.timed_out,
+                "truncated": result.truncated,
+                "cap_hit": result.cap_hit,
+                "message": result.message,
+                "stdout": result.stdout,
+                "stderr": result.stderr,
+                "delivery_status": delivery.status,
+                "delivery_reason": delivery.reason,
+            }
+        )
+        self._write(path, record)

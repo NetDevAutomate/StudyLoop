@@ -1,0 +1,16 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_runner.py -p no:cacheprovider --no-header -q --tb=line -k 'no_observation or practice_check_event or attempt_store'
+# worktree studyloop-wt/module-runner at c34b1e6f + uncommitted R5 tests and declaration-only record_phase/AttemptStore/DeliveryOutcome (bodies raise NotImplementedError); TMPDIR=$(getconf DARWIN_USER_TEMP_DIR); 2026-10-04
+# test_drill_writes_no_observation is re-pointed from today's learning/practice.py (its meaningful R1 red: evidence/R/no-observation.red.txt) at runner.run_phase + attempt.record_phase with the same assertion; the practice_check_events row test and the AttemptStore test are new
+FFF                                                                      [100%]
+=================================== FAILURES ===================================
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/attempt.py:174: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/attempt.py:174: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/attempt.py:187: NotImplementedError
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_module_runner.py::test_drill_writes_no_observation
+FAILED packages/studyloop/tests/test_module_runner.py::test_practice_check_event_row_carries_identity_outcome_and_delivery
+FAILED packages/studyloop/tests/test_module_runner.py::test_attempt_store_opens_finds_and_closes_one_attempt_per_drill
+3 failed, 44 deselected in 0.64s
