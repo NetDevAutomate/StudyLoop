@@ -18,6 +18,10 @@ Two layers:
   described in reviews/2026-09-02-full-repo-review/IMPLEMENTATION-PLAN.md
   §3, expanded and path-corrected -- see fixtures/lane_ownership.yaml's
   header and evidence/M0/0.7-lane-ownership/04-map-corrections.md).
+
+Branch -> lane is keyed two ways: the explicit ``branches:`` map in the fixture
+(module-contract-v1 lanes are ``feat/...`` branches, so nothing can be read off
+the name) and, after it, the archived campaigns' ``lane/m<n>-<slug>`` pattern.
 """
 
 from __future__ import annotations
@@ -142,6 +146,147 @@ def test_malformed_lane_branch_is_an_error_not_a_skip(branch: str) -> None:
     """A1: a branch under lane/ that dodges the pattern must fail, not skip."""
     with pytest.raises(MalformedLaneBranchError):
         lane_id_from_branch(branch)
+
+
+# ---------------------------------------------------------------------------
+# Pure logic: the explicit branch -> lane map (module-contract-v1 lanes)
+# ---------------------------------------------------------------------------
+
+#: The five module-contract-v1 lanes, as design.md §2 names them.
+_MODULE_CONTRACT_BRANCHES = {
+    "feat/module-schema": "S",
+    "feat/module-conformance": "C",
+    "feat/module-runner": "R",
+    "feat/module-mentor-delivery": "T",
+    "feat/module-web-labs": "W",
+}
+
+
+@pytest.mark.parametrize(
+    ("branch", "expected"),
+    sorted(_MODULE_CONTRACT_BRANCHES.items()),
+    ids=sorted(_MODULE_CONTRACT_BRANCHES),
+)
+def test_mapped_feat_branch_resolves_to_its_lane(branch: str, expected: str) -> None:
+    """A `feat/` branch listed in the map is keyed by the map, not its name."""
+    assert lane_id_from_branch(branch, _MODULE_CONTRACT_BRANCHES) == expected
+
+
+def test_fixture_branch_map_matches_design_and_points_at_real_lanes() -> None:
+    """The YAML carries exactly the §2 branches, each mapped to a lane that exists."""
+    lanes, _shared = _load_map()
+    branches = _load_branch_map()
+    assert branches == _MODULE_CONTRACT_BRANCHES
+    for branch, lane in branches.items():
+        assert lane in lanes, f"{branch} -> {lane!r}, but {lane!r} has no glob list"
+        assert lanes[lane], f"lane {lane!r} has an empty glob list"
+
+
+@pytest.mark.parametrize(
+    "branch",
+    [
+        pytest.param("feat/some-other-feature", id="feat-not-in-map"),
+        pytest.param("feat/module-schema-2", id="near-miss-is-not-a-prefix-match"),
+        pytest.param("main", id="main"),
+        pytest.param("integration/2026-09-remediation", id="integration"),
+    ],
+)
+def test_unmapped_branch_is_none_not_an_error(branch: str) -> None:
+    """A branch the map does not list is not a lane branch: logged/skipped, never failed."""
+    assert lane_id_from_branch(branch, _MODULE_CONTRACT_BRANCHES) is None
+
+
+def test_legacy_lane_branches_still_resolve_when_a_map_is_supplied() -> None:
+    """The map is consulted first; the archived `lane/m<n>-` key still works after it."""
+    assert lane_id_from_branch("lane/m3-data-safety", _MODULE_CONTRACT_BRANCHES) == "m3"
+    assert lane_id_from_branch("lane/m0-guards", _MODULE_CONTRACT_BRANCHES) == "m0"
+    with pytest.raises(MalformedLaneBranchError):
+        lane_id_from_branch("lane/m1x", _MODULE_CONTRACT_BRANCHES)
+
+
+def test_explicit_map_entry_wins_over_the_legacy_pattern() -> None:
+    """``lane_id_from_branch``'s docstring promises "an exact name match wins
+    outright" -- so a map entry whose key happens to be shaped like a legacy
+    ``lane/m<n>-<slug>`` branch must resolve to the MAPPED value, not to the
+    ``m<n>`` the regex would derive. Pinned at the S-review's request (finding
+    2, 2026-10-04): without this case nothing proved the precedence rather than
+    the mere coexistence of the two mechanisms. It is a pin of existing
+    behaviour, so it has no red transcript -- reversing the two branches in
+    ``lane_id_from_branch`` is what would make it fail."""
+    branches = {**_MODULE_CONTRACT_BRANCHES, "lane/m3-data-safety": "S"}
+    assert lane_id_from_branch("lane/m3-data-safety", branches) == "S"
+    # And an unmapped legacy name beside it still falls through to the regex.
+    assert lane_id_from_branch("lane/m4-security", branches) == "m4"
+
+
+def test_no_map_means_legacy_only() -> None:
+    """Without a map a `feat/` branch is not a lane branch -- the old behaviour, untouched."""
+    assert lane_id_from_branch("feat/module-schema") is None
+    assert lane_id_from_branch("feat/module-schema", {}) is None
+
+
+@pytest.mark.parametrize(
+    ("lane", "path", "owner"),
+    [
+        pytest.param(
+            "S",
+            "packages/studyloop/src/studyloop/modules/check.py",
+            "C",
+            id="schema-lane-edits-conformance-engine",
+        ),
+        pytest.param(
+            "C",
+            "packages/studyloop/src/studyloop/content/schemas.py",
+            "S",
+            id="conformance-lane-edits-schema-hotspot",
+        ),
+        pytest.param(
+            "R",
+            "packages/studyloop/src/studyloop/web/routes/modules.py",
+            "W",
+            id="runner-lane-edits-web-route",
+        ),
+        pytest.param(
+            "T",
+            "packages/studyloop/src/studyloop/modules/runner.py",
+            "R",
+            id="delivery-lane-edits-runner",
+        ),
+        pytest.param(
+            "W",
+            "packages/studyloop/src/studyloop/session/module_delivery.py",
+            "T",
+            id="web-lane-edits-delivery",
+        ),
+    ],
+)
+def test_mapped_lane_editing_another_lanes_file_fails(lane: str, path: str, owner: str) -> None:
+    """Against the REAL map: a module-contract lane touching a sibling's file is a violation.
+
+    Owners are asserted by membership, not equality: an archived lane's broad
+    glob may still match too (``session/module_delivery.py`` is also under
+    m2's ``session/**``), and that does not make the file any less T's.
+    """
+    lanes, shared = _load_map()
+    result = classify_files([path], lane, lanes, shared)
+    assert not result.ok
+    assert set(result.violations) == {path}
+    assert owner in result.violations[path]
+    assert lane not in result.violations[path]
+
+
+def test_mapped_lane_editing_its_own_file_is_ok() -> None:
+    """Against the REAL map: each lane's hotspot is fine for that lane alone."""
+    lanes, shared = _load_map()
+    for lane, path in (
+        ("S", "packages/studyloop/src/studyloop/content/schemas.py"),
+        ("C", "packages/studyloop/src/studyloop/modules/__init__.py"),
+        ("R", "packages/studyloop/src/studyloop/modules/runner.py"),
+        ("T", "packages/studyloop/src/studyloop/session/module_delivery.py"),
+        ("W", "packages/studyloop/src/studyloop/web/routes/session/_options.py"),
+    ):
+        result = classify_files([path], lane, lanes, shared)
+        assert result.ok, f"{lane} should own {path}: {result.violations}"
 
 
 # ---------------------------------------------------------------------------
@@ -289,15 +434,28 @@ def _load_map() -> tuple[dict[str, list[str]], list[str]]:
     return raw["lanes"], raw["shared"]
 
 
+def _load_branch_map() -> dict[str, str]:
+    """The explicit branch -> lane key (``branches:`` in the fixture).
+
+    Separate from :func:`_load_map` so the two existing call sites keep their
+    shape; absent key -> empty map, which makes :func:`lane_id_from_branch`
+    fall through to the legacy ``lane/m<n>-`` pattern alone.
+    """
+    raw = yaml.safe_load(FIXTURE_PATH.read_text())
+    return dict(raw.get("branches") or {})
+
+
 def test_lane_stays_in_its_lane() -> None:
     branch = _current_branch()
     try:
-        lane = lane_id_from_branch(branch)
+        lane = lane_id_from_branch(branch, _load_branch_map())
     except MalformedLaneBranchError as exc:
         pytest.fail(str(exc))
     if lane is None:
         hint = (
-            f" (detached HEAD: set {LANE_BRANCH_ENV}=lane/m<n>-<slug> to run the guard for real)"
+            f" (detached HEAD: set {LANE_BRANCH_ENV} to the lane's branch name --"
+            " lane/m<n>-<slug>, or a feat/... branch listed under `branches:` in"
+            " the fixture -- to run the guard for real)"
             if branch == "HEAD"
             else ""
         )
