@@ -58,7 +58,7 @@ fixture that fails it and a repaired twin that passes.
 - **THEN** it passes with zero findings
 
 #### Scenario: each rule has a failing fixture
-- **GIVEN** fixture `tests/fixtures/modules/mc0NN/`
+- **GIVEN** fixture `tests/fixtures/modules/mc0NN/broken/`
 - **WHEN** `module check` runs on it
 - **THEN** exactly rule `MC0NN` is reported, and its repaired twin passes
 

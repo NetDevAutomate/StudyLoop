@@ -1,0 +1,113 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_check.py -q -p no:cacheprovider   # check_module() temporarily reports every rule for every module ("always fail" validator): the twins must reject it on their assertions, not on import
+# -- assertion excerpts (every failure is an AssertionError on the report, none an import or NotImplementedError) --
+____________________ test_valid_scaffold_passes_every_rule _____________________
+    assert report.ok is True
+E   AssertionError: assert False is True
+E    +  where False = CheckReport(ok=False, findings=[Finding(rule_id='MC001', message='always fail', path='', line=None), Finding(rule_id='...015', message='always fail', path='', line=None), Finding(rule_id='MC016', message='always fail', path='', line=None)]).ok
+___________ test_broken_fixture_fails_naming_exactly_one_rule[MC001] ___________
+    assert _rule_ids(report) == {rule}
+E   AssertionError: assert {'MC001', 'MC... 'MC006', ...} == {'MC001'}
+E
+E     Extra items in the left set:
+E     'MC002'
+E     'MC003'
+E     'MC016'
+E     'MC009'
+E     'MC015'...
+E
+E     ...Full output truncated (11 lines hidden), use '-vv' to show
+___________ test_broken_fixture_fails_naming_exactly_one_rule[MC002] ___________
+    assert _rule_ids(report) == {rule}
+E   AssertionError: assert {'MC001', 'MC... 'MC006', ...} == {'MC002'}
+E
+E     Extra items in the left set:
+E     'MC003'
+E     'MC016'
+E     'MC009'
+E     'MC015'
+E     'MC013'...
+E
+E     ...Full output truncated (11 lines hidden), use '-vv' to show
+___________ test_broken_fixture_fails_naming_exactly_one_rule[MC003] ___________
+    assert _rule_ids(report) == {rule}
+E   AssertionError: assert {'MC001', 'MC... 'MC006', ...} == {'MC003'}
+E
+E     Extra items in the left set:
+E     'MC002'
+E     'MC016'
+E     'MC009'
+E     'MC015'
+E     'MC013'...
+E
+E     ...Full output truncated (11 lines hidden), use '-vv' to show
+___________ test_broken_fixture_fails_naming_exactly_one_rule[MC004] ___________
+    assert _rule_ids(report) == {rule}
+E   AssertionError: assert {'MC001', 'MC... 'MC006', ...} == {'MC004'}
+E
+E     Extra items in the left set:
+E     'MC002'
+E     'MC003'
+E     'MC016'
+E     'MC009'
+E     'MC015'...
+E
+E     ...Full output truncated (11 lines hidden), use '-vv' to show
+___________ test_broken_fixture_fails_naming_exactly_one_rule[MC005] ___________
+    assert _rule_ids(report) == {rule}
+E   AssertionError: assert {'MC001', 'MC... 'MC006', ...} == {'MC005'}
+E
+E     Extra items in the left set:
+E     'MC002'
+E     'MC003'
+E     'MC016'
+E     'MC009'
+E     'MC015'...
+E
+E     ...Full output truncated (11 lines hidden), use '-vv' to show
+___________ test_broken_fixture_fails_naming_exactly_one_rule[MC006] ___________
+    assert _rule_ids(report) == {rule}
+E   AssertionError: assert {'MC001', 'MC... 'MC006', ...} == {'MC006'}
+E
+E     Extra items in the left set:
+E     'MC002'
+# -- summary --
+FAILED packages/studyloop/tests/test_module_check.py::test_valid_scaffold_passes_every_rule
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC001]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC002]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC003]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC004]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC005]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC006]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC007]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC008]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC009]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC010]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC011]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC012]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC013]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC014]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC015]
+FAILED packages/studyloop/tests/test_module_check.py::test_broken_fixture_fails_naming_exactly_one_rule[MC016]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC001]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC002]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC003]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC004]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC005]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC006]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC007]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC008]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC009]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC010]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC011]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC012]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC013]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC014]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC015]
+FAILED packages/studyloop/tests/test_module_check.py::test_repaired_twin_passes_every_rule[MC016]
+FAILED packages/studyloop/tests/test_module_check.py::test_finding_carries_the_line_of_an_in_file_fault
+FAILED packages/studyloop/tests/test_module_check.py::test_finding_line_is_none_for_a_file_level_fault
+FAILED packages/studyloop/tests/test_module_check.py::test_mc002_names_the_contract_versions_core_speaks
+FAILED packages/studyloop/tests/test_module_check.py::test_mc009_finding_points_at_the_line_without_echoing_the_value
+FAILED packages/studyloop/tests/test_module_check.py::test_deck_findings_point_at_the_offending_field_line
+FAILED packages/studyloop/tests/test_module_check.py::test_report_to_dict_is_the_json_contract
+39 failed, 5 passed in 0.47s

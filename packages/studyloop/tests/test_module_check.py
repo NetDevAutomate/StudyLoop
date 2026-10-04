@@ -70,6 +70,56 @@ def test_repaired_twin_passes_every_rule(rule: str) -> None:
 
 
 # ---------------------------------------------------------------------------
+# C2: finding shape -- file, line, redaction, the --json dict
+# ---------------------------------------------------------------------------
+
+
+def test_finding_carries_the_line_of_an_in_file_fault() -> None:
+    """MC001's unknown key sits on line 6 of ``mc001/broken/module.yaml``."""
+    [finding] = check_module(_broken("MC001")).findings
+    assert (finding.rule_id, finding.path, finding.line) == ("MC001", "module.yaml", 6)
+    assert "homepage" in finding.message
+
+
+def test_finding_line_is_none_for_a_file_level_fault() -> None:
+    """MC003 names the file that is absent; there is no line to point at."""
+    [finding] = check_module(_broken("MC003")).findings
+    assert (finding.rule_id, finding.path, finding.line) == ("MC003", "CHANGELOG.md", None)
+
+
+def test_mc002_names_the_contract_versions_core_speaks() -> None:
+    [finding] = check_module(_broken("MC002")).findings
+    assert (finding.path, finding.line) == ("module.yaml", 2)
+    assert "99" in finding.message
+    assert "1" in finding.message
+
+
+def test_mc009_finding_points_at_the_line_without_echoing_the_value() -> None:
+    """A caught secret must not leak through the checker's own output."""
+    [finding] = check_module(_broken("MC009")).findings
+    assert (finding.path, finding.line) == ("scripts/check.sh", 3)
+    assert "0123456789abcdef" not in finding.message
+    assert "PASSWORD" in finding.message
+
+
+def test_deck_findings_point_at_the_offending_field_line() -> None:
+    """mc015's shell operator is in ``verification.command`` on line 22 of the deck."""
+    [finding] = check_module(_broken("MC015")).findings
+    assert (finding.path, finding.line) == ("decks/echo-basics.json", 22)
+
+
+def test_report_to_dict_is_the_json_contract() -> None:
+    payload = check_module(_broken("MC002")).to_dict()
+    assert payload["ok"] is False
+    [finding] = payload["findings"]
+    assert set(finding) == {"rule_id", "message", "path", "line"}
+    assert finding["rule_id"] == "MC002"
+    assert finding["path"] == "module.yaml"
+    assert finding["line"] == 2
+    assert check_module(VALID).to_dict() == {"ok": True, "findings": []}
+
+
+# ---------------------------------------------------------------------------
 # Fixture integrity against the §5.3 schema (S2)
 # ---------------------------------------------------------------------------
 

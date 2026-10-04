@@ -54,5 +54,7 @@ reports one rule id and nothing else. The choices imply:
   (symlink here) is MC013 only; an operator token is MC015 only. No fixture uses an
   absolute path, which MC007 and MC015 would both flag.
 - **MC009** — the fake secret is a hex sequence that detect-secrets' `is_sequential_string`
-  heuristic filters at commit time; an engine that reuses detect-secrets with the default
-  filter set will *not* flag it. See the lane report.
+  heuristic filters at commit time (so the fixture commits). The engine runs the keyword
+  detector family with those filters disabled (coordinator ruling, spec "optional-modules"),
+  so `export PASSWORD="0123456789abcdef"` **is** flagged by `module check`; the finding names
+  the keyword and the line, never the value.
