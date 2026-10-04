@@ -1,0 +1,12 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_lifecycle.py packages/studyloop/tests/test_module_cli.py -q -p no:cacheprovider
+# worktree with store.py staged add (pre-commit sha in the commit that carries this file)  2026-10-04T21:35:22Z
+.................................................                        [100%]
+49 passed in 1.13s
+# -- the seven staging tests, by name --
+test_module_lifecycle.py::test_add_refuses_a_symlinked_manifest_naming_the_path PASSED [ 14%]
+test_module_lifecycle.py::test_add_refuses_a_fifo_naming_the_path PASSED [ 28%]
+test_module_lifecycle.py::test_add_refuses_a_hard_link_naming_the_path PASSED [ 42%]
+test_module_lifecycle.py::test_add_checks_the_bytes_it_publishes PASSED [ 57%]
+test_module_lifecycle.py::test_add_digest_is_the_digest_of_the_published_bytes PASSED [ 71%]
+test_module_lifecycle.py::test_add_refuses_when_the_existing_snapshot_does_not_match_its_digest PASSED [ 85%]
+test_module_lifecycle.py::test_add_leaves_no_staging_directory_behind PASSED [100%]

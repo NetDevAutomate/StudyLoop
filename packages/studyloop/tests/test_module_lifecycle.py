@@ -454,3 +454,116 @@ def test_module_prerequisites_check_is_registered_under_deps() -> None:
 
     registered = {(category, fn.__name__) for category, fn in _get_registry()._checkers}
     assert ("deps", "check_module_prerequisites") in registered
+
+
+# ---------------------------------------------------------------------------
+# C-review 1 -- add() stages, then checks, then digests, then publishes
+# ---------------------------------------------------------------------------
+
+
+def _store_untouched(store: ModuleStore) -> bool:
+    return not store.lockfile.exists() and not any(store.snapshots.glob("*"))
+
+
+def test_add_refuses_a_symlinked_manifest_naming_the_path(
+    store: ModuleStore, tmp_path: Path
+) -> None:
+    """A symlinked module.yaml reads fine, is skipped by a lstat walk, and leaves a snapshot
+    that fails MC003: the copy must refuse the link, never silently skip it."""
+    module = scaffold_module(tmp_path / "linky", "linky-drills")
+    real = tmp_path / "elsewhere.yaml"
+    real.write_text((module / "module.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+    (module / "module.yaml").unlink()
+    (module / "module.yaml").symlink_to(real)
+
+    with pytest.raises(StoreError, match=r"module\.yaml.*symlink"):
+        store.add(module)
+    assert _store_untouched(store)
+
+
+def test_add_refuses_a_fifo_naming_the_path(store: ModuleStore, tmp_path: Path) -> None:
+    module = scaffold_module(tmp_path / "fifo", "fifo-drills")
+    os.mkfifo(module / "decks" / "pipe.json")
+
+    with pytest.raises(StoreError, match=r"decks/pipe\.json"):
+        store.add(module)
+    assert _store_untouched(store)
+
+
+def test_add_refuses_a_hard_link_naming_the_path(store: ModuleStore, tmp_path: Path) -> None:
+    module = scaffold_module(tmp_path / "hard", "hard-drills")
+    outside = tmp_path / "outside.txt"
+    outside.write_text("shared inode\n", encoding="utf-8")
+    os.link(outside, module / "mentor" / "notes.md")
+
+    with pytest.raises(StoreError, match=r"mentor/notes\.md.*hard link"):
+        store.add(module)
+    assert _store_untouched(store)
+
+
+def test_add_checks_the_bytes_it_publishes(
+    store: ModuleStore, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A source mutated into non-conformance while the check runs must not end up published:
+    the check, the digest and the copy all read one staged tree."""
+    import studyloop.modules.store as store_module
+
+    module = scaffold_module(tmp_path / "racy", "racy-drills")
+    real_check = store_module.check_module
+
+    def check_then_mutate_source(path: Path):
+        report = real_check(path)
+        (module / "scripts" / "check.sh").unlink()  # the deck still references it: MC007
+        return report
+
+    monkeypatch.setattr(store_module, "check_module", check_then_mutate_source)
+    entry = store.add(module)
+
+    snapshot = snapshot_dir(entry)
+    assert check_module(snapshot).ok is True, [f.rule_id for f in check_module(snapshot).findings]
+    assert content_digest(snapshot) == entry.digest
+
+
+def test_add_digest_is_the_digest_of_the_published_bytes(
+    store: ModuleStore, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Digest A must never be bound to bytes B (lane R's consent is digest-bound)."""
+    import studyloop.modules.store as store_module
+
+    module = scaffold_module(tmp_path / "racy", "racy-drills")
+    real_digest = store_module.content_digest
+
+    def digest_then_mutate_source(path: Path) -> str:
+        digest = real_digest(path)
+        (module / "CHANGELOG.md").write_text(
+            "# Changelog\n\n## 9.9.9\n\n- late\n", encoding="utf-8"
+        )
+        return digest
+
+    monkeypatch.setattr(store_module, "content_digest", digest_then_mutate_source)
+    entry = store.add(module)
+
+    assert content_digest(snapshot_dir(entry)) == entry.digest
+
+
+def test_add_refuses_when_the_existing_snapshot_does_not_match_its_digest(
+    store: ModuleStore, tmp_path: Path
+) -> None:
+    module = scaffold_module(tmp_path / "good", "good-drills")
+    entry = store.add(module)
+    tampered = snapshot_dir(entry) / "CHANGELOG.md"
+    tampered.chmod(0o644)
+    tampered.write_text("# tampered\n", encoding="utf-8")
+    before = store.lockfile.read_bytes()
+
+    with pytest.raises(StoreError, match="does not match"):
+        store.add(module)
+    assert store.lockfile.read_bytes() == before
+
+
+def test_add_leaves_no_staging_directory_behind(store: ModuleStore, tmp_path: Path) -> None:
+    store.add(scaffold_module(tmp_path / "good", "good-drills"))
+    with pytest.raises(ModuleCheckError):
+        store.add(FIXTURES / "mc015" / "broken")
+    leftovers = [p.name for p in store.snapshots.iterdir() if p.name.startswith(".")]
+    assert leftovers == []

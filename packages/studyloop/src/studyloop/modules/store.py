@@ -1,10 +1,24 @@
 """The module store: ``module add <path>`` / ``list`` / ``remove`` and ``modules.lock.json``.
 
 Module-contract v1 (proposal §7, spec "optional-modules"), lane C. A module is installed from
-a **local path only**: ``add`` runs the conformance check first and refuses on any finding --
-nothing is written, the lockfile stays byte-identical -- then copies the module into an
-immutable snapshot keyed by its content digest and records one :class:`LockEntry`. ``list``
-and ``remove`` operate on the lockfile alone. No network access occurs anywhere here; the
+a **local path only**. ``add`` is STAGE -> CHECK -> DIGEST -> PUBLISH, every step reading the
+same private copy, so the bytes that were checked are the bytes whose digest is recorded are
+the bytes the runner later executes (lane R's consent is digest-bound):
+
+1. **stage** -- copy the source into a private directory under ``snapshots/`` (``.staging-*``).
+   Only regular files and directories are copied; a symlink, hard link (``st_nlink != 1``),
+   device, socket or FIFO *anywhere* in the module is refused with :class:`StoreError` naming
+   the path -- never skipped, because a skipped ``module.yaml`` symlink would pass the check on
+   the source and fail MC003 in the snapshot. ``.git/`` directories are not module content and
+   are left out (they also carry hard links after ``git clone --local``).
+2. **check** -- ``check_module`` on the staged tree; any finding -> :class:`ModuleCheckError`,
+   staging removed, lockfile byte-identical.
+3. **digest** -- ``content_digest`` on the staged tree.
+4. **publish** -- atomic rename of the staging directory to ``snapshots/<hex>``. When that path
+   already exists it is re-digested and a mismatch is refused with :class:`StoreError`; a
+   match reuses it.
+
+``list`` and ``remove`` operate on the lockfile alone. No network access occurs anywhere here; the
 only subprocess is ``git`` reading local provenance (``rev-parse HEAD``, ``remote get-url
 origin``) when ``<path>`` is inside a git checkout, and that never fetches.
 
@@ -51,6 +65,7 @@ import os
 import shutil
 import stat
 import subprocess
+import tempfile
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -196,6 +211,49 @@ def content_digest(source: Path) -> str:
     return f"sha256:{digest.hexdigest()}"
 
 
+def _stage_tree(source: Path, staging: Path) -> None:
+    """Copy ``source`` into ``staging`` as regular files (0o444, 0o555 when executable).
+
+    Walks with ``os.scandir`` and ``lstat`` only. Anything that is not a regular file with a
+    single link or a directory is refused with :class:`StoreError` naming the relative path.
+    ``.git`` directories are skipped (not module content).
+    """
+    stack: list[tuple[Path, Path]] = [(source, staging)]
+    while stack:
+        src_dir, dst_dir = stack.pop()
+        with os.scandir(src_dir) as entries:
+            for entry in sorted(entries, key=lambda e: e.name):
+                rel = (Path(entry.path)).relative_to(source).as_posix()
+                info = entry.stat(follow_symlinks=False)
+                mode = info.st_mode
+                if stat.S_ISLNK(mode):
+                    raise StoreError(f"{rel} is a symlink; a module holds regular files only")
+                if stat.S_ISDIR(mode):
+                    if entry.name == ".git":
+                        continue
+                    child = dst_dir / entry.name
+                    child.mkdir()
+                    stack.append((Path(entry.path), child))
+                    continue
+                if not stat.S_ISREG(mode):
+                    kind = (
+                        "a FIFO"
+                        if stat.S_ISFIFO(mode)
+                        else "a socket"
+                        if stat.S_ISSOCK(mode)
+                        else "a device"
+                    )
+                    raise StoreError(f"{rel} is {kind}; a module holds regular files only")
+                if info.st_nlink != 1:
+                    raise StoreError(
+                        f"{rel} is a hard link ({info.st_nlink} links); a module holds regular "
+                        "files only"
+                    )
+                destination = dst_dir / entry.name
+                shutil.copyfile(entry.path, destination, follow_symlinks=False)
+                destination.chmod(0o555 if mode & stat.S_IXUSR else 0o444)
+
+
 # ---------------------------------------------------------------------------
 # git provenance -- local reads only, never a fetch
 # ---------------------------------------------------------------------------
@@ -254,18 +312,30 @@ class ModuleStore:
     # -- add ----------------------------------------------------------------------
 
     def add(self, source: Path) -> LockEntry:
-        """Install the module at ``source``; raise :class:`ModuleCheckError` before any write."""
+        """Install the module at ``source``: stage, check, digest, publish (module docstring).
+
+        Raises :class:`StoreError` for a source that is not a directory or holds anything but
+        regular files and directories, and :class:`ModuleCheckError` when the staged copy
+        fails conformance. In both cases nothing reaches the lockfile or ``snapshots/``.
+        """
         source = Path(source).resolve()
         if not source.is_dir():
             raise StoreError(f"{source} is not a directory")
-        report = check_module(source)
-        if not report.ok:
-            raise ModuleCheckError(source, report)
-        manifest = yaml.safe_load((source / "module.yaml").read_text(encoding="utf-8"))
-        module_id = str(manifest["id"])
-        version = str(manifest["version"])
-        digest = content_digest(source)
-        snapshot = self._ensure_snapshot(source, digest)
+        self.snapshots.mkdir(parents=True, exist_ok=True)
+        staging = Path(tempfile.mkdtemp(prefix=".staging-", dir=self.snapshots))
+        try:
+            _stage_tree(source, staging)
+            report = check_module(staging)
+            if not report.ok:
+                raise ModuleCheckError(source, report)
+            manifest = yaml.safe_load((staging / "module.yaml").read_text(encoding="utf-8"))
+            module_id = str(manifest["id"])
+            version = str(manifest["version"])
+            digest = content_digest(staging)
+            snapshot = self._publish(staging, digest)
+        finally:
+            if staging.exists():
+                shutil.rmtree(staging, ignore_errors=True)
         remote, sha = git_provenance(source)
         entry = LockEntry(
             id=module_id,
@@ -286,21 +356,26 @@ class ModuleStore:
             self._drop_orphaned_snapshot(previous, entries)
         return entry
 
-    def _ensure_snapshot(self, source: Path, digest: str) -> Path:
-        """Copy ``source`` into ``snapshots/<hex>`` unless that digest already exists."""
+    def _publish(self, staging: Path, digest: str) -> Path:
+        """Atomically rename the staged tree to ``snapshots/<hex>``; verify an existing one."""
         target = self.snapshots / digest.removeprefix("sha256:")
-        if target.is_dir():
-            return target
-        self.snapshots.mkdir(parents=True, exist_ok=True)
-        staging = self.snapshots / f".staging-{digest.removeprefix('sha256:')}"
-        if staging.exists():
-            shutil.rmtree(staging)
-        for relative, path in _module_files(source):
-            destination = staging / relative
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(path, destination, follow_symlinks=False)
-            destination.chmod(0o555 if _is_executable(path) else 0o444)
-        os.replace(staging, target)
+        staging.chmod(0o755)
+        if not target.exists():
+            try:
+                os.rename(staging, target)
+            except OSError:
+                if not target.is_dir():
+                    raise
+            else:
+                return target
+        # The path exists (an earlier add, or a concurrent one won the rename): the published
+        # bytes must be the bytes the digest names, or the lockfile would lie about them.
+        existing = content_digest(target)
+        if existing != digest:
+            raise StoreError(
+                f"snapshot {target} does not match its digest ({existing} != {digest}); "
+                "refusing to record it -- remove the snapshot directory and add again"
+            )
         return target
 
     # -- remove -------------------------------------------------------------------
