@@ -1,0 +1,28 @@
+# Gate G for lane R wave 1 at aeb38701 (R2-R6 committed); worktree studyloop-wt/module-runner; TMPDIR=$(getconf DARWIN_USER_TEMP_DIR); 2026-10-04
+
+$ env -u VIRTUAL_ENV just preflight   # run 2 (run 1 had one extra red: test_plan_guidance::test_guidance_warnings_identify_actual_unreadable_files, a second-boundary timestamp flake in planning/ -- untouched by this lane, 32/32 green in three isolated re-runs)
+2:All checks passed!
+6:0 errors, 0 warnings, 0 informations
+576:FAILED packages/studyloop/tests/test_fresh_install_scope.py::test_studyloop_study_exits_2_with_the_diagnostic_on_a_virgin_home
+577:==== 1 failed, 7576 passed, 15 skipped, 813 deselected in 956.52s (0:15:56) ====
+578:error: recipe `test` failed on line 27 with exit code 1
+580:real	16m9.366s
+
+# the only red is the allowed one (00-common.md §0: tmux is a mise shim that cannot resolve under the test's virgin HOME). Because `just test` exits 1 on it, the preflight chain stops there; the remaining recipes were run individually:
+
+$ env -u VIRTUAL_ENV just test-js
+ℹ tests 167
+ℹ pass 167
+ℹ fail 0
+
+$ env -u VIRTUAL_ENV just docs
+INFO    -  Documentation built in 0.49 seconds
+
+$ env -u VIRTUAL_ENV just release-consistency
+release consistency passed for studyloop 0.5.0
+
+$ env -u VIRTUAL_ENV just spec-check
+Totals: 25 passed, 0 failed (25 items)
+
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_runner.py packages/studyloop/tests/test_module_drill_cli.py packages/studyloop/tests/test_lane_ownership.py -p no:cacheprovider --no-header -q
+107 passed in 8.58s
