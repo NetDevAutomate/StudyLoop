@@ -1,0 +1,16 @@
+# Lane R's offline fixture module: the shape `studyloop module new` produces (proposal §5.1,
+# §7), hand-written because lane C's scaffold had not merged when R6 was built. One
+# echo-based drill whose three phases exit 0 with no Docker, kind or network.
+id: runner-offline
+contract: 1
+version: 0.1.0
+title: Runner offline fixture
+topic: shell
+license: MIT
+maintainers:
+  - name: StudyLoop core
+    github: NetDevAutomate
+prerequisites: []
+capabilities: [terminal, setup, check, cleanup]
+target:
+  kind: workdir

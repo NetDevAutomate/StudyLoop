@@ -1,0 +1,70 @@
+$ env -u VIRTUAL_ENV uv run python $KIROCREW_SCRATCH/probe_r6.py   # CliRunner driving drill_group setup/check/cleanup on the runner-offline fixture, no session state file, subprocess.Popen spied; 75f440d4+R6 uncommitted; 2026-10-04
+===== studyloop drill setup runner-offline/offline/echo-check  (exit 0)
+Drill phase: setup
+Drill:       runner-offline offline/echo-check
+Target:      workdir /var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/tmpfwvu722j/module-attempts/runner-offline/offline/echo-check/8d82eb9e-9d73-48fb-a66d-0a35a90f4f07
+Command (argv, no shell):
+  [0] scripts/setup.sh
+Script sha256: b368ec060ff1384d0f99f531418a7c55ab8b46a6cb3320e8f2d4b4c071506c19
+Run this phase now? [y/N]: y
+setup: setup passed (exit 0)
+setup: wrote hello.txt in /private/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/tmpfwvu722j/module-attempts/runner-offline/offline/echo-check/8d82eb9e-9d73-48fb-a66d-0a35a90f4f07 for drill offline/echo-check
+Mentor not told: no_active_session (no session state file or no web port/token)
+
+===== studyloop drill check runner-offline/offline/echo-check  (exit 0)
+Drill phase: check
+Drill:       runner-offline offline/echo-check
+Target:      workdir /var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/tmpfwvu722j/module-attempts/runner-offline/offline/echo-check/8d82eb9e-9d73-48fb-a66d-0a35a90f4f07
+Command (argv, no shell):
+  [0] scripts/check.sh
+  [1] hello.txt
+Script sha256: 2bbad49944c6095c539ecb34ac3424cb3345a4ef0761fa25ed7041000e0f53f5
+Run this phase now? [y/N]: y
+check: check passed (exit 0)
+check: hello.txt says hello
+Mentor not told: no_active_session (no session state file or no web port/token)
+
+===== studyloop drill cleanup runner-offline/offline/echo-check  (exit 0)
+Drill phase: cleanup
+Drill:       runner-offline offline/echo-check
+Target:      workdir /var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/tmpfwvu722j/module-attempts/runner-offline/offline/echo-check/8d82eb9e-9d73-48fb-a66d-0a35a90f4f07
+Command (argv, no shell):
+  [0] scripts/cleanup.sh
+Script sha256: cbfc58d548537399cc0f2b97f2075005a9f83c6a3444d6aecfa35d7514325312
+This phase is destructive: it deletes what the attempt created.
+Run this phase now? [y/N]: y
+cleanup: cleanup passed (exit 0)
+cleanup: removed hello.txt
+Mentor not told: no_active_session (no session state file or no web port/token)
+
+===== spawn as the spy saw it (check phase):
+argv: ['/private/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/tmpfwvu722j/snapshot/scripts/check.sh', 'hello.txt']
+kwargs (minus env): {'shell': False, 'cwd': '/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/tmpfwvu722j/module-attempts/runner-offline/offline/echo-check/8d82eb9e-9d73-48fb-a66d-0a35a90f4f07', 'stdin': -3, 'stdout': -1, 'stderr': -1, 'start_new_session': True, 'close_fds': True}
+env: {'HOME': '/private/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/tmpfwvu722j/module-attempts/runner-offline/offline/echo-check/8d82eb9e-9d73-48fb-a66d-0a35a90f4f07/home', 'PATH': '/usr/local/bin:/usr/bin:/bin', 'STUDYLOOP_MODULE_ID': 'runner-offline', 'STUDYLOOP_DRILL_ID': 'offline/echo-check', 'STUDYLOOP_ATTEMPT_ID': '8d82eb9e-9d73-48fb-a66d-0a35a90f4f07', 'STUDYLOOP_ATTEMPT_DIR': '/private/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/tmpfwvu722j/module-attempts/runner-offline/offline/echo-check/8d82eb9e-9d73-48fb-a66d-0a35a90f4f07', 'XDG_CONFIG_HOME': '/private/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/tmpfwvu722j/module-attempts/runner-offline/offline/echo-check/8d82eb9e-9d73-48fb-a66d-0a35a90f4f07/home/.config', 'XDG_CACHE_HOME': '/private/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/tmpfwvu722j/module-attempts/runner-offline/offline/echo-check/8d82eb9e-9d73-48fb-a66d-0a35a90f4f07/home/.cache', 'XDG_DATA_HOME': '/private/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/tmpfwvu722j/module-attempts/runner-offline/offline/echo-check/8d82eb9e-9d73-48fb-a66d-0a35a90f4f07/home/.local/share', 'XDG_STATE_HOME': '/private/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/tmpfwvu722j/module-attempts/runner-offline/offline/echo-check/8d82eb9e-9d73-48fb-a66d-0a35a90f4f07/home/.local/state', 'XDG_RUNTIME_DIR': '/private/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/tmpfwvu722j/module-attempts/runner-offline/offline/echo-check/8d82eb9e-9d73-48fb-a66d-0a35a90f4f07/home/.run'}
+===== DDL:
+CREATE TABLE practice_check_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    attempt_id TEXT NOT NULL,
+    module_id TEXT NOT NULL,
+    module_digest TEXT NOT NULL,
+    deck_id TEXT NOT NULL,
+    task_id TEXT NOT NULL,
+    phase TEXT NOT NULL CHECK (phase IN ('setup', 'check', 'cleanup')),
+    exit_class TEXT NOT NULL CHECK (exit_class IN ('passed', 'failed', 'error')),
+    exit_code INTEGER,
+    duration_seconds REAL NOT NULL,
+    timed_out INTEGER NOT NULL DEFAULT 0 CHECK (timed_out IN (0, 1)),
+    truncated INTEGER NOT NULL DEFAULT 0 CHECK (truncated IN (0, 1)),
+    cap_hit TEXT CHECK (cap_hit IS NULL OR cap_hit IN ('stdout', 'stderr', 'lines')),
+    delivery_status TEXT NOT NULL CHECK (delivery_status IN (
+        'delivered', 'no_active_session', 'transport_closed', 'timed_out',
+        'unsupported_framing', 'error')),
+    delivery_reason TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+)
+CREATE INDEX idx_practice_check_events_attempt ON practice_check_events(attempt_id, phase)
+CREATE INDEX idx_practice_check_events_drill ON practice_check_events(module_id, deck_id, task_id, created_at DESC)
+===== rows:
+('setup', 'passed', 0, 0.046, 0, 0, None, 'no_active_session', 'no session state file or no web port/token')
+('check', 'passed', 0, 0.019, 0, 0, None, 'no_active_session', 'no session state file or no web port/token')
+('cleanup', 'passed', 0, 0.019, 0, 0, None, 'no_active_session', 'no session state file or no web port/token')

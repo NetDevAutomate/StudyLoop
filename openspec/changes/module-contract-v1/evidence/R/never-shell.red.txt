@@ -1,0 +1,12 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_runner.py::test_runner_never_shell -p no:cacheprovider --no-header -q --tb=short
+# worktree studyloop-wt/module-runner at efe5bc76 (stubs committed; today's learning/practice.py untouched); TMPDIR=$(getconf DARWIN_USER_TEMP_DIR); 2026-10-04
+F                                                                        [100%]
+=================================== FAILURES ===================================
+___________________________ test_runner_never_shell ____________________________
+packages/studyloop/tests/test_module_runner.py:277: in test_runner_never_shell
+    assert shell is False, f"verification spawned with shell={shell!r}: {call.args!r}"
+E   AssertionError: verification spawned with shell=True: 'true'
+E   assert True is False
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_never_shell
+1 failed in 0.51s

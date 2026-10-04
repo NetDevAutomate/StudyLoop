@@ -1,0 +1,53 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_runner.py -p no:cacheprovider --no-header -q --tb=short -k 'nul_oversize or spawn_failure'
+# worktree studyloop-wt/module-runner at 3ac12521 + uncommitted M1 tests (declaration-only names added so the files import); TMPDIR=$(getconf DARWIN_USER_TEMP_DIR); 2026-10-04T21:48:20Z
+FFFF                                                                     [100%]
+=================================== FAILURES ===================================
+____ test_runner_refuses_nul_oversize_and_dollar_brace_arguments[nul-byte] _____
+packages/studyloop/tests/test_module_runner.py:471: in test_runner_refuses_nul_oversize_and_dollar_brace_arguments
+    world.run(Phase.CHECK, argv, consent=consent)
+packages/studyloop/tests/test_module_runner.py:196: in run
+    return runner.run_phase(
+packages/studyloop/src/studyloop/modules/runner.py:421: in run_phase
+    ledger.redeem(
+packages/studyloop/src/studyloop/modules/consent.py:177: in redeem
+    raise ConsentUnknownError(
+E   studyloop.modules.consent.ConsentUnknownError: consent forged-504de790-b30b-427c-87fc-50312feaaa54 was not issued by this ledger; refusing to run
+_ test_runner_refuses_nul_oversize_and_dollar_brace_arguments[two-mebibyte-argument] _
+packages/studyloop/tests/test_module_runner.py:471: in test_runner_refuses_nul_oversize_and_dollar_brace_arguments
+    world.run(Phase.CHECK, argv, consent=consent)
+packages/studyloop/tests/test_module_runner.py:196: in run
+    return runner.run_phase(
+packages/studyloop/src/studyloop/modules/runner.py:421: in run_phase
+    ledger.redeem(
+packages/studyloop/src/studyloop/modules/consent.py:177: in redeem
+    raise ConsentUnknownError(
+E   studyloop.modules.consent.ConsentUnknownError: consent forged-6ede3513-1e3d-4b40-b838-febd097977dd was not issued by this ledger; refusing to run
+__ test_runner_refuses_nul_oversize_and_dollar_brace_arguments[dollar-brace] ___
+packages/studyloop/tests/test_module_runner.py:471: in test_runner_refuses_nul_oversize_and_dollar_brace_arguments
+    world.run(Phase.CHECK, argv, consent=consent)
+packages/studyloop/tests/test_module_runner.py:196: in run
+    return runner.run_phase(
+packages/studyloop/src/studyloop/modules/runner.py:421: in run_phase
+    ledger.redeem(
+packages/studyloop/src/studyloop/modules/consent.py:177: in redeem
+    raise ConsentUnknownError(
+E   studyloop.modules.consent.ConsentUnknownError: consent forged-648cc403-23b1-4e28-9229-e02584b7e07d was not issued by this ledger; refusing to run
+____________ test_spawn_failure_is_an_error_result_not_an_exception ____________
+packages/studyloop/tests/test_module_runner.py:486: in test_spawn_failure_is_an_error_result_not_an_exception
+    result = world.run(Phase.CHECK, argv)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+packages/studyloop/tests/test_module_runner.py:196: in run
+    return runner.run_phase(
+packages/studyloop/src/studyloop/modules/runner.py:430: in run_phase
+    process = subprocess.Popen(
+/Users/ataylor/.local/share/uv/python/cpython-3.12-macos-aarch64-none/lib/python3.12/subprocess.py:1026: in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+/Users/ataylor/.local/share/uv/python/cpython-3.12-macos-aarch64-none/lib/python3.12/subprocess.py:1955: in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+E   OSError: [Errno 8] Exec format error: '/private/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/pytest-of-ataylor/pytest-439/test_spawn_failure_is_an_error0/snapshot/scripts/check.sh'
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_refuses_nul_oversize_and_dollar_brace_arguments[nul-byte]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_refuses_nul_oversize_and_dollar_brace_arguments[two-mebibyte-argument]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_refuses_nul_oversize_and_dollar_brace_arguments[dollar-brace]
+FAILED packages/studyloop/tests/test_module_runner.py::test_spawn_failure_is_an_error_result_not_an_exception
+4 failed, 52 deselected in 0.40s

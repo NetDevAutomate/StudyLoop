@@ -1,0 +1,30 @@
+$ env -u VIRTUAL_ENV uv run python $KIROCREW_SCRATCH/probe_m1.py   # real run_phase with prerequisites=('kubectl',), fake kubectl under a scratch /opt/homebrew/bin on the learner's PATH; 3ac12521+M1 uncommitted; 2026-10-04T22:00:45Z
+===== consent prompt
+Drill phase: check
+Drill:       runner-offline offline/echo-check
+Target:      workdir <tmp>/attempt
+Command (argv, no shell):
+  [0] scripts/check.sh
+Script sha256: 6adc79a7bcb5... (64 hex digits of the scratch check.sh, abbreviated here only so detect-secrets does not flag the transcript)
+This script runs with YOUR privileges on this machine -- it can read and write anything you can. StudyLoop runs it without a shell, with a clean environment, in a scratch directory, with capped and redacted output, and stops it on timeout; that is hygiene, not a sandbox (a process that detaches itself survives the stop).
+===== result
+PhaseResult(phase=<Phase.CHECK: 'check'>, exit_class=<ExitClass.PASSED: 'passed'>, exit_code=0, stdout='fake kubectl version-probe\ndone\n', stderr='', truncated=False, timed_out=False, duration_seconds=0.2983607500209473, cap_hit=None, message='check passed (exit 0)', process_returncode=0)
+===== spawn as the spy saw it
+argv: ['<tmp>/snapshot/scripts/check.sh']
+PATH: <tmp>/attempt/bin:/usr/bin:/bin
+bin/: {'kubectl': '<tmp>/opt/homebrew/bin/kubectl'}
+===== hop body (check_result_fields)
+{
+  "module_id": "runner-offline",
+  "module_digest": "sha256:abababababababababababababababababababababababababababababababab",
+  "deck_id": "offline",
+  "task_id": "echo-check",
+  "attempt_id": "a-probe-1",
+  "phase": "check",
+  "exit_class": "passed",
+  "exit_code": 0,
+  "duration_s": 0.2983607500209473,
+  "stdout_tail": "fake kubectl version-probe\ndone\n",
+  "stderr_tail": "",
+  "triggered_by": "learner"
+}

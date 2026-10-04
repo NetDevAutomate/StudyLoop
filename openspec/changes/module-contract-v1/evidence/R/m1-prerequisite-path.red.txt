@@ -1,0 +1,20 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_runner.py -p no:cacheprovider --no-header -q --tb=short -k 'prerequisite'
+# worktree studyloop-wt/module-runner at 3ac12521 + uncommitted M1 tests (declaration-only names added so the files import); TMPDIR=$(getconf DARWIN_USER_TEMP_DIR); 2026-10-04T21:48:20Z
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+_ test_declared_prerequisite_resolves_from_the_learners_path_into_attempt_bin __
+packages/studyloop/tests/test_module_runner.py:677: in test_declared_prerequisite_resolves_from_the_learners_path_into_attempt_bin
+    assert env["PATH"] == f"{attempt_dir / 'bin'}:/usr/bin:/bin"
+E   AssertionError: assert '/usr/local/bin:/usr/bin:/bin' == '/private/var.../usr/bin:/bin'
+E
+E     - /private/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/pytest-of-ataylor/pytest-445/test_declared_prerequisite_res0/attempts/attempt-1/bin:/usr/bin:/bin
+E     + /usr/local/bin:/usr/bin:/bin
+_____________ test_unresolvable_prerequisite_refuses_before_spawn ______________
+packages/studyloop/tests/test_module_runner.py:696: in test_unresolvable_prerequisite_refuses_before_spawn
+    with pytest.raises(PrerequisiteError, match="no-such-tool-xyz"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'studyloop.modules.runner.PrerequisiteError'>
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_module_runner.py::test_declared_prerequisite_resolves_from_the_learners_path_into_attempt_bin
+FAILED packages/studyloop/tests/test_module_runner.py::test_unresolvable_prerequisite_refuses_before_spawn
+2 failed, 54 deselected in 0.44s

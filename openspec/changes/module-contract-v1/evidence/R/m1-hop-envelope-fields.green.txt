@@ -1,0 +1,4 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_drill_cli.py -p no:cacheprovider --no-header -q --tb=short -k 'mentor_told_when or process_return_code or message_or_raw_hex'
+# worktree studyloop-wt/module-runner at 3ac12521 + uncommitted M1 fixes (committed next as one commit); TMPDIR=$(getconf DARWIN_USER_TEMP_DIR); 2026-10-04T21:59:45Z
+...                                                                      [100%]
+3 passed, 22 deselected in 0.95s

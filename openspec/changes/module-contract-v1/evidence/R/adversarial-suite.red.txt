@@ -1,0 +1,76 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_runner.py -p no:cacheprovider --no-header -q --tb=line -k 'not test_drill_writes_no_observation and not test_runner_never_shell'
+# worktree studyloop-wt/module-runner at 67d9fe51 (stubs only; bodies raise NotImplementedError); TMPDIR=$(getconf DARWIN_USER_TEMP_DIR); 2026-10-04
+# (b) boundary reds only -- the two (a) meaningful reds are deselected here; see no-observation.red.txt / never-shell.red.txt
+FFFFFFFFFFFFFFFFFFFFFF                                                   [100%]
+=================================== FAILURES ===================================
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/runner.py:72: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/runner.py:72: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/runner.py:72: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/runner.py:72: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/runner.py:72: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/runner.py:72: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/runner.py:72: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/runner.py:72: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/runner.py:72: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/runner.py:72: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/consent.py:86: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/consent.py:86: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/consent.py:86: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/consent.py:86: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/consent.py:86: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/consent.py:86: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/consent.py:86: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/consent.py:86: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/consent.py:86: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/consent.py:86: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/consent.py:86: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/consent.py:86: NotImplementedError
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_refuses_shell_token_in_literal_argument[semicolon]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_refuses_shell_token_in_literal_argument[pipe]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_refuses_shell_token_in_literal_argument[dollar-paren]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_refuses_shell_token_in_literal_argument[backtick]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_refuses_shell_token_in_literal_argument[redirect]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_refuses_script_that_is_not_a_regular_file_in_snapshot[symlink]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_refuses_script_that_is_not_a_regular_file_in_snapshot[hardlink]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_refuses_script_that_is_not_a_regular_file_in_snapshot[path-escape]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_refuses_script_that_is_not_a_regular_file_in_snapshot[absolute-path]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_refuses_script_that_is_not_a_regular_file_in_snapshot[directory]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_builds_environment_from_scratch
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_refuses_script_changed_after_consent
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_refuses_consent_replay
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_timeout_is_error_and_child_is_terminated
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_truncates_output_flood_and_reaps_child
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_maps_exit_codes_to_exit_classes[check-0-passed]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_maps_exit_codes_to_exit_classes[check-1-failed]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_maps_exit_codes_to_exit_classes[check-2-error]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_maps_exit_codes_to_exit_classes[check-7-error]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_maps_exit_codes_to_exit_classes[setup-1-error]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_requires_fresh_consent_per_phase[setup]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_requires_fresh_consent_per_phase[cleanup]
+22 failed, 2 deselected in 0.43s
+
+# exception-type tally of the lines above:
+  22 NotImplementedError

@@ -1,0 +1,15 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_runner.py -p no:cacheprovider --no-header -q --tb=short -k 'pre_planted_symlink'
+# worktree studyloop-wt/module-runner at 3ac12521 + uncommitted M1 tests (declaration-only names added so the files import); TMPDIR=$(getconf DARWIN_USER_TEMP_DIR); 2026-10-04T21:48:20Z
+F                                                                        [100%]
+=================================== FAILURES ===================================
+___________ test_pre_planted_symlink_at_the_sidecar_path_is_refused ____________
+packages/studyloop/tests/test_module_runner.py:377: in test_pre_planted_symlink_at_the_sidecar_path_is_refused
+    assert (record_path.parent.stat().st_mode & 0o777) == 0o700
+E   AssertionError: assert (16877 & 511) == 448
+E    +  where 16877 = os.stat_result(st_mode=16877, st_ino=586398911, st_dev=16777229, st_nlink=4, st_uid=501, st_gid=20, st_size=128, st_atime=1791150507, st_mtime=1791150507, st_ctime=1791150507).st_mode
+E    +    where os.stat_result(st_mode=16877, st_ino=586398911, st_dev=16777229, st_nlink=4, st_uid=501, st_gid=20, st_size=128, st_atime=1791150507, st_mtime=1791150507, st_ctime=1791150507) = stat()
+E    +      where stat = PosixPath('/private/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/pytest-of-ataylor/pytest-446/test_pre_planted_symlink_at_th0/attempts/example-module/pods/create-nginx').stat
+E    +        where PosixPath('/private/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/pytest-of-ataylor/pytest-446/test_pre_planted_symlink_at_th0/attempts/example-module/pods/create-nginx') = PosixPath('/private/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/pytest-of-ataylor/pytest-446/test_pre_planted_symlink_at_th0/attempts/example-module/pods/create-nginx/91a0db0e-6ecd-4ab3-acdc-dbeaf05d457a.json').parent
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_module_runner.py::test_pre_planted_symlink_at_the_sidecar_path_is_refused
+1 failed, 55 deselected in 0.34s

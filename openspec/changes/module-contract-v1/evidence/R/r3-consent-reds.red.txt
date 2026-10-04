@@ -1,0 +1,34 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_runner.py -p no:cacheprovider --no-header -q --tb=line -k 'consent or script_changed or environment_from_scratch or fresh_consent'
+# worktree studyloop-wt/module-runner at 1c755caf + uncommitted R3 test additions (consent.py still the R1 stub + new declaration-only names); TMPDIR=$(getconf DARWIN_USER_TEMP_DIR); 2026-10-04
+# new reds for wave 1: 10-minute single-use expiry (ruling 7, two readings), a consent never issued by the ledger, the consent prompt text; plus the R1 consent reds (digest race, replay, fresh consent per phase) and the environment test, which needs a working ledger
+FFFFFFFFF                                                                [100%]
+=================================== FAILURES ===================================
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/consent.py:109: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/consent.py:109: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/consent.py:109: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/consent.py:127: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/consent.py:109: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/consent.py:109: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/consent.py:64: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/consent.py:109: NotImplementedError
+E   NotImplementedError
+/Users/ataylor/code/personal/tools/studyloop-wt/module-runner/packages/studyloop/src/studyloop/modules/consent.py:109: NotImplementedError
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_builds_environment_from_scratch
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_refuses_script_changed_after_consent
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_refuses_consent_replay
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_refuses_consent_not_issued_by_the_ledger
+FAILED packages/studyloop/tests/test_module_runner.py::test_cli_consent_expires_ten_minutes_after_it_is_given[one-second-inside-the-ttl]
+FAILED packages/studyloop/tests/test_module_runner.py::test_cli_consent_expires_ten_minutes_after_it_is_given[one-second-past-the-ttl]
+FAILED packages/studyloop/tests/test_module_runner.py::test_consent_prompt_shows_phase_target_argv_and_digest
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_requires_fresh_consent_per_phase[setup]
+FAILED packages/studyloop/tests/test_module_runner.py::test_runner_requires_fresh_consent_per_phase[cleanup]
+9 failed, 27 deselected in 0.36s

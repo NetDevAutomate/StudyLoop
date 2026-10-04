@@ -90,20 +90,20 @@ preflight`. "Red kept" = the failing-test transcript is in the commit body or un
 
 ### R — secure runner + drill CLI
 
-- [ ] R2 `modules/runner.py`: single `scripts/` executable + literal args as argv,
+- [x] R2 `modules/runner.py`: single `scripts/` executable + literal args as argv,
       `shell=False`, regular-file check (MC013 at runtime too), environment built from scratch
       (scratch `HOME`/XDG, minimal `PATH`, the four `STUDYLOOP_*`/`KUBECONFIG` variables);
       verify R1 boundary cases turn green. G.
-- [ ] R3 `modules/consent.py`: argv + script content digest + phase + target shown, confirmed,
+- [x] R3 `modules/consent.py`: argv + script content digest + phase + target shown, confirmed,
       re-checked immediately before spawn; fresh consent per `setup`/`cleanup`; verify the
       digest-race and replay tests turn green. G.
-- [ ] R4 Exit classes per phase, per-phase `timeoutSeconds`, streamed byte/time caps with
+- [x] R4 Exit classes per phase, per-phase `timeoutSeconds`, streamed byte/time caps with
       truncation recorded, redaction before persistence; verify timeout → error and flood →
       truncated tests green. G.
-- [ ] R5 `modules/attempt.py` transient `practice_check` recording; verify
+- [x] R5 `modules/attempt.py` transient `practice_check` recording; verify
       `test_drill_writes_no_observation` green with the observations table row count unchanged
       (red kept from R1). G.
-- [ ] R6 `cli/_drill.py`: `studyloop drill <setup|check|cleanup> <module>/<deck>/<task>` exported
+- [x] R6 `cli/_drill.py`: `studyloop drill <setup|check|cleanup> <module>/<deck>/<task>` exported
       group; verify `test_module_drill_cli.py` runs the C3 scaffold's offline drill end to end
       with no Docker. G.
 - [ ] **M1 council** — adversarial review of R2–R5 before merge; coordinator arbitrates;
