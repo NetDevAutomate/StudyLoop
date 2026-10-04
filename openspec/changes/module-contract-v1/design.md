@@ -37,7 +37,8 @@ flowchart LR
 
 ## 2. Lanes and ownership
 
-Worktrees are siblings of the main checkout (`../studyloop-wt-module-<lane>`), bootstrapped
+Worktrees live beside the existing ones under `../studyloop-wt/module-<lane>` (the repo already
+uses `../studyloop-wt/<name>`, e.g. `studyloop-wt/voice-csp`), bootstrapped
 with `env -u VIRTUAL_ENV just sync-dev` (a fresh worktree has no venv — `docs/contributing.md:61,74`).
 Ownership is enforced by the re-keyed guard (§3); a lane editing a path owned only by another
 lane fails its own gate.
@@ -171,6 +172,29 @@ learner can say where to start and where to stop without having seen an answer.
 
 Each council is four non-Claude seats from one fixed brief, arbitrated in the open, results
 persisted under `council/`, exactly as the two 2026-10-04 rounds were run.
+
+**Review cadence (owner decision, 2026-10-04 16:40):** reviews happen at every milestone and
+"when needed", sized to what each decision costs if wrong.
+
+- **Full council (four seats)** at M0, M1 and M2 as above, and *when needed*: a lane reports a
+  contract gap (its brief's escalation condition); a lane-merge reviewer raises a finding the
+  coordinator cannot settle from the code; two lanes' tests disagree about a shared seam.
+- **Lane-merge review (one independent seat)** before each of S, C, T and W merges — R's
+  merge review *is* M1. The seat is a non-Claude model (default `gpt-5.6-sol`, whose
+  citations were the only ones that all checked out across both rounds; `qwen3-coder-next`
+  if unavailable). It receives the lane brief, the full diff, the red-first evidence and the
+  gate transcript, and answers four countable questions: does every new behaviour have a test
+  that was red first; does any file fall outside the lane's owned globs; does the diff do
+  anything the proposal does not ask for (C8 especially); what would break the next lane. The
+  coordinator verifies every finding against the tree before acting on it; unverified
+  findings are recorded as discounted, not applied.
+- **Test results are inputs, never summaries:** every review receives the gate transcript and
+  the evidence directory, not a sentence saying tests pass.
+- **Catch-rate ledger** `council/catch-rate.md`: per review, findings raised / verified /
+  acted on, and the coordinator's own call before the review. M2 reads it and says whether
+  the cadence earned its cost; a seat whose verified rate stays low is dropped.
+- **Not reviewed by a council:** fixture content, naming, formatting, commit wording, anything
+  the gate decides mechanically.
 
 ## 8. The transport spike (T1), scoped by what is already verified
 

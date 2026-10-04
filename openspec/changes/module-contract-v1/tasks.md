@@ -7,16 +7,18 @@ preflight`. "Red kept" = the failing-test transcript is in the commit body or un
 
 ## 0. Setup (coordinator)
 
-- [ ] 0.1 Create five worktrees as siblings of the main checkout, one per lane branch
+- [ ] 0.1 Create five worktrees under `../studyloop-wt/module-<lane>`, one per lane branch
       (`feat/module-schema`, `feat/module-conformance`, `feat/module-runner`,
       `feat/module-mentor-delivery`, `feat/module-web-labs`) from the same base sha; run
-      `env -u VIRTUAL_ENV just sync-dev` in each; verify `env -u VIRTUAL_ENV just test` passes
-      in one of them before any lane starts.
+      `env -u VIRTUAL_ENV just sync-dev` then `env -u VIRTUAL_ENV just test` in **one** of them
+      (the recipe is proven once); every other lane runs `just sync-dev` as its own step 1.
 - [ ] 0.2 Write the five lane briefs per `design.md` §11 and store them under
       `openspec/changes/module-contract-v1/briefs/`; verify each names its owned/forbidden
       globs, DoD tests, red-first obligation and merge position.
 - [ ] 0.3 Confirm the docs lease: `docs/`, `mkdocs.yml`, `CHANGELOG.md` have no uncommitted
       edits from the other session before S3 is scheduled; verify with `git status` on `main`.
+- [ ] 0.4 Open `council/catch-rate.md` (design.md §7 review cadence) with one row per planned
+      review: S-review, M0, C-review, M1, T-review, W-review, M2.
 
 ## 1. Wave 0 — S lands; C and R go red; T spikes
 
@@ -31,6 +33,8 @@ preflight`. "Red kept" = the failing-test transcript is in the commit body or un
       `test_module_schema.py`: the proposal's example validates, each field round-trips,
       missing/duplicate/malformed `id` rejected, a pre-existing deck still validates.
       Red kept: the example failing before this commit. G.
+- [ ] S-review One independent seat reviews S1–S2 (design.md §7 cadence); coordinator
+      verifies each finding against the tree; verify the row in `council/catch-rate.md` is filled.
 - [ ] S-merge Merge S1–S2 to `main` as the first and only early merge; push `main`; post
       `comms/2026-10-04-issue-53-reply.md` on #53 with `<SHA>` filled in (owner's account, owner's
       call); verify the comment is up and its proposal link resolves.
@@ -81,6 +85,7 @@ preflight`. "Red kept" = the failing-test transcript is in the commit body or un
       execute anything but `--version`. G.
 - [ ] C6 `cli/_module.py` Typer group exported, not registered; verify `test_module_cli.py`
       via `CliRunner` on the group object. G.
+- [ ] C-review One independent seat reviews C2–C6 before C merges; verify the catch-rate row.
 
 ### R — secure runner + drill CLI
 
@@ -115,6 +120,7 @@ preflight`. "Red kept" = the failing-test transcript is in the commit body or un
 - [ ] T4 ACP delivery per the ADR's serialisation; verify `::test_acp` green and
       `::test_acp_no_overlap_with_learner_turn` green; verify delivery failure is surfaced to
       the learner by a third test. G.
+- [ ] T-review One independent seat reviews T2–T4 before T merges; verify the catch-rate row.
 
 ### W — tests only
 
@@ -138,6 +144,7 @@ preflight`. "Red kept" = the failing-test transcript is in the commit body or un
       `acceptance/test_module_kdrill_live.py` gated `STUDYLOOP_ACC=1 STUDYLOOP_LIVE=1` with a
       sentinel-cluster assertion; UAT rubric for Personas A and B under `acceptance/uat/`;
       verify `just docs` strict and the acceptance test skips cleanly without the env vars. G.
+- [ ] W-review One independent seat reviews W2–W5 before W merges; verify the catch-rate row.
 
 ## 4. Wave 3 — representative user testing, live proof, release proof
 
