@@ -1,8 +1,28 @@
 # Testing cookbook for contributors
+<!-- facts: F7 F8 F11 -->
 
-You do not need to understand every suite to write a good first test. Start at the smallest boundary
-that can prove the behaviour, then add a browser journey if the learner must interact with the UI.
-See [setup](contributing.md#development-environment) and the [code map](contributor-code-map.md).
+Pick the smallest tier that can prove your behaviour, write one focused test there, and copy the
+structure of the two collected examples below, not their assertions. The five tiers, who runs each
+and where, come first; the patterns the examples already show follow.
+
+## Choose the tier first
+
+1. **Default** — `just test`, which is `uv run --group dev pytest`: unit, CLI, `TestClient` and
+   docs-truth tests. You run it locally; CI runs it on every push to `main` and every pull request targeting `main`. `pyproject.toml`
+   deselects every other marker, so a green default run proves nothing about the tiers below.
+2. **Integration** — `pytest -m integration`: real tmux and SQLite. Opt in locally when you touch
+   sessions or history; CI runs the marker nightly at 03:00 UTC (`.github/workflows/nightly-uat.yml`).
+3. **Browser (e2e)** — `just e2e`: Playwright journeys against a real server with fake agents. It
+   takes a machine-wide lock (`/tmp/studyloop-e2e.lock`), so one run per machine: the maintainer runs
+   it before a merge and CI runs the browser suite on pushes to `main` and pull requests to `main`. Run it yourself only when you
+   touched the web UI, the session transports or `tests/e2e/`, and never start a second run beside it.
+4. **Acceptance** — `just testacc`, which sets `STUDYLOOP_ACC=1`: a real harness through the real
+   product surface. Opt-in on your own machine; it never runs in CI.
+5. **UAT** — `just testuat`, which adds `STUDYLOOP_UAT=1`: release sign-off graded against a written
+   rubric. Opt-in on top of acceptance; never in CI. Both are on [Acceptance testing](acceptance-testing.md).
+
+Not sure? Start at 1 and move down only when the behaviour cannot be observed one tier up. See
+[setup](contributing.md#development-environment) and the [code map](contributor-code-map.md).
 
 ## First make a small loop work
 
@@ -12,12 +32,12 @@ From the repository root, after installing `uv`, `just` and the required Python 
 just sync-web
 uv run --group dev playwright install chromium
 uv run --group dev pytest packages/studyloop/tests/test_contributor_examples.py -q
-just e2e packages/studyloop/tests/e2e/test_contributor_browser_example.py
 ```
 
-The two example files are real, collected regression tests, not pseudocode. Copy their structure,
-not their assertions, for your feature. Use `just sync-full` when working across optional extras.
-In a worktree, prefix `just` or `uv run` with `env -u VIRTUAL_ENV`.
+The browser twin of that example runs under `just e2e` with the file path as its argument
+(tier 3 above). The two example files are real, collected regression tests, not pseudocode. Copy
+their structure, not their assertions, for your feature. Use `just sync-full` when working across
+optional extras. In a worktree, prefix `just` or `uv run` with `env -u VIRTUAL_ENV`.
 
 ## Which test belongs where?
 
@@ -32,11 +52,8 @@ In a worktree, prefix `just` or `uv run` with `env -u VIRTUAL_ENV`.
 | Are published commands and capability claims still true? | Documentation contract test | Relevant `test_docs_*.py`, plus `just docs` |
 
 `just preflight` runs lint, type checks, the default Python suite, JavaScript tests, strict docs,
-release consistency and the specification check. It does **not** run the full Playwright suite.
-`just e2e` does; run it for changes to Web UI, session transports or browser tests. It serializes
-browser runs with a machine-wide lock. Do not bypass that lock to run a second browser suite.
-The default pytest selection excludes opt-in integration, browser and live-provider markers.
-A green default run is not evidence that those workflows ran.
+release consistency and the specification check. It does **not** run the browser suite; that is
+`just e2e`, tier 3 above. A green default run is not evidence that the opt-in tiers ran.
 
 Keep test filenames unique across `tests/` and its subdirectories. The coverage collector also
 collects with pytest's prepend import mode; two files with the same basename can pass a focused
@@ -157,14 +174,12 @@ for new controls. Accessibility automation complements, rather than replaces, th
 
 ### Debug a failure without hiding it
 
-```bash
-just e2e packages/studyloop/tests/e2e/test_contributor_browser_example.py --headed --tracing retain-on-failure
-```
-
-The helper's `diag` writes screenshot, HTML and console evidence on failure; pytest-playwright
-can retain traces. Inspect the reported artifact paths. Traces and HTML may contain everything
-the browser saw: only attach reviewed, synthetic evidence to a public PR. Do not commit generated
-test artifacts. State which browser, viewport and test command reproduced the failure.
+Re-run the one failing journey through `just e2e` with its file path, adding `--headed` to watch it
+and `--tracing retain-on-failure` to keep a Playwright trace (the recipe passes extra arguments to
+pytest). The helper's `diag` writes screenshot, HTML and console evidence on failure. Inspect the
+reported artifact paths. Traces and HTML may contain everything the browser saw: only attach
+reviewed, synthetic evidence to a public PR. Do not commit generated test artifacts. State which
+browser, viewport and test command reproduced the failure.
 
 If startup reports an occupied port, stop the test process you own or choose an unused test port;
 do not kill an unknown listener. If a browser is missing, reinstall Chromium using the same venv's
@@ -184,31 +199,14 @@ Do not weaken a guard simply because it catches your new test.
 
 ## Pull-request template
 
-Copy this into the PR description and fill only with evidence you have:
+The template is the five questions on [Raising a pull request](contributor-pull-requests.md); this
+page only says what the test evidence under question 3 should look like:
 
-```markdown
-## Problem and learner outcome
-Issue: #...
-Before:
-After:
+1. The regression test, and why it failed before the fix (an import error is not that reason).
+2. The commands you ran, as typed, with their actual results, including skips and failures.
+3. For a browser change: the journey, the viewport and a reviewed synthetic screenshot.
+4. What you did not test, and why; a mock-backed test is not a live-provider verification.
 
-## Scope
-Changed:
-Deliberately not changed:
-Privacy, permissions, migration or compatibility implications:
-
-## Evidence
-- Regression test and why it failed before the fix:
-- Commands run and actual results (include skips/failures):
-- Browser journey, viewport and reviewed synthetic screenshot if relevant:
-- Not tested, and why:
-
-## Documentation
-- User guide / contributor guide / specification updated:
-- Unreleased changelog entry:
-- AI assistance used, if any:
-```
-
-Before requesting review: run `just preflight`, the relevant browser/acceptance checks, and
-`git diff --check`; read the diff yourself. Do not paste credentials or personal paths in the PR.
-Do not describe a mock-backed test as a live provider verification, or a local pass as a release.
+Before requesting review: run `just preflight`, the relevant browser or acceptance tier, and
+`git diff --check`; read the diff yourself. Do not paste credentials or personal paths in the PR,
+and do not describe a local pass as a release.

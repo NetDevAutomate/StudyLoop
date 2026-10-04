@@ -1,5 +1,8 @@
 # Acceptance testing
 
+Choose the tier first in the [testing cookbook](contributor-testing.md#choose-the-tier-first); the
+evidence a pull request needs is on [Raising a pull request](contributor-pull-requests.md).
+
 StudyLoop's acceptance tier is modelled directly on the [AWS Terraform
 Provider's `make testacc`](https://github.com/hashicorp/terraform-provider-aws) —
 every acceptance test **skips with a clear reason** unless you explicitly opt

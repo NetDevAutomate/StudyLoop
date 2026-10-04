@@ -1,0 +1,4 @@
+$ env -u VIRTUAL_ENV uv run --group dev pytest packages/studyloop/tests/test_docs_drift.py packages/studyloop/tests/test_contributor_docs.py packages/studyloop/tests/test_docs_harness_tier_contract.py -q -p no:cacheprovider
+............................................................s..........s [ 90%]
+....s..........................                                          [100%]
+316 passed, 3 skipped in 1.84s

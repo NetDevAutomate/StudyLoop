@@ -1,0 +1,38 @@
+$ env -u VIRTUAL_ENV uv run --group dev pytest packages/studyloop/tests/test_contributor_guide_drift.py -q -p no:cacheprovider -rf
+E   AssertionError: contributing.md: 372 lines > cap 200
+E   AssertionError: contributor-environment.md: still a stub (marker present); no numbered list
+E   AssertionError: contributor-debugging.md: still a stub (marker present); no numbered list
+E   AssertionError: contributor-cli.md: still a stub (marker present); no numbered list
+E   AssertionError: contributor-web.md: still a stub (marker present); no numbered list
+E   AssertionError: contributor-mcp.md: still a stub (marker present); no numbered list
+E   AssertionError: contributor-doctor.md: still a stub (marker present); no numbered list
+E   AssertionError: contributor-harnesses-agents.md: still a stub (marker present); no numbered list
+E   AssertionError: contributor-content.md: still a stub (marker present); no numbered list
+E   AssertionError: contributor-documentation.md: still a stub (marker present); no numbered list
+E   AssertionError: contributor-testing.md: 214 lines > cap 150
+E   AssertionError: contributor-changelog.md: still a stub (marker present); no numbered list
+E   AssertionError: contributor-pull-requests.md: still a stub (marker present); no numbered list
+E   AssertionError: contributor-issues-prioritisation.md: still a stub (marker present); no numbered list
+E   AssertionError: contributor-ai.md: still a stub (marker present); no numbered list
+E   AssertionError: contributor-conventions.md: still a stub (marker present); no numbered list
+E   AssertionError: contributor-module-index.md: still a stub (marker present); no numbered list
+E   AssertionError: contributor-module-index.md: no link to module-contract-v1/proposal.md
+FAILED packages/studyloop/tests/test_contributor_guide_drift.py::test_structure[contributing.md]
+FAILED packages/studyloop/tests/test_contributor_guide_drift.py::test_structure[contributor-environment.md]
+FAILED packages/studyloop/tests/test_contributor_guide_drift.py::test_structure[contributor-debugging.md]
+FAILED packages/studyloop/tests/test_contributor_guide_drift.py::test_structure[contributor-cli.md]
+FAILED packages/studyloop/tests/test_contributor_guide_drift.py::test_structure[contributor-web.md]
+FAILED packages/studyloop/tests/test_contributor_guide_drift.py::test_structure[contributor-mcp.md]
+FAILED packages/studyloop/tests/test_contributor_guide_drift.py::test_structure[contributor-doctor.md]
+FAILED packages/studyloop/tests/test_contributor_guide_drift.py::test_structure[contributor-harnesses-agents.md]
+FAILED packages/studyloop/tests/test_contributor_guide_drift.py::test_structure[contributor-content.md]
+FAILED packages/studyloop/tests/test_contributor_guide_drift.py::test_structure[contributor-documentation.md]
+FAILED packages/studyloop/tests/test_contributor_guide_drift.py::test_structure[contributor-testing.md]
+FAILED packages/studyloop/tests/test_contributor_guide_drift.py::test_structure[contributor-changelog.md]
+FAILED packages/studyloop/tests/test_contributor_guide_drift.py::test_structure[contributor-pull-requests.md]
+FAILED packages/studyloop/tests/test_contributor_guide_drift.py::test_structure[contributor-issues-prioritisation.md]
+FAILED packages/studyloop/tests/test_contributor_guide_drift.py::test_structure[contributor-ai.md]
+FAILED packages/studyloop/tests/test_contributor_guide_drift.py::test_structure[contributor-conventions.md]
+FAILED packages/studyloop/tests/test_contributor_guide_drift.py::test_structure[contributor-module-index.md]
+FAILED packages/studyloop/tests/test_contributor_guide_drift.py::test_module_pages_stay_proposals[contributor-module-index.md]
+18 failed, 74 passed in 0.69s

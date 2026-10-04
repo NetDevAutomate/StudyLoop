@@ -39,7 +39,7 @@ preflight`. "Red kept" = the failing-test transcript is in the commit body or un
       into `comms/2026-10-04-issue-53-reply.md`.
 - [ ] S-merge (owner) push `main`; post the #53 reply (owner's account, owner's call); verify the
       comment is up and its proposal link resolves.
-- [ ] S3 (docs lease held) `docs/module-contract.md` with the "Adding a module" checklist,
+- [ ] S3 (docs lease RELEASED 2026-10-04 21:40 — contributor guide merged at 6a3f45d2; lane S may take it) `docs/module-contract.md` with the "Adding a module" checklist,
       `.github/PULL_REQUEST_TEMPLATE/module.md`, `mkdocs.yml` nav entry, changelog entry;
       verify `test_docs_drift.py` extension (checklist, four README headings, PR template,
       MC001–MC016 linked) is red before and green after; `just docs` strict. G.
@@ -144,7 +144,7 @@ preflight`. "Red kept" = the failing-test transcript is in the commit body or un
       cancel → reload re-attaches → keyboard (Tab/Shift-Tab/Escape) → module removed → Labs
       gone; explicit module timeout; verify green under `just e2e` (machine lock; run alone).
       Red kept.
-- [ ] W5 Docs/changelog reconciliation (docs lease); acceptance test
+- [ ] W5 Docs/changelog reconciliation (docs lease — free since 6a3f45d2; serialise after S3); acceptance test
       `acceptance/test_module_kdrill_live.py` gated `STUDYLOOP_ACC=1 STUDYLOOP_LIVE=1` with a
       sentinel-cluster assertion; UAT rubric for Personas A and B under `acceptance/uat/`;
       verify `just docs` strict and the acceptance test skips cleanly without the env vars. G.
