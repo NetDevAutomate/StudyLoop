@@ -479,3 +479,37 @@ async def test_deliver_to_active_session_reads_active_current(monkeypatch) -> No
 
     monkeypatch.setattr(module_delivery.active, "current", _none)
     assert (await deliver_to_active_session(make_envelope())).status == "no_active_session"
+
+
+# --- PTY framing support: DEC 2004 tracking (M0 Q3) ----------------------------------
+#
+# Helper tests, added with the scanner: the scenario they support is the integration
+# test ``test_pty_mode_2004_off_falls_back_to_one_line`` (red first, evidence/T/).
+
+
+def test_dec2004_scanner_sees_a_sequence_split_across_reads() -> None:
+    from studyloop.session.transports.pty import _scan_dec2004
+
+    carry, on = _scan_dec2004(b"", b"hello \x1b[?20", enabled=False)
+    assert on is False, "half a sequence is not an enable"
+    carry, on = _scan_dec2004(carry, b"04h> ", enabled=on)
+    assert on is True, "the two halves together are ESC[?2004h"
+    carry, on = _scan_dec2004(carry, b"more output", enabled=on)
+    assert on is True, "no sequence in the chunk leaves the mode as it was"
+    carry, on = _scan_dec2004(carry, b"\x1b[?2004l\x1b[?2004h\x1b[?2004l", enabled=on)
+    assert on is False, "the LAST sequence in a chunk wins"
+    carry, on = _scan_dec2004(carry, b"\x1b[?2004l\x1b[?2004h", enabled=on)
+    assert on is True
+    assert len(carry) == 7, "the carry is the longest proper prefix a chunk can end with"
+
+
+def test_pty_transport_framing_follows_the_tracked_mode() -> None:
+    from studyloop.session.transports.pty import PTYTransport, _scan_dec2004
+
+    transport = PTYTransport(resolve_binary=lambda _a: None, build_launch_cmd=lambda _c: [])
+    assert transport.block_framing == "pty-line", "until the child enables mode 2004: one line"
+    transport._dec_carry, transport._bracketed_paste = _scan_dec2004(
+        transport._dec_carry, b"\x1b[?2004h", transport._bracketed_paste
+    )
+    assert transport.bracketed_paste_enabled is True
+    assert transport.block_framing == "pty"

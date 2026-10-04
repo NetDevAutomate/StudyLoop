@@ -1,0 +1,14 @@
+env -u VIRTUAL_ENV uv run pytest "packages/studyloop/tests/integration/test_module_delivery_transports.py::test_pty_mode_2004_off_falls_back_to_one_line" -m integration -q -p no:cacheprovider
+# worktree: module-mentor-delivery  HEAD: 72182acb (T2 landed; PTYTransport has no deliver_block / DEC 2004 tracking yet)  TMPDIR=$(getconf DARWIN_USER_TEMP_DIR)
+F                                                                        [100%]
+=================================== FAILURES ===================================
+________________ test_pty_mode_2004_off_falls_back_to_one_line _________________
+packages/studyloop/tests/integration/test_module_delivery_transports.py:275: in test_pty_mode_2004_off_falls_back_to_one_line
+    assert received.endswith(b"\r") and received.count(b"\r") == 1, (
+E   AssertionError: [studyloop.session.module_delivery.deliver] not one line submitted once: b'' (M0 Q3 fallback)
+E   assert (False)
+E    +  where False = <built-in method endswith of bytes object at 0x1027260e0>(b'\r')
+E    +    where <built-in method endswith of bytes object at 0x1027260e0> = b''.endswith
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/integration/test_module_delivery_transports.py::test_pty_mode_2004_off_falls_back_to_one_line
+1 failed in 20.83s

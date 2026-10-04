@@ -103,6 +103,7 @@ _PTY_FAKE_MENTOR = textwrap.dedent(
     import os, select, sys, time, tty
     fd = sys.stdin.fileno()
     tty.setraw(fd)                       # what every TUI harness agent does
+    sys.stdout.write("\\x1b[?2004h")        # ... and enables bracketed paste (DEC 2004)
     sys.stdout.write("READY\\n"); sys.stdout.flush()
     buf = b""
     deadline = time.monotonic() + 20.0
@@ -115,6 +116,28 @@ _PTY_FAKE_MENTOR = textwrap.dedent(
             buf += chunk
             if buf.endswith(b"\\x1b[201~\\r"):   # paste closed and submitted
                 break
+        elif buf:
+            break                            # idle after input: whatever came is all
+    sys.stdout.write("MENTOR-GOT " + buf.hex() + "\\n"); sys.stdout.flush()
+    """
+)
+
+
+_PTY_FAKE_MENTOR_NO_2004 = textwrap.dedent(
+    """
+    import os, select, sys, time, tty
+    fd = sys.stdin.fileno()
+    tty.setraw(fd)                       # raw mode, but bracketed paste is never enabled
+    sys.stdout.write("READY\\n"); sys.stdout.flush()
+    buf = b""
+    deadline = time.monotonic() + 20.0
+    while time.monotonic() < deadline:
+        ready, _, _ = select.select([fd], [], [], 1.0)
+        if ready:
+            chunk = os.read(fd, 65536)
+            if not chunk:
+                break
+            buf += chunk
         elif buf:
             break                            # idle after input: whatever came is all
     sys.stdout.write("MENTOR-GOT " + buf.hex() + "\\n"); sys.stdout.flush()
@@ -215,6 +238,55 @@ async def test_pty(tmp_path: Path) -> None:
     assert "kubectl: context deadline exceeded" in text, (
         f"[{seam}] stderr was cut before the stdout tail (ADR-0012 Q3: stdout first)"
     )
+
+
+@pytest.mark.asyncio
+async def test_pty_mode_2004_off_falls_back_to_one_line(tmp_path: Path) -> None:
+    """Spec scenario "bracketed paste off falls back to one line" (M0 Q3).
+
+    GIVEN a PTY session whose child never enabled DEC mode 2004, WHEN an envelope is
+    delivered, THEN it arrives as exactly one printable line -- output newlines
+    escaped as the two characters ``\\n``, sentinels kept, no ESC -- followed by one
+    CR, and the outcome says ``delivered``. (Raw multi-line text + CR would submit
+    each line as its own prompt and splinter the envelope.)
+    """
+    script = tmp_path / "fake_pty_mentor_no_2004.py"
+    script.write_text(_PTY_FAKE_MENTOR_NO_2004)
+    transport = PTYTransport(
+        resolve_binary=lambda _agent: sys.executable,
+        build_launch_cmd=lambda _cfg: [sys.executable, str(script)],
+    )
+    config = _config(tmp_path, agent="fake-pty-mentor")
+    seam = SEAM
+    result = _sample_result(stdout="replica count mismatch\n" * 3, stderr="boom\n")
+
+    await transport.start(config)
+    try:
+        await _wait_for_ready(transport, timeout=10.0)
+        session = ActiveSession(
+            study_session_id=config.study_session_id, transport=transport, config=config
+        )
+        outcome = await deliver(session, result)
+        received = await _pty_mentor_received(transport, timeout=25.0)
+    finally:
+        await transport.end()
+
+    text = received.decode("utf-8", errors="replace")
+    assert received.endswith(b"\r") and received.count(b"\r") == 1, (
+        f"[{seam}] not one line submitted once: {received[-40:]!r} (M0 Q3 fallback)"
+    )
+    assert b"\n" not in received and b"\x1b" not in received, (
+        f"[{seam}] mode 2004 is off, yet raw newlines or ESC reached the mentor -- a line "
+        f"editor would submit each line separately (M0 Q3). First 80 bytes: {received[:80]!r}"
+    )
+    assert text.startswith(BEGIN_SENTINEL) and END_SENTINEL in text, (
+        f"[{seam}] sentinels missing from the one-line envelope: {text[:80]!r}"
+    )
+    assert "replica count mismatch\\nreplica count mismatch" in text, (
+        f"[{seam}] output newlines must be escaped as the two characters \\n"
+    )
+    assert "kdrill" in text and "deployments/scale-to-three" in text and "failed" in text
+    assert getattr(outcome, "status", None) == "delivered", f"[{seam}] {outcome!r}"
 
 
 # --- ACP: a fake mentor that echoes each prompt and notices overlapping ones ---------
