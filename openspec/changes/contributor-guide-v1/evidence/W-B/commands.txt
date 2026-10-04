@@ -60,3 +60,21 @@ $ uv run --group dev pytest packages/studyloop/tests/test_e2e_coverage_gate.py -
 exit=0  sha=b5d15227  utc=2026-10-04T19:26Z
 .....                                                                    [100%]
 5 passed, 11 deselected in 32.05s
+
+$ uv run --group dev pytest packages/studyloop/tests/test_mcp_next_action.py -q
+exit=0  sha=d88d1c7d  utc=2026-10-04T19:29Z
+..........                                                               [100%]
+10 passed in 1.11s
+
+$ uv run --group dev pytest packages/studyloop/tests/test_mcp_session_parity.py -q
+exit=0  sha=d88d1c7d  utc=2026-10-04T19:29Z
+...............                                                          [100%]
+15 passed in 0.40s
+
+$ uv run --group dev pytest packages/studyloop/tests/test_mcp_*.py -q
+exit=0  sha=d88d1c7d  utc=2026-10-04T19:29Z
+........................................................................ [ 26%]
+........................................................................ [ 52%]
+........................................................................ [ 78%]
+............................................................             [100%]
+276 passed, 3 deselected in 3.91s
