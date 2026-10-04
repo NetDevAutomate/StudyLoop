@@ -8,7 +8,9 @@ A web change is a FastAPI route in `packages/studyloop/src/studyloop/web/routes/
 JavaScript, not React (F12). It is proved by a `TestClient` test, a `node --test` unit test for
 the component, and one Playwright journey in `packages/studyloop/tests/e2e/`.
 
-1. Add the route module and `include_router` it in `web/app.py`.
+1. Start the app you will walk: `uv run studyloop web` serves `http://127.0.0.1:8567` (the port is
+   `--port`; `--lan` binds all interfaces behind Basic auth). Then add the route module and
+   `include_router` it in `web/app.py`.
 2. Add or extend a component factory under `static/js/components/` and bind it in `index.html`.
 3. Write the `TestClient` test and the component's `node --test` file.
 4. Write one Playwright journey against the hermetic world in `tests/e2e/`.

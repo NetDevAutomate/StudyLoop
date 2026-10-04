@@ -8,13 +8,13 @@ and where, come first; the patterns the examples already show follow.
 ## Choose the tier first
 
 1. **Default** — `just test`, which is `uv run --group dev pytest`: unit, CLI, `TestClient` and
-   docs-truth tests. You run it locally; CI runs it on every push and pull request. `pyproject.toml`
+   docs-truth tests. You run it locally; CI runs it on every push to `main` and every pull request targeting `main`. `pyproject.toml`
    deselects every other marker, so a green default run proves nothing about the tiers below.
 2. **Integration** — `pytest -m integration`: real tmux and SQLite. Opt in locally when you touch
    sessions or history; CI runs the marker nightly at 03:00 UTC (`.github/workflows/nightly-uat.yml`).
 3. **Browser (e2e)** — `just e2e`: Playwright journeys against a real server with fake agents. It
    takes a machine-wide lock (`/tmp/studyloop-e2e.lock`), so one run per machine: the maintainer runs
-   it before a merge and CI runs the browser suite on every push. Run it yourself only when you
+   it before a merge and CI runs the browser suite on pushes to `main` and pull requests to `main`. Run it yourself only when you
    touched the web UI, the session transports or `tests/e2e/`, and never start a second run beside it.
 4. **Acceptance** — `just testacc`, which sets `STUDYLOOP_ACC=1`: a real harness through the real
    product surface. Opt-in on your own machine; it never runs in CI.

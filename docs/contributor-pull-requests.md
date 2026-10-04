@@ -23,8 +23,8 @@ eight real commits as examples, and what the reviewer and the merge then do.
    cross-cutting — 286 of the last 300 subjects carry a scope.
 3. **description** — imperative, states the *outcome* ("give the voice probe a budget"), no
    trailing period. A red-first commit may read `test(scope): RED — …` (example 5); a PR title may not.
-4. **Length — the honest limit.** Measured over the last 300 subjects on 2026-10-04: median 85
-   characters, mean 90, longest 163; 70 % fit in 100 and 88 % fit in 120, but only 23 % fit in 72.
+4. **Length — the honest limit.** Measured over the 300 subjects at `60bbb504`: median 85
+   characters, mean 90, longest 163; 71 % fit in 100 and 88 % fit in 120, but only 24 % fit in 72.
    So: aim under 100, treat 120 as the ceiling, and do not expect a 72-character rule here — the
    history does not keep one and this page will not claim it.
 
@@ -77,7 +77,8 @@ each, delete nothing (F3):
 2. What changed? — include the `[Unreleased]` bullet you added, or "no changelog entry" and why,
    and whether an AI assistant helped (the [AI usage page](contributor-ai.md) says how).
 3. Which automated checks passed, and where? — name the gates and the evidence paths.
-4. Which live or manual journey did you check yourself?
+4. Which live or manual journey did you check yourself? — for a web change, `uv run studyloop web`
+   (port 8567, loopback only unless `--lan`) is the app you walk.
 5. What remains unverified?
 
 Automated green and a manual check are separate claims; state both. "Nothing" under 5 is fine when
@@ -98,7 +99,8 @@ it is true.
 2. Every claim in the description against the code — `file:line` references are checked, not
    trusted; a test that would not fail on revert is sent back.
 3. The changelog bullet matches question 2 and reads in the learner's words.
-4. Docs changed in the same PR when behaviour did; `just docs` is strict, so a stale sentence fails.
+4. Docs changed in the same PR when behaviour did; `just docs` is strict and the drift tests pin
+   commands and paths, so a stale command fails — a stale sentence is the reviewer's to catch.
 5. Nothing private: no learner transcripts, keys or full local configuration in code, fixtures or
    screenshots.
 

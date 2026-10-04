@@ -7,7 +7,8 @@ welcome — a reproducible bug, a clearer sentence, a focused test, an honest ac
 flow became overwhelming. The path from clone to merged pull request is six steps; this page is the
 router, and each step links the one page that owns it.
 
-1. **Set up** — install uv, just, tmux, Node and Chromium, `just sync-dev`, prove the import:
+1. **Set up** — fork and clone first (step 1 of *Your first contribution* below), then install
+   uv, just, tmux, Node and Chromium, `just sync-dev`, `uv run studyloop setup`, prove the import:
    [Development Environment](contributor-environment.md).
 2. **Make one change** — fork, branch as `docs/…`, `fix/…`, `test/…` or `feat/…`, change one
    thing: [Your first contribution](#your-first-contribution) below, then the page for your kind of
@@ -16,7 +17,9 @@ router, and each step links the one page that owns it.
    [Testing Cookbook](contributor-testing.md). Stuck? [Debugging](contributor-debugging.md).
 4. **Pass the gate** — `just preflight` (lint, typecheck, test, test-js, docs, release-consistency,
    spec-check; F7), `git diff --check`, and `just e2e` if you touched the web layer.
-5. **Write the changelog bullet** — one learner-facing line under `[Unreleased]`, in the same PR:
+5. **Write the changelog bullet** — one learner-facing line under `[Unreleased]` for each
+   user-visible change, in the same PR; a test, docs, chore or ci change normally gets none, and
+   the PR says so under question 2:
    [Changelog Process](contributor-changelog.md).
 6. **Open the pull request** — `<type>(<scope>): <imperative description>` as title, the five
    questions as description: [Raising a Pull Request](contributor-pull-requests.md).
@@ -68,8 +71,11 @@ git switch -c docs/first-contribution upstream/main
 ```
 
 3. **Set up and change one thing.** Follow [Development Environment](contributor-environment.md),
-   reproduce the problem with synthetic data, find the owning layer in the
-   [code map](contributor-code-map.md), and change only that.
+   reproduce the problem with synthetic data, then change only the owning layer: a CLI command
+   → [A CLI Command](contributor-cli.md), a web route → [A Web Route and UI](contributor-web.md),
+   an MCP tool → [An MCP Tool](contributor-mcp.md), a doctor check →
+   [A Doctor Check](contributor-doctor.md); for anything else the
+   [code map](contributor-code-map.md) names the layer.
 4. **Prove and open.** `git push -u origin docs/first-contribution` publishes **your fork branch**;
    GitHub then offers a PR into `NetDevAutomate/StudyLoop:main`. Report setup failures rather than
    bypassing checks or describing skipped tests as passing.
@@ -123,8 +129,9 @@ job blocks merging. `.github/workflows/nightly-uat.yml` runs the *integration* t
 
 ## Documentation standards
 
-The site is an allowlist (`mkdocs.yml`), the build is strict, and claims are machine-checked —
-a stale sentence fails the build. Writing a truthful page, and the AuDHD writing rules:
+The site is an allowlist (`mkdocs.yml`), the build is strict (structure, nav, links), and the
+drift tests pin every command, path, anchor and source-backed fact a page shows — a stale
+command fails the suite; stale prose is caught by review. Writing a truthful page, and the AuDHD writing rules:
 [Documentation](contributor-documentation.md).
 
 ## Changelog process
@@ -155,7 +162,7 @@ reasoning: [Issues and Prioritisation](contributor-issues-prioritisation.md).
 ## AI usage, and models through a LiteLLM gateway
 
 AI-assisted contributions are welcome if you review everything you submit and disclose the help
-(`Co-Authored-By:` trailer or a line in the PR). Mentor harnesses bring their own model access;
+(a `Co-Authored-By:` trailer on the commit **and** a line under question 2 of the PR). Mentor harnesses bring their own model access;
 content generation uses the provider registry, where a LiteLLM gateway is one `openai_compat` row.
 Disclosure, ownership and the gateway option: [AI Usage](contributor-ai.md).
 

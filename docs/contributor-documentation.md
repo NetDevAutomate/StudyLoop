@@ -5,7 +5,9 @@
 A page is public only when four things are true: the file exists under `docs/`, `mkdocs.yml`
 un-excludes it, the `nav:` lists it, and `just docs` builds strictly with it in place. Everything
 else in the repository -- ADRs, plans, agent instructions, receipts -- stays source-only on
-purpose, and every claim a public page makes is checked by a test.
+purpose. Three checks share the work: the strict build proves structure, nav and links; the drift
+tests pin commands, paths, anchors and a few source-backed facts; a human reviewer reads the prose
+for truth — no test does that for you.
 
 ## Make a page public
 
@@ -27,7 +29,9 @@ just docs
 
 ## Keep it true: the drift tests
 
-Documentation here is tested like code, with no subprocess and no network in the default tier.
+Documentation here is tested like code, with no network in the default tier and only a bounded
+allowlist of read-only commands actually executed (`--version`, `--help`, `git log -1`); every
+other fenced command is resolved against the justfile, the Click tree or the filesystem.
 Three files do it, all under `packages/studyloop/tests/`:
 
 - `test_docs_drift.py` -- every fenced line beginning `studyloop …` on a page listed in its
@@ -37,8 +41,9 @@ Three files do it, all under `packages/studyloop/tests/`:
   against the source they describe.
 - `test_contributor_guide_drift.py` -- the twenty guide pages: fenced `just` recipes exist, fenced
   `pytest` paths exist, backticked repository paths exist, links and anchors resolve, the page has
-  one H1, an answer-first block, a numbered list and no more than 150 lines, and any sentence
-  about harness tiers, test markers, branch prefixes or commit types matches the source.
+  one H1, an answer-first block, a numbered list and no more than its line cap (150; the router
+  200, the testing cookbook 220; `acceptance-testing.md` is exempt until it is split), and any
+  sentence about harness tiers, test markers, branch prefixes or commit types matches the source.
 - `test_contributor_docs.py` -- the guide pages are allowlisted and in the nav, the cookbook links
   real collected examples, and the module guide keeps its proposal/execution boundary.
 
@@ -74,7 +79,9 @@ and by review where it is not. Check each item before you open the pull request:
 2. **Answer first.** The first block after the title is a paragraph of at most three sentences
    or a numbered list, and it tells the reader what to do or what is true. Context comes after.
 3. **Numbered steps for anything done in order.** Bullets only for sets with no order.
-4. **At most 150 lines.** If the page is longer, it has two jobs; split it.
+4. **At most 150 lines.** If the page is longer, it has two jobs; split it. Three pages carry a
+   larger cap for a stated reason (the router's fifteen anchors, the cookbook's pinned examples,
+   the pre-existing acceptance page) and the drift test names them.
 5. **No "see elsewhere" loops.** Link the owning page once, at the point the reader needs it,
    and never send them to a page that sends them back.
 6. **Define a term where it is used.** The first use of *adapter*, *tier*, *allowlist* or any

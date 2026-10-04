@@ -61,7 +61,8 @@ is on disk, in two places:
 `~/.config/studyloop`. If that guard fires, the test is wrong, not the guard.
 
 The quickest read of the whole installation is `uv run studyloop doctor` — it names the paths it
-checked in its *Details* column and exits 1 while any check is red. `--json` gives the same table
+checked in its *Details* column and exits 1 while a check has failed or a warning is auto-fixable
+(2 for a core failure it cannot fix; plain warnings exit 0). `--json` gives the same table
 as data for an issue report (remove private paths first).
 
 ## 4. Read a pre-commit failure
@@ -83,8 +84,10 @@ trim trailing whitespace........................................................
 
 Read it in three lines: the **hook id** tells you which rule; **exit code 1** means the commit was
 refused; **files were modified** means the hook already fixed the file — `git add` it and commit
-again. Hooks that cannot fix (`detect-secrets`, `bandit`, `pyright`, `trufflehog`) print the
-file and line instead; fix the finding, never bypass the hook (`--no-verify` and `SKIP=` are not
+again. Two kinds of hook: the **fixers** (`trailing-whitespace`, `end-of-file-fixer`,
+`ruff-format`) rewrite the file and refuse once so you can re-stage; the **reporters**
+(`ruff`, `detect-secrets`, `bandit`, `pyright`, `trufflehog`, the AWS-token and commit-author
+checks) cannot fix and print the file and line instead; fix the finding, never bypass the hook (`--no-verify` and `SKIP=` are not
 used in this repository). The hook list is `.pre-commit-config.yaml`.
 
 ## 5. `just e2e` says another run holds the lock

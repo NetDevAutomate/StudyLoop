@@ -38,8 +38,9 @@ just sync-dev
 ```
 
 `just sync-dev` runs `uv sync --all-packages --group dev`: both packages in the workspace plus
-the dev group (pytest, ruff, pyright, pre-commit, mkdocs). Choose a wider sync when you need the
-optional extras:
+the dev group (pytest, ruff, pyright, pre-commit). MkDocs is not in that group: it lives in the
+`docs` extra, and `just docs` adds it on demand (`uv run --extra docs mkdocs build --strict`).
+Choose a wider sync when you need the other optional extras:
 
 1. `just sync-dev` — enough for the default test suite, lint, typecheck and docs.
 2. `just sync-web`, `just sync-content`, `just sync-semantic` — the dev group plus one extra
@@ -75,14 +76,19 @@ uv run --group dev pre-commit install
 
 ```bash
 uv run studyloop --version
+uv run studyloop setup
 uv run studyloop doctor
 ```
 
 `--version` prints `studyloop, version 0.5.0` (the version in `packages/studyloop/pyproject.toml`).
-`doctor` checks the installation (interpreter, tmux, databases, agent definitions, MCP
-registrations) and exits **0 only when every check passes**. On a machine with no StudyLoop
-configuration it exits 1 and lists what is missing with a *Fix* column — that is the tool working,
-not the command failing. `uv run studyloop doctor --quiet` prints the one-line summary.
+`setup` writes the baseline configuration a session needs; without it, `studyloop study` on a
+fresh machine exits 2 with *No context scope configured* (`test_fresh_install_scope.py` pins
+this). `doctor` then checks the installation (interpreter, tmux, databases, agent definitions, MCP
+registrations). Its exit code: **0** when nothing failed (plain warnings and information still exit
+0), **1** when a check failed or a warning is auto-fixable (`--fix` applies the safe fixes), **2**
+when a core check failed and cannot be fixed automatically. On a machine with no StudyLoop
+configuration expect 1 and a *Fix* column listing what is missing — that is the tool working, not
+the command failing. `uv run studyloop doctor --quiet` prints the one-line summary.
 
 You are ready when the import path is yours, `--version` answers, and `just test-js` is green
 (a one-second Node run; the Python suites are on the [testing cookbook](contributor-testing.md)).
