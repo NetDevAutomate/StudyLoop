@@ -1,372 +1,189 @@
 # Contributing to StudyLoop
 
-StudyLoop is a local-first, AuDHD-aware study tool: a learner sits with an AI mentor that teaches through
-Socratic questioning, and the tool wraps that session in structure — plans, spaced review, a parking lot
-for stray thoughts, a wind-down. This guide is the single reference for contributing to it: how the repository
-is organised, how to set up, how changes are made and proven, and how pull requests are reviewed.
+<!-- facts: F1 F2 F3 F4 F7 F8 F10 F13 -->
 
-The project is a **pre-1.0 pre-release**. Six mentor harnesses are first-party: Kiro CLI, Codex, Claude
-Code and pi are core; OpenCode and Grok Build are preview. Everything else is out of scope until an issue
-defines it.
+StudyLoop is a local-first, AuDHD-aware study tool, pre-1.0, and every kind of contribution is
+welcome — a reproducible bug, a clearer sentence, a focused test, an honest account of where a study
+flow became overwhelming. The path from clone to merged pull request is six steps; this page is the
+router, and each step links the one page that owns it.
 
-Contributions of every kind are welcome: a reproducible bug, a clearer setup sentence, an accessibility
-observation, a focused test, or an honest account of where a study flow became overwhelming. The fastest
-way in is the [development environment](#development-environment) and one green `just preflight`; before
-you design anything, read the [AuDHD learning philosophy](audhd-learning-philosophy.md), which explains the
-constraints behind the decisions here.
+1. **Set up** — fork and clone first (step 1 of *Your first contribution* below), then install
+   uv, just, tmux, Node and Chromium, `just sync-dev`, `uv run studyloop setup`, prove the import:
+   [Development Environment](contributor-environment.md).
+2. **Make one change** — fork, branch as `docs/…`, `fix/…`, `test/…` or `feat/…`, change one
+   thing: [Your first contribution](#your-first-contribution) below, then the page for your kind of
+   change under [Making changes](#making-changes).
+3. **Prove it** — the failing test first, at the nearest useful boundary, then the fix:
+   [Testing Cookbook](contributor-testing.md). Stuck? [Debugging](contributor-debugging.md).
+4. **Pass the gate** — `just preflight` (lint, typecheck, test, test-js, docs, release-consistency,
+   spec-check; F7), `git diff --check`, and `just e2e` if you touched the web layer.
+5. **Write the changelog bullet** — one learner-facing line under `[Unreleased]` for each
+   user-visible change, in the same PR; a test, docs, chore or ci change normally gets none, and
+   the PR says so under question 2:
+   [Changelog Process](contributor-changelog.md).
+6. **Open the pull request** — `<type>(<scope>): <imperative description>` as title, the five
+   questions as description: [Raising a Pull Request](contributor-pull-requests.md).
 
-**Licensing.** Contributions are accepted under the repository's [MIT License](https://github.com/NetDevAutomate/StudyLoop/blob/main/LICENSE)
-(inbound = outbound). No CLA and no DCO sign-off is required.
-
-**Conduct.** The project follows the [Contributor Covenant 2.1](https://github.com/NetDevAutomate/StudyLoop/blob/main/CODE_OF_CONDUCT.md);
-it names the reporting contact and the enforcement ladder. Beyond it: be kind and specific, assume the other
-person is tired, and never quote learners' private material (session transcripts, notes, struggles) in public
-threads.
+**Licensing and conduct.** Contributions are accepted under the repository's
+[MIT License](https://github.com/NetDevAutomate/StudyLoop/blob/main/LICENSE) (inbound = outbound;
+no CLA, no DCO). The [Contributor Covenant 2.1](https://github.com/NetDevAutomate/StudyLoop/blob/main/CODE_OF_CONDUCT.md)
+applies; beyond it, never quote learners' private material (transcripts, notes, struggles) in public.
+Before you design anything, read the [AuDHD learning philosophy](audhd-learning-philosophy.md).
 
 ## Contents
 
 1. [Development environment](#development-environment)
-2. [How the repository is organised](#how-the-repository-is-organised)
-3. [Making changes](#making-changes)
-4. [Testing](#testing)
-5. [Continuous integration](#continuous-integration)
-6. [Documentation standards](#documentation-standards)
-7. [Changelog process](#changelog-process)
-8. [Raising a pull request](#raising-a-pull-request)
-9. [Submitting an issue](#submitting-an-issue)
-10. [How we prioritise](#how-we-prioritise)
-11. [AI usage, and models through a LiteLLM gateway](#ai-usage-and-models-through-a-litellm-gateway)
-12. [Security](#security)
-13. [FAQ](#faq)
+2. [Your first contribution](#your-first-contribution)
+3. [How the repository is organised](#how-the-repository-is-organised)
+4. [Making changes](#making-changes)
+5. [Testing](#testing)
+6. [Continuous integration](#continuous-integration)
+7. [Documentation standards](#documentation-standards)
+8. [Changelog process](#changelog-process)
+9. [Raising a pull request](#raising-a-pull-request)
+10. [Submitting an issue](#submitting-an-issue)
+11. [How we prioritise](#how-we-prioritise)
+12. [AI usage, and models through a LiteLLM gateway](#ai-usage-and-models-through-a-litellm-gateway)
+13. [Security](#security)
+14. [FAQ](#faq)
 
 ## Development environment
 
-Use the Python version in `.python-version` (currently 3.12); CI also checks 3.13. Requirements include
-[`uv`](https://docs.astral.sh/uv/), [`just`](https://github.com/casey/just),
-`tmux` (for CLI study sessions and the integration suite), Node.js (for the JavaScript tests), and Chromium
-via Playwright (for the browser suite).
-
-```bash
-git clone https://github.com/NetDevAutomate/StudyLoop.git studyloop
-cd studyloop
-uv sync --all-packages --all-extras
-uv run playwright install chromium
-uv run pre-commit install
-```
-
-The `Justfile` is the front door. The recipes you will use most:
-
-| Recipe | What it does |
-| --- | --- |
-| `just sync-dev` / `just sync-web` / `just sync-full` | Sync the workspace venv with the dev group, plus the web extra, plus every extra. A **fresh worktree has no venv**; run one of these before any other recipe or pyright reports hundreds of unresolved imports. |
-| `just test`, `just test-web`, `just test-js` | Unit suite, web unit suite, JavaScript unit tests. |
-| `just lint`, `just typecheck` | ruff (line length 100, `py312`) and pyright (`basic`), over `src/` **and** `tests/`. |
-| `just docs` | `mkdocs build --strict`. |
-| `just spec-check` | `openspec validate --specs --all`; skips when the `openspec` CLI is missing. |
-| `just preflight` | Everything above in one run: lint, typecheck, unit, JS, docs, release consistency, spec check. Run it before every push. |
-| `just e2e` | The Playwright browser suite. It takes a machine-wide lock; **one e2e run per machine at a time**. |
-| `just release-check` | The release gate: unit + JS tests, lint, typecheck, shellcheck, docs, both dependency audits, release consistency, a wheel build with a fresh-venv install smoke and a per-extra install smoke. It does not run `spec-check`; `preflight` does. |
-| `just ci-local` | Mirrors the GitHub Actions matrix locally. |
-
-Development happens on macOS and Linux; CI runs Ubuntu and the nightly checks run both Ubuntu and macOS. If setup
-fails, the [troubleshooting page](troubleshooting.md) covers the common causes; `uv sync --reinstall` resets the venv.
-
-Working from a git worktree? Prefix `just` and `uv run` with `env -u VIRTUAL_ENV` so the worktree's own venv is
-used rather than the one exported by your shell.
+Python 3.12 (`.python-version`), uv, just, tmux, Node and Playwright Chromium; one `just sync-dev`;
+then prove `import studyloop` resolves inside your checkout. Every command, with its output, is on
+[Development Environment](contributor-environment.md).
 
 ## Your first contribution
 
-You do not need to fix an entire workflow. A clearer sentence or a test for one refused operation is
+You do not need to fix an entire workflow: a clearer sentence or a test for one refused operation is
 a useful first PR. For a new capability, open an issue and agree the smallest slice before coding.
 
-1. **Try the learner workflow.** Follow the [setup guide](setup-guide.md), then reproduce the problem
-   with synthetic data. Read the [code map](contributor-code-map.md) to find the owning layer.
-2. **Fork and make one change.** On GitHub, fork StudyLoop into your account. Replace
-   `YOUR_GITHUB_USER` below; the placeholder is not a real repository to clone.
-3. **Prove and explain it.** Use the [testing cookbook](contributor-testing.md), run the relevant
-   gates, and open a PR from your fork into upstream `main` with the evidence template.
+1. **Fork** StudyLoop on GitHub into your account and clone the fork
+   (`git clone https://github.com/<you>/StudyLoop.git`). The upstream repository is
+   `NetDevAutomate/StudyLoop`.
+2. **Point at upstream and branch** from its `main`; choose `fix/`, `test/` or `feat/` instead of
+   `docs/` when that is what you are changing (F1):
 
 ```bash
-git clone https://github.com/YOUR_GITHUB_USER/StudyLoop.git
-cd StudyLoop
 git remote add upstream https://github.com/NetDevAutomate/StudyLoop.git
 git fetch upstream
 git switch -c docs/first-contribution upstream/main
-just sync-full
-uv run --group dev playwright install chromium
-uv run --group dev pre-commit install
 ```
 
-Choose `fix/`, `test/` or `feat/` instead for those changes. Before starting another contribution,
-fetch upstream and create a fresh branch from `upstream/main`; do not stack unrelated changes on
-your first PR. Never discard uncommitted work to synchronize a branch.
+3. **Set up and change one thing.** Follow [Development Environment](contributor-environment.md),
+   reproduce the problem with synthetic data, then change only the owning layer: a CLI command
+   → [A CLI Command](contributor-cli.md), a web route → [A Web Route and UI](contributor-web.md),
+   an MCP tool → [An MCP Tool](contributor-mcp.md), a doctor check →
+   [A Doctor Check](contributor-doctor.md); for anything else the
+   [code map](contributor-code-map.md) names the layer.
+4. **Prove and open.** `git push -u origin docs/first-contribution` publishes **your fork branch**;
+   GitHub then offers a PR into `NetDevAutomate/StudyLoop:main`. Report setup failures rather than
+   bypassing checks or describing skipped tests as passing.
 
-After checking and committing your focused diff, `git push -u origin docs/first-contribution`
-publishes **your fork branch**, not a release. GitHub can then open a PR targeting
-`NetDevAutomate/StudyLoop:main`. For documentation-only changes, `just docs` is a quick local loop;
-the full `just preflight` remains the before-push gate. Report setup failures rather than bypassing
-checks or describing skipped tests as passing.
-
-### Contributor handbook
-
-- [Code map](contributor-code-map.md): source ownership, request paths and where a change belongs.
-- [Testing cookbook](contributor-testing.md): unit, CLI, API, JavaScript and Playwright patterns,
-  isolated fixtures, runnable examples, failure diagnosis and a copyable PR template.
-- [Optional topic modules](contributor-modules.md): a proposal for topic-specific practice without
-  topic-specific core dependencies, including Kubernetes drills and registry design boundaries.
+Before a second contribution, fetch upstream and branch afresh; do not stack unrelated changes on
+your first PR, and never discard uncommitted work to synchronise a branch.
 
 ## How the repository is organised
 
-```text
-studyloop/
-├── packages/studyloop/            # learner-facing CLI, Web UI, mentor adapters, planning, review, content
-├── packages/agent-session-tools/  # session import, SQLite search, sync, Obsidian mirroring
-├── agents/                        # mentor personas, skills and protocols per harness; agents/shared/ is the methodology
-├── docs/                          # the published guides (mkdocs.yml allowlist) plus docs/adr and docs/architecture
-├── openspec/                      # capability specs (what the system does) and change proposals
-├── scripts/                       # thin helpers used by the Justfile and CI
-└── releases/                      # release notes
-```
-
-**Principles that decide where code goes.** The core study engine owns learner workflows; optional
-integrations extend it and the core never depends on them. Presentation layers (CLI, Web UI, TUI) call
-application services, never each other's private helpers. Live study sessions are the primary workflow;
-flashcards and quizzes support it.
-
-**Backends sit behind protocols.** Terminal multiplexers (`tmux`, `herdr`) implement the `Multiplexer`
-protocol in `packages/studyloop/src/studyloop/multiplexer.py`; content providers are rows in a data registry
-(`content/generators/provider_profiles.py`); mentor harnesses are adapters under `adapters/`. A new backend of
-any of these kinds is a new implementation behind the existing interface, not a new code path through the core.
-
-**Why the code looks the way it does** is recorded in two places that are public on purpose:
-
-- [Architecture Decision Records](https://github.com/NetDevAutomate/StudyLoop/tree/main/docs/adr) — short,
-  immutable records of the decisions a reasonable engineer could have made differently (`docs/adr/`). A changed
-  mind is a new ADR that supersedes the old one, never an edit.
-- The [session-authority contract](https://github.com/NetDevAutomate/StudyLoop/blob/main/docs/architecture/session-authority.md)
-  and the [current architecture](https://github.com/NetDevAutomate/StudyLoop/blob/main/docs/architecture/current.md)
-  in `docs/architecture/`. The contract is the document the session tests are written against.
-
-Implementation plans, review evidence, handoffs and audits are **not** in the repository. They are maintained
-privately and summarised here or in an ADR when a decision is worth keeping.
-
-**Names.** Python modules are `snake_case`; documentation files are `kebab-case.md`; classes are nouns
-(`AgentAdapter`), functions are verbs (`start_session`), protocols describe a capability (`Multiplexer`).
-Use the domain vocabulary consistently: *study session* (learner with mentor), *body double* (presence
-with low instructional pressure), *review artefact* (flashcard or quiz JSON), *source material* (the learner's
-own notes and documents), *agent adapter* (launch/control of one harness), *session exporter* (imports a
-harness's transcripts).
+Two packages (`packages/studyloop/` — CLI, Web UI, mentor adapters, planning, review, content;
+`packages/agent-session-tools/` — session import, SQLite search, sync), `agents/` (personas and
+skills per harness), `docs/`, `openspec/` (specs and change proposals), `scripts/`, `releases/`.
+Which layer owns what, and where each kind of change lands: [Code Map](contributor-code-map.md).
+Code-level naming, OpenSpec changes and ADRs: [Conventions](contributor-conventions.md).
 
 ## Making changes
 
-1. **Pick the path that fits the size of the change.**
-   - *Small fix* (a bug with a test, a docs correction, a test-only change): open the pull request directly.
-   - *Behaviour or design change* (a new option, a changed flow, a new module): open an issue first, then a
-     proposal under `openspec/changes/<change>/` (proposal, design, tasks) against the capability spec in
-     `openspec/specs/<capability>/spec.md`. `just spec-check` validates the specs. When a decision will still
-     matter in six months, write an ADR (`docs/adr/NNNN-kebab-title.md`, indexed in `docs/adr/README.md`).
-   - *New mentor harness or backend*: the issue must define the persona mechanism, launch and resume
-     commands, session store, exporter, health check, failure behaviour and a live acceptance path. Drive-by
-     harness additions are declined. A mentor definition must also reference
-     `agents/shared/recording-protocol.md` and name its four writers (`record_teachback`, `log_struggle`,
-     `log_topic`, `record_plan_learning`) — `test_adapter_parity.py` and `test_docs_harness_tier_contract.py`
-     pin this, and pin that no harness gains a pre-approval for them (owner decision, 2026-09-23).
-2. **Fork and branch.** Outside contributors fork and open pull requests against `main`; maintainers branch
-   in the repository. Name branches `feat/…`, `fix/…`, `docs/…` or `test/…`. Do not use `lane/…`: that
-   prefix is reserved for the maintainers' remediation lanes and carries an ownership test that only makes
-   sense there (on any other branch it is skipped). Review comments are addressed on the same branch; the
-   maintainer merges, so far always with a merge commit.
-3. **Keep specs and code together.** If your change alters what a spec describes, update the spec in the
-   same pull request; the spec is the description of behaviour, the tests are the proof.
-4. **Tests first.** Write the failing test at the nearest useful boundary, watch it fail for the right reason,
-   then make it pass. A fix without a test that would fail on revert is not finished.
-5. **Docs in the same change.** Every user-visible change updates the relevant guide and the changelog in the
-   same pull request. Documentation claims are tested (see below), so a stale sentence fails the build.
-6. **Keep the diff focused.** One problem per pull request. If public behaviour and internal structure both
-   have to move, split them unless one is meaningless without the other.
-7. **Before pushing:** `just preflight`, then `git diff --check`. Run `just e2e` as well when you touched
-   `packages/studyloop/src/studyloop/web/` (routes, static JS, CSS, HTML), the session transports under
-   `session/`, or anything under `tests/e2e/`.
+Small fix: open the PR directly. Behaviour or design change: an issue first, then a proposal under
+`openspec/changes/`. Six mentor harnesses are first-party: Kiro CLI, Codex, Claude Code and pi are
+core; OpenCode and Grok Build are preview (F4); everything else is out of scope until an issue
+defines it, and a new harness is declined unless that issue defines all seven items — persona
+mechanism, launch and resume commands, session store, exporter, health check, failure behaviour, a
+live acceptance path (F2; [Harnesses and Agents](contributor-harnesses-agents.md)). Then pick the
+page for your kind of change:
 
-Commit messages: an imperative subject line, and a body that says **why** (what was wrong, what the change
-makes true), not a restatement of the diff. If an AI assistant helped write the change, say so with a
-`Co-Authored-By:` trailer; you remain the author who reviewed and stands behind it.
+1. [A CLI Command](contributor-cli.md) · 2. [A Web Route and UI](contributor-web.md) ·
+   3. [An MCP Tool](contributor-mcp.md) · 4. [A Doctor Check](contributor-doctor.md) ·
+   5. [Harnesses and Agents](contributor-harnesses-agents.md) ·
+   6. [Content Schemas and Pipeline](contributor-content.md) ·
+   7. [Documentation](contributor-documentation.md).
+
+Branches are `feat/…`, `fix/…`, `docs/…`, `test/…`; `lane/` is reserved (F1). Commit subjects
+follow the grammar on [Raising a Pull Request](contributor-pull-requests.md). Topic-specific
+practice modules are a design-stage proposal, not a plugin API you can build against today:
+[Optional Modules (Proposal)](contributor-modules.md) and
+[Module Index (Proposal)](contributor-module-index.md).
 
 ## Testing
 
-The suite is layered by what each layer can prove and what it needs from the machine.
-
-| Layer | Marker / recipe | Proves | Needs |
-| --- | --- | --- | --- |
-| Unit | `just test` (default `pytest`) | Logic, contracts, protocol conformance, docs-truth guards | Nothing external |
-| Integration | `pytest -m integration` | Real tmux and herdr sessions, real SQLite | tmux installed; herdr optional |
-| Browser (e2e) | `just e2e` (`pytest -m e2e`) | The Web UI journeys against a real server with fake agents | Playwright Chromium; one run per machine |
-| Live | `pytest -m live_kiro`, `pytest -m live_provider` | A real Kiro child, a real LLM provider | Credentials and quota; opt-in only |
-| Live, second brain | `just live-obsidian`, `just live-xtiles <url> <probe>` | That a projection really lands in a vault and is really removed again; that what an assistant wrote is visible in xTiles' own interface | A throwaway Obsidian vault; a captured xTiles session (`just xtiles-auth`). Opt-in, and refused rather than skipped when the safety scope is missing |
-| Acceptance | `just testacc [harness] [actor] [tests]` (`pytest -m acceptance`) | A real harness driven through the real product surface, including CLI/tmux and the Web ACP lane, with a scripted learner and disposable scratch state | `STUDYLOOP_ACC=1`; opt-in, never runs in CI. See [Acceptance Testing](acceptance-testing.md) for authentication and safety boundaries |
-
-**Rules that keep the suite honest.**
-
-- Tests use isolated fixtures under `tmp_path`. Fixtures are never selectable as product backends and never
-  ship in the wheel.
-- The suite **fails the run** if a test touches the real `~/.config/studyloop` or leaves a session in the real
-  tmux server. Spawned servers get an isolated `HOME`, `XDG_*` and `STUDYLOOP_SESSION_DIR`; the spawn helper
-  refuses an environment that still points at your real directories. If a guard fires, the test is wrong, not
-  the guard.
-- Prove a new test is not vacuous: revert the fix locally and watch it fail, or say in the pull request why
-  it cannot be reverted.
-- A live test that touches a real account must be **deselected by default in both `pyproject.toml` files**, and
-  its safety scope must FAIL rather than skip when absent. Opting in is the owner's choice, so a missing opt-in
-  is a skip; but once opted in, a missing scope means the assertions match anything on the page, and skipping
-  there hides a mistake that could read real content into a log. `test_xtiles_live_guards.py` enforces both on
-  every commit, because a deselected test's own guarantees are never exercised by CI.
-- Do not widen a timeout to fix a flaky test. Find the mechanism (a state event, a locator condition) and
-  wait on that.
-- Do not copy test totals into documentation. A guard rejects three-digit "N tests" claims in `docs/` and
-  `releases/`; the executing gate is the only authority for numbers.
-
-Focused runs while iterating:
-
-```bash
-env -u VIRTUAL_ENV uv run --group dev pytest packages/studyloop/tests/test_session_state.py -q
-env -u VIRTUAL_ENV uv run --group dev pytest -m integration packages/studyloop/tests/test_harness_matrix.py -q
-```
+The default `just test` runs the unit tier; `integration`, `e2e`, `acceptance`, `uat` and the live
+markers are deselected (F7). Choosing the tier and writing the focused test:
+[Testing Cookbook](contributor-testing.md). Opt-in runs with a real harness:
+[Acceptance Testing](acceptance-testing.md).
 
 ## Continuous integration
 
-`ci.yml` runs on every push and pull request to `main`: lint, typecheck, SAST (bandit), dependency audits,
-the unit suite on Python 3.12 and 3.13, the JavaScript tests, the browser suite, a wheel build with an install
-smoke, and the web, content and semantic dependency profiles. A red job blocks merging; fix it or explain in
-the pull request exactly which unrelated failure you are seeing and where it is tracked.
-
-Two nightly workflows run on fresh runners: the **tmux integration UAT** on macOS (03:00 UTC, also triggerable
-manually) and the **install check** on Ubuntu and macOS (03:30 UTC). They catch what a developer machine hides: a hard-coded
-path, a dependency that only resolves from the workspace, a lock file that drifted.
-
-The dependency lock is enforced (`uv sync --locked`). If you change a dependency, run `uv lock`, commit
-`uv.lock`, and confirm `uv lock --check` leaves the tree clean.
+`.github/workflows/ci.yml` runs on every push and pull request to `main` (lint, typecheck, SAST,
+audits, the unit suite on 3.12 and 3.13, JavaScript tests, the browser suite, a wheel smoke); a red
+job blocks merging. `.github/workflows/nightly-uat.yml` runs the *integration* tier nightly at
+03:00 UTC; acceptance and UAT never run in CI (F8). Reproduce CI locally with `just ci-local`.
 
 ## Documentation standards
 
-- **The published site is an allowlist.** `mkdocs.yml` names every public page. A new file under `docs/` is
-  invisible to the site until it is written for readers and added to both the allowlist and the navigation.
-  `docs/adr/` and `docs/architecture/` are public in the repository for the reasoning they carry.
-- **Every documented claim must be true**, and many are machine-checked: CLI examples in the reference are
-  resolved against the real Click commands, prompt strings in the setup guide are checked against the wizard
-  code, the break table is parsed and compared with the constants, third-party notices are counted against the
-  vendored manifest. When you change behaviour, expect a docs test to fail until the page catches up.
-- Write for a reader with limited attention: one idea per paragraph, the answer first, a Mermaid diagram
-  where structure matters, commands in fenced blocks, no marketing.
-- Third-party claims (a tool's behaviour, a licence, a price) are pinned to a dated source.
-- Licences travel with the code. Anything vendored is listed in `web/static/vendor/MANIFEST` with a hash and
-  credited in `THIRD-PARTY-NOTICES.md` with the licence text; borrowed ideas are credited at the point of use.
+The site is an allowlist (`mkdocs.yml`), the build is strict (structure, nav, links), and the
+drift tests pin every command, path, anchor and source-backed fact a page shows — a stale
+command fails the suite; stale prose is caught by review. Writing a truthful page, and the AuDHD writing rules:
+[Documentation](contributor-documentation.md).
 
 ## Changelog process
 
-`CHANGELOG.md` keeps an `[Unreleased]` section with `### Added`, `### Changed`, `### Fixed`, `### Removed`
-and `### Security`. Write entries in the learner's terms ("starting a web session no longer clobbers a running
-CLI session"), not the code's. Dependency bounds and packaging changes go under `Changed`. Do not date a
-release or move `[Unreleased]`; the maintainer cuts releases.
+One bullet per user-visible change under `## [Unreleased]` in `CHANGELOG.md`, in the learner's
+words, in the same PR; the maintainer dates it at release. Sections, wording and what the gate does
+and does not check: [Changelog Process](contributor-changelog.md).
 
 ## Raising a pull request
 
-Before you open it: `just preflight` is green, `git diff --check` is clean, the branch has no merge-conflict
-markers (a repository test scans for them), and the changelog entry is written.
-
-The description answers five questions, briefly:
-
-1. What learner or contributor problem does this solve?
-2. What changed?
-3. Which automated checks passed, and where?
-4. Which live or manual journey did you check yourself?
-5. What remains unverified?
-
-Automated green and a manual check are separate claims; state both. Small pull requests are reviewed faster
-and reverted more safely. Reviewers verify claims against the code rather than trusting the description, so
-precise `file:line` references help.
+Title `<type>(<scope>): <imperative description>`; description answers the five questions (F3):
+problem, change, automated checks, manual check, what remains unverified. Grammar, eight real
+examples, the template and what reviewers check: [Raising a Pull Request](contributor-pull-requests.md).
 
 ## Submitting an issue
 
-For a bug: what you were trying to do, the exact command or Web UI action, what happened and what you
-expected, and the output of `studyloop doctor --json` with private paths removed. Say whether it reproduces
-with Kiro CLI, the documented demo harness.
-
-Never paste API keys, bearer tokens, session transcripts, or your full local configuration into an issue,
-fixture, screenshot or log. Session content is the learner's private material.
-
-For a feature: describe the learner situation first (energy level, what they were trying to do, where the
-friction was), then the smallest change that would help. The philosophy page explains why "smaller" wins.
+Bug: what you tried, the exact command or UI action, what happened, what you expected, and
+`studyloop doctor --json` with private paths removed. Feature: the learner situation first, then the
+smallest change that would help. Never paste keys, tokens or session transcripts. Details:
+[Issues and Prioritisation](contributor-issues-prioritisation.md).
 
 ## How we prioritise
 
-1. Anything that breaks or endangers a learner's session, data or privacy.
-2. Friction in the first week: setup, first session, first review.
-3. Truth of the documentation.
-4. Accessibility and low-energy paths.
-5. New capability, in the order the roadmap gives.
-
-The maintainer reads every new issue; there is no response-time promise yet. Clear reproductions move things up.
+1. A learner's session, data or privacy at risk. 2. Friction in the first week. 3. Truth of the
+documentation. 4. Accessibility and low-energy paths. 5. New capability, in roadmap order. The
+reasoning: [Issues and Prioritisation](contributor-issues-prioritisation.md).
 
 ## AI usage, and models through a LiteLLM gateway
 
-**Using an AI assistant to contribute** is welcome. Two conditions: you review and understand everything you
-submit, and you disclose the assistance (`Co-Authored-By:` trailer or a line in the pull request). The
-reviewer holds AI-written code to exactly the same bar: tests that fail on revert, docs that are true.
-
-**Where models are chosen in StudyLoop.** There are two independent places, and neither is hard-coded to a
-vendor:
-
-1. *Mentor harnesses* (Kiro CLI, Codex, Claude Code, OpenCode, pi, Grok Build) bring their own model
-   access. StudyLoop launches them and never sees their credentials. To route a harness through a gateway,
-   configure the harness itself according to its own documentation.
-2. *Content generation* (flashcards, quizzes) uses a provider registry in
-   `packages/studyloop/src/studyloop/content/generators/provider_profiles.py`. Each entry binds a slug to an
-   adapter (`openai_compat`, `anthropic_compat`, `bedrock`, `ollama`), a base URL, the environment variable
-   that carries its key, and a curated model list. Shipped slugs: `openai`, `openrouter`, `gemini` (the API,
-   not a mentor), `anthropic`, `bedrock` (SigV4 via your AWS profile), and `ollama` (the offline default).
-   The active one is chosen by the top-level `card_generator:` block in `config.yaml` (`backend`, `provider`, `model`).
-
-**A LiteLLM gateway** is an OpenAI-compatible proxy that fronts many providers behind one URL and one key.
-Because the registry already has an `openai_compat` adapter, adding one is the documented extension:
-one `ProviderProfile` row (`adapter="openai_compat"`, `base_url` of your proxy, an `auth_env` such as
-`LITELLM_API_KEY`), a curated model list, and a line in `.env.example`. Two honest caveats before you do:
-today a row's base URL is fixed in the registry, so a per-machine proxy address needs an environment
-override that does not exist yet — open an issue and propose it there first; and keys named `*_API_KEY`,
-`*_TOKEN`, `*_SECRET` are deliberately scrubbed from every process StudyLoop spawns
-(`session/child_env.py`), so a gateway key set for StudyLoop never reaches a mentor child. That is a feature.
-Never commit a gateway hostname, port or key: read them from environment variables and keep the values in
-your untracked `.env`.
-
-Large changes to this project have been reviewed by several models from different families through such a
-gateway before a human read them, with each claim checked against the source; that is optional practice, not
-a requirement. If you run a multi-model review of your own, cite the verified findings and keep keys and
-transcripts out of the pull request.
+AI-assisted contributions are welcome if you review everything you submit and disclose the help
+(a `Co-Authored-By:` trailer on the commit **and** a line under question 2 of the PR). Mentor harnesses bring their own model access;
+content generation uses the provider registry, where a LiteLLM gateway is one `openai_compat` row.
+Disclosure, ownership and the gateway option: [AI Usage](contributor-ai.md).
 
 ## Security
 
 Report vulnerabilities privately through
-[GitHub's advisory form](https://github.com/NetDevAutomate/StudyLoop/security/advisories/new); see
-[`SECURITY.md`](https://github.com/NetDevAutomate/StudyLoop/blob/main/SECURITY.md) for the supported line
-and the model. In code: API keys live in the encrypted store, never in the repository; the LAN password may be set in
-`config.yaml` (written with mode 0600) or generated, and reaches the web process through its environment,
-not argv; test hatches that replace the agent
-binary are snapshotted at import and refused when they arrive from a `.env`. Pre-commit runs secret detection
-and bandit; keep them installed.
+[GitHub's advisory form](https://github.com/NetDevAutomate/StudyLoop/security/advisories/new);
+[`SECURITY.md`](https://github.com/NetDevAutomate/StudyLoop/blob/main/SECURITY.md) names the
+supported line. In code: keys live in the encrypted store, never in the repository; pre-commit runs
+secret detection and bandit — keep the hooks installed.
 
 ## FAQ
 
-**Can I add support for my favourite coding assistant?** Open an issue with the seven items listed under
-*Making changes*. A harness is a contract with a live acceptance path, not a launcher.
+**Can I add my favourite coding assistant?** Open an issue with the seven items;
+[Harnesses and Agents](contributor-harnesses-agents.md) explains why drive-by additions are declined.
 
-**The docs build failed on a sentence I did not write.** Your change made that sentence false. Fix the
-page; that is the point of the guard.
+**The docs build failed on a sentence I did not write.** Your change made it false; fix the page.
+[Documentation](contributor-documentation.md).
 
-**`just e2e` says another run holds the lock.** Wait for it, or find the stale lock the recipe reports. Two
-browser suites on one machine collide on ports and produce false failures.
+**`just e2e` says another run holds the lock.** Wait, or check the pid it names:
+[Debugging](contributor-debugging.md#5-just-e2e-says-another-run-holds-the-lock).
 
-**Where are the design notes for X?** In an ADR if the decision was load-bearing, in the module docstring if
-it was local, and in the maintainers' private archive otherwise. Ask in an issue; if the answer is worth
-keeping, it becomes an ADR.
-
-**I only have low-energy time.** Documentation truth fixes, reproducible bug reports and accessibility notes
-are the most valuable small contributions this project receives.
+**I only have low-energy time.** Documentation truth fixes, reproducible bug reports and
+accessibility notes are the most valuable small contributions this project receives.

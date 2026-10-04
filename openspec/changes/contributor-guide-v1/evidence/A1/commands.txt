@@ -1,0 +1,16 @@
+
+$ uv run studyloop setup
+exit=(not executed: `setup` writes real configuration into the owner's HOME; `setup --help` was executed instead, exit=0)  sha=648d2dbc  utc=2026-10-04T20:09Z
+Usage: studyloop setup [OPTIONS]
+
+  First-run setup wizard — two questions, both optional.
+
+Options:
+
+$ uv run studyloop setup --help
+exit=0  sha=648d2dbc  utc=2026-10-04T20:09Z
+Usage: studyloop setup [OPTIONS]
+
+  First-run setup wizard — two questions, both optional.
+
+Options:

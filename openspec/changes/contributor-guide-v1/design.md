@@ -277,7 +277,9 @@ line_cap)`), default-tier, no network:
   never `just testacc`, never a session start, never network.
 - **H — structure.** First non-heading block is a paragraph of ≤ 3 sentences or a numbered list;
   ≥ 1 numbered list; no H1 other than the title; line count ≤ the page's cap (150 for every
-  page; 200 for the router, which carries 15 anchors); no `<!-- GUIDE-STUB -->` marker left.
+  page; 200 for the router, which carries 15 anchors; 220 for the testing cookbook, whose
+  collected examples are code pinned by `test_contributor_docs.py` — assembler amendment after
+  A0 measured it at 214); no `<!-- GUIDE-STUB -->` marker left.
 - **L — links.** Every `[text](path.md)` and `[text](path.md#anchor)` to `docs/` resolves and the
   anchor exists (GitHub-style slug); the router's H2 set equals F10 exactly.
 - **M — module pages.** Page 20: "design stage" within the first paragraph; a link containing

@@ -81,6 +81,21 @@ exclude_docs: |
   !/contributor-testing.md
   !/contributor-modules.md
   !/acceptance-testing.md
+  !/contributor-environment.md
+  !/contributor-debugging.md
+  !/contributor-cli.md
+  !/contributor-web.md
+  !/contributor-mcp.md
+  !/contributor-doctor.md
+  !/contributor-harnesses-agents.md
+  !/contributor-content.md
+  !/contributor-documentation.md
+  !/contributor-changelog.md
+  !/contributor-pull-requests.md
+  !/contributor-issues-prioritisation.md
+  !/contributor-ai.md
+  !/contributor-conventions.md
+  !/contributor-module-index.md
   !/images/**
   !/stylesheets/**
   !/javascripts/**
@@ -110,8 +125,29 @@ nav:
     - Architecture Overview: architecture.md
     - Roadmap: roadmap.md
   - Contribute:
-    - Start Contributing: contributing.md
+    - Start here:
+      - Start Contributing: contributing.md
+      - Development Environment: contributor-environment.md
+      - Debugging: contributor-debugging.md
+    - Make a change:
+      - A CLI Command: contributor-cli.md
+      - A Web Route and UI: contributor-web.md
+      - An MCP Tool: contributor-mcp.md
+      - A Doctor Check: contributor-doctor.md
+      - Harnesses and Agents: contributor-harnesses-agents.md
+      - Content Schemas and Pipeline: contributor-content.md
+      - Documentation: contributor-documentation.md
+    - Prove it:
+      - Testing Cookbook: contributor-testing.md
+      - Acceptance Testing: acceptance-testing.md
+    - Land it:
+      - Changelog Process: contributor-changelog.md
+      - Raising a Pull Request: contributor-pull-requests.md
+      - Issues and Prioritisation: contributor-issues-prioritisation.md
+      - AI Usage: contributor-ai.md
+  - Developer Reference:
     - Code Map: contributor-code-map.md
-    - Testing Cookbook: contributor-testing.md
+    - Conventions: contributor-conventions.md
+  - Proposals (design stage):
     - Optional Modules (Proposal): contributor-modules.md
-  - Acceptance Testing: acceptance-testing.md
+    - Module Index (Proposal): contributor-module-index.md

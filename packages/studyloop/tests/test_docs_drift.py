@@ -268,7 +268,36 @@ def _validate_example(example: str, root: click.Group, root_ctx: click.Context) 
 #: which commands to run: a guide naming a command that does not exist is worse
 #: than no guide, since the learner concludes the tool is broken rather than the
 #: page.
-_STUDYLOOP_EXAMPLE_DOCS = ("cli-reference.md", "second-brain.md")
+#:
+#: The twenty contributor-guide pages (openspec/changes/contributor-guide-v1,
+#: design.md §2) join for the same reason, and because K4 of that plan relies on
+#: this test failing any fenced ``studyloop module ...`` / ``studyloop drill ...``
+#: line a proposal page might show as though it existed. Their structure, links
+#: and ``uv run ...`` commands are pinned by test_contributor_guide_drift.py.
+_STUDYLOOP_EXAMPLE_DOCS = (
+    "cli-reference.md",
+    "second-brain.md",
+    "contributing.md",
+    "contributor-environment.md",
+    "contributor-debugging.md",
+    "contributor-cli.md",
+    "contributor-web.md",
+    "contributor-mcp.md",
+    "contributor-doctor.md",
+    "contributor-harnesses-agents.md",
+    "contributor-content.md",
+    "contributor-documentation.md",
+    "contributor-testing.md",
+    "acceptance-testing.md",
+    "contributor-changelog.md",
+    "contributor-pull-requests.md",
+    "contributor-issues-prioritisation.md",
+    "contributor-ai.md",
+    "contributor-code-map.md",
+    "contributor-conventions.md",
+    "contributor-modules.md",
+    "contributor-module-index.md",
+)
 
 
 def _build_studyloop_cases() -> list[tuple[str, str]]:
