@@ -52,7 +52,7 @@ preflight`. "Red kept" = the failing-test transcript is in the commit body or un
 
 ### R — adversarial red tests only (`feat/module-runner`)
 
-- [ ] R1 `test_module_runner.py` adversarial cases: shell token in argv, symlink/hardlink
+- [x] R1 `test_module_runner.py` adversarial cases: shell token in argv, symlink/hardlink
       script, inherited environment variable visible, script changed after consent, consent
       replay, per-phase timeout, output flood; plus `test_drill_writes_no_observation` and
       `test_runner_never_shell`; verify all fail — the last two against today's
@@ -60,7 +60,7 @@ preflight`. "Red kept" = the failing-test transcript is in the commit body or un
 
 ### T — spike (`feat/module-mentor-delivery`)
 
-- [ ] T1 Read `session/active.py`, `session/transport.py`, `session/transports/pty.py`,
+- [x] T1 Read `session/active.py`, `session/transport.py`, `session/transports/pty.py`,
       `session/transports/acp.py`, `web/routes/session/_transport.py`; draft
       `docs/adr/0012-practice-check-delivery.md` answering: PTY framing, ACP serialisation
       against an in-flight turn, envelope size bound, learner-visible failure; write test
