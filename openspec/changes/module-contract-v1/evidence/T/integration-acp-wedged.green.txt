@@ -1,0 +1,4 @@
+env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/integration/test_module_delivery_transports.py -m integration -k unconfirmed_cancel_wedges -q -p no:cacheprovider
+# worktree module-mentor-delivery  f517ef86+uncommitted wedged state  2026-10-04T21:42:19Z
+.                                                                        [100%]
+1 passed, 7 deselected in 3.31s

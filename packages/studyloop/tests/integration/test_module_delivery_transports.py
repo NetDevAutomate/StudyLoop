@@ -36,6 +36,7 @@ from studyloop.session.transport import (
     OutputBytes,
     SessionConfig,
     Stopped,
+    TransportError,
 )
 from studyloop.session.transports import acp as acp_module
 from studyloop.session.transports.acp import ACPTransport
@@ -543,6 +544,83 @@ _ACP_FAKE_MENTOR_HUNG = textwrap.dedent(
 )
 
 
+_ACP_FAKE_MENTOR_NEVER_CONFIRMS = textwrap.dedent(
+    """
+    import json, os, select, sys, time
+
+    _buf = b""
+
+    def read_frame(timeout):
+        global _buf
+        deadline = time.monotonic() + timeout
+        while b"\\n" not in _buf:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return None
+            ready, _, _ = select.select([0], [], [], remaining)
+            if not ready:
+                return None
+            chunk = os.read(0, 65536)
+            if not chunk:
+                return "EOF"
+            _buf += chunk
+        line, _buf = _buf.split(b"\\n", 1)
+        return json.loads(line)
+
+    def emit(frame):
+        sys.stdout.write(json.dumps(frame) + "\\n"); sys.stdout.flush()
+
+    def update(session_id, record):
+        emit({"jsonrpc": "2.0", "method": "session/update", "params": {
+            "sessionId": session_id,
+            "update": {"sessionUpdate": "agent_message_chunk",
+                       "content": {"type": "text", "text": json.dumps(record)}}}})
+
+    session_id = "fake-mentor-never-confirms"
+    prompts_seen = 0
+    while True:
+        frame = read_frame(60.0)
+        if frame is None or frame == "EOF":
+            break
+        method, rid = frame.get("method"), frame.get("id")
+        if method == "initialize":
+            emit({"jsonrpc": "2.0", "id": rid, "result": {
+                "protocolVersion": 1, "agentCapabilities": {}, "authMethods": [],
+                "agentInfo": {"name": "Fake ACP mentor that never confirms", "version": "0"}}})
+        elif method == "session/new":
+            emit({"jsonrpc": "2.0", "id": rid, "result": {"sessionId": session_id}})
+        elif method == "session/prompt":
+            # Report that a prompt reached the wire, then NEVER answer it -- not
+            # even after session/cancel. This is the agent M0 Q5's "no subsequent
+            # overlap" has to be safe against.
+            prompts_seen += 1
+            blocks = frame.get("params", {}).get("prompt", [])
+            text = "".join(b.get("text", "") for b in blocks if b.get("type") == "text")
+            update(session_id, {"prompt_seen": prompts_seen, "text": text[:60]})
+        elif method == "session/cancel":
+            # Acknowledge the cancel request itself; the cancelled turn still never ends.
+            emit({"jsonrpc": "2.0", "id": rid, "result": None})
+        elif rid is not None:
+            emit({"jsonrpc": "2.0", "id": rid,
+                  "error": {"code": -32601, "message": "Method not found"}})
+    """
+)
+
+
+async def _acp_drain_until_quiet(transport: ACPTransport, *, quiet_s: float) -> list[object]:
+    """Collect events until none arrives for ``quiet_s`` (for a turn that never ends)."""
+    events: list[object] = []
+    stream = transport.events()
+    while True:
+        try:
+            event = await asyncio.wait_for(stream.__anext__(), timeout=quiet_s)
+        except (TimeoutError, StopAsyncIteration):
+            return events
+        events.append(event)
+        if isinstance(event, Stopped):
+            return events
+
+
 async def _acp_turn_records(transport: ACPTransport, *, turns: int, timeout: float) -> list[dict]:
     """Collect the fake mentor's per-turn records until ``turns`` turn_end events."""
     records: list[dict] = []
@@ -728,6 +806,80 @@ async def test_acp_hung_turn_times_out_once_and_does_not_overlap(
         f"prompt lock is held until cancellation is confirmed"
     )
     assert by_turn[2]["received"] == "are you there?", f"[{seam}] {by_turn[2]!r}"
+
+
+@pytest.mark.asyncio
+async def test_acp_unconfirmed_cancel_wedges_transport_and_later_prompts_fail_fast(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """T-review finding 2 (M0 Q5: "no subsequent overlap").
+
+    GIVEN an ACP session whose agent acknowledges ``session/cancel`` but NEVER answers
+    the cancelled ``session/prompt``, WHEN a delivery times out, THEN after the bounded
+    cancel-confirmation wait the transport is WEDGED: the delivery reports ``timed_out``,
+    exactly one ``turn_end`` is emitted and its reason is ``wedged``, a later learner
+    prompt fails fast with a ``TransportError`` naming the cause and never reaches the
+    wire (the agent sees exactly ONE ``session/prompt``, ever), and a later delivery
+    reports ``transport_closed``. Releasing the queue instead would let the still-running
+    turn overlap the learner's next prompt.
+
+    Bounds lowered for the 60 s per-test ceiling: delivery 1 s, cancel-confirm 0.5 s.
+    """
+    monkeypatch.setattr(acp_module, "DELIVERY_TIMEOUT_S", 1.0, raising=False)
+    monkeypatch.setattr(acp_module, "_CANCEL_CONFIRM_TIMEOUT_S", 0.5, raising=False)
+    script = tmp_path / "fake_acp_mentor_never_confirms.py"
+    script.write_text(_ACP_FAKE_MENTOR_NEVER_CONFIRMS)
+    transport = ACPTransport(
+        resolve_binary=lambda _agent: sys.executable,
+        build_argv=lambda _cfg: [sys.executable, str(script)],
+    )
+    config = _config(tmp_path, agent="kiro")
+    seam = SEAM
+    result = _sample_result(stdout="ok\n")
+
+    await transport.start(config)
+    try:
+        session = ActiveSession(
+            study_session_id=config.study_session_id, transport=transport, config=config
+        )
+        first = await deliver(session, result)  # times out; cancel acked; never confirmed
+        await transport.send_input(b"are you there?")  # the learner, as _ws.py:201 sends it
+        try:
+            # A later delivery. Bounded: without the fix it queues behind the learner's
+            # prompt, which the agent never answers either, and would hang the test.
+            second = await asyncio.wait_for(deliver(session, result), timeout=3.0)
+        except TimeoutError:
+            second = None
+        events = await _acp_drain_until_quiet(transport, quiet_s=1.5)
+    finally:
+        await transport.end()
+
+    assert getattr(first, "status", None) == "timed_out", f"[{seam}] {first!r}"
+    seen = [
+        json.loads(e.payload["content"]["text"])
+        for e in events
+        if isinstance(e, AgentMessage) and e.kind == "agent_chunk"
+    ]
+    prompts_on_wire = max((r["prompt_seen"] for r in seen), default=0)
+    assert prompts_on_wire == 1, (
+        f"[{seam}] {prompts_on_wire} session/prompt reached the agent: a learner prompt was "
+        f"sent after an UNCONFIRMED cancellation and may overlap the still-running turn "
+        f"(M0 Q5: no subsequent overlap). Records: {seen!r}"
+    )
+    errors = [e.message for e in events if isinstance(e, TransportError)]
+    assert any("did not confirm cancellation" in m for m in errors), (
+        f"[{seam}] the learner's prompt was not refused with a clear TransportError: {errors!r}"
+    )
+    turn_ends = [
+        e.payload["reason"] for e in events if isinstance(e, AgentMessage) and e.kind == "turn_end"
+    ]
+    assert turn_ends == ["wedged"], (
+        f"[{seam}] expected exactly one turn_end with reason 'wedged', got {turn_ends!r}"
+    )
+    assert getattr(second, "status", None) == "transport_closed", f"[{seam}] {second!r}"
+    assert "did not confirm cancellation" in str(getattr(second, "reason", "")), (
+        f"[{seam}] {second!r}"
+    )
 
 
 # --- Failure visibility: a closed transport ------------------------------------------
