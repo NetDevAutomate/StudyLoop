@@ -5,7 +5,9 @@
 
 - The enum is core's (:data:`studyloop.modules.manifest.PREREQUISITE_IDS`: ``docker``,
   ``kind``, ``kubectl``); a module cannot add a probe, only a core PR can.
-- A probe runs ``<binary> --version`` and **nothing else**: no daemon call, no cluster or
+- A probe runs one fixed, core-owned argv and **nothing else**: ``<binary> --version`` unless
+  :data:`PREREQ_VERSION_ARGV` names another, as it does for kubectl (which has no
+  ``--version``): ``kubectl version --client --output=json``. No daemon call, no cluster or
   context is created, listed or switched. It is the one subprocess this module spawns.
 - Probes run only for modules recorded in ``modules.lock.json``. With no module installed
   no binary is looked up and no subprocess runs, so a learner who never installed a module
@@ -18,6 +20,7 @@ need is probed once and the row names every module that needs it.
 
 from __future__ import annotations
 
+import json
 import re
 import shutil
 import subprocess
@@ -34,6 +37,40 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 _VERSION = re.compile(r"\d+(?:\.\d+){1,3}")
+
+PREREQ_VERSION_ARGV: dict[str, list[str]] = {
+    "kubectl": ["version", "--client", "--output=json"],
+}
+"""Per-tool version argv (after the binary). A tool not listed gets ``["--version"]``.
+
+kubectl prints its client version as JSON under ``clientVersion.gitVersion``; ``--client``
+keeps it from contacting any cluster.
+"""
+_DEFAULT_VERSION_ARGV: list[str] = ["--version"]
+
+
+def version_argv(tool: str) -> list[str]:
+    """The arguments ``probe_tool`` passes after the binary for ``tool``."""
+    return list(PREREQ_VERSION_ARGV.get(tool, _DEFAULT_VERSION_ARGV))
+
+
+def _parse_version(tool: str, stdout: str, stderr: str) -> tuple[str | None, str]:
+    """``(version, detail)`` from the probe output: kubectl's JSON, or the first line."""
+    if tool == "kubectl":
+        try:
+            payload = json.loads(stdout)
+            git_version = payload["clientVersion"]["gitVersion"]
+        except (ValueError, KeyError, TypeError):
+            first_line = (stdout + stderr).strip().splitlines()
+            return None, first_line[0][:120] if first_line else "(no clientVersion in output)"
+        match = _VERSION.search(str(git_version))
+        return (match.group(0) if match else None), f"kubectl client {git_version}"[:120]
+    output = (stdout + stderr).strip()
+    first_line = output.splitlines()[0][:120] if output else "(no output)"
+    match = _VERSION.search(output)
+    return (match.group(0) if match else None), first_line
+
+
 _INSTALL_HINTS: dict[str, str] = {
     "docker": "Install Docker (https://docs.docker.com/get-docker/) and put `docker` on PATH",
     "kind": "Install kind (https://kind.sigs.k8s.io/docs/user/quick-start/#installation)",
@@ -53,34 +90,33 @@ class ProbeResult:
 
 
 def probe_tool(tool: str, *, path: str | None = None) -> ProbeResult:
-    """Look ``tool`` up on ``path`` (default: the process PATH) and run ``<tool> --version``.
+    """Look ``tool`` up on ``path`` (default: the process PATH) and run its version argv.
 
     ``tool`` must be one of :data:`PREREQUISITE_IDS`; anything else is refused before any
-    lookup, so module text can never choose what gets executed.
+    lookup, so module text can never choose what gets executed. The argv is
+    :func:`version_argv` -- ``--version`` or the table's entry -- and nothing else.
     """
     if tool not in PREREQUISITE_IDS:
         raise ValueError(f"{tool!r} is not a prerequisite id ({', '.join(PREREQUISITE_IDS)})")
     binary = shutil.which(tool, path=path)
     if binary is None:
         return ProbeResult(tool, False, None, f"{tool} not found on PATH")
+    argv = version_argv(tool)
+    shown = " ".join([tool, *argv])
     try:
         result = subprocess.run(
-            [binary, "--version"],
+            [binary, *argv],
             capture_output=True,
             text=True,
             timeout=15,
             check=False,
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
-        return ProbeResult(tool, True, None, f"{tool} --version could not run: {exc}")
-    output = (result.stdout + result.stderr).strip()
-    match = _VERSION.search(output)
-    if result.returncode != 0 or match is None:
-        first_line = output.splitlines()[0] if output else "(no output)"
-        return ProbeResult(
-            tool, True, None, f"{tool} --version exited {result.returncode}: {first_line[:120]}"
-        )
-    return ProbeResult(tool, True, match.group(0), output.splitlines()[0][:120])
+        return ProbeResult(tool, True, None, f"{shown} could not run: {exc}")
+    version, detail = _parse_version(tool, result.stdout, result.stderr)
+    if result.returncode != 0 or version is None:
+        return ProbeResult(tool, True, None, f"{shown} exited {result.returncode}: {detail}")
+    return ProbeResult(tool, True, version, detail)
 
 
 def _version_tuple(text: str) -> tuple[int, ...]:
@@ -166,7 +202,8 @@ def check_module_prerequisites(
                     "warn",
                     f"{tool} is installed but its version is unknown: {probe.detail} "
                     f"(needed by {by})",
-                    f"Run `{tool} --version` yourself; the module README names the version needed",
+                    f"Run `{' '.join([tool, *version_argv(tool)])}` yourself; the module README "
+                    "names the version needed",
                     False,
                 )
             )

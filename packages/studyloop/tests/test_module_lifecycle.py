@@ -323,13 +323,26 @@ def test_load_lockfile_rejects_a_foreign_shape(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _fake_bin(directory: Path, tool: str, output: str, exit_code: int = 0) -> Path:
-    """A fake ``tool`` that logs its argv to $FAKE_PROBE_LOG and prints ``output``."""
+def _fake_bin(
+    directory: Path, tool: str, output: str, exit_code: int = 0, *, only_argv: str | None = None
+) -> Path:
+    """A fake ``tool`` that logs its argv to $FAKE_PROBE_LOG and prints ``output``.
+
+    With ``only_argv`` the fake answers only that exact argument string and fails any other
+    invocation with exit 2 -- the way real kubectl rejects ``--version``.
+    """
     directory.mkdir(parents=True, exist_ok=True)
     script = directory / tool
+    guard = ""
+    if only_argv is not None:
+        guard = (
+            f'if [ "$*" != "{only_argv}" ]; then '
+            f"printf '%s\\n' \"error: unknown command or flag: $*\" >&2; exit 2; fi\n"
+        )
     script.write_text(
         "#!/bin/sh\n"
         f'printf "%s\\n" "{tool} $*" >> "$FAKE_PROBE_LOG"\n'
+        f"{guard}"
         f"printf '%s\\n' '{output}'\n"
         f"exit {exit_code}\n",
         encoding="utf-8",
@@ -428,19 +441,19 @@ def test_missing_tool_fails_and_an_old_version_warns(
 def test_tool_that_rejects_version_flag_is_a_warn_not_a_fail(
     store: ModuleStore, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Real kubectl has no --version flag; present-but-unparseable is reported, not hidden."""
+    """Present-but-unparseable is reported as warn "version unknown", not hidden."""
     log = tmp_path / "probe.log"
     monkeypatch.setenv("FAKE_PROBE_LOG", str(log))
     bins = tmp_path / "bin"
-    _fake_bin(bins, "kubectl", "Error: unknown flag: --version", exit_code=1)
-    _install_with_prerequisites(store, tmp_path, "k8s-drills", "[{id: kubectl}]")
+    _fake_bin(bins, "kind", "Error: unknown flag: --version", exit_code=1)
+    _install_with_prerequisites(store, tmp_path, "k8s-drills", "[{id: kind}]")
 
     [result] = check_module_prerequisites(store_root=store.root, path=str(bins))
 
     assert result.status == "warn"
     assert "version is unknown" in result.message
     assert "exited 1" in result.message
-    assert _probe_log(log) == ["kubectl --version"]
+    assert _probe_log(log) == ["kind --version"]
 
 
 def test_probe_tool_refuses_anything_outside_the_enum(tmp_path: Path) -> None:
@@ -567,3 +580,68 @@ def test_add_leaves_no_staging_directory_behind(store: ModuleStore, tmp_path: Pa
         store.add(FIXTURES / "mc015" / "broken")
     leftovers = [p.name for p in store.snapshots.iterdir() if p.name.startswith(".")]
     assert leftovers == []
+
+
+# ---------------------------------------------------------------------------
+# C-review 4 -- per-tool version argv: kubectl has no --version; the table names its argv
+# ---------------------------------------------------------------------------
+
+_KUBECTL_VERSION_JSON = (
+    '{"clientVersion": {"major": "1", "minor": "31", "gitVersion": "v1.31.0", '
+    '"gitCommit": "0000000", "platform": "darwin/arm64"}, "kustomizeVersion": "v5.4.2"}'
+)
+
+
+def test_kubectl_is_probed_with_version_client_json_and_parsed(
+    store: ModuleStore, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Spec: the probe argv is `<bin> --version` unless the per-tool table names another, as
+    it does for kubectl: `kubectl version --client --output=json`."""
+    log = tmp_path / "probe.log"
+    monkeypatch.setenv("FAKE_PROBE_LOG", str(log))
+    bins = tmp_path / "bin"
+    _fake_bin(bins, "kubectl", _KUBECTL_VERSION_JSON, only_argv="version --client --output=json")
+    _install_with_prerequisites(store, tmp_path, "k8s-drills", '[{id: kubectl, min: "1.30"}]')
+
+    [result] = check_module_prerequisites(store_root=store.root, path=str(bins))
+
+    assert (result.status, result.message) == ("pass", "kubectl 1.31.0 (needed by k8s-drills)")
+    assert _probe_log(log) == ["kubectl version --client --output=json"]
+
+
+def test_kubectl_json_without_a_client_version_is_a_warn(
+    store: ModuleStore, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    log = tmp_path / "probe.log"
+    monkeypatch.setenv("FAKE_PROBE_LOG", str(log))
+    bins = tmp_path / "bin"
+    _fake_bin(
+        bins,
+        "kubectl",
+        '{"kustomizeVersion": "v5.4.2"}',
+        only_argv="version --client --output=json",
+    )
+    _install_with_prerequisites(store, tmp_path, "k8s-drills", "[{id: kubectl}]")
+
+    [result] = check_module_prerequisites(store_root=store.root, path=str(bins))
+
+    assert result.status == "warn"
+    assert "version is unknown" in result.message
+
+
+def test_version_argv_table_defaults_to_dash_dash_version(
+    store: ModuleStore, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from studyloop.doctor.modules import PREREQ_VERSION_ARGV
+
+    assert PREREQ_VERSION_ARGV == {"kubectl": ["version", "--client", "--output=json"]}
+    log = tmp_path / "probe.log"
+    monkeypatch.setenv("FAKE_PROBE_LOG", str(log))
+    bins = tmp_path / "bin"
+    _fake_bin(bins, "docker", "Docker version 27.1.1, build deadbeef", only_argv="--version")
+    _install_with_prerequisites(store, tmp_path, "docker-drills", "[{id: docker}]")
+
+    [result] = check_module_prerequisites(store_root=store.root, path=str(bins))
+
+    assert (result.status, result.message) == ("pass", "docker 27.1.1 (needed by docker-drills)")
+    assert _probe_log(log) == ["docker --version"]

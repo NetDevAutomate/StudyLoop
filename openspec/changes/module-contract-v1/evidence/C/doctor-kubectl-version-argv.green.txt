@@ -1,0 +1,20 @@
+$ env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_lifecycle.py packages/studyloop/tests/test_cli_doctor.py packages/studyloop/tests/test_doctor_integration.py -q -p no:cacheprovider
+# worktree with doctor/modules.py PREREQ_VERSION_ARGV (sha = the commit carrying this file)  2026-10-04T21:42:47Z
+...........................................................              [100%]
+59 passed in 21.76s
+# -- the probe tests, by name --
+test_module_lifecycle.py::test_add_records_id_version_digest_and_snapshot PASSED [ 10%]
+test_module_lifecycle.py::test_no_module_installed_runs_no_probe PASSED [ 20%]
+test_module_lifecycle.py::test_probes_only_the_installed_modules_prerequisites_with_version_only PASSED [ 30%]
+test_module_lifecycle.py::test_missing_tool_fails_and_an_old_version_warns PASSED [ 40%]
+test_module_lifecycle.py::test_tool_that_rejects_version_flag_is_a_warn_not_a_fail PASSED [ 50%]
+test_module_lifecycle.py::test_probe_tool_refuses_anything_outside_the_enum PASSED [ 60%]
+test_module_lifecycle.py::test_module_prerequisites_check_is_registered_under_deps PASSED [ 70%]
+test_module_lifecycle.py::test_kubectl_is_probed_with_version_client_json_and_parsed PASSED [ 80%]
+test_module_lifecycle.py::test_kubectl_json_without_a_client_version_is_a_warn PASSED [ 90%]
+test_module_lifecycle.py::test_version_argv_table_defaults_to_dash_dash_version PASSED [100%]
+# -- the argv table --
+PREREQ_VERSION_ARGV = {'kubectl': ['version', '--client', '--output=json']}
+  docker   -> docker --version
+  kind     -> kind --version
+  kubectl  -> kubectl version --client --output=json
