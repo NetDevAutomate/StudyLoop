@@ -65,7 +65,7 @@ preflight`. "Red kept" = the failing-test transcript is in the commit body or un
       `docs/adr/0012-practice-check-delivery.md` answering: PTY framing, ACP serialisation
       against an in-flight turn, envelope size bound, learner-visible failure; write test
       doubles only; verify no production code changed (`git diff --stat` shows ADR + tests).
-- [ ] **M0 council** — four seats review the ADR draft and traces; coordinator arbitrates into
+- [x] **M0 council** — four seats review the ADR draft and traces; coordinator arbitrates into
       the ADR; verify the ADR records the decision and the rejected options.
 
 ## 2. Wave 1 — C, R, T implement; W writes tests
@@ -111,6 +111,9 @@ preflight`. "Red kept" = the failing-test transcript is in the commit body or un
       `design.md` §9.
 
 ### T — mentor delivery (after M0)
+
+- [ ] T-owner Probe each PTY harness (claude, codex, kiro-cli, pi) for `ESC[?2004h` at start-up with
+      the real binaries; record which enable bracketed paste (M0 Q3: confirms, does not gate T3).
 
 - [ ] T2 `session/module_delivery.py`: typed, size-bounded `PracticeCheckEnvelope`; adapter
       resolving `ActiveSession.transport`; verify unit tests for bound, labelling and the

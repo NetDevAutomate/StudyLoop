@@ -5,14 +5,20 @@ Each drill phase (`setup`, `check`, `cleanup`) SHALL name one executable under t
 snapshot's `scripts/` plus literal arguments; the runner SHALL execute it with `shell=False` from
 the snapshot, in an environment built from scratch (a scratch `HOME`, a per-attempt working
 directory, `STUDYLOOP_DRILL_ID` from the deck and task ids, the target's injected variables) and
-never the caller's inherited environment. A phase whose command contains shell tokens, resolves
-outside `scripts/`, or follows a symlink out of the snapshot SHALL be refused before any process
-starts.
+never the caller's inherited environment. A phase whose command contains shell tokens (`;`, `|`, `&`, `&&`, `||`, `$(`, backtick, `>`, `<`,
+newline), names an executable that is not a regular file directly under the snapshot's `scripts/`
+(a regular file elsewhere in the snapshot, a symlink or hardlink leaving `scripts/`, an absolute
+path, a directory), or whose argv exceeds 64 arguments SHALL be refused before any process starts.
 
 #### Scenario: a shell token is refused
-- **GIVEN** a check phase whose argv contains `;`, `|`, `&&` or `$(`
+- **GIVEN** a check phase whose argv contains `;`, `|`, `&`, `&&` or `$(`
 - **WHEN** `studyloop drill check <module>/<deck>/<task>` runs
 - **THEN** it refuses before spawning and names the token
+
+#### Scenario: a regular file outside scripts/ is refused
+- **GIVEN** a check phase naming `decks/helper.sh`, a regular file inside the snapshot but outside `scripts/`
+- **WHEN** the phase is consented to
+- **THEN** it is refused before spawn (MC013 at runtime) naming the path
 
 #### Scenario: the environment is not inherited
 - **GIVEN** the caller's environment carries `STUDYLOOP_SECRET_PROBE=1`
@@ -22,7 +28,8 @@ starts.
 ### Requirement: Every phase is consented to on its exact argv and script digest, each time
 Before each phase the runner SHALL show the phase, target, exact argv and the content digest of
 the script, require an explicit confirmation, and re-check the digest at spawn; a change between
-confirmation and spawn SHALL abort. Setup and cleanup SHALL each be consented to separately from
+confirmation and spawn SHALL abort. A CLI confirmation SHALL expire 10 minutes after it is given
+and SHALL be usable once. Setup and cleanup SHALL each be consented to separately from
 check. The web surface SHALL expose no `--yes` equivalent in v1.
 
 #### Scenario: a modified script does not run
@@ -31,19 +38,30 @@ check. The web surface SHALL expose no `--yes` equivalent in v1.
 - **THEN** the phase aborts and reports the digest mismatch
 
 ### Requirement: Exit classes, per-phase timeouts and streamed caps are the runner's, not the module's
-Exit `0` SHALL mean passed; `1` SHALL mean "failed, task not complete"; `≥ 2` SHALL mean the
-check could not run. `timeoutSeconds` SHALL bound each phase separately and a timeout SHALL be an
-error, never a fail. Output SHALL be streamed with a byte cap and a line cap enforced while the
-process runs, redacted by the existing secret detector, and kept only as transient evidence.
+For `check`, exit `0` SHALL mean passed; `1` SHALL mean "failed, task not complete"; `≥ 2` SHALL mean
+the check could not run. For `setup` and `cleanup`, any non-zero exit SHALL be classed as an error
+that is logged and surfaced; a failed cleanup SHALL still close the attempt. `timeoutSeconds`
+SHALL bound each phase separately and a timeout SHALL be an error, never a fail. Output SHALL be
+streamed with caps enforced while the process runs — 64 KiB of stdout, 16 KiB of stderr, 2,000
+lines in total — and when a cap is hit the process SHALL be terminated, `truncated` recorded, and
+the phase classed as an error naming the cap (a check that floods its output is not a trustworthy
+pass). Output SHALL be redacted by the existing secret detector and kept only as transient evidence.
 
 #### Scenario: output is capped while streaming
 - **GIVEN** a check script that prints 10 MiB
 - **WHEN** it runs
 - **THEN** the captured output stops at the cap, the process is terminated, and the result is an error naming the cap
 
+#### Scenario: a failing cleanup still closes the attempt
+- **GIVEN** a cleanup script that exits `3`
+- **WHEN** the cleanup phase runs with consent
+- **THEN** the phase is classed as an error, the message is shown to the learner, and the attempt is closed
+
 ### Requirement: A passing check records no learner observation
-A drill check result SHALL be recorded as a transient `practice_check` event only; it SHALL NOT
-write a `confident` or `struggling` observation into learner history. Mastery still comes from
+A drill check result SHALL be recorded as a transient `practice_check` event only — one row per
+phase completion in a `practice_check_events` table of the sessions database keyed by attempt id,
+holding identity, phase, exit class, duration, truncation flags and the delivery outcome; it SHALL
+NOT write a `confident` or `struggling` observation into learner history. Mastery still comes from
 teach-back.
 
 #### Scenario: no observation after a passing check
