@@ -1,0 +1,20 @@
+# Lane K0's offline fixture module: a `target.kind: kubeconfig-context` drill whose three
+# phases only echo `$KUBECONFIG` and read `kubectl config current-context`. The core suite
+# runs it with FAKE `kind`/`kubectl`/`docker` scripts on a scratch PATH -- nothing here
+# needs Docker, a real kind, or the network.
+id: k8s-offline
+contract: 1
+version: 0.1.0
+title: Kubernetes offline fixture
+topic: kubernetes
+license: MIT
+maintainers:
+  - name: StudyLoop core
+    github: NetDevAutomate
+prerequisites:
+  - id: kind
+  - id: kubectl
+  - id: docker
+capabilities: [terminal, setup, check, cleanup]
+target:
+  kind: kubeconfig-context

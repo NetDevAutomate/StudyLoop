@@ -278,6 +278,20 @@ lanes:
     - packages/studyloop/src/studyloop/web/routes/session/_dashboard.py  # W-review F4 only
     - packages/studyloop/src/studyloop/web/static/js/nav-and-panel-stores.js  # W-review F10 only
 
+  K0: # disposable kind cluster for target.kind: kubeconfig-context (feat/module-cluster)
+    # Coordinator-granted (briefs/K0-cluster-provisioning.md, "Owned globs"): the gap lane W
+    # found (W gap 7) -- nothing in core provisioned the §5.5 cluster. Dual ownership by
+    # region with R and W on _drill.py (DECISIONS.md §E5): K0 owns the _open_attempt /
+    # run_drill_phase block that opens, provisions and closes the attempt; W's target= and
+    # R's prerequisites wiring stay. Everything else under modules/ is forbidden to K0.
+    - packages/studyloop/src/studyloop/modules/cluster.py
+    - packages/studyloop/src/studyloop/cli/_drill.py        # attempt open/provision/close block only
+    - packages/studyloop/tests/test_module_cluster.py
+    - packages/studyloop/tests/test_module_drill_cli.py     # one case: a workdir module never calls kind
+    - packages/studyloop/tests/fixtures/modules/k8s-offline/**
+    - packages/studyloop/tests/fixtures/lane_ownership.yaml  # this row
+    - openspec/changes/module-contract-v1/evidence/K0/**
+
 # Explicit branch -> lane key for lanes whose branch name carries no lane id.
 # Consulted BEFORE the legacy `lane/m<n>-<slug>` pattern (tests/_lane_ownership.py,
 # lane_id_from_branch). A `feat/` branch that is not listed here is not a lane

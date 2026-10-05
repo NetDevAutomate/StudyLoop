@@ -1,0 +1,25 @@
+{
+  "id": "cluster",
+  "title": "Disposable cluster drill",
+  "tasks": [
+    {
+      "id": "current-context",
+      "taskType": "apply",
+      "prompt": "Confirm which cluster your kubectl is talking to.",
+      "successCriteria": ["kubectl config current-context names the attempt's disposable cluster"],
+      "expectedLearningOutcome": "A kubeconfig-context drill sees exactly one context: the disposable cluster core created for this attempt.",
+      "hint": "KUBECONFIG is already exported for you; kubectl needs no flags.",
+      "solution": "kubectl config current-context",
+      "scaffolding": "guided",
+      "mentorNotes": "Ask what KUBECONFIG points at before explaining contexts.",
+      "verification": {
+        "kind": "command",
+        "successCriteria": ["Check script exits 0"],
+        "setupCommand": "scripts/setup.sh",
+        "command": "scripts/check.sh",
+        "cleanupCommand": "scripts/cleanup.sh",
+        "timeoutSeconds": 10
+      }
+    }
+  ]
+}

@@ -1,0 +1,82 @@
+env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_cluster.py -q -p no:cacheprovider
+# worktree: module-cluster  HEAD: 6db33d55  2026-10-05T08:34:22Z
+FFFFFFFFFF                                                               [100%]
+=================================== FAILURES ===================================
+______ test_provision_spawns_kind_create_with_the_exact_argv_and_no_shell ______
+packages/studyloop/tests/test_module_cluster.py:218: in test_provision_spawns_kind_create_with_the_exact_argv_and_no_shell
+    handle = cluster.provision(attempt, tools=tools)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+packages/studyloop/src/studyloop/modules/cluster.py:79: in provision
+    raise NotImplementedError
+E   NotImplementedError
+___ test_provision_rewrites_the_kubeconfig_to_exactly_one_context_mode_0600 ____
+packages/studyloop/tests/test_module_cluster.py:256: in test_provision_rewrites_the_kubeconfig_to_exactly_one_context_mode_0600
+    handle = cluster.provision(attempt, tools=tools)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+packages/studyloop/src/studyloop/modules/cluster.py:79: in provision
+    raise NotImplementedError
+E   NotImplementedError
+______________ test_cluster_name_derives_from_the_attempt_id_only ______________
+packages/studyloop/tests/test_module_cluster.py:271: in test_cluster_name_derives_from_the_attempt_id_only
+    assert cluster.cluster_name("1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d") == "studyloop-1a2b3c4d"
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+packages/studyloop/src/studyloop/modules/cluster.py:59: in cluster_name
+    raise NotImplementedError
+E   NotImplementedError
+___________ test_provision_refuses_a_name_collision_without_creating ___________
+packages/studyloop/tests/test_module_cluster.py:287: in test_provision_refuses_a_name_collision_without_creating
+    cluster.provision(attempt, tools=tools)
+packages/studyloop/src/studyloop/modules/cluster.py:79: in provision
+    raise NotImplementedError
+E   NotImplementedError
+___ test_failed_create_names_the_cluster_and_deletes_what_kind_may_have_left ___
+packages/studyloop/tests/test_module_cluster.py:305: in test_failed_create_names_the_cluster_and_deletes_what_kind_may_have_left
+    cluster.provision(attempt, tools=tools)
+packages/studyloop/src/studyloop/modules/cluster.py:79: in provision
+    raise NotImplementedError
+E   NotImplementedError
+____________ test_hung_create_is_killed_at_the_timeout_and_reported ____________
+packages/studyloop/tests/test_module_cluster.py:326: in test_hung_create_is_killed_at_the_timeout_and_reported
+    cluster.provision(attempt, tools=tools, timeout_seconds=1)
+packages/studyloop/src/studyloop/modules/cluster.py:79: in provision
+    raise NotImplementedError
+E   NotImplementedError
+____________ test_kind_never_sees_the_learners_kubeconfig_variable _____________
+packages/studyloop/tests/test_module_cluster.py:340: in test_kind_never_sees_the_learners_kubeconfig_variable
+    cluster.provision(attempt, tools=tools)
+packages/studyloop/src/studyloop/modules/cluster.py:79: in provision
+    raise NotImplementedError
+E   NotImplementedError
+______ test_teardown_deletes_only_this_cluster_and_removes_the_kubeconfig ______
+packages/studyloop/tests/test_module_cluster.py:356: in test_teardown_deletes_only_this_cluster_and_removes_the_kubeconfig
+    handle = cluster.provision(attempt, tools=tools)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+packages/studyloop/src/studyloop/modules/cluster.py:79: in provision
+    raise NotImplementedError
+E   NotImplementedError
+_____________ test_teardown_failure_is_an_error_naming_the_cluster _____________
+packages/studyloop/tests/test_module_cluster.py:378: in test_teardown_failure_is_an_error_naming_the_cluster
+    handle = cluster.provision(attempt, tools=tools)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+packages/studyloop/src/studyloop/modules/cluster.py:79: in provision
+    raise NotImplementedError
+E   NotImplementedError
+________ test_handle_for_rebuilds_the_handle_from_the_recorded_attempt _________
+packages/studyloop/tests/test_module_cluster.py:406: in test_handle_for_rebuilds_the_handle_from_the_recorded_attempt
+    handle = cluster.handle_for(recorded, tools=tools)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+packages/studyloop/src/studyloop/modules/cluster.py:69: in handle_for
+    raise NotImplementedError
+E   NotImplementedError
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_module_cluster.py::test_provision_spawns_kind_create_with_the_exact_argv_and_no_shell
+FAILED packages/studyloop/tests/test_module_cluster.py::test_provision_rewrites_the_kubeconfig_to_exactly_one_context_mode_0600
+FAILED packages/studyloop/tests/test_module_cluster.py::test_cluster_name_derives_from_the_attempt_id_only
+FAILED packages/studyloop/tests/test_module_cluster.py::test_provision_refuses_a_name_collision_without_creating
+FAILED packages/studyloop/tests/test_module_cluster.py::test_failed_create_names_the_cluster_and_deletes_what_kind_may_have_left
+FAILED packages/studyloop/tests/test_module_cluster.py::test_hung_create_is_killed_at_the_timeout_and_reported
+FAILED packages/studyloop/tests/test_module_cluster.py::test_kind_never_sees_the_learners_kubeconfig_variable
+FAILED packages/studyloop/tests/test_module_cluster.py::test_teardown_deletes_only_this_cluster_and_removes_the_kubeconfig
+FAILED packages/studyloop/tests/test_module_cluster.py::test_teardown_failure_is_an_error_naming_the_cluster
+FAILED packages/studyloop/tests/test_module_cluster.py::test_handle_for_rebuilds_the_handle_from_the_recorded_attempt
+10 failed in 0.70s
