@@ -165,7 +165,14 @@ preflight`. "Red kept" = the failing-test transcript is in the commit body or un
       proof `evidence/U1/forced-failure-bundle/` (nine tracked members); gates `evidence/U1/
       testacc-gate.txt`, `evidence/U1/preflight-gate.txt` (first pass), `evidence/U1/fixpass-gate-*.txt`. G.
 - [ ] U2 `just testuat` — owner runs both personas twice against the rubric; verify sign-off
-      recorded under `evidence/uat/`.
+      recorded under `evidence/uat/`. (OWNER step; U2-ready since U1 merged 79dab398.)
+- [x] U1-review One independent seat (gpt-5.6-sol, `council/2026-10-05-review-U1-gpt-5.6-sol.md`:
+      do not merge, 10 raised, 10 verified); eight fixed red-first + the granted a4a focus fix per
+      `briefs/U1-fixpass.md`; F9 accepted, F10 recorded as an evidence gap; gate
+      `evidence/U1/merge-gate.txt` (7985 passed, 0 failed; testacc 41; e2e 9); merged 79dab398.
+- [ ] U1-F1 follow-up: `acceptance/uat/data/module_rubric_v1.md:23` (W's hash-pinned rubric)
+      still names `server.log`; the bundle member is `server-log.txt` since 943aa004. Rename at
+      the next rubric revision (re-pin the hash registry).
 - [x] K0 `modules/cluster.py`: core-created disposable kind cluster for `target.kind: kubeconfig-context`
       (provision before `setup`, one-context kubeconfig 0600 in the attempt dir, teardown after `cleanup`
       and on every failure path, never touch a cluster it did not create); offline tests with a fake
