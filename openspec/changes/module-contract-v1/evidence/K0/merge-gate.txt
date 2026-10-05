@@ -1,0 +1,15 @@
+# Lane K0 merge gate — every preflight recipe individually at 9bd9f1c9
+
+    sha=9bd9f1c9 start=2026-10-05T11:12:33+01:00
+    lint: rc=0 All checks passed!
+    typecheck: rc=0 0 errors, 0 warnings, 0 informations
+    test: rc=0 ========= 7981 passed, 15 skipped, 833 deselected in 984.67s (0:16:24) =========
+    test-js: rc=0 ℹ pass 189 ℹ fail 0
+    docs: rc=0 INFO    -  Documentation built in 0.68 seconds
+    release-consistency: rc=0 release consistency passed for studyloop 0.5.0
+    spec-check: rc=0 Totals: 25 passed, 0 failed (25 items)
+    end=2026-10-05T11:29:27+01:00 gate_fail=0
+    DONE
+
+Run after the K0-review fix pass (ten red-first commits, one per finding). The gate script
+tolerates exactly one known red (the virgin-HOME tmux test); it was not needed in this run.
