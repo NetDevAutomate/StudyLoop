@@ -1,13 +1,9 @@
 {
   "errors": [
-    "console.error: Event @ http://127.0.0.1:51782/vendor/js/htmx-2.0.4.min.js:0",
-    "console.error: Event @ http://127.0.0.1:51782/vendor/js/htmx-2.0.4.min.js:0"
+    "console.error: Event @ http://127.0.0.1:55714/vendor/js/htmx-2.0.4.min.js:0",
+    "console.error: Event @ http://127.0.0.1:55714/vendor/js/htmx-2.0.4.min.js:0"
   ],
   "api_calls": [
-    [
-      "GET",
-      "/api/session/state"
-    ],
     [
       "GET",
       "/api/session/last"
@@ -163,6 +159,10 @@
     [
       "GET",
       "/api/session/state"
+    ],
+    [
+      "GET",
+      "/api/retrieval/health"
     ]
   ]
 }

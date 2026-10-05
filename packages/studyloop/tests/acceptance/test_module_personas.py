@@ -319,12 +319,12 @@ class TestBundleWriter:
         assert violations == []
         manifest = json.loads(bundle.manifest_path.read_text())
         assert manifest["artifacts"] == {
-            "server_log": "server.log",
+            "server_log": "server-log.txt",
             "cli_transcript": "cli-transcript.txt",
             "lockfile_diff": "modules.lock.diff",
             "attempt_envelope": "attempt-envelope.json",
         }
-        server_log = (bundle.run_dir / "server.log").read_text()
+        server_log = (bundle.run_dir / "server-log.txt").read_text()
         assert "<REDACTED:lan_password>" in server_log and lan_credential not in server_log
         assert "<WORLD>/study-materials" in server_log
         assert "sha256:abababababab…" in server_log, server_log
@@ -338,6 +338,23 @@ class TestBundleWriter:
             "persona": "A",
             "envelope": {"labs_drill": {"ref": DRILL_REF}, "path": "<WORLD>"},
         }
+
+    @pytest.mark.parametrize("member", sorted({*EXPECTED_MEMBERS, "manifest.json", "turns.json"}))
+    def test_every_bundle_member_name_survives_the_repositorys_gitignore(self, member: str) -> None:
+        """U1-review F1: a member the manifest names must be committable under evidence/U1/ --
+        `*.log` is gitignored (.gitignore `# Logs`), so a `server.log` member is written, named
+        in the manifest, and silently absent from the tree."""
+        path = f"openspec/changes/module-contract-v1/evidence/U1/forced-failure-bundle/{member}"
+        probe = subprocess.run(
+            ["git", "check-ignore", "-v", "--no-index", "--", path],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert probe.returncode == 1, (
+            f"bundle member {member!r} is ignored by the repository: {probe.stdout.strip()}"
+        )
 
     def test_write_evidence_bundle_without_members_keeps_the_pre_u1_manifest(
         self, tmp_path: Path

@@ -1,0 +1,13 @@
+$ STUDYLOOP_ACC=1 env -u VIRTUAL_ENV uv run --group dev pytest -m acceptance packages/studyloop/tests/acceptance/test_module_personas.py -k gitignore -q -p no:cacheprovider --tb=short
+sha d00bea54  2026-10-05T12:10:29Z  (U1-review F1: the member is still named server.log)
+.......F.                                                                [100%]
+=================================== FAILURES ===================================
+_ TestBundleWriter.test_every_bundle_member_name_survives_the_repositorys_gitignore[server.log] _
+packages/studyloop/tests/acceptance/test_module_personas.py:355: in test_every_bundle_member_name_survives_the_repositorys_gitignore
+    assert probe.returncode == 1, (
+E   AssertionError: bundle member 'server.log' is ignored by the repository: .gitignore:77:*.log	openspec/changes/module-contract-v1/evidence/U1/forced-failure-bundle/server.log
+E   assert 0 == 1
+E    +  where 0 = CompletedProcess(args=['git', 'check-ignore', '-v', '--no-index', '--', 'openspec/changes/module-contract-v1/evidence/...t='.gitignore:77:*.log\topenspec/changes/module-contract-v1/evidence/U1/forced-failure-bundle/server.log\n', stderr='').returncode
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/acceptance/test_module_personas.py::TestBundleWriter::test_every_bundle_member_name_survives_the_repositorys_gitignore[server.log]
+1 failed, 8 passed, 23 deselected in 0.43s

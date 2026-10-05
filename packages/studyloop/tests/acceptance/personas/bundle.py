@@ -3,7 +3,7 @@
 On any phase failure the bundle under the run's evidence directory must carry, beside what
 ``acceptance/evidence.py`` wrote before this lane (``manifest.json`` + ``turns.json``):
 
-- the subprocess server's log (``server.log``),
+- the subprocess server's log (``server-log.txt`` -- ``*.log`` is gitignored, U1-review F1),
 - the transcript of every ``studyloop`` call the persona made (``cli-transcript.txt``),
 - a before/after unified diff of ``modules.lock.json`` (``modules.lock.diff``),
 - the attempt envelope JSON when a drill was started (``attempt-envelope.json``),
@@ -44,7 +44,7 @@ EXPECTED_MEMBERS: tuple[str, ...] = (
     SCREENSHOT_NAME,
     PAGE_HTML_NAME,
     CONSOLE_NAME,
-    "server.log",
+    "server-log.txt",
     "cli-transcript.txt",
     "modules.lock.diff",
     "attempt-envelope.json",

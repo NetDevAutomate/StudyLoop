@@ -70,8 +70,10 @@ class EvidenceBundle:
     attempt_envelope_path: Path | None = None
 
 
-#: File names of the optional members, beside ``manifest.json`` / ``turns.json``.
-SERVER_LOG_NAME = "server.log"
+#: File names of the optional members, beside ``manifest.json`` / ``turns.json``. The server
+#: log is ``.txt``, not ``.log``: a bundle is committed under ``evidence/`` as proof, and the
+#: repository ignores ``*.log`` (U1-review F1 -- the manifest named a member the tree lacked).
+SERVER_LOG_NAME = "server-log.txt"
 CLI_TRANSCRIPT_NAME = "cli-transcript.txt"
 LOCKFILE_DIFF_NAME = "modules.lock.diff"
 ATTEMPT_ENVELOPE_NAME = "attempt-envelope.json"
@@ -106,7 +108,7 @@ def write_evidence_bundle(
     four members design.md §6 adds for the persona journeys (lane U1): the subprocess
     server's captured output, the transcript of every ``studyloop`` call the persona made,
     the before/after diff of ``modules.lock.json`` and the attempt envelope recorded when a
-    drill was started. Each is written as its own file (``server.log``,
+    drill was started. Each is written as its own file (``server-log.txt``,
     ``cli-transcript.txt``, ``modules.lock.diff``, ``attempt-envelope.json``) and named in
     the manifest under ``artifacts`` -- a key that appears ONLY when at least one member was
     supplied, so a caller that passes none gets the pre-U1 manifest byte for byte.

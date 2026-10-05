@@ -5,46 +5,46 @@
     "flipped": false,
     "started_at_s": 0.0,
     "status": "passed",
-    "elapsed_s": 0.887
+    "elapsed_s": 0.796
   },
   {
     "phase": "a2",
     "title": "module add via the CLI; reload; one Labs entry",
     "flipped": false,
-    "started_at_s": 0.889,
+    "started_at_s": 0.798,
     "status": "passed",
-    "elapsed_s": 0.71
+    "elapsed_s": 0.868
   },
   {
     "phase": "a3",
     "title": "start one drill inside the one claimed session",
     "flipped": false,
-    "started_at_s": 1.601,
+    "started_at_s": 1.668,
     "status": "passed",
-    "elapsed_s": 0.694
+    "elapsed_s": 0.731
   },
   {
     "phase": "a4a",
     "title": "focus lands in the terminal after the start",
     "flipped": false,
-    "started_at_s": 2.297,
+    "started_at_s": 2.401,
     "status": "failed",
-    "error": "AssertionError: focus is on body, not in the terminal\nassert False\n +  where False = <function terminal_has_focus at 0x109e57ba0>(<Page url='http://127.0.0.1:51782/#study-session'>)\n +    where <function terminal_has_focus at 0x109e57ba0> = pw.terminal_has_focus",
-    "elapsed_s": 0.719
+    "error": "AssertionError: focus is on body, not in the terminal\nassert False\n +  where False = <function terminal_has_focus at 0x10c0e7c40>(<Page url='http://127.0.0.1:55714/#study-session'>)\n +    where <function terminal_has_focus at 0x10c0e7c40> = pw.terminal_has_focus",
+    "elapsed_s": 0.714
   },
   {
     "phase": "a4b",
     "title": "keyboard-only traversal: Tab / Shift-Tab, focus visible",
     "flipped": false,
-    "started_at_s": 3.078,
+    "started_at_s": 3.172,
     "status": "passed",
-    "elapsed_s": 0.257
+    "elapsed_s": 0.246
   },
   {
     "phase": "a5",
     "title": "cancel: Escape, the recovery copy, the session untouched",
     "flipped": true,
-    "started_at_s": 3.338,
+    "started_at_s": 3.421,
     "status": "failed",
     "error": "TimeoutError: Page.wait_for_selector: Timeout 15000ms exceeded.\nCall log:\n  - waiting for locator(\"[data-testid='labs-active-drill']\") to be hidden\n    35 \u00d7 locator resolved to visible <section aria-live=\"polite\" class=\"labs-active\" x-show=\"activeDrill\" data-testid=\"labs-active-drill\">\u2026</section>\n",
     "elapsed_s": 15.224
