@@ -1,0 +1,35 @@
+$ env -u VIRTUAL_ENV just preflight
+sha cc874180  2026-10-05T11:32:57Z
+uv run --group dev ruff check .
+All checks passed!
+uv run --group dev ruff format --check .
+1089 files already formatted
+uv run --group dev pyright
+0 errors, 0 warnings, 0 informations
+uv run --group dev pytest
+readiness budgets: unscaled (1.0x) — release configuration
+collected 8853 items / 856 deselected / 2 skipped / 7997 selected
+packages/studyloop/tests/test_openspec_gate_hook.py ........             [ 72%]
+packages/studyloop/tests/test_prepare_release_script.py ....             [ 78%]
+packages/studyloop/tests/test_release_consistency_script.py ............ [ 80%]
+packages/studyloop/tests/test_release_harnesses.py ......                [ 80%]
+packages/studyloop/tests/test_server_error_detectors.py ...........      [ 84%]
+======== 7984 passed, 15 skipped, 856 deselected in 1004.80s (0:16:44) =========
+✔ submit: non-JSON HTTP error falls back to "<status> <statusText>" (0.160542ms)
+✔ WS: transport_error is the failure terminal — error summary, running=false, socket closed (0.154542ms)
+✔ WS: onerror surfaces formError; onclose is the running=false safety net (0.1735ms)
+✔ a failed refresh hides Labs rather than showing a stale list (0.110125ms)
+✔ load: a failing list surfaces an error and still finishes loading (0.180375ms)
+✔ recordCheckpoint: both sinks failed is "not recorded", never "partially recorded" (1.5275ms)
+ℹ skipped 0
+INFO    -  Documentation built in 0.57 seconds
+uv run python scripts/check-release-consistency.py --skip-wheel
+release consistency passed for studyloop 0.5.0
+if command -v openspec >/dev/null 2>&1; then openspec validate --specs --all; else echo "openspec CLI not found — skipping spec validation (see the OpenSpec section of docs/contributing.md)"; fi
+  ℹ [INFO] file: skip_specs is set in .openspec.yaml: change declares no spec-level behavior changes, zero deltas accepted
+  ⚠ [WARNING] overview: Purpose section is still a placeholder rather than a Purpose anyone wrote (the sentence `openspec archive` writes for a new capability, or a `TBD`/`TODO` marker left in its place). Replace it with what this capability is for, editing the main spec directly: a `## Purpose` in a delta is read only when the capability is created, so it cannot replace this one.
+Totals: 25 passed, 0 failed (25 items)
+
+real	17m14.526s
+user	10m50.226s
+sys	4m22.298s
