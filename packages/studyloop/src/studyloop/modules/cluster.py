@@ -42,10 +42,12 @@ What this module guarantees, each a contract item:
   never silent.
 - *Environment of kind itself*: kind is **core's** tool, not module shell, and it has to
   reach the learner's Docker daemon (Docker Desktop contexts live under the learner's
-  ``~/.docker``), so it runs with a copy of the learner's environment -- with ``KUBECONFIG``
-  removed (belt and braces beside the explicit ``--kubeconfig``) and the resolved kind's own
-  directory put first on ``PATH``. The scratch environment of §5.5 is the *drill script's*;
-  it is built later by the runner and is untouched here.
+  ``~/.docker``), so it runs with an **allowlisted** slice of the learner's environment
+  (:data:`KIND_ENV_ALLOWLIST` + :data:`KIND_ENV_PREFIXES`: HOME, PATH, TMPDIR, locale, Docker,
+  kind, proxy and certificate variables) -- never the whole environment, never ``KUBECONFIG``
+  (``--kubeconfig`` is explicit on every call), the resolved kind's own directory first on
+  ``PATH`` (K0-review F7). The scratch environment of §5.5 is the *drill script's*; it is
+  built later by the runner and is untouched here.
 
 Spawning goes through ``subprocess.Popen`` looked up on the module at call time so tests can
 observe the exact spawn arguments by patching ``subprocess.Popen`` (same convention as
@@ -74,6 +76,8 @@ if TYPE_CHECKING:
 
 __all__ = [
     "CLUSTER_TOOLS",
+    "KIND_ENV_ALLOWLIST",
+    "KIND_ENV_PREFIXES",
     "KUBECONFIG_NAME",
     "ClusterError",
     "ClusterHandle",
@@ -97,6 +101,40 @@ KIND_WAIT = "120s"
 
 #: Hard timeout for one ``kind`` invocation (create or delete).
 KIND_TIMEOUT_SECONDS = 300
+
+#: Environment variables core's own ``kind`` call may inherit from the learner (K0-review F7):
+#: identity and home (``~/.docker`` holds the Docker contexts), a temp dir, terminal and
+#: locale, proxy settings in both cases, and the trust-store overrides the Go and curl
+#: ecosystems read. ``PATH`` is rebuilt, not inherited; ``KUBECONFIG`` is never passed.
+KIND_ENV_ALLOWLIST: frozenset[str] = frozenset(
+    {
+        "HOME",
+        "USER",
+        "LOGNAME",
+        "TMPDIR",
+        "TERM",
+        "LANG",
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "NO_PROXY",
+        "ALL_PROXY",
+        "http_proxy",
+        "https_proxy",
+        "no_proxy",
+        "all_proxy",
+        "SSL_CERT_FILE",
+        "SSL_CERT_DIR",
+        "REQUESTS_CA_BUNDLE",
+        "CURL_CA_BUNDLE",
+        "XDG_CONFIG_HOME",
+        "XDG_RUNTIME_DIR",
+    }
+)
+
+#: Variable families core's ``kind`` call may inherit: every locale override, everything the
+#: Docker client reads (``DOCKER_HOST``, ``DOCKER_CONTEXT``, ``DOCKER_CONFIG``, ...) and every
+#: kind knob (``KIND_EXPERIMENTAL_PROVIDER``, ``KIND_CLUSTER_NAME`` is overridden by ``--name``).
+KIND_ENV_PREFIXES: tuple[str, ...] = ("LC_", "DOCKER_", "KIND_")
 
 #: How many characters of the attempt id follow the prefix in the cluster name.
 _NAME_ID_CHARS = 8
@@ -204,13 +242,27 @@ def handle_for(attempt: Attempt, *, tools: Mapping[str, Path]) -> ClusterHandle:
 
 
 def _kind_env(kind: Path) -> dict[str, str]:
-    """The learner's environment for core's own ``kind`` call, minus ``KUBECONFIG``, with the
-    resolved kind's directory first on ``PATH`` (see the module docstring)."""
-    env = dict(os.environ)
+    """The environment for core's own ``kind`` call: an allowlist, never the learner's whole
+    environment and never ``KUBECONFIG`` (K0-review F7).
+
+    Exactly what kind and the Docker client need to find the learner's daemon and contexts
+    (``HOME`` -> ``~/.docker``, every ``DOCKER_*`` and ``KIND_*``), to go through the learner's
+    proxy and trust store, and to print in the learner's locale -- see
+    :data:`KIND_ENV_ALLOWLIST` and :data:`KIND_ENV_PREFIXES`. ``PATH`` is the resolved kind's
+    own directory first, then the learner's PATH (kind execs ``docker`` by name). Nothing else
+    crosses: no cloud credentials, no tokens, no ``KUBECONFIG`` (``--kubeconfig`` is explicit
+    on every call).
+    """
+    source = os.environ
+    env = {key: value for key, value in source.items() if _allowed_kind_var(key)}
     env.pop("KUBECONFIG", None)
-    inherited = env.get("PATH", "")
-    env["PATH"] = f"{kind.parent}:{inherited}" if inherited else str(kind.parent)
+    learner_path = source.get("PATH", "")
+    env["PATH"] = f"{kind.parent}:{learner_path}" if learner_path else str(kind.parent)
     return env
+
+
+def _allowed_kind_var(key: str) -> bool:
+    return key in KIND_ENV_ALLOWLIST or key.startswith(KIND_ENV_PREFIXES)
 
 
 def _stop(process: subprocess.Popen[bytes]) -> None:

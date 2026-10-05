@@ -673,10 +673,10 @@ def test_workdir_module_never_calls_kind(
     log = tmp_path / "kind-calls.log"
     kind = fake_bin / "kind"
     kind.write_text(
-        '#!/bin/sh\nprintf "%s\\n" "$*" >> "${FAKE_KIND_LOG:?}"\nexit 0\n', encoding="utf-8"
+        '#!/bin/sh\nprintf "%s\\n" "$*" >> "${KIND_FAKE_LOG:?}"\nexit 0\n', encoding="utf-8"
     )
     kind.chmod(0o755)
-    monkeypatch.setenv("FAKE_KIND_LOG", str(log))
+    monkeypatch.setenv("KIND_FAKE_LOG", str(log))
     monkeypatch.setenv("PATH", f"{fake_bin}:/usr/bin:/bin")
 
     for phase in ("setup", "check", "cleanup"):
