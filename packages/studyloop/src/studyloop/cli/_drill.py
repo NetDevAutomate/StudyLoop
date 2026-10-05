@@ -260,12 +260,18 @@ def _open_attempt(
 ) -> tuple[Attempt, bool]:
     """Return ``(attempt, opened_here)`` per phase: setup opens, check reuses-or-opens,
     cleanup needs one. ``target`` is the manifest's ``target.kind``; ``kubeconfig`` is still
-    ``None`` here -- for a ``kubeconfig-context`` attempt :func:`_provision_cluster` sets it
-    right after ``setup`` opens the attempt (the cluster name derives from the attempt id).
+    ``None`` here -- for a ``kubeconfig-context`` attempt :func:`_provision_cluster` records it
+    through :meth:`AttemptStore.set_kubeconfig` right after ``setup`` opens the attempt (the
+    cluster name derives from the attempt id).
     A ``check`` that opens a ``kubeconfig-context`` attempt here has no cluster: the caller
     records that attempt as refused and closes it (``test_module_lane_seams.py`` pins the
     record) -- only ``setup`` provisions (K0 brief item 5)."""
-    current = store.current(drill)
+    try:
+        current = store.current(drill)
+    except SidecarError as exc:
+        # K0-review F2: a record whose id or paths are not canonical is never used -- not to
+        # run in, not to delete with. Say so and stop; nothing is opened.
+        raise click.ClickException(str(exc)) from exc
     if phase is Phase.SETUP:
         if current is not None:
             raise click.ClickException(
@@ -287,27 +293,6 @@ def _open_attempt(
 # ---------------------------------------------------------------------------
 # The disposable cluster's lifetime is the attempt's (lane K0, modules/cluster.py)
 # ---------------------------------------------------------------------------
-
-
-def _record_kubeconfig(store: AttemptStore, attempt: Attempt, kubeconfig: Path) -> Attempt:
-    """Persist the core-written kubeconfig on the open attempt's record and return the attempt
-    carrying it, so ``check``/``cleanup`` (later processes) find it through ``store.current``.
-
-    :class:`AttemptStore` persists ``kubeconfig`` at ``open()`` and reads it back, but has no
-    setter -- and the path cannot be known before ``open()`` mints the attempt id the cluster
-    name derives from. The record is updated through the store's own sidecar primitives so its
-    ``O_NOFOLLOW`` / ``O_EXCL`` / atomic-rename discipline is kept (the file is owned by lane R;
-    a public ``set_kubeconfig`` is the coordinator's call).
-    """
-    path = store._record_path(attempt)
-    record = store._read(path)
-    if record is None:
-        raise SidecarError(
-            f"attempt record {path.name} vanished before the kubeconfig could be recorded"
-        )
-    record["kubeconfig"] = str(kubeconfig)
-    store._write(path, record)
-    return dataclasses.replace(attempt, kubeconfig=kubeconfig)
 
 
 @dataclasses.dataclass
@@ -363,7 +348,7 @@ def _provision_cluster(
     disposable = _Disposable(handle)
     live.append(disposable)
     try:
-        attempt = _record_kubeconfig(store, attempt, handle.kubeconfig)
+        attempt = store.set_kubeconfig(attempt, handle.kubeconfig)
     except SidecarError as exc:
         disposable.teardown(store, attempt, reason=f"setup: attempt record not updated: {exc}")
         raise click.ClickException(f"attempt record not updated: {exc}") from exc

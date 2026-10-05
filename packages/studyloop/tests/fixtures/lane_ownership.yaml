@@ -286,6 +286,7 @@ lanes:
     # R's prerequisites wiring stay. Everything else under modules/ is forbidden to K0.
     - packages/studyloop/src/studyloop/modules/cluster.py
     - packages/studyloop/src/studyloop/cli/_drill.py        # attempt open/provision/close block only
+    - packages/studyloop/src/studyloop/modules/attempt.py  # set_kubeconfig + canonical-record validation only -- coordinator-granted, K0-review F2
     - packages/studyloop/tests/test_module_cluster.py
     - packages/studyloop/tests/test_module_drill_cli.py     # one case: a workdir module never calls kind
     - packages/studyloop/tests/fixtures/modules/k8s-offline/**

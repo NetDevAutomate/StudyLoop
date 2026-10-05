@@ -58,6 +58,7 @@ from studyloop.modules.attempt import (
     AttemptStore,
     DrillIdentity,
     InstalledModule,
+    SidecarError,
     TargetKind,
 )
 from studyloop.modules.cluster import ClusterError
@@ -647,6 +648,75 @@ def test_handle_for_rebuilds_the_handle_from_the_recorded_attempt(
     assert os.path.isabs(handle.kubeconfig)
 
 
+def test_handle_for_refuses_a_kubeconfig_that_is_not_the_attempts_own(
+    attempt: Attempt, tools: Mapping[str, Path], tmp_path: Path
+) -> None:
+    """K0-review F2: the handle is what ``teardown`` deletes with and unlinks, so a recorded
+    kubeconfig anywhere but ``<attempt dir>/kubeconfig`` is refused, never used."""
+    foreign = tmp_path / "victim-kubeconfig"
+    foreign.write_text("apiVersion: v1\n", encoding="utf-8")
+    tampered = Attempt(
+        attempt_id=attempt.attempt_id,
+        drill=attempt.drill,
+        snapshot_dir=attempt.snapshot_dir,
+        attempt_dir=attempt.attempt_dir,
+        target=TargetKind.KUBECONFIG_CONTEXT,
+        kubeconfig=foreign,
+    )
+
+    with pytest.raises(ClusterError) as excinfo:
+        cluster.handle_for(tampered, tools=tools)
+
+    assert str(foreign) in str(excinfo.value)
+    assert foreign.read_text(encoding="utf-8") == "apiVersion: v1\n"
+
+
+def test_set_kubeconfig_is_the_stores_public_setter_and_round_trips(
+    attempt: Attempt, tmp_path: Path
+) -> None:
+    """K0-review F2 (a): ``AttemptStore.set_kubeconfig`` records the canonical path and returns
+    the attempt carrying it; ``current()`` reads it back; a non-canonical path is refused."""
+    store = AttemptStore(root=tmp_path / "module-attempts")
+    canonical = cluster.kubeconfig_path(attempt)
+
+    updated = store.set_kubeconfig(attempt, canonical)
+
+    assert updated.kubeconfig == canonical
+    reloaded = store.current(attempt.drill)
+    assert reloaded is not None and reloaded.kubeconfig == canonical
+    with pytest.raises(SidecarError) as excinfo:
+        store.set_kubeconfig(attempt, tmp_path / "elsewhere")
+    assert "kubeconfig" in str(excinfo.value)
+
+
+@pytest.mark.parametrize(
+    ("field", "value_for"),
+    [
+        pytest.param("attempt_id", lambda a, t: "another-attempt-id", id="attempt_id"),
+        pytest.param("attempt_dir", lambda a, t: str(t / "elsewhere"), id="attempt_dir"),
+        pytest.param("kubeconfig", lambda a, t: str(t / "victim-kubeconfig"), id="kubeconfig"),
+    ],
+)
+def test_current_rejects_a_record_whose_identity_or_paths_are_not_canonical(
+    attempt: Attempt, tmp_path: Path, field: str, value_for: Any
+) -> None:
+    """K0-review F2 (b): a record whose ``attempt_id`` is not the file's stem, whose
+    ``attempt_dir`` is not ``<drill dir>/<attempt_id>`` or whose ``kubeconfig`` is not
+    ``<attempt_dir>/kubeconfig`` is rejected with the store's own error naming the field --
+    never handed to anything that deletes."""
+    store = AttemptStore(root=tmp_path / "module-attempts")
+    (tmp_path / "elsewhere").mkdir()
+    record_path = next((tmp_path / "module-attempts").rglob("*.json"))
+    record = json.loads(record_path.read_text(encoding="utf-8"))
+    record[field] = value_for(attempt, tmp_path)
+    record_path.write_text(json.dumps(record), encoding="utf-8")
+
+    with pytest.raises(SidecarError) as excinfo:
+        store.current(attempt.drill)
+
+    assert field in str(excinfo.value)
+
+
 # ---------------------------------------------------------------------------
 # `studyloop drill` end to end against the k8s-offline fixture (brief item 5)
 # ---------------------------------------------------------------------------
@@ -939,6 +1009,43 @@ def test_name_collision_is_refused_before_consent_and_closes_the_attempt(
     assert "Run this phase now?" not in result.output
     assert _kinds(fake_tools) == [["get", "clusters"]]
     assert _store().current(installed_k8s) is None
+
+
+@pytest.mark.parametrize(
+    "tamper",
+    [
+        pytest.param({"kubeconfig": "victim"}, id="kubeconfig-elsewhere"),
+        pytest.param({"attempt_id": "another-attempt-id"}, id="attempt-id-swapped"),
+        pytest.param({"kubeconfig": "victim", "attempt_id": "another-attempt-id"}, id="both"),
+    ],
+)
+def test_tampered_attempt_record_makes_cleanup_refuse_before_any_kind_call(
+    installed_k8s: DrillIdentity,
+    sessions_db: Path,
+    fake_tools: FakeTools,
+    tmp_path: Path,
+    tamper: dict[str, str],
+) -> None:
+    """K0-review F2 through the CLI: a hand-edited record pointing ``kubeconfig`` at a file
+    under ``tmp_path`` and/or ``attempt_id`` at another id makes ``drill cleanup`` refuse,
+    naming the field, BEFORE any kind argv is recorded -- and the pointed-at file is untouched."""
+    assert _invoke("setup", K8S_DRILL).exit_code == 0
+    calls_after_setup = fake_tools.calls()
+    victim = tmp_path / "victim-kubeconfig"
+    victim.write_text("apiVersion: v1\nkind: Config\n", encoding="utf-8")
+    record_path = next((tmp_path / "module-attempts").rglob("*.json"))
+    record = json.loads(record_path.read_text(encoding="utf-8"))
+    for field, value in tamper.items():
+        record[field] = str(victim) if value == "victim" else value
+    record_path.write_text(json.dumps(record), encoding="utf-8")
+
+    result = _invoke("cleanup", K8S_DRILL)
+
+    assert result.exit_code == 1, result.output
+    assert "Run this phase now?" not in result.output
+    assert any(field in result.output for field in tamper), result.output
+    assert fake_tools.calls() == calls_after_setup, "no kind argv after the tampered record"
+    assert victim.read_text(encoding="utf-8") == "apiVersion: v1\nkind: Config\n"
 
 
 def test_keyboard_interrupt_right_after_provision_tears_down_the_cluster(

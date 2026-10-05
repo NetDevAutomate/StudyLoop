@@ -65,16 +65,28 @@ from typing import TYPE_CHECKING, Any
 
 import yaml
 
+from studyloop.modules.attempt import KUBECONFIG_NAME
+
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
     from studyloop.modules.attempt import Attempt
 
+__all__ = [
+    "CLUSTER_TOOLS",
+    "KUBECONFIG_NAME",
+    "ClusterError",
+    "ClusterHandle",
+    "cluster_name",
+    "handle_for",
+    "kubeconfig_path",
+    "provision",
+    "rewrite_kubeconfig",
+    "teardown",
+]
+
 #: Every disposable cluster's name starts with this; the rest derives from the attempt id.
 CLUSTER_PREFIX = "studyloop-"
-
-#: The kubeconfig file name inside the attempt directory.
-KUBECONFIG_NAME = "kubeconfig"
 
 #: The tools core itself needs to provision and tear down the cluster (M1 Q2: resolved on
 #: the learner's PATH up front, before any consent; an unresolvable one refuses the phase).
@@ -174,12 +186,20 @@ def handle_for(attempt: Attempt, *, tools: Mapping[str, Path]) -> ClusterHandle:
     """Rebuild the handle for an attempt whose cluster an earlier ``setup`` created.
 
     ``check`` and ``cleanup`` run in later processes: the name comes from the attempt id and
-    the kubeconfig from the attempt's record (falling back to its canonical path) -- never
-    from module text or from a listing.
+    the kubeconfig from the attempt's record -- never from module text or from a listing. The
+    handle is what :func:`teardown` deletes with and unlinks, so a recorded kubeconfig that is
+    not the attempt's own ``<attempt dir>/kubeconfig`` is refused, never used (K0-review F2).
     """
-    kubeconfig = attempt.kubeconfig if attempt.kubeconfig is not None else kubeconfig_path(attempt)
+    canonical = kubeconfig_path(attempt)
+    kubeconfig = attempt.kubeconfig if attempt.kubeconfig is not None else canonical
+    if Path(kubeconfig).is_symlink() or Path(kubeconfig).resolve() != canonical:
+        raise ClusterError(
+            f"attempt {attempt.attempt_id} records kubeconfig {str(kubeconfig)!r}, which is not "
+            f"its own {canonical}; refusing to touch anything through it",
+            cluster=cluster_name(attempt.attempt_id),
+        )
     return ClusterHandle(
-        name=cluster_name(attempt.attempt_id), kubeconfig=kubeconfig, kind=_kind_binary(tools)
+        name=cluster_name(attempt.attempt_id), kubeconfig=canonical, kind=_kind_binary(tools)
     )
 
 

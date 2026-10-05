@@ -1,0 +1,99 @@
+env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_cluster.py -q -p no:cacheprovider -k handle_for_refuses or set_kubeconfig or current_rejects or tampered_attempt_record
+# worktree: module-cluster  HEAD: d9684d59  2026-10-05T09:52:13Z
+FFFFFFFF                                                                 [100%]
+=================================== FAILURES ===================================
+______ test_handle_for_refuses_a_kubeconfig_that_is_not_the_attempts_own _______
+packages/studyloop/tests/test_module_cluster.py:667: in test_handle_for_refuses_a_kubeconfig_that_is_not_the_attempts_own
+    with pytest.raises(ClusterError) as excinfo:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'studyloop.modules.cluster.ClusterError'>
+_______ test_set_kubeconfig_is_the_stores_public_setter_and_round_trips ________
+packages/studyloop/tests/test_module_cluster.py:682: in test_set_kubeconfig_is_the_stores_public_setter_and_round_trips
+    updated = store.set_kubeconfig(attempt, canonical)
+              ^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'AttemptStore' object has no attribute 'set_kubeconfig'
+_ test_current_rejects_a_record_whose_identity_or_paths_are_not_canonical[attempt_id] _
+packages/studyloop/tests/test_module_cluster.py:714: in test_current_rejects_a_record_whose_identity_or_paths_are_not_canonical
+    with pytest.raises(SidecarError) as excinfo:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'studyloop.modules.attempt.SidecarError'>
+_ test_current_rejects_a_record_whose_identity_or_paths_are_not_canonical[attempt_dir] _
+packages/studyloop/tests/test_module_cluster.py:714: in test_current_rejects_a_record_whose_identity_or_paths_are_not_canonical
+    with pytest.raises(SidecarError) as excinfo:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'studyloop.modules.attempt.SidecarError'>
+_ test_current_rejects_a_record_whose_identity_or_paths_are_not_canonical[kubeconfig] _
+packages/studyloop/tests/test_module_cluster.py:714: in test_current_rejects_a_record_whose_identity_or_paths_are_not_canonical
+    with pytest.raises(SidecarError) as excinfo:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'studyloop.modules.attempt.SidecarError'>
+_ test_tampered_attempt_record_makes_cleanup_refuse_before_any_kind_call[kubeconfig-elsewhere] _
+packages/studyloop/tests/test_module_cluster.py:1044: in test_tampered_attempt_record_makes_cleanup_refuse_before_any_kind_call
+    assert result.exit_code == 1, result.output
+E   AssertionError: Cluster:     studyloop-4e6275a6 (disposable kind cluster core created for this attempt; deleted after cleanup or on failure)
+E     Drill phase: cleanup
+E     Drill:       k8s-offline cluster/current-context
+E     Target:      kubeconfig-context /private/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/pytest-of-ataylor/pytest-617/test_tampered_attempt_record_m0/victim-kubeconfig
+E     Command (argv, no shell):
+E       [0] scripts/cleanup.sh
+E     Script sha256: 1e9a19ae20916d31e8fb6368b36dc46596edf9449ed4896aaa13eb61b5e908cd
+E     This script runs with YOUR privileges on this machine -- it can read and write anything you can. StudyLoop runs it without a shell, with a clean environment, in a scratch directory, with capped and redacted output, and stops it on timeout; that is hygiene, not a sandbox (a process that detaches itself survives the stop).
+E     This phase is destructive: it deletes what the attempt created.
+E     Run this phase now? [y/N]: y
+E     cleanup: cleanup passed (exit 0)
+E     cleanup KUBECONFIG=/private/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/pytest-of-ataylor/pytest-617/test_tampered_attempt_record_m0/victim-kubeconfig
+E     Mentor not told: no_active_session (no session state file)
+E     Cluster studyloop-4e6275a6 deleted; its kubeconfig removed.
+E
+E   assert 0 == 1
+E    +  where 0 = <Result okay>.exit_code
+_ test_tampered_attempt_record_makes_cleanup_refuse_before_any_kind_call[attempt-id-swapped] _
+packages/studyloop/tests/test_module_cluster.py:1044: in test_tampered_attempt_record_makes_cleanup_refuse_before_any_kind_call
+    assert result.exit_code == 1, result.output
+E   AssertionError: Cluster:     studyloop-anothera (disposable kind cluster core created for this attempt; deleted after cleanup or on failure)
+E     Drill phase: cleanup
+E     Drill:       k8s-offline cluster/current-context
+E     Target:      kubeconfig-context /private/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/pytest-of-ataylor/pytest-617/test_tampered_attempt_record_m1/module-attempts/k8s-offline/cluster/current-context/210e1190-9a34-4791-9eae-3dfa8601bc07/kubeconfig
+E     Command (argv, no shell):
+E       [0] scripts/cleanup.sh
+E     Script sha256: 1e9a19ae20916d31e8fb6368b36dc46596edf9449ed4896aaa13eb61b5e908cd
+E     This script runs with YOUR privileges on this machine -- it can read and write anything you can. StudyLoop runs it without a shell, with a clean environment, in a scratch directory, with capped and redacted output, and stops it on timeout; that is hygiene, not a sandbox (a process that detaches itself survives the stop).
+E     This phase is destructive: it deletes what the attempt created.
+E     Run this phase now? [y/N]: y
+E     cleanup: cleanup passed (exit 0)
+E     cleanup KUBECONFIG=/private/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/pytest-of-ataylor/pytest-617/test_tampered_attempt_record_m1/module-attempts/k8s-offline/cluster/current-context/210e1190-9a34-4791-9eae-3dfa8601bc07/kubeconfig
+E     Mentor not told: no_active_session (no session state file)
+E     Cluster studyloop-anothera deleted; its kubeconfig removed.
+E
+E   assert 0 == 1
+E    +  where 0 = <Result okay>.exit_code
+_ test_tampered_attempt_record_makes_cleanup_refuse_before_any_kind_call[both] _
+packages/studyloop/tests/test_module_cluster.py:1044: in test_tampered_attempt_record_makes_cleanup_refuse_before_any_kind_call
+    assert result.exit_code == 1, result.output
+E   AssertionError: Cluster:     studyloop-anothera (disposable kind cluster core created for this attempt; deleted after cleanup or on failure)
+E     Drill phase: cleanup
+E     Drill:       k8s-offline cluster/current-context
+E     Target:      kubeconfig-context /private/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/pytest-of-ataylor/pytest-617/test_tampered_attempt_record_m2/victim-kubeconfig
+E     Command (argv, no shell):
+E       [0] scripts/cleanup.sh
+E     Script sha256: 1e9a19ae20916d31e8fb6368b36dc46596edf9449ed4896aaa13eb61b5e908cd
+E     This script runs with YOUR privileges on this machine -- it can read and write anything you can. StudyLoop runs it without a shell, with a clean environment, in a scratch directory, with capped and redacted output, and stops it on timeout; that is hygiene, not a sandbox (a process that detaches itself survives the stop).
+E     This phase is destructive: it deletes what the attempt created.
+E     Run this phase now? [y/N]: y
+E     cleanup: cleanup passed (exit 0)
+E     cleanup KUBECONFIG=/private/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/pytest-of-ataylor/pytest-617/test_tampered_attempt_record_m2/victim-kubeconfig
+E     Mentor not told: no_active_session (no session state file)
+E     Cluster studyloop-anothera deleted; its kubeconfig removed.
+E
+E   assert 0 == 1
+E    +  where 0 = <Result okay>.exit_code
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_module_cluster.py::test_handle_for_refuses_a_kubeconfig_that_is_not_the_attempts_own
+FAILED packages/studyloop/tests/test_module_cluster.py::test_set_kubeconfig_is_the_stores_public_setter_and_round_trips
+FAILED packages/studyloop/tests/test_module_cluster.py::test_current_rejects_a_record_whose_identity_or_paths_are_not_canonical[attempt_id]
+FAILED packages/studyloop/tests/test_module_cluster.py::test_current_rejects_a_record_whose_identity_or_paths_are_not_canonical[attempt_dir]
+FAILED packages/studyloop/tests/test_module_cluster.py::test_current_rejects_a_record_whose_identity_or_paths_are_not_canonical[kubeconfig]
+FAILED packages/studyloop/tests/test_module_cluster.py::test_tampered_attempt_record_makes_cleanup_refuse_before_any_kind_call[kubeconfig-elsewhere]
+FAILED packages/studyloop/tests/test_module_cluster.py::test_tampered_attempt_record_makes_cleanup_refuse_before_any_kind_call[attempt-id-swapped]
+FAILED packages/studyloop/tests/test_module_cluster.py::test_tampered_attempt_record_makes_cleanup_refuse_before_any_kind_call[both]
+8 failed, 27 deselected in 1.00s
