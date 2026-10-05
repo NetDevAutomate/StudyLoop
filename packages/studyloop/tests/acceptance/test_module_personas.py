@@ -75,7 +75,7 @@ from .personas.modules import (
     build_missing_kind_module,
     copy_module,
 )
-from .uat.redaction import contains_forbidden_content
+from .uat.redaction import RedactionLeakError, contains_forbidden_content
 
 _tests_dir = str(Path(__file__).resolve().parent.parent)
 if _tests_dir not in sys.path:
@@ -303,7 +303,7 @@ class TestBundleWriter:
     def test_failure_bundle_carries_the_seven_artefacts_redacted(self, tmp_path: Path) -> None:
         home = tmp_path / "home"
         lan_credential = "lan-" + "x" * 20  # a stand-in for the run's --lan credential
-        bundle, violations = write_persona_failure_bundle(
+        bundle = write_persona_failure_bundle(
             tmp_path / "evidence",
             run_id="unit-bundle",
             persona="A",
@@ -325,8 +325,7 @@ class TestBundleWriter:
         )
         names = {p.name for p in bundle.run_dir.iterdir()}
         assert set(EXPECTED_MEMBERS) <= names, sorted(names)
-        assert VIOLATIONS_NAME not in names, (bundle.run_dir / VIOLATIONS_NAME).read_text()
-        assert violations == []
+        assert VIOLATIONS_NAME not in names, "a clean bundle writes no violations file"
         manifest = json.loads(bundle.manifest_path.read_text())
         assert manifest["artifacts"] == {
             "server_log": "server-log.txt",
@@ -348,6 +347,52 @@ class TestBundleWriter:
             "persona": "A",
             "envelope": {"labs_drill": {"ref": DRILL_REF}, "path": "<WORLD>"},
         }
+
+    def _bundle_inputs(self, tmp_path: Path, outcome: str) -> dict:
+        home = tmp_path / "home"
+        return {
+            "run_id": "leak-check",
+            "persona": "B",
+            "outcome": outcome,
+            "phases": [],
+            "server_log": "",
+            "cli_records": [],
+            "lockfile_before": None,
+            "lockfile_after": None,
+            "attempt_envelope": None,
+            "screenshot_png": None,
+            "page_html": None,
+            "console": {"errors": [], "api_calls": []},
+            "homes": [home, tmp_path / "repo", Path("/Users/someone")],
+            "secrets": {},
+        }
+
+    def test_the_outcome_is_redacted_before_it_enters_the_manifest(self, tmp_path: Path) -> None:
+        """U1-review F3: B8's flipped run put the venv interpreter path into `outcome` raw
+        (persona-b-b8.red.txt). The outcome goes through the same redaction as every member."""
+        venv_python = tmp_path / "repo" / ".venv" / "bin" / "python"
+        write_persona_failure_bundle(
+            tmp_path / "evidence",
+            **self._bundle_inputs(tmp_path, f"exit 0: CompletedProcess(args=['{venv_python}'])"),
+        )
+        manifest = json.loads((tmp_path / "evidence" / "leak-check" / "manifest.json").read_text())
+        assert str(venv_python) not in manifest["outcome"], manifest["outcome"]
+        assert "<REPO>/.venv/bin/python" in manifest["outcome"], manifest["outcome"]
+
+    def test_a_leak_the_redactor_cannot_label_fails_the_bundle_naming_it(
+        self, tmp_path: Path
+    ) -> None:
+        """U1-review F3: detection without failure is no gate. A home path under a root the
+        redactor does not know is written to redaction-violations.txt AND raises, naming the
+        bundle and the violation."""
+        with pytest.raises(RedactionLeakError, match="leak-check") as leaked:
+            write_persona_failure_bundle(
+                tmp_path / "evidence",
+                **self._bundle_inputs(tmp_path, "wrote /Users/nobody/.config/studyloop/x"),
+            )
+        assert "home path leaked" in str(leaked.value), str(leaked.value)
+        violations = tmp_path / "evidence" / "leak-check" / VIOLATIONS_NAME
+        assert violations.is_file() and "/Users/nobody/" in violations.read_text()
 
     @pytest.mark.parametrize("member", sorted({*EXPECTED_MEMBERS, "manifest.json", "turns.json"}))
     def test_every_bundle_member_name_survives_the_repositorys_gitignore(self, member: str) -> None:

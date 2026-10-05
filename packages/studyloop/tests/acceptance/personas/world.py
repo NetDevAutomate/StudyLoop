@@ -45,6 +45,7 @@ from e2e._env import RunningServer, build_test_world, start_server  # noqa: E402
 
 from studyloop.harnesses import RELEASE_HARNESSES, get_harness  # noqa: E402
 
+from ..uat.redaction import RedactionLeakError  # noqa: E402
 from .bundle import CliRecord, write_persona_failure_bundle  # noqa: E402
 
 if TYPE_CHECKING:
@@ -280,7 +281,12 @@ class PersonaWorld:
             record["elapsed_s"] = round(time.monotonic() - started, 3)
             self.phases.append(record)
             if bundle:
-                bundle_dir = self.write_failure_bundle(phase_id, str(exc))
+                try:
+                    bundle_dir = self.write_failure_bundle(phase_id, str(exc))
+                except RedactionLeakError as leak:
+                    # The phase failed AND its bundle leaked: the leak is the louder finding
+                    # (U1-review F3); the phase's own failure travels as the cause.
+                    raise AssertionError(f"[persona {self.persona}] {leak}") from exc
                 if isinstance(exc, Exception):
                     exc.add_note(f"[persona {self.persona}] failure bundle: {bundle_dir}")
             raise
@@ -310,7 +316,8 @@ class PersonaWorld:
         }
 
     def write_failure_bundle(self, phase_id: str, reason: str) -> Path | None:
-        """Write the failure bundle; never raises (a bundle must not mask the real failure)."""
+        """Write the failure bundle. A diagnostics error never masks the real failure (``None``);
+        a redaction leak is the one exception that propagates (U1-review F3)."""
         try:
             screenshot: bytes | None = None
             html: str | None = None
@@ -319,7 +326,7 @@ class PersonaWorld:
                     screenshot = self.page.screenshot(full_page=True)
                 with contextlib.suppress(Exception):
                     html = self.page.content()
-            bundle, violations = write_persona_failure_bundle(
+            bundle = write_persona_failure_bundle(
                 BUNDLE_ROOT,
                 run_id=f"persona-{self.persona.lower()}-{self.run_id}-{phase_id}",
                 persona=self.persona,
@@ -341,12 +348,10 @@ class PersonaWorld:
                 secrets=self.secrets(),
             )
             self.bundle_dir = bundle.run_dir
-            if violations:
-                print(f"[persona {self.persona}] REDACTION VIOLATIONS in {bundle.run_dir}:")
-                for violation in violations:
-                    print(f"  - {violation}")
             print(f"[persona {self.persona}] failure bundle written: {bundle.run_dir}")
             return bundle.run_dir
+        except RedactionLeakError:
+            raise
         except Exception as exc:  # pragma: no cover - diagnostics never mask the failure
             print(f"[persona {self.persona}] could not write the failure bundle: {exc!r}")
             return None

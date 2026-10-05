@@ -1,0 +1,19 @@
+$ STUDYLOOP_ACC=1 env -u VIRTUAL_ENV uv run --group dev pytest -m acceptance packages/studyloop/tests/acceptance/test_module_personas.py -k TestBundleWriter -q -p no:cacheprovider --tb=short
+sha 08f35a1c  2026-10-05T12:25:10Z  (working tree: outcome redacted; a leak raises RedactionLeakError after writing redaction-violations.txt)
+..............                                                           [100%]
+14 passed, 22 deselected in 0.45s
+
+$ STUDYLOOP_ACC_FORCE_FAIL=b8 env -u VIRTUAL_ENV just testacc "" scripted "packages/studyloop/tests/acceptance/test_module_personas.py -k TestPersonaB -x -p no:cacheprovider --tb=short"   # the B8 case the review cites: its bundle manifest now carries <REPO>/.venv/bin/python, no violation
+E   AssertionError: exit 0: {
+E   [persona B] failure bundle: /Users/ataylor/code/personal/tools/studyloop-wt/module-personas/playwright/artifacts/personas/persona-b-1791203112-a81878e3-b8
+[persona B] failure bundle written: /Users/ataylor/code/personal/tools/studyloop-wt/module-personas/playwright/artifacts/personas/persona-b-1791203112-a81878e3-b8
+================== 1 failed, 7 passed, 26 deselected in 6.53s ==================
+error: recipe `testacc` failed on line 124 with exit code 1
+manifest outcome: failed at b8: exit 0: {
+    "ok": true,
+    "findings": []
+  }
+
+assert 0 == 1
+ +  where 0 = CompletedProcess(args=['<REPO>/.venv/bin/python', '-m', 'stud..
+redaction-violations.txt files in that bundle: 0

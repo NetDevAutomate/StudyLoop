@@ -15,8 +15,9 @@ password, the practice-check capability token), every absolute home path, LAN ad
 full sha256 digests -- and then VERIFIED with the UAT tier's detector
 (:func:`acceptance.uat.redaction.contains_forbidden_content`, imported, never copied). The
 verification result travels with the bundle (``redaction-violations.txt`` exists only when
-something slipped through), so a bundle that is about to be committed under
-``evidence/U1/forced-failure-bundle/`` carries its own proof.
+something slipped through) AND fails the write (:class:`RedactionLeakError`, the UAT tier's own
+exception, naming the bundle) -- detection that only printed was no gate (U1-review F3). A
+bundle committed under ``evidence/U1/forced-failure-bundle/`` therefore carries its own proof.
 """
 
 from __future__ import annotations
@@ -28,7 +29,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from ..evidence import EvidenceBundle, write_evidence_bundle
-from ..uat.redaction import contains_forbidden_content
+from ..uat.redaction import RedactionLeakError, contains_forbidden_content
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping, Sequence
@@ -168,15 +169,21 @@ def write_persona_failure_bundle(
     console: Mapping[str, object],
     homes: Sequence[Path],
     secrets: Mapping[str, str],
-) -> tuple[EvidenceBundle, list[str]]:
-    """Write one persona's failure bundle and return it with its redaction verdict.
+) -> EvidenceBundle:
+    """Write one persona's failure bundle, redacted and verified; raise if anything leaked.
 
     ``harness`` is who played the mentor -- the selected RELEASE_HARNESSES name or ``fake-agent``
-    (design.md §6, ruled at U1-review). ``attempt_envelope`` is written even when ``None`` (as
-    ``null``) so a reader of a failure
-    before any drill started still finds the file and learns that nothing was recorded, rather
-    than wondering whether the member was forgotten. The verdict is the list of violations
-    :func:`verify_redacted` found -- empty is the only acceptable value for a committed bundle.
+    (design.md §6, ruled at U1-review). ``outcome`` (the failing phase's own error text) goes
+    through the same redaction as every member before it enters the manifest (U1-review F3: a
+    flipped B8 run put the venv interpreter's path there raw). ``attempt_envelope`` is written
+    even when ``None`` (as ``null``) so a reader of a failure before any drill started still
+    finds the file and learns that nothing was recorded, rather than wondering whether the
+    member was forgotten.
+
+    Every text member is re-read and scanned (:func:`verify_redacted`); a non-empty verdict is
+    written to ``redaction-violations.txt`` beside the members and then raised as
+    :class:`RedactionLeakError` naming the bundle directory and each violation -- the caller's
+    test fails, and the bundle on disk says why.
     """
     redact = {"homes": homes, "secrets": secrets}
     envelope = _redact_json(attempt_envelope, **redact) if attempt_envelope is not None else None
@@ -185,7 +192,7 @@ def write_persona_failure_bundle(
         run_id=run_id,
         harness=harness,
         actor="scripted",
-        outcome=outcome,
+        outcome=redact_text(outcome, **redact),
         turns=[dict(_redact_json(p, **redact)) for p in phases],  # type: ignore[arg-type]
         platform=None,
         auth_mode="presence-only",
@@ -206,7 +213,11 @@ def write_persona_failure_bundle(
     violations = verify_redacted(run_dir, secrets=secrets)
     if violations:
         (run_dir / VIOLATIONS_NAME).write_text("\n".join(violations) + "\n", encoding="utf-8")
-    return bundle, violations
+        raise RedactionLeakError(
+            f"failure bundle {run_dir} still carries forbidden content "
+            f"({len(violations)} violation(s), listed in {VIOLATIONS_NAME}): {violations}"
+        )
+    return bundle
 
 
 __all__ = [
