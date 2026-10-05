@@ -292,7 +292,7 @@ lanes:
     - packages/studyloop/tests/test_module_lane_seams.py    # the one kubeconfig-context refusal test only -- coordinator-granted, K0-review F9
     - packages/studyloop/tests/fixtures/modules/k8s-offline/**
     - packages/studyloop/tests/fixtures/lane_ownership.yaml  # this row; branches: entry is coordinator-granted, K0-review F11
-    - packages/studyloop/tests/test_lane_ownership.py        # _MODULE_CONTRACT_BRANCHES only -- coordinator-granted, K0-review F11
+    - packages/studyloop/tests/test_lane_ownership.py        # _MODULE_CONTRACT_BRANCHES only -- coordinator-granted; + the U1 map requirement test (test_u1_map_covers_the_persona_lane_files) -- coordinator-granted, U1-review F8, K0-review F11
     - openspec/changes/module-contract-v1/evidence/K0/**
     # K0-review F6 (MC017) -- coordinator-granted, K0-review F6: one rule + registration + the
     # MC001-MC017 range, the mc017 fixture pair (and mc008's twins, which MC017 now binds), the
@@ -307,6 +307,25 @@ lanes:
     - docs/cli-reference.md                                 # range bump only -- coordinator-granted, K0-review F6
     - docs/contributor-modules.md                           # range bump line 36 only -- coordinator-granted, K0-review F6
 
+  U1: # Persona A + Persona B scripted acceptance journeys (feat/module-personas)
+    # Coordinator-granted (briefs/U1-persona-journeys.md, "Owned globs"): design.md §6's two
+    # personas re-expressed at the acceptance tier. Forbidden to U1: everything under src/,
+    # the e2e journey, uat/**, the specs and tasks.md (except its own tick). The first two
+    # files are forward-declared: created by U1's later commits, mapped here first so the
+    # guard polices every one of them.
+    - packages/studyloop/tests/acceptance/test_module_personas.py
+    - packages/studyloop/tests/acceptance/personas/**
+    - packages/studyloop/tests/acceptance/evidence.py       # the four optional bundle members only
+    - openspec/changes/module-contract-v1/evidence/U1/**
+    - packages/studyloop/tests/fixtures/lane_ownership.yaml  # this row; branches: entry is coordinator-granted
+    - packages/studyloop/tests/test_lane_ownership.py        # _MODULE_CONTRACT_BRANCHES only -- coordinator-granted; + the U1 map requirement test (test_u1_map_covers_the_persona_lane_files) -- coordinator-granted, U1-review F8
+    - docs/acceptance-testing.md                            # one subsection naming the persona journeys only
+    # The a4a focus defect, coordinator-granted at U1-review (briefs/U1-fixpass.md item 9): ONLY
+    # term.focus() on (re)attach in the console's xterm mount, and ONLY the attached-start focus
+    # in the Labs view's startDrill. Everything else in both files stays W's.
+    - packages/studyloop/src/studyloop/web/static/js/components/live-agent-console.js  # term.focus() after term.open on (re)attach only -- coordinator-granted, U1-review F9 (item 9)
+    - packages/studyloop/src/studyloop/web/static/js/labs.js  # focus the console after an attached start only -- coordinator-granted, U1-review F9 (item 9)
+
 # Explicit branch -> lane key for lanes whose branch name carries no lane id.
 # Consulted BEFORE the legacy `lane/m<n>-<slug>` pattern (tests/_lane_ownership.py,
 # lane_id_from_branch). A `feat/` branch that is not listed here is not a lane
@@ -318,6 +337,7 @@ branches:
   feat/module-mentor-delivery: T
   feat/module-web-labs: W
   feat/module-cluster: K0   # coordinator-granted, K0-review F11
+  feat/module-personas: U1  # coordinator-granted, briefs/U1-persona-journeys.md
 
 # Any lane may touch these. Docs and the changelog are shared because plan
 # principle 6 requires them to land in the same commit as the code they

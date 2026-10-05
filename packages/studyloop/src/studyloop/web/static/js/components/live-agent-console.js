@@ -272,12 +272,26 @@ export function liveAgentConsole(origin = 'study') {
           }
 
           try { fit.fit(); } catch { /* container may be hidden; retry on show */ }
+          /* Focus lands in the terminal on attach and re-attach (design.md §6 step 4;
+             U1-review a4a): the mentor pane is where the learner types next. At this tick
+             the mount can still sit inside a view whose x-show has not flipped (the state
+             read lands first), and a hidden textarea cannot take focus -- so focus now if
+             the pane has a size, otherwise on the first resize that gives it one. */
+          let focusPending = true;
+          const focusWhenVisible = () => {
+            const mount = this.$refs.xtermMount;
+            if (!focusPending || !mount || !mount.offsetParent) return;
+            focusPending = false;
+            try { term.focus(); } catch { /* ignore */ }
+          };
+          focusWhenVisible();
           term.writeln('\x1b[2mConnecting to agent...\x1b[0m');
 
           /* ResizeObserver → TIOCSWINSZ. `onResize` fires when fit()
              changes dims; the outbound resize frame is sent from there. */
           this._resizeObserver = new ResizeObserver(() => {
             try { fit.fit(); } catch { /* container hidden — no-op */ }
+            focusWhenVisible();
           });
           this._resizeObserver.observe(this.$refs.xtermMount);
 

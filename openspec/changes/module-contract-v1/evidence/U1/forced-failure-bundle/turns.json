@@ -1,0 +1,52 @@
+[
+  {
+    "phase": "a1",
+    "title": "load: no Labs entry, no prerequisite text",
+    "flipped": false,
+    "started_at_s": 0.0,
+    "status": "passed",
+    "elapsed_s": 0.836
+  },
+  {
+    "phase": "a2",
+    "title": "module add via the CLI; reload; one Labs entry",
+    "flipped": false,
+    "started_at_s": 0.838,
+    "status": "passed",
+    "elapsed_s": 0.87
+  },
+  {
+    "phase": "a3",
+    "title": "start one drill inside the one claimed session",
+    "flipped": false,
+    "started_at_s": 1.711,
+    "status": "passed",
+    "elapsed_s": 0.798
+  },
+  {
+    "phase": "a4a",
+    "title": "focus lands in the terminal after the start",
+    "flipped": false,
+    "started_at_s": 2.51,
+    "status": "failed",
+    "error": "AssertionError: focus is on body, not in the terminal\nassert False\n +  where False = <function terminal_has_focus at 0x10a3225c0>(<Page url='http://127.0.0.1:58833/#study-session'>)\n +    where <function terminal_has_focus at 0x10a3225c0> = pw.terminal_has_focus",
+    "elapsed_s": 0.723
+  },
+  {
+    "phase": "a4b",
+    "title": "keyboard-only traversal: Tab / Shift-Tab, focus visible",
+    "flipped": false,
+    "started_at_s": 3.298,
+    "status": "passed",
+    "elapsed_s": 0.247
+  },
+  {
+    "phase": "a5",
+    "title": "cancel: Escape, the recovery copy, the session untouched",
+    "flipped": true,
+    "started_at_s": 3.548,
+    "status": "failed",
+    "error": "AssertionError: expected the live-drill strip to be gone after Escape; it is still shown and the state file still names {'module_id': 'echo-drills', 'deck_id': 'echo-basics', 'task_id': 'echo-01', 'ref': 'echo-drills/echo-basics/echo-01', 'started_at': '2026-10-05T12:34:37.460868+00:00'}\nassert not True\n +  where True = is_visible()\n +    where is_visible = <Locator frame=<Frame name= url='http://127.0.0.1:58833/#labs'> selector=\"[data-testid='labs-active-drill']\">.is_visible\n +      where <Locator frame=<Frame name= url='http://127.0.0.1:58833/#labs'> selector=\"[data-testid='labs-active-drill']\"> = locator(\"[data-testid='labs-active-drill']\")\n +        where locator = <Page url='http://127.0.0.1:58833/#labs'>.locator",
+    "elapsed_s": 10.303
+  }
+]

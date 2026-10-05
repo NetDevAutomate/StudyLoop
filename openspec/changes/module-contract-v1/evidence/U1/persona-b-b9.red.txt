@@ -1,0 +1,20 @@
+$ STUDYLOOP_ACC=1 STUDYLOOP_ACC_FORCE_FAIL=b9 env -u VIRTUAL_ENV uv run --group dev pytest -m acceptance packages/studyloop/tests/acceptance/test_module_personas.py -k TestPersonaB -x -q -p no:cacheprovider --tb=short
+sha af6397f5  2026-10-05T12:45:42Z  (U1-review F7 regeneration: phase b9 FLIPPED -- the observed `module list` digest column is cut to 8 hex digits; the comparison against the parsed docs names it)
+........F
+=================================== FAILURES ===================================
+_ TestPersonaB.test_b9_the_docs_commands_and_the_observed_output_agree[chromium] _
+packages/studyloop/tests/acceptance/test_module_personas.py:1275: in test_b9_the_docs_commands_and_the_observed_output_agree
+    assert mismatches == [], "the docs and the observed output disagree:\n- " + "\n- ".join(
+E   AssertionError: the docs and the observed output disagree:
+E     - `module list` digest column '68cb3c6c' is not the first 12 hex digits of the lockfile digest ('68cb3c6cfb5f')
+E   assert ["`module lis...cb3c6cfb5f')"] == []
+E
+E     Left contains one more item: "`module list` digest column '68cb3c6c' is not the first 12 hex digits of the lockfile digest ('68cb3c6cfb5f')"
+E     Use -v to get more diff
+E   [persona B] failure bundle: /Users/ataylor/code/personal/tools/studyloop-wt/module-personas/playwright/artifacts/personas/persona-b-1791204343-1208e249-b9
+----------------------------- Captured stdout call -----------------------------
+[persona B] failure bundle written: /Users/ataylor/code/personal/tools/studyloop-wt/module-personas/playwright/artifacts/personas/persona-b-1791204343-1208e249-b9
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaB::test_b9_the_docs_commands_and_the_observed_output_agree[chromium]
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 8 passed, 31 deselected in 5.22s

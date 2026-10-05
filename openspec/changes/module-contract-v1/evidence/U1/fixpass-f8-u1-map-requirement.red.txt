@@ -1,0 +1,12 @@
+$ env -u VIRTUAL_ENV uv run --group dev pytest packages/studyloop/tests/test_lane_ownership.py -k u1_map_covers -q -p no:cacheprovider --tb=short
+sha 60b9a61d  2026-10-05T12:47:50Z  (U1-review F8: the requirement test run against the ownership map AS IT WAS before U1's row -- fixtures/lane_ownership.yaml at base 4037d9a4, restored right after)
+F                                                                        [100%]
+=================================== FAILURES ===================================
+__________________ test_u1_map_covers_the_persona_lane_files ___________________
+packages/studyloop/tests/test_lane_ownership.py:209: in test_u1_map_covers_the_persona_lane_files
+    assert "U1" in lanes, "the ownership map has no U1 row (briefs/U1-persona-journeys.md)"
+E   AssertionError: the ownership map has no U1 row (briefs/U1-persona-journeys.md)
+E   assert 'U1' in {'C': ['packages/studyloop/src/studyloop/modules/__init__.py', 'packages/studyloop/src/studyloop/modules/manifest.py',...test_lane_ownership.py', 'packages/studyloop/tests/fixtures/lane_ownership.yaml', 'docs/module-contract.md', ...], ...}
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_lane_ownership.py::test_u1_map_covers_the_persona_lane_files
+1 failed, 42 deselected in 0.28s

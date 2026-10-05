@@ -1,0 +1,21 @@
+$ STUDYLOOP_ACC=1 env -u VIRTUAL_ENV uv run --group dev pytest -m acceptance packages/studyloop/tests/acceptance/test_module_personas.py -k "redacted_before or leak_the_redactor" -q -p no:cacheprovider --tb=short
+sha 08f35a1c  2026-10-05T12:23:07Z  (U1-review F3: outcome enters the manifest raw; violations are printed, never raised)
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+_ TestBundleWriter.test_the_outcome_is_redacted_before_it_enters_the_manifest __
+packages/studyloop/tests/acceptance/test_module_personas.py:380: in test_the_outcome_is_redacted_before_it_enters_the_manifest
+    assert str(venv_python) not in manifest["outcome"], manifest["outcome"]
+E   AssertionError: exit 0: CompletedProcess(args=['/private/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/pytest-of-ataylor/pytest-715/test_the_outcome_is_redacted_b0/repo/.venv/bin/python'])
+E   assert '/private/va...v/bin/python' not in "exit 0: Com...in/python'])"
+E
+E     '/private/var/folde...po/.venv/bin/python' is contained here:
+E       exit 0: CompletedProcess(args=['/private/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/pytest-of-ataylor/pytest-715/test_the_outcome_is_redacted_b0/repo/.venv/bin/python'])
+_ TestBundleWriter.test_a_leak_the_redactor_cannot_label_fails_the_bundle_naming_it _
+packages/studyloop/tests/acceptance/test_module_personas.py:389: in test_a_leak_the_redactor_cannot_label_fails_the_bundle_naming_it
+    with pytest.raises(RedactionLeakError, match="leak-check") as leaked:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'acceptance.uat.redaction.RedactionLeakError'>
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/acceptance/test_module_personas.py::TestBundleWriter::test_the_outcome_is_redacted_before_it_enters_the_manifest
+FAILED packages/studyloop/tests/acceptance/test_module_personas.py::TestBundleWriter::test_a_leak_the_redactor_cannot_label_fails_the_bundle_naming_it
+2 failed, 34 deselected in 0.34s

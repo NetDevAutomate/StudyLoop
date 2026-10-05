@@ -1,0 +1,18 @@
+$ STUDYLOOP_ACC=1 STUDYLOOP_ACC_FORCE_FAIL=a1 env -u VIRTUAL_ENV uv run --group dev pytest -m acceptance packages/studyloop/tests/acceptance/test_module_personas.py -k TestPersonaA -x -q -p no:cacheprovider --tb=short
+sha aab790e9  2026-10-05T11:16:36Z  (working tree: Persona A tests for commit 3; phase a1 FLIPPED so its own assertion fails)
+F
+=================================== FAILURES ===================================
+_ TestPersonaA.test_a1_load_shows_no_labs_entry_and_no_prerequisite_text[chromium] _
+packages/studyloop/tests/acceptance/test_module_personas.py:405: in test_a1_load_shows_no_labs_entry_and_no_prerequisite_text
+    assert not pw.labs_entry_visible(page), "Labs must be hidden with an empty lockfile"
+E   AssertionError: Labs must be hidden with an empty lockfile
+E   assert not True
+E    +  where True = <function labs_entry_visible at 0x10a3cf380>(<Page url='http://127.0.0.1:49615/#today'>)
+E    +    where <function labs_entry_visible at 0x10a3cf380> = pw.labs_entry_visible
+E   [persona A] failure bundle: /Users/ataylor/code/personal/tools/studyloop-wt/module-personas/playwright/artifacts/personas/persona-a-1791198997-6ff4e1ef-a1
+----------------------------- Captured stdout call -----------------------------
+[persona A] failure bundle written: /Users/ataylor/code/personal/tools/studyloop-wt/module-personas/playwright/artifacts/personas/persona-a-1791198997-6ff4e1ef-a1
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaA::test_a1_load_shows_no_labs_entry_and_no_prerequisite_text[chromium]
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 13 deselected in 2.63s

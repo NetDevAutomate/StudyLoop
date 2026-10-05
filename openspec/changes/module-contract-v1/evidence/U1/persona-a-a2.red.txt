@@ -1,0 +1,20 @@
+$ STUDYLOOP_ACC=1 STUDYLOOP_ACC_FORCE_FAIL=a2 env -u VIRTUAL_ENV uv run --group dev pytest -m acceptance packages/studyloop/tests/acceptance/test_module_personas.py -k TestPersonaA -x -q -p no:cacheprovider --tb=short
+sha 6af7887e  2026-10-05T12:32:27Z  (U1-review F5 regeneration: phase a2 FLIPPED; a bounded state read, then the phase's own assertion names the expected state)
+.F
+=================================== FAILURES ===================================
+_ TestPersonaA.test_a2_module_add_then_exactly_one_labs_entry_with_ids_and_prompts[chromium] _
+packages/studyloop/tests/acceptance/test_module_personas.py:615: in test_a2_module_add_then_exactly_one_labs_entry_with_ids_and_prompts
+    step_labs_lists_the_installed_module(world, page, module_id="echo-drills", task=TASK)
+packages/studyloop/tests/acceptance/test_module_personas.py:169: in step_labs_lists_the_installed_module
+    assert pw.labs_entry_visible(page), (
+E   AssertionError: expected the Labs entry in the sidebar after `module add echo-drills`; the lockfile lists []
+E   assert False
+E    +  where False = <function labs_entry_visible at 0x108531d00>(<Page url='http://127.0.0.1:58347/#today'>)
+E    +    where <function labs_entry_visible at 0x108531d00> = pw.labs_entry_visible
+E   [persona A] failure bundle: /Users/ataylor/code/personal/tools/studyloop-wt/module-personas/playwright/artifacts/personas/persona-a-1791203548-c779ba12-a2
+----------------------------- Captured stdout call -----------------------------
+[persona A] failure bundle written: /Users/ataylor/code/personal/tools/studyloop-wt/module-personas/playwright/artifacts/personas/persona-a-1791203548-c779ba12-a2
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaA::test_a2_module_add_then_exactly_one_labs_entry_with_ids_and_prompts[chromium]
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 1 passed, 29 deselected in 12.62s

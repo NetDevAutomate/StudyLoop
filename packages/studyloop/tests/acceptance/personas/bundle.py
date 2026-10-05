@@ -1,0 +1,253 @@
+"""The persona failure bundle (design.md §6, lane U1).
+
+On any phase failure the bundle under the run's evidence directory must carry, beside what
+``acceptance/evidence.py`` wrote before this lane (``manifest.json`` + ``turns.json``):
+
+- the subprocess server's log (``server-log.txt`` -- ``*.log`` is gitignored, U1-review F1),
+- the transcript of every ``studyloop`` call the persona made (``cli-transcript.txt``),
+- a before/after unified diff of ``modules.lock.json`` (``modules.lock.diff``),
+- what a Labs start left behind -- session, drill, nonce, attempt ids (``labs-binding.json``),
+- the production ``PracticeCheckEnvelope`` the CLI posted, validated through
+  ``session.module_delivery.validate_envelope``, ONLY when a drill phase actually ran
+  (``practice-envelope.json``; U1-review F4 -- neither persona runs a phase, so neither
+  writes it: absent by design, recorded in ``evidence/U1/README.md``),
+
+plus the browser artefacts the e2e world writes on failure (screenshot, HTML, console).
+
+Everything textual is REDACTED before it is written -- the known run secrets (the ``--lan``
+password, the practice-check capability token), every absolute home path, LAN addresses and
+full sha256 digests -- and then VERIFIED with the UAT tier's detector
+(:func:`acceptance.uat.redaction.contains_forbidden_content`, imported, never copied). The
+verification result travels with the bundle (``redaction-violations.txt`` exists only when
+something slipped through) AND fails the write (:class:`RedactionLeakError`, the UAT tier's own
+exception, naming the bundle) -- detection that only printed was no gate (U1-review F3). A
+bundle committed under ``evidence/U1/forced-failure-bundle/`` therefore carries its own proof.
+"""
+
+from __future__ import annotations
+
+import difflib
+import json
+import re
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+from studyloop.session.module_delivery import validate_envelope
+
+from ..evidence import EvidenceBundle, write_evidence_bundle
+from ..uat.redaction import RedactionLeakError, contains_forbidden_content
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping, Sequence
+    from pathlib import Path
+
+SCREENSHOT_NAME = "screenshot.png"
+PAGE_HTML_NAME = "page.html"
+CONSOLE_NAME = "console.json"
+VIOLATIONS_NAME = "redaction-violations.txt"
+
+#: The members every persona failure bundle carries (tasks.md's seven: the "envelope" there is
+#: the Labs binding; the production envelope member is conditional, see the module docstring).
+EXPECTED_MEMBERS: tuple[str, ...] = (
+    SCREENSHOT_NAME,
+    PAGE_HTML_NAME,
+    CONSOLE_NAME,
+    "server-log.txt",
+    "cli-transcript.txt",
+    "modules.lock.diff",
+    "labs-binding.json",
+)
+PRACTICE_ENVELOPE_NAME = "practice-envelope.json"
+
+#: sha256 (64 hex) and git (40 hex) digests keep their first 12 characters: still a handle,
+#: no longer a high-entropy string for a secrets scanner to trip on.
+_HEX_DIGEST = re.compile(r"\b([0-9a-f]{12})(?:[0-9a-f]{52}|[0-9a-f]{28})\b")
+_LAN_IPV4 = re.compile(r"\b(?!127\.0\.0\.1\b)(?:\d{1,3}\.){3}\d{1,3}\b")
+
+
+@dataclass(frozen=True, slots=True)
+class CliRecord:
+    """One ``studyloop`` call the persona made, exactly as the learner would have seen it."""
+
+    argv: tuple[str, ...]
+    stdin: str
+    returncode: int
+    stdout: str
+    stderr: str
+    duration_s: float
+
+    def render(self) -> str:
+        shown = " ".join(("studyloop", *self.argv))
+        head = f"$ {shown}"
+        if self.stdin:
+            head += f"\n  (stdin: {self.stdin!r})"
+        body = self.stdout.rstrip("\n")
+        err = self.stderr.rstrip("\n")
+        parts = [head]
+        if body:
+            parts.append(body)
+        if err:
+            parts.append("--- stderr ---\n" + err)
+        parts.append(f"[exit {self.returncode} in {self.duration_s:.2f}s]")
+        return "\n".join(parts)
+
+
+def render_cli_transcript(records: Iterable[CliRecord]) -> str:
+    rendered = [record.render() for record in records]
+    return "\n\n".join(rendered) + ("\n" if rendered else "(no studyloop call was made)\n")
+
+
+def lockfile_diff(before: str | None, after: str | None) -> str:
+    """Unified diff of ``modules.lock.json`` between two readings; absent files are empty."""
+    diff = list(
+        difflib.unified_diff(
+            (before or "").splitlines(keepends=True),
+            (after or "").splitlines(keepends=True),
+            fromfile="modules.lock.json (before)",
+            tofile="modules.lock.json (after)",
+        )
+    )
+    if not diff:
+        state = "absent" if before is None and after is None else "unchanged"
+        return f"modules.lock.json {state}: no difference between the two readings\n"
+    return "".join(diff)
+
+
+def redact_text(text: str, *, homes: Sequence[Path], secrets: Mapping[str, str]) -> str:
+    """Known secrets first (longest first), then roots, LAN addresses and digests.
+
+    ``homes[0]`` is the persona's world root (``<WORLD>``), ``homes[1]`` the repository the
+    tests run from (``<REPO>``); every later entry is a real home directory (``<HOME>``).
+    Longest match first, so a world or a checkout under a home is named as itself.
+    """
+    for name, value in sorted(secrets.items(), key=lambda item: -len(item[1])):
+        if value:
+            text = text.replace(value, f"<REDACTED:{name}>")
+    labels = ("<WORLD>", "<REPO>")
+    labelled = [
+        (str(h), labels[i] if i < len(labels) else "<HOME>") for i, h in enumerate(homes) if str(h)
+    ]
+    for root, label in sorted(labelled, key=lambda item: -len(item[0])):
+        text = text.replace(root, label)
+    text = _LAN_IPV4.sub("<LAN-IP>", text)
+    return _HEX_DIGEST.sub(lambda m: m.group(1) + "…", text)
+
+
+def _redact_json(value: object, *, homes: Sequence[Path], secrets: Mapping[str, str]) -> object:
+    if isinstance(value, str):
+        return redact_text(value, homes=homes, secrets=secrets)
+    if isinstance(value, dict):
+        return {k: _redact_json(v, homes=homes, secrets=secrets) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_redact_json(v, homes=homes, secrets=secrets) for v in value]
+    return value
+
+
+def verify_redacted(run_dir: Path, *, secrets: Mapping[str, str]) -> list[str]:
+    """Every textual member re-read and scanned: the UAT detector plus the known secrets."""
+    violations: list[str] = []
+    for path in sorted(run_dir.iterdir()):
+        if path.suffix == ".png" or path.name == VIOLATIONS_NAME:
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        violations.extend(f"{path.name}: {v}" for v in contains_forbidden_content(text))
+        violations.extend(
+            f"{path.name}: known secret {name!r} present"
+            for name, v in secrets.items()
+            if v in text
+        )
+    return violations
+
+
+def write_persona_failure_bundle(
+    evidence_root: Path,
+    *,
+    run_id: str,
+    persona: str,
+    outcome: str,
+    phases: list[dict],
+    harness: str = "fake-agent",
+    server_log: str,
+    cli_records: Sequence[CliRecord],
+    lockfile_before: str | None,
+    lockfile_after: str | None,
+    labs_binding: dict | None,
+    screenshot_png: bytes | None,
+    page_html: str | None,
+    console: Mapping[str, object],
+    homes: Sequence[Path],
+    secrets: Mapping[str, str],
+    practice_envelope: Mapping[str, object] | None = None,
+) -> EvidenceBundle:
+    """Write one persona's failure bundle, redacted and verified; raise if anything leaked.
+
+    ``harness`` is who played the mentor -- the selected RELEASE_HARNESSES name or ``fake-agent``
+    (design.md §6, ruled at U1-review). ``outcome`` (the failing phase's own error text) goes
+    through the same redaction as every member before it enters the manifest (U1-review F3: a
+    flipped B8 run put the venv interpreter's path there raw). ``labs_binding`` is written even
+    when ``None`` (as ``null``) so a reader of a failure before any drill started still finds
+    the file and learns that nothing was recorded, rather than wondering whether the member was
+    forgotten. ``practice_envelope`` is the production phase-result payload and is written ONLY
+    when given -- i.e. when a drill phase actually ran -- after
+    :func:`studyloop.session.module_delivery.validate_envelope` accepted it (an invalid one
+    raises ``EnvelopeValidationError`` naming the field, and nothing is written).
+
+    Every text member is re-read and scanned (:func:`verify_redacted`); a non-empty verdict is
+    written to ``redaction-violations.txt`` beside the members and then raised as
+    :class:`RedactionLeakError` naming the bundle directory and each violation -- the caller's
+    test fails, and the bundle on disk says why.
+    """
+    redact = {"homes": homes, "secrets": secrets}
+    binding = _redact_json(labs_binding, **redact) if labs_binding is not None else None
+    envelope: dict | None = None
+    if practice_envelope is not None:
+        validated = validate_envelope(practice_envelope)  # raises before anything is written
+        envelope = dict(_redact_json(validated.model_dump(mode="json"), **redact))  # type: ignore[arg-type]
+    bundle = write_evidence_bundle(
+        evidence_root,
+        run_id=run_id,
+        harness=harness,
+        actor="scripted",
+        outcome=redact_text(outcome, **redact),
+        turns=[dict(_redact_json(p, **redact)) for p in phases],  # type: ignore[arg-type]
+        platform=None,
+        auth_mode="presence-only",
+        harness_version=None,
+        server_log=redact_text(server_log, **redact),
+        cli_transcript=redact_text(render_cli_transcript(cli_records), **redact),
+        lockfile_diff=redact_text(lockfile_diff(lockfile_before, lockfile_after), **redact),
+        labs_binding={"persona": persona, "binding": binding},
+        practice_envelope=envelope,
+    )
+    run_dir = bundle.run_dir
+    if screenshot_png is not None:
+        (run_dir / SCREENSHOT_NAME).write_bytes(screenshot_png)
+    if page_html is not None:
+        (run_dir / PAGE_HTML_NAME).write_text(redact_text(page_html, **redact), encoding="utf-8")
+    (run_dir / CONSOLE_NAME).write_text(
+        json.dumps(_redact_json(dict(console), **redact), indent=2) + "\n", encoding="utf-8"
+    )
+    violations = verify_redacted(run_dir, secrets=secrets)
+    if violations:
+        (run_dir / VIOLATIONS_NAME).write_text("\n".join(violations) + "\n", encoding="utf-8")
+        raise RedactionLeakError(
+            f"failure bundle {run_dir} still carries forbidden content "
+            f"({len(violations)} violation(s), listed in {VIOLATIONS_NAME}): {violations}"
+        )
+    return bundle
+
+
+__all__ = [
+    "CONSOLE_NAME",
+    "EXPECTED_MEMBERS",
+    "PAGE_HTML_NAME",
+    "PRACTICE_ENVELOPE_NAME",
+    "SCREENSHOT_NAME",
+    "VIOLATIONS_NAME",
+    "CliRecord",
+    "lockfile_diff",
+    "redact_text",
+    "render_cli_transcript",
+    "verify_redacted",
+    "write_persona_failure_bundle",
+]

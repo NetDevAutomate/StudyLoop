@@ -1,0 +1,20 @@
+$ STUDYLOOP_ACC=1 STUDYLOOP_ACC_FORCE_FAIL=b1 env -u VIRTUAL_ENV uv run --group dev pytest -m acceptance packages/studyloop/tests/acceptance/test_module_personas.py -k TestPersonaB -x -q -p no:cacheprovider --tb=short
+sha 1d03bb91  2026-10-05T11:24:36Z  (working tree: Persona B tests for commit 4; phase b1 FLIPPED so its own assertion fails)
+F
+=================================== FAILURES ===================================
+_ TestPersonaB.test_b1_the_documented_uv_setup_commands_succeed_offline[chromium] _
+packages/studyloop/tests/acceptance/test_module_personas.py:790: in test_b1_the_documented_uv_setup_commands_succeed_offline
+    assert proof.returncode == 0, proof.stdout + proof.stderr
+E   AssertionError: Traceback (most recent call last):
+E       File "<string>", line 1, in <module>
+E     ModuleNotFoundError: No module named 'studyloop'
+E
+E   assert 1 == 0
+E    +  where 1 = CompletedProcess(args=['uv', 'run', 'python', '-c', 'import studyloop; print(studyloop.__file__)'], returncode=1, stdo...most recent call last):\n  File "<string>", line 1, in <module>\nModuleNotFoundError: No module named \'studyloop\'\n').returncode
+E   [persona B] failure bundle: /Users/ataylor/code/personal/tools/studyloop-wt/module-personas/playwright/artifacts/personas/persona-b-1791199477-a9efb763-b1
+----------------------------- Captured stdout call -----------------------------
+[persona B] failure bundle written: /Users/ataylor/code/personal/tools/studyloop-wt/module-personas/playwright/artifacts/personas/persona-b-1791199477-a9efb763-b1
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaB::test_b1_the_documented_uv_setup_commands_succeed_offline[chromium]
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 13 deselected in 1.67s

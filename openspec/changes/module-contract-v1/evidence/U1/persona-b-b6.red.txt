@@ -1,0 +1,22 @@
+$ STUDYLOOP_ACC=1 STUDYLOOP_ACC_FORCE_FAIL=b6 env -u VIRTUAL_ENV uv run --group dev pytest -m acceptance packages/studyloop/tests/acceptance/test_module_personas.py -k TestPersonaB -x -q -p no:cacheprovider --tb=short
+sha 6af7887e  2026-10-05T12:33:37Z  (U1-review F5 regeneration: phase b6 FLIPPED; a bounded state read, then the phase's own assertion names the expected state)
+.....F
+=================================== FAILURES ===================================
+____ TestPersonaB.test_b6_escape_cancels_with_clear_recovery_copy[chromium] ____
+packages/studyloop/tests/acceptance/test_module_personas.py:1078: in test_b6_escape_cancels_with_clear_recovery_copy
+    step_escape_cancels_with_clear_recovery_copy(
+packages/studyloop/tests/acceptance/test_module_personas.py:259: in step_escape_cancels_with_clear_recovery_copy
+    assert not page.locator("[data-testid='labs-active-drill']").is_visible(), (
+E   AssertionError: expected the live-drill strip to be gone after Escape; it is still shown and the state file still names {'module_id': 'my-drills', 'deck_id': 'getting-started', 'task_id': 'ready-01', 'ref': 'my-drills/getting-started/ready-01', 'started_at': '2026-10-05T12:33:41.666426+00:00'}
+E   assert not True
+E    +  where True = is_visible()
+E    +    where is_visible = <Locator frame=<Frame name= url='http://127.0.0.1:58594/#labs'> selector="[data-testid='labs-active-drill']">.is_visible
+E    +      where <Locator frame=<Frame name= url='http://127.0.0.1:58594/#labs'> selector="[data-testid='labs-active-drill']"> = locator("[data-testid='labs-active-drill']")
+E    +        where locator = <Page url='http://127.0.0.1:58594/#labs'>.locator
+E   [persona B] failure bundle: /Users/ataylor/code/personal/tools/studyloop-wt/module-personas/playwright/artifacts/personas/persona-b-1791203619-b69dce84-b6
+----------------------------- Captured stdout call -----------------------------
+[persona B] failure bundle written: /Users/ataylor/code/personal/tools/studyloop-wt/module-personas/playwright/artifacts/personas/persona-b-1791203619-b69dce84-b6
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaB::test_b6_escape_cancels_with_clear_recovery_copy[chromium]
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 5 passed, 29 deselected in 14.73s

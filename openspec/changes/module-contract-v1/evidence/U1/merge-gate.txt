@@ -1,0 +1,18 @@
+# Lane U1 merge gate — every preflight recipe individually at 50a4f09a
+
+    sha=50a4f09a start=2026-10-05T14:17:09+01:00
+    lint: rc=0 All checks passed!
+    typecheck: rc=0 0 errors, 0 warnings, 0 informations
+    test: rc=0 ======== 7985 passed, 15 skipped, 874 deselected in 1043.10s (0:17:23) =========
+    test-js: rc=0 ℹ pass 189 ℹ fail 0
+    docs: rc=0 INFO    -  Documentation built in 0.62 seconds
+    release-consistency: rc=0 release consistency passed for studyloop 0.5.0
+    spec-check: rc=0 Totals: 25 passed, 0 failed (25 items)
+    end=2026-10-05T14:35:03+01:00 gate_fail=0
+    DONE
+
+Run after the U1-review fix pass (nine items in ten commits, including the granted a4a focus
+fix). The gate script tolerates exactly one known red (the virgin-HOME tmux test); it was not
+needed in this run. The acceptance-tier persona tests are deselected here by design (874
+deselected); their own gate is `evidence/U1/fixpass-gate-testacc.txt` (41 passed) and the
+coordinator re-ran them on the tip: 41 passed, W's e2e journey 9 passed, test-js 189.

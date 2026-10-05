@@ -1,0 +1,14 @@
+$ env -u VIRTUAL_ENV uv run --group dev pytest packages/studyloop/tests/test_lane_ownership.py packages/studyloop/tests/test_docs_drift.py packages/studyloop/tests/test_contributor_docs.py packages/studyloop/tests/test_contributor_guide_drift.py packages/studyloop/tests/test_acceptance_actors_docs.py packages/studyloop/tests/test_docs_harness_tier_contract.py -q -p no:cacheprovider
+sha 4200a8d7  2026-10-05T11:31:41Z  (working tree: docs/acceptance-testing.md persona subsection for commit 6)
+........................................................................ [ 55%]
+.....................................................s..........s....s.. [ 69%]
+........................................................................ [ 83%]
+........................................................................ [ 97%]
+...........                                                              [100%]
+512 passed, 3 skipped in 3.58s
+
+$ env -u VIRTUAL_ENV just docs
+INFO    -  Doc file 'troubleshooting.md' contains a link to 'adr/0005-retire-ttyd-browser-surface.md' which is excluded from the built site.
+INFO    -  Doc file 'troubleshooting.md' contains a link to 'adr/0008-retire-ttyd-entirely.md' which is excluded from the built site.
+INFO    -  Downloading external file: https://unpkg.com/iframe-worker/shim
+INFO    -  Documentation built in 1.91 seconds

@@ -1,0 +1,5 @@
+$ STUDYLOOP_ACC=1 env -u VIRTUAL_ENV uv run --group dev pytest -m acceptance packages/studyloop/tests/acceptance/test_module_personas.py -k TestBundleWriter -q -p no:cacheprovider --tb=short && env -u VIRTUAL_ENV uv run --group dev pytest packages/studyloop/tests/test_acceptance_evidence.py -q -p no:cacheprovider
+sha d00bea54  2026-10-05T12:10:52Z  (working tree: member renamed server-log.txt, manifest key server_log unchanged)
+............                                                             [100%]
+12 passed, 20 deselected in 0.38s
+9 passed in 0.23s

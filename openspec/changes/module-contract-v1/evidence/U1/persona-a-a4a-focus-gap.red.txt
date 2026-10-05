@@ -1,0 +1,14 @@
+$ STUDYLOOP_ACC=1 env -u VIRTUAL_ENV uv run --group dev pytest -m acceptance packages/studyloop/tests/acceptance/test_module_personas.py -k 'TestPersonaA and (a1 or a2 or a3 or a4a)' --runxfail -q -p no:cacheprovider --tb=short
+sha aab790e9  2026-10-05T11:18:09Z  (--runxfail: the a4a assertion fails on the shipped UI -- the gap the xfail(strict=True) names)
+...F                                                                     [100%]
+=================================== FAILURES ===================================
+_________ TestPersonaA.test_a4a_focus_lands_in_the_terminal[chromium] __________
+packages/studyloop/tests/acceptance/test_module_personas.py:449: in test_a4a_focus_lands_in_the_terminal
+    assert pw.terminal_has_focus(page), (
+E   AssertionError: focus is on body, not in the terminal
+E   assert False
+E    +  where False = <function terminal_has_focus at 0x10bfb3c40>(<Page url='http://127.0.0.1:50123/#study-session'>)
+E    +    where <function terminal_has_focus at 0x10bfb3c40> = pw.terminal_has_focus
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaA::test_a4a_focus_lands_in_the_terminal[chromium]
+1 failed, 3 passed, 19 deselected in 4.74s

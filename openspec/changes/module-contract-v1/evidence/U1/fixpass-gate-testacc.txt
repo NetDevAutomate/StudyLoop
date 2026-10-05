@@ -1,0 +1,92 @@
+$ env -u VIRTUAL_ENV just testacc "" scripted "packages/studyloop/tests/acceptance/test_module_personas.py -p no:cacheprovider -rA --durations=0"
+sha 8eec22c1  2026-10-05T12:55:49Z  (working tree: docs sentence + U1 tick for the final commit)
+[persona A] wall-clock 6.2s of the 360s budget
+[persona B] wall-clock 3.8s of the 480s budget
+1.25s call     tests/acceptance/test_module_personas.py::TestPersonaA::test_a7_missing_kind_module_reports_the_prerequisite_and_creates_nothing[chromium]
+0.97s call     tests/acceptance/test_module_personas.py::TestPersonaB::test_b4_module_add_then_labs_lists_the_contributors_module[chromium]
+0.97s call     tests/acceptance/test_module_personas.py::TestHarnessSelection::test_a_selected_harness_runs_without_the_fake_agent
+0.84s setup    tests/acceptance/test_module_personas.py::TestPersonaA::test_a1_load_shows_no_labs_entry_and_no_prerequisite_text[chromium]
+0.84s call     tests/acceptance/test_module_personas.py::TestPersonaA::test_a3_start_one_drill_inside_the_single_claimed_session[chromium]
+0.83s setup    tests/acceptance/test_module_personas.py::TestPersonaB::test_b1_the_documented_uv_setup_commands_succeed_offline[chromium]
+0.73s call     tests/acceptance/test_module_personas.py::TestPersonaA::test_a1_load_shows_no_labs_entry_and_no_prerequisite_text[chromium]
+0.73s call     tests/acceptance/test_module_personas.py::TestPersonaA::test_a2_module_add_then_exactly_one_labs_entry_with_ids_and_prompts[chromium]
+0.73s call     tests/acceptance/test_module_personas.py::TestPersonaA::test_a4a_focus_lands_in_the_terminal[chromium]
+0.71s call     tests/acceptance/test_module_personas.py::TestHarnessSelection::test_no_selection_means_the_fake_agent_and_the_bundle_says_so
+0.68s call     tests/acceptance/test_module_personas.py::TestPersonaB::test_b5_start_one_drill_inside_the_single_claimed_session[chromium]
+0.65s call     tests/acceptance/test_module_personas.py::TestPersonaA::test_a6_reload_reattaches_with_no_second_session[chromium]
+0.48s call     tests/acceptance/test_module_personas.py::TestPersonaA::test_a5_escape_cancels_with_clear_recovery_copy[chromium]
+0.48s call     tests/acceptance/test_module_personas.py::TestPersonaB::test_b6_escape_cancels_with_clear_recovery_copy[chromium]
+0.47s call     tests/acceptance/test_module_personas.py::TestPersonaA::test_a8_module_remove_then_labs_gone[chromium]
+0.45s call     tests/acceptance/test_module_personas.py::TestPersonaB::test_b1_the_documented_uv_setup_commands_succeed_offline[chromium]
+0.41s call     tests/acceptance/test_module_personas.py::TestPersonaB::test_b8_break_one_rule_read_the_json_failure_repair_and_recheck[chromium]
+0.35s teardown tests/acceptance/test_module_personas.py::TestPersonaB::test_b10_the_whole_persona_finished_under_eight_minutes[chromium]
+0.30s teardown tests/acceptance/test_module_personas.py::TestPersonaA::test_a9_the_whole_persona_finished_under_six_minutes[chromium]
+0.29s call     tests/acceptance/test_module_personas.py::TestPersonaB::test_b7_module_remove_then_labs_gone[chromium]
+0.26s call     tests/acceptance/test_module_personas.py::TestPersonaA::test_a4b_tab_and_shift_tab_traverse_the_labs_controls_with_visible_focus[chromium]
+0.20s call     tests/acceptance/test_module_personas.py::TestPersonaB::test_b3_module_check_passes_the_scaffold[chromium]
+0.20s call     tests/acceptance/test_module_personas.py::TestPersonaB::test_b9_the_docs_commands_and_the_observed_output_agree[chromium]
+0.15s setup    tests/acceptance/test_module_personas.py::TestBundleWriter::test_positive_control_the_detector_flags_dirty_input
+0.10s call     tests/acceptance/test_module_personas.py::TestPersonaB::test_b2_module_new_scaffolds_a_module[chromium]
+0.01s call     tests/acceptance/test_module_personas.py::TestBundleWriter::test_every_bundle_member_name_survives_the_repositorys_gitignore[cli-transcript.txt]
+0.01s call     tests/acceptance/test_module_personas.py::TestBundleWriter::test_every_bundle_member_name_survives_the_repositorys_gitignore[manifest.json]
+0.01s call     tests/acceptance/test_module_personas.py::TestBundleWriter::test_every_bundle_member_name_survives_the_repositorys_gitignore[console.json]
+0.01s call     tests/acceptance/test_module_personas.py::TestBundleWriter::test_every_bundle_member_name_survives_the_repositorys_gitignore[modules.lock.diff]
+0.01s call     tests/acceptance/test_module_personas.py::TestBundleWriter::test_every_bundle_member_name_survives_the_repositorys_gitignore[labs-binding.json]
+0.01s call     tests/acceptance/test_module_personas.py::TestBundleWriter::test_every_bundle_member_name_survives_the_repositorys_gitignore[practice-envelope.json]
+0.01s call     tests/acceptance/test_module_personas.py::TestBundleWriter::test_every_bundle_member_name_survives_the_repositorys_gitignore[turns.json]
+0.01s call     tests/acceptance/test_module_personas.py::TestBundleWriter::test_every_bundle_member_name_survives_the_repositorys_gitignore[page.html]
+0.01s call     tests/acceptance/test_module_personas.py::TestBundleWriter::test_every_bundle_member_name_survives_the_repositorys_gitignore[screenshot.png]
+0.01s call     tests/acceptance/test_module_personas.py::TestBundleWriter::test_every_bundle_member_name_survives_the_repositorys_gitignore[server-log.txt]
+0.01s call     tests/acceptance/test_module_personas.py::TestPersonaA::test_a9_the_whole_persona_finished_under_six_minutes[chromium]
+0.01s call     tests/acceptance/test_module_personas.py::TestPersonaB::test_b10_the_whole_persona_finished_under_eight_minutes[chromium]
+0.01s call     tests/acceptance/test_module_personas.py::TestDocsContract::test_the_documented_expectations_are_parsed_from_the_pages_and_the_help
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestBundleWriter::test_positive_control_the_detector_flags_dirty_input
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestBundleWriter::test_failure_bundle_carries_the_seven_artefacts_redacted
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestBundleWriter::test_the_outcome_is_redacted_before_it_enters_the_manifest
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestBundleWriter::test_a_leak_the_redactor_cannot_label_fails_the_bundle_naming_it
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestBundleWriter::test_the_committed_bundle_names_the_labs_binding_for_what_it_is
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestBundleWriter::test_a_practice_envelope_is_validated_before_it_is_written
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestBundleWriter::test_every_bundle_member_name_survives_the_repositorys_gitignore[cli-transcript.txt]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestBundleWriter::test_every_bundle_member_name_survives_the_repositorys_gitignore[console.json]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestBundleWriter::test_every_bundle_member_name_survives_the_repositorys_gitignore[labs-binding.json]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestBundleWriter::test_every_bundle_member_name_survives_the_repositorys_gitignore[manifest.json]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestBundleWriter::test_every_bundle_member_name_survives_the_repositorys_gitignore[modules.lock.diff]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestBundleWriter::test_every_bundle_member_name_survives_the_repositorys_gitignore[page.html]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestBundleWriter::test_every_bundle_member_name_survives_the_repositorys_gitignore[practice-envelope.json]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestBundleWriter::test_every_bundle_member_name_survives_the_repositorys_gitignore[screenshot.png]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestBundleWriter::test_every_bundle_member_name_survives_the_repositorys_gitignore[server-log.txt]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestBundleWriter::test_every_bundle_member_name_survives_the_repositorys_gitignore[turns.json]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestBundleWriter::test_write_evidence_bundle_without_members_keeps_the_pre_u1_manifest
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestDocsContract::test_the_documented_expectations_are_parsed_from_the_pages_and_the_help
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestDocsContract::test_a_tampered_copy_of_the_doc_makes_the_comparison_fail
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestHarnessSelection::test_no_selection_means_the_fake_agent_and_the_bundle_says_so
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestHarnessSelection::test_a_selected_harness_runs_without_the_fake_agent
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaA::test_a1_load_shows_no_labs_entry_and_no_prerequisite_text[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaA::test_a2_module_add_then_exactly_one_labs_entry_with_ids_and_prompts[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaA::test_a3_start_one_drill_inside_the_single_claimed_session[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaA::test_a4a_focus_lands_in_the_terminal[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaA::test_a4b_tab_and_shift_tab_traverse_the_labs_controls_with_visible_focus[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaA::test_a5_escape_cancels_with_clear_recovery_copy[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaA::test_a6_reload_reattaches_with_no_second_session[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaA::test_a7_missing_kind_module_reports_the_prerequisite_and_creates_nothing[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaA::test_a8_module_remove_then_labs_gone[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaA::test_a9_the_whole_persona_finished_under_six_minutes[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaB::test_b1_the_documented_uv_setup_commands_succeed_offline[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaB::test_b2_module_new_scaffolds_a_module[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaB::test_b3_module_check_passes_the_scaffold[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaB::test_b4_module_add_then_labs_lists_the_contributors_module[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaB::test_b5_start_one_drill_inside_the_single_claimed_session[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaB::test_b6_escape_cancels_with_clear_recovery_copy[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaB::test_b7_module_remove_then_labs_gone[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaB::test_b8_break_one_rule_read_the_json_failure_repair_and_recheck[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaB::test_b9_the_docs_commands_and_the_observed_output_agree[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaB::test_b10_the_whole_persona_finished_under_eight_minutes[chromium]
+============================= 41 passed in 14.42s ==============================
+
+$ env -u VIRTUAL_ENV uv run --group dev pytest packages/studyloop/tests/acceptance/test_module_personas.py -q -p no:cacheprovider   # NO STUDYLOOP_ACC: the default tier deselects all
+41 deselected in 0.10s
+
+$ env -u VIRTUAL_ENV uv run --group dev pytest -m acceptance packages/studyloop/tests/acceptance/test_module_personas.py -q -p no:cacheprovider -rs   # -m acceptance, no STUDYLOOP_ACC: skipped by name
+SKIPPED [1] packages/studyloop/tests/acceptance/test_module_personas.py:1278: acceptance tests require STUDYLOOP_ACC=1 (see docs/acceptance-testing.md)
+41 skipped in 0.11s
+bundles written by the green run: 0

@@ -1,0 +1,4 @@
+$ env -u VIRTUAL_ENV uv run --group dev pytest packages/studyloop/tests/test_lane_ownership.py -q -p no:cacheprovider -rs
+sha 4037d9a4  2026-10-05T10:53:00Z  (working tree: U1 row + branch map staged for commit 1)
+..........................................
+42 passed in 0.43s

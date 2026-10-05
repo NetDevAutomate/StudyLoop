@@ -1,0 +1,18 @@
+--- modules.lock.json (before)
++++ modules.lock.json (after)
+@@ -0,0 +1,15 @@
++{
++  "version": 1,
++  "modules": [
++    {
++      "id": "echo-drills",
++      "version": "0.1.0",
++      "digest": "sha256:b16d67cfc77e…",
++      "snapshot": "<WORLD>/modules/snapshots/b16d67cfc77e…",
++      "source": "<REPO>/packages/studyloop/tests/fixtures/modules/valid-scaffold",
++      "git_remote": "git@github.com:NetDevAutomate/StudyLoop.git",
++      "git_sha": "6af7887e1bc3…",
++      "installed_at": "2026-10-05T12:34:36+00:00"
++    }
++  ]
++}

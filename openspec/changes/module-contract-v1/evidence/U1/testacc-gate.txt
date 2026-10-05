@@ -1,0 +1,63 @@
+$ env -u VIRTUAL_ENV just testacc "" scripted "packages/studyloop/tests/acceptance/test_module_personas.py -p no:cacheprovider -rA --durations=0"
+sha cc874180  2026-10-05T11:32:31Z
+STUDYLOOP_ACC=1 STUDYLOOP_ACC_HARNESS="" STUDYLOOP_ACC_ACTOR="scripted" uv run --group dev pytest -m acceptance --ignore=packages/studyloop/tests/acceptance/uat packages/studyloop/tests/acceptance/test_module_personas.py -p no:cacheprovider -rA --durations=0
+[persona A] wall-clock 6.0s of the 360s budget
+[persona B] wall-clock 3.4s of the 480s budget
+1.28s call     tests/acceptance/test_module_personas.py::TestPersonaA::test_a7_missing_kind_module_reports_the_prerequisite_and_creates_nothing[chromium]
+1.08s setup    tests/acceptance/test_module_personas.py::TestPersonaA::test_a1_load_shows_no_labs_entry_and_no_prerequisite_text[chromium]
+0.97s call     tests/acceptance/test_module_personas.py::TestPersonaB::test_b4_module_add_then_labs_lists_the_contributors_module[chromium]
+0.80s setup    tests/acceptance/test_module_personas.py::TestPersonaB::test_b1_the_documented_uv_setup_commands_succeed_offline[chromium]
+0.78s call     tests/acceptance/test_module_personas.py::TestPersonaA::test_a1_load_shows_no_labs_entry_and_no_prerequisite_text[chromium]
+0.77s call     tests/acceptance/test_module_personas.py::TestPersonaA::test_a2_module_add_then_exactly_one_labs_entry_with_ids_and_prompts[chromium]
+0.74s call     tests/acceptance/test_module_personas.py::TestPersonaA::test_a3_start_one_drill_inside_the_single_claimed_session[chromium]
+0.71s call     tests/acceptance/test_module_personas.py::TestPersonaA::test_a4a_focus_lands_in_the_terminal[chromium]
+0.66s call     tests/acceptance/test_module_personas.py::TestPersonaB::test_b5_start_one_drill_inside_the_single_claimed_session[chromium]
+0.62s call     tests/acceptance/test_module_personas.py::TestPersonaA::test_a6_reload_reattaches_with_no_second_session[chromium]
+0.46s call     tests/acceptance/test_module_personas.py::TestPersonaA::test_a8_module_remove_then_labs_gone[chromium]
+0.45s call     tests/acceptance/test_module_personas.py::TestPersonaB::test_b1_the_documented_uv_setup_commands_succeed_offline[chromium]
+0.35s teardown tests/acceptance/test_module_personas.py::TestPersonaA::test_a9_the_whole_persona_finished_under_six_minutes[chromium]
+0.30s call     tests/acceptance/test_module_personas.py::TestPersonaB::test_b8_break_one_rule_read_the_json_failure_repair_and_recheck[chromium]
+0.29s teardown tests/acceptance/test_module_personas.py::TestPersonaB::test_b10_the_whole_persona_finished_under_eight_minutes[chromium]
+0.28s call     tests/acceptance/test_module_personas.py::TestPersonaA::test_a5_escape_cancels_with_clear_recovery_copy[chromium]
+0.27s call     tests/acceptance/test_module_personas.py::TestPersonaB::test_b7_module_remove_then_labs_gone[chromium]
+0.27s call     tests/acceptance/test_module_personas.py::TestPersonaB::test_b6_escape_cancels_with_clear_recovery_copy[chromium]
+0.25s call     tests/acceptance/test_module_personas.py::TestPersonaA::test_a4b_tab_and_shift_tab_traverse_the_labs_controls_with_visible_focus[chromium]
+0.20s call     tests/acceptance/test_module_personas.py::TestPersonaB::test_b3_module_check_passes_the_scaffold[chromium]
+0.19s call     tests/acceptance/test_module_personas.py::TestPersonaB::test_b9_the_docs_commands_and_the_observed_output_agree[chromium]
+0.16s setup    tests/acceptance/test_module_personas.py::TestBundleWriter::test_positive_control_the_detector_flags_dirty_input
+0.10s call     tests/acceptance/test_module_personas.py::TestPersonaB::test_b2_module_new_scaffolds_a_module[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestBundleWriter::test_positive_control_the_detector_flags_dirty_input
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestBundleWriter::test_failure_bundle_carries_the_seven_artefacts_redacted
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestBundleWriter::test_write_evidence_bundle_without_members_keeps_the_pre_u1_manifest
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaA::test_a1_load_shows_no_labs_entry_and_no_prerequisite_text[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaA::test_a2_module_add_then_exactly_one_labs_entry_with_ids_and_prompts[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaA::test_a3_start_one_drill_inside_the_single_claimed_session[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaA::test_a4b_tab_and_shift_tab_traverse_the_labs_controls_with_visible_focus[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaA::test_a5_escape_cancels_with_clear_recovery_copy[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaA::test_a6_reload_reattaches_with_no_second_session[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaA::test_a7_missing_kind_module_reports_the_prerequisite_and_creates_nothing[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaA::test_a8_module_remove_then_labs_gone[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaA::test_a9_the_whole_persona_finished_under_six_minutes[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaB::test_b1_the_documented_uv_setup_commands_succeed_offline[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaB::test_b2_module_new_scaffolds_a_module[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaB::test_b3_module_check_passes_the_scaffold[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaB::test_b4_module_add_then_labs_lists_the_contributors_module[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaB::test_b5_start_one_drill_inside_the_single_claimed_session[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaB::test_b6_escape_cancels_with_clear_recovery_copy[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaB::test_b7_module_remove_then_labs_gone[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaB::test_b8_break_one_rule_read_the_json_failure_repair_and_recheck[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaB::test_b9_the_docs_commands_and_the_observed_output_agree[chromium]
+PASSED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaB::test_b10_the_whole_persona_finished_under_eight_minutes[chromium]
+XFAIL packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaA::test_a4a_focus_lands_in_the_terminal[chromium] - GAP (design.md §6 step 4 'focus lands in the terminal'): after a Labs start the Study Session console mounts xterm (web/static/js/components/live-agent-console.js, term.open at ~259) without ever calling term.focus(); the fresh-start path also reloads the page (labs.js startDrill), so document.activeElement is <body>. Product change needed: focus the terminal when the console (re)attaches.
+======================== 22 passed, 1 xfailed in 12.18s ========================
+
+$ env -u VIRTUAL_ENV uv run --group dev pytest packages/studyloop/tests/acceptance/test_module_personas.py -q -p no:cacheprovider   # NO STUDYLOOP_ACC: the default tier must not collect these
+
+23 deselected in 0.06s
+
+$ env -u VIRTUAL_ENV uv run --group dev pytest -m acceptance packages/studyloop/tests/acceptance/test_module_personas.py -q -p no:cacheprovider -rs   # -m acceptance but still no STUDYLOOP_ACC: the gate skips by name
+SKIPPED [1] packages/studyloop/tests/acceptance/test_module_personas.py:905: acceptance tests require STUDYLOOP_ACC=1 (see docs/acceptance-testing.md)
+SKIPPED [1] packages/studyloop/tests/acceptance/test_module_personas.py:944: acceptance tests require STUDYLOOP_ACC=1 (see docs/acceptance-testing.md)
+SKIPPED [1] packages/studyloop/tests/acceptance/test_module_personas.py:1012: acceptance tests require STUDYLOOP_ACC=1 (see docs/acceptance-testing.md)
+23 skipped in 0.07s
+bundles written by the green run:        0

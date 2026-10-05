@@ -1,0 +1,23 @@
+$ STUDYLOOP_ACC=1 STUDYLOOP_ACC_PLANT_C7="Which command prints its arguments?" env -u VIRTUAL_ENV uv run --group dev pytest -m acceptance packages/studyloop/tests/acceptance/test_module_personas.py -k "TestPersonaA or TestPersonaB" -q -p no:cacheprovider --tb=line -rA
+sha 6862a970  2026-10-05T12:37:07Z  (U1-review F6: the fixture task's hint is planted into EVERY document the personas load; the browser phases that never ran the C7 sweep -- a3, a9, b5, b10 -- still PASS)
+PASSED TestPersonaA::test_a3_start_one_drill_inside_the_single_claimed_session[chromium]
+PASSED TestPersonaA::test_a9_the_whole_persona_finished_under_six_minutes[chromium]
+PASSED TestPersonaB::test_b1_the_documented_uv_setup_commands_succeed_offline[chromium]
+PASSED TestPersonaB::test_b2_module_new_scaffolds_a_module[chromium]
+PASSED TestPersonaB::test_b3_module_check_passes_the_scaffold[chromium]
+PASSED TestPersonaB::test_b5_start_one_drill_inside_the_single_claimed_session[chromium]
+PASSED TestPersonaB::test_b8_break_one_rule_read_the_json_failure_repair_and_recheck[chromium]
+PASSED TestPersonaB::test_b9_the_docs_commands_and_the_observed_output_agree[chromium]
+PASSED TestPersonaB::test_b10_the_whole_persona_finished_under_eight_minutes[chromium]
+XFAIL TestPersonaA::test_a4a_focus_lands_in_the_terminal[chromium] - GAP (design.md §6 step 4 'focus lands in the terminal'): after a Labs start the Study Session console mounts xterm (web/static/js/components/live-agent-console.js, term.open at ~259) without ever calling term.focus(); the fresh-start path also reloads the page (labs.js startDrill), so document.activeElement is <body>. Product change needed: focus the terminal when the console (re)attaches.
+FAILED TestPersonaA::test_a1_load_shows_no_labs_entry_and_no_prerequisite_text[chromium]
+FAILED TestPersonaA::test_a2_module_add_then_exactly_one_labs_entry_with_ids_and_prompts[chromium]
+FAILED TestPersonaA::test_a4b_tab_and_shift_tab_traverse_the_labs_controls_with_visible_focus[chromium]
+FAILED TestPersonaA::test_a5_escape_cancels_with_clear_recovery_copy[chromium]
+FAILED TestPersonaA::test_a6_reload_reattaches_with_no_second_session[chromium]
+FAILED TestPersonaA::test_a7_missing_kind_module_reports_the_prerequisite_and_creates_nothing[chromium]
+FAILED TestPersonaA::test_a8_module_remove_then_labs_gone[chromium]
+FAILED TestPersonaB::test_b4_module_add_then_labs_lists_the_contributors_module[chromium]
+FAILED TestPersonaB::test_b6_escape_cancels_with_clear_recovery_copy[chromium]
+FAILED TestPersonaB::test_b7_module_remove_then_labs_gone[chromium]
+10 failed, 9 passed, 19 deselected, 1 xfailed in 13.54s
