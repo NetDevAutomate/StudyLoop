@@ -1,5 +1,6 @@
 $ env -u VIRTUAL_ENV uv run --group dev pytest packages/studyloop/tests/test_lane_ownership.py -q -p no:cacheprovider -rs -k "test_lane_stays_in_its_lane or test_fixture_branch_map"
 sha 4037d9a4  2026-10-05T10:52:14Z
+NOTE (U1-review F8): this is a PIN of pre-existing behaviour, not a red -- the guard SKIPS on an unmapped branch ('not on a lane branch'), it does not fail. The genuinely red requirement test for the U1 map is fixpass-f8-u1-map-requirement.red.txt.
 .s                                                                       [100%]
 =========================== short test summary info ============================
 SKIPPED [1] packages/studyloop/tests/test_lane_ownership.py:465: not on a lane branch ('feat/module-personas'); nothing to police here

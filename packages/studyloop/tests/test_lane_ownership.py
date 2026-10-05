@@ -44,6 +44,7 @@ if _tests_dir not in sys.path:
 from _lane_ownership import (  # noqa: E402
     LaneOwnershipResult,
     MalformedLaneBranchError,
+    _matches_any,
     classify_files,
     lane_id_from_branch,
 )
@@ -186,6 +187,32 @@ def test_fixture_branch_map_matches_design_and_points_at_real_lanes() -> None:
     for branch, lane in branches.items():
         assert lane in lanes, f"{branch} -> {lane!r}, but {lane!r} has no glob list"
         assert lanes[lane], f"lane {lane!r} has an empty glob list"
+
+
+#: The persona lane's files, as its brief names them (briefs/U1-persona-journeys.md, "Owned
+#: globs"). Coordinator-granted, U1-review F8: the ownership "red" U1 first recorded was a skip
+#: (the guard skips an unmapped branch), so this is the requirement test -- the map MUST carry a
+#: U1 row covering every one of these, and the branch map MUST route feat/module-personas to it.
+_U1_LANE_FILES = (
+    "packages/studyloop/tests/acceptance/test_module_personas.py",
+    "packages/studyloop/tests/acceptance/evidence.py",
+    "packages/studyloop/tests/acceptance/personas/world.py",
+    "packages/studyloop/tests/acceptance/personas/bundle.py",
+    "openspec/changes/module-contract-v1/evidence/U1/forced-failure-bundle/manifest.json",
+    "docs/acceptance-testing.md",
+)
+
+
+def test_u1_map_covers_the_persona_lane_files() -> None:
+    """The U1 row exists, owns every file the U1 brief grants, and its branch is routed to it."""
+    lanes, _shared = _load_map()
+    assert "U1" in lanes, "the ownership map has no U1 row (briefs/U1-persona-journeys.md)"
+    assert _load_branch_map().get("feat/module-personas") == "U1", (
+        "feat/module-personas is not routed to lane U1 in the branch map"
+    )
+    for path in _U1_LANE_FILES:
+        owners = [lane for lane, globs in lanes.items() if _matches_any(path, globs)]
+        assert "U1" in owners, f"{path} is not covered by the U1 row (owners: {owners})"
 
 
 @pytest.mark.parametrize(

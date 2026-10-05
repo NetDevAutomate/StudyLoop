@@ -1,0 +1,4 @@
+$ env -u VIRTUAL_ENV uv run --group dev pytest packages/studyloop/tests/test_lane_ownership.py -k u1_map_covers -q -p no:cacheprovider --tb=short
+sha 60b9a61d  2026-10-05T12:47:51Z  (the map as committed: the U1 row + the branch route)
+...........................................                              [100%]
+43 passed in 0.46s

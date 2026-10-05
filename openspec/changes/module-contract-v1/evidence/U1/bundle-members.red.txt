@@ -1,5 +1,6 @@
 $ STUDYLOOP_ACC=1 env -u VIRTUAL_ENV uv run --group dev pytest -m acceptance packages/studyloop/tests/acceptance/test_module_personas.py -k TestBundleWriter -q -p no:cacheprovider --tb=short
 sha f5ab967e  2026-10-05T11:10:28Z  (evidence.py at HEAD: no server_log/cli_transcript/lockfile_diff/attempt_envelope parameters)
+NOTE (U1-review F8): the first of the three tests here (the leading '.') is test_positive_control_the_detector_flags_dirty_input -- pre-existing-behaviour COVERAGE of uat/redaction.py's detector, never red by design; the two 'F's are the red-first evidence for the four bundle members.
 .FF                                                                      [100%]
 =================================== FAILURES ===================================
 __ TestBundleWriter.test_failure_bundle_carries_the_seven_artefacts_redacted ___

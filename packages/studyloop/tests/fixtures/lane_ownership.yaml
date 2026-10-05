@@ -292,7 +292,7 @@ lanes:
     - packages/studyloop/tests/test_module_lane_seams.py    # the one kubeconfig-context refusal test only -- coordinator-granted, K0-review F9
     - packages/studyloop/tests/fixtures/modules/k8s-offline/**
     - packages/studyloop/tests/fixtures/lane_ownership.yaml  # this row; branches: entry is coordinator-granted, K0-review F11
-    - packages/studyloop/tests/test_lane_ownership.py        # _MODULE_CONTRACT_BRANCHES only -- coordinator-granted, K0-review F11
+    - packages/studyloop/tests/test_lane_ownership.py        # _MODULE_CONTRACT_BRANCHES only -- coordinator-granted; + the U1 map requirement test (test_u1_map_covers_the_persona_lane_files) -- coordinator-granted, U1-review F8, K0-review F11
     - openspec/changes/module-contract-v1/evidence/K0/**
     # K0-review F6 (MC017) -- coordinator-granted, K0-review F6: one rule + registration + the
     # MC001-MC017 range, the mc017 fixture pair (and mc008's twins, which MC017 now binds), the
@@ -318,7 +318,7 @@ lanes:
     - packages/studyloop/tests/acceptance/evidence.py       # the four optional bundle members only
     - openspec/changes/module-contract-v1/evidence/U1/**
     - packages/studyloop/tests/fixtures/lane_ownership.yaml  # this row; branches: entry is coordinator-granted
-    - packages/studyloop/tests/test_lane_ownership.py        # _MODULE_CONTRACT_BRANCHES only -- coordinator-granted
+    - packages/studyloop/tests/test_lane_ownership.py        # _MODULE_CONTRACT_BRANCHES only -- coordinator-granted; + the U1 map requirement test (test_u1_map_covers_the_persona_lane_files) -- coordinator-granted, U1-review F8
     - docs/acceptance-testing.md                            # one subsection naming the persona journeys only
 
 # Explicit branch -> lane key for lanes whose branch name carries no lane id.
