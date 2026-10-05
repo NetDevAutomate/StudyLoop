@@ -343,17 +343,25 @@ class _Disposable:
 
 
 def _provision_cluster(
-    store: AttemptStore, attempt: Attempt, tools: Mapping[str, Path]
+    store: AttemptStore, attempt: Attempt, tools: Mapping[str, Path], live: list[_Disposable]
 ) -> tuple[Attempt, _Disposable]:
     """``setup`` on a ``kubeconfig-context`` attempt: create the cluster BEFORE the consent
     prompt (so the prompt names it) and record its kubeconfig on the attempt. A provisioning
-    failure closes the just-opened attempt and is a Click error naming the cluster."""
+    failure closes the just-opened attempt and is a Click error naming the cluster.
+
+    The :class:`_Disposable` is appended to ``live`` the instant ``provision`` returns, so the
+    caller's ``except BaseException`` can tear the cluster down whatever happens next -- a
+    ``SidecarError`` writing the record, a ``KeyboardInterrupt`` landing between the two lines
+    (K0-review F4). Nothing here catches the non-``ClusterError`` cases itself: the caller does,
+    once, for every path.
+    """
     try:
         handle = cluster.provision(attempt, tools=tools)
     except ClusterError as exc:
         store.close(attempt, reason=f"setup: cluster not provisioned: {exc}")
         raise click.ClickException(str(exc)) from exc
     disposable = _Disposable(handle)
+    live.append(disposable)
     try:
         attempt = _record_kubeconfig(store, attempt, handle.kubeconfig)
     except SidecarError as exc:
@@ -484,11 +492,15 @@ def run_drill_phase(phase: Phase, ref: str) -> int:
 
     store = AttemptStore(root=attempts_root())
     attempt, opened_here = _open_attempt(store, phase, drill, installed.snapshot_dir, target)
-    disposable: _Disposable | None = None
+    # The attempt's disposable cluster, registered by `_attach_cluster` the instant it exists
+    # (a list, not a local assigned from a return value: a KeyboardInterrupt between the
+    # return and the assignment would otherwise leave a cluster nobody can tear down -- F4).
+    live: list[_Disposable] = []
     try:
+        disposable: _Disposable | None = None
         if target is TargetKind.KUBECONFIG_CONTEXT:
             attempt, disposable = _attach_cluster(
-                store, attempt, phase=phase, ref=ref, opened_here=opened_here
+                store, attempt, phase=phase, ref=ref, opened_here=opened_here, live=live
             )
         return _consent_and_run(
             store,
@@ -502,18 +514,26 @@ def run_drill_phase(phase: Phase, ref: str) -> int:
             prerequisites=prerequisites,
         )
     except BaseException as exc:
-        # K0 brief item 3: KeyboardInterrupt, click.Abort, a Click error after consent, any
-        # other failure -- the disposable cluster must not outlive the attempt. The normal
-        # paths above have already torn down when they meant to; this is a no-op for them.
-        if disposable is not None and not disposable.torn_down:
-            disposable.teardown(
-                store, attempt, reason=f"{phase.value} interrupted: {type(exc).__name__}"
-            )
+        # K0 brief item 3 / review F4: KeyboardInterrupt, click.Abort, a Click error after
+        # consent, a SidecarError, any other failure -- the disposable cluster must not
+        # outlive the attempt. The normal paths above have already torn down when they meant
+        # to (`torn_down` makes this a no-op for them).
+        for pending in live:
+            if not pending.torn_down:
+                pending.teardown(
+                    store, attempt, reason=f"{phase.value} interrupted: {type(exc).__name__}"
+                )
         raise
 
 
 def _attach_cluster(
-    store: AttemptStore, attempt: Attempt, *, phase: Phase, ref: str, opened_here: bool
+    store: AttemptStore,
+    attempt: Attempt,
+    *,
+    phase: Phase,
+    ref: str,
+    opened_here: bool,
+    live: list[_Disposable],
 ) -> tuple[Attempt, _Disposable]:
     """Give a ``kubeconfig-context`` attempt its disposable cluster, before any consent.
 
@@ -541,8 +561,10 @@ def _attach_cluster(
             store.close(attempt, reason=f"{phase.value} refused before consent: {exc}")
         raise click.ClickException(str(exc)) from exc
     if phase is Phase.SETUP:
-        return _provision_cluster(store, attempt, tools)
-    return attempt, _Disposable(cluster.handle_for(attempt, tools=tools))
+        return _provision_cluster(store, attempt, tools, live)
+    disposable = _Disposable(cluster.handle_for(attempt, tools=tools))
+    live.append(disposable)
+    return attempt, disposable
 
 
 @click.group("drill")

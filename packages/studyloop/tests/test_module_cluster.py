@@ -555,6 +555,73 @@ def test_failed_delete_after_a_provable_failed_create_keeps_the_kubeconfig(
     assert kubeconfig.is_file(), "a failed delete must not destroy the recovery credential"
 
 
+@pytest.mark.parametrize(
+    ("mode", "cause"),
+    [
+        pytest.param("misname", "expected exactly one context named", id="contexts-misnamed"),
+        pytest.param("malformed", "not a list of mappings", id="contexts-not-mappings"),
+    ],
+)
+def test_unusable_kubeconfig_after_a_successful_create_tears_down_and_names_the_cause(
+    attempt: Attempt,
+    tools: Mapping[str, Path],
+    fake_tools: FakeTools,
+    monkeypatch: pytest.MonkeyPatch,
+    mode: str,
+    cause: str,
+) -> None:
+    """K0-review F4: kind exited 0 (so the cluster is provably ours) but wrote a kubeconfig the
+    one-context rewrite cannot use -- contexts misnamed, or list entries that are not mappings
+    (the ``AttributeError`` path the review found). Whatever the rewrite raises, exactly one
+    delete runs and the error still names the cause and the cluster."""
+    monkeypatch.setenv("FAKE_KIND_FAIL", mode)
+    name = _expected_name(attempt)
+
+    with pytest.raises(ClusterError) as excinfo:
+        cluster.provision(attempt, tools=tools)
+
+    message = str(excinfo.value)
+    assert cause in message and name in message
+    assert excinfo.value.cluster == name
+    assert [call[:2] for call in fake_tools.calls()] == [
+        ["get", "clusters"],
+        ["create", "cluster"],
+        ["delete", "cluster"],
+    ]
+    assert not (attempt.attempt_dir / "kubeconfig").exists()
+
+
+def test_keyboard_interrupt_after_a_successful_create_tears_down_and_propagates(
+    attempt: Attempt,
+    tools: Mapping[str, Path],
+    fake_tools: FakeTools,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """K0-review F4: a Ctrl-C landing after kind created the cluster but before ``provision``
+    returned (so before ``_drill`` has any handle to tear down) must delete the cluster on the
+    way out -- and the ORIGINAL ``KeyboardInterrupt`` is what propagates, with the cluster
+    named in its notes, not a swallowed or re-typed error."""
+    real_rewrite = cluster.rewrite_kubeconfig
+
+    def interrupted(path: Path, name: str) -> str:
+        real_rewrite(path, name)
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(cluster, "rewrite_kubeconfig", interrupted)
+    name = _expected_name(attempt)
+
+    with pytest.raises(KeyboardInterrupt) as excinfo:
+        cluster.provision(attempt, tools=tools)
+
+    assert any(name in note for note in getattr(excinfo.value, "__notes__", []))
+    assert [call[:2] for call in fake_tools.calls()] == [
+        ["get", "clusters"],
+        ["create", "cluster"],
+        ["delete", "cluster"],
+    ]
+    assert not (attempt.attempt_dir / "kubeconfig").exists()
+
+
 def test_handle_for_rebuilds_the_handle_from_the_recorded_attempt(
     attempt: Attempt, tools: Mapping[str, Path], tmp_path: Path
 ) -> None:
@@ -872,6 +939,33 @@ def test_name_collision_is_refused_before_consent_and_closes_the_attempt(
     assert "Run this phase now?" not in result.output
     assert _kinds(fake_tools) == [["get", "clusters"]]
     assert _store().current(installed_k8s) is None
+
+
+def test_keyboard_interrupt_right_after_provision_tears_down_the_cluster(
+    installed_k8s: DrillIdentity,
+    sessions_db: Path,
+    fake_tools: FakeTools,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """K0-review F4 in ``_drill``: a Ctrl-C landing after ``cluster.provision`` returned but
+    before the attempt record carries the kubeconfig (the window before the runner is even
+    reached) must still delete the cluster and leave no open attempt. Injected where the
+    record is written, i.e. immediately after a successful provision."""
+    real_write = AttemptStore._write
+
+    def interrupted(self: AttemptStore, path: Path, record: dict[str, Any]) -> None:
+        if record.get("kubeconfig"):
+            raise KeyboardInterrupt
+        real_write(self, path, record)
+
+    monkeypatch.setattr(AttemptStore, "_write", interrupted)
+
+    result = CliRunner().invoke(drill_group, ["setup", K8S_DRILL], input="y\n")
+
+    assert result.exit_code == 1, result.output
+    assert "Aborted" in result.output
+    assert _kinds(fake_tools) == [["get", "clusters"], ["create", "cluster"], ["delete", "cluster"]]
+    assert "Run this phase now?" not in result.output
 
 
 def test_keyboard_interrupt_during_a_phase_tears_down_the_cluster(

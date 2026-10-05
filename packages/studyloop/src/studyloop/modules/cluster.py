@@ -310,19 +310,32 @@ def _write_private(path: Path, text: str) -> None:
     os.chmod(path, 0o600)
 
 
+def _entries(doc: dict[str, Any], key: str) -> list[dict[str, Any]]:
+    """``doc[key]`` as a list of mappings; anything else is a malformed kubeconfig (``ValueError``,
+    never an ``AttributeError`` escaping from ``.get`` on an int -- K0-review F4)."""
+    items = doc.get(key)
+    if items is None:
+        return []
+    if not isinstance(items, list) or not all(isinstance(item, dict) for item in items):
+        raise ValueError(f"kubeconfig {key!r} is not a list of mappings")
+    return items
+
+
 def _one_context(doc: Any, context_name: str) -> dict[str, Any]:
     """The kubeconfig document reduced to ``context_name``, its cluster and its user."""
     if not isinstance(doc, dict):
         raise ValueError("kubeconfig is not a mapping")
-    contexts = [c for c in doc.get("contexts") or [] if c.get("name") == context_name]
+    contexts = [c for c in _entries(doc, "contexts") if c.get("name") == context_name]
     if len(contexts) != 1:
         raise ValueError(
             f"expected exactly one context named {context_name!r}, found {len(contexts)}"
         )
-    binding = contexts[0].get("context") or {}
+    binding = contexts[0].get("context")
+    if not isinstance(binding, dict):
+        raise ValueError(f"context {context_name!r} has no mapping under 'context'")
     cluster_ref, user_ref = binding.get("cluster"), binding.get("user")
-    clusters = [c for c in doc.get("clusters") or [] if c.get("name") == cluster_ref]
-    users = [u for u in doc.get("users") or [] if u.get("name") == user_ref]
+    clusters = [c for c in _entries(doc, "clusters") if c.get("name") == cluster_ref]
+    users = [u for u in _entries(doc, "users") if u.get("name") == user_ref]
     if len(clusters) != 1 or len(users) != 1:
         raise ValueError(
             f"context {context_name!r} binds cluster {cluster_ref!r} and user {user_ref!r}; "
@@ -357,7 +370,7 @@ def rewrite_kubeconfig(path: Path, name: str) -> str:
         text = yaml.safe_dump(reduced, default_flow_style=False, sort_keys=False)
         path.unlink()
         _write_private(path, text)
-    except (OSError, ValueError, yaml.YAMLError) as exc:
+    except (OSError, ValueError, TypeError, AttributeError, yaml.YAMLError) as exc:
         raise ClusterError(
             f"could not reduce {path} to the one context {context_name!r}: {exc}", cluster=name
         ) from exc
@@ -415,12 +428,20 @@ def provision(
             f"; {_undo_after_failed_create(handle, timeout_seconds)}",
             cluster=name,
         )
+    # From here the cluster is provably ours (kind said so). ANY exception before the handle
+    # reaches the caller -- the rewrite's own ClusterError, a ValueError from a malformed
+    # document, a KeyboardInterrupt -- tears it down again and re-raises the ORIGINAL
+    # exception with the cluster named in its notes (K0-review F4, spec: "any exception after
+    # a successful create ... SHALL run the same teardown and keep the original error").
     try:
         rewrite_kubeconfig(kubeconfig, name)
     except ClusterError as exc:
         raise ClusterError(
             f"{exc}; {_undo_after_created(handle, timeout_seconds)}", cluster=name
         ) from exc
+    except BaseException as exc:
+        exc.add_note(f"disposable cluster {name}: {_undo_after_created(handle, timeout_seconds)}")
+        raise
     return handle
 
 
