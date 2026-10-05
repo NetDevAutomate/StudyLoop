@@ -1,0 +1,4 @@
+env -u VIRTUAL_ENV uv run pytest -m integration tests/integration/test_module_delivery_transports.py -q -p no:cacheprovider -rs   # cwd packages/studyloop
+# main HEAD a323bb11  2026-10-05T13:46:57Z  DoD 5: both transports, integration tier, run on merged main before M2
+..........                                                               [100%]
+10 passed in 14.06s

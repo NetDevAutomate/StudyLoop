@@ -11,7 +11,7 @@ experience may change before `1.0.0`.
 
 - Optional learning modules (issue #53). `studyloop module new <id>` scaffolds a module -- a
   directory of data with one offline drill -- that passes `studyloop module check`, the
-  conformance check with sixteen quotable rules (`MC001`-`MC016`, `--json` for CI).
+  conformance check with seventeen quotable rules (`MC001`-`MC017`, `--json` for CI).
   `studyloop module add <path>` installs a conforming module from a local path as an immutable
   snapshot recorded in `modules.lock.json`; `module list` and `module remove` manage it. Nothing
   is fetched from the network and no module code is ever imported or run as a library.
