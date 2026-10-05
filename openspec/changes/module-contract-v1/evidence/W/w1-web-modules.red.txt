@@ -1,5 +1,6 @@
 env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_web_modules.py -q -p no:cacheprovider
 # worktree: module-web-labs  HEAD: 355db26c  2026-10-04T23:10:00Z  TMPDIR=$(getconf DARWIN_USER_TEMP_DIR)  (W1: no route, no Labs entry, no labs.js)
+# CLASSIFICATION (W-review finding 1): 20 of 21 are red-first evidence. `test_options_carry_no_labs_entry_with_an_empty_lockfile` is CHARACTERISATION -- green by construction (no code existed to add a Labs key) -- and is not claimed as a red.
 E   AssertionError: {"detail":"Method Not Allowed"}
 E   assert 405 == 201
 E    +  where 405 = <Response [405 Method Not Allowed]>.status_code

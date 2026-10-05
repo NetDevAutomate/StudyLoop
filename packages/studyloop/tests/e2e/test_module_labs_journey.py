@@ -445,6 +445,16 @@ def test_phase5_reload_reattaches_with_no_second_session(
         # The live drill survived the reload in the Labs view too.
         _goto(page, labs_env, "labs")
         page.wait_for_selector("[data-testid='labs-active-drill']", state="visible", timeout=15_000)
+        # W-review finding 10: `#labs` is a real hash view -- a reload ON Labs lands on Labs
+        # (not on Today), with the live drill still shown.
+        assert page.evaluate("() => location.hash") == "#labs"
+        _reload(page)
+        page.wait_for_function(
+            "() => window.Alpine.store('nav').current === 'labs'", timeout=15_000
+        )
+        page.wait_for_selector("[data-testid='labs-view']", state="visible", timeout=15_000)
+        page.wait_for_selector("[data-testid='labs-active-drill']", state="visible", timeout=15_000)
+        assert _api(page, "/api/session/state")["study_session_id"] == JOURNEY["session_id"]
         # Post-reload the only tolerated noise is htmx re-owning its SSE stream (a bare
         # `Event`), exactly as the Body Double journey tolerates it. Anything else is real.
         post_reload = [
@@ -534,10 +544,14 @@ def test_phase7_drill_check_reaches_the_mentor_pane_as_one_labelled_block(
         attempt_dir = next(
             p for p in labs_env.world.root.rglob("module-attempts/*/*/*/*") if p.is_dir()
         )
+        # Exact identity (W-review finding 5): the replay names the attempt's own digest from
+        # its sidecar; a made-up digest is "no such attempt" (404), not a replay (409).
+        sidecar = json.loads(attempt_dir.with_suffix(".json").read_text(encoding="utf-8"))
+        assert sidecar["phases"][0]["phase"] == "check", "the CLI recorded the phase"
         body = json.dumps(
             {
                 "module_id": "echo-drills",
-                "module_digest": "sha256:" + "ab" * 32,
+                "module_digest": sidecar["drill"]["module_digest"],
                 "deck_id": "echo-basics",
                 "task_id": "echo-01",
                 "attempt_id": attempt_dir.name,
@@ -587,6 +601,11 @@ def test_phase8_module_remove_takes_labs_away(page: Page, labs_env: RunningServe
         page.wait_for_function("() => window.Alpine.store('labs').loaded === true", timeout=15_000)
         assert not _labs_entry_visible(page), "Labs is gone with the lockfile emptied"
         assert "labs" not in _api(page, "/api/session/options")
+        # `#labs` is a valid hash (finding 10) but an EMPTY Labs is not a view (C7): the Labs
+        # view sends the learner to Today rather than showing a module-less page.
+        page.wait_for_function(
+            "() => window.Alpine.store('nav').current === 'today'", timeout=15_000
+        )
         assert not page.locator("[data-testid='labs-view']").is_visible(), (
             "a stale #labs hash does not resurrect the view"
         )
@@ -598,7 +617,9 @@ def test_phase8_module_remove_takes_labs_away(page: Page, labs_env: RunningServe
 
 
 def test_phase9_the_server_outlived_the_journey(page: Page, labs_env: RunningServer) -> None:
-    """Every phase drove the real server; it is still up and the page saw no 5xx.
+    """CHARACTERISATION, not red-first evidence (W-review finding 2): a liveness guard that is
+    green by construction. Every phase drove the real server; it is still up and the page saw
+    no 5xx.
 
     The journey's console/page errors are collected per phase (phase 5 reads them across the
     reload); a failed request would have surfaced in the phase that issued it. This closes

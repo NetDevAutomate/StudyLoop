@@ -247,3 +247,60 @@ def test_root_cli_resolves_drill_setup_and_refuses_without_consent(
     assert "Drill phase: setup" in result.output
     assert "Not confirmed -- nothing executed." in result.output
     assert not list((tmp_path / "module-attempts").rglob("hello.txt")), "setup never ran"
+
+
+# --- W-review finding 8 (partial): the manifest's target.kind reaches AttemptStore.open ------
+#
+# `run_drill_phase` opened every attempt as `workdir`. Lane W passes
+# `TargetKind(manifest.target.kind)` through; cluster provisioning and the one-context
+# KUBECONFIG stay lane K0's, so a kubeconfig-context attempt records its target honestly and
+# the runner's existing refusal ("no core-written kubeconfig; refusing to spawn") fires
+# AFTER consent, before any process starts.
+
+
+@pytest.fixture
+def installed_kubeconfig_target(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> store.LockEntry:
+    source = tmp_path / "echo-drills-k8s"
+    shutil.copytree(FIXTURE_MODULE, source)
+    manifest = source / "module.yaml"
+    text = manifest.read_text(encoding="utf-8")
+    assert "kind: workdir" in text
+    manifest.write_text(text.replace("kind: workdir", "kind: kubeconfig-context"), encoding="utf-8")
+    root = tmp_path / "modules"
+    monkeypatch.setattr(store, "default_store_root", lambda: root)
+    monkeypatch.setattr(_drill, "attempts_root", lambda: tmp_path / "module-attempts")
+    return store.ModuleStore(root).add(source)
+
+
+def test_module_target_kind_is_read_from_the_installed_manifest(
+    installed_kubeconfig_target: store.LockEntry,
+) -> None:
+    from studyloop.modules.attempt import TargetKind
+
+    found = _drill.locate_installed_module(installed_kubeconfig_target.id)
+
+    assert _drill.module_target(found.snapshot_dir) is TargetKind.KUBECONFIG_CONTEXT
+
+
+def test_a_kubeconfig_context_module_records_its_target_and_is_refused_before_spawn(
+    installed_kubeconfig_target: store.LockEntry, tmp_path: Path
+) -> None:
+    import json
+
+    from click.testing import CliRunner
+
+    result = CliRunner().invoke(
+        _drill.drill_group,
+        ["check", f"{installed_kubeconfig_target.id}/echo-basics/echo-01"],
+        input="y\n",
+    )
+
+    records = list((tmp_path / "module-attempts").rglob("*.json"))
+    assert len(records) == 1, [str(r) for r in records]
+    record = json.loads(records[0].read_text(encoding="utf-8"))
+    assert record["target"] == "kubeconfig-context", record
+    assert record["kubeconfig"] is None, "provisioning is lane K0's; nothing is invented here"
+    assert record["closed_at"] is not None, "the refused attempt was closed"
+    assert result.exit_code == 1, result.output
+    assert "refusing to spawn" in result.output
+    assert "check:" not in result.output, "no phase result: nothing ran"

@@ -41,6 +41,10 @@ export const MENTOR_ONLY_FIELDS = Object.freeze(['hint', 'solution', 'mentorNote
 
 /** `sessionStorage` key for the drill the learner started from Labs. */
 export const ACTIVE_DRILL_KEY = 'studyloop.labs.activeDrill';
+/** `sessionStorage` key for the start's binding: `{ drill_nonce, study_session_id }`.
+ *  Per tab (sessionStorage), on purpose: the binding is THIS view's handle on the live
+ *  drill (W-review finding 7) -- another tab that never started it holds none. */
+export const ACTIVE_BINDING_KEY = 'studyloop.labs.activeBinding';
 
 const PHASES = Object.freeze(['setup', 'check', 'cleanup']);
 
@@ -178,6 +182,10 @@ export function labsView(deps = {}) {
     const nav = alpineStore('nav');
     if (nav && typeof nav.go === 'function') nav.go(view);
   });
+  const currentView = deps.currentView || (() => {
+    const nav = alpineStore('nav');
+    return nav && typeof nav.current === 'string' ? nav.current : '';
+  });
   const reload = deps.reload || (() => window.location.reload());
   const getStore = () => deps.store || alpineStore('labs');
 
@@ -197,7 +205,21 @@ export function labsView(deps = {}) {
   };
   const clearStored = () => {
     if (!storage) return;
-    try { storage.removeItem(ACTIVE_DRILL_KEY); } catch { /* nothing to clear */ }
+    try { storage.removeItem(ACTIVE_DRILL_KEY); storage.removeItem(ACTIVE_BINDING_KEY); } catch { /* nothing to clear */ }
+  };
+  const readBinding = () => {
+    if (!storage) return null;
+    try {
+      const raw = storage.getItem(ACTIVE_BINDING_KEY);
+      const parsed = raw ? JSON.parse(raw) : null;
+      return isObject(parsed) && parsed.drill_nonce ? parsed : null;
+    } catch {
+      return null;
+    }
+  };
+  const writeBinding = (binding) => {
+    if (!storage) return;
+    try { storage.setItem(ACTIVE_BINDING_KEY, JSON.stringify(binding)); } catch { /* quota */ }
   };
 
   return {
@@ -207,6 +229,10 @@ export function labsView(deps = {}) {
     startError: '',
     /** The drill the learner started from here, or null. Scrubbed; survives a reload. */
     activeDrill: null,
+    /** The start's nonce for the live drill (this view's handle on it), or ''. */
+    activeNonce: '',
+    /** The session the live drill was bound to, or ''. */
+    activeSessionId: '',
     /** `ref` of the drill whose start is in flight ('' otherwise) -- the button it belongs to shows it. */
     pendingRef: '',
     /* Monotonic: a cancel during an in-flight start bumps it, and the late response is
@@ -215,9 +241,15 @@ export function labsView(deps = {}) {
 
     async init() {
       this.activeDrill = readStored();
+      const binding = readBinding();
+      this.activeNonce = binding ? String(binding.drill_nonce) : '';
+      this.activeSessionId = binding ? String(binding.study_session_id || '') : '';
       const store = getStore();
       if (store && !store.loaded) await store.refresh();
       this._pickAgent();
+      /* `#labs` is a real hash view (finding 10), so a reload lands here -- but Labs exists
+         only while a module is installed (C7). An empty Labs is not a view; go to Today. */
+      if (store && store.loaded && !store.available && currentView() === 'labs') navigate('today');
     },
 
     modules() {
@@ -274,6 +306,11 @@ export function labsView(deps = {}) {
       let res;
       let raw = '';
       try {
+        /* Replacing a live drill: present this view's binding, or the server (rightly)
+           refuses -- another view cannot swap the drill out from under the one that started it. */
+        const binding = this.activeNonce
+          ? { drill_nonce: this.activeNonce, study_session_id: this.activeSessionId }
+          : {};
         res = await fetchFn('/api/modules/labs/start', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -283,6 +320,7 @@ export function labsView(deps = {}) {
             task_id: taskId,
             agent: this.agent,
             transport: this.transport,
+            ...binding,
           }),
         });
         raw = await res.text();
@@ -306,7 +344,12 @@ export function labsView(deps = {}) {
         isObject(data.drill) ? data.drill : { ref: task.ref, module_id: moduleId, deck_id: deckId, task_id: taskId },
       );
       this.activeDrill = drill;
+      this.activeNonce = typeof data.drill_nonce === 'string' ? data.drill_nonce : '';
+      this.activeSessionId = data.study_session_id ? String(data.study_session_id) : '';
       writeStored(drill);
+      if (this.activeNonce) {
+        writeBinding({ drill_nonce: this.activeNonce, study_session_id: this.activeSessionId });
+      }
       navigate('study-session');
       /* A fresh start: the Study Session view adopts the live session on page load
          (its console reattaches through /api/session/state). An attached start has
@@ -319,12 +362,33 @@ export function labsView(deps = {}) {
       this._epoch += 1;
       this.starting = false;
       this.pendingRef = '';
+      /* A start still in flight has no binding yet; dropping it locally is the whole cancel. */
+      if (!this.activeDrill) return;
+      let refused = '';
       try {
-        await fetchFn('/api/modules/labs/cancel', { method: 'POST' });
+        const res = await fetchFn('/api/modules/labs/cancel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            drill_nonce: this.activeNonce,
+            study_session_id: this.activeSessionId,
+          }),
+        });
+        if (res && res.status === 403) {
+          let data = {};
+          try { data = JSON.parse(await res.text()); } catch { data = {}; }
+          refused = data.error || 'This view did not start the live drill, so it cannot cancel it.';
+        }
       } catch {
-        /* The server-side record is advisory; the learner's decision stands either way. */
+        /* Unreachable server: the learner's decision stands; the record is advisory. */
+      }
+      if (refused) {
+        this.startError = refused;
+        return;
       }
       this.activeDrill = null;
+      this.activeNonce = '';
+      this.activeSessionId = '';
       clearStored();
     },
   };

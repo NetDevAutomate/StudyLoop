@@ -88,7 +88,9 @@ document.addEventListener('alpine:init', () => {
 
     init() {
       const hash = window.location.hash.slice(1);
-      const valid = ['today', 'flashcards', 'quizzes', 'generate', 'mastery', 'body-double', 'study-session', 'study-plans', 'settings', 'course-reader'];
+      /* 'labs' (module-contract v1, W-review finding 10): a reload on #labs lands on Labs.
+         With no module installed the Labs view itself sends the learner to Today (labs.js). */
+      const valid = ['today', 'flashcards', 'quizzes', 'generate', 'mastery', 'body-double', 'study-session', 'study-plans', 'settings', 'course-reader', 'labs'];
       if (hash && valid.includes(hash)) this.current = hash;
     },
 

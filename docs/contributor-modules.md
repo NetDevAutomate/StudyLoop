@@ -1,31 +1,30 @@
-# Optional topic modules: proposal and contribution boundaries
+# Optional topic modules: design history and contribution boundaries
 <!-- facts: F11 -->
 
-**Design proposal, not a shipped plugin API or registry.** This page summarises the module contract
-proposed in [`openspec/changes/module-contract-v1/proposal.md`](https://github.com/NetDevAutomate/StudyLoop/blob/main/openspec/changes/module-contract-v1/proposal.md)
-(revised after a four-model council review on 2026-10-04) and the boundaries a contribution must respect,
-motivated by [issue #53: Kubernetes drills](https://github.com/NetDevAutomate/StudyLoop/issues/53). It is
-not approval of that implementation or a promise that third-party code is safe to install; the repository
-does not provide the module lifecycle described below, and the proposed index has its own page,
-[Module Index (Proposal)](contributor-module-index.md).
+**The module contract is shipped (v1); there is no registry.** What a module is, how it is
+checked, installed, listed under **Labs** and run through `studyloop drill` is on
+[Module contract (v1)](module-contract.md), which is the authority where this page and it differ.
+This page keeps the design history -- the council-amended proposal in
+[`openspec/changes/module-contract-v1/proposal.md`](https://github.com/NetDevAutomate/StudyLoop/blob/main/openspec/changes/module-contract-v1/proposal.md),
+motivated by [issue #53: Kubernetes drills](https://github.com/NetDevAutomate/StudyLoop/issues/53) --
+and the boundaries a contribution must still respect. A proposed index has its own page,
+[Module Index (Proposal)](contributor-module-index.md), and is not built.
 
 ## The goal: specific practice, topic-agnostic foundations
 
-StudyLoop should support learning Kubernetes without becoming a Kubernetes application. **Modules
+StudyLoop supports learning Kubernetes without becoming a Kubernetes application. **Modules
 declare; core executes**: a module is a directory of *data* that core validates and runs through its
 own session, consent and verification machinery, while core keeps sessions, accessibility, consent,
-learner records and mentor interaction. A learner who has not installed a module never sees its
-prerequisites, its setup errors or its menu entry.
+learner records and mentor interaction; a learner who has not installed a module never sees its
+prerequisites, setup errors or menu entry. It is a small optional practice workflow, not a plugin
+platform; a second independent topic must exercise the boundary before it is called a stable API.
 
-Start with a small optional practice workflow, not a general plugin platform, a separate PTY stack or
-a Kubernetes-specific branch through planning and recall. A second independent topic must exercise the
-proposed boundary before it is declared a stable extension API.
+## The contract in one table
 
-## The proposed contract in one table
+The rows below are what shipped in v1, in the proposal's words; the contract page is the
+authority for the exact behaviour and commands.
 
-Everything in this table is proposed, not built, and the proposal is the authority where they differ.
-
-| Proposed element | What the council-amended proposal says |
+| Element | What the council-amended proposal says |
 | --- | --- |
 | Module layout | `module.yaml` manifest, `decks/*.json`, `mentor/brief.md`, optional `scripts/`, README with four required sections, LICENSE, CHANGELOG, own offline tests. No Python, no entry points, nothing core imports |
 | One content format | Drills are StudyLoop's existing `PracticeDeck` JSON plus six additive fields (deck and task `id`, `solution`, `scaffolding`, `mentorNotes`, `verification.cleanupCommand`); kdrill's YAML converts to it, the format does not bend per tool |
@@ -34,11 +33,11 @@ Everything in this table is proposed, not built, and the proposal is the authori
 | The Labs entry | One generic Web UI entry, hidden until a module is installed, listing drills by module; in the MVP every check is triggered explicitly from the CLI |
 | Browser checks | A **Check progress** button is v1.1, not the MVP: it needs an HTTP consent endpoint with same-origin, CSRF, one-use challenge and replay protection |
 | View-only credential | Deferred to v2 **together with** the attempt-scoped grant that would let a check repeat without re-confirming; in v1 the disposable cluster is the boundary and per-phase consent the control |
-| Conformance | A proposed `studyloop module check` command with quotable rule ids (MC001–MC016), run in the module repo's CI and later on every index entry |
+| Conformance | The `studyloop module check` command with quotable rule ids (MC001–MC016), run in the module repo's CI and later on every index entry |
 
-## What exists today, and what needs design
+## The core seams the contract reused, and what each still does not provide
 
-| Existing capability | Boundary to preserve | Not yet provided by that capability |
+| Existing capability | Boundary to preserve | Not provided by that capability |
 | --- | --- | --- |
 | JSON practice decks, `content/schemas.py` | Validate input; retain learner-facing success criteria | The six proposed fields, an arbitrary YAML drill format, or a module installer |
 | `verification.kind: command` | Explicit execution plus approval of the exact command; reload-and-compare protection | Blanket per-deck permission for repeated background checks |

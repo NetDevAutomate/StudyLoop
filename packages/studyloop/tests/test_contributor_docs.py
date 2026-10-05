@@ -35,7 +35,11 @@ def test_cookbook_links_to_real_collected_examples(relative_path: str) -> None:
 
 
 def test_module_guide_preserves_proposal_and_execution_boundaries() -> None:
+    """module-contract v1 shipped (W-review finding 9): the page now says so and names the
+    contract page as the authority; the two execution boundaries it states are unchanged."""
     guide = (ROOT / "docs/contributor-modules.md").read_text(encoding="utf-8")
-    assert "not a shipped plugin API or registry" in guide
+    assert "shipped" in guide and "no registry" in guide
+    assert "not a shipped plugin API or registry" not in guide
+    assert "(module-contract.md)" in guide
     assert "not an automatically executed setup hook" in guide
     assert "Catalogue inclusion should never silently authorize execution" in guide

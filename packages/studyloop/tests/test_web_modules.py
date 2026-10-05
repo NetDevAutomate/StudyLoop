@@ -40,7 +40,19 @@ pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient  # pyright: ignore[reportMissingImports]
 
 from studyloop import session_state
+from studyloop.cli import _drill
 from studyloop.modules import hop, store
+from studyloop.modules.attempt import (
+    Attempt,
+    AttemptStore,
+    DrillIdentity,
+    ExitClass,
+    Phase,
+    PhaseResult,
+)
+from studyloop.modules.attempt import (
+    DeliveryOutcome as RDeliveryOutcome,
+)
 from studyloop.session import active
 from studyloop.session.transport import DeliveryWrite, SessionConfig, Started
 from studyloop.web.app import create_app
@@ -175,12 +187,54 @@ def loopback_client() -> TestClient:
 
 
 @pytest.fixture
-def claimed_session() -> dict[str, Any]:
-    """A web-claimed session recorded in the state file, with its capability token.
+def attempts_root(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
+    """R's attempts root, private to the test; the route and the CLI both read it here."""
+    root = tmp_path / "module-attempts"
+    monkeypatch.setattr(_drill, "attempts_root", lambda: root)
+    return root
 
-    A fresh ``study_session_id`` per test: the route's replay and burst memory is keyed
-    by session, so no test can see another test's envelopes.
+
+DIGEST = "sha256:" + "ab" * 32
+DRILL = DrillIdentity(module_id=MODULE_ID, module_digest=DIGEST, deck_id=DECK_ID, task_id=TASK_ID)
+
+
+def _open_attempt(attempts_root: Path, snapshot: Path | None = None) -> Attempt:
+    """Open an attempt exactly as `studyloop drill` does (R's AttemptStore)."""
+    return AttemptStore(root=attempts_root).open(
+        DRILL, snapshot_dir=snapshot or attempts_root.parent / "snapshot"
+    )
+
+
+def _phase_result(phase: Phase = Phase.CHECK) -> PhaseResult:
+    return PhaseResult(
+        phase=phase,
+        exit_class=ExitClass.PASSED,
+        exit_code=0,
+        stdout="ready\n",
+        stderr="",
+        truncated=False,
+        timed_out=False,
+        duration_seconds=0.1,
+        message="check passed (exit 0)",
+        process_returncode=0,
+    )
+
+
+@pytest.fixture
+def open_attempt(attempts_root: Path) -> Attempt:
+    return _open_attempt(attempts_root)
+
+
+@pytest.fixture
+def claimed_session() -> dict[str, Any]:
+    """A web-claimed session recorded in the state file, with a capability THIS process issued.
+
+    A fresh ``study_session_id`` per test: the route's replay and burst memory is keyed by
+    session, so no test can see another test's envelopes. The token comes from
+    ``modules.issue_capability`` -- a token the process did not mint is a stale one (F6).
     """
+    from studyloop.web.routes import modules as modules_routes
+
     session_id = f"s-{uuid.uuid4().hex[:12]}"
     state = {
         hop.SESSION_KEY: session_id,
@@ -189,9 +243,14 @@ def claimed_session() -> dict[str, Any]:
         "pid": os.getpid(),
         "origin": "study",
         hop.PORT_KEY: 8567,
-        hop.TOKEN_KEY: f"tok-{uuid.uuid4().hex}",
     }
     session_state.write_session_state(state)
+    issue = getattr(modules_routes, "issue_capability", None)
+    if issue is None:  # pre-fix tree (the W-review red run): a raw token in the file
+        state[hop.TOKEN_KEY] = f"tok-{uuid.uuid4().hex}"
+        session_state.write_session_state({hop.TOKEN_KEY: state[hop.TOKEN_KEY]})
+    else:
+        state[hop.TOKEN_KEY] = issue(session_id)
     return state
 
 
@@ -199,7 +258,7 @@ def _envelope(**overrides: Any) -> dict[str, Any]:
     """Exactly lane R's hop body (``hop.ENVELOPE_FIELDS``) for one check result."""
     fields: dict[str, Any] = {
         "module_id": MODULE_ID,
-        "module_digest": "sha256:" + "ab" * 32,
+        "module_digest": DIGEST,
         "deck_id": DECK_ID,
         "task_id": TASK_ID,
         "attempt_id": f"attempt-{uuid.uuid4().hex[:8]}",
@@ -335,6 +394,12 @@ def _web_start_doubles(monkeypatch: pytest.MonkeyPatch):
     return stubs
 
 
+def _cancel_body(started: Any) -> dict[str, Any]:
+    """What a view that STARTED the drill holds: the nonce and the session it was bound to."""
+    data = started.json()
+    return {"drill_nonce": data.get("drill_nonce"), "study_session_id": data["study_session_id"]}
+
+
 def _start_body(**overrides: Any) -> dict[str, Any]:
     body: dict[str, Any] = {
         "module_id": MODULE_ID,
@@ -400,7 +465,10 @@ def test_labs_start_with_the_session_live_attaches_instead_of_starting_a_second(
     first = loopback_client.post("/api/modules/labs/start", json=_start_body())
     assert first.status_code == 201, first.text
 
-    second = loopback_client.post("/api/modules/labs/start", json=_start_body())
+    # The same view re-starts (presents its nonce): the live session is reused.
+    second = loopback_client.post(
+        "/api/modules/labs/start", json={**_start_body(), **_cancel_body(first)}
+    )
 
     assert second.status_code == 200, second.text
     body = second.json()
@@ -417,7 +485,7 @@ def test_labs_cancel_leaves_the_session_untouched(
     started = loopback_client.post("/api/modules/labs/start", json=_start_body())
     assert started.status_code == 201, started.text
 
-    response = loopback_client.post("/api/modules/labs/cancel")
+    response = loopback_client.post("/api/modules/labs/cancel", json=_cancel_body(started))
 
     assert response.status_code == 200, response.text
     assert response.json() == {"cancelled": True, "study_session_id": "study-labs-1"}
@@ -488,11 +556,15 @@ def test_practice_check_names_an_extra_field_with_422(
 
 
 def test_practice_check_with_no_active_session_is_200_no_active_session(
-    loopback_client: TestClient, claimed_session: dict[str, Any]
+    loopback_client: TestClient, claimed_session: dict[str, Any], open_attempt: Attempt
 ) -> None:
     """A delivery that did not land is a 200 whose status says so: the hop already
-    treats every non-2xx as its own ``error``."""
-    response = _post_check(loopback_client, _envelope(), token=claimed_session[hop.TOKEN_KEY])
+    treats every non-2xx as its own ``error``. (F5: the attempt is real and open.)"""
+    response = _post_check(
+        loopback_client,
+        _envelope(attempt_id=open_attempt.attempt_id),
+        token=claimed_session[hop.TOKEN_KEY],
+    )
 
     assert response.status_code == 200, response.text
     body = response.json()
@@ -501,7 +573,10 @@ def test_practice_check_with_no_active_session_is_200_no_active_session(
 
 
 def test_practice_check_delivers_into_the_active_session(
-    loopback_client: TestClient, claimed_session: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+    loopback_client: TestClient,
+    claimed_session: dict[str, Any],
+    open_attempt: Attempt,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     transport = FakeBlockTransport()
     session_id = claimed_session[hop.SESSION_KEY]
@@ -512,7 +587,11 @@ def test_practice_check_delivers_into_the_active_session(
 
     monkeypatch.setattr(active, "current", _current)
 
-    response = _post_check(loopback_client, _envelope(), token=claimed_session[hop.TOKEN_KEY])
+    response = _post_check(
+        loopback_client,
+        _envelope(attempt_id=open_attempt.attempt_id),
+        token=claimed_session[hop.TOKEN_KEY],
+    )
 
     assert response.status_code == 200, response.text
     assert response.json()["status"] == "delivered"
@@ -523,7 +602,10 @@ def test_practice_check_delivers_into_the_active_session(
 
 
 def test_practice_check_token_of_another_session_is_403_when_a_session_is_active(
-    loopback_client: TestClient, claimed_session: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+    loopback_client: TestClient,
+    claimed_session: dict[str, Any],
+    open_attempt: Attempt,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Exact binding (Q2.3): the token names the claimed session; a different live
     session refuses it rather than delivering into the wrong mentor."""
@@ -534,16 +616,20 @@ def test_practice_check_token_of_another_session_is_403_when_a_session_is_active
 
     monkeypatch.setattr(active, "current", _current)
 
-    response = _post_check(loopback_client, _envelope(), token=claimed_session[hop.TOKEN_KEY])
+    response = _post_check(
+        loopback_client,
+        _envelope(attempt_id=open_attempt.attempt_id),
+        token=claimed_session[hop.TOKEN_KEY],
+    )
 
     assert response.status_code == 403, response.text
     assert other.transport.sent == []
 
 
 def test_practice_check_replay_of_the_same_attempt_and_phase_is_409(
-    loopback_client: TestClient, claimed_session: dict[str, Any]
+    loopback_client: TestClient, claimed_session: dict[str, Any], open_attempt: Attempt
 ) -> None:
-    body = _envelope(attempt_id="attempt-replay")
+    body = _envelope(attempt_id=open_attempt.attempt_id)
     token = claimed_session[hop.TOKEN_KEY]
 
     first = _post_check(loopback_client, body, token=token)
@@ -557,13 +643,16 @@ def test_practice_check_replay_of_the_same_attempt_and_phase_is_409(
 
 
 def test_practice_check_sixth_envelope_within_a_minute_is_429(
-    loopback_client: TestClient, claimed_session: dict[str, Any]
+    loopback_client: TestClient, claimed_session: dict[str, Any], attempts_root: Path
 ) -> None:
     token = claimed_session[hop.TOKEN_KEY]
+    attempts = [_open_attempt(attempts_root) for _ in range(6)]
 
     statuses = [
-        _post_check(loopback_client, _envelope(attempt_id=f"burst-{n}"), token=token).status_code
-        for n in range(6)
+        _post_check(
+            loopback_client, _envelope(attempt_id=attempt.attempt_id), token=token
+        ).status_code
+        for attempt in attempts
     ]
 
     assert statuses == [200, 200, 200, 200, 200, 429], statuses
@@ -590,6 +679,248 @@ def test_practice_check_rejects_a_non_object_body_with_400(
     )
 
     assert response.status_code == 400, response.text
+
+
+# ---------------------------------------------------------------------------
+# W-review (council/2026-10-05-review-W-gpt-5.6-sol.md) -- the fixes, red first
+# ---------------------------------------------------------------------------
+
+# -- F4: /api/session/state never hands the capability to a browser client -----------
+
+
+def _assert_no_capability_keys(payload: dict[str, Any]) -> None:
+    leaked = [k for k in payload if k.endswith(("_token", "_secret")) or k == hop.TOKEN_KEY]
+    assert not leaked, f"capability/internal keys reached a browser client: {leaked}"
+
+
+def test_session_state_route_strips_the_capability_token_with_no_slot_held(
+    client: TestClient, claimed_session: dict[str, Any]
+) -> None:
+    """The file-verbatim path (no in-process slot): the file keeps the token, the wire
+    does not."""
+    response = client.get("/api/session/state")
+
+    assert response.status_code == 200, response.text
+    _assert_no_capability_keys(response.json())
+    assert response.json()[hop.SESSION_KEY] == claimed_session[hop.SESSION_KEY]
+    assert session_state.read_session_state()[hop.TOKEN_KEY] == claimed_session[hop.TOKEN_KEY], (
+        "the route must strip the wire, not the file"
+    )
+
+
+def test_session_state_route_strips_the_capability_token_with_the_slot_held(
+    client: TestClient, claimed_session: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The overlay path (the slot is held for the file's session)."""
+    session_id = claimed_session[hop.SESSION_KEY]
+    fake = FakeActiveSession(session_id, FakeBlockTransport(), _config(session_id))
+
+    async def _current() -> Any:
+        return fake
+
+    monkeypatch.setattr(active, "current", _current)
+
+    response = client.get("/api/session/state")
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body[hop.SESSION_KEY] == session_id and body["reattach_url"]
+    _assert_no_capability_keys(body)
+
+
+# -- F6: the capability is per process lifetime -----------------------------------------
+
+
+def test_labs_start_mints_a_fresh_token_each_time_and_the_old_one_is_403(
+    loopback_client: TestClient,
+    installed: store.LockEntry,
+    _web_start_doubles,
+    attempts_root: Path,
+) -> None:
+    first = loopback_client.post("/api/modules/labs/start", json=_start_body())
+    assert first.status_code == 201, first.text
+    old_token = session_state.read_session_state()[hop.TOKEN_KEY]
+
+    second = loopback_client.post(
+        "/api/modules/labs/start", json={**_start_body(), **_cancel_body(first)}
+    )
+    assert second.status_code == 200, second.text
+    new_token = session_state.read_session_state()[hop.TOKEN_KEY]
+
+    assert new_token and new_token != old_token, "a (re)start mints a fresh capability"
+    attempt = _open_attempt(attempts_root)
+    stale = _post_check(loopback_client, _envelope(attempt_id=attempt.attempt_id), token=old_token)
+    assert stale.status_code == 403, stale.text
+    fresh = _post_check(loopback_client, _envelope(attempt_id=attempt.attempt_id), token=new_token)
+    assert fresh.status_code == 200, fresh.text
+
+
+def test_a_token_minted_before_a_process_restart_is_403_and_rotated(
+    loopback_client: TestClient, claimed_session: dict[str, Any], open_attempt: Attempt
+) -> None:
+    """Simulated restart: the process memory is gone, the state file (and its token) is not.
+    The old token is refused and the file now carries a token this process minted, so the
+    CLI's NEXT hop (it re-reads the file every time) succeeds."""
+    from studyloop.web.routes import modules as modules_routes
+
+    old_token = claimed_session[hop.TOKEN_KEY]
+    modules_routes.reset_practice_check_guards()  # what a restart does to process memory
+
+    stale = _post_check(loopback_client, _envelope(attempt_id=open_attempt.attempt_id), old_token)
+
+    assert stale.status_code == 403, stale.text
+    assert "restart" in stale.json()["error"] or "stale" in stale.json()["error"]
+    rotated = session_state.read_session_state()[hop.TOKEN_KEY]
+    assert rotated and rotated != old_token, "the stale token was rotated, not kept"
+    retry = _post_check(loopback_client, _envelope(attempt_id=open_attempt.attempt_id), rotated)
+    assert retry.status_code == 200, retry.text
+
+
+# -- F5: the attempt must exist in R's store, open, with this phase unrecorded ----------
+
+
+def test_practice_check_for_an_unknown_attempt_is_404(
+    loopback_client: TestClient, claimed_session: dict[str, Any], attempts_root: Path
+) -> None:
+    response = _post_check(
+        loopback_client, _envelope(attempt_id="never-opened"), claimed_session[hop.TOKEN_KEY]
+    )
+
+    assert response.status_code == 404, response.text
+    assert "never-opened" in response.json()["error"]
+
+
+def test_practice_check_for_an_attempt_of_another_digest_is_404(
+    loopback_client: TestClient, claimed_session: dict[str, Any], open_attempt: Attempt
+) -> None:
+    """Exact identity: the sidecar's drill (module, digest, deck, task) must be the
+    envelope's."""
+    response = _post_check(
+        loopback_client,
+        _envelope(attempt_id=open_attempt.attempt_id, module_digest="sha256:" + "cd" * 32),
+        claimed_session[hop.TOKEN_KEY],
+    )
+
+    assert response.status_code == 404, response.text
+
+
+def test_practice_check_for_a_phase_already_in_the_sidecar_is_409(
+    loopback_client: TestClient,
+    claimed_session: dict[str, Any],
+    open_attempt: Attempt,
+    attempts_root: Path,
+) -> None:
+    """The CLI records the phase in the sidecar right after the hop; a later hop for the
+    same phase is a replay whatever the process remembers."""
+    AttemptStore(root=attempts_root).record_evidence(
+        open_attempt, _phase_result(Phase.CHECK), delivery=RDeliveryOutcome("delivered")
+    )
+
+    replay = _post_check(
+        loopback_client,
+        _envelope(attempt_id=open_attempt.attempt_id),
+        claimed_session[hop.TOKEN_KEY],
+    )
+    cleanup = _post_check(
+        loopback_client,
+        _envelope(attempt_id=open_attempt.attempt_id, phase="cleanup"),
+        claimed_session[hop.TOKEN_KEY],
+    )
+
+    assert replay.status_code == 409, replay.text
+    assert replay.json()["status"] == "duplicate"
+    assert cleanup.status_code == 200, "an unrecorded phase of the same attempt is delivered"
+
+
+def test_practice_check_for_a_closed_attempt_is_409(
+    loopback_client: TestClient,
+    claimed_session: dict[str, Any],
+    open_attempt: Attempt,
+    attempts_root: Path,
+) -> None:
+    AttemptStore(root=attempts_root).close(open_attempt, reason="cleanup ran")
+
+    response = _post_check(
+        loopback_client,
+        _envelope(attempt_id=open_attempt.attempt_id),
+        claimed_session[hop.TOKEN_KEY],
+    )
+
+    assert response.status_code == 409, response.text
+    assert response.json()["status"] == "attempt_closed"
+
+
+# -- F7: Labs mutations are bound to the view that started the drill -------------------
+
+
+def test_labs_start_returns_a_nonce_and_cancel_without_it_is_403(
+    loopback_client: TestClient, installed: store.LockEntry, _web_start_doubles
+) -> None:
+    started = loopback_client.post("/api/modules/labs/start", json=_start_body())
+    assert started.status_code == 201, started.text
+    body = started.json()
+    assert "drill_nonce" in body, "start returns no nonce"
+    assert body["drill_nonce"] and len(body["drill_nonce"]) >= 32
+
+    no_nonce = loopback_client.post(
+        "/api/modules/labs/cancel", json={"study_session_id": body["study_session_id"]}
+    )
+    wrong_session = loopback_client.post(
+        "/api/modules/labs/cancel",
+        json={"drill_nonce": body["drill_nonce"], "study_session_id": "study-other"},
+    )
+    wrong_nonce = loopback_client.post(
+        "/api/modules/labs/cancel",
+        json={"drill_nonce": "x" * 43, "study_session_id": body["study_session_id"]},
+    )
+
+    assert (no_nonce.status_code, wrong_session.status_code, wrong_nonce.status_code) == (
+        403,
+        403,
+        403,
+    ), (no_nonce.text, wrong_session.text, wrong_nonce.text)
+    assert session_state.read_session_state()["labs_drill"]["ref"] == DRILL_REF, "still live"
+
+
+def test_another_view_cannot_cancel_or_replace_the_drill_it_did_not_start(
+    loopback_client: TestClient, installed: store.LockEntry, _web_start_doubles
+) -> None:
+    """Two browser 'views' (two clients) against one process: only the one holding the
+    nonce can cancel or replace the live drill."""
+    other_view = TestClient(create_app(study_dirs=[]), client=LOOPBACK)
+    started = loopback_client.post("/api/modules/labs/start", json=_start_body())
+    assert started.status_code == 201, started.text
+
+    cancel = other_view.post(
+        "/api/modules/labs/cancel", json={"study_session_id": started.json()["study_session_id"]}
+    )
+    replace = other_view.post("/api/modules/labs/start", json=_start_body(deck_id=DECK_ID))
+
+    assert cancel.status_code == 403, cancel.text
+    assert replace.status_code == 403, replace.text
+    assert session_state.read_session_state()["labs_drill"]["ref"] == DRILL_REF
+
+    # The starting view, presenting its nonce, can replace (a new nonce) and then cancel.
+    replaced = loopback_client.post(
+        "/api/modules/labs/start", json={**_start_body(), **_cancel_body(started)}
+    )
+    assert replaced.status_code == 200, replaced.text
+    assert replaced.json()["drill_nonce"] != started.json()["drill_nonce"]
+    stale_cancel = loopback_client.post("/api/modules/labs/cancel", json=_cancel_body(started))
+    assert stale_cancel.status_code == 403, "the superseded nonce is dead"
+    cancelled = loopback_client.post("/api/modules/labs/cancel", json=_cancel_body(replaced))
+    assert cancelled.status_code == 200, cancelled.text
+    assert session_state.read_session_state().get("labs_drill") is None
+
+
+def test_cancel_with_no_live_drill_is_a_204_style_noop_for_the_session_owner(
+    loopback_client: TestClient, installed: store.LockEntry, _web_start_doubles
+) -> None:
+    """Nothing is live: there is no nonce to present, nothing to protect, nothing to do."""
+    response = loopback_client.post("/api/modules/labs/cancel", json={})
+
+    assert response.status_code == 200, response.text
+    assert response.json()["cancelled"] is False
 
 
 # ---------------------------------------------------------------------------

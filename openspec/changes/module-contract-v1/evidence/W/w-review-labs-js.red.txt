@@ -1,0 +1,82 @@
+node --test packages/studyloop/tests/js/module-labs.test.js
+# worktree: module-web-labs  HEAD: f6f1fb65 (W-review: nonce on cancel/replace, empty-Labs redirect) 2026-10-05T01:39:25Z
+✖ a 403 on cancel (another view owns the drill) is shown and the drill stays (0.096334ms)
+✖ init on the labs view with no module installed navigates to today (0.089916ms)
+✔ init on the labs view with a module installed stays put (0.041167ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 18
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 42.49225
+
+✖ failing tests:
+
+test at packages/studyloop/tests/js/module-labs.test.js:295:1
+✖ cancel presents the nonce and the session id the start returned (0.549416ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+  + null
+  - {
+  -   drill_nonce: 'nonce-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+  -   study_session_id: 'study-1'
+  - }
+
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: { drill_nonce: 'nonce-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', study_session_id: 'study-1' },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at packages/studyloop/tests/js/module-labs.test.js:311:1
+✖ a replacing start (another drill while one is live) carries the live nonce and session (0.199333ms)
+  AssertionError [ERR_ASSERTION]: the replace presents the live nonce
+  + actual - expected
+
+  + undefined
+  - 'nonce-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: 'nonce-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at packages/studyloop/tests/js/module-labs.test.js:334:1
+✖ a 403 on cancel (another view owns the drill) is shown and the drill stays (0.096334ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /did not start it/. Input:
+
+  ''
+
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '',
+    expected: /did not start it/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at packages/studyloop/tests/js/module-labs.test.js:348:1
+✖ init on the labs view with no module installed navigates to today (0.089916ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+  + []
+  - [
+  -   'today'
+  - ]
+
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [],
+    expected: [ 'today' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

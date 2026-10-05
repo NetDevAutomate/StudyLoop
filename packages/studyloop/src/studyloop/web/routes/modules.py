@@ -48,8 +48,10 @@ import hmac
 import ipaddress
 import json
 import logging
+import secrets
 import time
 from collections import deque
+from dataclasses import asdict
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -84,6 +86,7 @@ __all__ = [
     "contains_mentor_only_fields",
     "drill_view",
     "ensure_practice_check_capability",
+    "issue_capability",
     "labs_listing",
     "reset_practice_check_guards",
     "router",
@@ -244,25 +247,34 @@ def _server_port(request: Request) -> int | None:
     return None
 
 
-def ensure_practice_check_capability(request: Request) -> None:
-    """Make sure the state file carries ``practice_check_token`` and ``web_port``.
+#: Capabilities THIS process minted, per session (W-review finding 6). A token is valid
+#: only for the process lifetime that minted it: the replay/burst guards below live in the
+#: same memory, so a restart that forgets them also forgets every token -- the state file's
+#: surviving token is then stale (403) and is rotated on first contact, and the CLI, which
+#: re-reads the file for every hop, picks the fresh one up unaided.
+_issued: dict[str, str] = {}
 
-    Minting is the orchestrator's (``mint_practice_check_token``); this only fills what is
-    missing, so a token ``studyloop study`` wrote at launch is kept. Nothing is returned:
-    the token is for ``studyloop drill`` to read from the owner-only file, never for a
-    browser response.
-    """
+
+def issue_capability(session_id: str) -> str:
+    """Mint a fresh token for ``session_id``, write it to the owner-only state file and
+    remember it as this process's. Overwrites whatever token the file held."""
     from studyloop.session.orchestrator import mint_practice_check_token
 
-    state = session_state.read_session_state()
-    updates: dict[str, Any] = {}
-    if not state.get(hop.TOKEN_KEY):
-        updates[hop.TOKEN_KEY] = mint_practice_check_token()
+    token = mint_practice_check_token()
+    _issued[session_id] = token
+    session_state.write_session_state({hop.TOKEN_KEY: token})
+    return token
+
+
+def ensure_practice_check_capability(request: Request, session_id: str) -> None:
+    """A Labs start (re)binds the capability: a FRESH token (finding 6 ruling -- the web
+    process mints on every claim/start it performs) and the port it is presented to.
+    Nothing is returned: the token is for ``studyloop drill`` to read from the owner-only
+    file, never for a browser response."""
+    issue_capability(session_id)
     port = _server_port(request)
-    if port is not None and state.get(hop.PORT_KEY) != port:
-        updates[hop.PORT_KEY] = port
-    if updates:
-        session_state.write_session_state(updates)
+    if port is not None and session_state.read_session_state().get(hop.PORT_KEY) != port:
+        session_state.write_session_state({hop.PORT_KEY: port})
 
 
 # ---------------------------------------------------------------------------
@@ -271,7 +283,11 @@ def ensure_practice_check_capability(request: Request) -> None:
 
 
 class LabsStartRequest(BaseModel):
-    """``POST /modules/labs/start``: which drill, and how to start the session if needed."""
+    """``POST /modules/labs/start``: which drill, and how to start the session if needed.
+
+    ``drill_nonce`` + ``study_session_id`` are required only to REPLACE a drill that is
+    already live (finding 7): the view that started it holds them.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -281,13 +297,34 @@ class LabsStartRequest(BaseModel):
     energy: int = Field(default=5, ge=1, le=10)
     agent: str | None = None
     transport: Literal["pty", "acp"] | None = None
+    drill_nonce: str | None = None
+    study_session_id: str | None = None
+
+
+class LabsCancelRequest(BaseModel):
+    """``POST /modules/labs/cancel``: the nonce the start returned and the session it bound."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    drill_nonce: str | None = None
+    study_session_id: str | None = None
+
+
+#: The live drill's owner binding (finding 7): ``(session_id, drill ref) -> nonce``. One live
+#: drill at a time (one claimed session), so one entry; in process memory on purpose -- it is
+#: a view's handle, not learner state, and dies with the process like the capability above.
+_live_nonce: dict[tuple[str, str], str] = {}
 
 
 def _labs_topic(drill: dict[str, Any]) -> str:
     return f"Lab: {drill['ref']}"
 
 
-def _record_live_drill(drill: dict[str, Any]) -> None:
+def _record_live_drill(drill: dict[str, Any], session_id: str) -> str:
+    """Record the drill in the state file and bind a fresh nonce to (session, drill)."""
+    nonce = secrets.token_urlsafe(32)
+    _live_nonce.clear()
+    _live_nonce[(session_id, drill["ref"])] = nonce
     session_state.write_session_state(
         {
             LABS_DRILL_KEY: {
@@ -298,6 +335,43 @@ def _record_live_drill(drill: dict[str, Any]) -> None:
                 "started_at": datetime.now(UTC).isoformat(),
             }
         }
+    )
+    return nonce
+
+
+def _presents_live_nonce(session_id: object, nonce: object) -> bool:
+    """True when ``(session_id, nonce)`` is the live drill's binding (constant-time)."""
+    if not isinstance(session_id, str) or not isinstance(nonce, str) or not nonce:
+        return False
+    for (bound_session, _ref), bound_nonce in _live_nonce.items():
+        if bound_session == session_id and hmac.compare_digest(
+            nonce.encode("utf-8"), bound_nonce.encode("utf-8")
+        ):
+            return True
+    return False
+
+
+def _live_drill_guard(
+    session_id: str, nonce: object, presented_session: object
+) -> JSONResponse | None:
+    """403 when a drill is live and the caller does not hold its binding.
+
+    A live drill with NO in-memory binding (this process restarted since it was started) has
+    no owner left to protect; the next mutation takes it over.
+    """
+    live = session_state.read_session_state().get(LABS_DRILL_KEY)
+    if not isinstance(live, dict) or not _live_nonce:
+        return None
+    if _presents_live_nonce(presented_session, nonce) and presented_session == session_id:
+        return None
+    return JSONResponse(
+        {
+            "error": (
+                f"a drill is live ({live.get('ref')}) and this view did not start it; "
+                "cancel it from the view that did, or end the session"
+            )
+        },
+        status_code=403,
     )
 
 
@@ -332,8 +406,13 @@ async def start_lab(body: LabsStartRequest, request: Request) -> JSONResponse:
                 },
                 status_code=409,
             )
-        ensure_practice_check_capability(request)
-        _record_live_drill(drill)
+        refused = _live_drill_guard(
+            current.study_session_id, body.drill_nonce, body.study_session_id
+        )
+        if refused is not None:
+            return refused
+        ensure_practice_check_capability(request, current.study_session_id)
+        nonce = _record_live_drill(drill, current.study_session_id)
         return JSONResponse(
             {
                 "attached": True,
@@ -342,6 +421,7 @@ async def start_lab(body: LabsStartRequest, request: Request) -> JSONResponse:
                 "transport": state.get("transport") if same_file else None,
                 "reattach_url": f"/api/session/ws?study_session_id={current.study_session_id}",
                 "drill": drill,
+                "drill_nonce": nonce,
             },
             status_code=200,
         )
@@ -362,22 +442,33 @@ async def start_lab(body: LabsStartRequest, request: Request) -> JSONResponse:
     response = await start_session(start_body, request)
     if response.status_code != 201:
         return response
-    ensure_practice_check_capability(request)
-    _record_live_drill(drill)
     payload = json.loads(bytes(response.body))
-    payload.update({"attached": False, "drill": drill})
+    session_id = str(payload["study_session_id"])
+    ensure_practice_check_capability(request, session_id)
+    nonce = _record_live_drill(drill, session_id)
+    payload.update({"attached": False, "drill": drill, "drill_nonce": nonce})
     return JSONResponse(payload, status_code=201)
 
 
 @router.post("/modules/labs/cancel")
-async def cancel_lab() -> dict[str, Any]:
-    """Abandon the drill started from Labs. The session stays as it was; nothing ran."""
+async def cancel_lab(body: LabsCancelRequest | None = None) -> JSONResponse:
+    """Abandon the drill started from Labs. The session stays as it was; nothing ran.
+
+    Only the view holding the start's nonce (for the session it was bound to) may cancel a
+    live drill (finding 7); with nothing live there is nothing to protect and nothing to do.
+    """
+    body = body or LabsCancelRequest()
     state = session_state.read_session_state()
-    if state.get(LABS_DRILL_KEY) is not None:
-        session_state.write_session_state({LABS_DRILL_KEY: None})
     current = await active.current()
     session_id = current.study_session_id if current is not None else state.get(hop.SESSION_KEY)
-    return {"cancelled": True, "study_session_id": session_id}
+    if state.get(LABS_DRILL_KEY) is None:
+        return JSONResponse({"cancelled": False, "study_session_id": session_id})
+    refused = _live_drill_guard(str(session_id or ""), body.drill_nonce, body.study_session_id)
+    if refused is not None:
+        return refused
+    _live_nonce.clear()
+    session_state.write_session_state({LABS_DRILL_KEY: None})
+    return JSONResponse({"cancelled": True, "study_session_id": session_id})
 
 
 # ---------------------------------------------------------------------------
@@ -387,16 +478,21 @@ async def cancel_lab() -> dict[str, Any]:
 #: ``hop.ROUTE`` is the full path the CLI posts to; the router is mounted under ``/api``.
 _ROUTE_UNDER_API = hop.ROUTE.removeprefix("/api")
 
-#: Per-session replay memory and burst window. One claimed session at a time, so the
-#: memory is pruned to the session that last posted (``_remember``).
+#: Per-session replay memory and burst window -- process memory, by design: a token is only
+#: valid for the process that minted it (``_issued``), so these only need to hold for one
+#: process lifetime (finding 6). The attempt sidecar (R's store) is the durable half: a phase
+#: already recorded there is refused whatever this process remembers (finding 5).
 _seen: dict[str, set[tuple[str, str]]] = {}
 _bursts: dict[str, deque[float]] = {}
 
 
 def reset_practice_check_guards() -> None:
-    """Forget every session's replay and burst memory (tests)."""
+    """Forget everything this process holds -- capabilities, nonces, replay and burst memory.
+    Tests use it to simulate a restart."""
     _seen.clear()
     _bursts.clear()
+    _issued.clear()
+    _live_nonce.clear()
 
 
 def _is_loopback(request: Request) -> bool:
@@ -430,6 +526,58 @@ def _remember(session_id: str, key: tuple[str, str], now: float) -> None:
     _bursts.setdefault(session_id, deque()).append(now)
 
 
+def _attempt_check(envelope: Any) -> JSONResponse | None:
+    """Finding 5: the attempt must be one R's ``AttemptStore`` opened for exactly this drill
+    identity, still open, with this phase not yet recorded. Read-only on the sidecar."""
+    from studyloop.cli import _drill
+    from studyloop.modules.attempt import AttemptStore, DrillIdentity, SidecarError
+
+    drill = DrillIdentity(
+        module_id=envelope.module_id,
+        module_digest=envelope.module_digest,
+        deck_id=envelope.deck_id,
+        task_id=envelope.task_id,
+    )
+    # R's own layout and reader (lstat regular-file check, O_NOFOLLOW): the one sidecar
+    # discipline, read-only here. Private names, deliberately not duplicated.
+    store_ = AttemptStore(root=_drill.attempts_root())
+    record_path = store_._drill_dir(drill) / f"{envelope.attempt_id}.json"
+    try:
+        record = store_._read(record_path)
+    except SidecarError as exc:
+        return JSONResponse({"error": f"attempt record refused: {exc}"}, status_code=404)
+    if record is None or record.get("drill") != asdict(drill):
+        return JSONResponse(
+            {
+                "error": (
+                    f"no open attempt {envelope.attempt_id} for {drill.module_id}/{drill.drill_id}"
+                )
+            },
+            status_code=404,
+        )
+    if record.get("closed_at") is not None:
+        return JSONResponse(
+            {
+                "status": "attempt_closed",
+                "reason": f"attempt {envelope.attempt_id} was closed: {record.get('close_reason')}",
+            },
+            status_code=409,
+        )
+    recorded = {entry.get("phase") for entry in record.get("phases", []) if isinstance(entry, dict)}
+    if envelope.phase in recorded:
+        return JSONResponse(
+            {
+                "status": "duplicate",
+                "reason": (
+                    f"{envelope.phase} of attempt {envelope.attempt_id} is already recorded on "
+                    "the attempt"
+                ),
+            },
+            status_code=409,
+        )
+    return None
+
+
 @router.post(_ROUTE_UNDER_API)
 async def practice_check(request: Request) -> JSONResponse:
     """Deliver one typed check result to the mentor in this process (M0 Q2 items 1-5)."""
@@ -445,15 +593,27 @@ async def practice_check(request: Request) -> JSONResponse:
         )
     state = session_state.read_session_state()
     session_id = state.get(hop.SESSION_KEY)
-    if (
-        not session_id
-        or state.get("mode") == "ended"
-        or not _token_matches(presented, state.get(hop.TOKEN_KEY))
-    ):
+    if not session_id or state.get("mode") == "ended":
+        return JSONResponse({"error": "no claimed session"}, status_code=403)
+    session_id = str(session_id)
+    file_token = state.get(hop.TOKEN_KEY)
+    if isinstance(file_token, str) and file_token and _issued.get(session_id) != file_token:
+        # A token this process never minted: it survived a restart (or another process wrote
+        # it). Rotate so the CLI's next hop reads a live one, and refuse this one (finding 6).
+        issue_capability(session_id)
+        return JSONResponse(
+            {
+                "error": (
+                    "stale capability token: the web process restarted since it was minted; "
+                    "the token was rotated -- run the phase again (or start the drill from Labs)"
+                )
+            },
+            status_code=403,
+        )
+    if not _token_matches(presented, file_token):
         return JSONResponse(
             {"error": "the token does not match the claimed session"}, status_code=403
         )
-    session_id = str(session_id)
     current = await active.current()
     if current is not None and current.study_session_id != session_id:
         return JSONResponse(
@@ -471,6 +631,9 @@ async def practice_check(request: Request) -> JSONResponse:
     except EnvelopeValidationError as exc:
         return JSONResponse({"error": str(exc)}, status_code=422)
 
+    refused = _attempt_check(envelope)
+    if refused is not None:
+        return refused
     key = (envelope.attempt_id, envelope.phase)
     if key in _seen.get(session_id, set()):
         return JSONResponse(

@@ -1,5 +1,6 @@
 env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/e2e/test_module_labs_journey.py -m e2e -q -p no:cacheprovider
 # throwaway worktree at bfd156bb (W1: no routes, no Labs, module/drill unregistered) -- the journey file copied in; 2026-10-05T00:36:11Z
+# CLASSIFICATION (W-review finding 2): phases 1-8 are red-first evidence (8 failed). `test_phase9_the_server_outlived_the_journey` is CHARACTERISATION -- a liveness guard, green by construction -- and is not claimed as a red.
 .venv/lib/python3.12/site-packages/playwright/_impl/_page.py:1110: in wait_for_function
     return await self._main_frame.wait_for_function(**locals_to_params(locals()))
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

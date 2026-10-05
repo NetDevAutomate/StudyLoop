@@ -1,0 +1,17 @@
+env -u VIRTUAL_ENV uv run pytest "packages/studyloop/tests/test_contributor_guide_drift.py::test_module_pages_stay_proposals[contributor-modules.md]" "packages/studyloop/tests/test_contributor_docs.py::test_module_guide_preserves_proposal_and_execution_boundaries" -q -p no:cacheprovider
+# worktree: module-web-labs  HEAD: f6f1fb65 (W-review F9: pins updated to the shipped state, page not yet rewritten)  2026-10-05T01:42:59Z
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+___________ test_module_pages_stay_proposals[contributor-modules.md] ___________
+packages/studyloop/tests/test_contributor_guide_drift.py:462: in test_module_pages_stay_proposals
+    assert not problems, f"{stem}.md: " + "; ".join(problems)
+E   AssertionError: contributor-modules.md: no link to module-contract.md (the authority)
+E   assert not ['no link to module-contract.md (the authority)']
+________ test_module_guide_preserves_proposal_and_execution_boundaries _________
+packages/studyloop/tests/test_contributor_docs.py:41: in test_module_guide_preserves_proposal_and_execution_boundaries
+    assert "shipped" in guide and "no registry" in guide
+E   AssertionError: assert ('shipped' in '# Optional topic modules: proposal and contribution boundaries\n<!-- facts: F11 -->\n\n**Design proposal, not a shipp...ntract\nbefore promising an index or writing a broad loader: keeping the core small keeps contributions sustainable.\n' and 'no registry' in '# Optional topic modules: proposal and contribution boundaries\n<!-- facts: F11 -->\n\n**Design proposal, not a shipp...ntract\nbefore promising an index or writing a broad loader: keeping the core small keeps contributions sustainable.\n')
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_contributor_guide_drift.py::test_module_pages_stay_proposals[contributor-modules.md]
+FAILED packages/studyloop/tests/test_contributor_docs.py::test_module_guide_preserves_proposal_and_execution_boundaries
+2 failed in 0.36s

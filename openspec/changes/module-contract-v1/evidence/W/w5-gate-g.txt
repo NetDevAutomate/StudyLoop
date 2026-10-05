@@ -1,4 +1,5 @@
 # W5 gate (brief 'Gate before you report'); worktree module-web-labs b22e213c+W5 uncommitted  2026-10-05T00:56:34Z
+# RED-FIRST RECORD (W-review finding 3): docs/module-contract.md -- reproducible pre-change red in w5-module-contract-page.red.txt (the drift tuples name the page, the page is absent). EXEMPT, no meaningful red exists: tests/acceptance/uat/data/module_rubric_v1.md + module_rubric_registry.json (data; its loader test in test_web_modules.py is a mechanism check), tests/acceptance/test_module_kdrill_live.py (skip-gated live proof, DoD item 7 -- the owner's K1-K2 run is its first execution), CHANGELOG/cli-reference/web-ui-guide prose (pinned by the existing drift tests, no behaviour).
 $ env -u VIRTUAL_ENV just test-web && just test-js
 ============================= 145 passed in 9.22s ==============================
 ℹ tests 184

@@ -271,6 +271,12 @@ lanes:
     - packages/studyloop/src/studyloop/session/orchestrator.py  # mint_practice_check_token + its one call (W2)
     # The docs lease incl. S3 (docs/module-contract.md) passed to W5 -- W2 brief, "W5".
     - mkdocs.yml
+    # W-review follow-up (council/2026-10-05-review-W-gpt-5.6-sol.md; coordinator grants for
+    # this pass only): finding 4 -- strip capabilities from /api/session/state; finding 10 --
+    # `labs` in the nav hash allowlist; finding 8 -- the `target=` wiring in _drill.py (the
+    # _drill.py line above already covers that file).
+    - packages/studyloop/src/studyloop/web/routes/session/_dashboard.py  # W-review F4 only
+    - packages/studyloop/src/studyloop/web/static/js/nav-and-panel-stores.js  # W-review F10 only
 
 # Explicit branch -> lane key for lanes whose branch name carries no lane id.
 # Consulted BEFORE the legacy `lane/m<n>-<slug>` pattern (tests/_lane_ownership.py,

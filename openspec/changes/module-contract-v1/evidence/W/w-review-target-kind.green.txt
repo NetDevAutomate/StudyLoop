@@ -1,0 +1,4 @@
+env -u VIRTUAL_ENV uv run pytest "packages/studyloop/tests/test_module_lane_seams.py::test_module_target_kind_is_read_from_the_installed_manifest" "packages/studyloop/tests/test_module_lane_seams.py::test_a_kubeconfig_context_module_records_its_target_and_is_refused_before_spawn" -q -p no:cacheprovider
+# worktree: module-web-labs  HEAD: f6f1fb65+W-review fixes (uncommitted)  2026-10-05T01:48:10Z
+..                                                                       [100%]
+2 passed in 0.33s

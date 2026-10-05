@@ -447,6 +447,16 @@ def test_module_pages_stay_proposals(stem: str, group: str, cap: int) -> None:
         claims = [p for p in ("is available", "install it", "the index lists") if p in text.lower()]
         if claims:
             problems.append(f"present-tense claims about the index: {claims}")
+    elif stem == "contributor-modules":
+        # module-contract v1 shipped (W-review finding 9): the page is design history and
+        # boundaries; the first paragraph says the contract is shipped, says there is no
+        # registry, and names docs/module-contract.md as the authority.
+        if "is shipped" not in first:
+            problems.append('"is shipped" missing from the first paragraph')
+        if "no registry" not in first:
+            problems.append('"no registry" missing from the first paragraph')
+        if not any(t.startswith("module-contract.md") for t in _LINK_RE.findall(text)):
+            problems.append("no link to module-contract.md (the authority)")
     elif "proposal" not in first:
         problems.append('"proposal" missing from the first paragraph')
     assert not problems, f"{stem}.md: " + "; ".join(problems)

@@ -20,12 +20,13 @@ a learner's lab. Every phase is run through the real CLI with the consent typed 
 the tier's scratch environment (its own HOME, state dir, config and lockfile); the real
 ``~/.kube`` is never written because the module's scripts receive a scratch HOME.
 
-Contract gap, recorded for the coordinator (W5): ``cli/_drill.py`` opens every attempt with
-``target=workdir`` and nothing in core creates the §5.5 disposable cluster or writes the
-one-context ``KUBECONFIG`` (``runner.build_environment`` refuses a ``kubeconfig-context``
-attempt without one). A converted kdrill module therefore manages its own kind cluster from its
-``scripts/`` through the declared ``kind``/``kubectl`` prerequisites, and this proof asserts the
-blast radius that matters -- the sentinel survives -- rather than a core-written kubeconfig.
+Contract gap, recorded for the coordinator (W5, narrowed by the W-review follow-up): the
+attempt now records the manifest's ``target.kind`` (``cli/_drill.py``), but nothing in core yet
+creates the §5.5 disposable cluster or writes the one-context ``KUBECONFIG`` -- that is lane K0
+-- and ``runner.build_environment`` refuses a ``kubeconfig-context`` attempt without one. Until
+K0 lands this proof can only run a module whose manifest declares ``target.kind: workdir`` and
+manages its own kind cluster from ``scripts/`` through the declared ``kind``/``kubectl``
+prerequisites; it asserts the blast radius that matters -- the sentinel survives.
 """
 
 from __future__ import annotations

@@ -97,7 +97,9 @@ criterion (MC010). Secret-looking strings anywhere in the module fail MC009.
 - `setup`, `check` and `cleanup` are each one argv, run with `shell=False` in a per-attempt
   directory with an environment built from scratch: a scratch `HOME`, a minimal `PATH` plus the
   declared prerequisites, `STUDYLOOP_MODULE_ID`, `STUDYLOOP_DRILL_ID`, `STUDYLOOP_ATTEMPT_ID`
-  and -- for a cluster target -- `KUBECONFIG` naming exactly one context.
+  and -- for a cluster target -- `KUBECONFIG` naming exactly one context. The attempt records
+  the manifest's `target.kind`; creating that disposable cluster is not wired yet, so a
+  `kubeconfig-context` drill is refused after consent and before anything runs.
 - Exit codes: `check` 0 passed, 1 failed (task not complete), 2 or more could not run; a non-zero
   `setup` is an error; a failing `cleanup` is shown and the attempt still closes. A timeout is
   an error, never a fail; `timeoutSeconds` applies per phase.

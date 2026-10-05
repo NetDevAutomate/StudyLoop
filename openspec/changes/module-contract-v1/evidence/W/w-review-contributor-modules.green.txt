@@ -1,0 +1,4 @@
+env -u VIRTUAL_ENV uv run pytest "packages/studyloop/tests/test_contributor_guide_drift.py::test_module_pages_stay_proposals[contributor-modules.md]" "packages/studyloop/tests/test_contributor_docs.py::test_module_guide_preserves_proposal_and_execution_boundaries" -q -p no:cacheprovider
+# worktree: module-web-labs  HEAD: f6f1fb65+W-review fixes (uncommitted)  2026-10-05T01:48:10Z
+..                                                                       [100%]
+2 passed in 0.32s

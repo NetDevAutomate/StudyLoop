@@ -175,6 +175,7 @@ const START_201 = {
     transport: 'pty',
     ws_url: '/api/session/ws?study_session_id=study-1',
     attached: false,
+    drill_nonce: 'nonce-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     drill: { module_id: 'echo-drills', deck_id: 'echo-basics', task_id: 'echo-01', ref: TASK.ref,
       prompt: TASK.prompt, successCriteria: TASK.successCriteria, phases: ['check'], commands: TASK.commands },
   },
@@ -287,4 +288,77 @@ test('the view restores a live drill from storage on init and reads the agents f
   assert.equal(store.available, true);
   assert.equal(view.activeDrill.ref, TASK.ref);
   assert.equal(view.agent, 'codex', 'the first available agent is pre-selected, as in the picker');
+});
+
+/* ---- W-review finding 7: mutations carry the start's nonce and session ---------- */
+
+test('cancel presents the nonce and the session id the start returned', async () => {
+  const { view, calls } = viewWith({
+    'POST /api/modules/labs/start': START_201,
+    'POST /api/modules/labs/cancel': { body: { cancelled: true, study_session_id: 'study-1' } },
+  });
+  view.agent = 'codex';
+  await view.startDrill(MODULE, TASK);
+  await view.cancelDrill();
+  const cancel = calls.find((c) => c.key === 'POST /api/modules/labs/cancel');
+  assert.ok(cancel, 'no cancel issued');
+  assert.deepEqual(cancel.body, {
+    drill_nonce: START_201.body.drill_nonce,
+    study_session_id: 'study-1',
+  });
+});
+
+test('a replacing start (another drill while one is live) carries the live nonce and session', async () => {
+  const second = { ...START_201, status: 200, body: { ...START_201.body, attached: true, drill_nonce: 'nonce-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' } };
+  let n = 0;
+  const calls = [];
+  const fetch = async (url, init = {}) => {
+    const method = (init.method || 'GET').toUpperCase();
+    calls.push({ key: `${method} ${url}`, body: init.body ? JSON.parse(init.body) : null });
+    const route = n++ === 0 ? START_201 : second;
+    return { ok: true, status: route.status, text: async () => JSON.stringify(route.body) };
+  };
+  const view = labsView({ fetch, store: labsStore({ fetch }), navigate: () => {}, reload: () => {}, storage: null });
+  view.agent = 'codex';
+  await view.startDrill(MODULE, TASK);
+  const other = { ...TASK, id: 'echo-02', ref: 'echo-drills/echo-basics/echo-02' };
+  await view.startDrill(MODULE, other);
+  const starts = calls.filter((c) => c.key === 'POST /api/modules/labs/start');
+  assert.equal(starts.length, 2);
+  assert.equal(starts[0].body.drill_nonce, undefined, 'the first start has nothing to present');
+  assert.equal(starts[1].body.drill_nonce, START_201.body.drill_nonce, 'the replace presents the live nonce');
+  assert.equal(starts[1].body.study_session_id, 'study-1');
+  assert.equal(view.activeNonce, second.body.drill_nonce, 'the new nonce supersedes the old');
+});
+
+test('a 403 on cancel (another view owns the drill) is shown and the drill stays', async () => {
+  const { view } = viewWith({
+    'POST /api/modules/labs/start': START_201,
+    'POST /api/modules/labs/cancel': { status: 403, body: { error: 'a drill is live and this view did not start it' } },
+  });
+  view.agent = 'codex';
+  await view.startDrill(MODULE, TASK);
+  await view.cancelDrill();
+  assert.match(view.startError, /did not start it/);
+  assert.equal(view.activeDrill.ref, TASK.ref, 'a refused cancel leaves the drill live');
+});
+
+/* ---- W-review finding 10: #labs is a real hash view; empty Labs sends you to Today --- */
+
+test('init on the labs view with no module installed navigates to today', async () => {
+  const { view, navigated } = viewWith(
+    { 'GET /api/modules/labs': { body: { labs: [], agents: [] } } },
+    { currentView: () => 'labs' },
+  );
+  await view.init();
+  assert.deepEqual(navigated, ['today']);
+});
+
+test('init on the labs view with a module installed stays put', async () => {
+  const { view, navigated } = viewWith(
+    { 'GET /api/modules/labs': { body: { labs: [MODULE], agents: [] } } },
+    { currentView: () => 'labs' },
+  );
+  await view.init();
+  assert.deepEqual(navigated, []);
 });

@@ -1,0 +1,26 @@
+env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_contributor_guide_drift.py packages/studyloop/tests/test_docs_drift.py -q -p no:cacheprovider -k module-contract
+# throwaway worktree at b22e213c (W4) with the two W5 drift-tuple entries applied and docs/module-contract.md ABSENT  2026-10-05T01:45:40Z
+# READING: a collection-time FileNotFoundError, not an assertion -- the parametrised drift tests read the page named by the tuple at collection. It is the reproducible pre-change failure for docs/module-contract.md (W-review finding 3).
+
+==================================== ERRORS ====================================
+____________ ERROR collecting tests/test_contributor_guide_drift.py ____________
+packages/studyloop/tests/test_contributor_guide_drift.py:318: in <module>
+    @pytest.mark.parametrize(("stem", "command"), _command_params())
+                                                  ^^^^^^^^^^^^^^^^^
+packages/studyloop/tests/test_contributor_guide_drift.py:313: in _command_params
+    for line_no, command in _shell_lines(_read(stem))
+                                         ^^^^^^^^^^^
+packages/studyloop/tests/test_contributor_guide_drift.py:151: in _read
+    return (DOCS_DIR / f"{stem}.md").read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/ataylor/.local/share/uv/python/cpython-3.12-macos-aarch64-none/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/ataylor/.local/share/uv/python/cpython-3.12-macos-aarch64-none/lib/python3.12/pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/private/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/w-review-red-worktree/docs/module-contract.md'
+=========================== short test summary info ============================
+ERROR packages/studyloop/tests/test_contributor_guide_drift.py - FileNotFound...
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+305 deselected, 1 error in 0.65s

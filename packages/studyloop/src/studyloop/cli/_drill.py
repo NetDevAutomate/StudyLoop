@@ -50,12 +50,14 @@ from studyloop.modules.attempt import (
     PhaseResult,
     RefusalError,
     SidecarError,
+    TargetKind,
     record_phase,
 )
 from studyloop.modules.consent import ConsentLedger, describe_consent
 
 if TYPE_CHECKING:
     from studyloop.content.schemas import PracticeTask
+    from studyloop.modules.manifest import ModuleManifest
 
 __all__ = [
     "ModuleNotInstalledError",
@@ -63,6 +65,8 @@ __all__ = [
     "drill_group",
     "locate_installed_module",
     "module_prerequisites",
+    "module_target",
+    "read_module_manifest",
     "run_drill_phase",
 ]
 
@@ -152,13 +156,10 @@ def load_drill(snapshot_dir: Path, deck_id: str, task_id: str) -> tuple[Practice
     )
 
 
-def module_prerequisites(snapshot_dir: Path) -> tuple[str, ...]:
-    """``prerequisites[].id`` from the installed module's ``module.yaml``, in declared order.
-
-    Read through lane C's ``ModuleManifest`` (``extra: forbid``). The snapshot passed
-    ``module check`` at install, so a manifest that no longer validates means the snapshot
-    was altered: refuse the phase rather than run it with an empty tool list.
-    """
+def read_module_manifest(snapshot_dir: Path) -> ModuleManifest:
+    """The installed module's ``module.yaml`` through lane C's ``ModuleManifest`` (``extra:
+    forbid``). The snapshot passed ``module check`` at install, so a manifest that no longer
+    validates means the snapshot was altered: refuse the phase rather than guess."""
     import yaml
     from pydantic import ValidationError
 
@@ -167,13 +168,29 @@ def module_prerequisites(snapshot_dir: Path) -> tuple[str, ...]:
     manifest_path = snapshot_dir / "module.yaml"
     try:
         raw = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
-        manifest = ModuleManifest.model_validate(raw)
+        return ModuleManifest.model_validate(raw)
     except (OSError, ValueError, yaml.YAMLError, ValidationError) as exc:
         raise click.ClickException(
             f"module.yaml in the installed snapshot does not validate ({exc}); "
             "re-run `studyloop module add` from the module's source"
         ) from exc
-    return tuple(prerequisite.id for prerequisite in manifest.prerequisites)
+
+
+def module_prerequisites(snapshot_dir: Path) -> tuple[str, ...]:
+    """``prerequisites[].id`` from the installed module's ``module.yaml``, in declared order."""
+    return tuple(p.id for p in read_module_manifest(snapshot_dir).prerequisites)
+
+
+def module_target(snapshot_dir: Path) -> TargetKind:
+    """``target.kind`` from the installed module's manifest, as the runner's enum.
+
+    W-review finding 8 (partial): the attempt records the module's declared target instead of
+    defaulting to ``workdir``. Provisioning the §5.5 disposable cluster and writing the
+    one-context ``KUBECONFIG`` is lane K0's; until it lands, ``runner.build_environment``
+    refuses a ``kubeconfig-context`` attempt that carries no kubeconfig -- after consent,
+    before any process starts.
+    """
+    return TargetKind(read_module_manifest(snapshot_dir).target.kind)
 
 
 def phase_argv(task: PracticeTask, phase: Phase, task_ref: str) -> tuple[str, ...]:
@@ -219,10 +236,15 @@ def _exit_status(result: PhaseResult) -> int:
 
 
 def _open_attempt(
-    store: AttemptStore, phase: Phase, drill: DrillIdentity, snapshot_dir: Path
+    store: AttemptStore,
+    phase: Phase,
+    drill: DrillIdentity,
+    snapshot_dir: Path,
+    target: TargetKind = TargetKind.WORKDIR,
 ) -> tuple[Attempt, bool]:
     """Return ``(attempt, opened_here)`` per phase: setup opens, check reuses-or-opens,
-    cleanup needs one."""
+    cleanup needs one. ``target`` is the manifest's ``target.kind``; ``kubeconfig`` stays
+    ``None`` here (lane K0 provisions it)."""
     current = store.current(drill)
     if phase is Phase.SETUP:
         if current is not None:
@@ -230,7 +252,7 @@ def _open_attempt(
                 f"attempt {current.attempt_id} is already open for {drill.drill_id}; run "
                 f"`studyloop drill cleanup {drill.module_id}/{drill.drill_id}` first"
             )
-        return store.open(drill, snapshot_dir=snapshot_dir), True
+        return store.open(drill, snapshot_dir=snapshot_dir, target=target), True
     if phase is Phase.CLEANUP:
         if current is None:
             raise click.ClickException(
@@ -239,7 +261,7 @@ def _open_attempt(
         return current, False
     if current is not None:
         return current, False
-    return store.open(drill, snapshot_dir=snapshot_dir), True
+    return store.open(drill, snapshot_dir=snapshot_dir, target=target), True
 
 
 def run_drill_phase(phase: Phase, ref: str) -> int:
@@ -263,8 +285,11 @@ def run_drill_phase(phase: Phase, ref: str) -> int:
 
     # Lane C's manifest is on main: the tools the module declares (`prerequisites[].id`,
     # each in core's enum -- MC005 at install) are what core resolves on the learner's
-    # PATH and exposes to the child, and nothing else (M1 PATH ruling).
-    prerequisites = module_prerequisites(installed.snapshot_dir)
+    # PATH and exposes to the child, and nothing else (M1 PATH ruling). The same read gives
+    # the declared target kind the attempt records (W-review finding 8).
+    manifest = read_module_manifest(installed.snapshot_dir)
+    prerequisites = tuple(p.id for p in manifest.prerequisites)
+    target = TargetKind(manifest.target.kind)
 
     # Refuse what the runner would refuse BEFORE anyone is asked to consent to it: argv
     # (tokens, NUL, size), the script path (MC013) and the declared tools on the PATH.
@@ -277,7 +302,7 @@ def run_drill_phase(phase: Phase, ref: str) -> int:
     digest = runner.script_digest(script)
 
     store = AttemptStore(root=attempts_root())
-    attempt, opened_here = _open_attempt(store, phase, drill, installed.snapshot_dir)
+    attempt, opened_here = _open_attempt(store, phase, drill, installed.snapshot_dir, target)
 
     click.echo(describe_consent(attempt, phase, argv, script_digest=digest))
     if not click.confirm("Run this phase now?", default=False):
