@@ -625,6 +625,47 @@ round can land test-first. Named here, not silently absent:
   shape a real sign-off run's release note would carry; no real run has
   produced one yet.
 
+## The module persona journeys (module-contract v1)
+
+`tests/acceptance/test_module_personas.py` drives the two representative users the
+module-contract design names (`openspec/changes/module-contract-v1/design.md` §6) through the
+real product -- a subprocess `studyloop web` with the deterministic harness agent, the real
+CLI in subprocesses, a headless browser -- as ordered phases on one world per persona:
+
+- **Persona A, an AuDHD learner on a tablet over `--lan`** (viewport 820×1180, budget 6 min):
+  no Labs entry before a module is installed, `module add`, exactly one Labs entry listing ids
+  and prompts only, a drill started inside the one claimed session, keyboard-only traversal,
+  Escape cancelling with the recovery copy, a reload that re-attaches, a module declaring a
+  `kind` the machine lacks (reported by `doctor`, refused by `drill` before consent, nothing
+  created), `module remove`, Labs gone. The server binds `0.0.0.0` with the Basic Auth
+  password passed the production way; the test connects to `127.0.0.1` only.
+- **Persona B, a new contributor on a clean machine** (viewport 1440×900, budget 8 min): the
+  [environment page](contributor-environment.md)'s offline commands from a clean `HOME`,
+  `module new`, `module check`, Persona A's lifecycle on that module, one broken rule read
+  back through `--json` (MC017) and repaired, and the documented outputs compared with what
+  was observed.
+
+Each persona's last phase asserts its measured wall clock against the budget. Run both:
+
+```bash
+just testacc "" scripted packages/studyloop/tests/acceptance/test_module_personas.py
+```
+
+Any phase failure writes a bundle under `playwright/artifacts/personas/<run>/` carrying, beside
+the screenshot, HTML and console the browser tiers already write, the server log, the transcript
+of every `studyloop` call the persona made, a before/after diff of `modules.lock.json` and the
+attempt envelope -- redacted (home paths, LAN address, digests, the run's secrets) and then
+verified with the UAT tier's detector (`tests/acceptance/uat/redaction.py`, imported). To see one
+without breaking anything, flip a single phase's precondition:
+
+```bash
+STUDYLOOP_ACC_FORCE_FAIL=a5 just testacc "" scripted packages/studyloop/tests/acceptance/test_module_personas.py
+```
+
+The committed proof of that run is `openspec/changes/module-contract-v1/evidence/U1/forced-failure-bundle/`.
+One step is `xfail(strict=True)` against the shipped UI: after a Labs start, focus does not land
+in the terminal (the console mounts xterm without focusing it); the test names the product change.
+
 ## Rules that keep the tier honest
 
 - **Missing binary or credential → named skip.** The reason states which
