@@ -10,12 +10,13 @@ invocation runs exactly one phase of one drill through the §5.5 runner:
    (``setupCommand`` / ``command`` / ``cleanupCommand``), split into argv by ``shlex``;
 2. find or open the attempt (``setup`` opens a new one; ``check`` reuses the open one or
    opens one; ``cleanup`` needs an open one and always closes it). For a
-   ``kubeconfig-context`` module core's own tools (``kind``, ``kubectl``, ``docker``) are
-   then resolved on the learner's PATH whatever the module declares (M1 Q2) and ``setup``
-   **provisions the disposable kind cluster** (lane K0, ``modules/cluster.py``) and records
-   its one-context kubeconfig on the attempt -- all BEFORE the consent prompt, so the prompt
-   can name the cluster and the kubeconfig; ``check`` and ``cleanup`` reuse the recorded
-   kubeconfig, and a ``check`` that found nothing open is refused (only ``setup`` provisions);
+   ``kubeconfig-context`` module two refusals come BEFORE the open, so a refused phase leaves
+   no record (K0-review F9): a ``check`` with nothing open (only ``setup`` provisions) and an
+   unresolvable core tool (``kind``, ``kubectl``, ``docker`` are resolved on the learner's PATH
+   whatever the module declares, M1 Q2). Then ``setup`` **provisions the disposable kind
+   cluster** (lane K0, ``modules/cluster.py``) and records its one-context kubeconfig on the
+   attempt -- all BEFORE the consent prompt, so the prompt can name the cluster and the
+   kubeconfig; ``check`` and ``cleanup`` reuse the recorded kubeconfig;
 3. validate argv and script path and compute the digest **before** asking -- a command the
    runner would refuse is never shown as something to consent to (this happens before step
    2's open, so a refused command never leaves a record);
@@ -252,27 +253,34 @@ def _exit_status(result: PhaseResult) -> int:
     return 2
 
 
+def _current_attempt(store: AttemptStore, drill: DrillIdentity) -> Attempt | None:
+    """The open attempt for ``drill`` or ``None``; a non-canonical record is a Click error.
+
+    K0-review F2: a record whose id or paths are not canonical is never used -- not to run in,
+    not to delete with. Say so and stop; nothing is opened.
+    """
+    try:
+        return store.current(drill)
+    except SidecarError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+
 def _open_attempt(
     store: AttemptStore,
     phase: Phase,
     drill: DrillIdentity,
     snapshot_dir: Path,
     target: TargetKind = TargetKind.WORKDIR,
+    current: Attempt | None = None,
 ) -> tuple[Attempt, bool]:
     """Return ``(attempt, opened_here)`` per phase: setup opens, check reuses-or-opens,
-    cleanup needs one. ``target`` is the manifest's ``target.kind``; ``kubeconfig`` is still
-    ``None`` here -- for a ``kubeconfig-context`` attempt :func:`_provision_cluster` records it
-    through :meth:`AttemptStore.set_kubeconfig` right after ``setup`` opens the attempt (the
-    cluster name derives from the attempt id).
-    A ``check`` that opens a ``kubeconfig-context`` attempt here has no cluster: the caller
-    records that attempt as refused and closes it (``test_module_lane_seams.py`` pins the
-    record) -- only ``setup`` provisions (K0 brief item 5)."""
-    try:
-        current = store.current(drill)
-    except SidecarError as exc:
-        # K0-review F2: a record whose id or paths are not canonical is never used -- not to
-        # run in, not to delete with. Say so and stop; nothing is opened.
-        raise click.ClickException(str(exc)) from exc
+    cleanup needs one. ``current`` is the open attempt the caller already read through
+    :func:`_current_attempt` (so the pre-open refusals and this share one read); ``target`` is
+    the manifest's ``target.kind``; ``kubeconfig`` is still ``None`` here -- for a
+    ``kubeconfig-context`` attempt :func:`_provision_cluster` records it through
+    :meth:`AttemptStore.set_kubeconfig` right after ``setup`` opens the attempt (the cluster
+    name derives from the attempt id). A cluster-less ``check`` on a ``kubeconfig-context``
+    drill never reaches this function: :func:`_refuse_before_open` has already said no."""
     if phase is Phase.SETUP:
         if current is not None:
             raise click.ClickException(
@@ -479,7 +487,13 @@ def run_drill_phase(phase: Phase, ref: str) -> int:
     digest = runner.script_digest(script)
 
     store = AttemptStore(root=attempts_root())
-    attempt, opened_here = _open_attempt(store, phase, drill, installed.snapshot_dir, target)
+    current = _current_attempt(store, drill)
+    tools: Mapping[str, Path] = {}
+    if target is TargetKind.KUBECONFIG_CONTEXT:
+        tools = _refuse_before_open(phase, ref, current)  # F9: nothing opened yet
+    attempt, opened_here = _open_attempt(
+        store, phase, drill, installed.snapshot_dir, target, current=current
+    )
     # The attempt's disposable cluster, registered by `_attach_cluster` the instant it exists
     # (a list, not a local assigned from a return value: a KeyboardInterrupt between the
     # return and the assignment would otherwise leave a cluster nobody can tear down -- F4).
@@ -488,7 +502,7 @@ def run_drill_phase(phase: Phase, ref: str) -> int:
         disposable: _Disposable | None = None
         if target is TargetKind.KUBECONFIG_CONTEXT:
             attempt, disposable = _attach_cluster(
-                store, attempt, phase=phase, ref=ref, opened_here=opened_here, live=live
+                store, attempt, phase=phase, tools=tools, live=live
             )
         return _consent_and_run(
             store,
@@ -514,43 +528,52 @@ def run_drill_phase(phase: Phase, ref: str) -> int:
         raise
 
 
+def _refuse_before_open(phase: Phase, ref: str, current: Attempt | None) -> Mapping[str, Path]:
+    """The two ``kubeconfig-context`` refusals that happen BEFORE any attempt is opened, so a
+    refused phase leaves no record in the learner's attempt history (K0-review F9; spec: "a
+    phase refused before consent ... SHALL open no attempt record").
+
+    1. A ``check`` with nothing open has no cluster to run against -- only ``setup``
+       provisions (K0 brief item 5) -- and is refused naming ``drill setup``, not after consent
+       in the runner's missing-kubeconfig branch. This comes first, before any tool lookup, so
+       it does not depend on what is installed.
+    2. Core's own tools -- ``kind``, ``kubectl``, ``docker`` (brief item 6, M1 Q2) -- are
+       resolved on the learner's PATH whatever the module declares; an unresolvable one refuses
+       the phase naming the tool. The resolved paths are returned for provisioning/teardown.
+    """
+    if phase is Phase.CHECK and (current is None or current.kubeconfig is None):
+        raise click.ClickException(
+            f"no cluster for this attempt: a kubeconfig-context drill runs against the "
+            f"disposable cluster `studyloop drill setup {ref}` creates -- run that first; "
+            "refusing to spawn"
+        )
+    try:
+        return runner.resolve_prerequisites(cluster.CLUSTER_TOOLS)
+    except RefusalError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+
 def _attach_cluster(
     store: AttemptStore,
     attempt: Attempt,
     *,
     phase: Phase,
-    ref: str,
-    opened_here: bool,
+    tools: Mapping[str, Path],
     live: list[_Disposable],
 ) -> tuple[Attempt, _Disposable]:
     """Give a ``kubeconfig-context`` attempt its disposable cluster, before any consent.
 
     ``setup`` provisions (K0 brief item 5); ``check``/``cleanup`` rebuild the handle from the
-    attempt's recorded kubeconfig. A ``check`` that found nothing open has no cluster to run
-    against and is refused here -- not after consent in the runner's missing-kubeconfig branch
-    -- with the attempt it opened recorded and closed (``test_module_lane_seams.py`` pins that
-    record). Core's own tools -- ``kind``, ``kubectl``, ``docker`` (brief item 6, M1 Q2) --
-    are resolved on the learner's PATH here whatever the module declares; an unresolvable one
-    refuses the phase naming the tool, closing the attempt this invocation opened.
+    attempt's recorded kubeconfig (a non-canonical one is refused by ``cluster.handle_for``,
+    F2). Every refusal that needs no attempt has already happened in
+    :func:`_refuse_before_open`.
     """
-    if phase is Phase.CHECK and attempt.kubeconfig is None:
-        reason = (
-            f"no cluster for this attempt: a kubeconfig-context drill runs against the "
-            f"disposable cluster `studyloop drill setup {ref}` creates -- run that first; "
-            "refusing to spawn"
-        )
-        if opened_here:
-            store.close(attempt, reason=reason)
-        raise click.ClickException(reason)
-    try:
-        tools = runner.resolve_prerequisites(cluster.CLUSTER_TOOLS)
-    except RefusalError as exc:
-        if opened_here:
-            store.close(attempt, reason=f"{phase.value} refused before consent: {exc}")
-        raise click.ClickException(str(exc)) from exc
     if phase is Phase.SETUP:
         return _provision_cluster(store, attempt, tools, live)
-    disposable = _Disposable(cluster.handle_for(attempt, tools=tools))
+    try:
+        disposable = _Disposable(cluster.handle_for(attempt, tools=tools))
+    except ClusterError as exc:
+        raise click.ClickException(str(exc)) from exc
     live.append(disposable)
     return attempt, disposable
 

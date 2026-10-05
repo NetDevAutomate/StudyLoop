@@ -1,0 +1,4 @@
+env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_cluster.py packages/studyloop/tests/test_module_lane_seams.py -q -p no:cacheprovider -k without_an_open_attempt or missing_core_tool or records_its_target_and_is_refused
+# worktree: module-cluster  HEAD: 701e881a  2026-10-05T09:58:27Z
+...                                                                      [100%]
+3 passed, 46 deselected in 0.44s

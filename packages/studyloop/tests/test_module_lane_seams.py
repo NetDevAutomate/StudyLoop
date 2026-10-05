@@ -285,8 +285,11 @@ def test_module_target_kind_is_read_from_the_installed_manifest(
 def test_a_kubeconfig_context_module_records_its_target_and_is_refused_before_spawn(
     installed_kubeconfig_target: store.LockEntry, tmp_path: Path
 ) -> None:
-    import json
-
+    """Pins the K0 behaviour (K0-review F9, coordinator-granted edit): a ``check`` on a
+    kubeconfig-context module with nothing open is refused BEFORE consent and BEFORE any
+    attempt is opened -- no record exists afterwards, where the pre-K0 characterisation had one
+    closed record. The refusal fires before core's tools (kind/kubectl/docker) are resolved, so
+    this test does not depend on what is installed on the machine running it."""
     from click.testing import CliRunner
 
     result = CliRunner().invoke(
@@ -296,11 +299,8 @@ def test_a_kubeconfig_context_module_records_its_target_and_is_refused_before_sp
     )
 
     records = list((tmp_path / "module-attempts").rglob("*.json"))
-    assert len(records) == 1, [str(r) for r in records]
-    record = json.loads(records[0].read_text(encoding="utf-8"))
-    assert record["target"] == "kubeconfig-context", record
-    assert record["kubeconfig"] is None, "provisioning is lane K0's; nothing is invented here"
-    assert record["closed_at"] is not None, "the refused attempt was closed"
+    assert records == [], f"a pre-consent refusal must open no attempt record: {records}"
     assert result.exit_code == 1, result.output
     assert "refusing to spawn" in result.output
+    assert "Run this phase now?" not in result.output, "refused before consent"
     assert "check:" not in result.output, "no phase result: nothing ran"

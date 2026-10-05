@@ -1020,6 +1020,9 @@ def test_missing_core_tool_refuses_before_consent_even_when_the_module_omits_it(
     assert "Run this phase now?" not in result.output
     assert fake_tools.calls() == []
     assert _store().current(installed_k8s) is None
+    assert list((tmp_path / "module-attempts").rglob("*.json")) == [], (
+        "K0-review F9: a missing core tool is refused before any attempt is opened"
+    )
 
 
 def test_check_without_an_open_attempt_is_refused_before_consent(
@@ -1027,9 +1030,9 @@ def test_check_without_an_open_attempt_is_refused_before_consent(
 ) -> None:
     """Only ``setup`` provisions (brief item 5); a ``check`` with nothing open on a
     kubeconfig-context drill has no cluster to run against, so it is refused up front naming
-    ``drill setup`` -- not refused after consent by the runner's missing-kubeconfig branch.
-    The attempt it opened is recorded and closed as refused (``test_module_lane_seams.py``
-    pins that record), so nothing stays open."""
+    ``drill setup`` -- not refused after consent by the runner's missing-kubeconfig branch --
+    and (K0-review F9) it opens NO attempt record: a refusal before consent leaves no trace in
+    the learner's attempt history (``test_module_lane_seams.py`` pins the same)."""
     result = _invoke("check", K8S_DRILL)
 
     assert result.exit_code == 1, result.output
@@ -1037,8 +1040,7 @@ def test_check_without_an_open_attempt_is_refused_before_consent(
     assert "Run this phase now?" not in result.output
     assert fake_tools.calls() == []
     assert _store().current(installed_k8s) is None
-    records = list((tmp_path / "module-attempts").rglob("*.json"))
-    assert len(records) == 1 and json.loads(records[0].read_text())["closed_at"] is not None
+    assert list((tmp_path / "module-attempts").rglob("*.json")) == [], "no record was opened"
 
 
 def test_name_collision_is_refused_before_consent_and_closes_the_attempt(

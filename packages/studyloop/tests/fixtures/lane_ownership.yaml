@@ -289,6 +289,7 @@ lanes:
     - packages/studyloop/src/studyloop/modules/attempt.py  # set_kubeconfig + canonical-record validation only -- coordinator-granted, K0-review F2
     - packages/studyloop/tests/test_module_cluster.py
     - packages/studyloop/tests/test_module_drill_cli.py     # one case: a workdir module never calls kind
+    - packages/studyloop/tests/test_module_lane_seams.py    # the one kubeconfig-context refusal test only -- coordinator-granted, K0-review F9
     - packages/studyloop/tests/fixtures/modules/k8s-offline/**
     - packages/studyloop/tests/fixtures/lane_ownership.yaml  # this row; branches: entry is coordinator-granted, K0-review F11
     - packages/studyloop/tests/test_lane_ownership.py        # _MODULE_CONTRACT_BRANCHES only -- coordinator-granted, K0-review F11
