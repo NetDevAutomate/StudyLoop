@@ -12,7 +12,7 @@ Persona A -- AuDHD learner on a tablet over ``--lan`` (viewport 820x1180, budget
   a1 load: no Labs entry, no prerequisite text anywhere
   a2 `module add <valid-scaffold>` via the CLI; reload; exactly one Labs entry, ids + prompts only
   a3 start one drill: inside the single claimed session, no `module-attempts` appears
-  a4a focus lands in the terminal                       -- xfail(strict): gap, see the test
+  a4a focus lands in the terminal (fixed under the U1-review grant; red kept)
   a4b Tab / Shift-Tab traverse the Labs controls, focus visible (Escape is a5's cancel key)
   a5 Escape cancels: the recovery copy quoted in the test, the session where it was
   a6 reload re-attaches: same study_session_id, still one console
@@ -706,19 +706,13 @@ class TestPersonaA:
                 world, page, drill_ref=DRILL_REF, task_id="echo-01", flipped=world.flipped("a3")
             )
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "GAP (design.md §6 step 4 'focus lands in the terminal'): after a Labs start the "
-            "Study Session console mounts xterm (web/static/js/components/live-agent-console.js, "
-            "term.open at ~259) without ever calling term.focus(); the fresh-start path also "
-            "reloads the page (labs.js startDrill), so document.activeElement is <body>. Product "
-            "change needed: focus the terminal when the console (re)attaches."
-        ),
-    )
     def test_a4a_focus_lands_in_the_terminal(self, persona_a: PersonaWorld, page_a: Page) -> None:
         world, page = persona_a, page_a
-        with world.phase("a4a", "focus lands in the terminal after the start", bundle=False):
+        """design.md §6 step 4. Was xfail(strict=True) against the shipped UI (the console mounted
+        xterm without focusing it; persona-a-a4a-focus-gap.red.txt is this test's red); fixed
+        under the U1-review grant: term.focus() on (re)attach in live-agent-console.js and the
+        attached-start path in labs.js."""
+        with world.phase("a4a", "focus lands in the terminal after the start"):
             pw.goto(page, world, "study-session")
             page.wait_for_selector(
                 ".session-active-layout .xterm-mount", state="visible", timeout=30_000

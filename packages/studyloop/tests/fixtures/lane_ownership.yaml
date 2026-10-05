@@ -320,6 +320,11 @@ lanes:
     - packages/studyloop/tests/fixtures/lane_ownership.yaml  # this row; branches: entry is coordinator-granted
     - packages/studyloop/tests/test_lane_ownership.py        # _MODULE_CONTRACT_BRANCHES only -- coordinator-granted; + the U1 map requirement test (test_u1_map_covers_the_persona_lane_files) -- coordinator-granted, U1-review F8
     - docs/acceptance-testing.md                            # one subsection naming the persona journeys only
+    # The a4a focus defect, coordinator-granted at U1-review (briefs/U1-fixpass.md item 9): ONLY
+    # term.focus() on (re)attach in the console's xterm mount, and ONLY the attached-start focus
+    # in the Labs view's startDrill. Everything else in both files stays W's.
+    - packages/studyloop/src/studyloop/web/static/js/components/live-agent-console.js  # term.focus() after term.open on (re)attach only -- coordinator-granted, U1-review F9 (item 9)
+    - packages/studyloop/src/studyloop/web/static/js/labs.js  # focus the console after an attached start only -- coordinator-granted, U1-review F9 (item 9)
 
 # Explicit branch -> lane key for lanes whose branch name carries no lane id.
 # Consulted BEFORE the legacy `lane/m<n>-<slug>` pattern (tests/_lane_ownership.py,

@@ -187,6 +187,17 @@ export function labsView(deps = {}) {
     return nav && typeof nav.current === 'string' ? nav.current : '';
   });
   const reload = deps.reload || (() => window.location.reload());
+  /* After an ATTACHED start (no reload) the console is already mounted: put focus in it
+     (design.md §6 step 4; U1-review a4a). A fresh start reloads, and the console's own mount
+     focuses the terminal as it opens. */
+  const focusConsole = deps.focusConsole || (() => {
+    if (typeof document === 'undefined') return;
+    const focus = () => {
+      const area = document.querySelector('.session-active-layout .xterm-helper-textarea');
+      if (area && typeof area.focus === 'function') area.focus();
+    };
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(focus); else focus();
+  });
   const getStore = () => deps.store || alpineStore('labs');
 
   const readStored = () => {
@@ -353,8 +364,9 @@ export function labsView(deps = {}) {
       navigate('study-session');
       /* A fresh start: the Study Session view adopts the live session on page load
          (its console reattaches through /api/session/state). An attached start has
-         nothing to adopt -- the session was already there. */
+         nothing to adopt -- the session was already there; focus its console. */
       if (!data.attached) reload();
+      else focusConsole();
       return true;
     },
 
