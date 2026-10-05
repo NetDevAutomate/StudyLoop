@@ -1,0 +1,11 @@
+env -u VIRTUAL_ENV env STUDYLOOP_ACC= STUDYLOOP_LIVE= uv run pytest packages/studyloop/tests/acceptance/test_module_kdrill_live.py -q -p no:cacheprovider -rs
+# worktree: module-cluster  HEAD: 5cf7271c  2026-10-05T08:54:27Z
+
+1 deselected in 0.05s
+
+# collected explicitly (-m acceptance overrides the default deselection) it SKIPS, named:
+env -u VIRTUAL_ENV env STUDYLOOP_ACC= STUDYLOOP_LIVE= uv run pytest packages/studyloop/tests/acceptance/test_module_kdrill_live.py -q -p no:cacheprovider -rs -m acceptance
+s                                                                        [100%]
+=========================== short test summary info ============================
+SKIPPED [1] packages/studyloop/tests/acceptance/test_module_kdrill_live.py:122: acceptance tests require STUDYLOOP_ACC=1 (see docs/acceptance-testing.md)
+1 skipped in 0.22s

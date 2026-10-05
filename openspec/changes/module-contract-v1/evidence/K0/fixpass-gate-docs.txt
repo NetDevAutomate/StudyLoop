@@ -1,0 +1,9 @@
+env -u VIRTUAL_ENV just docs
+# worktree: module-cluster  HEAD: c7133f9e  2026-10-05T10:09:46Z
+NO_MKDOCS_2_WARNING=1 uv run --extra docs mkdocs build --strict
+INFO    -  Cleaning site directory
+INFO    -  Building documentation to directory: /Users/ataylor/code/personal/tools/studyloop-wt/module-cluster/site
+INFO    -  Doc file 'session-memory.md' contains a link to 'context-memory.md' which is excluded from the built site.
+INFO    -  Doc file 'troubleshooting.md' contains a link to 'adr/0005-retire-ttyd-browser-surface.md' which is excluded from the built site.
+INFO    -  Doc file 'troubleshooting.md' contains a link to 'adr/0008-retire-ttyd-entirely.md' which is excluded from the built site.
+INFO    -  Documentation built in 0.51 seconds

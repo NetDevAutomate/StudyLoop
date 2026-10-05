@@ -1,0 +1,4 @@
+env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_drill_cli.py -q -p no:cacheprovider -k workdir_module_never_calls_kind
+# worktree: module-cluster  HEAD: c50f2268  2026-10-05T08:41:58Z
+.                                                                        [100%]
+1 passed, 25 deselected in 0.91s

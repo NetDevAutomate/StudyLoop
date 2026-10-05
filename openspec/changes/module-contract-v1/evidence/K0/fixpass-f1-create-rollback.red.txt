@@ -1,0 +1,20 @@
+env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_cluster.py -q -p no:cacheprovider -k failed_create or hung_create or kubeconfig_variable
+# worktree: module-cluster  HEAD: 98f40535  2026-10-05T09:41:37Z
+FF...                                                                    [100%]
+=================================== FAILURES ===================================
+____________ test_failed_create_without_a_kubeconfig_runs_no_delete ____________
+packages/studyloop/tests/test_module_cluster.py:375: in test_failed_create_without_a_kubeconfig_runs_no_delete
+    assert [call[:2] for call in fake_tools.calls()] == [
+E   AssertionError: no delete without proof; the second listing is the read-only re-check
+E   assert [['get', 'clu...', 'cluster']] == [['get', 'clu..., 'clusters']]
+E
+E     At index 2 diff: ['delete', 'cluster'] != ['get', 'clusters']
+E     Use -v to get more diff
+_ test_failed_create_that_left_an_unproven_cluster_reports_it_without_deleting _
+packages/studyloop/tests/test_module_cluster.py:402: in test_failed_create_that_left_an_unproven_cluster_reports_it_without_deleting
+    assert "cannot prove it created" in message
+E   AssertionError: assert 'cannot prove it created' in 'could not create the disposable cluster studyloop-67f9fc9c: `kind create cluster --name studyloop-67f9fc9c --kubeconf... create failed on purpose (but the cluster is listed); anything kind had made for studyloop-67f9fc9c was deleted again'
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_module_cluster.py::test_failed_create_without_a_kubeconfig_runs_no_delete
+FAILED packages/studyloop/tests/test_module_cluster.py::test_failed_create_that_left_an_unproven_cluster_reports_it_without_deleting
+2 failed, 3 passed, 17 deselected in 1.73s

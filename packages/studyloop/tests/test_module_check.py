@@ -1,4 +1,4 @@
-"""Red tests for ``studyloop module check`` (proposal §6, MC001-MC016).
+"""Red tests for ``studyloop module check`` (proposal §6, MC001-MC017).
 
 Wave 0 (C1) of module-contract v1, lane C. Two groups, kept apart in the evidence:
 
@@ -54,6 +54,30 @@ def test_valid_scaffold_passes_every_rule() -> None:
     report = check_module(VALID)
     assert report.ok is True
     assert report.findings == []
+
+
+def test_rule_ids_are_mc001_to_mc017_in_table_order() -> None:
+    """The rule table has seventeen stable ids (proposal §6; MC017 added by the K0 review,
+    finding 6 -- coordinator-granted, K0-review F6). Every id has a broken/repaired fixture pair."""
+    assert tuple(f"MC{n:03d}" for n in range(1, 18)) == RULE_IDS
+    for rule in RULE_IDS:
+        assert _broken(rule).is_dir() and _repaired(rule).is_dir(), rule
+
+
+def test_mc017_kubeconfig_context_task_without_cleanup_is_refused_naming_task_and_phase() -> None:
+    """Spec scenario (optional-modules, K0-review F6): GIVEN a manifest whose ``target.kind`` is
+    ``kubeconfig-context`` and a deck task with a ``setupCommand`` but no ``cleanupCommand``
+    -- WHEN ``module check`` runs -- THEN it fails (rule MC017) naming the task and the missing
+    phase command, pointing at the deck task."""
+    report = check_module(FIXTURES / "mc017" / "broken")
+
+    assert report.ok is False
+    findings = [f for f in report.findings if f.rule_id == "MC017"]
+    assert len(findings) == 1, report.findings
+    (finding,) = findings
+    assert "echo-01" in finding.message and "cleanupCommand" in finding.message
+    assert finding.path == "decks/echo-basics.json"
+    assert finding.line is not None
 
 
 @pytest.mark.parametrize("rule", RULE_IDS)

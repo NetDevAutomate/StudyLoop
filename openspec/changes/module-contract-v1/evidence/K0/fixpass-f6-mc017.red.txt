@@ -1,0 +1,25 @@
+env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_check.py -q -p no:cacheprovider -k rule_ids_are or mc017
+# worktree: module-cluster  HEAD: 2327dd08  2026-10-05T10:06:38Z
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+_______________ test_rule_ids_are_mc001_to_mc017_in_table_order ________________
+packages/studyloop/tests/test_module_check.py:62: in test_rule_ids_are_mc001_to_mc017_in_table_order
+    assert RULE_IDS == tuple(f"MC{n:03d}" for n in range(1, 18))
+E   AssertionError: assert ('MC001', 'MC... 'MC006', ...) == ('MC001', 'MC... 'MC006', ...)
+E
+E     Right contains one more item: 'MC017'
+E     Use -v to get more diff
+_ test_mc017_kubeconfig_context_task_without_cleanup_is_refused_naming_task_and_phase _
+packages/studyloop/tests/test_module_check.py:74: in test_mc017_kubeconfig_context_task_without_cleanup_is_refused_naming_task_and_phase
+    assert report.ok is False
+E   assert True is False
+E    +  where True = CheckReport(ok=True, findings=[]).ok
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_module_check.py::test_rule_ids_are_mc001_to_mc017_in_table_order
+FAILED packages/studyloop/tests/test_module_check.py::test_mc017_kubeconfig_context_task_without_cleanup_is_refused_naming_task_and_phase
+2 failed, 53 deselected in 0.29s
+
+# and the CLI on the broken fixture (expected: MC017 finding, exit 1):
+env -u VIRTUAL_ENV uv run studyloop module check packages/studyloop/tests/fixtures/modules/mc017/broken
+ok packages/studyloop/tests/fixtures/modules/mc017/broken: conforms to module contract v1
+exit=0

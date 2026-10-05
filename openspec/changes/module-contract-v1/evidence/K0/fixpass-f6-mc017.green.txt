@@ -1,0 +1,25 @@
+env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_check.py -q -p no:cacheprovider
+# worktree: module-cluster  HEAD: 2327dd08  2026-10-05T10:08:28Z
+.........................................................                [100%]
+57 passed in 0.49s
+
+env -u VIRTUAL_ENV uv run studyloop module check packages/studyloop/tests/fixtures/modules/mc017/broken
+MC017 decks/echo-basics.json:17: decks/echo-basics.json: task echo-01 targets a kubeconfig-context cluster but has no cleanupCommand; the disposable cluster is created by setup and deleted after cleanup, so both are required
+1 finding in packages/studyloop/tests/fixtures/modules/mc017/broken
+exit=1
+env -u VIRTUAL_ENV uv run studyloop module check packages/studyloop/tests/fixtures/modules/mc017/repaired
+ok packages/studyloop/tests/fixtures/modules/mc017/repaired: conforms to module contract v1
+exit=0
+env -u VIRTUAL_ENV uv run studyloop module check packages/studyloop/tests/fixtures/modules/mc008/broken
+MC008 decks/echo-basics.json:23: decks/echo-basics.json: task echo-01 command overrides the injected context ('--context')
+1 finding in packages/studyloop/tests/fixtures/modules/mc008/broken
+exit=1
+env -u VIRTUAL_ENV uv run studyloop module check packages/studyloop/tests/fixtures/modules/mc008/repaired
+ok packages/studyloop/tests/fixtures/modules/mc008/repaired: conforms to module contract v1
+exit=0
+env -u VIRTUAL_ENV uv run studyloop module check packages/studyloop/tests/fixtures/modules/k8s-offline
+ok packages/studyloop/tests/fixtures/modules/k8s-offline: conforms to module contract v1
+exit=0
+env -u VIRTUAL_ENV uv run studyloop module check packages/studyloop/tests/fixtures/modules/valid-scaffold
+ok packages/studyloop/tests/fixtures/modules/valid-scaffold: conforms to module contract v1
+exit=0

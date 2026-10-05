@@ -278,6 +278,35 @@ lanes:
     - packages/studyloop/src/studyloop/web/routes/session/_dashboard.py  # W-review F4 only
     - packages/studyloop/src/studyloop/web/static/js/nav-and-panel-stores.js  # W-review F10 only
 
+  K0: # disposable kind cluster for target.kind: kubeconfig-context (feat/module-cluster)
+    # Coordinator-granted (briefs/K0-cluster-provisioning.md, "Owned globs"): the gap lane W
+    # found (W gap 7) -- nothing in core provisioned the §5.5 cluster. Dual ownership by
+    # region with R and W on _drill.py (DECISIONS.md §E5): K0 owns the _open_attempt /
+    # run_drill_phase block that opens, provisions and closes the attempt; W's target= and
+    # R's prerequisites wiring stay. Everything else under modules/ is forbidden to K0.
+    - packages/studyloop/src/studyloop/modules/cluster.py
+    - packages/studyloop/src/studyloop/cli/_drill.py        # attempt open/provision/close block only
+    - packages/studyloop/src/studyloop/modules/attempt.py  # set_kubeconfig + canonical-record validation only -- coordinator-granted, K0-review F2
+    - packages/studyloop/tests/test_module_cluster.py
+    - packages/studyloop/tests/test_module_drill_cli.py     # one case: a workdir module never calls kind
+    - packages/studyloop/tests/test_module_lane_seams.py    # the one kubeconfig-context refusal test only -- coordinator-granted, K0-review F9
+    - packages/studyloop/tests/fixtures/modules/k8s-offline/**
+    - packages/studyloop/tests/fixtures/lane_ownership.yaml  # this row; branches: entry is coordinator-granted, K0-review F11
+    - packages/studyloop/tests/test_lane_ownership.py        # _MODULE_CONTRACT_BRANCHES only -- coordinator-granted, K0-review F11
+    - openspec/changes/module-contract-v1/evidence/K0/**
+    # K0-review F6 (MC017) -- coordinator-granted, K0-review F6: one rule + registration + the
+    # MC001-MC017 range, the mc017 fixture pair (and mc008's twins, which MC017 now binds), the
+    # rule-id/fixture cases, and the range bump in the four named places.
+    - packages/studyloop/src/studyloop/modules/check.py      # check_cluster_lifecycle + registration + range -- coordinator-granted, K0-review F6
+    - packages/studyloop/src/studyloop/cli/_module.py       # MC001-MC017 range only -- coordinator-granted, K0-review F6
+    - packages/studyloop/tests/fixtures/modules/mc017/**   # coordinator-granted, K0-review F6
+    - packages/studyloop/tests/fixtures/modules/mc008/**   # setup/cleanup commands so MC017 holds -- coordinator-granted, K0-review F6
+    - packages/studyloop/tests/fixtures/modules/README.md  # MC017 row -- coordinator-granted, K0-review F6
+    - packages/studyloop/tests/test_module_check.py        # rule-id / fixture-pair cases only -- coordinator-granted, K0-review F6
+    - docs/module-contract.md                               # range bump line 4 only -- coordinator-granted, K0-review F6
+    - docs/cli-reference.md                                 # range bump only -- coordinator-granted, K0-review F6
+    - docs/contributor-modules.md                           # range bump line 36 only -- coordinator-granted, K0-review F6
+
 # Explicit branch -> lane key for lanes whose branch name carries no lane id.
 # Consulted BEFORE the legacy `lane/m<n>-<slug>` pattern (tests/_lane_ownership.py,
 # lane_id_from_branch). A `feat/` branch that is not listed here is not a lane
@@ -288,6 +317,7 @@ branches:
   feat/module-runner: R
   feat/module-mentor-delivery: T
   feat/module-web-labs: W
+  feat/module-cluster: K0   # coordinator-granted, K0-review F11
 
 # Any lane may touch these. Docs and the changelog are shared because plan
 # principle 6 requires them to land in the same commit as the code they

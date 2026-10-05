@@ -1,7 +1,7 @@
 """Conformance checks for optional modules: ``studyloop module check <path>``.
 
-Module-contract v1, lane C. :func:`check_module` evaluates the sixteen rules of proposal §6
-(MC001-MC016) against one module directory and returns a :class:`CheckReport`. It reads
+Module-contract v1, lane C. :func:`check_module` evaluates the seventeen rules of proposal §6
+(MC001-MC017) against one module directory and returns a :class:`CheckReport`. It reads
 files only: nothing a module ships is imported, executed or evaluated, and no symlink is
 followed out of the module directory. Fixtures under ``tests/fixtures/modules/`` pin one
 fault per rule (``mcNNN/broken``) with a repaired twin (``mcNNN/repaired``).
@@ -70,8 +70,8 @@ from studyloop.modules.manifest import (
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping
 
-RULE_IDS: tuple[str, ...] = tuple(f"MC{n:03d}" for n in range(1, 17))
-"""The sixteen conformance rule ids of proposal §6, in table order."""
+RULE_IDS: tuple[str, ...] = tuple(f"MC{n:03d}" for n in range(1, 18))
+"""The seventeen conformance rule ids of proposal §6, in table order."""
 
 REQUIRED_FILES: tuple[str, ...] = ("module.yaml", "README.md", "LICENSE", "CHANGELOG.md")
 """MC003, plus at least one ``decks/*.json``."""
@@ -147,7 +147,7 @@ class CheckReport:
 
 
 def check_module(path: Path) -> CheckReport:
-    """Check the module at ``path`` against MC001-MC016 and report every violation."""
+    """Check the module at ``path`` against MC001-MC017 and report every violation."""
     checker = _ModuleChecker(Path(path))
     findings = checker.run()
     return CheckReport(ok=not findings, findings=findings)
@@ -332,7 +332,7 @@ class _ModuleChecker:
             return self.findings
         self.check_required_files()  # MC003
         self.check_manifest()  # MC001, MC002, MC005
-        self.check_decks()  # MC004, MC006, MC007, MC008, MC010, MC013, MC014, MC015
+        self.check_decks()  # MC004, MC006, MC007, MC008, MC010, MC013, MC014, MC015, MC017
         self.check_unused_capabilities()  # MC016
         self.check_secrets()  # MC009
         self.check_readme_headings()  # MC011
@@ -496,6 +496,7 @@ class _ModuleChecker:
                     self.used_capabilities.add(capability)
                     line = _nearest_line(lines, (*task_loc, "verification", field))
                     self.check_phase_command(rel, label, field, capability, command, line)
+                self.check_cluster_lifecycle(rel, label, verification, lines, task_loc)  # MC017
 
     def check_phase_command(
         self, rel: str, label: str, field: str, capability: str, command: str, line: int | None
@@ -615,6 +616,35 @@ class _ModuleChecker:
         except (OSError, ValueError):
             return False
         return True
+
+    # -- MC017 ------------------------------------------------------------------
+
+    def check_cluster_lifecycle(
+        self,
+        rel: str,
+        label: str,
+        verification: dict[str, Any],
+        lines: dict[_KeyPath, int],
+        task_loc: _KeyPath,
+    ) -> None:
+        """MC017 (K0-review F6): a ``kubeconfig-context`` task carries ``setupCommand`` and
+        ``cleanupCommand`` -- the disposable cluster is created by ``setup`` and deleted after
+        ``cleanup``, so a task missing either could never run or would leak a cluster. One
+        finding per missing phase command, naming the task and the field, at the task's line."""
+        if self.manifest is None or self.manifest.target.kind != "kubeconfig-context":
+            return
+        for field in ("setupCommand", "cleanupCommand"):
+            value = verification.get(field)
+            if isinstance(value, str) and value.strip():
+                continue
+            self.add(
+                "MC017",
+                f"{rel}: task {label} targets a kubeconfig-context cluster but has no {field}; "
+                "the disposable cluster is created by setup and deleted after cleanup, so both "
+                "are required",
+                rel,
+                _nearest_line(lines, (*task_loc, "verification")),
+            )
 
     # -- MC016 ------------------------------------------------------------------
 

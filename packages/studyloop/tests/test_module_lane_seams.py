@@ -13,6 +13,7 @@ halves together on one tree (coordinator, module-contract-v1 merge of lane R):
 
 from __future__ import annotations
 
+import json
 import re
 import shutil
 from pathlib import Path
@@ -265,7 +266,16 @@ def installed_kubeconfig_target(monkeypatch: pytest.MonkeyPatch, tmp_path: Path)
     manifest = source / "module.yaml"
     text = manifest.read_text(encoding="utf-8")
     assert "kind: workdir" in text
-    manifest.write_text(text.replace("kind: workdir", "kind: kubeconfig-context"), encoding="utf-8")
+    text = text.replace("kind: workdir", "kind: kubeconfig-context")
+    # MC017 (K0-review F6): a kubeconfig-context task must carry setupCommand and
+    # cleanupCommand, or `module add`'s conformance check refuses the flipped scaffold.
+    text = text.replace("capabilities: [check]", "capabilities: [setup, check, cleanup]")
+    manifest.write_text(text, encoding="utf-8")
+    deck_path = source / "decks" / "echo-basics.json"
+    deck = json.loads(deck_path.read_text(encoding="utf-8"))
+    deck["tasks"][0]["verification"]["setupCommand"] = "scripts/check.sh"
+    deck["tasks"][0]["verification"]["cleanupCommand"] = "scripts/check.sh"
+    deck_path.write_text(json.dumps(deck), encoding="utf-8")
     root = tmp_path / "modules"
     monkeypatch.setattr(store, "default_store_root", lambda: root)
     monkeypatch.setattr(_drill, "attempts_root", lambda: tmp_path / "module-attempts")
@@ -285,8 +295,11 @@ def test_module_target_kind_is_read_from_the_installed_manifest(
 def test_a_kubeconfig_context_module_records_its_target_and_is_refused_before_spawn(
     installed_kubeconfig_target: store.LockEntry, tmp_path: Path
 ) -> None:
-    import json
-
+    """Pins the K0 behaviour (K0-review F9, coordinator-granted edit): a ``check`` on a
+    kubeconfig-context module with nothing open is refused BEFORE consent and BEFORE any
+    attempt is opened -- no record exists afterwards, where the pre-K0 characterisation had one
+    closed record. The refusal fires before core's tools (kind/kubectl/docker) are resolved, so
+    this test does not depend on what is installed on the machine running it."""
     from click.testing import CliRunner
 
     result = CliRunner().invoke(
@@ -296,11 +309,8 @@ def test_a_kubeconfig_context_module_records_its_target_and_is_refused_before_sp
     )
 
     records = list((tmp_path / "module-attempts").rglob("*.json"))
-    assert len(records) == 1, [str(r) for r in records]
-    record = json.loads(records[0].read_text(encoding="utf-8"))
-    assert record["target"] == "kubeconfig-context", record
-    assert record["kubeconfig"] is None, "provisioning is lane K0's; nothing is invented here"
-    assert record["closed_at"] is not None, "the refused attempt was closed"
+    assert records == [], f"a pre-consent refusal must open no attempt record: {records}"
     assert result.exit_code == 1, result.output
     assert "refusing to spawn" in result.output
+    assert "Run this phase now?" not in result.output, "refused before consent"
     assert "check:" not in result.output, "no phase result: nothing ran"

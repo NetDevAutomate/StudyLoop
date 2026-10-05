@@ -1,0 +1,21 @@
+env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_lane_ownership.py -q -p no:cacheprovider -rs -k lane_stays_in_its_lane or fixture_branch_map
+# worktree: module-cluster  HEAD: a492b962  2026-10-05T09:36:10Z
+.s                                                                       [100%]
+=========================== short test summary info ============================
+SKIPPED [1] packages/studyloop/tests/test_lane_ownership.py:462: not on a lane branch ('feat/module-cluster'); nothing to police here
+1 passed, 1 skipped, 38 deselected in 0.28s
+
+# after adding 'feat/module-cluster: K0' to branches: (constant not yet updated):
+env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_lane_ownership.py -q -p no:cacheprovider -rs -k "lane_stays_in_its_lane or fixture_branch_map"
+F.                                                                       [100%]
+=================================== FAILURES ===================================
+_______ test_fixture_branch_map_matches_design_and_points_at_real_lanes ________
+packages/studyloop/tests/test_lane_ownership.py:179: in test_fixture_branch_map_matches_design_and_points_at_real_lanes
+    assert branches == _MODULE_CONTRACT_BRANCHES
+E   AssertionError: assert {'feat/module...er': 'R', ...} == {'feat/module...ma': 'S', ...}
+E
+E     Omitting 5 identical items, use -vv to show
+E     Left contains 1 more item:
+E     {'feat/module-cluster': 'K0'}
+E     Use -v to get more diff
+1 failed, 1 passed, 38 deselected in 0.38s

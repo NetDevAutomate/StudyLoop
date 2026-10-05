@@ -541,13 +541,13 @@ agents:
 ### Modules and drills
 
 Optional learning modules are directories of data (a manifest, practice decks, the scripts they
-name) that StudyLoop validates against sixteen conformance rules and installs from a local path
+name) that StudyLoop validates against seventeen conformance rules and installs from a local path
 as an immutable snapshot; nothing is fetched from the network and no module code is ever imported.
 The full contract is on [Module contract (v1)](module-contract.md).
 
 ```bash
 studyloop module new my-drills            # Scaffold a conforming module with one offline drill
-studyloop module check ./my-drills        # MC001-MC016; exit 0 conforming, 1 findings, 2 not a dir
+studyloop module check ./my-drills        # MC001-MC017; exit 0 conforming, 1 findings, 2 not a dir
 studyloop module check --json ./my-drills # The same findings as JSON, for CI
 studyloop module add ./my-drills          # Check, then snapshot + modules.lock.json (only on success)
 studyloop module list                     # What the lockfile says is installed

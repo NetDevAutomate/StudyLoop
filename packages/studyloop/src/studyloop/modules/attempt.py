@@ -37,6 +37,7 @@ Contract rows these types carry (proposal §5.5):
 from __future__ import annotations
 
 import contextlib
+import dataclasses
 import json
 import logging
 import os
@@ -52,6 +53,11 @@ if TYPE_CHECKING:
     import sqlite3
 
 logger = logging.getLogger(__name__)
+
+
+#: The kubeconfig file name inside a ``kubeconfig-context`` attempt's directory: the one path
+#: core writes (``modules/cluster.py``) and the only one :class:`AttemptStore` records.
+KUBECONFIG_NAME = "kubeconfig"
 
 
 class Phase(StrEnum):
@@ -412,7 +418,54 @@ class AttemptStore:
                 tmp.unlink()
             raise
 
-    def _attempt_from(self, record: dict[str, Any]) -> Attempt:
+    @staticmethod
+    def _reject(path: Path, field: str, detail: str) -> SidecarError:
+        return SidecarError(
+            f"attempt record {path.name}: {field} {detail}; the record is not canonical and "
+            "will not be used (K0-review F2)"
+        )
+
+    def _canonical(self, path: Path, record: dict[str, Any]) -> dict[str, Any]:
+        """Bind the record's identity and paths to the file that holds it (K0-review F2).
+
+        A sidecar is judged by its own location, never by what it says about itself:
+        ``attempt_id`` must be the file's stem; ``attempt_dir`` must be ``<drill dir>/<attempt
+        id>`` beside the file (compared resolved, and neither may be a symlink);
+        ``kubeconfig``, when set, must be ``<attempt dir>/kubeconfig``. Anything else is a
+        :class:`SidecarError` naming the field -- such a record is never handed to code that
+        deletes a cluster or unlinks a credential.
+        """
+        attempt_id = record.get("attempt_id")
+        if not isinstance(attempt_id, str) or attempt_id != path.stem:
+            raise self._reject(path, "attempt_id", f"{attempt_id!r} is not the record's own id")
+        canonical_dir = path.parent / attempt_id
+        recorded_dir = record.get("attempt_dir")
+        if not isinstance(recorded_dir, str):
+            raise self._reject(path, "attempt_dir", "is missing")
+        recorded = Path(recorded_dir)
+        if (
+            recorded.is_symlink()
+            or canonical_dir.is_symlink()
+            or recorded.resolve() != canonical_dir.resolve()
+        ):
+            raise self._reject(
+                path, "attempt_dir", f"{recorded_dir!r} is not the attempt's own {canonical_dir}"
+            )
+        kubeconfig = record.get("kubeconfig")
+        if kubeconfig is not None:
+            expected = canonical_dir.resolve() / KUBECONFIG_NAME
+            if (
+                not isinstance(kubeconfig, str)
+                or Path(kubeconfig).is_symlink()
+                or Path(kubeconfig).resolve() != expected
+            ):
+                raise self._reject(
+                    path, "kubeconfig", f"{kubeconfig!r} is not the attempt's own {expected}"
+                )
+        return record
+
+    def _attempt_from(self, path: Path, record: dict[str, Any]) -> Attempt:
+        record = self._canonical(path, record)
         drill = DrillIdentity(**record["drill"])
         kubeconfig = record.get("kubeconfig")
         return Attempt(
@@ -471,7 +524,7 @@ class AttemptStore:
         drill_dir = self._drill_dir(drill)
         if not drill_dir.is_dir():
             return None
-        candidates: list[tuple[str, dict[str, Any]]] = []
+        candidates: list[tuple[str, Path, dict[str, Any]]] = []
         for path in drill_dir.glob("*.json"):
             if not stat.S_ISREG(os.lstat(path).st_mode):
                 logger.warning("ignoring non-regular file in attempts dir: %s", path.name)
@@ -479,11 +532,37 @@ class AttemptStore:
             record = self._read(path)
             if record is None or record.get("closed_at") is not None:
                 continue
-            candidates.append((str(record.get("opened_at", "")), record))
+            candidates.append((str(record.get("opened_at", "")), path, record))
         if not candidates:
             return None
         candidates.sort(key=lambda item: item[0])
-        return self._attempt_from(candidates[-1][1])
+        _opened, path, record = candidates[-1]
+        return self._attempt_from(path, record)
+
+    def set_kubeconfig(self, attempt: Attempt, kubeconfig: Path) -> Attempt:
+        """Record the core-written kubeconfig on an open attempt and return the attempt
+        carrying it (K0-review F2a: the one public write path for this field).
+
+        Only the canonical path -- ``<attempt dir>/kubeconfig`` -- is accepted, and the record
+        itself must be canonical (:meth:`_canonical`) before it is rewritten; anything else is
+        a :class:`SidecarError` naming the field. Called by ``studyloop drill setup`` right after
+        the cluster is provisioned, before consent, so ``check``/``cleanup`` in later processes
+        find the path through :meth:`current`.
+        """
+        expected = attempt.attempt_dir.resolve() / KUBECONFIG_NAME
+        if Path(kubeconfig).is_symlink() or Path(kubeconfig).resolve() != expected:
+            raise SidecarError(
+                f"attempt {attempt.attempt_id}: kubeconfig {str(kubeconfig)!r} is not the "
+                f"attempt's own {expected}; refusing to record it"
+            )
+        path = self._record_path(attempt)
+        record = self._read(path)
+        if record is None:
+            raise SidecarError(f"attempt record {path.name} is missing")
+        self._canonical(path, record)
+        record["kubeconfig"] = str(kubeconfig)
+        self._write(path, record)
+        return dataclasses.replace(attempt, kubeconfig=Path(kubeconfig))
 
     def close(self, attempt: Attempt, *, reason: str) -> None:
         """Mark the attempt closed with ``reason``; idempotent (a second close is a no-op)."""

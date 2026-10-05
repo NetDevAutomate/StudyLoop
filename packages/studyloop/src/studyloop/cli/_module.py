@@ -30,7 +30,7 @@ def module_group() -> None:
     """Optional learning modules: check conformance, scaffold, install, list, remove.
 
     A module is a directory of data (module.yaml, decks/*.json, scripts/, mentor/brief.md)
-    that StudyLoop validates against contract rules MC001-MC016 and never imports or
+    that StudyLoop validates against contract rules MC001-MC017 and never imports or
     executes. Install from a local path only; StudyLoop makes no network access here.
     Drills from installed modules run through `studyloop drill` inside the one claimed
     study session; `studyloop doctor` reports their declared prerequisites.
@@ -64,7 +64,7 @@ def _print_report(report: CheckReport, module_path: Path, as_json: bool) -> None
     help="Emit {ok, findings[{rule_id,message,path,line}]} for CI.",
 )
 def module_check(path: Path, as_json: bool) -> None:
-    """Check the module at PATH against conformance rules MC001-MC016.
+    """Check the module at PATH against conformance rules MC001-MC017.
 
     Reports each failure as `MCnnn <file>:<line>: <message>` (the line is omitted,
     and null in --json, for a file-level fault such as a missing file). Nothing in the

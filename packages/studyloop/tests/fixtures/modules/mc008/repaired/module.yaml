@@ -9,6 +9,6 @@ maintainers:
     github: studyloop-fixtures
 prerequisites:
   - { id: kubectl }
-capabilities: [check]
+capabilities: [setup, check, cleanup]
 target:
   kind: kubeconfig-context

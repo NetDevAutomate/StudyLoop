@@ -1,0 +1,4 @@
+env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_cluster.py -q -p no:cacheprovider -k failed_create or hung_create or kubeconfig_variable
+# worktree: module-cluster  HEAD: 98f40535  2026-10-05T09:43:03Z
+.....                                                                    [100%]
+5 passed, 17 deselected in 1.60s

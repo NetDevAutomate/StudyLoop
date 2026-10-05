@@ -162,7 +162,7 @@ preflight`. "Red kept" = the failing-test transcript is in the commit body or un
       lockfile diff, envelope) are produced on a forced failure.
 - [ ] U2 `just testuat` — owner runs both personas twice against the rubric; verify sign-off
       recorded under `evidence/uat/`.
-- [ ] K0 `modules/cluster.py`: core-created disposable kind cluster for `target.kind: kubeconfig-context`
+- [x] K0 `modules/cluster.py`: core-created disposable kind cluster for `target.kind: kubeconfig-context`
       (provision before `setup`, one-context kubeconfig 0600 in the attempt dir, teardown after `cleanup`
       and on every failure path, never touch a cluster it did not create); offline tests with a fake
       `kind`; verify the live acceptance test still skips cleanly. Gap found by lane W (W gap 7).

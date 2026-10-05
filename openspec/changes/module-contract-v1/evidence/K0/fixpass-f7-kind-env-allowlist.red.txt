@@ -1,0 +1,12 @@
+env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_cluster.py -q -p no:cacheprovider -k allowlisted_environment or kubeconfig_variable
+# worktree: module-cluster  HEAD: a6dcd37c  2026-10-05T09:59:56Z
+.F                                                                       [100%]
+=================================== FAILURES ===================================
+________________ test_kind_runs_with_an_allowlisted_environment ________________
+packages/studyloop/tests/test_module_cluster.py:511: in test_kind_runs_with_an_allowlisted_environment
+    assert not leaked, f"kind inherited {sorted(leaked)}"
+E   AssertionError: kind inherited ['AWS_SECRET_ACCESS_KEY', 'GITHUB_TOKEN', 'PLAYWRIGHT_MCP_EXTENSION_TOKEN']
+E   assert not {'AWS_SECRET_ACCESS_KEY', 'GITHUB_TOKEN', 'PLAYWRIGHT_MCP_EXTENSION_TOKEN'}
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_module_cluster.py::test_kind_runs_with_an_allowlisted_environment
+1 failed, 1 passed, 37 deselected in 0.43s

@@ -1,0 +1,8 @@
+env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_cluster.py packages/studyloop/tests/test_module_drill_cli.py packages/studyloop/tests/test_module_runner.py packages/studyloop/tests/test_module_lane_seams.py packages/studyloop/tests/test_lane_ownership.py -q -p no:cacheprovider -rs
+# worktree: module-cluster  HEAD: 5cf7271c  2026-10-05T08:54:01Z
+........................................................................ [ 47%]
+........................................................................ [ 94%]
+........s                                                                [100%]
+=========================== short test summary info ============================
+SKIPPED [1] packages/studyloop/tests/test_lane_ownership.py:462: not on a lane branch ('feat/module-cluster'); nothing to police here
+152 passed, 1 skipped in 16.11s

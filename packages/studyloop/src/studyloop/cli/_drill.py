@@ -9,22 +9,37 @@ invocation runs exactly one phase of one drill through the §5.5 runner:
    ``id`` matches, the task whose ``id`` matches, and the phase's command
    (``setupCommand`` / ``command`` / ``cleanupCommand``), split into argv by ``shlex``;
 2. find or open the attempt (``setup`` opens a new one; ``check`` reuses the open one or
-   opens one; ``cleanup`` needs an open one and always closes it);
+   opens one; ``cleanup`` needs an open one and always closes it). For a
+   ``kubeconfig-context`` module two refusals come BEFORE the open, so a refused phase leaves
+   no record (K0-review F9): a ``check`` with nothing open (only ``setup`` provisions) and an
+   unresolvable core tool (``kind``, ``kubectl``, ``docker`` are resolved on the learner's PATH
+   whatever the module declares, M1 Q2). Then ``setup`` **provisions the disposable kind
+   cluster** (lane K0, ``modules/cluster.py``) and records its one-context kubeconfig on the
+   attempt -- all BEFORE the consent prompt, so the prompt can name the cluster and the
+   kubeconfig; ``check`` and ``cleanup`` reuse the recorded kubeconfig;
 3. validate argv and script path and compute the digest **before** asking -- a command the
-   runner would refuse is never shown as something to consent to;
+   runner would refuse is never shown as something to consent to (this happens before step
+   2's open, so a refused command never leaves a record);
 4. show the consent text (phase, target, exact argv, script sha256) and ask. There is no
    ``--yes``. Declining exits 2 and runs nothing;
 5. run the phase; print its result first; then post the typed fields to the mentor hop and
    print exactly one line -- ``Mentor told.`` or ``Mentor not told: <reason>``;
 6. record the ``practice_check_events`` row and the attempt's own evidence; close the
-   attempt when the phase was ``cleanup`` (whatever its exit) or a failed ``setup``.
+   attempt when the phase was ``cleanup`` (whatever its exit) or a failed ``setup``. The
+   disposable cluster is deleted whenever the attempt closes **and** on every failure path
+   after it was created -- declined consent, a refusal after consent, a failed ``setup``, a
+   ``check`` in the error class (exit 2 or above, timeout, output cap; exit 1 keeps it),
+   Ctrl-C or any other exception -- and a failed delete is printed as
+   ``ERROR`` naming the cluster and makes the exit status 2 (spec: never hidden).
 
 Exit status: 0 passed, 1 failed (task not complete) or a refusal/usage problem reported by
-Click, 2 error (timeout, cap, non-zero setup/cleanup, check could not run) or consent declined.
+Click, 2 error (timeout, cap, non-zero setup/cleanup, check could not run, cluster teardown
+failed) or consent declined.
 """
 
 from __future__ import annotations
 
+import dataclasses
 import importlib
 import json
 import os
@@ -37,7 +52,7 @@ from typing import TYPE_CHECKING
 import click
 
 from studyloop.content.schemas import SLUG_PATTERN, PracticeDeck
-from studyloop.modules import hop, runner
+from studyloop.modules import cluster, hop, runner
 from studyloop.modules.attempt import (
     Attempt,
     AttemptStore,
@@ -53,9 +68,12 @@ from studyloop.modules.attempt import (
     TargetKind,
     record_phase,
 )
+from studyloop.modules.cluster import ClusterError, ClusterHandle
 from studyloop.modules.consent import ConsentLedger, describe_consent
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
+
     from studyloop.content.schemas import PracticeTask
     from studyloop.modules.manifest import ModuleManifest
 
@@ -184,11 +202,11 @@ def module_prerequisites(snapshot_dir: Path) -> tuple[str, ...]:
 def module_target(snapshot_dir: Path) -> TargetKind:
     """``target.kind`` from the installed module's manifest, as the runner's enum.
 
-    W-review finding 8 (partial): the attempt records the module's declared target instead of
-    defaulting to ``workdir``. Provisioning the §5.5 disposable cluster and writing the
-    one-context ``KUBECONFIG`` is lane K0's; until it lands, ``runner.build_environment``
-    refuses a ``kubeconfig-context`` attempt that carries no kubeconfig -- after consent,
-    before any process starts.
+    W-review finding 8: the attempt records the module's declared target instead of defaulting
+    to ``workdir``. For ``kubeconfig-context`` lane K0 (``modules/cluster.py``, wired in
+    :func:`run_drill_phase`) provisions the §5.5 disposable cluster at ``setup`` and records
+    the one-context ``KUBECONFIG`` on the attempt; ``runner.build_environment`` still refuses
+    an attempt that carries none (the spec's "a missing kubeconfig is refused before spawn").
     """
     return TargetKind(read_module_manifest(snapshot_dir).target.kind)
 
@@ -235,17 +253,34 @@ def _exit_status(result: PhaseResult) -> int:
     return 2
 
 
+def _current_attempt(store: AttemptStore, drill: DrillIdentity) -> Attempt | None:
+    """The open attempt for ``drill`` or ``None``; a non-canonical record is a Click error.
+
+    K0-review F2: a record whose id or paths are not canonical is never used -- not to run in,
+    not to delete with. Say so and stop; nothing is opened.
+    """
+    try:
+        return store.current(drill)
+    except SidecarError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+
 def _open_attempt(
     store: AttemptStore,
     phase: Phase,
     drill: DrillIdentity,
     snapshot_dir: Path,
     target: TargetKind = TargetKind.WORKDIR,
+    current: Attempt | None = None,
 ) -> tuple[Attempt, bool]:
     """Return ``(attempt, opened_here)`` per phase: setup opens, check reuses-or-opens,
-    cleanup needs one. ``target`` is the manifest's ``target.kind``; ``kubeconfig`` stays
-    ``None`` here (lane K0 provisions it)."""
-    current = store.current(drill)
+    cleanup needs one. ``current`` is the open attempt the caller already read through
+    :func:`_current_attempt` (so the pre-open refusals and this share one read); ``target`` is
+    the manifest's ``target.kind``; ``kubeconfig`` is still ``None`` here -- for a
+    ``kubeconfig-context`` attempt :func:`_provision_cluster` records it through
+    :meth:`AttemptStore.set_kubeconfig` right after ``setup`` opens the attempt (the cluster
+    name derives from the attempt id). A cluster-less ``check`` on a ``kubeconfig-context``
+    drill never reaches this function: :func:`_refuse_before_open` has already said no."""
     if phase is Phase.SETUP:
         if current is not None:
             raise click.ClickException(
@@ -262,6 +297,156 @@ def _open_attempt(
     if current is not None:
         return current, False
     return store.open(drill, snapshot_dir=snapshot_dir, target=target), True
+
+
+# ---------------------------------------------------------------------------
+# The disposable cluster's lifetime is the attempt's (lane K0, modules/cluster.py)
+# ---------------------------------------------------------------------------
+
+
+@dataclasses.dataclass
+class _Disposable:
+    """The attempt's disposable cluster and whether it has already been torn down.
+
+    One object per CLI invocation so the normal path (``cleanup``, a failed ``setup``, a
+    ``check`` timeout, declined consent) and the exceptional path (Ctrl-C, any error) cannot
+    both issue a ``kind delete`` for the same cluster.
+    """
+
+    handle: ClusterHandle
+    torn_down: bool = False
+
+    def teardown(self, store: AttemptStore, attempt: Attempt, *, reason: str) -> bool:
+        """Delete the cluster, remove its kubeconfig, close the attempt. Returns ``False`` when
+        kind could not delete it -- after printing ``ERROR: ...`` naming the cluster and the
+        by-hand command (never silently); the attempt is closed either way so the next
+        ``setup`` can start clean."""
+        if self.torn_down:
+            return True
+        self.torn_down = True
+        ok = True
+        try:
+            cluster.teardown(self.handle)
+            click.echo(f"Cluster {self.handle.name} deleted; its kubeconfig removed.")
+        except ClusterError as exc:
+            ok = False
+            click.echo(f"ERROR: {exc}")
+            reason = f"{reason}; cluster teardown failed: {exc}"
+        store.close(attempt, reason=reason)
+        return ok
+
+
+def _provision_cluster(
+    store: AttemptStore, attempt: Attempt, tools: Mapping[str, Path], live: list[_Disposable]
+) -> tuple[Attempt, _Disposable]:
+    """``setup`` on a ``kubeconfig-context`` attempt: create the cluster BEFORE the consent
+    prompt (so the prompt names it) and record its kubeconfig on the attempt. A provisioning
+    failure closes the just-opened attempt and is a Click error naming the cluster.
+
+    The :class:`_Disposable` is appended to ``live`` the instant ``provision`` returns, so the
+    caller's ``except BaseException`` can tear the cluster down whatever happens next -- a
+    ``SidecarError`` writing the record, a ``KeyboardInterrupt`` landing between the two lines
+    (K0-review F4). Nothing here catches the non-``ClusterError`` cases itself: the caller does,
+    once, for every path.
+    """
+    try:
+        handle = cluster.provision(attempt, tools=tools)
+    except ClusterError as exc:
+        store.close(attempt, reason=f"setup: cluster not provisioned: {exc}")
+        raise click.ClickException(str(exc)) from exc
+    disposable = _Disposable(handle)
+    live.append(disposable)
+    try:
+        attempt = store.set_kubeconfig(attempt, handle.kubeconfig)
+    except SidecarError as exc:
+        disposable.teardown(store, attempt, reason=f"setup: attempt record not updated: {exc}")
+        raise click.ClickException(f"attempt record not updated: {exc}") from exc
+    return attempt, disposable
+
+
+def _consent_and_run(
+    store: AttemptStore,
+    attempt: Attempt,
+    *,
+    opened_here: bool,
+    disposable: _Disposable | None,
+    phase: Phase,
+    argv: Sequence[str],
+    digest: str,
+    timeout: int,
+    prerequisites: Sequence[str],
+) -> int:
+    """Steps 4-6 of the module docstring for an attempt that is open (and, for a
+    ``kubeconfig-context`` target, whose cluster exists). Returns the exit status."""
+    if disposable is not None:
+        click.echo(
+            f"Cluster:     {disposable.handle.name} (disposable kind cluster core created for "
+            "this attempt; deleted after cleanup or on failure)"
+        )
+    click.echo(describe_consent(attempt, phase, argv, script_digest=digest))
+    if not click.confirm("Run this phase now?", default=False):
+        click.echo("Not confirmed -- nothing executed.")
+        reason = f"{phase.value} not confirmed; nothing ran"
+        if disposable is not None:
+            # K0 brief item 3: consent refused on any phase after the cluster exists tears it
+            # down -- a cluster nobody consented to work on does not stay up.
+            disposable.teardown(store, attempt, reason=reason)
+        elif opened_here:
+            store.close(attempt, reason=reason)
+        return 2
+
+    ledger = ConsentLedger()
+    consent = ledger.issue(attempt, phase, argv, script_digest=digest)
+    try:
+        result = runner.run_phase(
+            attempt,
+            phase,
+            argv,
+            consent=consent,
+            ledger=ledger,
+            timeout_seconds=timeout,
+            prerequisites=prerequisites,
+        )
+    except RefusalError as exc:
+        reason = f"{phase.value} refused before spawn: {exc}"
+        if opened_here:
+            if disposable is not None:
+                disposable.teardown(store, attempt, reason=reason)
+            else:
+                store.close(attempt, reason=reason)
+        raise click.ClickException(str(exc)) from exc
+
+    _echo_result(result)
+    fields = hop.check_result_fields(attempt, result)
+    outcome = hop.post_check_result(fields)
+    _echo_outcome(outcome)
+
+    if record_phase(attempt, result, delivery=outcome) is None:
+        click.echo(
+            "practice_check event not recorded: the sessions database is unavailable", err=True
+        )
+    status = _exit_status(result)
+    # The child has exited and been reaped (run_phase returned): safe to write the sidecar.
+    try:
+        store.record_evidence(attempt, result, delivery=outcome)
+        closes = phase is Phase.CLEANUP or (
+            phase is Phase.SETUP and result.exit_class is not ExitClass.PASSED
+        )
+        # Spec ("every failure path", K0-review F5): any check result in the ERROR class --
+        # exit 2 or above, a timeout, an output cap -- is a failure path for the cluster too.
+        # Only a check that FAILED (exit 1, task not complete) keeps it for the next try. The
+        # class is the runner's, never re-derived here from the raw exit code.
+        if disposable is not None and phase is Phase.CHECK and result.exit_class is ExitClass.ERROR:
+            closes = True
+        if closes:
+            if disposable is not None:
+                if not disposable.teardown(store, attempt, reason=result.message):
+                    status = 2
+            else:
+                store.close(attempt, reason=result.message)
+    except SidecarError as exc:
+        raise click.ClickException(f"attempt record not updated: {exc}") from exc
+    return status
 
 
 def run_drill_phase(phase: Phase, ref: str) -> int:
@@ -302,51 +487,95 @@ def run_drill_phase(phase: Phase, ref: str) -> int:
     digest = runner.script_digest(script)
 
     store = AttemptStore(root=attempts_root())
-    attempt, opened_here = _open_attempt(store, phase, drill, installed.snapshot_dir, target)
-
-    click.echo(describe_consent(attempt, phase, argv, script_digest=digest))
-    if not click.confirm("Run this phase now?", default=False):
-        click.echo("Not confirmed -- nothing executed.")
-        if opened_here:
-            store.close(attempt, reason=f"{phase.value} not confirmed; nothing ran")
-        return 2
-
-    ledger = ConsentLedger()
-    consent = ledger.issue(attempt, phase, argv, script_digest=digest)
+    current = _current_attempt(store, drill)
+    tools: Mapping[str, Path] = {}
+    if target is TargetKind.KUBECONFIG_CONTEXT:
+        tools = _refuse_before_open(phase, ref, current)  # F9: nothing opened yet
+    attempt, opened_here = _open_attempt(
+        store, phase, drill, installed.snapshot_dir, target, current=current
+    )
+    # The attempt's disposable cluster, registered by `_attach_cluster` the instant it exists
+    # (a list, not a local assigned from a return value: a KeyboardInterrupt between the
+    # return and the assignment would otherwise leave a cluster nobody can tear down -- F4).
+    live: list[_Disposable] = []
     try:
-        result = runner.run_phase(
+        disposable: _Disposable | None = None
+        if target is TargetKind.KUBECONFIG_CONTEXT:
+            attempt, disposable = _attach_cluster(
+                store, attempt, phase=phase, tools=tools, live=live
+            )
+        return _consent_and_run(
+            store,
             attempt,
-            phase,
-            argv,
-            consent=consent,
-            ledger=ledger,
-            timeout_seconds=timeout,
+            opened_here=opened_here,
+            disposable=disposable,
+            phase=phase,
+            argv=argv,
+            digest=digest,
+            timeout=timeout,
             prerequisites=prerequisites,
         )
+    except BaseException as exc:
+        # K0 brief item 3 / review F4: KeyboardInterrupt, click.Abort, a Click error after
+        # consent, a SidecarError, any other failure -- the disposable cluster must not
+        # outlive the attempt. The normal paths above have already torn down when they meant
+        # to (`torn_down` makes this a no-op for them).
+        for pending in live:
+            if not pending.torn_down:
+                pending.teardown(
+                    store, attempt, reason=f"{phase.value} interrupted: {type(exc).__name__}"
+                )
+        raise
+
+
+def _refuse_before_open(phase: Phase, ref: str, current: Attempt | None) -> Mapping[str, Path]:
+    """The two ``kubeconfig-context`` refusals that happen BEFORE any attempt is opened, so a
+    refused phase leaves no record in the learner's attempt history (K0-review F9; spec: "a
+    phase refused before consent ... SHALL open no attempt record").
+
+    1. A ``check`` with nothing open has no cluster to run against -- only ``setup``
+       provisions (K0 brief item 5) -- and is refused naming ``drill setup``, not after consent
+       in the runner's missing-kubeconfig branch. This comes first, before any tool lookup, so
+       it does not depend on what is installed.
+    2. Core's own tools -- ``kind``, ``kubectl``, ``docker`` (brief item 6, M1 Q2) -- are
+       resolved on the learner's PATH whatever the module declares; an unresolvable one refuses
+       the phase naming the tool. The resolved paths are returned for provisioning/teardown.
+    """
+    if phase is Phase.CHECK and (current is None or current.kubeconfig is None):
+        raise click.ClickException(
+            f"no cluster for this attempt: a kubeconfig-context drill runs against the "
+            f"disposable cluster `studyloop drill setup {ref}` creates -- run that first; "
+            "refusing to spawn"
+        )
+    try:
+        return runner.resolve_prerequisites(cluster.CLUSTER_TOOLS)
     except RefusalError as exc:
-        if opened_here:
-            store.close(attempt, reason=f"{phase.value} refused before spawn: {exc}")
         raise click.ClickException(str(exc)) from exc
 
-    _echo_result(result)
-    fields = hop.check_result_fields(attempt, result)
-    outcome = hop.post_check_result(fields)
-    _echo_outcome(outcome)
 
-    if record_phase(attempt, result, delivery=outcome) is None:
-        click.echo(
-            "practice_check event not recorded: the sessions database is unavailable", err=True
-        )
-    # The child has exited and been reaped (run_phase returned): safe to write the sidecar.
+def _attach_cluster(
+    store: AttemptStore,
+    attempt: Attempt,
+    *,
+    phase: Phase,
+    tools: Mapping[str, Path],
+    live: list[_Disposable],
+) -> tuple[Attempt, _Disposable]:
+    """Give a ``kubeconfig-context`` attempt its disposable cluster, before any consent.
+
+    ``setup`` provisions (K0 brief item 5); ``check``/``cleanup`` rebuild the handle from the
+    attempt's recorded kubeconfig (a non-canonical one is refused by ``cluster.handle_for``,
+    F2). Every refusal that needs no attempt has already happened in
+    :func:`_refuse_before_open`.
+    """
+    if phase is Phase.SETUP:
+        return _provision_cluster(store, attempt, tools, live)
     try:
-        store.record_evidence(attempt, result, delivery=outcome)
-        if phase is Phase.CLEANUP or (
-            phase is Phase.SETUP and result.exit_class is not ExitClass.PASSED
-        ):
-            store.close(attempt, reason=result.message)
-    except SidecarError as exc:
-        raise click.ClickException(f"attempt record not updated: {exc}") from exc
-    return _exit_status(result)
+        disposable = _Disposable(cluster.handle_for(attempt, tools=tools))
+    except ClusterError as exc:
+        raise click.ClickException(str(exc)) from exc
+    live.append(disposable)
+    return attempt, disposable
 
 
 @click.group("drill")
@@ -374,7 +603,9 @@ def _phase_command(phase: Phase, help_text: str) -> click.Command:
 drill_setup = _phase_command(
     Phase.SETUP,
     "Open a new attempt and run the task's setupCommand. A non-zero exit is an error and "
-    "the attempt is not started. Exit 0 passed, 2 error or not confirmed.",
+    "the attempt is not started. For a kubeconfig-context module the disposable kind "
+    "cluster is created first and named in the prompt; it is deleted again if setup fails "
+    "or is not confirmed. Exit 0 passed, 2 error or not confirmed.",
 )
 drill_check = _phase_command(
     Phase.CHECK,
@@ -386,5 +617,7 @@ drill_check = _phase_command(
 drill_cleanup = _phase_command(
     Phase.CLEANUP,
     "Run the task's cleanupCommand and close the attempt -- the attempt closes even when "
-    "cleanup fails (the failure is shown). Exit 0 passed, 2 error or not confirmed.",
+    "cleanup fails (the failure is shown). For a kubeconfig-context module the attempt's "
+    "disposable kind cluster is deleted after the script runs; a failed delete is reported "
+    "naming the cluster. Exit 0 passed, 2 error or not confirmed.",
 )

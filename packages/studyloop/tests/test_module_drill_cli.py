@@ -657,3 +657,32 @@ def _free_port() -> int:
     with contextlib.closing(socket.socket()) as sock:
         sock.bind(("127.0.0.1", 0))
         return sock.getsockname()[1]
+
+
+def test_workdir_module_never_calls_kind(
+    installed: DrillIdentity, sessions_db: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Lane K0 pin: the disposable-cluster path exists only for ``target.kind:
+    kubeconfig-context``. A ``workdir`` drill must not resolve or run ``kind`` at any phase,
+    even with a ``kind`` first on the PATH -- this one records every invocation to a log that
+    must never come into existence. (Already green when written: ``_drill`` never called kind
+    for any target; the pin is what would catch core resolving its cluster tools for every
+    target kind.)"""
+    fake_bin = tmp_path / "fake-bin"
+    fake_bin.mkdir()
+    log = tmp_path / "kind-calls.log"
+    kind = fake_bin / "kind"
+    kind.write_text(
+        '#!/bin/sh\nprintf "%s\\n" "$*" >> "${KIND_FAKE_LOG:?}"\nexit 0\n', encoding="utf-8"
+    )
+    kind.chmod(0o755)
+    monkeypatch.setenv("KIND_FAKE_LOG", str(log))
+    monkeypatch.setenv("PATH", f"{fake_bin}:/usr/bin:/bin")
+
+    for phase in ("setup", "check", "cleanup"):
+        result = _invoke(phase, DRILL_REF)
+        assert result.exit_code == 0, result.output
+        assert "Target:      workdir" in result.output
+        assert "Cluster:" not in result.output, "a workdir prompt names no cluster"
+
+    assert not log.exists(), f"kind was called for a workdir drill: {log.read_text()!r}"

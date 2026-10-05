@@ -1,0 +1,33 @@
+env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_cluster.py packages/studyloop/tests/test_module_lane_seams.py -q -p no:cacheprovider -k without_an_open_attempt or missing_core_tool or records_its_target_and_is_refused
+# worktree: module-cluster  HEAD: 701e881a  2026-10-05T09:57:13Z
+FFF                                                                      [100%]
+=================================== FAILURES ===================================
+_ test_missing_core_tool_refuses_before_consent_even_when_the_module_omits_it __
+packages/studyloop/tests/test_module_cluster.py:1023: in test_missing_core_tool_refuses_before_consent_even_when_the_module_omits_it
+    assert list((tmp_path / "module-attempts").rglob("*.json")) == [], (
+E   AssertionError: K0-review F9: a missing core tool is refused before any attempt is opened
+E   assert [PosixPath('/...81ef76.json')] == []
+E
+E     Left contains one more item: PosixPath('/private/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/pytest-of-ataylor/pytest-623/test_missing_core_tool_refuses0/module-attempts/k8s-offline/cluster/current-context/0bf8ee34-b188-48c6-b092-cb179e81ef76.json')
+E     Use -v to get more diff
+_________ test_check_without_an_open_attempt_is_refused_before_consent _________
+packages/studyloop/tests/test_module_cluster.py:1043: in test_check_without_an_open_attempt_is_refused_before_consent
+    assert list((tmp_path / "module-attempts").rglob("*.json")) == [], "no record was opened"
+E   AssertionError: no record was opened
+E   assert [PosixPath('/...cd1d96.json')] == []
+E
+E     Left contains one more item: PosixPath('/private/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/pytest-of-ataylor/pytest-623/test_check_without_an_open_att0/module-attempts/k8s-offline/cluster/current-context/f4d4646e-58d0-40d1-a49b-990a87cd1d96.json')
+E     Use -v to get more diff
+_ test_a_kubeconfig_context_module_records_its_target_and_is_refused_before_spawn _
+packages/studyloop/tests/test_module_lane_seams.py:302: in test_a_kubeconfig_context_module_records_its_target_and_is_refused_before_spawn
+    assert records == [], f"a pre-consent refusal must open no attempt record: {records}"
+E   AssertionError: a pre-consent refusal must open no attempt record: [PosixPath('/private/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/pytest-of-ataylor/pytest-623/test_a_kubeconfig_context_modu0/module-attempts/echo-drills/echo-basics/echo-01/e73ca633-b7fb-4d36-8d02-cb2c0b52075b.json')]
+E   assert [PosixPath('/...52075b.json')] == []
+E
+E     Left contains one more item: PosixPath('/private/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/pytest-of-ataylor/pytest-623/test_a_kubeconfig_context_modu0/module-attempts/echo-drills/echo-basics/echo-01/e73ca633-b7fb-4d36-8d02-cb2c0b52075b.json')
+E     Use -v to get more diff
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_module_cluster.py::test_missing_core_tool_refuses_before_consent_even_when_the_module_omits_it
+FAILED packages/studyloop/tests/test_module_cluster.py::test_check_without_an_open_attempt_is_refused_before_consent
+FAILED packages/studyloop/tests/test_module_lane_seams.py::test_a_kubeconfig_context_module_records_its_target_and_is_refused_before_spawn
+3 failed, 46 deselected in 0.50s

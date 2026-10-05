@@ -19,7 +19,9 @@
         "successCriteria": [
           "Check script exits 0"
         ],
+        "setupCommand": "scripts/setup.sh",
         "command": "scripts/check.sh --context prod",
+        "cleanupCommand": "scripts/cleanup.sh",
         "timeoutSeconds": 10
       }
     }

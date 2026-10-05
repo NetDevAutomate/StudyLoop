@@ -1,0 +1,4 @@
+env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_cluster.py -q -p no:cacheprovider -k unusable_kubeconfig or interrupt_after_a_successful_create or interrupt_right_after_provision
+# worktree: module-cluster  HEAD: 2261fc6d  2026-10-05T09:49:58Z
+....                                                                     [100%]
+4 passed, 23 deselected in 0.58s

@@ -1,0 +1,33 @@
+env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_cluster.py -q -p no:cacheprovider -k unusable_kubeconfig or interrupt_after_a_successful_create or interrupt_right_after_provision
+# worktree: module-cluster  HEAD: 2261fc6d  2026-10-05T09:47:57Z
+.FFF                                                                     [100%]
+=================================== FAILURES ===================================
+_ test_unusable_kubeconfig_after_a_successful_create_tears_down_and_names_the_cause[contexts-not-mappings] _
+packages/studyloop/tests/test_module_cluster.py:581: in test_unusable_kubeconfig_after_a_successful_create_tears_down_and_names_the_cause
+    cluster.provision(attempt, tools=tools)
+packages/studyloop/src/studyloop/modules/cluster.py:419: in provision
+    rewrite_kubeconfig(kubeconfig, name)
+packages/studyloop/src/studyloop/modules/cluster.py:356: in rewrite_kubeconfig
+    reduced = _one_context(yaml.safe_load(path.read_text(encoding="utf-8")), context_name)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+packages/studyloop/src/studyloop/modules/cluster.py:317: in _one_context
+    contexts = [c for c in doc.get("contexts") or [] if c.get("name") == context_name]
+                                                        ^^^^^
+E   AttributeError: 'int' object has no attribute 'get'
+_ test_keyboard_interrupt_after_a_successful_create_tears_down_and_propagates __
+packages/studyloop/tests/test_module_cluster.py:616: in test_keyboard_interrupt_after_a_successful_create_tears_down_and_propagates
+    assert any(name in note for note in getattr(excinfo.value, "__notes__", []))
+E   assert False
+E    +  where False = any(<generator object test_keyboard_interrupt_after_a_successful_create_tears_down_and_propagates.<locals>.<genexpr> at 0x1092d9a40>)
+_____ test_keyboard_interrupt_right_after_provision_tears_down_the_cluster _____
+packages/studyloop/tests/test_module_cluster.py:967: in test_keyboard_interrupt_right_after_provision_tears_down_the_cluster
+    assert _kinds(fake_tools) == [["get", "clusters"], ["create", "cluster"], ["delete", "cluster"]]
+E   AssertionError: assert [['get', 'clu...', 'cluster']] == [['get', 'clu...', 'cluster']]
+E
+E     Right contains one more item: ['delete', 'cluster']
+E     Use -v to get more diff
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_module_cluster.py::test_unusable_kubeconfig_after_a_successful_create_tears_down_and_names_the_cause[contexts-not-mappings]
+FAILED packages/studyloop/tests/test_module_cluster.py::test_keyboard_interrupt_after_a_successful_create_tears_down_and_propagates
+FAILED packages/studyloop/tests/test_module_cluster.py::test_keyboard_interrupt_right_after_provision_tears_down_the_cluster
+3 failed, 1 passed, 23 deselected in 0.62s

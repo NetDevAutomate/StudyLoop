@@ -1,0 +1,4 @@
+env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_cluster.py -q -p no:cacheprovider -k every_check_error_class or check_timeout_tears or exit_1_keeps
+# worktree: module-cluster  HEAD: f93da37e  2026-10-05T09:55:53Z
+.....                                                                    [100%]
+5 passed, 33 deselected in 2.41s
