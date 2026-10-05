@@ -96,6 +96,7 @@ exclude_docs: |
   !/contributor-ai.md
   !/contributor-conventions.md
   !/contributor-module-index.md
+  !/module-contract.md
   !/images/**
   !/stylesheets/**
   !/javascripts/**
@@ -149,5 +150,6 @@ nav:
     - Code Map: contributor-code-map.md
     - Conventions: contributor-conventions.md
   - Proposals (design stage):
-    - Optional Modules (Proposal): contributor-modules.md
+    - Optional Modules (Design History): contributor-modules.md
     - Module Index (Proposal): contributor-module-index.md
+  - Module Contract (v1): module-contract.md

@@ -1,0 +1,4 @@
+env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_contributor_guide_drift.py packages/studyloop/tests/test_docs_drift.py -q -p no:cacheprovider -k module-contract
+# worktree: module-web-labs  HEAD: f6f1fb65+W-review fixes (uncommitted)  2026-10-05T01:48:10Z  (docs/module-contract.md present)
+..........                                                               [100%]
+10 passed, 433 deselected in 0.37s

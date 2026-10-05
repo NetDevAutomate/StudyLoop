@@ -1,0 +1,118 @@
+env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_web_modules.py -q -p no:cacheprovider
+# worktree: module-web-labs  HEAD: 355db26c  2026-10-04T23:10:00Z  TMPDIR=$(getconf DARWIN_USER_TEMP_DIR)  (W1: no route, no Labs entry, no labs.js)
+# CLASSIFICATION (W-review finding 1): 20 of 21 are red-first evidence. `test_options_carry_no_labs_entry_with_an_empty_lockfile` is CHARACTERISATION -- green by construction (no code existed to add a Labs key) -- and is not claimed as a red.
+E   AssertionError: {"detail":"Method Not Allowed"}
+E   assert 405 == 201
+E    +  where 405 = <Response [405 Method Not Allowed]>.status_code
+________________ test_labs_cancel_leaves_the_session_untouched _________________
+packages/studyloop/tests/test_web_modules.py:418: in test_labs_cancel_leaves_the_session_untouched
+    assert started.status_code == 201, started.text
+E   AssertionError: {"detail":"Method Not Allowed"}
+E   assert 405 == 201
+E    +  where 405 = <Response [405 Method Not Allowed]>.status_code
+_____________ test_labs_start_rejects_a_body_with_an_unknown_field _____________
+packages/studyloop/tests/test_web_modules.py:438: in test_labs_start_rejects_a_body_with_an_unknown_field
+    assert response.status_code == 422, response.text
+E   AssertionError: {"detail":"Method Not Allowed"}
+E   assert 405 == 422
+E    +  where 405 = <Response [405 Method Not Allowed]>.status_code
+_____________ test_practice_check_without_the_token_header_is_401 ______________
+packages/studyloop/tests/test_web_modules.py:452: in test_practice_check_without_the_token_header_is_401
+    assert response.status_code == 401, response.text
+E   AssertionError: {"detail":"Method Not Allowed"}
+E   assert 405 == 401
+E    +  where 405 = <Response [405 Method Not Allowed]>.status_code
+_______________ test_practice_check_with_the_wrong_token_is_403 ________________
+packages/studyloop/tests/test_web_modules.py:461: in test_practice_check_with_the_wrong_token_is_403
+    assert response.status_code == 403, response.text
+E   AssertionError: {"detail":"Method Not Allowed"}
+E   assert 405 == 403
+E    +  where 405 = <Response [405 Method Not Allowed]>.status_code
+__ test_practice_check_from_a_non_loopback_address_is_403_even_with_the_token __
+packages/studyloop/tests/test_web_modules.py:471: in test_practice_check_from_a_non_loopback_address_is_403_even_with_the_token
+    assert response.status_code == 403, response.text
+E   AssertionError: {"detail":"Method Not Allowed"}
+E   assert 405 == 403
+E    +  where 405 = <Response [405 Method Not Allowed]>.status_code
+______________ test_practice_check_names_an_extra_field_with_422 _______________
+packages/studyloop/tests/test_web_modules.py:484: in test_practice_check_names_an_extra_field_with_422
+    assert response.status_code == 422, response.text
+E   AssertionError: {"detail":"Method Not Allowed"}
+E   assert 405 == 422
+E    +  where 405 = <Response [405 Method Not Allowed]>.status_code
+_____ test_practice_check_with_no_active_session_is_200_no_active_session ______
+packages/studyloop/tests/test_web_modules.py:497: in test_practice_check_with_no_active_session_is_200_no_active_session
+    assert response.status_code == 200, response.text
+E   AssertionError: {"detail":"Method Not Allowed"}
+E   assert 405 == 200
+E    +  where 405 = <Response [405 Method Not Allowed]>.status_code
+_____________ test_practice_check_delivers_into_the_active_session _____________
+packages/studyloop/tests/test_web_modules.py:517: in test_practice_check_delivers_into_the_active_session
+    assert response.status_code == 200, response.text
+E   AssertionError: {"detail":"Method Not Allowed"}
+E   assert 405 == 200
+E    +  where 405 = <Response [405 Method Not Allowed]>.status_code
+_ test_practice_check_token_of_another_session_is_403_when_a_session_is_active _
+packages/studyloop/tests/test_web_modules.py:539: in test_practice_check_token_of_another_session_is_403_when_a_session_is_active
+    assert response.status_code == 403, response.text
+E   AssertionError: {"detail":"Method Not Allowed"}
+E   assert 405 == 403
+E    +  where 405 = <Response [405 Method Not Allowed]>.status_code
+_______ test_practice_check_replay_of_the_same_attempt_and_phase_is_409 ________
+packages/studyloop/tests/test_web_modules.py:553: in test_practice_check_replay_of_the_same_attempt_and_phase_is_409
+    assert first.status_code == 200, first.text
+E   AssertionError: {"detail":"Method Not Allowed"}
+E   assert 405 == 200
+E    +  where 405 = <Response [405 Method Not Allowed]>.status_code
+__________ test_practice_check_sixth_envelope_within_a_minute_is_429 ___________
+packages/studyloop/tests/test_web_modules.py:569: in test_practice_check_sixth_envelope_within_a_minute_is_429
+    assert statuses == [200, 200, 200, 200, 200, 429], statuses
+E   AssertionError: [405, 405, 405, 405, 405, 405]
+E   assert [405, 405, 405, 405, 405, 405] == [200, 200, 200, 200, 200, 429]
+E
+E     At index 0 diff: 405 != 200
+E     Use -v to get more diff
+______________ test_practice_check_with_no_claimed_session_is_401 ______________
+packages/studyloop/tests/test_web_modules.py:577: in test_practice_check_with_no_claimed_session_is_401
+    assert response.status_code in (401, 403), response.text
+E   AssertionError: {"detail":"Method Not Allowed"}
+E   assert 405 in (401, 403)
+E    +  where 405 = <Response [405 Method Not Allowed]>.status_code
+____________ test_practice_check_rejects_a_non_object_body_with_400 ____________
+packages/studyloop/tests/test_web_modules.py:592: in test_practice_check_rejects_a_non_object_body_with_400
+    assert response.status_code == 400, response.text
+E   AssertionError: {"detail":"Method Not Allowed"}
+E   assert 405 == 400
+E    +  where 405 = <Response [405 Method Not Allowed]>.status_code
+_________________ test_the_module_routes_are_mounted_under_api _________________
+packages/studyloop/tests/test_web_modules.py:604: in test_the_module_routes_are_mounted_under_api
+    assert "/api/modules/labs" in paths
+E   AssertionError: assert '/api/modules/labs' in {'', '/', '/api/artefacts/{course}', '/api/backlog', '/api/backlog/demote', '/api/backlog/dismiss', ...}
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/starlette/testclient.py:53
+  /Users/ataylor/code/personal/tools/studyloop-wt/module-web-labs/.venv/lib/python3.12/site-packages/starlette/testclient.py:53: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_web_modules.py::test_options_list_the_installed_module_by_deck_and_task_ids_and_prompts
+FAILED packages/studyloop/tests/test_web_modules.py::test_labs_route_lists_ids_prompts_and_success_criteria_only
+FAILED packages/studyloop/tests/test_web_modules.py::test_labs_route_is_empty_with_no_module
+FAILED packages/studyloop/tests/test_web_modules.py::test_labs_start_refuses_an_unknown_drill_with_404
+FAILED packages/studyloop/tests/test_web_modules.py::test_labs_start_starts_the_one_claimed_session_through_the_session_start_path
+FAILED packages/studyloop/tests/test_web_modules.py::test_labs_start_with_the_session_live_attaches_instead_of_starting_a_second
+FAILED packages/studyloop/tests/test_web_modules.py::test_labs_cancel_leaves_the_session_untouched
+FAILED packages/studyloop/tests/test_web_modules.py::test_labs_start_rejects_a_body_with_an_unknown_field
+FAILED packages/studyloop/tests/test_web_modules.py::test_practice_check_without_the_token_header_is_401
+FAILED packages/studyloop/tests/test_web_modules.py::test_practice_check_with_the_wrong_token_is_403
+FAILED packages/studyloop/tests/test_web_modules.py::test_practice_check_from_a_non_loopback_address_is_403_even_with_the_token
+FAILED packages/studyloop/tests/test_web_modules.py::test_practice_check_names_an_extra_field_with_422
+FAILED packages/studyloop/tests/test_web_modules.py::test_practice_check_with_no_active_session_is_200_no_active_session
+FAILED packages/studyloop/tests/test_web_modules.py::test_practice_check_delivers_into_the_active_session
+FAILED packages/studyloop/tests/test_web_modules.py::test_practice_check_token_of_another_session_is_403_when_a_session_is_active
+FAILED packages/studyloop/tests/test_web_modules.py::test_practice_check_replay_of_the_same_attempt_and_phase_is_409
+FAILED packages/studyloop/tests/test_web_modules.py::test_practice_check_sixth_envelope_within_a_minute_is_429
+FAILED packages/studyloop/tests/test_web_modules.py::test_practice_check_with_no_claimed_session_is_401
+FAILED packages/studyloop/tests/test_web_modules.py::test_practice_check_rejects_a_non_object_body_with_400
+FAILED packages/studyloop/tests/test_web_modules.py::test_the_module_routes_are_mounted_under_api
+20 failed, 1 passed, 1 warning in 1.68s

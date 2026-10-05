@@ -289,6 +289,7 @@ def create_app(
         explorer,
         history,
         mastery,
+        modules,
         notes,
         now,
         parking,
@@ -310,6 +311,9 @@ def create_app(
     app.include_router(explorer.router, prefix="/api")
     app.include_router(artefacts.router)
     app.include_router(body_double.router, prefix="/api")
+    app.include_router(
+        modules.router, prefix="/api"
+    )  # module-contract v1: Labs + practice-check hop
     # Topic exercises are a developer preview. Keep the router absent (404),
     # rather than registered-and-refusing, unless the web process was started
     # explicitly with `studyloop web --dev`; otherwise the API would remain a

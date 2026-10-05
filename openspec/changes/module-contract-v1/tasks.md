@@ -131,23 +131,23 @@ preflight`. "Red kept" = the failing-test transcript is in the commit body or un
 
 ### W — tests only
 
-- [ ] W1 `test_web_modules.py` (`TestClient`): Labs absent with empty lockfile, present after
+- [x] W1 `test_web_modules.py` (`TestClient`): Labs absent with empty lockfile, present after
       install, start payload shape; `js/module-labs.test.js`; verify all red (no routes yet).
       Red kept.
 
 ## 3. Wave 2 — W implements and assembles
 
-- [ ] W2 `web/routes/modules.py` + `_options.py` entry; Labs in `index.html`/`components.js`/
+- [x] W2 `web/routes/modules.py` + `_options.py` entry; Labs in `index.html`/`components.js`/
       `style.css` + `static/js/labs.js`, hidden when the lockfile is empty; verify W1 tests
       green and `just test-js` green. G.
-- [ ] W3 Register `module` and `drill` groups in `cli/__init__.py`; include the router in
+- [x] W3 Register `module` and `drill` groups in `cli/__init__.py`; include the router in
       `web/app.py`; verify `studyloop module --help` and `studyloop drill --help` and the API
       route table. G.
-- [ ] W4 `e2e/test_module_labs_journey.py`: list → start inside the one claimed session →
+- [x] W4 `e2e/test_module_labs_journey.py`: list → start inside the one claimed session →
       cancel → reload re-attaches → keyboard (Tab/Shift-Tab/Escape) → module removed → Labs
       gone; explicit module timeout; verify green under `just e2e` (machine lock; run alone).
       Red kept.
-- [ ] W5 Docs/changelog reconciliation (docs lease — free since 6a3f45d2; serialise after S3); acceptance test
+- [x] W5 Docs/changelog reconciliation (docs lease — free since 6a3f45d2; serialise after S3); acceptance test
       `acceptance/test_module_kdrill_live.py` gated `STUDYLOOP_ACC=1 STUDYLOOP_LIVE=1` with a
       sentinel-cluster assertion; UAT rubric for Personas A and B under `acceptance/uat/`;
       verify `just docs` strict and the acceptance test skips cleanly without the env vars. G.

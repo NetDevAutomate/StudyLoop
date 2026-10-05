@@ -59,7 +59,7 @@ async def get_session_state() -> dict:
         # rule on this path, for a file that describes a session.
         if state.get("study_session_id"):
             state["purpose"] = _purpose_of(state, _DEFAULT_PURPOSE)
-        return state
+        return _for_browser(state)
 
     session_id = current.study_session_id
     if state.get("study_session_id") != session_id:
@@ -94,7 +94,23 @@ async def get_session_state() -> dict:
     # a CLI-started file predates the key, so default rather than omit — and
     # derive it from the persisted persona mode when the writer never wrote it.
     state["purpose"] = _purpose_of(state, _DEFAULT_PURPOSE)
-    return state
+    return _for_browser(state)
+
+
+def _for_browser(state: dict) -> dict:
+    """The state WITHOUT its capabilities: ``practice_check_token`` and any ``*_token`` /
+    ``*_secret`` key stay in the owner-only file (module-contract v1, W-review finding 4).
+
+    The file is ``0o600`` so that only the learner's own processes can read the loopback
+    hop's capability; this endpoint is reachable by any browser client (no auth unless
+    ``--lan``), so echoing the file verbatim would hand that capability to the page. The
+    file itself is untouched -- ``studyloop drill`` reads the token from there.
+    """
+    return {
+        key: value
+        for key, value in state.items()
+        if not (key.endswith(("_token", "_secret")) or key == "practice_check_token")
+    }
 
 
 def _purpose_of(state: dict, default: str) -> str:

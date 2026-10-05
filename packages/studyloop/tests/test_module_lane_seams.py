@@ -14,6 +14,7 @@ halves together on one tree (coordinator, module-contract-v1 merge of lane R):
 from __future__ import annotations
 
 import re
+import shutil
 from pathlib import Path
 
 import pytest
@@ -127,3 +128,179 @@ def test_lane_t_prefixes_every_tail_line_lane_r_sends(
     assert lines.count(END_SENTINEL) == 1, "exactly one real end sentinel"
     assert f"{TAIL_LINE_PREFIX}{END_SENTINEL}" in lines, "the forged sentinel is data"
     assert f"{TAIL_LINE_PREFIX}--- stderr (1 bytes) ---" in lines, "the forged header is data"
+
+
+# --- C -> R (W3): the manifest's prerequisites reach the runner's PATH resolution ------------
+#
+# `_drill.run_drill_phase` carried a TODO: `prerequisites = ()` until lane C's manifest was on
+# main. Lane W wires `Manifest.prerequisites[].id` from the located module's `module.yaml`
+# into it (W2 brief, owned block #1). The fixture declares none, so a copy declaring `kind`
+# (in core's enum, MC005) is installed through the real store; a fake `kind` sits on a scratch
+# PATH, which is where `runner.resolve_prerequisites` is told to look.
+
+
+@pytest.fixture
+def installed_with_kind(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> store.LockEntry:
+    source = tmp_path / "echo-drills-kind"
+    shutil.copytree(FIXTURE_MODULE, source)
+    manifest = source / "module.yaml"
+    text = manifest.read_text(encoding="utf-8")
+    assert "prerequisites: []" in text
+    manifest.write_text(
+        text.replace("prerequisites: []", "prerequisites:\n  - id: kind\n"), encoding="utf-8"
+    )
+    root = tmp_path / "modules"
+    monkeypatch.setattr(store, "default_store_root", lambda: root)
+    monkeypatch.setattr(_drill, "attempts_root", lambda: tmp_path / "module-attempts")
+    return store.ModuleStore(root).add(source)
+
+
+def test_module_prerequisites_are_read_from_the_installed_manifest(
+    installed_with_kind: store.LockEntry,
+) -> None:
+    found = _drill.locate_installed_module(installed_with_kind.id)
+
+    assert _drill.module_prerequisites(found.snapshot_dir) == ("kind",)
+    assert _drill.module_prerequisites(store.snapshot_dir(installed_with_kind)) == ("kind",)
+
+
+def test_manifest_prerequisites_reach_runner_resolve_prerequisites(
+    installed_with_kind: store.LockEntry, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`studyloop drill check` resolves the declared tool before anyone is asked to consent;
+    with the fake `kind` on a scratch PATH the phase reaches the consent prompt, and
+    declining runs nothing."""
+    from click.testing import CliRunner
+
+    from studyloop.modules import runner
+
+    scratch_bin = tmp_path / "bin"
+    scratch_bin.mkdir()
+    fake_kind = scratch_bin / "kind"
+    fake_kind.write_text("#!/bin/sh\necho fake kind\n", encoding="utf-8")
+    fake_kind.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{scratch_bin}:/usr/bin:/bin")
+
+    seen: list[tuple[str, ...]] = []
+    real_resolve = runner.resolve_prerequisites
+
+    def recording(prerequisites, *, learner_path=None):  # type: ignore[no-untyped-def]
+        seen.append(tuple(prerequisites))
+        return real_resolve(prerequisites, learner_path=learner_path)
+
+    monkeypatch.setattr(runner, "resolve_prerequisites", recording)
+
+    result = CliRunner().invoke(
+        _drill.drill_group,
+        ["check", f"{installed_with_kind.id}/echo-basics/echo-01"],
+        input="n\n",
+    )
+
+    assert seen == [("kind",)], f"the manifest's prerequisites never reached the runner: {seen}"
+    assert result.exit_code == 2, result.output
+    assert "Not confirmed -- nothing executed." in result.output
+    assert str(fake_kind) not in result.output, (
+        "the resolved path is the runner's, not the learner's"
+    )
+
+
+def test_a_declared_tool_missing_from_path_refuses_before_consent(
+    installed_with_kind: store.LockEntry, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from click.testing import CliRunner
+
+    monkeypatch.setenv("PATH", f"{tmp_path / 'empty-bin'}:/usr/bin:/bin")
+
+    result = CliRunner().invoke(
+        _drill.drill_group, ["check", f"{installed_with_kind.id}/echo-basics/echo-01"], input="y\n"
+    )
+
+    assert result.exit_code == 1, result.output
+    assert "kind" in result.output and "nothing was executed" in result.output
+    assert "Run this phase now?" not in result.output, "refused before the consent prompt"
+
+
+# --- W3: the registered root CLI reaches R's drill group -----------------------------------
+
+RUNNER_OFFLINE = Path(__file__).parent / "fixtures" / "modules" / "runner-offline"
+
+
+def test_root_cli_resolves_drill_setup_and_refuses_without_consent(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`studyloop drill setup <module>/<deck>/<task>` resolves through the LazyGroup map to
+    lane R's group; declining the consent prompt exits 2 and runs nothing."""
+    from click.testing import CliRunner
+
+    from studyloop.cli import cli as root_cli
+
+    root = tmp_path / "modules"
+    monkeypatch.setattr(store, "default_store_root", lambda: root)
+    monkeypatch.setattr(_drill, "attempts_root", lambda: tmp_path / "module-attempts")
+    entry = store.ModuleStore(root).add(RUNNER_OFFLINE)
+
+    result = CliRunner().invoke(
+        root_cli, ["drill", "setup", f"{entry.id}/offline/echo-check"], input="n\n"
+    )
+
+    assert result.exit_code == 2, result.output
+    assert "Drill phase: setup" in result.output
+    assert "Not confirmed -- nothing executed." in result.output
+    assert not list((tmp_path / "module-attempts").rglob("hello.txt")), "setup never ran"
+
+
+# --- W-review finding 8 (partial): the manifest's target.kind reaches AttemptStore.open ------
+#
+# `run_drill_phase` opened every attempt as `workdir`. Lane W passes
+# `TargetKind(manifest.target.kind)` through; cluster provisioning and the one-context
+# KUBECONFIG stay lane K0's, so a kubeconfig-context attempt records its target honestly and
+# the runner's existing refusal ("no core-written kubeconfig; refusing to spawn") fires
+# AFTER consent, before any process starts.
+
+
+@pytest.fixture
+def installed_kubeconfig_target(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> store.LockEntry:
+    source = tmp_path / "echo-drills-k8s"
+    shutil.copytree(FIXTURE_MODULE, source)
+    manifest = source / "module.yaml"
+    text = manifest.read_text(encoding="utf-8")
+    assert "kind: workdir" in text
+    manifest.write_text(text.replace("kind: workdir", "kind: kubeconfig-context"), encoding="utf-8")
+    root = tmp_path / "modules"
+    monkeypatch.setattr(store, "default_store_root", lambda: root)
+    monkeypatch.setattr(_drill, "attempts_root", lambda: tmp_path / "module-attempts")
+    return store.ModuleStore(root).add(source)
+
+
+def test_module_target_kind_is_read_from_the_installed_manifest(
+    installed_kubeconfig_target: store.LockEntry,
+) -> None:
+    from studyloop.modules.attempt import TargetKind
+
+    found = _drill.locate_installed_module(installed_kubeconfig_target.id)
+
+    assert _drill.module_target(found.snapshot_dir) is TargetKind.KUBECONFIG_CONTEXT
+
+
+def test_a_kubeconfig_context_module_records_its_target_and_is_refused_before_spawn(
+    installed_kubeconfig_target: store.LockEntry, tmp_path: Path
+) -> None:
+    import json
+
+    from click.testing import CliRunner
+
+    result = CliRunner().invoke(
+        _drill.drill_group,
+        ["check", f"{installed_kubeconfig_target.id}/echo-basics/echo-01"],
+        input="y\n",
+    )
+
+    records = list((tmp_path / "module-attempts").rglob("*.json"))
+    assert len(records) == 1, [str(r) for r in records]
+    record = json.loads(records[0].read_text(encoding="utf-8"))
+    assert record["target"] == "kubeconfig-context", record
+    assert record["kubeconfig"] is None, "provisioning is lane K0's; nothing is invented here"
+    assert record["closed_at"] is not None, "the refused attempt was closed"
+    assert result.exit_code == 1, result.output
+    assert "refusing to spawn" in result.output
+    assert "check:" not in result.output, "no phase result: nothing ran"

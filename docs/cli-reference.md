@@ -538,6 +538,40 @@ agents:
   priority: [kiro, codex, claude, opencode, pi, grok]
 ```
 
+### Modules and drills
+
+Optional learning modules are directories of data (a manifest, practice decks, the scripts they
+name) that StudyLoop validates against sixteen conformance rules and installs from a local path
+as an immutable snapshot; nothing is fetched from the network and no module code is ever imported.
+The full contract is on [Module contract (v1)](module-contract.md).
+
+```bash
+studyloop module new my-drills            # Scaffold a conforming module with one offline drill
+studyloop module check ./my-drills        # MC001-MC016; exit 0 conforming, 1 findings, 2 not a dir
+studyloop module check --json ./my-drills # The same findings as JSON, for CI
+studyloop module add ./my-drills          # Check, then snapshot + modules.lock.json (only on success)
+studyloop module list                     # What the lockfile says is installed
+studyloop module remove my-drills         # Drop the entry and its snapshot
+```
+
+A drill is one task of one deck of an installed module, run one **phase** at a time. Each phase is
+one executable under the module's `scripts/` plus literal arguments, run without a shell in a
+per-attempt directory with an environment built from scratch. Every phase prints its exact
+command and the script's sha256 and asks `Run this phase now?` before anything runs; there is
+no `--yes`. After the result, one line says whether the mentor in your running study session was
+told (`Mentor told.` / `Mentor not told: <reason>`).
+
+```bash
+studyloop drill setup my-drills/getting-started/ready-01    # Open an attempt; run setupCommand
+studyloop drill check my-drills/getting-started/ready-01    # Run the check: exit 0 passed, 1 not yet, 2 could not run
+studyloop drill cleanup my-drills/getting-started/ready-01  # Run cleanupCommand and close the attempt
+```
+
+In the Web UI, **Labs** appears in the sidebar only while a module is installed; it lists the
+drills by module and starts one inside your study session, showing the commands above to run in
+your own terminal. `studyloop doctor` reports each installed module's declared prerequisites
+(`docker`, `kind`, `kubectl`) without installing or creating anything.
+
 ---
 
 ## agent-session-tools

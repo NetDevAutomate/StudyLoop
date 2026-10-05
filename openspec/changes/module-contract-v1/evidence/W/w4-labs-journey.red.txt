@@ -1,0 +1,103 @@
+env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/e2e/test_module_labs_journey.py -m e2e -q -p no:cacheprovider
+# throwaway worktree at bfd156bb (W1: no routes, no Labs, module/drill unregistered) -- the journey file copied in; 2026-10-05T00:36:11Z
+# CLASSIFICATION (W-review finding 2): phases 1-8 are red-first evidence (8 failed). `test_phase9_the_server_outlived_the_journey` is CHARACTERISATION -- a liveness guard, green by construction -- and is not claimed as a red.
+.venv/lib/python3.12/site-packages/playwright/_impl/_page.py:1110: in wait_for_function
+    return await self._main_frame.wait_for_function(**locals_to_params(locals()))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:878: in wait_for_function
+    await self._channel.send("waitForFunction", self._timeout, params)
+.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:69: in send
+    return await self._connection.wrap_api_call(
+.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:559: in wrap_api_call
+    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E   playwright._impl._errors.TimeoutError: Page.wait_for_function: Timeout 30000ms exceeded.
+______ test_phase4_tab_and_shift_tab_traverse_the_labs_controls[chromium] ______
+packages/studyloop/tests/e2e/test_module_labs_journey.py:390: in test_phase4_tab_and_shift_tab_traverse_the_labs_controls
+    page.wait_for_selector("[data-testid='labs-active-drill']", state="visible", timeout=15_000)
+.venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:8217: in wait_for_selector
+    self._sync(
+.venv/lib/python3.12/site-packages/playwright/_impl/_page.py:419: in wait_for_selector
+    return await self._main_frame.wait_for_selector(**locals_to_params(locals()))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:369: in wait_for_selector
+    await self._channel.send(
+.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:69: in send
+    return await self._connection.wrap_api_call(
+.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:559: in wrap_api_call
+    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E   playwright._impl._errors.TimeoutError: Page.wait_for_selector: Timeout 15000ms exceeded.
+E   Call log:
+E     - waiting for locator("[data-testid='labs-active-drill']") to be visible
+________ test_phase5_reload_reattaches_with_no_second_session[chromium] ________
+packages/studyloop/tests/e2e/test_module_labs_journey.py:429: in test_phase5_reload_reattaches_with_no_second_session
+    page.wait_for_selector(
+.venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:8217: in wait_for_selector
+    self._sync(
+.venv/lib/python3.12/site-packages/playwright/_impl/_page.py:419: in wait_for_selector
+    return await self._main_frame.wait_for_selector(**locals_to_params(locals()))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:369: in wait_for_selector
+    await self._channel.send(
+.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:69: in send
+    return await self._connection.wrap_api_call(
+.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:559: in wrap_api_call
+    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E   playwright._impl._errors.TimeoutError: Page.wait_for_selector: Timeout 60000ms exceeded.
+E   Call log:
+E     - waiting for locator(".session-active-layout .xterm-mount") to be visible
+E       124 × locator resolved to hidden <div tabindex="0" x-ref="xtermMount" class="xterm-mount" @keydown.ctrl.period.prevent="blurTerminal()"></div>
+_ test_phase6_escape_cancels_the_drill_and_leaves_the_session_alone[chromium] __
+packages/studyloop/tests/e2e/test_module_labs_journey.py:463: in test_phase6_escape_cancels_the_drill_and_leaves_the_session_alone
+    page.wait_for_selector("[data-testid='labs-active-drill']", state="visible", timeout=15_000)
+.venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:8217: in wait_for_selector
+    self._sync(
+.venv/lib/python3.12/site-packages/playwright/_impl/_page.py:419: in wait_for_selector
+    return await self._main_frame.wait_for_selector(**locals_to_params(locals()))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:369: in wait_for_selector
+    await self._channel.send(
+.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:69: in send
+    return await self._connection.wrap_api_call(
+.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:559: in wrap_api_call
+    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E   playwright._impl._errors.TimeoutError: Page.wait_for_selector: Timeout 15000ms exceeded.
+E   Call log:
+E     - waiting for locator("[data-testid='labs-active-drill']") to be visible
+_ test_phase7_drill_check_reaches_the_mentor_pane_as_one_labelled_block[chromium] _
+packages/studyloop/tests/e2e/test_module_labs_journey.py:493: in test_phase7_drill_check_reaches_the_mentor_pane_as_one_labelled_block
+    page.wait_for_selector(
+.venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:8217: in wait_for_selector
+    self._sync(
+.venv/lib/python3.12/site-packages/playwright/_impl/_page.py:419: in wait_for_selector
+    return await self._main_frame.wait_for_selector(**locals_to_params(locals()))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:369: in wait_for_selector
+    await self._channel.send(
+.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:69: in send
+    return await self._connection.wrap_api_call(
+.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:559: in wrap_api_call
+    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E   playwright._impl._errors.TimeoutError: Page.wait_for_selector: Timeout 60000ms exceeded.
+E   Call log:
+E     - waiting for locator(".session-active-layout .xterm-mount") to be visible
+E       123 × locator resolved to hidden <div tabindex="0" x-ref="xtermMount" class="xterm-mount" @keydown.ctrl.period.prevent="blurTerminal()"></div>
+_____________ test_phase8_module_remove_takes_labs_away[chromium] ______________
+packages/studyloop/tests/e2e/test_module_labs_journey.py:573: in test_phase8_module_remove_takes_labs_away
+    assert result.returncode == 0, result.stdout + result.stderr
+E   AssertionError: Usage: python -m studyloop.cli [OPTIONS] COMMAND [ARGS]...
+E     Try 'python -m studyloop.cli --help' for help.
+E
+E     Error: No such command 'module'.
+E
+E   assert 2 == 0
+E    +  where 2 = CompletedProcess(args=['/private/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/w4-red-worktree/.venv/bin/python', '-...cli [OPTIONS] COMMAND [ARGS]...\nTry 'python -m studyloop.cli --help' for help.\n\nError: No such command 'module'.\n").returncode
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/e2e/test_module_labs_journey.py::test_phase1_no_module_means_no_labs_entry[chromium]
+FAILED packages/studyloop/tests/e2e/test_module_labs_journey.py::test_phase2_module_add_shows_one_labs_entry_with_ids_and_prompts[chromium]
+FAILED packages/studyloop/tests/e2e/test_module_labs_journey.py::test_phase3_start_runs_inside_the_one_claimed_session[chromium]
+FAILED packages/studyloop/tests/e2e/test_module_labs_journey.py::test_phase4_tab_and_shift_tab_traverse_the_labs_controls[chromium]
+FAILED packages/studyloop/tests/e2e/test_module_labs_journey.py::test_phase5_reload_reattaches_with_no_second_session[chromium]
+FAILED packages/studyloop/tests/e2e/test_module_labs_journey.py::test_phase6_escape_cancels_the_drill_and_leaves_the_session_alone[chromium]
+FAILED packages/studyloop/tests/e2e/test_module_labs_journey.py::test_phase7_drill_check_reaches_the_mentor_pane_as_one_labelled_block[chromium]
+FAILED packages/studyloop/tests/e2e/test_module_labs_journey.py::test_phase8_module_remove_takes_labs_away[chromium]
+8 failed, 1 passed in 199.90s (0:03:19)

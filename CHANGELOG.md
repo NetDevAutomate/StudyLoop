@@ -9,6 +9,30 @@ experience may change before `1.0.0`.
 
 ### Added
 
+- Optional learning modules (issue #53). `studyloop module new <id>` scaffolds a module -- a
+  directory of data with one offline drill -- that passes `studyloop module check`, the
+  conformance check with sixteen quotable rules (`MC001`-`MC016`, `--json` for CI).
+  `studyloop module add <path>` installs a conforming module from a local path as an immutable
+  snapshot recorded in `modules.lock.json`; `module list` and `module remove` manage it. Nothing
+  is fetched from the network and no module code is ever imported or run as a library.
+- `studyloop drill setup|check|cleanup <module>/<deck>/<task>` runs one phase of an installed
+  module's drill: one script plus literal arguments, without a shell, in a scratch directory with
+  an environment built from scratch. Every phase shows the exact command and the script's
+  checksum and asks before running -- there is no `--yes` -- and the result is printed with one
+  line saying whether the mentor in your running session was told.
+- A drill's check result reaches the mentor in your live study session as one bounded block
+  labelled as data (never as an instruction), on both the browser terminal and the ACP path;
+  when it cannot be delivered the CLI says why (`Mentor not told: <reason>`), never silently.
+- A **Labs** entry in the Web UI sidebar, present only while a module is installed. It lists each
+  module's drills by deck and task -- prompt and success criteria, never hint, solution or mentor
+  notes -- and **Start drill** starts your study session for that drill (or joins the one already
+  running) and shows the commands to run in your terminal; **Cancel drill** leaves the session as
+  it was. Nothing runs from the browser.
+- `studyloop doctor` reports each installed module's declared prerequisites (`docker`, `kind`,
+  `kubectl`) and their versions; it installs nothing and creates no cluster.
+- The documentation site gains the shipped **Module contract (v1)** page -- layout, manifest,
+  drill fields, how a phase runs, Labs -- with an "Adding a module" checklist, and the CLI
+  reference documents `module` and `drill`.
 - A twenty-page **Contribute** section of the documentation site, modelled on the Terraform AWS
   Provider contributor guide: a numbered start-here path (environment, debugging), one page per
   kind of change (CLI command, web route and UI, MCP tool, doctor check, harnesses and agents,

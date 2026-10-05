@@ -1,0 +1,14 @@
+node --test packages/studyloop/tests/js/module-labs.test.js
+# worktree: module-web-labs  HEAD: f6f1fb65+W-review fixes (uncommitted)  2026-10-05T01:48:10Z
+✔ a replacing start (another drill while one is live) carries the live nonce and session (0.102375ms)
+✔ a 403 on cancel (another view owns the drill) is shown and the drill stays (0.046458ms)
+✔ init on the labs view with no module installed navigates to today (0.034167ms)
+✔ init on the labs view with a module installed stays put (0.034042ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 35.713292

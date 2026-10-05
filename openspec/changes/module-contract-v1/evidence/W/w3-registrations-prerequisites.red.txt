@@ -1,0 +1,46 @@
+env -u VIRTUAL_ENV uv run pytest "packages/studyloop/tests/test_module_cli.py::test_group_is_exported_and_registered_at_assembly" "packages/studyloop/tests/test_module_lane_seams.py::test_module_prerequisites_are_read_from_the_installed_manifest" "packages/studyloop/tests/test_module_lane_seams.py::test_manifest_prerequisites_reach_runner_resolve_prerequisites" "packages/studyloop/tests/test_module_lane_seams.py::test_a_declared_tool_missing_from_path_refuses_before_consent" -q -p no:cacheprovider
+# worktree: module-web-labs  HEAD: 7ce23cb3 (W2; module/drill unregistered, _drill.py prerequisites = ())  2026-10-05T00:08:47Z
+FFFF                                                                     [100%]
+=================================== FAILURES ===================================
+______________ test_group_is_exported_and_registered_at_assembly _______________
+packages/studyloop/tests/test_module_cli.py:45: in test_group_is_exported_and_registered_at_assembly
+    assert lazy.get("module") == "studyloop.cli._module:module_group"
+E   AssertionError: assert None == 'studyloop.cli._module:module_group'
+E    +  where None = <built-in method get of dict object at 0x10c59b7c0>('module')
+E    +    where <built-in method get of dict object at 0x10c59b7c0> = {'audio': 'studyloop.cli._sync:audio', 'backlog': 'studyloop.cli._topics:topics_group', 'backup': 'studyloop.cli._backup:backup', 'brain': 'studyloop.cli._brain:brain_group', ...}.get
+________ test_module_prerequisites_are_read_from_the_installed_manifest ________
+packages/studyloop/tests/test_module_lane_seams.py:163: in test_module_prerequisites_are_read_from_the_installed_manifest
+    assert _drill.module_prerequisites(found.snapshot_dir) == ("kind",)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'studyloop.cli._drill' has no attribute 'module_prerequisites'
+________ test_manifest_prerequisites_reach_runner_resolve_prerequisites ________
+packages/studyloop/tests/test_module_lane_seams.py:199: in test_manifest_prerequisites_reach_runner_resolve_prerequisites
+    assert seen == [("kind",)], f"the manifest's prerequisites never reached the runner: {seen}"
+E   AssertionError: the manifest's prerequisites never reached the runner: [()]
+E   assert [()] == [('kind',)]
+E
+E     At index 0 diff: () != ('kind',)
+E     Use -v to get more diff
+________ test_a_declared_tool_missing_from_path_refuses_before_consent _________
+packages/studyloop/tests/test_module_lane_seams.py:218: in test_a_declared_tool_missing_from_path_refuses_before_consent
+    assert result.exit_code == 1, result.output
+E   AssertionError: Drill phase: check
+E     Drill:       echo-drills echo-basics/echo-01
+E     Target:      workdir /private/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/pytest-of-ataylor/pytest-517/test_a_declared_tool_missing_f0/module-attempts/echo-drills/echo-basics/echo-01/ab5c6d27-8d91-4bc0-aadb-3dc3292db530
+E     Command (argv, no shell):
+E       [0] scripts/check.sh
+E     Script sha256: 84864e96833d2aa953bd48fb76049d74b3b70724d844ab682e4356923fccbaaf
+E     This script runs with YOUR privileges on this machine -- it can read and write anything you can. StudyLoop runs it without a shell, with a clean environment, in a scratch directory, with capped and redacted output, and stops it on timeout; that is hygiene, not a sandbox (a process that detaches itself survives the stop).
+E     Run this phase now? [y/N]: y
+E     check: check passed (exit 0)
+E     ready
+E     Mentor not told: no_active_session (no session state file)
+E
+E   assert 0 == 1
+E    +  where 0 = <Result okay>.exit_code
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_module_cli.py::test_group_is_exported_and_registered_at_assembly
+FAILED packages/studyloop/tests/test_module_lane_seams.py::test_module_prerequisites_are_read_from_the_installed_manifest
+FAILED packages/studyloop/tests/test_module_lane_seams.py::test_manifest_prerequisites_reach_runner_resolve_prerequisites
+FAILED packages/studyloop/tests/test_module_lane_seams.py::test_a_declared_tool_missing_from_path_refuses_before_consent
+4 failed in 0.50s

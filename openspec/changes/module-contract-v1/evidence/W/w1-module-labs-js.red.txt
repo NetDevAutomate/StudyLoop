@@ -1,0 +1,112 @@
+node --test packages/studyloop/tests/js/module-labs.test.js
+# worktree: module-web-labs  HEAD: 355db26c  2026-10-04T23:10:30Z  (W1: labs.js is an interface stub -- every export throws NotImplementedError)
+✖ labsEntries is empty for an options payload with no labs key, and for a non-array (0.037416ms)
+✖ labsEntries keeps ids, prompts and success criteria and drops anything mentor-side (0.049458ms)
+✖ drillCommands prefers the server commands and otherwise derives them from the phases (0.035958ms)
+✖ the store is unavailable until a refresh finds an installed module (0.082375ms)
+✖ the store becomes available with one installed module and exposes it scrubbed (0.055625ms)
+✖ a failed refresh hides Labs rather than showing a stale list (0.045083ms)
+✖ starting a drill posts the drill identity (and the chosen agent) to the labs start route (0.084584ms)
+✖ a fresh start (201) lands the learner in the Study Session view and re-reads the live session (0.086166ms)
+✖ an attached start (200) does not reload: the session was already the learner's (0.056208ms)
+✖ the active drill never carries mentor-side fields, whatever the server sent (0.045208ms)
+✖ a refused start (409 from another view, 503 without an agent) is shown, not swallowed (0.040792ms)
+✖ start without an agent is refused locally with the picker's own hint (0.044042ms)
+✖ cancel posts to the cancel route, clears the drill and leaves the session alone (0.061708ms)
+✖ a start in flight can be cancelled: the late 201 is dropped and nothing is adopted (0.059958ms)
+✖ the view restores a live drill from storage on init and reads the agents from the store (0.047875ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 0
+ℹ fail 17
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 35.674208
+
+✖ failing tests:
+
+test at packages/studyloop/tests/js/module-labs.test.js:63:1
+✖ the mentor-only field list is exactly the three §5.6 fields (plus the snake_case twin) (0.891167ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+  + []
+  - [
+  -   'hint',
+  -   'mentorNotes',
+  -   'mentor_notes',
+  -   'solution'
+  - ]
+
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [],
+    expected: [ 'hint', 'mentorNotes', 'mentor_notes', 'solution' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at packages/studyloop/tests/js/module-labs.test.js:67:1
+✖ containsMentorOnlyFields finds a forbidden key anywhere in a payload (0.056209ms)
+  Error: NotImplementedError: labs.js lands in W2
+
+test at packages/studyloop/tests/js/module-labs.test.js:76:1
+✖ labsEntries is empty for an options payload with no labs key, and for a non-array (0.037416ms)
+  Error: NotImplementedError: labs.js lands in W2
+
+test at packages/studyloop/tests/js/module-labs.test.js:82:1
+✖ labsEntries keeps ids, prompts and success criteria and drops anything mentor-side (0.049458ms)
+  Error: NotImplementedError: labs.js lands in W2
+
+test at packages/studyloop/tests/js/module-labs.test.js:102:1
+✖ drillCommands prefers the server commands and otherwise derives them from the phases (0.035958ms)
+  Error: NotImplementedError: labs.js lands in W2
+
+test at packages/studyloop/tests/js/module-labs.test.js:113:1
+✖ the store is unavailable until a refresh finds an installed module (0.082375ms)
+  Error: NotImplementedError: labs.js lands in W2
+
+test at packages/studyloop/tests/js/module-labs.test.js:123:1
+✖ the store becomes available with one installed module and exposes it scrubbed (0.055625ms)
+  Error: NotImplementedError: labs.js lands in W2
+
+test at packages/studyloop/tests/js/module-labs.test.js:136:1
+✖ a failed refresh hides Labs rather than showing a stale list (0.045083ms)
+  Error: NotImplementedError: labs.js lands in W2
+
+test at packages/studyloop/tests/js/module-labs.test.js:183:1
+✖ starting a drill posts the drill identity (and the chosen agent) to the labs start route (0.084584ms)
+  Error: NotImplementedError: labs.js lands in W2
+
+test at packages/studyloop/tests/js/module-labs.test.js:195:1
+✖ a fresh start (201) lands the learner in the Study Session view and re-reads the live session (0.086166ms)
+  Error: NotImplementedError: labs.js lands in W2
+
+test at packages/studyloop/tests/js/module-labs.test.js:205:1
+✖ an attached start (200) does not reload: the session was already the learner's (0.056208ms)
+  Error: NotImplementedError: labs.js lands in W2
+
+test at packages/studyloop/tests/js/module-labs.test.js:215:1
+✖ the active drill never carries mentor-side fields, whatever the server sent (0.045208ms)
+  Error: NotImplementedError: labs.js lands in W2
+
+test at packages/studyloop/tests/js/module-labs.test.js:223:1
+✖ a refused start (409 from another view, 503 without an agent) is shown, not swallowed (0.040792ms)
+  Error: NotImplementedError: labs.js lands in W2
+
+test at packages/studyloop/tests/js/module-labs.test.js:235:1
+✖ start without an agent is refused locally with the picker's own hint (0.044042ms)
+  Error: NotImplementedError: labs.js lands in W2
+
+test at packages/studyloop/tests/js/module-labs.test.js:244:1
+✖ cancel posts to the cancel route, clears the drill and leaves the session alone (0.061708ms)
+  Error: NotImplementedError: labs.js lands in W2
+
+test at packages/studyloop/tests/js/module-labs.test.js:258:1
+✖ a start in flight can be cancelled: the late 201 is dropped and nothing is adopted (0.059958ms)
+  Error: NotImplementedError: labs.js lands in W2
+
+test at packages/studyloop/tests/js/module-labs.test.js:281:1
+✖ the view restores a live drill from storage on init and reads the agents from the store (0.047875ms)
+  Error: NotImplementedError: labs.js lands in W2

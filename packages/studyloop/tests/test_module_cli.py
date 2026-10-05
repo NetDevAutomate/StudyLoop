@@ -1,9 +1,10 @@
 """CLI tests for the ``studyloop module`` group (module-contract v1, lane C).
 
-The group is exported from ``studyloop.cli._module`` and NOT registered in ``cli/__init__.py``
-(lane W registers it at assembly), so every test drives the group object directly with
-``click.testing.CliRunner``. ``--help`` text is documentation: the docs-drift test will
-resolve fenced ``studyloop module ...`` examples against it once registered.
+The group is exported from ``studyloop.cli._module``; lane W registered it in
+``cli/__init__.py`` at assembly (W3), which the first test below pins. Every other test
+drives the group object directly with ``click.testing.CliRunner``. ``--help`` text is
+documentation: the docs-drift test resolves fenced ``studyloop module ...`` examples
+against the registered tree.
 """
 
 from __future__ import annotations
@@ -36,13 +37,17 @@ def _run(*args: str):
 # ---------------------------------------------------------------------------
 
 
-def test_group_is_exported_but_not_registered() -> None:
-    """W registers the group at assembly; until then the root CLI must not know ``module``."""
+def test_group_is_exported_and_registered_at_assembly() -> None:
+    """W registers the group at assembly (W3): the root CLI knows ``module`` and resolves it
+    to this very group object, so ``studyloop module --help`` is the help tested below."""
     assert module_group.name == "module"
-    assert "module" not in root_cli._lazy_subcommands  # type: ignore[attr-defined]
+    lazy = root_cli._lazy_subcommands  # type: ignore[attr-defined]
+    assert lazy.get("module") == "studyloop.cli._module:module_group"
+    assert lazy.get("drill") == "studyloop.cli._drill:drill_group"
     result = CliRunner().invoke(root_cli, ["module", "--help"])
-    assert result.exit_code == 2
-    assert "No such command 'module'" in result.output
+    assert result.exit_code == 0, result.output
+    for command in ("check", "new", "add", "list", "remove"):
+        assert command in result.output
 
 
 def test_help_lists_the_lifecycle_commands() -> None:

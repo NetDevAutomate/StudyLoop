@@ -297,6 +297,7 @@ _STUDYLOOP_EXAMPLE_DOCS = (
     "contributor-conventions.md",
     "contributor-modules.md",
     "contributor-module-index.md",
+    "module-contract.md",
 )
 
 

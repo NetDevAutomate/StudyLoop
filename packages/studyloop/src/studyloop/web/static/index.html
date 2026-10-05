@@ -29,6 +29,9 @@
        resolve them. Deferred like every module, so it runs before
        DOMContentLoaded and therefore before Alpine starts. -->
   <script type="module" src="/js/main.js"></script>
+  <!-- Labs (module-contract v1): its own module so the entry can be removed with the
+       feature; it registers window.labsView and the `labs` Alpine store itself. -->
+  <script type="module" src="/js/labs.js"></script>
 
   <!-- HTMX + SSE extension (vendored for offline PWA) -->
   <script src="/vendor/js/htmx-2.0.4.min.js"></script>
@@ -310,6 +313,18 @@
               @click="$store.nav.go('study-session')">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
         <span>Study Session</span>
+      </button>
+
+      <!-- LABS (module-contract v1, C7): ONE generic entry for every installed module's
+           drills, and it exists in the sidebar only while modules.lock.json lists a
+           module -- $store.labs.available is set by GET /api/modules/labs, so with no
+           module there is no entry, not an empty one. No counters here, ever. -->
+      <button class="sidebar-btn" data-testid="nav-labs"
+              x-show="$store.labs && $store.labs.available" x-cloak
+              :class="{ active: $store.nav.is('labs') }"
+              @click="$store.nav.go('labs')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3h6"/><path d="M10 3v6.5L4.5 19a2 2 0 001.7 3h11.6a2 2 0 001.7-3L14 9.5V3"/><path d="M7 15h10"/></svg>
+        <span>Labs</span>
       </button>
 
       <!-- Session activity feed — shown in sidebar when study-session tab active -->
@@ -2264,6 +2279,118 @@
             </div>
           </section>
         </div>
+      </div>
+
+      <!-- ============================================================ -->
+      <!-- LABS VIEW — installed modules' drills (module-contract v1)     -->
+      <!-- One generic entry (proposal §7). Lists decks and tasks by id  -->
+      <!-- and prompt, with success criteria and the exact CLI commands; -->
+      <!-- nothing from hint / solution / mentorNotes is ever in this    -->
+      <!-- DOM (§5.6, C7). Start = the one claimed session (labs.js);     -->
+      <!-- nothing executes from the browser in v1 (§8).                 -->
+      <!-- ============================================================ -->
+      <div x-show="$store.nav.is('labs')" x-cloak
+           class="labs-view" data-testid="labs-view"
+           x-data="labsView()" x-init="init()"
+           @keydown.escape="activeDrill && cancelDrill()">
+        <header class="body-double-header">
+          <h2>Labs</h2>
+          <p class="text-muted">
+            Hands-on drills from the modules you installed. Start one here, then run its
+            commands in your own terminal — each phase asks for your confirmation before
+            anything runs, and the mentor is told the result.
+          </p>
+        </header>
+
+        <p class="labs-error" role="alert" x-show="error()" x-cloak x-text="error()"></p>
+        <p class="labs-error" role="alert" data-testid="labs-start-error"
+           x-show="startError" x-cloak x-text="startError"></p>
+
+        <!-- The live drill: what the learner is doing now, and how to stop. -->
+        <section class="labs-active" data-testid="labs-active-drill" x-show="activeDrill" x-cloak
+                 aria-live="polite">
+          <h3>Live drill: <code x-text="activeDrill && activeDrill.ref"></code></h3>
+          <p class="labs-prompt" x-text="activeDrill && activeDrill.prompt"></p>
+          <p class="picker-hint">
+            Open a terminal and run the commands below. The check result reaches the
+            mentor in your Study Session.
+          </p>
+          <ul class="labs-commands">
+            <template x-for="command in commandsFor(activeDrill)" :key="command">
+              <li><code x-text="command"></code></li>
+            </template>
+          </ul>
+          <div class="labs-actions">
+            <button type="button" class="end-confirm-btn" data-testid="labs-open-session"
+                    @click="$store.nav.go('study-session')">Open the Study Session</button>
+            <button type="button" class="end-confirm-btn labs-cancel" data-testid="labs-cancel-drill"
+                    @click="cancelDrill()">Cancel drill</button>
+          </div>
+          <p class="picker-hint">
+            Cancel drops the drill and leaves your session as it is. Nothing has been run.
+          </p>
+        </section>
+
+        <!-- Agent for a fresh session (same choices as the Study picker). -->
+        <div class="picker-field picker-inline labs-agent" x-show="agents().length > 0">
+          <label for="labs-agent-select">Agent</label>
+          <select id="labs-agent-select" x-model="agent" class="picker-select">
+            <option value="" disabled>Select an agent</option>
+            <template x-for="a in agents()" :key="a.value">
+              <option :value="a.value" :disabled="!a.available"
+                      x-text="a.label + (a.available ? '' : ' (not found)')"></option>
+            </template>
+          </select>
+          <p class="picker-hint">
+            Used only when no study session is live yet; a live session is reused.
+          </p>
+        </div>
+
+        <p class="picker-hint" x-show="modules().length === 0 && !error()" x-cloak>
+          No module is installed. Install one from a local path with
+          <code>studyloop module add &lt;path&gt;</code> and reload.
+        </p>
+
+        <template x-for="module in modules()" :key="module.module_id">
+          <section class="labs-module" :data-module-id="module.module_id">
+            <h3>
+              <span x-text="module.title || module.module_id"></span>
+              <small class="text-muted">
+                <code x-text="module.module_id"></code>
+                <span x-show="module.version" x-text="'v' + module.version"></span>
+              </small>
+            </h3>
+            <template x-for="deck in module.decks" :key="deck.id">
+              <div class="labs-deck" :data-deck-id="deck.id">
+                <h4><span x-text="deck.title || deck.id"></span> <code x-text="deck.id"></code></h4>
+                <template x-for="task in deck.tasks" :key="task.ref">
+                  <article class="labs-task" :data-task-ref="task.ref"
+                           :class="{ active: isActive(task) }">
+                    <header class="labs-task-header">
+                      <code class="labs-task-id" x-text="task.id"></code>
+                      <span class="labs-task-live" x-show="isActive(task)" x-cloak>live</span>
+                    </header>
+                    <p class="labs-prompt" x-text="task.prompt"></p>
+                    <div class="labs-criteria" x-show="task.successCriteria && task.successCriteria.length">
+                      <span class="labs-criteria-label">Done when:</span>
+                      <ul>
+                        <template x-for="criterion in task.successCriteria" :key="criterion">
+                          <li x-text="criterion"></li>
+                        </template>
+                      </ul>
+                    </div>
+                    <button type="button" class="start-session-btn labs-start"
+                            :data-testid="'labs-start-' + task.id"
+                            :disabled="starting || isActive(task)"
+                            :class="{ disabled: starting || isActive(task) }"
+                            @click="startDrill(module, task)"
+                            x-text="isPending(task) ? 'Starting…' : (isActive(task) ? 'Live' : 'Start drill')"></button>
+                  </article>
+                </template>
+              </div>
+            </template>
+          </section>
+        </template>
       </div>
 
       <!-- ============================================================ -->

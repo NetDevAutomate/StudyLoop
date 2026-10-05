@@ -136,6 +136,20 @@ as a *planning* session in the Study Session console (labelled as such, and
 the label survives a reload); the click itself creates no plan. See
 [Study Plans](study-plans.md) for the full, current workflow.
 
+## Labs
+
+**Labs** is in the sidebar only while a learning module is installed with
+`studyloop module add`; with none installed there is no entry. It lists each
+module's drills by deck and task -- the prompt and the *done when* criteria,
+never the hint or the solution, which reach you through the mentor. **Start
+drill** starts your study session for that drill (or binds it to the session
+already running) and shows the exact `studyloop drill` commands to run in your
+own terminal; each phase asks for your confirmation there before anything runs,
+and the check result appears in the mentor's console as one labelled block.
+**Cancel drill** drops the drill and leaves the session as it was. Nothing runs
+from the browser. The contract modules follow is on
+[Module contract (v1)](module-contract.md).
+
 ## Courses, Mastery, Parking Lot, and Notes
 
 - **Courses** browses ingested learning material and can copy a Socratic prompt

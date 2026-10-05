@@ -1,0 +1,24 @@
+env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/e2e/test_module_labs_journey.py -m e2e -q -p no:cacheprovider -k "phase1 or phase2 or phase3 or phase4 or phase5 or phase8"
+# throwaway worktree at b22e213c (W4: nav allowlist without 'labs', no empty-Labs redirect) with the UPDATED journey file copied in  2026-10-05T01:46:04Z
+# phases 6-7 (cancel, the hop) deselected: they are not what finding 10 is about and the file's pre-fix shape differs (no nonce)
+# READING: phase 5's new assertion (reload on #labs lands on Labs) is the red. phase 8's new assertion (empty Labs -> Today) is green here by accident -- the old allowlist already dropped #labs to Today; its red is the labs.js unit test 'init on the labs view with no module installed navigates to today' (w-review-labs-js.red.txt).
+....F.                                                                   [100%]
+=================================== FAILURES ===================================
+________ test_phase5_reload_reattaches_with_no_second_session[chromium] ________
+packages/studyloop/tests/e2e/test_module_labs_journey.py:452: in test_phase5_reload_reattaches_with_no_second_session
+    page.wait_for_function(
+.venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:11599: in wait_for_function
+    self._sync(
+.venv/lib/python3.12/site-packages/playwright/_impl/_page.py:1110: in wait_for_function
+    return await self._main_frame.wait_for_function(**locals_to_params(locals()))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:878: in wait_for_function
+    await self._channel.send("waitForFunction", self._timeout, params)
+.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:69: in send
+    return await self._connection.wrap_api_call(
+.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:559: in wrap_api_call
+    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E   playwright._impl._errors.TimeoutError: Page.wait_for_function: Timeout 15000ms exceeded.
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/e2e/test_module_labs_journey.py::test_phase5_reload_reattaches_with_no_second_session[chromium]
+1 failed, 5 passed, 3 deselected in 25.82s

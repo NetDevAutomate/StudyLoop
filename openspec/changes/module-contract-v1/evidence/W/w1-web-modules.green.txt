@@ -1,0 +1,10 @@
+env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_web_modules.py -q -p no:cacheprovider
+# worktree: module-web-labs  HEAD: bfd156bb+W2 (routes/modules.py, _options.py labs entry, app.py include, orchestrator token, labs.js, index.html, style.css)  2026-10-04T23:25:22Z
+.....................                                                    [100%]
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/starlette/testclient.py:53
+  /Users/ataylor/code/personal/tools/studyloop-wt/module-web-labs/.venv/lib/python3.12/site-packages/starlette/testclient.py:53: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+21 passed, 1 warning in 1.35s

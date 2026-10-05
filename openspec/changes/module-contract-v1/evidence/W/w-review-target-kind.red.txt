@@ -1,0 +1,21 @@
+env -u VIRTUAL_ENV uv run pytest "packages/studyloop/tests/test_module_lane_seams.py::test_module_target_kind_is_read_from_the_installed_manifest" "packages/studyloop/tests/test_module_lane_seams.py::test_a_kubeconfig_context_module_records_its_target_and_is_refused_before_spawn" -q -p no:cacheprovider
+# worktree: module-web-labs  HEAD: f6f1fb65 (W-review F8: _drill.py opens every attempt as workdir)  2026-10-05T01:41:17Z
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+_________ test_module_target_kind_is_read_from_the_installed_manifest __________
+packages/studyloop/tests/test_module_lane_seams.py:282: in test_module_target_kind_is_read_from_the_installed_manifest
+    assert _drill.module_target(found.snapshot_dir) is TargetKind.KUBECONFIG_CONTEXT
+           ^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'studyloop.cli._drill' has no attribute 'module_target'
+_ test_a_kubeconfig_context_module_records_its_target_and_is_refused_before_spawn _
+packages/studyloop/tests/test_module_lane_seams.py:301: in test_a_kubeconfig_context_module_records_its_target_and_is_refused_before_spawn
+    assert record["target"] == "kubeconfig-context", record
+E   AssertionError: {'attempt_dir': '/private/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/pytest-of-ataylor/pytest-554/test_a_kubeconf...b624-3cb05fd5d740', 'attempt_id': '8b95732a-b8af-48dc-b624-3cb05fd5d740', 'close_reason': None, 'closed_at': None, ...}
+E   assert 'workdir' == 'kubeconfig-context'
+E
+E     - kubeconfig-context
+E     + workdir
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/test_module_lane_seams.py::test_module_target_kind_is_read_from_the_installed_manifest
+FAILED packages/studyloop/tests/test_module_lane_seams.py::test_a_kubeconfig_context_module_records_its_target_and_is_refused_before_spawn
+2 failed in 0.67s

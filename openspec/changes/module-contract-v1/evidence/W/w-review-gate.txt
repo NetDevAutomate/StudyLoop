@@ -1,0 +1,17 @@
+# W-review fixes gate; worktree module-web-labs f6f1fb65+fixes (uncommitted)  2026-10-05T01:48:33Z
+$ uv run pytest test_web_modules test_module_cli test_module_lane_seams test_module_drill_cli test_contributor_guide_drift test_docs_drift test_lane_ownership -q -p no:cacheprovider
+568 passed, 3 skipped, 1 warning in 10.37s
+$ just test-web && just test-js
+============================= 145 passed in 8.93s ==============================
+ℹ tests 189
+ℹ pass 189
+ℹ fail 0
+$ just lint && just typecheck
+All checks passed!
+0 errors, 0 warnings, 0 informations
+$ just docs
+NO_MKDOCS_2_WARNING=1 uv run --extra docs mkdocs build --strict
+INFO    -  Documentation built in 0.50 seconds
+$ just e2e (alone): see w-review-labs-hash.green.txt -- 9 passed
+$ related suites touched by F4/F7: test_web_session_ws, test_web_live_session, test_mcp_session_parity, test_e2e_coverage_gate
+62 passed, 1 warning in 45.37s

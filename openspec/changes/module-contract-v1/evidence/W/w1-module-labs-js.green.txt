@@ -1,0 +1,27 @@
+node --test packages/studyloop/tests/js/module-labs.test.js
+# worktree: module-web-labs  HEAD: bfd156bb+W2  2026-10-04T23:25:23Z
+✔ the mentor-only field list is exactly the three §5.6 fields (plus the snake_case twin) (0.560041ms)
+✔ containsMentorOnlyFields finds a forbidden key anywhere in a payload (0.101708ms)
+✔ labsEntries is empty for an options payload with no labs key, and for a non-array (0.054458ms)
+✔ labsEntries keeps ids, prompts and success criteria and drops anything mentor-side (0.106958ms)
+✔ drillCommands prefers the server commands and otherwise derives them from the phases (0.067417ms)
+✔ the store is unavailable until a refresh finds an installed module (0.117375ms)
+✔ the store becomes available with one installed module and exposes it scrubbed (0.094209ms)
+✔ a failed refresh hides Labs rather than showing a stale list (0.080458ms)
+✔ starting a drill posts the drill identity (and the chosen agent) to the labs start route (0.2385ms)
+✔ a fresh start (201) lands the learner in the Study Session view and re-reads the live session (0.099625ms)
+✔ an attached start (200) does not reload: the session was already the learner's (0.083792ms)
+✔ the active drill never carries mentor-side fields, whatever the server sent (0.06675ms)
+✔ a refused start (409 from another view, 503 without an agent) is shown, not swallowed (0.333333ms)
+✔ start without an agent is refused locally with the picker's own hint (0.069292ms)
+✔ cancel posts to the cancel route, clears the drill and leaves the session alone (0.110583ms)
+✔ a start in flight can be cancelled: the late 201 is dropped and nothing is adopted (0.109041ms)
+✔ the view restores a live drill from storage on init and reads the agents from the store (0.116542ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 34.478042

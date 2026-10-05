@@ -273,12 +273,31 @@ def start_web_background(session_name: str, *, lan: bool = False, password: str 
             stderr=subprocess.DEVNULL,
             env=child_env,
         )
+        from studyloop.modules.hop import TOKEN_KEY
         from studyloop.session_state import write_session_state
 
-        write_session_state({"web_pid": proc.pid, "web_port": port})
+        # The per-session capability the loopback `practice_check` hop presents (council
+        # M0 Q2.2): minted beside the port it will be presented to, in the owner-only
+        # state file `studyloop drill` trusts. The web route re-mints only when absent.
+        write_session_state(
+            {"web_pid": proc.pid, "web_port": port, TOKEN_KEY: mint_practice_check_token()}
+        )
         _open_browser(f"http://127.0.0.1:{port}/session")
     except Exception:
         console.print("[yellow]Could not start web dashboard.[/yellow]")
+
+
+def mint_practice_check_token() -> str:
+    """A fresh per-session capability token for the ``practice_check`` loopback route.
+
+    32 random bytes, URL-safe (43 characters): unguessable, printable, and safe to carry in
+    the ``X-StudyLoop-Session-Token`` header. Its only copy is the session state file
+    (``0o600`` in a ``0o700`` directory), which is what makes it a capability rather than
+    a password -- same user, same machine, same lifetime as the session.
+    """
+    import secrets
+
+    return secrets.token_urlsafe(32)
 
 
 def _kill_port_occupant(port: int, expected_cmd: str = "") -> None:
