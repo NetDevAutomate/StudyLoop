@@ -167,6 +167,13 @@ preflight`. "Red kept" = the failing-test transcript is in the commit body or un
       and on every failure path, never touch a cluster it did not create); offline tests with a fake
       `kind`; verify the live acceptance test still skips cleanly. Gap found by lane W (W gap 7).
       Brief `briefs/K0-cluster-provisioning.md`. G.
+- [x] K0-review One independent seat (gpt-5.6-sol, `council/2026-10-05-review-K0-gpt-5.6-sol.md`:
+      do not merge, 11 raised, 11 verified); fixes red-first in ten commits per
+      `briefs/K0-fixpass.md`; gate `evidence/K0/merge-gate.txt` (7981 passed, 0 failed); merged to
+      local main d997a4d0.
+- [ ] K0-F8 follow-up: bound core's own `kind` invocation's output while it streams (today
+      `communicate()` buffers, then `_tail` truncates). Not a merge blocker — kind is core's tool,
+      its output is not module-controlled; `--wait` is bounded by the hard timeout.
 - [ ] K1 Bruno's converted `studyloop-module-kubernetes-drills` at a frozen sha passes
       `studyloop module check`; verify the `--json` report is stored under `evidence/kdrill/`.
 - [ ] K2 Owner runs `acceptance/test_module_kdrill_live.py` with Docker + kind: setup, check,
