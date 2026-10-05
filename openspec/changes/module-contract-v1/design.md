@@ -144,7 +144,13 @@ through the real surface (`just testacc …`, `STUDYLOOP_ACC=1`), **UAT** = brow
 graded against a written rubric for sign-off (`just testuat`, `STUDYLOOP_ACC=1 STUDYLOOP_UAT=1`,
 files under `tests/acceptance/uat/`). Both use the `tests/e2e/_env.py` world (temp vault,
 subprocess server, screenshot + HTML + console on failure); this plan adds server log, CLI
-transcript, `modules.lock.json` diff and the attempt envelope to the failure bundle.
+transcript, `modules.lock.json` diff and the attempt envelope to the failure bundle. The module
+personas' subject is the module surface, not the mentor: they drive the harness
+`STUDYLOOP_ACC_HARNESS` selects when one is selected (the tier's real-binary rule), and the e2e
+world's fake agent otherwise, and the bundle's `harness` field says which (`fake-agent` is an
+honest value, never hidden) — the acceptance tier's "nothing standing in for the mentor" rule
+(`docs/acceptance-testing.md`) is about mentor-session journeys, and U2's sign-off runs with a
+real harness (ruled at U1-review, 2026-10-05).
 
 **Persona A — AuDHD learner on a tablet over `--lan`** (viewport 820×1180; acceptance budget
 6 min, UAT 12 min). Steps and assertions: (1) load, assert no Labs entry and no prerequisite
@@ -152,8 +158,12 @@ text anywhere; (2) fixture runs `studyloop module add <scaffold>`, reload, asser
 Labs entry; (3) open it, start one drill, assert it runs inside the single claimed session;
 (4) assert focus lands in the terminal and Tab / Shift-Tab / Escape remain usable — the
 keyboard-only traversal is part of this persona; (5) cancel, assert clear recovery copy;
-(6) reload, assert re-attach with no second session; (7) install a fixture missing `kind`,
-assert a concise prerequisite report and no resource creation; (8) `module remove`, reload,
+(6) reload, assert re-attach with no second session; (7) `module add` a fixture whose manifest
+declares `kind` on a machine without it: `add` succeeds (conformance is static, proposal §7 — it
+never probes the PATH), `doctor` names the missing prerequisite and the module that needs it,
+`drill` refuses before consent with no attempt directory created, and Labs shows no prerequisite
+text (corrected at U1-review, 2026-10-05: the earlier "add refuses, no resource creation" wording
+contradicted proposal §7 and the code); (8) `module remove`, reload,
 assert Labs gone. Throughout: no overdue counter, no hint, solution or mentor notes in the DOM.
 
 **Persona B — new contributor on a clean machine** (viewport 1440×900; acceptance 8 min, UAT
