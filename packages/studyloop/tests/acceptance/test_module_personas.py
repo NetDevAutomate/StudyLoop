@@ -46,9 +46,12 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import stat
+import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -65,9 +68,11 @@ from .personas.bundle import (
     write_persona_failure_bundle,
 )
 from .personas.modules import (
+    K8S_OFFLINE,
     MISSING_KIND_DRILL,
     MISSING_KIND_ID,
     build_missing_kind_module,
+    copy_module,
 )
 from .uat.redaction import contains_forbidden_content
 
@@ -97,8 +102,13 @@ pytestmark = [
     ),
 ]
 
+REPO_ROOT = Path(__file__).resolve().parents[4]
+DOCS = REPO_ROOT / "docs"
+
 PERSONA_A_BUDGET_S = 6 * 60
+PERSONA_B_BUDGET_S = 8 * 60
 PERSONA_A_VIEWPORT = (820, 1180)
+PERSONA_B_VIEWPORT = (1440, 900)
 
 #: The recovery copy the Labs view renders beside a live drill (index.html, the labs-active
 #: section). Quoted verbatim: a5 asserts on the rendered text, not on a class.
@@ -106,7 +116,9 @@ CANCEL_RECOVERY_COPY = (
     "Cancel drops the drill and leaves your session as it is. Nothing has been run."
 )
 
-# NOTE (commit 3 of lane U1): Persona B lands in the next commit with its own red transcripts.
+#: The scaffold `studyloop module new my-drills` writes (modules/scaffold.py), as the docs name it.
+CONTRIBUTOR_MODULE_ID = "my-drills"
+CONTRIBUTOR_DRILL_REF = f"{CONTRIBUTOR_MODULE_ID}/getting-started/ready-01"
 
 
 # ---------------------------------------------------------------------------
@@ -614,3 +626,390 @@ class TestPersonaA:
     ) -> None:
         with persona_a.phase("a9", "wall clock under the 6-minute budget"):
             step_under_budget(persona_a, page_a, flipped=persona_a.flipped("a9"))
+
+
+# ---------------------------------------------------------------------------
+# Persona B -- new contributor on a clean machine
+# ---------------------------------------------------------------------------
+
+
+def resolve_tool(name: str) -> str | None:
+    """The real binary behind ``name`` on this machine (through a mise shim when there is one),
+    or ``None``. A shim needs the developer's HOME; the contributor's clean HOME has none."""
+    found = shutil.which(name)
+    if found is None:
+        return None
+    if "mise/shims" in found:
+        mise = shutil.which("mise")
+        if mise is None:
+            return None
+        resolved = subprocess.run(
+            [mise, "which", name], capture_output=True, text=True, check=False, timeout=30
+        )
+        return resolved.stdout.strip() or None
+    return found
+
+
+def contributor_shell_env(world: PersonaWorld, tools: dict[str, str]) -> dict[str, str]:
+    """A new contributor's shell: the clean HOME of the persona's world, the tools they installed
+    (step 1 of docs/contributor-environment.md) and nothing of this developer's StudyLoop.
+
+    ``UV_OFFLINE=1`` turns any network reach into a loud failure rather than a silent download;
+    ``UV_CACHE_DIR`` reuses this machine's uv cache (packages, not learner data) -- the only
+    concession to "clean machine", recorded in the report."""
+    dirs: list[str] = []
+    for path in tools.values():
+        parent = str(Path(path).parent)
+        if parent not in dirs:
+            dirs.append(parent)
+    home = world.world.home
+    return {
+        "PATH": os.pathsep.join((*dirs, os.defpath)),
+        "HOME": str(home),
+        "TMPDIR": str(world.world.tmp_dir),
+        "XDG_CONFIG_HOME": str(home / ".config"),
+        "XDG_CACHE_HOME": str(home / ".cache"),
+        "XDG_STATE_HOME": str(home / ".local" / "state"),
+        "LANG": "C",
+        "LC_ALL": "C",
+        "NO_COLOR": "1",
+        "TERM": "dumb",
+        "UV_OFFLINE": "1",
+        "UV_CACHE_DIR": os.environ.get("UV_CACHE_DIR", str(Path.home() / ".cache" / "uv")),
+    }
+
+
+def shell(
+    world: PersonaWorld,
+    argv: list[str],
+    *,
+    env: dict[str, str],
+    cwd: Path,
+    stdin: str = "",
+    timeout: int = 180,
+) -> subprocess.CompletedProcess[str]:
+    """A contributor's shell command, transcribed into the persona's CLI transcript."""
+    started = time.monotonic()
+    result = subprocess.run(
+        argv,
+        env=env,
+        cwd=cwd,
+        input=stdin,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+        check=False,
+    )
+    world.cli_records.append(
+        CliRecord(
+            argv=("[shell]", *argv),
+            stdin=stdin,
+            returncode=result.returncode,
+            stdout=result.stdout,
+            stderr=result.stderr,
+            duration_s=time.monotonic() - started,
+        )
+    )
+    return result
+
+
+def documented_version_line() -> str:
+    """The exact `--version` output docs/contributor-environment.md promises."""
+    text = (DOCS / "contributor-environment.md").read_text(encoding="utf-8")
+    match = re.search(r"`--version` prints `([^`]+)`", text)
+    assert match, "contributor-environment.md no longer states the --version output"
+    return match.group(1)
+
+
+@pytest.fixture(scope="class")
+def persona_b(
+    tmp_path_factory: pytest.TempPathFactory, browser
+) -> Generator[PersonaWorld, None, None]:
+    root = tmp_path_factory.mktemp("persona-b")
+    world = pw.launch_persona_world(root, persona="B", budget_s=PERSONA_B_BUDGET_S, lan=False)
+    (world.world.root / "contributor").mkdir(exist_ok=True)
+    try:
+        pw.open_page(browser, world, viewport=PERSONA_B_VIEWPORT)
+        yield world
+    finally:
+        pw.stop_persona_world(world)
+
+
+@pytest.fixture()
+def page_b(persona_b: PersonaWorld) -> Page:
+    assert persona_b.page is not None
+    return persona_b.page
+
+
+class TestPersonaB:
+    @staticmethod
+    def contributor_dir(world: PersonaWorld) -> Path:
+        return world.world.root / "contributor"
+
+    def test_b1_the_documented_uv_setup_commands_succeed_offline(
+        self, persona_b: PersonaWorld
+    ) -> None:
+        """docs/contributor-environment.md steps 1, 3 and 4, run as written in a clean HOME.
+
+        Skipped on purpose, with the reason the brief asks for:
+        - `just sync-dev` (`uv sync --all-packages --group dev`): resolves and downloads into
+          the clean HOME's empty uv cache -> network. The worktree's own venv, already synced,
+          is what `uv run` below exercises.
+        - `uv run --group dev playwright install chromium`: a browser download -> network.
+        - `uv run --group dev pre-commit install`: writes a git hook into THIS checkout's
+          `.git` (a worktree shares its parent's hooks), i.e. into the developer's repository,
+          not the scratch env.
+        """
+        world = persona_b
+        with world.phase("b1", "documented uv setup commands, offline"):
+            tools = {name: resolve_tool(name) for name in ("uv", "tmux", "node")}
+            missing = sorted(name for name, path in tools.items() if path is None)
+            if missing:
+                pytest.skip(f"contributor tools not installed on this machine: {missing}")
+            env = contributor_shell_env(world, {k: v for k, v in tools.items() if v})
+            world.facts["b1_skipped"] = {
+                "just sync-dev": "network (uv sync into an empty cache)",
+                "uv run --group dev playwright install chromium": "network (browser download)",
+                "uv run --group dev pre-commit install": "writes into this checkout's .git hooks",
+            }
+            cwd = REPO_ROOT if not world.flipped("b1") else world.world.home
+
+            # Step 1: every tool answers.
+            for argv in (["uv", "--version"], ["tmux", "-V"], ["node", "--version"]):
+                result = shell(world, argv, env=env, cwd=cwd)
+                assert result.returncode == 0, f"{argv}: {result.stdout}{result.stderr}"
+                assert result.stdout.strip(), f"{argv} printed nothing"
+
+            # Step 3: the import proof -- a path under THIS checkout.
+            proof = shell(
+                world,
+                ["uv", "run", "python", "-c", "import studyloop; print(studyloop.__file__)"],
+                env=env,
+                cwd=cwd,
+            )
+            assert proof.returncode == 0, proof.stdout + proof.stderr
+            printed = Path(proof.stdout.strip())
+            assert printed.is_relative_to(REPO_ROOT), (
+                f"import resolved outside the checkout: {printed}"
+            )
+            assert str(printed).endswith("packages/studyloop/src/studyloop/__init__.py"), printed
+
+            # Step 4: the smoke checks, with the documented outputs.
+            version = shell(world, ["uv", "run", "studyloop", "--version"], env=env, cwd=cwd)
+            assert version.returncode == 0, version.stderr
+            assert version.stdout.strip() == documented_version_line(), version.stdout
+            setup = shell(
+                world, ["uv", "run", "studyloop", "setup"], env=env, cwd=cwd, stdin="\n\n"
+            )
+            assert setup.returncode == 0, setup.stdout + setup.stderr
+            config = world.world.home / ".config" / "studyloop" / "config.yaml"
+            assert config.is_file(), "setup wrote no config.yaml under the clean HOME"
+            doctor = shell(world, ["uv", "run", "studyloop", "doctor"], env=env, cwd=cwd)
+            # Documented: 0 = nothing failed, 1 = a fix is available ("the tool working"),
+            # 2 = a core check failed and cannot be fixed. 2 is the only failure.
+            assert doctor.returncode in (0, 1), f"doctor exit {doctor.returncode}:\n{doctor.stdout}"
+            if doctor.returncode == 1:
+                assert "Fix" in doctor.stdout, "exit 1 without the documented Fix column"
+            world.facts["b1_doctor_exit"] = doctor.returncode
+
+    def test_b2_module_new_scaffolds_a_module(self, persona_b: PersonaWorld) -> None:
+        world = persona_b
+        with world.phase("b2", "studyloop module new scaffolds"):
+            cwd = self.contributor_dir(world)
+            if world.flipped("b2"):  # the opposite state: the destination is already taken
+                (cwd / CONTRIBUTOR_MODULE_ID).mkdir()
+                (cwd / CONTRIBUTOR_MODULE_ID / "stale.txt").write_text("x", encoding="utf-8")
+            result = world.cli("module", "new", CONTRIBUTOR_MODULE_ID, cwd=cwd)
+            assert result.returncode == 0, result.stdout + result.stderr
+            module_dir = cwd / CONTRIBUTOR_MODULE_ID
+            assert f"created {module_dir}" in result.stdout, result.stdout
+            assert f"next: studyloop module check {module_dir}" in result.stdout, result.stdout
+            for rel in (
+                "module.yaml",
+                "decks/getting-started.json",
+                "scripts/check.sh",
+                "mentor/brief.md",
+                "README.md",
+                "LICENSE",
+                "CHANGELOG.md",
+                "tests/check.sh",
+            ):
+                assert (module_dir / rel).is_file(), f"the scaffold did not write {rel}"
+            world.facts["module_dir"] = str(module_dir)
+
+    def test_b3_module_check_passes_the_scaffold(self, persona_b: PersonaWorld) -> None:
+        world = persona_b
+        with world.phase("b3", "studyloop module check passes it"):
+            module_dir = Path(world.facts["module_dir"])
+            if world.flipped("b3"):  # the opposite state: a required file is gone (MC003)
+                (module_dir / "LICENSE").unlink()
+            checked = world.cli("module", "check", str(module_dir), cwd=module_dir.parent)
+            assert checked.returncode == 0, checked.stdout + checked.stderr
+            assert "conforms to module contract v1" in checked.stdout, checked.stdout
+            as_json = world.cli("module", "check", "--json", str(module_dir))
+            assert as_json.returncode == 0, as_json.stdout + as_json.stderr
+            assert json.loads(as_json.stdout) == {"ok": True, "findings": []}
+
+    def test_b4_module_add_then_labs_lists_the_contributors_module(
+        self, persona_b: PersonaWorld, page_b: Page
+    ) -> None:
+        world, page = persona_b, page_b
+        with world.phase("b4", "lifecycle: add -> one Labs entry"):
+            module_dir = Path(world.facts["module_dir"])
+            task = deck_task(module_dir, "getting-started", "ready-01")
+            world.facts["task"] = task
+            page.goto(f"{world.server.base_url}/#today")
+            pw.wait_labs_loaded(page)
+            assert not pw.labs_entry_visible(page), "Labs must be hidden before the add"
+            if not world.flipped("b4"):
+                added = world.cli("module", "add", str(module_dir))
+                assert added.returncode == 0, added.stdout + added.stderr
+                assert f"installed {CONTRIBUTOR_MODULE_ID}" in added.stdout, added.stdout
+                world.facts["add_stdout"] = added.stdout
+            listed = world.cli("module", "list")
+            world.facts["list_stdout"] = listed.stdout
+            step_labs_lists_the_installed_module(
+                world, page, module_id=CONTRIBUTOR_MODULE_ID, task=task
+            )
+
+    def test_b5_start_one_drill_inside_the_single_claimed_session(
+        self, persona_b: PersonaWorld, page_b: Page
+    ) -> None:
+        world, page = persona_b, page_b
+        with world.phase("b5", "lifecycle: start inside the one claimed session"):
+            step_start_runs_inside_the_one_claimed_session(
+                world,
+                page,
+                drill_ref=CONTRIBUTOR_DRILL_REF,
+                task_id="ready-01",
+                flipped=world.flipped("b5"),
+            )
+
+    def test_b6_escape_cancels_with_clear_recovery_copy(
+        self, persona_b: PersonaWorld, page_b: Page
+    ) -> None:
+        world, page = persona_b, page_b
+        with world.phase("b6", "lifecycle: cancel"):
+            step_escape_cancels_with_clear_recovery_copy(
+                world, page, task_id="ready-01", flipped=world.flipped("b6")
+            )
+
+    def test_b7_module_remove_then_labs_gone(self, persona_b: PersonaWorld, page_b: Page) -> None:
+        world, page = persona_b, page_b
+        with world.phase("b7", "lifecycle: remove -> Labs gone"):
+            step_remove_takes_labs_away(
+                world, page, module_id=CONTRIBUTOR_MODULE_ID, flipped=world.flipped("b7")
+            )
+
+    def test_b8_break_one_rule_read_the_json_failure_repair_and_recheck(
+        self, persona_b: PersonaWorld
+    ) -> None:
+        world = persona_b
+        with world.phase("b8", "break one fixture -> MC017 in --json; repair; green"):
+            copy = copy_module(K8S_OFFLINE, self.contributor_dir(world) / "k8s-copy")
+            clean = world.cli("module", "check", str(copy))
+            assert clean.returncode == 0, clean.stdout + clean.stderr
+            deck_path = copy / "decks" / "cluster.json"
+            original = deck_path.read_text(encoding="utf-8")
+            deck = json.loads(original)
+            if not world.flipped("b8"):
+                del deck["tasks"][0]["verification"]["cleanupCommand"]
+                deck_path.write_text(json.dumps(deck, indent=2) + "\n", encoding="utf-8")
+
+            broken = world.cli("module", "check", "--json", str(copy))
+            assert broken.returncode == 1, (
+                f"exit {broken.returncode}: {broken.stdout}{broken.stderr}"
+            )
+            report = json.loads(broken.stdout)
+            assert report["ok"] is False
+            assert all(set(f) == {"rule_id", "message", "path", "line"} for f in report["findings"])
+            rule_ids = {f["rule_id"] for f in report["findings"]}
+            # The removed cleanup is MC017; the now-unused `cleanup` capability is MC016.
+            assert rule_ids == {"MC017", "MC016"}, rule_ids
+            mc017 = next(f for f in report["findings"] if f["rule_id"] == "MC017")
+            assert mc017["path"] == "decks/cluster.json", mc017
+            assert isinstance(mc017["line"], int) and mc017["line"] > 0, mc017
+            lines = deck_path.read_text(encoding="utf-8").splitlines()
+            assert '"verification"' in lines[mc017["line"] - 1], (
+                f"line {mc017['line']} is {lines[mc017['line'] - 1]!r}"
+            )
+            assert "cleanupCommand" in mc017["message"], mc017["message"]
+            world.facts["b8_json_keys"] = sorted(report)
+
+            deck_path.write_text(original, encoding="utf-8")  # the repair
+            repaired = world.cli("module", "check", str(copy))
+            assert repaired.returncode == 0, repaired.stdout + repaired.stderr
+
+    def test_b9_the_docs_commands_and_the_observed_output_agree(
+        self, persona_b: PersonaWorld
+    ) -> None:
+        """The observed half of docs/module-contract.md and docs/cli-reference.md; the structural
+        half (every fenced `studyloop` line resolves) is test_docs_drift.py's."""
+        world = persona_b
+        with world.phase("b9", "docs' commands vs observed output"):
+            contract = (DOCS / "module-contract.md").read_text(encoding="utf-8")
+            reference = (DOCS / "cli-reference.md").read_text(encoding="utf-8")
+            module_dir = Path(world.facts["module_dir"])
+            task = world.facts["task"]
+
+            # module-contract.md step 1: the scaffold passes `module check` as written (b3) and
+            # its check script "prints `ready` and exits 0".
+            assert "prints `ready` and exits 0" in contract
+            check_sh = shell(
+                world,
+                ["/bin/sh", str(module_dir / "scripts" / "check.sh")],
+                env={"PATH": os.defpath, "HOME": str(world.world.home)},
+                cwd=module_dir,
+            )
+            assert check_sh.returncode == 0 and check_sh.stdout.strip() == "ready", (
+                check_sh.stdout + check_sh.stderr
+            )
+
+            # module-contract.md step 6 / cli-reference.md: the documented drill ref names a deck
+            # and task the scaffold really writes.
+            documented_ref = re.search(r"studyloop drill check (my-drills/\S+)", contract)
+            assert documented_ref and documented_ref.group(1) == CONTRIBUTOR_DRILL_REF
+            assert (
+                task["id"] == "ready-01" and task["verification"]["command"] == "scripts/check.sh"
+            )
+            assert "my-drills/getting-started/ready-01" in reference
+
+            # module-contract.md step 4: `add` reports the snapshot and the lockfile records id,
+            # version and digest (b4's observed output).
+            add_stdout = world.facts["add_stdout"] if not world.flipped("b9") else "flipped"
+            assert "snapshot:" in add_stdout and "lockfile:" in add_stdout, add_stdout
+            assert re.search(
+                rf"installed {CONTRIBUTOR_MODULE_ID} 0\.1\.0 \(sha256:[0-9a-f]{{64}}\)", add_stdout
+            ), add_stdout
+
+            # module-contract.md step 5 / `module list --help`: one line per module -- id, version,
+            # the first 12 hex digits of the digest, the snapshot directory (b4's observation),
+            # and the documented empty-state line once removed (b7).
+            list_stdout = world.facts["list_stdout"]
+            assert re.search(
+                rf"^{CONTRIBUTOR_MODULE_ID}\s+0\.1\.0\s+[0-9a-f]{{12}}\s+\S+snapshots/",
+                list_stdout,
+                re.M,
+            ), list_stdout
+            empty = world.cli("module", "list")
+            assert (
+                empty.stdout.strip()
+                == "no modules installed (studyloop module add <path> installs one)"
+            )
+
+            # cli-reference.md: "exit 0 conforming, 1 findings, 2 not a dir" -- 0 (b3), 1 (b8), 2:
+            assert "exit 0 conforming, 1 findings, 2 not a dir" in reference
+            not_a_dir = world.cli("module", "check", str(module_dir / "module.yaml"))
+            assert not_a_dir.returncode == 2, not_a_dir.stdout + not_a_dir.stderr
+            assert "is not a directory" in not_a_dir.stderr, not_a_dir.stderr
+            # `module check --help` promises `{ok, findings[{rule_id,message,path,line}]}` (b8).
+            assert world.facts["b8_json_keys"] == ["findings", "ok"]
+
+            # contributor-environment.md: `--version` as documented (b1 asserted it; pin here too).
+            assert documented_version_line().startswith("studyloop, version ")
+
+    def test_b10_the_whole_persona_finished_under_eight_minutes(
+        self, persona_b: PersonaWorld, page_b: Page
+    ) -> None:
+        with persona_b.phase("b10", "wall clock under the 8-minute budget"):
+            step_under_budget(persona_b, page_b, flipped=persona_b.flipped("b10"))

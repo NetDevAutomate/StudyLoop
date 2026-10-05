@@ -1,0 +1,16 @@
+$ STUDYLOOP_ACC=1 STUDYLOOP_ACC_FORCE_FAIL=b9 env -u VIRTUAL_ENV uv run --group dev pytest -m acceptance packages/studyloop/tests/acceptance/test_module_personas.py -k TestPersonaB -x -q -p no:cacheprovider --tb=short
+sha 1d03bb91  2026-10-05T11:25:50Z  (working tree: Persona B tests for commit 4; phase b9 FLIPPED so its own assertion fails)
+........F
+=================================== FAILURES ===================================
+_ TestPersonaB.test_b9_the_docs_commands_and_the_observed_output_agree[chromium] _
+packages/studyloop/tests/acceptance/test_module_personas.py:980: in test_b9_the_docs_commands_and_the_observed_output_agree
+    assert "snapshot:" in add_stdout and "lockfile:" in add_stdout, add_stdout
+E   AssertionError: flipped
+E   assert ('snapshot:' in 'flipped')
+E   [persona B] failure bundle: /Users/ataylor/code/personal/tools/studyloop-wt/module-personas/playwright/artifacts/personas/persona-b-1791199551-1e399177-b9
+----------------------------- Captured stdout call -----------------------------
+[persona B] failure bundle written: /Users/ataylor/code/personal/tools/studyloop-wt/module-personas/playwright/artifacts/personas/persona-b-1791199551-1e399177-b9
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaB::test_b9_the_docs_commands_and_the_observed_output_agree[chromium]
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 8 passed, 13 deselected in 5.16s
