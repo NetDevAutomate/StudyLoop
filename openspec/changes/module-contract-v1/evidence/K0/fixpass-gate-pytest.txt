@@ -1,0 +1,16 @@
+env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_cluster.py packages/studyloop/tests/test_module_drill_cli.py packages/studyloop/tests/test_module_runner.py packages/studyloop/tests/test_module_lane_seams.py packages/studyloop/tests/test_lane_ownership.py packages/studyloop/tests/test_module_check.py packages/studyloop/tests/test_module_lifecycle.py packages/studyloop/tests/test_docs_drift.py packages/studyloop/tests/test_contributor_docs.py -q -p no:cacheprovider -rs
+# worktree: module-cluster  HEAD: c7133f9e  2026-10-05T10:08:59Z
+........................................................................ [ 12%]
+........................................................................ [ 24%]
+........................................................................ [ 36%]
+........................................................................ [ 48%]
+........................................................................ [ 60%]
+........................................................................ [ 72%]
+........................................................................ [ 84%]
+..............................................................s......... [ 97%]
+.s....s..........                                                        [100%]
+=========================== short test summary info ============================
+SKIPPED [1] packages/studyloop/tests/test_docs_drift.py:564: setup-guide.md:231: top-level YAML is a list, not a mapping
+SKIPPED [1] packages/studyloop/tests/test_docs_drift.py:561: setup-guide.md:673: not parseable as a single YAML document (not config)
+SKIPPED [1] packages/studyloop/tests/test_docs_drift.py:570: second-brain.md:120: top-level key(s) ['studyloop'] mark this block as not a studyloop config.yaml example (playbook / frontmatter / workflow)
+590 passed, 3 skipped in 23.91s
