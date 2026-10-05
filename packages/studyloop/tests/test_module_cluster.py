@@ -708,18 +708,22 @@ def test_missing_core_tool_refuses_before_consent_even_when_the_module_omits_it(
 
 
 def test_check_without_an_open_attempt_is_refused_before_consent(
-    installed_k8s: DrillIdentity, sessions_db: Path, fake_tools: FakeTools
+    installed_k8s: DrillIdentity, sessions_db: Path, fake_tools: FakeTools, tmp_path: Path
 ) -> None:
     """Only ``setup`` provisions (brief item 5); a ``check`` with nothing open on a
     kubeconfig-context drill has no cluster to run against, so it is refused up front naming
-    ``drill setup`` -- not refused after consent by the runner's missing-kubeconfig branch."""
+    ``drill setup`` -- not refused after consent by the runner's missing-kubeconfig branch.
+    The attempt it opened is recorded and closed as refused (``test_module_lane_seams.py``
+    pins that record), so nothing stays open."""
     result = _invoke("check", K8S_DRILL)
 
     assert result.exit_code == 1, result.output
-    assert "drill setup" in result.output
+    assert "drill setup" in result.output and "refusing to spawn" in result.output
     assert "Run this phase now?" not in result.output
     assert fake_tools.calls() == []
     assert _store().current(installed_k8s) is None
+    records = list((tmp_path / "module-attempts").rglob("*.json"))
+    assert len(records) == 1 and json.loads(records[0].read_text())["closed_at"] is not None
 
 
 def test_name_collision_is_refused_before_consent_and_closes_the_attempt(
