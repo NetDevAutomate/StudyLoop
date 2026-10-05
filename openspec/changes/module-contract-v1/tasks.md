@@ -42,7 +42,7 @@ preflight`. "Red kept" = the failing-test transcript is in the commit body or un
 - [ ] S3 (docs lease RELEASED 2026-10-04 21:40 — contributor guide merged at 6a3f45d2; lane S may take it) `docs/module-contract.md` with the "Adding a module" checklist,
       `.github/PULL_REQUEST_TEMPLATE/module.md`, `mkdocs.yml` nav entry, changelog entry;
       verify `test_docs_drift.py` extension (checklist, four README headings, PR template,
-      MC001–MC016 linked) is red before and green after; `just docs` strict. G.
+      MC001–MC017 linked) is red before and green after; `just docs` strict. G.
 
 ### C — red tests only (`feat/module-conformance`)
 
@@ -190,9 +190,15 @@ preflight`. "Red kept" = the failing-test transcript is in the commit body or un
 - [ ] K2 Owner runs `acceptance/test_module_kdrill_live.py` with Docker + kind: setup, check,
       cleanup complete; the `studyloop-*` cluster is gone; the sentinel cluster remains;
       verify the log is stored under `evidence/kdrill/`.
-- [ ] **M2 council** — four seats audit the seven DoD items against evidence, the UAT
-      artifacts and the scope exclusions; coordinator arbitrates; verify each DoD item is
-      marked held/not-held with a pointer to its evidence.
+- [x] **M2 council** — three seats (gpt-5.6-sol, glm-5, qwen3-coder-next; DeepSeek dropped per
+      M1) audited the seven DoD items against evidence, the UAT artifacts and the scope
+      exclusions; `council/2026-10-05-m2-arbitration.md` marks each item held / held-with-caveat /
+      not-held with its evidence pointer. Verdict: release-ready pending owner steps (push, #53,
+      agents/kiro diff, U2, K1, K2). 21 raised / 15 verified / 5 acted / 7 recorded / 6 discounted.
+- [ ] M2 follow-ups: (a) the lane gate script runs `-m integration` and copies per-recipe tails
+      into `evidence/<lane>/` so merge-gate files are transcripts, not summaries; (b) OS sandboxing
+      for the runner is a v2 item (the v1 threat model is stated in the runner docstring, consent
+      prompt and ADR-0012).
 - [ ] 4.1 Archive this change to `openspec/changes/archive/2026-xx-xx-module-contract-v1/`
       once M2 holds; verify `CHANGELOG.md` names the contract version and the deferrals
       (browser Check progress → v1.1; view-only credential + grants → v2).

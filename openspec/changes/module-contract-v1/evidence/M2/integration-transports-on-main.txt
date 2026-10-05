@@ -1,4 +1,4 @@
 env -u VIRTUAL_ENV uv run pytest -m integration tests/integration/test_module_delivery_transports.py -q -p no:cacheprovider -rs   # cwd packages/studyloop
-# main HEAD a323bb11  2026-10-05T13:46:57Z  DoD 5: both transports, integration tier, run on merged main before M2
+# main HEAD 5438eb40  2026-10-05T14:03:05Z  DoD 5: both transports, integration tier, re-run on the M2 arbitration tip (earlier run at a323bb11: 10 passed)
 ..........                                                               [100%]
-10 passed in 14.06s
+10 passed in 16.87s
