@@ -664,8 +664,9 @@ STUDYLOOP_ACC_FORCE_FAIL=a5 just testacc "" scripted packages/studyloop/tests/ac
 ```
 
 The committed proof of that run is `openspec/changes/module-contract-v1/evidence/U1/forced-failure-bundle/`.
-One step is `xfail(strict=True)` against the shipped UI: after a Labs start, focus does not land
-in the terminal (the console mounts xterm without focusing it); the test names the product change.
+Who plays the mentor follows the tier's selection: with `STUDYLOOP_ACC_HARNESS` naming a harness
+the personas drive that real binary (a missing or unauthenticated one skips by name); with no
+selection they drive the e2e fake agent, and the bundle's `harness` field says which.
 
 ## Rules that keep the tier honest
 

@@ -160,9 +160,10 @@ preflight`. "Red kept" = the failing-test transcript is in the commit body or un
 - [x] U1 `just testacc` Persona A and Persona B scripted journeys (design.md §6), budgets 6 and
       8 minutes; verify artifacts (screenshot, HTML, console, server log, CLI transcript,
       lockfile diff, envelope) are produced on a forced failure. `acceptance/test_module_personas.py`
-      (22 passed, 1 xfailed: a4a focus-in-terminal is a product gap; A 6.0s, B 3.4s measured);
-      forced-failure proof `evidence/U1/forced-failure-bundle/`; gates `evidence/U1/testacc-gate.txt`,
-      `evidence/U1/preflight-gate.txt` (7984 passed, 0 failed). G.
+      (first pass 22 passed, 1 xfailed; after the U1-review fix pass -- `briefs/U1-fixpass.md`, nine
+      items incl. the granted a4a focus fix -- 0 xfailed, both personas under budget); forced-failure
+      proof `evidence/U1/forced-failure-bundle/` (nine tracked members); gates `evidence/U1/
+      testacc-gate.txt`, `evidence/U1/preflight-gate.txt` (first pass), `evidence/U1/fixpass-gate-*.txt`. G.
 - [ ] U2 `just testuat` — owner runs both personas twice against the rubric; verify sign-off
       recorded under `evidence/uat/`.
 - [x] K0 `modules/cluster.py`: core-created disposable kind cluster for `target.kind: kubeconfig-context`

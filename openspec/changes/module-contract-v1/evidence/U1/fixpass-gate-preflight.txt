@@ -1,0 +1,17 @@
+$ env -u VIRTUAL_ENV just preflight
+sha 8eec22c1  2026-10-05T12:57:18Z  (the fix pass's Gate G, run once on the final tree)
+uv run --group dev ruff check .
+All checks passed!
+uv run --group dev ruff format --check .
+1091 files already formatted
+uv run --group dev pyright
+0 errors, 0 warnings, 0 informations
+uv run --group dev pytest
+======== 7985 passed, 15 skipped, 874 deselected in 1009.96s (0:16:49) =========
+ℹ tests 189
+ℹ pass 189
+ℹ fail 0
+INFO    -  Documentation built in 0.59 seconds
+uv run python scripts/check-release-consistency.py --skip-wheel
+release consistency passed for studyloop 0.5.0
+Totals: 25 passed, 0 failed (25 items)

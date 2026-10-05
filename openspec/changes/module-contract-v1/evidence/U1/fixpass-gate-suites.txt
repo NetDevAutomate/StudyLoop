@@ -1,0 +1,32 @@
+sha 8eec22c1  2026-10-05T12:56:22Z
+$ env -u VIRTUAL_ENV just e2e packages/studyloop/tests/e2e/test_module_labs_journey.py
+============================== 9 passed in 6.41s ===============================
+
+$ env -u VIRTUAL_ENV just test-js
+ℹ tests 189
+ℹ pass 189
+ℹ fail 0
+
+$ env -u VIRTUAL_ENV uv run --group dev pytest packages/studyloop/tests/test_lane_ownership.py packages/studyloop/tests/test_docs_drift.py packages/studyloop/tests/test_contributor_docs.py packages/studyloop/tests/test_contributor_guide_drift.py packages/studyloop/tests/test_acceptance_evidence.py packages/studyloop/tests/test_acceptance_actors_docs.py -q -p no:cacheprovider -s
+..........................................[lane-ownership] unmapped (allowed): ['openspec/changes/module-contract-v1/tasks.md']
+506 passed, 3 skipped in 3.05s
+
+$ env -u VIRTUAL_ENV just lint typecheck
+All checks passed!
+1091 files already formatted
+0 errors, 0 warnings, 0 informations
+
+$ env -u VIRTUAL_ENV just docs
+NO_MKDOCS_2_WARNING=1 uv run --extra docs mkdocs build --strict
+INFO    -  Documentation built in 0.58 seconds
+
+$ git ls-files openspec/changes/module-contract-v1/evidence/U1/forced-failure-bundle
+openspec/changes/module-contract-v1/evidence/U1/forced-failure-bundle/cli-transcript.txt
+openspec/changes/module-contract-v1/evidence/U1/forced-failure-bundle/console.json
+openspec/changes/module-contract-v1/evidence/U1/forced-failure-bundle/labs-binding.json
+openspec/changes/module-contract-v1/evidence/U1/forced-failure-bundle/manifest.json
+openspec/changes/module-contract-v1/evidence/U1/forced-failure-bundle/modules.lock.diff
+openspec/changes/module-contract-v1/evidence/U1/forced-failure-bundle/page.html
+openspec/changes/module-contract-v1/evidence/U1/forced-failure-bundle/screenshot.png
+openspec/changes/module-contract-v1/evidence/U1/forced-failure-bundle/server-log.txt
+openspec/changes/module-contract-v1/evidence/U1/forced-failure-bundle/turns.json
