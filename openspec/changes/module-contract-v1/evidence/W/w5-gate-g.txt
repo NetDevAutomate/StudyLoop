@@ -1,0 +1,49 @@
+# W5 gate (brief 'Gate before you report'); worktree module-web-labs b22e213c+W5 uncommitted  2026-10-05T00:56:34Z
+$ env -u VIRTUAL_ENV just test-web && just test-js
+============================= 145 passed in 9.22s ==============================
+ℹ tests 184
+ℹ pass 184
+ℹ fail 0
+$ uv run pytest test_web_modules test_module_cli test_module_lane_seams test_contributor_guide_drift test_docs_drift -q -p no:cacheprovider
+490 passed, 3 skipped, 1 warning in 4.21s
+$ just lint && just typecheck
+All checks passed!
+0 errors, 0 warnings, 0 informations
+$ just docs
+NO_MKDOCS_2_WARNING=1 uv run --extra docs mkdocs build --strict
+INFO    -  Documentation built in 0.51 seconds
+$ acceptance test skips cleanly without the env vars:
+# default selection (addopts deselects acceptance):
+1 deselected in 0.11s
+# -m acceptance, no STUDYLOOP_ACC:
+SKIPPED [1] packages/studyloop/tests/acceptance/test_module_kdrill_live.py:121: acceptance tests require STUDYLOOP_ACC=1 (see docs/acceptance-testing.md)
+1 skipped in 0.27s
+# STUDYLOOP_ACC=1 without STUDYLOOP_LIVE:
+SKIPPED [1] packages/studyloop/tests/acceptance/test_module_kdrill_live.py:121: live kdrill proof requires STUDYLOOP_LIVE=1 (it creates a kind cluster)
+1 skipped in 0.30s
+# STUDYLOOP_ACC=1 STUDYLOOP_LIVE=1 without the module path:
+SKIPPED [1] packages/studyloop/tests/acceptance/test_module_kdrill_live.py:121: live kdrill proof requires STUDYLOOP_KDRILL_MODULE=<path to the converted module>
+1 skipped in 0.31s
+
+env -u VIRTUAL_ENV just preflight   # 2026-10-05T00:57:24Z
+All checks passed!
+0 errors, 0 warnings, 0 informations
+FAILED packages/studyloop/tests/test_fresh_install_scope.py::test_studyloop_study_exits_2_with_the_diagnostic_on_a_virgin_home
+==== 1 failed, 7921 passed, 15 skipped, 833 deselected in 966.45s (0:16:06) ====
+error: recipe `test` failed on line 27 with exit code 1
+preflight exit=1
+
+# the recipes after 'test' in preflight, run separately because just stops at the first failing recipe:
+$ just test-js docs release-consistency spec-check
+ℹ tests 184
+ℹ pass 184
+ℹ fail 0
+INFO    -  Documentation built in 0.52 seconds
+release consistency passed for studyloop 0.5.0
+Totals: 25 passed, 0 failed (25 items)
+exit=0
+
+# Reading (lane W): 1 red -- test_fresh_install_scope::test_studyloop_study_exits_2_... is the
+# pre-existing baseline red (00-common.md §0: tmux is a mise shim that cannot resolve under the
+# virgin HOME). The two coverage-ratchet reds of the W2/W3 gates are green since W4. Everything
+# else in `just preflight` is green.

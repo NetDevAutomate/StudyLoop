@@ -83,6 +83,9 @@ GUIDE_PAGES: tuple[tuple[str, str, int], ...] = (
     ("contributor-conventions", "reference", 150),
     ("contributor-modules", "proposals", 150),
     ("contributor-module-index", "proposals", 150),
+    # module-contract v1 (lane W5, the S3 page): the SHIPPED contract, so it takes the full
+    # C/H/L pins -- its fenced `studyloop module` / `drill` commands resolve against the tree.
+    ("module-contract", "reference", 150),
 )
 
 #: design.md §3 F10 -- the router's H2s in order; every one is an anchor other pages link to.

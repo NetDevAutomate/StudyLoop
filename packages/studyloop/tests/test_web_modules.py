@@ -606,3 +606,28 @@ def test_the_module_routes_are_mounted_under_api() -> None:
     assert "/api/modules/labs/cancel" in paths
     assert ROUTE in paths, "hop.ROUTE is the full path the CLI posts to"
     assert "/api/modules/practice-check" in paths, "the M0 Q2 loopback route, as the hop spells it"
+
+
+# ---------------------------------------------------------------------------
+# the module UAT rubric (W5) -- mechanism only, ungated: the file is pinned by hash
+# ---------------------------------------------------------------------------
+
+
+def test_the_module_uat_rubric_is_pinned_and_names_both_personas() -> None:
+    from acceptance.uat.rubric import load_rubric  # pyright: ignore[reportMissingImports]
+
+    data = Path(__file__).parent / "acceptance" / "uat" / "data"
+    rubric = load_rubric(data / "module_rubric_v1.md", data / "module_rubric_registry.json")
+
+    assert rubric.version == 1
+    assert {c.id for c in rubric.criteria} >= {
+        "labs_entry_discipline",
+        "start_inside_one_session",
+        "keyboard_and_cancel",
+        "nothing_mentor_side_nothing_executed",
+        "mentor_delivery",
+        "contributor_path",
+    }
+    assert "Persona A" in rubric.body and "Persona B" in rubric.body
+    assert any("mentorNotes" in reason for reason in rubric.reject_if)
+    assert any("second study session" in reason for reason in rubric.reject_if)
