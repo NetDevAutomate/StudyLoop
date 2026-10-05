@@ -107,13 +107,17 @@ def lockfile_diff(before: str | None, after: str | None) -> str:
 def redact_text(text: str, *, homes: Sequence[Path], secrets: Mapping[str, str]) -> str:
     """Known secrets first (longest first), then roots, LAN addresses and digests.
 
-    ``homes[0]`` is the persona's world root (``<WORLD>``); every later entry is a real home
-    directory (``<HOME>``). Longest match first, so a world under a home is named as the world.
+    ``homes[0]`` is the persona's world root (``<WORLD>``), ``homes[1]`` the repository the
+    tests run from (``<REPO>``); every later entry is a real home directory (``<HOME>``).
+    Longest match first, so a world or a checkout under a home is named as itself.
     """
     for name, value in sorted(secrets.items(), key=lambda item: -len(item[1])):
         if value:
             text = text.replace(value, f"<REDACTED:{name}>")
-    labelled = [(str(h), "<WORLD>" if i == 0 else "<HOME>") for i, h in enumerate(homes) if str(h)]
+    labels = ("<WORLD>", "<REPO>")
+    labelled = [
+        (str(h), labels[i] if i < len(labels) else "<HOME>") for i, h in enumerate(homes) if str(h)
+    ]
     for root, label in sorted(labelled, key=lambda item: -len(item[0])):
         text = text.replace(root, label)
     text = _LAN_IPV4.sub("<LAN-IP>", text)

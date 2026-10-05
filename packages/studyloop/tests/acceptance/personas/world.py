@@ -51,6 +51,9 @@ if TYPE_CHECKING:
 
 FORCE_FAIL_ENV = "STUDYLOOP_ACC_FORCE_FAIL"
 
+#: The checkout the personas run from; labelled ``<REPO>`` in a bundle.
+_REPO_ROOT = Path(__file__).resolve().parents[5]
+
 #: Where a persona's failure bundle lands: the repo's Playwright artefact root (gitignored), one
 #: directory per run, so a failing `just testacc` leaves something a reader can open.
 BUNDLE_ROOT = PLAYWRIGHT_ARTIFACTS / "personas"
@@ -282,7 +285,7 @@ class PersonaWorld:
                     "errors": list(self.console_errors),
                     "api_calls": [list(call) for call in self.api_calls[-40:]],
                 },
-                homes=[self.world.root, Path.home()],
+                homes=[self.world.root, _REPO_ROOT, Path.home()],
                 secrets=self.secrets(),
             )
             self.bundle_dir = bundle.run_dir

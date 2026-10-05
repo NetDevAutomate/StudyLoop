@@ -300,7 +300,7 @@ class TestBundleWriter:
             outcome="forced",
             phases=[{"phase": "a1", "status": "passed", "elapsed_s": 0.1}],
             server_log=f"LAN password: {lan_credential}\nvault {home}/study-materials\n"
-            f"digest sha256:{'ab' * 32}\n",
+            f"digest sha256:{'ab' * 32}\nsource {tmp_path}/repo/fixtures /Users/someone/x\n",
             cli_records=[
                 CliRecord(("module", "add", str(home / "mod")), "", 0, "installed\n", "", 0.2)
             ],
@@ -310,7 +310,7 @@ class TestBundleWriter:
             screenshot_png=b"\x89PNG\r\n\x1a\n",
             page_html=f"<html><body>{home}</body></html>",
             console={"errors": [f"console.error: {home}/x.js"], "api_calls": []},
-            homes=[home],
+            homes=[home, tmp_path / "repo", Path("/Users/someone")],
             secrets={"lan_password": lan_credential},
         )
         names = {p.name for p in bundle.run_dir.iterdir()}
@@ -328,6 +328,7 @@ class TestBundleWriter:
         assert "<REDACTED:lan_password>" in server_log and lan_credential not in server_log
         assert "<WORLD>/study-materials" in server_log
         assert "sha256:abababababab…" in server_log, server_log
+        assert "source <REPO>/fixtures <HOME>/x" in server_log, server_log
         diff = (bundle.run_dir / "modules.lock.diff").read_text()
         assert diff.startswith("--- modules.lock.json (before)") and "+{" in diff, diff
         transcript = (bundle.run_dir / "cli-transcript.txt").read_text()

@@ -1,0 +1,16 @@
+{
+  "run_id": "persona-a-1791199758-89c50652-a5",
+  "harness": "fake-agent",
+  "actor": "scripted",
+  "outcome": "failed at a5: Page.wait_for_selector: Timeout 15000ms exceeded.\nCall log:\n  - waiting for locator(\"[data-testid='labs-active-drill']\") to be hidden\n    35 \u00d7 locator resolved to visible <section aria-live=\"polite\" c",
+  "turn_count": 6,
+  "platform": null,
+  "auth_mode": "presence-only",
+  "harness_version": null,
+  "artifacts": {
+    "server_log": "server.log",
+    "cli_transcript": "cli-transcript.txt",
+    "lockfile_diff": "modules.lock.diff",
+    "attempt_envelope": "attempt-envelope.json"
+  }
+}

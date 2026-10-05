@@ -1,0 +1,18 @@
+{
+  "envelope": {
+    "attempt_records": [],
+    "labs_drill": {
+      "deck_id": "echo-basics",
+      "module_id": "echo-drills",
+      "ref": "echo-drills/echo-basics/echo-01",
+      "started_at": "2026-10-05T11:29:20.599932+00:00",
+      "task_id": "echo-01"
+    },
+    "started_from_labs": {
+      "at_s": 1.833,
+      "ref": "echo-drills/echo-basics/echo-01"
+    },
+    "study_session_id": "ff17b6f1-73ca-4bed-a578-499ff0c534e7"
+  },
+  "persona": "A"
+}

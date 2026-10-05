@@ -1,0 +1,6 @@
+$ studyloop module add <REPO>/packages/studyloop/tests/fixtures/modules/valid-scaffold
+installed echo-drills 0.1.0 (sha256:b16d67cfc77e…)
+snapshot: <WORLD>/modules/snapshots/b16d67cfc77e…
+git: git@github.com:NetDevAutomate/StudyLoop.git @ 32c354fa7216…
+lockfile: <WORLD>/modules/modules.lock.json
+[exit 0 in 0.17s]
