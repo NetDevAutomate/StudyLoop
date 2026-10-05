@@ -264,6 +264,13 @@ lanes:
     - packages/studyloop/tests/e2e/test_module_labs_journey.py
     - packages/studyloop/tests/acceptance/test_module_kdrill_live.py
     - packages/studyloop/tests/acceptance/uat/**            # module rubric
+    # Wave-2 grants (briefs/W2-web-labs-impl.md, "owned-glob additions" #1 and #2), dual
+    # ownership by region (DECISIONS.md §E5): the prerequisites block in R's _drill.py and
+    # the capability-token mint beside orchestrator.py's web_pid/web_port write (M0 Q2.2).
+    - packages/studyloop/src/studyloop/cli/_drill.py        # prerequisites wiring only (W3)
+    - packages/studyloop/src/studyloop/session/orchestrator.py  # mint_practice_check_token + its one call (W2)
+    # The docs lease incl. S3 (docs/module-contract.md) passed to W5 -- W2 brief, "W5".
+    - mkdocs.yml
 
 # Explicit branch -> lane key for lanes whose branch name carries no lane id.
 # Consulted BEFORE the legacy `lane/m<n>-<slug>` pattern (tests/_lane_ownership.py,

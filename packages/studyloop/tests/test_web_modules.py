@@ -66,6 +66,7 @@ TASK_ID = "echo-01"
 DRILL_REF = f"{MODULE_ID}/{DECK_ID}/{TASK_ID}"
 
 ROUTE = hop.ROUTE
+assert ROUTE == "/api/modules/practice-check", "lane R's hop and this route must agree"
 LOOPBACK = ("127.0.0.1", 50000)
 
 #: The three mentor-side task fields (proposal §5.6) -- keys AND the fixture's values,
@@ -603,4 +604,5 @@ def test_the_module_routes_are_mounted_under_api() -> None:
     assert "/api/modules/labs" in paths
     assert "/api/modules/labs/start" in paths
     assert "/api/modules/labs/cancel" in paths
-    assert f"/api{ROUTE}" in paths
+    assert ROUTE in paths, "hop.ROUTE is the full path the CLI posts to"
+    assert "/api/modules/practice-check" in paths, "the M0 Q2 loopback route, as the hop spells it"

@@ -24,13 +24,27 @@ _AGENT_FALLBACK_BINARIES = {name: HARNESSES[name].binary for name in RELEASE_HAR
 
 @router.get("/session/options")
 def get_session_options(request: Request, refresh: bool = False) -> dict[str, Any]:
-    """Return local study choices for the web session picker."""
+    """Return local study choices for the web session picker.
+
+    ``labs`` (module-contract v1, web-ui spec scenarios 1-2) is present only when
+    ``modules.lock.json`` lists at least one module -- absent, not empty, otherwise -- and
+    is read fresh on every call rather than through the filesystem index above: the
+    lockfile is not part of that index's fingerprint, and a ``module add`` while the server
+    runs must show on the next fetch. The MCP ``list_session_options`` tool composes its
+    own result from the builders and does not carry it.
+    """
+    from studyloop.web.routes.modules import labs_listing
+
     targets = _get_indexed_target_options(request.app.state, force=refresh)
-    return {
+    options: dict[str, Any] = {
         **targets,
         "agents": _agent_options(),
         "terminal_engine": _terminal_engine_option(request.app.state),
     }
+    labs = labs_listing()
+    if labs:
+        options["labs"] = labs
+    return options
 
 
 def _terminal_engine_option(state: Any) -> dict[str, Any]:
