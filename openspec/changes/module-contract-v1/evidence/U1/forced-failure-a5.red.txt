@@ -1,5 +1,10 @@
 $ STUDYLOOP_ACC_FORCE_FAIL=a5 env -u VIRTUAL_ENV just testacc "" scripted "packages/studyloop/tests/acceptance/test_module_personas.py -k TestPersonaA -x -p no:cacheprovider --tb=short"
-sha c39bbfb5  2026-10-05T12:29:32Z  (U1-review F4 regeneration: the ONE forced failure -- a5's Escape is not pressed; the bundle it wrote is copied to forced-failure-bundle/; labs-binding.json names the Labs binding, practice-envelope.json is absent because no phase ran)
+sha 6af7887e  2026-10-05T12:34:33Z  (the ONE forced failure -- a5's Escape is not pressed; after U1-review F5 the phase fails on its own assertion; the bundle it wrote is forced-failure-bundle/)
+STUDYLOOP_ACC=1 STUDYLOOP_ACC_HARNESS="" STUDYLOOP_ACC_ACTOR="scripted" uv run --group dev pytest -m acceptance --ignore=packages/studyloop/tests/acceptance/uat packages/studyloop/tests/acceptance/test_module_personas.py -k TestPersonaA -x -p no:cacheprovider --tb=short
+============================= test session starts ==============================
+platform darwin -- Python 3.12.8, pytest-9.0.3, pluggy-1.6.0
+readiness budgets: unscaled (1.0x) — release configuration
+rootdir: /Users/ataylor/code/personal/tools/studyloop-wt/module-personas/packages/studyloop
 configfile: pyproject.toml
 plugins: playwright-0.7.2, timeout-2.4.0, asyncio-1.3.0, base-url-2.1.0, anyio-4.15.1, respx-0.23.1, cov-7.0.0
 timeout: 60.0s
@@ -12,31 +17,21 @@ packages/studyloop/tests/acceptance/test_module_personas.py ...x.F
 
 =================================== FAILURES ===================================
 ____ TestPersonaA.test_a5_escape_cancels_with_clear_recovery_copy[chromium] ____
-packages/studyloop/tests/acceptance/test_module_personas.py:668: in test_a5_escape_cancels_with_clear_recovery_copy
+packages/studyloop/tests/acceptance/test_module_personas.py:686: in test_a5_escape_cancels_with_clear_recovery_copy
     step_escape_cancels_with_clear_recovery_copy(
-packages/studyloop/tests/acceptance/test_module_personas.py:244: in step_escape_cancels_with_clear_recovery_copy
-    page.wait_for_selector("[data-testid='labs-active-drill']", state="hidden", timeout=15_000)
-.venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:8217: in wait_for_selector
-    self._sync(
-.venv/lib/python3.12/site-packages/playwright/_impl/_page.py:419: in wait_for_selector
-    return await self._main_frame.wait_for_selector(**locals_to_params(locals()))
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-.venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:369: in wait_for_selector
-    await self._channel.send(
-.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:69: in send
-    return await self._connection.wrap_api_call(
-.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:559: in wrap_api_call
-    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
-E   playwright._impl._errors.TimeoutError: Page.wait_for_selector: Timeout 15000ms exceeded.
-E   Call log:
-E     - waiting for locator("[data-testid='labs-active-drill']") to be hidden
-E       34 × locator resolved to visible <section aria-live="polite" class="labs-active" x-show="activeDrill" data-testid="labs-active-drill">…</section>
-E
-E   [persona A] failure bundle: /Users/ataylor/code/personal/tools/studyloop-wt/module-personas/playwright/artifacts/personas/persona-a-1791203373-e9d8355a-a5
+packages/studyloop/tests/acceptance/test_module_personas.py:259: in step_escape_cancels_with_clear_recovery_copy
+    assert not page.locator("[data-testid='labs-active-drill']").is_visible(), (
+E   AssertionError: expected the live-drill strip to be gone after Escape; it is still shown and the state file still names {'module_id': 'echo-drills', 'deck_id': 'echo-basics', 'task_id': 'echo-01', 'ref': 'echo-drills/echo-basics/echo-01', 'started_at': '2026-10-05T12:34:37.460868+00:00'}
+E   assert not True
+E    +  where True = is_visible()
+E    +    where is_visible = <Locator frame=<Frame name= url='http://127.0.0.1:58833/#labs'> selector="[data-testid='labs-active-drill']">.is_visible
+E    +      where <Locator frame=<Frame name= url='http://127.0.0.1:58833/#labs'> selector="[data-testid='labs-active-drill']"> = locator("[data-testid='labs-active-drill']")
+E    +        where locator = <Page url='http://127.0.0.1:58833/#labs'>.locator
+E   [persona A] failure bundle: /Users/ataylor/code/personal/tools/studyloop-wt/module-personas/playwright/artifacts/personas/persona-a-1791203675-d1286acf-a5
 ----------------------------- Captured stdout call -----------------------------
-[persona A] failure bundle written: /Users/ataylor/code/personal/tools/studyloop-wt/module-personas/playwright/artifacts/personas/persona-a-1791203373-e9d8355a-a5
+[persona A] failure bundle written: /Users/ataylor/code/personal/tools/studyloop-wt/module-personas/playwright/artifacts/personas/persona-a-1791203675-d1286acf-a5
 =========================== short test summary info ============================
 FAILED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaA::test_a5_escape_cancels_with_clear_recovery_copy[chromium]
 !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
-============ 1 failed, 4 passed, 29 deselected, 1 xfailed in 20.46s ============
+============ 1 failed, 4 passed, 29 deselected, 1 xfailed in 15.53s ============
 error: recipe `testacc` failed on line 124 with exit code 1

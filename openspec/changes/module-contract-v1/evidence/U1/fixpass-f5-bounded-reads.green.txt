@@ -1,0 +1,3 @@
+$ env -u VIRTUAL_ENV just testacc "" scripted "packages/studyloop/tests/acceptance/test_module_personas.py -p no:cacheprovider"
+sha 6af7887e  2026-10-05T12:34:18Z  (working tree: the six phases read state then assert; unflipped)
+======================== 38 passed, 1 xfailed in 14.95s ========================

@@ -544,6 +544,22 @@ def reload(page: Page) -> None:
     wait_alpine(page)
 
 
+def settle(page: Page, js_predicate: str, *, timeout_s: float = 10.0, poll_ms: int = 200) -> bool:
+    """Poll a sync JS predicate until truthy or ``timeout_s``; return its FINAL truthiness.
+
+    The persona phases assert on the state this returns (U1-review F5): a wait that raises a
+    Playwright TimeoutError proves only that time passed, so each phase reads the DOM once more
+    after the bounded wait and fails on an assertion that names the state it expected.
+    """
+    deadline = time.monotonic() + timeout_s
+    while True:
+        if page.evaluate(js_predicate):
+            return True
+        if time.monotonic() >= deadline:
+            return bool(page.evaluate(js_predicate))
+        page.wait_for_timeout(poll_ms)
+
+
 def labs_entry_visible(page: Page) -> bool:
     return page.locator("[data-testid='nav-labs']").is_visible()
 
@@ -691,6 +707,7 @@ __all__ = [
     "require_mentor_ready",
     "resolve_tool",
     "selected_persona_harness",
+    "settle",
     "stop_persona_world",
     "study_consoles",
     "terminal_has_focus",

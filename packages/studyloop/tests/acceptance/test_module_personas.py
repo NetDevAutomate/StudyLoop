@@ -164,7 +164,12 @@ def step_labs_lists_the_installed_module(
 ) -> None:
     """After `module add`: reload; exactly ONE Labs entry; the view lists ids and prompts only."""
     pw.reload(page)
-    pw.wait_labs_entry(page, visible=True)
+    pw.wait_labs_loaded(page)
+    pw.settle(page, "() => window.Alpine.store('labs').available === true")
+    assert pw.labs_entry_visible(page), (
+        f"expected the Labs entry in the sidebar after `module add {module_id}`; "
+        f"the lockfile lists {[m['module_id'] for m in pw.api(page, '/api/modules/labs')['labs']]}"
+    )
     assert page.locator("[data-testid='nav-labs']").count() == 1, "exactly ONE Labs entry"
     options = pw.api(page, "/api/session/options")
     assert [m["module_id"] for m in options["labs"]] == [module_id], options.get("labs")
@@ -205,7 +210,12 @@ def step_start_runs_inside_the_one_claimed_session(
         world.facts["drill_started"] = {"ref": drill_ref, "at_s": round(world.budget.elapsed(), 3)}
     # The one start path: POST /api/modules/labs/start, then the Study Session view adopts
     # the live session on load and the console -- the mentor pane -- mounts.
-    page.wait_for_function("() => location.hash === '#study-session'", timeout=15_000)
+    pw.settle(page, "() => location.hash === '#study-session'")
+    assert page.evaluate("() => location.hash") == "#study-session", (
+        f"expected the Study Session view after Start on {drill_ref}; the page is still on "
+        f"{page.evaluate('() => location.hash')!r} and the session state is "
+        f"{pw.api(page, '/api/session/state').get('study_session_id')!r}"
+    )
     page.wait_for_selector(".session-active-layout .xterm-mount", state="visible", timeout=60_000)
     if world.fake_mentor:
         pw.wait_for_terminal_text(page, "FAKE-AGENT READY")
@@ -241,7 +251,15 @@ def step_escape_cancels_with_clear_recovery_copy(
     page.locator("[data-testid='labs-cancel-drill']").focus()
     if not flipped:
         page.keyboard.press("Escape")
-    page.wait_for_selector("[data-testid='labs-active-drill']", state="hidden", timeout=15_000)
+    pw.settle(
+        page,
+        """() => { const el = document.querySelector("[data-testid='labs-active-drill']");
+                  return !el || el.offsetParent === null; }""",
+    )
+    assert not page.locator("[data-testid='labs-active-drill']").is_visible(), (
+        "expected the live-drill strip to be gone after Escape; it is still shown and the "
+        f"state file still names {world.state_file().get('labs_drill')!r}"
+    )
     assert_called(world, "POST", "/api/modules/labs/cancel")
     assert ("POST", "/api/session/end") not in world.api_calls, "cancel must never end the session"
     state = pw.api(page, "/api/session/state")

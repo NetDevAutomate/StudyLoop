@@ -1,8 +1,8 @@
 {
-  "run_id": "persona-a-1791203373-e9d8355a-a5",
+  "run_id": "persona-a-1791203675-d1286acf-a5",
   "harness": "fake-agent",
   "actor": "scripted",
-  "outcome": "failed at a5: Page.wait_for_selector: Timeout 15000ms exceeded.\nCall log:\n  - waiting for locator(\"[data-testid='labs-active-drill']\") to be hidden\n    34 \u00d7 locator resolved to visible <section aria-live=\"polite\" c",
+  "outcome": "failed at a5: expected the live-drill strip to be gone after Escape; it is still shown and the state file still names {'module_id': 'echo-drills', 'deck_id': 'echo-basics', 'task_id': 'echo-01', 'ref': 'echo-drills",
   "turn_count": 6,
   "platform": null,
   "auth_mode": "presence-only",

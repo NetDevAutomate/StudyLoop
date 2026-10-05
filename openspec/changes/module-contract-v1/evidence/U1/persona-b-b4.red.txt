@@ -1,34 +1,20 @@
 $ STUDYLOOP_ACC=1 STUDYLOOP_ACC_FORCE_FAIL=b4 env -u VIRTUAL_ENV uv run --group dev pytest -m acceptance packages/studyloop/tests/acceptance/test_module_personas.py -k TestPersonaB -x -q -p no:cacheprovider --tb=short
-sha 1d03bb91  2026-10-05T11:24:43Z  (working tree: Persona B tests for commit 4; phase b4 FLIPPED so its own assertion fails)
+sha 6af7887e  2026-10-05T12:33:09Z  (U1-review F5 regeneration: phase b4 FLIPPED; a bounded state read, then the phase's own assertion names the expected state)
 ...F
 =================================== FAILURES ===================================
 _ TestPersonaB.test_b4_module_add_then_labs_lists_the_contributors_module[chromium] _
-packages/studyloop/tests/acceptance/test_module_personas.py:871: in test_b4_module_add_then_labs_lists_the_contributors_module
+packages/studyloop/tests/acceptance/test_module_personas.py:1056: in test_b4_module_add_then_labs_lists_the_contributors_module
     step_labs_lists_the_installed_module(
-packages/studyloop/tests/acceptance/test_module_personas.py:162: in step_labs_lists_the_installed_module
-    pw.wait_labs_entry(page, visible=True)
-packages/studyloop/tests/acceptance/personas/world.py:402: in wait_labs_entry
-    page.wait_for_selector(
-.venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:8217: in wait_for_selector
-    self._sync(
-.venv/lib/python3.12/site-packages/playwright/_impl/_page.py:419: in wait_for_selector
-    return await self._main_frame.wait_for_selector(**locals_to_params(locals()))
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-.venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:369: in wait_for_selector
-    await self._channel.send(
-.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:69: in send
-    return await self._connection.wrap_api_call(
-.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:559: in wrap_api_call
-    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
-E   playwright._impl._errors.TimeoutError: Page.wait_for_selector: Timeout 15000ms exceeded.
-E   Call log:
-E     - waiting for locator("[data-testid='nav-labs']") to be visible
-E       35 × locator resolved to hidden <button class="sidebar-btn" data-testid="nav-labs" @click="$store.nav.go('labs')" :class="{ active: $store.nav.is('labs') }" x-show="$store.labs && $store.labs.available">…</button>
-E
-E   [persona B] failure bundle: /Users/ataylor/code/personal/tools/studyloop-wt/module-personas/playwright/artifacts/personas/persona-b-1791199484-c90e9f22-b4
+packages/studyloop/tests/acceptance/test_module_personas.py:169: in step_labs_lists_the_installed_module
+    assert pw.labs_entry_visible(page), (
+E   AssertionError: expected the Labs entry in the sidebar after `module add my-drills`; the lockfile lists []
+E   assert False
+E    +  where False = <function labs_entry_visible at 0x10c75dd00>(<Page url='http://127.0.0.1:58505/#today'>)
+E    +    where <function labs_entry_visible at 0x10c75dd00> = pw.labs_entry_visible
+E   [persona B] failure bundle: /Users/ataylor/code/personal/tools/studyloop-wt/module-personas/playwright/artifacts/personas/persona-b-1791203591-ee5cf1eb-b4
 ----------------------------- Captured stdout call -----------------------------
-[persona B] failure bundle written: /Users/ataylor/code/personal/tools/studyloop-wt/module-personas/playwright/artifacts/personas/persona-b-1791199484-c90e9f22-b4
+[persona B] failure bundle written: /Users/ataylor/code/personal/tools/studyloop-wt/module-personas/playwright/artifacts/personas/persona-b-1791203591-ee5cf1eb-b4
 =========================== short test summary info ============================
 FAILED packages/studyloop/tests/acceptance/test_module_personas.py::TestPersonaB::test_b4_module_add_then_labs_lists_the_contributors_module[chromium]
 !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
-1 failed, 3 passed, 13 deselected in 18.21s
+1 failed, 3 passed, 29 deselected in 13.32s
