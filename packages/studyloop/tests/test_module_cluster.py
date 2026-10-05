@@ -19,25 +19,47 @@ disposable cluster") and brief (``briefs/K0-cluster-provisioning.md``) items pin
 - the name derives from the attempt id with the ``studyloop-`` prefix; a collision is refused;
 - teardown argv, the kubeconfig removed, and a teardown failure surfacing as an error naming
   the cluster; a failed or hung create never leaves a half-made cluster behind silently.
+
+The second half drives ``studyloop drill`` with ``CliRunner`` against the ``k8s-offline``
+fixture module (``tests/fixtures/modules/k8s-offline/``, a ``kubeconfig-context`` drill whose
+scripts only echo ``$KUBECONFIG`` and read ``kubectl config current-context``): ``setup``
+provisions before the consent prompt and the prompt names the cluster, the child sees
+``KUBECONFIG=<attempt>/kubeconfig``, ``check`` reuses it, ``cleanup`` deletes after the module's
+script, and every failure path after a successful create -- declined consent, failed setup,
+check timeout, Ctrl-C -- tears the cluster down; the pre-consent refusals (missing core tool,
+name collision, check with nothing open) never call ``kind create``.
 """
 
 from __future__ import annotations
 
+import json
 import os
+import shutil
 import stat
 import subprocess
 import textwrap
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 import yaml
+from click.testing import CliRunner
+from test_module_drill_cli import _events, _module_digest
 from test_module_runner import SpawnCall, spawn_spy
+from test_practice_verify import _attempt_db, _patch_db
 
+from studyloop.cli import _drill
+from studyloop.cli._drill import drill_group
 from studyloop.modules import cluster, runner
-from studyloop.modules.attempt import Attempt, AttemptStore, DrillIdentity, TargetKind
+from studyloop.modules.attempt import (
+    Attempt,
+    AttemptStore,
+    DrillIdentity,
+    InstalledModule,
+    TargetKind,
+)
 from studyloop.modules.cluster import ClusterError
 
 if TYPE_CHECKING:
@@ -429,3 +451,315 @@ def test_handle_for_rebuilds_the_handle_from_the_recorded_attempt(
     )
     assert cluster.kubeconfig_path(attempt) == attempt.attempt_dir / "kubeconfig"
     assert os.path.isabs(handle.kubeconfig)
+
+
+# ---------------------------------------------------------------------------
+# `studyloop drill` end to end against the k8s-offline fixture (brief item 5)
+# ---------------------------------------------------------------------------
+
+K8S_FIXTURE = Path(__file__).parent / "fixtures" / "modules" / "k8s-offline"
+K8S_MODULE_ID = "k8s-offline"
+K8S_DRILL = f"{K8S_MODULE_ID}/cluster/current-context"
+
+
+@pytest.fixture
+def sessions_db(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
+    db = _attempt_db(tmp_path)
+    _patch_db(monkeypatch, db)
+    return db
+
+
+@pytest.fixture
+def installed_k8s(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, fake_tools: FakeTools
+) -> DrillIdentity:
+    """The fixture module copied to ``tmp_path`` (so a test may edit it) and 'installed'
+    through the same locator seam ``test_module_drill_cli.py`` uses; attempts live under
+    ``tmp_path`` too. Requires ``fake_tools`` so the scratch PATH is in force first."""
+    snapshot = tmp_path / "snapshot"
+    shutil.copytree(K8S_FIXTURE, snapshot)
+    for script in (snapshot / "scripts").iterdir():
+        script.chmod(0o755)
+    monkeypatch.setattr(_drill, "attempts_root", lambda: tmp_path / "module-attempts")
+    digest = _module_digest(snapshot)
+
+    def locate(module_id: str) -> InstalledModule:
+        if module_id != K8S_MODULE_ID:
+            raise _drill.ModuleNotInstalledError(module_id)
+        return InstalledModule(module_id=K8S_MODULE_ID, module_digest=digest, snapshot_dir=snapshot)
+
+    monkeypatch.setattr(_drill, "locate_installed_module", locate)
+    return DrillIdentity(
+        module_id=K8S_MODULE_ID, module_digest=digest, deck_id="cluster", task_id="current-context"
+    )
+
+
+def _invoke(*args: str, confirm: str = "y") -> Any:
+    return CliRunner().invoke(drill_group, list(args), input=f"{confirm}\n", catch_exceptions=False)
+
+
+def _store() -> AttemptStore:
+    return AttemptStore(root=_drill.attempts_root())
+
+
+def _kinds(fake_tools: FakeTools) -> list[list[str]]:
+    """Each fake-kind call reduced to its verb pair (``["get", "clusters"]`` ...)."""
+    return [call[:2] for call in fake_tools.calls()]
+
+
+def _set_phase_script(tmp_path: Path, name: str, body: str) -> None:
+    script = tmp_path / "snapshot" / "scripts" / name
+    script.write_text(body, encoding="utf-8")
+    script.chmod(0o755)
+
+
+def test_drill_setup_check_cleanup_run_against_the_disposable_cluster(
+    installed_k8s: DrillIdentity,
+    sessions_db: Path,
+    fake_tools: FakeTools,
+    spawn_spy: list[SpawnCall],
+    tmp_path: Path,
+) -> None:
+    """Spec scenario "the drill's cluster is disposable": ``setup`` provisions BEFORE the
+    consent prompt (which names the cluster and the kubeconfig), the attempt records the
+    kubeconfig, every phase's child sees ``KUBECONFIG=<attempt>/kubeconfig`` naming only that
+    cluster, ``check`` reuses it without touching kind, ``cleanup`` runs the module's script
+    and THEN deletes exactly that cluster and closes the attempt."""
+    store = _store()
+
+    setup = _invoke("setup", K8S_DRILL)
+
+    assert setup.exit_code == 0, setup.output
+    attempt = store.current(installed_k8s)
+    assert attempt is not None, "setup must leave the attempt open for check"
+    name = f"studyloop-{attempt.attempt_id[:8]}"
+    kubeconfig = cluster.kubeconfig_path(attempt)
+    assert attempt.kubeconfig is not None and attempt.kubeconfig.resolve() == kubeconfig, (
+        "the attempt record must carry the core-written kubeconfig for the later phases"
+    )
+    prompt, asked, _rest = setup.output.partition("Run this phase now?")
+    assert asked, setup.output
+    assert "Cluster:" in prompt and name in prompt, "the consent prompt names the cluster"
+    assert f"Target:      kubeconfig-context {kubeconfig}" in prompt
+    assert _kinds(fake_tools) == [["get", "clusters"], ["create", "cluster"]]
+    assert f"setup KUBECONFIG={kubeconfig}" in setup.output
+    assert f"setup context kind-{name}" in setup.output, "the child saw the one-context file"
+    assert "setup passed (exit 0)" in setup.output
+
+    check = _invoke("check", K8S_DRILL)
+
+    assert check.exit_code == 0, check.output
+    assert f"check context kind-{name}" in check.output
+    assert "check passed (exit 0)" in check.output
+    assert store.current(installed_k8s) == attempt, "check runs in the attempt setup opened"
+    assert _kinds(fake_tools) == [["get", "clusters"], ["create", "cluster"]], (
+        "check reuses the recorded kubeconfig; kind is not called"
+    )
+
+    cleanup = _invoke("cleanup", K8S_DRILL)
+
+    assert cleanup.exit_code == 0, cleanup.output
+    assert f"cleanup KUBECONFIG={kubeconfig}" in cleanup.output, "module cleanup ran first"
+    assert "cleanup passed (exit 0)" in cleanup.output
+    assert fake_tools.calls()[-1] == [
+        "delete",
+        "cluster",
+        "--name",
+        name,
+        "--kubeconfig",
+        str(kubeconfig),
+    ]
+    assert _kinds(fake_tools) == [["get", "clusters"], ["create", "cluster"], ["delete", "cluster"]]
+    assert name in cleanup.output, "the learner is told the cluster is gone"
+    assert store.current(installed_k8s) is None, "cleanup closes the attempt"
+    assert not kubeconfig.exists()
+
+    scripts_dir = (tmp_path / "snapshot" / "scripts").resolve()
+    phase_spawns = [call for call in spawn_spy if Path(call.args[0]).parent == scripts_dir]
+    assert [Path(call.args[0]).name for call in phase_spawns] == [
+        "setup.sh",
+        "check.sh",
+        "cleanup.sh",
+    ]
+    for call in phase_spawns:
+        assert call.kwargs["env"]["KUBECONFIG"] == str(kubeconfig)
+    rows = _events(sessions_db)
+    assert [row["phase"] for row in rows] == ["setup", "check", "cleanup"]
+    assert {row["exit_class"] for row in rows} == {"passed"}
+
+
+def test_declining_setup_consent_tears_down_the_cluster_it_had_created(
+    installed_k8s: DrillIdentity, sessions_db: Path, fake_tools: FakeTools
+) -> None:
+    """Brief item 3: the cluster exists before the prompt (it is named in it), so ``n`` must
+    delete it again and leave no open attempt."""
+    result = _invoke("setup", K8S_DRILL, confirm="n")
+
+    assert result.exit_code == 2, result.output
+    assert "Not confirmed" in result.output
+    assert _kinds(fake_tools) == [["get", "clusters"], ["create", "cluster"], ["delete", "cluster"]]
+    assert _store().current(installed_k8s) is None
+    assert _events(sessions_db) == []
+
+
+def test_failed_setup_script_tears_down_the_cluster_and_does_not_start_the_attempt(
+    installed_k8s: DrillIdentity, sessions_db: Path, fake_tools: FakeTools, tmp_path: Path
+) -> None:
+    """§5.5 *Exit codes* + brief item 3: setup non-zero = error, attempt not started -- and the
+    cluster that was created for it is deleted."""
+    _set_phase_script(tmp_path, "setup.sh", "#!/bin/sh\necho 'no nodes today' >&2\nexit 1\n")
+
+    result = _invoke("setup", K8S_DRILL)
+
+    assert result.exit_code == 2, result.output
+    assert "setup failed (exit 1; error) -- attempt not started" in result.output
+    assert _kinds(fake_tools)[-1] == ["delete", "cluster"]
+    assert _store().current(installed_k8s) is None
+    assert _events(sessions_db)[0]["exit_class"] == "error"
+
+
+def test_check_timeout_tears_down_the_cluster_and_closes_the_attempt(
+    installed_k8s: DrillIdentity, sessions_db: Path, fake_tools: FakeTools, tmp_path: Path
+) -> None:
+    """Brief item 3 names the check timeout as a failure path: the hung check is stopped, the
+    phase is an error, and the attempt's cluster does not outlive it."""
+    assert _invoke("setup", K8S_DRILL).exit_code == 0
+    deck_path = tmp_path / "snapshot" / "decks" / "cluster.json"
+    deck = json.loads(deck_path.read_text(encoding="utf-8"))
+    deck["tasks"][0]["verification"]["timeoutSeconds"] = 1
+    deck_path.write_text(json.dumps(deck), encoding="utf-8")
+    _set_phase_script(tmp_path, "check.sh", "#!/bin/sh\nsleep 20\n")
+
+    result = _invoke("check", K8S_DRILL)
+
+    assert result.exit_code == 2, result.output
+    assert "check timed out after 1s" in result.output
+    assert _kinds(fake_tools)[-1] == ["delete", "cluster"]
+    assert _store().current(installed_k8s) is None
+    assert _events(sessions_db)[-1]["timed_out"] == 1
+
+
+def test_check_exit_1_keeps_the_cluster_for_another_try(
+    installed_k8s: DrillIdentity, sessions_db: Path, fake_tools: FakeTools, tmp_path: Path
+) -> None:
+    """``check`` exit 1 is "task not complete", the normal keep-trying loop -- not a failure
+    path. The attempt stays open and kind is not called."""
+    assert _invoke("setup", K8S_DRILL).exit_code == 0
+    _set_phase_script(tmp_path, "check.sh", "#!/bin/sh\necho not yet\nexit 1\n")
+
+    result = _invoke("check", K8S_DRILL)
+
+    assert result.exit_code == 1, result.output
+    assert "task not complete (exit 1)" in result.output
+    assert _kinds(fake_tools) == [["get", "clusters"], ["create", "cluster"]]
+    assert _store().current(installed_k8s) is not None
+
+
+def test_teardown_failure_on_cleanup_is_an_error_naming_the_cluster(
+    installed_k8s: DrillIdentity,
+    sessions_db: Path,
+    fake_tools: FakeTools,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Brief item 3: a failed ``kind delete`` is reported as ERROR naming the cluster and the
+    by-hand command -- never silently -- and the CLI exits non-zero even though the module's
+    own cleanup passed; the attempt is still closed (a failed cleanup closes it, spec)."""
+    assert _invoke("setup", K8S_DRILL).exit_code == 0
+    attempt = _store().current(installed_k8s)
+    assert attempt is not None
+    name = f"studyloop-{attempt.attempt_id[:8]}"
+    monkeypatch.setenv("FAKE_KIND_FAIL", "delete")
+
+    result = _invoke("cleanup", K8S_DRILL)
+
+    assert result.exit_code == 2, result.output
+    assert "cleanup passed (exit 0)" in result.output, "the module's cleanup still ran"
+    assert "ERROR" in result.output
+    assert name in result.output
+    assert f"kind delete cluster --name {name}" in result.output
+    assert _store().current(installed_k8s) is None
+    assert not cluster.kubeconfig_path(attempt).exists()
+
+
+def test_missing_core_tool_refuses_before_consent_even_when_the_module_omits_it(
+    installed_k8s: DrillIdentity, sessions_db: Path, fake_tools: FakeTools, tmp_path: Path
+) -> None:
+    """Brief item 6 / M1 Q2: ``kind``, ``kubectl`` and ``docker`` are CORE's prerequisites for
+    this target kind, resolved up front whatever the module declares; an unresolvable one is
+    an error naming the tool, before any consent and before kind is called."""
+    manifest = tmp_path / "snapshot" / "module.yaml"
+    manifest.write_text(
+        manifest.read_text(encoding="utf-8").replace(
+            "prerequisites:\n  - id: kind\n  - id: kubectl\n  - id: docker\n",
+            "prerequisites:\n  - id: kubectl\n",
+        ),
+        encoding="utf-8",
+    )
+    assert "id: docker" not in manifest.read_text(encoding="utf-8")
+    (fake_tools.bin_dir / "docker").unlink()
+
+    result = _invoke("setup", K8S_DRILL)
+
+    assert result.exit_code == 1, result.output
+    assert "'docker'" in result.output
+    assert "Run this phase now?" not in result.output
+    assert fake_tools.calls() == []
+    assert _store().current(installed_k8s) is None
+
+
+def test_check_without_an_open_attempt_is_refused_before_consent(
+    installed_k8s: DrillIdentity, sessions_db: Path, fake_tools: FakeTools
+) -> None:
+    """Only ``setup`` provisions (brief item 5); a ``check`` with nothing open on a
+    kubeconfig-context drill has no cluster to run against, so it is refused up front naming
+    ``drill setup`` -- not refused after consent by the runner's missing-kubeconfig branch."""
+    result = _invoke("check", K8S_DRILL)
+
+    assert result.exit_code == 1, result.output
+    assert "drill setup" in result.output
+    assert "Run this phase now?" not in result.output
+    assert fake_tools.calls() == []
+    assert _store().current(installed_k8s) is None
+
+
+def test_name_collision_is_refused_before_consent_and_closes_the_attempt(
+    installed_k8s: DrillIdentity,
+    sessions_db: Path,
+    fake_tools: FakeTools,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Brief item 2 through the CLI: an existing cluster with the derived name is a refusal
+    naming it, nothing is created, no consent is asked and no attempt stays open."""
+    monkeypatch.setattr(cluster, "cluster_name", lambda attempt_id: "studyloop-fixed")
+    monkeypatch.setenv("FAKE_KIND_CLUSTERS", "studyloop-sentinel-1234 studyloop-fixed")
+
+    result = _invoke("setup", K8S_DRILL)
+
+    assert result.exit_code == 1, result.output
+    assert "studyloop-fixed" in result.output and "already exists" in result.output
+    assert "Run this phase now?" not in result.output
+    assert _kinds(fake_tools) == [["get", "clusters"]]
+    assert _store().current(installed_k8s) is None
+
+
+def test_keyboard_interrupt_during_a_phase_tears_down_the_cluster(
+    installed_k8s: DrillIdentity,
+    sessions_db: Path,
+    fake_tools: FakeTools,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Brief item 3: Ctrl-C after the cluster exists must not leave it running. Click turns
+    the interrupt into ``Aborted!`` (exit 1); the delete and the close happen on the way out."""
+    assert _invoke("setup", K8S_DRILL).exit_code == 0
+
+    def interrupted(*_args: Any, **_kwargs: Any) -> Any:
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(runner, "run_phase", interrupted)
+
+    result = CliRunner().invoke(drill_group, ["check", K8S_DRILL], input="y\n")
+
+    assert result.exit_code == 1, result.output
+    assert "Aborted" in result.output
+    assert _kinds(fake_tools)[-1] == ["delete", "cluster"]
+    assert _store().current(installed_k8s) is None
