@@ -88,6 +88,33 @@ every failure path after it was created. Core SHALL never use, list-and-delete, 
 cluster it did not create for that attempt. A name collision SHALL be refused, never reused. A
 teardown failure SHALL be reported as an error naming the cluster, never hidden.
 
+"Every failure path" means: any `check` result in an error class (exit status 2 or above, a
+timeout, an output cap) and any `setup` result other than pass delete the cluster and close the
+attempt; only a `check` that exits `1` (task not complete) keeps it for the next try. After a
+`kind create` that did not succeed, core SHALL delete the cluster only when it can prove it created
+it — kind wrote the attempt's own kubeconfig naming that cluster — and SHALL otherwise report the
+name and the exact by-hand command without deleting anything. When a delete fails, the attempt's
+kubeconfig SHALL be kept and the reported command SHALL name it (`kind delete cluster --name <name>
+--kubeconfig <attempt>/kubeconfig`), so the learner never has to touch their default kubeconfig.
+Any exception after a successful create — not only the runner's own errors — SHALL run the same
+teardown and keep the original error. Core's own `kind` invocation SHALL run with an allowlisted
+environment (HOME, PATH, TMPDIR, locale, Docker, kind, proxy and certificate variables), never the
+learner's whole environment and never `KUBECONFIG`. A phase refused before consent (no cluster for a
+`check`, a missing core tool) SHALL open no attempt record. An attempt record whose id, directory
+or kubeconfig path is not the canonical one for its file SHALL be rejected, never used to delete.
+
+#### Scenario: a check that errors tears the cluster down; a check that fails does not
+- **GIVEN** a kubeconfig-context attempt with its cluster
+- **WHEN** `check` exits `1`
+- **THEN** the cluster and the attempt stay open for the next try
+- **WHEN** `check` instead times out, is capped, or exits `2` or above
+- **THEN** the cluster is deleted and the attempt is closed with the reason recorded
+
+#### Scenario: a failed create never deletes a cluster core cannot prove it made
+- **GIVEN** `kind create` fails before it wrote the attempt's kubeconfig
+- **WHEN** core reports the failure
+- **THEN** no `kind delete` runs and the error names the cluster and the by-hand command
+
 #### Scenario: the drill's cluster is disposable and the learner's clusters survive
 - **GIVEN** a learner with an existing kind cluster and a kubeconfig-context module
 - **WHEN** `setup`, `check` and `cleanup` run for one attempt
