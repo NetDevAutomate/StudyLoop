@@ -44,6 +44,7 @@ Run:  just testacc "" scripted packages/studyloop/tests/acceptance/test_module_p
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import os
 import re
@@ -63,6 +64,7 @@ pytest.importorskip("playwright")
 from studyloop.session.module_delivery import EnvelopeValidationError
 
 from .evidence import write_evidence_bundle
+from .personas import docs_contract
 from .personas import world as pw
 from .personas.bundle import (
     EXPECTED_MEMBERS,
@@ -512,6 +514,87 @@ class TestBundleWriter:
         }
         assert bundle.server_log_path is None and bundle.labs_binding_path is None
         assert {p.name for p in bundle.run_dir.iterdir()} == {"manifest.json", "turns.json"}
+
+
+# ---------------------------------------------------------------------------
+# The documented module-command contract (U1-review F7): what docs/module-contract.md,
+# docs/cli-reference.md and the --help texts promise about `module new|check|list|add`, parsed,
+# so B9 can compare the observed output against it rather than against literals.
+# ---------------------------------------------------------------------------
+
+
+class TestDocsContract:
+    def test_the_documented_expectations_are_parsed_from_the_pages_and_the_help(self) -> None:
+        contract = docs_contract.load_documented_contract(DOCS)
+        assert contract.finding_template == "MCnnn <file>:<line>: <message>"
+        assert contract.check_exit_codes == {"conforming": 0, "findings": 1, "not a dir": 2}
+        assert contract.json_report_keys == ("ok", "findings")
+        assert contract.json_finding_keys == ("rule_id", "message", "path", "line")
+        assert contract.list_digest_hex == 12
+        assert {"module.yaml", "mentor/brief.md", "README.md", "LICENSE", "CHANGELOG.md"} <= set(
+            contract.scaffold_files
+        )
+        assert contract.check_script_prints == "ready" and contract.check_script_exit == 0
+        assert contract.snapshot_dir_template == "modules/snapshots/<digest>"
+        assert contract.drill_ref == CONTRIBUTOR_DRILL_REF
+        shapes = {docs_contract.command_shape(c) for c in contract.documented_commands}
+        assert {"new <id>", "check <path>", "check --json <path>", "add <path>", "list"} <= shapes
+
+    def test_a_tampered_copy_of_the_doc_makes_the_comparison_fail(self, tmp_path: Path) -> None:
+        """The sensitivity proof the brief asks for: copy the two pages, edit one fenced command
+        (`module list` -> `module ls`) and one prose template (12 -> 8 hex digits), and the
+        comparison against REAL observed output names both."""
+        docs_copy = tmp_path / "docs"
+        docs_copy.mkdir()
+        for name in ("module-contract.md", "cli-reference.md"):
+            (docs_copy / name).write_text((DOCS / name).read_text(encoding="utf-8"), "utf-8")
+        page = docs_copy / "module-contract.md"
+        page.write_text(
+            page.read_text("utf-8").replace("studyloop module list\n", "studyloop module ls\n", 1),
+            "utf-8",
+        )
+        digest = "ab" * 32
+        snapshot = f"/x/modules/snapshots/sha256-{digest}"
+        observed = docs_contract.ObservedModuleOutputs(
+            commands_run=(
+                "new my-drills",
+                "check /x/my-drills",
+                "check --json /x/my-drills",
+                "add /x/my-drills",
+                "list",
+                "remove my-drills",
+            ),
+            check_finding_lines=("MC017 decks/cluster.json:14: task current-context has no x",),
+            check_exit_codes={"conforming": 0, "findings": 1, "not a dir": 2},
+            json_report={
+                "ok": False,
+                "findings": [{"rule_id": "MC017", "message": "m", "path": "p", "line": 14}],
+            },
+            list_lines=(f"my-drills  0.1.0      {digest[:12]}  {snapshot}",),
+            lockfile_entries=(
+                {
+                    "id": "my-drills",
+                    "version": "0.1.0",
+                    "digest": f"sha256:{digest}",
+                    "snapshot": snapshot,
+                },
+            ),
+            add_stdout=f"installed my-drills 0.1.0 (sha256:{digest})\nsnapshot: {snapshot}\n",
+            scaffold_dir=None,
+            check_script_stdout="ready\n",
+            check_script_exit=0,
+        )
+        clean = docs_contract.compare_observed(
+            docs_contract.load_documented_contract(DOCS), observed
+        )
+        assert clean == [], clean
+        tampered = docs_contract.load_documented_contract(docs_copy)
+        mismatches = docs_contract.compare_observed(tampered, observed)
+        assert any("ls" in m for m in mismatches), mismatches
+        # Help text is the product's, not the page's: tamper the parsed value directly.
+        tampered8 = dataclasses.replace(tampered, list_digest_hex=8)
+        mismatches = docs_contract.compare_observed(tampered8, observed)
+        assert any("8 hex digits" in m for m in mismatches), mismatches
 
 
 # ---------------------------------------------------------------------------
@@ -1007,6 +1090,7 @@ class TestPersonaB:
                 (cwd / CONTRIBUTOR_MODULE_ID / "stale.txt").write_text("x", encoding="utf-8")
             result = world.cli("module", "new", CONTRIBUTOR_MODULE_ID, cwd=cwd)
             assert result.returncode == 0, result.stdout + result.stderr
+            world.facts["new_stdout"] = result.stdout
             module_dir = cwd / CONTRIBUTOR_MODULE_ID
             assert f"created {module_dir}" in result.stdout, result.stdout
             assert f"next: studyloop module check {module_dir}" in result.stdout, result.stdout
@@ -1035,6 +1119,7 @@ class TestPersonaB:
             as_json = world.cli("module", "check", "--json", str(module_dir))
             assert as_json.returncode == 0, as_json.stdout + as_json.stderr
             assert json.loads(as_json.stdout) == {"ok": True, "findings": []}
+            world.facts["check_exit_conforming"] = checked.returncode
 
     def test_b4_module_add_then_labs_lists_the_contributors_module(
         self, persona_b: PersonaWorld, page_b: Page
@@ -1055,6 +1140,9 @@ class TestPersonaB:
                 world.facts["add_stdout"] = added.stdout
             listed = world.cli("module", "list")
             world.facts["list_stdout"] = listed.stdout
+            world.facts["lockfile_entries"] = json.loads(world.lockfile_text() or "{}").get(
+                "modules", []
+            )
             step_labs_lists_the_installed_module(
                 world, page, module_id=CONTRIBUTOR_MODULE_ID, task=task
             )
@@ -1107,7 +1195,13 @@ class TestPersonaB:
             assert broken.returncode == 1, (
                 f"exit {broken.returncode}: {broken.stdout}{broken.stderr}"
             )
+            as_text = world.cli("module", "check", str(copy))
+            world.facts["check_exit_findings"] = as_text.returncode
+            world.facts["check_finding_lines"] = [
+                line for line in as_text.stdout.splitlines() if line.startswith("MC")
+            ]
             report = json.loads(broken.stdout)
+            world.facts["check_json_report"] = report
             assert report["ok"] is False
             assert all(set(f) == {"rule_id", "message", "path", "line"} for f in report["findings"])
             rule_ids = {f["rule_id"] for f in report["findings"]}
@@ -1130,70 +1224,62 @@ class TestPersonaB:
     def test_b9_the_docs_commands_and_the_observed_output_agree(
         self, persona_b: PersonaWorld
     ) -> None:
-        """The observed half of docs/module-contract.md and docs/cli-reference.md; the structural
-        half (every fenced `studyloop` line resolves) is test_docs_drift.py's."""
+        """The observed half of docs/module-contract.md and docs/cli-reference.md (U1-review F7):
+        the pages' fenced commands, prose templates and the shipped --help texts are PARSED into
+        the documented contract (personas/docs_contract.py) and every observation this persona
+        made of `module new`, `module check`, `module list` and `module add` is compared with
+        it; the structural half (every fenced `studyloop` line resolves) is test_docs_drift.py's."""
         world = persona_b
         with world.phase("b9", "docs' commands vs observed output"):
-            contract = (DOCS / "module-contract.md").read_text(encoding="utf-8")
-            reference = (DOCS / "cli-reference.md").read_text(encoding="utf-8")
+            contract = docs_contract.load_documented_contract(DOCS)
             module_dir = Path(world.facts["module_dir"])
             task = world.facts["task"]
+            assert task["id"] == contract.drill_ref.rsplit("/", 1)[1], (
+                f"the documented drill ref {contract.drill_ref} names a task the scaffold did not "
+                f"write ({task['id']})"
+            )
 
-            # module-contract.md step 1: the scaffold passes `module check` as written (b3) and
-            # its check script "prints `ready` and exits 0".
-            assert "prints `ready` and exits 0" in contract
+            # module-contract.md step 1: the scaffold's check script, run as the module would.
             check_sh = shell(
                 world,
                 ["/bin/sh", str(module_dir / "scripts" / "check.sh")],
                 env={"PATH": os.defpath, "HOME": str(world.world.home)},
                 cwd=module_dir,
             )
-            assert check_sh.returncode == 0 and check_sh.stdout.strip() == "ready", (
-                check_sh.stdout + check_sh.stderr
-            )
-
-            # module-contract.md step 6 / cli-reference.md: the documented drill ref names a deck
-            # and task the scaffold really writes.
-            documented_ref = re.search(r"studyloop drill check (my-drills/\S+)", contract)
-            assert documented_ref and documented_ref.group(1) == CONTRIBUTOR_DRILL_REF
-            assert (
-                task["id"] == "ready-01" and task["verification"]["command"] == "scripts/check.sh"
-            )
-            assert "my-drills/getting-started/ready-01" in reference
-
-            # module-contract.md step 4: `add` reports the snapshot and the lockfile records id,
-            # version and digest (b4's observed output).
-            add_stdout = world.facts["add_stdout"] if not world.flipped("b9") else "flipped"
-            assert "snapshot:" in add_stdout and "lockfile:" in add_stdout, add_stdout
-            assert re.search(
-                rf"installed {CONTRIBUTOR_MODULE_ID} 0\.1\.0 \(sha256:[0-9a-f]{{64}}\)", add_stdout
-            ), add_stdout
-
-            # module-contract.md step 5 / `module list --help`: one line per module -- id, version,
-            # the first 12 hex digits of the digest, the snapshot directory (b4's observation),
-            # and the documented empty-state line once removed (b7).
-            list_stdout = world.facts["list_stdout"]
-            assert re.search(
-                rf"^{CONTRIBUTOR_MODULE_ID}\s+0\.1\.0\s+[0-9a-f]{{12}}\s+\S+snapshots/",
-                list_stdout,
-                re.M,
-            ), list_stdout
-            empty = world.cli("module", "list")
-            assert (
-                empty.stdout.strip()
-                == "no modules installed (studyloop module add <path> installs one)"
-            )
-
-            # cli-reference.md: "exit 0 conforming, 1 findings, 2 not a dir" -- 0 (b3), 1 (b8), 2:
-            assert "exit 0 conforming, 1 findings, 2 not a dir" in reference
+            # cli-reference.md: "2 not a dir" -- observed here, the other two codes in b3 / b8.
             not_a_dir = world.cli("module", "check", str(module_dir / "module.yaml"))
-            assert not_a_dir.returncode == 2, not_a_dir.stdout + not_a_dir.stderr
             assert "is not a directory" in not_a_dir.stderr, not_a_dir.stderr
-            # `module check --help` promises `{ok, findings[{rule_id,message,path,line}]}` (b8).
-            assert world.facts["b8_json_keys"] == ["findings", "ok"]
 
-            # contributor-environment.md: `--version` as documented (b1 asserted it; pin here too).
-            assert documented_version_line().startswith("studyloop, version ")
+            list_lines = [line for line in world.facts["list_stdout"].splitlines() if line.strip()]
+            if world.flipped("b9"):  # the opposite state: an observation the docs do not describe
+                list_lines = [
+                    line.replace(line.split()[2], line.split()[2][:8], 1) for line in list_lines
+                ]
+            observed = docs_contract.ObservedModuleOutputs(
+                commands_run=docs_contract.observed_commands(r.argv for r in world.cli_records),
+                check_finding_lines=tuple(world.facts["check_finding_lines"]),
+                check_exit_codes={
+                    "conforming": world.facts["check_exit_conforming"],
+                    "findings": world.facts["check_exit_findings"],
+                    "not a dir": not_a_dir.returncode,
+                },
+                json_report=world.facts["check_json_report"],
+                list_lines=tuple(list_lines),
+                lockfile_entries=tuple(world.facts["lockfile_entries"]),
+                add_stdout=world.facts["add_stdout"],
+                scaffold_dir=module_dir,
+                check_script_stdout=check_sh.stdout,
+                check_script_exit=check_sh.returncode,
+            )
+            mismatches = docs_contract.compare_observed(contract, observed)
+            assert mismatches == [], "the docs and the observed output disagree:\n- " + "\n- ".join(
+                mismatches
+            )
+            # The empty-state line once removed (b7) -- observed, and not something the pages
+            # describe, so recorded as a fact rather than compared.
+            empty = world.cli("module", "list")
+            world.facts["list_empty_stdout"] = empty.stdout.strip()
+            assert empty.returncode == 0
 
     def test_b10_the_whole_persona_finished_under_eight_minutes(
         self, persona_b: PersonaWorld, page_b: Page

@@ -1,0 +1,4 @@
+$ STUDYLOOP_ACC=1 env -u VIRTUAL_ENV uv run --group dev pytest -m acceptance packages/studyloop/tests/acceptance/test_module_personas.py -k "TestDocsContract or TestPersonaB" -q -p no:cacheprovider --tb=short
+sha af6397f5  2026-10-05T12:45:48Z  (working tree: personas/docs_contract.py parses the pages + --help; b9 compares every observation with it)
+............                                                             [100%]
+12 passed, 29 deselected in 5.28s

@@ -1,0 +1,14 @@
+$ STUDYLOOP_ACC=1 env -u VIRTUAL_ENV uv run --group dev pytest -m acceptance packages/studyloop/tests/acceptance/test_module_personas.py -k TestDocsContract -q -p no:cacheprovider --tb=short
+sha af6397f5  2026-10-05T12:41:24Z  (U1-review F7: no documented-contract parser exists yet; B9 compares literals and hand-written regexes)
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/Users/ataylor/.local/share/uv/python/cpython-3.12-macos-aarch64-none/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+packages/studyloop/tests/acceptance/test_module_personas.py:67: in <module>
+    from .personas import docs_contract
+E   ImportError: cannot import name 'docs_contract' from 'acceptance.personas' (/Users/ataylor/code/personal/tools/studyloop-wt/module-personas/packages/studyloop/tests/acceptance/personas/__init__.py)
+=========================== short test summary info ============================
+ERROR packages/studyloop/tests/acceptance/test_module_personas.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 0.18s
