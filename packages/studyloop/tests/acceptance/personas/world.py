@@ -25,6 +25,7 @@ import contextlib
 import json
 import os
 import secrets
+import shutil
 import socket
 import subprocess
 import sys
@@ -38,8 +39,11 @@ _tests_dir = str(Path(__file__).resolve().parents[2])
 if _tests_dir not in sys.path:
     sys.path.insert(0, _tests_dir)
 
+import pytest  # noqa: E402
 from _playwright_paths import PLAYWRIGHT_ARTIFACTS  # noqa: E402
 from e2e._env import RunningServer, build_test_world, start_server  # noqa: E402
+
+from studyloop.harnesses import RELEASE_HARNESSES, get_harness  # noqa: E402
 
 from .bundle import CliRecord, write_persona_failure_bundle  # noqa: E402
 
@@ -50,6 +54,11 @@ if TYPE_CHECKING:
     from playwright.sync_api import Browser, Page
 
 FORCE_FAIL_ENV = "STUDYLOOP_ACC_FORCE_FAIL"
+HARNESS_ENV = "STUDYLOOP_ACC_HARNESS"
+
+#: The bundle's ``harness`` when no harness is selected and the e2e fake agent plays the mentor
+#: (design.md §6, ruled at U1-review: an honest value, never hidden).
+FAKE_AGENT = "fake-agent"
 
 #: The checkout the personas run from; labelled ``<REPO>`` in a bundle.
 _REPO_ROOT = Path(__file__).resolve().parents[5]
@@ -67,6 +76,39 @@ def free_port() -> int:
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
         return int(sock.getsockname()[1])
+
+
+def resolve_tool(name: str) -> str | None:
+    """The real binary behind ``name`` on this machine (through a mise shim when there is one),
+    or ``None``. A shim needs the developer's HOME to resolve; a persona's world has none."""
+    found = shutil.which(name)
+    if found is None:
+        return None
+    if "mise/shims" in found:
+        mise = shutil.which("mise")
+        if mise is None:
+            return None
+        resolved = subprocess.run(
+            [mise, "which", name], capture_output=True, text=True, check=False, timeout=30
+        )
+        return resolved.stdout.strip() or None
+    return found
+
+
+def selected_persona_harness() -> str | None:
+    """The harness the personas drive, or ``None`` for the e2e fake agent.
+
+    design.md §6 (ruled at U1-review): the harness ``STUDYLOOP_ACC_HARNESS`` selects when one is
+    selected -- the FIRST named, the personas drive one mentor -- and the fake agent otherwise.
+    An EMPTY selection is the tier's "all six" default (``conftest.selected_harnesses``), which
+    for a module persona means "no particular harness": the fake agent. Unknown names are the
+    gate's loud failure, not this function's.
+    """
+    raw = os.environ.get(HARNESS_ENV, "").strip()
+    if not raw:
+        return None
+    names = [name.strip() for name in raw.split(",") if name.strip()]
+    return names[0] if names else None
 
 
 class BudgetExceededError(AssertionError):
@@ -110,6 +152,11 @@ class PersonaWorld:
     server: RunningServer
     budget: WallClockBudget
     lan_password: str | None
+    #: Who plays the mentor: a RELEASE_HARNESSES name, or :data:`FAKE_AGENT`. Recorded in the
+    #: bundle's ``harness`` field (design.md §6).
+    harness: str = FAKE_AGENT
+    #: The resolved harness binary for a real harness (``None`` for the fake agent).
+    harness_binary: str | None = None
     cli_records: list[CliRecord] = field(default_factory=list)
     phases: list[dict[str, Any]] = field(default_factory=list)
     facts: dict[str, Any] = field(default_factory=dict)
@@ -125,6 +172,10 @@ class PersonaWorld:
     @property
     def world(self):
         return self.server.world
+
+    @property
+    def fake_mentor(self) -> bool:
+        return self.harness == FAKE_AGENT
 
     @property
     def lockfile_path(self) -> Path:
@@ -272,6 +323,7 @@ class PersonaWorld:
                 BUNDLE_ROOT,
                 run_id=f"persona-{self.persona.lower()}-{self.run_id}-{phase_id}",
                 persona=self.persona,
+                harness=self.harness,
                 outcome=f"failed at {phase_id}: {reason[:200]}",
                 phases=list(self.phases),
                 server_log=self.server_log_text(),
@@ -306,25 +358,64 @@ class PersonaWorld:
 
 
 def launch_persona_world(root: Path, *, persona: str, budget_s: float, lan: bool) -> PersonaWorld:
-    """A server in its own world with the harness agent; ``--lan`` for Persona A.
+    """A server in its own world; ``--lan`` for Persona A; the mentor per the selection.
+
+    No harness selected (``STUDYLOOP_ACC_HARNESS`` empty): the e2e fake agent, through the
+    ``STUDYLOOP_TEST_AGENT_CMD`` hatch, ``harness="fake-agent"``. A harness selected: that
+    binary, resolved on this host's PATH and put on the world's controlled PATH, with no hatch
+    in the environment at all -- the server the browser talks to starts the real harness through
+    its own session-start path, exactly as a learner's would. A selected binary that is not on
+    this host is a named skip (D-13), before any server starts.
 
     ``--lan`` makes the product bind ``0.0.0.0`` and protect the UI with HTTP Basic Auth; the
     password travels the production way (``STUDYLOOP_WEB_PASSWORD`` in the server's env, never
     argv). The TEST only ever connects to ``127.0.0.1`` -- the world's ``base_url`` -- so no LAN
     address is used anywhere.
     """
+    harness = selected_persona_harness()
+    binary: str | None = None
+    if harness is not None:
+        if harness not in RELEASE_HARNESSES:
+            # The tier's gate fails loudly on an unknown name before any test body; here only
+            # so a direct caller gets the same answer rather than a KeyError.
+            raise ValueError(f"unknown {HARNESS_ENV} value {harness!r}")
+        binary = resolve_tool(get_harness(harness).binary)
+        if binary is None:
+            pytest.skip(f"{harness}: {get_harness(harness).binary} not on PATH")
     password = secrets.token_urlsafe(16) if lan else None
     extra_env = {"STUDYLOOP_WEB_PASSWORD": password} if password else None
-    world = build_test_world(root, free_port(), fake_agent=True, extra_env=extra_env)
+    world = build_test_world(
+        root,
+        free_port(),
+        fake_agent=harness is None,
+        extra_env=extra_env,
+        path_prefix=Path(binary).parent if binary else None,
+    )
     server = start_server(world, extra_args=["--lan"] if lan else None)
     persona_world = PersonaWorld(
         persona=persona,
         server=server,
         budget=WallClockBudget(persona, budget_s),
         lan_password=password,
+        harness=harness or FAKE_AGENT,
+        harness_binary=binary,
     )
     persona_world.lockfile_baseline = persona_world.lockfile_text()
     return persona_world
+
+
+def require_mentor_ready(world: PersonaWorld) -> None:
+    """Before a persona drives a REAL harness: the matrix lane's availability probe under the
+    world's own environment (``kiro-cli whoami`` for kiro; presence for the others), a named
+    skip when it says no. The fake agent needs nothing."""
+    if world.fake_mentor or world.harness_binary is None:
+        return
+    from .probes import harness_probe
+
+    ok, reason = harness_probe(world.harness, world.harness_binary, world.world.env)
+    if not ok:
+        stop_persona_world(world)
+        pytest.skip(f"{world.harness}: {reason}")
 
 
 def stop_persona_world(world: PersonaWorld) -> None:
@@ -488,6 +579,25 @@ def body_double_consoles(page: Page) -> int:
     )
 
 
+#: The Study Session console's own ``connected`` flag -- set when its WebSocket opened.
+CONSOLE_CONNECTED_JS = """
+() => {
+  const el = document.querySelector('.session-active-layout .session-terminal-area');
+  if (!el || !window.Alpine) return false;
+  const data = window.Alpine.$data(el);
+  return !!(data && data.connected);
+}
+"""
+
+
+def console_connected(page: Page) -> bool:
+    return bool(page.evaluate(CONSOLE_CONNECTED_JS))
+
+
+def wait_console_connected(page: Page, timeout: int = 30_000) -> None:
+    page.wait_for_function(CONSOLE_CONNECTED_JS, timeout=timeout)
+
+
 def terminal_has_focus(page: Page) -> bool:
     """True when the focused element is inside the Study Session console's xterm mount
     (xterm's own ``.xterm-helper-textarea`` is what carries keyboard focus)."""
@@ -502,7 +612,10 @@ def terminal_has_focus(page: Page) -> bool:
 
 __all__ = [
     "BUNDLE_ROOT",
+    "CONSOLE_CONNECTED_JS",
+    "FAKE_AGENT",
     "FORCE_FAIL_ENV",
+    "HARNESS_ENV",
     "TERMINAL_TEXT_JS",
     "BudgetExceededError",
     "PersonaWorld",
@@ -511,6 +624,7 @@ __all__ = [
     "active_testid",
     "api",
     "body_double_consoles",
+    "console_connected",
     "forced_failure_phase",
     "free_port",
     "goto",
@@ -518,12 +632,16 @@ __all__ = [
     "launch_persona_world",
     "open_page",
     "reload",
+    "require_mentor_ready",
+    "resolve_tool",
+    "selected_persona_harness",
     "stop_persona_world",
     "study_consoles",
     "terminal_has_focus",
     "terminal_text",
     "visible_text",
     "wait_alpine",
+    "wait_console_connected",
     "wait_for_terminal_text",
     "wait_labs_entry",
     "wait_labs_loaded",

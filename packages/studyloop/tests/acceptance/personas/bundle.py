@@ -157,6 +157,7 @@ def write_persona_failure_bundle(
     persona: str,
     outcome: str,
     phases: list[dict],
+    harness: str = "fake-agent",
     server_log: str,
     cli_records: Sequence[CliRecord],
     lockfile_before: str | None,
@@ -170,7 +171,9 @@ def write_persona_failure_bundle(
 ) -> tuple[EvidenceBundle, list[str]]:
     """Write one persona's failure bundle and return it with its redaction verdict.
 
-    ``attempt_envelope`` is written even when ``None`` (as ``null``) so a reader of a failure
+    ``harness`` is who played the mentor -- the selected RELEASE_HARNESSES name or ``fake-agent``
+    (design.md §6, ruled at U1-review). ``attempt_envelope`` is written even when ``None`` (as
+    ``null``) so a reader of a failure
     before any drill started still finds the file and learns that nothing was recorded, rather
     than wondering whether the member was forgotten. The verdict is the list of violations
     :func:`verify_redacted` found -- empty is the only acceptable value for a committed bundle.
@@ -180,7 +183,7 @@ def write_persona_failure_bundle(
     bundle = write_evidence_bundle(
         evidence_root,
         run_id=run_id,
-        harness="fake-agent",
+        harness=harness,
         actor="scripted",
         outcome=outcome,
         turns=[dict(_redact_json(p, **redact)) for p in phases],  # type: ignore[arg-type]

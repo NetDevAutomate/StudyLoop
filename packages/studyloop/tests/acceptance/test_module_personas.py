@@ -52,6 +52,7 @@ import stat
 import subprocess
 import sys
 import time
+import urllib.request
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -181,13 +182,20 @@ def step_start_runs_inside_the_one_claimed_session(
     world: PersonaWorld, page: Page, *, drill_ref: str, task_id: str, flipped: bool
 ) -> None:
     pw.goto(page, world, "labs")
+    # The picker pre-selects the first detected agent (the fake agent rides the codex adapter);
+    # a selected real harness is chosen explicitly, exactly as the learner would.
     page.wait_for_function(
         """() => {
             const sel = document.querySelector('#labs-agent-select');
-            return sel && sel.value === 'codex';
+            return sel && sel.value !== '';
         }""",
         timeout=30_000,
     )
+    if world.fake_mentor:
+        assert page.locator("#labs-agent-select").input_value() == "codex"
+    else:
+        page.select_option("#labs-agent-select", world.harness)
+        assert page.locator("#labs-agent-select").input_value() == world.harness
     if not flipped:
         page.locator(f"[data-testid='labs-start-{task_id}']").click()
         world.facts["drill_started"] = {"ref": drill_ref, "at_s": round(world.budget.elapsed(), 3)}
@@ -195,8 +203,9 @@ def step_start_runs_inside_the_one_claimed_session(
     # the live session on load and the console -- the mentor pane -- mounts.
     page.wait_for_function("() => location.hash === '#study-session'", timeout=15_000)
     page.wait_for_selector(".session-active-layout .xterm-mount", state="visible", timeout=60_000)
-    pw.wait_for_terminal_text(page, "FAKE-AGENT READY")
-    pw.wait_for_terminal_text(page, "FAKE-AGENT TOPIC: Lab: " + drill_ref)
+    if world.fake_mentor:
+        pw.wait_for_terminal_text(page, "FAKE-AGENT READY")
+        pw.wait_for_terminal_text(page, "FAKE-AGENT TOPIC: Lab: " + drill_ref)
     assert pw.study_consoles(page) >= 1
     assert pw.body_double_consoles(page) == 0, "the Body Double console must not cross-fire"
 
@@ -204,6 +213,7 @@ def step_start_runs_inside_the_one_claimed_session(
     assert state["origin"] == "study"
     assert state["labs_drill"]["ref"] == drill_ref
     assert state["topic"] == f"Lab: {drill_ref}"
+    assert state.get("agent") == ("codex" if world.fake_mentor else world.harness), state
     world.facts["session_id"] = state["study_session_id"]
 
     on_disk = world.state_file()
@@ -384,6 +394,50 @@ class TestBundleWriter:
 
 
 # ---------------------------------------------------------------------------
+# Which mentor the personas drive (design.md §6, ruled at U1-review): the harness
+# STUDYLOOP_ACC_HARNESS selects when one is selected, the e2e fake agent otherwise.
+# ---------------------------------------------------------------------------
+
+
+class TestHarnessSelection:
+    def test_no_selection_means_the_fake_agent_and_the_bundle_says_so(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.delenv("STUDYLOOP_ACC_HARNESS", raising=False)
+        world = pw.launch_persona_world(tmp_path / "w", persona="A", budget_s=10, lan=False)
+        try:
+            assert "STUDYLOOP_TEST_AGENT_CMD" in world.world.env, "no harness selected: fake agent"
+            assert world.harness == "fake-agent", "the bundle's harness names the stand-in honestly"
+        finally:
+            pw.stop_persona_world(world)
+
+    def test_a_selected_harness_runs_without_the_fake_agent(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """U1-review F2: with a harness selected the world must drive THAT binary -- the
+        server's environment carries no STUDYLOOP_TEST_AGENT_CMD and its agent options see the
+        real binary. Skips by name when the binary is not on this host."""
+        harness, binary = "kiro", "kiro-cli"
+        if shutil.which(binary) is None:
+            pytest.skip(f"{harness}: {binary} not on PATH")
+        monkeypatch.setenv("STUDYLOOP_ACC_HARNESS", harness)
+        world = pw.launch_persona_world(tmp_path / "w", persona="A", budget_s=10, lan=False)
+        try:
+            # start_server(world) hands the subprocess exactly world.env (e2e/_env.py).
+            assert "STUDYLOOP_TEST_AGENT_CMD" not in world.world.env, (
+                "the fake agent was injected although a harness is selected"
+            )
+            assert world.harness == harness
+            with urllib.request.urlopen(
+                f"{world.server.base_url}/api/modules/labs", timeout=10
+            ) as r:
+                agents = {a["value"]: a for a in json.load(r)["agents"]}
+            assert agents[harness]["available"] is True, agents[harness]
+        finally:
+            pw.stop_persona_world(world)
+
+
+# ---------------------------------------------------------------------------
 # Persona A -- AuDHD learner on a tablet over --lan
 # ---------------------------------------------------------------------------
 
@@ -394,6 +448,7 @@ def persona_a(
 ) -> Generator[PersonaWorld, None, None]:
     root = tmp_path_factory.mktemp("persona-a")
     world = pw.launch_persona_world(root, persona="A", budget_s=PERSONA_A_BUDGET_S, lan=True)
+    pw.require_mentor_ready(world)
     try:
         pw.open_page(browser, world, viewport=PERSONA_A_VIEWPORT)
         yield world
@@ -530,9 +585,15 @@ class TestPersonaA:
             page.wait_for_selector(
                 ".session-active-layout .xterm-mount", state="visible", timeout=30_000
             )
-            # A re-attach does not replay earlier output; this line is the proof the SAME running
-            # session was adopted rather than a new one started.
-            pw.wait_for_terminal_text(page, "reattached to your running session", timeout=30_000)
+            # The console re-opens its WebSocket to the SAME running session (its `connected`
+            # flag); a re-attach does not replay earlier output and says so in the pane -- a line
+            # a full-screen TUI harness redraws over, so it is read only with the fake agent.
+            pw.wait_console_connected(page)
+            assert pw.console_connected(page)
+            if world.fake_mentor:
+                pw.wait_for_terminal_text(
+                    page, "reattached to your running session", timeout=30_000
+                )
             assert world.state_file()["study_session_id"] == world.facts["session_id"]
             assert pw.study_consoles(page) >= 1 and pw.body_double_consoles(page) == 0
             pw.goto(page, world, "labs")
@@ -651,23 +712,6 @@ class TestPersonaA:
 # ---------------------------------------------------------------------------
 
 
-def resolve_tool(name: str) -> str | None:
-    """The real binary behind ``name`` on this machine (through a mise shim when there is one),
-    or ``None``. A shim needs the developer's HOME; the contributor's clean HOME has none."""
-    found = shutil.which(name)
-    if found is None:
-        return None
-    if "mise/shims" in found:
-        mise = shutil.which("mise")
-        if mise is None:
-            return None
-        resolved = subprocess.run(
-            [mise, "which", name], capture_output=True, text=True, check=False, timeout=30
-        )
-        return resolved.stdout.strip() or None
-    return found
-
-
 def contributor_shell_env(world: PersonaWorld, tools: dict[str, str]) -> dict[str, str]:
     """A new contributor's shell: the clean HOME of the persona's world, the tools they installed
     (step 1 of docs/contributor-environment.md) and nothing of this developer's StudyLoop.
@@ -745,6 +789,7 @@ def persona_b(
 ) -> Generator[PersonaWorld, None, None]:
     root = tmp_path_factory.mktemp("persona-b")
     world = pw.launch_persona_world(root, persona="B", budget_s=PERSONA_B_BUDGET_S, lan=False)
+    pw.require_mentor_ready(world)
     (world.world.root / "contributor").mkdir(exist_ok=True)
     try:
         pw.open_page(browser, world, viewport=PERSONA_B_VIEWPORT)
@@ -780,7 +825,7 @@ class TestPersonaB:
         """
         world = persona_b
         with world.phase("b1", "documented uv setup commands, offline"):
-            tools = {name: resolve_tool(name) for name in ("uv", "tmux", "node")}
+            tools = {name: pw.resolve_tool(name) for name in ("uv", "tmux", "node")}
             missing = sorted(name for name, path in tools.items() if path is None)
             if missing:
                 pytest.skip(f"contributor tools not installed on this machine: {missing}")

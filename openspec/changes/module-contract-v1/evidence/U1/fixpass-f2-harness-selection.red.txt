@@ -1,0 +1,20 @@
+$ STUDYLOOP_ACC=1 env -u VIRTUAL_ENV uv run --group dev pytest -m acceptance packages/studyloop/tests/acceptance/test_module_personas.py -k TestHarnessSelection -q -p no:cacheprovider --tb=short
+sha 943aa004  2026-10-05T12:14:35Z  (U1-review F2: launch_persona_world still injects the fake agent unconditionally)
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+_ TestHarnessSelection.test_no_selection_means_the_fake_agent_and_the_bundle_says_so _
+packages/studyloop/tests/acceptance/test_module_personas.py:401: in test_no_selection_means_the_fake_agent_and_the_bundle_says_so
+    assert world.harness == "fake-agent", "the bundle's harness names the stand-in honestly"
+           ^^^^^^^^^^^^^
+E   AttributeError: 'PersonaWorld' object has no attribute 'harness'
+___ TestHarnessSelection.test_a_selected_harness_runs_without_the_fake_agent ___
+packages/studyloop/tests/acceptance/test_module_personas.py:418: in test_a_selected_harness_runs_without_the_fake_agent
+    assert "STUDYLOOP_TEST_AGENT_CMD" not in world.world.env, (
+E   AssertionError: the fake agent was injected although a harness is selected
+E   assert 'STUDYLOOP_TEST_AGENT_CMD' not in mappingproxy({'PATH': '/Users/ataylor/code/personal/tools/studyloop-wt/module-personas/.venv/bin:/Users/ataylor/.local...rs/ataylor/code/personal/tools/studyloop-wt/module-personas/packages/studyloop/tests/_fake_agent.py '{persona_file}'"})
+E    +  where mappingproxy({'PATH': '/Users/ataylor/code/personal/tools/studyloop-wt/module-personas/.venv/bin:/Users/ataylor/.local...rs/ataylor/code/personal/tools/studyloop-wt/module-personas/packages/studyloop/tests/_fake_agent.py '{persona_file}'"}) = TestWorld(root=PosixPath('/private/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/pytest-of-ataylor/pytest-705/test_a...s/ataylor/code/personal/tools/studyloop-wt/module-personas/packages/studyloop/tests/_fake_agent.py '{persona_file}'"})).env
+E    +    where TestWorld(root=PosixPath('/private/var/folders/cy/jqj_m5j5287fcct7rd5slmkc0000gn/T/pytest-of-ataylor/pytest-705/test_a...s/ataylor/code/personal/tools/studyloop-wt/module-personas/packages/studyloop/tests/_fake_agent.py '{persona_file}'"})) = PersonaWorld(persona='A', server=RunningServer(world=TestWorld(root=PosixPath('/private/var/folders/cy/jqj_m5j5287fcct...={}, page=None, console_errors=[], api_calls=[], lockfile_baseline=None, bundle_dir=None, run_id='1791202477-05f41705').world
+=========================== short test summary info ============================
+FAILED packages/studyloop/tests/acceptance/test_module_personas.py::TestHarnessSelection::test_no_selection_means_the_fake_agent_and_the_bundle_says_so
+FAILED packages/studyloop/tests/acceptance/test_module_personas.py::TestHarnessSelection::test_a_selected_harness_runs_without_the_fake_agent
+2 failed, 32 deselected in 2.27s
