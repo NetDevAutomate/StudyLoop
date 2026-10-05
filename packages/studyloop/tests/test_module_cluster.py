@@ -79,6 +79,7 @@ FAKE_KIND = textwrap.dedent(
     #   FAKE_KIND_FAIL=misname            create exits 0 but the contexts are not kind-<name>
     #   FAKE_KIND_FAIL=malformed          create exits 0 but `contexts:` holds non-mappings
     #   FAKE_KIND_FAIL=delete             delete exits 1
+    #   FAKE_KIND_FAIL_DELETE=1           delete exits 1 (combinable with a create mode)
     #   FAKE_KIND_HANG=create             create writes the kubeconfig, then sleeps 30 s
     #   FAKE_KIND_CLUSTERS="a b"          what `get clusters` lists (plus registered names)
     set -u
@@ -147,7 +148,7 @@ FAKE_KIND = textwrap.dedent(
         echo "Creating cluster \\"$name\\" ... (fake)"
         exit 0 ;;
       "delete cluster")
-        if [ "${FAKE_KIND_FAIL:-}" = delete ]; then
+        if [ "${FAKE_KIND_FAIL:-}" = delete ] || [ -n "${FAKE_KIND_FAIL_DELETE:-}" ]; then
           echo "fake kind: delete failed on purpose" >&2
           exit 1
         fi
@@ -223,7 +224,13 @@ def fake_tools(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> FakeTools:
         script.chmod(0o755)
     log = tmp_path / "kind-calls.log"
     monkeypatch.setenv("FAKE_KIND_LOG", str(log))
-    for var in ("FAKE_KIND_FAIL", "FAKE_KIND_HANG", "FAKE_KIND_CLUSTERS", "KUBECONFIG"):
+    for var in (
+        "FAKE_KIND_FAIL",
+        "FAKE_KIND_FAIL_DELETE",
+        "FAKE_KIND_HANG",
+        "FAKE_KIND_CLUSTERS",
+        "KUBECONFIG",
+    ):
         monkeypatch.delenv(var, raising=False)
     monkeypatch.setenv("PATH", f"{bin_dir}:/usr/bin:/bin")
     return FakeTools(bin_dir=bin_dir, log=log)
@@ -400,7 +407,7 @@ def test_failed_create_that_left_an_unproven_cluster_reports_it_without_deleting
     message = str(excinfo.value)
     assert name in message
     assert "cannot prove it created" in message
-    assert f"kind delete cluster --name {name}" in message
+    assert f"kind delete cluster --name {name} --kubeconfig" in message
     assert [call[:2] for call in fake_tools.calls()] == [
         ["get", "clusters"],
         ["create", "cluster"],
@@ -506,8 +513,10 @@ def test_teardown_failure_is_an_error_naming_the_cluster(
     fake_tools: FakeTools,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Brief item 3: never silent -- the error names the cluster and the by-hand command so
-    the learner can delete it; the kubeconfig is still removed."""
+    """Brief item 3 + K0-review F3: never silent -- the error names the cluster and the exact
+    by-hand command INCLUDING ``--kubeconfig <attempt>/kubeconfig`` (so the learner never has to
+    open their default kubeconfig), and the attempt's kubeconfig -- the only credential that
+    can still reach the cluster -- is KEPT for that command."""
     handle = cluster.provision(attempt, tools=tools)
     monkeypatch.setenv("FAKE_KIND_FAIL", "delete")
 
@@ -516,10 +525,34 @@ def test_teardown_failure_is_an_error_naming_the_cluster(
 
     message = str(excinfo.value)
     assert handle.name in message
-    assert f"kind delete cluster --name {handle.name}" in message
+    assert f"kind delete cluster --name {handle.name} --kubeconfig {handle.kubeconfig}" in message
     assert "delete failed on purpose" in message
     assert excinfo.value.cluster == handle.name
-    assert not handle.kubeconfig.exists()
+    assert handle.kubeconfig.is_file(), "the recovery credential must survive a failed delete"
+    assert stat.S_IMODE(handle.kubeconfig.stat().st_mode) == 0o600
+
+
+def test_failed_delete_after_a_provable_failed_create_keeps_the_kubeconfig(
+    attempt: Attempt,
+    tools: Mapping[str, Path],
+    fake_tools: FakeTools,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """K0-review F3 on the create-rollback path: kind wrote our kubeconfig (proof), the create
+    then failed, and the follow-up delete fails too -- the kubeconfig stays and the message
+    carries the exact command naming it."""
+    monkeypatch.setenv("FAKE_KIND_FAIL", "create-after-write")
+    monkeypatch.setenv("FAKE_KIND_FAIL_DELETE", "1")
+    name = _expected_name(attempt)
+    kubeconfig = attempt.attempt_dir / "kubeconfig"
+
+    with pytest.raises(ClusterError) as excinfo:
+        cluster.provision(attempt, tools=tools)
+
+    message = str(excinfo.value)
+    assert [call[:2] for call in fake_tools.calls()][-1] == ["delete", "cluster"]
+    assert f"kind delete cluster --name {name} --kubeconfig {kubeconfig}" in message
+    assert kubeconfig.is_file(), "a failed delete must not destroy the recovery credential"
 
 
 def test_handle_for_rebuilds_the_handle_from_the_recorded_attempt(
@@ -770,9 +803,10 @@ def test_teardown_failure_on_cleanup_is_an_error_naming_the_cluster(
     assert "cleanup passed (exit 0)" in result.output, "the module's cleanup still ran"
     assert "ERROR" in result.output
     assert name in result.output
-    assert f"kind delete cluster --name {name}" in result.output
+    kubeconfig = cluster.kubeconfig_path(attempt)
+    assert f"kind delete cluster --name {name} --kubeconfig {kubeconfig}" in result.output
     assert _store().current(installed_k8s) is None
-    assert not cluster.kubeconfig_path(attempt).exists()
+    assert kubeconfig.is_file(), "K0-review F3: the recovery credential survives a failed delete"
 
 
 def test_missing_core_tool_refuses_before_consent_even_when_the_module_omits_it(

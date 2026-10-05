@@ -32,11 +32,14 @@ What this module guarantees, each a contract item:
   file and an atomic rename. A kubeconfig in which that context is missing is an error (and
   the cluster is deleted again).
 - *Teardown*: ``kind delete cluster --name <name> --kubeconfig <attempt>/kubeconfig`` with
-  the same spawn discipline, then the kubeconfig file is removed. ``--kubeconfig`` is passed
-  on delete too: without it kind opens the learner's default kubeconfig (``$KUBECONFIG`` or
-  ``~/.kube/config``) to drop the context, which is a learner-owned file this module must
-  never touch. A failed delete is a :class:`ClusterError` naming the cluster and the by-hand
-  command; the CLI prints it as ``ERROR`` and exits non-zero -- never silent.
+  the same spawn discipline, then -- on success -- the kubeconfig file is removed.
+  ``--kubeconfig`` is passed on delete too: without it kind opens the learner's default
+  kubeconfig (``$KUBECONFIG`` or ``~/.kube/config``) to drop the context, which is a
+  learner-owned file this module must
+  never touch. A failed delete KEEPS the kubeconfig (it is the one credential that still
+  reaches the cluster) and is a :class:`ClusterError` naming the cluster and the exact by-hand
+  command including ``--kubeconfig``; the CLI prints it as ``ERROR`` and exits non-zero --
+  never silent.
 - *Environment of kind itself*: kind is **core's** tool, not module shell, and it has to
   reach the learner's Docker daemon (Docker Desktop contexts live under the learner's
   ``~/.docker``), so it runs with a copy of the learner's environment -- with ``KUBECONFIG``
@@ -269,8 +272,24 @@ def _delete_argv(handle: ClusterHandle) -> list[str]:
     ]
 
 
-def _by_hand(name: str) -> str:
-    return f"delete it by hand with `kind delete cluster --name {name}`"
+def _by_hand(handle: ClusterHandle) -> str:
+    """The exact command a learner runs to finish what core could not -- naming the attempt's
+    own kubeconfig, so kind edits that file and never the learner's default one (K0-review F3)."""
+    return (
+        f"delete it by hand with `kind delete cluster --name {handle.name} "
+        f"--kubeconfig {handle.kubeconfig}`"
+    )
+
+
+def _delete_once(handle: ClusterHandle, timeout_seconds: int) -> _KindRun:
+    """``kind delete`` for exactly this cluster. The kubeconfig is removed ONLY when the delete
+    succeeded: after a failure it is the one credential that still reaches the cluster, and the
+    by-hand command names it (K0-review F3)."""
+    deleted = _run_kind(_delete_argv(handle), timeout_seconds=timeout_seconds)
+    if deleted.ok:
+        with contextlib.suppress(OSError):
+            handle.kubeconfig.unlink(missing_ok=True)
+    return deleted
 
 
 def _write_private(path: Path, text: str) -> None:
@@ -372,7 +391,7 @@ def provision(
     if name in _existing_clusters(kind, timeout_seconds=timeout_seconds):
         raise ClusterError(
             f"a kind cluster named {name} already exists; refusing to reuse it (if it is a "
-            f"leftover from an earlier attempt, {_by_hand(name)} and run setup again)",
+            f"leftover from an earlier attempt, {_by_hand(handle)} and run setup again)",
             cluster=name,
         )
 
@@ -448,7 +467,7 @@ def _undo_after_failed_create(handle: ClusterHandle, timeout_seconds: int) -> st
     if handle.name in listed:
         return (
             f"a cluster named {handle.name} exists that core cannot prove it created, so it was "
-            f"NOT deleted; if it is yours, {_by_hand(handle.name)}"
+            f"NOT deleted; if it is yours, {_by_hand(handle)}"
         )
     return "nothing was created"
 
@@ -456,15 +475,12 @@ def _undo_after_failed_create(handle: ClusterHandle, timeout_seconds: int) -> st
 def _undo_after_created(handle: ClusterHandle, timeout_seconds: int) -> str:
     """One ``kind delete`` for a cluster core knows is this attempt's (the create succeeded, or
     kind wrote the attempt's kubeconfig for it); returns what happened for the error text."""
-    deleted = _run_kind(_delete_argv(handle), timeout_seconds=timeout_seconds)
-    with contextlib.suppress(OSError):
-        handle.kubeconfig.unlink(missing_ok=True)
+    deleted = _delete_once(handle, timeout_seconds)
     if deleted.ok:
         return f"anything kind had made for {handle.name} was deleted again"
     return (
-        f"the follow-up `kind delete cluster --name {handle.name}` also failed "
-        f"({deleted.describe(timeout_seconds)}) -- if `kind get clusters` lists it, "
-        f"{_by_hand(handle.name)}"
+        f"the follow-up delete also failed ({deleted.describe(timeout_seconds)}) -- the cluster "
+        f"may still exist and its kubeconfig was kept at {handle.kubeconfig}; {_by_hand(handle)}"
     )
 
 
@@ -472,17 +488,16 @@ def teardown(handle: ClusterHandle, *, timeout_seconds: int = KIND_TIMEOUT_SECON
     """Delete the attempt's cluster and remove its kubeconfig; a failure names the cluster.
 
     Deletes exactly ``handle.name`` -- no listing, no prefix sweep. The kubeconfig is removed
-    whether or not kind succeeded (it holds admin credentials for a cluster the learner no
-    longer wants); the :class:`ClusterError` tells the learner the cluster may still exist and
-    how to delete it by hand.
+    only when kind succeeded: after a failed delete it is the one credential that still reaches
+    the cluster, so it is kept (mode ``0o600`` in the core-owned attempt directory) and the
+    :class:`ClusterError` tells the learner the cluster may still exist and gives the exact
+    command, naming that file, to delete it by hand (K0-review F3).
     """
-    deleted = _run_kind(_delete_argv(handle), timeout_seconds=timeout_seconds)
-    with contextlib.suppress(OSError):
-        handle.kubeconfig.unlink(missing_ok=True)
+    deleted = _delete_once(handle, timeout_seconds)
     if not deleted.ok:
         raise ClusterError(
             f"could not delete the disposable cluster {handle.name}: "
-            f"{deleted.describe(timeout_seconds)} -- the cluster may still exist; "
-            f"{_by_hand(handle.name)}",
+            f"{deleted.describe(timeout_seconds)} -- the cluster may still exist and its "
+            f"kubeconfig was kept at {handle.kubeconfig}; {_by_hand(handle)}",
             cluster=handle.name,
         )
