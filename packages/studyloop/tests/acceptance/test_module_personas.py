@@ -131,20 +131,19 @@ CONTRIBUTOR_DRILL_REF = f"{CONTRIBUTOR_MODULE_ID}/getting-started/ready-01"
 # ---------------------------------------------------------------------------
 
 
+def mentor_only(task: dict) -> tuple[str, str, str]:
+    return (task["hint"], task["solution"], task["mentorNotes"])
+
+
 def assert_c7_clean(page: Page, *tasks: dict) -> None:
-    """No overdue counter, no hint, no solution, no mentor notes -- in the RENDERED text and in the
-    DOM (proposal §5.6, C7). ``tasks`` are the deck tasks whose mentor-only strings must not
-    appear; the fixture task from valid-scaffold is always included."""
-    text = pw.visible_text(page)
-    lowered = text.lower()
-    assert "overdue" not in lowered, "an overdue counter is rendered"
-    assert "mentor notes" not in lowered, "mentor notes are rendered"
-    html = page.content()
-    for task in (TASK, *tasks):
-        for key in ("hint", "solution", "mentorNotes"):
-            needle = task[key]
-            assert needle not in text, f"mentor-side {key} is rendered: {needle!r}"
-            assert needle not in html, f"mentor-side {key} reached the DOM: {needle!r}"
+    """The C7 sweep (personas/world.py `c7_sweep`), called mid-phase where a view was just
+    rendered; the phase wrapper runs the same sweep at the end of EVERY browser phase with the
+    persona's registered texts. ``tasks`` add their mentor-only strings; valid-scaffold's task
+    is always included."""
+    texts = [*mentor_only(TASK)]
+    for task in tasks:
+        texts.extend(mentor_only(task))
+    pw.c7_sweep(page, texts)
 
 
 def assert_called(world: PersonaWorld, method: str, path: str) -> None:
@@ -571,6 +570,7 @@ def persona_a(
     root = tmp_path_factory.mktemp("persona-a")
     world = pw.launch_persona_world(root, persona="A", budget_s=PERSONA_A_BUDGET_S, lan=True)
     pw.require_mentor_ready(world)
+    world.register_mentor_only(*mentor_only(TASK))
     try:
         pw.open_page(browser, world, viewport=PERSONA_A_VIEWPORT)
         yield world
@@ -912,6 +912,7 @@ def persona_b(
     root = tmp_path_factory.mktemp("persona-b")
     world = pw.launch_persona_world(root, persona="B", budget_s=PERSONA_B_BUDGET_S, lan=False)
     pw.require_mentor_ready(world)
+    world.register_mentor_only(*mentor_only(TASK))
     (world.world.root / "contributor").mkdir(exist_ok=True)
     try:
         pw.open_page(browser, world, viewport=PERSONA_B_VIEWPORT)
@@ -1043,6 +1044,7 @@ class TestPersonaB:
             module_dir = Path(world.facts["module_dir"])
             task = deck_task(module_dir, "getting-started", "ready-01")
             world.facts["task"] = task
+            world.register_mentor_only(*mentor_only(task))
             page.goto(f"{world.server.base_url}/#today")
             pw.wait_labs_loaded(page)
             assert not pw.labs_entry_visible(page), "Labs must be hidden before the add"

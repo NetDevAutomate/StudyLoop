@@ -49,13 +49,18 @@ from ..uat.redaction import RedactionLeakError  # noqa: E402
 from .bundle import CliRecord, write_persona_failure_bundle  # noqa: E402
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Generator, Sequence
 
     from playwright._impl._api_structures import HttpCredentials
     from playwright.sync_api import Browser, Page
 
 FORCE_FAIL_ENV = "STUDYLOOP_ACC_FORCE_FAIL"
 HARNESS_ENV = "STUDYLOOP_ACC_HARNESS"
+#: Test-only control for the C7 sweep (U1-review F6): when set to a string, every document the
+#: persona's page loads gets a planted ``<p data-testid="hint">`` carrying that string, so a
+#: sweep that runs in EVERY browser phase fails every one of them -- and one that does not,
+#: does not. Never set by the runner; the red/green pair under evidence/U1/ is its only use.
+PLANT_C7_ENV = "STUDYLOOP_ACC_PLANT_C7"
 
 #: The bundle's ``harness`` when no harness is selected and the e2e fake agent plays the mentor
 #: (design.md §6, ruled at U1-review: an honest value, never hidden).
@@ -158,6 +163,10 @@ class PersonaWorld:
     harness: str = FAKE_AGENT
     #: The resolved harness binary for a real harness (``None`` for the fake agent).
     harness_binary: str | None = None
+    #: Mentor-only strings (hint / solution / mentorNotes of every task the persona installs)
+    #: that must never reach the rendered page or the DOM; swept after EVERY phase whose page is
+    #: on the product (C7; U1-review F6).
+    mentor_only_texts: list[str] = field(default_factory=list)
     cli_records: list[CliRecord] = field(default_factory=list)
     phases: list[dict[str, Any]] = field(default_factory=list)
     facts: dict[str, Any] = field(default_factory=dict)
@@ -253,6 +262,22 @@ class PersonaWorld:
         )
         return result
 
+    # -- the C7 sweep ------------------------------------------------------------------
+
+    def register_mentor_only(self, *texts: str) -> None:
+        for text in texts:
+            if text and text not in self.mentor_only_texts:
+                self.mentor_only_texts.append(text)
+
+    def page_on_product(self) -> bool:
+        return self.page is not None and self.page.url.startswith(self.server.base_url)
+
+    def sweep_c7(self) -> None:
+        """C7 on the page as it stands: no overdue counter, no hint, no solution, no mentor
+        notes -- in the RENDERED text and in the DOM. Raises AssertionError naming the leak."""
+        assert self.page is not None
+        c7_sweep(self.page, self.mentor_only_texts)
+
     # -- phases ------------------------------------------------------------------------
 
     def flipped(self, phase: str) -> bool:
@@ -279,6 +304,11 @@ class PersonaWorld:
         started = time.monotonic()
         try:
             yield
+            # The C7 sweep runs in EVERY browser phase, from here, not only in the phases that
+            # remembered to call it (U1-review F6); a failure here is a phase failure.
+            if self.page_on_product():
+                record["c7_swept"] = True
+                self.sweep_c7()
         except BaseException as exc:
             record.update(status="failed", error=f"{type(exc).__name__}: {exc}")
             record["elapsed_s"] = round(time.monotonic() - started, 3)
@@ -495,6 +525,15 @@ def open_page(browser: Browser, world: PersonaWorld, *, viewport: tuple[int, int
         viewport={"width": viewport[0], "height": viewport[1]}, http_credentials=credentials
     )
     page = context.new_page()
+    planted = os.environ.get(PLANT_C7_ENV, "")
+    if planted:
+        page.add_init_script(
+            "(() => { const plant = () => { const p = document.createElement('p');"
+            " p.setAttribute('data-testid', 'hint'); p.textContent = "
+            + json.dumps(planted)
+            + "; document.body.appendChild(p); }; if (document.body) plant();"
+            " else document.addEventListener('DOMContentLoaded', plant); })();"
+        )
     page.on("pageerror", lambda exc: world.console_errors.append(f"pageerror: {exc}"))
 
     def _record(msg) -> None:
@@ -662,6 +701,24 @@ CONSOLE_CONNECTED_JS = """
 """
 
 
+#: Rendered phrases C7 forbids anywhere on the study surface (proposal §5.6, C7).
+C7_FORBIDDEN_PHRASES: tuple[str, ...] = ("overdue", "mentor notes")
+
+
+def c7_sweep(page: Page, mentor_only_texts: Sequence[str]) -> None:
+    """No overdue counter, no hint, no solution, no mentor notes -- in the rendered text
+    (``document.body.innerText``) and in the DOM (``page.content()``). Assertion messages name
+    the leaked text, never a CSS class."""
+    text = visible_text(page)
+    lowered = text.lower()
+    for phrase in C7_FORBIDDEN_PHRASES:
+        assert phrase not in lowered, f"C7: {phrase!r} is rendered on {page.url}"
+    html = page.content()
+    for needle in mentor_only_texts:
+        assert needle not in text, f"C7: mentor-side text is rendered on {page.url}: {needle!r}"
+        assert needle not in html, f"C7: mentor-side text reached the DOM on {page.url}: {needle!r}"
+
+
 def console_connected(page: Page) -> bool:
     return bool(page.evaluate(CONSOLE_CONNECTED_JS))
 
@@ -684,10 +741,12 @@ def terminal_has_focus(page: Page) -> bool:
 
 __all__ = [
     "BUNDLE_ROOT",
+    "C7_FORBIDDEN_PHRASES",
     "CONSOLE_CONNECTED_JS",
     "FAKE_AGENT",
     "FORCE_FAIL_ENV",
     "HARNESS_ENV",
+    "PLANT_C7_ENV",
     "TERMINAL_TEXT_JS",
     "BudgetExceededError",
     "PersonaWorld",
@@ -696,6 +755,7 @@ __all__ = [
     "active_testid",
     "api",
     "body_double_consoles",
+    "c7_sweep",
     "console_connected",
     "forced_failure_phase",
     "free_port",
