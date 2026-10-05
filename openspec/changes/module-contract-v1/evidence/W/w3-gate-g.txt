@@ -1,0 +1,21 @@
+env -u VIRTUAL_ENV just lint typecheck test-js docs release-consistency spec-check  (then: just test, below)
+# worktree: module-web-labs  7ce23cb3+W3 uncommitted  2026-10-05T00:13:12Z
+All checks passed!
+0 errors, 0 warnings, 0 informations
+ℹ tests 184
+ℹ pass 184
+ℹ fail 0
+INFO    -  Documentation built in 0.54 seconds
+release consistency passed for studyloop 0.5.0
+Totals: 25 passed, 0 failed (25 items)
+fast-recipes exit=0
+
+env -u VIRTUAL_ENV just test   # 2026-10-05T00:13:38Z
+FAILED packages/studyloop/tests/test_e2e_coverage_gate.py::test_every_route_has_a_full_stack_test
+FAILED packages/studyloop/tests/test_e2e_coverage_gate.py::test_every_nav_view_has_a_browser_test
+FAILED packages/studyloop/tests/test_fresh_install_scope.py::test_studyloop_study_exits_2_with_the_diagnostic_on_a_virgin_home
+=== 3 failed, 7898 passed, 15 skipped, 823 deselected in 1012.86s (0:16:52) ====
+just test exit=1
+
+# Reading (lane W): the same 3 red as the W2 gate -- the pre-existing tmux baseline red and the
+# two coverage-ratchet tests that require W4's browser journey (tests/e2e/test_module_labs_journey.py).

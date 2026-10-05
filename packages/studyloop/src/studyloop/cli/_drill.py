@@ -62,6 +62,7 @@ __all__ = [
     "attempts_root",
     "drill_group",
     "locate_installed_module",
+    "module_prerequisites",
     "run_drill_phase",
 ]
 
@@ -151,6 +152,30 @@ def load_drill(snapshot_dir: Path, deck_id: str, task_id: str) -> tuple[Practice
     )
 
 
+def module_prerequisites(snapshot_dir: Path) -> tuple[str, ...]:
+    """``prerequisites[].id`` from the installed module's ``module.yaml``, in declared order.
+
+    Read through lane C's ``ModuleManifest`` (``extra: forbid``). The snapshot passed
+    ``module check`` at install, so a manifest that no longer validates means the snapshot
+    was altered: refuse the phase rather than run it with an empty tool list.
+    """
+    import yaml
+    from pydantic import ValidationError
+
+    from studyloop.modules.manifest import ModuleManifest
+
+    manifest_path = snapshot_dir / "module.yaml"
+    try:
+        raw = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+        manifest = ModuleManifest.model_validate(raw)
+    except (OSError, ValueError, yaml.YAMLError, ValidationError) as exc:
+        raise click.ClickException(
+            f"module.yaml in the installed snapshot does not validate ({exc}); "
+            "re-run `studyloop module add` from the module's source"
+        ) from exc
+    return tuple(prerequisite.id for prerequisite in manifest.prerequisites)
+
+
 def phase_argv(task: PracticeTask, phase: Phase, task_ref: str) -> tuple[str, ...]:
     """The phase's command from the task's verification block, split into literal argv."""
     verification = task.verification
@@ -236,10 +261,10 @@ def run_drill_phase(phase: Phase, ref: str) -> int:
         task_id=task_id,
     )
 
-    # TODO(module-contract-v1): read ``prerequisites[].id`` from the module's manifest once
-    # lane C's ``modules/manifest.py`` is on main; until then no tool is exposed to the child
-    # beyond /usr/bin:/bin (M1 PATH ruling: core resolves what the module declares).
-    prerequisites: tuple[str, ...] = ()
+    # Lane C's manifest is on main: the tools the module declares (`prerequisites[].id`,
+    # each in core's enum -- MC005 at install) are what core resolves on the learner's
+    # PATH and exposes to the child, and nothing else (M1 PATH ruling).
+    prerequisites = module_prerequisites(installed.snapshot_dir)
 
     # Refuse what the runner would refuse BEFORE anyone is asked to consent to it: argv
     # (tokens, NUL, size), the script path (MC013) and the declared tools on the PATH.

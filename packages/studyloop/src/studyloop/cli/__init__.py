@@ -79,6 +79,11 @@ from studyloop.cli._lazy import LazyGroup
         "brain": "studyloop.cli._brain:brain_group",
         # _exercise.py — the three topic exercise formats and their review pipeline
         "exercise": "studyloop.cli._exercise:exercise_group",
+        # module-contract v1 (lanes C and R, registered by W at assembly): optional
+        # learning modules -- check/new/add/list/remove -- and the drill runner, the
+        # MVP's only execution surface (per-phase consent, no --yes).
+        "module": "studyloop.cli._module:module_group",
+        "drill": "studyloop.cli._drill:drill_group",
     },
     dev_subcommands={"exercise"},
 )

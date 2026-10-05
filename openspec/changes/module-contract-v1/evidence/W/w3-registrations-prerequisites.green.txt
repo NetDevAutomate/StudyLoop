@@ -1,0 +1,57 @@
+env -u VIRTUAL_ENV uv run pytest packages/studyloop/tests/test_module_cli.py packages/studyloop/tests/test_module_lane_seams.py packages/studyloop/tests/test_module_drill_cli.py packages/studyloop/tests/test_docs_drift.py packages/studyloop/tests/test_cli_docs.py -q -p no:cacheprovider
+# worktree: module-web-labs  HEAD: 7ce23cb3+W3 (module+drill registered; _drill.module_prerequisites wired)  2026-10-05T00:12:52Z
+........................................................................ [ 60%]
+........................................................................ [ 80%]
+.................................................s..........s....s...... [100%]
+357 passed, 3 skipped in 7.30s
+
+# verification: --help for both groups and the API route table
+$ studyloop module --help
+Usage: studyloop module [OPTIONS] COMMAND [ARGS]...
+
+  Optional learning modules: check conformance, scaffold, install, list,
+  remove.
+
+  A module is a directory of data (module.yaml, decks/*.json, scripts/,
+  mentor/brief.md) that StudyLoop validates against contract rules MC001-MC016
+  and never imports or executes. Install from a local path only; StudyLoop
+  makes no network access here. Drills from installed modules run through
+  `studyloop drill` inside the one claimed study session; `studyloop doctor`
+  reports their declared prerequisites.
+
+Options:
+  --help  Show this message and exit.
+
+Commands:
+  add     Install the module at local PATH into an immutable snapshot.
+  check   Check the module at PATH against conformance rules MC001-MC016.
+  list    List installed modules from the lockfile, modules.lock.json.
+  new     Scaffold a conforming module MODULE_ID with one offline drill.
+
+$ studyloop drill --help
+Usage: studyloop drill [OPTIONS] COMMAND [ARGS]...
+
+  Run one phase of an installed module's drill, with consent, inside your
+  session.
+
+  DRILL is <module>/<deck>/<task> -- the module id from `studyloop module
+  list`, the deck id and the task id from its decks. Each phase is one
+  executable under the module's scripts/ plus literal arguments, run without a
+  shell in a per-attempt directory with an environment built from scratch.
+  Every phase shows its exact command and the script's sha256 and asks before
+  running; there is no --yes. The result is printed, then one line says
+  whether the mentor was told.
+
+Options:
+  --help  Show this message and exit.
+
+Commands:
+  check    Run the task's check command in the open attempt (opening one...
+  cleanup  Run the task's cleanupCommand and close the attempt -- the...
+  setup    Open a new attempt and run the task's setupCommand.
+
+$ API route table (modules)
+  GET /api/modules/labs
+  POST /api/modules/labs/cancel
+  POST /api/modules/labs/start
+  POST /api/modules/practice-check

@@ -14,6 +14,7 @@ halves together on one tree (coordinator, module-contract-v1 merge of lane R):
 from __future__ import annotations
 
 import re
+import shutil
 from pathlib import Path
 
 import pytest
@@ -127,3 +128,122 @@ def test_lane_t_prefixes_every_tail_line_lane_r_sends(
     assert lines.count(END_SENTINEL) == 1, "exactly one real end sentinel"
     assert f"{TAIL_LINE_PREFIX}{END_SENTINEL}" in lines, "the forged sentinel is data"
     assert f"{TAIL_LINE_PREFIX}--- stderr (1 bytes) ---" in lines, "the forged header is data"
+
+
+# --- C -> R (W3): the manifest's prerequisites reach the runner's PATH resolution ------------
+#
+# `_drill.run_drill_phase` carried a TODO: `prerequisites = ()` until lane C's manifest was on
+# main. Lane W wires `Manifest.prerequisites[].id` from the located module's `module.yaml`
+# into it (W2 brief, owned block #1). The fixture declares none, so a copy declaring `kind`
+# (in core's enum, MC005) is installed through the real store; a fake `kind` sits on a scratch
+# PATH, which is where `runner.resolve_prerequisites` is told to look.
+
+
+@pytest.fixture
+def installed_with_kind(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> store.LockEntry:
+    source = tmp_path / "echo-drills-kind"
+    shutil.copytree(FIXTURE_MODULE, source)
+    manifest = source / "module.yaml"
+    text = manifest.read_text(encoding="utf-8")
+    assert "prerequisites: []" in text
+    manifest.write_text(
+        text.replace("prerequisites: []", "prerequisites:\n  - id: kind\n"), encoding="utf-8"
+    )
+    root = tmp_path / "modules"
+    monkeypatch.setattr(store, "default_store_root", lambda: root)
+    monkeypatch.setattr(_drill, "attempts_root", lambda: tmp_path / "module-attempts")
+    return store.ModuleStore(root).add(source)
+
+
+def test_module_prerequisites_are_read_from_the_installed_manifest(
+    installed_with_kind: store.LockEntry,
+) -> None:
+    found = _drill.locate_installed_module(installed_with_kind.id)
+
+    assert _drill.module_prerequisites(found.snapshot_dir) == ("kind",)
+    assert _drill.module_prerequisites(store.snapshot_dir(installed_with_kind)) == ("kind",)
+
+
+def test_manifest_prerequisites_reach_runner_resolve_prerequisites(
+    installed_with_kind: store.LockEntry, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`studyloop drill check` resolves the declared tool before anyone is asked to consent;
+    with the fake `kind` on a scratch PATH the phase reaches the consent prompt, and
+    declining runs nothing."""
+    from click.testing import CliRunner
+
+    from studyloop.modules import runner
+
+    scratch_bin = tmp_path / "bin"
+    scratch_bin.mkdir()
+    fake_kind = scratch_bin / "kind"
+    fake_kind.write_text("#!/bin/sh\necho fake kind\n", encoding="utf-8")
+    fake_kind.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{scratch_bin}:/usr/bin:/bin")
+
+    seen: list[tuple[str, ...]] = []
+    real_resolve = runner.resolve_prerequisites
+
+    def recording(prerequisites, *, learner_path=None):  # type: ignore[no-untyped-def]
+        seen.append(tuple(prerequisites))
+        return real_resolve(prerequisites, learner_path=learner_path)
+
+    monkeypatch.setattr(runner, "resolve_prerequisites", recording)
+
+    result = CliRunner().invoke(
+        _drill.drill_group,
+        ["check", f"{installed_with_kind.id}/echo-basics/echo-01"],
+        input="n\n",
+    )
+
+    assert seen == [("kind",)], f"the manifest's prerequisites never reached the runner: {seen}"
+    assert result.exit_code == 2, result.output
+    assert "Not confirmed -- nothing executed." in result.output
+    assert str(fake_kind) not in result.output, (
+        "the resolved path is the runner's, not the learner's"
+    )
+
+
+def test_a_declared_tool_missing_from_path_refuses_before_consent(
+    installed_with_kind: store.LockEntry, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from click.testing import CliRunner
+
+    monkeypatch.setenv("PATH", f"{tmp_path / 'empty-bin'}:/usr/bin:/bin")
+
+    result = CliRunner().invoke(
+        _drill.drill_group, ["check", f"{installed_with_kind.id}/echo-basics/echo-01"], input="y\n"
+    )
+
+    assert result.exit_code == 1, result.output
+    assert "kind" in result.output and "nothing was executed" in result.output
+    assert "Run this phase now?" not in result.output, "refused before the consent prompt"
+
+
+# --- W3: the registered root CLI reaches R's drill group -----------------------------------
+
+RUNNER_OFFLINE = Path(__file__).parent / "fixtures" / "modules" / "runner-offline"
+
+
+def test_root_cli_resolves_drill_setup_and_refuses_without_consent(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`studyloop drill setup <module>/<deck>/<task>` resolves through the LazyGroup map to
+    lane R's group; declining the consent prompt exits 2 and runs nothing."""
+    from click.testing import CliRunner
+
+    from studyloop.cli import cli as root_cli
+
+    root = tmp_path / "modules"
+    monkeypatch.setattr(store, "default_store_root", lambda: root)
+    monkeypatch.setattr(_drill, "attempts_root", lambda: tmp_path / "module-attempts")
+    entry = store.ModuleStore(root).add(RUNNER_OFFLINE)
+
+    result = CliRunner().invoke(
+        root_cli, ["drill", "setup", f"{entry.id}/offline/echo-check"], input="n\n"
+    )
+
+    assert result.exit_code == 2, result.output
+    assert "Drill phase: setup" in result.output
+    assert "Not confirmed -- nothing executed." in result.output
+    assert not list((tmp_path / "module-attempts").rglob("hello.txt")), "setup never ran"
